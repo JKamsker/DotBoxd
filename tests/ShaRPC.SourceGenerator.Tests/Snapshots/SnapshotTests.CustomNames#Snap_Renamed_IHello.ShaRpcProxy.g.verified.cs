@@ -7,7 +7,7 @@ namespace Snap.Renamed
     /// <summary>
     /// Client proxy for IHello.
     /// </summary>
-    public sealed class HelloProxy : global::Snap.Renamed.IHello
+    public sealed class HelloProxy : global::Snap.Renamed.IHello, global::Snap.Renamed.IHelloAsync
     {
         private readonly global::ShaRPC.Core.Client.IShaRpcClient _client;
 
@@ -19,6 +19,11 @@ namespace Snap.Renamed
         public async global::System.Threading.Tasks.Task<string> HelloAsync(string who)
         {
             return await _client.InvokeAsync<string, string>("Greeter", "Greet", who, default);
+        }
+
+        public async global::System.Threading.Tasks.Task<string> HelloAsync(string who, global::System.Threading.CancellationToken ct = default)
+        {
+            return await _client.InvokeAsync<string, string>("Greeter", "Greet", who, ct);
         }
     }
 }

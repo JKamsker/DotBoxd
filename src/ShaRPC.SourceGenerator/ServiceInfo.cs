@@ -53,8 +53,43 @@ internal sealed record MethodModel(
 internal sealed record ParameterModel(string Name, string Type, string RefKindKeyword = "");
 
 /// <summary>
-/// Shared helpers used by both the proxy and dispatcher emitters.
+/// A <see cref="ServiceModel"/> paired with its computed async-sibling projection. Lives
+/// as one value-equatable record so the per-service source-output step can be driven
+/// from a single input without losing incrementality.
 /// </summary>
+internal sealed record ServiceBundle(
+    ServiceModel Model,
+    EquatableArray<AsyncSiblingMethod> SiblingMethods,
+    EquatableArray<ShaRpcGenerator.MethodDiagnostic> SiblingCollisions)
+{
+    public static ServiceBundle Empty(ServiceModel model) =>
+        new(
+            model,
+            EquatableArray<AsyncSiblingMethod>.Empty,
+            EquatableArray<ShaRpcGenerator.MethodDiagnostic>.Empty);
+}
+
+/// <summary>
+/// Shape of one method as it should appear on the auto-generated async sibling interface.
+/// </summary>
+internal sealed record AsyncSiblingMethod(
+    /// <summary>Method name on the sibling (e.g. <c>"Add"</c> → <c>"AddAsync"</c>).</summary>
+    string Name,
+    /// <summary>Original method this row was derived from — used by the proxy emitter to
+    /// pick the wire call shape and to suppress duplicate emission when the sibling row
+    /// is identical to the original method.</summary>
+    MethodModel Source,
+    /// <summary>The return kind on the sibling — always Task / TaskOf / ValueTask / ValueTaskOf;
+    /// sync methods are projected onto <see cref="MethodReturnKind.Task"/> or
+    /// <see cref="MethodReturnKind.TaskOf"/> depending on whether they carry a payload.</summary>
+    MethodReturnKind SiblingReturnKind,
+    /// <summary>True when this row materially differs from <see cref="Source"/> — i.e.
+    /// the proxy needs an extra method to satisfy the sibling interface. False when one
+    /// physical method on the proxy satisfies both interfaces (already-async methods
+    /// with the same name and signature).</summary>
+    bool RequiresExtraProxyMethod);
+
+/// <summary>Shared helpers used by both the proxy and dispatcher emitters.</summary>
 internal static class NamingHelpers
 {
     /// <summary>
@@ -108,4 +143,23 @@ internal static class NamingHelpers
         kind == MethodReturnKind.Sync ||
         kind == MethodReturnKind.TaskOf ||
         kind == MethodReturnKind.ValueTaskOf;
+
+    /// <summary>
+    /// Name of the auto-generated async sibling interface for <paramref name="interfaceName"/>.
+    /// e.g. <c>"IFoo"</c> → <c>"IFooAsync"</c>, <c>"Foo"</c> → <c>"FooAsync"</c>. Falls back
+    /// to appending only when the source name does not already end in <c>"Async"</c>, so
+    /// <c>"IFooAsync"</c> would emit a sibling named <c>"IFooAsync"</c>… which collides; the
+    /// caller is expected to detect that and skip generation.
+    /// </summary>
+    public static string AsyncSiblingInterfaceName(string interfaceName) =>
+        interfaceName.EndsWith("Async", System.StringComparison.Ordinal)
+            ? interfaceName
+            : interfaceName + "Async";
+
+    /// <summary>
+    /// Projects a method name onto its async sibling form. Already-Async names are unchanged,
+    /// otherwise the suffix is appended.
+    /// </summary>
+    public static string AsyncSiblingMethodName(string name) =>
+        name.EndsWith("Async", System.StringComparison.Ordinal) ? name : name + "Async";
 }

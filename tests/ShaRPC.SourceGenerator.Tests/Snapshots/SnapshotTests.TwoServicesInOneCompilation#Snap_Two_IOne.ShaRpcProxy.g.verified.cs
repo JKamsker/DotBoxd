@@ -7,7 +7,7 @@ namespace Snap.Two
     /// <summary>
     /// Client proxy for IOne.
     /// </summary>
-    public sealed class OneProxy : global::Snap.Two.IOne
+    public sealed class OneProxy : global::Snap.Two.IOne, global::Snap.Two.IOneAsync
     {
         private readonly global::ShaRPC.Core.Client.IShaRpcClient _client;
 
@@ -19,6 +19,11 @@ namespace Snap.Two
         public async global::System.Threading.Tasks.Task<int> AAsync(int x)
         {
             return await _client.InvokeAsync<int, int>("IOne", "AAsync", x, default);
+        }
+
+        public async global::System.Threading.Tasks.Task<int> AAsync(int x, global::System.Threading.CancellationToken ct = default)
+        {
+            return await _client.InvokeAsync<int, int>("IOne", "AAsync", x, ct);
         }
     }
 }

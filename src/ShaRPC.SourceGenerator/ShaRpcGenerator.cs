@@ -48,6 +48,14 @@ public sealed class ShaRpcGenerator : IIncrementalGenerator
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    private static readonly DiagnosticDescriptor s_asyncSiblingCollisionRule = new(
+        id: "SHARPC004",
+        title: "ShaRPC async sibling method name collides",
+        messageFormat: "ShaRPC cannot project '{0}.{1}' onto its async sibling: {2}",
+        category: "ShaRPC.SourceGenerator",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
     internal readonly record struct ServiceResult(
         ServiceModel? Model,
         GeneratorError? Error,
@@ -114,20 +122,52 @@ public sealed class ShaRpcGenerator : IIncrementalGenerator
             .Select(static (r, _) => r.Model!)
             .WithTrackingName("Services");
 
-        context.RegisterSourceOutput(models, static (spc, model) =>
+        // Bundle each model with its async-sibling projection + collision diagnostics so
+        // every downstream step (per-service source output, SHARPC004 diagnostics) flows
+        // through one value-equatable record.
+        var bundles = models
+            .Select(static (m, _) =>
+            {
+                var (siblings, collisions) = ComputeAsyncSiblingMethods(m);
+                return new ServiceBundle(m, siblings, collisions);
+            })
+            .WithTrackingName("ServiceBundles");
+
+        // SHARPC004 — async-sibling naming collision warnings.
+        var siblingCollisions = bundles
+            .SelectMany(static (b, _) => b.SiblingCollisions.Array)
+            .WithTrackingName("SiblingCollisions");
+
+        context.RegisterSourceOutput(siblingCollisions, static (spc, d) =>
+            spc.ReportDiagnostic(Diagnostic.Create(
+                s_asyncSiblingCollisionRule,
+                Location.None,
+                d.InterfaceName,
+                d.MethodName,
+                d.Reason)));
+
+        context.RegisterSourceOutput(bundles, static (spc, bundle) =>
         {
             try
             {
-                var hintPrefix = HintNamePrefix(model);
-                var proxySource = ProxyGenerator.Generate(model);
+                var hintPrefix = HintNamePrefix(bundle.Model);
+                var proxySource = ProxyGenerator.Generate(bundle.Model, bundle.SiblingMethods);
                 spc.AddSource(
                     $"{hintPrefix}.ShaRpcProxy.g.cs",
                     SourceText.From(proxySource, Encoding.UTF8));
 
-                var dispatcherSource = DispatcherGenerator.Generate(model);
+                var dispatcherSource = DispatcherGenerator.Generate(bundle.Model);
                 spc.AddSource(
                     $"{hintPrefix}.ShaRpcDispatcher.g.cs",
                     SourceText.From(dispatcherSource, Encoding.UTF8));
+
+                if (!bundle.SiblingMethods.IsEmpty)
+                {
+                    var asyncSource = AsyncInterfaceGenerator.Generate(bundle.Model, bundle.SiblingMethods);
+                    spc.AddSource(
+                        $"{hintPrefix}.ShaRpcAsync.g.cs",
+                        SourceText.From(asyncSource, Encoding.UTF8));
+                }
             }
             catch (OperationCanceledException)
             {
@@ -138,7 +178,7 @@ public sealed class ShaRpcGenerator : IIncrementalGenerator
                 spc.ReportDiagnostic(Diagnostic.Create(
                     s_generatorErrorRule,
                     Location.None,
-                    model.InterfaceName,
+                    bundle.Model.InterfaceName,
                     ex.ToString()));
             }
         });
@@ -457,6 +497,73 @@ public sealed class ShaRpcGenerator : IIncrementalGenerator
             return "@" + name;
         }
         return name;
+    }
+
+    /// <summary>
+    /// Projects each method on the service onto its async-sibling shape, and reports any
+    /// collisions on the sibling-interface naming. The first return value is the set of
+    /// sibling rows; the second is the list of collision diagnostics to surface as
+    /// SHARPC004 warnings.
+    /// </summary>
+    internal static (EquatableArray<AsyncSiblingMethod> Siblings, EquatableArray<MethodDiagnostic> Collisions)
+        ComputeAsyncSiblingMethods(ServiceModel service)
+    {
+        var rows = new List<AsyncSiblingMethod>();
+        var collisions = new List<MethodDiagnostic>();
+        // Key on (siblingName, parameter-type-list) — that's what would collide on the
+        // sibling interface declaration. We deliberately ignore return type, because two
+        // methods with the same name and parameters but different returns can't coexist
+        // on a C# interface at all.
+        var seen = new Dictionary<string, MethodModel>(StringComparer.Ordinal);
+
+        foreach (var m in service.Methods.Array)
+        {
+            // Unsupported (ref/in/out) methods don't get exposed on the sibling — they
+            // already have a SHARPC002 diagnostic and a throwing stub on the proxy.
+            if (m.UnsupportedReason is not null)
+            {
+                continue;
+            }
+
+            string siblingName = NamingHelpers.IsAsync(m.ReturnKind)
+                ? m.Name
+                : NamingHelpers.AsyncSiblingMethodName(m.Name);
+
+            var key = siblingName + "(" +
+                string.Join(",", m.Parameters.Array.Select(p => p.Type)) + ")";
+
+            if (seen.TryGetValue(key, out var clash))
+            {
+                collisions.Add(new MethodDiagnostic(
+                    service.InterfaceName,
+                    m.Name,
+                    $"the async-sibling projection '{siblingName}' would collide with '{clash.Name}'. Rename one of the methods or drop the trailing 'Async' on the sync method."));
+                continue;
+            }
+            seen[key] = m;
+
+            // The sibling return kind:
+            // - sync void → Task
+            // - sync T    → Task<T>
+            // - already-async → unchanged (so awaiting is straight-through)
+            var siblingReturnKind = m.ReturnKind switch
+            {
+                MethodReturnKind.Void => MethodReturnKind.Task,
+                MethodReturnKind.Sync => MethodReturnKind.TaskOf,
+                _ => m.ReturnKind,
+            };
+
+            // True iff the proxy would need an extra method to satisfy the sibling
+            // interface. A second method is unnecessary when name AND signature already
+            // match (same name on both, already async, already has CT parameter).
+            var siblingNameMatches = siblingName == m.Name;
+            var alreadyHasCt = m.HasCancellationToken;
+            var requiresExtra = !(siblingNameMatches && alreadyHasCt && NamingHelpers.IsAsync(m.ReturnKind));
+
+            rows.Add(new AsyncSiblingMethod(siblingName, m, siblingReturnKind, requiresExtra));
+        }
+
+        return (rows.ToEquatableArray(), collisions.ToEquatableArray());
     }
 
     /// <summary>

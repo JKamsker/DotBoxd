@@ -7,7 +7,7 @@ namespace Snap.Inherit
     /// <summary>
     /// Client proxy for IDerived.
     /// </summary>
-    public sealed class DerivedProxy : global::Snap.Inherit.IDerived
+    public sealed class DerivedProxy : global::Snap.Inherit.IDerived, global::Snap.Inherit.IDerivedAsync
     {
         private readonly global::ShaRPC.Core.Client.IShaRpcClient _client;
 
@@ -24,6 +24,16 @@ namespace Snap.Inherit
         public async global::System.Threading.Tasks.Task<int> BaseAsync(int x)
         {
             return await _client.InvokeAsync<int, int>("IDerived", "BaseAsync", x, default);
+        }
+
+        public async global::System.Threading.Tasks.Task<string> DerivedAsync(global::System.Threading.CancellationToken ct = default)
+        {
+            return await _client.InvokeAsync<string>("IDerived", "DerivedAsync", ct);
+        }
+
+        public async global::System.Threading.Tasks.Task<int> BaseAsync(int x, global::System.Threading.CancellationToken ct = default)
+        {
+            return await _client.InvokeAsync<int, int>("IDerived", "BaseAsync", x, ct);
         }
     }
 }

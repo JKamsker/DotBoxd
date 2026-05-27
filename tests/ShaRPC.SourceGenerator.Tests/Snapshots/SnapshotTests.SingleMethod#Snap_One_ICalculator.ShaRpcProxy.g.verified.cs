@@ -7,7 +7,7 @@ namespace Snap.One
     /// <summary>
     /// Client proxy for ICalculator.
     /// </summary>
-    public sealed class CalculatorProxy : global::Snap.One.ICalculator
+    public sealed class CalculatorProxy : global::Snap.One.ICalculator, global::Snap.One.ICalculatorAsync
     {
         private readonly global::ShaRPC.Core.Client.IShaRpcClient _client;
 
@@ -19,6 +19,11 @@ namespace Snap.One
         public async global::System.Threading.Tasks.Task<int> AddAsync(int a, int b)
         {
             return await _client.InvokeAsync<(int, int), int>("ICalculator", "AddAsync", (a, b), default);
+        }
+
+        public async global::System.Threading.Tasks.Task<int> AddAsync(int a, int b, global::System.Threading.CancellationToken ct = default)
+        {
+            return await _client.InvokeAsync<(int, int), int>("ICalculator", "AddAsync", (a, b), ct);
         }
     }
 }

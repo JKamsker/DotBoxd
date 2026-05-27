@@ -614,13 +614,17 @@ public class CodegenRegressionTests
         var proxyType = asm.GetType("Regress.VtRun.VtRunProxy")!;
         var proxy = Activator.CreateInstance(proxyType, client)!;
 
-        // Invoke AddAsync → ValueTask<int>; convert to Task via AsTask() reflection.
-        var vt = proxyType.GetMethod("AddAsync")!.Invoke(proxy, new object[] { 4, 8 })!;
+        // The proxy implements both IVtRun and the generated IVtRunAsync sibling, so
+        // it carries two AddAsync overloads (with and without CancellationToken). Bind
+        // explicitly to the original 2-arg overload so the lookup is unambiguous.
+        var addMethod = proxyType.GetMethod("AddAsync", new[] { typeof(int), typeof(int) })!;
+        var vt = addMethod.Invoke(proxy, new object[] { 4, 8 })!;
         var asTask = (Task<int>)vt.GetType().GetMethod("AsTask")!.Invoke(vt, null)!;
         (await asTask).Should().Be(12);
 
-        // Invoke PingAsync → ValueTask; await its AsTask().
-        var vtPing = proxyType.GetMethod("PingAsync")!.Invoke(proxy, Array.Empty<object>())!;
+        // Same disambiguation for the zero-arg PingAsync (sibling adds a CT overload).
+        var pingMethod = proxyType.GetMethod("PingAsync", Type.EmptyTypes)!;
+        var vtPing = pingMethod.Invoke(proxy, Array.Empty<object>())!;
         var asTaskPing = (Task)vtPing.GetType().GetMethod("AsTask")!.Invoke(vtPing, null)!;
         await asTaskPing;
     }

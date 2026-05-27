@@ -7,7 +7,7 @@ namespace Snap.Kw
     /// <summary>
     /// Client proxy for IKwSnap.
     /// </summary>
-    public sealed class KwSnapProxy : global::Snap.Kw.IKwSnap
+    public sealed class KwSnapProxy : global::Snap.Kw.IKwSnap, global::Snap.Kw.IKwSnapAsync
     {
         private readonly global::ShaRPC.Core.Client.IShaRpcClient _client;
 
@@ -19,6 +19,11 @@ namespace Snap.Kw
         public async global::System.Threading.Tasks.Task<int> DoAsync(int @class, int @default)
         {
             return await _client.InvokeAsync<(int, int), int>("IKwSnap", "DoAsync", (@class, @default), default);
+        }
+
+        public async global::System.Threading.Tasks.Task<int> DoAsync(int @class, int @default, global::System.Threading.CancellationToken ct = default)
+        {
+            return await _client.InvokeAsync<(int, int), int>("IKwSnap", "DoAsync", (@class, @default), ct);
         }
     }
 }

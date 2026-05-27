@@ -7,7 +7,7 @@ namespace Snap.Mixed
     /// <summary>
     /// Client proxy for IMix.
     /// </summary>
-    public sealed class MixProxy : global::Snap.Mixed.IMix
+    public sealed class MixProxy : global::Snap.Mixed.IMix, global::Snap.Mixed.IMixAsync
     {
         private readonly global::ShaRPC.Core.Client.IShaRpcClient _client;
 
@@ -34,6 +34,26 @@ namespace Snap.Mixed
         public void SyncPing()
         {
             _client.InvokeAsync<object>("IMix", "SyncPing", new object(), default).GetAwaiter().GetResult();
+        }
+
+        public async global::System.Threading.Tasks.Task<string> GetNameAsync(global::System.Threading.CancellationToken ct = default)
+        {
+            return await _client.InvokeAsync<string>("IMix", "GetNameAsync", ct);
+        }
+
+        public async global::System.Threading.Tasks.Task SaveAsync(string value, global::System.Threading.CancellationToken ct = default)
+        {
+            await _client.InvokeAsync<string>("IMix", "SaveAsync", value, ct);
+        }
+
+        public async global::System.Threading.Tasks.Task<int> SyncAddAsync(int a, int b, global::System.Threading.CancellationToken ct = default)
+        {
+            return await _client.InvokeAsync<(int, int), int>("IMix", "SyncAdd", (a, b), ct);
+        }
+
+        public async global::System.Threading.Tasks.Task SyncPingAsync(global::System.Threading.CancellationToken ct = default)
+        {
+            await _client.InvokeAsync<object>("IMix", "SyncPing", new object(), ct);
         }
     }
 }

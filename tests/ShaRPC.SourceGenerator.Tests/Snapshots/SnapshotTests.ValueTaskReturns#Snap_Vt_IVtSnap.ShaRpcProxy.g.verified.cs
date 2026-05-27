@@ -7,7 +7,7 @@ namespace Snap.Vt
     /// <summary>
     /// Client proxy for IVtSnap.
     /// </summary>
-    public sealed class VtSnapProxy : global::Snap.Vt.IVtSnap
+    public sealed class VtSnapProxy : global::Snap.Vt.IVtSnap, global::Snap.Vt.IVtSnapAsync
     {
         private readonly global::ShaRPC.Core.Client.IShaRpcClient _client;
 
@@ -24,6 +24,16 @@ namespace Snap.Vt
         public async global::System.Threading.Tasks.ValueTask PingAsync()
         {
             await _client.InvokeAsync<object>("IVtSnap", "PingAsync", new object(), default);
+        }
+
+        public async global::System.Threading.Tasks.ValueTask<int> AddAsync(int a, int b, global::System.Threading.CancellationToken ct = default)
+        {
+            return await _client.InvokeAsync<(int, int), int>("IVtSnap", "AddAsync", (a, b), ct);
+        }
+
+        public async global::System.Threading.Tasks.ValueTask PingAsync(global::System.Threading.CancellationToken ct = default)
+        {
+            await _client.InvokeAsync<object>("IVtSnap", "PingAsync", new object(), ct);
         }
     }
 }

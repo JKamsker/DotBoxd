@@ -137,7 +137,12 @@ public class BehavioralTests
             "NoCtProxy must implement INoCt — the generator must not add stray parameters");
 
         var addParams = interfaceType.GetMethod("AddAsync")!.GetParameters();
-        var proxyAddParams = proxyType.GetMethod("AddAsync")!.GetParameters();
+        // The proxy implements both INoCt (the user interface, with no CT) and INoCtAsync
+        // (the generated sibling, with CT). Resolve the original interface-matching
+        // overload explicitly by parameter types to avoid an ambiguous-match exception.
+        var proxyAddParams = proxyType
+            .GetMethod("AddAsync", addParams.Select(p => p.ParameterType).ToArray())!
+            .GetParameters();
         proxyAddParams.Should().HaveSameCount(addParams,
             "proxy must mirror the interface parameter list exactly");
     }

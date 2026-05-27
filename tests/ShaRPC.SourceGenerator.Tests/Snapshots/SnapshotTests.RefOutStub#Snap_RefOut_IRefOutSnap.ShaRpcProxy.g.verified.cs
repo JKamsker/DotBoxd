@@ -7,7 +7,7 @@ namespace Snap.RefOut
     /// <summary>
     /// Client proxy for IRefOutSnap.
     /// </summary>
-    public sealed class RefOutSnapProxy : global::Snap.RefOut.IRefOutSnap
+    public sealed class RefOutSnapProxy : global::Snap.RefOut.IRefOutSnap, global::Snap.RefOut.IRefOutSnapAsync
     {
         private readonly global::ShaRPC.Core.Client.IShaRpcClient _client;
 
@@ -24,6 +24,11 @@ namespace Snap.RefOut
         public async global::System.Threading.Tasks.Task<int> GoodAsync(int a)
         {
             return await _client.InvokeAsync<int, int>("IRefOutSnap", "GoodAsync", a, default);
+        }
+
+        public async global::System.Threading.Tasks.Task<int> GoodAsync(int a, global::System.Threading.CancellationToken ct = default)
+        {
+            return await _client.InvokeAsync<int, int>("IRefOutSnap", "GoodAsync", a, ct);
         }
     }
 }

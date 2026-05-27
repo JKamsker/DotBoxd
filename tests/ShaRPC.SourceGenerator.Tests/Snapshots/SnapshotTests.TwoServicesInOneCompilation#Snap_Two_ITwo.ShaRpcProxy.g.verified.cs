@@ -7,7 +7,7 @@ namespace Snap.Two
     /// <summary>
     /// Client proxy for ITwo.
     /// </summary>
-    public sealed class TwoProxy : global::Snap.Two.ITwo
+    public sealed class TwoProxy : global::Snap.Two.ITwo, global::Snap.Two.ITwoAsync
     {
         private readonly global::ShaRPC.Core.Client.IShaRpcClient _client;
 
@@ -19,6 +19,11 @@ namespace Snap.Two
         public async global::System.Threading.Tasks.Task<string> BAsync()
         {
             return await _client.InvokeAsync<string>("ITwo", "BAsync", default);
+        }
+
+        public async global::System.Threading.Tasks.Task<string> BAsync(global::System.Threading.CancellationToken ct = default)
+        {
+            return await _client.InvokeAsync<string>("ITwo", "BAsync", ct);
         }
     }
 }
