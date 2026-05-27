@@ -21,6 +21,12 @@ internal static class ServiceShapeValidator
 
             if (member is IMethodSymbol method)
             {
+                if (method.MethodKind == MethodKind.Ordinary &&
+                    method.DeclaredAccessibility != Accessibility.Public)
+                {
+                    return $"non-public interface method '{method.Name}' is not supported; ShaRPC services may declare public instance methods only";
+                }
+
                 if (method.MethodKind == MethodKind.Ordinary && method.IsStatic)
                 {
                     return $"static interface method '{method.Name}' is not supported; ShaRPC services may declare instance methods only";

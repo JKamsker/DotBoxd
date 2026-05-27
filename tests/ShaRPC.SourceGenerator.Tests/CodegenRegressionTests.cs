@@ -303,6 +303,33 @@ public class CodegenRegressionTests
     }
 
     [Fact]
+    public void ServiceInterfaceWithPrivateMethod_ProducesSHARPC003_AndIsSkipped()
+    {
+        const string source = """
+            using ShaRPC.Core.Attributes;
+
+            namespace Regress.PrivateMethod
+            {
+                [ShaRpcService]
+                public interface IWithPrivate
+                {
+                    private int Hidden() => 1;
+                    int Visible();
+                }
+            }
+            """;
+
+        var compilation = GeneratorTestHelper.CreateCompilation(source);
+        var driver = GeneratorTestHelper.CreateDriver().RunGenerators(compilation);
+        var runResult = driver.GetRunResult();
+
+        runResult.Diagnostics.Should().Contain(d => d.Id == "SHARPC003" &&
+            d.GetMessage().Contains("non-public interface method 'Hidden' is not supported"));
+        runResult.Results.Single().GeneratedSources
+            .Should().NotContain(g => g.HintName.Contains("IWithPrivate"));
+    }
+
+    [Fact]
     public void ReservedKeywordParameterNames_AreEscaped()
     {
         // Regression for H1: a parameter named `default` (or any C# keyword) must be
