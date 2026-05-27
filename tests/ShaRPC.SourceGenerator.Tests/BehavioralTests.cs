@@ -104,6 +104,99 @@ public class BehavioralTests
         impl.PingCount.Should().Be(1);
     }
 
+    /// <summary>
+    /// Regression for C-1: an interface method that does NOT declare a
+    /// <see cref="CancellationToken"/> parameter must produce a proxy method whose
+    /// signature exactly matches the interface (no spurious `ct` parameter), or the
+    /// proxy class fails to implement the interface (CS0535).
+    /// </summary>
+    [Fact]
+    public void InterfaceWithoutCancellationToken_GeneratesCompilingProxyAndDispatcher()
+    {
+        const string source = """
+            using ShaRPC.Core.Attributes;
+            using System.Threading.Tasks;
+
+            namespace Behavior.NoCt
+            {
+                [ShaRpcService]
+                public interface INoCt
+                {
+                    Task<int> AddAsync(int a, int b);
+                    Task PingAsync();
+                }
+            }
+            """;
+
+        var (asm, _) = CompileWithGenerator(source);
+
+        var interfaceType = asm.GetType("Behavior.NoCt.INoCt")!;
+        var proxyType = asm.GetType("Behavior.NoCt.NoCtProxy")!;
+        proxyType.Should().NotBeNull();
+        interfaceType.IsAssignableFrom(proxyType).Should().BeTrue(
+            "NoCtProxy must implement INoCt — the generator must not add stray parameters");
+
+        var addParams = interfaceType.GetMethod("AddAsync")!.GetParameters();
+        var proxyAddParams = proxyType.GetMethod("AddAsync")!.GetParameters();
+        proxyAddParams.Should().HaveSameCount(addParams,
+            "proxy must mirror the interface parameter list exactly");
+    }
+
+    /// <summary>
+    /// Regression for C-2: a synchronous interface method (return type T, no Task) must
+    /// produce a sync proxy method whose return type matches the interface, not
+    /// `async Task&lt;T&gt;`.
+    /// </summary>
+    [Fact]
+    public async Task InterfaceWithSyncReturn_GeneratesCompilingSyncProxyAndDispatcher()
+    {
+        const string source = """
+            using ShaRPC.Core.Attributes;
+
+            namespace Behavior.Sync
+            {
+                [ShaRpcService]
+                public interface ISync
+                {
+                    int Add(int a, int b);
+                    void Ping();
+                }
+            }
+            """;
+
+        var (asm, _) = CompileWithGenerator(source);
+
+        var interfaceType = asm.GetType("Behavior.Sync.ISync")!;
+        var proxyType = asm.GetType("Behavior.Sync.SyncProxy")!;
+        proxyType.Should().NotBeNull();
+        interfaceType.IsAssignableFrom(proxyType).Should().BeTrue(
+            "SyncProxy must implement ISync with the declared sync return types");
+
+        var addReturn = proxyType.GetMethod("Add")!.ReturnType;
+        addReturn.Should().Be(typeof(int), "sync int return must stay int, not Task<int>");
+
+        var pingReturn = proxyType.GetMethod("Ping")!.ReturnType;
+        pingReturn.Should().Be(typeof(void), "sync void return must stay void, not Task");
+
+        // Dispatcher should still work even for an all-sync service.
+        var dispatcherType = asm.GetType("Behavior.Sync.SyncDispatcher")!;
+        var syncImpl = new SyncImpl();
+        var implProxy = DispatchTargetFactory.CreateProxyForInterface(interfaceType, syncImpl);
+        var dispatcher = (IServiceDispatcher)Activator.CreateInstance(dispatcherType, implProxy)!;
+        var serializer = new JsonSerializerWrapper();
+
+        var bytes = await dispatcher.DispatchAsync(
+            "Add",
+            serializer.Serialize<ValueTuple<int, int>>(new ValueTuple<int, int>(4, 5)),
+            serializer,
+            CancellationToken.None);
+        serializer.Deserialize<int>(bytes).Should().Be(9);
+
+        var pingBytes = await dispatcher.DispatchAsync("Ping", Array.Empty<byte>(), serializer, CancellationToken.None);
+        pingBytes.Should().BeEmpty();
+        syncImpl.PingCalls.Should().Be(1);
+    }
+
     [Fact]
     public void GeneratedExtensions_ExposeCreateProxyAndAddExtensionMethods()
     {
@@ -236,7 +329,6 @@ public class BehavioralTests
         // We need to make it generic over (dynamicInterfaceType, MathDispatchProxy) at runtime.
         public static object CreateProxy(Type interfaceType, MathImpl impl)
         {
-            // Find DispatchProxy.Create<T,TProxy>() - the generic static factory with two type params.
             var openGeneric = typeof(DispatchProxy)
                 .GetMethods(BindingFlags.Public | BindingFlags.Static)
                 .First(m => m.Name == "Create" && m.IsGenericMethodDefinition && m.GetGenericArguments().Length == 2);
@@ -245,6 +337,50 @@ public class BehavioralTests
             ((MathDispatchProxy)proxy).Impl = impl;
             return proxy;
         }
+
+        // Generic factory: forward every interface call to an arbitrary object via reflection
+        // so tests can synthesize an implementation for a dynamically-compiled interface
+        // without writing a per-interface DispatchProxy.
+        public static object CreateProxyForInterface(Type interfaceType, object impl)
+        {
+            var openGeneric = typeof(DispatchProxy)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .First(m => m.Name == "Create" && m.IsGenericMethodDefinition && m.GetGenericArguments().Length == 2);
+            var closed = openGeneric.MakeGenericMethod(interfaceType, typeof(ReflectiveDispatchProxy));
+            var proxy = closed.Invoke(null, null)!;
+            ((ReflectiveDispatchProxy)proxy).Impl = impl;
+            return proxy;
+        }
+    }
+
+    public class ReflectiveDispatchProxy : DispatchProxy
+    {
+        public object? Impl;
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            if (targetMethod is null || Impl is null) return null;
+            // Forward by name; assume the impl exposes a method with matching name + arity.
+            var implMethod = Impl.GetType().GetMethod(
+                targetMethod.Name,
+                BindingFlags.Public | BindingFlags.Instance,
+                binder: null,
+                types: targetMethod.GetParameters().Select(p => p.ParameterType).ToArray(),
+                modifiers: null);
+            if (implMethod is null)
+            {
+                throw new InvalidOperationException(
+                    $"Test impl {Impl.GetType().Name} has no method {targetMethod.Name} matching the requested signature.");
+            }
+            return implMethod.Invoke(Impl, args);
+        }
+    }
+
+    public sealed class SyncImpl
+    {
+        public int PingCalls { get; private set; }
+        public int Add(int a, int b) => a + b;
+        public void Ping() => PingCalls++;
     }
 
     public class MathDispatchProxy : DispatchProxy

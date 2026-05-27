@@ -197,19 +197,22 @@ public class IncrementalCacheTests
         driver = driver.RunGenerators(compilation2);
         var result = driver.GetRunResult();
 
-        // The first service's per-service SourceOutput must remain cached.
-        // We assert: the source for IFooService.ShaRpcProxy.g.cs is present and unchanged in cached form.
-        var perServiceOutputs = result.Results.Single().TrackedOutputSteps
-            .SelectMany(kvp => kvp.Value)
+        // The first service's per-service Services step output (the value-equatable model)
+        // must stay cached because IFooService didn't change. The AllServices aggregate
+        // must be modified because the collection grew.
+        var servicesOutputs = result.Results.Single().TrackedSteps["Services"]
             .SelectMany(s => s.Outputs)
             .ToArray();
 
-        // At least one new output should appear (the second service files) AND at least one
-        // cached output should be present (the first service's outputs are content-equal).
-        perServiceOutputs.Any(o => o.Reason == IncrementalStepRunReason.New || o.Reason == IncrementalStepRunReason.Modified)
-            .Should().BeTrue("the second service must produce new or modified outputs");
-        perServiceOutputs.Any(o => o.Reason == IncrementalStepRunReason.Cached || o.Reason == IncrementalStepRunReason.Unchanged)
-            .Should().BeTrue("the first service outputs must remain cached when an unrelated second service is added");
+        servicesOutputs.Should().HaveCount(2, "both services should flow through the Services step");
+
+        // Find the first service's output by inspecting the value's InterfaceName via
+        // reflection (the model type is internal to the generator assembly).
+        var fooOutput = servicesOutputs.SingleOrDefault(o => InterfaceNameOf(o.Value) == "IFooService");
+        fooOutput.Value.Should().NotBeNull("IFooService should still flow through the Services step");
+        var cachedReasons = new[] { IncrementalStepRunReason.Cached, IncrementalStepRunReason.Unchanged };
+        cachedReasons.Should().Contain(fooOutput.Reason,
+            "IFooService's model is value-equal across runs and must be cached when a second, unrelated service is added");
 
         // The AllServices aggregate MUST be modified because the collection of services changed.
         AssertStepHasModifiedOutput(result, "AllServices");
@@ -257,6 +260,25 @@ public class IncrementalCacheTests
         // Extensions is not emitted when there are no services.
         result.Results.Single().GeneratedSources
             .Should().NotContain(g => g.HintName == "ShaRpcExtensions.g.cs");
+
+        // Stronger: the Services tracked step must NOT report IFooService as still cached
+        // after its [ShaRpcService] attribute was removed. We materialize first and use
+        // a regular foreach so the predicate isn't constrained by expression-tree rules.
+        var servicesOutputs = result.Results.Single().TrackedSteps["Services"]
+            .SelectMany(s => s.Outputs)
+            .ToArray();
+        var staleFoo = servicesOutputs
+            .Where(o => InterfaceNameOf(o.Value) == "IFooService")
+            .Where(o => o.Reason == IncrementalStepRunReason.Cached || o.Reason == IncrementalStepRunReason.Unchanged)
+            .ToArray();
+        staleFoo.Should().BeEmpty(
+            "IFooService must NOT still be flowing through Services as Cached after its [ShaRpcService] was removed");
+    }
+
+    private static string? InterfaceNameOf(object? maybeModel)
+    {
+        if (maybeModel is null) return null;
+        return maybeModel.GetType().GetProperty("InterfaceName")?.GetValue(maybeModel) as string;
     }
 
     // ---------- assertion helpers ----------

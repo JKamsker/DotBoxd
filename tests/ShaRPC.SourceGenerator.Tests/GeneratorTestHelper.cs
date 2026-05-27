@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using ShaRPC.Core.Attributes;
@@ -12,9 +14,18 @@ namespace ShaRPC.SourceGenerator.Tests;
 /// </summary>
 internal static class GeneratorTestHelper
 {
+    // System.Reflection.DispatchProxy caches its generated proxies by interface type, and
+    // the type identity is partly the defining assembly name. When several in-memory test
+    // compilations all share the name "compilation", the cache returns a proxy that was
+    // emitted against a different (now-unloaded) interface, so reuse fails with a
+    // TypeLoadException. Suffixing with an incrementing counter avoids that collision.
+    private static int s_compilationCounter;
+
     /// <summary>
     /// Builds a compilation that contains the supplied user source plus references to
-    /// .NET 9 BCL and the ShaRPC.Core marker attribute assembly.
+    /// the .NET BCL and the ShaRPC.Core marker attribute assembly. Each call uses a unique
+    /// assembly name so that dynamically loaded test compilations do not collide in the
+    /// process-wide caches used by reflection-based facilities such as DispatchProxy.
     /// </summary>
     public static CSharpCompilation CreateCompilation(params string[] sources)
     {
@@ -25,8 +36,9 @@ internal static class GeneratorTestHelper
             MetadataReference.CreateFromFile(typeof(ShaRpcServiceAttribute).Assembly.Location),
         };
 
+        var unique = Interlocked.Increment(ref s_compilationCounter);
         return CSharpCompilation.Create(
-            assemblyName: "compilation",
+            assemblyName: $"GenTest_{unique}_{Guid.NewGuid():N}",
             syntaxTrees: trees,
             references: references,
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));

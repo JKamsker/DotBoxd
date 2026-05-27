@@ -48,11 +48,13 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void ServiceWithUnresolvableMethodSignature_DoesNotCrashGenerator()
+    public void ServiceWithUnresolvableMethodSignature_DoesNotCrashAndStillEmitsAFile()
     {
-        // This source is broken (UnknownType doesn't exist). The generator should still
-        // complete without throwing and either skip or emit a diagnostic - it must not bubble
-        // an exception through the driver.
+        // This source references a type the user hasn't declared (UnknownType). The
+        // generator must still produce per-service output files (proxy/dispatcher) — the
+        // user's project may add the missing type from another file or via referenced
+        // assemblies, so the generator must not silently drop the service. It must also
+        // not surface its own NullReferenceException via SHARPC001.
         const string source = """
             using ShaRPC.Core.Attributes;
             using System.Threading.Tasks;
@@ -71,9 +73,16 @@ public class DiagnosticTests
         var driver = GeneratorTestHelper.CreateDriver().RunGenerators(compilation);
         var runResult = driver.GetRunResult();
 
-        // The driver should have completed without throwing. Generator-level diagnostics
-        // (SHARPC001) may or may not appear, but at minimum we must not have an unhandled
-        // exception surface as a driver error.
-        runResult.Diagnostics.Should().NotContain(d => d.Severity == DiagnosticSeverity.Error && d.GetMessage().Contains("System.NullReferenceException"));
+        // No SHARPC001 escaping with an internal NRE — generator must handle error symbols.
+        runResult.Diagnostics
+            .Where(d => d.Id == "SHARPC001")
+            .Should().NotContain(d => d.GetMessage().Contains("NullReferenceException"),
+                "the generator must not propagate its own NREs through SHARPC001");
+
+        // Positive assertion: per-service hint names must still be produced.
+        var hints = runResult.Results.Single().GeneratedSources.Select(g => g.HintName).ToArray();
+        hints.Should().Contain("IBroken.ShaRpcProxy.g.cs",
+            "the generator should still emit a proxy hint for IBroken so consumers see something");
+        hints.Should().Contain("IBroken.ShaRpcDispatcher.g.cs");
     }
 }
