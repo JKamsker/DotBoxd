@@ -11,7 +11,10 @@ internal static class ServiceModelFactory
     private const string ShaRpcMethodAttributeName = "ShaRPC.Core.Attributes.ShaRpcMethodAttribute";
     private const string CancellationTokenFullName = "System.Threading.CancellationToken";
 
-    private static readonly SymbolDisplayFormat s_qualifiedFormat = SymbolDisplayFormat.FullyQualifiedFormat;
+    private static readonly SymbolDisplayFormat s_qualifiedFormat =
+        SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
+            SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions |
+            SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);
 
     public static ServiceResult GetServiceResult(GeneratorAttributeSyntaxContext context, CancellationToken ct)
     {

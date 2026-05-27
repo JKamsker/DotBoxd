@@ -1288,6 +1288,37 @@ public class CodegenRegressionTests
         dispatcher.Should().NotContain("case \"EchoAsync\":");
     }
 
+    [Fact]
+    public void GenericServiceMethod_WithKeywordTypeParameter_EmitsCompilingProxyStub()
+    {
+        const string source = """
+            using ShaRPC.Core.Attributes;
+            using System.Threading.Tasks;
+
+            namespace Regress.GenericKeyword
+            {
+                [ShaRpcService]
+                public interface IGenericKeyword
+                {
+                    Task<@class> EchoAsync<@class>(@class value) where @class : class;
+                }
+            }
+            """;
+
+        var (final, runResult) = Run(source);
+        AssertCompiles(final);
+
+        runResult.Diagnostics.Should().Contain(d => d.Id == "SHARPC002" &&
+            d.GetMessage().Contains("generic service methods are not supported"));
+
+        var proxy = runResult.Results.Single().GeneratedSources
+            .Single(g => g.HintName == GeneratorTestHelper.HintName(
+                "Regress.GenericKeyword", "IGenericKeyword", GeneratorTestHelper.GeneratedKind.Proxy))
+            .SourceText.ToString();
+        proxy.Should().Contain("EchoAsync<@class>(@class value) where @class : class");
+        proxy.Should().Contain("global::System.Threading.Tasks.Task<@class>");
+    }
+
     /// <summary>
     /// Regression: <see cref="System.Threading.CancellationToken"/> parameters can be
     /// written through aliases and can appear before later payload parameters. The

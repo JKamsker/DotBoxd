@@ -7,7 +7,10 @@ internal static class ReturnTypeClassifier
     private const string ShaRpcServiceAttributeName = "ShaRPC.Core.Attributes.ShaRpcServiceAttribute";
     private const string SystemThreadingTasks = "System.Threading.Tasks";
 
-    private static readonly SymbolDisplayFormat s_qualifiedFormat = SymbolDisplayFormat.FullyQualifiedFormat;
+    private static readonly SymbolDisplayFormat s_qualifiedFormat =
+        SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
+            SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions |
+            SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);
 
     public static string? GetUnsupportedServiceReturnReason(ITypeSymbol returnType)
     {

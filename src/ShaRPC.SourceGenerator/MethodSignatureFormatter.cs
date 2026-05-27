@@ -6,7 +6,10 @@ namespace ShaRPC.SourceGenerator;
 
 internal static class MethodSignatureFormatter
 {
-    private static readonly SymbolDisplayFormat s_qualifiedFormat = SymbolDisplayFormat.FullyQualifiedFormat;
+    private static readonly SymbolDisplayFormat s_qualifiedFormat =
+        SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
+            SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions |
+            SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);
 
     public static string GetTypeParameterList(IMethodSymbol method)
     {
@@ -15,7 +18,7 @@ internal static class MethodSignatureFormatter
             return string.Empty;
         }
 
-        return "<" + string.Join(", ", method.TypeParameters.Select(p => p.Name)) + ">";
+        return "<" + string.Join(", ", method.TypeParameters.Select(p => IdentifierHelpers.EscapeIdentifier(p.Name))) + ">";
     }
 
     public static string GetConstraintClauses(IMethodSymbol method)
@@ -58,7 +61,7 @@ internal static class MethodSignatureFormatter
 
             if (constraints.Count > 0)
             {
-                clauses.Add($" where {typeParameter.Name} : {string.Join(", ", constraints)}");
+                clauses.Add($" where {IdentifierHelpers.EscapeIdentifier(typeParameter.Name)} : {string.Join(", ", constraints)}");
             }
         }
 
