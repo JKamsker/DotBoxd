@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 
@@ -105,7 +104,7 @@ internal static class ProxyGenerator
     private static void GenerateProxyMethod(StringBuilder sb, ServiceModel service, MethodModel method)
     {
         var paramList = new StringBuilder();
-        AppendParameterList(paramList, method.Parameters);
+        ProxyGenerationHelpers.AppendParameterList(paramList, method.Parameters);
 
         var declaredReturn = NamingHelpers.GetDeclaredReturnTypeText(method.ReturnKind, method.UnwrappedReturnType);
         var isAsync = NamingHelpers.IsAsync(method.ReturnKind);
@@ -114,14 +113,14 @@ internal static class ProxyGenerator
         // NOT add `async` for stubs — the throw must take the synchronous exit path so
         // out-parameters are considered definitely assigned by the C# compiler.
         var asyncKeyword = (isAsync && method.UnsupportedReason is null) ? "async " : string.Empty;
-        var ctArg = GetCancellationTokenArgument(method.Parameters);
+        var ctArg = ProxyGenerationHelpers.GetCancellationTokenArgument(method.Parameters);
 
         sb.AppendLine($"        public {asyncKeyword}{declaredReturn} {method.Name}{method.TypeParameterList}({paramList}){method.ConstraintClauses}");
         sb.AppendLine("        {");
 
         if (method.UnsupportedReason is not null)
         {
-            sb.AppendLine($"            throw new global::System.NotSupportedException(\"ShaRPC cannot marshal '{method.Name}': {ShaRpcGenerator.EscapeStringLiteral(method.UnsupportedReason)}\");");
+            sb.AppendLine($"            throw new global::System.NotSupportedException(\"ShaRPC cannot marshal '{method.Name}': {LiteralHelpers.EscapeStringLiteral(method.UnsupportedReason)}\");");
         }
         else
         {
@@ -146,7 +145,7 @@ internal static class ProxyGenerator
         var returnType = isSubServiceReturn
             ? "global::ShaRPC.Core.Protocol.ServiceHandle"
             : method.UnwrappedReturnType;
-        var requestParameters = GetRequestParameters(method.Parameters);
+        var requestParameters = ProxyGenerationHelpers.GetRequestParameters(method.Parameters);
         var svc = service.ServiceName;
         var rpc = method.RpcName;
 
@@ -209,7 +208,7 @@ internal static class ProxyGenerator
     private static void GenerateAsyncSiblingMethod(StringBuilder sb, ServiceModel service, AsyncSiblingMethod s)
     {
         var paramList = new StringBuilder();
-        AppendParameterList(paramList, s.Parameters);
+        ProxyGenerationHelpers.AppendParameterList(paramList, s.Parameters);
 
         var declaredReturn = NamingHelpers.GetDeclaredReturnTypeText(
             s.SiblingReturnKind, s.Source.UnwrappedReturnType);
@@ -225,51 +224,13 @@ internal static class ProxyGenerator
             ReturnKind = s.SiblingReturnKind,
             Parameters = s.Parameters,
         };
-        var invocation = BuildClientInvocation(service, virtualSource, GetCancellationTokenArgument(s.Parameters));
+        var invocation = BuildClientInvocation(
+            service,
+            virtualSource,
+            ProxyGenerationHelpers.GetCancellationTokenArgument(s.Parameters));
         EmitInvocation(sb, virtualSource, invocation);
 
         sb.AppendLine("        }");
-    }
-
-    private static void AppendParameterList(StringBuilder sb, EquatableArray<ParameterModel> parameters)
-    {
-        for (var i = 0; i < parameters.Count; i++)
-        {
-            if (i > 0) sb.Append(", ");
-            var p = parameters[i];
-            sb.Append(p.RefKindKeyword).Append(p.Type).Append(' ').Append(p.Name);
-            if (p.IsCancellationToken && p.HasDefaultValue)
-            {
-                sb.Append(" = default");
-            }
-        }
-    }
-
-    private static string GetCancellationTokenArgument(EquatableArray<ParameterModel> parameters)
-    {
-        foreach (var p in parameters.Array)
-        {
-            if (p.IsCancellationToken)
-            {
-                return p.Name;
-            }
-        }
-
-        return "default";
-    }
-
-    private static List<ParameterModel> GetRequestParameters(EquatableArray<ParameterModel> parameters)
-    {
-        var requestParameters = new List<ParameterModel>();
-        foreach (var p in parameters.Array)
-        {
-            if (!p.IsCancellationToken)
-            {
-                requestParameters.Add(p);
-            }
-        }
-
-        return requestParameters;
     }
 
     private static void EmitInvocation(StringBuilder sb, MethodModel method, string invocation)
@@ -301,31 +262,11 @@ internal static class ProxyGenerator
                 // The sub-proxy class lives in the SAME namespace as its interface, named
                 // {StripI(InterfaceName)}Proxy — derived from SubService.QualifiedInterfaceName.
                 var info = method.SubService!;
-                var subProxyType = BuildSubProxyTypeName(info.QualifiedInterfaceName);
+                var subProxyType = ProxyGenerationHelpers.BuildSubProxyTypeName(info.QualifiedInterfaceName);
                 sb.AppendLine($"            var __handle = await {invocation};");
                 sb.AppendLine($"            return new {subProxyType}(_client, __handle.InstanceId);");
                 break;
             }
         }
-    }
-
-    /// <summary>
-    /// From <c>global::App.ISubService</c> derive <c>global::App.SubServiceProxy</c>.
-    /// Mirrors the StripInterfacePrefix + "Proxy" convention used for all generated proxies.
-    /// </summary>
-    private static string BuildSubProxyTypeName(string qualifiedInterfaceName)
-    {
-        const string globalPrefix = "global::";
-        var startsWithGlobal = qualifiedInterfaceName.StartsWith(globalPrefix, System.StringComparison.Ordinal);
-        var searchStart = startsWithGlobal ? globalPrefix.Length : 0;
-        var lastDot = qualifiedInterfaceName.LastIndexOf('.');
-        var hasNamespace = lastDot >= searchStart;
-        var qualifierPart = hasNamespace
-            ? qualifiedInterfaceName.Substring(0, lastDot + 1)
-            : startsWithGlobal ? globalPrefix : string.Empty;
-        var simpleName = hasNamespace
-            ? qualifiedInterfaceName.Substring(lastDot + 1)
-            : startsWithGlobal ? qualifiedInterfaceName.Substring(globalPrefix.Length) : qualifiedInterfaceName;
-        return qualifierPart + NamingHelpers.StripInterfacePrefix(simpleName) + "Proxy";
     }
 }

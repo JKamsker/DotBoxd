@@ -79,13 +79,13 @@ internal sealed record ParameterModel(
 internal sealed record ServiceBundle(
     ServiceModel Model,
     EquatableArray<AsyncSiblingMethod> SiblingMethods,
-    EquatableArray<ShaRpcGenerator.MethodDiagnostic> SiblingCollisions)
+    EquatableArray<MethodDiagnostic> SiblingCollisions)
 {
     public static ServiceBundle Empty(ServiceModel model) =>
         new(
             model,
             EquatableArray<AsyncSiblingMethod>.Empty,
-            EquatableArray<ShaRpcGenerator.MethodDiagnostic>.Empty);
+            EquatableArray<MethodDiagnostic>.Empty);
 }
 
 /// <summary>
