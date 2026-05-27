@@ -29,6 +29,9 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnu
         _array = array;
     }
 
+    /// <summary>A canonical empty instance, backed by <see cref="ImmutableArray{T}.Empty"/>.</summary>
+    public static EquatableArray<T> Empty { get; } = new(ImmutableArray<T>.Empty);
+
     public bool IsEmpty => _array.IsDefaultOrEmpty;
 
     public int Count => _array.IsDefault ? 0 : _array.Length;

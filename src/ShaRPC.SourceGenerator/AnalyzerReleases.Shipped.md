@@ -8,3 +8,5 @@
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
 SHARPC001 | ShaRPC.SourceGenerator | Error | ShaRPC source generator failure
+SHARPC002 | ShaRPC.SourceGenerator | Error | Unsupported ShaRPC method shape (e.g. ref/in/out parameter)
+SHARPC003 | ShaRPC.SourceGenerator | Error | Unsupported ShaRPC service shape (e.g. generic or nested interface)
