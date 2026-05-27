@@ -129,6 +129,42 @@ public class CodegenRegressionTests
     }
 
     [Fact]
+    public void RefReturnMethod_ProducesSHARPC002_AndCompilingProxyStub()
+    {
+        const string source = """
+            using ShaRPC.Core.Attributes;
+
+            namespace Regress.RefReturn
+            {
+                [ShaRpcService]
+                public interface IRefReturn
+                {
+                    ref int GetRef();
+                }
+            }
+            """;
+
+        var (final, runResult) = Run(source);
+        AssertCompiles(final);
+
+        runResult.Diagnostics.Should().Contain(d => d.Id == "SHARPC002" &&
+            d.GetMessage().Contains("return value uses an unsupported pass-by-reference kind 'ref'"));
+
+        var generated = runResult.Results.Single().GeneratedSources;
+        var proxy = generated
+            .Single(g => g.HintName == GeneratorTestHelper.HintName(
+                "Regress.RefReturn", "IRefReturn", GeneratorTestHelper.GeneratedKind.Proxy))
+            .SourceText.ToString();
+        proxy.Should().Contain("public ref int GetRef()");
+
+        var dispatcher = generated
+            .Single(g => g.HintName == GeneratorTestHelper.HintName(
+                "Regress.RefReturn", "IRefReturn", GeneratorTestHelper.GeneratedKind.Dispatcher))
+            .SourceText.ToString();
+        dispatcher.Should().NotContain("case \"GetRef\":");
+    }
+
+    [Fact]
     public void GenericServiceInterface_ProducesSHARPC003_AndIsSkipped()
     {
         // Regression for C2: generic service interfaces are unsupported. The generator

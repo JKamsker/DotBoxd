@@ -192,6 +192,11 @@ internal static class ServiceModelFactory
             unsupportedReason ??= "generic service methods are not supported; expose a non-generic RPC method instead";
         }
 
+        if (methodSymbol.RefKind != RefKind.None)
+        {
+            unsupportedReason ??= $"return value uses an unsupported pass-by-reference kind '{methodSymbol.RefKind.ToString().ToLowerInvariant()}'";
+        }
+
         foreach (var param in methodSymbol.Parameters)
         {
             var isCancellationToken = cancellationTokenSymbol is not null &&
@@ -236,6 +241,7 @@ internal static class ServiceModelFactory
             RpcName: LiteralHelpers.EscapeStringLiteral(GetConfiguredMethodName(methodSymbol) ?? methodSymbol.Name),
             ReturnKind: returnKind,
             UnwrappedReturnType: unwrappedReturnType,
+            ReturnRefKindKeyword: RefKindKeyword(methodSymbol.RefKind),
             HasCancellationToken: hasCancellationToken,
             Parameters: parameters.ToEquatableArray(),
             TypeParameterList: typeParameterList,

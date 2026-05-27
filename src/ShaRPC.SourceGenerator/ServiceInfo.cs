@@ -50,6 +50,7 @@ internal sealed record MethodModel(
     string RpcName,
     MethodReturnKind ReturnKind,
     string? UnwrappedReturnType,
+    string ReturnRefKindKeyword,
     bool HasCancellationToken,
     EquatableArray<ParameterModel> Parameters,
     string TypeParameterList = "",
