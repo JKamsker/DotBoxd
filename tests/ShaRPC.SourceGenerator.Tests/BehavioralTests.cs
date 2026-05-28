@@ -59,13 +59,15 @@ public class BehavioralTests
 
         // IMath.AddAsync declares (int, int, CancellationToken ct = default) — the proxy
         // now mirrors that signature exactly, so we pass the same three arguments.
-        var resultTask = (Task)addMethod.Invoke(proxy, new object[] { 2, 3, CancellationToken.None })!;
+        using var proxyCts = new CancellationTokenSource();
+        var resultTask = (Task)addMethod.Invoke(proxy, new object[] { 2, 3, proxyCts.Token })!;
         await resultTask;
         var result = (int)resultTask.GetType().GetProperty("Result")!.GetValue(resultTask)!;
 
         result.Should().Be(42);
         mockClient.LastService.Should().Be("IMath");
         mockClient.LastMethod.Should().Be("AddAsync");
+        mockClient.LastCancellationToken.Should().Be(proxyCts.Token);
     }
 
     [Fact]
@@ -87,10 +89,12 @@ public class BehavioralTests
 
         // Two-arg method goes through tuple deserialization.
         var payload = serializer.Serialize<ValueTuple<int, int>>(new ValueTuple<int, int>(7, 5));
-        var bytes = await dispatcher.DispatchAsync("AddAsync", payload, serializer, new InstanceRegistry(), CancellationToken.None);
+        using var dispatcherCts = new CancellationTokenSource();
+        var bytes = await dispatcher.DispatchAsync("AddAsync", payload, serializer, new InstanceRegistry(), dispatcherCts.Token);
         var sum = serializer.Deserialize<int>(bytes);
         sum.Should().Be(12);
         impl.LastCall.Should().Be("Add(7,5)");
+        impl.LastCancellationToken.Should().Be(dispatcherCts.Token);
 
         // One-arg method goes through single deserialization.
         var single = serializer.Serialize<int>(6);
@@ -259,6 +263,7 @@ public class BehavioralTests
         public string? LastService { get; private set; }
         public string? LastMethod { get; private set; }
         public object? LastRequest { get; private set; }
+        public CancellationToken LastCancellationToken { get; private set; }
         public object? NextResultObject { get; set; }
 
         public bool IsConnected => true;
@@ -270,6 +275,7 @@ public class BehavioralTests
             LastService = service;
             LastMethod = method;
             LastRequest = request;
+            LastCancellationToken = ct;
             return Task.FromResult((TResponse)NextResultObject!);
         }
 
@@ -277,6 +283,7 @@ public class BehavioralTests
         {
             LastService = service;
             LastMethod = method;
+            LastCancellationToken = ct;
             return Task.FromResult((TResponse)NextResultObject!);
         }
 
@@ -285,6 +292,7 @@ public class BehavioralTests
             LastService = service;
             LastMethod = method;
             LastRequest = request;
+            LastCancellationToken = ct;
             return Task.CompletedTask;
         }
 
@@ -316,22 +324,26 @@ public class BehavioralTests
     public sealed class MathImpl
     {
         public string? LastCall { get; private set; }
+        public CancellationToken LastCancellationToken { get; private set; }
         public int PingCount { get; private set; }
 
         public Task<int> AddAsync(int a, int b, CancellationToken ct)
         {
             LastCall = $"Add({a},{b})";
+            LastCancellationToken = ct;
             return Task.FromResult(a + b);
         }
 
         public Task<int> SquareAsync(int x, CancellationToken ct)
         {
             LastCall = $"Square({x})";
+            LastCancellationToken = ct;
             return Task.FromResult(x * x);
         }
 
         public Task PingAsync(CancellationToken ct)
         {
+            LastCancellationToken = ct;
             PingCount++;
             return Task.CompletedTask;
         }
