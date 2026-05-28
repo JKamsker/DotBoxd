@@ -223,6 +223,35 @@ public class ReviewedCodegenRegressionTests
         dispatcher.Should().Contain("case " + methodLiteral + ":");
     }
 
+    [Fact]
+    public void GenericUnsupportedMethod_PreservesNullableReferenceConstraintOnStub()
+    {
+        const string source = """
+            #nullable enable
+            using ShaRPC.Core.Attributes;
+
+            namespace Regress.NullableConstraint
+            {
+                [ShaRpcService]
+                public interface IGenericConstraint
+                {
+                    T Echo<T>(T value) where T : class?;
+                }
+            }
+            """;
+
+        var (final, runResult) = Run(source);
+        AssertCompiles(final);
+
+        runResult.Diagnostics.Should().Contain(d => d.Id == "SHARPC002" &&
+            d.GetMessage().Contains("generic service methods are not supported"));
+
+        var proxy = runResult.Results.Single().GeneratedSources
+            .Single(g => g.HintName.EndsWith("IGenericConstraint.ShaRpcProxy.g.cs"))
+            .SourceText.ToString();
+        proxy.Should().Contain("public T Echo<T>(T value) where T : class?");
+    }
+
     private static (CSharpCompilation Final, GeneratorDriverRunResult RunResult) Run(string source)
     {
         var compilation = GeneratorTestHelper.CreateCompilation(source);

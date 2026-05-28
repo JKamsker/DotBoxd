@@ -9,7 +9,8 @@ internal static class MethodSignatureFormatter
     private static readonly SymbolDisplayFormat s_qualifiedFormat =
         SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
             SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions |
-            SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);
+            SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers |
+            SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
 
     public static string GetTypeParameterList(IMethodSymbol method, CancellationToken ct)
     {
@@ -43,7 +44,10 @@ internal static class MethodSignatureFormatter
             var constraints = new List<string>();
             if (typeParameter.HasReferenceTypeConstraint)
             {
-                constraints.Add("class");
+                constraints.Add(
+                    typeParameter.ReferenceTypeConstraintNullableAnnotation == NullableAnnotation.Annotated
+                        ? "class?"
+                        : "class");
             }
             else if (typeParameter.HasUnmanagedTypeConstraint)
             {

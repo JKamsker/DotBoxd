@@ -126,7 +126,7 @@ public class UnsupportedShapeCoverageTests
         var (_, runResult) = Compile(source);
 
         runResult.Diagnostics.Should().Contain(d => d.Id == "SHARPC002" &&
-            d.GetMessage().Contains("parameter 'value' uses an unsupported pass-by-reference kind"));
+            d.GetMessage().Contains("parameter 'value' uses an unsupported pass-by-reference kind 'ref readonly'"));
 
         var generated = runResult.Results.Single().GeneratedSources;
         var proxy = generated

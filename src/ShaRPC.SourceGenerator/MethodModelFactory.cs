@@ -179,9 +179,13 @@ internal static class MethodModelFactory
     private static string RefKindDisplay(RefKind kind, bool isReturn)
     {
         var text = kind.ToString();
-        return isReturn && text == "In"
-            ? "ref readonly"
-            : text.ToLowerInvariant();
+        return text switch
+        {
+            "In" when isReturn => "ref readonly",
+            "RefReadOnly" => "ref readonly",
+            "RefReadOnlyParameter" => "ref readonly",
+            _ => text.ToLowerInvariant(),
+        };
     }
 
     private static void SetUnsupported(
