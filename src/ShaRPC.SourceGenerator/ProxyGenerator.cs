@@ -66,23 +66,20 @@ internal static class ProxyGenerator
         {
             ct.ThrowIfCancellationRequested();
             sb.AppendLine();
-            GenerateProxyMethod(sb, service, method, ct);
+            GenerateProxyMethod(sb, service, method, proxyName, qualifiedInterface, ct);
         }
 
-        // Emit the extra non-blocking entry points required to satisfy the async sibling
-        // interface. Methods whose sibling row matches their original signature already
-        // satisfy both interfaces via a single physical implementation, so we only emit
-        // for the rows that genuinely differ.
         foreach (var s in siblingMethods.Array)
         {
             ct.ThrowIfCancellationRequested();
-            if (!s.RequiresExtraProxyMethod)
+            if (!s.RequiresExtraProxyMethod &&
+                !ProxyGenerationHelpers.MethodNameCollidesWithProxy(s.Name, proxyName))
             {
                 continue;
             }
 
             sb.AppendLine();
-            GenerateAsyncSiblingMethod(sb, service, s, ct);
+            GenerateAsyncSiblingMethod(sb, service, s, proxyName, qualifiedAsyncSibling, ct);
         }
 
         sb.AppendLine("    }");
@@ -95,7 +92,6 @@ internal static class ProxyGenerator
         return sb.ToString();
     }
 
-    /// <summary>Builds a <c>global::Namespace.InterfaceName</c> reference.</summary>
     private static string QualifyServiceType(ServiceModel service, string typeName) =>
         IdentifierHelpers.QualifyTypeName(service.Namespace, typeName);
 
@@ -103,6 +99,8 @@ internal static class ProxyGenerator
         StringBuilder sb,
         ServiceModel service,
         MethodModel method,
+        string proxyName,
+        string qualifiedInterface,
         CancellationToken ct)
     {
         var paramList = new StringBuilder();
@@ -110,15 +108,15 @@ internal static class ProxyGenerator
 
         var declaredReturn = NamingHelpers.GetDeclaredReturnTypeText(method.ReturnKind, method.UnwrappedReturnType);
         var isAsync = NamingHelpers.IsAsync(method.ReturnKind);
-        // Methods whose shape we cannot marshal (ref/in/out parameters) are emitted as a
-        // throwing stub so the proxy class still implements the user's interface. We do
-        // NOT add `async` for stubs — the throw must take the synchronous exit path so
-        // out-parameters are considered definitely assigned by the C# compiler.
+        // Stubs stay non-async so out-parameters are definitely assigned by throw.
         var asyncKeyword = (isAsync && method.UnsupportedReason is null) ? "async " : string.Empty;
         var unsafeKeyword = method.RequiresUnsafeSignature ? "unsafe " : string.Empty;
         var ctArg = ProxyGenerationHelpers.GetCancellationTokenArgument(method.Parameters, ct);
+        var explicitInterface = ProxyGenerationHelpers.MethodNameCollidesWithProxy(method.Name, proxyName);
+        var access = explicitInterface ? string.Empty : "public ";
+        var target = explicitInterface ? qualifiedInterface + "." + method.Name : method.Name;
 
-        sb.AppendLine($"        public {unsafeKeyword}{asyncKeyword}{method.ReturnRefKindKeyword}{declaredReturn} {method.Name}{method.TypeParameterList}({paramList}){method.ConstraintClauses}");
+        sb.AppendLine($"        {access}{unsafeKeyword}{asyncKeyword}{method.ReturnRefKindKeyword}{declaredReturn} {target}{method.TypeParameterList}({paramList}){method.ConstraintClauses}");
         sb.AppendLine("        {");
 
         if (method.UnsupportedReason is not null)
@@ -218,6 +216,8 @@ internal static class ProxyGenerator
         StringBuilder sb,
         ServiceModel service,
         AsyncSiblingMethod s,
+        string proxyName,
+        string qualifiedAsyncSibling,
         CancellationToken ct)
     {
         var paramList = new StringBuilder();
@@ -225,8 +225,11 @@ internal static class ProxyGenerator
 
         var declaredReturn = NamingHelpers.GetDeclaredReturnTypeText(
             s.SiblingReturnKind, s.Source.UnwrappedReturnType);
+        var explicitInterface = ProxyGenerationHelpers.MethodNameCollidesWithProxy(s.Name, proxyName);
+        var access = explicitInterface ? string.Empty : "public ";
+        var target = explicitInterface ? qualifiedAsyncSibling + "." + s.Name : s.Name;
 
-        sb.AppendLine($"        public async {declaredReturn} {s.Name}({paramList})");
+        sb.AppendLine($"        {access}async {declaredReturn} {target}({paramList})");
         sb.AppendLine("        {");
 
         // For the wire call, treat the sibling as having a CancellationToken AND the

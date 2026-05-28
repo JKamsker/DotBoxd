@@ -76,6 +76,9 @@ internal static class ProxyGenerationHelpers
         return qualifierPart + NamingHelpers.StripInterfacePrefix(simpleName) + "Proxy";
     }
 
+    public static bool MethodNameCollidesWithProxy(string methodName, string proxyName) =>
+        IdentifierHelpers.UnescapeIdentifier(methodName) == proxyName;
+
     public static string UniqueGeneratedLocalName(
         EquatableArray<ParameterModel> parameters,
         string baseName,
