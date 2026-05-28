@@ -95,6 +95,34 @@ public class ExistingTypeCollisionKeyTests
             .Should().NotContain(g => g.HintName.Contains("IFoo.") || g.HintName.Contains("IBar."));
     }
 
+    [Fact]
+    public void EscapedKeywordNamespace_StillMatchesExistingTypeCollision()
+    {
+        const string source = """
+            using ShaRPC.Core.Attributes;
+
+            namespace Regress.@event
+            {
+                public sealed class FooProxy
+                {
+                }
+
+                [ShaRpcService]
+                public interface IFoo
+                {
+                    int Get();
+                }
+            }
+            """;
+
+        var runResult = Run(source);
+
+        runResult.Diagnostics.Should().Contain(d => d.Id == "SHARPC003" &&
+            d.GetMessage().Contains("generated proxy type 'FooProxy' would collide"));
+        runResult.Results.Single().GeneratedSources
+            .Should().NotContain(g => g.HintName.Contains("IFoo."));
+    }
+
     private static GeneratorDriverRunResult Run(string source)
     {
         var compilation = GeneratorTestHelper.CreateCompilation(source);

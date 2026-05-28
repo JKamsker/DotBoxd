@@ -43,9 +43,7 @@ internal static class ServiceModelFactory
 
         var displayName = interfaceSymbol.ToDisplayString();
         var serviceLocation = DiagnosticLocationFactory.FromSymbol(interfaceSymbol);
-        var serviceNamespace = interfaceSymbol.ContainingNamespace.IsGlobalNamespace
-            ? string.Empty
-            : interfaceSymbol.ContainingNamespace.ToDisplayString();
+        var serviceNamespace = GetNamespace(interfaceSymbol.ContainingNamespace);
         var qualifiedInterfaceName = IdentifierHelpers.QualifyTypeName(
             serviceNamespace,
             interfaceSymbol.Name);
@@ -172,6 +170,22 @@ internal static class ServiceModelFactory
         }
 
         return null;
+    }
+
+    private static string GetNamespace(INamespaceSymbol namespaceSymbol)
+    {
+        if (namespaceSymbol.IsGlobalNamespace)
+        {
+            return string.Empty;
+        }
+
+        var parts = new Stack<string>();
+        for (var current = namespaceSymbol; !current.IsGlobalNamespace; current = current.ContainingNamespace)
+        {
+            parts.Push(current.Name);
+        }
+
+        return string.Join(".", parts);
     }
 
     private static IEnumerable<IMethodSymbol> EnumerateMethods(
