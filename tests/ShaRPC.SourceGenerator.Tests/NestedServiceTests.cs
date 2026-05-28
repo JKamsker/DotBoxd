@@ -191,6 +191,54 @@ public class NestedServiceTests
         fakeClient.LastInstanceCallId.Should().Be("sum-123");
         fakeClient.LastInstanceCallMethod.Should().Be("SumAsync");
         fakeClient.LastInstanceRequest.Should().Be(new ValueTuple<int, int>(2, 3));
+
+        using var cts = new CancellationTokenSource();
+        var sumWithCt = sub.GetType().GetMethod(
+            "SumAsync",
+            new[] { typeof(int), typeof(int), typeof(CancellationToken) })!;
+        var ctTask = (Task<int>)sumWithCt.Invoke(sub, new object[] { 5, 8, cts.Token })!;
+        (await ctTask).Should().Be(42);
+        fakeClient.LastInstanceRequest.Should().Be(new ValueTuple<int, int>(5, 8));
+        fakeClient.LastInstanceCancellationToken.Should().Be(cts.Token);
+    }
+
+    [Fact]
+    public void ValueTaskSubServiceReturn_AcrossNamespaces_UsesQualifiedSubProxy()
+    {
+        const string source = """
+            using ShaRPC.Core.Attributes;
+            using System.Threading.Tasks;
+
+            namespace Nested.Cross.Sub
+            {
+                [ShaRpcService]
+                public interface ISubService
+                {
+                    ValueTask<int> CountAsync();
+                }
+            }
+
+            namespace Nested.Cross.Root
+            {
+                [ShaRpcService]
+                public interface IRootService
+                {
+                    ValueTask<Nested.Cross.Sub.ISubService> GetSubAsync();
+                }
+            }
+            """;
+
+        var (_, runResult) = Compile(source);
+
+        var rootProxy = runResult.Results.Single().GeneratedSources
+            .Single(g => g.HintName.EndsWith("IRootService.ShaRpcProxy.g.cs"))
+            .SourceText.ToString();
+        rootProxy.Should().Contain("new global::Nested.Cross.Sub.SubServiceProxy");
+
+        var rootDispatcher = runResult.Results.Single().GeneratedSources
+            .Single(g => g.HintName.EndsWith("IRootService.ShaRpcDispatcher.g.cs"))
+            .SourceText.ToString();
+        rootDispatcher.Should().Contain("registry.Register(\"ISubService\", __sub)");
     }
 
     [Fact]
@@ -239,6 +287,7 @@ public class NestedServiceTests
         public string? LastInstanceCallId;
         public string? LastInstanceCallMethod;
         public object? LastInstanceRequest;
+        public CancellationToken LastInstanceCancellationToken;
 
         public bool IsConnected => true;
         public Task ConnectAsync(CancellationToken ct = default) => Task.CompletedTask;
@@ -259,17 +308,20 @@ public class NestedServiceTests
         {
             LastInstanceCallService = svc; LastInstanceCallId = id; LastInstanceCallMethod = method;
             LastInstanceRequest = req;
+            LastInstanceCancellationToken = ct;
             return Task.FromResult((TR)(object)CountResult);
         }
         public Task<TR> InvokeOnInstanceAsync<TR>(string svc, string id, string method, CancellationToken ct = default)
         {
             LastInstanceCallService = svc; LastInstanceCallId = id; LastInstanceCallMethod = method;
+            LastInstanceCancellationToken = ct;
             return Task.FromResult((TR)(object)CountResult);
         }
         public Task InvokeOnInstanceAsync<TQ>(string svc, string id, string method, TQ req, CancellationToken ct = default)
         {
             LastInstanceCallService = svc; LastInstanceCallId = id; LastInstanceCallMethod = method;
             LastInstanceRequest = req;
+            LastInstanceCancellationToken = ct;
             return Task.CompletedTask;
         }
     }

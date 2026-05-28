@@ -208,6 +208,40 @@ public class AsyncSiblingTests
             "the original AddAsync implementation should satisfy the sibling signature");
     }
 
+    [Fact]
+    public void AsyncProjectionColliding_WithExistingAsyncCtOverload_FiresSHARPC004()
+    {
+        const string source = """
+            using ShaRPC.Core.Attributes;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace AsyncSibling.J
+            {
+                [ShaRpcService]
+                public interface IAsyncClash
+                {
+                    [ShaRpcMethod(Name = "FetchNoCt")]
+                    Task<int> FetchAsync(int value);
+                    [ShaRpcMethod(Name = "FetchWithCt")]
+                    Task<int> FetchAsync(int value, CancellationToken ct = default);
+                }
+            }
+            """;
+
+        var (asm, runResult) = Compile(source);
+
+        runResult.Diagnostics.Should().Contain(d => d.Id == "SHARPC004" &&
+            d.GetMessage().Contains("FetchAsync"));
+
+        var proxy = asm.GetType("AsyncSibling.J.AsyncClashProxy")!;
+        proxy.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Where(m => m.Name == "FetchAsync")
+            .Where(m => m.GetParameters().Length == 2 &&
+                m.GetParameters()[1].ParameterType == typeof(CancellationToken))
+            .Should().ContainSingle();
+    }
+
     /// <summary>
     /// The generated CancellationToken parameter on a sibling method must avoid names
     /// already used by payload parameters.
