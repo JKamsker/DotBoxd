@@ -149,6 +149,43 @@ public class ReviewedCodegenRegressionTests
         hints.Should().Contain("A_B.ShaRpcProxy.g.cs");
     }
 
+    [Fact]
+    public void CustomWireNames_WithControlEscapes_EmitEscapedProxyAndDispatcherLiterals()
+    {
+        const string source = """
+            using ShaRPC.Core.Attributes;
+            using System.Threading.Tasks;
+
+            namespace Regress.ControlWireNames
+            {
+                [ShaRpcService(Name = "svc\u0085\n\r\t\0end")]
+                public interface IControlNames
+                {
+                    [ShaRpcMethod(Name = "method\u0085\n\r\t\0end")]
+                    Task<int> GetAsync();
+                }
+            }
+            """;
+
+        var (final, runResult) = Run(source);
+        AssertCompiles(final);
+
+        const string serviceLiteral = "\"svc\\u0085\\n\\r\\t\\0end\"";
+        const string methodLiteral = "\"method\\u0085\\n\\r\\t\\0end\"";
+        var generated = runResult.Results.Single().GeneratedSources;
+        var proxy = generated
+            .Single(g => g.HintName.EndsWith("IControlNames.ShaRpcProxy.g.cs"))
+            .SourceText.ToString();
+        proxy.Should().Contain(serviceLiteral);
+        proxy.Should().Contain(methodLiteral);
+
+        var dispatcher = generated
+            .Single(g => g.HintName.EndsWith("IControlNames.ShaRpcDispatcher.g.cs"))
+            .SourceText.ToString();
+        dispatcher.Should().Contain(serviceLiteral);
+        dispatcher.Should().Contain("case " + methodLiteral + ":");
+    }
+
     private static (CSharpCompilation Final, GeneratorDriverRunResult RunResult) Run(string source)
     {
         var compilation = GeneratorTestHelper.CreateCompilation(source);
