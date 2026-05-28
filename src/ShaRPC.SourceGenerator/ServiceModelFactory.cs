@@ -29,6 +29,7 @@ internal static class ServiceModelFactory
                 MethodDiagnostics: EquatableArray<MethodDiagnostic>.Empty,
                 MethodLocations: EquatableArray<DiagnosticLocation>.Empty,
                 ServiceLocation: default,
+                QualifiedInterfaceName: string.Empty,
                 ServiceDiagnostic: null);
         }
     }
@@ -42,13 +43,20 @@ internal static class ServiceModelFactory
 
         var displayName = interfaceSymbol.ToDisplayString();
         var serviceLocation = DiagnosticLocationFactory.FromSymbol(interfaceSymbol);
+        var serviceNamespace = interfaceSymbol.ContainingNamespace.IsGlobalNamespace
+            ? string.Empty
+            : interfaceSymbol.ContainingNamespace.ToDisplayString();
+        var qualifiedInterfaceName = IdentifierHelpers.QualifyTypeName(
+            serviceNamespace,
+            interfaceSymbol.Name);
 
         if (interfaceSymbol.IsGenericType)
         {
             return RejectedService(
                 displayName,
                 "generic service interfaces are not supported; declare a non-generic interface and forward to a generic helper if needed",
-                serviceLocation);
+                serviceLocation,
+                qualifiedInterfaceName);
         }
 
         if (interfaceSymbol.ContainingType is not null)
@@ -56,7 +64,8 @@ internal static class ServiceModelFactory
             return RejectedService(
                 displayName,
                 "nested service interfaces are not supported; declare the interface at namespace scope",
-                serviceLocation);
+                serviceLocation,
+                qualifiedInterfaceName);
         }
 
         if (interfaceSymbol.DeclaredAccessibility != Accessibility.Public)
@@ -64,7 +73,8 @@ internal static class ServiceModelFactory
             return RejectedService(
                 displayName,
                 "service interfaces must be public because generated proxy, dispatcher, and extension APIs are public",
-                serviceLocation);
+                serviceLocation,
+                qualifiedInterfaceName);
         }
 
         var unsupportedMemberDiagnostic = ServiceShapeValidator.GetUnsupportedMemberDiagnostic(interfaceSymbol, ct);
@@ -73,7 +83,8 @@ internal static class ServiceModelFactory
             return RejectedService(
                 displayName,
                 unsupportedMemberDiagnostic.Value.Reason,
-                unsupportedMemberDiagnostic.Value.Location);
+                unsupportedMemberDiagnostic.Value.Location,
+                qualifiedInterfaceName);
         }
 
         ct.ThrowIfCancellationRequested();
@@ -98,7 +109,8 @@ internal static class ServiceModelFactory
                     return RejectedService(
                         displayName,
                         $"inherited method '{methodSymbol.Name}' has the same signature as another method but an incompatible return type",
-                        DiagnosticLocationFactory.FromSymbol(methodSymbol));
+                        DiagnosticLocationFactory.FromSymbol(methodSymbol),
+                        qualifiedInterfaceName);
                 }
 
                 continue;
@@ -119,13 +131,9 @@ internal static class ServiceModelFactory
 
         WireNameValidator.MarkDuplicateWireNames(displayName, methods, methodLocations, methodDiagnostics, ct);
 
-        var ns = interfaceSymbol.ContainingNamespace.IsGlobalNamespace
-            ? string.Empty
-            : interfaceSymbol.ContainingNamespace.ToDisplayString();
-
         return new ServiceResult(
             Model: new ServiceModel(
-                Namespace: ns,
+                Namespace: serviceNamespace,
                 InterfaceName: interfaceSymbol.Name,
                 ServiceName: LiteralHelpers.EscapeStringLiteral(serviceName),
                 Methods: methods.ToEquatableArray()),
@@ -133,19 +141,22 @@ internal static class ServiceModelFactory
             MethodDiagnostics: methodDiagnostics.ToEquatableArray(),
             MethodLocations: methodLocations.ToEquatableArray(),
             ServiceLocation: serviceLocation,
+            QualifiedInterfaceName: qualifiedInterfaceName,
             ServiceDiagnostic: null);
     }
 
     private static ServiceResult RejectedService(
         string displayName,
         string reason,
-        DiagnosticLocation location) =>
+        DiagnosticLocation location,
+        string qualifiedInterfaceName) =>
         new(
             Model: null,
             Error: null,
             MethodDiagnostics: EquatableArray<MethodDiagnostic>.Empty,
             MethodLocations: EquatableArray<DiagnosticLocation>.Empty,
             ServiceLocation: location,
+            QualifiedInterfaceName: qualifiedInterfaceName,
             ServiceDiagnostic: new ServiceDiagnostic(displayName, reason, location));
 
     private static string? GetConfiguredServiceName(GeneratorAttributeSyntaxContext context)

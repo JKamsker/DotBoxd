@@ -9,6 +9,7 @@ internal readonly record struct ServiceResult(
     EquatableArray<MethodDiagnostic> MethodDiagnostics,
     EquatableArray<DiagnosticLocation> MethodLocations,
     DiagnosticLocation ServiceLocation,
+    string QualifiedInterfaceName,
     ServiceDiagnostic? ServiceDiagnostic);
 
 internal readonly record struct GeneratorError(string Where, string Message);

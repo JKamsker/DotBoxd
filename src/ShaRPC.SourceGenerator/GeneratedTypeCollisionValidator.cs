@@ -69,6 +69,7 @@ internal static class GeneratedTypeCollisionValidator
             MethodDiagnostics: EquatableArray<MethodDiagnostic>.Empty,
             MethodLocations: EquatableArray<DiagnosticLocation>.Empty,
             ServiceLocation: location,
+            QualifiedInterfaceName: IdentifierHelpers.QualifyTypeName(model.Namespace, model.InterfaceName),
             ServiceDiagnostic: new ServiceDiagnostic(GetDisplayName(model), reason, location));
 
     private static string GetDisplayName(ServiceModel model) =>
