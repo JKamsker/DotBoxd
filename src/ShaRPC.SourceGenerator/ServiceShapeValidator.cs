@@ -10,7 +10,7 @@ internal static class ServiceShapeValidator
         INamedTypeSymbol interfaceSymbol,
         CancellationToken ct)
     {
-        foreach (var member in EnumerateInterfaceMembers(interfaceSymbol))
+        foreach (var member in EnumerateInterfaceMembers(interfaceSymbol, ct))
         {
             ct.ThrowIfCancellationRequested();
 
@@ -58,17 +58,23 @@ internal static class ServiceShapeValidator
         return null;
     }
 
-    private static IEnumerable<ISymbol> EnumerateInterfaceMembers(INamedTypeSymbol interfaceSymbol)
+    private static IEnumerable<ISymbol> EnumerateInterfaceMembers(
+        INamedTypeSymbol interfaceSymbol,
+        CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         foreach (var member in interfaceSymbol.GetMembers())
         {
+            ct.ThrowIfCancellationRequested();
             yield return member;
         }
 
         foreach (var baseInterface in interfaceSymbol.AllInterfaces)
         {
+            ct.ThrowIfCancellationRequested();
             foreach (var member in baseInterface.GetMembers())
             {
+                ct.ThrowIfCancellationRequested();
                 yield return member;
             }
         }

@@ -9,14 +9,9 @@ namespace ShaRPC.SourceGenerator;
 
 internal sealed record ExistingTypeIndex(EquatableArray<ExistingTypeKey> Types)
 {
-    public static ExistingTypeIndex Create(ImmutableArray<ExistingTypeDeclaration> declarations, CancellationToken ct)
+    public static ExistingTypeIndex Create(ImmutableArray<ExistingTypeKey> declarations, CancellationToken ct)
     {
-        var types = new List<ExistingTypeKey>(declarations.Length);
-        foreach (var declaration in declarations)
-        {
-            ct.ThrowIfCancellationRequested();
-            types.Add(declaration.Key);
-        }
+        var types = new List<ExistingTypeKey>(declarations);
 
         types.Sort((left, right) =>
         {
@@ -57,6 +52,19 @@ internal sealed record ExistingTypeIndex(EquatableArray<ExistingTypeKey> Types)
 
     public static ExistingTypeDeclaration? FromDeclaration(SyntaxNode node)
     {
+        var key = KeyFromDeclaration(node);
+        if (key is null)
+        {
+            return null;
+        }
+
+        return new ExistingTypeDeclaration(
+            key.Value,
+            DiagnosticLocation.FromLocation(GetNameLocation(node)));
+    }
+
+    public static ExistingTypeKey? KeyFromDeclaration(SyntaxNode node)
+    {
         if (!TryGetTypeName(node, out var name) || IsNestedInType(node) || IsFileLocal(node))
         {
             return null;
@@ -67,9 +75,7 @@ internal sealed record ExistingTypeIndex(EquatableArray<ExistingTypeKey> Types)
             return null;
         }
 
-        return new ExistingTypeDeclaration(
-            new ExistingTypeKey(GetNamespace(node), name),
-            DiagnosticLocation.FromLocation(GetNameLocation(node)));
+        return new ExistingTypeKey(GetNamespace(node), name);
     }
 
     private static bool CanCollideWithGeneratedType(string name) =>

@@ -34,11 +34,11 @@ internal static class GeneratedTypeCollisionValidator
                 dispatcher);
         }
 
-        if (WillGenerateAsyncSiblingInterface(model, ct))
+        if (NamingHelpers.CanGenerateAsyncSiblingInterface(model.InterfaceName))
         {
             var siblingName = NamingHelpers.AsyncSiblingInterfaceName(model.InterfaceName);
             var sibling = new ExistingTypeKey(model.Namespace, siblingName);
-            if (existingTypes.Contains(sibling, ct))
+            if (existingTypes.Contains(sibling, ct) && WillGenerateAsyncSiblingInterface(model, ct))
             {
                 return RejectedService(
                     model,

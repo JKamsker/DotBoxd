@@ -7,9 +7,6 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace ShaRPC.SourceGenerator;
 
-/// <summary>
-/// Incremental source generator for ShaRPC client proxies and server dispatchers.
-/// </summary>
 [Generator(LanguageNames.CSharp)]
 public sealed class ShaRpcGenerator : IIncrementalGenerator
 {
@@ -56,20 +53,28 @@ public sealed class ShaRpcGenerator : IIncrementalGenerator
                 transform: static (ctx, ct) => ServiceModelFactory.GetServiceResult(ctx, ct))
             .WithTrackingName("RawServiceResults");
 
-        var existingTypeDeclarations = context.SyntaxProvider
+        var existingTypeKeys = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                predicate: static (node, _) => node is BaseTypeDeclarationSyntax or DelegateDeclarationSyntax,
+                transform: static (ctx, _) => ExistingTypeIndex.KeyFromDeclaration(ctx.Node))
+            .Where(static key => key is not null)
+            .Select(static (key, _) => key!.Value)
+            .WithTrackingName("ExistingTypeKeys");
+
+        var existingTypeLocations = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (node, _) => node is BaseTypeDeclarationSyntax or DelegateDeclarationSyntax,
                 transform: static (ctx, _) => ExistingTypeIndex.FromDeclaration(ctx.Node))
-            .Where(static type => type is not null)
-            .Select(static (type, _) => type!.Value)
+            .Where(static declaration => declaration is not null)
+            .Select(static (declaration, _) => declaration!.Value)
             .WithTrackingName("ExistingTypeDeclarations");
 
-        var existingTypes = existingTypeDeclarations
+        var existingTypes = existingTypeKeys
             .Collect()
             .Select(static (types, ct) => ExistingTypeIndex.Create(types, ct))
             .WithTrackingName("ExistingTypes");
 
-        var existingTypeLocations = existingTypeDeclarations
+        var existingTypeLocationIndex = existingTypeLocations
             .Collect()
             .Select(static (types, ct) => ExistingTypeLocationIndex.Create(types, ct))
             .WithTrackingName("ExistingTypeLocations");
@@ -141,7 +146,6 @@ public sealed class ShaRpcGenerator : IIncrementalGenerator
                 error.Where,
                 error.Message)));
 
-        // SHARPC002 — per-method diagnostics for shapes ShaRPC cannot generate (ref/in/out).
         var methodDiagnostics = results
             .SelectMany(static (r, _) => r.MethodDiagnostics.Array)
             .WithTrackingName("MethodDiagnostics");
@@ -154,7 +158,6 @@ public sealed class ShaRpcGenerator : IIncrementalGenerator
                 d.MethodName,
                 d.Reason)));
 
-        // SHARPC003 — service-level diagnostics (generic / nested service interfaces).
         var serviceDiagnostics = results
             .Where(static r => r.ServiceDiagnostic is not null)
             .Select(static (r, _) => r.ServiceDiagnostic!.Value)
@@ -170,7 +173,7 @@ public sealed class ShaRpcGenerator : IIncrementalGenerator
         var existingTypeDiagnostics = results
             .Where(static r => r.ExistingTypeCollision is not null)
             .Select(static (r, _) => r.ExistingTypeCollision!.Value)
-            .Combine(existingTypeLocations)
+            .Combine(existingTypeLocationIndex)
             .Select(static (pair, ct) => new ServiceDiagnostic(
                 pair.Left.InterfaceName,
                 pair.Left.Reason,
@@ -210,7 +213,6 @@ public sealed class ShaRpcGenerator : IIncrementalGenerator
             .Select(static (projection, _) => projection.Bundle)
             .WithTrackingName("ServiceBundles");
 
-        // SHARPC004 — async-sibling naming collision warnings.
         var siblingCollisions = projections
             .SelectMany(static (projection, _) => projection.SiblingCollisions.Array)
             .WithTrackingName("SiblingCollisions");
@@ -294,5 +296,4 @@ public sealed class ShaRpcGenerator : IIncrementalGenerator
             }
         });
     }
-
 }

@@ -96,7 +96,7 @@ internal static class ServiceModelFactory
         var methodDiagnostics = new List<MethodDiagnostic>();
         var seenSignatures = new Dictionary<string, IMethodSymbol>(StringComparer.Ordinal);
 
-        foreach (var methodSymbol in EnumerateMethods(interfaceSymbol))
+        foreach (var methodSymbol in EnumerateMethods(interfaceSymbol, ct))
         {
             ct.ThrowIfCancellationRequested();
 
@@ -174,10 +174,14 @@ internal static class ServiceModelFactory
         return null;
     }
 
-    private static IEnumerable<IMethodSymbol> EnumerateMethods(INamedTypeSymbol interfaceSymbol)
+    private static IEnumerable<IMethodSymbol> EnumerateMethods(
+        INamedTypeSymbol interfaceSymbol,
+        CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         foreach (var member in interfaceSymbol.GetMembers())
         {
+            ct.ThrowIfCancellationRequested();
             if (member is IMethodSymbol m && m.MethodKind == MethodKind.Ordinary)
             {
                 yield return m;
@@ -186,8 +190,10 @@ internal static class ServiceModelFactory
 
         foreach (var baseInterface in interfaceSymbol.AllInterfaces)
         {
+            ct.ThrowIfCancellationRequested();
             foreach (var member in baseInterface.GetMembers())
             {
+                ct.ThrowIfCancellationRequested();
                 if (member is IMethodSymbol m && m.MethodKind == MethodKind.Ordinary)
                 {
                     yield return m;
