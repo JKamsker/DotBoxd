@@ -77,19 +77,18 @@ internal sealed record ExistingTypeIndex(EquatableArray<ExistingTypeKey> Types)
     public static ExistingTypeKey? KeyFromDeclaration(SyntaxNode node)
     {
         if (!TryGetTypeIdentity(node, out var name, out var arity) ||
+            !CanCollideWithGeneratedType(name) ||
             IsNestedInType(node) ||
             IsFileLocal(node))
         {
             return null;
         }
 
-        if (!CanCollideWithGeneratedType(name))
-        {
-            return null;
-        }
-
         return new ExistingTypeKey(GetNamespace(node), name, arity);
     }
+
+    public static bool IsPotentialGeneratedTypeDeclaration(SyntaxNode node) =>
+        TryGetTypeIdentity(node, out var name, out _) && CanCollideWithGeneratedType(name);
 
     private static bool CanCollideWithGeneratedType(string name) =>
         name.EndsWith("Proxy", System.StringComparison.Ordinal) ||

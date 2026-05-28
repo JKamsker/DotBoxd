@@ -55,7 +55,8 @@ public sealed class ShaRpcGenerator : IIncrementalGenerator
 
         var existingTypeKeys = context.SyntaxProvider
             .CreateSyntaxProvider(
-                predicate: static (node, _) => node is BaseTypeDeclarationSyntax or DelegateDeclarationSyntax,
+                predicate: static (node, _) =>
+                    ExistingTypeIndex.IsPotentialGeneratedTypeDeclaration(node),
                 transform: static (ctx, _) => ExistingTypeIndex.KeyFromDeclaration(ctx.Node))
             .Where(static key => key is not null)
             .Select(static (key, _) => key!.Value)
@@ -63,7 +64,8 @@ public sealed class ShaRpcGenerator : IIncrementalGenerator
 
         var existingTypeLocations = context.SyntaxProvider
             .CreateSyntaxProvider(
-                predicate: static (node, _) => node is BaseTypeDeclarationSyntax or DelegateDeclarationSyntax,
+                predicate: static (node, _) =>
+                    ExistingTypeIndex.IsPotentialGeneratedTypeDeclaration(node),
                 transform: static (ctx, _) => ExistingTypeIndex.FromDeclaration(ctx.Node))
             .Where(static declaration => declaration is not null)
             .Select(static (declaration, _) => declaration!.Value)
