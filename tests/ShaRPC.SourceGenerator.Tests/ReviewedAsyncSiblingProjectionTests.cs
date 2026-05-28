@@ -134,6 +134,34 @@ public class ReviewedAsyncSiblingProjectionTests
             .Should().ContainSingle();
     }
 
+    [Fact]
+    public void SyncMethodAlreadyEndingAsync_WithCancellationToken_DoesNotEmitDuplicateProxyMethod()
+    {
+        const string source = """
+            using ShaRPC.Core.Attributes;
+            using System.Threading;
+
+            namespace AsyncSibling.SelfCollision
+            {
+                [ShaRpcService]
+                public interface IFoo
+                {
+                    int FetchAsync(CancellationToken ct = default);
+                }
+            }
+            """;
+
+        var (assembly, runResult) = Compile(source);
+
+        runResult.Diagnostics.Should().Contain(d => d.Id == "SHARPC004" &&
+            d.GetMessage().Contains("FetchAsync"));
+
+        var proxy = assembly.GetType("AsyncSibling.SelfCollision.FooProxy")!;
+        proxy.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Where(m => m.Name == "FetchAsync")
+            .Should().ContainSingle();
+    }
+
     private static (Assembly Assembly, GeneratorDriverRunResult RunResult) Compile(string source)
     {
         var compilation = GeneratorTestHelper.CreateCompilation(source);

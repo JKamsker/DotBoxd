@@ -20,6 +20,7 @@ internal static class AsyncSiblingProjector
         var candidates = new List<AsyncSiblingMethod>();
         var collisions = new List<MethodDiagnostic>();
         var blockedSignatures = UnsupportedOriginalSignatures(service, ct);
+        var originalSignatures = OriginalSignatures(service, ct);
 
         for (var i = 0; i < service.Methods.Count; i++)
         {
@@ -52,6 +53,16 @@ internal static class AsyncSiblingProjector
                     service.InterfaceName,
                     m.Name,
                     $"the async-sibling projection '{siblingName}' would collide with unsupported method '{blockerName}'. Rename one of the methods or drop the trailing 'Async' on the sync method.",
+                    GetLocation(i, methodLocations)));
+                continue;
+            }
+
+            if (requiresExtra && originalSignatures.TryGetValue(candidateKey, out blockerName))
+            {
+                collisions.Add(new MethodDiagnostic(
+                    service.InterfaceName,
+                    m.Name,
+                    $"the async-sibling projection '{siblingName}' would collide with method '{blockerName}'. Rename one of the methods or drop the trailing 'Async' on the sync method.",
                     GetLocation(i, methodLocations)));
                 continue;
             }
@@ -148,6 +159,21 @@ internal static class AsyncSiblingProjector
             {
                 signatures[SignatureKey(method.Name, method.TypeParameterList, method.Parameters, ct)] = method.Name;
             }
+        }
+
+        return signatures;
+    }
+
+    private static Dictionary<string, string> OriginalSignatures(
+        ServiceModel service,
+        CancellationToken ct)
+    {
+        var signatures = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var method in service.Methods.Array)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            signatures[SignatureKey(method.Name, method.TypeParameterList, method.Parameters, ct)] = method.Name;
         }
 
         return signatures;
