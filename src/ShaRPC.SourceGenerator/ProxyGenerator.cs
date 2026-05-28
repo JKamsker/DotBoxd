@@ -73,7 +73,7 @@ internal static class ProxyGenerator
         {
             ct.ThrowIfCancellationRequested();
             if (!s.RequiresExtraProxyMethod &&
-                !ProxyGenerationHelpers.MethodNameCollidesWithProxy(s.Name, proxyName))
+                !ProxyGenerationHelpers.MethodNameRequiresExplicitImplementation(s.Name, proxyName))
             {
                 continue;
             }
@@ -112,7 +112,7 @@ internal static class ProxyGenerator
         var asyncKeyword = (isAsync && method.UnsupportedReason is null) ? "async " : string.Empty;
         var unsafeKeyword = method.RequiresUnsafeSignature ? "unsafe " : string.Empty;
         var ctArg = ProxyGenerationHelpers.GetCancellationTokenArgument(method.Parameters, ct);
-        var explicitInterface = ProxyGenerationHelpers.MethodNameCollidesWithProxy(method.Name, proxyName);
+        var explicitInterface = ProxyGenerationHelpers.MethodNameRequiresExplicitImplementation(method.Name, proxyName);
         var access = explicitInterface ? string.Empty : "public ";
         var target = explicitInterface ? qualifiedInterface + "." + method.Name : method.Name;
 
@@ -225,7 +225,7 @@ internal static class ProxyGenerator
 
         var declaredReturn = NamingHelpers.GetDeclaredReturnTypeText(
             s.SiblingReturnKind, s.Source.UnwrappedReturnType);
-        var explicitInterface = ProxyGenerationHelpers.MethodNameCollidesWithProxy(s.Name, proxyName);
+        var explicitInterface = ProxyGenerationHelpers.MethodNameRequiresExplicitImplementation(s.Name, proxyName);
         var access = explicitInterface ? string.Empty : "public ";
         var target = explicitInterface ? qualifiedAsyncSibling + "." + s.Name : s.Name;
 
