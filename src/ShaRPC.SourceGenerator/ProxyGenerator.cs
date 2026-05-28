@@ -67,6 +67,20 @@ internal static class ProxyGenerator
             ct.ThrowIfCancellationRequested();
             sb.AppendLine();
             GenerateProxyMethod(sb, service, method, proxyName, ct);
+            if (ProxyGenerationHelpers.MethodNameRequiresExplicitImplementation(method.Name, proxyName))
+            {
+                foreach (var implementationType in method.AdditionalExplicitImplementationTypes.Array)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    sb.AppendLine();
+                    GenerateProxyMethod(
+                        sb,
+                        service,
+                        method with { ExplicitImplementationType = implementationType },
+                        proxyName,
+                        ct);
+                }
+            }
         }
 
         foreach (var s in siblingMethods.Array)
@@ -124,7 +138,7 @@ internal static class ProxyGenerator
         else
         {
             var invocation = BuildClientInvocation(service, method, ctArg, ct);
-            EmitInvocation(sb, method, invocation, ct);
+            ProxyInvocationEmitter.Emit(sb, method, invocation, ct);
         }
 
         sb.AppendLine("        }");
@@ -146,7 +160,7 @@ internal static class ProxyGenerator
         var isSubServiceReturn = NamingHelpers.IsSubServiceReturn(method.ReturnKind);
         var hasReturn = NamingHelpers.HasReturnValue(method.ReturnKind);
         var returnType = isSubServiceReturn
-            ? "global::ShaRPC.Core.Protocol.ServiceHandle"
+            ? GetServiceHandleType(method)
             : method.UnwrappedReturnType is null
                 ? null
                 : ProxyGenerationHelpers.GetWireType(method.UnwrappedReturnType);
@@ -209,6 +223,11 @@ internal static class ProxyGenerator
         return $"(this._instanceId is null ? this._client.InvokeAsync{typeArgs}({callArgs}) : this._client.InvokeOnInstanceAsync{typeArgs}({callArgsInst}))";
     }
 
+    private static string GetServiceHandleType(MethodModel method) =>
+        method.SubService?.AllowsNull == true
+            ? "global::ShaRPC.Core.Protocol.ServiceHandle?"
+            : "global::ShaRPC.Core.Protocol.ServiceHandle";
+
     /// <summary>
     /// Emits a non-blocking proxy method that satisfies the async sibling interface.
     /// Reuses the underlying RPC call site of the original method (same service, same
@@ -247,53 +266,8 @@ internal static class ProxyGenerator
             virtualSource,
             ProxyGenerationHelpers.GetCancellationTokenArgument(s.Parameters, ct),
             ct);
-        EmitInvocation(sb, virtualSource, invocation, ct);
+        ProxyInvocationEmitter.Emit(sb, virtualSource, invocation, ct);
 
         sb.AppendLine("        }");
-    }
-
-    private static void EmitInvocation(
-        StringBuilder sb,
-        MethodModel method,
-        string invocation,
-        CancellationToken ct)
-    {
-        switch (method.ReturnKind)
-        {
-            case MethodReturnKind.Void:
-                sb.AppendLine($"            {invocation}.GetAwaiter().GetResult();");
-                break;
-
-            case MethodReturnKind.Sync:
-                sb.AppendLine($"            return {invocation}.GetAwaiter().GetResult();");
-                break;
-
-            case MethodReturnKind.Task:
-            case MethodReturnKind.ValueTask:
-                sb.AppendLine($"            await {invocation};");
-                break;
-
-            case MethodReturnKind.TaskOf:
-            case MethodReturnKind.ValueTaskOf:
-                sb.AppendLine($"            return await {invocation};");
-                break;
-
-            case MethodReturnKind.TaskOfSubService:
-            case MethodReturnKind.ValueTaskOfSubService:
-            {
-                // Wire response is a ServiceHandle; wrap it in the generated sub-proxy.
-                // The sub-proxy class lives in the SAME namespace as its interface, named
-                // {StripI(InterfaceName)}Proxy — derived from SubService.QualifiedInterfaceName.
-                var info = method.SubService!;
-                var subProxyType = ProxyGenerationHelpers.BuildSubProxyTypeName(info.QualifiedInterfaceName);
-                var handleName = ProxyGenerationHelpers.UniqueGeneratedLocalName(
-                    method.Parameters,
-                    "__sharpc_handle",
-                    ct);
-                sb.AppendLine($"            var {handleName} = await {invocation};");
-                sb.AppendLine($"            return new {subProxyType}(this._client, {handleName}.InstanceId);");
-                break;
-            }
-        }
     }
 }

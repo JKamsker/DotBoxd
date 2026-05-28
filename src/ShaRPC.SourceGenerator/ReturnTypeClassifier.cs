@@ -199,7 +199,8 @@ internal static class ReturnTypeClassifier
 
         info = new SubServiceInfo(
             QualifiedInterfaceName: named.ToDisplayString(s_qualifiedIdentityFormat),
-            ServiceName: LiteralHelpers.EscapeStringLiteral(serviceName));
+            ServiceName: LiteralHelpers.EscapeStringLiteral(serviceName),
+            AllowsNull: named.NullableAnnotation == NullableAnnotation.Annotated);
         return true;
     }
 }

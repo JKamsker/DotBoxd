@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 
@@ -94,7 +93,7 @@ internal static class ServiceModelFactory
         var methodDiagnostics = new List<MethodDiagnostic>();
         var seenSignatures = new Dictionary<string, IMethodSymbol>(StringComparer.Ordinal);
         var seenSignatureIndexes = new Dictionary<string, int>(StringComparer.Ordinal);
-        var validationCache = new RpcTypeValidationCache();
+        var validationCache = SharedRpcTypeValidationCache.Get(context.SemanticModel.Compilation);
 
         foreach (var methodSymbol in EnumerateMethods(interfaceSymbol, ct))
         {
@@ -103,7 +102,7 @@ internal static class ServiceModelFactory
             var sigKey = MethodSignatureFacts.GetSignatureKey(methodSymbol, ct);
             if (seenSignatures.TryGetValue(sigKey, out var existingMethod))
             {
-                if (!HasSameReturnShape(existingMethod, methodSymbol))
+                if (!InheritedMethodDeduplicator.HasCompatibleReturnShape(existingMethod, methodSymbol))
                 {
                     return RejectedService(
                         displayName,
@@ -112,7 +111,7 @@ internal static class ServiceModelFactory
                         qualifiedInterfaceName);
                 }
 
-                if (!HasSameParameterRefKinds(existingMethod, methodSymbol))
+                if (!InheritedMethodDeduplicator.HasSameParameterRefKinds(existingMethod, methodSymbol))
                 {
                     return RejectedService(
                         displayName,
@@ -130,8 +129,19 @@ internal static class ServiceModelFactory
                         qualifiedInterfaceName);
                 }
 
+                if (!InheritedMethodDeduplicator.HasSameConfiguredWireName(existingMethod, methodSymbol))
+                {
+                    return RejectedService(
+                        displayName,
+                        $"inherited method '{methodSymbol.Name}' has the same signature as another method but a different wire method name",
+                        DiagnosticLocationFactory.FromSymbol(methodSymbol),
+                        qualifiedInterfaceName);
+                }
+
                 var existingIndex = seenSignatureIndexes[sigKey];
-                methods[existingIndex] = methods[existingIndex] with { RequiresDispatcherReceiverCast = true };
+                methods[existingIndex] = InheritedMethodDeduplicator.AddAdditionalExplicitImplementation(
+                    methods[existingIndex],
+                    methodSymbol.ContainingType);
                 continue;
             }
             seenSignatures[sigKey] = methodSymbol;
@@ -247,25 +257,4 @@ internal static class ServiceModelFactory
         }
     }
 
-    private static bool HasSameReturnShape(IMethodSymbol left, IMethodSymbol right) =>
-        left.RefKind == right.RefKind &&
-        SymbolEqualityComparer.Default.Equals(left.ReturnType, right.ReturnType);
-
-    private static bool HasSameParameterRefKinds(IMethodSymbol left, IMethodSymbol right)
-    {
-        if (left.Parameters.Length != right.Parameters.Length)
-        {
-            return false;
-        }
-
-        for (var i = 0; i < left.Parameters.Length; i++)
-        {
-            if (left.Parameters[i].RefKind != right.Parameters[i].RefKind)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
 }

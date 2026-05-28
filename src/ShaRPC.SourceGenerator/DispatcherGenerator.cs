@@ -220,6 +220,13 @@ internal static class DispatcherGenerator
                 // client can wrap in a sub-proxy.
                 var info = method.SubService!;
                 sb.AppendLine($"                    var __sub = await {call};");
+                if (info.AllowsNull)
+                {
+                    sb.AppendLine("                    if (__sub is null)");
+                    sb.AppendLine("                    {");
+                    sb.AppendLine("                        return serializer.Serialize<global::ShaRPC.Core.Protocol.ServiceHandle?>(null);");
+                    sb.AppendLine("                    }");
+                }
                 sb.AppendLine($"                    var __subId = registry.Register(\"{info.ServiceName}\", __sub);");
                 sb.AppendLine($"                    return serializer.Serialize(new global::ShaRPC.Core.Protocol.ServiceHandle {{ ServiceName = \"{info.ServiceName}\", InstanceId = __subId }});");
                 break;

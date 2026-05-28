@@ -28,7 +28,7 @@ internal enum MethodReturnKind
 /// interface name (so the proxy can construct a sibling proxy) and the RPC service name
 /// (so the wire instance dispatch hits the right registry slot).
 /// </summary>
-internal sealed record SubServiceInfo(string QualifiedInterfaceName, string ServiceName);
+internal sealed record SubServiceInfo(string QualifiedInterfaceName, string ServiceName, bool AllowsNull);
 
 /// <summary>
 /// Immutable, value-equatable representation of a ShaRPC service.
@@ -54,6 +54,7 @@ internal sealed record MethodModel(
     string ReturnRefKindKeyword,
     bool HasCancellationToken,
     EquatableArray<ParameterModel> Parameters,
+    EquatableArray<string> AdditionalExplicitImplementationTypes,
     bool RequiresUnsafeSignature = false,
     int TypeParameterCount = 0,
     string TypeParameterList = "",

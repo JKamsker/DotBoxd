@@ -23,7 +23,7 @@ internal static class SubServicePayloadInspector
     public static bool ContainsShaRpcServiceInterface(
         ITypeSymbol type,
         CancellationToken ct,
-        Dictionary<string, bool> cache) =>
+        RpcTypeValidationCache cache) =>
         ContainsShaRpcServiceInterface(
             type,
             ct,
@@ -34,7 +34,7 @@ internal static class SubServicePayloadInspector
         ITypeSymbol type,
         CancellationToken ct,
         HashSet<string> visitedOriginalDefinitions,
-        Dictionary<string, bool>? cache)
+        RpcTypeValidationCache? cache)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -55,7 +55,7 @@ internal static class SubServicePayloadInspector
         INamedTypeSymbol named,
         CancellationToken ct,
         HashSet<string> visitedOriginalDefinitions,
-        Dictionary<string, bool>? cache)
+        RpcTypeValidationCache? cache)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -65,7 +65,7 @@ internal static class SubServicePayloadInspector
         }
 
         var cacheKey = named.ToDisplayString(s_cacheKeyFormat);
-        if (cache is not null && cache.TryGetValue(cacheKey, out var cached))
+        if (cache is not null && cache.TryGetSubServicePayloadResult(cacheKey, out var cached))
         {
             return cached;
         }
@@ -78,7 +78,7 @@ internal static class SubServicePayloadInspector
             {
                 if (cache is not null)
                 {
-                    cache[cacheKey] = true;
+                    cache.SetSubServicePayloadResult(cacheKey, result: true);
                 }
 
                 return true;
@@ -96,7 +96,7 @@ internal static class SubServicePayloadInspector
         visitedOriginalDefinitions.Remove(originalDefinitionKey);
         if (cache is not null)
         {
-            cache[cacheKey] = contains;
+            cache.SetSubServicePayloadResult(cacheKey, contains);
         }
 
         return contains;
@@ -106,7 +106,7 @@ internal static class SubServicePayloadInspector
         INamedTypeSymbol type,
         CancellationToken ct,
         HashSet<string> visitedOriginalDefinitions,
-        Dictionary<string, bool>? cache)
+        RpcTypeValidationCache? cache)
     {
         foreach (var member in type.GetMembers())
         {

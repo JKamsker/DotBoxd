@@ -71,6 +71,77 @@ public class InheritedExplicitProxyTests
             "global::System.Type global::Regress.ObjectMemberProxy.IFoo.GetType()");
     }
 
+    [Fact]
+    public void DuplicateInheritedExplicitMethods_ImplementEveryDeclaringInterface()
+    {
+        const string source = """
+            using ShaRPC.Core.Attributes;
+            using System;
+
+            namespace Regress.DuplicateInheritedExplicitProxy
+            {
+                public interface ILeft
+                {
+                    Type GetType();
+                }
+
+                public interface IRight
+                {
+                    Type GetType();
+                }
+
+                [ShaRpcService]
+                public interface IFoo : ILeft, IRight
+                {
+                }
+            }
+            """;
+
+        var (final, runResult) = Run(source);
+        AssertCompiles(final);
+
+        var proxy = GetProxy(runResult);
+        proxy.Should().Contain(
+            "global::System.Type global::Regress.DuplicateInheritedExplicitProxy.ILeft.GetType()");
+        proxy.Should().Contain(
+            "global::System.Type global::Regress.DuplicateInheritedExplicitProxy.IRight.GetType()");
+    }
+
+    [Fact]
+    public void DuplicateInheritedMethodsWithDifferentWireNames_RejectService()
+    {
+        const string source = """
+            using ShaRPC.Core.Attributes;
+
+            namespace Regress.DuplicateInheritedWireNames
+            {
+                public interface ILeft
+                {
+                    [ShaRpcMethod(Name = "left")]
+                    int Get();
+                }
+
+                public interface IRight
+                {
+                    [ShaRpcMethod(Name = "right")]
+                    int Get();
+                }
+
+                [ShaRpcService]
+                public interface IFoo : ILeft, IRight
+                {
+                }
+            }
+            """;
+
+        var (_, runResult) = Run(source);
+
+        runResult.Diagnostics.Should().Contain(d => d.Id == "SHARPC003" &&
+            d.GetMessage().Contains("different wire method name"));
+        runResult.Results.Single().GeneratedSources
+            .Should().NotContain(g => g.HintName.Contains("IFoo."));
+    }
+
     private static string GetProxy(GeneratorDriverRunResult runResult) =>
         runResult.Results.Single().GeneratedSources
             .Single(g => g.HintName.EndsWith("IFoo.ShaRpcProxy.g.cs"))

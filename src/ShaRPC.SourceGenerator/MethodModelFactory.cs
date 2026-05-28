@@ -143,13 +143,14 @@ internal static class MethodModelFactory
 
         return new MethodModel(
             Name: IdentifierHelpers.EscapeIdentifier(methodSymbol.Name),
-            ExplicitImplementationType: methodSymbol.ContainingType.ToDisplayString(s_qualifiedFormat),
+            ExplicitImplementationType: GetExplicitImplementationType(methodSymbol.ContainingType),
             RpcName: LiteralHelpers.EscapeStringLiteral(GetConfiguredMethodName(methodSymbol) ?? methodSymbol.Name),
             ReturnKind: returnKind,
             UnwrappedReturnType: unwrappedReturnType,
             ReturnRefKindKeyword: ReturnRefKindKeyword(methodSymbol.RefKind),
             HasCancellationToken: hasCancellationToken,
             Parameters: parameters.ToEquatableArray(),
+            AdditionalExplicitImplementationTypes: EquatableArray<string>.Empty,
             RequiresUnsafeSignature: requiresUnsafeSignature,
             TypeParameterCount: methodSymbol.Arity,
             TypeParameterList: typeParameterList,
@@ -157,6 +158,9 @@ internal static class MethodModelFactory
             UnsupportedReason: unsupportedReason,
             SubService: subService);
     }
+
+    internal static string GetExplicitImplementationType(INamedTypeSymbol type) =>
+        type.ToDisplayString(s_qualifiedFormat);
 
     private static string? GetConfiguredMethodName(IMethodSymbol methodSymbol)
     {
