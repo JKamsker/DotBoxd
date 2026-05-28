@@ -54,7 +54,7 @@ internal static class InheritedMethodDeduplicator
         return true;
     }
 
-    private static string GetNullableTypeKey(
+    public static string GetNullableTypeKey(
         ITypeSymbol type,
         IMethodSymbol method,
         CancellationToken ct)

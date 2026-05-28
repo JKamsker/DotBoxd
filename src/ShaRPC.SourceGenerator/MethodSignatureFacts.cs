@@ -149,7 +149,7 @@ internal static class MethodSignatureFacts
         foreach (var constraintType in constraintTypes)
         {
             ct.ThrowIfCancellationRequested();
-            constraints.Add(GetCanonicalType(constraintType, method, ct));
+            constraints.Add(InheritedMethodDeduplicator.GetNullableTypeKey(constraintType, method, ct));
         }
 
         constraints.Sort(System.StringComparer.Ordinal);
