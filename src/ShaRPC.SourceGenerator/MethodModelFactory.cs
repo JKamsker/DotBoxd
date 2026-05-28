@@ -30,6 +30,7 @@ internal static class MethodModelFactory
         string? unsupportedReason = null;
         methodLocation = DiagnosticLocationFactory.FromSymbol(methodSymbol);
         var unsupportedLocation = methodLocation;
+        var requiresUnsafeSignature = RpcTypeValidator.RequiresUnsafeContext(returnType, ct);
 
         SetUnsupported(
             ref unsupportedReason,
@@ -68,6 +69,7 @@ internal static class MethodModelFactory
             ct.ThrowIfCancellationRequested();
 
             var parameterLocation = DiagnosticLocationFactory.FromSymbol(param);
+            requiresUnsafeSignature |= RpcTypeValidator.RequiresUnsafeContext(param.Type, ct);
             var isCancellationToken = cancellationTokenSymbol is not null &&
                 SymbolEqualityComparer.Default.Equals(param.Type, cancellationTokenSymbol);
 
@@ -125,6 +127,7 @@ internal static class MethodModelFactory
             ReturnRefKindKeyword: RefKindKeyword(methodSymbol.RefKind),
             HasCancellationToken: hasCancellationToken,
             Parameters: parameters.ToEquatableArray(),
+            RequiresUnsafeSignature: requiresUnsafeSignature,
             TypeParameterList: typeParameterList,
             ConstraintClauses: constraintClauses,
             UnsupportedReason: unsupportedReason,

@@ -111,9 +111,10 @@ internal static class ProxyGenerator
         // NOT add `async` for stubs — the throw must take the synchronous exit path so
         // out-parameters are considered definitely assigned by the C# compiler.
         var asyncKeyword = (isAsync && method.UnsupportedReason is null) ? "async " : string.Empty;
+        var unsafeKeyword = method.RequiresUnsafeSignature ? "unsafe " : string.Empty;
         var ctArg = ProxyGenerationHelpers.GetCancellationTokenArgument(method.Parameters);
 
-        sb.AppendLine($"        public {asyncKeyword}{method.ReturnRefKindKeyword}{declaredReturn} {method.Name}{method.TypeParameterList}({paramList}){method.ConstraintClauses}");
+        sb.AppendLine($"        public {unsafeKeyword}{asyncKeyword}{method.ReturnRefKindKeyword}{declaredReturn} {method.Name}{method.TypeParameterList}({paramList}){method.ConstraintClauses}");
         sb.AppendLine("        {");
 
         if (method.UnsupportedReason is not null)

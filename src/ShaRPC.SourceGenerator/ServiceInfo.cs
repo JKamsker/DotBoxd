@@ -53,6 +53,7 @@ internal sealed record MethodModel(
     string ReturnRefKindKeyword,
     bool HasCancellationToken,
     EquatableArray<ParameterModel> Parameters,
+    bool RequiresUnsafeSignature = false,
     string TypeParameterList = "",
     string ConstraintClauses = "",
     string? UnsupportedReason = null,
