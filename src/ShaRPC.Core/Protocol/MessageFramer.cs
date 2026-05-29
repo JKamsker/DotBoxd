@@ -88,12 +88,7 @@ public static class MessageFramer
         ReadOnlySpan<byte> payload)
     {
         using var writer = new PooledBufferWriter(HeaderSize + EnvelopeLengthSize + payload.Length);
-
-        // Reserve the header + envelope-length prefix; both length fields are patched in afterwards.
-        var prefix = writer.GetSpan(HeaderSize + EnvelopeLengthSize);
-        BinaryPrimitives.WriteInt32LittleEndian(prefix.Slice(4, 4), messageId);
-        prefix[8] = (byte)type;
-        writer.Advance(HeaderSize + EnvelopeLengthSize);
+        WriteFramePrefix(writer, messageId, type);
 
         var envelopeStart = writer.WrittenCount;
         serializer.Serialize(writer, envelope);
@@ -106,6 +101,45 @@ public static class MessageFramer
             writer.Advance(payload.Length);
         }
 
+        return FinishFrame(writer, envelopeLength);
+    }
+
+    /// <summary>
+    /// Serializes <paramref name="envelope"/> followed immediately by <paramref name="argument"/>
+    /// behind a frame header into a single pooled buffer. Unlike <see cref="FrameMessage{T}"/> this
+    /// serializes the argument straight into the frame writer, avoiding the intermediate payload
+    /// buffer and the copy. The caller owns the returned <see cref="Payload"/>.
+    /// </summary>
+    public static Payload FrameRequest<TEnvelope, TArgument>(
+        ISerializer serializer,
+        int messageId,
+        MessageType type,
+        TEnvelope envelope,
+        TArgument argument)
+    {
+        using var writer = new PooledBufferWriter(HeaderSize + EnvelopeLengthSize);
+        WriteFramePrefix(writer, messageId, type);
+
+        var envelopeStart = writer.WrittenCount;
+        serializer.Serialize(writer, envelope);
+        var envelopeLength = writer.WrittenCount - envelopeStart;
+
+        serializer.Serialize(writer, argument);
+
+        return FinishFrame(writer, envelopeLength);
+    }
+
+    private static void WriteFramePrefix(PooledBufferWriter writer, int messageId, MessageType type)
+    {
+        // Reserve the header + envelope-length prefix; both length fields are patched in by FinishFrame.
+        var prefix = writer.GetSpan(HeaderSize + EnvelopeLengthSize);
+        BinaryPrimitives.WriteInt32LittleEndian(prefix.Slice(4, 4), messageId);
+        prefix[8] = (byte)type;
+        writer.Advance(HeaderSize + EnvelopeLengthSize);
+    }
+
+    private static Payload FinishFrame(PooledBufferWriter writer, int envelopeLength)
+    {
         var frame = writer.DetachPayload();
         var header = frame.Memory.Span;
         BinaryPrimitives.WriteInt32LittleEndian(header.Slice(0, 4), frame.Length);
