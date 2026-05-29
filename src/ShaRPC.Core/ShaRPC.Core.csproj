@@ -2,7 +2,26 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <Description>Core abstractions and infrastructure for ShaRPC</Description>
+    <!-- Primary package: ships the runtime core AND the bundled source generator
+         as a single "ShaRPC" package, so consumers install one thing. -->
+    <PackageId>ShaRPC</PackageId>
+    <Description>High-performance, transport-agnostic RPC framework for C#. Bundles the runtime core and the source generator (compile-time client proxies and server dispatchers).</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Build the generator before this project so its assembly exists at pack time.
+         ReferenceOutputAssembly=false: it ships as an analyzer, not a runtime reference. -->
+    <ProjectReference Include="..\ShaRPC.SourceGenerator\ShaRPC.SourceGenerator.csproj"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Pack the generator into analyzers/dotnet/cs of this package so any SDK-based
+         consumer auto-loads it. Replaces the standalone ShaRPC.SourceGenerator package. -->
+    <None Include="..\ShaRPC.SourceGenerator\bin\$(Configuration)\netstandard2.0\ShaRPC.SourceGenerator.dll"
+          Pack="true"
+          PackagePath="analyzers/dotnet/cs"
+          Visible="false" />
+  </ItemGroup>
 
 </Project>

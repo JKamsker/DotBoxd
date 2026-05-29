@@ -79,9 +79,10 @@ jobs:
       - name: Pack
         run: |
           mkdir -p artifacts/nupkg
+          # ShaRPC.Core packs as the bundled "ShaRPC" package (runtime core + the
+          # source generator), so the generator is no longer packed standalone.
           for proj in \
               src/ShaRPC.Core/ShaRPC.Core.csproj \
-              src/ShaRPC.SourceGenerator/ShaRPC.SourceGenerator.csproj \
               src/ShaRPC.Serializers.MessagePack/ShaRPC.Serializers.MessagePack.csproj \
               src/ShaRPC.Transports.Tcp/ShaRPC.Transports.Tcp.csproj; do
             dotnet pack "$proj" -c $CONFIGURATION --no-build -o artifacts/nupkg \

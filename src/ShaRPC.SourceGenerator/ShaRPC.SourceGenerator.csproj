@@ -9,6 +9,10 @@
     <IsRoslynComponent>true</IsRoslynComponent>
     <Description>Source generator for ShaRPC client proxies and server dispatchers</Description>
 
+    <!-- Not published as its own package. The built DLL is bundled into the ShaRPC
+         package via ShaRPC.Core.csproj. Overrides IsPackable from src/Directory.Build.props. -->
+    <IsPackable>false</IsPackable>
+
     <!-- Analyzer packaging: don't ship the assembly under lib/, ship it under
          analyzers/dotnet/cs/ so the compiler picks it up, and don't drag in any
          runtime dependency on Roslyn assemblies. -->

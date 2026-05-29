@@ -1,8 +1,45 @@
 # ShaRPC
 
 [![ci](https://github.com/JKamsker/sharpc/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/JKamsker/sharpc/actions/workflows/ci.yml)
+[![NuGet](https://img.shields.io/nuget/vpre/ShaRPC.svg?logo=nuget&label=ShaRPC)](https://www.nuget.org/packages/ShaRPC)
+[![Downloads](https://img.shields.io/nuget/dt/ShaRPC.svg?logo=nuget)](https://www.nuget.org/packages/ShaRPC)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A high-performance, transport-agnostic RPC framework for C# with source generator-based code generation, designed for Unity and .NET interoperability.
+
+## Installation
+
+Install from [nuget.org](https://www.nuget.org/packages/ShaRPC). The main package
+bundles the runtime core **and** the source generator, so this is all you need to
+define and call services:
+
+```sh
+# Core runtime + source generator (start here)
+dotnet add package ShaRPC
+```
+
+Add a serializer:
+
+```sh
+# MessagePack serializer (ISerializer implementation)
+dotnet add package ShaRPC.Serializers.MessagePack
+```
+
+Add a transport:
+
+```sh
+# TCP server/client transport
+dotnet add package ShaRPC.Transports.Tcp
+```
+
+A typical TCP + MessagePack setup uses all three:
+
+```sh
+# Everything needed for the Quick Start below
+dotnet add package ShaRPC
+dotnet add package ShaRPC.Serializers.MessagePack
+dotnet add package ShaRPC.Transports.Tcp
+```
 
 ## Features
 
@@ -180,20 +217,19 @@ dotnet run --project samples/GameService/Client
 
 ## NuGet packages
 
-CI publishes the four library packages as GitHub Actions artifacts on every
-build:
+CI publishes to [nuget.org](https://www.nuget.org/packages/ShaRPC) on every push to
+`main` (as `1.0.0-ci.<run_number>` prereleases); tag pushes (`vX.Y.Z`) are released
+under the tag's exact version.
 
-| Package                              | Contents                                      |
-|--------------------------------------|-----------------------------------------------|
-| `ShaRPC.Core`                        | core abstractions + protocol                  |
-| `ShaRPC.SourceGenerator`             | analyzer (auto-loaded; no runtime dependency) |
-| `ShaRPC.Transports.Tcp`              | TCP server/client transport                   |
-| `ShaRPC.Serializers.MessagePack`     | MessagePack `ISerializer`                     |
+| Package                                                                                           | Contents                                                                  |
+|---------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|
+| [`ShaRPC`](https://www.nuget.org/packages/ShaRPC)                                                 | Runtime core + bundled source generator (auto-loaded analyzer, no runtime dependency) |
+| [`ShaRPC.Transports.Tcp`](https://www.nuget.org/packages/ShaRPC.Transports.Tcp)                   | TCP server/client transport                                               |
+| [`ShaRPC.Serializers.MessagePack`](https://www.nuget.org/packages/ShaRPC.Serializers.MessagePack) | MessagePack `ISerializer`                                                 |
 
-Download the latest `nuget-packages` artifact from
-[the CI run](https://github.com/JKamsker/sharpc/actions/workflows/ci.yml) to
-get `.nupkg` + `.snupkg` files. Versions are `1.0.0-ci.<run_number>` on every
-push; tag pushes (`vX.Y.Z`) are released under the tag's exact version.
+The core library and the source generator ship together in the single `ShaRPC`
+package. `ShaRPC.Transports.Tcp` and `ShaRPC.Serializers.MessagePack` both depend
+on `ShaRPC`. See [Installation](#installation) for the install commands.
 
 ## Requirements
 
