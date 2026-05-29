@@ -1,10 +1,20 @@
 namespace ShaRPC.Core.Protocol;
 
 /// <summary>
-/// Represents an RPC request message.
+/// Represents an RPC request message. A <see langword="struct"/> so that framing a request
+/// does not heap-allocate the envelope on the client hot path; it is constructed, serialized,
+/// and read but never mutated after construction.
 /// </summary>
-public sealed class RpcRequest
+public struct RpcRequest
 {
+    /// <summary>
+    /// Initializes an empty request. Required so the string field initializers run for
+    /// <c>new RpcRequest()</c> and during deserialization.
+    /// </summary>
+    public RpcRequest()
+    {
+    }
+
     /// <summary>
     /// Unique identifier for this request, used for response correlation.
     /// </summary>

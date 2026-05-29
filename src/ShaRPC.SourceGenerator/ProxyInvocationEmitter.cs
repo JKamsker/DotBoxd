@@ -49,7 +49,9 @@ internal static class ProxyInvocationEmitter
         sb.AppendLine($"            var {handleName} = await {invocation};");
         if (info.AllowsNull)
         {
-            sb.AppendLine($"            return {handleName} is null ? null : new {subProxyType}(this._client, {handleName}.InstanceId);");
+            // ServiceHandle is a struct, so the nullable wire type is Nullable<ServiceHandle>;
+            // unwrap via .Value before reading InstanceId.
+            sb.AppendLine($"            return {handleName} is null ? null : new {subProxyType}(this._client, {handleName}.Value.InstanceId);");
         }
         else
         {

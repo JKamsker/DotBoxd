@@ -1,0 +1,125 @@
+using System.Buffers;
+using ShaRPC.Core.Buffers;
+using ShaRPC.Core.Protocol;
+using ShaRPC.Serializers.MessagePack;
+using Xunit;
+
+namespace ShaRPC.Tests;
+
+/// <summary>
+/// Guards that the protocol envelope DTOs round-trip through the production MessagePack
+/// serializer (the composite StandardResolver + ContractlessStandardResolver). These types
+/// carry no MessagePack attributes, so this is the canary that the contractless resolver
+/// still handles them after their declaration shape changes.
+/// </summary>
+public class EnvelopeRoundTripTests
+{
+    private static T RoundTrip<T>(MessagePackRpcSerializer serializer, T value)
+    {
+        var writer = new ArrayBufferWriter<byte>();
+        serializer.Serialize(writer, value);
+        return serializer.Deserialize<T>(writer.WrittenMemory);
+    }
+
+    [Fact]
+    public void RpcRequest_RoundTrips_WithInstanceId()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var request = new RpcRequest
+        {
+            MessageId = 42,
+            ServiceName = "Calc",
+            MethodName = "Add",
+            InstanceId = "instance-7",
+        };
+
+        var result = RoundTrip(serializer, request);
+
+        Assert.Equal(request.MessageId, result.MessageId);
+        Assert.Equal(request.ServiceName, result.ServiceName);
+        Assert.Equal(request.MethodName, result.MethodName);
+        Assert.Equal(request.InstanceId, result.InstanceId);
+    }
+
+    [Fact]
+    public void RpcRequest_RoundTrips_WithNullInstanceId()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var request = new RpcRequest { MessageId = 1, ServiceName = "S", MethodName = "M" };
+
+        var result = RoundTrip(serializer, request);
+
+        Assert.Equal(1, result.MessageId);
+        Assert.Null(result.InstanceId);
+    }
+
+    [Fact]
+    public void RpcResponse_RoundTrips_Success()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var response = new RpcResponse { MessageId = 9, IsSuccess = true };
+
+        var result = RoundTrip(serializer, response);
+
+        Assert.Equal(9, result.MessageId);
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.ErrorMessage);
+        Assert.Null(result.ErrorType);
+    }
+
+    [Fact]
+    public void RpcResponse_RoundTrips_Error()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var response = new RpcResponse
+        {
+            MessageId = 9,
+            IsSuccess = false,
+            ErrorMessage = "boom",
+            ErrorType = "ShaRpcRemoteException",
+        };
+
+        var result = RoundTrip(serializer, response);
+
+        Assert.Equal(9, result.MessageId);
+        Assert.False(result.IsSuccess);
+        Assert.Equal("boom", result.ErrorMessage);
+        Assert.Equal("ShaRpcRemoteException", result.ErrorType);
+    }
+
+    [Fact]
+    public void ServiceHandle_RoundTrips()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var handle = new ServiceHandle { ServiceName = "ISub", InstanceId = "sub-1" };
+
+        var result = RoundTrip(serializer, handle);
+
+        Assert.Equal("ISub", result.ServiceName);
+        Assert.Equal("sub-1", result.InstanceId);
+    }
+
+    [Fact]
+    public void NullableServiceHandle_RoundTrips_Null()
+    {
+        // The dispatcher emits serializer.Serialize<ServiceHandle?>(output, null) when a nullable
+        // sub-service method returns null; the client deserializes the same nullable shape.
+        var serializer = new MessagePackRpcSerializer();
+
+        var result = RoundTrip<ServiceHandle?>(serializer, null);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void NullableServiceHandle_RoundTrips_Value()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        ServiceHandle? handle = new ServiceHandle { ServiceName = "ISub", InstanceId = "sub-2" };
+
+        var result = RoundTrip(serializer, handle);
+
+        Assert.NotNull(result);
+        Assert.Equal("sub-2", result!.Value.InstanceId);
+    }
+}

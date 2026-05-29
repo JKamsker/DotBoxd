@@ -6,8 +6,16 @@ namespace ShaRPC.Core.Protocol;
 /// server allocated when the root method ran; the client wraps the handle in a
 /// generated sub-service proxy that uses the identifier on every subsequent call.
 /// </summary>
-public sealed class ServiceHandle
+public struct ServiceHandle
 {
+    /// <summary>
+    /// Initializes an empty handle. Required so the string field initializers run for
+    /// <c>new ServiceHandle()</c> and during deserialization.
+    /// </summary>
+    public ServiceHandle()
+    {
+    }
+
     /// <summary>The RPC service name of the sub-service (e.g. <c>"ISubService"</c>).</summary>
     public string ServiceName { get; set; } = string.Empty;
 

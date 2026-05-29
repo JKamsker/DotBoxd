@@ -1,9 +1,11 @@
 namespace ShaRPC.Core.Protocol;
 
 /// <summary>
-/// Represents an RPC response message.
+/// Represents an RPC response message. A <see langword="struct"/> so that framing a response
+/// does not heap-allocate the envelope on the server hot path; it is constructed, serialized,
+/// and read but never mutated after construction.
 /// </summary>
-public sealed class RpcResponse
+public struct RpcResponse
 {
     /// <summary>
     /// The message ID this response corresponds to.
