@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using ShaRPC.Core.Protocol;
+using ShaRPC.Serializers.MessagePack;
 using Xunit;
 
 namespace ShaRPC.Tests;
@@ -52,22 +53,105 @@ public class MessageFramerTests
     }
 
     [Fact]
-    public void TryReadFrame_ShouldRoundTripFrameToPayload()
+    public void TryReadFrame_ShouldRoundTripEnvelopeAndPayload()
     {
         // Arrange
+        var serializer = new MessagePackRpcSerializer();
         var messageId = 7;
-        var type = MessageType.Response;
+        var type = MessageType.Request;
+        var request = new RpcRequest
+        {
+            MessageId = messageId,
+            ServiceName = "Calc",
+            MethodName = "Add",
+        };
         var payload = new byte[] { 9, 8, 7, 6 };
-        using var frame = MessageFramer.FrameToPayload(messageId, type, payload);
+        using var frame = MessageFramer.FrameMessage(serializer, messageId, type, request, payload);
 
         // Act
-        var ok = MessageFramer.TryReadFrame(frame.Memory, out var extractedId, out var extractedType, out var extractedPayload);
+        var ok = MessageFramer.TryReadFrame(
+            frame.Memory,
+            out var extractedId,
+            out var extractedType,
+            out var extractedEnvelope,
+            out var extractedPayload);
 
         // Assert
         Assert.True(ok);
         Assert.Equal(messageId, extractedId);
         Assert.Equal(type, extractedType);
         Assert.Equal(payload, extractedPayload.ToArray());
+
+        var roundTripped = serializer.Deserialize<RpcRequest>(extractedEnvelope);
+        Assert.Equal(request.MessageId, roundTripped.MessageId);
+        Assert.Equal(request.ServiceName, roundTripped.ServiceName);
+        Assert.Equal(request.MethodName, roundTripped.MethodName);
+    }
+
+    [Fact]
+    public void TryReadFrame_WithEmptyPayload_ShouldRoundTrip()
+    {
+        // Arrange
+        var serializer = new MessagePackRpcSerializer();
+        var request = new RpcRequest { MessageId = 3, ServiceName = "S", MethodName = "M" };
+        using var frame = MessageFramer.FrameMessage(serializer, 3, MessageType.Request, request, ReadOnlySpan<byte>.Empty);
+
+        // Act
+        var ok = MessageFramer.TryReadFrame(
+            frame.Memory,
+            out var extractedId,
+            out _,
+            out var extractedEnvelope,
+            out var extractedPayload);
+
+        // Assert
+        Assert.True(ok);
+        Assert.Equal(3, extractedId);
+        Assert.True(extractedPayload.IsEmpty);
+        Assert.False(extractedEnvelope.IsEmpty);
+    }
+
+    [Fact]
+    public void TryReadFrame_ParsingCost_DoesNotScaleWithPayloadSize()
+    {
+        // The un-nested wire format returns the trailing payload as a zero-copy slice of the frame
+        // buffer, so parsing must not allocate anything proportional to payload size. If a per-message
+        // copy regressed back in, parsing the large frame would allocate measurably more than the small.
+        var serializer = new MessagePackRpcSerializer();
+        var request = new RpcRequest { MessageId = 1, ServiceName = "S", MethodName = "M" };
+
+        using var smallFrame = MessageFramer.FrameMessage(serializer, 1, MessageType.Request, request, new byte[16]);
+        using var largeFrame = MessageFramer.FrameMessage(serializer, 1, MessageType.Request, request, new byte[256 * 1024]);
+
+        var smallAllocated = MeasureParseAllocations(smallFrame.Memory);
+        var largeAllocated = MeasureParseAllocations(largeFrame.Memory);
+
+        Assert.Equal(smallAllocated, largeAllocated);
+    }
+
+    private static long MeasureParseAllocations(ReadOnlyMemory<byte> frame)
+    {
+        const int iterations = 1000;
+
+        // Warm up so tiered JIT compilation does not allocate inside the measured window.
+        long sink = 0;
+        for (var i = 0; i < iterations; i++)
+        {
+            MessageFramer.TryReadFrame(frame, out _, out _, out var envelope, out var payload);
+            sink += envelope.Length + payload.Length;
+        }
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < iterations; i++)
+        {
+            MessageFramer.TryReadFrame(frame, out _, out _, out var envelope, out var payload);
+            sink += envelope.Length + payload.Length;
+        }
+        var after = GC.GetAllocatedBytesForCurrentThread();
+
+        // Keep `sink` observable so the calls cannot be optimized away.
+        Assert.True(sink >= 0);
+        return after - before;
     }
 
     [Fact]

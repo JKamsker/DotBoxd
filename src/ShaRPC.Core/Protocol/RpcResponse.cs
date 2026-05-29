@@ -16,11 +16,6 @@ public sealed class RpcResponse
     public bool IsSuccess { get; set; }
 
     /// <summary>
-    /// Serialized return value (if successful).
-    /// </summary>
-    public ReadOnlyMemory<byte> Payload { get; set; } = ReadOnlyMemory<byte>.Empty;
-
-    /// <summary>
     /// Error message (if not successful).
     /// </summary>
     public string? ErrorMessage { get; set; }

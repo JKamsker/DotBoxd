@@ -7,7 +7,9 @@ namespace ShaRPC.Core.Protocol;
 
 /// <summary>
 /// Handles message framing for the ShaRPC protocol.
-/// Format: [4 bytes: Total Length][4 bytes: MessageId][1 byte: MessageType][N bytes: Payload]
+/// Stream frame: [4 bytes: Total Length][4 bytes: MessageId][1 byte: MessageType][N bytes: Body].
+/// For RPC messages the body is un-nested as [4 bytes: Envelope Length][E bytes: Envelope][P bytes: Payload],
+/// so the trailing payload can be handed to callers as a zero-copy slice of the frame buffer.
 /// </summary>
 public static class MessageFramer
 {
@@ -15,6 +17,12 @@ public static class MessageFramer
     /// Header size: 4 (length) + 4 (messageId) + 1 (type) = 9 bytes
     /// </summary>
     public const int HeaderSize = 9;
+
+    /// <summary>
+    /// Length prefix written before the serialized envelope so the trailing payload can be
+    /// located without the serializer reporting how many bytes it consumed.
+    /// </summary>
+    public const int EnvelopeLengthSize = 4;
 
     /// <summary>
     /// Maximum message size (16 MB).
@@ -68,55 +76,85 @@ public static class MessageFramer
     }
 
     /// <summary>
-    /// Serializes <paramref name="body"/> directly behind a frame header into a single pooled
-    /// buffer, then patches the total length. The caller owns the returned <see cref="Payload"/>.
+    /// Serializes <paramref name="envelope"/> and appends the raw <paramref name="payload"/> bytes
+    /// behind a frame header into a single pooled buffer, then patches the total length and the
+    /// envelope length. The caller owns the returned <see cref="Payload"/>.
     /// </summary>
-    public static Payload FrameMessage<T>(ISerializer serializer, int messageId, MessageType type, T body)
+    public static Payload FrameMessage<T>(
+        ISerializer serializer,
+        int messageId,
+        MessageType type,
+        T envelope,
+        ReadOnlySpan<byte> payload)
     {
-        using var writer = new PooledBufferWriter(HeaderSize);
+        using var writer = new PooledBufferWriter(HeaderSize + EnvelopeLengthSize + payload.Length);
 
-        // Reserve the header; the total-length field is patched in after the body is serialized.
-        var header = writer.GetSpan(HeaderSize);
-        BinaryPrimitives.WriteInt32LittleEndian(header.Slice(4, 4), messageId);
-        header[8] = (byte)type;
-        writer.Advance(HeaderSize);
+        // Reserve the header + envelope-length prefix; both length fields are patched in afterwards.
+        var prefix = writer.GetSpan(HeaderSize + EnvelopeLengthSize);
+        BinaryPrimitives.WriteInt32LittleEndian(prefix.Slice(4, 4), messageId);
+        prefix[8] = (byte)type;
+        writer.Advance(HeaderSize + EnvelopeLengthSize);
 
-        serializer.Serialize(writer, body);
+        var envelopeStart = writer.WrittenCount;
+        serializer.Serialize(writer, envelope);
+        var envelopeLength = writer.WrittenCount - envelopeStart;
 
-        var payload = writer.DetachPayload();
-        BinaryPrimitives.WriteInt32LittleEndian(payload.Memory.Span.Slice(0, 4), payload.Length);
-        return payload;
+        if (payload.Length > 0)
+        {
+            var span = writer.GetSpan(payload.Length);
+            payload.CopyTo(span);
+            writer.Advance(payload.Length);
+        }
+
+        var frame = writer.DetachPayload();
+        var header = frame.Memory.Span;
+        BinaryPrimitives.WriteInt32LittleEndian(header.Slice(0, 4), frame.Length);
+        BinaryPrimitives.WriteInt32LittleEndian(header.Slice(HeaderSize, EnvelopeLengthSize), envelopeLength);
+        return frame;
     }
 
     /// <summary>
-    /// Parses a frame out of an in-memory buffer without copying. <paramref name="payload"/> is a
-    /// slice of <paramref name="source"/> and shares its lifetime.
+    /// Parses an un-nested RPC frame out of an in-memory buffer without copying. Both
+    /// <paramref name="envelope"/> and <paramref name="payload"/> are slices of
+    /// <paramref name="source"/> and share its lifetime.
     /// </summary>
     public static bool TryReadFrame(
         ReadOnlyMemory<byte> source,
         out int messageId,
         out MessageType type,
+        out ReadOnlyMemory<byte> envelope,
         out ReadOnlyMemory<byte> payload)
     {
         messageId = 0;
         type = default;
+        envelope = ReadOnlyMemory<byte>.Empty;
         payload = ReadOnlyMemory<byte>.Empty;
 
-        if (source.Length < HeaderSize)
+        if (source.Length < HeaderSize + EnvelopeLengthSize)
         {
             return false;
         }
 
         var span = source.Span;
         var totalLength = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(0, 4));
-        if (totalLength < HeaderSize || totalLength > source.Length)
+        if (totalLength < HeaderSize + EnvelopeLengthSize || totalLength > source.Length)
         {
             return false;
         }
 
         messageId = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(4, 4));
         type = (MessageType)span[8];
-        payload = source.Slice(HeaderSize, totalLength - HeaderSize);
+
+        var envelopeLength = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(HeaderSize, EnvelopeLengthSize));
+        var envelopeStart = HeaderSize + EnvelopeLengthSize;
+        if (envelopeLength < 0 || (long)envelopeStart + envelopeLength > totalLength)
+        {
+            return false;
+        }
+
+        envelope = source.Slice(envelopeStart, envelopeLength);
+        var payloadStart = envelopeStart + envelopeLength;
+        payload = source.Slice(payloadStart, totalLength - payloadStart);
         return true;
     }
 

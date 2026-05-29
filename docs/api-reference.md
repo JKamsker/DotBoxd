@@ -287,7 +287,7 @@ public static class ShaRpcGeneratedExtensions
 ### Wire Format
 
 ```
-[4 bytes: Total Length][4 bytes: MessageId][1 byte: MessageType][N bytes: Payload]
+[4 bytes: Total Length][4 bytes: MessageId][1 byte: MessageType][4 bytes: Envelope Length][E bytes: Envelope][P bytes: Payload]
 ```
 
 | Field | Size | Description |
@@ -295,10 +295,17 @@ public static class ShaRpcGeneratedExtensions
 | Total Length | 4 bytes (int32 LE) | Full message size including header |
 | Message ID | 4 bytes (int32 LE) | Request/response correlation ID |
 | Message Type | 1 byte | 0x01=Request, 0x02=Response, 0x03=Error |
-| Payload | Variable | Serialized message body |
+| Envelope Length | 4 bytes (int32 LE) | Size of the serialized envelope |
+| Envelope | Variable | Serialized `RpcRequest`/`RpcResponse` metadata |
+| Payload | Variable | Raw serialized arguments/return value |
 
 > [!NOTE]
 > All multi-byte integers are in LE (Little Endian) format.
+
+The payload is **not** nested inside the envelope. It is appended as raw trailing bytes so the
+receiver can hand it to the dispatcher (or deserialize the return value) as a zero-copy slice of the
+frame buffer, avoiding a per-message heap allocation. The envelope-length prefix lets the receiver
+locate the payload without the serializer reporting how many bytes it consumed.
 
 ### Message Types
 
@@ -309,7 +316,7 @@ public static class ShaRpcGeneratedExtensions
 | `0x03` | Error | Error response from server |
 | `0x04` | Cancel | Cancellation (reserved for future) |
 
-### Request Payload
+### Request Envelope
 
 ```csharp
 public class RpcRequest
@@ -317,19 +324,22 @@ public class RpcRequest
     public int MessageId { get; set; }
     public string ServiceName { get; set; }
     public string MethodName { get; set; }
-    public byte[] Payload { get; set; }  // Serialized arguments
+    public string? InstanceId { get; set; }  // Target sub-service instance, null for singletons
 }
 ```
 
-### Response Payload
+The serialized method arguments travel as the frame's trailing payload, not inside this envelope.
+
+### Response Envelope
 
 ```csharp
 public class RpcResponse
 {
     public int MessageId { get; set; }
     public bool IsSuccess { get; set; }
-    public byte[] Payload { get; set; }  // Serialized return value
     public string? ErrorMessage { get; set; }
     public string? ErrorType { get; set; }
 }
 ```
+
+The serialized return value travels as the frame's trailing payload, not inside this envelope.

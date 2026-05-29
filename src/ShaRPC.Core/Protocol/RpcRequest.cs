@@ -21,11 +21,6 @@ public sealed class RpcRequest
     public string MethodName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Serialized method arguments.
-    /// </summary>
-    public ReadOnlyMemory<byte> Payload { get; set; } = ReadOnlyMemory<byte>.Empty;
-
-    /// <summary>
     /// Per-connection opaque identifier of the server-side instance this call targets.
     /// <c>null</c> for ordinary singleton-service calls (the legacy code path); non-null
     /// for nested-service calls dispatched via

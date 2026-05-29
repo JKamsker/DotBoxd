@@ -135,14 +135,20 @@ Proxy generator is **unchanged** (it only forwards to the generic `_client.Invok
 
 ---
 
-## Future Work (documented follow-up, not in this change)
-Eliminate the last per-message allocation (the array MessagePack allocates to back the nested
-`RpcRequest/RpcResponse.Payload`). Two options: (a) a custom MessagePack formatter that rents into
-a caller-owned buffer, or (b) an **un-nested wire format** = `header + envelope(no payload) + raw
-trailing payload bytes`, letting the payload be a zero-copy slice of the frame buffer. Both require
-extending the frame `Payload` lifetime until the awaiting caller deserializes (the `Payload` must
-travel with `RpcResponse` and be disposed there), which is why it's deferred. Will spawn a separate
-task at end of implementation.
+## Future Work — DONE (un-nested wire format)
+Eliminated the last per-message allocation (the array MessagePack allocated to back the nested
+`RpcRequest/RpcResponse.Payload`). Chose **option (b) — un-nested wire format** =
+`header + envelope-length + envelope(no payload) + raw trailing payload bytes`, so the payload is a
+zero-copy slice of the frame buffer.
+
+Implemented:
+- `MessageFramer`: added `EnvelopeLengthSize`; `FrameMessage<T>(serializer, id, type, envelope, ReadOnlySpan<byte> payload)` and `TryReadFrame(... out envelope, out payload)`.
+- Dropped the `Payload` member from `RpcRequest`/`RpcResponse` entirely (Core has no MessagePack dependency, so attribute-based exclusion was not serializer-agnostic — the member is removed structurally).
+- Server `ProcessMessageAsync` passes the zero-copy `payload` slice to the dispatcher (which deserializes args synchronously before its first `await`, so the slice never outlives the live `data` frame) and appends `resultPayload` as trailing bytes.
+- Client carries the rented frame to the awaiting caller via a `ReceivedResponse : IDisposable` carrier; a `consumed` flag + `DisposeResultWhenAvailable` continuation + receive-loop `handedOff` flag make the frame-lifetime hand-off leak-proof across timeout/cancel/duplicate/error races (`Payload.Dispose` is idempotent).
+- Tests: rewrote the framer round-trip test for the split format, added an empty-payload round-trip and an allocation-regression test asserting parse cost does not scale with payload size.
+
+Verified: `dotnet build` green; 22 ShaRPC.Tests (incl. real-TCP + in-memory pipe round-trips) and 192 SourceGenerator.Tests pass with no snapshot re-baselining.
 
 ---
 

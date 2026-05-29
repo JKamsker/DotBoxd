@@ -14,7 +14,7 @@ public sealed class ShaRpcClient : IShaRpcClient
 {
     private readonly ITransport _transport;
     private readonly ISerializer _serializer;
-    private readonly ConcurrentDictionary<int, TaskCompletionSource<RpcResponse>> _pendingRequests = new();
+    private readonly ConcurrentDictionary<int, TaskCompletionSource<ReceivedResponse>> _pendingRequests = new();
     private readonly TimeSpan _timeout;
     private int _messageIdCounter;
     private Task? _receiveTask;
@@ -44,8 +44,8 @@ public sealed class ShaRpcClient : IShaRpcClient
         CancellationToken ct = default)
     {
         using var requestPayload = _serializer.SerializeToPayload(request);
-        var response = await SendRequestAsync(service, method, requestPayload.Memory, instanceId: null, ct);
-        return _serializer.Deserialize<TResponse>(response.Payload);
+        using var received = await SendRequestAsync(service, method, requestPayload.Memory, instanceId: null, ct);
+        return _serializer.Deserialize<TResponse>(received.Payload);
     }
 
     public async Task<TResponse> InvokeAsync<TResponse>(
@@ -53,8 +53,8 @@ public sealed class ShaRpcClient : IShaRpcClient
         string method,
         CancellationToken ct = default)
     {
-        var response = await SendRequestAsync(service, method, ReadOnlyMemory<byte>.Empty, instanceId: null, ct);
-        return _serializer.Deserialize<TResponse>(response.Payload);
+        using var received = await SendRequestAsync(service, method, ReadOnlyMemory<byte>.Empty, instanceId: null, ct);
+        return _serializer.Deserialize<TResponse>(received.Payload);
     }
 
     public async Task InvokeAsync<TRequest>(
@@ -64,7 +64,7 @@ public sealed class ShaRpcClient : IShaRpcClient
         CancellationToken ct = default)
     {
         using var requestPayload = _serializer.SerializeToPayload(request);
-        await SendRequestAsync(service, method, requestPayload.Memory, instanceId: null, ct);
+        using var received = await SendRequestAsync(service, method, requestPayload.Memory, instanceId: null, ct);
     }
 
     public async Task<TResponse> InvokeOnInstanceAsync<TRequest, TResponse>(
@@ -75,8 +75,8 @@ public sealed class ShaRpcClient : IShaRpcClient
         CancellationToken ct = default)
     {
         using var requestPayload = _serializer.SerializeToPayload(request);
-        var response = await SendRequestAsync(service, method, requestPayload.Memory, instanceId, ct);
-        return _serializer.Deserialize<TResponse>(response.Payload);
+        using var received = await SendRequestAsync(service, method, requestPayload.Memory, instanceId, ct);
+        return _serializer.Deserialize<TResponse>(received.Payload);
     }
 
     public async Task<TResponse> InvokeOnInstanceAsync<TResponse>(
@@ -85,8 +85,8 @@ public sealed class ShaRpcClient : IShaRpcClient
         string method,
         CancellationToken ct = default)
     {
-        var response = await SendRequestAsync(service, method, ReadOnlyMemory<byte>.Empty, instanceId, ct);
-        return _serializer.Deserialize<TResponse>(response.Payload);
+        using var received = await SendRequestAsync(service, method, ReadOnlyMemory<byte>.Empty, instanceId, ct);
+        return _serializer.Deserialize<TResponse>(received.Payload);
     }
 
     public async Task InvokeOnInstanceAsync<TRequest>(
@@ -97,10 +97,10 @@ public sealed class ShaRpcClient : IShaRpcClient
         CancellationToken ct = default)
     {
         using var requestPayload = _serializer.SerializeToPayload(request);
-        await SendRequestAsync(service, method, requestPayload.Memory, instanceId, ct);
+        using var received = await SendRequestAsync(service, method, requestPayload.Memory, instanceId, ct);
     }
 
-    private async Task<RpcResponse> SendRequestAsync(
+    private async Task<ReceivedResponse> SendRequestAsync(
         string service,
         string method,
         ReadOnlyMemory<byte> payload,
@@ -118,16 +118,20 @@ public sealed class ShaRpcClient : IShaRpcClient
             MessageId = messageId,
             ServiceName = service,
             MethodName = method,
-            Payload = payload,
             InstanceId = instanceId,
         };
 
-        var tcs = new TaskCompletionSource<RpcResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var tcs = new TaskCompletionSource<ReceivedResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pendingRequests.TryAdd(messageId, tcs);
 
+        // Ownership note: the received frame is handed to us through `tcs`. We only return it to the
+        // caller (transferring ownership) once `consumed` is set; on every other path the finally
+        // disposes the frame via DisposeResultWhenAvailable, so a response that races in after a
+        // timeout/cancel can never leak its rented buffer.
+        var consumed = false;
         try
         {
-            using (var frame = MessageFramer.FrameMessage(_serializer, messageId, MessageType.Request, request))
+            using (var frame = MessageFramer.FrameMessage(_serializer, messageId, MessageType.Request, request, payload.Span))
             {
                 await _transport.Connection.SendAsync(frame.Memory, ct);
             }
@@ -144,16 +148,17 @@ public sealed class ShaRpcClient : IShaRpcClient
                     throw new ShaRpcTimeoutException($"Request to {service}.{method} timed out.");
                 }
 
-                var response = await tcs.Task;
+                var received = await tcs.Task;
 
-                if (!response.IsSuccess)
+                if (!received.Response.IsSuccess)
                 {
                     throw new ShaRpcRemoteException(
-                        response.ErrorMessage ?? "Unknown error",
-                        response.ErrorType ?? "Unknown");
+                        received.Response.ErrorMessage ?? "Unknown error",
+                        received.Response.ErrorType ?? "Unknown");
                 }
 
-                return response;
+                consumed = true;
+                return received;
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
@@ -163,7 +168,41 @@ public sealed class ShaRpcClient : IShaRpcClient
         finally
         {
             _pendingRequests.TryRemove(messageId, out _);
+            if (!consumed)
+            {
+                DisposeResultWhenAvailable(tcs.Task);
+            }
         }
+    }
+
+    /// <summary>
+    /// Disposes the frame carried by a response the caller has abandoned (timeout, cancellation, or
+    /// a remote error). Handles the case where the response has not arrived yet by disposing it on
+    /// completion. A faulted or cancelled task carries no frame, so nothing is disposed.
+    /// </summary>
+    private static void DisposeResultWhenAvailable(Task<ReceivedResponse> task)
+    {
+        if (task.IsCompleted)
+        {
+            if (task.Status == TaskStatus.RanToCompletion)
+            {
+                task.Result.Dispose();
+            }
+
+            return;
+        }
+
+        _ = task.ContinueWith(
+            static t =>
+            {
+                if (t.Status == TaskStatus.RanToCompletion)
+                {
+                    t.Result.Dispose();
+                }
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     private async Task ReceiveLoopAsync(CancellationToken ct)
@@ -178,29 +217,49 @@ public sealed class ShaRpcClient : IShaRpcClient
                     break;
                 }
 
-                using var frame = await connection.ReceiveAsync(ct);
+                var frame = await connection.ReceiveAsync(ct);
                 if (frame.Length == 0)
                 {
+                    frame.Dispose();
                     break;
                 }
 
-                if (!MessageFramer.TryReadFrame(frame.Memory, out var messageId, out var messageType, out var envelope))
+                // Safety invariant: `payload` is a zero-copy slice of `frame`. Ownership of `frame`
+                // is transferred to the ReceivedResponse carrier and ultimately to the awaiting
+                // caller, which disposes it after deserializing the payload. If the frame is not
+                // handed off (unparseable, wrong type, or no matching/abandoned request) we dispose
+                // it here so the rented buffer is always returned exactly once.
+                var handedOff = false;
+                try
                 {
-                    continue;
-                }
+                    if (!MessageFramer.TryReadFrame(frame.Memory, out var messageId, out var messageType, out var envelope, out var payload))
+                    {
+                        continue;
+                    }
 
-                if (messageType == MessageType.Response || messageType == MessageType.Error)
-                {
-                    // Safety invariant: under MessagePackSecurity.UntrustedData the serializer copies
-                    // the nested RpcResponse.Payload into a fresh heap array rather than aliasing
-                    // `envelope`. That makes `response.Payload` outlive `frame`, so the rented frame
-                    // can be disposed at the end of this loop iteration even though the awaiting caller
-                    // deserializes response.Payload later on another thread. Do NOT switch the inner
-                    // payload to a zero-copy slice of `frame` without extending the frame's lifetime.
+                    if (messageType != MessageType.Response && messageType != MessageType.Error)
+                    {
+                        continue;
+                    }
+
                     var response = _serializer.Deserialize<RpcResponse>(envelope);
                     if (_pendingRequests.TryGetValue(messageId, out var tcs))
                     {
-                        tcs.TrySetResult(response);
+                        var received = new ReceivedResponse(response, payload, frame);
+                        if (!tcs.TrySetResult(received))
+                        {
+                            // The caller already gave up; release the frame we just took ownership of.
+                            received.Dispose();
+                        }
+
+                        handedOff = true;
+                    }
+                }
+                finally
+                {
+                    if (!handedOff)
+                    {
+                        frame.Dispose();
                     }
                 }
             }
@@ -250,5 +309,27 @@ public sealed class ShaRpcClient : IShaRpcClient
 
         _cts?.Dispose();
         await _transport.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Carries a deserialized <see cref="RpcResponse"/> together with the zero-copy payload slice and
+    /// the frame buffer that backs it. Disposing returns the rented frame to the pool exactly once.
+    /// </summary>
+    private sealed class ReceivedResponse : IDisposable
+    {
+        private Payload? _frame;
+
+        public ReceivedResponse(RpcResponse response, ReadOnlyMemory<byte> payload, Payload frame)
+        {
+            Response = response;
+            Payload = payload;
+            _frame = frame;
+        }
+
+        public RpcResponse Response { get; }
+
+        public ReadOnlyMemory<byte> Payload { get; }
+
+        public void Dispose() => Interlocked.Exchange(ref _frame, null)?.Dispose();
     }
 }

@@ -12,10 +12,13 @@ public sealed class RpcRequest
     public int MessageId { get; set; }
     public string ServiceName { get; set; } = string.Empty;
     public string MethodName { get; set; } = string.Empty;
-    public byte[] Payload { get; set; } = Array.Empty<byte>();
     public string? InstanceId { get; set; }   // NEW. null = singleton service call.
 }
 ```
+
+> The serialized method arguments are no longer carried inside this envelope; they travel as the
+> frame's raw trailing payload (see the wire format in the API reference) so the dispatcher can read
+> them as a zero-copy slice of the receive buffer.
 
 `InstanceId` is `null` for all existing top-level service calls — the field is additive and wire-compatible because MessagePack/JSON tolerate unknown-but-absent properties.
 
