@@ -9,6 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
+
     <!-- Build the generator before this project so its assembly exists at pack time.
          ReferenceOutputAssembly=false: it ships as an analyzer, not a runtime reference. -->
     <ProjectReference Include="..\ShaRPC.SourceGenerator\ShaRPC.SourceGenerator.csproj"

@@ -48,9 +48,10 @@ dotnet add package ShaRPC.Transports.Tcp
 - **Async sibling interfaces**: every `[ShaRpcService]` automatically gains an `I{Name}Async` view so callers can pick a blocking or non-blocking entry point.
 - **Nested services**: a method returning another `[ShaRpcService]` interface returns a fully-working sub-proxy bound to a server-side instance — no DTO marshalling for live objects.
 - **Unity Compatible**: Works with IL2CPP and AOT compilation.
-- **Transport Agnostic**: TCP included, easily extensible to WebSocket, Steam, etc.
+- **Bidirectional peers**: one duplex connection can serve local services and call remote services at the same time.
+- **Transport Agnostic**: TCP, stream/named-pipe connections, and single-connection adapters included; easily extensible to WebSocket, Steam, etc.
 - **Shared Contracts**: Same C# interfaces on client and server.
-- **Fast Serialization**: MessagePack for efficient binary encoding.
+- **Fast Serialization**: MessagePack for efficient binary encoding, custom resolver options, and `ReadOnlyMemory<byte>` DTO fields.
 - **Async/Await**: Full async support with cancellation tokens.
 
 ## Quick Start
@@ -90,6 +91,19 @@ await client.ConnectAsync();
 
 var gameService = client.CreateGameServiceProxy();
 var player = await gameService.JoinAsync("Player1");
+```
+
+### Bidirectional Peer
+
+For named pipes, plugin IPC, sidecars, and other duplex transports, both endpoints can serve and call services over one connection:
+
+```csharp
+var peer = await ShaRpcPeer.StartAsync(
+    connection,
+    new MessagePackRpcSerializer(),
+    builder => builder.AddDispatcher(ShaRpcGenerated.CreateDispatcher<IGameService>(gameService)));
+
+var remote = peer.CreateProxy<IRemoteGameService>();
 ```
 
 ## Generator features at a glance

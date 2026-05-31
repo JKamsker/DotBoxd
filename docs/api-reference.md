@@ -135,9 +135,42 @@ Interface for service dispatchers (generated).
 public interface IServiceDispatcher
 {
     string ServiceName { get; }
-    Task<byte[]> DispatchAsync(string method, byte[] payload, ISerializer serializer, CancellationToken ct = default);
+    Task DispatchAsync(
+        string method,
+        ReadOnlyMemory<byte> payload,
+        ISerializer serializer,
+        IInstanceRegistry registry,
+        IBufferWriter<byte> output,
+        CancellationToken ct = default);
 }
 ```
+
+---
+
+### Peer
+
+#### `ShaRpcPeer`
+Bidirectional endpoint over one duplex `IConnection`. One peer can serve local dispatchers and create generated proxies for the remote side over the same connection.
+
+```csharp
+var peer = await ShaRpcPeer.StartAsync(
+    connection,
+    serializer,
+    builder => builder.AddDispatcher(ShaRpcGenerated.CreateDispatcher<IMyService>(implementation)),
+    new ShaRpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(10) });
+
+var remote = peer.CreateProxy<IRemoteService>();
+```
+
+| Member | Description |
+|--------|-------------|
+| `CreateProxy<TService>()` / `GetProxy<TService>()` | Creates a generated proxy for the remote peer |
+| `RegisterDispatcher(IServiceDispatcher)` | Registers an inbound dispatcher |
+| `ReadError` | Raised when the shared read loop faults |
+| `Disconnected` | Raised when the remote connection closes |
+| `CloseAsync()` / `DisposeAsync()` | Idempotently closes the peer and underlying connection |
+
+`ShaRpcPeerOptions.InboundQueueCapacity` and `QueueFullMode` can bound the internal request/response queues used by the duplex splitter.
 
 ---
 
@@ -174,11 +207,20 @@ Represents an active connection.
 public interface IConnection : IAsyncDisposable
 {
     Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default);
-    Task<Memory<byte>> ReceiveAsync(CancellationToken ct = default);
+    Task<Payload> ReceiveAsync(CancellationToken ct = default);
     bool IsConnected { get; }
     string RemoteEndpoint { get; }
 }
 ```
+
+#### Built-in single-connection primitives
+
+| Type | Description |
+|------|-------------|
+| `StreamConnection` | `IConnection` over any duplex `Stream`, including `PipeStream`; reads and writes complete ShaRPC length-prefixed frames |
+| `SingleConnectionTransport` | Client `ITransport` adapter for an already-established `IConnection` |
+| `SingleConnectionServerTransport` | Server `IServerTransport` adapter that accepts one already-established `IConnection` |
+| `DuplexConnectionSplitter` | Routes request/cancel frames to a server-facing connection and response/error frames to a client-facing connection |
 
 ---
 
@@ -190,9 +232,9 @@ Serialization interface.
 ```csharp
 public interface ISerializer
 {
-    byte[] Serialize<T>(T value);
-    T Deserialize<T>(ReadOnlySpan<byte> data);
-    object? Deserialize(ReadOnlySpan<byte> data, Type type);
+    void Serialize<T>(IBufferWriter<byte> writer, T value);
+    T Deserialize<T>(ReadOnlyMemory<byte> data);
+    object? Deserialize(ReadOnlyMemory<byte> data, Type type);
 }
 ```
 
@@ -254,11 +296,18 @@ var serializer = MessagePackRpcSerializer.CreateUnityCompatible();
 
 // Custom options
 var serializer = new MessagePackRpcSerializer(customOptions);
+
+// Custom resolver with ShaRPC binary payload formatters and standard fallbacks
+var serializer = MessagePackRpcSerializer.CreateWithResolver(myResolver);
 ```
 
 | Method | Description |
 |--------|-------------|
 | `CreateUnityCompatible()` | Creates serializer optimized for Unity/AOT |
+| `CreateWithResolver(IFormatterResolver)` | Creates serializer with a custom resolver chain |
+| `CreateOptions(params IFormatterResolver[])` | Builds hardened MessagePack options with ShaRPC formatters |
+
+The default options include a formatter for `ReadOnlyMemory<byte>` so binary DTO fields encode as MessagePack bin payloads.
 
 ---
 
@@ -279,6 +328,21 @@ public static class ShaRpcGeneratedExtensions
         IFooService implementation);
 }
 ```
+
+The generator also emits a public factory class and registers factories with the runtime registry:
+
+```csharp
+// In namespace ShaRPC.Generated
+public static class ShaRpcGenerated
+{
+    public static TService CreateProxy<TService>(IShaRpcClient client) where TService : class;
+    public static object CreateProxy(Type serviceInterface, IShaRpcClient client);
+    public static IServiceDispatcher CreateDispatcher<TService>(TService implementation) where TService : class;
+    public static IServiceDispatcher CreateDispatcher(Type serviceInterface, object implementation);
+}
+```
+
+The runtime registry is available as `ShaRPC.Core.Generated.ShaRpcServiceRegistry` and throws a clear diagnostic when no generated factory is registered for a service interface.
 
 ---
 

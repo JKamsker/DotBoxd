@@ -23,6 +23,15 @@ internal static class InMemoryPipe
     /// </summary>
     public static (ITransport Client, IServerTransport Server) CreatePair(int writeChunkSize = 0)
     {
+        var (clientConnection, serverConnection) = CreateConnectionPair(writeChunkSize);
+        return (new PipeClientTransport(clientConnection), new PipeServerTransport(serverConnection));
+    }
+
+    /// <summary>
+    /// Creates two directly connected <see cref="IConnection"/> instances for peer tests.
+    /// </summary>
+    public static (PipeConnection Client, PipeConnection Server) CreateConnectionPair(int writeChunkSize = 0)
+    {
         var clientToServer = new Pipe();
         var serverToClient = new Pipe();
 
@@ -38,7 +47,7 @@ internal static class InMemoryPipe
             remoteEndpoint: "memory://client",
             writeChunkSize);
 
-        return (new PipeClientTransport(clientConnection), new PipeServerTransport(serverConnection));
+        return (clientConnection, serverConnection);
     }
 }
 

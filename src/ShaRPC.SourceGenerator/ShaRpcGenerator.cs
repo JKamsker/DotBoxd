@@ -230,6 +230,11 @@ public sealed class ShaRpcGenerator : IIncrementalGenerator
                 spc.AddSource(
                     "ShaRpcExtensions.g.cs",
                     SourceText.From(extensionsSource, Encoding.UTF8));
+
+                var factorySource = GeneratedFactoryGenerator.Generate(services, spc.CancellationToken);
+                spc.AddSource(
+                    "ShaRpcGenerated.g.cs",
+                    SourceText.From(factorySource, Encoding.UTF8));
             }
             catch (OperationCanceledException)
             {
