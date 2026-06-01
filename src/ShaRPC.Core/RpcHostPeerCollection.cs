@@ -36,6 +36,8 @@ internal sealed class RpcHostPeerCollection
 
     public async Task CloseAllAsync()
     {
+        // A peer that disconnects naturally just before this runs may be disposed twice:
+        // once by DisposeInBackground and once here. RpcPeer.DisposeAsync is idempotent.
         var tasks = _peers.Keys.Select(peer => DisposeOnePeerAsync(peer)).ToArray();
         if (tasks.Length != 0)
         {

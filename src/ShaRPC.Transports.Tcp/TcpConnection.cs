@@ -16,7 +16,7 @@ public sealed class TcpConnection : IConnection
     private readonly TcpClient _client;
     private readonly NetworkStream _stream;
     private readonly SemaphoreSlim _sendLock = new(1, 1);
-    private bool _disposed;
+    private int _disposed;
 
     public TcpConnection(TcpClient client)
     {
@@ -24,13 +24,13 @@ public sealed class TcpConnection : IConnection
         _stream = client.GetStream();
     }
 
-    public bool IsConnected => _client.Connected && !_disposed;
+    public bool IsConnected => _client.Connected && Volatile.Read(ref _disposed) == 0;
 
     public string RemoteEndpoint => _client.Client.RemoteEndPoint?.ToString() ?? "unknown";
 
     public async Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
     {
-        if (_disposed)
+        if (Volatile.Read(ref _disposed) != 0)
         {
             throw new ObjectDisposedException(nameof(TcpConnection));
         }
@@ -49,7 +49,7 @@ public sealed class TcpConnection : IConnection
 
     public async Task<Payload> ReceiveAsync(CancellationToken ct = default)
     {
-        if (_disposed)
+        if (Volatile.Read(ref _disposed) != 0)
         {
             throw new ObjectDisposedException(nameof(TcpConnection));
         }
@@ -115,14 +115,12 @@ public sealed class TcpConnection : IConnection
         return totalRead;
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
-            return;
+            return default;
         }
-
-        _disposed = true;
 
         try
         {
@@ -135,6 +133,6 @@ public sealed class TcpConnection : IConnection
         }
 
         _sendLock.Dispose();
-        await Task.CompletedTask;
+        return default;
     }
 }

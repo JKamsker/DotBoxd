@@ -33,6 +33,11 @@ public sealed class ShaRpcClient : IShaRpcClient
     public bool IsConnected => _transport.IsConnected;
     public async Task ConnectAsync(CancellationToken ct = default)
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            throw new ObjectDisposedException(nameof(ShaRpcClient));
+        }
+
         if (Interlocked.Exchange(ref _connected, 1) != 0)
         {
             throw new InvalidOperationException("Already connected.");

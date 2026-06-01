@@ -207,9 +207,9 @@ public sealed class RpcHost : IAsyncDisposable
                 {
                     await acceptTask.ConfigureAwait(false);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Accept loop faults are swallowed during shutdown.
+                    RpcDiagnostics.Report("Accept loop fault during shutdown", ex);
                 }
             }
 
@@ -305,5 +305,4 @@ public sealed class RpcHost : IAsyncDisposable
             await _listener.DisposeAsync().ConfigureAwait(false);
         }
     }
-
 }

@@ -183,7 +183,7 @@ public sealed class RpcPeerRegressionTests
         Assert.Equal(MessageType.Error, messageType);
         Assert.Equal(0, payload.Length);
         Assert.False(response.IsSuccess);
-        Assert.Equal("ShaRpcProtocolException", response.ErrorType);
+        Assert.Equal(RpcErrorTypes.ProtocolError, response.ErrorType);
         Assert.Contains("Malformed request envelope", response.ErrorMessage);
     }
 

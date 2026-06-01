@@ -12,7 +12,7 @@ public sealed class TcpServerTransport : IServerTransport
     private readonly IPAddress _address;
     private readonly int _port;
     private TcpListener? _listener;
-    private bool _disposed;
+    private int _disposed;
     private bool _started;
 
     public TcpServerTransport(int port) : this(IPAddress.Any, port)
@@ -38,7 +38,7 @@ public sealed class TcpServerTransport : IServerTransport
 
     public Task StartAsync(CancellationToken ct = default)
     {
-        if (_disposed)
+        if (Volatile.Read(ref _disposed) != 0)
         {
             throw new ObjectDisposedException(nameof(TcpServerTransport));
         }
@@ -57,7 +57,7 @@ public sealed class TcpServerTransport : IServerTransport
 
     public async Task<IConnection> AcceptAsync(CancellationToken ct = default)
     {
-        if (_disposed)
+        if (Volatile.Read(ref _disposed) != 0)
         {
             throw new ObjectDisposedException(nameof(TcpServerTransport));
         }
@@ -67,16 +67,24 @@ public sealed class TcpServerTransport : IServerTransport
             throw new InvalidOperationException("Server not started.");
         }
 
-        // Wrap AcceptTcpClientAsync with cancellation support for .NET Standard 2.1
-        var acceptTask = _listener.AcceptTcpClientAsync();
-
-        while (!acceptTask.IsCompleted)
+        // netstandard2.1: AcceptTcpClientAsync has no CancellationToken overload.
+        // Stop the listener on cancellation to unblock the pending accept.
+        using var registration = ct.Register(static state =>
         {
-            ct.ThrowIfCancellationRequested();
-            await Task.WhenAny(acceptTask, Task.Delay(100, ct));
+            try { ((TcpListener)state!).Stop(); }
+            catch { }
+        }, _listener);
+
+        TcpClient client;
+        try
+        {
+            client = await _listener.AcceptTcpClientAsync().ConfigureAwait(false);
+        }
+        catch (Exception) when (ct.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(ct);
         }
 
-        var client = await acceptTask;
         return new TcpConnection(client);
     }
 
@@ -88,12 +96,11 @@ public sealed class TcpServerTransport : IServerTransport
 
     public ValueTask DisposeAsync()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
             return default;
         }
 
-        _disposed = true;
         _listener?.Stop();
 
         return default;

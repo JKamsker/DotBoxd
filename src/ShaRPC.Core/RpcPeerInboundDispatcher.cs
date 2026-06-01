@@ -7,6 +7,7 @@ using ShaRPC.Core.Server;
 using ShaRPC.Core.Transport;
 
 namespace ShaRPC.Core;
+
 internal sealed class RpcPeerInboundDispatcher
 {
     private readonly ConcurrentDictionary<string, IServiceDispatcher> _dispatchers = new();

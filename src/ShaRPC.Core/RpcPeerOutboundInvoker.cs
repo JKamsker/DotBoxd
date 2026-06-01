@@ -16,6 +16,7 @@ internal sealed class RpcPeerOutboundInvoker : IRpcInvoker
     private readonly ShaRpcPendingRequests _pending = new();
     private readonly RpcPeerCancelFrameSender _cancelFrames;
     private int _messageIdCounter;
+    private int _pendingCount;
 
     public RpcPeerOutboundInvoker(
         ISerializer serializer,
@@ -163,6 +164,7 @@ internal sealed class RpcPeerOutboundInvoker : IRpcInvoker
         catch
         {
             _pending.Remove(pending.MessageId, pending.Completion.Task, consumed: true);
+            ReleasePendingSlot();
             throw;
         }
     }
@@ -195,14 +197,16 @@ internal sealed class RpcPeerOutboundInvoker : IRpcInvoker
         catch
         {
             _pending.Remove(pending.MessageId, pending.Completion.Task, consumed: true);
+            ReleasePendingSlot();
             throw;
         }
     }
 
     private (int MessageId, TaskCompletionSource<ReceivedResponse> Completion) ReservePendingRequest(CancellationToken ct)
     {
-        if (_pending.Count >= _maxPendingRequests)
+        if (Interlocked.Increment(ref _pendingCount) > _maxPendingRequests)
         {
+            Interlocked.Decrement(ref _pendingCount);
             throw new ShaRpcException("Maximum pending requests reached.");
         }
 
@@ -216,8 +220,11 @@ internal sealed class RpcPeerOutboundInvoker : IRpcInvoker
             }
         }
 
+        Interlocked.Decrement(ref _pendingCount);
         throw new ShaRpcException("Unable to reserve a request message id.");
     }
+
+    private void ReleasePendingSlot() => Interlocked.Decrement(ref _pendingCount);
 
     private static RpcRequest CreateEnvelope(
         int messageId,
@@ -289,6 +296,7 @@ internal sealed class RpcPeerOutboundInvoker : IRpcInvoker
         finally
         {
             _pending.Remove(messageId, tcs.Task, consumed);
+            ReleasePendingSlot();
         }
     }
 }

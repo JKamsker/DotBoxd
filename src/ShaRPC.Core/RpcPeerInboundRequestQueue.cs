@@ -24,7 +24,7 @@ internal sealed class RpcPeerInboundRequestQueue
         _queue = Channel.CreateBounded<RpcPeerInboundRequest>(new BoundedChannelOptions(capacity)
         {
             SingleReader = true,
-            SingleWriter = true,
+            SingleWriter = false,
             FullMode = BoundedChannelFullMode.Wait,
         });
     }

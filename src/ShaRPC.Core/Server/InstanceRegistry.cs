@@ -9,15 +9,29 @@ namespace ShaRPC.Core.Server;
 /// </summary>
 public sealed class InstanceRegistry : IInstanceRegistry
 {
+    internal const int DefaultMaxInstances = 1024;
+
     private readonly ConcurrentDictionary<(string Service, string Id), object> _entries = new();
+    private readonly int _maxInstances;
+
+    public InstanceRegistry() : this(DefaultMaxInstances) { }
+
+    public InstanceRegistry(int maxInstances)
+    {
+        _maxInstances = maxInstances;
+    }
 
     /// <inheritdoc />
     public string Register(string serviceName, object instance)
     {
         if (instance is null) throw new ArgumentNullException(nameof(instance));
-        // Guid.NewGuid().ToString("N") is opaque enough on its own; per-connection scope
-        // means an attacker on another connection cannot guess and reuse the id even if
-        // they somehow learned it.
+
+        if (_entries.Count >= _maxInstances)
+        {
+            throw new InvalidOperationException(
+                $"Instance registry limit reached ({_maxInstances}). Release unused instances before registering new ones.");
+        }
+
         var id = Guid.NewGuid().ToString("N");
         _entries[(serviceName, id)] = instance;
         return id;

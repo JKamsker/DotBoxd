@@ -28,7 +28,7 @@ public static class RpcDiagnostics
         {
             try
             {
-                ((EventHandler<RpcDiagnosticErrorEventArgs>)subscriber).Invoke(null, args);
+                ((EventHandler<RpcDiagnosticErrorEventArgs>)subscriber).Invoke(typeof(RpcDiagnostics), args);
             }
             catch (Exception subscriberError)
             {

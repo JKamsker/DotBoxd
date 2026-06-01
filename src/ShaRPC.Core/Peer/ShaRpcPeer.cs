@@ -9,6 +9,7 @@ namespace ShaRPC.Core.Peer;
 /// <summary>
 /// Bidirectional ShaRPC endpoint over one duplex connection.
 /// </summary>
+[Obsolete("Use RpcPeer for new code. ShaRpcPeer will be removed in a future release.")]
 public sealed class ShaRpcPeer : IAsyncDisposable
 {
     private readonly DuplexConnectionSplitter _splitter;
