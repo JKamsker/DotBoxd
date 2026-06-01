@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Threading.Channels;
 using ShaRPC.Core.Buffers;
 using ShaRPC.Core.Protocol;
 using ShaRPC.Core.Serialization;
@@ -16,16 +15,15 @@ internal sealed class RpcPeerInboundDispatcher
     private readonly ISerializer _serializer;
     private readonly RpcPeerResponseBuilder _responseBuilder;
     private readonly Func<ReadOnlyMemory<byte>, CancellationToken, Task> _sendAsync;
-    private readonly bool _dropIncomingWhenFull;
-    private readonly Channel<RpcPeerInboundRequest>? _queue;
-    private CancellationTokenSource? _queueCts;
-    private Task? _worker;
+    private readonly Action<int, MessageType, string> _protocolError;
+    private readonly RpcPeerInboundRequestQueue? _queue;
     private int _stopped;
 
     public RpcPeerInboundDispatcher(
         ISerializer serializer,
         RpcPeerOptions options,
-        Func<ReadOnlyMemory<byte>, CancellationToken, Task> sendAsync)
+        Func<ReadOnlyMemory<byte>, CancellationToken, Task> sendAsync,
+        Action<int, MessageType, string> protocolError)
     {
         _serializer = serializer;
         _responseBuilder = new RpcPeerResponseBuilder(
@@ -34,6 +32,7 @@ internal sealed class RpcPeerInboundDispatcher
             _dispatchers,
             options.RejectInboundCalls);
         _sendAsync = sendAsync;
+        _protocolError = protocolError;
         if (!Enum.IsDefined(typeof(ShaRpcQueueFullMode), options.QueueFullMode))
         {
             throw new ArgumentOutOfRangeException(
@@ -52,24 +51,16 @@ internal sealed class RpcPeerInboundDispatcher
                 capacity,
                 "Inbound queue capacity must be greater than zero.");
         }
-        _dropIncomingWhenFull = options.QueueFullMode == ShaRpcQueueFullMode.DropIncoming;
-        _queue = Channel.CreateBounded<RpcPeerInboundRequest>(new BoundedChannelOptions(capacity)
-        {
-            SingleReader = true,
-            SingleWriter = true,
-            // Wait lets DropIncoming detect a full queue via TryWrite and release state.
-            FullMode = BoundedChannelFullMode.Wait,
-        });
+        _queue = new RpcPeerInboundRequestQueue(
+            capacity,
+            options.QueueFullMode,
+            ProcessRequestAsync,
+            ReleaseRequest);
     }
 
     public void Start(CancellationToken loopCt)
     {
-        if (_queue is null)
-        {
-            return;
-        }
-        _queueCts = CancellationTokenSource.CreateLinkedTokenSource(loopCt);
-        _worker = Task.Run(() => ProcessQueueAsync(_queueCts.Token));
+        _queue?.Start(loopCt);
     }
 
     public void AddDispatcher(IServiceDispatcher dispatcher)
@@ -92,6 +83,7 @@ internal sealed class RpcPeerInboundDispatcher
 
         if (!TryCreateInboundRequest(frame, messageId, loopCt, out var inbound, out var protocolError))
         {
+            _protocolError(messageId, MessageType.Request, protocolError);
             using var errorFrame = _responseBuilder.BuildProtocolErrorFrame(messageId, protocolError);
             await _sendAsync(errorFrame.Memory, loopCt).ConfigureAwait(false);
             return false;
@@ -102,30 +94,8 @@ internal sealed class RpcPeerInboundDispatcher
             StartRequest(inbound);
             return true;
         }
-        if (_dropIncomingWhenFull)
-        {
-            if (_queue.Writer.TryWrite(inbound))
-            {
-                return true;
-            }
-            ReleaseRequest(inbound);
-            return false;
-        }
-        try
-        {
-            await _queue.Writer.WriteAsync(inbound, loopCt).ConfigureAwait(false);
-            return true;
-        }
-        catch (OperationCanceledException) when (loopCt.IsCancellationRequested)
-        {
-            ReleaseRequest(inbound);
-            return false;
-        }
-        catch (ChannelClosedException)
-        {
-            ReleaseRequest(inbound);
-            return false;
-        }
+
+        return _queue.TryEnqueue(inbound);
     }
 
     public void Cancel(int messageId)
@@ -143,17 +113,14 @@ internal sealed class RpcPeerInboundDispatcher
             return;
         }
 
-        _queueCts?.Cancel();
-        _queue?.Writer.TryComplete();
-
         foreach (var requestCts in _activeInbound.Values)
         {
             SafeCancel(requestCts);
         }
 
-        if (_worker is not null)
+        if (_queue is not null)
         {
-            await ObserveShutdownAsync(_worker).ConfigureAwait(false);
+            await _queue.StopAsync().ConfigureAwait(false);
         }
 
         if (!_activeTasks.IsEmpty)
@@ -161,9 +128,7 @@ internal sealed class RpcPeerInboundDispatcher
             await ObserveShutdownAsync(Task.WhenAll(_activeTasks.Values)).ConfigureAwait(false);
         }
 
-        DrainQueue();
         _registry.ReleaseAll();
-        _queueCts?.Dispose();
     }
 
     private bool TryCreateInboundRequest(
@@ -206,24 +171,6 @@ internal sealed class RpcPeerInboundDispatcher
         }
     }
 
-    private async Task ProcessQueueAsync(CancellationToken ct)
-    {
-        try
-        {
-            while (await _queue!.Reader.WaitToReadAsync(ct).ConfigureAwait(false))
-            {
-                while (_queue.Reader.TryRead(out var inbound))
-                {
-                    await ProcessRequestAsync(inbound).ConfigureAwait(false);
-                }
-            }
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            // Expected during peer shutdown.
-        }
-    }
-
     private async Task ProcessRequestAsync(RpcPeerInboundRequest inbound)
     {
         try
@@ -250,20 +197,6 @@ internal sealed class RpcPeerInboundDispatcher
         {
             ReleaseRequest(inbound);
             _activeTasks.TryRemove(inbound.MessageId, out _);
-        }
-    }
-
-    private void DrainQueue()
-    {
-        if (_queue is null)
-        {
-            return;
-        }
-
-        while (_queue.Reader.TryRead(out var inbound))
-        {
-            inbound.Frame.Dispose();
-            ReleaseRequest(inbound);
         }
     }
 

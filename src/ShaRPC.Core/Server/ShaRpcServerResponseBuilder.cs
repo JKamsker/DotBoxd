@@ -7,15 +7,13 @@ namespace ShaRPC.Core.Server;
 
 internal sealed class ShaRpcServerResponseBuilder
 {
-    private readonly ISerializer _serializer;
-    private readonly ConcurrentDictionary<string, IServiceDispatcher> _dispatchers;
+    private readonly RpcDispatchResponseBuilder _inner;
 
     public ShaRpcServerResponseBuilder(
         ISerializer serializer,
         ConcurrentDictionary<string, IServiceDispatcher> dispatchers)
     {
-        _serializer = serializer;
-        _dispatchers = dispatchers;
+        _inner = new RpcDispatchResponseBuilder(serializer, dispatchers);
     }
 
     public async ValueTask<Payload> BuildAsync(
@@ -25,46 +23,6 @@ internal sealed class ShaRpcServerResponseBuilder
         IInstanceRegistry registry,
         CancellationToken ct)
     {
-        if (!_dispatchers.TryGetValue(request.ServiceName, out var dispatcher))
-        {
-            return BuildErrorFrame(messageId, RpcErrors.ServiceNotFound(request.ServiceName));
-        }
-
-        using var writer = new PooledBufferWriter(MessageFramer.HeaderSize + MessageFramer.EnvelopeLengthSize);
-        MessageFramer.WriteFramePrefix(writer, messageId, MessageType.Response);
-        var envelopeStart = writer.WrittenCount;
-        _serializer.Serialize(writer, new RpcResponse { MessageId = messageId, IsSuccess = true });
-        var envelopeLength = writer.WrittenCount - envelopeStart;
-
-        try
-        {
-            await (request.InstanceId is null
-                ? dispatcher.DispatchAsync(request.MethodName, payload, _serializer, registry, writer, ct)
-                : dispatcher.DispatchOnInstanceAsync(request.InstanceId, request.MethodName, payload, _serializer, registry, writer, ct));
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            return BuildErrorFrame(messageId, RpcErrors.FromException(ex));
-        }
-
-        return MessageFramer.FinishFrame(writer, envelopeLength);
+        return await _inner.BuildAsync(request, messageId, payload, registry, ct).ConfigureAwait(false);
     }
-
-    private Payload BuildErrorFrame(int messageId, RpcError error) =>
-        MessageFramer.FrameMessage(
-            _serializer,
-            messageId,
-            MessageType.Error,
-            new RpcResponse
-            {
-                MessageId = messageId,
-                IsSuccess = false,
-                ErrorMessage = error.Message,
-                ErrorType = error.Type,
-            },
-            ReadOnlySpan<byte>.Empty);
 }

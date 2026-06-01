@@ -157,7 +157,7 @@ generated proxies for services provided by the remote side.
 |--------|-------------|
 | `Provide<TService>(TService)` / `Provide(IServiceDispatcher)` | Registers an inbound service |
 | `Get<TService>()` | Creates a generated proxy for a remote service |
-| `Disconnected` | Raised when the read loop ends, with endpoint and exception details |
+| `Disconnected` | Raised when a remote close or read error ends the read loop; local close/dispose does not raise it |
 | `ReadError` | Raised when the read loop faults |
 | `ProtocolError` | Raised when a malformed or unsupported protocol frame is observed |
 | `CloseAsync()` / `DisposeAsync()` | Idempotently disposes the peer and underlying connection; closed peers cannot be restarted |
@@ -166,7 +166,9 @@ generated proxies for services provided by the remote side.
 but it is not an authentication or authorization boundary. Any connected peer can still send
 request frames; secure transports or application-level checks should enforce trust.
 Leaving `RpcPeerOptions.InboundQueueCapacity` unset dispatches inbound peer requests
-immediately and does not cap concurrent dispatcher work.
+immediately and does not cap concurrent dispatcher work. In `Wait` mode, request
+admission can wait for dispatch queue space while response and cancel frames continue
+through the peer read loop.
 
 #### `ShaRpcPeer`
 Bidirectional endpoint over one duplex `IConnection`. One peer can serve local dispatchers and create generated proxies for the remote side over the same connection.
@@ -308,7 +310,7 @@ public interface ISerializer
 | Exception | Description |
 |-----------|-------------|
 | `ShaRpcException` | Base exception for all ShaRPC errors |
-| `ShaRpcRemoteException` | Server-side exception (includes `RemoteExceptionType`) |
+| `ShaRpcRemoteException` | Remote error (includes `RemoteExceptionType`); non-`ShaRpcException` server failures are sanitized |
 | `ShaRpcConnectionException` | Connection lost or failed |
 | `ShaRpcTimeoutException` | Request timed out |
 | `ShaRpcNotFoundException` | Service or method not found |

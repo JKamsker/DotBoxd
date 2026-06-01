@@ -149,7 +149,8 @@ public sealed record RpcPeerOptions
     public bool RejectInboundCalls { get; init; }
 
     // Backpressure for inbound dispatch. Null dispatches immediately and does not cap
-    // concurrent dispatcher work.
+    // concurrent dispatcher work. In Wait mode, response and cancel frames keep flowing
+    // while request admission waits for dispatch queue space.
     public int? InboundQueueCapacity { get; init; }
     public ShaRpcQueueFullMode QueueFullMode { get; init; } = ShaRpcQueueFullMode.Wait;
 }

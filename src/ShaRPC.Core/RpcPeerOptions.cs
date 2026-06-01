@@ -24,11 +24,12 @@ public sealed record RpcPeerOptions
     public bool RejectInboundCalls { get; init; }
 
     /// <summary>
-    /// Maximum queued inbound frames. Null dispatches inbound requests immediately and does not
-    /// cap concurrent dispatch work.
+    /// Maximum queued inbound requests. Null dispatches inbound requests immediately and does not
+    /// cap concurrent dispatch work. In wait mode, response and cancel frames keep being read while
+    /// request admission waits for dispatch queue space.
     /// </summary>
     public int? InboundQueueCapacity { get; init; }
 
-    /// <summary>Policy used when <see cref="InboundQueueCapacity"/> is set and the queue is full.</summary>
+    /// <summary>Policy used when <see cref="InboundQueueCapacity"/> is set and the request queue is full.</summary>
     public ShaRpcQueueFullMode QueueFullMode { get; init; } = ShaRpcQueueFullMode.Wait;
 }
