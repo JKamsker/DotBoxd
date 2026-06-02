@@ -86,7 +86,11 @@ public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
     /// <summary>Raised when a malformed or unsupported protocol frame is observed.</summary>
     public event EventHandler<RpcProtocolErrorEventArgs>? ProtocolError;
 
-    /// <summary>Raised when inbound request dispatch or response sending fails.</summary>
+    /// <summary>
+    /// Raised when an inbound request fails outside the service method itself — for example when
+    /// the response or error frame cannot be sent. Exceptions thrown by a provided service method
+    /// are not surfaced here; they are converted into an Error frame returned to the caller.
+    /// </summary>
     public event EventHandler<RpcDispatchErrorEventArgs>? DispatchError;
 
     /// <summary>Provides a local implementation of <typeparamref name="TService"/> for the other

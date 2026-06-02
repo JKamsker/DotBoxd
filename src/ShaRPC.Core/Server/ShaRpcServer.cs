@@ -49,9 +49,70 @@ public sealed class ShaRpcServer : IShaRpcServer
             throw new InvalidOperationException("Already started.");
         }
 
-        _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        // Assign _cts under the lock before the await so a concurrent Stop/Dispose observes it, and
+        // re-check after the await before launching the accept loop. Otherwise a stop that runs
+        // while the transport is starting can null _cts (StartAsync then NREs on _cts.Token) and
+        // leave an accept loop orphaned on an already-stopped transport.
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        lock (_lifecycleLock)
+        {
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                cts.Dispose();
+                throw new ObjectDisposedException(nameof(ShaRpcServer));
+            }
+
+            _cts = cts;
+        }
+
         await _transport.StartAsync(ct).ConfigureAwait(false);
-        _acceptTask = AcceptConnectionsAsync(_cts.Token);
+
+        var stopStartedTransport = false;
+        Exception? startFailure = null;
+        var disposeCts = false;
+        lock (_lifecycleLock)
+        {
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                var ownsCts = ReferenceEquals(_cts, cts);
+                disposeCts = ownsCts && _stopTask is null;
+                if (ownsCts)
+                {
+                    _cts = null;
+                    _acceptTask = null;
+                }
+
+                stopStartedTransport = true;
+                startFailure = new ObjectDisposedException(nameof(ShaRpcServer));
+            }
+            else if (!ReferenceEquals(_cts, cts) || _stopTask is not null || cts.IsCancellationRequested)
+            {
+                // A concurrent stop already ran (or is running) and owns the CTS lifecycle.
+                stopStartedTransport = true;
+            }
+            else
+            {
+                _acceptTask = AcceptConnectionsAsync(cts.Token);
+                return;
+            }
+        }
+
+        if (stopStartedTransport)
+        {
+            await _transport.StopAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+
+        if (startFailure is not null)
+        {
+            if (disposeCts)
+            {
+                cts.Dispose();
+            }
+
+            throw startFailure;
+        }
+
+        throw new InvalidOperationException("Server start was stopped before it completed.");
     }
 
     public Task StopAsync(CancellationToken ct = default)
@@ -60,26 +121,23 @@ public sealed class ShaRpcServer : IShaRpcServer
         {
             if (_stopTask is not null) return _stopTask;
             if (_cts is null) return Task.CompletedTask;
-            _stopTask = StopCoreAsync(ct);
+            return _stopTask = StopCoreAsync(_cts, _acceptTask, ct);
         }
-
-        return _stopTask;
     }
 
-    private async Task StopCoreAsync(CancellationToken ct)
+    private async Task StopCoreAsync(CancellationTokenSource cts, Task? acceptTask, CancellationToken ct)
     {
-        CancellationTokenSource cts;
-        Task? acceptTask;
-
-        lock (_lifecycleLock)
-        {
-            cts = _cts!;
-            acceptTask = _acceptTask;
-        }
-
+        var completed = false;
         try
         {
-            cts.Cancel();
+            try
+            {
+                cts.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // A prior failed start path disposed the CTS.
+            }
 
             if (acceptTask != null)
             {
@@ -104,19 +162,29 @@ public sealed class ShaRpcServer : IShaRpcServer
             }
 
             await _transport.StopAsync(ct).ConfigureAwait(false);
-            try { cts.Dispose(); } catch (ObjectDisposedException) { }
-
-            lock (_lifecycleLock)
-            {
-                _cts = null;
-                _acceptTask = null;
-            }
+            completed = true;
         }
         finally
         {
+            try
+            {
+                cts.Dispose();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+
             lock (_lifecycleLock)
             {
-                _stopTask = null;
+                if (ReferenceEquals(_cts, cts))
+                {
+                    _stopTask = null;
+                    if (completed)
+                    {
+                        _cts = null;
+                        _acceptTask = null;
+                    }
+                }
             }
         }
     }
@@ -265,10 +333,13 @@ public sealed class ShaRpcServer : IShaRpcServer
                         ErrorType = RpcErrorTypes.ProtocolError,
                     },
                     ReadOnlySpan<byte>.Empty);
-                // Transfer ownership to the send task so the frame is not disposed
-                // while SendAsync is still reading from its memory.
-                connection.SendAsync(errorFrame.Memory, ct)
-                    .ContinueWith(
+                var ownershipTransferred = false;
+                try
+                {
+                    // Transfer ownership to the send task so the frame is not disposed while
+                    // SendAsync is still reading from its memory.
+                    var sendTask = connection.SendAsync(errorFrame.Memory, ct);
+                    _ = sendTask.ContinueWith(
                         static (t, state) =>
                         {
                             ((Payload)state!).Dispose();
@@ -279,6 +350,18 @@ public sealed class ShaRpcServer : IShaRpcServer
                         CancellationToken.None,
                         TaskContinuationOptions.ExecuteSynchronously,
                         TaskScheduler.Default);
+                    ownershipTransferred = true;
+                }
+                finally
+                {
+                    // SendAsync threw synchronously (e.g. the connection closed) before ownership
+                    // transferred to the continuation; dispose the rented frame here so it returns
+                    // to the pool.
+                    if (!ownershipTransferred)
+                    {
+                        errorFrame.Dispose();
+                    }
+                }
             }
             catch
             {

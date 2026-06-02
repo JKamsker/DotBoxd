@@ -213,6 +213,11 @@ public sealed class RpcHost : IAsyncDisposable
                 }
             }
 
+            // Await peer hand-offs the (now-stopped) accept loop started so a connection accepted
+            // just before cancellation finishes registering before we drain peers — otherwise it
+            // could start a peer after CloseAllAsync, leaking the channel past host shutdown.
+            await _acceptLoop.DrainInFlightAsync().ConfigureAwait(false);
+
             await _listener.StopAsync(ct).ConfigureAwait(false);
             await _peers.CloseAllAsync().ConfigureAwait(false);
             await _peers.AwaitCleanupAsync().ConfigureAwait(false);
@@ -265,8 +270,29 @@ public sealed class RpcHost : IAsyncDisposable
         }
 
         peer.Disconnected += OnPeerDisconnected;
-        _peers.Add(peer);
-        peer.Start();
+
+        bool registered;
+        lock (_lifecycleLock)
+        {
+            // Only register and start a peer the host will still manage. StopCoreAsync drains
+            // in-flight hand-offs before CloseAllAsync, so a peer registered here is guaranteed to
+            // be closed by the host; one rejected here (the host is stopping/stopped/disposed) is
+            // disposed below instead of leaking its channel and read loop past shutdown.
+            registered = Volatile.Read(ref _disposed) == 0 && _stopTask is null && _cts is not null;
+            if (registered)
+            {
+                _peers.Add(peer);
+                peer.Start();
+            }
+        }
+
+        if (!registered)
+        {
+            peer.Disconnected -= OnPeerDisconnected;
+            await peer.DisposeAsync().ConfigureAwait(false);
+            return;
+        }
+
         RpcEventHandlerInvoker.Raise(PeerConnected, this, new RpcPeerEventArgs(peer));
     }
 

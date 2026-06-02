@@ -53,8 +53,37 @@ public sealed class ShaRpcClient : IShaRpcClient
             throw;
         }
 
-        _cts = new CancellationTokenSource();
-        _receiveTask = _receiveLoop.RunAsync(_cts.Token);
+        var cts = new CancellationTokenSource();
+        var receiveTask = _receiveLoop.RunAsync(cts.Token);
+        Volatile.Write(ref _cts, cts);
+        Volatile.Write(ref _receiveTask, receiveTask);
+
+        // DisposeAsync may have run while we awaited the transport connect, observing _cts and
+        // _receiveTask while they were still null. Re-check and tear down the loop we just started
+        // so it does not run on (and leak a CTS over) an already-disposed transport.
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            try
+            {
+                cts.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // DisposeAsync already disposed the CTS.
+            }
+
+            try
+            {
+                await receiveTask.ConfigureAwait(false);
+            }
+            catch
+            {
+                // Receive loop faulted against the disposing transport during teardown.
+            }
+
+            cts.Dispose();
+            throw new ObjectDisposedException(nameof(ShaRpcClient));
+        }
     }
 
     public async Task<TResponse> InvokeAsync<TRequest, TResponse>(
@@ -306,13 +335,26 @@ public sealed class ShaRpcClient : IShaRpcClient
             return;
         }
 
-        _cts?.Cancel();
+        var cts = Volatile.Read(ref _cts);
+        var receiveTask = Volatile.Read(ref _receiveTask);
 
-        if (_receiveTask != null)
+        if (cts is not null)
         {
             try
             {
-                await _receiveTask.ConfigureAwait(false);
+                cts.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // A concurrent ConnectAsync teardown already disposed the CTS.
+            }
+        }
+
+        if (receiveTask != null)
+        {
+            try
+            {
+                await receiveTask.ConfigureAwait(false);
             }
             catch
             {
@@ -322,7 +364,7 @@ public sealed class ShaRpcClient : IShaRpcClient
 
         _pendingRequests.FailAll(new ShaRpcConnectionException("Connection closed."));
 
-        _cts?.Dispose();
+        cts?.Dispose();
         await _transport.DisposeAsync().ConfigureAwait(false);
     }
 }

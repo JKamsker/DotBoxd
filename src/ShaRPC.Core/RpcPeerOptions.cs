@@ -1,3 +1,4 @@
+using System.Threading;
 using ShaRPC.Core.Transport;
 
 namespace ShaRPC.Core;
@@ -13,9 +14,30 @@ public sealed class RpcPeerOptions
     private int? _inboundQueueCapacity = DefaultInboundQueueCapacity;
     private int _maxPendingRequests = DefaultMaxPendingRequests;
     private ShaRpcQueueFullMode _queueFullMode = ShaRpcQueueFullMode.Wait;
+    private TimeSpan _requestTimeout = TimeSpan.FromSeconds(30);
 
-    /// <summary>Default per-call timeout for proxies created by this peer.</summary>
-    public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(30);
+    /// <summary>
+    /// Default per-call timeout for proxies created by this peer. Must be a positive
+    /// <see cref="TimeSpan"/> (at most <see cref="int.MaxValue"/> milliseconds) or
+    /// <see cref="Timeout.InfiniteTimeSpan"/> to disable the timeout.
+    /// </summary>
+    public TimeSpan RequestTimeout
+    {
+        get => _requestTimeout;
+        init
+        {
+            if (value != Timeout.InfiniteTimeSpan &&
+                (value <= TimeSpan.Zero || value.TotalMilliseconds > int.MaxValue))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(RequestTimeout),
+                    value,
+                    "Request timeout must be positive (at most int.MaxValue ms) or Timeout.InfiniteTimeSpan.");
+            }
+
+            _requestTimeout = value;
+        }
+    }
 
     /// <summary>
     /// Optional service provider for dispatcher factories that resolve dependencies.
@@ -36,6 +58,16 @@ public sealed class RpcPeerOptions
     /// only be used with trusted peers or externally bounded transports. In wait mode, request
     /// admission waits for bounded dispatch queue space.
     /// </summary>
+    /// <remarks>
+    /// A peer demuxes responses, cancels, and inbound requests over a single read loop. In
+    /// <see cref="ShaRpcQueueFullMode.Wait"/> mode that loop parks when the request queue is full,
+    /// which also pauses reading responses to this peer's own outbound calls. For a bidirectional
+    /// peer whose inbound handlers call back into the same peer, size this capacity above the
+    /// maximum number of inbound requests that can arrive ahead of those callbacks' responses, or
+    /// use <see langword="null"/> (unbounded) or <see cref="ShaRpcQueueFullMode.DropIncoming"/>;
+    /// otherwise an under-sized Wait queue can stall a reentrant response until
+    /// <see cref="RequestTimeout"/>.
+    /// </remarks>
     public int? InboundQueueCapacity
     {
         get => _inboundQueueCapacity;

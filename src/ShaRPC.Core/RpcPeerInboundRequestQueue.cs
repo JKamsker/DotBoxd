@@ -44,7 +44,9 @@ internal sealed class RpcPeerInboundRequestQueue
                 return true;
             }
 
-            inbound.Frame.Dispose();
+            // Release the request resources but leave frame disposal to the read loop, which
+            // disposes on the false return. Disposing here too would double-return the pooled
+            // buffer (benign only while Payload.Dispose stays idempotent).
             _release(inbound);
             return false;
         }

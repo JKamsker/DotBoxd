@@ -132,6 +132,89 @@ public sealed class PeerTests
     }
 
     [Fact]
+    public async Task RpcHost_AcceptsMultiplePeers_CallsEach_AndClosesAllOnStop()
+    {
+        const int peerCount = 4;
+        var clientSides = new List<IConnection>();
+        var serverSides = new List<IConnection>();
+        for (var i = 0; i < peerCount; i++)
+        {
+            var (client, server) = InMemoryChannel.CreatePair();
+            clientSides.Add(client);
+            serverSides.Add(server);
+        }
+
+        var hostPeers = new ConcurrentBag<RpcPeer>();
+        var connectedCount = 0;
+        var allConnected = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        await using var host = RpcHost
+            .Listen(new MultiConnectionServerTransport(serverSides), NewSerializer())
+            .ForEachPeer(peer => peer.Provide<IGameService>(new TestGameService()));
+        host.PeerConnected += (_, args) =>
+        {
+            hostPeers.Add(args.Peer);
+            if (Interlocked.Increment(ref connectedCount) == peerCount)
+            {
+                allConnected.TrySetResult(true);
+            }
+        };
+        await host.StartAsync();
+
+        var clients = clientSides
+            .Select(c => RpcPeer.Over(c, NewSerializer(), new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) }).Start())
+            .ToList();
+        try
+        {
+            // Every accepted peer is independently callable.
+            var statuses = await Task.WhenAll(clients.Select(c => c.GetGameService().GetServerStatusAsync()))
+                .WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.All(statuses, Assert.NotNull);
+
+            await allConnected.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(peerCount, Volatile.Read(ref connectedCount));
+
+            await host.StopAsync().WaitAsync(TimeSpan.FromSeconds(5));
+
+            // StopAsync must close every accepted peer.
+            Assert.Equal(peerCount, hostPeers.Count);
+            Assert.All(hostPeers, peer => Assert.False(peer.IsConnected));
+        }
+        finally
+        {
+            foreach (var client in clients)
+            {
+                await client.DisposeAsync();
+            }
+        }
+    }
+
+    [Fact]
+    public async Task RpcPeer_HandlesManyConcurrentCalls_OverOneConnection()
+    {
+        var (clientChannel, serverChannel) = InMemoryChannel.CreatePair();
+
+        await using var provider = RpcPeer.Over(serverChannel, NewSerializer())
+            .Provide<IGameService>(new TestGameService())
+            .Start();
+        await using var caller = RpcPeer.Over(clientChannel, NewSerializer(),
+                new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(10) })
+            .Start();
+
+        var game = caller.GetGameService();
+        const int callCount = 50;
+
+        var players = await Task.WhenAll(
+                Enumerable.Range(0, callCount).Select(i => game.RegisterPlayerAsync($"Player-{i}")))
+            .WaitAsync(TimeSpan.FromSeconds(10));
+
+        for (var i = 0; i < callCount; i++)
+        {
+            Assert.Equal($"Player-{i}", players[i].Name);
+        }
+    }
+
+    [Fact]
     public async Task RpcPeer_OverTcp_RoundTrips()
     {
         Exception? clientReadError = null;
@@ -286,6 +369,61 @@ public sealed class PeerTests
                 _outbound.TryComplete();
             }
 
+            return default;
+        }
+    }
+
+    /// <summary>
+    /// Server transport that yields a fixed set of pre-established connections one per accept, then
+    /// blocks like a listener with no further clients until stopped or cancelled.
+    /// </summary>
+    private sealed class MultiConnectionServerTransport : IServerTransport
+    {
+        private readonly Queue<IConnection> _connections;
+        private readonly TaskCompletionSource<bool> _stopped =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly object _gate = new();
+        private int _disposed;
+
+        public MultiConnectionServerTransport(IEnumerable<IConnection> connections) =>
+            _connections = new Queue<IConnection>(connections);
+
+        public Task StartAsync(CancellationToken ct = default) => Task.CompletedTask;
+
+        public async Task<IConnection> AcceptAsync(CancellationToken ct = default)
+        {
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                throw new ObjectDisposedException(nameof(MultiConnectionServerTransport));
+            }
+
+            lock (_gate)
+            {
+                if (_connections.Count > 0)
+                {
+                    return _connections.Dequeue();
+                }
+            }
+
+            using (ct.Register(static state => ((TaskCompletionSource<bool>)state!).TrySetResult(true), _stopped))
+            {
+                await _stopped.Task.ConfigureAwait(false);
+            }
+
+            ct.ThrowIfCancellationRequested();
+            throw new OperationCanceledException();
+        }
+
+        public Task StopAsync(CancellationToken ct = default)
+        {
+            _stopped.TrySetResult(true);
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            Interlocked.Exchange(ref _disposed, 1);
+            _stopped.TrySetResult(true);
             return default;
         }
     }

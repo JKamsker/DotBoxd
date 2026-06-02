@@ -43,7 +43,15 @@ public sealed class TcpConnection : IConnection
         }
         finally
         {
-            _sendLock.Release();
+            try
+            {
+                _sendLock.Release();
+            }
+            catch (ObjectDisposedException)
+            {
+                // DisposeAsync disposed the send lock while this send was in flight; the real
+                // I/O fault (if any) already propagates from the WriteAsync above.
+            }
         }
     }
 
@@ -65,31 +73,32 @@ public sealed class TcpConnection : IConnection
             }
 
             var totalLength = BinaryPrimitives.ReadInt32LittleEndian(lengthBuffer.AsSpan(0, 4));
-            if (totalLength <= 0 || totalLength > MessageFramer.MaxMessageSize)
+
+            // A valid frame is at least a full header (length prefix + type + message id). Rejecting
+            // sub-header lengths (1-3) before renting also avoids the Slice(0, 4) below throwing on a
+            // too-small buffer and leaking it. Mirrors StreamConnection.ValidateIncomingLength.
+            if (totalLength < MessageFramer.HeaderSize || totalLength > MessageFramer.MaxMessageSize)
             {
                 throw new InvalidOperationException($"Invalid message length: {totalLength}");
             }
 
             // Rent the full frame buffer and write back the length prefix we already consumed.
             var payload = Payload.Rent(totalLength);
-            BinaryPrimitives.WriteInt32LittleEndian(payload.Memory.Span.Slice(0, 4), totalLength);
-
-            if (totalLength > 4)
+            try
             {
-                try
-                {
-                    bytesRead = await ReadExactAsync(_stream, payload.Memory.Slice(4), ct);
-                    if (bytesRead < totalLength - 4)
-                    {
-                        payload.Dispose();
-                        return Payload.Empty; // Connection closed
-                    }
-                }
-                catch
+                BinaryPrimitives.WriteInt32LittleEndian(payload.Memory.Span.Slice(0, 4), totalLength);
+
+                bytesRead = await ReadExactAsync(_stream, payload.Memory.Slice(4), ct);
+                if (bytesRead < totalLength - 4)
                 {
                     payload.Dispose();
-                    throw;
+                    return Payload.Empty; // Connection closed
                 }
+            }
+            catch
+            {
+                payload.Dispose();
+                throw;
             }
 
             return payload;

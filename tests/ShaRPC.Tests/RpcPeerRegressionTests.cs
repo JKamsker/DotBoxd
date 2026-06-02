@@ -95,11 +95,10 @@ public sealed class RpcPeerRegressionTests
         {
             await dispatcher.FirstEntered.WaitAsync(TimeSpan.FromSeconds(1));
 
-            var secondDispatch = await Task.WhenAny(
-                dispatcher.SecondEntered,
-                Task.Delay(TimeSpan.FromMilliseconds(200)));
-
-            Assert.NotSame(dispatcher.SecondEntered, secondDispatch);
+            // The single dispatch worker is blocked inside the first handler, so the second request
+            // cannot have entered dispatch yet. Assert that deterministically instead of sampling
+            // after a fixed delay.
+            Assert.False(dispatcher.SecondEntered.IsCompleted);
             Assert.Equal(1, dispatcher.MaxActive);
         }
         finally
@@ -108,6 +107,7 @@ public sealed class RpcPeerRegressionTests
         }
 
         await Task.WhenAll(calls).WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Equal(1, dispatcher.MaxActive);
     }
 
     [Fact]
@@ -137,6 +137,11 @@ public sealed class RpcPeerRegressionTests
             .ToArray();
 
         await dispatcher.FirstEntered.WaitAsync(TimeSpan.FromSeconds(1));
+
+        // Wall-clock dependent by nature: the dropped request(s) are detected by their client-side
+        // RequestTimeout (750ms) firing, while the dispatched + queued requests succeed once the
+        // handler is released here. The InRange tolerances below absorb whether one or two frames
+        // were dropped (which depends on dispatch-worker timing).
         await Task.Delay(TimeSpan.FromMilliseconds(150));
         dispatcher.Release();
 

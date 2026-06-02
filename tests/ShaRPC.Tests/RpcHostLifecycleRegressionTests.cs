@@ -1,4 +1,5 @@
 using ShaRPC.Core;
+using ShaRPC.Core.Buffers;
 using ShaRPC.Core.Transport;
 using ShaRPC.Serializers.MessagePack;
 using Xunit;
@@ -8,6 +9,39 @@ namespace ShaRPC.Tests;
 public sealed class RpcHostLifecycleRegressionTests
 {
     private static MessagePackRpcSerializer NewSerializer() => new();
+
+    // H2: a connection accepted just before shutdown must not leak. The hand-off is held open until
+    // shutdown is already underway; the host must dispose the peer (and its channel) instead of
+    // starting a read loop the host would never tear down.
+    [Fact]
+    public async Task AcceptDuringShutdown_DisposesPeerInsteadOfLeakingIt()
+    {
+        var connection = new TrackingConnection();
+        var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var configureEntered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var peerConnectedFired = 0;
+
+        await using var host = RpcHost
+            .Listen(new SingleConnectionServerTransport(connection), NewSerializer())
+            .ForEachPeer(_ =>
+            {
+                // Hold the accepted peer's hand-off open until the test has begun shutdown.
+                configureEntered.TrySetResult(true);
+                gate.Task.GetAwaiter().GetResult();
+            });
+        host.PeerConnected += (_, _) => Interlocked.Increment(ref peerConnectedFired);
+        await host.StartAsync();
+
+        await configureEntered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        // Begin shutdown while the hand-off is mid-flight, then let it proceed.
+        var stop = host.StopAsync();
+        gate.SetResult(true);
+        await stop.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.True(connection.IsConnectionDisposed);
+        Assert.Equal(0, Volatile.Read(ref peerConnectedFired));
+    }
 
     [Fact]
     public async Task DisposeDuringStart_DoesNotStartAcceptLoopAfterDispose()
@@ -71,6 +105,38 @@ public sealed class RpcHostLifecycleRegressionTests
             .Start();
 
         Assert.Same(failure, await error.Task.WaitAsync(TimeSpan.FromSeconds(1)));
+    }
+
+    private sealed class TrackingConnection : IConnection
+    {
+        private readonly TaskCompletionSource<bool> _disposedSignal =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _disposed;
+
+        public bool IsConnected => Volatile.Read(ref _disposed) == 0;
+
+        public bool IsConnectionDisposed => Volatile.Read(ref _disposed) != 0;
+
+        public string RemoteEndpoint => "test://tracking";
+
+        public Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default) => Task.CompletedTask;
+
+        public async Task<Payload> ReceiveAsync(CancellationToken ct = default)
+        {
+            using (ct.Register(static state => ((TaskCompletionSource<bool>)state!).TrySetResult(true), _disposedSignal))
+            {
+                await _disposedSignal.Task.ConfigureAwait(false);
+            }
+
+            return Payload.Empty;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            Interlocked.Exchange(ref _disposed, 1);
+            _disposedSignal.TrySetResult(true);
+            return default;
+        }
     }
 
     private sealed class DelayedStartServerTransport : IServerTransport

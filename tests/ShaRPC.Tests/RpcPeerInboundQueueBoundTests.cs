@@ -41,8 +41,12 @@ public sealed class RpcPeerInboundQueueBoundTests
 
         await dispatcher.FirstEntered.WaitAsync(TimeSpan.FromSeconds(1));
         await connection.WaitForReceiveCountAsync(3, TimeSpan.FromSeconds(1));
-        await Task.Delay(TimeSpan.FromMilliseconds(150));
 
+        // The read loop is parked enqueuing the 3rd frame into the full (capacity-1) queue, so it
+        // never makes a 4th receive attempt. Assert the absence deterministically: the wait fails
+        // fast if a regression let the loop read past capacity, instead of always sleeping a fixed delay.
+        await Assert.ThrowsAsync<TimeoutException>(
+            () => connection.WaitForReceiveAttemptAsync(4, TimeSpan.FromMilliseconds(200)));
         Assert.Equal(3, connection.ReceiveCount);
 
         dispatcher.Release();
@@ -78,7 +82,14 @@ public sealed class RpcPeerInboundQueueBoundTests
         await dispatcher.FirstEntered.WaitAsync(TimeSpan.FromSeconds(1));
         await connection.WaitForReceiveCountAsync(3, TimeSpan.FromSeconds(1));
         await connection.WaitForReceiveAttemptAsync(4, TimeSpan.FromSeconds(1));
+
+        // At least one of the two trailing frames overflowed the capacity-1 queue and was released
+        // (disposed) on drop. We assert "at least one" rather than "exactly one": whether one or both
+        // drop depends on whether the dispatch worker has drained the queued frame yet, so an
+        // exactly-one assertion would be racy. The actively-dispatched frame must NOT be disposed
+        // while the handler still holds it.
         Assert.True(IsDisposed(second) || IsDisposed(third));
+        Assert.False(IsDisposed(first));
 
         dispatcher.Release();
     }

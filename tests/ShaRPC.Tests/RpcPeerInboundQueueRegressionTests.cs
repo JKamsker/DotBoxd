@@ -18,8 +18,14 @@ public sealed class RpcPeerInboundQueueRegressionTests
 {
     private static MessagePackRpcSerializer NewSerializer() => new();
 
+    // A peer demuxes responses and inbound requests over a single read loop. While in-flight inbound
+    // requests fit the Wait-mode queue, the loop can buffer them without parking, so a reentrant
+    // response (here, the answer to the call whose handler is itself calling back) still flows. This
+    // is the achievable guarantee; exceeding capacity parks the loop, which is why RpcPeerOptions
+    // documents sizing the queue above the reentrancy depth (or using an unbounded queue — see
+    // WaitQueue_ReentrantResponseFlows_WithUnboundedQueue).
     [Fact]
-    public async Task WaitQueue_ReadsReentrantResponse_WhenRequestQueueIsFull()
+    public async Task WaitQueue_ReentrantResponseFlows_WhileInflightRequestsFitCapacity()
     {
         var serializer = NewSerializer();
         var (clientConnection, serverConnection) = InMemoryPipe.CreateConnectionPair();
@@ -32,7 +38,7 @@ public sealed class RpcPeerInboundQueueRegressionTests
             {
                 InboundQueueCapacity = 2,
                 QueueFullMode = ShaRpcQueueFullMode.Wait,
-                RequestTimeout = TimeSpan.FromMilliseconds(750),
+                RequestTimeout = TimeSpan.FromSeconds(5),
             });
         server
             .Provide((IServiceDispatcher)new ReentrantCallbackDispatcher(
@@ -40,7 +46,8 @@ public sealed class RpcPeerInboundQueueRegressionTests
             .Provide((IServiceDispatcher)blocking)
             .Start();
 
-        var notifications = new QueueFillingNotifications(clientConnection, serializer);
+        // Two Hold frames sit in the capacity-2 queue while the reentrant response flows.
+        var notifications = new QueueFillingNotifications(clientConnection, serializer, holdCount: 2);
         await using var client = RpcPeer
             .Over(clientConnection, serializer, new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) })
             .Provide<IPlayerNotifications>(notifications)
@@ -49,8 +56,53 @@ public sealed class RpcPeerInboundQueueRegressionTests
         var call = client.InvokeAsync<string>(ReentrantCallbackDispatcher.Service, "Call");
         try
         {
-            await notifications.BackpressureFramesSent.WaitAsync(TimeSpan.FromSeconds(1));
-            var result = await call.WaitAsync(TimeSpan.FromSeconds(2));
+            await notifications.BackpressureFramesSent.WaitAsync(TimeSpan.FromSeconds(2));
+            var result = await call.WaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.Equal("callback-ok", result);
+        }
+        finally
+        {
+            blocking.Release();
+        }
+    }
+
+    // The documented escape hatch: an unbounded inbound queue never parks the read loop, so a
+    // reentrant response flows even when the callback floods more inbound requests than any bounded
+    // queue would hold.
+    [Fact]
+    public async Task WaitQueue_ReentrantResponseFlows_WithUnboundedQueue()
+    {
+        var serializer = NewSerializer();
+        var (clientConnection, serverConnection) = InMemoryPipe.CreateConnectionPair();
+        var blocking = new BlockingDispatcher();
+
+        await using var server = RpcPeer.Over(
+            serverConnection,
+            serializer,
+            new RpcPeerOptions
+            {
+                InboundQueueCapacity = null,
+                RequestTimeout = TimeSpan.FromSeconds(5),
+            });
+        server
+            .Provide((IServiceDispatcher)new ReentrantCallbackDispatcher(
+                () => server.GetPlayerNotifications()))
+            .Provide((IServiceDispatcher)blocking)
+            .Start();
+
+        // Far more Hold frames than any small bounded queue would admit; the unbounded queue never parks.
+        var notifications = new QueueFillingNotifications(clientConnection, serializer, holdCount: 8);
+        await using var client = RpcPeer
+            .Over(clientConnection, serializer, new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) })
+            .Provide<IPlayerNotifications>(notifications)
+            .Start();
+
+        var call = client.InvokeAsync<string>(ReentrantCallbackDispatcher.Service, "Call");
+        try
+        {
+            await notifications.BackpressureFramesSent.WaitAsync(TimeSpan.FromSeconds(2));
+            var result = await call.WaitAsync(TimeSpan.FromSeconds(5));
 
             Assert.Equal("callback-ok", result);
         }
@@ -133,14 +185,16 @@ public sealed class RpcPeerInboundQueueRegressionTests
     {
         private readonly IConnection _connection;
         private readonly ISerializer _serializer;
+        private readonly int _holdCount;
         private readonly TaskCompletionSource<bool> _sent =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         private int _messageId = 10_000;
 
-        public QueueFillingNotifications(IConnection connection, ISerializer serializer)
+        public QueueFillingNotifications(IConnection connection, ISerializer serializer, int holdCount)
         {
             _connection = connection;
             _serializer = serializer;
+            _holdCount = holdCount;
         }
 
         public Task BackpressureFramesSent => _sent.Task;
@@ -149,8 +203,14 @@ public sealed class RpcPeerInboundQueueRegressionTests
 
         public async Task<string> WhoAmIAsync(CancellationToken ct = default)
         {
-            await SendBlockingRequestAsync(ct).ConfigureAwait(false);
-            await SendBlockingRequestAsync(ct).ConfigureAwait(false);
+            // Send inbound Hold requests back at the calling peer before answering this call, so its
+            // read loop must process them while a reentrant response (the answer to this call) is in
+            // flight.
+            for (var i = 0; i < _holdCount; i++)
+            {
+                await SendBlockingRequestAsync(ct).ConfigureAwait(false);
+            }
+
             _sent.TrySetResult(true);
             return "queue-filler";
         }

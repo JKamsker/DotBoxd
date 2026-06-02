@@ -136,9 +136,14 @@ await participant.JoinedAsync("Jonas");
 
 ### `RpcPeerOptions`
 
+`RpcPeerOptions` is a sealed class with validating init-only properties (it is not a `record`:
+the init accessors reject invalid values such as a non-positive `InboundQueueCapacity`,
+`MaxPendingRequests`, or `RequestTimeout`, so it does not carry value-equality semantics).
+
 ```csharp
-public sealed record RpcPeerOptions
+public sealed class RpcPeerOptions
 {
+    // Validated: must be positive (<= int.MaxValue ms) or Timeout.InfiniteTimeSpan.
     public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(30);
     public IServiceProvider? ServiceProvider { get; init; }
 
@@ -148,12 +153,19 @@ public sealed record RpcPeerOptions
     // an authentication or authorization boundary.
     public bool RejectInboundCalls { get; init; }
 
-    // Backpressure for inbound dispatch. Defaults to a bounded queue. Null dispatches
+    // Backpressure for inbound dispatch. Defaults to a bounded queue (1024). Null dispatches
     // immediately and does not cap concurrent dispatcher work; use it only with trusted
     // peers or externally bounded transports. In Wait mode, queued requests are bounded
     // and excess request frames apply read-side backpressure until dispatch queue space is
     // available.
-    public int? InboundQueueCapacity { get; init; }
+    //
+    // Because a peer demuxes responses, cancels, and inbound requests over a single read
+    // loop, a full Wait-mode queue parks that loop — which also pauses reading responses to
+    // this peer's own outbound calls. A bidirectional peer whose inbound handlers call back
+    // into the same peer must size this above the number of inbound requests that can arrive
+    // ahead of those callbacks' responses, or use null / DropIncoming; otherwise an
+    // under-sized Wait queue can stall a reentrant response until RequestTimeout.
+    public int? InboundQueueCapacity { get; init; } = 1024;
     public int MaxPendingRequests { get; init; } = 4096;
     public ShaRpcQueueFullMode QueueFullMode { get; init; } = ShaRpcQueueFullMode.Wait;
 }

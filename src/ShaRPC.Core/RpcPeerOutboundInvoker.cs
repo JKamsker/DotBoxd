@@ -163,7 +163,11 @@ internal sealed class RpcPeerOutboundInvoker : IRpcInvoker
         }
         catch
         {
+            // Frame construction (serialization) threw before SendFrameAndAwaitAsync took
+            // ownership of the reserved slot, so release it here; otherwise the admission gate
+            // leaks one slot per serialization failure and eventually rejects every call.
             _pending.Remove(pending.MessageId, pending.Completion.Task, consumed: true);
+            ReleasePendingSlot();
             throw;
         }
     }
@@ -195,7 +199,11 @@ internal sealed class RpcPeerOutboundInvoker : IRpcInvoker
         }
         catch
         {
+            // Frame construction (serialization) threw before SendFrameAndAwaitAsync took
+            // ownership of the reserved slot, so release it here; otherwise the admission gate
+            // leaks one slot per serialization failure and eventually rejects every call.
             _pending.Remove(pending.MessageId, pending.Completion.Task, consumed: true);
+            ReleasePendingSlot();
             throw;
         }
     }
