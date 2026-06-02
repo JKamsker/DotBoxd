@@ -170,7 +170,16 @@ public sealed class ShaRpcServer : IShaRpcServer
                     break;
                 }
 
-                await concurrency.WaitAsync(ct).ConfigureAwait(false);
+                try
+                {
+                    await concurrency.WaitAsync(ct).ConfigureAwait(false);
+                }
+                catch
+                {
+                    data.Dispose();
+                    throw;
+                }
+
                 ProcessMessage(connection, registry, data, activeRequests, activeTasks, concurrency, ct);
             }
         }
@@ -259,7 +268,17 @@ public sealed class ShaRpcServer : IShaRpcServer
                 // Transfer ownership to the send task so the frame is not disposed
                 // while SendAsync is still reading from its memory.
                 connection.SendAsync(errorFrame.Memory, ct)
-                    .ContinueWith(_ => errorFrame.Dispose(), TaskScheduler.Default);
+                    .ContinueWith(
+                        static (t, state) =>
+                        {
+                            ((Payload)state!).Dispose();
+                            if (t.IsFaulted)
+                                RpcDiagnostics.Report("Error frame send failed", t.Exception!.GetBaseException());
+                        },
+                        errorFrame,
+                        CancellationToken.None,
+                        TaskContinuationOptions.ExecuteSynchronously,
+                        TaskScheduler.Default);
             }
             catch
             {
