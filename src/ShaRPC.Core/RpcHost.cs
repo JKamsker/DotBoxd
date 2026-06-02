@@ -264,8 +264,8 @@ public sealed class RpcHost : IAsyncDisposable
             return;
         }
 
-        _peers.Add(peer);
         peer.Disconnected += OnPeerDisconnected;
+        _peers.Add(peer);
         peer.Start();
         RpcEventHandlerInvoker.Raise(PeerConnected, this, new RpcPeerEventArgs(peer));
     }

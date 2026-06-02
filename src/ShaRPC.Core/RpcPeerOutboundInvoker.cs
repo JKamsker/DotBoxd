@@ -206,7 +206,7 @@ internal sealed class RpcPeerOutboundInvoker : IRpcInvoker
     {
         if (Interlocked.Increment(ref _pendingCount) > _maxPendingRequests)
         {
-            Interlocked.Decrement(ref _pendingCount);
+            // Do not decrement here; the caller's catch block calls ReleasePendingSlot.
             throw new ShaRpcException("Maximum pending requests reached.");
         }
 
@@ -220,7 +220,7 @@ internal sealed class RpcPeerOutboundInvoker : IRpcInvoker
             }
         }
 
-        Interlocked.Decrement(ref _pendingCount);
+        // Do not decrement here; the caller's catch block calls ReleasePendingSlot.
         throw new ShaRpcException("Unable to reserve a request message id.");
     }
 

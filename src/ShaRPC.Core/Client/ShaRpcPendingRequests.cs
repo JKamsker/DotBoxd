@@ -64,17 +64,23 @@ internal sealed class ShaRpcPendingRequests
 
     public void FailAll(Exception error)
     {
-        foreach (var request in _requests.Values)
+        foreach (var key in _requests.Keys)
         {
-            request.TrySetException(error);
+            if (_requests.TryRemove(key, out var tcs))
+            {
+                tcs.TrySetException(error);
+            }
         }
     }
 
     public void CancelAll()
     {
-        foreach (var request in _requests.Values)
+        foreach (var key in _requests.Keys)
         {
-            request.TrySetCanceled();
+            if (_requests.TryRemove(key, out var tcs))
+            {
+                tcs.TrySetCanceled();
+            }
         }
     }
 }

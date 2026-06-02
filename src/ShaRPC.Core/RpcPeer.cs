@@ -226,11 +226,6 @@ public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
                 return new ValueTask(_disposeTask);
             }
 
-            if (_disposed != 0)
-            {
-                return default;
-            }
-
             _disposed = 1;
             Interlocked.Exchange(ref _closed, 1);
             cts = _cts;
@@ -257,9 +252,9 @@ public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
             }
         }
 
+        await _outbound.StopCancelFramesAsync().ConfigureAwait(false);
         _outbound.FailPending(new ShaRpcConnectionException("Connection closed."));
         await _inbound.StopAsync().ConfigureAwait(false);
-        await _outbound.StopCancelFramesAsync().ConfigureAwait(false);
 
         _sender.Dispose();
         await _channel.DisposeAsync().ConfigureAwait(false);

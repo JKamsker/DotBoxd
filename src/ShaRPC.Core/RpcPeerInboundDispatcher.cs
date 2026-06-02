@@ -230,9 +230,18 @@ internal sealed class RpcPeerInboundDispatcher
         catch (Exception ex)
         {
             _dispatchError(inbound, ex);
-            RpcDiagnostics.Report(
-                $"Inbound request {inbound.Request.ServiceName}.{inbound.Request.MethodName} failed",
-                ex);
+            RpcDiagnostics.Report("Inbound request dispatch failed", ex);
+            try
+            {
+                using var errorFrame = _responseBuilder.BuildErrorFrame(
+                    inbound.MessageId,
+                    RpcErrors.FromException(ex));
+                await _sendAsync(errorFrame.Memory, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Best-effort error response.
+            }
         }
         finally
         {

@@ -41,4 +41,7 @@ internal sealed class RpcPeerResponseBuilder
 
     public Payload BuildProtocolErrorFrame(int messageId, string errorMessage) =>
         _inner.BuildProtocolErrorFrame(messageId, errorMessage);
+
+    public Payload BuildErrorFrame(int messageId, RpcError error) =>
+        _inner.BuildErrorFrame(messageId, error);
 }

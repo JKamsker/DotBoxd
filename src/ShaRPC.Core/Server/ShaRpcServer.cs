@@ -93,7 +93,14 @@ public sealed class ShaRpcServer : IShaRpcServer
             var connectionTasks = _connections.Values.ToArray();
             if (connectionTasks.Length > 0)
             {
-                await Task.WhenAll(connectionTasks).ConfigureAwait(false);
+                try
+                {
+                    await Task.WhenAll(connectionTasks).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    RpcDiagnostics.Report("Connection handler fault during shutdown", ex);
+                }
             }
 
             await _transport.StopAsync(ct).ConfigureAwait(false);
@@ -249,10 +256,10 @@ public sealed class ShaRpcServer : IShaRpcServer
                         ErrorType = RpcErrorTypes.ProtocolError,
                     },
                     ReadOnlySpan<byte>.Empty);
-                using (errorFrame)
-                {
-                    _ = connection.SendAsync(errorFrame.Memory, ct);
-                }
+                // Transfer ownership to the send task so the frame is not disposed
+                // while SendAsync is still reading from its memory.
+                connection.SendAsync(errorFrame.Memory, ct)
+                    .ContinueWith(_ => errorFrame.Dispose(), TaskScheduler.Default);
             }
             catch
             {

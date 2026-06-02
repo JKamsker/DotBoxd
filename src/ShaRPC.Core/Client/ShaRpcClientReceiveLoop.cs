@@ -53,7 +53,20 @@ internal sealed class ShaRpcClientReceiveLoop
                         continue;
                     }
 
-                    var response = _serializer.Deserialize<RpcResponse>(envelope);
+                    RpcResponse response;
+                    try
+                    {
+                        response = _serializer.Deserialize<RpcResponse>(envelope);
+                    }
+                    catch (Exception ex)
+                    {
+                        _pendingRequests.TryFail(
+                            messageId,
+                            new ShaRpcProtocolException("Malformed response envelope."));
+                        RpcDiagnostics.Report("Response envelope deserialization failed", ex);
+                        continue;
+                    }
+
                     handedOff = _pendingRequests.TryComplete(messageId, response, payload, frame);
                 }
                 finally
