@@ -4,6 +4,21 @@ using ShaRPC.Core.Transport;
 
 namespace ShaRPC.Core;
 
+/// <summary>
+/// Outcome of attempting to enqueue an inbound request for dispatch.
+/// </summary>
+internal enum InboundEnqueueResult
+{
+    /// <summary>The request was queued (or dispatched) and the queue now owns the frame.</summary>
+    Accepted,
+
+    /// <summary>The queue was full in DropIncoming mode; the caller should notify the peer.</summary>
+    Dropped,
+
+    /// <summary>The peer is shutting down (cancelled or channel closed); no notification needed.</summary>
+    ShuttingDown,
+}
+
 internal sealed class RpcPeerInboundRequestQueue
 {
     private readonly Channel<RpcPeerInboundRequest> _queue;
@@ -50,28 +65,28 @@ internal sealed class RpcPeerInboundRequestQueue
         _dispatchWorker = Task.Run(() => DispatchAsync(_cts.Token));
     }
 
-    public async ValueTask<bool> EnqueueAsync(RpcPeerInboundRequest inbound, CancellationToken ct)
+    public async ValueTask<InboundEnqueueResult> EnqueueAsync(RpcPeerInboundRequest inbound, CancellationToken ct)
     {
         var bytes = inbound.Frame.Length;
 
         if (_dropIncomingWhenFull)
         {
             // Drop when over the byte budget or when the count queue is full. Release the request
-            // resources but leave frame disposal to the read loop, which disposes on the false return.
-            // Disposing here too would double-return the pooled buffer (benign only while
+            // resources but leave frame disposal to the read loop, which disposes on the Dropped
+            // return. Disposing here too would double-return the pooled buffer (benign only while
             // Payload.Dispose stays idempotent).
             if (TryAdmitBytes(bytes))
             {
                 if (_queue.Writer.TryWrite(inbound))
                 {
-                    return true;
+                    return InboundEnqueueResult.Accepted;
                 }
 
                 ReleaseBytes(bytes);
             }
 
             _release(inbound);
-            return false;
+            return InboundEnqueueResult.Dropped;
         }
 
         try
@@ -86,7 +101,7 @@ internal sealed class RpcPeerInboundRequestQueue
             // immediately before returning, with no await in between — and its sole throw point is the
             // wait that runs *before* admitting. A cancelled admit therefore reserved nothing to release.
             _release(inbound);
-            return false;
+            return InboundEnqueueResult.ShuttingDown;
         }
 
         var committed = false;
@@ -94,15 +109,15 @@ internal sealed class RpcPeerInboundRequestQueue
         {
             await _queue.Writer.WriteAsync(inbound, ct).ConfigureAwait(false);
             committed = true;
-            return true;
+            return InboundEnqueueResult.Accepted;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            return false;
+            return InboundEnqueueResult.ShuttingDown;
         }
         catch (ChannelClosedException)
         {
-            return false;
+            return InboundEnqueueResult.ShuttingDown;
         }
         finally
         {

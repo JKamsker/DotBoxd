@@ -37,7 +37,7 @@ namespace Snap.Vt
                     return;
                 }
                 default:
-                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'IVtSnap'.");
+                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'IVtSnap'.", global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException.NotFoundKind.Method);
             }
         }
 
@@ -47,7 +47,7 @@ namespace Snap.Vt
         {
             if (!registry.TryGet("IVtSnap", instanceId, out var __obj) || __obj is not global::Snap.Vt.IVtSnap __inst)
             {
-                throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Instance '" + instanceId + "' not found for service 'IVtSnap'.");
+                throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Instance '" + instanceId + "' not found for service 'IVtSnap'.", global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException.NotFoundKind.Instance);
             }
             switch (method)
             {
@@ -64,7 +64,7 @@ namespace Snap.Vt
                     return;
                 }
                 default:
-                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'IVtSnap'.");
+                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'IVtSnap'.", global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException.NotFoundKind.Method);
             }
         }
     }

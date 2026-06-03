@@ -13,7 +13,7 @@ public sealed class TcpTransport : ITransport
     private readonly int _port;
     private TcpClient? _client;
     private TcpConnection? _connection;
-    private bool _disposed;
+    private int _disposed;
 
     public TcpTransport(string host, int port)
     {
@@ -34,7 +34,7 @@ public sealed class TcpTransport : ITransport
 
     public async Task ConnectAsync(CancellationToken ct = default)
     {
-        if (_disposed)
+        if (Volatile.Read(ref _disposed) != 0)
         {
             throw new ObjectDisposedException(nameof(TcpTransport));
         }
@@ -44,31 +44,51 @@ public sealed class TcpTransport : ITransport
             throw new InvalidOperationException("Already connected.");
         }
 
-        _client = new TcpClient();
-
-        // netstandard2.1 has no CancellationToken overload for ConnectAsync, so race it against an
-        // infinite delay bound to the token. The delay is cancelled in the finally so its timer and
-        // token registration are released on the success path instead of lingering for ct's lifetime.
-        var connectTask = _client.ConnectAsync(_host, _port);
-        using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        // Connect against a fresh local client and publish it to the fields only once the connect
+        // has succeeded. Any failure — connect error, timeout, or cancellation — disposes the client,
+        // so a failed attempt never leaks a socket and a retry never overwrites an undisposed _client.
+        var client = new TcpClient();
         try
         {
-            if (await Task.WhenAny(connectTask, Task.Delay(Timeout.Infinite, connectCts.Token)) != connectTask)
+            // netstandard2.1 has no CancellationToken overload for ConnectAsync, so race it against an
+            // infinite delay bound to the token. The delay is cancelled in the finally so its timer and
+            // token registration are released on the success path instead of lingering for ct's lifetime.
+            var connectTask = client.ConnectAsync(_host, _port);
+            using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            try
             {
-                _client.Dispose();
-                // The connect attempt now faults against the disposed client; observe it so it does not
-                // surface later as an unobserved task exception.
-                ObserveFault(connectTask);
-                ct.ThrowIfCancellationRequested();
+                if (await Task.WhenAny(connectTask, Task.Delay(Timeout.Infinite, connectCts.Token)).ConfigureAwait(false) != connectTask)
+                {
+                    // Cancelled before the connect completed. Observe the connect task's eventual fault
+                    // (it faults once the client is disposed below) so it is not an unobserved exception.
+                    ObserveFault(connectTask);
+                    ct.ThrowIfCancellationRequested();
+                }
+
+                await connectTask.ConfigureAwait(false);
+            }
+            finally
+            {
+                connectCts.Cancel();
             }
         }
-        finally
+        catch
         {
-            connectCts.Cancel();
+            client.Dispose();
+            throw;
         }
 
-        await connectTask;
-        _connection = new TcpConnection(_client, FrameReadIdleTimeout);
+        _client = client;
+        _connection = new TcpConnection(client, FrameReadIdleTimeout);
+
+        // Close the window where DisposeAsync ran during the connect and observed null fields: tear
+        // down the connection we just created so it cannot outlive a disposed transport.
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            await _connection.DisposeAsync().ConfigureAwait(false);
+            client.Dispose();
+            throw new ObjectDisposedException(nameof(TcpTransport));
+        }
     }
 
     private static void ObserveFault(Task task) =>
@@ -80,16 +100,14 @@ public sealed class TcpTransport : ITransport
 
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
             return;
         }
 
-        _disposed = true;
-
         if (_connection != null)
         {
-            await _connection.DisposeAsync();
+            await _connection.DisposeAsync().ConfigureAwait(false);
         }
 
         _client?.Dispose();

@@ -16,9 +16,10 @@ internal sealed class RpcPeerResponseBuilder
         ISerializer serializer,
         InstanceRegistry registry,
         ConcurrentDictionary<string, IServiceDispatcher> dispatchers,
-        bool rejectInboundCalls)
+        bool rejectInboundCalls,
+        Func<Exception, RpcErrorInfo?>? exceptionTransformer = null)
     {
-        _inner = new RpcDispatchResponseBuilder(serializer, dispatchers);
+        _inner = new RpcDispatchResponseBuilder(serializer, dispatchers, exceptionTransformer);
         _registry = registry;
         _rejectInboundCalls = rejectInboundCalls;
     }

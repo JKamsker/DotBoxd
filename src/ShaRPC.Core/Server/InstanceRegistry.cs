@@ -13,6 +13,7 @@ public sealed class InstanceRegistry : IInstanceRegistry
 
     private readonly ConcurrentDictionary<(string Service, string Id), object> _entries = new();
     private readonly int _maxInstances;
+    private int _count;
 
     public InstanceRegistry() : this(DefaultMaxInstances) { }
 
@@ -34,8 +35,12 @@ public sealed class InstanceRegistry : IInstanceRegistry
     {
         if (instance is null) throw new ArgumentNullException(nameof(instance));
 
-        if (_entries.Count >= _maxInstances)
+        // Reserve a slot atomically. A plain Count check followed by an add lets several threads
+        // pass the check before any of them adds, so concurrent sub-service creation could exceed
+        // the configured maximum. Increment-then-check-then-rollback closes that race.
+        if (Interlocked.Increment(ref _count) > _maxInstances)
         {
+            Interlocked.Decrement(ref _count);
             throw new InvalidOperationException(
                 $"Instance registry limit reached ({_maxInstances}). Release unused instances before registering new ones.");
         }
@@ -58,9 +63,52 @@ public sealed class InstanceRegistry : IInstanceRegistry
     }
 
     /// <inheritdoc />
-    public void Release(string serviceName, string instanceId) =>
-        _entries.TryRemove((serviceName, instanceId), out _);
+    public void Release(string serviceName, string instanceId)
+    {
+        if (_entries.TryRemove((serviceName, instanceId), out var instance))
+        {
+            Interlocked.Decrement(ref _count);
+            DisposeInstance(instance);
+        }
+    }
 
     /// <inheritdoc />
-    public void ReleaseAll() => _entries.Clear();
+    public void ReleaseAll()
+    {
+        // TryRemove each key (Keys is a snapshot on ConcurrentDictionary) so every instance is
+        // disposed exactly once and its slot freed, even if Release races in concurrently.
+        foreach (var key in _entries.Keys)
+        {
+            if (_entries.TryRemove(key, out var instance))
+            {
+                Interlocked.Decrement(ref _count);
+                DisposeInstance(instance);
+            }
+        }
+    }
+
+    // Sub-service instances are connection-scoped and owned by the registry (see IInstanceRegistry),
+    // so they are disposed when released. Best-effort: a faulting dispose is reported via diagnostics
+    // but never breaks teardown. IAsyncDisposable is preferred when present; the blocking wait is safe
+    // because ShaRPC runs context-free (ConfigureAwait(false) throughout), so there is no captured
+    // SynchronizationContext to deadlock against.
+    private static void DisposeInstance(object instance)
+    {
+        try
+        {
+            switch (instance)
+            {
+                case IAsyncDisposable asyncDisposable:
+                    asyncDisposable.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                    break;
+                case IDisposable disposable:
+                    disposable.Dispose();
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            ShaRPC.Core.RpcDiagnostics.Report("Sub-service instance disposal failed", ex);
+        }
+    }
 }

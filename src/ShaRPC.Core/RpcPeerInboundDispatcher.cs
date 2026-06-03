@@ -19,6 +19,7 @@ internal sealed class RpcPeerInboundDispatcher
     private readonly Func<ReadOnlyMemory<byte>, CancellationToken, Task> _sendAsync;
     private readonly Action<int, MessageType, string, Exception?> _protocolError;
     private readonly Action<RpcPeerInboundRequest, Exception> _dispatchError;
+    private readonly Func<Exception, RpcErrorInfo?>? _exceptionTransformer;
     private readonly RpcPeerInboundRequestQueue? _queue;
     private int _stopped;
 
@@ -34,10 +35,12 @@ internal sealed class RpcPeerInboundDispatcher
             serializer,
             _registry,
             _dispatchers,
-            options.RejectInboundCalls);
+            options.RejectInboundCalls,
+            options.ExceptionTransformer);
         _sendAsync = sendAsync;
         _protocolError = protocolError;
         _dispatchError = dispatchError;
+        _exceptionTransformer = options.ExceptionTransformer;
         if (options.InboundQueueCapacity is not { } capacity)
         {
             return;
@@ -98,7 +101,28 @@ internal sealed class RpcPeerInboundDispatcher
             return true;
         }
 
-        return await _queue.EnqueueAsync(inbound, loopCt).ConfigureAwait(false);
+        var result = await _queue.EnqueueAsync(inbound, loopCt).ConfigureAwait(false);
+        if (result == InboundEnqueueResult.Dropped)
+        {
+            // The request was shed under backpressure. Reply with an explicit queue-full error so the
+            // caller fails fast instead of waiting out its whole request timeout.
+            await SendQueueFullErrorAsync(messageId, loopCt).ConfigureAwait(false);
+        }
+
+        return result == InboundEnqueueResult.Accepted;
+    }
+
+    private async Task SendQueueFullErrorAsync(int messageId, CancellationToken ct)
+    {
+        try
+        {
+            using var errorFrame = _responseBuilder.BuildErrorFrame(messageId, RpcErrors.QueueFull());
+            await _sendAsync(errorFrame.Memory, ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Best-effort: if the notification cannot be sent, the caller still falls back to its timeout.
+        }
     }
 
     public void Cancel(int messageId)
@@ -251,7 +275,7 @@ internal sealed class RpcPeerInboundDispatcher
             {
                 using var errorFrame = _responseBuilder.BuildErrorFrame(
                     inbound.MessageId,
-                    RpcErrors.FromException(ex));
+                    RpcErrors.FromException(ex, _exceptionTransformer));
                 await _sendAsync(errorFrame.Memory, CancellationToken.None).ConfigureAwait(false);
             }
             catch

@@ -31,7 +31,7 @@ namespace Snap.Two
                     return;
                 }
                 default:
-                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'ITwo'.");
+                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'ITwo'.", global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException.NotFoundKind.Method);
             }
         }
 
@@ -41,7 +41,7 @@ namespace Snap.Two
         {
             if (!registry.TryGet("ITwo", instanceId, out var __obj) || __obj is not global::Snap.Two.ITwo __inst)
             {
-                throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Instance '" + instanceId + "' not found for service 'ITwo'.");
+                throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Instance '" + instanceId + "' not found for service 'ITwo'.", global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException.NotFoundKind.Instance);
             }
             switch (method)
             {
@@ -52,7 +52,7 @@ namespace Snap.Two
                     return;
                 }
                 default:
-                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'ITwo'.");
+                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'ITwo'.", global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException.NotFoundKind.Method);
             }
         }
     }

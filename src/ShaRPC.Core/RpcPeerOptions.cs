@@ -51,6 +51,26 @@ public sealed class RpcPeerOptions
     public IServiceProvider? ServiceProvider { get; init; }
 
     /// <summary>
+    /// Optional hook, invoked on the side that runs the service, that turns an exception thrown by a
+    /// handler into the error returned to the caller. Return an <see cref="RpcErrorInfo"/> to surface
+    /// that message and type to the caller, or <see langword="null"/> to keep the default opaque
+    /// "Internal error." response for that exception.
+    /// <para>
+    /// When this is <see langword="null"/> (the default) every handler exception is reported opaquely
+    /// so internal failure detail is never leaked. Framework protocol errors (service, method, and
+    /// instance not found) keep their own typed mapping and are not routed through this hook.
+    /// </para>
+    /// <para>
+    /// Exposing exception detail can leak sensitive information, so this is opt-in — only enable it
+    /// for trusted peers, or map exceptions to safe, caller-facing messages. The shortcut
+    /// <c>ExceptionTransformer = ex =&gt; RpcErrorInfo.FromException(ex)</c> exposes every exception's
+    /// message and type. The hook may be invoked concurrently when
+    /// <see cref="MaxConcurrentInboundDispatch"/> is greater than one, so keep it thread-safe.
+    /// </para>
+    /// </summary>
+    public Func<Exception, RpcErrorInfo?>? ExceptionTransformer { get; init; }
+
+    /// <summary>
     /// When <see langword="true"/>, inbound request frames are answered with an explicit
     /// "this peer does not accept inbound calls" error rather than a "service not found"
     /// error. Use it to make a get-only ("client") peer's one-directional intent explicit.

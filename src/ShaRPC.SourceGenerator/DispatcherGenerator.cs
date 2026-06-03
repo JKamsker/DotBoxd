@@ -96,7 +96,7 @@ internal static class DispatcherGenerator
         {
             sb.AppendLine($"            if (!registry.TryGet(\"{service.ServiceName}\", instanceId, out var __obj) || __obj is not {qualifiedInterface} __inst)");
             sb.AppendLine("            {");
-            sb.AppendLine($"                throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException(\"Instance '\" + instanceId + \"' not found for service '{service.ServiceName}'.\");");
+            sb.AppendLine($"                throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException(\"Instance '\" + instanceId + \"' not found for service '{service.ServiceName}'.\", global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException.NotFoundKind.Instance);");
             sb.AppendLine("            }");
             receiver = "__inst";
         }
@@ -115,7 +115,7 @@ internal static class DispatcherGenerator
         }
 
         sb.AppendLine("                default:");
-        sb.AppendLine($"                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException(\"Method '\" + method + \"' not found on service '{service.ServiceName}'.\");");
+        sb.AppendLine($"                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException(\"Method '\" + method + \"' not found on service '{service.ServiceName}'.\", global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException.NotFoundKind.Method);");
         sb.AppendLine("            }");
         sb.AppendLine("        }");
     }

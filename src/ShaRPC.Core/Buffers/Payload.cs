@@ -62,16 +62,20 @@ public sealed class Payload : IMemoryOwner<byte>
     /// </summary>
     public void Dispose()
     {
-        var array = _array;
-
-        // Empty wraps a zero-length array (Rent never returns one), so this both keeps the
-        // Empty singleton reusable and makes Dispose idempotent on already-returned payloads.
-        if (array is null || array.Length == 0)
+        // Empty wraps a zero-length array (Rent never returns one) and has _length 0, so skipping
+        // it here keeps the Empty singleton reusable — its _array must never be nulled. For real
+        // payloads the Interlocked.Exchange makes Dispose both idempotent and thread-safe: only the
+        // thread that observes the non-null array returns it, so concurrent or repeated Dispose can
+        // never double-return the same rented buffer to the pool.
+        if (_length == 0)
         {
             return;
         }
 
-        _array = null;
-        ArrayPool<byte>.Shared.Return(array);
+        var array = Interlocked.Exchange(ref _array, null);
+        if (array is not null)
+        {
+            ArrayPool<byte>.Shared.Return(array);
+        }
     }
 }

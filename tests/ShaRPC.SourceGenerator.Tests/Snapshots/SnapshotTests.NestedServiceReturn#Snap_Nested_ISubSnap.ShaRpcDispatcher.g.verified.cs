@@ -31,7 +31,7 @@ namespace Snap.Nested
                     return;
                 }
                 default:
-                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'ISubSnap'.");
+                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'ISubSnap'.", global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException.NotFoundKind.Method);
             }
         }
 
@@ -41,7 +41,7 @@ namespace Snap.Nested
         {
             if (!registry.TryGet("ISubSnap", instanceId, out var __obj) || __obj is not global::Snap.Nested.ISubSnap __inst)
             {
-                throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Instance '" + instanceId + "' not found for service 'ISubSnap'.");
+                throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Instance '" + instanceId + "' not found for service 'ISubSnap'.", global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException.NotFoundKind.Instance);
             }
             switch (method)
             {
@@ -52,7 +52,7 @@ namespace Snap.Nested
                     return;
                 }
                 default:
-                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'ISubSnap'.");
+                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'ISubSnap'.", global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException.NotFoundKind.Method);
             }
         }
     }

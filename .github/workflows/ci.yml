@@ -84,7 +84,8 @@ jobs:
           for proj in \
               src/ShaRPC.Core/ShaRPC.Core.csproj \
               src/ShaRPC.Serializers.MessagePack/ShaRPC.Serializers.MessagePack.csproj \
-              src/ShaRPC.Transports.Tcp/ShaRPC.Transports.Tcp.csproj; do
+              src/ShaRPC.Transports.Tcp/ShaRPC.Transports.Tcp.csproj \
+              src/ShaRPC.Transports.NamedPipes/ShaRPC.Transports.NamedPipes.csproj; do
             dotnet pack "$proj" -c $CONFIGURATION --no-build -o artifacts/nupkg \
               -p:Version=${{ steps.version.outputs.version }}
           done

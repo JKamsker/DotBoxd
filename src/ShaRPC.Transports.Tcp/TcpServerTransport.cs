@@ -14,7 +14,7 @@ public sealed class TcpServerTransport : IServerTransport
     private TcpListener? _listener;
     private Task<TcpClient>? _pendingAccept;
     private int _disposed;
-    private bool _started;
+    private int _started;
 
     public TcpServerTransport(int port) : this(IPAddress.Any, port)
     {
@@ -51,14 +51,24 @@ public sealed class TcpServerTransport : IServerTransport
             throw new ObjectDisposedException(nameof(TcpServerTransport));
         }
 
-        if (_started)
+        if (Interlocked.Exchange(ref _started, 1) != 0)
         {
             throw new InvalidOperationException("Server already started.");
         }
 
-        _listener = new TcpListener(_address, _port);
-        _listener.Start();
-        _started = true;
+        try
+        {
+            var listener = new TcpListener(_address, _port);
+            listener.Start();
+            _listener = listener;
+        }
+        catch
+        {
+            // Bind/listen failed (e.g. port in use). Reset so the transport can be started again
+            // and a half-constructed listener is not left in the field.
+            Volatile.Write(ref _started, 0);
+            throw;
+        }
 
         return Task.CompletedTask;
     }
@@ -70,7 +80,11 @@ public sealed class TcpServerTransport : IServerTransport
             throw new ObjectDisposedException(nameof(TcpServerTransport));
         }
 
-        if (_listener == null)
+        // Capture the listener once: a concurrent StopAsync/DisposeAsync nulls the field, and reading
+        // it twice could NRE between the guard and the accept call. If Stop races in after this read,
+        // AcceptTcpClientAsync simply faults on the stopped listener and the catch below maps it.
+        var listener = _listener;
+        if (listener == null)
         {
             throw new InvalidOperationException("Server not started.");
         }
@@ -80,7 +94,7 @@ public sealed class TcpServerTransport : IServerTransport
         // against the token; on cancellation keep the in-flight accept to hand back on the next call
         // so the listener stays alive. AcceptAsync is driven by a single accept loop, so there is no
         // concurrent caller racing _pendingAccept.
-        var acceptTask = _pendingAccept ?? _listener.AcceptTcpClientAsync();
+        var acceptTask = _pendingAccept ?? listener.AcceptTcpClientAsync();
         _pendingAccept = null;
 
         if (ct.CanBeCanceled && !acceptTask.IsCompleted)
@@ -113,7 +127,11 @@ public sealed class TcpServerTransport : IServerTransport
 
     public Task StopAsync(CancellationToken ct = default)
     {
-        _listener?.Stop();
+        // Reset state so the transport can be restarted with StartAsync, and so a subsequent
+        // AcceptAsync surfaces "not started" instead of accepting on a stopped listener.
+        Volatile.Write(ref _started, 0);
+        var listener = Interlocked.Exchange(ref _listener, null);
+        listener?.Stop();
         ObservePendingAccept();
         return Task.CompletedTask;
     }
@@ -125,7 +143,9 @@ public sealed class TcpServerTransport : IServerTransport
             return default;
         }
 
-        _listener?.Stop();
+        Volatile.Write(ref _started, 0);
+        var listener = Interlocked.Exchange(ref _listener, null);
+        listener?.Stop();
         ObservePendingAccept();
 
         return default;

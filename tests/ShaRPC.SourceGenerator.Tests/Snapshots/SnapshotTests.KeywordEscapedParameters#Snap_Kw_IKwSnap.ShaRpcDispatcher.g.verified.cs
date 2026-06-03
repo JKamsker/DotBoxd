@@ -32,7 +32,7 @@ namespace Snap.Kw
                     return;
                 }
                 default:
-                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'IKwSnap'.");
+                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'IKwSnap'.", global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException.NotFoundKind.Method);
             }
         }
 
@@ -42,7 +42,7 @@ namespace Snap.Kw
         {
             if (!registry.TryGet("IKwSnap", instanceId, out var __obj) || __obj is not global::Snap.Kw.IKwSnap __inst)
             {
-                throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Instance '" + instanceId + "' not found for service 'IKwSnap'.");
+                throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Instance '" + instanceId + "' not found for service 'IKwSnap'.", global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException.NotFoundKind.Instance);
             }
             switch (method)
             {
@@ -54,7 +54,7 @@ namespace Snap.Kw
                     return;
                 }
                 default:
-                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'IKwSnap'.");
+                    throw new global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException("Method '" + method + "' not found on service 'IKwSnap'.", global::ShaRPC.Core.Exceptions.ShaRpcNotFoundException.NotFoundKind.Method);
             }
         }
     }

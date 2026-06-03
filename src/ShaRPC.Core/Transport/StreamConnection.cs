@@ -47,7 +47,7 @@ public sealed class StreamConnection : IRpcChannel
     public async Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
     {
         ThrowIfDisposed();
-        ValidateOutgoingFrame(data);
+        MessageFramer.ValidateOutgoingFrame(data.Span, _maxMessageSize);
 
         await _sendLock.WaitAsync(ct).ConfigureAwait(false);
         try
@@ -146,23 +146,6 @@ public sealed class StreamConnection : IRpcChannel
         {
             throw new ObjectDisposedException(nameof(StreamConnection));
         }
-    }
-
-    private void ValidateOutgoingFrame(ReadOnlyMemory<byte> data)
-    {
-        if (data.Length < MessageFramer.HeaderSize)
-        {
-            throw new InvalidDataException($"ShaRPC frame is too small: {data.Length} bytes.");
-        }
-
-        var declaredLength = BinaryPrimitives.ReadInt32LittleEndian(data.Span.Slice(0, 4));
-        if (declaredLength != data.Length)
-        {
-            throw new InvalidDataException(
-                $"ShaRPC frame length prefix {declaredLength} does not match buffer length {data.Length}.");
-        }
-
-        ValidateIncomingLength(declaredLength);
     }
 
     private void ValidateIncomingLength(int totalLength)

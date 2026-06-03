@@ -82,6 +82,85 @@ public sealed class RpcPeerProtocolRegressionTests
     }
 
     [Fact]
+    public async Task ServiceException_WithExposingTransformer_SurfacesMessageAndType()
+    {
+        var (clientConnection, serverConnection) = InMemoryPipe.CreateConnectionPair();
+
+        await using var server = RpcPeer
+            .Over(
+                serverConnection,
+                NewSerializer(),
+                new RpcPeerOptions { ExceptionTransformer = ex => RpcErrorInfo.FromException(ex) })
+            .Provide((IServiceDispatcher)new ThrowingDispatcher())
+            .Start();
+        await using var client = RpcPeer
+            .Over(clientConnection, NewSerializer(), new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) })
+            .Start();
+
+        var ex = await Assert.ThrowsAsync<ShaRpcRemoteException>(
+            () => client.InvokeAsync<int>(ThrowingDispatcher.Service, "Throw"));
+
+        // With the server opting in, the handler's real message and exception type reach the caller.
+        Assert.Equal("Internal path C:\\secret\\db.txt", ex.Message);
+        Assert.Equal(nameof(InvalidOperationException), ex.RemoteExceptionType);
+    }
+
+    [Fact]
+    public async Task ServiceException_WithSelectiveTransformer_MapsToSafeError()
+    {
+        var (clientConnection, serverConnection) = InMemoryPipe.CreateConnectionPair();
+
+        await using var server = RpcPeer
+            .Over(
+                serverConnection,
+                NewSerializer(),
+                new RpcPeerOptions
+                {
+                    ExceptionTransformer = ex => ex is InvalidOperationException
+                        ? new RpcErrorInfo("The request could not be processed.", "AppRequestRejected")
+                        : null,
+                })
+            .Provide((IServiceDispatcher)new ThrowingDispatcher())
+            .Start();
+        await using var client = RpcPeer
+            .Over(clientConnection, NewSerializer(), new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) })
+            .Start();
+
+        var ex = await Assert.ThrowsAsync<ShaRpcRemoteException>(
+            () => client.InvokeAsync<int>(ThrowingDispatcher.Service, "Throw"));
+
+        // The transformer maps the exception to a safe, caller-facing message and a custom type, and
+        // never exposes the raw internal path.
+        Assert.Equal("The request could not be processed.", ex.Message);
+        Assert.Equal("AppRequestRejected", ex.RemoteExceptionType);
+        Assert.DoesNotContain("C:\\secret", ex.Message);
+    }
+
+    [Fact]
+    public async Task ServiceException_WithTransformerReturningNull_StaysOpaque()
+    {
+        var (clientConnection, serverConnection) = InMemoryPipe.CreateConnectionPair();
+
+        await using var server = RpcPeer
+            .Over(
+                serverConnection,
+                NewSerializer(),
+                new RpcPeerOptions { ExceptionTransformer = _ => null })
+            .Provide((IServiceDispatcher)new ThrowingDispatcher())
+            .Start();
+        await using var client = RpcPeer
+            .Over(clientConnection, NewSerializer(), new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) })
+            .Start();
+
+        var ex = await Assert.ThrowsAsync<ShaRpcRemoteException>(
+            () => client.InvokeAsync<int>(ThrowingDispatcher.Service, "Throw"));
+
+        // Returning null keeps the secure opaque default for that exception.
+        Assert.Equal("Internal error.", ex.Message);
+        Assert.Equal(RpcErrorTypes.InternalError, ex.RemoteExceptionType);
+    }
+
+    [Fact]
     public async Task Timeout_SendsCancelFrameAndRemovesPendingRequest()
     {
         var (clientConnection, serverConnection) = InMemoryPipe.CreateConnectionPair();

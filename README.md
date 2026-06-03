@@ -296,7 +296,7 @@ on `ShaRPC`. See [Installation](#installation) for the install commands.
 ## Requirements
 
 - **.NET Standard 2.1** for library projects (Unity 2021.3+).
-- **.NET 6.0+** for server projects (recommended: .NET 8.0+).
+- **.NET 6.0+** for server projects (recommended: .NET 8.0+; CI builds and tests against .NET 8 and 9).
 - **MessagePack** 2.5.x.
 
 ## Diagnostics emitted by the generator

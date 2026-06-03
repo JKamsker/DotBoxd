@@ -44,6 +44,20 @@ public sealed class PeerTests
     }
 
     [Fact]
+    public async Task Get_AfterDispose_ThrowsObjectDisposed()
+    {
+        var (clientChannel, _) = InMemoryChannel.CreatePair();
+        var caller = RpcPeer.Over(clientChannel, NewSerializer(),
+            new RpcPeerOptions { RejectInboundCalls = true });
+
+        await caller.DisposeAsync();
+
+        // Get must fail fast on a disposed peer rather than handing back a proxy that only throws on
+        // its first call.
+        Assert.Throws<ObjectDisposedException>(() => caller.Get<IGameService>());
+    }
+
+    [Fact]
     public async Task Bidirectional_BothSidesProvideAndCall_OverOneConnection()
     {
         var (channelA, channelB) = InMemoryChannel.CreatePair();

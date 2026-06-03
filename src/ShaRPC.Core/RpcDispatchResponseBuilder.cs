@@ -10,13 +10,16 @@ internal sealed class RpcDispatchResponseBuilder
 {
     private readonly ISerializer _serializer;
     private readonly ConcurrentDictionary<string, IServiceDispatcher> _dispatchers;
+    private readonly Func<Exception, RpcErrorInfo?>? _exceptionTransformer;
 
     public RpcDispatchResponseBuilder(
         ISerializer serializer,
-        ConcurrentDictionary<string, IServiceDispatcher> dispatchers)
+        ConcurrentDictionary<string, IServiceDispatcher> dispatchers,
+        Func<Exception, RpcErrorInfo?>? exceptionTransformer = null)
     {
         _serializer = serializer;
         _dispatchers = dispatchers;
+        _exceptionTransformer = exceptionTransformer;
     }
 
     public async ValueTask<Payload> BuildAsync(
@@ -61,7 +64,7 @@ internal sealed class RpcDispatchResponseBuilder
         }
         catch (Exception ex)
         {
-            return BuildErrorFrame(messageId, RpcErrors.FromException(ex));
+            return BuildErrorFrame(messageId, RpcErrors.FromException(ex, _exceptionTransformer));
         }
 
         return MessageFramer.FinishFrame(writer, envelopeLength);

@@ -138,10 +138,10 @@ public sealed class RpcPeerRegressionTests
 
         await dispatcher.FirstEntered.WaitAsync(TimeSpan.FromSeconds(1));
 
-        // Wall-clock dependent by nature: the dropped request(s) are detected by their client-side
-        // RequestTimeout (750ms) firing, while the dispatched + queued requests succeed once the
-        // handler is released here. The InRange tolerances below absorb whether one or two frames
-        // were dropped (which depends on dispatch-worker timing).
+        // The dropped request(s) now come back as an explicit queue-full RPC error instead of the
+        // client waiting out its RequestTimeout; the dispatched + queued requests succeed once the
+        // handler is released here. The InRange tolerances absorb whether one or two frames were
+        // dropped (which depends on dispatch-worker timing).
         await Task.Delay(TimeSpan.FromMilliseconds(150));
         dispatcher.Release();
 
@@ -149,12 +149,46 @@ public sealed class RpcPeerRegressionTests
             .WaitAsync(TimeSpan.FromSeconds(2));
 
         var successes = outcomes.Count(static exception => exception is null);
-        var timeouts = outcomes.OfType<ShaRpcTimeoutException>().Count();
+        var dropped = outcomes
+            .OfType<ShaRpcRemoteException>()
+            .Count(static ex => ex.RemoteExceptionType == RpcErrorTypes.QueueFull);
 
         Assert.Equal(1, dispatcher.MaxActive);
         Assert.InRange(successes, 1, 2);
-        Assert.InRange(timeouts, 1, 2);
-        Assert.Equal(3, successes + timeouts);
+        Assert.InRange(dropped, 1, 2);
+        Assert.Equal(3, successes + dropped);
+    }
+
+    [Fact]
+    public async Task UnknownMethod_OnProvidedService_AnsweredWithMethodNotFound()
+    {
+        var serializer = NewSerializer();
+        var (clientConnection, serverConnection) = InMemoryPipe.CreateConnectionPair();
+        await using var client = clientConnection;
+        await using var peer = RpcPeer
+            .Over(serverConnection, serializer, new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) })
+            .Provide<IGameService>(new TestGameService())
+            .Start();
+
+        var wireName = ShaRPC.Core.Generated.ShaRpcServiceRegistry.GetService(typeof(IGameService)).ServiceName;
+
+        using var requestFrame = MessageFramer.FrameMessage(
+            serializer,
+            7,
+            MessageType.Request,
+            new RpcRequest { MessageId = 7, ServiceName = wireName, MethodName = "NoSuchMethod" },
+            ReadOnlySpan<byte>.Empty);
+        await client.SendAsync(requestFrame.Memory);
+
+        using var responseFrame = await client.ReceiveAsync().WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.True(MessageFramer.TryReadFrame(responseFrame.Memory, out _, out var messageType, out var envelope, out _));
+        var response = serializer.Deserialize<RpcResponse>(envelope);
+
+        // A missing method on a known service maps to MethodNotFound — distinct from the
+        // ServiceNotFound a missing service produces, so callers can tell the two apart.
+        Assert.Equal(MessageType.Error, messageType);
+        Assert.False(response.IsSuccess);
+        Assert.Equal(RpcErrorTypes.MethodNotFound, response.ErrorType);
     }
 
     [Fact]

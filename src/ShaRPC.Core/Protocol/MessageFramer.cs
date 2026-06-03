@@ -30,9 +30,12 @@ public static class MessageFramer
     public const int MaxMessageSize = 16 * 1024 * 1024;
 
     /// <summary>
-    /// A framed message read from a stream. The caller owns <see cref="Payload"/> and must dispose it.
+    /// A framed message read from a stream by <see cref="ReadMessageAsync"/>. <see cref="Body"/> is
+    /// the message body only — the 9-byte frame header has already been stripped, unlike the
+    /// full-frame payload an <c>IRpcChannel.ReceiveAsync</c> returns. The caller owns it and must
+    /// dispose it.
     /// </summary>
-    public readonly record struct FramedMessage(int MessageId, MessageType Type, Payload Payload);
+    public readonly record struct FramedMessage(int MessageId, MessageType Type, Payload Body);
 
     /// <summary>
     /// Writes a complete frame (header + payload) into the supplied buffer writer.
@@ -158,6 +161,33 @@ public static class MessageFramer
     }
 
     /// <summary>
+    /// Validates that <paramref name="frame"/> is a well-formed outgoing wire frame: at least a full
+    /// header, a length prefix that exactly matches the buffer length, and within
+    /// <paramref name="maxMessageSize"/>. Shared by every transport's send path so a malformed frame
+    /// is rejected locally instead of being shipped to the peer (where behaviour would otherwise
+    /// differ by transport). Throws <see cref="InvalidDataException"/> on a bad frame.
+    /// </summary>
+    public static void ValidateOutgoingFrame(ReadOnlySpan<byte> frame, int maxMessageSize = MaxMessageSize)
+    {
+        if (frame.Length < HeaderSize)
+        {
+            throw new InvalidDataException($"ShaRPC frame is too small: {frame.Length} bytes.");
+        }
+
+        var declaredLength = BinaryPrimitives.ReadInt32LittleEndian(frame.Slice(0, 4));
+        if (declaredLength != frame.Length)
+        {
+            throw new InvalidDataException(
+                $"ShaRPC frame length prefix {declaredLength} does not match buffer length {frame.Length}.");
+        }
+
+        if (declaredLength > maxMessageSize)
+        {
+            throw new InvalidDataException($"Invalid ShaRPC frame length: {declaredLength}.");
+        }
+    }
+
+    /// <summary>
     /// Parses an un-nested RPC frame out of an in-memory buffer without copying. Both
     /// <paramref name="envelope"/> and <paramref name="payload"/> are slices of
     /// <paramref name="source"/> and share its lifetime.
@@ -181,7 +211,10 @@ public static class MessageFramer
 
         var span = source.Span;
         var totalLength = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(0, 4));
-        if (totalLength < HeaderSize + EnvelopeLengthSize || totalLength > source.Length)
+        // The buffer must contain exactly one frame: too short means the frame is incomplete, while
+        // trailing bytes beyond the declared length indicate a malformed buffer (every transport
+        // hands ReceiveAsync exactly one frame). Reject both rather than silently ignoring a tail.
+        if (totalLength < HeaderSize + EnvelopeLengthSize || totalLength != source.Length)
         {
             return false;
         }
@@ -221,7 +254,9 @@ public static class MessageFramer
 
         var span = source.Span;
         var totalLength = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(0, 4));
-        if (totalLength < HeaderSize || totalLength > source.Length)
+        // As in TryReadFrame, the buffer must hold exactly one frame — reject both an incomplete
+        // frame and one with trailing bytes beyond the declared length.
+        if (totalLength < HeaderSize || totalLength != source.Length)
         {
             return false;
         }
@@ -233,7 +268,7 @@ public static class MessageFramer
 
     /// <summary>
     /// Reads a framed message from a stream. Returns <c>null</c> when the connection is closed.
-    /// The caller owns the returned <see cref="FramedMessage.Payload"/> and must dispose it.
+    /// The caller owns the returned <see cref="FramedMessage.Body"/> and must dispose it.
     /// </summary>
     public static async Task<FramedMessage?> ReadMessageAsync(
         Stream stream,
@@ -242,7 +277,7 @@ public static class MessageFramer
         var headerBuffer = ArrayPool<byte>.Shared.Rent(HeaderSize);
         try
         {
-            var bytesRead = await ReadExactAsync(stream, headerBuffer.AsMemory(0, HeaderSize), ct);
+            var bytesRead = await ReadExactAsync(stream, headerBuffer.AsMemory(0, HeaderSize), ct).ConfigureAwait(false);
             if (bytesRead < HeaderSize)
             {
                 return null; // Connection closed
@@ -264,7 +299,7 @@ public static class MessageFramer
             {
                 try
                 {
-                    bytesRead = await ReadExactAsync(stream, payload.Memory, ct);
+                    bytesRead = await ReadExactAsync(stream, payload.Memory, ct).ConfigureAwait(false);
                     if (bytesRead < payloadLength)
                     {
                         payload.Dispose();
@@ -298,8 +333,8 @@ public static class MessageFramer
     {
         using var writer = new PooledBufferWriter(HeaderSize + payload.Length);
         WriteFrame(writer, messageId, type, payload.Span);
-        await stream.WriteAsync(writer.WrittenMemory, ct);
-        await stream.FlushAsync(ct);
+        await stream.WriteAsync(writer.WrittenMemory, ct).ConfigureAwait(false);
+        await stream.FlushAsync(ct).ConfigureAwait(false);
     }
 
     private static async Task<int> ReadExactAsync(Stream stream, Memory<byte> buffer, CancellationToken ct)
@@ -307,7 +342,7 @@ public static class MessageFramer
         var totalRead = 0;
         while (totalRead < buffer.Length)
         {
-            var read = await stream.ReadAsync(buffer.Slice(totalRead), ct);
+            var read = await stream.ReadAsync(buffer.Slice(totalRead), ct).ConfigureAwait(false);
             if (read == 0)
             {
                 return totalRead; // Connection closed

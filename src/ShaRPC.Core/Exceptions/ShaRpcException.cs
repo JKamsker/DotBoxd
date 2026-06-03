@@ -60,13 +60,34 @@ public class ShaRpcTimeoutException : ShaRpcException
 }
 
 /// <summary>
-/// Exception thrown when a service or method is not found.
+/// Exception thrown when a service, method, or sub-service instance is not found.
 /// </summary>
 public class ShaRpcNotFoundException : ShaRpcException
 {
-    public ShaRpcNotFoundException(string message) : base(message)
+    /// <summary>Distinguishes which lookup produced the not-found result.</summary>
+    public enum NotFoundKind
+    {
+        /// <summary>No service is registered under the requested name.</summary>
+        Service,
+
+        /// <summary>The service exists but exposes no method with the requested name.</summary>
+        Method,
+
+        /// <summary>The sub-service instance id is unknown or has expired.</summary>
+        Instance,
+    }
+
+    public ShaRpcNotFoundException(string message) : this(message, NotFoundKind.Service)
     {
     }
+
+    public ShaRpcNotFoundException(string message, NotFoundKind kind) : base(message)
+    {
+        Kind = kind;
+    }
+
+    /// <summary>Which lookup produced this not-found result.</summary>
+    public NotFoundKind Kind { get; }
 }
 
 /// <summary>

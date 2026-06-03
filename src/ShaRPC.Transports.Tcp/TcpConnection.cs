@@ -57,6 +57,13 @@ public sealed class TcpConnection : IRpcChannel
         RemoteEndpoint = client.Client.RemoteEndPoint?.ToString() ?? "unknown";
     }
 
+    /// <summary>
+    /// Whether this connection is believed to be live. This is a best-effort <em>hint</em>: it
+    /// combines the disposed flag with <see cref="System.Net.Sockets.TcpClient.Connected"/>, which
+    /// reflects only the last known socket state and does not probe the wire. A dropped connection
+    /// is not observed here until the next send/receive fails — rely on I/O exceptions for the
+    /// authoritative state.
+    /// </summary>
     public bool IsConnected => _client.Connected && Volatile.Read(ref _disposed) == 0;
 
     public string RemoteEndpoint { get; }
@@ -67,6 +74,10 @@ public sealed class TcpConnection : IRpcChannel
         {
             throw new ObjectDisposedException(nameof(TcpConnection));
         }
+
+        // Reject malformed/oversized frames locally rather than shipping them to the peer, matching
+        // StreamConnection and the inbound length check in ReceiveAsync below.
+        MessageFramer.ValidateOutgoingFrame(data.Span);
 
         await _sendLock.WaitAsync(ct).ConfigureAwait(false);
         try

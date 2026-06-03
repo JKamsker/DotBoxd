@@ -174,11 +174,11 @@ public class MessageFramerTests
         {
             Assert.Equal(messageId, msg.MessageId);
             Assert.Equal(type, msg.Type);
-            Assert.Equal(payload, msg.Payload.Memory.ToArray());
+            Assert.Equal(payload, msg.Body.Memory.ToArray());
         }
         finally
         {
-            msg.Payload.Dispose();
+            msg.Body.Dispose();
         }
     }
 
@@ -216,11 +216,11 @@ public class MessageFramerTests
         {
             Assert.Equal(messageId, msg.MessageId);
             Assert.Equal(type, msg.Type);
-            Assert.Equal(payload, msg.Payload.Memory.ToArray());
+            Assert.Equal(payload, msg.Body.Memory.ToArray());
         }
         finally
         {
-            msg.Payload.Dispose();
+            msg.Body.Dispose();
         }
     }
 
@@ -249,7 +249,7 @@ public class MessageFramerTests
         }
         finally
         {
-            msg.Payload.Dispose();
+            msg.Body.Dispose();
         }
     }
 
@@ -272,11 +272,40 @@ public class MessageFramerTests
         var msg = result.Value;
         try
         {
-            Assert.Equal(payload, msg.Payload.Memory.ToArray());
+            Assert.Equal(payload, msg.Body.Memory.ToArray());
         }
         finally
         {
-            msg.Payload.Dispose();
+            msg.Body.Dispose();
         }
+    }
+
+    [Fact]
+    public void TryReadFrame_WithTrailingBytes_ReturnsFalse()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var request = new RpcRequest { MessageId = 5, ServiceName = "S", MethodName = "M" };
+        using var frame = MessageFramer.FrameMessage(serializer, 5, MessageType.Request, request, new byte[] { 1, 2, 3 });
+
+        // An exact-length buffer is one complete frame and must parse.
+        Assert.True(MessageFramer.TryReadFrame(frame.Memory, out _, out _, out _, out _));
+
+        // A buffer carrying the frame plus trailing garbage must be rejected rather than silently
+        // accepted with the tail ignored — matters for custom IRpcChannel implementations.
+        var withTail = new byte[frame.Length + 1];
+        frame.Memory.Span.CopyTo(withTail);
+        Assert.False(MessageFramer.TryReadFrame(withTail, out _, out _, out _, out _));
+    }
+
+    [Fact]
+    public void TryReadFrameHeader_WithTrailingBytes_ReturnsFalse()
+    {
+        using var frame = MessageFramer.FrameToPayload(11, MessageType.Cancel, ReadOnlySpan<byte>.Empty);
+
+        Assert.True(MessageFramer.TryReadFrameHeader(frame.Memory, out _, out _));
+
+        var withTail = new byte[frame.Length + 2];
+        frame.Memory.Span.CopyTo(withTail);
+        Assert.False(MessageFramer.TryReadFrameHeader(withTail, out _, out _));
     }
 }

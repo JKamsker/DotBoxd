@@ -173,6 +173,51 @@ public class GeneratedFactoryRegistryTests
         Assert.Same(services, ShaRpcServiceRegistry.GetServices(assembly));
     }
 
+    [Fact]
+    public void GeneratedMetadata_ServiceNameWithBackslash_IsNotDoubleEscaped()
+    {
+        // A wire name containing a backslash exercises literal escaping. The model stores the name
+        // already-escaped, so the generated registry metadata must not escape it a second time —
+        // otherwise ShaRpcGenerated.Services[0].ServiceName would disagree with the dispatcher's
+        // ServiceName (which inserts the same stored name directly into a string literal).
+        const string source = """
+            using ShaRPC.Core.Attributes;
+            using System.Threading.Tasks;
+
+            namespace Escape.Sample
+            {
+                [ShaRpcService(Name = "svc\\path")]
+                public interface IThing
+                {
+                    Task PingAsync();
+                }
+
+                public sealed class Thing : IThing
+                {
+                    public Task PingAsync() => Task.CompletedTask;
+                }
+            }
+            """;
+
+        var assembly = CompileAndLoad(source);
+        var interfaceType = assembly.GetType("Escape.Sample.IThing")!;
+        var implementation = Activator.CreateInstance(assembly.GetType("Escape.Sample.Thing")!)!;
+
+        var generated = assembly.GetType("ShaRPC.Generated.ShaRpcGenerated")
+            ?? throw new InvalidOperationException("Generated factory type not found.");
+        var services = Assert.IsAssignableFrom<IReadOnlyList<ShaRpcGeneratedService>>(
+            generated.GetProperty("Services")!.GetValue(null));
+        var dispatcher = (IServiceDispatcher)generated
+            .GetMethod("CreateDispatcher", new[] { typeof(Type), typeof(object) })!
+            .Invoke(null, new[] { interfaceType, implementation })!;
+
+        // The true semantic wire name is a single backslash: svc\path. Double-escaping would yield
+        // svc\\path in the metadata.
+        Assert.Equal("svc\\path", services[0].ServiceName);
+        // Metadata and the dispatcher must agree on the wire name.
+        Assert.Equal(dispatcher.ServiceName, services[0].ServiceName);
+    }
+
     private interface INotGeneratedService
     {
     }

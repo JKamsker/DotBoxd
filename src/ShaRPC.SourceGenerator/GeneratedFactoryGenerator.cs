@@ -34,7 +34,10 @@ internal static class GeneratedFactoryGenerator
             sb.AppendLine($"                typeof({fullInterfaceName}),");
             sb.AppendLine($"                typeof({fullProxyName}),");
             sb.AppendLine($"                typeof({fullDispatcherName}),");
-            sb.AppendLine($"                \"{LiteralHelpers.EscapeStringLiteral(service.ServiceName)}\"),");
+            // service.ServiceName is already escaped at model-build time (ServiceModelFactory),
+            // matching every other emission site (proxy/dispatcher). Inserting it directly avoids
+            // double-escaping names that contain backslashes, quotes, or control characters.
+            sb.AppendLine($"                \"{service.ServiceName}\"),");
         }
 
         sb.AppendLine("        };");

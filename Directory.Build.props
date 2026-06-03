@@ -3,7 +3,12 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Enforce warnings-as-errors in CI so the published build stays clean, without blocking local
+         development on every warning. NU1900 (NuGet audit source unreachable) is environmental noise
+         and must never fail the build. -->
+    <TreatWarningsAsErrors Condition=" '$(GITHUB_ACTIONS)' == 'true' ">true</TreatWarningsAsErrors>
+    <TreatWarningsAsErrors Condition=" '$(GITHUB_ACTIONS)' != 'true' ">false</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>NU1900</WarningsNotAsErrors>
     <DefaultItemExcludes>$(DefaultItemExcludes);**/artifacts/**</DefaultItemExcludes>
   </PropertyGroup>
 

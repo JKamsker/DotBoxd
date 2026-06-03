@@ -158,8 +158,20 @@ public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
 
     /// <summary>Creates a proxy to call <typeparamref name="TService"/> on the other side.</summary>
     public TService Get<TService>()
-        where TService : class =>
-        ShaRpcServiceRegistry.CreateProxy<TService>(this);
+        where TService : class
+    {
+        // Fail fast on a disposed peer rather than handing back a proxy that only throws on its first
+        // call. Mirrors the disposal guard in Provide.
+        lock (_lifecycleLock)
+        {
+            if (_disposed != 0)
+            {
+                throw new ObjectDisposedException(nameof(RpcPeer));
+            }
+        }
+
+        return ShaRpcServiceRegistry.CreateProxy<TService>(this);
+    }
 
     /// <summary>Begins the read loop. Idempotent; safe to call from a fluent chain.</summary>
     public RpcPeer Start()
