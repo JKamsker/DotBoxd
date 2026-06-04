@@ -94,7 +94,8 @@ internal sealed record ExistingTypeIndex(EquatableArray<ExistingTypeKey> Types)
         name.EndsWith("Proxy", System.StringComparison.Ordinal) ||
         name.EndsWith("Dispatcher", System.StringComparison.Ordinal) ||
         name.EndsWith("Async", System.StringComparison.Ordinal) ||
-        name == "ShaRpcGeneratedExtensions";
+        name == "ShaRpcGeneratedExtensions" ||
+        name == "ShaRpcGenerated";
 
     private static bool TryGetTypeIdentity(SyntaxNode node, out string name, out int arity)
     {

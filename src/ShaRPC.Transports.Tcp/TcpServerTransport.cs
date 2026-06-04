@@ -69,6 +69,19 @@ public sealed class TcpServerTransport : IServerTransport
             _onListenerStartedBeforePublishForTest?.Invoke();
 
             _listener = listener;
+
+            // Dekker-style fence + re-check: a DisposeAsync that raced in after the _disposed guard above
+            // but before this publish saw a still-null _listener (its Interlocked.Exchange was a no-op), so
+            // it never stopped the listener we just published. Detect that and stop it here instead of
+            // leaking the bound port. Mirrors the client-side TcpTransport.ConnectAsync fix.
+            Interlocked.MemoryBarrier();
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                Interlocked.Exchange(ref _listener, null);
+                listener.Stop();
+                Volatile.Write(ref _started, 0);
+                throw new ObjectDisposedException(nameof(TcpServerTransport));
+            }
         }
         catch
         {

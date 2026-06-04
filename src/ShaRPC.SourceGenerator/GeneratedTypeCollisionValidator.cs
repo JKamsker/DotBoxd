@@ -46,6 +46,15 @@ internal static class GeneratedTypeCollisionValidator
                 extensions);
         }
 
+        var factory = new ExistingTypeKey("ShaRPC.Generated", "ShaRpcGenerated", 0);
+        if (existingTypes.Contains(factory, ct))
+        {
+            return RejectedService(
+                model,
+                "generated factory type 'ShaRPC.Generated.ShaRpcGenerated' would collide with an existing type",
+                factory);
+        }
+
         return result;
     }
 
