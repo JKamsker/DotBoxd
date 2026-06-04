@@ -39,6 +39,12 @@ public sealed class TcpTransport : ITransport
             throw new ObjectDisposedException(nameof(TcpTransport));
         }
 
+        // Honour an already-cancelled token at entry, so cancellation does not depend on the WhenAny below
+        // resolving on the cancelled-delay branch (Task.WhenAny returns its first argument when both tasks
+        // are already complete). Matches every sibling entry point (TcpServerTransport.StartAsync/
+        // AcceptAsync, NamedPipeClientTransport.ConnectAsync).
+        ct.ThrowIfCancellationRequested();
+
         if (_connection != null)
         {
             throw new InvalidOperationException("Already connected.");
