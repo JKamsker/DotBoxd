@@ -147,10 +147,12 @@ internal static class MethodModelFactory
                 unsupportedLocation));
         }
 
+        var configuredRpcName = GetConfiguredMethodName(methodSymbol) ?? methodSymbol.Name;
+
         return new MethodModel(
             Name: IdentifierHelpers.EscapeIdentifier(methodSymbol.Name),
             ExplicitImplementationType: GetExplicitImplementationType(methodSymbol.ContainingType),
-            RpcName: LiteralHelpers.EscapeStringLiteral(GetConfiguredMethodName(methodSymbol) ?? methodSymbol.Name),
+            RpcName: LiteralHelpers.EscapeStringLiteral(configuredRpcName),
             ReturnKind: returnKind,
             UnwrappedReturnType: unwrappedReturnType,
             ReturnRefKindKeyword: ReturnRefKindKeyword(methodSymbol.RefKind),
@@ -162,7 +164,8 @@ internal static class MethodModelFactory
             TypeParameterList: typeParameterList,
             ConstraintClauses: constraintClauses,
             UnsupportedReason: unsupportedReason,
-            SubService: subService);
+            SubService: subService,
+            RawRpcName: configuredRpcName);
     }
 
     internal static string GetExplicitImplementationType(INamedTypeSymbol type) =>

@@ -62,12 +62,14 @@ public sealed class Payload : IMemoryOwner<byte>
     /// </summary>
     public void Dispose()
     {
-        // Empty wraps a zero-length array (Rent never returns one) and has _length 0, so skipping
-        // it here keeps the Empty singleton reusable — its _array must never be nulled. For real
-        // payloads the Interlocked.Exchange makes Dispose both idempotent and thread-safe: only the
-        // thread that observes the non-null array returns it, so concurrent or repeated Dispose can
-        // never double-return the same rented buffer to the pool.
-        if (_length == 0)
+        // Protect ONLY the Empty singleton: its array is Array.Empty<byte>() (never pool-rented), so
+        // returning it would be wrong and nulling it would break the shared singleton. Identity is the
+        // correct discriminator — a real zero-length payload (e.g. DetachPayload on a zero-written
+        // PooledBufferWriter) owns a genuine rented array and must be returned; the old `_length == 0`
+        // guard wrongly skipped it and leaked the buffer. For real payloads the Interlocked.Exchange
+        // makes Dispose idempotent and thread-safe: only the thread that observes the non-null array
+        // returns it, so concurrent or repeated Dispose can never double-return the same buffer.
+        if (ReferenceEquals(_array, Array.Empty<byte>()))
         {
             return;
         }

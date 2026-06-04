@@ -15,7 +15,7 @@ public static class RpcDiagnostics
 
     internal static void Report(string operation, Exception error)
     {
-        Trace.TraceError($"{operation}: {error.GetType().Name}: {error.Message}");
+        SafeTrace($"{operation}: {error.GetType().Name}: {error.Message}");
 
         var handler = Error;
         if (handler is null)
@@ -32,8 +32,21 @@ public static class RpcDiagnostics
             }
             catch (Exception subscriberError)
             {
-                Trace.TraceError($"ShaRPC diagnostic handler failed: {subscriberError}");
+                SafeTrace($"ShaRPC diagnostic handler failed: {subscriberError}");
             }
+        }
+    }
+
+    private static void SafeTrace(string message)
+    {
+        try
+        {
+            Trace.TraceError(message);
+        }
+        catch
+        {
+            // Best-effort fallback logging only: a hostile or faulting TraceListener must never break
+            // diagnostic subscriber isolation by propagating out of Report.
         }
     }
 }

@@ -81,6 +81,11 @@ public sealed class TcpServerTransport : IServerTransport
             throw new ObjectDisposedException(nameof(TcpServerTransport));
         }
 
+        // Honour an already-cancelled token before claiming or starting any accept, so a pre-cancelled
+        // call neither consumes a stashed accept nor starts (and then orphans) a fresh
+        // listener.AcceptTcpClientAsync() that the shutdown observation path could never reclaim.
+        ct.ThrowIfCancellationRequested();
+
         // Capture the listener once: a concurrent StopAsync/DisposeAsync nulls the field, and reading
         // it twice could NRE between the guard and the accept call. If Stop races in after this read,
         // AcceptTcpClientAsync simply faults on the stopped listener and the catch below maps it.

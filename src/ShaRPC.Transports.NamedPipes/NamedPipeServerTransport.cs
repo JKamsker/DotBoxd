@@ -157,45 +157,44 @@ public sealed class NamedPipeServerTransport : IServerTransport
         {
             stopCts = _stopCts;
             _stopCts = null;
+
+            // Cancel BEFORE disposing the pending stream. Disposing the stream wakes a blocked
+            // WaitForConnectionAsync with ObjectDisposedException, and its catch filter converts that to
+            // OperationCanceledException only when the (linked) token is already cancelled. The linked
+            // token derives from _stopCts, so cancelling first closes the dispose-before-cancel window:
+            // a stopped pending accept always surfaces as cancellation, never a raw ObjectDisposedException.
+            // The cancellation callback only disposes the pipe stream (lock-free), so running it under
+            // _sync cannot deadlock.
+            stopCts?.Cancel();
             _pendingStream?.Dispose();
             _pendingStream = null;
         }
 
-        // Test seam (null/no-op in production): invoked after the pending stream has been disposed but
-        // before the stop source is cancelled, so a test can deterministically open the dispose-before-cancel
-        // window and observe how a blocked AcceptAsync surfaces the disposed stream. Never set in production.
-        var beforeCancelHook = _beforeStopCancelForTest;
-        if (beforeCancelHook is not null)
+        // Test seam (null/no-op in production): fires OUTSIDE the lock so a blocked AcceptAsync can run
+        // its finally (which takes _sync) and complete. A test parks here until the woken accept has
+        // unwound, confirming it surfaced cancellation rather than the disposed stream. Never set in
+        // production.
+        var afterStopHook = _beforeStopCancelForTest;
+        if (afterStopHook is not null)
         {
-            return StopWithBeforeCancelHookAsync(beforeCancelHook, stopCts);
+            return CompleteStopAsync(afterStopHook, stopCts);
         }
 
-        if (stopCts is not null)
-        {
-            stopCts.Cancel();
-            stopCts.Dispose();
-        }
-
+        stopCts?.Dispose();
         return Task.CompletedTask;
     }
 
     /// <summary>
-    /// Test-only seam invoked inside <see cref="StopAsync"/> after the pending stream is disposed and
-    /// before <c>stopCts.Cancel()</c> runs. Lets a test deterministically widen the dispose-before-cancel
-    /// window so a blocked <c>AcceptAsync</c> can observe the disposed stream before cancellation is
-    /// signalled. Never set in production.
+    /// Test-only seam invoked inside <see cref="StopAsync"/> after the stop source has been cancelled and
+    /// the pending stream disposed (outside <c>_sync</c>). Lets a test park until a woken <c>AcceptAsync</c>
+    /// has fully unwound, to assert it surfaced cancellation. Never set in production.
     /// </summary>
     internal Func<Task>? _beforeStopCancelForTest;
 
-    private static async Task StopWithBeforeCancelHookAsync(Func<Task> beforeCancelHook, CancellationTokenSource? stopCts)
+    private static async Task CompleteStopAsync(Func<Task> hook, CancellationTokenSource? stopCts)
     {
-        await beforeCancelHook().ConfigureAwait(false);
-
-        if (stopCts is not null)
-        {
-            stopCts.Cancel();
-            stopCts.Dispose();
-        }
+        await hook().ConfigureAwait(false);
+        stopCts?.Dispose();
     }
 
     public async ValueTask DisposeAsync()

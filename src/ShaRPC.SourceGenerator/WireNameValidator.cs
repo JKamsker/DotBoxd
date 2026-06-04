@@ -40,7 +40,7 @@ internal static class WireNameValidator
             }
 
             var reason =
-                $"wire method name '{method.RpcName}' is used by multiple service methods; give each overload a distinct [ShaRpcMethod(Name = ...)] value";
+                $"wire method name '{method.RawRpcName}' is used by multiple service methods; give each overload a distinct [ShaRpcMethod(Name = ...)] value";
             methods[i] = method with { UnsupportedReason = reason };
             methodDiagnostics.Add(new MethodDiagnostic(interfaceName, method.Name, reason, methodLocations[i]));
         }

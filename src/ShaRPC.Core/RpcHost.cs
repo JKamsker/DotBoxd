@@ -23,6 +23,7 @@ public sealed class RpcHost : IAsyncDisposable
     private Task? _stopTask;
     private bool _starting;
     private int _disposed;
+    private int _listenerStopped;
 
     // Test seam: invoked after _listener.StartAsync succeeds but before StartAsync's second
     // lifecycle lock. Null (inert) in production. Lets a test deterministically run StopCoreAsync
@@ -94,6 +95,10 @@ public sealed class RpcHost : IAsyncDisposable
             cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             _cts = cts;
             _starting = true;
+
+            // Fresh lifecycle: arm the single-shot listener-stop guard so exactly one of StartAsync's
+            // recovery path and StopCoreAsync stops the listener this run.
+            _listenerStopped = 0;
         }
 
         try
@@ -165,9 +170,26 @@ public sealed class RpcHost : IAsyncDisposable
             {
                 stopStartedListener = true;
             }
-            else if (_stopTask is not null || cts.IsCancellationRequested)
+            else if (_stopTask is not null)
             {
+                // A StopAsync is in flight; it owns _cts and will clean up. We only need to ensure the
+                // listener we started is stopped (guarded below so it is not stopped twice).
                 stopStartedListener = true;
+            }
+            else if (cts.IsCancellationRequested)
+            {
+                // The caller token fired after the transport started but before the accept loop launched,
+                // and no StopAsync is in flight. Reclaim our own lifecycle state (mirroring the catch
+                // block) so the cancelled, undisposed CTS does not linger and make a later StartAsync
+                // wrongly report "Host is already running."
+                disposeCts = ReferenceEquals(_cts, cts);
+                if (disposeCts)
+                {
+                    _cts = null;
+                }
+
+                stopStartedListener = true;
+                startFailure = new InvalidOperationException("Host start was stopped before it completed.");
             }
             else
             {
@@ -179,7 +201,10 @@ public sealed class RpcHost : IAsyncDisposable
 
         try
         {
-            if (stopStartedListener)
+            // Stop the listener at most once across this lifecycle: a concurrent or already-completed
+            // StopCoreAsync may have stopped it too, and IServerTransport does not require StopAsync to
+            // be safe to call twice. The guard is re-armed per StartAsync.
+            if (stopStartedListener && Interlocked.Exchange(ref _listenerStopped, 1) == 0)
             {
                 await _listener.StopAsync(CancellationToken.None).ConfigureAwait(false);
             }
@@ -249,7 +274,23 @@ public sealed class RpcHost : IAsyncDisposable
             // could start a peer after CloseAllAsync, leaking the channel past host shutdown.
             await _acceptLoop.DrainInFlightAsync().ConfigureAwait(false);
 
-            await _listener.StopAsync(ct).ConfigureAwait(false);
+            // Stop the listener at most once per lifecycle (see StartAsync's recovery path): the flag is
+            // armed by StartAsync, so whichever of the two paths runs first performs the single stop.
+            if (Interlocked.Exchange(ref _listenerStopped, 1) == 0)
+            {
+                try
+                {
+                    await _listener.StopAsync(ct).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // The stop did not complete (e.g. the supplied token was already cancelled); re-arm
+                    // so a retried StopAsync can stop the listener again.
+                    Volatile.Write(ref _listenerStopped, 0);
+                    throw;
+                }
+            }
+
             await _peers.CloseAllAsync().ConfigureAwait(false);
             await _peers.AwaitCleanupAsync().ConfigureAwait(false);
             completed = true;

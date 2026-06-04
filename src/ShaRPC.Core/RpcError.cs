@@ -40,7 +40,7 @@ internal static class RpcErrors
             {
                 return new RpcError(
                     Truncate(info.Message ?? string.Empty),
-                    string.IsNullOrEmpty(info.Type) ? RpcErrorTypes.InternalError : info.Type);
+                    string.IsNullOrEmpty(info.Type) ? RpcErrorTypes.InternalError : Truncate(info.Type));
             }
         }
 
@@ -76,6 +76,15 @@ internal static class RpcErrors
             return value;
         }
 
-        return value.Substring(0, MaxReflectedValueLength - 3) + "...";
+        var cutAt = MaxReflectedValueLength - 3;
+
+        // Never split a UTF-16 surrogate pair: if the last kept char is a high surrogate, drop it so the
+        // result cannot end with an orphaned (malformed) surrogate that breaks strict UTF-8 encoding.
+        if (char.IsHighSurrogate(value[cutAt - 1]))
+        {
+            cutAt--;
+        }
+
+        return value.Substring(0, cutAt) + "...";
     }
 }

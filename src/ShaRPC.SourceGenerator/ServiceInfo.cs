@@ -37,7 +37,8 @@ internal sealed record ServiceModel(
     string Namespace,
     string InterfaceName,
     string ServiceName,
-    EquatableArray<MethodModel> Methods);
+    EquatableArray<MethodModel> Methods,
+    string RawServiceName = "");
 
 /// <summary>
 /// Immutable, value-equatable representation of a service method. When
@@ -61,7 +62,8 @@ internal sealed record MethodModel(
     string ConstraintClauses = "",
     bool RequiresDispatcherReceiverCast = false,
     string? UnsupportedReason = null,
-    SubServiceInfo? SubService = null);
+    SubServiceInfo? SubService = null,
+    string RawRpcName = "");
 
 /// <summary>
 /// Immutable, value-equatable representation of a method parameter.
