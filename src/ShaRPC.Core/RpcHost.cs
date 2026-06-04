@@ -425,7 +425,19 @@ public sealed class RpcHost : IAsyncDisposable
         }
         finally
         {
-            await _listener.DisposeAsync().ConfigureAwait(false);
+            try
+            {
+                // If StopAsync threw (e.g. the transport's listener stop faulted), its own peer teardown
+                // was skipped and the _disposed guard blocks any retry — so close accepted peers here.
+                // Idempotent on the normal path: StopCoreAsync already closed them and CloseAllAsync is a
+                // no-op on an empty collection.
+                await _peers.CloseAllAsync().ConfigureAwait(false);
+                await _peers.AwaitCleanupAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                await _listener.DisposeAsync().ConfigureAwait(false);
+            }
         }
     }
 }

@@ -35,6 +35,18 @@ internal static class MethodModelFactory
         var unsupportedLocation = methodLocation;
         var requiresUnsafeSignature = RpcTypeValidator.RequiresUnsafeContext(returnType, ct);
 
+        // An explicit empty/whitespace [ShaRpcMethod(Name = "")] compiles but throws ArgumentException on
+        // the first call (the empty wire name fails validation), so reject it at build time.
+        var configuredMethodName = GetConfiguredMethodName(methodSymbol);
+        if (configuredMethodName is not null && string.IsNullOrWhiteSpace(configuredMethodName))
+        {
+            SetUnsupported(
+                ref unsupportedReason,
+                ref unsupportedLocation,
+                "[ShaRpcMethod(Name = ...)] wire name must not be empty or whitespace",
+                methodLocation);
+        }
+
         SetUnsupported(
             ref unsupportedReason,
             ref unsupportedLocation,
@@ -147,7 +159,7 @@ internal static class MethodModelFactory
                 unsupportedLocation));
         }
 
-        var configuredRpcName = GetConfiguredMethodName(methodSymbol) ?? methodSymbol.Name;
+        var configuredRpcName = configuredMethodName ?? methodSymbol.Name;
 
         return new MethodModel(
             Name: IdentifierHelpers.EscapeIdentifier(methodSymbol.Name),
