@@ -87,12 +87,160 @@ public sealed class RpcStreamManagerRegressionTests
         Assert.Equal(0, streams.PendingCreditCount);
     }
 
+    [Fact]
+    public async Task TryAddCredit_WhenRegistrationCompletesAfterSenderMiss_CreditsActiveSender()
+    {
+        var sentItem = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var streams = CreateStreamManager((frame, ct) =>
+        {
+            Assert.True(MessageFramer.TryReadFrameHeader(frame, out _, out var type));
+            if (type == MessageType.StreamItem)
+            {
+                sentItem.TrySetResult();
+            }
+
+            return Task.CompletedTask;
+        });
+        var handle = streams.ReserveOutbound(RpcStreamKind.Binary);
+        RpcOutboundStreamSet? outbound = null;
+        streams.AfterOutboundSenderMissForTest = streamId =>
+        {
+            if (streamId == handle.StreamId)
+            {
+                outbound = streams.RegisterOutbound(
+                    new[] { RpcStreamAttachment.FromStream(handle, new MemoryStream()) },
+                    CancellationToken.None);
+            }
+        };
+        using var credit = RpcRawFrame.FrameInt32(handle.StreamId, MessageType.StreamCredit, 1);
+        using var sendCts = new CancellationTokenSource();
+
+        try
+        {
+            Assert.True(streams.TryAddCredit(credit));
+            await streams.SendStreamItemAsync(handle.StreamId, new byte[] { 1 }, sendCts.Token)
+                .WaitAsync(Timeout);
+            await sentItem.Task.WaitAsync(Timeout);
+        }
+        finally
+        {
+            sendCts.Cancel();
+            if (outbound is not null)
+            {
+                await outbound.DisposeAsync().AsTask().WaitAsync(Timeout);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task CancelOutbound_WhenRegistrationCompletesAfterSenderMiss_CancelsActiveSender()
+    {
+        var streams = CreateStreamManager();
+        var handle = streams.ReserveOutbound(RpcStreamKind.Binary);
+        var source = new CancellationObservingStream();
+        RpcOutboundStreamSet? outbound = null;
+        streams.AfterOutboundSenderMissForTest = streamId =>
+        {
+            if (streamId == handle.StreamId)
+            {
+                outbound = streams.RegisterOutbound(
+                    new[] { RpcStreamAttachment.FromStream(handle, source, leaveOpen: false) },
+                    CancellationToken.None);
+            }
+        };
+
+        try
+        {
+            streams.CancelOutbound(handle.StreamId);
+            Assert.NotNull(outbound);
+            outbound!.Start();
+
+            await source.Canceled.WaitAsync(Timeout);
+        }
+        finally
+        {
+            if (outbound is not null)
+            {
+                await outbound.DisposeAsync().AsTask().WaitAsync(Timeout);
+            }
+        }
+    }
+
     private static RpcStreamManager CreateStreamManager()
+        => CreateStreamManager(SendNoopAsync);
+
+    private static RpcStreamManager CreateStreamManager(
+        Func<ReadOnlyMemory<byte>, CancellationToken, Task> sendAsync)
     {
         var serializer = new MessagePackRpcSerializer();
-        return new RpcStreamManager(serializer, SendNoopAsync, exceptionTransformer: null);
+        return new RpcStreamManager(serializer, sendAsync, exceptionTransformer: null);
     }
 
     private static Task SendNoopAsync(ReadOnlyMemory<byte> frame, CancellationToken ct) =>
         Task.CompletedTask;
+
+    private sealed class CancellationObservingStream : Stream
+    {
+        private readonly TaskCompletionSource _canceled =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<int> _readReleased =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task Canceled => _canceled.Task;
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush()
+        {
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) =>
+            throw new NotSupportedException();
+
+        public override ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _canceled.TrySetResult();
+                return ValueTask.FromCanceled<int>(cancellationToken);
+            }
+
+            return new ValueTask<int>(_readReleased.Task);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            _readReleased.TrySetResult(0);
+            base.Dispose(disposing);
+        }
+
+        public override ValueTask DisposeAsync()
+        {
+            _readReleased.TrySetResult(0);
+            return default;
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) =>
+            throw new NotSupportedException();
+
+        public override void SetLength(long value) =>
+            throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) =>
+            throw new NotSupportedException();
+    }
 }

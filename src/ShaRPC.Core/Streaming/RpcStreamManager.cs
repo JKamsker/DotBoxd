@@ -39,6 +39,9 @@ internal sealed class RpcStreamManager
     // Deterministic coverage for the reserved-to-released pending-credit race; null in production.
     internal Action<int>? AfterReservedOutboundCreditObservedForTest { get; set; }
 
+    // Deterministic coverage for sender-miss-to-reservation-check races; null in production.
+    internal Action<int>? AfterOutboundSenderMissForTest { get; set; }
+
     public RpcStreamReceiver GetOrRegisterInbound(RpcStreamHandle handle, CancellationToken ct)
     {
         if (handle.StreamId == 0)
@@ -191,18 +194,9 @@ internal sealed class RpcStreamManager
                 }
 
                 added[addedCount++] = state;
-                if (_canceledOutbound.TryRemove(state.StreamId, out _))
-                {
-                    state.Cancel();
-                    throw new OperationCanceledException("Stream was canceled before registration.");
-                }
-
-                if (_pendingCredits.TryRemove(state.StreamId, out var credits))
-                {
-                    state.AddCredit(credits);
-                }
-
+                DrainPendingOutbound(state);
                 _reservedOutbound.TryRemove(state.StreamId, out _);
+                DrainPendingOutbound(state);
                 rows[i] = (attachments[i], state);
             }
 
@@ -290,8 +284,14 @@ internal sealed class RpcStreamManager
             return true;
         }
 
+        AfterOutboundSenderMissForTest?.Invoke(streamId);
         if (!_reservedOutbound.ContainsKey(streamId))
         {
+            if (_senders.TryGetValue(streamId, out state))
+            {
+                state.AddCredit(count);
+            }
+
             return true;
         }
 
@@ -321,8 +321,14 @@ internal sealed class RpcStreamManager
             return;
         }
 
+        AfterOutboundSenderMissForTest?.Invoke(streamId);
         if (!_reservedOutbound.ContainsKey(streamId))
         {
+            if (_senders.TryGetValue(streamId, out state))
+            {
+                state.Cancel();
+            }
+
             return;
         }
 
@@ -346,12 +352,19 @@ internal sealed class RpcStreamManager
 
     public void RemoveOutbound(int streamId)
     {
-        _pendingCredits.TryRemove(streamId, out _);
-        _reservedOutbound.TryRemove(streamId, out _);
-        _canceledOutbound.TryRemove(streamId, out _);
+        ClearOutboundTracking(streamId);
         if (_senders.TryRemove(streamId, out var state))
         {
             state.Dispose();
+        }
+    }
+
+    internal void RemoveCompletedOutbound(int streamId)
+    {
+        ClearOutboundTracking(streamId);
+        if (_senders.TryRemove(streamId, out var state))
+        {
+            state.DisposeAfterCompletion();
         }
     }
 
@@ -425,6 +438,27 @@ internal sealed class RpcStreamManager
         _senders.TryGetValue(streamId, out var state)
             ? state
             : throw new ShaRpcConnectionException($"Stream '{streamId}' is no longer active.");
+
+    private void DrainPendingOutbound(RpcStreamSendState state)
+    {
+        if (_canceledOutbound.TryRemove(state.StreamId, out _))
+        {
+            state.Cancel();
+            throw new OperationCanceledException("Stream was canceled before registration.");
+        }
+
+        if (_pendingCredits.TryRemove(state.StreamId, out var credits))
+        {
+            state.AddCredit(credits);
+        }
+    }
+
+    private void ClearOutboundTracking(int streamId)
+    {
+        _pendingCredits.TryRemove(streamId, out _);
+        _reservedOutbound.TryRemove(streamId, out _);
+        _canceledOutbound.TryRemove(streamId, out _);
+    }
 
     private void AbortInbound(int streamId)
     {

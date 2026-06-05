@@ -54,6 +54,39 @@ public class EnvelopeRoundTripTests
     }
 
     [Fact]
+    public void RpcRequest_RoundTrips_WithStreams()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var request = new RpcRequest
+        {
+            MessageId = 42,
+            ServiceName = "Streaming",
+            MethodName = "Upload",
+            Streams = new[]
+            {
+                new RpcStreamHandle(101, RpcStreamKind.Binary),
+                new RpcStreamHandle(102, RpcStreamKind.Items),
+            },
+        };
+
+        var result = RoundTrip(serializer, request);
+
+        Assert.NotNull(result.Streams);
+        Assert.Collection(
+            result.Streams!,
+            stream =>
+            {
+                Assert.Equal(101, stream.StreamId);
+                Assert.Equal(RpcStreamKind.Binary, stream.Kind);
+            },
+            stream =>
+            {
+                Assert.Equal(102, stream.StreamId);
+                Assert.Equal(RpcStreamKind.Items, stream.Kind);
+            });
+    }
+
+    [Fact]
     public void RpcResponse_RoundTrips_Success()
     {
         var serializer = new MessagePackRpcSerializer();
@@ -85,6 +118,24 @@ public class EnvelopeRoundTripTests
         Assert.False(result.IsSuccess);
         Assert.Equal("boom", result.ErrorMessage);
         Assert.Equal("ShaRpcRemoteException", result.ErrorType);
+    }
+
+    [Fact]
+    public void RpcResponse_RoundTrips_WithStream()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var response = new RpcResponse
+        {
+            MessageId = 9,
+            IsSuccess = true,
+            Stream = new RpcStreamHandle(201, RpcStreamKind.Binary),
+        };
+
+        var result = RoundTrip(serializer, response);
+
+        Assert.NotNull(result.Stream);
+        Assert.Equal(201, result.Stream!.Value.StreamId);
+        Assert.Equal(RpcStreamKind.Binary, result.Stream.Value.Kind);
     }
 
     [Fact]

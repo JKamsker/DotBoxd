@@ -64,4 +64,15 @@ internal sealed class RpcStreamSendState : IDisposable
         _credits.Dispose();
         _cts.Dispose();
     }
+
+    public void DisposeAfterCompletion()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        _credits.Dispose();
+        _cts.Dispose();
+    }
 }

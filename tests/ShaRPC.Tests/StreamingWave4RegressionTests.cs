@@ -124,9 +124,11 @@ public sealed class StreamingWave4RegressionTests
         var serializer = new MessagePackRpcSerializer();
         var diagnostics = new TaskCompletionSource<RpcDiagnosticErrorEventArgs>(
             TaskCreationOptions.RunContinuationsAsynchronously);
+        var failure = new InvalidOperationException("credit send failed");
         void OnDiagnostic(object? sender, RpcDiagnosticErrorEventArgs args)
         {
-            if (args.Operation == "Stream credit notification failed")
+            if (args.Operation == "Stream credit notification failed" &&
+                ReferenceEquals(args.Error, failure))
             {
                 diagnostics.TrySetResult(args);
             }
@@ -142,7 +144,7 @@ public sealed class StreamingWave4RegressionTests
                     Assert.True(MessageFramer.TryReadFrameHeader(frame, out _, out var type));
                     if (type == MessageType.StreamCredit)
                     {
-                        throw new InvalidOperationException("credit send failed");
+                        throw failure;
                     }
 
                     return Task.CompletedTask;
@@ -152,7 +154,7 @@ public sealed class StreamingWave4RegressionTests
             streams.RegisterInboundResponse(new RpcStreamHandle(603, RpcStreamKind.Binary), CancellationToken.None);
 
             var diagnostic = await diagnostics.Task.WaitAsync(TestTimeout);
-            Assert.IsType<InvalidOperationException>(diagnostic.Error);
+            Assert.Same(failure, diagnostic.Error);
             await WaitUntilAsync(() => streams.InboundReceiverCount == 0);
         }
         finally

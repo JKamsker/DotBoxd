@@ -146,7 +146,7 @@ internal sealed class RpcOutboundStreamSet : IAsyncDisposable
         }
         finally
         {
-            _manager.RemoveOutbound(state.StreamId);
+            _manager.RemoveCompletedOutbound(state.StreamId);
         }
     }
 
