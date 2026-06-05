@@ -11,6 +11,7 @@ internal sealed class RpcStreamManager
     public const int WindowSize = 4;
 
     private readonly ConcurrentDictionary<int, RpcStreamReceiver> _receivers = new();
+    private readonly ConcurrentDictionary<int, byte> _canceledOutbound = new();
     private readonly ConcurrentDictionary<int, int> _pendingCredits = new();
     private readonly ConcurrentDictionary<int, byte> _reservedOutbound = new();
     private readonly ConcurrentDictionary<int, RpcStreamSendState> _senders = new();
@@ -34,6 +35,9 @@ internal sealed class RpcStreamManager
     internal int OutboundSenderCount => _senders.Count;
 
     internal int PendingCreditCount => _pendingCredits.Count;
+
+    // Deterministic coverage for the reserved-to-released pending-credit race; null in production.
+    internal Action<int>? AfterReservedOutboundCreditObservedForTest { get; set; }
 
     public RpcStreamReceiver GetOrRegisterInbound(RpcStreamHandle handle, CancellationToken ct)
     {
@@ -95,6 +99,7 @@ internal sealed class RpcStreamManager
         if (_reservedOutbound.TryRemove(streamId, out _))
         {
             _pendingCredits.TryRemove(streamId, out _);
+            _canceledOutbound.TryRemove(streamId, out _);
         }
     }
 
@@ -186,6 +191,12 @@ internal sealed class RpcStreamManager
                 }
 
                 added[addedCount++] = state;
+                if (_canceledOutbound.TryRemove(state.StreamId, out _))
+                {
+                    state.Cancel();
+                    throw new OperationCanceledException("Stream was canceled before registration.");
+                }
+
                 if (_pendingCredits.TryRemove(state.StreamId, out var credits))
                 {
                     state.AddCredit(credits);
@@ -284,6 +295,7 @@ internal sealed class RpcStreamManager
             return true;
         }
 
+        AfterReservedOutboundCreditObservedForTest?.Invoke(streamId);
         _pendingCredits.AddOrUpdate(
             streamId,
             count,
@@ -292,6 +304,10 @@ internal sealed class RpcStreamManager
             _pendingCredits.TryRemove(streamId, out var pending))
         {
             state.AddCredit(pending);
+        }
+        else if (!_reservedOutbound.ContainsKey(streamId))
+        {
+            _pendingCredits.TryRemove(streamId, out _);
         }
 
         return true;
@@ -302,16 +318,37 @@ internal sealed class RpcStreamManager
         if (_senders.TryGetValue(streamId, out var state))
         {
             state.Cancel();
+            return;
+        }
+
+        if (!_reservedOutbound.ContainsKey(streamId))
+        {
+            return;
+        }
+
+        _canceledOutbound.TryAdd(streamId, 0);
+        if (_senders.TryGetValue(streamId, out state) &&
+            _canceledOutbound.TryRemove(streamId, out _))
+        {
+            state.Cancel();
+        }
+        else if (!_reservedOutbound.ContainsKey(streamId))
+        {
+            _canceledOutbound.TryRemove(streamId, out _);
         }
     }
 
     public void RemoveInbound(int streamId) =>
+        AbortInbound(streamId);
+
+    internal void RemoveCompletedInbound(int streamId) =>
         _receivers.TryRemove(streamId, out _);
 
     public void RemoveOutbound(int streamId)
     {
         _pendingCredits.TryRemove(streamId, out _);
         _reservedOutbound.TryRemove(streamId, out _);
+        _canceledOutbound.TryRemove(streamId, out _);
         if (_senders.TryRemove(streamId, out var state))
         {
             state.Dispose();
@@ -388,6 +425,14 @@ internal sealed class RpcStreamManager
         _senders.TryGetValue(streamId, out var state)
             ? state
             : throw new ShaRpcConnectionException($"Stream '{streamId}' is no longer active.");
+
+    private void AbortInbound(int streamId)
+    {
+        if (_receivers.TryRemove(streamId, out var receiver))
+        {
+            receiver.Abort(new ShaRpcConnectionException($"Stream '{streamId}' is no longer active."));
+        }
+    }
 
     private async Task SendControlAsync(int streamId, MessageType type, CancellationToken ct)
     {

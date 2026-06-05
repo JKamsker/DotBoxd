@@ -463,14 +463,17 @@ internal static class ProxyGenerator
             Parameters = s.Parameters,
         };
         var locals = new GeneratedLocalNames(s.Parameters, ct);
-        var invocation = BuildClientInvocation(
-            sb,
-            service,
-            virtualSource,
-            ProxyGenerationHelpers.GetCancellationTokenArgument(s.Parameters, ct),
-            locals,
-            ct);
-        ProxyInvocationEmitter.Emit(sb, virtualSource, invocation, locals, ct);
+        var ctArg = ProxyGenerationHelpers.GetCancellationTokenArgument(s.Parameters, ct);
+        if (virtualSource.ReturnKind == MethodReturnKind.AsyncEnumerable &&
+            HasStreamedRequestParameter(virtualSource, ct))
+        {
+            EmitLazyAsyncEnumerableInvocation(sb, service, virtualSource, ctArg, locals, ct);
+        }
+        else
+        {
+            var invocation = BuildClientInvocation(sb, service, virtualSource, ctArg, locals, ct);
+            ProxyInvocationEmitter.Emit(sb, virtualSource, invocation, locals, ct);
+        }
 
         sb.AppendLine("        }");
     }

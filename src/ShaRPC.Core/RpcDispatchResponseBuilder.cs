@@ -63,6 +63,7 @@ internal sealed class RpcDispatchResponseBuilder
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
+            await streaming.AbandonResponseAsync().ConfigureAwait(false);
             throw;
         }
         catch (Exception ex)
@@ -75,21 +76,29 @@ internal sealed class RpcDispatchResponseBuilder
 
         if (streaming.Response is { } stream)
         {
-            var response = new RpcResponse
+            try
             {
-                MessageId = messageId,
-                IsSuccess = true,
-                Stream = stream.Handle,
-            };
-            using var responseWriter = new PooledBufferWriter(
-                MessageFramer.HeaderSize + MessageFramer.EnvelopeLengthSize);
-            MessageFramer.WriteFramePrefix(responseWriter, messageId, MessageType.Response);
-            var responseEnvelopeStart = responseWriter.WrittenCount;
-            _serializer.Serialize(responseWriter, response);
-            var responseEnvelopeLength = responseWriter.WrittenCount - responseEnvelopeStart;
-            return new RpcDispatchResult(
-                MessageFramer.FinishFrame(responseWriter, responseEnvelopeLength),
-                stream);
+                var response = new RpcResponse
+                {
+                    MessageId = messageId,
+                    IsSuccess = true,
+                    Stream = stream.Handle,
+                };
+                using var responseWriter = new PooledBufferWriter(
+                    MessageFramer.HeaderSize + MessageFramer.EnvelopeLengthSize);
+                MessageFramer.WriteFramePrefix(responseWriter, messageId, MessageType.Response);
+                var responseEnvelopeStart = responseWriter.WrittenCount;
+                _serializer.Serialize(responseWriter, response);
+                var responseEnvelopeLength = responseWriter.WrittenCount - responseEnvelopeStart;
+                return new RpcDispatchResult(
+                    MessageFramer.FinishFrame(responseWriter, responseEnvelopeLength),
+                    stream);
+            }
+            catch
+            {
+                await streaming.AbandonResponseAsync().ConfigureAwait(false);
+                throw;
+            }
         }
 
         return new RpcDispatchResult(MessageFramer.FinishFrame(writer, envelopeLength), stream: null);

@@ -81,14 +81,17 @@ internal sealed class RpcStreamReceiver
             }
 
             await _chunks.Reader.Completion.ConfigureAwait(false);
+            _manager.RemoveCompletedInbound(Handle.StreamId);
             return null;
         }
-        finally
+        catch
         {
             if (_chunks.Reader.Completion.IsCompleted)
             {
-                _manager.RemoveInbound(Handle.StreamId);
+                _manager.RemoveCompletedInbound(Handle.StreamId);
             }
+
+            throw;
         }
     }
 

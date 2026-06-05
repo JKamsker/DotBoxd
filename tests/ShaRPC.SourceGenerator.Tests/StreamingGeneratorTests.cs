@@ -153,6 +153,49 @@ public sealed class StreamingGeneratorTests
     }
 
     [Fact]
+    public void AsyncSiblingDirectAsyncEnumerableWithAddedCt_ReservesStreamsInsideEnumeration()
+    {
+        const string source = """
+            using ShaRPC.Core.Attributes;
+            using System.Collections.Generic;
+            using System.IO;
+
+            namespace Streaming.LazySibling
+            {
+                [ShaRpcService]
+                public interface ILazySiblingStreaming
+                {
+                    IAsyncEnumerable<int> EchoAsync(Stream bytes);
+                }
+            }
+            """;
+
+        var compilation = GeneratorTestHelper.CreateCompilation(source);
+        var driver = GeneratorTestHelper.CreateDriver().RunGenerators(compilation);
+        var runResult = driver.GetRunResult();
+
+        runResult.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty();
+        EmitShouldSucceed(((CSharpCompilation)compilation).AddSyntaxTrees(runResult.GeneratedTrees));
+
+        var proxy = GeneratedSource(
+            runResult,
+            GeneratorTestHelper.HintName(
+                "Streaming.LazySibling",
+                "ILazySiblingStreaming",
+                GeneratorTestHelper.GeneratedKind.Proxy));
+        var signature = "global::System.Collections.Generic.IAsyncEnumerable<int> EchoAsync(global::System.IO.Stream bytes, global::System.Threading.CancellationToken ct = default)";
+        var signatureIndex = proxy.IndexOf(signature, StringComparison.Ordinal);
+        var returnIndex = proxy.IndexOf("return __sharpc_enumerate();", signatureIndex, StringComparison.Ordinal);
+        var reserveIndex = proxy.IndexOf("ReserveStream(global::ShaRPC.Core.Protocol.RpcStreamKind.Binary)", signatureIndex, StringComparison.Ordinal);
+
+        signatureIndex.Should().BeGreaterOrEqualTo(0);
+        returnIndex.Should().BeGreaterThan(signatureIndex);
+        reserveIndex.Should().BeGreaterThan(returnIndex);
+        proxy.Substring(signatureIndex).Should().Contain("[global::System.Runtime.CompilerServices.EnumeratorCancellation]");
+    }
+
+    [Fact]
     public void NullableStreamingShapes_ProduceUnsupportedDiagnostics()
     {
         const string source = """

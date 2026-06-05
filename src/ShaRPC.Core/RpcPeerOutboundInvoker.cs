@@ -242,7 +242,17 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
             throw;
         }
 
-        var pending = ReservePendingRequest(ct);
+        (int MessageId, TaskCompletionSource<ReceivedResponse> Completion) pending;
+        try
+        {
+            pending = ReservePendingRequest(ct);
+        }
+        catch
+        {
+            _streams.ReleaseOutboundReservations(streams);
+            throw;
+        }
+
         var outboundStreams = RpcOutboundStreamSet.Empty;
         try
         {

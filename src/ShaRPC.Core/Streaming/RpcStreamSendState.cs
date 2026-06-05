@@ -35,6 +35,9 @@ internal sealed class RpcStreamSendState : IDisposable
         catch (ObjectDisposedException)
         {
         }
+        catch (SemaphoreFullException)
+        {
+        }
     }
 
     public void Cancel()

@@ -376,8 +376,12 @@ internal sealed class RpcPeerInboundDispatcher
             outbound.Start();
             await outbound.WaitAsync().ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (inbound.RequestCts.IsCancellationRequested)
+        catch (OperationCanceledException) when (!registered || inbound.RequestCts.IsCancellationRequested)
         {
+            if (!registered)
+            {
+                await stream.DisposeSourceAsync().ConfigureAwait(false);
+            }
         }
         catch (Exception ex)
         {
