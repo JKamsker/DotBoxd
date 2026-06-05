@@ -1,4 +1,5 @@
 using System.IO.Pipes;
+using System.Net.Sockets;
 using ShaRPC.Core.Protocol;
 using ShaRPC.Core.Transport;
 
@@ -192,10 +193,11 @@ public sealed class NamedPipeServerTransport : IServerTransport
             _stopCts = null;
 
             // Cancel BEFORE disposing the pending stream. Disposing the stream wakes a blocked
-            // WaitForConnectionAsync with ObjectDisposedException, and its catch filter converts that to
-            // OperationCanceledException only when the (linked) token is already cancelled. The linked
-            // token derives from _stopCts, so cancelling first closes the dispose-before-cancel window:
-            // a stopped pending accept always surfaces as cancellation, never a raw ObjectDisposedException.
+            // WaitForConnectionAsync with ObjectDisposedException, IOException, or SocketException
+            // depending on platform/runtime, and its catch filters convert that to OperationCanceledException
+            // only when the (linked) token is already cancelled. The linked token derives from _stopCts,
+            // so cancelling first closes the dispose-before-cancel window: a stopped pending accept always
+            // surfaces as cancellation, never a raw disposal/socket exception.
             // The cancellation callback only disposes the pipe stream (lock-free), so running it under
             // _sync cannot deadlock.
             stopCts?.Cancel();
@@ -281,6 +283,10 @@ public sealed class NamedPipeServerTransport : IServerTransport
             throw new OperationCanceledException(ct);
         }
         catch (IOException) when (ct.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(ct);
+        }
+        catch (SocketException) when (ct.IsCancellationRequested)
         {
             throw new OperationCanceledException(ct);
         }
