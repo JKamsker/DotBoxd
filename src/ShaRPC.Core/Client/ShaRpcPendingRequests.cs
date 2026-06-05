@@ -32,6 +32,9 @@ internal sealed class ShaRpcPendingRequests
         }
     }
 
+    public bool TryTake(int messageId, out TaskCompletionSource<ReceivedResponse> tcs) =>
+        _requests.TryRemove(messageId, out tcs!);
+
     public bool TryComplete(
         int messageId,
         RpcResponse response,

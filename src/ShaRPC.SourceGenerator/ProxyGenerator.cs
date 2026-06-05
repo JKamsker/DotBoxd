@@ -118,7 +118,7 @@ internal static class ProxyGenerator
         var paramList = new StringBuilder();
         ProxyGenerationHelpers.AppendParameterList(paramList, method.Parameters, ct);
 
-        var declaredReturn = NamingHelpers.GetDeclaredReturnTypeText(method.ReturnKind, method.UnwrappedReturnType);
+        var declaredReturn = method.DeclaredReturnType;
         var isAsync = NamingHelpers.IsAsync(method.ReturnKind) &&
             method.ReturnKind != MethodReturnKind.AsyncEnumerable;
         // Stubs stay non-async so out-parameters are definitely assigned by throw.
@@ -138,8 +138,9 @@ internal static class ProxyGenerator
         }
         else
         {
-            var invocation = BuildClientInvocation(sb, service, method, ctArg, ct);
-            ProxyInvocationEmitter.Emit(sb, method, invocation, ct);
+            var locals = new GeneratedLocalNames(method.Parameters, ct);
+            var invocation = BuildClientInvocation(sb, service, method, ctArg, locals, ct);
+            ProxyInvocationEmitter.Emit(sb, method, invocation, locals, ct);
         }
 
         sb.AppendLine("        }");
@@ -157,6 +158,7 @@ internal static class ProxyGenerator
         ServiceModel service,
         MethodModel method,
         string ctArg,
+        GeneratedLocalNames locals,
         CancellationToken ct)
     {
         var isSubServiceReturn = NamingHelpers.IsSubServiceReturn(method.ReturnKind);
@@ -167,7 +169,7 @@ internal static class ProxyGenerator
                 ? null
                 : ProxyGenerationHelpers.GetWireType(method.UnwrappedReturnType);
         var requestParameters = ProxyGenerationHelpers.GetRequestParameters(method.Parameters, ct);
-        var streamSetup = EmitStreamSetup(sb, method, requestParameters, ct);
+        var streamSetup = EmitStreamSetup(sb, method, requestParameters, locals, ct);
         var streamArray = streamSetup.ArrayName;
         var svc = service.ServiceName;
         var rpc = method.RpcName;
@@ -267,6 +269,7 @@ internal static class ProxyGenerator
         StringBuilder sb,
         MethodModel method,
         System.Collections.Generic.List<ParameterModel> requestParameters,
+        GeneratedLocalNames locals,
         CancellationToken ct)
     {
         var handles = new System.Collections.Generic.Dictionary<int, string>();
@@ -285,10 +288,7 @@ internal static class ProxyGenerator
             return (null, handles);
         }
 
-        var arrayName = ProxyGenerationHelpers.UniqueGeneratedLocalName(
-            method.Parameters,
-            "__sharpc_streams",
-            ct);
+        var arrayName = locals.Reserve("__sharpc_streams", ct);
         var attachmentExpressions = new System.Collections.Generic.List<string>(streamCount);
         for (var i = 0; i < requestParameters.Count; i++)
         {
@@ -299,10 +299,7 @@ internal static class ProxyGenerator
                 continue;
             }
 
-            var handleName = ProxyGenerationHelpers.UniqueGeneratedLocalName(
-                method.Parameters,
-                "__sharpc_stream" + (i + 1),
-                ct);
+            var handleName = locals.Reserve("__sharpc_stream" + (i + 1), ct);
             handles[i] = handleName;
             var kind = parameter.StreamKind == ParameterStreamKind.AsyncEnumerable ? "Items" : "Binary";
             sb.AppendLine($"            var {handleName} = this._invoker.ReserveStream(global::ShaRPC.Core.Protocol.RpcStreamKind.{kind});");
@@ -354,7 +351,11 @@ internal static class ProxyGenerator
 
         if (NamingHelpers.IsAsyncEnumerableReturn(returnKind))
         {
-            return isInstanceScoped ? "InvokeAsyncEnumerableOnInstance" : "InvokeAsyncEnumerable";
+            var eager = returnKind == MethodReturnKind.TaskOfAsyncEnumerable ||
+                returnKind == MethodReturnKind.ValueTaskOfAsyncEnumerable;
+            return isInstanceScoped
+                ? eager ? "InvokeAsyncEnumerableOnInstanceAsync" : "InvokeAsyncEnumerableOnInstance"
+                : eager ? "InvokeAsyncEnumerableAsync" : "InvokeAsyncEnumerable";
         }
 
         return isInstanceScoped ? "InvokeOnInstanceAsync" : "InvokeAsync";
@@ -394,13 +395,15 @@ internal static class ProxyGenerator
             ReturnKind = s.SiblingReturnKind,
             Parameters = s.Parameters,
         };
+        var locals = new GeneratedLocalNames(s.Parameters, ct);
         var invocation = BuildClientInvocation(
             sb,
             service,
             virtualSource,
             ProxyGenerationHelpers.GetCancellationTokenArgument(s.Parameters, ct),
+            locals,
             ct);
-        ProxyInvocationEmitter.Emit(sb, virtualSource, invocation, ct);
+        ProxyInvocationEmitter.Emit(sb, virtualSource, invocation, locals, ct);
 
         sb.AppendLine("        }");
     }

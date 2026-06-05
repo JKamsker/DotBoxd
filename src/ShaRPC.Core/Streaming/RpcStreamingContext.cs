@@ -11,7 +11,6 @@ public sealed class RpcStreamingContext : IRpcStreamingContext
 {
     private readonly RpcStreamManager? _streams;
     private readonly ISerializer? _serializer;
-    private readonly int _responseStreamId;
     private readonly CancellationToken _ct;
     private RpcStreamAttachment? _response;
 
@@ -24,12 +23,10 @@ public sealed class RpcStreamingContext : IRpcStreamingContext
     internal RpcStreamingContext(
         RpcStreamManager streams,
         ISerializer serializer,
-        int responseStreamId,
         CancellationToken ct)
     {
         _streams = streams;
         _serializer = serializer;
-        _responseStreamId = responseStreamId;
         _ct = ct;
     }
 
@@ -65,10 +62,9 @@ public sealed class RpcStreamingContext : IRpcStreamingContext
             throw new ArgumentNullException(nameof(stream));
         }
 
-        SetResponse(RpcStreamAttachment.FromStream(
-            new RpcStreamHandle(_responseStreamId, RpcStreamKind.Binary),
-            stream,
-            leaveOpen: false));
+        SetResponse(
+            RpcStreamKind.Binary,
+            handle => RpcStreamAttachment.FromStream(handle, stream, leaveOpen: false));
     }
 
     public void SetResponse(Pipe pipe)
@@ -78,10 +74,9 @@ public sealed class RpcStreamingContext : IRpcStreamingContext
             throw new ArgumentNullException(nameof(pipe));
         }
 
-        SetResponse(RpcStreamAttachment.FromPipe(
-            new RpcStreamHandle(_responseStreamId, RpcStreamKind.Binary),
-            pipe,
-            completeReader: true));
+        SetResponse(
+            RpcStreamKind.Binary,
+            handle => RpcStreamAttachment.FromPipe(handle, pipe, completeReader: true));
     }
 
     public void SetResponse<T>(IAsyncEnumerable<T> items)
@@ -91,12 +86,14 @@ public sealed class RpcStreamingContext : IRpcStreamingContext
             throw new ArgumentNullException(nameof(items));
         }
 
-        SetResponse(RpcStreamAttachment.FromAsyncEnumerable(
-            new RpcStreamHandle(_responseStreamId, RpcStreamKind.Items),
-            items));
+        SetResponse(
+            RpcStreamKind.Items,
+            handle => RpcStreamAttachment.FromAsyncEnumerable(handle, items));
     }
 
-    private void SetResponse(RpcStreamAttachment response)
+    private void SetResponse(
+        RpcStreamKind kind,
+        Func<RpcStreamHandle, RpcStreamAttachment> createResponse)
     {
         EnsureEnabled();
         if (_response is not null)
@@ -104,7 +101,16 @@ public sealed class RpcStreamingContext : IRpcStreamingContext
             throw new InvalidOperationException("Only one streamed response can be set for an RPC call.");
         }
 
-        _response = response;
+        var handle = _streams!.ReserveOutbound(kind);
+        try
+        {
+            _response = createResponse(handle);
+        }
+        catch
+        {
+            _streams.RemoveOutbound(handle.StreamId);
+            throw;
+        }
     }
 
     private void EnsureEnabled()

@@ -9,6 +9,7 @@ internal static class ProxyInvocationEmitter
         StringBuilder sb,
         MethodModel method,
         string invocation,
+        GeneratedLocalNames locals,
         CancellationToken ct)
     {
         switch (method.ReturnKind)
@@ -40,11 +41,11 @@ internal static class ProxyInvocationEmitter
                 break;
             case MethodReturnKind.TaskOfAsyncEnumerable:
             case MethodReturnKind.ValueTaskOfAsyncEnumerable:
-                sb.AppendLine($"            return {invocation};");
+                sb.AppendLine($"            return await {invocation};");
                 break;
             case MethodReturnKind.TaskOfSubService:
             case MethodReturnKind.ValueTaskOfSubService:
-                EmitSubServiceReturn(sb, method, invocation, ct);
+                EmitSubServiceReturn(sb, method, invocation, locals, ct);
                 break;
         }
     }
@@ -53,14 +54,12 @@ internal static class ProxyInvocationEmitter
         StringBuilder sb,
         MethodModel method,
         string invocation,
+        GeneratedLocalNames locals,
         CancellationToken ct)
     {
         var info = method.SubService!;
         var subProxyType = ProxyGenerationHelpers.BuildSubProxyTypeName(info.QualifiedInterfaceName);
-        var handleName = ProxyGenerationHelpers.UniqueGeneratedLocalName(
-            method.Parameters,
-            "__sharpc_handle",
-            ct);
+        var handleName = locals.Reserve("__sharpc_handle", ct);
         sb.AppendLine($"            var {handleName} = await {invocation};");
         if (info.AllowsNull)
         {

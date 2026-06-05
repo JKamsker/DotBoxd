@@ -66,6 +66,21 @@ internal sealed class RpcPeerStreamingCalls
         }
     }
 
+    public async Task<IAsyncEnumerable<T>> ReadAsyncEnumerableAsync<T>(
+        Task<ReceivedResponse> responseTask)
+    {
+        var received = await responseTask.ConfigureAwait(false);
+        try
+        {
+            var receiver = TakeStreamReceiver(received, RpcStreamKind.Items);
+            return new RpcRemoteAsyncEnumerable<T>(receiver, _serializer);
+        }
+        finally
+        {
+            received.Dispose();
+        }
+    }
+
     private static CancellationTokenSource? LinkTokens(
         CancellationToken first,
         CancellationToken second,

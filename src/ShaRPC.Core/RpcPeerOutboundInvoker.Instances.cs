@@ -133,4 +133,21 @@ internal sealed partial class RpcPeerOutboundInvoker
         _streamingCalls.EnumerateAsync<T>(
             invokeCt => SendRequestAsync(service, method, request, instanceId, streams, invokeCt),
             ct);
+
+    public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableOnInstanceAsync<T>(
+        string service,
+        string instanceId,
+        string method,
+        CancellationToken ct = default) =>
+        _streamingCalls.ReadAsyncEnumerableAsync<T>(SendRequestAsync(service, method, instanceId, ct));
+
+    public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableOnInstanceAsync<TRequest, T>(
+        string service,
+        string instanceId,
+        string method,
+        TRequest request,
+        RpcStreamAttachment[]? streams = null,
+        CancellationToken ct = default) =>
+        _streamingCalls.ReadAsyncEnumerableAsync<T>(
+            SendRequestAsync(service, method, request, instanceId, streams, ct));
 }

@@ -77,6 +77,7 @@ internal sealed record MethodModel(
     string ExplicitImplementationType,
     string RpcName,
     MethodReturnKind ReturnKind,
+    string DeclaredReturnType,
     string? UnwrappedReturnType,
     string ReturnRefKindKeyword,
     bool HasCancellationToken,

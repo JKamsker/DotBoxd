@@ -43,5 +43,10 @@ public enum MessageType : byte
     /// <summary>
     /// Receiver-to-sender flow-control credit for a multiplexed stream.
     /// </summary>
-    StreamCredit = 0x08
+    StreamCredit = 0x08,
+
+    /// <summary>
+    /// Cancellation request for a multiplexed stream, distinct from RPC request cancellation.
+    /// </summary>
+    StreamCancel = 0x09
 }

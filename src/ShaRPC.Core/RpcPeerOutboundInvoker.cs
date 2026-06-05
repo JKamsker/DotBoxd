@@ -40,7 +40,7 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
     }
 
     public RpcStreamHandle ReserveStream(RpcStreamKind kind) =>
-        new(NextMessageId(CancellationToken.None), kind);
+        _streams.ReserveOutbound(kind);
 
     public async Task<TResponse> InvokeAsync<TRequest, TResponse>(
         string service,
@@ -142,6 +142,21 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
             invokeCt => SendRequestAsync(service, method, request, instanceId: null, streams, invokeCt),
             ct);
 
+    public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableAsync<T>(
+        string service,
+        string method,
+        CancellationToken ct = default) =>
+        _streamingCalls.ReadAsyncEnumerableAsync<T>(SendRequestAsync(service, method, instanceId: null, ct));
+
+    public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableAsync<TRequest, T>(
+        string service,
+        string method,
+        TRequest request,
+        RpcStreamAttachment[]? streams = null,
+        CancellationToken ct = default) =>
+        _streamingCalls.ReadAsyncEnumerableAsync<T>(
+            SendRequestAsync(service, method, request, instanceId: null, streams, ct));
+
     public bool TryCompleteResponse(int messageId, Payload frame)
     {
         if (!MessageFramer.TryReadFrame(frame.Memory, out _, out var messageType, out var envelope, out var payload))
@@ -173,13 +188,32 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
             return false;
         }
 
-        RpcStreamReceiver? stream = null;
-        if (response.Stream is { } handle)
+        if (!_pending.TryTake(messageId, out var completion))
         {
-            stream = _streams.GetOrRegisterInbound(handle, CancellationToken.None);
+            return false;
         }
 
-        return _pending.TryComplete(messageId, response, payload, frame, stream);
+        RpcStreamReceiver? stream = null;
+        try
+        {
+            if (response.Stream is { } handle)
+            {
+                stream = _streams.GetOrRegisterInbound(handle, CancellationToken.None);
+            }
+
+            var received = new ReceivedResponse(response, payload, frame, stream);
+            if (!completion.TrySetResult(received))
+            {
+                received.Dispose();
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            completion.TrySetException(ex);
+            return false;
+        }
     }
 
     public void FailPending(Exception error) => _pending.FailAll(error);
@@ -197,9 +231,10 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         ValidateTarget(service, method);
         _ensureStarted();
         var pending = ReservePendingRequest(ct);
-        var outboundStreams = _streams.RegisterOutbound(streams, ct);
+        var outboundStreams = RpcOutboundStreamSet.Empty;
         try
         {
+            outboundStreams = _streams.RegisterOutbound(streams, ct);
             var envelope = CreateEnvelope(pending.MessageId, service, method, instanceId, streams);
             var frame = MessageFramer.FrameRequest(
                 _serializer,
@@ -218,9 +253,9 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         }
         catch
         {
-            // Frame construction (serialization) threw before SendFrameAndAwaitAsync took
+            // Registration or frame construction threw before SendFrameAndAwaitAsync took
             // ownership of the reserved slot, so release it here; otherwise the admission gate
-            // leaks one slot per serialization failure and eventually rejects every call.
+            // leaks one slot per local setup failure and eventually rejects every call.
             _pending.Remove(pending.MessageId, pending.Completion.Task, consumed: true);
             ReleasePendingSlot();
             _ = outboundStreams.DisposeAsync();

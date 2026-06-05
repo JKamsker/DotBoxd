@@ -40,6 +40,8 @@ internal sealed class RpcPeerFrameProcessor
                 return !await _inbound.AcceptRequestAsync(frame, messageId, ct).ConfigureAwait(false);
             case MessageType.Cancel:
                 _inbound.Cancel(messageId);
+                return true;
+            case MessageType.StreamCancel:
                 _streams.CancelOutbound(messageId);
                 return true;
             case MessageType.StreamItem:

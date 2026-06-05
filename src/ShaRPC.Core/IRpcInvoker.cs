@@ -115,6 +115,20 @@ public interface IRpcInvoker
         CancellationToken ct = default) =>
         throw new NotSupportedException("This IRpcInvoker does not support streaming RPC responses.");
 
+    Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableAsync<T>(
+        string service,
+        string method,
+        CancellationToken ct = default) =>
+        throw new NotSupportedException("This IRpcInvoker does not support streaming RPC responses.");
+
+    Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableAsync<TRequest, T>(
+        string service,
+        string method,
+        TRequest request,
+        RpcStreamAttachment[]? streams = null,
+        CancellationToken ct = default) =>
+        throw new NotSupportedException("This IRpcInvoker does not support streaming RPC responses.");
+
     /// <summary>Invokes a method on a specific remote sub-service instance.</summary>
     /// <param name="service">The remote service name.</param>
     /// <param name="instanceId">The target instance identifier.</param>
@@ -221,6 +235,22 @@ public interface IRpcInvoker
         throw new NotSupportedException("This IRpcInvoker does not support streaming RPC responses.");
 
     IAsyncEnumerable<T> InvokeAsyncEnumerableOnInstance<TRequest, T>(
+        string service,
+        string instanceId,
+        string method,
+        TRequest request,
+        RpcStreamAttachment[]? streams = null,
+        CancellationToken ct = default) =>
+        throw new NotSupportedException("This IRpcInvoker does not support streaming RPC responses.");
+
+    Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableOnInstanceAsync<T>(
+        string service,
+        string instanceId,
+        string method,
+        CancellationToken ct = default) =>
+        throw new NotSupportedException("This IRpcInvoker does not support streaming RPC responses.");
+
+    Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableOnInstanceAsync<TRequest, T>(
         string service,
         string instanceId,
         string method,

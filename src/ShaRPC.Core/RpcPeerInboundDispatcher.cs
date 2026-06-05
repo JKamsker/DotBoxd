@@ -64,6 +64,8 @@ internal sealed class RpcPeerInboundDispatcher
         _queue?.Start(loopCt);
     }
 
+    internal int ActiveInboundCount => _activeInbound.Count;
+
     public void AddDispatcher(IServiceDispatcher dispatcher)
     {
         if (!_dispatchers.TryAdd(dispatcher.ServiceName, dispatcher))
@@ -189,6 +191,11 @@ internal sealed class RpcPeerInboundDispatcher
             return false;
         }
 
+        if (!RpcStreamValidation.TryValidateInboundHandles(request.Streams, out protocolError))
+        {
+            return false;
+        }
+
         var requestCts = CancellationTokenSource.CreateLinkedTokenSource(loopCt);
         if (!_activeInbound.TryAdd(messageId, requestCts))
         {
@@ -270,7 +277,6 @@ internal sealed class RpcPeerInboundDispatcher
                 var streaming = new RpcStreamingContext(
                     _streams,
                     _serializer,
-                    inbound.MessageId,
                     inbound.RequestCts.Token);
                 using var response = await _responseBuilder.BuildAsync(
                     inbound.Request,
@@ -278,10 +284,24 @@ internal sealed class RpcPeerInboundDispatcher
                     inbound.Body,
                     streaming,
                     inbound.RequestCts.Token).ConfigureAwait(false);
-                await _sendAsync(response.Frame.Memory, inbound.RequestCts.Token).ConfigureAwait(false);
-                if (response.Stream is not null)
+                var responseStream = response.Stream;
+                try
                 {
-                    StartResponseStream(inbound, response.Stream);
+                    await _sendAsync(response.Frame.Memory, inbound.RequestCts.Token).ConfigureAwait(false);
+                }
+                catch
+                {
+                    if (responseStream is not null)
+                    {
+                        _streams.RemoveOutbound(responseStream.Handle.StreamId);
+                    }
+
+                    throw;
+                }
+
+                if (responseStream is not null)
+                {
+                    StartResponseStream(inbound, responseStream);
                     releaseRequest = false;
                 }
             }

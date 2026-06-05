@@ -242,6 +242,10 @@ public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
         _outbound.InvokeAsyncEnumerable<T>(service, method, ct);
     public IAsyncEnumerable<T> InvokeAsyncEnumerable<TRequest, T>(string service, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
         _outbound.InvokeAsyncEnumerable<TRequest, T>(service, method, request, streams, ct);
+    public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableAsync<T>(string service, string method, CancellationToken ct = default) =>
+        _outbound.InvokeAsyncEnumerableAsync<T>(service, method, ct);
+    public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableAsync<TRequest, T>(string service, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
+        _outbound.InvokeAsyncEnumerableAsync<TRequest, T>(service, method, request, streams, ct);
     public Task<TResponse> InvokeOnInstanceAsync<TRequest, TResponse>(string service, string instanceId, string method, TRequest request, CancellationToken ct = default) =>
         _outbound.InvokeOnInstanceAsync<TRequest, TResponse>(service, instanceId, method, request, ct);
     public Task<TResponse> InvokeOnInstanceAsync<TRequest, TResponse>(string service, string instanceId, string method, TRequest request, RpcStreamAttachment[] streams, CancellationToken ct = default) =>
@@ -266,6 +270,10 @@ public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
         _outbound.InvokeAsyncEnumerableOnInstance<T>(service, instanceId, method, ct);
     public IAsyncEnumerable<T> InvokeAsyncEnumerableOnInstance<TRequest, T>(string service, string instanceId, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
         _outbound.InvokeAsyncEnumerableOnInstance<TRequest, T>(service, instanceId, method, request, streams, ct);
+    public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableOnInstanceAsync<T>(string service, string instanceId, string method, CancellationToken ct = default) =>
+        _outbound.InvokeAsyncEnumerableOnInstanceAsync<T>(service, instanceId, method, ct);
+    public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableOnInstanceAsync<TRequest, T>(string service, string instanceId, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
+        _outbound.InvokeAsyncEnumerableOnInstanceAsync<TRequest, T>(service, instanceId, method, request, streams, ct);
     public RpcStreamHandle ReserveStream(RpcStreamKind kind) =>
         _outbound.ReserveStream(kind);
 

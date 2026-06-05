@@ -167,6 +167,7 @@ internal static class DispatcherGenerator
             sb.AppendLine($"                    var args = serializer.Deserialize<({tupleTypes})>(payload);");
         }
 
+        var locals = new GeneratedLocalNames(method.Parameters, ct);
         var argumentExpressions = new string[method.Parameters.Count];
         var argumentRequestIndex = 0;
         for (var i = 0; i < method.Parameters.Count; i++)
@@ -190,10 +191,7 @@ internal static class DispatcherGenerator
                 continue;
             }
 
-            var local = ProxyGenerationHelpers.UniqueGeneratedLocalName(
-                method.Parameters,
-                "__sharpc_arg" + argumentRequestIndex,
-                ct);
+            var local = locals.Reserve("__sharpc_arg" + argumentRequestIndex, ct);
             sb.AppendLine($"                    var {local} = {BuildStreamingArgument(parameter, source)};");
             argumentExpressions[i] = local;
         }

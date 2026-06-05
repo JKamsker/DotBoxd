@@ -299,6 +299,7 @@ public sealed class FinalRejectionMethodParametersCoverageTests
             ExplicitImplementationType: "global::Test.IFoo",
             RpcName: "Do",
             ReturnKind: returnKind,
+            DeclaredReturnType: "void",
             UnwrappedReturnType: null,
             ReturnRefKindKeyword: "",
             HasCancellationToken: hasCancellationToken,

@@ -28,6 +28,7 @@ internal static class MethodModelFactory
 
         var returnType = methodSymbol.ReturnType;
         var returnKind = ReturnTypeClassifier.Classify(returnType, ct, out var unwrappedReturnType, out var subService);
+        var declaredReturnType = returnType.ToDisplayString(s_qualifiedFormat);
         var typeParameterList = MethodSignatureFormatter.GetTypeParameterList(methodSymbol, ct);
         var constraintClauses = MethodSignatureFormatter.GetConstraintClauses(methodSymbol, ct);
         string? unsupportedReason = null;
@@ -66,6 +67,11 @@ internal static class MethodModelFactory
                 "return type",
                 ct,
                 validationCache),
+            methodLocation);
+        SetUnsupported(
+            ref unsupportedReason,
+            ref unsupportedLocation,
+            GetUnsupportedNullableStreamingReturnReason(returnType, returnKind),
             methodLocation);
 
         var parameters = new List<ParameterModel>();
@@ -138,6 +144,11 @@ internal static class MethodModelFactory
                     ct,
                     validationCache),
                 parameterLocation);
+            SetUnsupported(
+                ref unsupportedReason,
+                ref unsupportedLocation,
+                GetUnsupportedNullableStreamingParameterReason(param.Type, streamKind, param.Name),
+                parameterLocation);
 
             // A cancellation-token default is always emitted as "= default"; capture the literal text of
             // any other parameter's explicit default so the generated proxy/async-sibling preserve it.
@@ -171,6 +182,7 @@ internal static class MethodModelFactory
             ExplicitImplementationType: GetExplicitImplementationType(methodSymbol.ContainingType),
             RpcName: LiteralHelpers.EscapeStringLiteral(configuredRpcName),
             ReturnKind: returnKind,
+            DeclaredReturnType: declaredReturnType,
             UnwrappedReturnType: unwrappedReturnType,
             ReturnRefKindKeyword: ReturnRefKindKeyword(methodSymbol.RefKind),
             HasCancellationToken: hasCancellationToken,
@@ -292,6 +304,47 @@ internal static class MethodModelFactory
             ? streamItemType
             : type;
         return RpcTypeValidator.GetUnsupportedTypeReason(target, $"parameter '{parameterName}'", ct);
+    }
+
+    private static string? GetUnsupportedNullableStreamingReturnReason(
+        ITypeSymbol returnType,
+        MethodReturnKind returnKind)
+    {
+        if (returnKind == MethodReturnKind.Stream ||
+            returnKind == MethodReturnKind.Pipe ||
+            returnKind == MethodReturnKind.AsyncEnumerable)
+        {
+            return returnType.NullableAnnotation == NullableAnnotation.Annotated
+                ? "nullable streaming return values are not supported; streams cannot be null"
+                : null;
+        }
+
+        if (NamingHelpers.IsStreamReturn(returnKind) ||
+            NamingHelpers.IsPipeReturn(returnKind) ||
+            NamingHelpers.IsAsyncEnumerableReturn(returnKind))
+        {
+            if (returnType is INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } named &&
+                named.TypeArguments[0].NullableAnnotation == NullableAnnotation.Annotated)
+            {
+                return "nullable streaming return values are not supported; streams cannot be null";
+            }
+        }
+
+        return null;
+    }
+
+    private static string? GetUnsupportedNullableStreamingParameterReason(
+        ITypeSymbol type,
+        ParameterStreamKind streamKind,
+        string parameterName)
+    {
+        if (streamKind == ParameterStreamKind.None ||
+            type.NullableAnnotation != NullableAnnotation.Annotated)
+        {
+            return null;
+        }
+
+        return $"nullable streamed parameter '{parameterName}' is not supported; streams cannot be null";
     }
 
     private static string? GetUnsupportedParameterSubServiceReason(
