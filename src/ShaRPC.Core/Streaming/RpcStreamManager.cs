@@ -330,10 +330,20 @@ internal sealed class RpcStreamManager
             return true;
         }
         AfterReservedOutboundCreditObservedForTest?.Invoke(streamId);
-        _pendingCredits.AddOrUpdate(
-            streamId,
-            count,
-            (_, current) => current > int.MaxValue - count ? int.MaxValue : current + count);
+        while (true)
+        {
+            if (_pendingCredits.TryGetValue(streamId, out var current))
+            {
+                var next = current > int.MaxValue - count ? int.MaxValue : current + count;
+                if (_pendingCredits.TryUpdate(streamId, next, current))
+                    break;
+            }
+            else
+            {
+                if (_pendingCredits.TryAdd(streamId, count))
+                    break;
+            }
+        }
         if (_senders.TryGetValue(streamId, out state) &&
             _pendingCredits.TryRemove(streamId, out var pending))
         {
