@@ -20,6 +20,7 @@ internal sealed class RpcStreamManager
     private readonly ISerializer _serializer;
     private readonly Func<Exception, RpcErrorInfo?>? _exceptionTransformer;
     private int _outboundStreamIdCounter;
+    private int _activeInboundCount;
 
     public RpcStreamManager(
         ISerializer serializer,
@@ -30,11 +31,12 @@ internal sealed class RpcStreamManager
         _sendAsync = sendAsync;
         _exceptionTransformer = exceptionTransformer;
     }
-    internal int InboundReceiverCount => _receivers.Values.Count(receiver => !receiver.IsCompleted);
+    internal int InboundReceiverCount => Volatile.Read(ref _activeInboundCount);
     internal int OutboundSenderCount => _senders.Count;
     internal int PendingCreditCount => _pendingCredits.Count;
     internal int CanceledInboundCount => _canceledInbound.Count;
     internal int CanceledInboundTrackingCount => _canceledInbound.TrackingCount;
+    internal void DecrementActiveInbound() => Interlocked.Decrement(ref _activeInboundCount);
     internal Action<int, RpcStreamReceiver>? AfterInboundReceiverObservedForTest { get; set; }
     internal Action<int>? AfterReservedOutboundCreditObservedForTest { get; set; }
     internal Action<int>? AfterOutboundSenderMissForTest { get; set; }
@@ -169,6 +171,7 @@ internal sealed class RpcStreamManager
             {
                 throw new ShaRpcProtocolException($"Inbound stream id '{handle.StreamId}' is already active.");
             }
+            Interlocked.Increment(ref _activeInboundCount);
         }
         receiver.SendCreditBestEffort(WindowSize, ct);
         return receiver;

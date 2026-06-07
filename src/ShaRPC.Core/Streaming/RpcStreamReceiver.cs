@@ -116,6 +116,8 @@ internal sealed class RpcStreamReceiver
             streams = Interlocked.Exchange(ref _outboundStreams, null);
         }
 
+        _manager.DecrementActiveInbound();
+
         if (streams is not null)
         {
             _ = streams.DisposeAsync();
@@ -192,6 +194,8 @@ internal sealed class RpcStreamReceiver
 
             streams = Interlocked.Exchange(ref _outboundStreams, null);
         }
+
+        _manager.DecrementActiveInbound();
 
         if (streams is not null)
         {
