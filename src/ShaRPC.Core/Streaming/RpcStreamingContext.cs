@@ -72,9 +72,16 @@ public sealed class RpcStreamingContext : IRpcStreamingContext
             throw new ArgumentNullException(nameof(stream));
         }
 
-        SetResponse(
-            RpcStreamKind.Binary,
-            handle => RpcStreamAttachment.FromStream(handle, stream, leaveOpen: false));
+        var handle = ReserveResponseHandle(RpcStreamKind.Binary);
+        try
+        {
+            _response = RpcStreamAttachment.FromStream(handle, stream, leaveOpen: false);
+        }
+        catch
+        {
+            _streams!.RemoveOutbound(handle.StreamId);
+            throw;
+        }
     }
 
     public void SetResponse(Pipe pipe)
@@ -84,9 +91,16 @@ public sealed class RpcStreamingContext : IRpcStreamingContext
             throw new ArgumentNullException(nameof(pipe));
         }
 
-        SetResponse(
-            RpcStreamKind.Binary,
-            handle => RpcStreamAttachment.FromPipe(handle, pipe, completeReader: true));
+        var handle = ReserveResponseHandle(RpcStreamKind.Binary);
+        try
+        {
+            _response = RpcStreamAttachment.FromPipe(handle, pipe, completeReader: true);
+        }
+        catch
+        {
+            _streams!.RemoveOutbound(handle.StreamId);
+            throw;
+        }
     }
 
     public void SetResponse<T>(IAsyncEnumerable<T> items)
@@ -96,14 +110,19 @@ public sealed class RpcStreamingContext : IRpcStreamingContext
             throw new ArgumentNullException(nameof(items));
         }
 
-        SetResponse(
-            RpcStreamKind.Items,
-            handle => RpcStreamAttachment.FromAsyncEnumerable(handle, items));
+        var handle = ReserveResponseHandle(RpcStreamKind.Items);
+        try
+        {
+            _response = RpcStreamAttachment.FromAsyncEnumerable(handle, items);
+        }
+        catch
+        {
+            _streams!.RemoveOutbound(handle.StreamId);
+            throw;
+        }
     }
 
-    private void SetResponse(
-        RpcStreamKind kind,
-        Func<RpcStreamHandle, RpcStreamAttachment> createResponse)
+    private RpcStreamHandle ReserveResponseHandle(RpcStreamKind kind)
     {
         EnsureEnabled();
         if (_response is not null)
@@ -111,16 +130,7 @@ public sealed class RpcStreamingContext : IRpcStreamingContext
             throw new InvalidOperationException("Only one streamed response can be set for an RPC call.");
         }
 
-        var handle = _streams!.ReserveOutbound(kind);
-        try
-        {
-            _response = createResponse(handle);
-        }
-        catch
-        {
-            _streams.RemoveOutbound(handle.StreamId);
-            throw;
-        }
+        return _streams!.ReserveOutbound(kind);
     }
 
     private RpcStreamReceiver GetInbound(RpcStreamHandle handle, RpcStreamKind expected)
