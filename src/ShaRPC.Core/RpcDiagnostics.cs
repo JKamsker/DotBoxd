@@ -15,9 +15,13 @@ public static class RpcDiagnostics
 
     internal static void Report(string operation, Exception error)
     {
-        // Build the message inside the guard: a custom exception's virtual Message getter can throw, and
-        // that must not escape Report and break subscriber isolation.
-        SafeTrace(() => $"{operation}: {error.GetType().Name}: {error.Message}");
+        try
+        {
+            Trace.TraceError($"{operation}: {error.GetType().Name}: {error.Message}");
+        }
+        catch
+        {
+        }
 
         var handler = Error;
         if (handler is null)
@@ -26,31 +30,52 @@ public static class RpcDiagnostics
         }
 
         var args = new RpcDiagnosticErrorEventArgs(operation, error);
-        foreach (var subscriber in handler.GetInvocationList())
+        try
         {
-            try
+            handler.Invoke(typeof(RpcDiagnostics), args);
+        }
+        catch (Exception firstEx)
+        {
+            var subscribers = handler.GetInvocationList();
+            if (subscribers.Length == 1)
             {
-                ((EventHandler<RpcDiagnosticErrorEventArgs>)subscriber).Invoke(typeof(RpcDiagnostics), args);
+                SafeTrace("ShaRPC diagnostic handler failed", firstEx);
+                return;
             }
-            catch (Exception subscriberError)
+
+            foreach (var subscriber in subscribers)
             {
-                // A faulting subscriber's own ToString() can throw too, so format inside the guard.
-                SafeTrace(() => $"ShaRPC diagnostic handler failed: {subscriberError}");
+                try
+                {
+                    ((EventHandler<RpcDiagnosticErrorEventArgs>)subscriber).Invoke(typeof(RpcDiagnostics), args);
+                }
+                catch (Exception subscriberError)
+                {
+                    SafeTrace("ShaRPC diagnostic handler failed", subscriberError);
+                }
             }
         }
     }
 
-    private static void SafeTrace(Func<string> messageFactory)
+    private static void SafeTrace(string message)
     {
         try
         {
-            Trace.TraceError(messageFactory());
+            Trace.TraceError(message);
         }
         catch
         {
-            // Best-effort fallback logging only: neither building the message (a virtual Message/ToString
-            // may throw) nor a hostile/faulting TraceListener must break diagnostic subscriber isolation
-            // by propagating out of Report.
+        }
+    }
+
+    private static void SafeTrace(string prefix, Exception ex)
+    {
+        try
+        {
+            Trace.TraceError($"{prefix}: {ex}");
+        }
+        catch
+        {
         }
     }
 }

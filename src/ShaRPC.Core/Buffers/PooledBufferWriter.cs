@@ -73,8 +73,8 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
     /// </summary>
     public Payload DetachPayload()
     {
-        var buffer = _buffer ?? throw new InvalidOperationException("Buffer has already been detached or disposed.");
-        _buffer = null;
+        var buffer = Interlocked.Exchange(ref _buffer, null)
+            ?? throw new InvalidOperationException("Buffer has already been detached or disposed.");
         return new Payload(buffer, _written);
     }
 
@@ -83,14 +83,11 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
     /// </summary>
     public void Dispose()
     {
-        var buffer = _buffer;
-        if (buffer is null)
+        var buffer = Interlocked.Exchange(ref _buffer, null);
+        if (buffer is not null)
         {
-            return;
+            ArrayPool<byte>.Shared.Return(buffer);
         }
-
-        _buffer = null;
-        ArrayPool<byte>.Shared.Return(buffer);
     }
 
     private void EnsureCapacity(int sizeHint)

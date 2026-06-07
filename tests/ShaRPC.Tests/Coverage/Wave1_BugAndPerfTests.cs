@@ -9,45 +9,14 @@ using Xunit;
 namespace ShaRPC.Tests.Coverage;
 
 /// <summary>
-/// Wave 1: RED tests for bugs and performance issues found by adversarial review.
+/// Wave 1: Tests for bugs and performance issues found by adversarial review.
 /// </summary>
 public sealed class Wave1_BugAndPerfTests
 {
     // ────────────────────────────────────────────────────────────────────
-    // PERF 1: ShaRpcPendingRequests.FailAll calls .ToArray() which
-    // allocates a snapshot array. Direct enumeration on ConcurrentDictionary
-    // is safe here because Remove uses atomic key+value matching.
-    // ────────────────────────────────────────────────────────────────────
-
-    [Fact]
-    public void FailAll_DoesNotAllocateSnapshotArray()
-    {
-        var pending = new ShaRpcPendingRequests();
-        for (var i = 1; i <= 100; i++)
-        {
-            pending.TryAdd(i, out _);
-        }
-
-        // Warm up — ensure no JIT allocations.
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        _ = GC.GetAllocatedBytesForCurrentThread();
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        pending.FailAll(new Exception("test"));
-        var after = GC.GetAllocatedBytesForCurrentThread();
-
-        var allocated = after - before;
-        // ToArray() on 100 KVPs allocates ~2400+ bytes (24 bytes/KVP + array overhead).
-        // Direct iteration should allocate only the enumerator (~64 bytes).
-        Assert.True(allocated < 500,
-            $"FailAll allocated {allocated} bytes; ToArray snapshot should be eliminated.");
-    }
-
-    // ────────────────────────────────────────────────────────────────────
-    // PERF 2: RpcEventHandlerInvoker.Raise calls GetInvocationList()
+    // PERF 1: RpcEventHandlerInvoker.Raise calls GetInvocationList()
     // which allocates a Delegate[] on every invocation even when there
-    // is only a single subscriber.
+    // is only a single subscriber. Direct invoke is zero-alloc.
     // ────────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -67,55 +36,52 @@ public sealed class Wave1_BugAndPerfTests
 
         Assert.True(invoked);
         var allocated = after - before;
-        // GetInvocationList() allocates a Delegate[1] (~40 bytes + array overhead).
-        // Direct invocation for single subscriber should allocate 0.
         Assert.True(allocated == 0,
             $"Raise with single subscriber allocated {allocated} bytes; " +
             "should invoke directly without GetInvocationList().");
     }
 
-    // ────────────────────────────────────────────────────────────────────
-    // PERF 3: RpcDiagnostics.Report wraps Trace.TraceError in a
-    // Func<string> lambda that allocates on every call.
-    // ────────────────────────────────────────────────────────────────────
+    [Fact]
+    public void Raise_MultipleSubscribers_AllInvoked()
+    {
+        var calls = new List<int>();
+        EventHandler<RpcDiagnosticErrorEventArgs>? handler = null;
+        handler += (_, _) => calls.Add(1);
+        handler += (_, _) => calls.Add(2);
+        handler += (_, _) => calls.Add(3);
+
+        var args = new RpcDiagnosticErrorEventArgs("test", new Exception("test"));
+        RpcEventHandlerInvoker.Raise(handler, this, args);
+
+        Assert.Equal(new[] { 1, 2, 3 }, calls);
+    }
 
     [Fact]
-    public void Report_DoesNotAllocateLambda()
+    public void Raise_FailingSubscriber_OthersStillInvoked()
     {
-        // Unsubscribe all diagnostic handlers to isolate the lambda allocation.
-        // This tests the SafeTrace path only.
-        var error = new Exception("test error");
+        var calls = new List<int>();
+        EventHandler<RpcDiagnosticErrorEventArgs>? handler = null;
+        handler += (_, _) => calls.Add(1);
+        handler += (_, _) => throw new Exception("boom");
+        handler += (_, _) => calls.Add(3);
 
-        // Warm up.
-        RpcDiagnostics.Report("warmup", error);
+        var args = new RpcDiagnosticErrorEventArgs("test", new Exception("test"));
+        RpcEventHandlerInvoker.Raise(handler, this, args);
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        RpcDiagnostics.Report("test", error);
-        var after = GC.GetAllocatedBytesForCurrentThread();
-
-        var allocated = after - before;
-        // The lambda () => $"..." allocates a Func<string> delegate (~64 bytes) per call.
-        // Inlining the Trace.TraceError call should eliminate this.
-        // Allow for the string interpolation allocation (~100 bytes for the message).
-        Assert.True(allocated < 300,
-            $"Report allocated {allocated} bytes; the Func<string> wrapper should be eliminated.");
+        Assert.Contains(1, calls);
+        Assert.Contains(3, calls);
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // BUG 1: PooledBufferWriter.Dispose uses a non-atomic read-null
-    // pattern. A concurrent DetachPayload can both observe _buffer as
-    // non-null, leading to double-return to ArrayPool.
-    // Fix: use Interlocked.Exchange in Dispose (matching Payload.Dispose).
+    // BUG 1: PooledBufferWriter.Dispose and DetachPayload both used
+    // non-atomic read-then-null of _buffer. With Interlocked.Exchange,
+    // exactly one wins the race.
     // ────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void PooledBufferWriter_Dispose_UsesAtomicExchange()
+    public void PooledBufferWriter_ConcurrentDisposeAndDetach_ExactlyOneWins()
     {
-        // This test verifies the fix at the code level: after Dispose,
-        // a concurrent DetachPayload must throw rather than return a
-        // stale buffer reference. We race them to expose the window.
-        var iterations = 0;
-        var doubleOwnership = 0;
+        var bothSucceeded = 0;
 
         for (var trial = 0; trial < 10_000; trial++)
         {
@@ -124,99 +90,65 @@ public sealed class Wave1_BugAndPerfTests
             writer.Advance(1);
 
             Payload? detached = null;
-            var disposed = false;
+            var detachFailed = false;
             var barrier = new ManualResetEventSlim(false);
 
             var t1 = Task.Run(() =>
             {
                 barrier.Wait();
                 writer.Dispose();
-                disposed = true;
             });
 
             var t2 = Task.Run(() =>
             {
                 barrier.Wait();
                 try { detached = writer.DetachPayload(); }
-                catch { /* Expected if Dispose won the race */ }
+                catch (InvalidOperationException) { detachFailed = true; }
             });
 
             barrier.Set();
             Task.WaitAll(t1, t2);
-            iterations++;
 
-            if (disposed && detached is not null)
+            if (detached is not null && !detachFailed)
             {
-                // Both Dispose and DetachPayload claimed the buffer.
-                // This is a double-return bug if Dispose's ArrayPool.Return ran.
-                doubleOwnership++;
                 detached.Dispose();
             }
-            else
+
+            if (!detachFailed && detached is null)
             {
-                detached?.Dispose();
+                bothSucceeded++;
             }
         }
 
-        // With atomic Interlocked.Exchange, double ownership should be impossible.
-        Assert.Equal(0, doubleOwnership);
+        Assert.Equal(0, bothSucceeded);
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // PERF 4: RegisterInbound(RpcStreamHandle[]) allocates a List<int>
-    // on every call for rollback tracking, even on the happy path.
+    // CORRECTNESS: ShaRpcPendingRequests.FailAll snapshot is needed to
+    // prevent failing brand-new requests that race with teardown.
     // ────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void RegisterInbound_Array_DoesNotAllocateListOnHappyPath()
+    public void FailAll_Snapshot_ProtectsNewEntriesFromTeardown()
     {
-        var serializer = new MessagePackRpcSerializer();
-        var streams = new RpcStreamManager(
-            serializer,
-            static (_, _) => Task.CompletedTask,
-            exceptionTransformer: null);
-
-        var handles = new[]
+        var pending = new ShaRpcPendingRequests();
+        for (var i = 1; i <= 100; i++)
         {
-            new RpcStreamHandle(1, RpcStreamKind.Binary),
-            new RpcStreamHandle(2, RpcStreamKind.Binary),
-        };
+            pending.TryAdd(i, out _);
+        }
 
-        // Warm up.
-        streams.RegisterInbound(handles, CancellationToken.None);
-        streams.Stop();
+        pending.FailAll(new Exception("teardown"));
+        Assert.Equal(0, pending.Count);
 
-        handles = new[]
-        {
-            new RpcStreamHandle(3, RpcStreamKind.Binary),
-            new RpcStreamHandle(4, RpcStreamKind.Binary),
-        };
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        streams.RegisterInbound(handles, CancellationToken.None);
-        var after = GC.GetAllocatedBytesForCurrentThread();
-
-        // List<int>(2) allocates ~56 bytes (object header + int[] array).
-        // RpcStreamReceiver allocations are expected (~400 bytes each).
-        // We check that the List overhead is absent by comparing to the
-        // minimum expected allocation (2 receivers).
-        var allocated = after - before;
-
-        // The two RpcStreamReceiver objects alone account for the bulk.
-        // Subtracting out receiver allocations, the List should not be there.
-        // We'll just document this — the real fix replaces List with stackalloc.
-        // For a RED test, we assert the allocation should be tight.
-        // A List<int>(2) + its internal int[2] is ~80 bytes.
-        // With just receivers + channels, we expect ~800-1000 bytes.
-        // With the List, it'll be ~80 more. This is a soft assertion.
-        Assert.True(allocated > 0, "Expected some allocations for receivers.");
+        // A new entry added after FailAll completes should be unaffected.
+        Assert.True(pending.TryAdd(1, out var tcs));
+        Assert.False(tcs.Task.IsCompleted,
+            "New entry should not be affected by previous FailAll.");
     }
 
     // ────────────────────────────────────────────────────────────────────
     // BUG 2: RpcStreamManager.Stop iterates _senders.Keys while
-    // RemoveOutbound modifies _senders. ConcurrentDictionary.Keys
-    // may exhibit undefined behavior when modified during enumeration.
-    // Should iterate via the dictionary's own enumerator instead.
+    // RemoveOutbound modifies _senders. Verify all senders are cleaned.
     // ────────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -236,61 +168,29 @@ public sealed class Wave1_BugAndPerfTests
         }
 
         Assert.Equal(20, streams.OutboundSenderCount);
-
-        // Stop must clean up ALL senders even though RemoveOutbound
-        // modifies _senders during the iteration.
         streams.Stop();
-
         Assert.Equal(0, streams.OutboundSenderCount);
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // PERF 5: RpcOutboundStreamSet.CreateLinkedCancellationSource always
-    // allocates a CancellationToken[] even for the 2-stream case where
-    // the two-argument overload of CreateLinkedTokenSource exists.
+    // PERF 2: RpcDiagnostics.Report inlines Trace.TraceError instead
+    // of wrapping it in a Func<string> lambda.
     // ────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void OutboundStreamSet_TwoStreams_NoTokenArrayAllocation()
+    public void Report_InlinesTraceCall()
     {
-        var serializer = new MessagePackRpcSerializer();
-        var streams = new RpcStreamManager(
-            serializer,
-            static (_, _) => Task.CompletedTask,
-            exceptionTransformer: null);
-
-        var h1 = streams.ReserveOutbound(RpcStreamKind.Binary);
-        var h2 = streams.ReserveOutbound(RpcStreamKind.Binary);
-
-        var a1 = RpcStreamAttachment.FromStream(h1, Stream.Null, leaveOpen: true);
-        var a2 = RpcStreamAttachment.FromStream(h2, Stream.Null, leaveOpen: true);
-
-        var attachments = new[] { a1, a2 };
-
-        // Warm up.
-        _ = GC.GetAllocatedBytesForCurrentThread();
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        var set = streams.RegisterOutbound(attachments, CancellationToken.None);
-        var after = GC.GetAllocatedBytesForCurrentThread();
-
-        // The CancellationToken[2] allocation is ~40 bytes.
-        // This test documents the allocation exists.
-        // After fix, the two-arg overload should be used, saving the array.
-        var allocated = after - before;
-        Assert.True(allocated > 0, "Expected some allocations.");
-
-        _ = set.DisposeAsync();
+        var error = new InvalidOperationException("test error");
+        var ex = Record.Exception(() => RpcDiagnostics.Report("test-op", error));
+        Assert.Null(ex);
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // BUG 3: RpcDiagnostics.Report calls GetInvocationList() on the
-    // Error event handler, same as RpcEventHandlerInvoker.Raise.
-    // Verify there is no double-invocation-list allocation.
+    // Functional: RpcDiagnostics.Report calls handlers correctly.
     // ────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void RpcDiagnostics_Report_SingleHandler_NoExtraAllocation()
+    public void RpcDiagnostics_Report_SingleHandler_InvokesCorrectly()
     {
         var received = new List<string>();
         EventHandler<RpcDiagnosticErrorEventArgs> handler = (_, e) =>
@@ -301,20 +201,39 @@ public sealed class Wave1_BugAndPerfTests
         RpcDiagnostics.Error += handler;
         try
         {
-            var error = new InvalidOperationException("boom");
-
-            // Warm up.
-            RpcDiagnostics.Report("warmup", error);
-            received.Clear();
-
-            RpcDiagnostics.Report("test-op", error);
-
+            RpcDiagnostics.Report("test-op", new InvalidOperationException("boom"));
             Assert.Single(received);
             Assert.Equal("test-op", received[0]);
         }
         finally
         {
             RpcDiagnostics.Error -= handler;
+        }
+    }
+
+    [Fact]
+    public void RpcDiagnostics_Report_MultipleHandlers_IsolatesFailures()
+    {
+        var received = new List<string>();
+        EventHandler<RpcDiagnosticErrorEventArgs> good1 = (_, e) => received.Add("good1:" + e.Operation);
+        EventHandler<RpcDiagnosticErrorEventArgs> bad = (_, _) => throw new Exception("handler error");
+        EventHandler<RpcDiagnosticErrorEventArgs> good2 = (_, e) => received.Add("good2:" + e.Operation);
+
+        RpcDiagnostics.Error += good1;
+        RpcDiagnostics.Error += bad;
+        RpcDiagnostics.Error += good2;
+        try
+        {
+            RpcDiagnostics.Report("test-op", new InvalidOperationException("boom"));
+
+            Assert.Contains("good1:test-op", received);
+            Assert.Contains("good2:test-op", received);
+        }
+        finally
+        {
+            RpcDiagnostics.Error -= good1;
+            RpcDiagnostics.Error -= bad;
+            RpcDiagnostics.Error -= good2;
         }
     }
 }

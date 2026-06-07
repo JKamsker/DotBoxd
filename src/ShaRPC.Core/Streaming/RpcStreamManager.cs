@@ -498,9 +498,9 @@ internal sealed class RpcStreamManager
         {
             receiver.Abort(new ShaRpcConnectionException("Connection closed."));
         }
-        foreach (var streamId in _senders.Keys)
+        foreach (var pair in _senders)
         {
-            RemoveOutbound(streamId);
+            RemoveOutbound(pair.Key);
         }
         _pendingCredits.Clear();
         _reservedOutbound.Clear();
