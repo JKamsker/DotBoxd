@@ -50,6 +50,7 @@ public sealed class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifier
         List<VerificationDiagnostic> diagnostics,
         CancellationToken cancellationToken)
     {
+        PeStructureVerifier.Verify(peReader, diagnostics);
         VerifyAssemblyReferences(reader, policy, diagnostics);
         VerifyTypeReferences(reader, policy, diagnostics);
         VerifyCustomAttributes(reader, diagnostics);
