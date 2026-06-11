@@ -1,5 +1,6 @@
 namespace SafeIR.Compiler;
 
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text.Json;
 using SafeIR;
@@ -12,6 +13,7 @@ public sealed class PersistentCompiledArtifactCache
     };
 
     private readonly string _rootDirectory;
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _entryLocks = new(StringComparer.Ordinal);
 
     public PersistentCompiledArtifactCache(string rootDirectory)
     {
@@ -22,6 +24,43 @@ public sealed class PersistentCompiledArtifactCache
     public bool EntryExists(string cacheKey) => Directory.Exists(EntryPath(cacheKey));
 
     public async ValueTask<CompiledCacheLookup> TryReadAsync(
+        string cacheKey,
+        ExecutionPlan plan,
+        string entrypoint,
+        IGeneratedAssemblyVerifier verifier,
+        VerificationPolicy policy,
+        CancellationToken cancellationToken)
+        => await WithEntryLockAsync(
+                cacheKey,
+                () => TryReadCoreAsync(cacheKey, plan, entrypoint, verifier, policy, cancellationToken),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    public async ValueTask WriteAsync(
+        string cacheKey,
+        ExecutionPlan plan,
+        string entrypoint,
+        byte[] assemblyBytes,
+        ArtifactManifest manifest,
+        VerificationResult verification,
+        VerificationPolicy policy,
+        CancellationToken cancellationToken)
+        => await WithEntryLockAsync(
+                cacheKey,
+                () => WriteCoreAsync(cacheKey, plan, entrypoint, assemblyBytes, manifest, verification, policy, cancellationToken),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    public string EntryPath(string cacheKey)
+    {
+        if (!IsHexHash(cacheKey)) {
+            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.CacheInvalid, "cache key is not path safe"));
+        }
+
+        return Path.Combine(_rootDirectory, cacheKey[..2], cacheKey[2..4], cacheKey);
+    }
+
+    private async ValueTask<CompiledCacheLookup> TryReadCoreAsync(
         string cacheKey,
         ExecutionPlan plan,
         string entrypoint,
@@ -60,7 +99,7 @@ public sealed class PersistentCompiledArtifactCache
         }
     }
 
-    public async ValueTask WriteAsync(
+    private async ValueTask WriteCoreAsync(
         string cacheKey,
         ExecutionPlan plan,
         string entrypoint,
@@ -96,15 +135,6 @@ public sealed class PersistentCompiledArtifactCache
                 Directory.Delete(tempPath, recursive: true);
             }
         }
-    }
-
-    public string EntryPath(string cacheKey)
-    {
-        if (!IsHexHash(cacheKey)) {
-            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.CacheInvalid, "cache key is not path safe"));
-        }
-
-        return Path.Combine(_rootDirectory, cacheKey[..2], cacheKey[2..4], cacheKey);
     }
 
     private static void ValidateManifest(
@@ -172,6 +202,36 @@ public sealed class PersistentCompiledArtifactCache
         await JsonSerializer.SerializeAsync(stream, value, JsonOptions, cancellationToken).ConfigureAwait(false);
     }
 
+    private async ValueTask<T> WithEntryLockAsync<T>(
+        string cacheKey,
+        Func<ValueTask<T>> action,
+        CancellationToken cancellationToken)
+    {
+        var entryLock = _entryLocks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
+        await entryLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try {
+            return await action().ConfigureAwait(false);
+        }
+        finally {
+            entryLock.Release();
+        }
+    }
+
+    private async ValueTask WithEntryLockAsync(
+        string cacheKey,
+        Func<ValueTask> action,
+        CancellationToken cancellationToken)
+    {
+        var entryLock = _entryLocks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
+        await entryLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try {
+            await action().ConfigureAwait(false);
+        }
+        finally {
+            entryLock.Release();
+        }
+    }
+
     private void Quarantine(string entryPath)
     {
         if (!Directory.Exists(entryPath)) {
@@ -180,7 +240,9 @@ public sealed class PersistentCompiledArtifactCache
 
         var quarantineRoot = Path.Combine(_rootDirectory, "quarantine");
         Directory.CreateDirectory(quarantineRoot);
-        var target = Path.Combine(quarantineRoot, Path.GetFileName(entryPath) + "-" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        var target = Path.Combine(
+            quarantineRoot,
+            Path.GetFileName(entryPath) + "-" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "-" + Guid.NewGuid().ToString("N"));
         Directory.Move(entryPath, target);
     }
 
