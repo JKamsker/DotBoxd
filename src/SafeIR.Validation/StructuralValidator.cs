@@ -10,6 +10,12 @@ internal static class StructuralValidator
 
         foreach (var request in module.CapabilityRequests) {
             CheckIdentifier(request.Id, "capability id", diagnostics);
+            CheckOptionalText(request.Reason, "capability reason", diagnostics);
+        }
+
+        foreach (var item in module.Metadata) {
+            CheckIdentifier(item.Key, "metadata key", diagnostics);
+            CheckIdentifier(item.Value, "metadata value", diagnostics);
         }
 
         foreach (var group in module.Functions.GroupBy(f => f.Id, StringComparer.Ordinal).Where(g => g.Count() > 1)) {
@@ -29,6 +35,10 @@ internal static class StructuralValidator
     {
         CheckIdentifier(function.Id, "function id", diagnostics);
         CheckType(function.ReturnType, diagnostics);
+        foreach (var group in function.Parameters.GroupBy(p => p.Name, StringComparer.Ordinal).Where(g => g.Count() > 1)) {
+            diagnostics.Add(new SandboxDiagnostic("E-STRUCT-DUP-PARAM", $"duplicate parameter '{group.Key}' in function '{function.Id}'"));
+        }
+
         foreach (var parameter in function.Parameters) {
             CheckIdentifier(parameter.Name, "parameter name", diagnostics);
             CheckType(parameter.Type, diagnostics);
@@ -50,6 +60,13 @@ internal static class StructuralValidator
     {
         if (DangerousReferenceDetector.IsDangerousReference(value)) {
             diagnostics.Add(new SandboxDiagnostic("E-IR-CLR-REF", $"{description} '{value}' looks like a forbidden CLR reference"));
+        }
+    }
+
+    private static void CheckOptionalText(string? value, string description, List<SandboxDiagnostic> diagnostics)
+    {
+        if (value is not null) {
+            CheckIdentifier(value, description, diagnostics);
         }
     }
 }

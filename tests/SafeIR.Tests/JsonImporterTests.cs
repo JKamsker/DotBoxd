@@ -63,6 +63,77 @@ public sealed class JsonImporterTests
     }
 
     [Fact]
+    public void Module_root_rejects_unsupported_properties()
+    {
+        var ex = Assert.Throws<SandboxValidationException>(() => SafeIrJsonImporter.Import(MinimalModule(
+            """
+            "assemblyName": "System.IO.File",
+            """)));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-JSON-SCHEMA");
+    }
+
+    [Fact]
+    public void Expression_rejects_mixed_shapes()
+    {
+        var ex = Assert.Throws<SandboxValidationException>(() => SafeIrJsonImporter.Import(MinimalModule(
+            "",
+            """{ "i32": 1, "call": "math.abs", "args": [{ "i32": 1 }] }""")));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-JSON-SCHEMA");
+    }
+
+    [Fact]
+    public async Task Duplicate_parameter_names_return_validation_diagnostic()
+    {
+        var host = SandboxHost.Create(builder => {
+            builder.AddDefaultPureBindings();
+            builder.UseInterpreter();
+        });
+        var module = await host.ParseJsonAsync("""
+        {
+          "id": "bad-params",
+          "version": "1.0.0",
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [
+                { "name": "value", "type": "I32" },
+                { "name": "value", "type": "I32" }
+              ],
+              "returnType": "I32",
+              "body": [{ "op": "return", "value": { "var": "value" } }]
+            }
+          ]
+        }
+        """);
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () =>
+            await host.PrepareAsync(module, SandboxPolicyBuilder.Create().Build()));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-STRUCT-DUP-PARAM");
+    }
+
+    [Fact]
+    public async Task Metadata_rejects_forbidden_clr_references()
+    {
+        var host = SandboxHost.Create(builder => {
+            builder.AddDefaultPureBindings();
+            builder.UseInterpreter();
+        });
+        var module = await host.ParseJsonAsync(MinimalModule(
+            """
+            "metadata": { "debug": "System.IO.File" },
+            """));
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () =>
+            await host.PrepareAsync(module, SandboxPolicyBuilder.Create().Build()));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-IR-CLR-REF");
+    }
+
+    [Fact]
     public async Task Forbidden_clr_call_is_rejected_before_execution()
     {
         var host = SandboxTestHost.Create();
@@ -94,4 +165,22 @@ public sealed class JsonImporterTests
         var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () => await host.PrepareAsync(module, policy));
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-IR-CLR-REF");
     }
+
+    private static string MinimalModule(string extraModuleProperty, string returnValue = """{ "i32": 1 }""")
+        => $$"""
+        {
+          "id": "schema-check",
+          "version": "1.0.0",
+          {{extraModuleProperty}}
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [],
+              "returnType": "I32",
+              "body": [{ "op": "return", "value": {{returnValue}} }]
+            }
+          ]
+        }
+        """;
 }
