@@ -13,9 +13,9 @@
     <Folder Name="/examples/">
         <Project Path="examples/SafeIR.PluginIpc.Client/SafeIR.PluginIpc.Client.csproj" />
         <Project Path="examples/SafeIR.PluginIpc.Server/SafeIR.PluginIpc.Server.csproj" />
+        <Project Path="examples/SafeIR.PluginIpc.Server.Abstractions/SafeIR.PluginIpc.Server.Abstractions.csproj" />
         <Project Path="examples/SafeIR.PluginIpc.Shared/SafeIR.PluginIpc.Shared.csproj" />
         <Project Path="examples/SafeIR.PluginLocal/SafeIR.PluginLocal.csproj" />
-        <Project Path="examples/SafeIR.PluginSamples.Common/SafeIR.PluginSamples.Common.csproj" />
     </Folder>
     <Folder Name="/tests/">
         <Project Path="tests/SafeIR.Tests/SafeIR.Tests.csproj" />

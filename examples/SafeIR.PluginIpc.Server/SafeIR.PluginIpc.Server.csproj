@@ -9,7 +9,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SafeIR.Plugins\SafeIR.Plugins.csproj" />
     <ProjectReference Include="..\SafeIR.PluginIpc.Shared\SafeIR.PluginIpc.Shared.csproj" />
-    <ProjectReference Include="..\SafeIR.PluginSamples.Common\SafeIR.PluginSamples.Common.csproj" />
+    <ProjectReference Include="..\SafeIR.PluginIpc.Server.Abstractions\SafeIR.PluginIpc.Server.Abstractions.csproj" />
+    <ProjectReference Include="..\SafeIR.PluginLocal\SafeIR.PluginLocal.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

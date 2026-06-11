@@ -1,10 +1,19 @@
-using SafeIR.PluginSamples.Common;
+using SafeIR.PluginIpc.Server.Abstractions;
+using SafeIR.PluginLocal;
 using SafeIR.Plugins;
 
 namespace SafeIR.Tests;
 
 public sealed class PluginAddendumTests
 {
+    [Fact]
+    public void Fire_damage_contracts_live_in_server_abstractions_and_kernel_lives_in_local_plugin()
+    {
+        Assert.Equal("SafeIR.PluginIpc.Server.Abstractions", typeof(DamageEvent).Assembly.GetName().Name);
+        Assert.Equal("SafeIR.PluginLocal", typeof(FireDamageKernel).Assembly.GetName().Name);
+        Assert.Same(typeof(FireDamageKernel).Assembly, typeof(FireDamagePluginPackage).Assembly);
+    }
+
     [Fact]
     public async Task Kernel_live_settings_affect_future_hook_runs()
     {

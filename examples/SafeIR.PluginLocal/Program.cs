@@ -1,4 +1,5 @@
-using SafeIR.PluginSamples.Common;
+using SafeIR.PluginLocal;
+using SafeIR.PluginIpc.Server.Abstractions;
 using SafeIR.Plugins;
 
 var messages = new InMemoryPluginMessageSink();

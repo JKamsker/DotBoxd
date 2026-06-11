@@ -4,6 +4,7 @@ This branch implements the addendum as a hosting-layer plugin model:
 
 - `SafeIR.Plugins` exposes live values, typed live contexts, kernel state, hook pipelines, plugin manifests, and safe message bindings.
 - `SafeIR.PluginAnalyzer` provides local SDK diagnostics for forbidden File IO in kernels and unsupported live setting types.
+- `SafeIR.PluginIpc.Server.Abstractions` owns the server-side event contracts that plugin clients implement against.
 - Plugin packages carry Safe IR plus manifest metadata. The server validates the package with the existing Safe IR validator before installation.
 - Hook handlers run through `SandboxHost.ExecuteAsync`; the server does not load or execute plugin DLLs.
 
@@ -47,7 +48,7 @@ Simple filters request CPU-only execution. They do not mutate server state and d
 
 ### 2. Implement A Kernel
 
-Use kernels when the plugin needs both a server-side filter and an approved action path. The current sample kernel lives at `examples\SafeIR.PluginSamples.Common\FireDamageKernel.cs`.
+Use kernels when the plugin needs both a server-side filter and an approved action path. The current sample kernel lives at `examples\SafeIR.PluginLocal\FireDamageKernel.cs`.
 
 ```csharp
 [GamePlugin("fire-damage")]
@@ -223,7 +224,8 @@ If the policy does not grant `game.message.write`, package preparation fails clo
 
 The flagship example is implemented in:
 
-- `examples\SafeIR.PluginSamples.Common\FireDamageKernel.cs`
+- `examples\SafeIR.PluginLocal\FireDamageKernel.cs`
+- `examples\SafeIR.PluginIpc.Server.Abstractions\DamageEvent.cs`
 - `SafeIR.PluginAnalyzer` generated `FireDamagePluginPackage.g.cs`
 - `examples\SafeIR.PluginLocal\Program.cs`
 

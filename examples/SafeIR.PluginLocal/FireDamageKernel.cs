@@ -1,6 +1,7 @@
-namespace SafeIR.PluginSamples.Common;
+namespace SafeIR.PluginLocal;
 
 using System.ComponentModel.DataAnnotations;
+using SafeIR.PluginIpc.Server.Abstractions;
 using SafeIR.Plugins;
 
 [GamePlugin("fire-damage")]

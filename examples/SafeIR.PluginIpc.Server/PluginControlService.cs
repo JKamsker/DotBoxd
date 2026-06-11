@@ -2,7 +2,8 @@ namespace SafeIR.PluginIpc.Server;
 
 using System.Globalization;
 using SafeIR.PluginIpc.Shared;
-using SafeIR.PluginSamples.Common;
+using SafeIR.PluginIpc.Server.Abstractions;
+using SafeIR.PluginLocal;
 using SafeIR.Plugins;
 
 public sealed class PluginControlService : IPluginControlService

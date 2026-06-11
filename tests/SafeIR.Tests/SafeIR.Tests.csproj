@@ -20,7 +20,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\examples\SafeIR.PluginSamples.Common\SafeIR.PluginSamples.Common.csproj" />
+    <ProjectReference Include="..\..\examples\SafeIR.PluginIpc.Server.Abstractions\SafeIR.PluginIpc.Server.Abstractions.csproj" />
+    <ProjectReference Include="..\..\examples\SafeIR.PluginLocal\SafeIR.PluginLocal.csproj" />
     <ProjectReference Include="..\..\src\SafeIR.PluginAnalyzer\SafeIR.PluginAnalyzer.csproj" />
     <ProjectReference Include="..\..\src\SafeIR.Core\SafeIR.Core.csproj" />
     <ProjectReference Include="..\..\src\SafeIR.Validation\SafeIR.Validation.csproj" />

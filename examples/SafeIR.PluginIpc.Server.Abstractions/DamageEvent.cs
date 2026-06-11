@@ -1,4 +1,4 @@
-namespace SafeIR.PluginSamples.Common;
+namespace SafeIR.PluginIpc.Server.Abstractions;
 
 using SafeIR;
 using SafeIR.Plugins;
