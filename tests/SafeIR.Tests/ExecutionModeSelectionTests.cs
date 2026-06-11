@@ -217,7 +217,7 @@ public sealed class ExecutionModeSelectionTests
         {
             Calls++;
             return ValueTask.FromResult(new CompiledArtifact(
-                [0],
+                [],
                 "delegate-artifact",
                 Manifest(plan, "delegate-artifact"),
                 new VerificationResult(true, [], "delegate-artifact", "delegate-verifier", DateTimeOffset.UtcNow),
@@ -233,7 +233,7 @@ public sealed class ExecutionModeSelectionTests
             CompileOptions options,
             CancellationToken cancellationToken)
             => ValueTask.FromResult(new CompiledArtifact(
-                [0],
+                [],
                 "throwing-artifact",
                 Manifest(plan, "throwing-artifact"),
                 new VerificationResult(true, [], "throwing-artifact", "delegate-verifier", DateTimeOffset.UtcNow),

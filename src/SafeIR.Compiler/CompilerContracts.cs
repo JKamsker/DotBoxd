@@ -22,15 +22,51 @@ public enum CompiledCacheStatus
     Recompiled
 }
 
-public sealed record CompiledArtifact(
-    byte[] AssemblyBytes,
-    string AssemblyHash,
-    ArtifactManifest Manifest,
-    VerificationResult Verification,
-    SandboxCompiledEntrypoint Entrypoint,
-    CompiledRuntimeFormKind RuntimeForm,
-    CompiledCacheStatus CacheStatus = CompiledCacheStatus.None)
+public sealed record CompiledArtifact
 {
+    public CompiledArtifact(
+        byte[] assemblyBytes,
+        string assemblyHash,
+        ArtifactManifest manifest,
+        VerificationResult verification,
+        SandboxCompiledEntrypoint entrypoint,
+        CompiledRuntimeFormKind runtimeForm,
+        CompiledCacheStatus cacheStatus = CompiledCacheStatus.None)
+    {
+        ArgumentNullException.ThrowIfNull(assemblyBytes);
+        ArgumentNullException.ThrowIfNull(assemblyHash);
+        ArgumentNullException.ThrowIfNull(manifest);
+        ArgumentNullException.ThrowIfNull(verification);
+        ArgumentNullException.ThrowIfNull(entrypoint);
+
+        if (runtimeForm == CompiledRuntimeFormKind.DynamicMethod && assemblyBytes.Length != 0) {
+            throw new ArgumentException(
+                "DynamicMethod artifacts expose only the created delegate, not assembly bytes.",
+                nameof(AssemblyBytes));
+        }
+
+        if (runtimeForm == CompiledRuntimeFormKind.LoadedAssembly && assemblyBytes.Length == 0) {
+            throw new ArgumentException(
+                "LoadedAssembly artifacts must include the verified assembly image used to create the delegate.",
+                nameof(AssemblyBytes));
+        }
+
+        AssemblyBytes = assemblyBytes;
+        AssemblyHash = assemblyHash;
+        Manifest = manifest;
+        Verification = verification;
+        Entrypoint = entrypoint;
+        RuntimeForm = runtimeForm;
+        CacheStatus = cacheStatus;
+    }
+
+    public byte[] AssemblyBytes { get; init; }
+    public string AssemblyHash { get; init; }
+    public ArtifactManifest Manifest { get; init; }
+    public VerificationResult Verification { get; init; }
+    public SandboxCompiledEntrypoint Entrypoint { get; init; }
+    public CompiledRuntimeFormKind RuntimeForm { get; init; }
+    public CompiledCacheStatus CacheStatus { get; init; }
     public string ArtifactHash => AssemblyHash;
 }
 

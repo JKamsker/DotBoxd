@@ -4,7 +4,6 @@
     <ProjectReference Include="..\SafeIR.Core\SafeIR.Core.csproj" />
     <ProjectReference Include="..\SafeIR.Validation\SafeIR.Validation.csproj" />
     <ProjectReference Include="..\SafeIR.Runtime\SafeIR.Runtime.csproj" />
-    <ProjectReference Include="..\SafeIR.Interpreter\SafeIR.Interpreter.csproj" />
     <ProjectReference Include="..\SafeIR.Verifier\SafeIR.Verifier.csproj" />
   </ItemGroup>
 

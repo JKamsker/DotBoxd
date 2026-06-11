@@ -46,6 +46,7 @@ Deliver:
 - binding invocation
 - safe error model
 - audit events
+- no compiler, verifier, Reflection.Emit, `DynamicMethod`, DLL, or IL execution dependency
 
 Acceptance:
 
@@ -54,6 +55,7 @@ Acceptance:
 - granted safe file read works
 - infinite loops stop by fuel
 - debug trace works for basic scripts
+- interpreted execution does not create or consume compiled artifacts
 
 ## Phase 3 — Runtime safe APIs
 
