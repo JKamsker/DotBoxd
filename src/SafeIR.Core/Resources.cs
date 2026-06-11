@@ -78,6 +78,7 @@ public sealed class ResourceMeter
 
     public void ChargeAllocation(long bytes)
     {
+        ThrowIfNegative(bytes, nameof(bytes));
         AllocatedBytes += bytes;
         if (AllocatedBytes > Limits.MaxAllocatedBytes) {
             throw Quota("allocation budget exhausted");
@@ -156,6 +157,7 @@ public sealed class ResourceMeter
 
     public void ChargeFileRead(long bytes)
     {
+        ThrowIfNegative(bytes, nameof(bytes));
         FileBytesRead += bytes;
         if (FileBytesRead > Limits.MaxFileBytesRead) {
             throw Quota("file read byte budget exhausted");
@@ -164,6 +166,7 @@ public sealed class ResourceMeter
 
     public void ChargeFileWrite(long bytes)
     {
+        ThrowIfNegative(bytes, nameof(bytes));
         FileBytesWritten += bytes;
         if (FileBytesWritten > Limits.MaxFileBytesWritten) {
             throw Quota("file write byte budget exhausted");
@@ -172,6 +175,7 @@ public sealed class ResourceMeter
 
     public void ChargeNetworkRead(long bytes)
     {
+        ThrowIfNegative(bytes, nameof(bytes));
         NetworkBytesRead += bytes;
         if (NetworkBytesRead > Limits.MaxNetworkBytesRead) {
             throw Quota("network read byte budget exhausted");
@@ -199,6 +203,13 @@ public sealed class ResourceMeter
 
     private static SandboxRuntimeException Quota(string message)
         => new(new SandboxError(SandboxErrorCode.QuotaExceeded, message));
+
+    private static void ThrowIfNegative(long amount, string paramName)
+    {
+        if (amount < 0) {
+            throw new ArgumentOutOfRangeException(paramName);
+        }
+    }
 
     private void ChargeStringShape(ValueShape shape)
     {
@@ -277,21 +288,3 @@ public sealed record SandboxResourceUsage(
     int LogEvents,
     long CollectionElements,
     long StringBytes);
-
-internal readonly record struct ValueShape(
-    long Elements,
-    int MaxListLength,
-    int MaxMapEntries,
-    int Depth,
-    int MaxStringLength,
-    long StringBytes)
-{
-    public ValueShape Combine(ValueShape nested)
-        => new(
-            Elements + nested.Elements,
-            Math.Max(MaxListLength, nested.MaxListLength),
-            Math.Max(MaxMapEntries, nested.MaxMapEntries),
-            Math.Max(Depth, nested.Depth == 0 ? Depth : nested.Depth + 1),
-            Math.Max(MaxStringLength, nested.MaxStringLength),
-            StringBytes + nested.StringBytes);
-}
