@@ -447,7 +447,7 @@ internal sealed class RpcStreamManager
     {
         var state = GetSender(streamId);
         await state.WaitForCreditAsync(ct).ConfigureAwait(false);
-        using var writer = new PooledBufferWriter(MessageFramer.HeaderSize);
+        using var writer = PooledBufferWriter.Rent(MessageFramer.HeaderSize);
         RpcRawFrame.WritePrefix(writer, streamId, MessageType.StreamItem);
         serializer.Serialize(writer, item);
         using var frame = RpcRawFrame.Finish(writer);

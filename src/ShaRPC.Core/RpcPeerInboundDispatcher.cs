@@ -277,7 +277,7 @@ internal sealed class RpcPeerInboundDispatcher
                 var responseStream = response.Stream;
                 try
                 {
-                    await _sendAsync(response.Frame.Memory, inbound.RequestCts.Token).ConfigureAwait(false);
+                    await _sendAsync(response.FrameMemory, inbound.RequestCts.Token).ConfigureAwait(false);
                 }
                 catch
                 {

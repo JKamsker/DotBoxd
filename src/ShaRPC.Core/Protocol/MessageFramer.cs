@@ -90,7 +90,7 @@ public static class MessageFramer
         T envelope,
         ReadOnlySpan<byte> payload)
     {
-        using var writer = new PooledBufferWriter(HeaderSize + EnvelopeLengthSize + payload.Length);
+        using var writer = PooledBufferWriter.Rent(HeaderSize + EnvelopeLengthSize + payload.Length);
         WriteFramePrefix(writer, messageId, type);
 
         var envelopeStart = writer.WrittenCount;
@@ -107,6 +107,39 @@ public static class MessageFramer
         return FinishFrame(writer, envelopeLength);
     }
 
+    internal static PooledBufferWriter RentFrameMessage<T>(
+        ISerializer serializer,
+        int messageId,
+        MessageType type,
+        T envelope,
+        ReadOnlySpan<byte> payload)
+    {
+        var writer = PooledBufferWriter.Rent(HeaderSize + EnvelopeLengthSize + payload.Length);
+        try
+        {
+            WriteFramePrefix(writer, messageId, type);
+
+            var envelopeStart = writer.WrittenCount;
+            serializer.Serialize(writer, envelope);
+            var envelopeLength = writer.WrittenCount - envelopeStart;
+
+            if (payload.Length > 0)
+            {
+                var span = writer.GetSpan(payload.Length);
+                payload.CopyTo(span);
+                writer.Advance(payload.Length);
+            }
+
+            CompleteFrame(writer, envelopeLength);
+            return writer;
+        }
+        catch
+        {
+            writer.Dispose();
+            throw;
+        }
+    }
+
     /// <summary>
     /// Serializes <paramref name="envelope"/> followed immediately by <paramref name="argument"/>
     /// behind a frame header into a single pooled buffer. Unlike <see cref="FrameMessage{T}"/> this
@@ -120,7 +153,7 @@ public static class MessageFramer
         TEnvelope envelope,
         TArgument argument)
     {
-        using var writer = new PooledBufferWriter(HeaderSize + EnvelopeLengthSize);
+        using var writer = PooledBufferWriter.Rent(HeaderSize + EnvelopeLengthSize);
         WriteFramePrefix(writer, messageId, type);
 
         var envelopeStart = writer.WrittenCount;
@@ -130,6 +163,34 @@ public static class MessageFramer
         serializer.Serialize(writer, argument);
 
         return FinishFrame(writer, envelopeLength);
+    }
+
+    internal static PooledBufferWriter RentFrameRequest<TEnvelope, TArgument>(
+        ISerializer serializer,
+        int messageId,
+        MessageType type,
+        TEnvelope envelope,
+        TArgument argument)
+    {
+        var writer = PooledBufferWriter.Rent(HeaderSize + EnvelopeLengthSize);
+        try
+        {
+            WriteFramePrefix(writer, messageId, type);
+
+            var envelopeStart = writer.WrittenCount;
+            serializer.Serialize(writer, envelope);
+            var envelopeLength = writer.WrittenCount - envelopeStart;
+
+            serializer.Serialize(writer, argument);
+
+            CompleteFrame(writer, envelopeLength);
+            return writer;
+        }
+        catch
+        {
+            writer.Dispose();
+            throw;
+        }
     }
 
     /// <summary>
@@ -153,11 +214,16 @@ public static class MessageFramer
     /// </summary>
     internal static Payload FinishFrame(PooledBufferWriter writer, int envelopeLength)
     {
+        CompleteFrame(writer, envelopeLength);
         var frame = writer.DetachPayload();
-        var header = frame.Memory.Span;
-        BinaryPrimitives.WriteInt32LittleEndian(header.Slice(0, 4), frame.Length);
-        BinaryPrimitives.WriteInt32LittleEndian(header.Slice(HeaderSize, EnvelopeLengthSize), envelopeLength);
         return frame;
+    }
+
+    internal static void CompleteFrame(PooledBufferWriter writer, int envelopeLength)
+    {
+        var header = writer.WrittenSpan;
+        BinaryPrimitives.WriteInt32LittleEndian(header.Slice(0, 4), writer.WrittenCount);
+        BinaryPrimitives.WriteInt32LittleEndian(header.Slice(HeaderSize, EnvelopeLengthSize), envelopeLength);
     }
 
     /// <summary>
@@ -339,7 +405,7 @@ public static class MessageFramer
         ReadOnlyMemory<byte> payload,
         CancellationToken ct = default)
     {
-        using var writer = new PooledBufferWriter(HeaderSize + payload.Length);
+        using var writer = PooledBufferWriter.Rent(HeaderSize + payload.Length);
         WriteFrame(writer, messageId, type, payload.Span);
         await stream.WriteAsync(writer.WrittenMemory, ct).ConfigureAwait(false);
         await stream.FlushAsync(ct).ConfigureAwait(false);

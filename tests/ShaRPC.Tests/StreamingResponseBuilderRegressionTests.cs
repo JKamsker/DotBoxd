@@ -79,7 +79,7 @@ public sealed class StreamingResponseBuilderRegressionTests
         Assert.True(dispatcher.ResponseStream.DisposeAttempted);
         AssertNoPendingCreditForReleasedReservation(streams, streamId: 1);
         Assert.True(MessageFramer.TryReadFrame(
-            result.Frame.Memory,
+            result.FrameMemory,
             out _,
             out var messageType,
             out var envelope,

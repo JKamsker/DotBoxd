@@ -13,7 +13,7 @@ public static class SerializerExtensions
     /// </summary>
     public static Payload SerializeToPayload<T>(this ISerializer serializer, T value)
     {
-        using var writer = new PooledBufferWriter();
+        using var writer = PooledBufferWriter.Rent();
         serializer.Serialize(writer, value);
         return writer.DetachPayload();
     }

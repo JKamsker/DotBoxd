@@ -5,17 +5,44 @@ namespace ShaRPC.Core;
 
 internal sealed class RpcDispatchResult : IDisposable
 {
-    private Payload? _frame;
+    private Payload? _payloadFrame;
+    private PooledBufferWriter? _writerFrame;
 
     public RpcDispatchResult(Payload frame, RpcStreamAttachment? stream)
     {
-        _frame = frame;
+        _payloadFrame = frame;
         Stream = stream;
     }
 
-    public Payload Frame => _frame ?? throw new ObjectDisposedException(nameof(RpcDispatchResult));
+    public RpcDispatchResult(PooledBufferWriter frame, RpcStreamAttachment? stream)
+    {
+        _writerFrame = frame;
+        Stream = stream;
+    }
+
+    public ReadOnlyMemory<byte> FrameMemory
+    {
+        get
+        {
+            if (_payloadFrame is { } payloadFrame)
+            {
+                return payloadFrame.Memory;
+            }
+
+            if (_writerFrame is { } writerFrame)
+            {
+                return writerFrame.WrittenMemory;
+            }
+
+            throw new ObjectDisposedException(nameof(RpcDispatchResult));
+        }
+    }
 
     public RpcStreamAttachment? Stream { get; }
 
-    public void Dispose() => Interlocked.Exchange(ref _frame, null)?.Dispose();
+    public void Dispose()
+    {
+        Interlocked.Exchange(ref _payloadFrame, null)?.Dispose();
+        Interlocked.Exchange(ref _writerFrame, null)?.Dispose();
+    }
 }

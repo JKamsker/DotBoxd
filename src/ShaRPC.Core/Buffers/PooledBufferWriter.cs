@@ -12,8 +12,12 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
     // Largest single-dimension array the runtime allows (== Array.MaxLength, which netstandard2.1 lacks).
     private const int MaxArrayLength = 0x7FFFFFC7;
 
+    [ThreadStatic]
+    private static PooledBufferWriter? s_cachedWriter;
+
     private byte[]? _buffer;
     private int _written;
+    private bool _returnToCache;
 
     public PooledBufferWriter(int initialCapacity = 256)
     {
@@ -27,6 +31,27 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
     }
 
     /// <summary>
+    /// Rents a writer object for internal one-shot framing paths. The public constructor keeps
+    /// disposed writers permanently unusable; this internal pool is only used where the writer never
+    /// escapes the method that rented it.
+    /// </summary>
+    internal static PooledBufferWriter Rent(int initialCapacity = 256)
+    {
+        var writer = s_cachedWriter;
+        if (writer is null)
+        {
+            writer = new PooledBufferWriter(initialCapacity) { _returnToCache = true };
+        }
+        else
+        {
+            s_cachedWriter = null;
+            writer.Reset(initialCapacity);
+        }
+
+        return writer;
+    }
+
+    /// <summary>
     /// The bytes written so far.
     /// </summary>
     public ReadOnlyMemory<byte> WrittenMemory =>
@@ -36,6 +61,9 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
     /// The number of bytes written so far.
     /// </summary>
     public int WrittenCount => _written;
+
+    internal Span<byte> WrittenSpan =>
+        (_buffer ?? throw new ObjectDisposedException(nameof(PooledBufferWriter))).AsSpan(0, _written);
 
     public void Advance(int count)
     {
@@ -88,6 +116,27 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
         {
             ArrayPool<byte>.Shared.Return(buffer);
         }
+
+        if (_returnToCache)
+        {
+            _written = 0;
+            if (s_cachedWriter is null)
+            {
+                s_cachedWriter = this;
+            }
+        }
+    }
+
+    private void Reset(int initialCapacity)
+    {
+        if (initialCapacity <= 0)
+        {
+            initialCapacity = 256;
+        }
+
+        _buffer = ArrayPool<byte>.Shared.Rent(initialCapacity);
+        _written = 0;
+        _returnToCache = true;
     }
 
     private void EnsureCapacity(int sizeHint)

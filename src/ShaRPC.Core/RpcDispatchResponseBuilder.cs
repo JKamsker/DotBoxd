@@ -42,7 +42,7 @@ internal sealed class RpcDispatchResponseBuilder
             return new RpcDispatchResult(BuildErrorFrame(messageId, RpcErrors.ServiceNotFound()), stream: null);
         }
 
-        using var writer = new PooledBufferWriter(MessageFramer.HeaderSize + MessageFramer.EnvelopeLengthSize);
+        var writer = PooledBufferWriter.Rent(MessageFramer.HeaderSize + MessageFramer.EnvelopeLengthSize);
         MessageFramer.WriteFramePrefix(writer, messageId, MessageType.Response);
         var envelopeStart = writer.WrittenCount;
         _serializer.Serialize(writer, new RpcResponse { MessageId = messageId, IsSuccess = true });
@@ -64,11 +64,13 @@ internal sealed class RpcDispatchResponseBuilder
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
+            writer?.Dispose();
             await streaming.AbandonResponseAsync().ConfigureAwait(false);
             throw;
         }
         catch (ShaRpcProtocolException ex)
         {
+            writer?.Dispose();
             await streaming.AbandonResponseAsync().ConfigureAwait(false);
             return new RpcDispatchResult(
                 BuildErrorFrame(messageId, RpcErrors.Protocol(ex.Message)),
@@ -76,6 +78,7 @@ internal sealed class RpcDispatchResponseBuilder
         }
         catch (Exception ex)
         {
+            writer?.Dispose();
             await streaming.AbandonResponseAsync().ConfigureAwait(false);
             return new RpcDispatchResult(
                 BuildErrorFrame(messageId, RpcErrors.FromException(ex, _exceptionTransformer)),
@@ -84,6 +87,8 @@ internal sealed class RpcDispatchResponseBuilder
 
         if (streaming.Response is { } stream)
         {
+            writer.Dispose();
+            PooledBufferWriter? responseWriter = null;
             try
             {
                 var response = new RpcResponse
@@ -92,24 +97,27 @@ internal sealed class RpcDispatchResponseBuilder
                     IsSuccess = true,
                     Stream = stream.Handle,
                 };
-                using var responseWriter = new PooledBufferWriter(
+                responseWriter = PooledBufferWriter.Rent(
                     MessageFramer.HeaderSize + MessageFramer.EnvelopeLengthSize);
                 MessageFramer.WriteFramePrefix(responseWriter, messageId, MessageType.Response);
                 var responseEnvelopeStart = responseWriter.WrittenCount;
                 _serializer.Serialize(responseWriter, response);
                 var responseEnvelopeLength = responseWriter.WrittenCount - responseEnvelopeStart;
-                return new RpcDispatchResult(
-                    MessageFramer.FinishFrame(responseWriter, responseEnvelopeLength),
-                    stream);
+                MessageFramer.CompleteFrame(responseWriter, responseEnvelopeLength);
+                var result = new RpcDispatchResult(responseWriter, stream);
+                responseWriter = null;
+                return result;
             }
             catch
             {
+                responseWriter?.Dispose();
                 await streaming.AbandonResponseAsync().ConfigureAwait(false);
                 throw;
             }
         }
 
-        return new RpcDispatchResult(MessageFramer.FinishFrame(writer, envelopeLength), stream: null);
+        MessageFramer.CompleteFrame(writer, envelopeLength);
+        return new RpcDispatchResult(writer, stream: null);
     }
 
     public Payload BuildProtocolErrorFrame(int messageId, string errorMessage) =>

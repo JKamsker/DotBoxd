@@ -275,13 +275,13 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
 
         var outboundStreams = RpcOutboundStreamSet.Empty;
         var registeredStreams = false;
-        Payload frame;
+        PooledBufferWriter frame;
         try
         {
             outboundStreams = _streams.RegisterOutbound(streams, ct);
             registeredStreams = true;
             var envelope = CreateEnvelope(pending.MessageId, service, method, instanceId, streams);
-            frame = MessageFramer.FrameRequest(
+            frame = MessageFramer.RentFrameRequest(
                 _serializer,
                 pending.MessageId,
                 MessageType.Request,
@@ -326,7 +326,7 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         try
         {
             var envelope = CreateEnvelope(pending.MessageId, service, method, instanceId, streams: null);
-            var frame = MessageFramer.FrameMessage(
+            var frame = MessageFramer.RentFrameMessage(
                 _serializer,
                 pending.MessageId,
                 MessageType.Request,
@@ -399,7 +399,7 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
     private async Task<ReceivedResponse> SendFrameAndAwaitAsync(
         int messageId,
         TaskCompletionSource<ReceivedResponse> tcs,
-        Payload frame,
+        PooledBufferWriter frame,
         string service,
         string method,
         RpcOutboundStreamSet outboundStreams,
@@ -411,7 +411,7 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         {
             using (frame)
             {
-                await _sendAsync(frame.Memory, ct).ConfigureAwait(false);
+                await _sendAsync(frame.WrittenMemory, ct).ConfigureAwait(false);
                 requestSent = true;
             }
             outboundStreams.Start();
