@@ -1,10 +1,9 @@
 using SafeIR.PluginIpc.Shared;
 using SafeIR.Transport.Ipc;
-using ShaRPC.Generated;
 
 var pipeName = args.Length > 0 ? args[0] : "safe-ir-plugin-ipc";
 await using var connection = await SafeIrShaRpcMessagePackIpc.ConnectNamedPipeAsync(pipeName);
-var service = connection.Peer.GetPluginControlService();
+var service = connection.Get<IPluginControlService>();
 Console.WriteLine("Initial settings:");
 foreach (var setting in await service.GetSettingsAsync()) {
     Console.WriteLine($"  {setting.Name} = {setting.Value}");

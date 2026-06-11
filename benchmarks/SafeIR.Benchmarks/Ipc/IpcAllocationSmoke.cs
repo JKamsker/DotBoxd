@@ -2,7 +2,6 @@ namespace SafeIR.Benchmarks.Ipc;
 
 using System.Globalization;
 using SafeIR.Transport.Ipc;
-using ShaRPC.Generated;
 
 internal static class IpcAllocationSmoke
 {
@@ -13,12 +12,12 @@ internal static class IpcAllocationSmoke
         var pipeName = "safe-ir-ipc-smoke-" + Guid.NewGuid().ToString("N");
         await using var host = SafeIrShaRpcMessagePackIpc.ListenNamedPipe(
             pipeName,
-            peer => peer.ProvideAllocationProbeService(new AllocationProbeService()));
+            peer => peer.Provide<IAllocationProbeService>(new AllocationProbeService()));
         await host.StartAsync().ConfigureAwait(false);
 
         await using var client = await SafeIrShaRpcMessagePackIpc.ConnectNamedPipeAsync(pipeName)
             .ConfigureAwait(false);
-        var service = client.Peer.GetAllocationProbeService();
+        var service = client.Get<IAllocationProbeService>();
         await service.AddAsync(1).ConfigureAwait(false);
         await service.EchoAsync(new PingRequest(1, 1)).ConfigureAwait(false);
 

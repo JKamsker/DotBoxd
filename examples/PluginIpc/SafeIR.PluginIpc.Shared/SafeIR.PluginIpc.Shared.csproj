@@ -2,7 +2,7 @@
 
   <ItemGroup>
     <PackageReference Include="MessagePack" Version="2.5.187" />
-    <PackageReference Include="ShaRPC" Version="1.0.0-ci.18" />
+    <PackageReference Include="ShaRPC" Version="1.0.0-ci.20" />
   </ItemGroup>
 
   <PropertyGroup>

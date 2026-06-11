@@ -3,9 +3,10 @@ namespace SafeIR.Benchmarks.Ipc;
 using BenchmarkDotNet.Attributes;
 using SafeIR.Transport.Ipc;
 using ShaRPC.Core;
+using ShaRPC.Core.Transport;
 
 [MemoryDiagnoser]
-public class IpcRoundTripBenchmarks
+public class InMemoryRoundTripBenchmarks
 {
     private readonly PingRequest _request = new(42, 123);
     private RpcPeerSession? _client;
@@ -15,14 +16,15 @@ public class IpcRoundTripBenchmarks
     [GlobalSetup]
     public async Task SetupAsync()
     {
-        var pipeName = "safe-ir-ipc-bench-" + Guid.NewGuid().ToString("N");
-        _host = SafeIrShaRpcMessagePackIpc.ListenNamedPipe(
-            pipeName,
+        var (serverChannel, clientChannel) = InMemoryRpcChannel.CreatePair();
+        _host = SafeIrShaRpcMessagePackIpc.Listen(
+            new SingleConnectionServerTransport(serverChannel, ownsConnection: true),
             peer => peer.Provide<IAllocationProbeService>(new AllocationProbeService()),
             new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) });
         await _host.StartAsync().ConfigureAwait(false);
 
-        _client = await SafeIrShaRpcMessagePackIpc.ConnectNamedPipeAsync(pipeName)
+        _client = await SafeIrShaRpcMessagePackIpc.ConnectAsync(
+                new SingleConnectionTransport(clientChannel, ownsConnection: true))
             .ConfigureAwait(false);
         _service = _client.Get<IAllocationProbeService>();
         _ = await _service.AddAsync(1).ConfigureAwait(false);

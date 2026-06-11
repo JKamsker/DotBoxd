@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <PackageReference Include="ShaRPC" Version="1.0.0-ci.18" />
-    <PackageReference Include="ShaRPC.Serializers.MessagePack" Version="1.0.0-ci.18" />
-    <PackageReference Include="ShaRPC.Transports.NamedPipes" Version="1.0.0-ci.18" />
+    <PackageReference Include="ShaRPC" Version="1.0.0-ci.20" />
+    <PackageReference Include="ShaRPC.Serializers.MessagePack" Version="1.0.0-ci.20" />
+    <PackageReference Include="ShaRPC.Transports.NamedPipes" Version="1.0.0-ci.20" />
   </ItemGroup>
 
   <PropertyGroup>
