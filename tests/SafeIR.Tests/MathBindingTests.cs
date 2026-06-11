@@ -91,6 +91,8 @@ public sealed class MathBindingTests
         Assert.True(compiled.Succeeded, compiled.Error?.SafeMessage);
         Assert.Equal(((I32Value)interpreted.Value!).Value, ((I32Value)compiled.Value!).Value);
         Assert.Equal(ExecutionMode.Compiled, compiled.ActualMode);
+        Assert.Equal(interpreted.ResourceUsage.HostCalls, compiled.ResourceUsage.HostCalls);
+        Assert.Equal(4, compiled.ResourceUsage.HostCalls);
     }
 
     [Theory]
