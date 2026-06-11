@@ -28,7 +28,10 @@ public static class CompiledRuntime
 
     public static SandboxValue I32(int value) => SandboxValue.FromInt32(value);
 
-    public static SandboxValue F64(double value) => SandboxValue.FromDouble(value);
+    public static SandboxValue F64(double value)
+        => double.IsFinite(value)
+            ? SandboxValue.FromDouble(value)
+            : throw InvalidInput("f64 value must be finite");
 
     public static SandboxValue Bool(bool value) => SandboxValue.FromBool(value);
 
@@ -121,7 +124,7 @@ public static class CompiledRuntime
         return I32(Math.Clamp(AsI32(value), minimum, maximum));
     }
 
-    public static SandboxValue SqrtF64(SandboxValue value) => SandboxValue.FromDouble(Math.Sqrt(AsF64(value)));
+    public static SandboxValue SqrtF64(SandboxValue value) => F64(Math.Sqrt(AsF64(value)));
 
     public static SandboxValue FloorF64(SandboxValue value) => F64(Math.Floor(AsF64(value)));
 

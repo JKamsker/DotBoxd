@@ -143,6 +143,25 @@ public sealed class MathBindingTests
         Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
     }
 
+    [Theory]
+    [InlineData(ExecutionMode.Interpreted, false)]
+    [InlineData(ExecutionMode.Compiled, true)]
+    public async Task F64_math_domain_errors_are_sandbox_errors(
+        ExecutionMode mode,
+        bool compiler)
+    {
+        var result = await ExecuteReturnAsync(
+            """{ "call": "math.sqrt", "args": [{ "f64": -1.0 }] }""",
+            "F64",
+            SandboxPolicyBuilder.Create().Build(),
+            new SandboxExecutionOptions { Mode = mode, AllowFallbackToInterpreter = false },
+            compiler);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.InvalidInput, result.Error!.Code);
+        Assert.Equal(mode, result.ActualMode);
+    }
+
     private static async Task<SandboxExecutionResult> ExecuteReturnAsync(
         string expression,
         string returnType,

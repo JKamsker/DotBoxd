@@ -12,7 +12,10 @@ public abstract record SandboxValue
 
     public static SandboxValue FromInt64(long value) => new I64Value(value);
 
-    public static SandboxValue FromDouble(double value) => new F64Value(value);
+    public static SandboxValue FromDouble(double value)
+        => double.IsFinite(value)
+            ? new F64Value(value)
+            : throw new ArgumentOutOfRangeException(nameof(value), value, "F64 values must be finite.");
 
     public static SandboxValue FromString(string value) => new StringValue(value);
 

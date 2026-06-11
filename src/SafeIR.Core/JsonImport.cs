@@ -69,8 +69,10 @@ internal static class JsonImport
 
     public static double ReadDoubleValue(JsonElement value, string name)
     {
-        if (value.ValueKind != JsonValueKind.Number || !value.TryGetDouble(out var result)) {
-            throw Error("E-JSON-TYPE", $"'{name}' must be a number");
+        if (value.ValueKind != JsonValueKind.Number ||
+            !value.TryGetDouble(out var result) ||
+            !double.IsFinite(result)) {
+            throw Error("E-JSON-TYPE", $"'{name}' must be a finite number");
         }
 
         return result;

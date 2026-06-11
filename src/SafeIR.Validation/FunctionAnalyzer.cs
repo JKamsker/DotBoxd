@@ -125,6 +125,10 @@ internal sealed class FunctionAnalyzer
             }
         }
 
+        if (literal.Value is F64Value number && !double.IsFinite(number.Value)) {
+            throw new SandboxValidationException([new SandboxDiagnostic("E-CONST-F64", "f64 constant must be finite")]);
+        }
+
         return literal.Value.Type;
     }
 
