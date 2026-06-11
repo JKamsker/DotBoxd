@@ -1,3 +1,4 @@
+using SafeIR.Hosting;
 using SafeIR.Runtime;
 
 namespace SafeIR.Tests;
@@ -133,6 +134,17 @@ public sealed class BindingRegistryValidationTests
             Assert.Equal("RuntimeStub", binding.Compiled.Kind);
             Assert.Equal(typeof(CompiledRuntime).FullName, binding.Compiled.Type);
         });
+    }
+
+    [Fact]
+    public void Network_binding_api_only_accepts_in_memory_invokers()
+    {
+        var method = typeof(SandboxHostBuilder).GetMethods()
+            .Single(m => m.Name == nameof(SandboxHostBuilder.AddNetworkBindings));
+        var parameters = method.GetParameters();
+
+        Assert.Equal(typeof(SafeInMemoryHttpMessageInvoker), parameters[0].ParameterType);
+        Assert.Equal(typeof(SafeDnsResolver), parameters[1].ParameterType);
     }
 
     private static BindingRegistry Build(BindingDescriptor binding)

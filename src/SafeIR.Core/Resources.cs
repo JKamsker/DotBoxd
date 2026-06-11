@@ -183,6 +183,17 @@ public sealed class ResourceMeter
         }
     }
 
+    public TimeSpan RemainingWallTime()
+    {
+        var stopwatchTicks = _deadline - Stopwatch.GetTimestamp();
+        if (stopwatchTicks <= 0) {
+            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.Timeout, "wall-time budget exhausted"));
+        }
+
+        var timespanTicks = (long)Math.Ceiling(stopwatchTicks * TimeSpan.TicksPerSecond / (double)Stopwatch.Frequency);
+        return TimeSpan.FromTicks(Math.Max(1, timespanTicks));
+    }
+
     private static SandboxRuntimeException Quota(string message)
         => new(new SandboxError(SandboxErrorCode.QuotaExceeded, message));
 

@@ -6,7 +6,7 @@ using System.Net.Sockets;
 internal static class SafePinnedHttpTransport
 {
     public static async ValueTask<HttpResponseMessage> SendAsync(
-        HttpMessageInvoker? invoker,
+        SafeInMemoryHttpMessageInvoker? invoker,
         HttpRequestMessage message,
         IReadOnlyList<IPAddress> vettedAddresses,
         CancellationToken cancellationToken)

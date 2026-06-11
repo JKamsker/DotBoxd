@@ -12,7 +12,7 @@ public static class SafeHttpClient
     public static async ValueTask<string> GetTextAsync(
         SandboxContext context,
         SandboxUri uri,
-        HttpMessageInvoker? invoker,
+        SafeInMemoryHttpMessageInvoker? invoker,
         SafeDnsResolver? dnsResolver,
         CancellationToken cancellationToken)
     {
@@ -21,7 +21,7 @@ public static class SafeHttpClient
         try {
             var request = ResolveRequest(context, uri);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(request.Timeout);
+            timeout.CancelAfter(EffectiveTimeout(context, request.Timeout));
             var addresses = await ResolveVettedAddressesAsync(
                     request.Grant,
                     request.Uri.Host,
@@ -40,9 +40,9 @@ public static class SafeHttpClient
             }
 
             response.EnsureSuccessStatusCode();
-            var text = await ReadLimitedTextAsync(context, response, request.MaxResponseBytes, timeout.Token).ConfigureAwait(false);
-            Audit(context, startedAt, true, resource, Encoding.UTF8.GetByteCount(text), null);
-            return text;
+            var body = await ReadLimitedTextAsync(context, response, request.MaxResponseBytes, timeout.Token).ConfigureAwait(false);
+            Audit(context, startedAt, true, resource, body.BytesRead, null);
+            return body.Text;
         }
         catch (SandboxRuntimeException ex) {
             Audit(context, startedAt, false, resource, null, ex.Error.Code);
@@ -86,7 +86,7 @@ public static class SafeHttpClient
             ReadTimeout(grant));
     }
 
-    private static async ValueTask<string> ReadLimitedTextAsync(
+    private static async ValueTask<LimitedText> ReadLimitedTextAsync(
         SandboxContext context,
         HttpResponseMessage response,
         long maxBytes,
@@ -113,11 +113,12 @@ public static class SafeHttpClient
             memory.Write(buffer, 0, read);
         }
 
-        context.ChargeFuel(memory.Length);
-        context.ChargeAllocation(memory.Length);
-        var text = Encoding.UTF8.GetString(memory.ToArray());
+        var bytes = memory.ToArray();
+        context.ChargeFuel(bytes.Length);
+        context.ChargeAllocation(bytes.Length);
+        var text = Encoding.UTF8.GetString(bytes);
         context.ChargeString(text);
-        return text;
+        return new LimitedText(text, bytes.Length);
     }
 
     private static void RequireAllowedScheme(CapabilityGrant grant, Uri uri)
@@ -184,6 +185,12 @@ public static class SafeHttpClient
         }
 
         return TimeSpan.FromMilliseconds(milliseconds);
+    }
+
+    private static TimeSpan EffectiveTimeout(SandboxContext context, TimeSpan requestTimeout)
+    {
+        var remaining = context.Budget.RemainingWallTime();
+        return remaining < requestTimeout ? remaining : requestTimeout;
     }
 
     private static async ValueTask<IReadOnlyList<IPAddress>> ResolveDnsAsync(
@@ -269,4 +276,6 @@ public static class SafeHttpClient
     private static SandboxRuntimeException Error(SandboxErrorCode code, string message) => new(new SandboxError(code, message));
 
     private sealed record SafeHttpRequest(CapabilityGrant Grant, Uri Uri, long MaxResponseBytes, TimeSpan Timeout);
+
+    private sealed record LimitedText(string Text, long BytesRead);
 }

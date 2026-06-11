@@ -4,7 +4,7 @@ using SafeIR;
 
 public static class SafeHttpBindings
 {
-    public static BindingDescriptor GetText(HttpMessageInvoker? invoker = null, SafeDnsResolver? dnsResolver = null)
+    public static BindingDescriptor GetText(SafeInMemoryHttpMessageInvoker? invoker = null, SafeDnsResolver? dnsResolver = null)
         => new(
             "net.http.get",
             SemVersion.One,
