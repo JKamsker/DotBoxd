@@ -102,6 +102,20 @@ public sealed class SandboxPolicyBuilder
         return this;
     }
 
+    public SandboxPolicyBuilder GrantTimeNow()
+    {
+        _allowedEffects |= SandboxEffect.Time;
+        _grants.Add(new CapabilityGrant("time.now", new Dictionary<string, string>()));
+        return this;
+    }
+
+    public SandboxPolicyBuilder GrantRandom()
+    {
+        _allowedEffects |= SandboxEffect.Random;
+        _grants.Add(new CapabilityGrant("random", new Dictionary<string, string>()));
+        return this;
+    }
+
     public SandboxPolicyBuilder WithFuel(long maxFuel)
     {
         _limits = _limits with { MaxFuel = maxFuel };

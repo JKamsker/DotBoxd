@@ -9,6 +9,8 @@ internal static class SandboxTestHost
         => SandboxHost.Create(builder => {
             builder.AddDefaultPureBindings();
             builder.AddFileBindings();
+            builder.AddTimeBindings();
+            builder.AddRandomBindings();
             builder.UseInterpreter();
             if (compilerCache is not null) {
                 builder.UseCompilerCache(compilerCache);

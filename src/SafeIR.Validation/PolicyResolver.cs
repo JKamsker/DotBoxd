@@ -34,9 +34,16 @@ internal static class PolicyResolver
         }
 
         if (policy.Deterministic) {
-            var nondeterministic = requiredEffects & (SandboxEffect.Time | SandboxEffect.Random | SandboxEffect.Network);
-            if (nondeterministic != SandboxEffect.None) {
-                diagnostics.Add(new SandboxDiagnostic("E-POLICY-DETERMINISM", $"deterministic policy denies {nondeterministic}"));
+            if ((requiredEffects & SandboxEffect.Time) != 0 && policy.LogicalNow is null) {
+                diagnostics.Add(new SandboxDiagnostic("E-POLICY-DETERMINISM", "deterministic policy requires logical time for Time effects"));
+            }
+
+            if ((requiredEffects & SandboxEffect.Random) != 0 && policy.RandomSeed is null) {
+                diagnostics.Add(new SandboxDiagnostic("E-POLICY-DETERMINISM", "deterministic policy requires a random seed for Random effects"));
+            }
+
+            if ((requiredEffects & SandboxEffect.Network) != 0) {
+                diagnostics.Add(new SandboxDiagnostic("E-POLICY-DETERMINISM", "deterministic policy denies Network effects"));
             }
         }
     }

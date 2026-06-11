@@ -26,6 +26,18 @@ public sealed class SandboxHostBuilder
         return this;
     }
 
+    public SandboxHostBuilder AddTimeBindings()
+    {
+        _bindings.AddTimeBindings();
+        return this;
+    }
+
+    public SandboxHostBuilder AddRandomBindings()
+    {
+        _bindings.AddRandomBindings();
+        return this;
+    }
+
     public SandboxHostBuilder AddBinding(BindingDescriptor descriptor)
     {
         _bindings.Add(descriptor);

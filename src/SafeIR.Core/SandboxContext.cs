@@ -2,6 +2,8 @@ namespace SafeIR;
 
 public sealed class SandboxContext
 {
+    private Random? _random;
+
     public SandboxContext(
         SandboxRunId runId,
         SandboxPolicy policy,
@@ -55,4 +57,37 @@ public sealed class SandboxContext
     }
 
     public void ChargeAllocation(long bytes) => Budget.ChargeAllocation(bytes);
+
+    public DateTimeOffset UtcNow()
+    {
+        if (Policy.Deterministic) {
+            return Policy.LogicalNow ?? throw new SandboxRuntimeException(new SandboxError(
+                SandboxErrorCode.PolicyDenied,
+                "deterministic time requires a logical clock"));
+        }
+
+        return DateTimeOffset.UtcNow;
+    }
+
+    public int NextRandomInt32(int minInclusive, int maxExclusive)
+    {
+        if (minInclusive >= maxExclusive) {
+            throw new SandboxRuntimeException(new SandboxError(
+                SandboxErrorCode.InvalidInput,
+                "random range is invalid"));
+        }
+
+        if (Policy.Deterministic) {
+            if (Policy.RandomSeed is null) {
+                throw new SandboxRuntimeException(new SandboxError(
+                    SandboxErrorCode.PolicyDenied,
+                    "deterministic random requires a seed"));
+            }
+
+            _random ??= new Random(unchecked((int)Policy.RandomSeed.Value));
+            return _random.Next(minInclusive, maxExclusive);
+        }
+
+        return Random.Shared.Next(minInclusive, maxExclusive);
+    }
 }

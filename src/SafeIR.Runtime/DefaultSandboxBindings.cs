@@ -9,4 +9,10 @@ public static class DefaultSandboxBindings
 
     public static BindingRegistryBuilder AddFileBindings(this BindingRegistryBuilder builder)
         => builder.Add(SafeFileBindings.ReadText);
+
+    public static BindingRegistryBuilder AddTimeBindings(this BindingRegistryBuilder builder)
+        => builder.Add(SafeTimeBindings.NowUnixMillis);
+
+    public static BindingRegistryBuilder AddRandomBindings(this BindingRegistryBuilder builder)
+        => builder.Add(SafeRandomBindings.NextI32);
 }
