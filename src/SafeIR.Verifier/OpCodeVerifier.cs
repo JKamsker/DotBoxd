@@ -42,13 +42,24 @@ internal static class OpCodeVerifier
         }
 
         var il = body.GetILReader();
+        var instructionOffsets = new HashSet<int>();
+        var branchTargets = new HashSet<int>();
         while (il.RemainingBytes > 0) {
+            instructionOffsets.Add(il.Offset);
             var opcode = ReadOpCode(ref il);
             if (Forbidden.Contains(opcode) || !Allowed.Contains(opcode)) {
                 diagnostics.Add(new VerificationDiagnostic("V-OPCODE", $"opcode '{opcode}' is not allowed"));
             }
 
-            VerifyOperand(reader, policy, opcode, ref il, diagnostics);
+            VerifyOperand(reader, policy, opcode, ref il, diagnostics, branchTargets);
+        }
+
+        foreach (var target in branchTargets) {
+            if (!instructionOffsets.Contains(target)) {
+                diagnostics.Add(new VerificationDiagnostic(
+                    "V-CONTROL-FLOW",
+                    $"branch target offset {target} is not a valid instruction"));
+            }
         }
     }
 
@@ -67,7 +78,8 @@ internal static class OpCodeVerifier
         VerificationPolicy policy,
         ILOpCode opcode,
         ref BlobReader il,
-        List<VerificationDiagnostic> diagnostics)
+        List<VerificationDiagnostic> diagnostics,
+        HashSet<int> branchTargets)
     {
         if (opcode is ILOpCode.Call or ILOpCode.Callvirt or ILOpCode.Newobj) {
             var handle = MetadataTokens.EntityHandle(il.ReadInt32());
@@ -94,7 +106,7 @@ internal static class OpCodeVerifier
             return;
         }
 
-        SkipOperand(opcode, ref il);
+        SkipOperand(opcode, ref il, branchTargets);
     }
 
     private static void VerifyLocalCall(
@@ -108,15 +120,26 @@ internal static class OpCodeVerifier
         }
     }
 
-    private static void SkipOperand(ILOpCode opcode, ref BlobReader il)
+    private static void SkipOperand(ILOpCode opcode, ref BlobReader il, HashSet<int> branchTargets)
     {
-        if (opcode.IsBranch()) {
-            if (opcode.GetBranchOperandSize() == 1) {
-                _ = il.ReadSByte();
-                return;
+        if (opcode == ILOpCode.Switch) {
+            var count = il.ReadInt32();
+            var deltas = new int[count];
+            for (var i = 0; i < count; i++) {
+                deltas[i] = il.ReadInt32();
             }
 
-            _ = il.ReadInt32();
+            var nextOffset = il.Offset;
+            foreach (var delta in deltas) {
+                branchTargets.Add(nextOffset + delta);
+            }
+
+            return;
+        }
+
+        if (opcode.IsBranch()) {
+            var delta = opcode.GetBranchOperandSize() == 1 ? il.ReadSByte() : il.ReadInt32();
+            branchTargets.Add(il.Offset + delta);
             return;
         }
 
