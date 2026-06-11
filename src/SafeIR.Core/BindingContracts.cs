@@ -170,10 +170,38 @@ internal static class BindingRegistryValidator
             diagnostics.Add(new SandboxDiagnostic("E-BINDING-DANGER", $"binding '{binding.Id}' is dangerous and cannot be enabled by default"));
         }
 
+        ValidateCompiledTarget(binding, diagnostics);
         foreach (var type in binding.Parameters.Append(binding.ReturnType)) {
             if (!type.IsKnown() || type.IsForbidden()) {
                 diagnostics.Add(new SandboxDiagnostic("E-BINDING-TYPE", $"binding '{binding.Id}' exposes forbidden or unknown type '{type}'"));
             }
         }
     }
+
+    private static void ValidateCompiledTarget(BindingDescriptor binding, List<SandboxDiagnostic> diagnostics)
+    {
+        if (binding.Compiled.Kind != "RuntimeStub") {
+            diagnostics.Add(new SandboxDiagnostic("E-BINDING-COMPILED", $"binding '{binding.Id}' has unsupported compiled target kind"));
+        }
+
+        if (string.IsNullOrWhiteSpace(binding.Compiled.Type) ||
+            string.IsNullOrWhiteSpace(binding.Compiled.Method)) {
+            diagnostics.Add(new SandboxDiagnostic("E-BINDING-COMPILED", $"binding '{binding.Id}' has an incomplete compiled target"));
+            return;
+        }
+
+        if (!binding.Compiled.Type.StartsWith("SafeIR.Runtime.", StringComparison.Ordinal) ||
+            HasForbiddenCompiledReference(binding.Compiled.Type) ||
+            HasForbiddenCompiledReference(binding.Compiled.Method)) {
+            diagnostics.Add(new SandboxDiagnostic("E-BINDING-COMPILED", $"binding '{binding.Id}' points compiled code outside the approved runtime stub surface"));
+        }
+    }
+
+    private static bool HasForbiddenCompiledReference(string value)
+        => value.Contains("System.", StringComparison.Ordinal) ||
+           value.Contains("Microsoft.", StringComparison.Ordinal) ||
+           value.Contains("Reflection", StringComparison.Ordinal) ||
+           value.Contains("Process", StringComparison.Ordinal) ||
+           value.Contains("Environment", StringComparison.Ordinal) ||
+           value.Contains("DllImport", StringComparison.Ordinal);
 }
