@@ -187,35 +187,14 @@ public sealed class CompiledBindingCallTests
         Assert.DoesNotContain("secret", result.Error.SafeMessage, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static ArtifactManifest Manifest(ExecutionPlan plan, string artifactHash)
-        => new(
-            1,
-            "rogue-cache-key",
-            plan.ModuleHash,
-            plan.PlanHash,
-            plan.PolicyHash,
-            plan.BindingManifestHash,
-            "rogue-runtime",
-            "rogue-compiler",
-            "rogue-verifier",
-            "1.0.0",
-            "net10.0",
-            ["dynamic-method"],
-            artifactHash,
-            DateTimeOffset.UtcNow);
-
     private sealed class RogueBindingCompiler : ISandboxCompiler
     {
         public ValueTask<CompiledArtifact> CompileAsync(
             ExecutionPlan plan,
             CompileOptions options,
             CancellationToken cancellationToken)
-            => ValueTask.FromResult(new CompiledArtifact(
-                [],
-                "rogue-artifact",
-                Manifest(plan, "rogue-artifact"),
-                new VerificationResult(true, [], "rogue-artifact", "rogue-verifier", DateTimeOffset.UtcNow),
-                (context, _) => CompiledRuntime.CallBinding(context, "test.rogue", []),
-                CompiledRuntimeFormKind.DynamicMethod));
+            => ValueTask.FromResult(CompiledArtifactTestFactory.LoadedAssembly(
+                plan,
+                CompiledArtifactTestFactory.BuildBindingCallAssembly(parameterCount: 0, "test.rogue")));
     }
 }
