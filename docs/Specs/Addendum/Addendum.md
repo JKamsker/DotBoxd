@@ -706,12 +706,15 @@ Live setting properties must be:
 
 ```text
 Allowed:
-  primitive value types
+  bool
+  int
+  long
+  double
   string
-  enum
-  approved readonly value objects
-  nullable versions of approved types, if supported
 ```
+
+Enums, additional numeric types, approved readonly value objects, and nullable
+forms are extension points, not part of the current SDK contract.
 
 Live setting properties must not be:
 
@@ -824,12 +827,8 @@ Use one of:
   bool
   int
   long
-  float
   double
-  decimal
   string
-  enum
-  approved value object
 ```
 
 The server must still re-validate the uploaded package.
