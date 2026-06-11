@@ -153,7 +153,7 @@ public sealed record ExecutionPlan
     public SandboxPolicy Policy { get; init; }
     public BindingTable Bindings { get; init; }
     public ResourceBudget Budget { get; init; }
-    public ExecutableBytecode Bytecode { get; init; }
+    public IReadOnlyDictionary<string, FunctionAnalysis> FunctionAnalysis { get; init; }
 }
 ```
 

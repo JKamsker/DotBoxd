@@ -2,7 +2,7 @@ namespace SafeIR.Interpreter;
 
 using SafeIR;
 
-internal static class BytecodeCollectionOperations
+internal static class CollectionOperations
 {
     public static SandboxValue CreateList(SandboxType itemType, SandboxContext context)
     {
@@ -10,9 +10,8 @@ internal static class BytecodeCollectionOperations
         return SandboxValue.FromList([], itemType);
     }
 
-    public static SandboxValue BuildList(int count, BytecodeFrame frame, SandboxContext context)
+    public static SandboxValue BuildList(IReadOnlyList<SandboxValue> values, SandboxContext context)
     {
-        var values = frame.PopArguments(count);
         context.ChargeAllocation(values.Count * 16);
         return SandboxValue.FromList(values);
     }

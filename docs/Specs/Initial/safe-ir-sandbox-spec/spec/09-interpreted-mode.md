@@ -39,25 +39,23 @@ JSON IR
   -> type check
   -> effect check
   -> policy resolve
-  -> lower to executable bytecode or typed IR
-  -> execute in interpreter
+  -> execute verified IR in interpreter
 ```
 
-No assembly is emitted.
+No assembly, IL, dynamic method, DLL, or interpreter bytecode is emitted for interpreted mode.
 
 ## Execution representation
 
-Two possible approaches:
-
-### Option A: Tree-walking interpreter
-
-Executes AST/IR nodes recursively.
+Interpreted mode walks the imported and validated IR object model directly. It executes
+functions, statements, expressions, and calls from the same `SandboxModule` held by the
+execution plan.
 
 Pros:
 
-- easiest MVP
 - good diagnostics
 - simple stepping
+- no generated code or lowered instruction stream
+- closest representation to user-submitted JSON IR
 
 Cons:
 
@@ -65,32 +63,8 @@ Cons:
 - recursion depth concerns
 - harder to optimize
 
-### Option B: Bytecode interpreter
-
-Lower IR to sandbox bytecode:
-
-```text
-LoadConst 0
-StoreLocal 1
-LoadLocal 1
-CallBinding file.readText
-Return
-```
-
-Pros:
-
-- faster
-- easier fuel accounting
-- easier compiler parity
-- easier differential testing
-
-Cons:
-
-- more implementation work
-
-Recommendation:
-
-Start with tree-walking only if speed of implementation matters. Move to bytecode before compiled mode.
+Do not add an interpreter bytecode layer. If a lower-level representation is needed, it belongs
+to compiled mode and must produce verified runtime IL or a managed DLL before execution.
 
 ## Interpreter state
 
@@ -98,8 +72,7 @@ Start with tree-walking only if speed of implementation matters. Move to bytecod
 public sealed class InterpreterFrame
 {
     public FunctionId Function { get; }
-    public SandboxValue[] Locals { get; }
-    public int InstructionPointer { get; set; }
+    public Dictionary<string, SandboxValue> Locals { get; }
 }
 
 public sealed class InterpreterState
@@ -116,7 +89,7 @@ Interpreter fuel checks are straightforward.
 
 Charge fuel for:
 
-- every instruction or grouped instruction block
+- every statement/expression or grouped IR block
 - loop backedges
 - function calls
 - host binding calls
@@ -161,7 +134,7 @@ Debug traces should include:
 runId
 moduleHash
 functionId
-instructionId
+statement/expression kind
 jsonLocation optional
 locals snapshot optional/limited
 fuelRemaining
@@ -231,10 +204,8 @@ Safe optimizations:
 - constant folding during canonicalization
 - direct binding slot lookup
 - precomputed local indices
-- bytecode dispatch table
 - small-value structs for primitives
 - string interning only if controlled
-- specialized opcodes for common operations
 
 Avoid optimizations that change semantics compared to compiled mode.
 

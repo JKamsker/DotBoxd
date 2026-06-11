@@ -23,7 +23,6 @@ internal static class ExecutionPlanBuilder
             policy,
             bindings,
             policy.ResourceLimits,
-            BytecodeLowerer.Lower(module, bindings),
             functions);
     }
 

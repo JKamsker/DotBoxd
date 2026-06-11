@@ -206,7 +206,6 @@ Interpreted mode also benefits from caching:
 - type-checked plan
 - effect analysis
 - execution plan
-- bytecode
 
 This is separate from DLL cache.
 
@@ -215,7 +214,7 @@ Example:
 ```text
 json hash -> imported module
 canonical IR hash -> validated module
-plan hash -> executable bytecode
+plan hash -> validated execution plan
 ```
 
 ## Cache eviction

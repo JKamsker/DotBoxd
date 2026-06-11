@@ -19,16 +19,16 @@ internal sealed class ExpressionEvaluator
         return expression switch {
             LiteralExpression literal => literal.Value,
             VariableExpression variable => frame.Locals[variable.Name],
-            UnaryExpression unary => EvaluateUnary(unary, frame),
+            UnaryExpression unary => await EvaluateUnaryAsync(unary, frame).ConfigureAwait(false),
             BinaryExpression binary => await EvaluateBinaryAsync(binary, frame).ConfigureAwait(false),
             CallExpression call => await EvaluateCallAsync(call, frame).ConfigureAwait(false),
             _ => throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "unsupported expression"))
         };
     }
 
-    private SandboxValue EvaluateUnary(UnaryExpression unary, InterpreterFrame frame)
+    private async ValueTask<SandboxValue> EvaluateUnaryAsync(UnaryExpression unary, InterpreterFrame frame)
     {
-        var value = EvaluateAsync(unary.Operand, frame).AsTask().GetAwaiter().GetResult();
+        var value = await EvaluateAsync(unary.Operand, frame).ConfigureAwait(false);
         return unary.Operator switch {
             "!" => SandboxValue.FromBool(!((BoolValue)value).Value),
             "-" => SandboxValue.FromInt32(-((I32Value)value).Value),
@@ -61,19 +61,13 @@ internal sealed class ExpressionEvaluator
 
     private async ValueTask<SandboxValue> EvaluateCallAsync(CallExpression call, InterpreterFrame frame)
     {
-        if (call.Name == "list.empty") {
-            _context.ChargeAllocation(8);
-            return SandboxValue.FromList([]);
-        }
-
         var args = new List<SandboxValue>(call.Arguments.Count);
         foreach (var arg in call.Arguments) {
             args.Add(await EvaluateAsync(arg, frame).ConfigureAwait(false));
         }
 
-        if (call.Name == "list.of") {
-            _context.ChargeAllocation(args.Count * 16);
-            return SandboxValue.FromList(args);
+        if (TryEvaluateCollectionCall(call, args, out var collectionValue)) {
+            return collectionValue;
         }
 
         if (_context.Bindings.TryGet(call.Name, out _)) {
@@ -85,6 +79,30 @@ internal sealed class ExpressionEvaluator
         }
 
         throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, $"unknown call '{call.Name}' at runtime"));
+    }
+
+    private bool TryEvaluateCollectionCall(
+        CallExpression call,
+        IReadOnlyList<SandboxValue> args,
+        out SandboxValue value)
+    {
+        value = call.Name switch {
+            "list.empty" => CollectionOperations.CreateList(call.GenericType ?? SandboxType.Unit, _context),
+            "list.of" => CollectionOperations.BuildList(args, _context),
+            "list.count" => CollectionOperations.CountList(Arg(args, 0)),
+            "list.get" => CollectionOperations.GetListItem(Arg(args, 1), Arg(args, 0)),
+            "list.add" => CollectionOperations.AddListItem(Arg(args, 1), Arg(args, 0), _context),
+            "map.empty" => CollectionOperations.CreateMap(
+                call.GenericType ?? SandboxType.Map(SandboxType.Unit, SandboxType.Unit),
+                _context),
+            "map.containsKey" => CollectionOperations.ContainsMapKey(Arg(args, 1), Arg(args, 0)),
+            "map.get" => CollectionOperations.GetMapValue(Arg(args, 1), Arg(args, 0)),
+            "map.set" => CollectionOperations.SetMapValue(Arg(args, 2), Arg(args, 1), Arg(args, 0), _context),
+            "map.remove" => CollectionOperations.RemoveMapValue(Arg(args, 1), Arg(args, 0), _context),
+            _ => SandboxValue.Unit
+        };
+        return call.Name is "list.empty" or "list.of" or "list.count" or "list.get" or "list.add"
+            or "map.empty" or "map.containsKey" or "map.get" or "map.set" or "map.remove";
     }
 
     public async ValueTask<SandboxValue> InvokeFunctionAsync(SandboxFunction function, IReadOnlyList<SandboxValue> args)
@@ -119,4 +137,9 @@ internal sealed class ExpressionEvaluator
         _context.ChargeAllocation(text.Length * sizeof(char));
         return SandboxValue.FromString(text);
     }
+
+    private static SandboxValue Arg(IReadOnlyList<SandboxValue> args, int index)
+        => index < args.Count
+            ? args[index]
+            : throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "call arity mismatch"));
 }

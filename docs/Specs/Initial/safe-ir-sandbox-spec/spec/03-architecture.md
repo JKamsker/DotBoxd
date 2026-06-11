@@ -110,7 +110,7 @@ Contains:
 
 Contains:
 
-- bytecode/IR interpreter
+- direct IR interpreter
 - debug stepping
 - trace events
 - interpreter-specific optimizations
@@ -252,7 +252,7 @@ It contains:
 - granted capabilities
 - resource budgets
 - execution options
-- backend-independent lowered representation
+- function analysis
 
 ### 8. Select backend
 
@@ -268,7 +268,7 @@ ExecutionMode.Auto
 
 ### 9A. Interpret
 
-The interpreter executes the plan directly.
+The interpreter executes the verified IR held by the plan directly.
 
 It must:
 
@@ -361,7 +361,8 @@ Examples:
 
 ## Internal representation recommendation
 
-Use a stackless, typed IR or bytecode rather than raw MSIL.
+Use the canonical typed IR as the backend-independent representation. Do not introduce a
+separate interpreter bytecode layer.
 
 Reason:
 
@@ -377,6 +378,5 @@ Suggested layers:
 ```text
 JSON IR        user-facing format
 Canonical IR   stable, typed, named operations
-Bytecode       compact executable form for interpreter/compiler lowering
-IL             compiled backend only, never user-facing
+IL/DLL         compiled backend only, never user-facing
 ```

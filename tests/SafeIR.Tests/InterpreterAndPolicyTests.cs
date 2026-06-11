@@ -74,6 +74,28 @@ public sealed class InterpreterAndPolicyTests
         Assert.Equal(SandboxErrorCode.QuotaExceeded, result.Error!.Code);
     }
 
+    [Fact]
+    public async Task Interpreted_debug_trace_reports_ir_statement_kinds()
+    {
+        var host = SandboxTestHost.Create();
+        var module = await host.ParseJsonAsync(SandboxTestHost.PureScoreJson());
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.FromList([SandboxValue.FromInt32(3), SandboxValue.FromInt32(2)]),
+            new SandboxExecutionOptions { Mode = ExecutionMode.Interpreted, EnableDebugTrace = true });
+
+        Assert.True(result.Succeeded);
+        Assert.Contains(result.AuditEvents, e =>
+            e.Kind == "DebugTrace" &&
+            e.Message?.Contains(nameof(AssignmentStatement), StringComparison.Ordinal) == true);
+        Assert.DoesNotContain(result.AuditEvents, e =>
+            e.Kind == "DebugTrace" &&
+            e.Message?.Contains("Bytecode", StringComparison.Ordinal) == true);
+    }
+
     internal static string FileReadJson(string path)
         => $$"""
         {

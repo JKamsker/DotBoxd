@@ -105,7 +105,7 @@ The IR never references `System.IO.File`.
 ## Interpreted execution
 
 ```text
-json IR -> import -> validate -> effects -> policy -> bytecode -> interpreter
+json IR -> import -> validate -> effects -> policy -> interpreter
 ```
 
 No DLL generated.
@@ -113,7 +113,7 @@ No DLL generated.
 ## Compiled execution
 
 ```text
-json IR -> import -> validate -> effects -> policy -> bytecode -> IL -> verifier -> DLL cache -> run
+json IR -> import -> validate -> effects -> policy -> IL/DLL -> verifier -> DLL cache -> run
 ```
 
 ## Forbidden examples

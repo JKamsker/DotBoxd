@@ -41,7 +41,7 @@ Acceptance:
 
 Deliver:
 
-- tree-walking or bytecode interpreter
+- direct IR interpreter
 - fuel checks
 - binding invocation
 - safe error model
@@ -72,19 +72,18 @@ Acceptance:
 - no raw host objects exposed
 - audit events sanitized
 
-## Phase 4 — Bytecode and parity foundation
+## Phase 4 — Compiler parity foundation
 
 Deliver:
 
-- lower canonical IR to executable bytecode
-- interpreter uses bytecode
-- IR node IDs or JSON locations to bytecode
+- compiler consumes the same verified IR semantics as the interpreter
+- IR node IDs or JSON locations preserved for diagnostics
 - differential test harness ready for compiled mode
 
 Acceptance:
 
-- bytecode and tree interpreter, if both exist, agree
-- operation costs assigned at bytecode level
+- interpreted and compiled backends agree for supported modules
+- operation costs assigned at IR operation level
 
 ## Phase 5 — Compiled mode MVP
 
