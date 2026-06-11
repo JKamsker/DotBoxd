@@ -48,6 +48,48 @@ public sealed class CompiledCacheConcurrencyTests
         Assert.Equal(quarantinedEntries.Length, quarantinedEntries.Select(Path.GetFileName).Distinct(StringComparer.Ordinal).Count());
     }
 
+    [Fact]
+    public async Task Same_root_hosts_coordinate_same_key_cold_compiles()
+    {
+        using var temp = TempDirectory.Create();
+        var hosts = Enumerable.Range(0, 6)
+            .Select(_ => SandboxTestHost.Create(compiler: true, compilerCache: temp.Path))
+            .ToArray();
+        var module = await hosts[0].ParseJsonAsync(SandboxTestHost.PureScoreJson());
+        var plans = await Task.WhenAll(hosts.Select(host =>
+            host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build()).AsTask()));
+        var input = SandboxValue.FromList([SandboxValue.FromInt32(2), SandboxValue.FromInt32(1)]);
+
+        var results = await Task.WhenAll(hosts.Select((host, index) => ExecuteCompiled(host, plans[index], input)));
+
+        Assert.All(results, AssertSuccessfulCompiledResult);
+        Assert.Single(Directory.EnumerateFiles(temp.Path, "module.dll", SearchOption.AllDirectories));
+        Assert.NotEmpty(Directory.EnumerateFiles(Path.Combine(temp.Path, ".locks"), "*.lock", SearchOption.AllDirectories));
+    }
+
+    [Fact]
+    public async Task Same_root_hosts_coordinate_corrupted_entry_recovery()
+    {
+        using var temp = TempDirectory.Create();
+        var seedHost = SandboxTestHost.Create(compiler: true, compilerCache: temp.Path);
+        var module = await seedHost.ParseJsonAsync(SandboxTestHost.PureScoreJson());
+        var seedPlan = await seedHost.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var input = SandboxValue.FromList([SandboxValue.FromInt32(2), SandboxValue.FromInt32(1)]);
+        _ = await ExecuteCompiled(seedHost, seedPlan, input);
+        await File.WriteAllTextAsync(Path.Combine(CacheEntry(temp.Path, seedPlan), "manifest.json"), "{ broken json");
+        var hosts = Enumerable.Range(0, 6)
+            .Select(_ => SandboxTestHost.Create(compiler: true, compilerCache: temp.Path))
+            .ToArray();
+        var plans = await Task.WhenAll(hosts.Select(host =>
+            host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build()).AsTask()));
+
+        var results = await Task.WhenAll(hosts.Select((host, index) => ExecuteCompiled(host, plans[index], input)));
+
+        Assert.All(results, AssertSuccessfulCompiledResult);
+        Assert.True(File.Exists(Path.Combine(CacheEntry(temp.Path, seedPlan), "module.dll")));
+        Assert.NotEmpty(Directory.GetDirectories(Path.Combine(temp.Path, "quarantine")));
+    }
+
     private static async Task<SandboxExecutionResult> ExecuteCompiled(
         Hosting.SandboxHost host,
         ExecutionPlan plan,

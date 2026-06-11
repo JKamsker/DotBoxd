@@ -23,6 +23,7 @@ internal static class CompiledExecutionRunner
         try {
             context.ChargeValue(input);
             var value = artifact.Entrypoint(context, input);
+            EnsureReturnType(plan, entrypoint, value);
             WriteSummary(audit, runId, startedAt, plan, artifact, budget, true, null);
             return ValueTask.FromResult(Result(plan, artifact, budget, audit, true, value, null));
         }
@@ -83,4 +84,13 @@ internal static class CompiledExecutionRunner
                      $"cacheKey={artifact.Manifest.CacheKey} artifact={artifact.ArtifactHash} " +
                      $"plan={plan.PlanHash} policy={plan.PolicyHash} bindings={plan.BindingManifestHash} " +
                      $"fuel={budget.FuelUsed}/{budget.Limits.MaxFuel}"));
+
+    private static void EnsureReturnType(ExecutionPlan plan, string entrypoint, SandboxValue? value)
+    {
+        if (value is null || !plan.FunctionAnalysis.TryGetValue(entrypoint, out var analysis)) {
+            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "function return type mismatch"));
+        }
+
+        EntrypointBinder.RequireType(value, analysis.ReturnType, "function return type mismatch");
+    }
 }

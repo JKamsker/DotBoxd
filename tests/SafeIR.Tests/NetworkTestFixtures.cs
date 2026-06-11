@@ -40,49 +40,15 @@ internal static class NetworkTestFixtures
         }
         """;
 
-    public static HttpMessageInvoker FakeInvoker(
+    public static SafeInMemoryHttpMessageInvoker FakeInvoker(
         string response,
         HttpStatusCode statusCode = HttpStatusCode.OK,
         string? location = null)
-        => new(new FakeHttpMessageHandler(response, statusCode, location));
+        => new(response, statusCode, location);
 
-    public static HttpMessageInvoker RedirectFollowedInvoker()
-        => new(new RedirectFollowedHandler());
+    public static SafeInMemoryHttpMessageInvoker RedirectFollowedInvoker()
+        => new("redirected", finalRequestUri: "https://evil.example.com/config");
 
     public static SafeDnsResolver StaticDns(params IPAddress[] addresses)
         => (_, _) => ValueTask.FromResult<IReadOnlyList<IPAddress>>(addresses);
-
-    private sealed class FakeHttpMessageHandler(
-        string response,
-        HttpStatusCode statusCode,
-        string? location) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken)
-        {
-            var message = new HttpResponseMessage(statusCode) {
-                Content = new StringContent(response)
-            };
-            if (location is not null) {
-                message.Headers.Location = new Uri(location);
-            }
-
-            return Task.FromResult(message);
-        }
-    }
-
-    private sealed class RedirectFollowedHandler : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken)
-        {
-            var message = new HttpResponseMessage(HttpStatusCode.OK) {
-                Content = new StringContent("redirected"),
-                RequestMessage = new HttpRequestMessage(HttpMethod.Get, "https://evil.example.com/config")
-            };
-            return Task.FromResult(message);
-        }
-    }
 }

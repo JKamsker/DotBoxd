@@ -105,6 +105,11 @@ Interpreter checks it regularly.
 
 Compiled code checks via `ChargeFuel` and host binding calls.
 
+Host bindings that can block outside normal fuel charging, such as DNS lookup, HTTP send,
+HTTP response reads, and file operations, must receive cancellation that is bounded by the
+remaining sandbox wall-time budget. A per-binding timeout is an upper bound only when it is
+shorter than the remaining sandbox deadline.
+
 ## Memory limits
 
 In-process memory limiting is cooperative.

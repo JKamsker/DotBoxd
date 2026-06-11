@@ -146,10 +146,16 @@ Required checks:
 - allow only configured hosts
 - reject IP literals unless explicitly allowed
 - reject localhost/private ranges unless explicitly allowed
-- enforce DNS pinning/rebinding protections if needed
+- enforce DNS pinning/rebinding protections for every real network request
 - enforce request/response size limits
-- enforce timeouts
+- enforce the stricter of the request timeout and remaining sandbox wall-time budget
 - audit host/path sanitized
+
+The production transport must own the real network path. Host code may provide an explicit
+in-memory HTTP invoker for tests and deterministic fixtures, but arbitrary `HttpClient`,
+`HttpMessageHandler`, socket, stream, or handler injection is not part of the sandbox API.
+Opaque custom transports cannot prove that they connected to the vetted DNS/IP target and
+must not be treated as pinned network execution.
 
 Do not expose raw `HttpClient`, sockets, streams, handlers, or headers that can smuggle credentials unless explicitly modeled.
 

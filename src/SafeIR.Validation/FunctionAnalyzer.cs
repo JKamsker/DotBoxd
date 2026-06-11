@@ -4,6 +4,8 @@ using SafeIR;
 
 internal sealed class FunctionAnalyzer
 {
+    private const int MaxTextLiteralLength = 65_536;
+
     private readonly IBindingCatalog _bindings;
     private readonly List<SandboxDiagnostic> _diagnostics;
     private readonly Dictionary<string, SandboxFunction> _functions;
@@ -120,13 +122,56 @@ internal sealed class FunctionAnalyzer
     {
         if (literal.Value is StringValue text) {
             effects |= SandboxEffect.Alloc;
-            if (text.Value.Length > 65_536) {
-                throw new SandboxValidationException([new SandboxDiagnostic("E-CONST-HUGE", "string constant exceeds maximum length")]);
+            EnsureTextLiteralLength(text.Value, "string");
+        }
+
+        if (literal.Value is F64Value number && !double.IsFinite(number.Value)) {
+            throw new SandboxValidationException([new SandboxDiagnostic("E-CONST-F64", "f64 constant must be finite")]);
+        }
+
+        if (literal.Value is SandboxPathValue path) {
+            effects |= SandboxEffect.Alloc;
+            EnsureTextLiteralLength(path.Value.RelativePath, "path");
+            if (!IsPortableRelativePath(path.Value.RelativePath)) {
+                throw new SandboxValidationException([new SandboxDiagnostic("E-CONST-PATH", "path constant must be a portable relative path")]);
+            }
+        }
+
+        if (literal.Value is SandboxUriValue uri) {
+            effects |= SandboxEffect.Alloc;
+            EnsureTextLiteralLength(uri.Value.Value, "uri");
+            if (!IsSandboxUri(uri.Value.Value)) {
+                throw new SandboxValidationException([new SandboxDiagnostic("E-CONST-URI", "uri constant must be an absolute URI without user info")]);
             }
         }
 
         return literal.Value.Type;
     }
+
+    private static void EnsureTextLiteralLength(string value, string literalKind)
+    {
+        if (value.Length > MaxTextLiteralLength) {
+            throw new SandboxValidationException([
+                new SandboxDiagnostic("E-CONST-HUGE", $"{literalKind} constant exceeds maximum length")
+            ]);
+        }
+    }
+
+    private static bool IsPortableRelativePath(string path)
+        => !string.IsNullOrWhiteSpace(path) &&
+           !path.Contains('\\') &&
+           !path.Contains(':') &&
+           !path.StartsWith("/", StringComparison.Ordinal) &&
+           !Uri.TryCreate(path, UriKind.Absolute, out _) &&
+           !Path.IsPathRooted(path) &&
+           !path.Split('/').Any(segment => segment is "");
+
+    private static bool IsSandboxUri(string value)
+        => !string.IsNullOrWhiteSpace(value) &&
+           !value.Contains('\\') &&
+           Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+           !string.IsNullOrWhiteSpace(uri.Host) &&
+           string.IsNullOrEmpty(uri.UserInfo);
 
     private SandboxType AnalyzeUnary(UnaryExpression unary, FunctionScope scope, ref SandboxEffect effects)
     {

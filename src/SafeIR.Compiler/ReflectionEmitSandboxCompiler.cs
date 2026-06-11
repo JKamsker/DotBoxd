@@ -2,7 +2,6 @@ namespace SafeIR.Compiler;
 
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.Loader;
 using SafeIR;
 using SafeIR.Runtime;
 using SafeIR.Verifier;
@@ -42,7 +41,7 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
                 cancellationToken).ConfigureAwait(false);
             if (cached.Status == CompiledCacheStatus.Hit && cached.Artifact is not null) {
                 return cached.Artifact with {
-                    Entrypoint = LoadEntrypoint(cached.Artifact.AssemblyBytes),
+                    Entrypoint = UnmaterializedEntrypoint,
                     CacheStatus = CompiledCacheStatus.Hit
                 };
             }
@@ -59,7 +58,6 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
                 "compiled artifact failed verification"));
         }
 
-        var entrypoint = LoadEntrypoint(assemblyBytes);
         var status = _cache is null
             ? CompiledCacheStatus.None
             : await WriteCacheAsync(
@@ -77,7 +75,7 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
             verification.AssemblyHash,
             manifest,
             verification,
-            entrypoint,
+            UnmaterializedEntrypoint,
             CompiledRuntimeFormKind.LoadedAssembly,
             status);
     }
@@ -211,13 +209,6 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         return existing;
     }
 
-    internal static SandboxCompiledEntrypoint LoadEntrypoint(byte[] assemblyBytes)
-    {
-        var context = new AssemblyLoadContext("SafeIR.Generated", isCollectible: true);
-        var assembly = context.LoadFromStream(new MemoryStream(assemblyBytes, writable: false));
-        var type = assembly.GetTypes().Single(t => t.Name.StartsWith("Module_", StringComparison.Ordinal));
-        var method = type.GetMethod("Execute", BindingFlags.Public | BindingFlags.Static) ??
-            throw new MissingMethodException(type.FullName, "Execute");
-        return method.CreateDelegate<SandboxCompiledEntrypoint>();
-    }
+    private static SandboxValue UnmaterializedEntrypoint(SandboxContext _, SandboxValue __)
+        => throw new InvalidOperationException("loaded assembly artifacts are materialized by the host");
 }

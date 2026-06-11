@@ -8,7 +8,7 @@ internal static class SandboxTestHost
     public static SandboxHost Create(
         bool compiler = false,
         string? compilerCache = null,
-        HttpMessageInvoker? networkInvoker = null,
+        SafeInMemoryHttpMessageInvoker? networkInvoker = null,
         SafeDnsResolver? dnsResolver = null)
         => SandboxHost.Create(builder => {
             builder.AddDefaultPureBindings();

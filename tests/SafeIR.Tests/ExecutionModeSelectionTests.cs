@@ -51,8 +51,7 @@ public sealed class ExecutionModeSelectionTests
     [Fact]
     public async Task Auto_mode_promotes_to_compiled_after_hotness_threshold()
     {
-        var compiler = new DelegateCompiler();
-        var host = HostWithCompiler(compiler);
+        var host = SandboxTestHost.Create(compiler: true);
         var module = await host.ParseJsonAsync(SandboxTestHost.PureScoreJson());
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
         var options = new SandboxExecutionOptions { Mode = ExecutionMode.Auto, AutoCompileThreshold = 2 };
@@ -65,7 +64,6 @@ public sealed class ExecutionModeSelectionTests
         Assert.True(second.Succeeded, second.Error?.SafeMessage);
         Assert.Equal(ExecutionMode.Interpreted, first.ActualMode);
         Assert.Equal(ExecutionMode.Compiled, second.ActualMode);
-        Assert.Equal(1, compiler.Calls);
     }
 
     [Fact]
@@ -107,9 +105,31 @@ public sealed class ExecutionModeSelectionTests
     }
 
     [Fact]
-    public async Task Compiled_mode_invokes_compiler_provided_runtime_form()
+    public async Task Compiled_mode_rejects_dynamic_method_artifact_before_delegate_runs()
     {
-        var compiler = new DelegateCompiler();
+        var compiler = new DynamicDelegateCompiler();
+        var host = HostWithCompiler(compiler);
+        var module = await host.ParseJsonAsync(SandboxTestHost.PureScoreJson());
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.FromList([SandboxValue.FromInt32(1), SandboxValue.FromInt32(1)]),
+            new SandboxExecutionOptions { Mode = ExecutionMode.Compiled, AllowFallbackToInterpreter = false });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.ValidationError, result.Error!.Code);
+        Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
+        Assert.Null(result.ArtifactHash);
+        Assert.Equal(1, compiler.Calls);
+        Assert.False(compiler.DelegateExecuted);
+    }
+
+    [Fact]
+    public async Task Compiled_mode_ignores_untrusted_loaded_assembly_delegate()
+    {
+        var compiler = new TamperedLoadedAssemblyCompiler();
         var host = HostWithCompiler(compiler);
         var module = await host.ParseJsonAsync(SandboxTestHost.PureScoreJson());
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
@@ -121,32 +141,9 @@ public sealed class ExecutionModeSelectionTests
             new SandboxExecutionOptions { Mode = ExecutionMode.Compiled, AllowFallbackToInterpreter = false });
 
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
-        Assert.Equal(123, ((I32Value)result.Value!).Value);
         Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
-        Assert.Equal("delegate-artifact", result.ArtifactHash);
-        Assert.Equal(1, compiler.Calls);
-        Assert.Contains(
-            result.AuditEvents,
-            e => e.Message?.Contains("runtimeForm=DynamicMethod", StringComparison.Ordinal) == true);
-    }
-
-    [Fact]
-    public async Task Compiled_runtime_unexpected_exception_returns_host_failure()
-    {
-        var host = HostWithCompiler(new ThrowingDelegateCompiler());
-        var module = await host.ParseJsonAsync(SandboxTestHost.PureScoreJson());
-        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
-
-        var result = await host.ExecuteAsync(
-            plan,
-            "main",
-            SandboxValue.FromList([SandboxValue.FromInt32(1), SandboxValue.FromInt32(1)]),
-            new SandboxExecutionOptions { Mode = ExecutionMode.Compiled, AllowFallbackToInterpreter = false });
-
-        Assert.False(result.Succeeded);
-        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
-        Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
-        Assert.Equal("throwing-artifact", result.ArtifactHash);
+        Assert.Equal(35, ((I32Value)result.Value!).Value);
+        Assert.False(compiler.DelegateExecuted);
     }
 
     [Fact]
@@ -195,23 +192,6 @@ public sealed class ExecutionModeSelectionTests
             builder.UseCompilerIfAvailable(compiler);
         });
 
-    private static ArtifactManifest Manifest(ExecutionPlan plan, string artifactHash)
-        => new(
-            1,
-            "delegate-cache-key",
-            plan.ModuleHash,
-            plan.PlanHash,
-            plan.PolicyHash,
-            plan.BindingManifestHash,
-            "delegate-runtime",
-            "delegate-compiler",
-            "delegate-verifier",
-            "1.0.0",
-            "net10.0",
-            ["dynamic-method"],
-            artifactHash,
-            DateTimeOffset.UtcNow);
-
     private sealed class FailingCompiler : ISandboxCompiler
     {
         public int Calls { get; private set; }
@@ -226,9 +206,10 @@ public sealed class ExecutionModeSelectionTests
         }
     }
 
-    private sealed class DelegateCompiler : ISandboxCompiler
+    private sealed class DynamicDelegateCompiler : ISandboxCompiler
     {
         public int Calls { get; private set; }
+        public bool DelegateExecuted { get; private set; }
 
         public ValueTask<CompiledArtifact> CompileAsync(
             ExecutionPlan plan,
@@ -236,29 +217,35 @@ public sealed class ExecutionModeSelectionTests
             CancellationToken cancellationToken)
         {
             Calls++;
-            return ValueTask.FromResult(new CompiledArtifact(
-                [],
-                "delegate-artifact",
-                Manifest(plan, "delegate-artifact"),
-                new VerificationResult(true, [], "delegate-artifact", "delegate-verifier", DateTimeOffset.UtcNow),
-                (_, _) => SandboxValue.FromInt32(123),
-                CompiledRuntimeFormKind.DynamicMethod));
+            return ValueTask.FromResult(CompiledArtifactTestFactory.DynamicMethod(
+                plan,
+                (_, _) => {
+                    DelegateExecuted = true;
+                    return SandboxValue.FromInt32(123);
+                },
+                "delegate-artifact"));
         }
     }
 
-    private sealed class ThrowingDelegateCompiler : ISandboxCompiler
+    private sealed class TamperedLoadedAssemblyCompiler : ISandboxCompiler
     {
-        public ValueTask<CompiledArtifact> CompileAsync(
+        private readonly ReflectionEmitSandboxCompiler _inner = new(new GeneratedAssemblyVerifier());
+
+        public bool DelegateExecuted { get; private set; }
+
+        public async ValueTask<CompiledArtifact> CompileAsync(
             ExecutionPlan plan,
             CompileOptions options,
             CancellationToken cancellationToken)
-            => ValueTask.FromResult(new CompiledArtifact(
-                [],
-                "throwing-artifact",
-                Manifest(plan, "throwing-artifact"),
-                new VerificationResult(true, [], "throwing-artifact", "delegate-verifier", DateTimeOffset.UtcNow),
-                (_, _) => throw new InvalidOperationException("compiled delegate failed"),
-                CompiledRuntimeFormKind.DynamicMethod));
+        {
+            var artifact = await _inner.CompileAsync(plan, options, cancellationToken).ConfigureAwait(false);
+            return artifact with {
+                Entrypoint = (_, _) => {
+                    DelegateExecuted = true;
+                    return SandboxValue.FromInt32(999);
+                }
+            };
+        }
     }
 
     private sealed class SandboxFailureCompiler(SandboxErrorCode code) : ISandboxCompiler

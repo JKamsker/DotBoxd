@@ -1,4 +1,6 @@
 using SafeIR;
+using SafeIR.Compiler;
+using SafeIR.Verifier;
 
 namespace SafeIR.Tests;
 
@@ -93,6 +95,30 @@ public sealed class CompilerTests
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.QuotaExceeded, result.Error!.Code);
         Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
+    }
+
+    [Fact]
+    public async Task Reflection_emit_compiler_returns_unmaterialized_loaded_artifact()
+    {
+        var host = SandboxTestHost.Create();
+        var module = await host.ParseJsonAsync(SandboxTestHost.PureScoreJson());
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var compiler = new ReflectionEmitSandboxCompiler(new GeneratedAssemblyVerifier());
+
+        var artifact = await compiler.CompileAsync(plan, new CompileOptions("main"), CancellationToken.None);
+
+        Assert.Equal(CompiledRuntimeFormKind.LoadedAssembly, artifact.RuntimeForm);
+        Assert.NotEmpty(artifact.AssemblyBytes);
+        Assert.Throws<InvalidOperationException>(() =>
+            artifact.Entrypoint(
+                new SandboxContext(
+                    SandboxRunId.New(),
+                    plan.Policy,
+                    new ResourceMeter(plan.Budget),
+                    plan.Bindings,
+                    new InMemoryAuditSink(),
+                    CancellationToken.None),
+                SandboxValue.Unit));
     }
 
     [Fact]

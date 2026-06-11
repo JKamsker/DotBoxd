@@ -108,12 +108,11 @@ public sealed class SandboxContext
                 $"binding '{descriptor.Id}' returned an unexpected value type"));
         }
 
-        if (!descriptor.CostModel.AllocationFromReturnBytes) {
-            return value;
+        var bytes = BindingReturnCost.MeasureBytes(value);
+        if (descriptor.CostModel.AllocationFromReturnBytes) {
+            ChargeValue(value);
         }
 
-        ChargeValue(value);
-        var bytes = BindingReturnCost.MeasureBytes(value);
         if (bytes > 0 && descriptor.CostModel.PerByteFuel > 0) {
             ChargeFuel(CheckedFuel(bytes, descriptor.CostModel.PerByteFuel));
         }

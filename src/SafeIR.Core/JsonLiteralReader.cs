@@ -44,7 +44,7 @@ internal static class JsonLiteralReader
         }
 
         if (element.TryGetProperty("uri", out var uri)) {
-            value = SandboxValue.FromUri(ReadStringValue(uri, "uri"));
+            value = SandboxValue.FromUri(ReadUriValue(uri, "uri"));
             literalName = "uri";
             return true;
         }

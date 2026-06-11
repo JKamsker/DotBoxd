@@ -45,6 +45,26 @@ public sealed class BindingReturnCostTests
         Assert.Equal(SandboxErrorCode.QuotaExceeded, result.Error!.Code);
     }
 
+    [Theory]
+    [InlineData(ExecutionMode.Interpreted, false)]
+    [InlineData(ExecutionMode.Compiled, true)]
+    public async Task Binding_per_byte_cost_charges_fuel_without_allocation_flag(
+        ExecutionMode mode,
+        bool compiler)
+    {
+        var result = await ExecuteAsync(
+            PerByteStringBinding("test.perByteString", "hello", perByteFuel: 10),
+            SandboxPolicyBuilder.Create()
+                .WithMaxStringLength(64)
+                .WithFuel(50)
+                .Build(),
+            mode,
+            compiler);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, result.Error!.Code);
+    }
+
     [Fact]
     public async Task Binding_return_type_mismatch_is_sanitized()
     {
@@ -101,6 +121,20 @@ public sealed class BindingReturnCostTests
             SandboxEffect.Cpu | SandboxEffect.Alloc,
             null,
             new BindingCostModel(1, perByteFuel, AllocationFromReturnBytes: true),
+            AuditLevel.None,
+            BindingSafety.PureHostFacade,
+            (_, _, _) => ValueTask.FromResult(SandboxValue.FromString(value)),
+            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)));
+
+    private static BindingDescriptor PerByteStringBinding(string id, string value, long perByteFuel)
+        => new(
+            id,
+            SemVersion.One,
+            [],
+            SandboxType.String,
+            SandboxEffect.Cpu,
+            null,
+            BindingCostModel.PerByte(1, perByteFuel),
             AuditLevel.None,
             BindingSafety.PureHostFacade,
             (_, _, _) => ValueTask.FromResult(SandboxValue.FromString(value)),

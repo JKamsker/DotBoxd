@@ -166,7 +166,7 @@ internal sealed class ExpressionEvaluator
 
     private SandboxValue ChargeLiteral(SandboxValue value)
     {
-        if (value is StringValue) {
+        if (value is StringValue or SandboxPathValue or SandboxUriValue) {
             _context.ChargeValue(value);
         }
 

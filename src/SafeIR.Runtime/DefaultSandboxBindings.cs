@@ -18,7 +18,7 @@ public static class DefaultSandboxBindings
 
     public static BindingRegistryBuilder AddNetworkBindings(
         this BindingRegistryBuilder builder,
-        HttpMessageInvoker? invoker = null,
+        SafeInMemoryHttpMessageInvoker? invoker = null,
         SafeDnsResolver? dnsResolver = null)
         => builder.Add(SafeHttpBindings.GetText(invoker, dnsResolver));
 

@@ -11,7 +11,7 @@ public static class SafeFileBindings
         SandboxType.String,
         SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.FileRead,
         "file.read",
-        BindingCostModel.PerByte(baseFuel: 50, perByteFuel: 1),
+        BindingCostModel.Fixed(50),
         AuditLevel.PerResource,
         BindingSafety.ReadOnlyExternal,
         async (context, args, cancellationToken) => {
@@ -28,7 +28,7 @@ public static class SafeFileBindings
         SandboxType.Unit,
         SandboxEffect.Cpu | SandboxEffect.FileWrite | SandboxEffect.Audit,
         "file.write",
-        BindingCostModel.PerByte(baseFuel: 50, perByteFuel: 1),
+        BindingCostModel.Fixed(50),
         AuditLevel.PerResource,
         BindingSafety.SideEffectingExternal,
         async (context, args, cancellationToken) => {

@@ -12,13 +12,22 @@ public abstract record SandboxValue
 
     public static SandboxValue FromInt64(long value) => new I64Value(value);
 
-    public static SandboxValue FromDouble(double value) => new F64Value(value);
+    public static SandboxValue FromDouble(double value)
+        => double.IsFinite(value)
+            ? new F64Value(value)
+            : throw new ArgumentOutOfRangeException(nameof(value), value, "F64 values must be finite.");
 
     public static SandboxValue FromString(string value) => new StringValue(value);
 
-    public static SandboxValue FromPath(string value) => new SandboxPathValue(new SandboxPath(value));
+    public static SandboxValue FromPath(string value)
+        => SandboxLiteralConstraints.IsPortableRelativePath(value)
+            ? new SandboxPathValue(new SandboxPath(value))
+            : throw new ArgumentException("Sandbox paths must be portable relative paths.", nameof(value));
 
-    public static SandboxValue FromUri(string value) => new SandboxUriValue(new SandboxUri(value));
+    public static SandboxValue FromUri(string value)
+        => SandboxLiteralConstraints.IsSandboxUri(value)
+            ? new SandboxUriValue(new SandboxUri(value))
+            : throw new ArgumentException("Sandbox URIs must be absolute and must not include user info.", nameof(value));
 
     public static SandboxValue FromList(IReadOnlyList<SandboxValue> values)
         => new ListValue(values, values.Count == 0 ? SandboxType.Unit : values[0].Type);

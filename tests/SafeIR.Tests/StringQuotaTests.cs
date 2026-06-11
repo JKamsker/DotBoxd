@@ -62,6 +62,28 @@ public sealed class StringQuotaTests
         Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
     }
 
+    [Theory]
+    [InlineData(ExecutionMode.Interpreted, false)]
+    [InlineData(ExecutionMode.Compiled, true)]
+    public async Task Budgeted_string_concat_charges_per_byte_fuel(
+        ExecutionMode mode,
+        bool compiler)
+    {
+        var result = await ExecuteReturnAsync(
+            """
+            {
+              "call": "string.concatBudgeted",
+              "args": [{ "string": "hello" }, { "string": "world" }]
+            }
+            """,
+            SandboxPolicyBuilder.Create().WithFuel(20).Build(),
+            new SandboxExecutionOptions { Mode = mode, AllowFallbackToInterpreter = false },
+            compiler);
+
+        AssertQuotaExceeded(result);
+        Assert.Equal(mode, result.ActualMode);
+    }
+
     [Fact]
     public async Task Entrypoint_string_input_length_limit_is_enforced()
     {

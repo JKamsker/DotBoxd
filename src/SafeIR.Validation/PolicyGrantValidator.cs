@@ -5,7 +5,10 @@ using SafeIR;
 
 internal static class PolicyGrantValidator
 {
-    public static void Validate(SandboxPolicy policy, List<SandboxDiagnostic> diagnostics)
+    public static void Validate(
+        SandboxPolicy policy,
+        IReadOnlySet<string> requiredCapabilities,
+        List<SandboxDiagnostic> diagnostics)
     {
         var activeGrants = policy.Grants
             .Where(IsActive)
@@ -19,14 +22,17 @@ internal static class PolicyGrantValidator
         }
 
         foreach (var grant in activeGrants) {
-            ValidateGrant(grant, diagnostics);
+            ValidateGrant(grant, requiredCapabilities, diagnostics);
         }
     }
 
     private static bool IsActive(CapabilityGrant grant)
         => grant.ExpiresAt is null || grant.ExpiresAt > DateTimeOffset.UtcNow;
 
-    private static void ValidateGrant(CapabilityGrant grant, List<SandboxDiagnostic> diagnostics)
+    private static void ValidateGrant(
+        CapabilityGrant grant,
+        IReadOnlySet<string> requiredCapabilities,
+        List<SandboxDiagnostic> diagnostics)
     {
         switch (grant.Id) {
             case "file.read":
@@ -40,6 +46,14 @@ internal static class PolicyGrantValidator
                 break;
             case "time.now" or "random" or "log.write":
                 RequireAllowedKeys(grant, diagnostics, []);
+                break;
+            default:
+                if (!requiredCapabilities.Contains(grant.Id)) {
+                    diagnostics.Add(new SandboxDiagnostic(
+                        "E-POLICY-GRANT",
+                        $"grant '{grant.Id}' is not supported by the prepared module"));
+                }
+
                 break;
         }
     }

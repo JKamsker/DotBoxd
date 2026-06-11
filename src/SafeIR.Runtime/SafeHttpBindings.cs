@@ -4,7 +4,7 @@ using SafeIR;
 
 public static class SafeHttpBindings
 {
-    public static BindingDescriptor GetText(HttpMessageInvoker? invoker = null, SafeDnsResolver? dnsResolver = null)
+    public static BindingDescriptor GetText(SafeInMemoryHttpMessageInvoker? invoker = null, SafeDnsResolver? dnsResolver = null)
         => new(
             "net.http.get",
             SemVersion.One,
@@ -12,7 +12,7 @@ public static class SafeHttpBindings
             SandboxType.String,
             SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.Network,
             "net.http.get",
-            BindingCostModel.PerByte(baseFuel: 75, perByteFuel: 1),
+            BindingCostModel.Fixed(75),
             AuditLevel.PerResource,
             BindingSafety.ReadOnlyExternal,
             async (context, args, cancellationToken) => {

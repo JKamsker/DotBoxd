@@ -67,6 +67,40 @@ public sealed class PolicyBoundaryTests
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-POLICY-GRANT");
     }
 
+    [Fact]
+    public async Task Prepare_rejects_unknown_grant_not_required_by_registered_binding()
+    {
+        var host = SandboxTestHost.Create();
+        var module = await host.ParseJsonAsync(SandboxTestHost.PureScoreJson());
+        var policy = new SandboxPolicy(
+            "unknown-grant",
+            SandboxEffects.Pure,
+            [new CapabilityGrant("vendor.secret", new Dictionary<string, string>())],
+            new ResourceLimits(MaxFuel: 5_000));
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () =>
+            await host.PrepareAsync(module, policy));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-POLICY-GRANT");
+    }
+
+    [Fact]
+    public async Task Unknown_capability_request_cannot_be_satisfied_by_unknown_grant()
+    {
+        var host = SandboxTestHost.Create();
+        var module = await host.ParseJsonAsync(UnknownCapabilityRequestJson());
+        var policy = new SandboxPolicy(
+            "unknown-request",
+            SandboxEffects.Pure,
+            [new CapabilityGrant("vendor.secret", new Dictionary<string, string>())],
+            new ResourceLimits(MaxFuel: 5_000));
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () =>
+            await host.PrepareAsync(module, policy));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-POLICY-GRANT");
+    }
+
     [Theory]
     [InlineData("maxBytesPerRun", "not-a-number")]
     [InlineData("allowOverwrite", "maybe")]
@@ -181,6 +215,27 @@ public sealed class PolicyBoundaryTests
               "parameters": [],
               "returnType": "Unit",
               "body": [{ "op": "return", "value": { "call": "host.unknown", "args": [] } }]
+            }
+          ]
+        }
+        """;
+
+    private static string UnknownCapabilityRequestJson()
+        => """
+        {
+          "id": "unknown-capability-request",
+          "version": "1.0.0",
+          "capabilityRequests": [{ "id": "vendor.secret" }],
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [
+                { "name": "level", "type": "I32" },
+                { "name": "rarity", "type": "I32" }
+              ],
+              "returnType": "I32",
+              "body": [{ "op": "return", "value": { "i32": 1 } }]
             }
           ]
         }
