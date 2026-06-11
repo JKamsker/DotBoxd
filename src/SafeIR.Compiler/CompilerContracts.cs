@@ -7,12 +7,22 @@ public delegate SandboxValue SandboxCompiledEntrypoint(SandboxContext context, S
 
 public sealed record CompileOptions(string Entrypoint, bool Optimize = false);
 
+public enum CompiledCacheStatus
+{
+    None,
+    Hit,
+    Miss,
+    Invalid,
+    Recompiled
+}
+
 public sealed record CompiledArtifact(
     byte[] AssemblyBytes,
     string AssemblyHash,
     ArtifactManifest Manifest,
     VerificationResult Verification,
-    SandboxCompiledEntrypoint Entrypoint);
+    SandboxCompiledEntrypoint Entrypoint,
+    CompiledCacheStatus CacheStatus = CompiledCacheStatus.None);
 
 public interface ISandboxCompiler
 {

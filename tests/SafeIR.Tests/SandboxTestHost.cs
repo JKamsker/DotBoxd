@@ -5,11 +5,15 @@ namespace SafeIR.Tests;
 
 internal static class SandboxTestHost
 {
-    public static SandboxHost Create(bool compiler = false)
+    public static SandboxHost Create(bool compiler = false, string? compilerCache = null)
         => SandboxHost.Create(builder => {
             builder.AddDefaultPureBindings();
             builder.AddFileBindings();
             builder.UseInterpreter();
+            if (compilerCache is not null) {
+                builder.UseCompilerCache(compilerCache);
+            }
+
             if (compiler) {
                 builder.UseCompilerIfAvailable();
             }

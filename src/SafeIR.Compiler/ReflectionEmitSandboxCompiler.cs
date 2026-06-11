@@ -10,11 +10,16 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
 {
     private readonly IGeneratedAssemblyVerifier _verifier;
     private readonly VerificationPolicy _verificationPolicy;
+    private readonly PersistentCompiledArtifactCache? _cache;
 
-    public ReflectionEmitSandboxCompiler(IGeneratedAssemblyVerifier verifier, VerificationPolicy? verificationPolicy = null)
+    public ReflectionEmitSandboxCompiler(
+        IGeneratedAssemblyVerifier verifier,
+        VerificationPolicy? verificationPolicy = null,
+        PersistentCompiledArtifactCache? cache = null)
     {
         _verifier = verifier;
         _verificationPolicy = verificationPolicy ?? VerificationPolicy.BoxedValueDefaults();
+        _cache = cache;
     }
 
     public async ValueTask<CompiledArtifact> CompileAsync(
@@ -23,6 +28,25 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         CancellationToken cancellationToken)
     {
         var function = ResolveSupportedFunction(plan, options.Entrypoint);
+        var cacheKey = CacheKeyBuilder.Build(plan, _verificationPolicy, options.Optimize);
+        var lookupStatus = CompiledCacheStatus.None;
+        if (_cache is not null) {
+            var cached = await _cache.TryReadAsync(
+                cacheKey,
+                plan,
+                _verifier,
+                _verificationPolicy,
+                cancellationToken).ConfigureAwait(false);
+            if (cached.Status == CompiledCacheStatus.Hit && cached.Artifact is not null) {
+                return cached.Artifact with {
+                    Entrypoint = LoadEntrypoint(cached.Artifact.AssemblyBytes),
+                    CacheStatus = CompiledCacheStatus.Hit
+                };
+            }
+
+            lookupStatus = cached.Status;
+        }
+
         var assemblyBytes = EmitAssembly(plan, function);
         var manifest = BuildManifest(plan, assemblyBytes, options);
         var verification = await _verifier.VerifyAsync(assemblyBytes, manifest, _verificationPolicy, cancellationToken).ConfigureAwait(false);
@@ -33,7 +57,10 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         }
 
         var entrypoint = LoadEntrypoint(assemblyBytes);
-        return new CompiledArtifact(assemblyBytes, verification.AssemblyHash, manifest, verification, entrypoint);
+        var status = _cache is null
+            ? CompiledCacheStatus.None
+            : await WriteCacheAsync(cacheKey, lookupStatus, plan, assemblyBytes, manifest, verification, cancellationToken).ConfigureAwait(false);
+        return new CompiledArtifact(assemblyBytes, verification.AssemblyHash, manifest, verification, entrypoint, status);
     }
 
     private static SandboxFunction ResolveSupportedFunction(ExecutionPlan plan, string entrypoint)
@@ -95,7 +122,24 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
             DateTimeOffset.UtcNow);
     }
 
-    private static SandboxCompiledEntrypoint LoadEntrypoint(byte[] assemblyBytes)
+    private async ValueTask<CompiledCacheStatus> WriteCacheAsync(
+        string cacheKey,
+        CompiledCacheStatus lookupStatus,
+        ExecutionPlan plan,
+        byte[] assemblyBytes,
+        ArtifactManifest manifest,
+        VerificationResult verification,
+        CancellationToken cancellationToken)
+    {
+        var cache = _cache ?? throw new InvalidOperationException("compiler cache is not configured");
+        var existing = lookupStatus == CompiledCacheStatus.Invalid || cache.EntryExists(cacheKey)
+            ? CompiledCacheStatus.Recompiled
+            : CompiledCacheStatus.Miss;
+        await cache.WriteAsync(cacheKey, plan, assemblyBytes, manifest, verification, cancellationToken).ConfigureAwait(false);
+        return existing;
+    }
+
+    internal static SandboxCompiledEntrypoint LoadEntrypoint(byte[] assemblyBytes)
     {
         var context = new AssemblyLoadContext("SafeIR.Generated", isCollectible: true);
         var assembly = context.LoadFromStream(new MemoryStream(assemblyBytes, writable: false));

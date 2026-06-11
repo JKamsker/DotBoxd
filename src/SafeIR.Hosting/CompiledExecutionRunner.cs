@@ -71,5 +71,5 @@ internal static class CompiledExecutionRunner
             success,
             ResourceId: $"module:{plan.ModuleHash}",
             ErrorCode: error?.Code,
-            Message: $"mode=compiled artifact={artifact.AssemblyHash} fuel={budget.FuelUsed}/{budget.Limits.MaxFuel}"));
+            Message: $"mode=compiled cacheStatus={artifact.CacheStatus} artifact={artifact.AssemblyHash} fuel={budget.FuelUsed}/{budget.Limits.MaxFuel}"));
 }

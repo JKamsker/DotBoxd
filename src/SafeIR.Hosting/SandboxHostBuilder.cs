@@ -11,6 +11,8 @@ public sealed class SandboxHostBuilder
     private readonly BindingRegistryBuilder _bindings = new();
     private ISandboxInterpreter? _interpreter;
     private ISandboxCompiler? _compiler;
+    private string? _compilerCacheDirectory;
+    private bool _useCompiler;
 
     public SandboxHostBuilder AddDefaultPureBindings()
     {
@@ -38,13 +40,32 @@ public sealed class SandboxHostBuilder
 
     public SandboxHostBuilder UseCompilerIfAvailable(ISandboxCompiler? compiler = null)
     {
-        _compiler = compiler ?? new ReflectionEmitSandboxCompiler(new GeneratedAssemblyVerifier());
+        _useCompiler = true;
+        _compiler = compiler;
+        return this;
+    }
+
+    public SandboxHostBuilder UseCompilerCache(string cacheDirectory)
+    {
+        _compilerCacheDirectory = cacheDirectory;
         return this;
     }
 
     internal SandboxHost Build()
     {
         _interpreter ??= new SandboxInterpreter();
+        if (_useCompiler) {
+            _compiler ??= CreateDefaultCompiler();
+        }
+
         return new SandboxHost(_bindings.Build(), _interpreter, _compiler);
+    }
+
+    private ISandboxCompiler CreateDefaultCompiler()
+    {
+        var cache = _compilerCacheDirectory is null
+            ? null
+            : new PersistentCompiledArtifactCache(_compilerCacheDirectory);
+        return new ReflectionEmitSandboxCompiler(new GeneratedAssemblyVerifier(), cache: cache);
     }
 }
