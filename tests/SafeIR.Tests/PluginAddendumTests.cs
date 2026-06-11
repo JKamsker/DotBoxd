@@ -36,6 +36,89 @@ public sealed class PluginAddendumTests
     }
 
     [Fact]
+    public async Task ModifyAsync_commits_class_kernel_settings_as_a_batch()
+    {
+        var messages = new InMemoryPluginMessageSink();
+        var server = PluginServer.Create(messages);
+        await server.InstallAsync(FireDamagePluginPackage.Create());
+        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
+
+        await kernel.ModifyAsync(state => {
+            state.DamageType = "ice";
+            state.MinDamage = 250;
+        });
+
+        await server.Hooks.PublishAsync(new DamageEvent("fire", 300, "player-1"));
+        await server.Hooks.PublishAsync(new DamageEvent("ice", 200, "player-2"));
+        await server.Hooks.PublishAsync(new DamageEvent("ice", 300, "player-3"));
+
+        Assert.Equal("ice", kernel.Value.DamageType);
+        Assert.Equal(250, kernel.Value.MinDamage);
+        var message = Assert.Single(messages.Messages);
+        Assert.Equal("player-3", message.TargetId);
+    }
+
+    [Fact]
+    public async Task ModifyAsync_rejects_invalid_batch_without_changing_current_settings()
+    {
+        var server = PluginServer.Create();
+        await server.InstallAsync(FireDamagePluginPackage.Create());
+        var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await kernel.ModifyAsync(state => {
+                state.DamageType = "ice";
+                state.MinDamage = 10_001;
+            }).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "SGP023");
+        Assert.Equal("fire", kernel.Value.DamageType);
+        Assert.Equal(100, kernel.Value.MinDamage);
+        Assert.Equal("fire", kernel.Kernel.Value.Get<string>("DamageType"));
+        Assert.Equal(100, kernel.Kernel.Value.Get<int>("MinDamage"));
+    }
+
+    [Fact]
+    public async Task ModifyAsync_supports_interface_shaped_kernel_settings()
+    {
+        var server = PluginServer.Create();
+        await server.InstallAsync(FireDamagePluginPackage.Create());
+        var settings = server.Kernels.Get<IFireDamageSettings>("fire-damage");
+
+        await settings.ModifyAsync(state => {
+            state.DamageType = "ice";
+            state.MinDamage = 250;
+        });
+
+        Assert.Equal("ice", settings.Value.DamageType);
+        Assert.Equal(250, settings.Value.MinDamage);
+        Assert.Equal("ice", settings.Kernel.Value.Get<string>("DamageType"));
+        Assert.Equal(250, settings.Kernel.Value.Get<int>("MinDamage"));
+    }
+
+    [Fact]
+    public async Task ModifyAsync_atomic_waits_for_in_flight_kernel_execution()
+    {
+        var messages = new BlockingPluginMessageSink();
+        var server = PluginServer.Create(messages);
+        await server.InstallAsync(FireDamagePluginPackage.Create());
+        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
+        var publish = server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1")).AsTask();
+        await messages.SendStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var modify = kernel.ModifyAsync(state => state.MinDamage = 250, atomic: true).AsTask();
+        var completed = await Task.WhenAny(modify, Task.Delay(100));
+
+        Assert.NotSame(modify, completed);
+        messages.ReleaseSend.SetResult();
+        await publish;
+        await modify;
+        Assert.Equal(250, kernel.Value.MinDamage);
+    }
+
+    [Fact]
     public async Task Value_binding_filter_updates_without_rebuilding_pipeline()
     {
         var server = PluginServer.Create();
@@ -142,5 +225,17 @@ public sealed class PluginAddendumTests
             async () => await server.InstallAsync(FireDamagePluginPackage.Create(), policy).AsTask());
 
         Assert.Contains(ex.Diagnostics, d => d.Code is "E-POLICY-CAP" or "E-POLICY-EFFECT");
+    }
+
+    private sealed class BlockingPluginMessageSink : IPluginMessageSink
+    {
+        public TaskCompletionSource SendStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource ReleaseSend { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async ValueTask SendAsync(string targetId, string message, CancellationToken cancellationToken = default)
+        {
+            SendStarted.TrySetResult();
+            await ReleaseSend.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 }

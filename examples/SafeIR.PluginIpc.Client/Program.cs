@@ -27,15 +27,19 @@ await PrintMessagesAsync("fire 120", new DamageEventRequest {
     TargetId = "player-1"
 });
 
-await service.SetSettingAsync("MinDamage", "250");
-await PrintMessagesAsync("fire 120 after threshold update", new DamageEventRequest {
+await service.ModifySettingsAsync(
+    [
+        new LiveSettingUpdate { Name = "MinDamage", Value = "250" },
+        new LiveSettingUpdate { Name = "DamageType", Value = "ice" }
+    ],
+    atomic: true);
+await PrintMessagesAsync("fire 120 after batch update", new DamageEventRequest {
     DamageType = "fire",
     Amount = 120,
     TargetId = "player-1"
 });
 
-await service.SetSettingAsync("DamageType", "ice");
-await PrintMessagesAsync("ice 300 after damage type update", new DamageEventRequest {
+await PrintMessagesAsync("ice 300 after batch update", new DamageEventRequest {
     DamageType = "ice",
     Amount = 300,
     TargetId = "player-2"

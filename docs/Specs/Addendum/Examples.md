@@ -129,15 +129,28 @@ DamageEvent
 
 ### 5. Update Settings At Runtime
 
-Live setting changes are applied to future hook executions without reinstalling the plugin or rebuilding the hook pipeline.
+Live setting changes are applied to future hook executions without reinstalling the plugin or rebuilding the hook pipeline. Use `ModifyAsync` when multiple settings should become visible as one validated batch.
 
 ```csharp
 var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
 
-kernel.Value.MinDamage = 250;
-kernel.Value.DamageType = "ice";
+await kernel.ModifyAsync(state => {
+    state.MinDamage = 250;
+    state.DamageType = "ice";
+});
 
 await server.Hooks.PublishAsync(new DamageEvent("ice", 300, "player-2"));
+```
+
+Pass `atomic: true` when the update must also wait for any in-flight kernel execution and prevent a new execution from crossing the commit boundary:
+
+```csharp
+await kernel.ModifyAsync(
+    state => {
+        state.MinDamage = 250;
+        state.DamageType = "ice";
+    },
+    atomic: true);
 ```
 
 For small scripts, the same live-update behavior is available through value bindings:
@@ -163,6 +176,17 @@ var settings = server.BindContext<IFireDamageSettings>(
     });
 
 settings.Value.MinDamage = 250;
+```
+
+Over IPC, send the same update as one request:
+
+```csharp
+await service.ModifySettingsAsync(
+    [
+        new LiveSettingUpdate { Name = "MinDamage", Value = "250" },
+        new LiveSettingUpdate { Name = "DamageType", Value = "ice" }
+    ],
+    atomic: true);
 ```
 
 ### 6. Inspect Plugin Permissions

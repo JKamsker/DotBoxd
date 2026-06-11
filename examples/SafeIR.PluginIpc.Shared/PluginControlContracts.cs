@@ -10,6 +10,11 @@ public interface IPluginControlService
 
     Task SetSettingAsync(string name, string value, CancellationToken cancellationToken = default);
 
+    Task ModifySettingsAsync(
+        IReadOnlyList<LiveSettingUpdate> settings,
+        bool atomic = false,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<string>> PublishDamageAsync(
         DamageEventRequest request,
         CancellationToken cancellationToken = default);
@@ -26,6 +31,16 @@ public sealed class DamageEventRequest
 
     [Key(2)]
     public string TargetId { get; set; } = string.Empty;
+}
+
+[MessagePackObject]
+public sealed class LiveSettingUpdate
+{
+    [Key(0)]
+    public string Name { get; set; } = string.Empty;
+
+    [Key(1)]
+    public string Value { get; set; } = string.Empty;
 }
 
 [MessagePackObject]

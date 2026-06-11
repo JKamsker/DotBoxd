@@ -47,8 +47,20 @@ public sealed class PluginControlService : IPluginControlService
     public Task SetSettingAsync(string name, string value, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        _kernel.Value.Set(name, value);
-        return Task.CompletedTask;
+        return _kernel.ModifySettingsAsync(
+                new Dictionary<string, object?> { [name] = value },
+                cancellationToken: cancellationToken)
+            .AsTask();
+    }
+
+    public Task ModifySettingsAsync(
+        IReadOnlyList<LiveSettingUpdate> settings,
+        bool atomic = false,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var values = settings.ToDictionary(s => s.Name, s => (object?)s.Value, StringComparer.Ordinal);
+        return _kernel.ModifySettingsAsync(values, atomic, cancellationToken).AsTask();
     }
 
     public async Task<IReadOnlyList<string>> PublishDamageAsync(

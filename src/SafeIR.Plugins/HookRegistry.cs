@@ -84,11 +84,7 @@ public sealed class HookPipeline<TEvent>
     public HookPipeline<TEvent> UseKernel(InstalledKernel kernel)
     {
         kernel.ValidateFor(_adapter);
-        _handlers.Add(async (e, context) => {
-            if (await kernel.ShouldHandleAsync(_adapter, e, context.CancellationToken).ConfigureAwait(false)) {
-                await kernel.HandleAsync(_adapter, e, context.CancellationToken).ConfigureAwait(false);
-            }
-        });
+        _handlers.Add((e, context) => kernel.InvokeAsync(_adapter, e, context.CancellationToken));
         return this;
     }
 

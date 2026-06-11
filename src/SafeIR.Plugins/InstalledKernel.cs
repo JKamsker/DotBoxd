@@ -6,6 +6,7 @@ using SafeIR.Hosting;
 public sealed class InstalledKernel
 {
     private readonly object _typedValueGate = new();
+    private readonly SemaphoreSlim _executionGate = new(1, 1);
     private readonly SandboxHost _host;
     private readonly ExecutionPlan _plan;
     private readonly KernelEntrypoints _entrypoints;
@@ -51,12 +52,15 @@ public sealed class InstalledKernel
         TEvent e,
         CancellationToken cancellationToken = default)
     {
-        var result = await ExecuteAsync(_entrypoints.ShouldHandle, adapter, e, cancellationToken).ConfigureAwait(false);
-        if (result is not BoolValue handled) {
-            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "kernel ShouldHandle returned a non-bool value"));
+        await _executionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try {
+            var input = BuildInput(adapter, e);
+            var result = await ExecutePreparedAsync(_entrypoints.ShouldHandle, input, cancellationToken).ConfigureAwait(false);
+            return AsShouldHandleResult(result);
         }
-
-        return handled.Value;
+        finally {
+            _executionGate.Release();
+        }
     }
 
     public async ValueTask HandleAsync<TEvent>(
@@ -64,7 +68,95 @@ public sealed class InstalledKernel
         TEvent e,
         CancellationToken cancellationToken = default)
     {
-        _ = await ExecuteAsync(_entrypoints.Handle, adapter, e, cancellationToken).ConfigureAwait(false);
+        await _executionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try {
+            var input = BuildInput(adapter, e);
+            _ = await ExecutePreparedAsync(_entrypoints.Handle, input, cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            _executionGate.Release();
+        }
+    }
+
+    internal async ValueTask InvokeAsync<TEvent>(
+        IPluginEventAdapter<TEvent> adapter,
+        TEvent e,
+        CancellationToken cancellationToken = default)
+    {
+        await _executionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try {
+            var input = BuildInput(adapter, e);
+            var result = await ExecutePreparedAsync(_entrypoints.ShouldHandle, input, cancellationToken).ConfigureAwait(false);
+            if (AsShouldHandleResult(result)) {
+                _ = await ExecutePreparedAsync(_entrypoints.Handle, input, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally {
+            _executionGate.Release();
+        }
+    }
+
+    public async ValueTask ModifySettingsAsync(
+        IReadOnlyDictionary<string, object?> values,
+        bool atomic = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (atomic) {
+            await _executionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        try {
+            Value.SetMany(values);
+            RefreshTypedValuesFromStore();
+        }
+        finally {
+            if (atomic) {
+                _executionGate.Release();
+            }
+        }
+    }
+
+    internal async ValueTask ModifyAsync<TState>(
+        TState current,
+        Action<TState> modify,
+        bool atomic,
+        CancellationToken cancellationToken) where TState : class
+    {
+        ArgumentNullException.ThrowIfNull(modify);
+        if (atomic) {
+            await _executionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        try {
+            if (typeof(TState).IsInterface) {
+                var draftStore = Value.Copy(Manifest.LiveSettings);
+                var draft = draftStore.As<TState>();
+                modify(draft);
+                Value.SetMany(draftStore.ToObjectValues(Manifest.LiveSettings));
+                RefreshTypedValuesFromStore();
+                return;
+            }
+
+            var classDraft = LiveKernelValueFactory.CreateDraft(current);
+            modify(classDraft);
+            Value.SetMany(LiveKernelValueFactory.ExtractSettings(classDraft, Manifest.LiveSettings));
+            LiveKernelValueFactory.CopyLiveProperties(classDraft, current);
+            RefreshTypedValuesFromStore();
+        }
+        finally {
+            if (atomic) {
+                _executionGate.Release();
+            }
+        }
+    }
+
+    private static bool AsShouldHandleResult(SandboxValue result)
+    {
+        if (result is not BoolValue handled) {
+            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "kernel ShouldHandle returned a non-bool value"));
+        }
+
+        return handled.Value;
     }
 
     internal void ValidateFor<TEvent>(IPluginEventAdapter<TEvent> adapter)
@@ -82,13 +174,11 @@ public sealed class InstalledKernel
         ValidateFunction(_entrypoints.Handle, SandboxType.Unit, expected);
     }
 
-    private async ValueTask<SandboxValue> ExecuteAsync<TEvent>(
+    private async ValueTask<SandboxValue> ExecutePreparedAsync(
         string entrypoint,
-        IPluginEventAdapter<TEvent> adapter,
-        TEvent e,
+        SandboxValue input,
         CancellationToken cancellationToken)
     {
-        var input = BuildInput(adapter, e);
         var result = await _host.ExecuteAsync(
                 _plan,
                 entrypoint,
@@ -110,6 +200,20 @@ public sealed class InstalledKernel
             .Concat(Value.ToSandboxValues(Manifest.LiveSettings))
             .ToArray();
         return SandboxValue.FromList(values);
+    }
+
+    private void RefreshTypedValuesFromStore()
+    {
+        lock (_typedValueGate) {
+            foreach (var value in _typedValues.Values) {
+                var type = value.GetType();
+                if (type.IsInterface) {
+                    continue;
+                }
+
+                LiveKernelValueFactory.PullFromStore(this, value);
+            }
+        }
     }
 
     private void SynchronizeLiveState()
@@ -153,4 +257,10 @@ public sealed class TypedInstalledKernel<TSettings> where TSettings : class
 
     public InstalledKernel Kernel { get; }
     public TSettings Value { get; }
+
+    public ValueTask ModifyAsync(
+        Action<TSettings> modify,
+        bool atomic = false,
+        CancellationToken cancellationToken = default)
+        => Kernel.ModifyAsync(Value, modify, atomic, cancellationToken);
 }

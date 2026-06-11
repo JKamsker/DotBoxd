@@ -96,6 +96,16 @@ internal static class LiveSettingTypeConverter
         throw Diagnostic($"Live setting type '{targetType.Name}' is not supported.");
     }
 
+    public static object? CoerceClr(string type, object? value)
+        => type switch {
+            "bool" => CoerceClr(typeof(bool), value),
+            "int" => CoerceClr(typeof(int), value),
+            "long" => CoerceClr(typeof(long), value),
+            "double" => CoerceClr(typeof(double), value),
+            "string" => CoerceClr(typeof(string), value),
+            _ => throw Diagnostic($"Live setting type '{type}' is not supported.")
+        };
+
     public static SandboxValue ToSandboxValue(string type, object? value)
         => type switch {
             "bool" => SandboxValue.FromBool(Convert.ToBoolean(value, CultureInfo.InvariantCulture)),

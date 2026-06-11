@@ -20,10 +20,10 @@ server.Hooks.On<DamageEvent>()
 
 await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
 var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
-kernel.Value.MinDamage = 250;
-await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
-
-kernel.Value.DamageType = "ice";
+await kernel.ModifyAsync(state => {
+    state.MinDamage = 250;
+    state.DamageType = "ice";
+});
 await server.Hooks.PublishAsync(new DamageEvent("ice", 300, "player-2"));
 
 Console.WriteLine("Live context defaults:");

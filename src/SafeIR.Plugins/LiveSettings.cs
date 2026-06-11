@@ -55,6 +55,7 @@ public sealed class LiveValue<T> : ILiveSetting
 
 public sealed class LiveSettingStore
 {
+    private readonly object _gate = new();
     private readonly Dictionary<string, ILiveSetting> _settings;
 
     public LiveSettingStore(IEnumerable<ILiveSetting> settings)
@@ -66,37 +67,68 @@ public sealed class LiveSettingStore
         => _settings.Values.Select(s => s.Definition).OrderBy(s => s.Name, StringComparer.Ordinal).ToArray();
 
     public T Get<T>(string name)
-        => _settings.TryGetValue(name, out var setting)
-            ? (T)LiveSettingTypeConverter.CoerceClr(typeof(T), setting.CurrentValue)!
-            : throw new KeyNotFoundException($"Live setting '{name}' is not registered.");
+    {
+        lock (_gate) {
+            return _settings.TryGetValue(name, out var setting)
+                ? (T)LiveSettingTypeConverter.CoerceClr(typeof(T), setting.CurrentValue)!
+                : throw new KeyNotFoundException($"Live setting '{name}' is not registered.");
+        }
+    }
 
     public object? GetObject(string name)
-        => _settings.TryGetValue(name, out var setting)
-            ? setting.CurrentValue
-            : throw new KeyNotFoundException($"Live setting '{name}' is not registered.");
+    {
+        lock (_gate) {
+            return _settings.TryGetValue(name, out var setting)
+                ? setting.CurrentValue
+                : throw new KeyNotFoundException($"Live setting '{name}' is not registered.");
+        }
+    }
 
     public void Set<T>(string name, T value)
     {
-        if (!_settings.TryGetValue(name, out var setting)) {
-            throw new KeyNotFoundException($"Live setting '{name}' is not registered.");
-        }
-
-        setting.SetObject(value);
+        SetObject(name, value);
     }
 
     public void SetObject(string name, object? value)
     {
-        if (!_settings.TryGetValue(name, out var setting)) {
-            throw new KeyNotFoundException($"Live setting '{name}' is not registered.");
-        }
+        SetMany(new Dictionary<string, object?> { [name] = value });
+    }
 
-        setting.SetObject(value);
+    public void SetMany(IReadOnlyDictionary<string, object?> values)
+    {
+        lock (_gate) {
+            var coerced = CoerceAndValidate(values);
+            foreach (var item in coerced) {
+                _settings[item.Key].SetObject(item.Value);
+            }
+        }
     }
 
     public T As<T>() where T : class => LiveContextProxy<T>.Create(this);
 
     internal IReadOnlyList<SandboxValue> ToSandboxValues(IReadOnlyList<LiveSettingDefinition> orderedSettings)
-        => orderedSettings.Select(s => _settings[s.Name].ToSandboxValue()).ToArray();
+    {
+        lock (_gate) {
+            return orderedSettings.Select(s => _settings[s.Name].ToSandboxValue()).ToArray();
+        }
+    }
+
+    internal IReadOnlyDictionary<string, object?> ToObjectValues(IReadOnlyList<LiveSettingDefinition> orderedSettings)
+    {
+        lock (_gate) {
+            return orderedSettings.ToDictionary(s => s.Name, s => _settings[s.Name].CurrentValue, StringComparer.Ordinal);
+        }
+    }
+
+    internal LiveSettingStore Copy(IReadOnlyList<LiveSettingDefinition> orderedSettings)
+    {
+        lock (_gate) {
+            var definitions = orderedSettings
+                .Select(s => s with { DefaultValue = _settings[s.Name].CurrentValue })
+                .ToArray();
+            return FromDefinitions(definitions);
+        }
+    }
 
     internal static LiveSettingStore FromDefinitions(IEnumerable<LiveSettingDefinition> definitions)
     {
@@ -113,6 +145,22 @@ public sealed class LiveSettingStore
             return new LiveSettingSlot(definition, value);
         });
         return new LiveSettingStore(settings);
+    }
+
+    private Dictionary<string, object?> CoerceAndValidate(IReadOnlyDictionary<string, object?> values)
+    {
+        var coerced = new Dictionary<string, object?>(StringComparer.Ordinal);
+        foreach (var item in values) {
+            if (!_settings.TryGetValue(item.Key, out var setting)) {
+                throw new KeyNotFoundException($"Live setting '{item.Key}' is not registered.");
+            }
+
+            var value = LiveSettingTypeConverter.CoerceClr(setting.Definition.Type, item.Value);
+            LiveSettingTypeConverter.ValidateRangeValue(setting.Definition, value);
+            coerced[item.Key] = value;
+        }
+
+        return coerced;
     }
 
     private sealed class LiveSettingSlot(LiveSettingDefinition definition, object? value) : ILiveSetting
