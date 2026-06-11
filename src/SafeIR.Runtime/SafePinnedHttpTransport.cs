@@ -23,6 +23,7 @@ internal static class SafePinnedHttpTransport
     {
         var handler = new SocketsHttpHandler {
             AllowAutoRedirect = false,
+            UseProxy = false,
             ConnectCallback = async (context, cancellationToken) => {
                 foreach (var address in vettedAddresses) {
                     var socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
