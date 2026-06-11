@@ -64,7 +64,7 @@ public sealed record CompiledArtifact
                 nameof(AssemblyBytes));
         }
 
-        AssemblyBytes = assemblyBytes;
+        AssemblyBytes = assemblyBytes.ToArray();
         AssemblyHash = assemblyHash;
         Manifest = manifest;
         Verification = verification;

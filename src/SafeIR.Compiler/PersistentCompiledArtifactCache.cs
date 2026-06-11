@@ -1,7 +1,6 @@
 namespace SafeIR.Compiler;
 
 using System.Collections.Concurrent;
-using System.Security.Cryptography;
 using System.Text.Json;
 using SafeIR;
 using SafeIR.Verifier;
@@ -30,11 +29,14 @@ public sealed class PersistentCompiledArtifactCache
         IGeneratedAssemblyVerifier verifier,
         VerificationPolicy policy,
         CancellationToken cancellationToken)
-        => await WithEntryLockAsync(
+    {
+        PersistentCompiledArtifactCacheValidator.ValidateCacheKey(cacheKey);
+        return await WithEntryLockAsync(
                 cacheKey,
                 () => TryReadCoreAsync(cacheKey, plan, entrypoint, verifier, policy, cancellationToken),
                 cancellationToken)
             .ConfigureAwait(false);
+    }
 
     public async ValueTask WriteAsync(
         string cacheKey,
@@ -45,18 +47,18 @@ public sealed class PersistentCompiledArtifactCache
         VerificationResult verification,
         VerificationPolicy policy,
         CancellationToken cancellationToken)
-        => await WithEntryLockAsync(
+    {
+        PersistentCompiledArtifactCacheValidator.ValidateCacheKey(cacheKey);
+        await WithEntryLockAsync(
                 cacheKey,
                 () => WriteCoreAsync(cacheKey, plan, entrypoint, assemblyBytes, manifest, verification, policy, cancellationToken),
                 cancellationToken)
             .ConfigureAwait(false);
+    }
 
     public string EntryPath(string cacheKey)
     {
-        if (!IsHexHash(cacheKey)) {
-            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.CacheInvalid, "cache key is not path safe"));
-        }
-
+        PersistentCompiledArtifactCacheValidator.ValidateCacheKey(cacheKey);
         return Path.Combine(_rootDirectory, cacheKey[..2], cacheKey[2..4], cacheKey);
     }
 
@@ -76,12 +78,12 @@ public sealed class PersistentCompiledArtifactCache
         try {
             var manifest = await ReadJsonAsync<ArtifactManifest>(Path.Combine(entryPath, "manifest.json"), cancellationToken)
                 .ConfigureAwait(false);
-            ValidateManifest(cacheKey, plan, entrypoint, manifest, policy);
+            PersistentCompiledArtifactCacheValidator.ValidateManifest(cacheKey, plan, entrypoint, manifest, policy);
             var cachedVerification = await ReadJsonAsync<VerificationResult>(
                     Path.Combine(entryPath, "verification.json"),
                     cancellationToken)
                 .ConfigureAwait(false);
-            ValidateVerification(manifest, cachedVerification, policy);
+            PersistentCompiledArtifactCacheValidator.ValidateVerification(manifest, cachedVerification, policy);
             var assemblyBytes = await File.ReadAllBytesAsync(Path.Combine(entryPath, "module.dll"), cancellationToken)
                 .ConfigureAwait(false);
             var verification = await verifier.VerifyAsync(assemblyBytes, manifest, policy, cancellationToken).ConfigureAwait(false);
@@ -98,7 +100,7 @@ public sealed class PersistentCompiledArtifactCache
                 CompiledRuntimeFormKind.LoadedAssembly,
                 CompiledCacheStatus.Hit));
         }
-        catch (Exception ex) when (ex is IOException or JsonException or SandboxRuntimeException or UnauthorizedAccessException) {
+        catch (Exception ex) when (ex is IOException or JsonException or SandboxRuntimeException or UnauthorizedAccessException or ArgumentException) {
             Quarantine(entryPath);
             return new CompiledCacheLookup(CompiledCacheStatus.Invalid, null);
         }
@@ -114,8 +116,8 @@ public sealed class PersistentCompiledArtifactCache
         VerificationPolicy policy,
         CancellationToken cancellationToken)
     {
-        ValidateManifest(cacheKey, plan, entrypoint, manifest, policy);
-        ValidateVerification(manifest, verification, policy);
+        PersistentCompiledArtifactCacheValidator.ValidateManifest(cacheKey, plan, entrypoint, manifest, policy);
+        PersistentCompiledArtifactCacheValidator.ValidateVerification(manifest, verification, policy);
 
         var finalPath = EntryPath(cacheKey);
         var tempPath = Path.Combine(_rootDirectory, ".tmp-" + Guid.NewGuid().ToString("N"));
@@ -137,72 +139,6 @@ public sealed class PersistentCompiledArtifactCache
             if (Directory.Exists(tempPath)) {
                 Directory.Delete(tempPath, recursive: true);
             }
-        }
-    }
-
-    private static void ValidateManifest(
-        string cacheKey,
-        ExecutionPlan plan,
-        string entrypoint,
-        ArtifactManifest manifest,
-        VerificationPolicy policy)
-    {
-        ValidateManifest(cacheKey, plan, manifest, policy.VerifierVersion);
-        var expectedFlags = ExpectedOptimizationFlags(cacheKey, plan, entrypoint, policy);
-        if (!manifest.OptimizationFlags.SequenceEqual(expectedFlags, StringComparer.Ordinal)) {
-            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.CacheInvalid, "cached artifact optimization flags do not match cache key"));
-        }
-    }
-
-    private static void ValidateManifest(
-        string cacheKey,
-        ExecutionPlan plan,
-        ArtifactManifest manifest,
-        string verifierVersion)
-    {
-        if (manifest.ArtifactVersion != 1 ||
-            manifest.CacheKey != cacheKey ||
-            manifest.ModuleHash != plan.ModuleHash ||
-            manifest.PlanHash != plan.PlanHash ||
-            manifest.PolicyHash != plan.PolicyHash ||
-            manifest.BindingManifestHash != plan.BindingManifestHash ||
-            manifest.CompilerVersion != CacheKeyBuilder.CompilerVersion ||
-            manifest.VerifierVersion != verifierVersion ||
-            manifest.RuntimeFacadeHash != CacheKeyBuilder.RuntimeFacadeHash ||
-            manifest.LanguageVersion != CacheKeyBuilder.LanguageVersion ||
-            manifest.TargetFramework != CacheKeyBuilder.TargetFramework) {
-            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.CacheInvalid, "cached artifact manifest does not match current plan"));
-        }
-    }
-
-    private static string[] ExpectedOptimizationFlags(
-        string cacheKey,
-        ExecutionPlan plan,
-        string entrypoint,
-        VerificationPolicy policy)
-    {
-        if (cacheKey == CacheKeyBuilder.Build(plan, entrypoint, policy, optimize: false)) {
-            return ["boxed-values"];
-        }
-
-        if (cacheKey == CacheKeyBuilder.Build(plan, entrypoint, policy, optimize: true)) {
-            return ["opt"];
-        }
-
-        throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.CacheInvalid, "cache key does not match current compile options"));
-    }
-
-    private static void ValidateVerification(
-        ArtifactManifest manifest,
-        VerificationResult verification,
-        VerificationPolicy policy)
-    {
-        if (!verification.Succeeded ||
-            verification.VerifierVersion != policy.VerifierVersion ||
-            verification.AssemblyHash != manifest.AssemblyHash) {
-            throw new SandboxRuntimeException(new SandboxError(
-                SandboxErrorCode.CacheInvalid,
-                "cached artifact verification does not match current verifier"));
         }
     }
 
@@ -269,8 +205,6 @@ public sealed class PersistentCompiledArtifactCache
         Directory.Move(entryPath, target);
     }
 
-    private static bool IsHexHash(string cacheKey)
-        => cacheKey.Length >= 64 && cacheKey.All(Uri.IsHexDigit);
 }
 
 public sealed record CompiledCacheLookup(CompiledCacheStatus Status, CompiledArtifact? Artifact);

@@ -1,7 +1,10 @@
 namespace SafeIR.Verifier;
 
+using SafeIR;
+
 public sealed record VerificationPolicy(
     IReadOnlySet<string> AllowedAssemblies,
+    IReadOnlySet<string> AllowedAssemblyIdentities,
     IReadOnlySet<string> AllowedTypes,
     IReadOnlySet<string> AllowedMembers,
     IReadOnlySet<string> ForbiddenTypePrefixes,
@@ -22,6 +25,12 @@ public sealed record VerificationPolicy(
         => new(
             new HashSet<string>(StringComparer.Ordinal) {
                 "System.Private.CoreLib", "System.Runtime", "SafeIR.Core", "SafeIR.Runtime"
+            },
+            new HashSet<string>(StringComparer.Ordinal) {
+                AssemblyIdentity("System.Private.CoreLib", "10.0.0.0", "neutral", "7cec85d7bea7798e"),
+                AssemblyIdentity("System.Runtime", "10.0.0.0", "neutral", "b03f5f7f11d50a3a"),
+                AssemblyIdentity("SafeIR.Core", SafeIrAssemblyVersion(), "neutral", "null"),
+                AssemblyIdentity("SafeIR.Runtime", SafeIrAssemblyVersion(), "neutral", "null")
             },
             new HashSet<string>(StringComparer.Ordinal) {
                 "System.Object", "System.Void", "System.Boolean", "System.Int32", "System.String",
@@ -87,10 +96,16 @@ public sealed record VerificationPolicy(
                 "System.Threading.Tasks.", "System.Activator", "System.Environment",
                 "System.GC", "System.Delegate", "System.Linq.Expressions.", "Microsoft.CSharp."
             },
-            "safe-ir-verifier-1");
+            "safe-ir-verifier-2");
 
     public bool IsMemberAllowed(string memberSignature) => AllowedMembers.Contains(memberSignature);
 
     private static string RuntimeMember(string name, string parameters, string returnType)
         => $"{Runtime}.{name}({parameters}):{returnType}";
+
+    private static string SafeIrAssemblyVersion()
+        => typeof(SandboxValue).Assembly.GetName().Version?.ToString() ?? "0.0.0.0";
+
+    private static string AssemblyIdentity(string name, string version, string culture, string publicKeyToken)
+        => $"{name}, Version={version}, Culture={culture}, PublicKeyToken={publicKeyToken}";
 }

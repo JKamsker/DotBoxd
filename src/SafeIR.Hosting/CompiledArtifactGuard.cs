@@ -18,7 +18,8 @@ internal static class CompiledArtifactGuard
         CancellationToken cancellationToken)
     {
         EnsureMatchesPlan(artifact, plan, entrypoint);
-        var verification = await Verifier.VerifyAsync(artifact.AssemblyBytes, artifact.Manifest, DefaultVerificationPolicy, cancellationToken)
+        var assemblyBytes = artifact.AssemblyBytes.ToArray();
+        var verification = await Verifier.VerifyAsync(assemblyBytes, artifact.Manifest, DefaultVerificationPolicy, cancellationToken)
             .ConfigureAwait(false);
         if (!verification.Succeeded) {
             throw new SandboxRuntimeException(new SandboxError(
@@ -31,11 +32,11 @@ internal static class CompiledArtifactGuard
         }
 
         return new CompiledArtifact(
-            artifact.AssemblyBytes,
+            assemblyBytes,
             artifact.AssemblyHash,
             artifact.Manifest,
             verification,
-            LoadEntrypoint(artifact.AssemblyBytes),
+            LoadEntrypoint(assemblyBytes),
             CompiledRuntimeFormKind.LoadedAssembly,
             artifact.CacheStatus);
     }

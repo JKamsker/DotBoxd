@@ -52,6 +52,19 @@ internal static class VerifierTestHelpers
 
     public static MethodBuilder DefineValidExecute(TypeBuilder type)
     {
+        var fn = type.DefineMethod(
+            "Fn_0",
+            MethodAttributes.Private | MethodAttributes.Static,
+            typeof(SandboxValue),
+            [typeof(SandboxContext)]);
+        var fnIl = fn.GetILGenerator();
+        EmitEnterCall(fnIl);
+        EmitChargeFuel(fnIl);
+        EmitExitCall(fnIl);
+        fnIl.Emit(OpCodes.Ldc_I4_0);
+        fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.I32))!);
+        fnIl.Emit(OpCodes.Ret);
+
         var method = type.DefineMethod(
             "Execute",
             MethodAttributes.Public | MethodAttributes.Static,
@@ -61,8 +74,28 @@ internal static class VerifierTestHelpers
         il.Emit(OpCodes.Ldarg_1);
         il.Emit(OpCodes.Ldc_I4_0);
         il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.ValidateEntrypointInput))!);
-        il.Emit(OpCodes.Ldarg_1);
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Call, fn);
         il.Emit(OpCodes.Ret);
         return method;
+    }
+
+    private static void EmitEnterCall(ILGenerator il)
+    {
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.EnterCall))!);
+    }
+
+    private static void EmitChargeFuel(ILGenerator il)
+    {
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Ldc_I4_1);
+        il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.ChargeFuel))!);
+    }
+
+    private static void EmitExitCall(ILGenerator il)
+    {
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.ExitCall))!);
     }
 }

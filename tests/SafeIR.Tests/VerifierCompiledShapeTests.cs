@@ -21,6 +21,22 @@ public sealed class VerifierCompiledShapeTests
     }
 
     [Fact]
+    public async Task Verifier_rejects_execute_that_does_runtime_work_directly()
+    {
+        var result = await VerifierTestHelpers.VerifyAsync(VerifierTestHelpers.BuildGeneratedAssembly(type => {
+            var execute = DefineExecute(type);
+            var il = execute.GetILGenerator();
+            EmitValidateInput(il);
+            il.Emit(OpCodes.Ldc_I4_1);
+            il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.I32))!);
+            il.Emit(OpCodes.Ret);
+        }));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d => d.Code == "V-COMPILED-SHAPE");
+    }
+
+    [Fact]
     public async Task Verifier_rejects_generated_function_without_meters()
     {
         var result = await VerifierTestHelpers.VerifyAsync(VerifierTestHelpers.BuildGeneratedAssembly(type => {
@@ -114,6 +130,28 @@ public sealed class VerifierCompiledShapeTests
             fnIl.Emit(OpCodes.Brtrue_S, skipExit);
             EmitExitCall(fnIl);
             fnIl.MarkLabel(skipExit);
+            fnIl.Emit(OpCodes.Ldarg_1);
+            fnIl.Emit(OpCodes.Ret);
+            EmitExecuteCalling(type, fn);
+        }));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d => d.Code == "V-COMPILED-SHAPE");
+    }
+
+    [Fact]
+    public async Task Verifier_rejects_generated_function_with_unmetered_cycle()
+    {
+        var result = await VerifierTestHelpers.VerifyAsync(VerifierTestHelpers.BuildGeneratedAssembly(type => {
+            var fn = DefineFunction(type);
+            var fnIl = fn.GetILGenerator();
+            var loop = fnIl.DefineLabel();
+            EmitEnterCall(fnIl);
+            EmitChargeFuel(fnIl);
+            fnIl.MarkLabel(loop);
+            fnIl.Emit(OpCodes.Ldc_I4_1);
+            fnIl.Emit(OpCodes.Brtrue_S, loop);
+            EmitExitCall(fnIl);
             fnIl.Emit(OpCodes.Ldarg_1);
             fnIl.Emit(OpCodes.Ret);
             EmitExecuteCalling(type, fn);
