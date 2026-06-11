@@ -57,18 +57,21 @@ public static class SafeFileSystem
         try {
             var resolved = ResolvePath(context, path, "file.write", "file.writeText");
             var bytes = System.Text.Encoding.UTF8.GetBytes(text);
-            EnsureWriteAllowed(resolved, bytes.Length);
+            var permission = SafeFileWritePublisher.EnsureAllowed(resolved.Grant, resolved.FullPath, bytes.Length);
             context.Budget.ChargeFileWrite(bytes.Length);
-            var directory = Path.GetDirectoryName(resolved.FullPath);
-            if (!string.IsNullOrWhiteSpace(directory)) {
-                Directory.CreateDirectory(directory);
-            }
 
             EnsureNoReparsePoint(resolved.RootFull, resolved.FullPath);
+            SafeFileWritePublisher.EnsureParentDirectory(resolved.RootFull, resolved.FullPath, permission);
             var tempPath = resolved.FullPath + ".tmp-" + Guid.NewGuid().ToString("N");
-            await File.WriteAllBytesAsync(tempPath, bytes, cancellationToken).ConfigureAwait(false);
-            EnsureNoReparsePoint(resolved.RootFull, resolved.FullPath);
-            File.Move(tempPath, resolved.FullPath, overwrite: true);
+            try {
+                await File.WriteAllBytesAsync(tempPath, bytes, cancellationToken).ConfigureAwait(false);
+                EnsureNoReparsePoint(resolved.RootFull, resolved.FullPath);
+                SafeFileWritePublisher.PublishTempFile(tempPath, resolved.FullPath, permission);
+            }
+            finally {
+                SafeFileWritePublisher.TryDelete(tempPath);
+            }
+
             context.ChargeFuel(bytes.Length);
             AuditWrite(context, startedAt, true, resolved.SanitizedPath, bytes.Length, null);
         }
@@ -152,24 +155,7 @@ public static class SafeFileSystem
         }
     }
 
-    private static void EnsureWriteAllowed(ResolvedPath resolved, long byteCount)
-    {
-        var exists = File.Exists(resolved.FullPath);
-        if (exists && !ReadBool(resolved.Grant, "allowOverwrite", fallback: true)) {
-            throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: overwrite is not allowed");
-        }
-
-        if (!exists && !ReadBool(resolved.Grant, "allowCreate", fallback: true)) {
-            throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: create is not allowed");
-        }
-
-        var maxBytes = ReadLong(resolved.Grant, "maxBytesPerRun", long.MaxValue);
-        if (byteCount > maxBytes) {
-            throw Error(SandboxErrorCode.QuotaExceeded, "file.writeText denied: content exceeds write limit");
-        }
-    }
-
-    private static void EnsureNoReparsePoint(string rootFull, string fullPath)
+    internal static void EnsureNoReparsePoint(string rootFull, string fullPath)
     {
         var root = rootFull.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         CheckAttributes(root);
