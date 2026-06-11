@@ -24,6 +24,7 @@ public sealed class PersistentCompiledArtifactCache
     public async ValueTask<CompiledCacheLookup> TryReadAsync(
         string cacheKey,
         ExecutionPlan plan,
+        string entrypoint,
         IGeneratedAssemblyVerifier verifier,
         VerificationPolicy policy,
         CancellationToken cancellationToken)
@@ -36,7 +37,7 @@ public sealed class PersistentCompiledArtifactCache
         try {
             var manifest = await ReadJsonAsync<ArtifactManifest>(Path.Combine(entryPath, "manifest.json"), cancellationToken)
                 .ConfigureAwait(false);
-            ValidateManifest(cacheKey, plan, manifest, policy);
+            ValidateManifest(cacheKey, plan, entrypoint, manifest, policy);
             var assemblyBytes = await File.ReadAllBytesAsync(Path.Combine(entryPath, "module.dll"), cancellationToken)
                 .ConfigureAwait(false);
             var verification = await verifier.VerifyAsync(assemblyBytes, manifest, policy, cancellationToken).ConfigureAwait(false);
@@ -62,13 +63,14 @@ public sealed class PersistentCompiledArtifactCache
     public async ValueTask WriteAsync(
         string cacheKey,
         ExecutionPlan plan,
+        string entrypoint,
         byte[] assemblyBytes,
         ArtifactManifest manifest,
         VerificationResult verification,
         VerificationPolicy policy,
         CancellationToken cancellationToken)
     {
-        ValidateManifest(cacheKey, plan, manifest, policy);
+        ValidateManifest(cacheKey, plan, entrypoint, manifest, policy);
         if (verification.VerifierVersion != policy.VerifierVersion) {
             throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.CacheInvalid, "verification result does not match current verifier"));
         }
@@ -108,11 +110,12 @@ public sealed class PersistentCompiledArtifactCache
     private static void ValidateManifest(
         string cacheKey,
         ExecutionPlan plan,
+        string entrypoint,
         ArtifactManifest manifest,
         VerificationPolicy policy)
     {
         ValidateManifest(cacheKey, plan, manifest, policy.VerifierVersion);
-        var expectedFlags = ExpectedOptimizationFlags(cacheKey, plan, policy);
+        var expectedFlags = ExpectedOptimizationFlags(cacheKey, plan, entrypoint, policy);
         if (!manifest.OptimizationFlags.SequenceEqual(expectedFlags, StringComparer.Ordinal)) {
             throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.CacheInvalid, "cached artifact optimization flags do not match cache key"));
         }
@@ -139,13 +142,17 @@ public sealed class PersistentCompiledArtifactCache
         }
     }
 
-    private static string[] ExpectedOptimizationFlags(string cacheKey, ExecutionPlan plan, VerificationPolicy policy)
+    private static string[] ExpectedOptimizationFlags(
+        string cacheKey,
+        ExecutionPlan plan,
+        string entrypoint,
+        VerificationPolicy policy)
     {
-        if (cacheKey == CacheKeyBuilder.Build(plan, policy, optimize: false)) {
+        if (cacheKey == CacheKeyBuilder.Build(plan, entrypoint, policy, optimize: false)) {
             return ["boxed-values"];
         }
 
-        if (cacheKey == CacheKeyBuilder.Build(plan, policy, optimize: true)) {
+        if (cacheKey == CacheKeyBuilder.Build(plan, entrypoint, policy, optimize: true)) {
             return ["opt"];
         }
 

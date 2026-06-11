@@ -43,6 +43,9 @@ ExecutionPlan
   -> execute
 ```
 
+The compiled runner accepts only an already-created runtime-form delegate plus proof that the
+form was verified or gated. It does not accept raw IL as executable input.
+
 ## Assembly generation options
 
 ### Option A: `PersistedAssemblyBuilder`

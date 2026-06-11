@@ -16,7 +16,7 @@ public static class StringBindings
             AuditLevel.None,
             BindingSafety.PureIntrinsic,
             (_, args, _) => ValueTask.FromResult(SandboxValue.FromInt32(((StringValue)args[0]).Value.Length)),
-            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.StringLength))),
+            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding))),
         new(
             "string.concatBudgeted",
             SemVersion.One,
@@ -32,6 +32,6 @@ public static class StringBindings
                 ctx.ChargeString(text);
                 return ValueTask.FromResult(SandboxValue.FromString(text));
             },
-            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.ConcatString)))
+            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)))
     ];
 }

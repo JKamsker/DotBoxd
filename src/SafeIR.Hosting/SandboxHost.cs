@@ -37,6 +37,7 @@ public sealed class SandboxHost
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        ExecutionPlanGuard.EnsurePolicyLimits(policy);
         var validation = new ModuleValidator().Validate(module, _bindings, policy);
         if (!validation.Succeeded) {
             throw new SandboxValidationException(validation.Diagnostics);
@@ -53,6 +54,7 @@ public sealed class SandboxHost
         CancellationToken cancellationToken = default)
     {
         options ??= new SandboxExecutionOptions();
+        ExecutionPlanGuard.EnsurePrepared(plan, _bindings);
         if (options.RequireDeterministic && !plan.Policy.Deterministic) {
             return DeterminismRequiredResult(plan, options);
         }

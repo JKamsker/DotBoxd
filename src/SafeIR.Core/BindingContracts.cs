@@ -3,7 +3,7 @@ using System.Text;
 
 namespace SafeIR;
 
-public delegate ValueTask<SandboxValue> InterpreterBinding(
+public delegate ValueTask<SandboxValue> BindingInvoker(
     SandboxContext context,
     IReadOnlyList<SandboxValue> args,
     CancellationToken cancellationToken);
@@ -26,6 +26,9 @@ public sealed record BindingCostModel(
     public static BindingCostModel Fixed(long baseFuel) => new(baseFuel);
 
     public static BindingCostModel PerByte(long baseFuel, long perByteFuel)
+        => new(baseFuel, perByteFuel);
+
+    public static BindingCostModel PerReturnedByte(long baseFuel, long perByteFuel)
         => new(baseFuel, perByteFuel, AllocationFromReturnBytes: true);
 }
 
@@ -56,7 +59,7 @@ public sealed record BindingDescriptor(
     BindingCostModel CostModel,
     AuditLevel AuditLevel,
     BindingSafety Safety,
-    InterpreterBinding Interpreter,
+    BindingInvoker Invoke,
     CompiledBinding Compiled)
 {
     public BindingSignature Signature => new(

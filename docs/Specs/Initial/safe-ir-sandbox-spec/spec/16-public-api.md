@@ -156,7 +156,7 @@ builder.Add(new BindingDescriptor(
     CostModel: BindingCostModel.PerByte(baseFuel: 50, perByteFuel: 1),
     AuditLevel: AuditLevel.PerResource,
     Safety: BindingSafety.ReadOnlyExternal,
-    Interpreter: SafeFileBindings.ReadTextInterpreter,
+    Invoke: SafeFileBindings.ReadText,
     Compiled: CompiledBinding.RuntimeStub("Sandbox.Runtime.GeneratedBindingStubs", "File_ReadText")));
 ```
 
@@ -204,7 +204,9 @@ public interface ISandboxCompiler
 ```
 
 `CompiledArtifact` represents an already-created compiled runtime form. The host invokes its
-entrypoint delegate; it must not interpret raw IL bytes.
+entrypoint delegate; it must not interpret raw IL bytes. Construction must fail unless the
+runtime form has a successful verification/gate result and the artifact hash matches the
+manifest and verification result.
 
 ```csharp
 public enum CompiledRuntimeFormKind

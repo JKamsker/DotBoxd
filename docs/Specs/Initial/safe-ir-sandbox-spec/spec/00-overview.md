@@ -63,7 +63,9 @@ The in-process security boundary is semantic:
 ```text
 User can only express allowed IR operations.
 Compiler/interpreter only implement those operations.
-Generated IL exists only in compiled mode and is verified or gated before execution.
+Generated IL exists only in compiled mode. SafeIR never interprets IL; trusted compiler code
+creates a gated `DynamicMethod` delegate or a verified generated assembly/DLL, and the CLR
+executes that runtime form.
 Host APIs are narrow capability facades.
 ```
 
@@ -112,7 +114,7 @@ Use when:
 Properties:
 
 - emits a compiler-owned runtime artifact, not a raw MSIL blob supplied by a user
-- supported runtime forms are a verified generated assembly/DLL or a future `DynamicMethod` backend with equivalent allowlist gating
+- supported runtime forms are a gated `DynamicMethod` delegate or a verified generated assembly/DLL
 - post-emission verification/gating is mandatory before execution
 - generated DLLs are cached by IR/policy/binding/runtime hash when using the assembly backend
 - generated assemblies are loaded through a controlled `AssemblyLoadContext`

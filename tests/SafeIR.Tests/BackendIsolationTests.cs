@@ -51,6 +51,53 @@ public sealed class BackendIsolationTests
         Assert.Equal("AssemblyBytes", ex.ParamName);
     }
 
+    [Fact]
+    public void Compiled_artifact_rejects_failed_verification_or_gate()
+    {
+        var ex = Assert.Throws<ArgumentException>(() => new CompiledArtifact(
+            [],
+            "dynamic-artifact",
+            Manifest("dynamic-artifact"),
+            new VerificationResult(
+                false,
+                [new VerificationDiagnostic("V-GATE", "dynamic method gate failed")],
+                "dynamic-artifact",
+                "verifier-version",
+                DateTimeOffset.UtcNow),
+            (_, _) => SandboxValue.Unit,
+            CompiledRuntimeFormKind.DynamicMethod));
+
+        Assert.Equal("verification", ex.ParamName);
+    }
+
+    [Fact]
+    public void Compiled_artifact_rejects_hash_mismatch()
+    {
+        var ex = Assert.Throws<ArgumentException>(() => new CompiledArtifact(
+            [],
+            "dynamic-artifact",
+            Manifest("other-artifact"),
+            Verification("dynamic-artifact"),
+            (_, _) => SandboxValue.Unit,
+            CompiledRuntimeFormKind.DynamicMethod));
+
+        Assert.Equal("assemblyHash", ex.ParamName);
+    }
+
+    [Fact]
+    public void Compiled_artifact_rejects_unknown_runtime_form()
+    {
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new CompiledArtifact(
+            [],
+            "dynamic-artifact",
+            Manifest("dynamic-artifact"),
+            Verification("dynamic-artifact"),
+            (_, _) => SandboxValue.Unit,
+            (CompiledRuntimeFormKind)99));
+
+        Assert.Equal("runtimeForm", ex.ParamName);
+    }
+
     private static string[] ReferencedAssemblyNames(System.Reflection.Assembly assembly)
         => assembly.GetReferencedAssemblies().Select(reference => reference.Name ?? string.Empty).ToArray();
 

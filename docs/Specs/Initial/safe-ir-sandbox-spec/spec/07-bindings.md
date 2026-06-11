@@ -52,7 +52,7 @@ public sealed record BindingDescriptor(
     BindingCostModel CostModel,
     AuditLevel AuditLevel,
     BindingSafety Safety,
-    InterpreterBinding Interpreter,
+    BindingInvoker Invoke,
     CompiledBinding Compiled);
 ```
 
@@ -111,7 +111,7 @@ Example:
 The interpreter calls a delegate that accepts sandbox values:
 
 ```csharp
-public delegate ValueTask<SandboxValue> InterpreterBinding(
+public delegate ValueTask<SandboxValue> BindingInvoker(
     SandboxContext context,
     IReadOnlyList<SandboxValue> args,
     CancellationToken cancellationToken);
@@ -333,7 +333,7 @@ Example mapping:
 | file too large | `QuotaExceeded` |
 | timeout | `Timeout` |
 | cancellation | `Cancelled` |
-| unexpected exception | `HostFailure` with safe message |
+| unexpected binding exception | `BindingFailure` with safe message |
 
 Do not leak secrets, full paths, connection strings, stack traces, or internal object details to untrusted users.
 

@@ -281,7 +281,8 @@ It must:
 
 ### 9B. Compile
 
-The compiler emits a compiled runtime form: either a `DynamicMethod` or a valid .NET assembly.
+The compiler emits a compiled runtime form: either a gated `DynamicMethod` delegate or a
+verified .NET assembly/DLL loaded through controlled runtime code.
 
 It must:
 
@@ -290,6 +291,9 @@ It must:
 - inject budget checks
 - avoid arbitrary allocations
 - save DLL and manifest when caching an assembly backend
+
+The host invokes only the entrypoint delegate created from that runtime form. It must never
+feed generated IL bytes into an interpreter.
 
 ### 10B. Verify generated assembly
 
@@ -379,5 +383,5 @@ Suggested layers:
 ```text
 JSON IR        user-facing format
 Canonical IR   stable, typed, named operations interpreted directly
-IL artifact    compiled backend only, never user-facing (`DynamicMethod` or DLL)
+IL artifact    compiled backend only, never user-facing or interpreted (`DynamicMethod` or DLL)
 ```

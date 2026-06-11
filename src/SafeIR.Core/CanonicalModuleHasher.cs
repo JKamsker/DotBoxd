@@ -76,13 +76,30 @@ public static class CanonicalModuleHasher
     }
 
     private static string Expr(Expression expression) => expression switch {
-        LiteralExpression literal => $"lit({literal.Value})",
+        LiteralExpression literal => "lit(" + Value(literal.Value) + ")",
         VariableExpression variable => $"var({variable.Name})",
         UnaryExpression unary => $"unary({unary.Operator},{Expr(unary.Operand)})",
         BinaryExpression binary => $"bin({binary.Operator},{Expr(binary.Left)},{Expr(binary.Right)})",
         CallExpression call => $"call({call.Name},{call.GenericType},{string.Join(",", call.Arguments.Select(Expr))})",
         _ => throw new NotSupportedException(expression.GetType().Name)
     };
+
+    private static string Value(SandboxValue value)
+        => value switch {
+            UnitValue => "unit",
+            BoolValue boolean => "bool:" + (boolean.Value ? "true" : "false"),
+            I32Value number => "i32:" + number.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            I64Value number => "i64:" + number.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            F64Value number => "f64:" + number.Value.ToString("R", System.Globalization.CultureInfo.InvariantCulture),
+            StringValue text => "string:" + text.Value,
+            SandboxPathValue path => "path:" + path.Value.RelativePath,
+            SandboxUriValue uri => "uri:" + uri.Value.Value,
+            ListValue list => "list:" + list.ItemType + "[" + string.Join(",", list.Values.Select(Value)) + "]",
+            MapValue map => "map:" + map.KeyType + ":" + map.ValueType + "{" +
+                            string.Join(",", map.Values.OrderBy(p => Value(p.Key), StringComparer.Ordinal)
+                                .Select(p => Value(p.Key) + "=>" + Value(p.Value))) + "}",
+            _ => throw new NotSupportedException(value.GetType().Name)
+        };
 
     private sealed class CanonicalWriter
     {
@@ -97,6 +114,10 @@ public static class CanonicalModuleHasher
         public override string ToString() => _builder.ToString();
 
         private static string Escape(string value)
-            => value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\n", "\\n", StringComparison.Ordinal);
+            => value
+                .Replace("\\", "\\\\", StringComparison.Ordinal)
+                .Replace("\u001f", "\\u001f", StringComparison.Ordinal)
+                .Replace("\r", "\\r", StringComparison.Ordinal)
+                .Replace("\n", "\\n", StringComparison.Ordinal);
     }
 }

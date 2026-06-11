@@ -1,6 +1,6 @@
 namespace SafeIR;
 
-internal static class ResourceLimitValidation
+public static class ResourceLimitValidation
 {
     public static void Validate(ResourceLimits limits)
     {

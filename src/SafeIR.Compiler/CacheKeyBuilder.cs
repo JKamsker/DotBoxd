@@ -13,11 +13,12 @@ public static class CacheKeyBuilder
 
     public static string LanguageVersion => SandboxLanguage.CurrentVersionText;
 
-    public static string Build(ExecutionPlan plan, VerificationPolicy policy, bool optimize)
+    public static string Build(ExecutionPlan plan, string entrypoint, VerificationPolicy policy, bool optimize)
     {
         var parts = new[] {
             "safe-ir-cache-v1",
             plan.ModuleHash,
+            entrypoint,
             LanguageVersion,
             CompilerVersion,
             policy.VerifierVersion,

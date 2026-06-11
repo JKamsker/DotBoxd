@@ -30,12 +30,13 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         CancellationToken cancellationToken)
     {
         var function = ResolveSupportedFunction(plan, options.Entrypoint);
-        var cacheKey = CacheKeyBuilder.Build(plan, _verificationPolicy, options.Optimize);
+        var cacheKey = CacheKeyBuilder.Build(plan, options.Entrypoint, _verificationPolicy, options.Optimize);
         var lookupStatus = CompiledCacheStatus.None;
         if (_cache is not null) {
             var cached = await _cache.TryReadAsync(
                 cacheKey,
                 plan,
+                options.Entrypoint,
                 _verifier,
                 _verificationPolicy,
                 cancellationToken).ConfigureAwait(false);
@@ -61,7 +62,16 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         var entrypoint = LoadEntrypoint(assemblyBytes);
         var status = _cache is null
             ? CompiledCacheStatus.None
-            : await WriteCacheAsync(cacheKey, lookupStatus, plan, assemblyBytes, manifest, verification, cancellationToken).ConfigureAwait(false);
+            : await WriteCacheAsync(
+                    cacheKey,
+                    lookupStatus,
+                    plan,
+                    options.Entrypoint,
+                    assemblyBytes,
+                    manifest,
+                    verification,
+                    cancellationToken)
+                .ConfigureAwait(false);
         return new CompiledArtifact(
             assemblyBytes,
             verification.AssemblyHash,
@@ -156,7 +166,7 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         var assemblyHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(assemblyBytes)).ToLowerInvariant();
         return new ArtifactManifest(
             1,
-            CacheKeyBuilder.Build(plan, _verificationPolicy, options.Optimize),
+            CacheKeyBuilder.Build(plan, options.Entrypoint, _verificationPolicy, options.Optimize),
             plan.ModuleHash,
             plan.PlanHash,
             plan.PolicyHash,
@@ -175,6 +185,7 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         string cacheKey,
         CompiledCacheStatus lookupStatus,
         ExecutionPlan plan,
+        string entrypoint,
         byte[] assemblyBytes,
         ArtifactManifest manifest,
         VerificationResult verification,
@@ -184,7 +195,7 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         var existing = lookupStatus == CompiledCacheStatus.Invalid || cache.EntryExists(cacheKey)
             ? CompiledCacheStatus.Recompiled
             : CompiledCacheStatus.Miss;
-        await cache.WriteAsync(cacheKey, plan, assemblyBytes, manifest, verification, _verificationPolicy, cancellationToken)
+        await cache.WriteAsync(cacheKey, plan, entrypoint, assemblyBytes, manifest, verification, _verificationPolicy, cancellationToken)
             .ConfigureAwait(false);
         return existing;
     }

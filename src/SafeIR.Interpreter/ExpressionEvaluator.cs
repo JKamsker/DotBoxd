@@ -117,7 +117,8 @@ internal sealed class ExpressionEvaluator
         var descriptor = _context.Bindings.GetDescriptor(id);
         _context.ChargeBindingCall(descriptor);
         try {
-            return await descriptor.Interpreter(_context, args, _context.CancellationToken).ConfigureAwait(false);
+            var value = await descriptor.Invoke(_context, args, _context.CancellationToken).ConfigureAwait(false);
+            return _context.ChargeBindingReturn(descriptor, value);
         }
         catch (SandboxRuntimeException) {
             throw;

@@ -44,6 +44,7 @@ JSON IR
 ```
 
 No assembly, IL, dynamic method, DLL, or interpreter bytecode is emitted for interpreted mode.
+The interpreter executes the verified `SandboxModule`/`ExecutionPlan` IR only.
 
 ## Execution representation
 
@@ -114,7 +115,7 @@ Interpreter calls binding descriptors directly:
 var binding = plan.Bindings.Get(bindingSlot);
 context.RequireCapability(binding.RequiredCapability);
 context.ChargeFuel(binding.CostModel.BaseFuel);
-var result = await binding.Interpreter(context, args, ct);
+var result = await binding.Invoke(context, args, ct);
 ```
 
 The interpreter must not use reflection to invoke arbitrary methods from user-controlled names.

@@ -39,6 +39,19 @@ public sealed record CompiledArtifact
         ArgumentNullException.ThrowIfNull(verification);
         ArgumentNullException.ThrowIfNull(entrypoint);
 
+        if (!Enum.IsDefined(runtimeForm)) {
+            throw new ArgumentOutOfRangeException(nameof(runtimeForm), runtimeForm, "Compiled runtime form is not supported.");
+        }
+
+        if (!verification.Succeeded) {
+            throw new ArgumentException("Compiled runtime form must be verified or gated before execution.", nameof(verification));
+        }
+
+        if (!StringComparer.Ordinal.Equals(assemblyHash, verification.AssemblyHash) ||
+            !StringComparer.Ordinal.Equals(assemblyHash, manifest.AssemblyHash)) {
+            throw new ArgumentException("Compiled artifact hash must match its manifest and verification result.", nameof(assemblyHash));
+        }
+
         if (runtimeForm == CompiledRuntimeFormKind.DynamicMethod && assemblyBytes.Length != 0) {
             throw new ArgumentException(
                 "DynamicMethod artifacts expose only the created delegate, not assembly bytes.",

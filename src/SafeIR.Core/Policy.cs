@@ -22,14 +22,23 @@ public sealed record SandboxPolicy(
     public string Hash => StableHash();
 
     public bool GrantsCapability(string capabilityId)
-        => Grants.Any(g => StringComparer.Ordinal.Equals(g.Id, capabilityId) &&
-                           (g.ExpiresAt is null || g.ExpiresAt > DateTimeOffset.UtcNow));
+    {
+        var now = DateTimeOffset.UtcNow;
+        return Grants.Any(g => IsActiveGrant(g, capabilityId, now));
+    }
 
     public CapabilityGrant GetGrant(string capabilityId)
-        => Grants.FirstOrDefault(g => StringComparer.Ordinal.Equals(g.Id, capabilityId)) ??
+    {
+        var now = DateTimeOffset.UtcNow;
+        return Grants.FirstOrDefault(g => IsActiveGrant(g, capabilityId, now)) ??
            throw new SandboxRuntimeException(new SandboxError(
                SandboxErrorCode.PermissionDenied,
                $"capability {capabilityId} is not granted"));
+    }
+
+    private static bool IsActiveGrant(CapabilityGrant grant, string capabilityId, DateTimeOffset now)
+        => StringComparer.Ordinal.Equals(grant.Id, capabilityId) &&
+           (grant.ExpiresAt is null || grant.ExpiresAt > now);
 
     private string StableHash()
     {

@@ -180,7 +180,7 @@ public sealed class CompiledCacheTests
     }
 
     private static string CacheKey(ExecutionPlan plan)
-        => CacheKeyBuilder.Build(plan, VerificationPolicy.BoxedValueDefaults(), optimize: false);
+        => CacheKeyBuilder.Build(plan, "main", VerificationPolicy.BoxedValueDefaults(), optimize: false);
 
     private static SandboxHost HostWithExtraBinding(string cacheDirectory)
         => SandboxHost.Create(builder => {

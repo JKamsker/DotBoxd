@@ -15,7 +15,8 @@ internal static class CompiledExecutionRunner
         var runId = options.RunId ?? SandboxRunId.New();
         var audit = new InMemoryAuditSink();
         var budget = new ResourceMeter(plan.Budget);
-        var context = new SandboxContext(runId, plan.Policy, budget, plan.Bindings, audit, cancellationToken);
+        var allowedBindings = BindingReferenceCollector.Collect(plan.Module, plan.Bindings);
+        var context = new SandboxContext(runId, plan.Policy, budget, plan.Bindings, audit, cancellationToken, allowedBindings);
         var startedAt = DateTimeOffset.UtcNow;
 
         try {

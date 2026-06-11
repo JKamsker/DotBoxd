@@ -244,7 +244,8 @@ Canonicalization requirements:
 - UTF-8
 - sorted maps
 - stable IDs
-- normalized numbers
+- normalized invariant-culture numbers
+- escaped canonical separators and control characters inside string fields
 - no timestamps
 - no machine-specific paths
 - no dependency on JSON whitespace or property order
