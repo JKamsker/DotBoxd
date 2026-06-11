@@ -11,8 +11,8 @@
     <VersionPrefix>0.1.0</VersionPrefix>
     <Authors>JKamsker</Authors>
     <Company>JKamsker</Company>
-    <Description>SafeIR JSON IR sandbox components for validating, interpreting, compiling, and hosting restricted .NET workloads.</Description>
-    <PackageTags>safe-ir;sandbox;json-ir;interpreter;compiler</PackageTags>
+    <Description>SafeIR sandbox components for validating, interpreting, compiling, hosting, serializing, and transporting restricted .NET workloads.</Description>
+    <PackageTags>safe-ir;sandbox;ir;interpreter;compiler;serialization;transport</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/JKamsker/Safe-IR</RepositoryUrl>

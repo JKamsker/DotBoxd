@@ -21,6 +21,7 @@ public sealed class PinnedHttpTransportTests
                 maxResponseBytes: 1024,
                 allowedSchemes: ["http"],
                 allowPrivateNetwork: true)
+            .WithWallTime(TimeSpan.FromSeconds(2))
             .WithFuel(5_000)
             .Build();
         var plan = await host.PrepareAsync(module, policy);

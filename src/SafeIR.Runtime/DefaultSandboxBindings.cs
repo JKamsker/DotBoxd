@@ -16,12 +16,6 @@ public static class DefaultSandboxBindings
     public static BindingRegistryBuilder AddRandomBindings(this BindingRegistryBuilder builder)
         => builder.Add(SafeRandomBindings.NextI32);
 
-    public static BindingRegistryBuilder AddNetworkBindings(
-        this BindingRegistryBuilder builder,
-        SafeInMemoryHttpMessageInvoker? invoker = null,
-        SafeDnsResolver? dnsResolver = null)
-        => builder.Add(SafeHttpBindings.GetText(invoker, dnsResolver));
-
     public static BindingRegistryBuilder AddLogBindings(this BindingRegistryBuilder builder)
         => builder.Add(SafeLogBindings.Info).Add(SafeLogBindings.Warn);
 }

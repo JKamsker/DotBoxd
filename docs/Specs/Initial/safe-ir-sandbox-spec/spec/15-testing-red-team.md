@@ -4,7 +4,7 @@
 
 Testing must cover:
 
-- JSON importer
+- JSON importer addon
 - canonicalization
 - type checker
 - effect analyzer
@@ -201,7 +201,7 @@ All must be rejected.
 
 Fuzz:
 
-- JSON importer
+- JSON importer addon
 - IR deserializer
 - type checker
 - policy resolver

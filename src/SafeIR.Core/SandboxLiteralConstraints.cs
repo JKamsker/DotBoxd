@@ -1,6 +1,6 @@
 namespace SafeIR;
 
-internal static class SandboxLiteralConstraints
+public static class SandboxLiteralConstraints
 {
     public const int MaxTextLiteralLength = 65_536;
 
@@ -26,6 +26,6 @@ internal static class SandboxLiteralConstraints
            !string.IsNullOrWhiteSpace(uri.Host) &&
            string.IsNullOrEmpty(uri.UserInfo);
 
-    public static ValueShape TextShape(string value)
+    internal static ValueShape TextShape(string value)
         => new(0, 0, 0, 0, value.Length, value.Length * sizeof(char));
 }

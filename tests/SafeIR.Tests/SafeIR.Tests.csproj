@@ -26,6 +26,9 @@
     <ProjectReference Include="..\..\src\SafeIR.Core\SafeIR.Core.csproj" />
     <ProjectReference Include="..\..\src\SafeIR.Validation\SafeIR.Validation.csproj" />
     <ProjectReference Include="..\..\src\SafeIR.Runtime\SafeIR.Runtime.csproj" />
+    <ProjectReference Include="..\..\src\SafeIR.Serialization.Json\SafeIR.Serialization.Json.csproj" />
+    <ProjectReference Include="..\..\src\SafeIR.Transport.Http\SafeIR.Transport.Http.csproj" />
+    <ProjectReference Include="..\..\src\SafeIR.Transport.Ipc.ShaRpc\SafeIR.Transport.Ipc.ShaRpc.csproj" />
     <ProjectReference Include="..\..\src\SafeIR.Interpreter\SafeIR.Interpreter.csproj" />
     <ProjectReference Include="..\..\src\SafeIR.Compiler\SafeIR.Compiler.csproj" />
     <ProjectReference Include="..\..\src\SafeIR.Hosting\SafeIR.Hosting.csproj" />

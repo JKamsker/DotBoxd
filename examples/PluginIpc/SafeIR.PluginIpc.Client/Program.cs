@@ -1,21 +1,10 @@
 using SafeIR.PluginIpc.Shared;
-using ShaRPC.Core;
+using SafeIR.Transport.Ipc;
 using ShaRPC.Generated;
-using ShaRPC.Serializers.MessagePack;
-using ShaRPC.Transports.NamedPipes;
 
 var pipeName = args.Length > 0 ? args[0] : "safe-ir-plugin-ipc";
-await using var transport = new NamedPipeClientTransport(pipeName);
-await transport.ConnectAsync();
-
-await using var peer = RpcPeer
-    .Over(
-        transport.Connection!,
-        new MessagePackRpcSerializer(),
-        new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(10), RejectInboundCalls = true })
-    .Start();
-
-var service = peer.GetPluginControlService();
+await using var connection = await SafeIrShaRpcMessagePackIpc.ConnectNamedPipeAsync(pipeName);
+var service = connection.Peer.GetPluginControlService();
 Console.WriteLine("Initial settings:");
 foreach (var setting in await service.GetSettingsAsync()) {
     Console.WriteLine($"  {setting.Name} = {setting.Value}");

@@ -73,8 +73,20 @@ public sealed class SandboxPolicyBuilder
     }
 
     public SandboxPolicyBuilder Grant(string capabilityId, object parameters)
+        => Grant(capabilityId, parameters, SandboxEffect.None);
+
+    public SandboxPolicyBuilder Grant(
+        string capabilityId,
+        object parameters,
+        SandboxEffect allowedEffects,
+        Func<ResourceLimits, ResourceLimits>? configureLimits = null)
     {
+        _allowedEffects |= allowedEffects;
         _grants.Add(new CapabilityGrant(capabilityId, ParameterReader.Read(parameters)));
+        if (configureLimits is not null) {
+            _limits = configureLimits(_limits);
+        }
+
         return this;
     }
 
@@ -119,33 +131,6 @@ public sealed class SandboxPolicyBuilder
     {
         _allowedEffects |= SandboxEffect.Random;
         _grants.Add(new CapabilityGrant("random", new Dictionary<string, string>()));
-        return this;
-    }
-
-    public SandboxPolicyBuilder GrantHttpGet(
-        IEnumerable<string> allowedHosts,
-        long maxResponseBytes,
-        IEnumerable<string>? allowedSchemes = null,
-        TimeSpan? timeout = null,
-        bool allowIpLiterals = false,
-        bool allowPrivateNetwork = false)
-    {
-        ThrowIfNegative(maxResponseBytes, nameof(maxResponseBytes));
-        if (timeout is not null && timeout.Value < TimeSpan.Zero) {
-            throw new ArgumentOutOfRangeException(nameof(timeout));
-        }
-
-        _allowedEffects |= SandboxEffect.Network;
-        var schemes = allowedSchemes?.ToArray() ?? ["https"];
-        _grants.Add(new CapabilityGrant("net.http.get", new Dictionary<string, string> {
-            ["allowedHosts"] = string.Join(',', allowedHosts),
-            ["allowedSchemes"] = string.Join(',', schemes),
-            ["maxResponseBytes"] = maxResponseBytes.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            ["timeoutMs"] = ((long)(timeout ?? TimeSpan.FromSeconds(2)).TotalMilliseconds).ToString(System.Globalization.CultureInfo.InvariantCulture),
-            ["allowIpLiterals"] = allowIpLiterals.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            ["allowPrivateNetwork"] = allowPrivateNetwork.ToString(System.Globalization.CultureInfo.InvariantCulture)
-        }));
-        _limits = _limits with { MaxNetworkBytesRead = Math.Max(_limits.MaxNetworkBytesRead, maxResponseBytes) };
         return this;
     }
 

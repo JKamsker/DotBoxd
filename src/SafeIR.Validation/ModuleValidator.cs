@@ -14,7 +14,7 @@ public sealed class ModuleValidator
 
         var analyzer = new FunctionAnalyzer(module, bindings, diagnostics);
         var functions = analyzer.AnalyzeAll();
-        PolicyResolver.Validate(module, policy, functions, analyzer.RequiredCapabilities, diagnostics);
+        PolicyResolver.Validate(module, bindings, policy, functions, analyzer.RequiredCapabilities, diagnostics);
 
         return new ModuleValidationResult(
             diagnostics.All(d => d.Severity != DiagnosticSeverity.Error),

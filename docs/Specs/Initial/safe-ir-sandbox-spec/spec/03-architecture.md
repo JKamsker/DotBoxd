@@ -4,12 +4,12 @@
 
 ```text
 +-------------------+
-| User JSON IR      |
+| Serialized IR     |
 +---------+---------+
           |
           v
 +-------------------+       +-------------------+
-| JSON IR Importer  | ----> | Diagnostics       |
+| Importer Addon    | ----> | Diagnostics       |
 +---------+---------+       +-------------------+
           |
           v
@@ -78,7 +78,6 @@ Contains:
 - effect model
 - diagnostics
 - canonicalizer
-- serializer
 - execution-plan model
 
 Must not depend on Reflection.Emit or host app infrastructure.
@@ -147,11 +146,11 @@ Contains:
 
 ## End-to-end pipeline
 
-### 1. Import JSON IR
+### 1. Import IR
 
 Input may be:
 
-- a JSON IR document
+- a JSON IR document through the JSON serialization addon
 - prebuilt IR from a visual editor
 - host-generated IR
 
@@ -381,7 +380,7 @@ Reason:
 Suggested layers:
 
 ```text
-JSON IR        user-facing format
+JSON IR        optional user-facing serialization format
 Canonical IR   stable, typed, named operations interpreted directly
 IL artifact    compiled backend only, never user-facing or interpreted (`DynamicMethod` or DLL)
 ```
