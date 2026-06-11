@@ -77,6 +77,11 @@ public sealed class PersistentCompiledArtifactCache
             var manifest = await ReadJsonAsync<ArtifactManifest>(Path.Combine(entryPath, "manifest.json"), cancellationToken)
                 .ConfigureAwait(false);
             ValidateManifest(cacheKey, plan, entrypoint, manifest, policy);
+            var cachedVerification = await ReadJsonAsync<VerificationResult>(
+                    Path.Combine(entryPath, "verification.json"),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            ValidateVerification(manifest, cachedVerification, policy);
             var assemblyBytes = await File.ReadAllBytesAsync(Path.Combine(entryPath, "module.dll"), cancellationToken)
                 .ConfigureAwait(false);
             var verification = await verifier.VerifyAsync(assemblyBytes, manifest, policy, cancellationToken).ConfigureAwait(false);
@@ -110,9 +115,7 @@ public sealed class PersistentCompiledArtifactCache
         CancellationToken cancellationToken)
     {
         ValidateManifest(cacheKey, plan, entrypoint, manifest, policy);
-        if (verification.VerifierVersion != policy.VerifierVersion) {
-            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.CacheInvalid, "verification result does not match current verifier"));
-        }
+        ValidateVerification(manifest, verification, policy);
 
         var finalPath = EntryPath(cacheKey);
         var tempPath = Path.Combine(_rootDirectory, ".tmp-" + Guid.NewGuid().ToString("N"));
@@ -187,6 +190,20 @@ public sealed class PersistentCompiledArtifactCache
         }
 
         throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.CacheInvalid, "cache key does not match current compile options"));
+    }
+
+    private static void ValidateVerification(
+        ArtifactManifest manifest,
+        VerificationResult verification,
+        VerificationPolicy policy)
+    {
+        if (!verification.Succeeded ||
+            verification.VerifierVersion != policy.VerifierVersion ||
+            verification.AssemblyHash != manifest.AssemblyHash) {
+            throw new SandboxRuntimeException(new SandboxError(
+                SandboxErrorCode.CacheInvalid,
+                "cached artifact verification does not match current verifier"));
+        }
     }
 
     private static async ValueTask<T> ReadJsonAsync<T>(string path, CancellationToken cancellationToken)
