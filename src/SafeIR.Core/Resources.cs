@@ -10,6 +10,7 @@ public sealed record ResourceLimits(
     int MaxHostCalls = 100,
     long MaxFileBytesRead = 1_048_576,
     long MaxFileBytesWritten = 0,
+    long MaxNetworkBytesRead = 1_048_576,
     int MaxLogEvents = 100)
 {
     public TimeSpan EffectiveWallTime => MaxWallTime ?? TimeSpan.FromMilliseconds(100);
@@ -32,10 +33,11 @@ public sealed class ResourceMeter
     public int HostCalls { get; private set; }
     public long FileBytesRead { get; private set; }
     public long FileBytesWritten { get; private set; }
+    public long NetworkBytesRead { get; private set; }
     public int LogEvents { get; private set; }
 
     public SandboxResourceUsage Snapshot()
-        => new(FuelUsed, Limits.MaxFuel, AllocatedBytes, HostCalls, FileBytesRead, FileBytesWritten, LogEvents);
+        => new(FuelUsed, Limits.MaxFuel, AllocatedBytes, HostCalls, FileBytesRead, FileBytesWritten, NetworkBytesRead, LogEvents);
 
     public void ChargeFuel(long amount)
     {
@@ -86,6 +88,14 @@ public sealed class ResourceMeter
         }
     }
 
+    public void ChargeNetworkRead(long bytes)
+    {
+        NetworkBytesRead += bytes;
+        if (NetworkBytesRead > Limits.MaxNetworkBytesRead) {
+            throw Quota("network read byte budget exhausted");
+        }
+    }
+
     public void CheckDeadline()
     {
         if (Stopwatch.GetTimestamp() > _deadline) {
@@ -104,4 +114,5 @@ public sealed record SandboxResourceUsage(
     int HostCalls,
     long FileBytesRead,
     long FileBytesWritten,
+    long NetworkBytesRead,
     int LogEvents);

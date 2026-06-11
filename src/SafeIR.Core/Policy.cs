@@ -116,6 +116,28 @@ public sealed class SandboxPolicyBuilder
         return this;
     }
 
+    public SandboxPolicyBuilder GrantHttpGet(
+        IEnumerable<string> allowedHosts,
+        long maxResponseBytes,
+        IEnumerable<string>? allowedSchemes = null,
+        TimeSpan? timeout = null,
+        bool allowIpLiterals = false,
+        bool allowPrivateNetwork = false)
+    {
+        _allowedEffects |= SandboxEffect.Network;
+        var schemes = allowedSchemes?.ToArray() ?? ["https"];
+        _grants.Add(new CapabilityGrant("net.http.get", new Dictionary<string, string> {
+            ["allowedHosts"] = string.Join(',', allowedHosts),
+            ["allowedSchemes"] = string.Join(',', schemes),
+            ["maxResponseBytes"] = maxResponseBytes.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["timeoutMs"] = ((long)(timeout ?? TimeSpan.FromSeconds(2)).TotalMilliseconds).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["allowIpLiterals"] = allowIpLiterals.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["allowPrivateNetwork"] = allowPrivateNetwork.ToString(System.Globalization.CultureInfo.InvariantCulture)
+        }));
+        _limits = _limits with { MaxNetworkBytesRead = Math.Max(_limits.MaxNetworkBytesRead, maxResponseBytes) };
+        return this;
+    }
+
     public SandboxPolicyBuilder WithFuel(long maxFuel)
     {
         _limits = _limits with { MaxFuel = maxFuel };

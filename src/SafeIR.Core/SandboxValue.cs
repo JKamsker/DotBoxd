@@ -18,6 +18,8 @@ public abstract record SandboxValue
 
     public static SandboxValue FromPath(string value) => new SandboxPathValue(new SandboxPath(value));
 
+    public static SandboxValue FromUri(string value) => new SandboxUriValue(new SandboxUri(value));
+
     public static SandboxValue FromList(IReadOnlyList<SandboxValue> values) => new ListValue(values);
 }
 
@@ -59,6 +61,16 @@ public sealed record SandboxPath(string RelativePath)
 public sealed record SandboxPathValue(SandboxPath Value) : SandboxValue
 {
     public override SandboxType Type => SandboxType.SandboxPath;
+}
+
+public sealed record SandboxUri(string Value)
+{
+    public override string ToString() => Value;
+}
+
+public sealed record SandboxUriValue(SandboxUri Value) : SandboxValue
+{
+    public override SandboxType Type => SandboxType.Scalar("SandboxUri");
 }
 
 public sealed record ListValue(IReadOnlyList<SandboxValue> Values) : SandboxValue

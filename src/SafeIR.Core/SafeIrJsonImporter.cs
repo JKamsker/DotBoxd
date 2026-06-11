@@ -185,6 +185,11 @@ public static class SafeIrJsonImporter
             return true;
         }
 
+        if (element.TryGetProperty("uri", out var uri)) {
+            value = SandboxValue.FromUri(ReadStringValue(uri, "uri"));
+            return true;
+        }
+
         value = SandboxValue.Unit;
         return false;
     }

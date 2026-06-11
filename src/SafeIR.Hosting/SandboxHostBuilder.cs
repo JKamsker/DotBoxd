@@ -38,6 +38,12 @@ public sealed class SandboxHostBuilder
         return this;
     }
 
+    public SandboxHostBuilder AddNetworkBindings(HttpMessageInvoker? invoker = null)
+    {
+        _bindings.AddNetworkBindings(invoker);
+        return this;
+    }
+
     public SandboxHostBuilder AddBinding(BindingDescriptor descriptor)
     {
         _bindings.Add(descriptor);

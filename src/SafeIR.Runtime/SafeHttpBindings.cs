@@ -1,0 +1,32 @@
+namespace SafeIR.Runtime;
+
+using SafeIR;
+
+public static class SafeHttpBindings
+{
+    public static BindingDescriptor GetText(HttpMessageInvoker? invoker = null)
+        => new(
+            "net.http.get",
+            SemVersion.One,
+            [SandboxType.Scalar("SandboxUri")],
+            SandboxType.String,
+            SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.Network,
+            "net.http.get",
+            BindingCostModel.PerByte(baseFuel: 75, perByteFuel: 1),
+            AuditLevel.PerResource,
+            BindingSafety.ReadOnlyExternal,
+            async (context, args, cancellationToken) => {
+                var text = await SafeHttpClient.GetTextAsync(
+                    context,
+                    ((SandboxUriValue)args[0]).Value,
+                    invoker ?? SharedHttp.Invoker,
+                    cancellationToken).ConfigureAwait(false);
+                return SandboxValue.FromString(text);
+            },
+            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)));
+
+    private static class SharedHttp
+    {
+        public static readonly HttpMessageInvoker Invoker = new(new HttpClientHandler());
+    }
+}
