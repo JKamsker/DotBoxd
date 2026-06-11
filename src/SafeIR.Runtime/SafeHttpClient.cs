@@ -12,7 +12,7 @@ public static class SafeHttpClient
     public static async ValueTask<string> GetTextAsync(
         SandboxContext context,
         SandboxUri uri,
-        HttpMessageInvoker invoker,
+        HttpMessageInvoker? invoker,
         SafeDnsResolver? dnsResolver,
         CancellationToken cancellationToken)
     {
@@ -22,10 +22,15 @@ public static class SafeHttpClient
             var request = ResolveRequest(context, uri);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(request.Timeout);
-            await RequireIpPolicyAsync(request.Grant, request.Uri.Host, dnsResolver ?? ResolveDnsAsync, timeout.Token)
+            var addresses = await ResolveVettedAddressesAsync(
+                    request.Grant,
+                    request.Uri.Host,
+                    dnsResolver ?? ResolveDnsAsync,
+                    timeout.Token)
                 .ConfigureAwait(false);
             using var message = new HttpRequestMessage(HttpMethod.Get, request.Uri);
-            using var response = await invoker.SendAsync(message, timeout.Token).ConfigureAwait(false);
+            using var response = await SafePinnedHttpTransport.SendAsync(invoker, message, addresses, timeout.Token)
+                .ConfigureAwait(false);
             if (response.RequestMessage?.RequestUri is { } finalUri && !SameUri(finalUri, request.Uri)) {
                 throw Error(SandboxErrorCode.PermissionDenied, "net.http.get denied: redirects are not allowed");
             }
@@ -131,7 +136,7 @@ public static class SafeHttpClient
         }
     }
 
-    private static async ValueTask RequireIpPolicyAsync(
+    private static async ValueTask<IReadOnlyList<IPAddress>> ResolveVettedAddressesAsync(
         CapabilityGrant grant,
         string host,
         SafeDnsResolver dnsResolver,
@@ -139,17 +144,17 @@ public static class SafeHttpClient
     {
         if (IPAddress.TryParse(host, out var address)) {
             RequireIpLiteralAllowed(grant, address);
-            return;
+            return [address];
         }
 
-        if (ReadBool(grant, "allowPrivateNetwork")) {
-            return;
-        }
-
+        var allowPrivateNetwork = ReadBool(grant, "allowPrivateNetwork");
         var addresses = await dnsResolver(host, cancellationToken).ConfigureAwait(false);
-        if (addresses.Count == 0 || addresses.Any(SafeIpAddressClassifier.IsNonGlobal)) {
+        if (addresses.Count == 0 ||
+            !allowPrivateNetwork && addresses.Any(SafeIpAddressClassifier.IsNonGlobal)) {
             throw Error(SandboxErrorCode.PermissionDenied, "net.http.get denied: private network targets are not allowed");
         }
+
+        return addresses;
     }
 
     private static void RequireIpLiteralAllowed(CapabilityGrant grant, IPAddress address)

@@ -19,17 +19,10 @@ public static class SafeHttpBindings
                 var text = await SafeHttpClient.GetTextAsync(
                     context,
                     ((SandboxUriValue)args[0]).Value,
-                    invoker ?? SharedHttp.Invoker,
+                    invoker,
                     dnsResolver,
                     cancellationToken).ConfigureAwait(false);
                 return SandboxValue.FromString(text);
             },
             CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)));
-
-    private static class SharedHttp
-    {
-        public static readonly HttpMessageInvoker Invoker = new(new HttpClientHandler {
-            AllowAutoRedirect = false
-        });
-    }
 }
