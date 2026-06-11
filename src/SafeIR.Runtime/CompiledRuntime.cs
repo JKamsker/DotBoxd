@@ -10,17 +10,20 @@ public static class CompiledRuntime
 
     public static void ExitCall(SandboxContext context) => context.ExitCall();
 
-    public static SandboxValue GetInputArgument(SandboxValue input, int index)
+    public static void ValidateEntrypointInput(SandboxValue input, int parameterCount)
+        => EntrypointBinder.ValidateInputShape(input, parameterCount);
+
+    public static SandboxValue GetInputArgument(
+        SandboxValue input,
+        int index,
+        int parameterCount,
+        SandboxType expectedType)
+        => EntrypointBinder.GetArgument(input, index, parameterCount, expectedType);
+
+    public static SandboxValue RequireValueType(SandboxValue value, SandboxType expectedType)
     {
-        if (index == 0 && input is not ListValue) {
-            return input;
-        }
-
-        if (input is ListValue list && index >= 0 && index < list.Values.Count) {
-            return list.Values[index];
-        }
-
-        throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.InvalidInput, "entrypoint input argument mismatch"));
+        EntrypointBinder.RequireType(value, expectedType, "function return type mismatch");
+        return value;
     }
 
     public static SandboxValue I32(int value) => SandboxValue.FromInt32(value);

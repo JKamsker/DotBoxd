@@ -150,10 +150,16 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
 
     private static void EmitExecute(ILGenerator il, SandboxFunction entrypoint, MethodInfo entrypointMethod)
     {
+        il.Emit(OpCodes.Ldarg_1);
+        EmitInt32(il, entrypoint.Parameters.Count);
+        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ValidateEntrypointInput)));
+
         il.Emit(OpCodes.Ldarg_0);
         for (var i = 0; i < entrypoint.Parameters.Count; i++) {
             il.Emit(OpCodes.Ldarg_1);
             EmitInt32(il, i);
+            EmitInt32(il, entrypoint.Parameters.Count);
+            EmitSandboxType(il, entrypoint.Parameters[i].Type);
             il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.GetInputArgument)));
         }
 

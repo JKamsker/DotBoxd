@@ -280,6 +280,8 @@ internal sealed class MethodEmitter
         _il.Emit(OpCodes.Stloc, value);
         EmitExitCall();
         _il.Emit(OpCodes.Ldloc, value);
+        EmitSandboxType(_il, _function.ReturnType);
+        _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.RequireValueType)));
         _il.Emit(OpCodes.Ret);
     }
 

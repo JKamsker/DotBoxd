@@ -2,6 +2,7 @@ namespace SafeIR.Compiler;
 
 using System.Reflection;
 using System.Reflection.Emit;
+using SafeIR;
 using SafeIR.Runtime;
 
 internal static class IlEmitterPrimitives
@@ -50,4 +51,30 @@ internal static class IlEmitterPrimitives
 
     public static MethodInfo Runtime(string name)
         => typeof(CompiledRuntime).GetMethods(BindingFlags.Public | BindingFlags.Static).Single(m => m.Name == name);
+
+    public static void EmitSandboxType(ILGenerator il, SandboxType type)
+    {
+        if (type.Arguments.Count == 0) {
+            il.Emit(OpCodes.Ldstr, type.Name);
+            il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.TypeScalar)));
+            return;
+        }
+
+        if (type is { Name: "List", Arguments.Count: 1 }) {
+            EmitSandboxType(il, type.Arguments[0]);
+            il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.TypeList)));
+            return;
+        }
+
+        if (type is { Name: "Map", Arguments.Count: 2 }) {
+            EmitSandboxType(il, type.Arguments[0]);
+            EmitSandboxType(il, type.Arguments[1]);
+            il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.TypeMap)));
+            return;
+        }
+
+        throw new SandboxRuntimeException(new SandboxError(
+            SandboxErrorCode.ValidationError,
+            $"type '{type}' is not supported by compiler"));
+    }
 }
