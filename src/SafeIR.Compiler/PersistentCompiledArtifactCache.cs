@@ -210,6 +210,9 @@ public sealed class PersistentCompiledArtifactCache
         var entryLock = _entryLocks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
         await entryLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
+            await using var fileLock = await PersistentCacheEntryLock
+                .AcquireAsync(_rootDirectory, cacheKey, cancellationToken)
+                .ConfigureAwait(false);
             return await action().ConfigureAwait(false);
         }
         finally {
@@ -225,6 +228,9 @@ public sealed class PersistentCompiledArtifactCache
         var entryLock = _entryLocks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
         await entryLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
+            await using var fileLock = await PersistentCacheEntryLock
+                .AcquireAsync(_rootDirectory, cacheKey, cancellationToken)
+                .ConfigureAwait(false);
             await action().ConfigureAwait(false);
         }
         finally {
