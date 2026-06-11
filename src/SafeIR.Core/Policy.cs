@@ -96,6 +96,7 @@ public sealed class SandboxPolicyBuilder
 
     public SandboxPolicyBuilder GrantFileRead(string root, long maxBytesPerRun)
     {
+        ThrowIfNegative(maxBytesPerRun, nameof(maxBytesPerRun));
         _allowedEffects |= SandboxEffect.FileRead;
         _grants.Add(new CapabilityGrant("file.read", new Dictionary<string, string> {
             ["root"] = root,
@@ -111,6 +112,7 @@ public sealed class SandboxPolicyBuilder
         bool allowCreate = true,
         bool allowOverwrite = true)
     {
+        ThrowIfNegative(maxBytesPerRun, nameof(maxBytesPerRun));
         _allowedEffects |= SandboxEffect.FileWrite | SandboxEffect.Audit;
         _grants.Add(new CapabilityGrant("file.write", new Dictionary<string, string> {
             ["root"] = root,
@@ -144,6 +146,11 @@ public sealed class SandboxPolicyBuilder
         bool allowIpLiterals = false,
         bool allowPrivateNetwork = false)
     {
+        ThrowIfNegative(maxResponseBytes, nameof(maxResponseBytes));
+        if (timeout is not null && timeout.Value < TimeSpan.Zero) {
+            throw new ArgumentOutOfRangeException(nameof(timeout));
+        }
+
         _allowedEffects |= SandboxEffect.Network;
         var schemes = allowedSchemes?.ToArray() ?? ["https"];
         _grants.Add(new CapabilityGrant("net.http.get", new Dictionary<string, string> {
@@ -251,7 +258,18 @@ public sealed class SandboxPolicyBuilder
         return this;
     }
 
-    public SandboxPolicy Build() => new(_policyId, _allowedEffects, _grants, _limits, _deterministic, _logicalNow, _randomSeed);
+    public SandboxPolicy Build()
+    {
+        ResourceLimitValidation.Validate(_limits);
+        return new SandboxPolicy(_policyId, _allowedEffects, _grants, _limits, _deterministic, _logicalNow, _randomSeed);
+    }
+
+    private static void ThrowIfNegative(long value, string paramName)
+    {
+        if (value < 0) {
+            throw new ArgumentOutOfRangeException(paramName);
+        }
+    }
 }
 
 internal static class ParameterReader

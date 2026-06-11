@@ -188,11 +188,20 @@ internal static class BindingRegistryValidator
             diagnostics.Add(new SandboxDiagnostic("E-BINDING-DANGER", $"binding '{binding.Id}' is dangerous and cannot be enabled by default"));
         }
 
+        ValidateCostModel(binding, diagnostics);
         ValidateCompiledTarget(binding, diagnostics);
         foreach (var type in binding.Parameters.Append(binding.ReturnType)) {
             if (!type.IsKnown() || type.IsForbidden()) {
                 diagnostics.Add(new SandboxDiagnostic("E-BINDING-TYPE", $"binding '{binding.Id}' exposes forbidden or unknown type '{type}'"));
             }
+        }
+    }
+
+    private static void ValidateCostModel(BindingDescriptor binding, List<SandboxDiagnostic> diagnostics)
+    {
+        var cost = binding.CostModel;
+        if (cost.BaseFuel < 0 || cost.PerByteFuel < 0 || cost.MaxCallsPerRun is < 0) {
+            diagnostics.Add(new SandboxDiagnostic("E-BINDING-COST", $"binding '{binding.Id}' declares a negative resource cost or call limit"));
         }
     }
 

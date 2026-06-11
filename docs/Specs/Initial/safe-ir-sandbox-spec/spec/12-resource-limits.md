@@ -58,6 +58,10 @@ public sealed class ResourceBudget
 }
 ```
 
+All configured resource limits and binding cost values must be non-negative. Zero is allowed
+where it is useful to deny a category completely, such as zero host calls, zero file bytes written,
+or zero log events.
+
 ## Fuel
 
 Fuel is the main cooperative CPU limit.

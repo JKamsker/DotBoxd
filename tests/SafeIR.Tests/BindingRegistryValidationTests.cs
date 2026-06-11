@@ -60,6 +60,18 @@ public sealed class BindingRegistryValidationTests
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-BINDING-COMPILED");
     }
 
+    [Theory]
+    [MemberData(nameof(NegativeCostModels))]
+    public void Binding_registry_rejects_negative_cost_model(BindingCostModel costModel)
+    {
+        var ex = Assert.Throws<SandboxValidationException>(() => Build(
+            TestBinding(
+                CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)),
+                costModel: costModel)));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-BINDING-COST");
+    }
+
     [Fact]
     public void Default_bindings_use_approved_compiled_targets()
     {
@@ -84,7 +96,8 @@ public sealed class BindingRegistryValidationTests
 
     private static BindingDescriptor TestBinding(
         CompiledBinding compiled,
-        BindingSafety safety = BindingSafety.PureHostFacade)
+        BindingSafety safety = BindingSafety.PureHostFacade,
+        BindingCostModel? costModel = null)
         => new(
             "test.binding",
             SemVersion.One,
@@ -92,9 +105,16 @@ public sealed class BindingRegistryValidationTests
             SandboxType.Unit,
             SandboxEffect.Cpu,
             null,
-            BindingCostModel.Fixed(1),
+            costModel ?? BindingCostModel.Fixed(1),
             AuditLevel.None,
             safety,
             (_, _, _) => ValueTask.FromResult(SandboxValue.Unit),
             compiled);
+
+    public static TheoryData<BindingCostModel> NegativeCostModels()
+        => new() {
+            new BindingCostModel(BaseFuel: -1),
+            new BindingCostModel(BaseFuel: 1, PerByteFuel: -1),
+            new BindingCostModel(BaseFuel: 1, MaxCallsPerRun: -1)
+        };
 }

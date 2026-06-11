@@ -31,6 +31,7 @@ public sealed class ResourceMeter
 
     public ResourceMeter(ResourceLimits limits)
     {
+        ResourceLimitValidation.Validate(limits);
         Limits = limits;
         _deadline = Stopwatch.GetTimestamp() + (long)(limits.EffectiveWallTime.TotalSeconds * Stopwatch.Frequency);
     }

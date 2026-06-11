@@ -257,6 +257,7 @@ Registry build should validate:
 - duplicate slot numbers
 - forbidden signatures
 - missing capability for effects
+- negative resource costs or per-binding call limits
 - unknown types
 - unknown effects
 - invalid compiled stubs
