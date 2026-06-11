@@ -77,5 +77,8 @@ internal static class CompiledExecutionRunner
             success,
             ResourceId: $"module:{plan.ModuleHash}",
             ErrorCode: error?.Code,
-            Message: $"mode=compiled runtimeForm={artifact.RuntimeForm} cacheStatus={artifact.CacheStatus} artifact={artifact.ArtifactHash} fuel={budget.FuelUsed}/{budget.Limits.MaxFuel}"));
+            Message: $"mode=compiled runtimeForm={artifact.RuntimeForm} cacheStatus={artifact.CacheStatus} " +
+                     $"cacheKey={artifact.Manifest.CacheKey} artifact={artifact.ArtifactHash} " +
+                     $"plan={plan.PlanHash} policy={plan.PolicyHash} bindings={plan.BindingManifestHash} " +
+                     $"fuel={budget.FuelUsed}/{budget.Limits.MaxFuel}"));
 }

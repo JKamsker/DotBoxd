@@ -73,5 +73,7 @@ public sealed class SandboxInterpreter : ISandboxInterpreter
             success,
             ResourceId: $"module:{plan.ModuleHash}",
             ErrorCode: error?.Code,
-            Message: $"mode=interpreted plan={plan.PlanHash} fuel={budget.FuelUsed}/{budget.Limits.MaxFuel}"));
+            Message: $"mode=interpreted cacheStatus=None plan={plan.PlanHash} " +
+                     $"policy={plan.PolicyHash} bindings={plan.BindingManifestHash} " +
+                     $"fuel={budget.FuelUsed}/{budget.Limits.MaxFuel}"));
 }
