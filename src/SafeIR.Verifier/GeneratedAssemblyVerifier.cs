@@ -52,6 +52,7 @@ public sealed class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifier
     {
         VerifyAssemblyReferences(reader, policy, diagnostics);
         VerifyTypeReferences(reader, policy, diagnostics);
+        VerifyCustomAttributes(reader, diagnostics);
         VerifyDefinitions(peReader, reader, policy, diagnostics, cancellationToken);
         if (reader.ManifestResources.Count > 0) {
             diagnostics.Add(new VerificationDiagnostic("V-RESOURCE", "embedded resources are not allowed"));
@@ -89,6 +90,19 @@ public sealed class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifier
             else if (!policy.AllowedTypes.Contains(name)) {
                 diagnostics.Add(new VerificationDiagnostic("V-TYPE-REF", $"type reference '{name}' is not allowed"));
             }
+        }
+    }
+
+    private static void VerifyCustomAttributes(
+        MetadataReader reader,
+        List<VerificationDiagnostic> diagnostics)
+    {
+        foreach (var handle in reader.CustomAttributes) {
+            var attribute = reader.GetCustomAttribute(handle);
+            var member = MetadataName.Member(reader, attribute.Constructor);
+            diagnostics.Add(new VerificationDiagnostic(
+                "V-CUSTOM-ATTR",
+                $"custom attribute '{member.TypeName}.{member.MemberName}' is not allowed"));
         }
     }
 
