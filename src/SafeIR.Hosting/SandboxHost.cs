@@ -27,12 +27,13 @@ public sealed class SandboxHost
         return builder.Build();
     }
 
-    public ValueTask<SandboxModule> ParseJsonAsync(string jsonIr, CancellationToken cancellationToken = default)
+    public ValueTask<SandboxModule> ImportJsonAsync(string jsonIr, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         return ValueTask.FromResult(SafeIrJsonImporter.Import(jsonIr));
     }
-
+    public ValueTask<SandboxModule> ParseJsonAsync(string jsonIr, CancellationToken cancellationToken = default)
+        => ImportJsonAsync(jsonIr, cancellationToken);
     public ValueTask<ExecutionPlan> PrepareAsync(
         SandboxModule module,
         SandboxPolicy policy,
@@ -255,7 +256,6 @@ public sealed class SandboxHost
             ResourceId: $"module:{plan.ModuleHash}",
             ErrorCode: error.Code,
             Message: error.SafeMessage));
-
         return new SandboxExecutionResult {
             Succeeded = false,
             Error = error,

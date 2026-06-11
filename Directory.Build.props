@@ -8,5 +8,17 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <Authors>JKamsker</Authors>
+    <Company>JKamsker</Company>
+    <Description>SafeIR JSON IR sandbox components for validating, interpreting, compiling, and hosting restricted .NET workloads.</Description>
+    <PackageTags>safe-ir;sandbox;json-ir;interpreter;compiler</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/JKamsker/Safe-IR</RepositoryUrl>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 </Project>
