@@ -1,5 +1,6 @@
 namespace SafeIR.PluginAnalyzer;
 
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 internal static class SafeIrShouldHandleBodyModelFactory
@@ -27,18 +28,25 @@ internal static class SafeIrShouldHandleBodyModelFactory
     private static SafeIrStatementBodyModel LowerBlock(
         BlockSyntax block,
         SafeIrExpressionLoweringContext context)
+        => LowerStatements(block.Statements, start: 0, context);
+
+    private static SafeIrStatementBodyModel LowerStatements(
+        SyntaxList<StatementSyntax> statements,
+        int start,
+        SafeIrExpressionLoweringContext context)
     {
-        if (block.Statements.Count == 1)
+        var remaining = statements.Count - start;
+        if (remaining == 1)
         {
-            return LowerStatement(block.Statements[0], context);
+            return LowerStatement(statements[start], context);
         }
 
-        if (block.Statements.Count == 2 &&
-            block.Statements[0] is IfStatementSyntax branch &&
+        if (remaining > 1 &&
+            statements[start] is IfStatementSyntax branch &&
             branch.Else is null)
         {
             var whenTrue = LowerStatement(branch.Statement, context);
-            var whenFalse = LowerStatement(block.Statements[1], context);
+            var whenFalse = LowerStatements(statements, start + 1, context);
             return SafeIrConditionBodyModelFactory.CreateBranch(
                 branch.Condition,
                 whenTrue,
@@ -59,8 +67,7 @@ internal static class SafeIrShouldHandleBodyModelFactory
                 LowerIf(branch, context),
             BlockSyntax block when block.Statements.Count == 1 =>
                 LowerStatement(block.Statements[0], context),
-            _ => throw new NotSupportedException(
-                "Kernel ShouldHandle block bodies may only contain return statements or if/else return statements.")
+            _ => throw new NotSupportedException(UnsupportedShapeMessage)
         };
 
     private static SafeIrStatementBodyModel LowerIf(

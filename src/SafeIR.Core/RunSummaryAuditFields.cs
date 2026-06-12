@@ -16,6 +16,7 @@ public static class RunSummaryAuditFields
         var fields = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["mode"] = mode.ToString(),
+            ["executionMode"] = mode.ToString(),
             ["executionDispatched"] = executionDispatched.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["cacheStatus"] = cacheStatus,
             ["moduleHash"] = plan.ModuleHash,
@@ -28,6 +29,7 @@ public static class RunSummaryAuditFields
             ["loopIterations"] = budget.LoopIterations.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["maxLoopIterations"] = budget.Limits.MaxLoopIterations.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["allocatedBytes"] = budget.AllocatedBytes.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["allocationCharged"] = budget.AllocatedBytes.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["maxAllocatedBytes"] = budget.Limits.MaxAllocatedBytes.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["hostCalls"] = budget.HostCalls.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["maxHostCalls"] = budget.Limits.MaxHostCalls.ToString(System.Globalization.CultureInfo.InvariantCulture),

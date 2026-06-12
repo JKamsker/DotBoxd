@@ -122,15 +122,32 @@ public sealed partial class SandboxHost : IDisposable
 
     private SandboxExecutionResult Publish(SandboxExecutionResult result)
     {
-        if (_auditObserver is not null)
+        if (_auditObserver is null)
         {
-            foreach (var auditEvent in result.AuditEvents)
-            {
-                _auditObserver(auditEvent);
-            }
+            return result;
+        }
+
+        foreach (var auditEvent in result.AuditEvents)
+        {
+            PublishToAuditObservers(auditEvent);
         }
 
         return result;
+    }
+
+    private void PublishToAuditObservers(SandboxAuditEvent auditEvent)
+    {
+        foreach (var observer in _auditObserver!.GetInvocationList())
+        {
+            try
+            {
+                ((Action<SandboxAuditEvent>)observer)(auditEvent);
+            }
+            catch (Exception)
+            {
+                // Operational forwarding failures must not change sandbox execution behavior.
+            }
+        }
     }
 
     private async ValueTask<SandboxExecutionResult> ExecuteCompiledAsync(

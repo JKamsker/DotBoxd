@@ -38,6 +38,9 @@ artifactHash optional
 ```
 
 The current `RunSummary` event stores these as structured string fields where possible.
+For compatibility with earlier previews, `RunSummary` also emits legacy aliases `mode` for
+`executionMode` and `allocatedBytes` for `allocationCharged`. New consumers should prefer the
+spec names.
 `executionDispatched` is `false` for host-side denials that fail before interpreter, compiled
 runtime, or trusted worker dispatch. Duration, completed-at timestamps, and capability-grant/use
 rollups are recommended operational extensions, not required fields in the current public

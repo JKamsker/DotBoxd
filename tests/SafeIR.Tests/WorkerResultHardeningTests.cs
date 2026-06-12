@@ -103,6 +103,23 @@ public sealed class WorkerResultHardeningTests
     }
 
     [Fact]
+    public async Task Worker_result_without_spec_run_summary_aliases_is_rejected()
+    {
+        var worker = new TestWorker { OmitSpecSummaryAliases = true };
+        var host = Host(worker);
+        var plan = await PrepareAsync(host, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            Input(),
+            new SandboxExecutionOptions { Isolation = SandboxIsolation.WorkerProcess });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+    }
+
+    [Fact]
     public async Task Compiled_worker_success_requires_runtime_envelope_fields()
     {
         var worker = new TestWorker
@@ -177,6 +194,7 @@ public sealed class WorkerResultHardeningTests
         public TimeSpan Delay { get; init; }
         public bool UnderreportMaxFuel { get; init; }
         public bool OmitSummaryFields { get; init; }
+        public bool OmitSpecSummaryAliases { get; init; }
         public bool OmitCompiledEnvelopeFields { get; init; }
         public bool ReportExecutionDispatched { get; init; } = true;
         public ExecutionMode ResultMode { get; init; } = ExecutionMode.Interpreted;
@@ -217,6 +235,14 @@ public sealed class WorkerResultHardeningTests
                     ResultMode == ExecutionMode.Compiled && !OmitCompiledEnvelopeFields ? CacheKey : null,
                     ResultMode == ExecutionMode.Compiled && !OmitCompiledEnvelopeFields ? ArtifactHash : null,
                     executionDispatched: ReportExecutionDispatched);
+            if (OmitSpecSummaryAliases && fields is not null)
+            {
+                var legacyOnly = new Dictionary<string, string>(fields, StringComparer.Ordinal);
+                legacyOnly.Remove("executionMode");
+                legacyOnly.Remove("allocationCharged");
+                fields = legacyOnly;
+            }
+
             audit.Write(new SandboxAuditEvent(
                 runId,
                 "RunSummary",

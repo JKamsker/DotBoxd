@@ -134,8 +134,8 @@
     },
     {
       "path": "spec/14-observability-audit.md",
-      "sha256": "db5d5e22cb89dde4f8a85337a4cfc2a34892951d5f3c2952f659d9b3949af39f",
-      "bytes": 5538
+      "sha256": "77d9f4a2398e4490ad41dfc1ce9c4fd2e5389813a2be92888a307ba8d67d23c1",
+      "bytes": 5735
     },
     {
       "path": "spec/15-testing-red-team.md",

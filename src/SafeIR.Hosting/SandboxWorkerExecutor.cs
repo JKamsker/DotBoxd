@@ -223,6 +223,7 @@ internal sealed class SandboxWorkerExecutor(ConfiguredSandboxWorker? worker)
     {
         if (summary.Fields is null ||
             !FieldEquals(summary, "mode", result.ActualMode.ToString()) ||
+            !FieldEquals(summary, "executionMode", result.ActualMode.ToString()) ||
             !FieldEquals(summary, "executionDispatched", true) ||
             !HasNonEmptyField(summary, "cacheStatus") ||
             !FieldEquals(summary, "moduleHash", plan.ModuleHash) ||
@@ -233,6 +234,7 @@ internal sealed class SandboxWorkerExecutor(ConfiguredSandboxWorker? worker)
             !FieldEquals(summary, "maxFuel", result.ResourceUsage.MaxFuel) ||
             !FieldEquals(summary, "loopIterations", result.ResourceUsage.LoopIterations) ||
             !FieldEquals(summary, "allocatedBytes", result.ResourceUsage.AllocatedBytes) ||
+            !FieldEquals(summary, "allocationCharged", result.ResourceUsage.AllocatedBytes) ||
             !FieldEquals(summary, "hostCalls", result.ResourceUsage.HostCalls) ||
             !FieldEquals(summary, "fileBytesRead", result.ResourceUsage.FileBytesRead) ||
             !FieldEquals(summary, "fileBytesWritten", result.ResourceUsage.FileBytesWritten) ||
