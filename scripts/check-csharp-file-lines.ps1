@@ -9,7 +9,7 @@ $ErrorActionPreference = "Stop"
 
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $toolPackage = "CodeEnforcer"
-$toolVersion = "0.1.0-ci.6"
+$toolVersion = "0.1.0-ci.8"
 $toolManifest = Join-Path $root ".config/dotnet-tools.json"
 $arguments = @(
     "--root", $root
