@@ -20,8 +20,8 @@ public static class SandboxDescriptorGuards
     ];
 
     public static bool ContainsForbiddenDescriptor(string value)
-        => ForbiddenFragments.Any(fragment => value.Contains(fragment, StringComparison.OrdinalIgnoreCase)) ||
-           ForbiddenIlFragments.Any(fragment => value.Contains(fragment, StringComparison.OrdinalIgnoreCase)) ||
+        => ContainsAnyFragment(value, ForbiddenFragments) ||
+           ContainsAnyFragment(value, ForbiddenIlFragments) ||
            LooksLikeAssemblyQualifiedName(value) ||
            ContainsMetadataToken(value);
 
@@ -34,7 +34,7 @@ public static class SandboxDescriptorGuards
         for (var index = 0; index <= value.Length - 8; index++)
         {
             if (IsMetadataTokenPrefix(value, index) &&
-                Enumerable.Range(index + 2, 6).All(i => IsHex(value[i])) &&
+                IsHexRun(value, index + 2, 6) &&
                 IsTokenBoundary(value, index - 1) &&
                 IsTokenBoundary(value, index + 8))
             {
@@ -44,13 +44,12 @@ public static class SandboxDescriptorGuards
 
         for (var index = 0; index <= value.Length - 10; index++)
         {
-            var candidate = value.Substring(index, 4);
-            if (!MetadataTokenPrefixes.Contains(candidate, StringComparer.OrdinalIgnoreCase))
+            if (!IsPrefixedMetadataToken(value.AsSpan(index, 4)))
             {
                 continue;
             }
 
-            if (Enumerable.Range(index + 4, 6).All(i => IsHex(value[i])))
+            if (IsHexRun(value, index + 4, 6))
             {
                 return true;
             }
@@ -66,9 +65,55 @@ public static class SandboxDescriptorGuards
             return false;
         }
 
-        var prefix = value.Substring(index, 2);
-        return MetadataTokenPrefixes.Any(token =>
-            token.AsSpan(2).Equals(prefix.AsSpan(), StringComparison.OrdinalIgnoreCase));
+        var prefix = value.AsSpan(index, 2);
+        for (var i = 0; i < MetadataTokenPrefixes.Length; i++)
+        {
+            if (MetadataTokenPrefixes[i].AsSpan(2).Equals(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ContainsAnyFragment(string value, string[] fragments)
+    {
+        for (var i = 0; i < fragments.Length; i++)
+        {
+            if (value.Contains(fragments[i], StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsPrefixedMetadataToken(ReadOnlySpan<char> candidate)
+    {
+        for (var i = 0; i < MetadataTokenPrefixes.Length; i++)
+        {
+            if (MetadataTokenPrefixes[i].AsSpan().Equals(candidate, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsHexRun(string value, int start, int length)
+    {
+        for (var i = start; i < start + length; i++)
+        {
+            if (!IsHex(value[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static bool IsTokenBoundary(string value, int index)
