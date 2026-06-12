@@ -84,6 +84,56 @@ public sealed class PluginAnalyzerGeneratedPackageTests
         Assert.Equal("matched", message.Message);
     }
 
+    [Fact]
+    public async Task Generated_package_executes_supported_i32_operator_subset()
+    {
+        var package = CreateGeneratedPackage("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(
+                string TargetId,
+                string Message,
+                string DamageType,
+                int Amount,
+                long Sequence,
+                double Ratio);
+
+            [GamePlugin("generated-i32-operators")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                [LiveSetting]
+                public int Zero { get; set; } = 0;
+
+                [LiveSetting]
+                public int Divisor { get; set; } = 1;
+
+                [LiveSetting]
+                public int Modulo { get; set; } = 3;
+
+                [LiveSetting]
+                public int Ceiling { get; set; } = 10;
+
+                public bool ShouldHandle(DamageEvent e, HookContext ctx)
+                    => (((e.Amount + Zero) * Zero / Divisor) % Modulo) < Zero ||
+                       (e.Amount <= Ceiling - Zero && e.Amount > -1);
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, e.Message);
+            }
+            """);
+
+        var server = PluginServer.Create();
+        var kernel = await server.InstallAsync(package);
+        var adapter = new GeneratedDamageEventAdapter();
+
+        Assert.True(await kernel.ShouldHandleAsync(adapter, EventWithAmount(0)));
+        Assert.True(await kernel.ShouldHandleAsync(adapter, EventWithAmount(10)));
+        Assert.False(await kernel.ShouldHandleAsync(adapter, EventWithAmount(-1)));
+        Assert.False(await kernel.ShouldHandleAsync(adapter, EventWithAmount(11)));
+    }
+
     private static PluginPackage CreateGeneratedPackage(string source)
     {
         var compilation = CSharpCompilation.Create(
@@ -126,6 +176,9 @@ public sealed class PluginAnalyzerGeneratedPackageTests
         Assert.Equal(type, actual.Type);
         Assert.Equal(expectedDefault, actual.DefaultValue);
     }
+
+    private static GeneratedDamageEvent EventWithAmount(int amount)
+        => new("player-1", "matched", "fire", amount, 7L, 1.5D);
 
     private static IEnumerable<MetadataReference> TrustedPlatformReferences()
     {
