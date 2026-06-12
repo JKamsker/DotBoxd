@@ -96,6 +96,36 @@ public sealed class PluginAnalyzerGenerationTests
         Assert.Empty(result.GeneratedTrees);
     }
 
+    [Theory]
+    [InlineData("double.NaN")]
+    [InlineData("double.PositiveInfinity")]
+    [InlineData("double.NegativeInfinity")]
+    public void Generator_reports_non_finite_double_live_setting_default(string defaultValue)
+    {
+        var result = RunGenerator($$"""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId);
+
+            [GamePlugin("bad-double-default")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                [LiveSetting]
+                public double Ratio { get; set; } = {{defaultValue}};
+
+                public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, "message");
+            }
+            """);
+
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Id == "SGP100");
+        Assert.Empty(result.GeneratedTrees);
+    }
+
     [Fact]
     public void Generator_orders_event_parameters_like_convention_adapter()
     {

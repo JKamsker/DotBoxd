@@ -236,7 +236,7 @@ internal static class PluginSymbolReader
         {
             int number => number,
             long number => number,
-            double number when IsWhole(number) && number >= int.MinValue && number <= int.MaxValue => (long)number,
+            double number when IsWhole(number) && number >= long.MinValue && number <= long.MaxValue => (long)number,
             string text => long.Parse(text, NumberStyles.Integer, CultureInfo.InvariantCulture),
             _ => throw RangeValueException()
         };

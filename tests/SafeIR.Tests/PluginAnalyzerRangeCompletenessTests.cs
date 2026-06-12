@@ -36,6 +36,10 @@ public sealed class PluginAnalyzerRangeCompletenessTests
                 [Range(typeof(long), "1", "9")]
                 public long Sequence { get; set; } = 7L;
 
+                [LiveSetting]
+                [Range(1L, 10000000000L)]
+                public long LargeSequence { get; set; } = 7L;
+
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
 
                 public void Handle(DamageEvent e, HookContext ctx)
@@ -47,6 +51,7 @@ public sealed class PluginAnalyzerRangeCompletenessTests
         Assert.Contains("new global::SafeIR.Plugins.LiveSettingDefinition(\"MinDamage\", \"int\", 50, 0, 100)", generated);
         Assert.Contains("new global::SafeIR.Plugins.LiveSettingDefinition(\"Ratio\", \"double\", 1.5D, 0.5D, 2.5D)", generated);
         Assert.Contains("new global::SafeIR.Plugins.LiveSettingDefinition(\"Sequence\", \"long\", 7L, 1L, 9L)", generated);
+        Assert.Contains("new global::SafeIR.Plugins.LiveSettingDefinition(\"LargeSequence\", \"long\", 7L, 1L, 10000000000L)", generated);
     }
 
     [Theory]

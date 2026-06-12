@@ -37,7 +37,9 @@ internal static class LiteralReader
             bool boolean => boolean ? "true" : "false",
             int number => number.ToString(System.Globalization.CultureInfo.InvariantCulture),
             long number => number.ToString(System.Globalization.CultureInfo.InvariantCulture) + "L",
-            double number => number.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + "D",
+            double number when !double.IsNaN(number) && !double.IsInfinity(number) =>
+                number.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + "D",
+            double => throw new NotSupportedException("Double literal values must be finite."),
             string text => SymbolDisplay.FormatLiteral(text, quote: true),
             _ => Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? "null"
         };
