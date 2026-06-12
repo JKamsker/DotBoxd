@@ -4,7 +4,8 @@ param(
     [string] $Configuration = "Release",
     [switch] $NoBuild,
     [Parameter(Mandatory = $true)]
-    [string[]] $RequiredFullyQualifiedNameContains
+    [string[]] $RequiredFullyQualifiedNameContains,
+    [hashtable] $MinimumExecutedTestsByGroup = @{}
 )
 
 $ErrorActionPreference = "Stop"
@@ -25,6 +26,22 @@ $requiredNames = @($RequiredFullyQualifiedNameContains | Where-Object {
 })
 if ($requiredNames.Count -eq 0) {
     throw "At least one required test name must be provided."
+}
+
+$defaultMinimums = @{
+    SafeFileSystemTests = 13
+    SafeFileSystemReparsePointTests = 4
+    FileExtensionPolicyTests = 2
+    PathUriLiteralValidationTests = 29
+    CompiledArtifactGuardTests = 16
+    CompiledRuntimeQuotaTests = 1
+    VerifierAttackMatrixTests = 7
+    VerifierLoopMeteringTests = 1
+    BindingRegistryHardeningTests = 12
+    PluginPackageValidationTests = 11
+    PluginRevocationTests = 4
+    PinnedHttpTransportTests = 3
+    DifferentialFuzzTests = 1
 }
 
 $resultsDirectory = Join-Path $root "artifacts/test-results/required-tests"
@@ -88,6 +105,7 @@ if ($executed.Count -eq 0) {
 }
 
 $missing = @()
+$belowMinimum = @()
 foreach ($requiredName in $requiredNames) {
     $matches = @($executed | Where-Object {
         $_.FullyQualifiedName.IndexOf($requiredName, [StringComparison]::Ordinal) -ge 0 -or
@@ -95,11 +113,27 @@ foreach ($requiredName in $requiredNames) {
     })
     if ($matches.Count -eq 0) {
         $missing += $requiredName
+        continue
+    }
+
+    $minimum = 1
+    if ($MinimumExecutedTestsByGroup.ContainsKey($requiredName)) {
+        $minimum = [int] $MinimumExecutedTestsByGroup[$requiredName]
+    } elseif ($defaultMinimums.ContainsKey($requiredName)) {
+        $minimum = [int] $defaultMinimums[$requiredName]
+    }
+
+    if ($matches.Count -lt $minimum) {
+        $belowMinimum += "$requiredName expected >= $minimum, executed $($matches.Count)"
     }
 }
 
 if ($missing.Count -gt 0) {
     throw "Required test filter did not execute expected test groups: $($missing -join ', ')"
+}
+
+if ($belowMinimum.Count -gt 0) {
+    throw "Required test groups executed fewer tests than expected: $($belowMinimum -join '; ')"
 }
 
 Write-Host "Required test gate passed. Executed tests: $($executed.Count). Required groups: $($requiredNames.Count)."

@@ -50,6 +50,8 @@ For hard isolation against runtime bugs, memory exhaustion, process termination,
 | `spec/15-testing-red-team.md` | Required tests and malicious fixtures |
 | `spec/16-public-api.md` | Current C# API surface |
 | `spec/17-implementation-plan.md` | Build order and acceptance criteria |
+| `../Addendum/Addendum.md` | Plugin/kernel addendum specification |
+| `../Addendum/Examples.md` | Plugin/kernel addendum runnable examples |
 | `adr/0001-restricted-ir-not-csharp.md` | Decision: no arbitrary C# |
 | `adr/0002-two-execution-backends.md` | Decision: interpreter + compiler |
 | `adr/0003-host-granted-bindings.md` | Decision: only host grants bindings |

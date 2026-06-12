@@ -102,7 +102,7 @@
 - [x] Allocation/collection quotas enforced cooperatively.
 - [x] File/network byte limits enforced by facades.
 - [x] Log/event limits enforced.
-- [x] Worker process boundary can be required for high-risk tenants.
+- [x] Worker process boundary requests fail closed unless a hardened worker client is configured.
 
 ## Audit
 

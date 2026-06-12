@@ -42,7 +42,8 @@ publishing the SafeIR packages.
 
 <!-- release-gate: inventory -->
 
-- [x] Worker process/container mode available for high-risk tenants.
+- [x] Worker delegation API fails closed unless a hardened worker profile is configured.
+- [ ] Concrete hardened worker process/container implementation available for high-risk tenants.
 - [ ] Worker has no secrets by default.
 - [ ] Worker resource limits configured.
 - [ ] Audit retention configured.

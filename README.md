@@ -79,11 +79,35 @@ var result = await host.ExecuteAsync(
 ## Local Verification
 
 ```powershell
-dotnet restore SafeIR.slnx
-dotnet build SafeIR.slnx
-dotnet test SafeIR.slnx
+dotnet restore SafeIR.slnx --locked-mode
+dotnet build SafeIR.slnx --configuration Release --no-restore
+dotnet test SafeIR.slnx --configuration Release --no-build
+.\scripts\run-required-tests.ps1 `
+  -Project tests\SafeIR.Tests\SafeIR.Tests.csproj `
+  -Configuration Release `
+  -NoBuild `
+  -RequiredFullyQualifiedNameContains @(
+    "SafeFileSystemTests",
+    "SafeFileSystemReparsePointTests",
+    "FileExtensionPolicyTests",
+    "PathUriLiteralValidationTests",
+    "CompiledArtifactGuardTests",
+    "CompiledRuntimeQuotaTests",
+    "VerifierAttackMatrixTests",
+    "VerifierLoopMeteringTests",
+    "BindingRegistryHardeningTests",
+    "PluginPackageValidationTests",
+    "PluginRevocationTests",
+    "PinnedHttpTransportTests",
+    "DifferentialFuzzTests"
+  )
+.\scripts\check-docs-smoke.ps1 -Configuration Release
 .\scripts\check-csharp-file-lines.ps1
-dotnet pack SafeIR.slnx --configuration Release --output artifacts/packages
+.\scripts\check-spec-manifest.ps1
+.\scripts\check-release-readiness.ps1
+dotnet pack SafeIR.slnx --configuration Release --no-build --output artifacts/packages
+.\scripts\check-package-metadata.ps1 -PackageDirectory artifacts\packages -AllowPrereleaseVersions
+.\scripts\check-package-metadata.ps1 -PackageDirectory artifacts\packages -AllowedPrereleasePackageIds SafeIR.Transport.Ipc.ShaRpc
 ```
 
 `SafeIR.Transport.Ipc.ShaRpc` is intentionally packed as a prerelease package while its upstream ShaRPC dependencies are prerelease-only. Stable release gates allow only that preview addon to carry prerelease metadata and dependencies.

@@ -29,13 +29,13 @@
     },
     {
       "path": "checklists/release-readiness.md",
-      "sha256": "06b5d37132ad8c423907393179890f0fdeb68b352bbffea822092ef14427ac10",
-      "bytes": 2043
+      "sha256": "0913db8b7bbd8ed19959ebf9285d224bdcf2cb43423cb152490a4268ae5f5d25",
+      "bytes": 2160
     },
     {
       "path": "checklists/security-review.md",
-      "sha256": "ca0c15710772fc9aaf67c3e5292967a016a9158dcb2e9f033740a5d39a7402b3",
-      "bytes": 3655
+      "sha256": "ae967f403f86423329b4a43548734dc907f734f990ac6d5c0d281d3b0501ed36",
+      "bytes": 3684
     },
     {
       "path": "examples/example-binding-manifest.md",
@@ -49,8 +49,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "2d1d80a438194652e19adc43e70ad5a07646d423cf22bc63e065f5f3024692ce",
-      "bytes": 4387
+      "sha256": "dface1c5d089db46ee0dc572bf5b6f0480d4a10cf52442a81090f61a39e07e8c",
+      "bytes": 4529
     },
     {
       "path": "references.md",
