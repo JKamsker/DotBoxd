@@ -7,7 +7,20 @@ internal static class PluginEventPropertyReader
     public static IReadOnlyList<IPropertySymbol> Read(INamedTypeSymbol eventType)
     {
         var properties = ReadableProperties(eventType).ToArray();
+        ValidatePropertyNames(properties);
         return ConstructorPropertyOrder(eventType, properties) ?? properties;
+    }
+
+    private static void ValidatePropertyNames(IPropertySymbol[] properties)
+    {
+        var duplicate = properties
+            .GroupBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(group => group.Skip(1).Any());
+        if (duplicate is not null)
+        {
+            throw new NotSupportedException(
+                $"Event property '{duplicate.First().Name}' is declared more than once or differs only by case.");
+        }
     }
 
     private static IEnumerable<IPropertySymbol> ReadableProperties(INamedTypeSymbol eventType)

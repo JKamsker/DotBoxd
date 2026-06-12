@@ -52,6 +52,8 @@ internal static class PluginKernelModelFactory
                 throw new NotSupportedException("Live settings must use supported scalar types.");
             }
 
+            ValidateGeneratedParameterNames(eventProperties, liveSettings);
+
             var eventParameterName = shouldHandle.ParameterList.Parameters
                 .ElementAtOrDefault(SafeIrGenerationNames.KernelMethodParameters.EventIndex)
                 ?.Identifier.ValueText ??
@@ -108,6 +110,31 @@ internal static class PluginKernelModelFactory
                 declaration.Identifier.GetLocation(),
                 ex.Message);
             return new PluginKernelModelResult(null, diagnostic);
+        }
+    }
+
+    private static void ValidateGeneratedParameterNames(
+        EquatableArray<EventPropertyModel> eventProperties,
+        EquatableArray<LiveSettingModel> liveSettings)
+    {
+        var eventParameterNames = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var property in eventProperties)
+        {
+            var parameterName = SafeIrExpressionModelFactory.EventVariable(property.Name);
+            if (!eventParameterNames.Add(parameterName))
+            {
+                throw new NotSupportedException(
+                    $"Event property '{property.Name}' generates duplicate parameter '{parameterName}'.");
+            }
+        }
+
+        foreach (var setting in liveSettings)
+        {
+            if (eventParameterNames.Contains(setting.Name))
+            {
+                throw new NotSupportedException(
+                    $"Live setting '{setting.Name}' conflicts with a generated event parameter.");
+            }
         }
     }
 

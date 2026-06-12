@@ -78,6 +78,66 @@ public sealed class PluginAnalyzerPropertyShapeTests
         Assert.Empty(result.GeneratedTrees);
     }
 
+    [Fact]
+    public void Generator_rejects_live_settings_that_collide_with_generated_event_parameters()
+    {
+        var result = RunGenerator("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId, string Message);
+
+            [GamePlugin("parameter-collision")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                [LiveSetting]
+                public string e_Message { get; set; } = "setting";
+
+                public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, e.Message);
+            }
+            """, expectGeneratorErrors: true);
+
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Id == "SGP100");
+        Assert.Empty(result.GeneratedTrees);
+    }
+
+    [Fact]
+    public void Generator_rejects_duplicate_event_property_names()
+    {
+        var result = RunGenerator("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public class BaseDamageEvent
+            {
+                public string Message { get; } = "";
+            }
+
+            public sealed class DamageEvent : BaseDamageEvent
+            {
+                public string TargetId { get; } = "";
+                public new string Message { get; } = "";
+            }
+
+            [GamePlugin("duplicate-event-property")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, e.Message);
+            }
+            """, expectGeneratorErrors: true);
+
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Id == "SGP100");
+        Assert.Empty(result.GeneratedTrees);
+    }
+
     private static GeneratorDriverRunResult RunGenerator(string source, bool expectGeneratorErrors = false)
     {
         var compilation = CSharpCompilation.Create(
