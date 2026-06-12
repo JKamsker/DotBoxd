@@ -11,7 +11,7 @@ internal static class SafeHttpResponseAccounting
         HttpResponseMessage response,
         long maxBytes)
     {
-        var bytes = MetadataBytes(response);
+        var bytes = MeasureMetadataBytes(response);
         context.Budget.ChargeNetworkRead(bytes);
         if (bytes > maxBytes)
         {
@@ -21,7 +21,7 @@ internal static class SafeHttpResponseAccounting
         return bytes;
     }
 
-    private static long MetadataBytes(HttpResponseMessage response)
+    public static long MeasureMetadataBytes(HttpResponseMessage response)
     {
         var reason = response.ReasonPhrase ?? string.Empty;
         var bytes = CheckedAdd(

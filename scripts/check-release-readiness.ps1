@@ -52,6 +52,59 @@ foreach ($checklist in $checklists) {
 $openItems = @($items | Where-Object { -not $_.Complete })
 $requiredOpenItems = @($openItems | Where-Object { $_.Required })
 
+function Assert-Evidence([string] $ChecklistText, [string] $Path, [string[]] $Patterns = @()) {
+    $fullPath = Join-Path $root $Path
+    if (-not (Test-Path -LiteralPath $fullPath)) {
+        throw "Release checklist item '$ChecklistText' is marked complete but evidence is missing: $Path"
+    }
+
+    $content = Get-Content -Raw -LiteralPath $fullPath
+    foreach ($pattern in $Patterns) {
+        if ($content -notmatch $pattern) {
+            throw "Release checklist item '$ChecklistText' is marked complete but evidence '$Path' does not contain pattern '$pattern'."
+        }
+    }
+}
+
+function Assert-CompletedItemEvidence {
+    $evidence = @(
+        @{
+            Text = "Verifier malicious fixtures pass."
+            Path = "tests/SafeIR.Tests/VerifierAttackMatrixTests.cs"
+            Patterns = @("HttpClient", "ProcessStart", "Calli")
+        },
+        @{
+            Text = "Compiled/interpreted differential tests pass."
+            Path = "tests/SafeIR.Tests/DifferentialFuzzTests.cs"
+            Patterns = @("ExecutionMode\.Interpreted", "ExecutionMode\.Compiled")
+        },
+        @{
+            Text = "Path traversal tests pass."
+            Path = "tests/SafeIR.Tests/SafeFileSystemTests.cs"
+            Patterns = @("\.\./secret\.txt", "config/\.\./\.\./secret\.txt")
+        },
+        @{
+            Text = "Cache corruption tests pass."
+            Path = "tests/SafeIR.Tests/CompiledMaterializationCacheTests.cs"
+            Patterns = @("MutatesSecondArtifactCompiler", "AssemblyBytes")
+        },
+        @{
+            Text = "Binding security checklist passes."
+            Path = "tests/SafeIR.Tests/BindingRegistryHardeningTests.cs"
+            Patterns = @("E-BINDING-AUDIT", "E-BINDING-GRANT", "E-BINDING-TYPE")
+        }
+    )
+
+    foreach ($entry in $evidence) {
+        $item = $items | Where-Object { $_.Required -and $_.Text -eq $entry.Text } | Select-Object -First 1
+        if ($null -ne $item -and $item.Complete) {
+            Assert-Evidence $entry.Text $entry.Path $entry.Patterns
+        }
+    }
+}
+
+Assert-CompletedItemEvidence
+
 if ($RequireComplete) {
     if ($requiredOpenItems.Count -gt 0) {
         $sample = $requiredOpenItems |

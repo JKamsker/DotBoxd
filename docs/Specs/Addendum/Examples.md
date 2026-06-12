@@ -297,24 +297,24 @@ The example installs the `fire-damage` kernel, publishes events, updates `MinDam
 
 It also demonstrates:
 
-- Level 1: `BindValue<T>`
-- Level 2: `BindContext<TSettings>`
-- Level 3: IR-backed kernel classes with manifest live settings
+- Level 1: host-authored `BindValue<T>`
+- Level 2: host-authored `BindContext<TSettings>`
+- Level 3: package/generator-backed IR kernel classes with manifest live settings
 
 ## Named-Pipe IPC Example
 
-The IPC sample uses `SafeIR.Transport.Ipc.ShaRpc`, which wraps ShaRPC named pipes with MessagePack serialization. The shared contract project still references `ShaRPC` and `MessagePack` because service attributes and payload attributes live with the contract types.
+The IPC sample uses `SafeIR.Transport.Ipc.ShaRpc`, which wraps ShaRPC named pipes with MessagePack serialization. The pipe name is a trusted local control-plane endpoint: pass an explicit high-entropy or otherwise deployment-scoped name, and do not expose it across tenant boundaries. The shared contract project still references `ShaRPC` and `MessagePack` because service attributes and payload attributes live with the contract types.
 
 Run the server in one terminal:
 
 ```powershell
-dotnet run --project examples\PluginIpc\SafeIR.PluginIpc.Server\SafeIR.PluginIpc.Server.csproj -- safe-ir-plugin-ipc
+dotnet run --project examples\PluginIpc\SafeIR.PluginIpc.Server\SafeIR.PluginIpc.Server.csproj -- safe-ir-plugin-ipc-local-demo
 ```
 
 Run the client in another:
 
 ```powershell
-dotnet run --project examples\PluginIpc\SafeIR.PluginIpc.Client\SafeIR.PluginIpc.Client.csproj -- safe-ir-plugin-ipc
+dotnet run --project examples\PluginIpc\SafeIR.PluginIpc.Client\SafeIR.PluginIpc.Client.csproj -- safe-ir-plugin-ipc-local-demo
 ```
 
 The client reads settings, publishes a matching event, changes live settings over IPC, and publishes again to prove the server-side hook pipeline uses the updated state.

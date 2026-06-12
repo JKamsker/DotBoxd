@@ -48,6 +48,9 @@ public sealed class SafeLoggingTests
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
         var audit = Assert.Single(result.AuditEvents, e => e.Kind == "SandboxLog");
         Assert.Equal(logicalNow, audit.Timestamp);
+        Assert.Equal("0.000", audit.Fields!["durationMs"]);
+        var summary = Assert.Single(result.AuditEvents, e => e.Kind == "RunSummary");
+        Assert.Equal(logicalNow, summary.Timestamp);
     }
 
     [Fact]
@@ -128,6 +131,21 @@ public sealed class SafeLoggingTests
         var result = await ExecuteLogAsync(
             """{ "call": "log.info", "args": [{ "string": "too long" }] }""",
             SandboxPolicyBuilder.Create().GrantLogging().WithMaxLogMessageLength(4).Build());
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, result.Error!.Code);
+        Assert.DoesNotContain(result.AuditEvents, e => e.Kind == "SandboxLog");
+    }
+
+    [Fact]
+    public async Task Log_sanitization_allocations_are_charged()
+    {
+        var result = await ExecuteLogAsync(
+            """{ "call": "log.info", "args": [{ "string": "abcde" }] }""",
+            SandboxPolicyBuilder.Create()
+                .GrantLogging()
+                .WithMaxTotalStringBytes(12)
+                .Build());
 
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.QuotaExceeded, result.Error!.Code);

@@ -34,7 +34,11 @@ public sealed class WorkerIsolationTests
     [Fact]
     public async Task Worker_process_isolation_rejects_incomplete_worker_profile_without_invoking_client()
     {
-        var worker = new CapturingWorker();
+        var worker = new CapturingWorker
+        {
+            ResultMode = ExecutionMode.Compiled,
+            ResultArtifactHash = new string('a', 64)
+        };
         var host = SandboxHost.Create(builder =>
         {
             builder.AddDefaultPureBindings();
@@ -88,6 +92,7 @@ public sealed class WorkerIsolationTests
         Assert.Equal(ExecutionMode.Compiled, worker.Options.Mode);
         Assert.Equal(result.AuditEvents, observed);
         Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerExecution");
+        Assert.All(result.AuditEvents, e => Assert.True(e.SequenceNumber > 0));
     }
 
     [Fact]
@@ -149,6 +154,112 @@ public sealed class WorkerIsolationTests
         Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
     }
 
+    [Fact]
+    public async Task Worker_process_isolation_rejects_interpreted_result_when_compiled_fallback_is_disabled()
+    {
+        var worker = new CapturingWorker { ResultMode = ExecutionMode.Interpreted };
+        var host = HostWithWorker(worker);
+        var plan = await PrepareAsync(host);
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            Input(),
+            new SandboxExecutionOptions
+            {
+                Mode = ExecutionMode.Compiled,
+                AllowFallbackToInterpreter = false,
+                Isolation = SandboxIsolation.WorkerProcess
+            });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
+    }
+
+    [Fact]
+    public async Task Worker_process_isolation_rejects_compiled_result_for_interpreted_request()
+    {
+        var worker = new CapturingWorker
+        {
+            ResultMode = ExecutionMode.Compiled,
+            ResultArtifactHash = new string('b', 64)
+        };
+        var host = HostWithWorker(worker);
+        var plan = await PrepareAsync(host);
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            Input(),
+            new SandboxExecutionOptions
+            {
+                Mode = ExecutionMode.Interpreted,
+                Isolation = SandboxIsolation.WorkerProcess
+            });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
+    }
+
+    [Fact]
+    public async Task Worker_process_isolation_rejects_success_with_wrong_return_type()
+    {
+        var worker = new CapturingWorker { ResultValue = SandboxValue.Unit };
+        var host = HostWithWorker(worker);
+        var plan = await PrepareAsync(host);
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            Input(),
+            new SandboxExecutionOptions { Isolation = SandboxIsolation.WorkerProcess });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
+    }
+
+    [Fact]
+    public async Task Worker_process_isolation_rejects_success_with_error()
+    {
+        var worker = new CapturingWorker
+        {
+            ResultError = new SandboxError(SandboxErrorCode.HostFailure, "unexpected worker error")
+        };
+        var host = HostWithWorker(worker);
+        var plan = await PrepareAsync(host);
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            Input(),
+            new SandboxExecutionOptions { Isolation = SandboxIsolation.WorkerProcess });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
+    }
+
+    [Fact]
+    public async Task Worker_process_isolation_rejects_failure_without_error()
+    {
+        var worker = new CapturingWorker { Succeeded = false };
+        var host = HostWithWorker(worker);
+        var plan = await PrepareAsync(host);
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            Input(),
+            new SandboxExecutionOptions { Isolation = SandboxIsolation.WorkerProcess });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
+    }
+
     private static SandboxHost HostWithWorker(CapturingWorker worker)
         => SandboxHost.Create(builder =>
         {
@@ -173,6 +284,9 @@ public sealed class WorkerIsolationTests
         public bool ReturnWrongPlanIdentity { get; init; }
         public ExecutionMode ResultMode { get; init; } = ExecutionMode.Interpreted;
         public string? ResultArtifactHash { get; init; }
+        public bool Succeeded { get; init; } = true;
+        public SandboxValue? ResultValue { get; init; } = SandboxValue.FromInt32(35);
+        public SandboxError? ResultError { get; init; }
 
         public ValueTask<SandboxExecutionResult> ExecuteInWorkerAsync(
             ExecutionPlan plan,
@@ -185,20 +299,31 @@ public sealed class WorkerIsolationTests
             Calls++;
             Options = options;
             var runId = options.RunId ?? SandboxRunId.New();
-            var audit = new SandboxAuditEvent(
+            var audit = new InMemoryAuditSink();
+            audit.Write(new SandboxAuditEvent(
                 runId,
                 "WorkerExecution",
                 DateTimeOffset.UtcNow,
-                true,
+                Succeeded,
                 ResourceId: $"module:{plan.ModuleHash}",
-                Message: entrypoint);
+                ErrorCode: ResultError?.Code,
+                Message: entrypoint));
+            audit.Write(new SandboxAuditEvent(
+                runId,
+                "RunSummary",
+                DateTimeOffset.UtcNow,
+                Succeeded,
+                ResourceId: $"module:{plan.ModuleHash}",
+                ErrorCode: ResultError?.Code,
+                Message: "worker execution completed"));
 
             return ValueTask.FromResult(new SandboxExecutionResult
             {
-                Succeeded = true,
-                Value = input,
+                Succeeded = Succeeded,
+                Value = Succeeded ? ResultValue : null,
+                Error = ResultError,
                 ResourceUsage = new ResourceMeter(plan.Budget).Snapshot(),
-                AuditEvents = [audit],
+                AuditEvents = audit.Events,
                 ActualMode = ResultMode,
                 ModuleHash = ReturnWrongPlanIdentity ? "wrong-module" : plan.ModuleHash,
                 PlanHash = plan.PlanHash,

@@ -1,6 +1,8 @@
 param(
     [string] $PackageDirectory = "artifacts/packages",
-    [switch] $AllowPrereleaseVersions
+    [switch] $AllowPrereleaseVersions,
+    [string[]] $AllowedPrereleasePackageIds = @(),
+    [string] $ExpectedVersion = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -16,6 +18,18 @@ if (-not (Test-Path -LiteralPath $fullPackageDirectory)) {
     throw "Package directory does not exist: $fullPackageDirectory"
 }
 
+$normalizedExpectedVersion = $ExpectedVersion.Trim()
+if ($normalizedExpectedVersion.StartsWith("v", [StringComparison]::OrdinalIgnoreCase)) {
+    $normalizedExpectedVersion = $normalizedExpectedVersion.Substring(1)
+}
+
+$allowedPrereleaseIds = New-Object "System.Collections.Generic.HashSet[string]" ([StringComparer]::Ordinal)
+foreach ($allowedId in $AllowedPrereleasePackageIds) {
+    if (-not [string]::IsNullOrWhiteSpace($allowedId)) {
+        [void] $allowedPrereleaseIds.Add($allowedId)
+    }
+}
+
 function RequiredText($metadata, [string] $name, [string] $packageName) {
     $node = $metadata.SelectSingleNode("*[local-name()='$name']")
     if ($null -eq $node -or [string]::IsNullOrWhiteSpace($node.InnerText)) {
@@ -23,6 +37,10 @@ function RequiredText($metadata, [string] $name, [string] $packageName) {
     }
 
     return $node.InnerText
+}
+
+function IsPrereleaseVersion([string] $version) {
+    return $version.Contains("-", [StringComparison]::Ordinal)
 }
 
 $expectedIds = [string[]] @(
@@ -81,8 +99,19 @@ foreach ($package in $packages) {
         }
 
         $version = RequiredText $metadata "version" $package.Name
-        if (-not $AllowPrereleaseVersions -and $version.Contains("-", [StringComparison]::Ordinal)) {
+        $allowPackagePrerelease = $AllowPrereleaseVersions -or $allowedPrereleaseIds.Contains($id)
+        if (-not $allowPackagePrerelease -and (IsPrereleaseVersion $version)) {
             throw "Package $($package.Name) has prerelease version '$version'. Stable release metadata is required."
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($normalizedExpectedVersion)) {
+            if ($allowedPrereleaseIds.Contains($id)) {
+                if (-not $version.StartsWith($normalizedExpectedVersion + "-", [StringComparison]::Ordinal)) {
+                    throw "Package $($package.Name) version '$version' must use tag version '$normalizedExpectedVersion' as its prefix."
+                }
+            } elseif ($version -ne $normalizedExpectedVersion) {
+                throw "Package $($package.Name) version '$version' does not match tag version '$normalizedExpectedVersion'."
+            }
         }
 
         [void] (RequiredText $metadata "authors" $package.Name)
@@ -93,9 +122,25 @@ foreach ($package in $packages) {
             throw "Package $($package.Name) must declare a license expression or file."
         }
 
+        if ($license.InnerText -eq "MIT" -and -not (Test-Path -LiteralPath (Join-Path $root "LICENSE"))) {
+            throw "Package $($package.Name) declares MIT but the repository has no LICENSE file."
+        }
+
         $repository = $metadata.SelectSingleNode("*[local-name()='repository']")
         if ($null -eq $repository -or [string]::IsNullOrWhiteSpace($repository.url)) {
             throw "Package $($package.Name) must declare a repository URL."
+        }
+
+        if (-not $allowPackagePrerelease) {
+            $dependencies = $metadata.SelectNodes(".//*[local-name()='dependency']")
+            foreach ($dependency in $dependencies) {
+                $dependencyId = $dependency.id
+                $dependencyVersion = $dependency.version
+                if (-not [string]::IsNullOrWhiteSpace($dependencyVersion) -and
+                    (IsPrereleaseVersion $dependencyVersion)) {
+                    throw "Stable package $id depends on prerelease package $dependencyId $dependencyVersion."
+                }
+            }
         }
     } finally {
         $zip.Dispose()

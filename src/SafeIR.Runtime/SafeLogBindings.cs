@@ -30,6 +30,7 @@ public static partial class SafeLogBindings
     {
         var startedAt = DateTimeOffset.UtcNow;
         context.ChargeLogEvent(message);
+        context.ChargeStringAllocation(message.Length);
         var timestamp = context.UtcNow();
         context.Audit.Write(new SandboxAuditEvent(
             context.RunId,

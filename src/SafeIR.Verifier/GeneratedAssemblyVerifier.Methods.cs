@@ -77,6 +77,11 @@ public sealed partial class GeneratedAssemblyVerifier
                 diagnostics.Add(new VerificationDiagnostic("V-METHOD-PINVOKE", $"method '{name}' has P/Invoke attributes"));
             }
 
+            if (IsGeneratedExecutableMethod(name) && method.RelativeVirtualAddress == 0)
+            {
+                diagnostics.Add(new VerificationDiagnostic("V-METHOD-BODY", $"method '{name}' must have a method body"));
+            }
+
             if (method.RelativeVirtualAddress != 0)
             {
                 var body = peReader.GetMethodBody(method.RelativeVirtualAddress);
@@ -105,6 +110,14 @@ public sealed partial class GeneratedAssemblyVerifier
             diagnostics.Add(new VerificationDiagnostic(
                 "V-METHOD-NAME",
                 $"method '{name}' is not an expected generated method name"));
+        }
+
+        if (IsGeneratedExecutableMethod(name) &&
+            (method.Attributes & (MethodAttributes.Abstract | MethodAttributes.Virtual)) != 0)
+        {
+            diagnostics.Add(new VerificationDiagnostic(
+                "V-METHOD-ATTR",
+                $"method '{name}' must be concrete and non-virtual"));
         }
 
         var access = method.Attributes & MethodAttributes.MemberAccessMask;
@@ -189,4 +202,7 @@ public sealed partial class GeneratedAssemblyVerifier
                 $"method '{name}' uses unsupported implementation attributes"));
         }
     }
+
+    private static bool IsGeneratedExecutableMethod(string name)
+        => name == "Execute" || name.StartsWith("Fn_", StringComparison.Ordinal);
 }

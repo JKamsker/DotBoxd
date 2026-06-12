@@ -59,18 +59,18 @@
     },
     {
       "path": "spec/02-threat-model.md",
-      "sha256": "bfd175e522178ce80daa770909acaa22a06e3dc35c863e17e4bad3004755405d",
-      "bytes": 6930
+      "sha256": "c8c7f66a161539060f5d1bab9afc4983dc42a304ae4986d41f19ec5ce86f69f1",
+      "bytes": 6709
     },
     {
       "path": "spec/03-architecture.md",
-      "sha256": "609f614fa94532c5998dbfd08ab0a4a8018ad870370c29bf09ee7b602b662af0",
-      "bytes": 9888
+      "sha256": "adfd36f299c3baa2661ae045739454ac6e99d0d6520c1fcd660c05eb6020550a",
+      "bytes": 9886
     },
     {
       "path": "spec/04-ir-language.md",
-      "sha256": "0e9ecff3f30edf4d0686f2590089d64e3471f0026b6f0a9dbd32b5fce1023086",
-      "bytes": 5729
+      "sha256": "cf4bb5201b12f9759232739443ceaa4c758dee579a1b7f2f1bba548af1ce33b3",
+      "bytes": 5456
     },
     {
       "path": "spec/05-type-system.md",
@@ -94,8 +94,8 @@
     },
     {
       "path": "spec/09-interpreted-mode.md",
-      "sha256": "18310df8d33a2b2a0cbe963a23d57397dd504179108717337801cb94cdf6240e",
-      "bytes": 6401
+      "sha256": "4d3863ff7cb0cc1477febd7b0b787758a2b9efaa00407445e79f094acb22420b",
+      "bytes": 6156
     },
     {
       "path": "spec/10-compiled-mode.md",
@@ -124,13 +124,13 @@
     },
     {
       "path": "spec/15-testing-red-team.md",
-      "sha256": "4ee8656cb12a7b4cba28c2bc4c5c18ea847abf697f8a71799238874eef6473e3",
-      "bytes": 6928
+      "sha256": "d9827fca25026935cf549278914e886f2153e130eb078e802d134d0b96086432",
+      "bytes": 6620
     },
     {
       "path": "spec/16-public-api.md",
-      "sha256": "8ebc1799164b59ddb0f76d0788aa844c2521be8045c8951b86dac4456639737d",
-      "bytes": 14164
+      "sha256": "683a5bf7b981114aebf00cd21257a360100f3dd0834715604af0eef6397cb2c1",
+      "bytes": 13966
     },
     {
       "path": "spec/17-implementation-plan.md",

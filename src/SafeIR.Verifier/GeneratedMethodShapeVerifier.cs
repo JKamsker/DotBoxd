@@ -263,10 +263,7 @@ internal static class GeneratedMethodShapeVerifier
            calledMember != ExitCall &&
            calledMember != ChargeFuelSignature &&
            calledMember != ChargeLoopIterationSignature &&
-           calledMember != RequireValueType &&
-           calledMember != TypeScalar &&
-           calledMember != TypeList &&
-           calledMember != TypeMap;
+           calledMember != RequireValueType;
 
     private static bool IsMeterDensityWorkCall(string? calledMember)
     {

@@ -8,7 +8,7 @@ public sealed partial class SandboxHost
         => new(
             runId,
             "ExecutionFallback",
-            DateTimeOffset.UtcNow,
+            AuditTime(plan),
             true,
             ResourceId: $"module:{plan.ModuleHash}",
             ErrorCode: reason.Code,
@@ -25,12 +25,15 @@ public sealed partial class SandboxHost
         }
     }
 
-    private static SandboxExecutionResult CompilerUnavailableResult(ExecutionPlan plan, SandboxExecutionOptions options)
+    private static SandboxExecutionResult CompilerUnavailableResult(
+        ExecutionPlan plan,
+        SandboxExecutionOptions options,
+        SandboxError? reason = null)
     {
         var runId = options.RunId ?? SandboxRunId.New();
         var budget = new ResourceMeter(plan.Budget);
-        var startedAt = DateTimeOffset.UtcNow;
-        var error = new SandboxError(SandboxErrorCode.ValidationError, "compiled execution is not available for this run");
+        var startedAt = AuditTime(plan);
+        var error = reason ?? new SandboxError(SandboxErrorCode.ValidationError, "compiled execution is not available for this run");
         var audit = new InMemoryAuditSink();
         audit.Write(new SandboxAuditEvent(
             runId,
@@ -62,7 +65,7 @@ public sealed partial class SandboxHost
     {
         var runId = options.RunId ?? SandboxRunId.New();
         var budget = new ResourceMeter(plan.Budget);
-        var startedAt = DateTimeOffset.UtcNow;
+        var startedAt = AuditTime(plan);
         var error = new SandboxError(SandboxErrorCode.ValidationError, message);
         var audit = new InMemoryAuditSink();
         audit.Write(new SandboxAuditEvent(
@@ -95,7 +98,7 @@ public sealed partial class SandboxHost
     {
         var runId = options.RunId ?? SandboxRunId.New();
         var budget = new ResourceMeter(plan.Budget);
-        var startedAt = DateTimeOffset.UtcNow;
+        var startedAt = AuditTime(plan);
         var audit = new InMemoryAuditSink();
         audit.Write(new SandboxAuditEvent(
             runId,
@@ -129,7 +132,7 @@ public sealed partial class SandboxHost
     {
         var runId = options.RunId ?? SandboxRunId.New();
         var budget = new ResourceMeter(plan.Budget);
-        var startedAt = DateTimeOffset.UtcNow;
+        var startedAt = AuditTime(plan);
         var error = new SandboxError(SandboxErrorCode.PolicyDenied, "deterministic execution is required");
         var audit = new InMemoryAuditSink();
         audit.Write(new SandboxAuditEvent(
@@ -162,7 +165,7 @@ public sealed partial class SandboxHost
     {
         var runId = options.RunId ?? SandboxRunId.New();
         var budget = new ResourceMeter(plan.Budget);
-        var startedAt = DateTimeOffset.UtcNow;
+        var startedAt = AuditTime(plan);
         var error = new SandboxError(
             SandboxErrorCode.PolicyDenied,
             $"capability {revoked.Id} has been revoked");
@@ -204,7 +207,7 @@ public sealed partial class SandboxHost
     {
         var runId = options.RunId ?? SandboxRunId.New();
         var budget = new ResourceMeter(plan.Budget);
-        var startedAt = DateTimeOffset.UtcNow;
+        var startedAt = AuditTime(plan);
         var error = new SandboxError(
             SandboxErrorCode.PolicyDenied,
             profile is null
@@ -242,7 +245,7 @@ public sealed partial class SandboxHost
     {
         var runId = options.RunId ?? SandboxRunId.New();
         var budget = new ResourceMeter(plan.Budget);
-        var startedAt = DateTimeOffset.UtcNow;
+        var startedAt = AuditTime(plan);
         var audit = new InMemoryAuditSink();
         audit.Write(new SandboxAuditEvent(
             runId,
@@ -274,7 +277,7 @@ public sealed partial class SandboxHost
         => new(
             runId,
             "VerifierFailure",
-            DateTimeOffset.UtcNow,
+            AuditTime(plan),
             false,
             ResourceId: $"module:{plan.ModuleHash}",
             ErrorCode: error.Code,
@@ -302,6 +305,11 @@ public sealed partial class SandboxHost
                      $"bindings={plan.BindingManifestHash} fuel={budget.FuelUsed}/{budget.Limits.MaxFuel}",
             Fields: RunSummaryAuditFields.Create(plan, budget, mode, cacheStatus)));
     }
+
+    private static DateTimeOffset AuditTime(ExecutionPlan plan)
+        => plan.Policy.Deterministic
+            ? plan.Policy.LogicalNow ?? DateTimeOffset.UnixEpoch
+            : DateTimeOffset.UtcNow;
 }
 
 internal static class SandboxAuditEventSequence

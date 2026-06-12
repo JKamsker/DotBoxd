@@ -88,6 +88,19 @@ internal static class PluginPackageValidator
             diagnostics.Add(new SandboxDiagnostic(
                 "SGP014",
                 "Plugin manifest contract must be an IEventKernel<TEvent> contract."));
+            return;
+        }
+
+        var eventName = package.Manifest.Contract[
+            "IEventKernel<".Length..^1];
+        foreach (var subscription in package.Manifest.Subscriptions)
+        {
+            if (!string.Equals(subscription.Event, eventName, StringComparison.Ordinal))
+            {
+                diagnostics.Add(new SandboxDiagnostic(
+                    "SGP014",
+                    $"Plugin manifest contract event '{eventName}' must match subscription event '{subscription.Event}'."));
+            }
         }
     }
 

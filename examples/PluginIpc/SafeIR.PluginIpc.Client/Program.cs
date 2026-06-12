@@ -1,7 +1,13 @@
 using SafeIR.PluginIpc.Shared;
 using SafeIR.Transport.Ipc;
 
-var pipeName = args.Length > 0 ? args[0] : "safe-ir-plugin-ipc";
+if (args.Length != 1)
+{
+    Console.Error.WriteLine("Usage: SafeIR.PluginIpc.Client <named-pipe-name>");
+    return;
+}
+
+var pipeName = args[0];
 await using var connection = await SafeIrShaRpcMessagePackIpc.ConnectNamedPipeAsync(pipeName);
 var service = connection.Get<IPluginControlService>();
 Console.WriteLine("Initial settings:");

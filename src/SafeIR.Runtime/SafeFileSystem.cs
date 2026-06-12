@@ -176,7 +176,9 @@ public static class SafeFileSystem
             var buffer = new byte[4096];
             while (true)
             {
-                var read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                context.Budget.CheckDeadline();
+                var read = await SafeFileNoFollow.ReadAsync(stream, buffer, cancellationToken).ConfigureAwait(false);
+                context.Budget.CheckDeadline();
                 if (read == 0)
                 {
                     return memory;

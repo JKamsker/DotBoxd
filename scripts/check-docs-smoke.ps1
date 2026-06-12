@@ -10,6 +10,41 @@ $localPluginExample = Join-Path $root "examples/LocalPlugin/SafeIR.PluginLocal/S
 $ipcServerExample = Join-Path $root "examples/PluginIpc/SafeIR.PluginIpc.Server/SafeIR.PluginIpc.Server.csproj"
 $ipcClientExample = Join-Path $root "examples/PluginIpc/SafeIR.PluginIpc.Client/SafeIR.PluginIpc.Client.csproj"
 
+function Resolve-RepoPath([string] $Path) {
+    $normalized = $Path.Trim().Trim('"').Replace('\', [System.IO.Path]::DirectorySeparatorChar)
+    return Join-Path $root $normalized
+}
+
+function Assert-ExistingPath([string] $Document, [int] $LineNumber, [string] $Path) {
+    $resolved = Resolve-RepoPath $Path
+    if (-not (Test-Path -LiteralPath $resolved)) {
+        throw "$Document line $LineNumber references missing path: $Path"
+    }
+}
+
+function Test-DocumentCommands([string] $Path) {
+    $lines = Get-Content -LiteralPath $Path
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $line = $lines[$i].Trim()
+        if ($line -match '^dotnet\s+(restore|build|test|pack)\s+(?<target>\S+)') {
+            Assert-ExistingPath $Path ($i + 1) $matches["target"]
+            continue
+        }
+
+        if ($line -match '^dotnet\s+run\s+--project\s+(?<project>\S+)') {
+            Assert-ExistingPath $Path ($i + 1) $matches["project"]
+            continue
+        }
+
+        if ($line -match '^\.(?<script>\\scripts\\\S+\.ps1)') {
+            Assert-ExistingPath $Path ($i + 1) ("." + $matches["script"])
+        }
+    }
+}
+
+Test-DocumentCommands (Join-Path $root "README.md")
+Test-DocumentCommands (Join-Path $root "docs/Specs/Addendum/Examples.md")
+
 & dotnet run --project $addendumExample --configuration $Configuration --no-build
 if ($LASTEXITCODE -ne 0) {
     throw "Addendum example smoke test failed with exit code $LASTEXITCODE"
@@ -65,7 +100,7 @@ function Wait-IpcServer([object] $Server) {
     throw "IPC server did not start listening within 30 seconds."
 }
 
-$pipeName = "safe-ir-plugin-ipc-smoke-" + [Guid]::NewGuid().ToString("N")
+$pipeName = "sir-ipc-" + [Guid]::NewGuid().ToString("N").Substring(0, 12)
 $ipcServer = Start-IpcServer $ipcServerExample $pipeName
 try {
     Wait-IpcServer $ipcServer

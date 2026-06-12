@@ -301,11 +301,37 @@ internal sealed class MethodEmitter
     {
         var value = _il.DeclareLocal(typeof(SandboxValue));
         _il.Emit(OpCodes.Stloc, value);
+        _il.Emit(OpCodes.Ldloc, value);
+        EmitMeteredSandboxType(_function.ReturnType);
+        _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.RequireValueType)));
+        _il.Emit(OpCodes.Stloc, value);
         CompiledMeterEmitter.ExitCall(_il);
         _il.Emit(OpCodes.Ldloc, value);
-        EmitSandboxType(_il, _function.ReturnType);
-        _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.RequireValueType)));
         _il.Emit(OpCodes.Ret);
+    }
+
+    private void EmitMeteredSandboxType(SandboxType type)
+    {
+        if (type is { Name: "List", Arguments.Count: 1 })
+        {
+            EmitMeteredSandboxType(type.Arguments[0]);
+            CompiledMeterEmitter.Fuel(_il, 1);
+            _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.TypeList)));
+            return;
+        }
+
+        if (type is { Name: "Map", Arguments.Count: 2 })
+        {
+            EmitMeteredSandboxType(type.Arguments[0]);
+            EmitMeteredSandboxType(type.Arguments[1]);
+            CompiledMeterEmitter.Fuel(_il, 1);
+            _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.TypeMap)));
+            return;
+        }
+
+        CompiledMeterEmitter.Fuel(_il, 1);
+        _il.Emit(OpCodes.Ldstr, type.Name);
+        _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.TypeScalar)));
     }
 
     private static Exception Unsupported(string message)

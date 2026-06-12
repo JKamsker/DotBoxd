@@ -25,7 +25,7 @@ public sealed class SandboxInterpreter : ISandboxInterpreter
             allowedBindings,
             plan.ModuleHash,
             plan.PolicyHash);
-        var startedAt = DateTimeOffset.UtcNow;
+        var startedAt = AuditTime(plan);
 
         try
         {
@@ -93,4 +93,9 @@ public sealed class SandboxInterpreter : ISandboxInterpreter
                      $"policy={plan.PolicyHash} policyId={plan.Policy.PolicyId} bindings={plan.BindingManifestHash} " +
                      $"fuel={budget.FuelUsed}/{budget.Limits.MaxFuel}",
             Fields: RunSummaryAuditFields.Create(plan, budget, ExecutionMode.Interpreted, "None")));
+
+    private static DateTimeOffset AuditTime(ExecutionPlan plan)
+        => plan.Policy.Deterministic
+            ? plan.Policy.LogicalNow ?? DateTimeOffset.UnixEpoch
+            : DateTimeOffset.UtcNow;
 }

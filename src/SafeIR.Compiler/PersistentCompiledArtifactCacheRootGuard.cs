@@ -1,5 +1,8 @@
 namespace SafeIR.Compiler;
 
+using System.Runtime.Versioning;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using SafeIR;
 
 internal static class PersistentCompiledArtifactCacheRootGuard
@@ -18,17 +21,24 @@ internal static class PersistentCompiledArtifactCacheRootGuard
             throw Denied("compiled cache directory must not be a reparse point");
         }
 
-        ValidateUnixMode(info);
+        ValidatePlatformPermissions(info);
         ProbeExclusiveWrite(info.FullName);
     }
 
-    private static void ValidateUnixMode(DirectoryInfo info)
+    private static void ValidatePlatformPermissions(DirectoryInfo info)
     {
         if (OperatingSystem.IsWindows())
         {
+            ValidateWindowsAcl(info);
             return;
         }
 
+        ValidateUnixMode(info);
+    }
+
+    [UnsupportedOSPlatform("windows")]
+    private static void ValidateUnixMode(DirectoryInfo info)
+    {
         var mode = File.GetUnixFileMode(info.FullName);
         const UnixFileMode unsafeWrite =
             UnixFileMode.GroupWrite |
@@ -38,6 +48,53 @@ internal static class PersistentCompiledArtifactCacheRootGuard
             throw Denied("compiled cache directory must not be group- or world-writable");
         }
     }
+
+    [SupportedOSPlatform("windows")]
+    private static void ValidateWindowsAcl(DirectoryInfo info)
+    {
+        var security = info.GetAccessControl(AccessControlSections.Access);
+        foreach (FileSystemAccessRule rule in security.GetAccessRules(true, true, typeof(SecurityIdentifier)))
+        {
+            if (rule.AccessControlType != AccessControlType.Allow ||
+                !GrantsWrite(rule.FileSystemRights) ||
+                rule.IdentityReference is not SecurityIdentifier sid ||
+                !IsBroadPrincipal(sid))
+            {
+                continue;
+            }
+
+            throw Denied("compiled cache directory must not grant write access to broad Windows principals");
+        }
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static bool GrantsWrite(FileSystemRights rights)
+    {
+        const FileSystemRights writeRights =
+            FileSystemRights.Write |
+            FileSystemRights.WriteData |
+            FileSystemRights.CreateFiles |
+            FileSystemRights.CreateDirectories |
+            FileSystemRights.AppendData |
+            FileSystemRights.WriteAttributes |
+            FileSystemRights.WriteExtendedAttributes |
+            FileSystemRights.Delete |
+            FileSystemRights.DeleteSubdirectoriesAndFiles |
+            FileSystemRights.ChangePermissions |
+            FileSystemRights.TakeOwnership |
+            FileSystemRights.Modify |
+            FileSystemRights.FullControl;
+        return (rights & writeRights) != 0;
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static bool IsBroadPrincipal(SecurityIdentifier sid)
+        => sid.IsWellKnown(WellKnownSidType.WorldSid) ||
+           sid.IsWellKnown(WellKnownSidType.AuthenticatedUserSid) ||
+           sid.IsWellKnown(WellKnownSidType.BuiltinUsersSid) ||
+           sid.IsWellKnown(WellKnownSidType.BuiltinGuestsSid) ||
+           sid.IsWellKnown(WellKnownSidType.AnonymousSid) ||
+           sid.IsWellKnown(WellKnownSidType.InteractiveSid);
 
     private static void ProbeExclusiveWrite(string rootDirectory)
     {

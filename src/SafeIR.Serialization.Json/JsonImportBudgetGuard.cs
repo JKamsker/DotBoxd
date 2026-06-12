@@ -11,7 +11,7 @@ internal static class JsonImportBudgetGuard
     private const int MaxTokens = 100_000;
     private const int MaxContainerItems = 10_000;
     private const int MaxStringBytes = 65_536;
-    private const int MaxTotalStringBytes = 1_048_576;
+    private const int MaxTotalStringBytes = 524_288;
 
     public static void Validate(string json)
     {
@@ -31,7 +31,7 @@ internal static class JsonImportBudgetGuard
         {
             AllowTrailingCommas = false,
             CommentHandling = JsonCommentHandling.Disallow,
-            MaxDepth = MaxDepth
+            MaxDepth = MaxDepth + 1
         });
         var stack = new ContainerFrame[MaxDepth];
         var depth = -1;

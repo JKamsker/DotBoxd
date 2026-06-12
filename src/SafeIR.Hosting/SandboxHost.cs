@@ -198,7 +198,7 @@ public sealed partial class SandboxHost : IDisposable
                         reason,
                         cancellationToken)
                     .ConfigureAwait(false)
-                : CompilerUnavailableResult(plan, options);
+                : CompilerUnavailableResult(plan, options, reason);
         }
 
         var compiled = await TryExecuteCompiledAsync(plan, entrypoint, input, options, cancellationToken)

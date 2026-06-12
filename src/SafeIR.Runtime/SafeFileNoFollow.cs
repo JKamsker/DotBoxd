@@ -23,6 +23,22 @@ internal static partial class SafeFileNoFollow
         return new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.None, BufferSize, useAsync: true);
     }
 
+    public static ValueTask<int> ReadAsync(
+        FileStream stream,
+        byte[] buffer,
+        CancellationToken cancellationToken)
+    {
+        if (stream.IsAsync)
+        {
+            return stream.ReadAsync(buffer, cancellationToken);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        var read = stream.Read(buffer, 0, buffer.Length);
+        cancellationToken.ThrowIfCancellationRequested();
+        return ValueTask.FromResult(read);
+    }
+
     private static FileStream OpenWindows(string fullPath)
     {
         var handle = CreateFileW(
@@ -68,7 +84,8 @@ internal static partial class SafeFileNoFollow
         }
 
         var handle = new SafeFileHandle(new IntPtr(fd), ownsHandle: true);
-        return new FileStream(handle, FileAccess.Read, BufferSize, isAsync: true);
+        // POSIX open returns a synchronous descriptor; .NET rejects marking that handle async.
+        return new FileStream(handle, FileAccess.Read, BufferSize, isAsync: false);
     }
 
     private static int UnixOpenFlags()

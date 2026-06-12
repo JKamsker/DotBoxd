@@ -17,6 +17,7 @@ public static class SafeHttpClient
     {
         var startedAt = DateTimeOffset.UtcNow;
         var resource = SafeHttpUriAudit.Sanitize(uri.Value);
+        long? responseBytes = null;
         try
         {
             var request = ResolveRequest(context, uri);
@@ -33,6 +34,9 @@ public static class SafeHttpClient
             using var pinnedResponse = await SafePinnedHttpTransport.SendAsync(invoker, message, addresses, timeout.Token)
                 .ConfigureAwait(false);
             var response = pinnedResponse.Message;
+            var metadataBytes = SafeHttpResponseAccounting.MeasureMetadataBytes(response);
+            responseBytes = metadataBytes;
+            SafeHttpResponseAccounting.ChargeMetadata(context, response, request.MaxResponseBytes);
             if (response.RequestMessage?.RequestUri is { } finalUri && !SafeHttpUriAudit.SameUri(finalUri, request.Uri))
             {
                 throw Error(SandboxErrorCode.PermissionDenied, "net.http.get denied: redirects are not allowed");
@@ -43,24 +47,24 @@ public static class SafeHttpClient
                 throw Error(SandboxErrorCode.PermissionDenied, "net.http.get denied: redirects are not allowed");
             }
 
-            response.EnsureSuccessStatusCode();
-            var metadataBytes = SafeHttpResponseAccounting.ChargeMetadata(
-                context,
-                response,
-                request.MaxResponseBytes);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw Error(SandboxErrorCode.HostFailure, "net.http.get failed: response status was not successful");
+            }
+
             var body = await ReadLimitedTextAsync(
                     context,
                     response,
                     request.MaxResponseBytes - metadataBytes,
                     timeout.Token)
                 .ConfigureAwait(false);
-            var responseBytes = metadataBytes + body.BytesRead;
+            responseBytes = metadataBytes + body.BytesRead;
             Audit(context, startedAt, true, resource, responseBytes, null);
             return body.Text;
         }
         catch (SandboxRuntimeException ex)
         {
-            Audit(context, startedAt, false, resource, null, ex.Error.Code);
+            Audit(context, startedAt, false, resource, responseBytes, ex.Error.Code);
             throw;
         }
         catch (OperationCanceledException) when (!context.CancellationToken.IsCancellationRequested)

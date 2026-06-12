@@ -112,7 +112,7 @@ Contains:
 - JSON IR importer
 - JSON schema boundary checks
 - import-budget enforcement
-- host parsing/import extension methods
+- host JSON import extension methods
 
 ### `SafeIR.Transport.Http`
 
@@ -130,7 +130,7 @@ Contains:
 - ShaRPC MessagePack named-pipe helpers
 - plugin-control IPC transport primitives
 
-Packaging note: this addon remains prerelease while the upstream ShaRPC packages it depends on are prerelease-only. Stable SafeIR releases must either wait for stable ShaRPC dependencies or exclude this addon from the stable release set.
+Packaging note: this addon remains prerelease while the upstream ShaRPC packages it depends on are prerelease-only. Stable SafeIR release gates permit prerelease metadata and dependencies only for this explicitly documented preview addon.
 
 ### `SafeIR.Interpreter`
 

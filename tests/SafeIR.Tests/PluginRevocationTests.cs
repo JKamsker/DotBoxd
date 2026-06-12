@@ -113,7 +113,7 @@ public sealed class PluginRevocationTests
     private sealed class BlockingEventAdapter : IPluginEventAdapter<BlockingEvent>
     {
         public static BlockingEventAdapter Instance { get; } = new();
-        public string EventName => "blocking.event";
+        public string EventName => nameof(BlockingEvent);
         public IReadOnlyList<Parameter> Parameters => [new("targetId", SandboxType.String)];
         public IReadOnlyList<SandboxValue> ToSandboxValues(BlockingEvent e) => [SandboxValue.FromString(e.TargetId)];
     }
@@ -128,7 +128,7 @@ public sealed class PluginRevocationTests
                 ExecutionMode.Interpreted,
                 ["Cpu", "Alloc", "GameStateWrite", "Audit"],
                 [],
-                [new HookSubscriptionManifest("blocking.event", "BlockingKernel")]),
+                [new HookSubscriptionManifest(nameof(BlockingEvent), "BlockingKernel")]),
             new SandboxModule(
                 "revocation-blocking",
                 SemVersion.One,

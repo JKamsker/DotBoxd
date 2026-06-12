@@ -74,6 +74,11 @@ public sealed class InstalledKernel
 
     internal void SetUpdateMode(Type stateType, LiveUpdateMode mode)
     {
+        if (!Enum.IsDefined(mode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(mode), mode, "Live update mode is not supported.");
+        }
+
         lock (_updateModeGate)
         {
             _updateModes[stateType] = mode;

@@ -620,6 +620,7 @@ The product should support three ergonomic levels.
 ## Level 1: Value Bindings
 
 Best for tiny plugins.
+This is a host-side convenience pattern; it does not produce a portable plugin package by itself.
 
 ```csharp
 var minDamage = server.BindValue("minDamage", 100);
@@ -632,6 +633,7 @@ server.Hooks.On<DamageEvent>()
 ## Level 2: Context Bindings
 
 Best for grouped settings.
+This is also host-side configuration plumbing; package generation starts at the kernel-class model.
 
 ```csharp
 var settings = server.BindContext<DamageSettings>("operatorDefaults");
@@ -664,7 +666,8 @@ public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
 }
 ```
 
-The main documentation should lead with Level 3.
+The main documentation should lead with Level 3 because it is the package/generator-supported
+authoring path. Levels 1 and 2 remain useful for host-authored hook composition.
 
 ---
 
@@ -993,6 +996,7 @@ Prefer this:
 ```csharp
 public sealed partial class MyKernel : IEventKernel<MyEvent>
 {
+    [LiveSetting]
     public int Threshold { get; set; } = 100;
 
     public bool ShouldHandle(MyEvent e, HookContext ctx)

@@ -171,6 +171,7 @@ public sealed class SandboxContext
             startedAt,
             ModuleHash,
             PolicyHash,
+            Policy.Deterministic,
             bytesRead,
             bytesWritten);
 

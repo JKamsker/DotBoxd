@@ -67,6 +67,14 @@ internal static class BindingRegistryValidator
             diagnostics.Add(new SandboxDiagnostic("E-BINDING-CAP", $"binding '{binding.Id}' has side effects but no capability"));
         }
 
+        if (!string.IsNullOrWhiteSpace(binding.RequiredCapability) &&
+            (binding.Effects & ~SandboxEffect.Cpu) == SandboxEffect.None)
+        {
+            diagnostics.Add(new SandboxDiagnostic(
+                "E-BINDING-EFFECT",
+                $"binding '{binding.Id}' requires a capability but declares only pure CPU effects"));
+        }
+
         if (ReachesOutsideSandbox(binding))
         {
             if (string.IsNullOrWhiteSpace(binding.RequiredCapability))

@@ -153,6 +153,69 @@ public sealed class PluginAnalyzerGenerationTests
         Assert.Empty(result.GeneratedTrees);
     }
 
+    [Theory]
+    [InlineData("[LiveSetting] private int Hidden { get; set; } = 1;")]
+    [InlineData("[LiveSetting] public static int StaticValue { get; set; } = 1;")]
+    [InlineData("[LiveSetting] public int GetOnly { get; } = 1;")]
+    [InlineData("[LiveSetting] public int InitOnly { get; init; } = 1;")]
+    public void Generator_rejects_live_settings_that_runtime_typed_state_cannot_update(string property)
+    {
+        var result = RunGenerator($$"""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId);
+
+            [GamePlugin("bad-live-setting")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                {{property}}
+
+                public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, "message");
+            }
+            """);
+
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Id == "SGP100");
+        Assert.Empty(result.GeneratedTrees);
+    }
+
+    [Fact]
+    public void Generator_rejects_duplicate_live_setting_names_from_base_type()
+    {
+        var result = RunGenerator("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId);
+
+            public class BaseKernel
+            {
+                [LiveSetting]
+                public int MinDamage { get; set; } = 1;
+            }
+
+            [GamePlugin("duplicate-live-setting")]
+            public sealed partial class DamageKernel : BaseKernel, IEventKernel<DamageEvent>
+            {
+                [LiveSetting]
+                public new int MinDamage { get; set; } = 2;
+
+                public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, "message");
+            }
+            """);
+
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Id == "SGP100");
+        Assert.Empty(result.GeneratedTrees);
+    }
+
     private static GeneratorDriverRunResult RunGenerator(string source)
     {
         var compilation = CSharpCompilation.Create(

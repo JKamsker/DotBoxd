@@ -106,6 +106,20 @@ public sealed class PluginPackageValidationTests
     }
 
     [Fact]
+    public async Task Install_rejects_event_kernel_contract_with_different_event_than_subscription()
+    {
+        var server = PluginServer.Create();
+        var package = FireDamagePluginPackage.Create();
+        var invalid = package with { Manifest = package.Manifest with { Contract = "IEventKernel<OtherEvent>" } };
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () => await server.InstallAsync(invalid).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d =>
+            d.Code == "SGP014" &&
+            d.Message.Contains("must match subscription event", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Install_rejects_wrong_should_handle_return_type()
     {
         var server = PluginServer.Create();

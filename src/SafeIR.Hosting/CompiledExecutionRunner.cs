@@ -28,7 +28,7 @@ internal static class CompiledExecutionRunner
             allowedBindings,
             plan.ModuleHash,
             plan.PolicyHash);
-        var startedAt = DateTimeOffset.UtcNow;
+        var startedAt = AuditTime(plan);
 
         try
         {
@@ -154,4 +154,9 @@ internal static class CompiledExecutionRunner
 
         EntrypointBinder.RequireType(value, analysis.ReturnType, "function return type mismatch");
     }
+
+    private static DateTimeOffset AuditTime(ExecutionPlan plan)
+        => plan.Policy.Deterministic
+            ? plan.Policy.LogicalNow ?? DateTimeOffset.UnixEpoch
+            : DateTimeOffset.UtcNow;
 }

@@ -1,4 +1,7 @@
 using System.Diagnostics;
+using System.Runtime.Versioning;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using SafeIR.Compiler;
 using SafeIR.Verifier;
 
@@ -31,6 +34,22 @@ public sealed class CompiledCacheRootGuardTests
             UnixFileMode.UserWrite |
             UnixFileMode.UserExecute |
             UnixFileMode.GroupWrite);
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() => new PersistentCompiledArtifactCache(temp.Path));
+
+        Assert.Equal(SandboxErrorCode.PermissionDenied, ex.Error.Code);
+    }
+
+    [Fact]
+    public void Persistent_cache_rejects_broad_windows_write_acl()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        using var temp = TempDirectory.Create();
+        GrantEveryoneWrite(temp.Path);
 
         var ex = Assert.Throws<SandboxRuntimeException>(() => new PersistentCompiledArtifactCache(temp.Path));
 
@@ -194,6 +213,21 @@ public sealed class CompiledCacheRootGuardTests
         catch (UnauthorizedAccessException)
         {
         }
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void GrantEveryoneWrite(string path)
+    {
+        var info = new DirectoryInfo(path);
+        var security = info.GetAccessControl(AccessControlSections.Access);
+        var everyone = new SecurityIdentifier(WellKnownSidType.WorldSid, null);
+        security.AddAccessRule(new FileSystemAccessRule(
+            everyone,
+            FileSystemRights.Write,
+            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+            PropagationFlags.None,
+            AccessControlType.Allow));
+        info.SetAccessControl(security);
     }
 
     private sealed class TempDirectory : IDisposable

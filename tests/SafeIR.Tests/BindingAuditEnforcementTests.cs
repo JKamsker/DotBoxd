@@ -79,6 +79,26 @@ public sealed class BindingAuditEnforcementTests
 
     [Theory]
     [MemberData(nameof(Modes))]
+    public async Task Audited_binding_return_quota_is_reported_before_missing_success_audit(ExecutionMode mode)
+    {
+        var host = Host(TestBindingBehavior.ReturnsLargeStringWithoutAudit);
+        var module = await host.ImportJsonAsync(ModuleJson(returnType: "String"));
+        var policy = SandboxPolicyBuilder.Create().WithFuel(1_000).WithMaxTotalStringBytes(4).Build();
+        var plan = await host.PrepareAsync(module, policy);
+
+        var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit, new SandboxExecutionOptions { Mode = mode, AllowFallbackToInterpreter = false });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, result.Error!.Code);
+        Assert.Contains(result.AuditEvents, e =>
+            e.Kind == "BindingCall" &&
+            e.BindingId == "test.audited" &&
+            e.Success == false &&
+            e.ErrorCode == SandboxErrorCode.QuotaExceeded);
+    }
+
+    [Theory]
+    [MemberData(nameof(Modes))]
     public async Task Audited_binding_failure_without_binding_audit_preserves_error_and_audits_failure(ExecutionMode mode)
     {
         var host = Host(TestBindingBehavior.ThrowsWithoutAudit);
@@ -138,7 +158,7 @@ public sealed class BindingAuditEnforcementTests
     {
         var builder = SandboxPolicyBuilder.Create().WithFuel(1_000);
         return behavior == TestBindingBehavior.WrongCapability
-            ? builder.Grant("test.cap", new { }).Build()
+            ? builder.Grant("test.cap", new { }, SandboxEffect.Audit).Build()
             : builder.Build();
     }
 
@@ -147,8 +167,8 @@ public sealed class BindingAuditEnforcementTests
             "test.audited",
             SemVersion.One,
             [],
-            SandboxType.I32,
-            SandboxEffect.Cpu,
+            behavior == TestBindingBehavior.ReturnsLargeStringWithoutAudit ? SandboxType.String : SandboxType.I32,
+            behavior == TestBindingBehavior.WrongCapability ? SandboxEffect.Cpu | SandboxEffect.Audit : SandboxEffect.Cpu,
             behavior == TestBindingBehavior.WrongCapability ? "test.cap" : null,
             BindingCostModel.Fixed(1),
             AuditLevel.PerCall,
@@ -195,6 +215,11 @@ public sealed class BindingAuditEnforcementTests
                 if (behavior == TestBindingBehavior.MissingAuditCorrelation)
                 {
                     WriteAudit(context, "BindingCall", null, SandboxEffect.Cpu, "test:audit", includeCorrelation: false);
+                }
+
+                if (behavior == TestBindingBehavior.ReturnsLargeStringWithoutAudit)
+                {
+                    return ValueTask.FromResult(SandboxValue.FromString("oversized"));
                 }
 
                 return ValueTask.FromResult(SandboxValue.FromInt32(7));
@@ -248,10 +273,11 @@ public sealed class BindingAuditEnforcementTests
         EmptyAuditEffect,
         EmptyAuditResource,
         EmptyAuditFields,
-        MissingAuditCorrelation
+        MissingAuditCorrelation,
+        ReturnsLargeStringWithoutAudit
     }
 
-    private static string ModuleJson()
+    private static string ModuleJson(string returnType = "I32")
         => """
         {
           "id": "binding-audit-enforcement",
@@ -261,10 +287,10 @@ public sealed class BindingAuditEnforcementTests
               "id": "main",
               "visibility": "entrypoint",
               "parameters": [],
-              "returnType": "I32",
+              "returnType": "{returnType}",
               "body": [{ "op": "return", "value": { "call": "test.audited", "args": [] } }]
             }
           ]
         }
-        """;
+        """.Replace("{returnType}", returnType, StringComparison.Ordinal);
 }

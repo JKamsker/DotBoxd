@@ -177,8 +177,9 @@ internal sealed class ExpressionEvaluator
             timeout = _context.CreateWallTimeToken();
             using var returnCredits = _context.BeginBindingReturnCreditScope();
             var value = await descriptor.Invoke(_context, args, timeout.Token).ConfigureAwait(false);
+            value = _context.ChargeBindingReturn(descriptor, value);
             _context.EnsureRequiredBindingSuccessAudit(descriptor, auditCheckpoint);
-            return _context.ChargeBindingReturn(descriptor, value);
+            return value;
         }
         catch (SandboxRuntimeException ex)
         {

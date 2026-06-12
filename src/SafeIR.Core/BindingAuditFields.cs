@@ -7,10 +7,11 @@ public static class BindingAuditFields
         DateTimeOffset startedAt,
         string moduleHash,
         string policyHash,
+        bool deterministic,
         long? bytesRead = null,
         long? bytesWritten = null)
     {
-        var fields = Create(resourceKind, startedAt, bytesRead, bytesWritten)
+        var fields = Create(resourceKind, startedAt, deterministic, bytesRead, bytesWritten)
             .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
         fields["moduleHash"] = moduleHash;
         fields["policyHash"] = policyHash;
@@ -20,13 +21,14 @@ public static class BindingAuditFields
     public static IReadOnlyDictionary<string, string> Create(
         string resourceKind,
         DateTimeOffset startedAt,
+        bool deterministic = false,
         long? bytesRead = null,
         long? bytesWritten = null)
     {
         var fields = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["resourceKind"] = resourceKind,
-            ["durationMs"] = DurationMs(startedAt)
+            ["durationMs"] = deterministic ? "0.000" : DurationMs(startedAt)
         };
 
         AddBytes(fields, "bytesRead", bytesRead);

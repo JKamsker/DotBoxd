@@ -37,17 +37,50 @@ internal static class PluginSymbolReader
         INamedTypeSymbol kernelType,
         SemanticModel semanticModel,
         CancellationToken cancellationToken)
-        => kernelType.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Where(IsLiveSetting)
+    {
+        var properties = LiveSettingProperties(kernelType).ToArray();
+        foreach (var group in properties.GroupBy(p => p.Name, StringComparer.Ordinal).Where(g => g.Take(2).Count() > 1))
+        {
+            throw new NotSupportedException($"Live setting '{group.Key}' is declared more than once.");
+        }
+
+        return properties
             .Select(property => ToLiveSetting(property, semanticModel, cancellationToken))
             .ToArray();
+    }
+
+    private static IEnumerable<IPropertySymbol> LiveSettingProperties(INamedTypeSymbol kernelType)
+    {
+        for (var current = kernelType; current is not null; current = current.BaseType)
+        {
+            foreach (var property in current.GetMembers().OfType<IPropertySymbol>().Where(IsLiveSetting))
+            {
+                ValidateLiveSettingProperty(property);
+                yield return property;
+            }
+        }
+    }
 
     private static bool IsLiveSetting(IPropertySymbol property)
         => property.GetAttributes().Any(a => string.Equals(
             a.AttributeClass?.ToDisplayString(),
             "SafeIR.Plugins.LiveSettingAttribute",
             StringComparison.Ordinal));
+
+    private static void ValidateLiveSettingProperty(IPropertySymbol property)
+    {
+        if (property.DeclaredAccessibility != Accessibility.Public ||
+            property.IsStatic ||
+            property.GetMethod is null ||
+            property.SetMethod is null ||
+            property.GetMethod.DeclaredAccessibility != Accessibility.Public ||
+            property.SetMethod.DeclaredAccessibility != Accessibility.Public ||
+            property.SetMethod.IsInitOnly)
+        {
+            throw new NotSupportedException(
+                $"Live setting '{property.Name}' must be a public instance property with public get and set accessors.");
+        }
+    }
 
     private static LiveSettingModel ToLiveSetting(
         IPropertySymbol property,

@@ -208,6 +208,45 @@ public sealed class SafeNetworkTests
 
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
+        Assert.Contains(result.AuditEvents, e => e.BindingId == "net.http.get" && e.Bytes > 0);
+    }
+
+    [Fact]
+    public async Task Http_get_charges_failed_response_metadata_before_status_failure()
+    {
+        var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("not-found", HttpStatusCode.NotFound));
+        var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
+        var policy = SandboxPolicyBuilder.Create()
+            .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
+            .WithFuel(5_000)
+            .Build();
+        var plan = await host.PrepareAsync(module, policy);
+
+        var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.True(result.ResourceUsage.NetworkBytesRead > 0);
+        Assert.Contains(result.AuditEvents, e => e.BindingId == "net.http.get" && e.Bytes > 0);
+    }
+
+    [Fact]
+    public async Task Http_get_enforces_failed_response_metadata_byte_limit()
+    {
+        var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("not-found", HttpStatusCode.NotFound));
+        var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
+        var policy = SandboxPolicyBuilder.Create()
+            .GrantHttpGet(["api.example.com"], maxResponseBytes: 1)
+            .WithFuel(5_000)
+            .Build();
+        var plan = await host.PrepareAsync(module, policy);
+
+        var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, result.Error!.Code);
+        Assert.True(result.ResourceUsage.NetworkBytesRead > 0);
+        Assert.Contains(result.AuditEvents, e => e.BindingId == "net.http.get" && e.Bytes > 0);
     }
 
     [Fact]

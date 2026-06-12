@@ -56,8 +56,8 @@ public sealed class SandboxHost
 }
 ```
 
-`ImportJsonAsync` is the preferred extension method provided by the JSON serialization addon.
-`ImportJsonAsync` remains a compatibility alias and does not imply a custom language parser.
+`ImportJsonAsync` is the extension method provided by the JSON serialization addon.
+SafeIR does not expose a custom language parser; hosts import JSON IR into the safe model.
 `RevokeCapability` is host-local and applies to already-prepared plans. A plan whose module
 requests or whose selected entrypoint reaches a revoked capability must fail before interpreted
 execution, compiler invocation, or compiled-cache lookup. The failed run emits a

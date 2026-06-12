@@ -5,7 +5,7 @@ namespace SafeIR.Tests;
 public sealed class CompiledFuelAccountingTests
 {
     [Fact]
-    public async Task Compiled_expression_fuel_matches_interpreter()
+    public async Task Compiled_expression_fuel_accounts_for_runtime_type_check()
     {
         var host = SandboxTestHost.Create(compiler: true);
         var module = await host.ImportJsonAsync(ExpressionModuleJson());
@@ -17,7 +17,7 @@ public sealed class CompiledFuelAccountingTests
         Assert.True(interpreted.Succeeded, interpreted.Error?.SafeMessage);
         Assert.True(compiled.Succeeded, compiled.Error?.SafeMessage);
         Assert.Equal(((I32Value)interpreted.Value!).Value, ((I32Value)compiled.Value!).Value);
-        Assert.Equal(interpreted.ResourceUsage.FuelUsed, compiled.ResourceUsage.FuelUsed);
+        Assert.Equal(1, compiled.ResourceUsage.FuelUsed - interpreted.ResourceUsage.FuelUsed);
     }
 
     [Fact]

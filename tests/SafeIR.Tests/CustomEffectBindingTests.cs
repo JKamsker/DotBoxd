@@ -77,23 +77,13 @@ public sealed class CustomEffectBindingTests
     }
 
     [Fact]
-    public async Task Compiled_mode_rejects_capability_gated_binding_even_when_effects_are_pure()
+    public void Registry_rejects_capability_gated_binding_when_effects_are_pure()
     {
         var observed = 0;
-        var host = HostWithBinding(CapabilityGatedPureBinding(() => observed++));
-        var module = await host.ImportJsonAsync(CapabilityGatedPureModule());
-        var plan = await host.PrepareAsync(
-            module,
-            SandboxPolicyBuilder.Create().Grant("game.write", new { }).WithFuel(1_000).Build());
 
-        var result = await host.ExecuteAsync(
-            plan,
-            "main",
-            SandboxValue.Unit,
-            new SandboxExecutionOptions { Mode = ExecutionMode.Compiled, AllowFallbackToInterpreter = false });
+        var ex = Assert.Throws<SandboxValidationException>(() => HostWithBinding(CapabilityGatedPureBinding(() => observed++)));
 
-        Assert.False(result.Succeeded);
-        Assert.Equal(SandboxErrorCode.ValidationError, result.Error!.Code);
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-BINDING-EFFECT");
         Assert.Equal(0, observed);
     }
 
@@ -192,20 +182,4 @@ public sealed class CustomEffectBindingTests
         }
         """;
 
-    private static string CapabilityGatedPureModule()
-        => """
-        {
-          "id": "capability-gated-pure-binding",
-          "version": "1.0.0",
-          "functions": [
-            {
-              "id": "main",
-              "visibility": "entrypoint",
-              "parameters": [],
-              "returnType": "I32",
-              "body": [{ "op": "return", "value": { "call": "app.gatedPure", "args": [] } }]
-            }
-          ]
-        }
-        """;
 }

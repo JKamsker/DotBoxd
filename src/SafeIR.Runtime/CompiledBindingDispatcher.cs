@@ -25,8 +25,9 @@ internal static class CompiledBindingDispatcher
             timeout = context.CreateWallTimeToken();
             using var returnCredits = context.BeginBindingReturnCreditScope();
             var value = descriptor.Invoke(context, args, timeout.Token).AsTask().GetAwaiter().GetResult();
+            value = context.ChargeBindingReturn(descriptor, value);
             context.EnsureRequiredBindingSuccessAudit(descriptor, auditCheckpoint);
-            return context.ChargeBindingReturn(descriptor, value);
+            return value;
         }
         catch (SandboxRuntimeException ex)
         {
