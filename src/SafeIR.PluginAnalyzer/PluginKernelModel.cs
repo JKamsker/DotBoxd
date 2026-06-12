@@ -10,6 +10,8 @@ internal sealed record PluginKernelModel(
     string EventName,
     string EventParameterName,
     string ContextParameterName,
+    string HandleEventParameterName,
+    string HandleContextParameterName,
     IReadOnlyList<EventPropertyModel> EventProperties,
     IReadOnlyList<LiveSettingModel> LiveSettings,
     MethodDeclarationSyntax ShouldHandle,

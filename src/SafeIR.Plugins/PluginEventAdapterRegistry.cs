@@ -51,7 +51,7 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
     {
         _properties = properties;
         Parameters = properties
-            .Select(p => new Parameter(p.Name, LiveSettingTypeConverter.ToSandboxType(LiveSettingTypeConverter.FromClrType(p.PropertyType))))
+            .Select(p => new Parameter(EventParameterName(p.Name), LiveSettingTypeConverter.ToSandboxType(LiveSettingTypeConverter.FromClrType(p.PropertyType))))
             .ToArray();
     }
 
@@ -75,4 +75,7 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
                 LiveSettingTypeConverter.FromClrType(p.PropertyType),
                 p.GetValue(e)))
             .ToArray();
+
+    private static string EventParameterName(string propertyName)
+        => "e_" + propertyName;
 }

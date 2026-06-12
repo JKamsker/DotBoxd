@@ -41,6 +41,8 @@ internal static class PluginKernelModelFactory
                 EventName: eventType.Name,
                 EventParameterName: shouldHandle.ParameterList.Parameters.FirstOrDefault()?.Identifier.ValueText ?? "e",
                 ContextParameterName: shouldHandle.ParameterList.Parameters.Skip(1).FirstOrDefault()?.Identifier.ValueText ?? "ctx",
+                HandleEventParameterName: handle.ParameterList.Parameters.FirstOrDefault()?.Identifier.ValueText ?? "e",
+                HandleContextParameterName: handle.ParameterList.Parameters.Skip(1).FirstOrDefault()?.Identifier.ValueText ?? "ctx",
                 EventProperties: PluginSymbolReader.EventProperties(eventType),
                 LiveSettings: PluginSymbolReader.LiveSettings(type),
                 ShouldHandle: shouldHandle,

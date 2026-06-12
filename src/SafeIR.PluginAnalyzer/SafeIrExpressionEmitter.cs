@@ -6,10 +6,12 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 internal sealed class SafeIrExpressionEmitter
 {
     private readonly PluginKernelModel _model;
+    private readonly string _eventParameterName;
 
-    public SafeIrExpressionEmitter(PluginKernelModel model)
+    public SafeIrExpressionEmitter(PluginKernelModel model, string? eventParameterName = null)
     {
         _model = model;
+        _eventParameterName = eventParameterName ?? model.EventParameterName;
     }
 
     public string Emit(ExpressionSyntax expression)
@@ -41,7 +43,7 @@ internal sealed class SafeIrExpressionEmitter
     private string EmitMemberAccess(MemberAccessExpressionSyntax member)
     {
         if (member.Expression is IdentifierNameSyntax identifier &&
-            string.Equals(identifier.Identifier.ValueText, _model.EventParameterName, StringComparison.Ordinal)) {
+            string.Equals(identifier.Identifier.ValueText, _eventParameterName, StringComparison.Ordinal)) {
             return $"Var({LiteralReader.StringLiteral(EventVariable(member.Name.Identifier.ValueText))})";
         }
 

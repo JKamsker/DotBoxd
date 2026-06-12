@@ -137,13 +137,39 @@ internal static class SafeIrPackageSourceEmitter
 
     private static string HandleExpression(PluginKernelModel model)
     {
-        var invocation = model.Handle.ExpressionBody?.Expression as InvocationExpressionSyntax ??
-            model.Handle.Body?.Statements.OfType<ExpressionStatementSyntax>().Select(s => s.Expression).OfType<InvocationExpressionSyntax>().FirstOrDefault();
+        var invocation = FindMessageSendInvocation(model);
         if (invocation is null || invocation.ArgumentList.Arguments.Count != 2) {
             throw new NotSupportedException("Kernel Handle must call ctx.Messages.Send(targetId, message).");
         }
 
-        var emitter = new SafeIrExpressionEmitter(model);
+        var emitter = new SafeIrExpressionEmitter(model, model.HandleEventParameterName);
         return $"new global::SafeIR.CallExpression(global::SafeIR.Plugins.PluginMessageBindings.SendBindingId, [{emitter.Emit(invocation.ArgumentList.Arguments[0].Expression)}, {emitter.Emit(invocation.ArgumentList.Arguments[1].Expression)}], null, Span)";
+    }
+
+    private static InvocationExpressionSyntax? FindMessageSendInvocation(PluginKernelModel model)
+    {
+        var invocation = model.Handle.ExpressionBody?.Expression as InvocationExpressionSyntax ??
+            model.Handle.Body?.Statements.OfType<ExpressionStatementSyntax>()
+                .Select(s => s.Expression)
+                .OfType<InvocationExpressionSyntax>()
+                .FirstOrDefault();
+        if (invocation is null || !IsContextMessageSend(invocation.Expression, model.HandleContextParameterName)) {
+            return null;
+        }
+
+        return invocation;
+    }
+
+    private static bool IsContextMessageSend(ExpressionSyntax expression, string contextParameterName)
+    {
+        if (expression is not MemberAccessExpressionSyntax sendAccess ||
+            !string.Equals(sendAccess.Name.Identifier.ValueText, "Send", StringComparison.Ordinal) ||
+            sendAccess.Expression is not MemberAccessExpressionSyntax messagesAccess ||
+            !string.Equals(messagesAccess.Name.Identifier.ValueText, "Messages", StringComparison.Ordinal)) {
+            return false;
+        }
+
+        return messagesAccess.Expression is IdentifierNameSyntax context &&
+            string.Equals(context.Identifier.ValueText, contextParameterName, StringComparison.Ordinal);
     }
 }

@@ -196,6 +196,74 @@ public sealed class PluginAnalyzerTests
         Assert.Empty(driver.GetRunResult().GeneratedTrees);
     }
 
+    [Fact]
+    public void Generator_reports_handle_that_does_not_call_context_messages_send()
+    {
+        var compilation = CreateCompilation("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId);
+
+            [GamePlugin("bad-handle")]
+            public sealed partial class BadKernel : IEventKernel<DamageEvent>
+            {
+                public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => Send(e.TargetId, "message");
+
+                private static void Send(string targetId, string message) { }
+            }
+            """);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            [new SafeIrPluginPackageGenerator().AsSourceGenerator()],
+            parseOptions: ParseOptions);
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out _,
+            out var generatorDiagnostics);
+
+        Assert.Contains(generatorDiagnostics, d => d.Id == "SGP100");
+        Assert.Empty(driver.GetRunResult().GeneratedTrees);
+    }
+
+    [Fact]
+    public void Generator_uses_handle_event_parameter_name_for_message_arguments()
+    {
+        var compilation = CreateCompilation("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId);
+
+            [GamePlugin("different-handle-name")]
+            public sealed partial class GoodKernel : IEventKernel<DamageEvent>
+            {
+                public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
+
+                public void Handle(DamageEvent evt, HookContext ctx)
+                    => ctx.Messages.Send(evt.TargetId, "message");
+            }
+            """);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            [new SafeIrPluginPackageGenerator().AsSourceGenerator()],
+            parseOptions: ParseOptions);
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var generatorDiagnostics);
+
+        Assert.Empty(generatorDiagnostics.Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
+        var generated = Assert.Single(driver.GetRunResult().GeneratedTrees).GetText().ToString();
+        Assert.Contains("Var(\"e_TargetId\")", generated);
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
+    }
+
     private static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(string source)
     {
         var compilation = CreateCompilation(source);
