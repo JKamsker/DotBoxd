@@ -45,15 +45,12 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
     public void ReleaseStream(RpcStreamHandle handle) =>
         _streams.ReleaseOutboundReservation(handle.StreamId);
 
-    public async Task<TResponse> InvokeAsync<TRequest, TResponse>(
+    public Task<TResponse> InvokeAsync<TRequest, TResponse>(
         string service,
         string method,
         TRequest request,
-        CancellationToken ct = default)
-    {
-        using var received = await SendRequestAsync(service, method, request, instanceId: null, streams: null, ct).ConfigureAwait(false);
-        return DeserializeNonStreamingResponse<TResponse>(received);
-    }
+        CancellationToken ct = default) =>
+        SendUnaryRequestAsync<TRequest, TResponse>(service, method, request, instanceId: null, ct);
 
     public async Task<TResponse> InvokeAsync<TRequest, TResponse>(
         string service,
@@ -66,14 +63,11 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         return DeserializeNonStreamingResponse<TResponse>(received);
     }
 
-    public async Task<TResponse> InvokeAsync<TResponse>(
+    public Task<TResponse> InvokeAsync<TResponse>(
         string service,
         string method,
-        CancellationToken ct = default)
-    {
-        using var received = await SendRequestAsync(service, method, instanceId: null, ct).ConfigureAwait(false);
-        return DeserializeNonStreamingResponse<TResponse>(received);
-    }
+        CancellationToken ct = default) =>
+        SendUnaryRequestAsync<TResponse>(service, method, instanceId: null, ct);
 
     public async Task InvokeAsync<TRequest>(
         string service,
