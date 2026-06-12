@@ -9,6 +9,7 @@ public static class SafeIrJsonImporter
     {
         try
         {
+            JsonImportBudgetGuard.Validate(json);
             using var document = JsonDocument.Parse(json, new JsonDocumentOptions
             {
                 AllowTrailingCommas = false,
