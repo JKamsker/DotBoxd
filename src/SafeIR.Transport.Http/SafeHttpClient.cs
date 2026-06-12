@@ -124,14 +124,17 @@ public static class SafeHttpClient
         var buffer = new byte[4096];
         while (true)
         {
-            var read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            var remaining = maxBytes - memory.Length;
+            var readLimit = (int)Math.Min(buffer.Length, remaining + 1);
+            var read = await stream.ReadAsync(buffer.AsMemory(0, readLimit), cancellationToken)
+                .ConfigureAwait(false);
             if (read == 0)
             {
                 break;
             }
 
             context.Budget.ChargeNetworkRead(read);
-            if (memory.Length + read > maxBytes)
+            if (read > remaining)
             {
                 throw Error(SandboxErrorCode.QuotaExceeded, "net.http.get denied: response exceeds byte limit");
             }

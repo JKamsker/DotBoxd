@@ -63,7 +63,7 @@ public sealed class SafeInMemoryHttpMessageInvoker : HttpMessageInvoker
             }
 
             var message = new HttpResponseMessage(_statusCode) {
-                Content = new ByteArrayContent(_responseBytes),
+                Content = new StreamContent(new NonSeekableMemoryStream(_responseBytes)),
                 RequestMessage = _finalRequestUri is null
                     ? request
                     : new HttpRequestMessage(request.Method, _finalRequestUri)
@@ -74,5 +74,20 @@ public sealed class SafeInMemoryHttpMessageInvoker : HttpMessageInvoker
 
             return message;
         }
+    }
+
+    private sealed class NonSeekableMemoryStream(byte[] bytes) : MemoryStream(bytes, writable: false)
+    {
+        public override bool CanSeek => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override long Seek(long offset, SeekOrigin loc) => throw new NotSupportedException();
     }
 }
