@@ -2,17 +2,73 @@ namespace SafeIR;
 
 public sealed record FunctionAnalysis(SandboxType ReturnType, SandboxEffect Effects);
 
-public sealed record ExecutionPlan(
-    string ModuleHash,
-    string PlanHash,
-    string PlanSeal,
-    string PolicyHash,
-    string BindingManifestHash,
-    SandboxModule Module,
-    SandboxPolicy Policy,
-    BindingRegistry Bindings,
-    ResourceLimits Budget,
-    IReadOnlyDictionary<string, FunctionAnalysis> FunctionAnalysis);
+public sealed class ExecutionPlan
+{
+    public ExecutionPlan(
+        string moduleHash,
+        string planHash,
+        ExecutionPlanSeal planSeal,
+        string policyHash,
+        string bindingManifestHash,
+        SandboxModule module,
+        SandboxPolicy policy,
+        BindingRegistry bindings,
+        ResourceLimits budget,
+        IReadOnlyDictionary<string, FunctionAnalysis> functionAnalysis)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(moduleHash);
+        ArgumentException.ThrowIfNullOrWhiteSpace(planHash);
+        ArgumentNullException.ThrowIfNull(planSeal);
+        ArgumentException.ThrowIfNullOrWhiteSpace(policyHash);
+        ArgumentException.ThrowIfNullOrWhiteSpace(bindingManifestHash);
+        ArgumentNullException.ThrowIfNull(module);
+        ArgumentNullException.ThrowIfNull(policy);
+        ArgumentNullException.ThrowIfNull(bindings);
+        ArgumentNullException.ThrowIfNull(budget);
+
+        ModuleHash = moduleHash;
+        PlanHash = planHash;
+        PlanSeal = planSeal;
+        PolicyHash = policyHash;
+        BindingManifestHash = bindingManifestHash;
+        Module = module;
+        Policy = policy;
+        Bindings = bindings;
+        Budget = budget;
+        FunctionAnalysis = ModelCopy.Dictionary(functionAnalysis);
+    }
+
+    public string ModuleHash { get; }
+    public string PlanHash { get; }
+    public ExecutionPlanSeal PlanSeal { get; }
+    public string PolicyHash { get; }
+    public string BindingManifestHash { get; }
+    public SandboxModule Module { get; }
+    public SandboxPolicy Policy { get; }
+    public BindingRegistry Bindings { get; }
+    public ResourceLimits Budget { get; }
+    public IReadOnlyDictionary<string, FunctionAnalysis> FunctionAnalysis { get; }
+}
+
+public sealed class ExecutionPlanSeal : IEquatable<ExecutionPlanSeal>
+{
+    private readonly string _value;
+
+    public ExecutionPlanSeal(string value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+        _value = value;
+    }
+
+    public bool Equals(ExecutionPlanSeal? other)
+        => other is not null && StringComparer.Ordinal.Equals(_value, other._value);
+
+    public override bool Equals(object? obj) => Equals(obj as ExecutionPlanSeal);
+
+    public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(_value);
+
+    public override string ToString() => "[redacted]";
+}
 
 public sealed record SandboxExecutionOptions
 {

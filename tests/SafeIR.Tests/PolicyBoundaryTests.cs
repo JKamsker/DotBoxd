@@ -181,7 +181,9 @@ public sealed partial class PolicyBoundaryTests
         var module = await host.ParseJsonAsync(SandboxTestHost.PureScoreJson());
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
         var unverifiedModule = await host.ParseJsonAsync(UnknownCallJson());
-        var tampered = plan with { Module = unverifiedModule };
+        var tampered = new ExecutionPlan(
+            plan.ModuleHash, plan.PlanHash, plan.PlanSeal, plan.PolicyHash, plan.BindingManifestHash,
+            unverifiedModule, plan.Policy, plan.Bindings, plan.Budget, plan.FunctionAnalysis);
 
         var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () =>
             await host.ExecuteAsync(

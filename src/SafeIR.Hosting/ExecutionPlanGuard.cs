@@ -69,7 +69,7 @@ internal static class ExecutionPlanGuard
             plan.PolicyHash != expected.PolicyHash ||
             plan.BindingManifestHash != expected.BindingManifestHash ||
             plan.PlanHash != expected.PlanHash ||
-            plan.PlanSeal != expected.PlanSeal ||
+            !plan.PlanSeal.Equals(expected.PlanSeal) ||
             plan.Budget != expected.Budget ||
             !SameAnalysis(plan.FunctionAnalysis, expected.FunctionAnalysis))
         {

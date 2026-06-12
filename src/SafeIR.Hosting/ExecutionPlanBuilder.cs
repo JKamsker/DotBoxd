@@ -19,7 +19,7 @@ internal static class ExecutionPlanBuilder
         return new ExecutionPlan(
             moduleHash,
             planHash,
-            planSeal,
+            new ExecutionPlanSeal(planSeal),
             policy.Hash,
             bindings.ManifestHash,
             module,
