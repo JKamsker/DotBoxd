@@ -18,9 +18,8 @@ internal static class PluginKernelModelFactory
         var pluginId = PluginSymbolReader.PluginId(context.Attributes);
         var eventTypes = PluginSymbolReader.EventTypes(type);
         if (string.IsNullOrWhiteSpace(pluginId)) {
-            var diagnostic = Diagnostic.Create(
-                PluginAnalyzerDiagnostics.UnsupportedKernelShapeRule,
-                declaration.Identifier.GetLocation(),
+            var diagnostic = PluginKernelDiagnostic.Create(
+                declaration.Identifier,
                 "GamePlugin id must be a non-empty string.");
             return new PluginKernelModelResult(null, diagnostic);
         }
@@ -35,9 +34,8 @@ internal static class PluginKernelModelFactory
 
         if (eventTypes.Count > 1)
         {
-            var diagnostic = Diagnostic.Create(
-                PluginAnalyzerDiagnostics.UnsupportedKernelShapeRule,
-                declaration.Identifier.GetLocation(),
+            var diagnostic = PluginKernelDiagnostic.Create(
+                declaration.Identifier,
                 "Game plugins must implement exactly one IEventKernel<TEvent>.");
             return new PluginKernelModelResult(null, diagnostic);
         }
