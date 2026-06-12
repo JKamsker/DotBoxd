@@ -290,11 +290,16 @@ internal static class ParameterReader
             return new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(values, StringComparer.Ordinal));
         }
 
-        var dictionary = parameters.GetType().GetProperties()
-            .ToDictionary(
-                p => p.Name,
-                p => Convert.ToString(p.GetValue(parameters), System.Globalization.CultureInfo.InvariantCulture) ?? "",
-                StringComparer.Ordinal);
+        var properties = parameters.GetType().GetProperties();
+        var dictionary = new Dictionary<string, string>(properties.Length, StringComparer.Ordinal);
+        for (var i = 0; i < properties.Length; i++)
+        {
+            var property = properties[i];
+            dictionary.Add(
+                property.Name,
+                Convert.ToString(property.GetValue(parameters), System.Globalization.CultureInfo.InvariantCulture) ?? "");
+        }
+
         return new ReadOnlyDictionary<string, string>(dictionary);
     }
 }
