@@ -20,23 +20,28 @@ internal static class CompiledExecutionRunner
         var context = new SandboxContext(runId, plan.Policy, budget, plan.Bindings, audit, cancellationToken, allowedBindings);
         var startedAt = DateTimeOffset.UtcNow;
 
-        try {
+        try
+        {
+            budget.CheckDeadline();
             context.ChargeValue(input);
             var value = artifact.Entrypoint(context, input);
             EnsureReturnType(plan, entrypoint, value);
             WriteSummary(audit, runId, startedAt, plan, artifact, budget, true, null);
             return ValueTask.FromResult(Result(plan, artifact, budget, audit, true, value, null));
         }
-        catch (OperationCanceledException) {
+        catch (OperationCanceledException)
+        {
             var error = new SandboxError(SandboxErrorCode.Cancelled, "execution cancelled");
             WriteSummary(audit, runId, startedAt, plan, artifact, budget, false, error);
             return ValueTask.FromResult(Result(plan, artifact, budget, audit, false, null, error));
         }
-        catch (SandboxRuntimeException ex) {
+        catch (SandboxRuntimeException ex)
+        {
             WriteSummary(audit, runId, startedAt, plan, artifact, budget, false, ex.Error);
             return ValueTask.FromResult(Result(plan, artifact, budget, audit, false, null, ex.Error));
         }
-        catch (Exception) {
+        catch (Exception)
+        {
             var error = new SandboxError(SandboxErrorCode.HostFailure, "compiled sandbox execution failed");
             WriteSummary(audit, runId, startedAt, plan, artifact, budget, false, error);
             return ValueTask.FromResult(Result(plan, artifact, budget, audit, false, null, error));
@@ -51,7 +56,8 @@ internal static class CompiledExecutionRunner
         bool succeeded,
         SandboxValue? value,
         SandboxError? error)
-        => new() {
+        => new()
+        {
             Succeeded = succeeded,
             Value = value,
             Error = error,
@@ -87,7 +93,8 @@ internal static class CompiledExecutionRunner
 
     private static void EnsureReturnType(ExecutionPlan plan, string entrypoint, SandboxValue? value)
     {
-        if (value is null || !plan.FunctionAnalysis.TryGetValue(entrypoint, out var analysis)) {
+        if (value is null || !plan.FunctionAnalysis.TryGetValue(entrypoint, out var analysis))
+        {
             throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "function return type mismatch"));
         }
 

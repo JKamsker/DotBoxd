@@ -32,6 +32,8 @@ public sealed class VerifierGeneratedShapeTests
             "bindings",
             "runtime",
             "compiler",
+            "type-system",
+            "effect-analysis",
             "verifier",
             "1.0.0",
             "net10.0",

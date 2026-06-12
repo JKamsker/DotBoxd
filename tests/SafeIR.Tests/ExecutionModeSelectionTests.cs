@@ -105,7 +105,7 @@ public sealed class ExecutionModeSelectionTests
     }
 
     [Fact]
-    public async Task Compiled_mode_executes_gated_dynamic_method_artifact()
+    public async Task Compiled_mode_rejects_dynamic_method_artifact_before_delegate_runs()
     {
         var compiler = new DynamicDelegateCompiler();
         var host = HostWithCompiler(compiler);
@@ -118,12 +118,12 @@ public sealed class ExecutionModeSelectionTests
             SandboxValue.FromList([SandboxValue.FromInt32(1), SandboxValue.FromInt32(1)]),
             new SandboxExecutionOptions { Mode = ExecutionMode.Compiled, AllowFallbackToInterpreter = false });
 
-        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.ValidationError, result.Error!.Code);
         Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
-        Assert.Equal(123, ((I32Value)result.Value!).Value);
-        Assert.Equal("delegate-artifact", result.ArtifactHash);
+        Assert.Null(result.ArtifactHash);
         Assert.Equal(1, compiler.Calls);
-        Assert.True(compiler.DelegateExecuted);
+        Assert.False(compiler.DelegateExecuted);
     }
 
     [Fact]

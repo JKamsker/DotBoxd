@@ -31,6 +31,11 @@ public sealed record SandboxType(string Name, IReadOnlyList<SandboxType> Argumen
     public static SandboxType F64 { get; } = Scalar("F64");
     public static SandboxType String { get; } = Scalar("String");
     public static SandboxType SandboxPath { get; } = Scalar("SandboxPath");
+    public static SandboxType SandboxUri { get; } = Scalar("SandboxUri");
+    public static SandboxType PlayerId { get; } = Scalar("PlayerId");
+    public static SandboxType ItemId { get; } = Scalar("ItemId");
+    public static SandboxType QuestId { get; } = Scalar("QuestId");
+    public static SandboxType MapId { get; } = Scalar("MapId");
 
     public static SandboxType Scalar(string name) => new(name, []);
 
@@ -42,6 +47,9 @@ public sealed record SandboxType(string Name, IReadOnlyList<SandboxType> Argumen
         => ForbiddenNames.Contains(name) ||
            name.StartsWith("System.", StringComparison.Ordinal) ||
            name.StartsWith("Microsoft.", StringComparison.Ordinal);
+
+    public static bool IsKnownOpaqueId(string name)
+        => name is "PlayerId" or "ItemId" or "QuestId" or "MapId";
 
     public bool IsKnown(int maxDepth = 8) => IsKnown(this, 0, maxDepth);
 

@@ -41,7 +41,7 @@ public sealed class CompiledArtifactGuardTests
     }
 
     [Fact]
-    public async Task Dynamic_method_artifact_executes_gated_delegate()
+    public async Task Dynamic_method_artifact_is_rejected_before_delegate_runs()
     {
         var compiler = new DynamicCompiler();
         var host = HostWithCompiler(compiler);
@@ -49,12 +49,9 @@ public sealed class CompiledArtifactGuardTests
 
         var result = await ExecuteCompiledAsync(host, plan);
 
-        Assert.True(result.Succeeded, result.Error?.SafeMessage);
-        Assert.Equal(123, ((I32Value)result.Value!).Value);
-        Assert.True(compiler.DelegateExecuted);
-        Assert.Contains(result.AuditEvents, e =>
-            e.Kind == "RunSummary" &&
-            e.Message?.Contains("runtimeForm=DynamicMethod", StringComparison.Ordinal) == true);
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.ValidationError, result.Error!.Code);
+        Assert.False(compiler.DelegateExecuted);
     }
 
     [Fact]
@@ -77,6 +74,8 @@ public sealed class CompiledArtifactGuardTests
     [Theory]
     [InlineData("cache")]
     [InlineData("compiler")]
+    [InlineData("type-system")]
+    [InlineData("analysis")]
     [InlineData("verifier")]
     [InlineData("runtime")]
     [InlineData("language")]
@@ -154,6 +153,8 @@ public sealed class CompiledArtifactGuardTests
         {
             "cache" => manifest with { CacheKey = "stale-cache-key" },
             "compiler" => manifest with { CompilerVersion = "stale-compiler" },
+            "type-system" => manifest with { TypeSystemVersion = "stale-type-system" },
+            "analysis" => manifest with { EffectAnalysisVersion = "stale-analysis" },
             "verifier" => manifest with { VerifierVersion = "stale-verifier" },
             "runtime" => manifest with { RuntimeFacadeHash = "stale-runtime" },
             "language" => manifest with { LanguageVersion = "0.0.0" },

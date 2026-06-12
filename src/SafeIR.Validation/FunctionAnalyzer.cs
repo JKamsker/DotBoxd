@@ -4,8 +4,6 @@ using SafeIR;
 
 internal sealed class FunctionAnalyzer
 {
-    private const int MaxTextLiteralLength = 65_536;
-
     private readonly IBindingCatalog _bindings;
     private readonly List<SandboxDiagnostic> _diagnostics;
     private readonly Dictionary<string, SandboxFunction> _functions;
@@ -25,7 +23,8 @@ internal sealed class FunctionAnalyzer
 
     public IReadOnlyDictionary<string, FunctionAnalysis> AnalyzeAll()
     {
-        foreach (var function in _functions.Values) {
+        foreach (var function in _functions.Values)
+        {
             Analyze(function.Id);
         }
 
@@ -34,11 +33,13 @@ internal sealed class FunctionAnalyzer
 
     private FunctionAnalysis Analyze(string functionId)
     {
-        if (_analyzed.TryGetValue(functionId, out var existing)) {
+        if (_analyzed.TryGetValue(functionId, out var existing))
+        {
             return existing;
         }
 
-        if (!_analyzing.Add(functionId)) {
+        if (!_analyzing.Add(functionId))
+        {
             _diagnostics.Add(new SandboxDiagnostic("E-CALL-RECURSION", $"recursive call involving '{functionId}' is not allowed"));
             return new FunctionAnalysis(SandboxType.Unit, SandboxEffect.None);
         }
@@ -47,11 +48,13 @@ internal sealed class FunctionAnalyzer
         var scope = FunctionScope.FromParameters(function.Parameters);
         var effects = SandboxEffect.Cpu;
         var alwaysReturns = false;
-        foreach (var statement in function.Body) {
+        foreach (var statement in function.Body)
+        {
             alwaysReturns |= AnalyzeStatement(statement, scope, function.ReturnType, ref effects);
         }
 
-        if (!alwaysReturns) {
+        if (!alwaysReturns)
+        {
             _diagnostics.Add(new SandboxDiagnostic("E-FN-RETURN", $"function '{function.Id}' is missing a guaranteed return"));
         }
 
@@ -63,7 +66,8 @@ internal sealed class FunctionAnalyzer
 
     private bool AnalyzeStatement(Statement statement, FunctionScope scope, SandboxType returnType, ref SandboxEffect effects)
     {
-        switch (statement) {
+        switch (statement)
+        {
             case AssignmentStatement assignment:
                 var assignmentType = AnalyzeExpression(assignment.Value, scope, ref effects);
                 scope.Set(assignment.Name, assignmentType, _diagnostics, assignment.Span);
@@ -99,7 +103,8 @@ internal sealed class FunctionAnalyzer
     private bool AnalyzeBlock(IReadOnlyList<Statement> block, FunctionScope scope, SandboxType returnType, ref SandboxEffect effects)
     {
         var alwaysReturns = false;
-        foreach (var statement in block) {
+        foreach (var statement in block)
+        {
             alwaysReturns |= AnalyzeStatement(statement, scope, returnType, ref effects);
         }
 
@@ -109,8 +114,9 @@ internal sealed class FunctionAnalyzer
     private SandboxType AnalyzeExpression(Expression expression, FunctionScope scope, ref SandboxEffect effects)
     {
         effects |= SandboxEffect.Cpu;
-        return expression switch {
-            LiteralExpression literal => LiteralType(literal, ref effects),
+        return expression switch
+        {
+            LiteralExpression literal => LiteralExpressionAnalyzer.Analyze(literal, ref effects),
             VariableExpression variable => scope.Get(variable.Name, _diagnostics, variable.Span),
             UnaryExpression unary => AnalyzeUnary(unary, scope, ref effects),
             BinaryExpression binary => AnalyzeBinary(binary, scope, ref effects),
@@ -125,64 +131,17 @@ internal sealed class FunctionAnalyzer
         return SandboxType.Unit;
     }
 
-    private static SandboxType LiteralType(LiteralExpression literal, ref SandboxEffect effects)
-    {
-        if (literal.Value is StringValue text) {
-            effects |= SandboxEffect.Alloc;
-            EnsureTextLiteralLength(text.Value, "string");
-        }
-
-        if (literal.Value is F64Value number && !double.IsFinite(number.Value)) {
-            throw new SandboxValidationException([new SandboxDiagnostic("E-CONST-F64", "f64 constant must be finite")]);
-        }
-
-        if (literal.Value is SandboxPathValue path) {
-            effects |= SandboxEffect.Alloc;
-            EnsureTextLiteralLength(path.Value.RelativePath, "path");
-            if (!IsPortableRelativePath(path.Value.RelativePath)) {
-                throw new SandboxValidationException([new SandboxDiagnostic("E-CONST-PATH", "path constant must be a portable relative path")]);
-            }
-        }
-
-        if (literal.Value is SandboxUriValue uri) {
-            effects |= SandboxEffect.Alloc;
-            EnsureTextLiteralLength(uri.Value.Value, "uri");
-            if (!IsSandboxUri(uri.Value.Value)) {
-                throw new SandboxValidationException([new SandboxDiagnostic("E-CONST-URI", "uri constant must be an absolute URI without user info")]);
-            }
-        }
-
-        return literal.Value.Type;
-    }
-
-    private static void EnsureTextLiteralLength(string value, string literalKind)
-    {
-        if (value.Length > MaxTextLiteralLength) {
-            throw new SandboxValidationException([
-                new SandboxDiagnostic("E-CONST-HUGE", $"{literalKind} constant exceeds maximum length")
-            ]);
-        }
-    }
-
-    private static bool IsPortableRelativePath(string path)
-        => SandboxLiteralConstraints.IsPortableRelativePath(path);
-
-    private static bool IsSandboxUri(string value)
-        => !string.IsNullOrWhiteSpace(value) &&
-           !value.Contains('\\') &&
-           Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
-           !string.IsNullOrWhiteSpace(uri.Host) &&
-           string.IsNullOrEmpty(uri.UserInfo);
-
     private SandboxType AnalyzeUnary(UnaryExpression unary, FunctionScope scope, ref SandboxEffect effects)
     {
         var operand = AnalyzeExpression(unary.Operand, scope, ref effects);
-        if (unary.Operator == "!") {
+        if (unary.Operator == "!")
+        {
             Require(operand, SandboxType.Bool, unary.Span);
             return SandboxType.Bool;
         }
 
-        if (unary.Operator != "-") {
+        if (unary.Operator != "-")
+        {
             _diagnostics.Add(new SandboxDiagnostic("E-OP-UNKNOWN", $"unknown unary operator '{unary.Operator}'", Span: unary.Span));
             return SandboxType.Unit;
         }
@@ -195,24 +154,28 @@ internal sealed class FunctionAnalyzer
     {
         var left = AnalyzeExpression(binary.Left, scope, ref effects);
         var right = AnalyzeExpression(binary.Right, scope, ref effects);
-        if (binary.Operator is "==" or "!=") {
+        if (binary.Operator is "==" or "!=")
+        {
             Require(left, right, binary.Span);
             return SandboxType.Bool;
         }
 
-        if (binary.Operator is "<" or "<=" or ">" or ">=") {
+        if (binary.Operator is "<" or "<=" or ">" or ">=")
+        {
             Require(left, SandboxType.I32, binary.Span);
             Require(right, SandboxType.I32, binary.Span);
             return SandboxType.Bool;
         }
 
-        if (binary.Operator is "&&" or "||") {
+        if (binary.Operator is "&&" or "||")
+        {
             Require(left, SandboxType.Bool, binary.Span);
             Require(right, SandboxType.Bool, binary.Span);
             return SandboxType.Bool;
         }
 
-        if (binary.Operator is not ("+" or "-" or "*" or "/" or "%")) {
+        if (binary.Operator is not ("+" or "-" or "*" or "/" or "%"))
+        {
             _diagnostics.Add(new SandboxDiagnostic("E-OP-UNKNOWN", $"unknown binary operator '{binary.Operator}'", Span: binary.Span));
             return SandboxType.Unit;
         }
@@ -225,20 +188,24 @@ internal sealed class FunctionAnalyzer
     private SandboxType AnalyzeCall(CallExpression call, FunctionScope scope, ref SandboxEffect effects)
     {
         ValidateGenericType(call);
-        if (_collections.TryAnalyze(call, scope, ref effects, out var collectionType)) {
+        if (_collections.TryAnalyze(call, scope, ref effects, out var collectionType))
+        {
             return collectionType;
         }
 
-        if (_functions.TryGetValue(call.Name, out var function)) {
+        if (_functions.TryGetValue(call.Name, out var function))
+        {
             CheckArguments(call, function.Parameters.Select(p => p.Type).ToArray(), scope, ref effects);
             effects |= Analyze(function.Id).Effects;
             return function.ReturnType;
         }
 
-        if (_bindings.TryGet(call.Name, out var binding)) {
+        if (_bindings.TryGet(call.Name, out var binding))
+        {
             CheckArguments(call, binding.Parameters, scope, ref effects);
             effects |= binding.Effects;
-            if (binding.RequiredCapability is not null) {
+            if (binding.RequiredCapability is not null)
+            {
                 RequiredCapabilities.Add(binding.RequiredCapability);
             }
 
@@ -251,34 +218,40 @@ internal sealed class FunctionAnalyzer
 
     private void ValidateGenericType(CallExpression call)
     {
-        if (call.GenericType is null) {
+        if (call.GenericType is null)
+        {
             return;
         }
 
-        if (!call.GenericType.IsKnown() || call.GenericType.IsForbidden()) {
+        if (!call.GenericType.IsKnown() || call.GenericType.IsForbidden())
+        {
             _diagnostics.Add(new SandboxDiagnostic("E-TYPE-UNKNOWN", $"unknown or forbidden type '{call.GenericType}'", Span: call.Span));
         }
 
-        if (call.Name is not ("list.empty" or "map.empty")) {
+        if (call.Name is not ("list.empty" or "map.empty"))
+        {
             _diagnostics.Add(new SandboxDiagnostic("E-CALL-GENERIC", $"call '{call.Name}' does not accept genericType", Span: call.Span));
         }
     }
 
     private void CheckArguments(CallExpression call, IReadOnlyList<SandboxType> expected, FunctionScope scope, ref SandboxEffect effects)
     {
-        if (call.Arguments.Count != expected.Count) {
+        if (call.Arguments.Count != expected.Count)
+        {
             _diagnostics.Add(new SandboxDiagnostic("E-CALL-ARITY", $"call '{call.Name}' expects {expected.Count} arguments", Span: call.Span));
             return;
         }
 
-        for (var i = 0; i < expected.Count; i++) {
+        for (var i = 0; i < expected.Count; i++)
+        {
             Require(AnalyzeExpression(call.Arguments[i], scope, ref effects), expected[i], call.Arguments[i].Span);
         }
     }
 
     private void Require(SandboxType actual, SandboxType expected, SourceSpan span)
     {
-        if (actual != expected) {
+        if (actual != expected)
+        {
             _diagnostics.Add(new SandboxDiagnostic("E-TYPE-MISMATCH", $"expected {expected}, got {actual}", Span: span));
         }
     }

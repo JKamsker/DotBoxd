@@ -111,6 +111,8 @@ public sealed class BackendIsolationTests
             "binding-hash",
             "runtime-hash",
             "compiler-version",
+            "type-system-version",
+            "effect-analysis-version",
             "verifier-version",
             "1.0.0",
             "net10.0",

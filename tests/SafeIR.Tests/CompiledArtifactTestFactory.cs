@@ -48,6 +48,8 @@ internal static class CompiledArtifactTestFactory
             plan.BindingManifestHash,
             CacheKeyBuilder.RuntimeFacadeHash,
             CacheKeyBuilder.CompilerVersion,
+            CacheKeyBuilder.TypeSystemVersion,
+            CacheKeyBuilder.EffectAnalysisVersion,
             policy.VerifierVersion,
             CacheKeyBuilder.LanguageVersion,
             CacheKeyBuilder.TargetFramework,
@@ -60,19 +62,22 @@ internal static class CompiledArtifactTestFactory
         => new(true, [], artifactHash, VerificationPolicy.BoxedValueDefaults().VerifierVersion, DateTimeOffset.UtcNow);
 
     public static byte[] BuildI32Assembly(int parameterCount, int value)
-        => BuildExecuteAssembly(parameterCount, il => {
+        => BuildExecuteAssembly(parameterCount, il =>
+        {
             il.Emit(OpCodes.Ldc_I4, value);
             il.Emit(OpCodes.Call, RuntimeMethod(nameof(CompiledRuntime.I32)));
         });
 
     public static byte[] BuildBoolAssembly(int parameterCount, bool value)
-        => BuildExecuteAssembly(parameterCount, il => {
+        => BuildExecuteAssembly(parameterCount, il =>
+        {
             il.Emit(value ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
             il.Emit(OpCodes.Call, RuntimeMethod(nameof(CompiledRuntime.Bool)));
         });
 
     public static byte[] BuildBindingCallAssembly(int parameterCount, string bindingId)
-        => BuildExecuteAssembly(parameterCount, il => {
+        => BuildExecuteAssembly(parameterCount, il =>
+        {
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldstr, bindingId);
             il.Emit(OpCodes.Ldc_I4_0);
@@ -81,7 +86,8 @@ internal static class CompiledArtifactTestFactory
         });
 
     private static byte[] BuildExecuteAssembly(int parameterCount, Action<ILGenerator> emitBody)
-        => VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             var parameterTypes = new Type[parameterCount + 1];
             parameterTypes[0] = typeof(SandboxContext);
             Array.Fill(parameterTypes, typeof(SandboxValue), 1, parameterCount);
@@ -114,7 +120,8 @@ internal static class CompiledArtifactTestFactory
             il.Emit(OpCodes.Ldc_I4, parameterCount);
             il.Emit(OpCodes.Call, RuntimeMethod(nameof(CompiledRuntime.ValidateEntrypointInput)));
             il.Emit(OpCodes.Ldarg_0);
-            for (var i = 0; i < parameterCount; i++) {
+            for (var i = 0; i < parameterCount; i++)
+            {
                 il.Emit(OpCodes.Ldarg_1);
                 il.Emit(OpCodes.Ldc_I4, i);
                 il.Emit(OpCodes.Ldc_I4, parameterCount);

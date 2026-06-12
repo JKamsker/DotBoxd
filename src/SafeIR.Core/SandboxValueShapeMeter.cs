@@ -8,16 +8,22 @@ internal static class SandboxValueShapeMeter
         var stack = new Stack<Frame>();
         var shape = new ValueShape(0, 0, 0, 0, 0, 0);
         stack.Push(new Frame(value, Depth: 0, Exit: false));
-        while (stack.Count > 0) {
+        while (stack.Count > 0)
+        {
             var frame = stack.Pop();
-            if (frame.Exit) {
+            if (frame.Exit)
+            {
                 active.Remove(frame.Value);
                 continue;
             }
 
-            switch (frame.Value) {
+            switch (frame.Value)
+            {
                 case StringValue text:
                     shape = AddText(shape, SandboxLiteralConstraints.TextShape(text.Value), limits);
+                    break;
+                case OpaqueIdValue id:
+                    shape = AddText(shape, SandboxLiteralConstraints.TextShape(id.Value), limits);
                     break;
                 case SandboxPathValue path:
                     shape = AddText(shape, SandboxLiteralConstraints.TextShape(path.Value.RelativePath), limits);
@@ -31,6 +37,12 @@ internal static class SandboxValueShapeMeter
                 case MapValue map:
                     shape = AddMap(shape, map, frame.Depth, active, stack, limits);
                     break;
+                case UnitValue or BoolValue or I32Value or I64Value or F64Value:
+                    break;
+                default:
+                    throw new SandboxRuntimeException(new SandboxError(
+                        SandboxErrorCode.InvalidInput,
+                        "unknown sandbox value kind is not supported"));
             }
         }
 
@@ -49,7 +61,8 @@ internal static class SandboxValueShapeMeter
         var depth = parentDepth + 1;
         EnsureCollectionLimits(list.Values.Count, 0, depth, limits);
         stack.Push(new Frame(list, depth, Exit: true));
-        for (var i = list.Values.Count - 1; i >= 0; i--) {
+        for (var i = list.Values.Count - 1; i >= 0; i--)
+        {
             stack.Push(new Frame(list.Values[i], depth, Exit: false));
         }
 
@@ -68,7 +81,8 @@ internal static class SandboxValueShapeMeter
         var depth = parentDepth + 1;
         EnsureCollectionLimits(0, map.Values.Count, depth, limits);
         stack.Push(new Frame(map, depth, Exit: true));
-        foreach (var pair in map.Values.Reverse()) {
+        foreach (var pair in map.Values.Reverse())
+        {
             stack.Push(new Frame(pair.Value, depth, Exit: false));
             stack.Push(new Frame(pair.Key, depth, Exit: false));
         }
@@ -85,11 +99,13 @@ internal static class SandboxValueShapeMeter
         ResourceLimits? limits)
     {
         var totalElements = AddLong(shape.Elements, elements, "collection element budget exhausted");
-        if (limits is not null && totalElements > limits.MaxTotalCollectionElements) {
+        if (limits is not null && totalElements > limits.MaxTotalCollectionElements)
+        {
             throw Quota("collection element budget exhausted");
         }
 
-        return shape with {
+        return shape with
+        {
             Elements = totalElements,
             MaxListLength = Math.Max(shape.MaxListLength, listLength),
             MaxMapEntries = Math.Max(shape.MaxMapEntries, mapEntries),
@@ -99,16 +115,19 @@ internal static class SandboxValueShapeMeter
 
     private static ValueShape AddText(ValueShape shape, ValueShape text, ResourceLimits? limits)
     {
-        if (limits is not null && text.MaxStringLength > limits.MaxStringLength) {
+        if (limits is not null && text.MaxStringLength > limits.MaxStringLength)
+        {
             throw Quota("string length budget exhausted");
         }
 
         var stringBytes = AddLong(shape.StringBytes, text.StringBytes, "string byte budget exhausted");
-        if (limits is not null && stringBytes > limits.MaxTotalStringBytes) {
+        if (limits is not null && stringBytes > limits.MaxTotalStringBytes)
+        {
             throw Quota("string byte budget exhausted");
         }
 
-        return shape with {
+        return shape with
+        {
             MaxStringLength = Math.Max(shape.MaxStringLength, text.MaxStringLength),
             StringBytes = stringBytes
         };
@@ -116,26 +135,31 @@ internal static class SandboxValueShapeMeter
 
     private static void EnsureCollectionLimits(int listLength, int mapEntries, int depth, ResourceLimits? limits)
     {
-        if (limits is null) {
+        if (limits is null)
+        {
             return;
         }
 
-        if (listLength > limits.MaxListLength) {
+        if (listLength > limits.MaxListLength)
+        {
             throw Quota("list length budget exhausted");
         }
 
-        if (mapEntries > limits.MaxMapEntries) {
+        if (mapEntries > limits.MaxMapEntries)
+        {
             throw Quota("map entry budget exhausted");
         }
 
-        if (depth > limits.MaxCollectionDepth) {
+        if (depth > limits.MaxCollectionDepth)
+        {
             throw Quota("collection depth budget exhausted");
         }
     }
 
     private static void Enter(object value, HashSet<object> active)
     {
-        if (!active.Add(value)) {
+        if (!active.Add(value))
+        {
             throw new SandboxRuntimeException(new SandboxError(
                 SandboxErrorCode.InvalidInput,
                 "cyclic collection value is not supported"));
@@ -144,10 +168,12 @@ internal static class SandboxValueShapeMeter
 
     private static long AddLong(long current, long amount, string quotaMessage)
     {
-        try {
+        try
+        {
             return checked(current + amount);
         }
-        catch (OverflowException) {
+        catch (OverflowException)
+        {
             throw Quota(quotaMessage);
         }
     }

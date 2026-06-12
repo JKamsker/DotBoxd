@@ -1,5 +1,7 @@
 namespace SafeIR.Verifier;
 
+using System.Security.Cryptography;
+using System.Text;
 using SafeIR;
 
 public sealed record VerificationPolicy(
@@ -100,6 +102,25 @@ public sealed record VerificationPolicy(
             "safe-ir-verifier-3");
 
     public bool IsMemberAllowed(string memberSignature) => AllowedMembers.Contains(memberSignature);
+
+    public string AllowlistHash
+        => Hash(
+            "allowlist",
+            AllowedAssemblies
+                .Concat(AllowedAssemblyIdentities)
+                .Concat(AllowedTypes)
+                .Concat(AllowedMembers)
+                .Concat(ForbiddenTypePrefixes));
+
+    public string RuntimeFacadeHash
+        => Hash(
+            "runtime-facade",
+            AllowedMembers.Where(m => m.StartsWith($"{Runtime}.", StringComparison.Ordinal)));
+
+    private static string Hash(string prefix, IEnumerable<string> values)
+        => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
+            prefix + "|" + string.Join('|', values.Order(StringComparer.Ordinal)))))
+            .ToLowerInvariant();
 
     private static string RuntimeMember(string name, string parameters, string returnType)
         => $"{Runtime}.{name}({parameters}):{returnType}";

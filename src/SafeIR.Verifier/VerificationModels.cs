@@ -9,6 +9,8 @@ public sealed record ArtifactManifest(
     string BindingManifestHash,
     string RuntimeFacadeHash,
     string CompilerVersion,
+    string TypeSystemVersion,
+    string EffectAnalysisVersion,
     string VerifierVersion,
     string LanguageVersion,
     string TargetFramework,

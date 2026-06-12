@@ -36,7 +36,7 @@ public sealed class BindingAuditEnforcementTests
     {
         var host = Host(TestBindingBehavior.WritesSuccessAudit);
         var module = await host.ParseJsonAsync(ModuleJson());
-        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var plan = await host.PrepareAsync(module, Policy(TestBindingBehavior.WritesSuccessAudit));
 
         var result = await host.ExecuteAsync(
             plan,
@@ -51,6 +51,28 @@ public sealed class BindingAuditEnforcementTests
         Assert.Equal(
             result.AuditEvents.Select(e => e.SequenceNumber).Order().ToArray(),
             result.AuditEvents.Select(e => e.SequenceNumber).ToArray());
+    }
+
+    [Theory]
+    [InlineData(TestBindingBehavior.WrongAuditKind)]
+    [InlineData(TestBindingBehavior.WrongCapability)]
+    [InlineData(TestBindingBehavior.EmptyAuditEffect)]
+    [InlineData(TestBindingBehavior.EmptyAuditResource)]
+    public async Task Malformed_binding_audit_does_not_satisfy_required_audit(TestBindingBehavior behavior)
+    {
+        var host = Host(behavior);
+        var module = await host.ParseJsonAsync(ModuleJson());
+        var plan = await host.PrepareAsync(module, Policy(behavior));
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.Unit,
+            new SandboxExecutionOptions { Mode = ExecutionMode.Interpreted });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.BindingFailure, result.Error!.Code);
+        Assert.Contains("required audit", result.Error.SafeMessage, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -110,6 +132,14 @@ public sealed class BindingAuditEnforcementTests
             builder.UseCompilerIfAvailable();
         });
 
+    private static SandboxPolicy Policy(TestBindingBehavior behavior)
+    {
+        var builder = SandboxPolicyBuilder.Create().WithFuel(1_000);
+        return behavior == TestBindingBehavior.WrongCapability
+            ? builder.Grant("test.cap", new { }).Build()
+            : builder.Build();
+    }
+
     private static BindingDescriptor AuditedBinding(TestBindingBehavior behavior)
         => new(
             "test.audited",
@@ -117,7 +147,7 @@ public sealed class BindingAuditEnforcementTests
             [],
             SandboxType.I32,
             SandboxEffect.Cpu,
-            null,
+            behavior == TestBindingBehavior.WrongCapability ? "test.cap" : null,
             BindingCostModel.Fixed(1),
             AuditLevel.PerCall,
             BindingSafety.PureHostFacade,
@@ -132,25 +162,69 @@ public sealed class BindingAuditEnforcementTests
 
                 if (behavior == TestBindingBehavior.WritesSuccessAudit)
                 {
-                    context.Audit.Write(new SandboxAuditEvent(
-                        context.RunId,
-                        "BindingCall",
-                        DateTimeOffset.UtcNow,
-                        true,
-                        BindingId: "test.audited",
-                        Effect: SandboxEffect.Cpu,
-                        ResourceId: "test:audit"));
+                    WriteAudit(context, "BindingCall", "test.cap", SandboxEffect.Cpu, "test:audit");
+                }
+
+                if (behavior == TestBindingBehavior.WrongAuditKind)
+                {
+                    WriteAudit(context, "RunSummary", null, SandboxEffect.Cpu, "test:audit");
+                }
+
+                if (behavior == TestBindingBehavior.WrongCapability)
+                {
+                    WriteAudit(context, "BindingCall", "other.cap", SandboxEffect.Cpu, "test:audit");
+                }
+
+                if (behavior == TestBindingBehavior.EmptyAuditEffect)
+                {
+                    WriteAudit(context, "BindingCall", null, SandboxEffect.None, "test:audit");
+                }
+
+                if (behavior == TestBindingBehavior.EmptyAuditResource)
+                {
+                    WriteAudit(context, "BindingCall", null, SandboxEffect.Cpu, null);
                 }
 
                 return ValueTask.FromResult(SandboxValue.FromInt32(7));
             },
-            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)));
+            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)),
+            NoParameterGrant);
 
-    private enum TestBindingBehavior
+    private static void NoParameterGrant(CapabilityGrant grant, ICollection<SandboxDiagnostic> diagnostics)
+    {
+        foreach (var key in grant.Parameters.Keys)
+        {
+            diagnostics.Add(new SandboxDiagnostic(
+                "E-POLICY-GRANT-PARAM",
+                $"grant '{grant.Id}' parameter '{key}' is not supported"));
+        }
+    }
+
+    private static void WriteAudit(
+        SandboxContext context,
+        string kind,
+        string? capabilityId,
+        SandboxEffect effect,
+        string? resourceId)
+        => context.Audit.Write(new SandboxAuditEvent(
+            context.RunId,
+            kind,
+            DateTimeOffset.UtcNow,
+            true,
+            BindingId: "test.audited",
+            CapabilityId: capabilityId,
+            Effect: effect,
+            ResourceId: resourceId));
+
+    public enum TestBindingBehavior
     {
         MissingSuccessAudit,
         WritesSuccessAudit,
-        ThrowsWithoutAudit
+        ThrowsWithoutAudit,
+        WrongAuditKind,
+        WrongCapability,
+        EmptyAuditEffect,
+        EmptyAuditResource
     }
 
     private static string ModuleJson()

@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Reflection.Emit;
+using SafeIR.Runtime;
 using SafeIR.Verifier;
 
 namespace SafeIR.Tests;
@@ -27,6 +28,17 @@ public sealed class VerifierMethodShapeTests
         Assert.Contains(result.Diagnostics, d => d.Code == "V-METHOD-NAME");
     }
 
+    [Fact]
+    public async Task Verifier_rejects_local_generated_call_before_meters()
+    {
+        var result = await VerifyAsync(AssemblyWithUnmeteredRecursiveCall());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d =>
+            d.Code == "V-COMPILED-SHAPE" &&
+            d.Message.Contains("before local calls", StringComparison.Ordinal));
+    }
+
     private static async ValueTask<VerificationResult> VerifyAsync(byte[] bytes)
     {
         var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).ToLowerInvariant();
@@ -39,6 +51,8 @@ public sealed class VerifierMethodShapeTests
             "bindings",
             "runtime",
             "compiler",
+            "type-system",
+            "effect-analysis",
             "verifier",
             "1.0.0",
             "net10.0",
@@ -91,6 +105,43 @@ public sealed class VerifierMethodShapeTests
         assembly.Save(stream);
         return stream.ToArray();
     }
+
+    private static byte[] AssemblyWithUnmeteredRecursiveCall()
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
+            var function = type.DefineMethod(
+                "Fn_0",
+                MethodAttributes.Private | MethodAttributes.Static,
+                typeof(SandboxValue),
+                [typeof(SandboxContext)]);
+            var fnIl = function.GetILGenerator();
+            fnIl.Emit(OpCodes.Ldarg_0);
+            fnIl.Emit(OpCodes.Call, function);
+            fnIl.Emit(OpCodes.Pop);
+            fnIl.Emit(OpCodes.Ldarg_0);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.EnterCall))!);
+            fnIl.Emit(OpCodes.Ldarg_0);
+            fnIl.Emit(OpCodes.Ldc_I4_1);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.ChargeFuel))!);
+            fnIl.Emit(OpCodes.Ldarg_0);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.ExitCall))!);
+            fnIl.Emit(OpCodes.Ldc_I4_0);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.I32))!);
+            fnIl.Emit(OpCodes.Ret);
+
+            var execute = type.DefineMethod(
+                "Execute",
+                MethodAttributes.Public | MethodAttributes.Static,
+                typeof(SandboxValue),
+                [typeof(SandboxContext), typeof(SandboxValue)]);
+            var il = execute.GetILGenerator();
+            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Ldc_I4_0);
+            il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.ValidateEntrypointInput))!);
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Call, function);
+            il.Emit(OpCodes.Ret);
+        });
 
     private static void DefineVoidMethod(TypeBuilder type, string name, MethodAttributes attributes)
     {

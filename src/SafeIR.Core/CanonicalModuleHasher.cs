@@ -10,15 +10,18 @@ public static class CanonicalModuleHasher
         var writer = new CanonicalWriter();
         writer.Write("module", module.Id, module.Version.ToString(), module.TargetSandboxVersion.ToString());
 
-        foreach (var request in module.CapabilityRequests.OrderBy(r => r.Id, StringComparer.Ordinal)) {
+        foreach (var request in module.CapabilityRequests.OrderBy(r => r.Id, StringComparer.Ordinal))
+        {
             writer.Write("requires", request.Id, request.Reason ?? "");
         }
 
-        foreach (var item in module.Metadata.OrderBy(m => m.Key, StringComparer.Ordinal)) {
+        foreach (var item in module.Metadata.OrderBy(m => m.Key, StringComparer.Ordinal))
+        {
             writer.Write("metadata", item.Key, item.Value);
         }
 
-        foreach (var function in module.Functions.OrderBy(f => f.Id, StringComparer.Ordinal)) {
+        foreach (var function in module.Functions.OrderBy(f => f.Id, StringComparer.Ordinal))
+        {
             WriteFunction(writer, function);
         }
 
@@ -28,18 +31,21 @@ public static class CanonicalModuleHasher
     private static void WriteFunction(CanonicalWriter writer, SandboxFunction function)
     {
         writer.Write("fn", function.IsEntrypoint ? "entry" : "private", function.Id, Type(function.ReturnType));
-        foreach (var parameter in function.Parameters) {
+        foreach (var parameter in function.Parameters)
+        {
             writer.Write("param", parameter.Name, Type(parameter.Type));
         }
 
-        foreach (var statement in function.Body) {
+        foreach (var statement in function.Body)
+        {
             WriteStatement(writer, statement);
         }
     }
 
     private static void WriteStatement(CanonicalWriter writer, Statement statement)
     {
-        switch (statement) {
+        switch (statement)
+        {
             case AssignmentStatement assignment:
                 writer.Write("set", assignment.Name, Expr(assignment.Value));
                 break;
@@ -71,7 +77,8 @@ public static class CanonicalModuleHasher
         }
     }
 
-    private static string Expr(Expression expression) => expression switch {
+    private static string Expr(Expression expression) => expression switch
+    {
         LiteralExpression literal => Node("lit", Value(literal.Value)),
         VariableExpression variable => Node("var", variable.Name),
         UnaryExpression unary => Node("unary", unary.Operator, Expr(unary.Operand)),
@@ -81,13 +88,15 @@ public static class CanonicalModuleHasher
     };
 
     private static string Value(SandboxValue value)
-        => value switch {
+        => value switch
+        {
             UnitValue => Node("unit"),
             BoolValue boolean => Node("bool", boolean.Value ? "true" : "false"),
             I32Value number => Node("i32", number.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             I64Value number => Node("i64", number.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             F64Value number => Node("f64", number.Value.ToString("R", System.Globalization.CultureInfo.InvariantCulture)),
             StringValue text => Node("string", text.Value),
+            OpaqueIdValue id => Node("opaque-id", id.TypeName, id.Value),
             SandboxPathValue path => Node("path", path.Value.RelativePath),
             SandboxUriValue uri => Node("uri", uri.Value.Value),
             ListValue list => ListLiteral(list),

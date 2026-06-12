@@ -20,7 +20,7 @@ internal static class CompiledArtifactGuard
         EnsureMatchesPlan(artifact, plan, entrypoint);
         if (artifact.RuntimeForm == CompiledRuntimeFormKind.DynamicMethod)
         {
-            return artifact;
+            throw Invalid("dynamic method artifacts require an independent verifier gate before execution");
         }
 
         var assemblyBytes = artifact.AssemblyBytes.ToArray();
@@ -80,8 +80,10 @@ internal static class CompiledArtifactGuard
             manifest.PolicyHash != plan.PolicyHash ||
             manifest.BindingManifestHash != plan.BindingManifestHash ||
             manifest.CompilerVersion != CacheKeyBuilder.CompilerVersion ||
+            manifest.TypeSystemVersion != CacheKeyBuilder.TypeSystemVersion ||
+            manifest.EffectAnalysisVersion != CacheKeyBuilder.EffectAnalysisVersion ||
             manifest.VerifierVersion != DefaultVerificationPolicy.VerifierVersion ||
-            manifest.RuntimeFacadeHash != CacheKeyBuilder.RuntimeFacadeHash ||
+            manifest.RuntimeFacadeHash != DefaultVerificationPolicy.RuntimeFacadeHash ||
             manifest.LanguageVersion != CacheKeyBuilder.LanguageVersion ||
             manifest.TargetFramework != CacheKeyBuilder.TargetFramework)
         {

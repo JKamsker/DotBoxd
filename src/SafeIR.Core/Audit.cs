@@ -36,7 +36,7 @@ public interface IAuditSink
 
     void Write(SandboxAuditEvent auditEvent);
 
-    bool HasBindingAuditSince(string bindingId, long checkpoint, bool success);
+    bool HasBindingAuditSince(BindingDescriptor descriptor, long checkpoint, bool success);
 }
 
 public sealed class InMemoryAuditSink : IAuditSink
@@ -54,10 +54,34 @@ public sealed class InMemoryAuditSink : IAuditSink
         _events.Add(auditEvent with { SequenceNumber = sequence });
     }
 
-    public bool HasBindingAuditSince(string bindingId, long checkpoint, bool success)
+    public bool HasBindingAuditSince(BindingDescriptor descriptor, long checkpoint, bool success)
         => _events.Any(e =>
             e.SequenceNumber > checkpoint &&
             e.Success == success &&
-            e.Kind != "DebugTrace" &&
-            StringComparer.Ordinal.Equals(e.BindingId, bindingId));
+            IsBindingAuditKind(e.Kind) &&
+            StringComparer.Ordinal.Equals(e.BindingId, descriptor.Id) &&
+            CapabilityMatches(e, descriptor) &&
+            EffectMatches(e, descriptor) &&
+            !string.IsNullOrWhiteSpace(e.ResourceId) &&
+            (success || e.ErrorCode is not null));
+
+    private static bool IsBindingAuditKind(string kind)
+        => kind is "BindingCall" or "SandboxLog" or "PluginMessage";
+
+    private static bool CapabilityMatches(SandboxAuditEvent auditEvent, BindingDescriptor descriptor)
+        => descriptor.RequiredCapability is null ||
+           StringComparer.Ordinal.Equals(auditEvent.CapabilityId, descriptor.RequiredCapability);
+
+    private static bool EffectMatches(SandboxAuditEvent auditEvent, BindingDescriptor descriptor)
+    {
+        if (auditEvent.Effect == SandboxEffect.None ||
+            (auditEvent.Effect & ~descriptor.Effects) != SandboxEffect.None)
+        {
+            return false;
+        }
+
+        var nonCpuEffects = descriptor.Effects & ~SandboxEffect.Cpu;
+        return nonCpuEffects == SandboxEffect.None ||
+               (auditEvent.Effect & nonCpuEffects) != SandboxEffect.None;
+    }
 }

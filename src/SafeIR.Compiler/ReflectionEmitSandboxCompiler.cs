@@ -31,7 +31,8 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         var function = ResolveSupportedFunction(plan, options.Entrypoint);
         var cacheKey = CacheKeyBuilder.Build(plan, options.Entrypoint, _verificationPolicy, options.Optimize);
         var lookupStatus = CompiledCacheStatus.None;
-        if (_cache is not null) {
+        if (_cache is not null)
+        {
             var cached = await _cache.TryReadAsync(
                 cacheKey,
                 plan,
@@ -39,8 +40,10 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
                 _verifier,
                 _verificationPolicy,
                 cancellationToken).ConfigureAwait(false);
-            if (cached.Status == CompiledCacheStatus.Hit && cached.Artifact is not null) {
-                return cached.Artifact with {
+            if (cached.Status == CompiledCacheStatus.Hit && cached.Artifact is not null)
+            {
+                return cached.Artifact with
+                {
                     Entrypoint = UnmaterializedEntrypoint,
                     CacheStatus = CompiledCacheStatus.Hit
                 };
@@ -52,7 +55,8 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         var assemblyBytes = EmitAssembly(plan, function);
         var manifest = BuildManifest(plan, assemblyBytes, options);
         var verification = await _verifier.VerifyAsync(assemblyBytes, manifest, _verificationPolicy, cancellationToken).ConfigureAwait(false);
-        if (!verification.Succeeded) {
+        if (!verification.Succeeded)
+        {
             throw new SandboxRuntimeException(new SandboxError(
                 SandboxErrorCode.VerifierFailure,
                 "compiled artifact failed verification"));
@@ -83,12 +87,14 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
     private static SandboxFunction ResolveSupportedFunction(ExecutionPlan plan, string entrypoint)
     {
         var function = plan.Module.Functions.FirstOrDefault(f => f.Id == entrypoint && f.IsEntrypoint);
-        if (function is null) {
+        if (function is null)
+        {
             throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, $"entrypoint '{entrypoint}' is not available"));
         }
 
         var effects = plan.FunctionAnalysis[function.Id].Effects;
-        if ((effects & ~(SandboxEffect.Cpu | SandboxEffect.Alloc)) != SandboxEffect.None) {
+        if ((effects & ~(SandboxEffect.Cpu | SandboxEffect.Alloc)) != SandboxEffect.None)
+        {
             throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "compiled mode supports pure modules only"));
         }
 
@@ -110,7 +116,8 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
             [typeof(SandboxContext), typeof(SandboxValue)]);
 
         EmitExecute(execute.GetILGenerator(), function, functions[function.Id]);
-        foreach (var item in plan.Module.Functions) {
+        foreach (var item in plan.Module.Functions)
+        {
             new MethodEmitter(
                 functions[item.Id].GetILGenerator(),
                 item,
@@ -131,7 +138,8 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         IReadOnlyList<SandboxFunction> functions)
     {
         var methods = new Dictionary<string, MethodBuilder>(StringComparer.Ordinal);
-        for (var i = 0; i < functions.Count; i++) {
+        for (var i = 0; i < functions.Count; i++)
+        {
             var function = functions[i];
             methods[function.Id] = type.DefineMethod(
                 "Fn_" + i,
@@ -158,7 +166,8 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ValidateEntrypointInput)));
 
         il.Emit(OpCodes.Ldarg_0);
-        for (var i = 0; i < entrypoint.Parameters.Count; i++) {
+        for (var i = 0; i < entrypoint.Parameters.Count; i++)
+        {
             il.Emit(OpCodes.Ldarg_1);
             EmitInt32(il, i);
             EmitInt32(il, entrypoint.Parameters.Count);
@@ -180,8 +189,10 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
             plan.PlanHash,
             plan.PolicyHash,
             plan.BindingManifestHash,
-            CacheKeyBuilder.RuntimeFacadeHash,
+            _verificationPolicy.RuntimeFacadeHash,
             CacheKeyBuilder.CompilerVersion,
+            CacheKeyBuilder.TypeSystemVersion,
+            CacheKeyBuilder.EffectAnalysisVersion,
             _verificationPolicy.VerifierVersion,
             CacheKeyBuilder.LanguageVersion,
             CacheKeyBuilder.TargetFramework,

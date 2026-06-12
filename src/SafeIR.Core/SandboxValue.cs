@@ -19,6 +19,19 @@ public abstract record SandboxValue
 
     public static SandboxValue FromString(string value) => new StringValue(value);
 
+    public static SandboxValue FromOpaqueId(string typeName, string value)
+        => SandboxType.IsKnownOpaqueId(typeName) && SandboxLiteralConstraints.IsOpaqueId(value)
+            ? new OpaqueIdValue(typeName, value)
+            : throw new ArgumentException("Opaque IDs must use a known ID type and a safe ID value.", nameof(value));
+
+    public static SandboxValue FromPlayerId(string value) => FromOpaqueId("PlayerId", value);
+
+    public static SandboxValue FromItemId(string value) => FromOpaqueId("ItemId", value);
+
+    public static SandboxValue FromQuestId(string value) => FromOpaqueId("QuestId", value);
+
+    public static SandboxValue FromMapId(string value) => FromOpaqueId("MapId", value);
+
     public static SandboxValue FromPath(string value)
         => SandboxLiteralConstraints.IsPortableRelativePath(value)
             ? new SandboxPathValue(new SandboxPath(value))
@@ -70,6 +83,11 @@ public sealed record F64Value(double Value) : SandboxValue
 public sealed record StringValue(string Value) : SandboxValue
 {
     public override SandboxType Type => SandboxType.String;
+}
+
+public sealed record OpaqueIdValue(string TypeName, string Value) : SandboxValue
+{
+    public override SandboxType Type => SandboxType.Scalar(TypeName);
 }
 
 public sealed record SandboxPath(string RelativePath)

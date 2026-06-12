@@ -18,22 +18,27 @@ public sealed class SandboxInterpreter : ISandboxInterpreter
         var context = new SandboxContext(runId, plan.Policy, budget, plan.Bindings, audit, cancellationToken, allowedBindings);
         var startedAt = DateTimeOffset.UtcNow;
 
-        try {
+        try
+        {
+            budget.CheckDeadline();
             var evaluator = new InterpreterEvaluator(plan, context, options);
             var value = await evaluator.ExecuteEntrypointAsync(entrypoint, input).ConfigureAwait(false);
             WriteSummary(audit, runId, startedAt, plan, budget, true, null);
             return Result(plan, budget, audit, true, value, null);
         }
-        catch (OperationCanceledException) {
+        catch (OperationCanceledException)
+        {
             var error = new SandboxError(SandboxErrorCode.Cancelled, "execution cancelled");
             WriteSummary(audit, runId, startedAt, plan, budget, false, error);
             return Result(plan, budget, audit, false, null, error);
         }
-        catch (SandboxRuntimeException ex) {
+        catch (SandboxRuntimeException ex)
+        {
             WriteSummary(audit, runId, startedAt, plan, budget, false, ex.Error);
             return Result(plan, budget, audit, false, null, ex.Error);
         }
-        catch (Exception) {
+        catch (Exception)
+        {
             var error = new SandboxError(SandboxErrorCode.HostFailure, "sandbox execution failed");
             WriteSummary(audit, runId, startedAt, plan, budget, false, error);
             return Result(plan, budget, audit, false, null, error);
@@ -47,7 +52,8 @@ public sealed class SandboxInterpreter : ISandboxInterpreter
         bool succeeded,
         SandboxValue? value,
         SandboxError? error)
-        => new() {
+        => new()
+        {
             Succeeded = succeeded,
             Value = value,
             Error = error,

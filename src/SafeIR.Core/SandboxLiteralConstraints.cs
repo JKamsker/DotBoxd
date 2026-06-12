@@ -17,7 +17,8 @@ public static class SandboxLiteralConstraints
             path.Contains(':') ||
             path.StartsWith("/", StringComparison.Ordinal) ||
             Uri.TryCreate(path, UriKind.Absolute, out _) ||
-            Path.IsPathRooted(path)) {
+            Path.IsPathRooted(path))
+        {
             return false;
         }
 
@@ -29,7 +30,8 @@ public static class SandboxLiteralConstraints
         if (segment is "" or "." or ".." ||
             segment.Any(char.IsControl) ||
             segment.EndsWith(' ') ||
-            segment.EndsWith('.')) {
+            segment.EndsWith('.'))
+        {
             return false;
         }
 
@@ -44,6 +46,11 @@ public static class SandboxLiteralConstraints
            Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
            !string.IsNullOrWhiteSpace(uri.Host) &&
            string.IsNullOrEmpty(uri.UserInfo);
+
+    public static bool IsOpaqueId(string? value)
+        => !string.IsNullOrWhiteSpace(value) &&
+           value.Length <= 256 &&
+           value.All(c => char.IsLetterOrDigit(c) || c is '_' or '-' or '.' or ':');
 
     internal static ValueShape TextShape(string value)
         => new(0, 0, 0, 0, value.Length, value.Length * sizeof(char));

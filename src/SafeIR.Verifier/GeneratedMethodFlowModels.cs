@@ -6,6 +6,7 @@ internal sealed record GeneratedMethodFlow(
     IReadOnlyList<GeneratedInstruction> Instructions,
     IReadOnlyDictionary<int, GeneratedInstruction> ByOffset,
     HashSet<string> ReachableCalls,
+    IReadOnlyDictionary<int, GeneratedMeterState> EntryStates,
     IReadOnlyList<GeneratedMeterState> ReturnStates,
     bool HasUnmeteredCycle);
 

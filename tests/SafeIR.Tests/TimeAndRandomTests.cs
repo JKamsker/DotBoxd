@@ -55,6 +55,15 @@ public sealed class TimeAndRandomTests
     }
 
     [Fact]
+    public async Task Deterministic_random_uses_full_ulong_seed()
+    {
+        var first = await ExecuteRandomSumAsync(0x0000_0000_0000_0001UL);
+        var second = await ExecuteRandomSumAsync(0x0000_0001_0000_0001UL);
+
+        Assert.NotEqual(first, second);
+    }
+
+    [Fact]
     public async Task Deterministic_random_policy_requires_seed()
     {
         var host = SandboxTestHost.Create();
@@ -93,6 +102,21 @@ public sealed class TimeAndRandomTests
           ]
         }
         """;
+
+    private static async Task<int> ExecuteRandomSumAsync(ulong seed)
+    {
+        var host = SandboxTestHost.Create();
+        var module = await host.ParseJsonAsync(RandomSumJson());
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create()
+                .GrantRandom()
+                .Deterministic(DateTimeOffset.UnixEpoch, seed)
+                .Build());
+        var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        return ((I32Value)result.Value!).Value;
+    }
 
     private static string RandomSumJson()
         => """

@@ -7,11 +7,14 @@ using SafeIR.Verifier;
 
 public static class CacheKeyBuilder
 {
-    public const string CompilerVersion = "safe-ir-compiler-6";
-    public const string RuntimeFacadeHash = "safe-ir-runtime-facade-6";
+    public const string CompilerVersion = "safe-ir-compiler-7";
+    public const string TypeSystemVersion = "safe-ir-type-system-2";
+    public const string EffectAnalysisVersion = "safe-ir-effect-analysis-2";
     public const string TargetFramework = "net10.0";
 
     public static string LanguageVersion => SandboxLanguage.CurrentVersionText;
+
+    public static string RuntimeFacadeHash => VerificationPolicy.BoxedValueDefaults().RuntimeFacadeHash;
 
     public static string Build(ExecutionPlan plan, string entrypoint, VerificationPolicy policy, bool optimize)
     {
@@ -21,8 +24,11 @@ public static class CacheKeyBuilder
             entrypoint,
             LanguageVersion,
             CompilerVersion,
+            TypeSystemVersion,
+            EffectAnalysisVersion,
             policy.VerifierVersion,
-            RuntimeFacadeHash,
+            policy.AllowlistHash,
+            policy.RuntimeFacadeHash,
             plan.BindingManifestHash,
             plan.PolicyHash,
             TargetFramework,

@@ -19,6 +19,7 @@ internal static class GeneratedMethodFlowAnalyzer
             instructions,
             byOffset,
             reachableCalls,
+            states,
             returnStates,
             HasUnmeteredCycle(instructions, byOffset, states.Keys));
     }
@@ -28,43 +29,53 @@ internal static class GeneratedMethodFlowAnalyzer
         IReadOnlyDictionary<int, GeneratedInstruction> byOffset,
         GeneratedInstruction instruction)
     {
-        if (instruction.Opcode == ILOpCode.Ret) {
+        if (instruction.Opcode == ILOpCode.Ret)
+        {
             yield break;
         }
 
-        if (instruction.Opcode is ILOpCode.Br or ILOpCode.Br_s) {
-            if (instruction.BranchTarget is { } target) {
+        if (instruction.Opcode is ILOpCode.Br or ILOpCode.Br_s)
+        {
+            if (instruction.BranchTarget is { } target)
+            {
                 yield return target;
             }
 
             yield break;
         }
 
-        if (instruction.Opcode == ILOpCode.Switch) {
-            foreach (var target in instruction.SwitchTargets) {
+        if (instruction.Opcode == ILOpCode.Switch)
+        {
+            foreach (var target in instruction.SwitchTargets)
+            {
                 yield return target;
             }
 
-            if (NextInstructionOffset(instructions, byOffset, instruction) is { } next) {
+            if (NextInstructionOffset(instructions, byOffset, instruction) is { } next)
+            {
                 yield return next;
             }
 
             yield break;
         }
 
-        if (instruction.Opcode.IsBranch()) {
-            if (instruction.BranchTarget is { } target) {
+        if (instruction.Opcode.IsBranch())
+        {
+            if (instruction.BranchTarget is { } target)
+            {
                 yield return target;
             }
 
-            if (NextInstructionOffset(instructions, byOffset, instruction) is { } next) {
+            if (NextInstructionOffset(instructions, byOffset, instruction) is { } next)
+            {
                 yield return next;
             }
 
             yield break;
         }
 
-        if (NextInstructionOffset(instructions, byOffset, instruction) is { } fallthrough) {
+        if (NextInstructionOffset(instructions, byOffset, instruction) is { } fallthrough)
+        {
             yield return fallthrough;
         }
     }
@@ -77,39 +88,47 @@ internal static class GeneratedMethodFlowAnalyzer
         Func<GeneratedInstruction, GeneratedMeterState> stateFor)
     {
         var states = new Dictionary<int, GeneratedMeterState>();
-        if (instructions.Count == 0) {
+        if (instructions.Count == 0)
+        {
             return states;
         }
 
         states[instructions[0].Offset] = GeneratedMeterState.None;
         var queue = new Queue<int>();
         queue.Enqueue(instructions[0].Offset);
-        while (queue.Count > 0) {
+        while (queue.Count > 0)
+        {
             var offset = queue.Dequeue();
             var instruction = byOffset[offset];
             var output = states[offset] | stateFor(instruction);
-            if (instruction.CalledMember is not null) {
+            if (instruction.CalledMember is not null)
+            {
                 reachableCalls.Add(instruction.CalledMember);
             }
 
-            if (instruction.Opcode == ILOpCode.Ret) {
+            if (instruction.Opcode == ILOpCode.Ret)
+            {
                 returnStates.Add(output);
                 continue;
             }
 
-            foreach (var successor in Successors(instructions, byOffset, instruction)) {
-                if (!byOffset.ContainsKey(successor)) {
+            foreach (var successor in Successors(instructions, byOffset, instruction))
+            {
+                if (!byOffset.ContainsKey(successor))
+                {
                     continue;
                 }
 
-                if (!states.TryGetValue(successor, out var existing)) {
+                if (!states.TryGetValue(successor, out var existing))
+                {
                     states[successor] = output;
                     queue.Enqueue(successor);
                     continue;
                 }
 
                 var joined = existing & output;
-                if (joined != existing) {
+                if (joined != existing)
+                {
                     states[successor] = joined;
                     queue.Enqueue(successor);
                 }
@@ -136,17 +155,21 @@ internal static class GeneratedMethodFlowAnalyzer
         HashSet<int> reachable,
         Dictionary<int, VisitColor> colors)
     {
-        if (!reachable.Contains(offset) || !byOffset.TryGetValue(offset, out var instruction) || IsFuelCharge(instruction)) {
+        if (!reachable.Contains(offset) || !byOffset.TryGetValue(offset, out var instruction) || IsFuelCharge(instruction))
+        {
             return false;
         }
 
-        if (colors.TryGetValue(offset, out var color)) {
+        if (colors.TryGetValue(offset, out var color))
+        {
             return color == VisitColor.Visiting;
         }
 
         colors[offset] = VisitColor.Visiting;
-        foreach (var successor in Successors(instructions, byOffset, instruction)) {
-            if (Visit(successor, instructions, byOffset, reachable, colors)) {
+        foreach (var successor in Successors(instructions, byOffset, instruction))
+        {
+            if (Visit(successor, instructions, byOffset, reachable, colors))
+            {
                 return true;
             }
         }
@@ -162,35 +185,41 @@ internal static class GeneratedMethodFlowAnalyzer
     {
         var instructions = new List<GeneratedInstruction>();
         var il = body.GetILReader();
-        while (il.RemainingBytes > 0) {
+        while (il.RemainingBytes > 0)
+        {
             var offset = il.Offset;
-            var opcode = ReadOpCode(ref il);
+            var opcode = GeneratedIlReader.ReadOpCode(ref il);
             string? calledMember = null;
             var isLocalCall = false;
             int? branchTarget = null;
             int[] switchTargets = [];
-            if (opcode is ILOpCode.Call or ILOpCode.Callvirt or ILOpCode.Newobj) {
+            if (opcode is ILOpCode.Call or ILOpCode.Callvirt or ILOpCode.Newobj)
+            {
                 var handle = MetadataTokens.EntityHandle(il.ReadInt32());
                 var member = MetadataName.MemberSignature(reader, handle);
                 calledMember = member.Signature;
                 isLocalCall = handle.Kind == HandleKind.MethodDefinition;
             }
-            else if (opcode == ILOpCode.Switch) {
+            else if (opcode == ILOpCode.Switch)
+            {
                 var count = il.ReadInt32();
                 var deltas = new int[count];
-                for (var i = 0; i < count; i++) {
+                for (var i = 0; i < count; i++)
+                {
                     deltas[i] = il.ReadInt32();
                 }
 
                 var nextOffset = il.Offset;
                 switchTargets = deltas.Select(delta => nextOffset + delta).ToArray();
             }
-            else if (opcode.IsBranch()) {
+            else if (opcode.IsBranch())
+            {
                 var delta = opcode.GetBranchOperandSize() == 1 ? il.ReadSByte() : il.ReadInt32();
                 branchTarget = il.Offset + delta;
             }
-            else {
-                SkipOperand(opcode, ref il);
+            else
+            {
+                GeneratedIlReader.SkipOperand(opcode, ref il);
             }
 
             instructions.Add(new GeneratedInstruction(offset, opcode, il.Offset, branchTarget, switchTargets, calledMember, isLocalCall));
@@ -204,61 +233,20 @@ internal static class GeneratedMethodFlowAnalyzer
         IReadOnlyDictionary<int, GeneratedInstruction> byOffset,
         GeneratedInstruction instruction)
     {
-        if (byOffset.ContainsKey(instruction.NextOffset)) {
+        if (byOffset.ContainsKey(instruction.NextOffset))
+        {
             return instruction.NextOffset;
         }
 
-        for (var i = 0; i + 1 < instructions.Count; i++) {
-            if (instructions[i] == instruction) {
+        for (var i = 0; i + 1 < instructions.Count; i++)
+        {
+            if (instructions[i] == instruction)
+            {
                 return instructions[i + 1].Offset;
             }
         }
 
         return null;
-    }
-
-    private static ILOpCode ReadOpCode(ref BlobReader il)
-    {
-        var first = il.ReadByte();
-        return first == 0xFE ? (ILOpCode)(0xFE00 | il.ReadByte()) : (ILOpCode)first;
-    }
-
-    private static void SkipOperand(ILOpCode opcode, ref BlobReader il)
-    {
-        if (opcode == ILOpCode.Switch) {
-            var count = il.ReadInt32();
-            for (var i = 0; i < count; i++) {
-                _ = il.ReadInt32();
-            }
-
-            return;
-        }
-
-        if (opcode.IsBranch()) {
-            if (opcode.GetBranchOperandSize() == 1) {
-                _ = il.ReadSByte();
-            }
-            else {
-                _ = il.ReadInt32();
-            }
-
-            return;
-        }
-
-        switch (opcode) {
-            case ILOpCode.Ldarg or ILOpCode.Starg or ILOpCode.Ldloc or ILOpCode.Stloc:
-                _ = il.ReadUInt16();
-                break;
-            case ILOpCode.Ldarg_s or ILOpCode.Starg_s or ILOpCode.Ldloc_s or ILOpCode.Stloc_s or ILOpCode.Ldc_i4_s:
-                _ = il.ReadByte();
-                break;
-            case ILOpCode.Ldc_i4 or ILOpCode.Ldstr or ILOpCode.Newarr:
-                _ = il.ReadInt32();
-                break;
-            case ILOpCode.Ldc_r8:
-                _ = il.ReadDouble();
-                break;
-        }
     }
 
     private enum VisitColor

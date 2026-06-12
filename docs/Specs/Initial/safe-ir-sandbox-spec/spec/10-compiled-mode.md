@@ -4,8 +4,12 @@
 
 Compiled mode turns verified IR into a compiler-owned runtime form and invokes an entrypoint
 delegate created from that compiled form.
-Supported forms are a `DynamicMethod` backend or a valid managed .NET assembly that can optionally
-be persisted as a DLL cache artifact.
+The executable MVP form is a valid managed .NET assembly that can optionally be persisted as a
+DLL cache artifact.
+
+A `DynamicMethod` backend is a future/in-memory backend option only. Until it has an independent
+verifier-equivalent gate for emitted calls, opcodes, and runtime stubs, hosts must reject
+`DynamicMethod` artifacts before invocation.
 
 Compiled mode is for hot code paths and repeated execution.
 
@@ -37,7 +41,7 @@ and runtime stubs. Users still never provide IL bytes, metadata tokens, or CLR m
 ```text
 ExecutionPlan
   -> backend lowering
-  -> generate DynamicMethod or assembly
+  -> generate assembly
   -> verify/gate generated runtime form
   -> create/load entrypoint delegate
   -> execute
@@ -45,6 +49,8 @@ ExecutionPlan
 
 The compiled runner accepts only an already-created runtime-form delegate plus proof that the
 form was verified or gated. It does not accept raw IL as executable input.
+For the MVP host guard, only loaded assembly artifacts have that proof; `DynamicMethod` artifacts
+fail closed.
 
 ## Assembly generation options
 
@@ -100,8 +106,9 @@ Cons:
 
 Recommendation:
 
-Use only after the assembly backend and verifier rules are proven, or keep the surface identical to
-the assembly backend runtime stubs.
+Do not execute this backend in the MVP. Re-enable it only after the assembly backend and verifier
+rules are proven and an independent gate can prove the surface is identical to the assembly backend
+runtime stubs.
 
 ## Generated assembly shape
 

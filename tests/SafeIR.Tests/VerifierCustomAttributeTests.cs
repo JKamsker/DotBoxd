@@ -34,6 +34,8 @@ public sealed class VerifierCustomAttributeTests
             "bindings",
             "runtime",
             "compiler",
+            "type-system",
+            "effect-analysis",
             "verifier",
             "1.0.0",
             "net10.0",
@@ -46,14 +48,16 @@ public sealed class VerifierCustomAttributeTests
     }
 
     private static byte[] TypeObsoleteAttributeAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var ctor = typeof(ObsoleteAttribute).GetConstructor([typeof(string)])!;
             type.SetCustomAttribute(new CustomAttributeBuilder(ctor, ["blocked"]));
             DefineVoidExecute(type);
         });
 
     private static byte[] MethodObsoleteAttributeAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var method = DefineVoidExecute(type);
             var ctor = typeof(ObsoleteAttribute).GetConstructor([typeof(string)])!;
             method.SetCustomAttribute(new CustomAttributeBuilder(ctor, ["blocked"]));

@@ -34,6 +34,8 @@ public sealed class VerifierFieldTests
             "bindings",
             "runtime",
             "compiler",
+            "type-system",
+            "effect-analysis",
             "verifier",
             "1.0.0",
             "net10.0",
@@ -46,13 +48,15 @@ public sealed class VerifierFieldTests
     }
 
     private static byte[] StaticReadonlyFieldAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             type.DefineField("Cached", typeof(int), FieldAttributes.Private | FieldAttributes.Static | FieldAttributes.InitOnly);
             DefineVoidExecute(type);
         });
 
     private static byte[] InstanceFieldAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             type.DefineField("State", typeof(int), FieldAttributes.Private);
             DefineVoidExecute(type);
         });

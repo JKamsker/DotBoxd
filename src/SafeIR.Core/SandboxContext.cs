@@ -92,7 +92,7 @@ public sealed class SandboxContext
     public void EnsureRequiredBindingSuccessAudit(BindingDescriptor descriptor, long checkpoint)
     {
         if (descriptor.AuditLevel == AuditLevel.None ||
-            Audit.HasBindingAuditSince(descriptor.Id, checkpoint, success: true))
+            Audit.HasBindingAuditSince(descriptor, checkpoint, success: true))
         {
             return;
         }
@@ -108,7 +108,7 @@ public sealed class SandboxContext
         SandboxErrorCode errorCode)
     {
         if (descriptor.AuditLevel == AuditLevel.None ||
-            Audit.HasBindingAuditSince(descriptor.Id, checkpoint, success: false))
+            Audit.HasBindingAuditSince(descriptor, checkpoint, success: false))
         {
             return;
         }
@@ -214,10 +214,19 @@ public sealed class SandboxContext
                     "deterministic random requires a seed"));
             }
 
-            _random ??= new Random(unchecked((int)Policy.RandomSeed.Value));
+            _random ??= new Random(SeedToInt32(Policy.RandomSeed.Value));
             return _random.Next(minInclusive, maxExclusive);
         }
 
         return Random.Shared.Next(minInclusive, maxExclusive);
+    }
+
+    private static int SeedToInt32(ulong seed)
+    {
+        var value = seed + 0x9E3779B97F4A7C15UL;
+        value = (value ^ (value >> 30)) * 0xBF58476D1CE4E5B9UL;
+        value = (value ^ (value >> 27)) * 0x94D049BB133111EBUL;
+        value ^= value >> 31;
+        return unchecked((int)(value ^ (value >> 32)));
     }
 }

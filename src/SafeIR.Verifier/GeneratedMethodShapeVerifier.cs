@@ -31,12 +31,14 @@ internal static class GeneratedMethodShapeVerifier
         List<VerificationDiagnostic> diagnostics)
     {
         var analysis = GeneratedMethodFlowAnalyzer.Analyze(reader, body, StateFor);
-        if (methodName == "Execute") {
+        if (methodName == "Execute")
+        {
             VerifyExecute(analysis, diagnostics);
             return;
         }
 
-        if (methodName.StartsWith("Fn_", StringComparison.Ordinal)) {
+        if (methodName.StartsWith("Fn_", StringComparison.Ordinal))
+        {
             VerifyFunction(methodName, analysis, diagnostics);
         }
     }
@@ -50,17 +52,22 @@ internal static class GeneratedMethodShapeVerifier
             GeneratedMeterState.ValidateInput | GeneratedMeterState.LocalFunctionCall,
             diagnostics,
             "Execute must validate input and dispatch before returning");
-        if (analysis.HasUnmeteredCycle || analysis.Instructions.Any(i => i.Opcode.IsBranch())) {
+        if (analysis.HasUnmeteredCycle || analysis.Instructions.Any(i => i.Opcode.IsBranch()))
+        {
             diagnostics.Add(new VerificationDiagnostic("V-COMPILED-SHAPE", "Execute must not contain control-flow branches"));
         }
 
-        foreach (var instruction in analysis.Instructions.Where(i => i.CalledMember is not null)) {
-            if (instruction.IsLocalCall) {
-                if (!IsGeneratedFunctionCall(instruction.CalledMember!)) {
+        foreach (var instruction in analysis.Instructions.Where(i => i.CalledMember is not null))
+        {
+            if (instruction.IsLocalCall)
+            {
+                if (!IsGeneratedFunctionCall(instruction.CalledMember!))
+                {
                     diagnostics.Add(new VerificationDiagnostic("V-COMPILED-SHAPE", "Execute may only call generated function helpers"));
                 }
             }
-            else if (!ExecuteAllowedCalls.Contains(instruction.CalledMember!)) {
+            else if (!ExecuteAllowedCalls.Contains(instruction.CalledMember!))
+            {
                 diagnostics.Add(new VerificationDiagnostic("V-COMPILED-SHAPE", "Execute may only validate input and dispatch"));
             }
         }
@@ -79,14 +86,30 @@ internal static class GeneratedMethodShapeVerifier
             GeneratedMeterState.EnterCall | GeneratedMeterState.ExitCall | GeneratedMeterState.ChargeFuel,
             diagnostics,
             $"method '{methodName}' must meter every return path");
-        if (analysis.HasUnmeteredCycle) {
+        if (analysis.HasUnmeteredCycle)
+        {
             diagnostics.Add(new VerificationDiagnostic("V-COMPILED-SHAPE", $"method '{methodName}' must charge fuel in every control-flow cycle"));
+        }
+
+        foreach (var instruction in analysis.Instructions.Where(i => i.IsLocalCall))
+        {
+            var state = analysis.EntryStates.TryGetValue(instruction.Offset, out var entryState)
+                ? entryState
+                : GeneratedMeterState.None;
+            var required = GeneratedMeterState.EnterCall | GeneratedMeterState.ChargeFuel;
+            if ((state & required) != required)
+            {
+                diagnostics.Add(new VerificationDiagnostic(
+                    "V-COMPILED-SHAPE",
+                    $"method '{methodName}' must enter call depth and charge fuel before local calls"));
+            }
         }
     }
 
     private static GeneratedMeterState StateFor(GeneratedInstruction instruction)
     {
-        var state = instruction.CalledMember switch {
+        var state = instruction.CalledMember switch
+        {
             var member when member == ValidateInput => GeneratedMeterState.ValidateInput,
             var member when member == EnterCall => GeneratedMeterState.EnterCall,
             var member when member == ExitCall => GeneratedMeterState.ExitCall,
@@ -107,7 +130,8 @@ internal static class GeneratedMethodShapeVerifier
         List<VerificationDiagnostic> diagnostics,
         string message)
     {
-        if (!analysis.ReachableCalls.Contains(signature)) {
+        if (!analysis.ReachableCalls.Contains(signature))
+        {
             diagnostics.Add(new VerificationDiagnostic("V-COMPILED-SHAPE", message));
         }
     }
@@ -119,7 +143,8 @@ internal static class GeneratedMethodShapeVerifier
         string message)
     {
         if (analysis.ReturnStates.Count == 0 ||
-            analysis.ReturnStates.All(state => (state & required) != required)) {
+            analysis.ReturnStates.All(state => (state & required) != required))
+        {
             diagnostics.Add(new VerificationDiagnostic("V-COMPILED-SHAPE", message));
         }
     }
@@ -131,7 +156,8 @@ internal static class GeneratedMethodShapeVerifier
         string message)
     {
         if (analysis.ReturnStates.Count == 0 ||
-            analysis.ReturnStates.Any(state => (state & required) != required)) {
+            analysis.ReturnStates.Any(state => (state & required) != required))
+        {
             diagnostics.Add(new VerificationDiagnostic("V-COMPILED-SHAPE", message));
         }
     }
