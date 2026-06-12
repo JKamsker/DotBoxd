@@ -130,15 +130,17 @@ public sealed class CustomEffectBindingTests
             {
                 var value = ((I32Value)args[0]).Value;
                 record(value);
+                var timestamp = DateTimeOffset.UtcNow;
                 context.Audit.Write(new SandboxAuditEvent(
                     context.RunId,
                     "BindingCall",
-                    DateTimeOffset.UtcNow,
+                    timestamp,
                     true,
                     BindingId: "app.counter",
                     CapabilityId: "game.write",
                     Effect: SandboxEffect.GameStateWrite,
-                    ResourceId: "counter:test"));
+                    ResourceId: "counter:test",
+                    Fields: BindingAuditFields.Create("counter", timestamp)));
                 return ValueTask.FromResult(SandboxValue.FromInt32(value));
             },
             CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)),

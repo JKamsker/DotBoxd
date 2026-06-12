@@ -233,15 +233,17 @@ public sealed partial class LogicalShortCircuitTests
             (context, _, _) =>
             {
                 invoke();
+                var timestamp = DateTimeOffset.UtcNow;
                 context.Audit.Write(new SandboxAuditEvent(
                     context.RunId,
                     "BindingCall",
-                    DateTimeOffset.UtcNow,
+                    timestamp,
                     true,
                     BindingId: "test.effectfulBool",
                     CapabilityId: "game.read",
                     Effect: SandboxEffect.GameStateRead,
-                    ResourceId: "game:test"));
+                    ResourceId: "game:test",
+                    Fields: BindingAuditFields.Create("game", timestamp)));
                 return ValueTask.FromResult(SandboxValue.FromBool(true));
             },
             CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)),
