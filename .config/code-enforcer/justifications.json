@@ -16,10 +16,6 @@
       "justification": "Existing core model folder over the folder limit. New core subsystems should be grouped into subdirectories."
     },
     {
-      "path": "src/SafeIR.PluginAnalyzer",
-      "justification": "Existing analyzer implementation folder over the folder limit. New analyzer pieces should be grouped by concern."
-    },
-    {
       "path": "tests/SafeIR.Tests",
       "justification": "Legacy monolithic test project folder. New tests should be split into focused subdirectories when practical."
     }
@@ -28,10 +24,6 @@
     {
       "path": "src/SafeIR.Core",
       "justification": "Existing core project root predates the project-folder limit. New core implementation files should be grouped into subdirectories."
-    },
-    {
-      "path": "src/SafeIR.PluginAnalyzer",
-      "justification": "Existing analyzer project root predates the project-folder limit. New analyzer implementation files should be grouped into subdirectories."
     },
     {
       "path": "tests/SafeIR.Tests",
