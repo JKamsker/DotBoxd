@@ -281,11 +281,13 @@ internal sealed class RpcPeerInboundDispatcher
         {
             using (inbound.Frame)
             {
-                streaming = new RpcStreamingContext(
-                    _streams,
-                    _serializer,
-                    inbound.RequestCts.Token,
-                    inbound.Request.Streams);
+                streaming = _responseBuilder.RequiresStreamingContext(inbound.Request)
+                    ? new RpcStreamingContext(
+                        _streams,
+                        _serializer,
+                        inbound.RequestCts.Token,
+                        inbound.Request.Streams)
+                    : RpcStreamingContext.Disabled;
                 using var response = await _responseBuilder.BuildAsync(
                     inbound.Request,
                     inbound.MessageId,

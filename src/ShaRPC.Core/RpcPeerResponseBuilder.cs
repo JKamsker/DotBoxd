@@ -26,6 +26,9 @@ internal sealed class RpcPeerResponseBuilder
 
     public void FreezeDispatchers() => _inner.FreezeDispatchers();
 
+    public bool RequiresStreamingContext(RpcRequest request) =>
+        !_rejectInboundCalls && _inner.RequiresStreamingContext(request);
+
     public ValueTask<RpcDispatchResult> BuildAsync(
         RpcRequest request,
         int messageId,

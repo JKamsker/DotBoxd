@@ -7,7 +7,7 @@ namespace Snap.Kw
     /// <summary>
     /// Server dispatcher for IKwSnap.
     /// </summary>
-    public sealed class KwSnapDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher
+    public sealed class KwSnapDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher
     {
         private readonly global::Snap.Kw.IKwSnap _service;
 

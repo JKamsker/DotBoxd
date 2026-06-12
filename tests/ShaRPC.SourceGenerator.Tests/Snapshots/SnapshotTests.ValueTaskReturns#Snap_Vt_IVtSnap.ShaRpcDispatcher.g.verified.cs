@@ -7,7 +7,7 @@ namespace Snap.Vt
     /// <summary>
     /// Server dispatcher for IVtSnap.
     /// </summary>
-    public sealed class VtSnapDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher
+    public sealed class VtSnapDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher
     {
         private readonly global::Snap.Vt.IVtSnap _service;
 

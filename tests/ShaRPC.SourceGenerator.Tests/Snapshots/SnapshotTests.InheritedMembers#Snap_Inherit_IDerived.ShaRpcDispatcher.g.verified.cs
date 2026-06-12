@@ -7,7 +7,7 @@ namespace Snap.Inherit
     /// <summary>
     /// Server dispatcher for IDerived.
     /// </summary>
-    public sealed class DerivedDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher
+    public sealed class DerivedDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher
     {
         private readonly global::Snap.Inherit.IDerived _service;
 

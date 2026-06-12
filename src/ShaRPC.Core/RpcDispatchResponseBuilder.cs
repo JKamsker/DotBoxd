@@ -33,6 +33,17 @@ internal sealed class RpcDispatchResponseBuilder
         }
     }
 
+    public bool RequiresStreamingContext(RpcRequest request)
+    {
+        if (string.IsNullOrEmpty(request.ServiceName) ||
+            !TryGetDispatcher(request.ServiceName, out var dispatcher))
+        {
+            return false;
+        }
+
+        return dispatcher is not INonStreamingServiceDispatcher;
+    }
+
     public async ValueTask<RpcDispatchResult> BuildAsync(
         RpcRequest request,
         int messageId,
@@ -58,17 +69,14 @@ internal sealed class RpcDispatchResponseBuilder
 
         try
         {
-            await (request.InstanceId is null
-                ? dispatcher.DispatchAsync(request.MethodName, payload, _serializer, registry, writer, streaming, ct)
-                : dispatcher.DispatchOnInstanceAsync(
-                    request.InstanceId,
-                    request.MethodName,
-                    payload,
-                    _serializer,
-                    registry,
-                    writer,
-                    streaming,
-                    ct)).ConfigureAwait(false);
+            await DispatchAsync(
+                dispatcher,
+                request,
+                payload,
+                registry,
+                writer,
+                streaming,
+                ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -154,5 +162,41 @@ internal sealed class RpcDispatchResponseBuilder
         }
 
         return _dispatchers.TryGetValue(serviceName, out dispatcher!);
+    }
+
+    private Task DispatchAsync(
+        IServiceDispatcher dispatcher,
+        RpcRequest request,
+        ReadOnlyMemory<byte> payload,
+        IInstanceRegistry registry,
+        PooledBufferWriter writer,
+        RpcStreamingContext streaming,
+        CancellationToken ct)
+    {
+        if (dispatcher is INonStreamingServiceDispatcher)
+        {
+            return request.InstanceId is null
+                ? dispatcher.DispatchAsync(request.MethodName, payload, _serializer, registry, writer, ct)
+                : dispatcher.DispatchOnInstanceAsync(
+                    request.InstanceId,
+                    request.MethodName,
+                    payload,
+                    _serializer,
+                    registry,
+                    writer,
+                    ct);
+        }
+
+        return request.InstanceId is null
+            ? dispatcher.DispatchAsync(request.MethodName, payload, _serializer, registry, writer, streaming, ct)
+            : dispatcher.DispatchOnInstanceAsync(
+                request.InstanceId,
+                request.MethodName,
+                payload,
+                _serializer,
+                registry,
+                writer,
+                streaming,
+                ct);
     }
 }

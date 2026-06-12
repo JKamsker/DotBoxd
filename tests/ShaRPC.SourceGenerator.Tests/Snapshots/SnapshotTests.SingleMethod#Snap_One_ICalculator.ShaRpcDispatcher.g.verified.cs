@@ -7,7 +7,7 @@ namespace Snap.One
     /// <summary>
     /// Server dispatcher for ICalculator.
     /// </summary>
-    public sealed class CalculatorDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher
+    public sealed class CalculatorDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher
     {
         private readonly global::Snap.One.ICalculator _service;
 

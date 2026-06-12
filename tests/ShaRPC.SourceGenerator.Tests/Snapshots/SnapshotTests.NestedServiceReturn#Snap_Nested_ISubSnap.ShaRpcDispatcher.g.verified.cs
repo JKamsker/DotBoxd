@@ -7,7 +7,7 @@ namespace Snap.Nested
     /// <summary>
     /// Server dispatcher for ISubSnap.
     /// </summary>
-    public sealed class SubSnapDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher
+    public sealed class SubSnapDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher
     {
         private readonly global::Snap.Nested.ISubSnap _service;
 

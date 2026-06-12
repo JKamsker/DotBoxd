@@ -7,7 +7,7 @@ namespace Snap.Renamed
     /// <summary>
     /// Server dispatcher for IHello.
     /// </summary>
-    public sealed class HelloDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher
+    public sealed class HelloDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher
     {
         private readonly global::Snap.Renamed.IHello _service;
 

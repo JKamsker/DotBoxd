@@ -7,7 +7,7 @@ namespace Snap.RefOut
     /// <summary>
     /// Server dispatcher for IRefOutSnap.
     /// </summary>
-    public sealed class RefOutSnapDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher
+    public sealed class RefOutSnapDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher
     {
         private readonly global::Snap.RefOut.IRefOutSnap _service;
 

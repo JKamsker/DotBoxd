@@ -7,7 +7,7 @@ namespace Snap.Mixed
     /// <summary>
     /// Server dispatcher for IMix.
     /// </summary>
-    public sealed class MixDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher
+    public sealed class MixDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher
     {
         private readonly global::Snap.Mixed.IMix _service;
 

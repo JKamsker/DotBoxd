@@ -7,7 +7,7 @@ namespace Snap.Two
     /// <summary>
     /// Server dispatcher for ITwo.
     /// </summary>
-    public sealed class TwoDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher
+    public sealed class TwoDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher
     {
         private readonly global::Snap.Two.ITwo _service;
 

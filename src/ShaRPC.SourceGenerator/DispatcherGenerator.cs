@@ -37,7 +37,10 @@ internal static class DispatcherGenerator
         sb.AppendLine("    /// <summary>");
         sb.AppendLine($"    /// Server dispatcher for {service.InterfaceName}.");
         sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    public sealed class {dispatcherName} : global::ShaRPC.Core.Server.IServiceDispatcher");
+        var dispatcherInterfaces = CanDispatchWithoutStreaming(service)
+            ? "global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher"
+            : "global::ShaRPC.Core.Server.IServiceDispatcher";
+        sb.AppendLine($"    public sealed class {dispatcherName} : {dispatcherInterfaces}");
         sb.AppendLine("    {");
         sb.AppendLine($"        private readonly {qualifiedInterface} _service;");
         sb.AppendLine();
@@ -357,5 +360,38 @@ internal static class DispatcherGenerator
         }
 
         return requestParameters;
+    }
+
+    private static bool CanDispatchWithoutStreaming(ServiceModel service)
+    {
+        foreach (var method in service.Methods.Array)
+        {
+            if (method.UnsupportedReason is null && UsesStreaming(method))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool UsesStreaming(MethodModel method)
+    {
+        if (NamingHelpers.IsStreamReturn(method.ReturnKind) ||
+            NamingHelpers.IsPipeReturn(method.ReturnKind) ||
+            NamingHelpers.IsAsyncEnumerableReturn(method.ReturnKind))
+        {
+            return true;
+        }
+
+        foreach (var parameter in method.Parameters.Array)
+        {
+            if (parameter.StreamKind != ParameterStreamKind.None)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
