@@ -124,16 +124,7 @@ function Get-RelativePath {
         [string] $TargetPath
     )
 
-    $baseFullPath = [System.IO.Path]::GetFullPath($BasePath)
-    if (-not $baseFullPath.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
-        $baseFullPath += [System.IO.Path]::DirectorySeparatorChar
-    }
-
-    $targetFullPath = [System.IO.Path]::GetFullPath($TargetPath)
-    $baseUri = [Uri] $baseFullPath
-    $targetUri = [Uri] $targetFullPath
-    $relativeUri = $baseUri.MakeRelativeUri($targetUri)
-    return [Uri]::UnescapeDataString($relativeUri.ToString()).Replace('/', [System.IO.Path]::DirectorySeparatorChar)
+    return [System.IO.Path]::GetRelativePath($BasePath, $TargetPath)
 }
 
 $documentSets = @(
