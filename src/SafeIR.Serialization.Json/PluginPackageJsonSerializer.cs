@@ -1,10 +1,22 @@
 namespace SafeIR.Plugins;
 
+using System.Text;
 using System.Text.Json;
 using static SafeIR.JsonImport;
 
 public static class PluginPackageJsonSerializer
 {
+    public static string Export(PluginPackage package, bool indented = false)
+    {
+        ArgumentNullException.ThrowIfNull(package);
+
+        using var stream = new MemoryStream();
+        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = indented });
+        WritePackage(writer, package);
+        writer.Flush();
+        return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
     public static PluginPackage Import(string json)
     {
         ArgumentNullException.ThrowIfNull(json);
@@ -28,6 +40,125 @@ public static class PluginPackageJsonSerializer
         {
             throw Error("E-JSON-VERSION", ex.Message);
         }
+    }
+
+    private static void WritePackage(Utf8JsonWriter writer, PluginPackage package)
+    {
+        writer.WriteStartObject();
+        WriteManifest(writer, package.Manifest);
+        writer.WritePropertyName("entrypoints");
+        WriteEntrypoints(writer, package.Entrypoints);
+        writer.WritePropertyName("module");
+        SafeIrJsonExporter.Write(writer, package.Module);
+        writer.WriteEndObject();
+    }
+
+    private static void WriteManifest(Utf8JsonWriter writer, PluginManifest manifest)
+    {
+        writer.WritePropertyName("manifest");
+        writer.WriteStartObject();
+        writer.WriteString("pluginId", manifest.PluginId);
+        writer.WriteString("contract", manifest.Contract);
+        writer.WriteString("mode", manifest.Mode.ToString());
+        WriteStringArray(writer, "effects", manifest.Effects);
+        WriteLiveSettings(writer, manifest.LiveSettings);
+        WriteSubscriptions(writer, manifest.Subscriptions);
+        writer.WriteEndObject();
+    }
+
+    private static void WriteStringArray(
+        Utf8JsonWriter writer,
+        string name,
+        IReadOnlyList<string> values)
+    {
+        writer.WritePropertyName(name);
+        writer.WriteStartArray();
+        foreach (var value in values) {
+            writer.WriteStringValue(value);
+        }
+
+        writer.WriteEndArray();
+    }
+
+    private static void WriteLiveSettings(
+        Utf8JsonWriter writer,
+        IReadOnlyList<LiveSettingDefinition> settings)
+    {
+        writer.WritePropertyName("liveSettings");
+        writer.WriteStartArray();
+        foreach (var setting in settings) {
+            writer.WriteStartObject();
+            writer.WriteString("name", setting.Name);
+            writer.WriteString("type", setting.Type);
+            writer.WritePropertyName("defaultValue");
+            WriteLiveSettingValue(writer, setting.DefaultValue, "defaultValue");
+            if (setting.Min is not null) {
+                writer.WritePropertyName("min");
+                WriteLiveSettingValue(writer, setting.Min, "min");
+            }
+
+            if (setting.Max is not null) {
+                writer.WritePropertyName("max");
+                WriteLiveSettingValue(writer, setting.Max, "max");
+            }
+
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+    }
+
+    private static void WriteLiveSettingValue(Utf8JsonWriter writer, object? value, string name)
+    {
+        switch (value) {
+            case null:
+                writer.WriteNullValue();
+                break;
+            case bool boolean:
+                writer.WriteBooleanValue(boolean);
+                break;
+            case int integer:
+                writer.WriteNumberValue(integer);
+                break;
+            case long integer:
+                writer.WriteNumberValue(integer);
+                break;
+            case double number when double.IsFinite(number):
+                writer.WriteNumberValue(number);
+                break;
+            case float number when float.IsFinite(number):
+                writer.WriteNumberValue(number);
+                break;
+            case string text:
+                writer.WriteStringValue(text);
+                break;
+            default:
+                throw Error("E-JSON-EXPORT", $"live setting value '{name}' must be a JSON scalar");
+        }
+    }
+
+    private static void WriteSubscriptions(
+        Utf8JsonWriter writer,
+        IReadOnlyList<HookSubscriptionManifest> subscriptions)
+    {
+        writer.WritePropertyName("subscriptions");
+        writer.WriteStartArray();
+        foreach (var subscription in subscriptions) {
+            writer.WriteStartObject();
+            writer.WriteString("event", subscription.Event);
+            writer.WriteString("kernel", subscription.Kernel);
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+    }
+
+    private static void WriteEntrypoints(Utf8JsonWriter writer, KernelEntrypoints entrypoints)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("shouldHandle", entrypoints.ShouldHandle);
+        writer.WriteString("handle", entrypoints.Handle);
+        writer.WriteEndObject();
     }
 
     private static PluginPackage ReadPackage(JsonElement element)

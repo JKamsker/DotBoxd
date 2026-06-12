@@ -428,10 +428,34 @@ public static class SafeIrJsonImporter
 {
     public static SandboxModule Import(string json);
 }
+
+public static class SafeIrJsonExporter
+{
+    public static string Export(SandboxModule module, bool indented = false);
+}
+
+public static class PluginPackageJsonSerializer
+{
+    public static string Export(PluginPackage package, bool indented = false);
+    public static PluginPackage Import(string json);
+}
+
+public static class PluginServerJsonExtensions
+{
+    public static ValueTask<InstalledKernel> InstallJsonAsync(
+        this PluginServer server,
+        string json,
+        SandboxPolicy? policy = null,
+        CancellationToken cancellationToken = default);
+}
 ```
 
 JSON import is the only built-in text ingestion path for Safe IR. It preserves source locations for
 diagnostics and debug traces; it is not a lexer/parser for a custom script language.
+Generated plugin package factories return in-memory `PluginPackage` instances for SDK and test
+use. Production upload should serialize that package with `PluginPackageJsonSerializer.Export`,
+send the JSON envelope, and install it through `InstallJsonAsync`; the envelope contains manifest
+metadata plus JSON Safe IR and does not contain assembly loader instructions.
 
 ## Verifier API
 

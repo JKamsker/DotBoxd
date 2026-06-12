@@ -25,7 +25,9 @@ The goal is to make plugin development feel like normal C# while preserving the 
 The local examples may reference a generated package factory from a plugin project to demonstrate
 the build-time lowering flow. That factory is trusted development-time code, not the production
 upload boundary. A production server should receive serialized JSON package data containing Safe
-IR plus manifest metadata and validate it before installation.
+IR plus manifest metadata and validate it before installation. The generated package factory can
+create a `PluginPackage`; `PluginPackageJsonSerializer.Export` converts that package to the JSON
+envelope used for upload.
 
 ---
 
@@ -142,6 +144,9 @@ public sealed partial class EpicItemsOnly : IItemFilter
     }
 }
 ```
+
+The current SDK generator lowers `IEventKernel<TEvent>` kernels. Other shared interfaces are
+contract guidance until the host provides a matching adapter/lowering path.
 
 For event handling:
 
@@ -282,6 +287,8 @@ However, kernel classes are the preferred ergonomic model for real plugins.
 Hook kernel entrypoint parameters are name-bound. The verified IR entrypoints
 must declare the event adapter parameters first, followed by live setting
 parameters, with exact names, types, and order.
+Event shape validation is owned by the trusted event adapter; the adapter must expose only approved
+snapshot fields and convert them to the declared `SandboxValue` inputs.
 
 ---
 
@@ -589,6 +596,9 @@ server.Hooks.On<DamageEvent>()
     .UseKernel<FireDamageKernel>();
 ```
 
+Host-authored `Where` filters and `InvokeHostHandler` callbacks are trusted server delegates. They
+are not portable untrusted plugin code unless a host-specific lowering path turns them into Safe IR.
+
 Conceptually:
 
 ```text
@@ -740,6 +750,9 @@ The production package is a JSON envelope with a manifest and a Safe IR module:
 ```
 
 The envelope must not contain executable assembly paths, raw DLL bytes, CLR type names used as execution targets, or other host-code loading instructions. The server imports the JSON Safe IR module, validates it, and then runs the IR through the selected runtime mode.
+Generated SDK factories return in-memory `PluginPackage` values for local tooling. The upload path is
+`PluginPackageJsonSerializer.Export(FireDamagePluginPackage.Create())` followed by server-side
+`InstallJsonAsync` validation.
 
 The plugin package manifest should include live state metadata.
 
