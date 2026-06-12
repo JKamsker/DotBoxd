@@ -1,19 +1,19 @@
 ---
 id: COR-0039
 area: correctness
-status: open
+status: fixed_pending_verification
 priority: high
 title: Short-circuit reordering can evaluate throwing pure operands
 dedup_key: correctness/short-circuit/reorder-throwing-pure-operands
 created_at: 2026-06-12T22:52:31.4830936+00:00
 created_by: correctness-producer
 created_commit: 
-updated_at: 2026-06-12T22:52:31.4830936+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
+updated_at: 2026-06-12T23:49:31.7651678+00:00
+claimed_by: worker
+claimed_at: 2026-06-12T23:45:52.9589559+00:00
+claim_branch: workflow-work
+fixed_by: worker
+fixed_at: 2026-06-12T23:49:31.7651678+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 

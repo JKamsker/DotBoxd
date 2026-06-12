@@ -61,7 +61,7 @@ public sealed partial class LogicalShortCircuitTests
 
     [Theory]
     [MemberData(nameof(Modes))]
-    public async Task And_prefers_cheaper_right_operand_when_it_can_short_circuit(ExecutionMode mode)
+    public async Task And_preserves_source_order_for_pure_binding_operands(ExecutionMode mode)
     {
         var (result, calls) = await ExecuteAsync(
             """{ "op": "and", "left": { "call": "test.bool", "args": [] }, "right": { "bool": false } }""",
@@ -70,8 +70,8 @@ public sealed partial class LogicalShortCircuitTests
 
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
         Assert.False(((BoolValue)result.Value!).Value);
-        Assert.Equal(0, calls);
-        Assert.Equal(0, result.ResourceUsage.HostCalls);
+        Assert.Equal(1, calls);
+        Assert.Equal(1, result.ResourceUsage.HostCalls);
         Assert.Equal(mode, result.ActualMode);
     }
 
@@ -93,7 +93,7 @@ public sealed partial class LogicalShortCircuitTests
 
     [Theory]
     [MemberData(nameof(Modes))]
-    public async Task Or_prefers_cheaper_right_operand_when_it_can_short_circuit(ExecutionMode mode)
+    public async Task Or_preserves_source_order_for_pure_binding_operands(ExecutionMode mode)
     {
         var (result, calls) = await ExecuteAsync(
             """{ "op": "or", "left": { "call": "test.bool", "args": [] }, "right": { "bool": true } }""",
@@ -102,14 +102,14 @@ public sealed partial class LogicalShortCircuitTests
 
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
         Assert.True(((BoolValue)result.Value!).Value);
-        Assert.Equal(0, calls);
-        Assert.Equal(0, result.ResourceUsage.HostCalls);
+        Assert.Equal(1, calls);
+        Assert.Equal(1, result.ResourceUsage.HostCalls);
         Assert.Equal(mode, result.ActualMode);
     }
 
     [Theory]
     [MemberData(nameof(Modes))]
-    public async Task And_prefers_cheaper_literal_over_collection_intrinsic(ExecutionMode mode)
+    public async Task And_preserves_source_order_for_collection_intrinsic(ExecutionMode mode)
     {
         var host = SandboxTestHost.Create(compiler: true);
         var module = await host.ImportJsonAsync(ModuleJson("""
@@ -144,8 +144,8 @@ public sealed partial class LogicalShortCircuitTests
             SandboxValue.Unit,
             new SandboxExecutionOptions { Mode = mode, AllowFallbackToInterpreter = false });
 
-        Assert.True(result.Succeeded, result.Error?.SafeMessage);
-        Assert.False(((BoolValue)result.Value!).Value);
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, result.Error!.Code);
         Assert.Equal(mode, result.ActualMode);
     }
 
