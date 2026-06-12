@@ -53,14 +53,14 @@ public static class ShortCircuitExpressionOrder
 
         if (functions.TryGetValue(call.Name, out var function))
         {
-            return estimate.Combine(new CostEstimate(20, IsPure(function.Effects)));
+            return estimate.Combine(new CostEstimate(20, function.CanReorder));
         }
 
         if (bindings.TryGet(call.Name, out var binding))
         {
             return estimate.Combine(new CostEstimate(
                 Math.Max(0, binding.CostModel.BaseFuel),
-                IsPure(binding.Effects)));
+                CanReorderBinding(binding)));
         }
 
         if (SandboxCollectionFuel.IsCollectionIntrinsic(call.Name))
@@ -72,6 +72,9 @@ public static class ShortCircuitExpressionOrder
     }
 
     private static bool IsPure(SandboxEffect effects) => (effects & ~SandboxEffects.Pure) == SandboxEffect.None;
+
+    private static bool CanReorderBinding(BindingSignature binding)
+        => binding.Safety == BindingSafety.PureIntrinsic && IsPure(binding.Effects);
 
     private readonly record struct CostEstimate(long Cost, bool CanReorder)
     {

@@ -69,6 +69,7 @@ internal static class ExecutionPlanBuilder
             parts.Add(item.Key);
             parts.Add(item.Value.ReturnType.ToString());
             parts.Add(((int)item.Value.Effects).ToString(System.Globalization.CultureInfo.InvariantCulture));
+            parts.Add(item.Value.CanReorder.ToString());
         }
 
         return Convert

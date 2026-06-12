@@ -1,6 +1,6 @@
 namespace SafeIR;
 
-public sealed record FunctionAnalysis(SandboxType ReturnType, SandboxEffect Effects);
+public sealed record FunctionAnalysis(SandboxType ReturnType, SandboxEffect Effects, bool CanReorder);
 
 public sealed class ExecutionPlan
 {

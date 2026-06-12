@@ -205,7 +205,9 @@ public sealed partial class LogicalShortCircuitTests
         return (result, calls);
     }
 
-    private static BindingDescriptor BoolBinding(Func<bool> invoke)
+    private static BindingDescriptor BoolBinding(
+        Func<bool> invoke,
+        BindingSafety safety = BindingSafety.PureIntrinsic)
         => new(
             "test.bool",
             SemVersion.One,
@@ -215,7 +217,7 @@ public sealed partial class LogicalShortCircuitTests
             null,
             BindingCostModel.Fixed(1),
             AuditLevel.None,
-            BindingSafety.PureHostFacade,
+            safety,
             (_, _, _) => ValueTask.FromResult(SandboxValue.FromBool(invoke())),
             CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)));
 
