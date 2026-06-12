@@ -113,6 +113,37 @@ public sealed partial class PluginAnalyzerTests
         Assert.Contains(diagnostics, d => d.Id == "SGP001");
     }
 
+    [Fact]
+    public async Task Reports_forbidden_host_api_hidden_behind_deep_helper_chain()
+    {
+        var diagnostics = await AnalyzeAsync("""
+            using SafeIR.Plugins;
+
+            public static class BadHelper
+            {
+                public static void Step0() => Step1();
+                public static void Step1() => Step2();
+                public static void Step2() => Step3();
+                public static void Step3() => Step4();
+                public static void Step4() => System.IO.File.WriteAllText("x.txt", "bad");
+            }
+
+            [GamePlugin("bad")]
+            public sealed class BadKernel : IEventKernel<string>
+            {
+                public bool ShouldHandle(string e, HookContext context)
+                {
+                    BadHelper.Step0();
+                    return true;
+                }
+
+                public void Handle(string e, HookContext context) { }
+            }
+            """);
+
+        Assert.Contains(diagnostics, d => d.Id == "SGP001");
+    }
+
     private static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(string source)
     {
         var compilation = CreateCompilation(source);

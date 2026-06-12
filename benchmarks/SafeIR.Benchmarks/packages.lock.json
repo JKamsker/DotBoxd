@@ -246,6 +246,9 @@
           "SafeIR.Validation": "[0.1.0, )"
         }
       },
+      "safeir.pluginanalyzer": {
+        "type": "Project"
+      },
       "safeir.plugins": {
         "type": "Project",
         "dependencies": {

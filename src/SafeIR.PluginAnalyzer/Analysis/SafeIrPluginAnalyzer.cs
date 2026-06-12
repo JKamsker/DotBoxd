@@ -220,15 +220,35 @@ public sealed class SafeIrPluginAnalyzer : DiagnosticAnalyzer
         private Dictionary<ISymbol, ITypeSymbol> PropagateForbiddenHelpers()
         {
             var tainted = new Dictionary<ISymbol, ITypeSymbol>(_forbidden, SymbolEqualityComparer.Default);
-            var changed = true;
-            while (changed) {
-                changed = false;
-                foreach (var call in _calls) {
-                    if (!tainted.ContainsKey(call.Caller) &&
-                        tainted.TryGetValue(call.Target, out var type)) {
-                        tainted[call.Caller] = type;
-                        changed = true;
+            if (tainted.Count == 0) {
+                return tainted;
+            }
+
+            var callersByTarget = new Dictionary<ISymbol, List<ISymbol>>(SymbolEqualityComparer.Default);
+            foreach (var call in _calls) {
+                if (!callersByTarget.TryGetValue(call.Target, out var callers)) {
+                    callers = [];
+                    callersByTarget.Add(call.Target, callers);
+                }
+
+                callers.Add(call.Caller);
+            }
+
+            var pending = new Queue<ISymbol>(tainted.Keys);
+            while (pending.Count > 0) {
+                var target = pending.Dequeue();
+                if (!tainted.TryGetValue(target, out var type) ||
+                    !callersByTarget.TryGetValue(target, out var callers)) {
+                    continue;
+                }
+
+                foreach (var caller in callers) {
+                    if (tainted.ContainsKey(caller)) {
+                        continue;
                     }
+
+                    tainted.Add(caller, type);
+                    pending.Enqueue(caller);
                 }
             }
 

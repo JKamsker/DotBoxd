@@ -7,9 +7,6 @@
 - [ ] `ALG-0002` medium - Collection mutations copy whole containers per update
   - File: `docs/agent-loop/findings/ALG-0002-collection-mutations-copy-whole-containers-per-update.md`
   - Dedup: `algorithm/collections/mutation/whole-container-copy`
-- [ ] `ALG-0004` medium - Plugin analyzer rescans helper call graph to propagate taint
-  - File: `docs/agent-loop/findings/ALG-0004-plugin-analyzer-rescans-helper-call-graph-to-propagate-taint.md`
-  - Dedup: `algorithm/plugin-analyzer/helper-callgraph/repeated-full-scan`
 - [ ] `ALG-0005` medium - Binding reference collection rewalks shared graphs per entrypoint
   - File: `docs/agent-loop/findings/ALG-0005-binding-reference-collection-rewalks-shared-graphs-per-entrypoint.md`
   - Dedup: `algorithm/binding-reference/per-entrypoint-graph-rewalk`
@@ -19,6 +16,10 @@
 
 ## Fixed pending verification
 
+- [~] `ALG-0004` medium - Plugin analyzer rescans helper call graph to propagate taint
+  - File: `docs/agent-loop/findings/ALG-0004-plugin-analyzer-rescans-helper-call-graph-to-propagate-taint.md`
+  - Fixed by: `fixer`
+  - Commit: ``
 
 ## Verified
 
