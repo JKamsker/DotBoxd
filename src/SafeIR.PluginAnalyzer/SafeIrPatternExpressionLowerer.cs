@@ -44,9 +44,10 @@ internal static class SafeIrPatternExpressionLowerer
                 $"Pattern constant '{pattern.Expression}' must match the input expression type.");
         }
 
-        return new SafeIrExpressionModel(
-            $"{SafeIrGenerationNames.Helpers.Eq}({value.Source}, {constant.Source})",
-            SafeIrGenerationNames.ManifestTypes.Bool,
+        return SafeIrEqualityExpressionLowerer.Lower(
+            value,
+            constant,
+            negate: false,
             value.Allocates || constant.Allocates);
     }
 

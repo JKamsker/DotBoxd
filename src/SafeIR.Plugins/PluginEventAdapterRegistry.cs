@@ -99,10 +99,27 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
     private static IReadOnlyList<PropertyInfo> ReadableProperties(Type eventType)
     {
         var properties = ReadablePropertiesInHierarchy(eventType).ToArray();
+        ValidatePropertyNames(properties);
 
         return TryConstructorPropertyOrder(eventType, properties, out var ordered)
             ? ordered
             : properties;
+    }
+
+    private static void ValidatePropertyNames(IReadOnlyList<PropertyInfo> properties)
+    {
+        var names = new Dictionary<string, string>(properties.Count, StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < properties.Count; i++)
+        {
+            var propertyName = properties[i].Name;
+            if (names.TryGetValue(propertyName, out var firstName))
+            {
+                throw new NotSupportedException(
+                    $"Event property '{firstName}' is declared more than once or differs only by case.");
+            }
+
+            names.Add(propertyName, propertyName);
+        }
     }
 
     private static IEnumerable<PropertyInfo> ReadablePropertiesInHierarchy(Type eventType)

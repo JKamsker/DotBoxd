@@ -186,29 +186,12 @@ function Invoke-IpcClient([string] $Project, [string] $PipeName) {
     $process = Start-Process @parameters
     try {
         if (-not $process.WaitForExit(30000)) {
-            $process.Kill()
-            $process.WaitForExit()
+            Stop-ProcessTree $process
+            Write-CapturedOutput "IPC client example smoke test" $outputPath $errorPath
             throw "IPC client example smoke test timed out after 30 seconds."
         }
 
-        $output = if (Test-Path -LiteralPath $outputPath) {
-            Get-Content -Raw -LiteralPath $outputPath
-        } else {
-            ""
-        }
-        $errorOutput = if (Test-Path -LiteralPath $errorPath) {
-            Get-Content -Raw -LiteralPath $errorPath
-        } else {
-            ""
-        }
-
-        if (-not [string]::IsNullOrWhiteSpace($output)) {
-            Write-Host $output.TrimEnd()
-        }
-        if (-not [string]::IsNullOrWhiteSpace($errorOutput)) {
-            Write-Error $errorOutput.TrimEnd()
-        }
-
+        Write-CapturedOutput "IPC client example smoke test" $outputPath $errorPath
         if ($process.ExitCode -ne 0) {
             throw "IPC client example smoke test failed with exit code $($process.ExitCode)"
         }

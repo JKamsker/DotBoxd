@@ -88,6 +88,13 @@ public sealed class PluginAnalyzerPropertyShapeTests
     }
 
     [Fact]
+    public void Convention_adapter_rejects_duplicate_event_property_names()
+    {
+        Assert.Throws<NotSupportedException>(
+            () => new PluginEventAdapterRegistry().Resolve<DuplicateCaseEvent>());
+    }
+
+    [Fact]
     public void Generator_rejects_live_setting_indexers()
     {
         var result = RunGenerator("""
@@ -216,5 +223,12 @@ public sealed class PluginAnalyzerPropertyShapeTests
         public string TargetId { get; } = "player-1";
 
         public string PrivateGetter { private get; set; } = "hidden";
+    }
+
+    private sealed class DuplicateCaseEvent
+    {
+        public string TargetId { get; } = "player-1";
+
+        public string targetId { get; } = "player-2";
     }
 }

@@ -192,7 +192,7 @@ public sealed class PluginAnalyzerCompletenessTests
         Assert.Empty(diagnostics.Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
         Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
         var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
-        Assert.Contains("Eq(Var(\"e_Message\"), Str(\"fire\"))", generated);
+        Assert.Contains("StringEquals(Var(\"e_Message\"), Str(\"fire\"))", generated);
         Assert.Contains("Gt(Var(\"e_Sequence\"), I64(0L))", generated);
         Assert.Contains("Not(Le(Var(\"e_Ratio\"), F64(1D)))", generated);
     }
