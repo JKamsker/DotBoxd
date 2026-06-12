@@ -1,4 +1,5 @@
 using SafeIR.Compiler;
+using SafeIR.Compiler.Emitters;
 using SafeIR.Hosting;
 using SafeIR.Verifier;
 using System.Text.Json;

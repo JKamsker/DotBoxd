@@ -2,6 +2,7 @@ namespace SafeIR.Hosting;
 
 using SafeIR;
 using SafeIR.Compiler;
+using SafeIR.Compiler.Emitters;
 using SafeIR.Interpreter;
 using SafeIR.Runtime;
 using SafeIR.Verifier;

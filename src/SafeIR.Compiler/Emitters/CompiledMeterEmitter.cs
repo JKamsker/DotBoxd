@@ -1,8 +1,8 @@
-namespace SafeIR.Compiler;
+namespace SafeIR.Compiler.Emitters;
 
 using System.Reflection.Emit;
 using SafeIR.Runtime;
-using static IlEmitterPrimitives;
+using static SafeIR.Compiler.IlEmitterPrimitives;
 
 internal static class CompiledMeterEmitter
 {

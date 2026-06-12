@@ -1,10 +1,10 @@
-namespace SafeIR.Compiler;
+namespace SafeIR.Compiler.Emitters;
 
 using System.Reflection;
 using System.Reflection.Emit;
 using SafeIR;
 using SafeIR.Runtime;
-using static IlEmitterPrimitives;
+using static SafeIR.Compiler.IlEmitterPrimitives;
 
 internal sealed class MethodEmitter
 {

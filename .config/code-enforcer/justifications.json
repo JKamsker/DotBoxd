@@ -34,10 +34,6 @@
   ],
   "rootFolders": [
     {
-      "path": "src/SafeIR.Compiler",
-      "justification": "Existing compiler project root predates the project-folder limit. New compiler implementation files should move into subdirectories."
-    },
-    {
       "path": "src/SafeIR.Core",
       "justification": "Existing core project root predates the project-folder limit. New core implementation files should be grouped into subdirectories."
     },
