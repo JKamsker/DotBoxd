@@ -4,6 +4,9 @@ namespace SafeIR.Tests;
 
 public sealed class WorkerResultHardeningTests
 {
+    private static readonly string ValidArtifactHash = new('c', 64);
+    private static readonly string ValidCacheKey = new('d', 64);
+
     [Fact]
     public async Task Require_deterministic_denies_before_worker_invocation()
     {
@@ -88,8 +91,38 @@ public sealed class WorkerResultHardeningTests
         var worker = new TestWorker
         {
             ResultMode = ExecutionMode.Compiled,
-            ArtifactHash = new string('c', 64),
+            ArtifactHash = ValidArtifactHash,
             OmitCompiledEnvelopeFields = true
+        };
+        var host = Host(worker);
+        var plan = await PrepareAsync(host, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            Input(),
+            new SandboxExecutionOptions { Isolation = SandboxIsolation.WorkerProcess });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+    }
+
+    [Theory]
+    [InlineData("DynamicMethod", null, null)]
+    [InlineData("UnknownRuntime", null, null)]
+    [InlineData(null, "not-a-cache-key", null)]
+    [InlineData(null, null, "not-an-artifact-hash")]
+    public async Task Compiled_worker_success_rejects_malformed_runtime_envelope(
+        string? runtimeForm,
+        string? cacheKey,
+        string? artifactHash)
+    {
+        var worker = new TestWorker
+        {
+            ResultMode = ExecutionMode.Compiled,
+            ArtifactHash = artifactHash ?? ValidArtifactHash,
+            RuntimeForm = runtimeForm ?? "LoadedAssembly",
+            CacheKey = cacheKey ?? ValidCacheKey
         };
         var host = Host(worker);
         var plan = await PrepareAsync(host, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
@@ -130,6 +163,8 @@ public sealed class WorkerResultHardeningTests
         public bool OmitCompiledEnvelopeFields { get; init; }
         public ExecutionMode ResultMode { get; init; } = ExecutionMode.Interpreted;
         public string? ArtifactHash { get; init; }
+        public string RuntimeForm { get; init; } = "LoadedAssembly";
+        public string CacheKey { get; init; } = ValidCacheKey;
 
         public async ValueTask<SandboxExecutionResult> ExecuteInWorkerAsync(
             ExecutionPlan plan,
@@ -160,8 +195,8 @@ public sealed class WorkerResultHardeningTests
                     budget,
                     ResultMode,
                     "None",
-                    ResultMode == ExecutionMode.Compiled && !OmitCompiledEnvelopeFields ? "LoadedAssembly" : null,
-                    ResultMode == ExecutionMode.Compiled && !OmitCompiledEnvelopeFields ? "worker-cache-key" : null,
+                    ResultMode == ExecutionMode.Compiled && !OmitCompiledEnvelopeFields ? RuntimeForm : null,
+                    ResultMode == ExecutionMode.Compiled && !OmitCompiledEnvelopeFields ? CacheKey : null,
                     ResultMode == ExecutionMode.Compiled && !OmitCompiledEnvelopeFields ? ArtifactHash : null);
             audit.Write(new SandboxAuditEvent(
                 runId,

@@ -28,6 +28,15 @@ internal static class BindingRegistryValidator
         "file.read", "file.write", "time.now", "random", "log.write"
     };
 
+    private static readonly IReadOnlyDictionary<string, SandboxEffect> BuiltInCapabilityEffects =
+        new Dictionary<string, SandboxEffect>(StringComparer.Ordinal) {
+            ["file.read"] = SandboxEffect.FileRead,
+            ["file.write"] = SandboxEffect.FileWrite,
+            ["time.now"] = SandboxEffect.Time,
+            ["random"] = SandboxEffect.Random,
+            ["log.write"] = SandboxEffect.Audit
+        };
+
     public static IReadOnlyList<SandboxDiagnostic> Validate(IReadOnlyList<BindingDescriptor> bindings)
     {
         var diagnostics = new List<SandboxDiagnostic>();
@@ -97,6 +106,8 @@ internal static class BindingRegistryValidator
                 $"binding '{binding.Id}' uses custom capability '{binding.RequiredCapability}' without a grant validator"));
         }
 
+        ValidateBuiltInCapabilityEffect(binding, diagnostics);
+
         if (binding.Safety == BindingSafety.DangerousRequiresReview)
         {
             diagnostics.Add(new SandboxDiagnostic("E-BINDING-DANGER", $"binding '{binding.Id}' is dangerous and cannot be enabled by default"));
@@ -147,6 +158,26 @@ internal static class BindingRegistryValidator
 
     private static bool IsExternal(BindingSafety safety)
         => safety is BindingSafety.ReadOnlyExternal or BindingSafety.SideEffectingExternal;
+
+    private static void ValidateBuiltInCapabilityEffect(
+        BindingDescriptor binding,
+        List<SandboxDiagnostic> diagnostics)
+    {
+        if (binding.RequiredCapability is null ||
+            !BuiltInCapabilityEffects.TryGetValue(binding.RequiredCapability, out var requiredEffect))
+        {
+            return;
+        }
+
+        var allowedEffects = SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.Audit | requiredEffect;
+        if ((binding.Effects & requiredEffect) == SandboxEffect.None ||
+            (binding.Effects & ~allowedEffects) != SandboxEffect.None)
+        {
+            diagnostics.Add(new SandboxDiagnostic(
+                "E-BINDING-CAP-EFFECT",
+                $"binding '{binding.Id}' uses built-in capability '{binding.RequiredCapability}' with incompatible effects"));
+        }
+    }
 
     private static void ValidateCompiledTarget(BindingDescriptor binding, List<SandboxDiagnostic> diagnostics)
     {

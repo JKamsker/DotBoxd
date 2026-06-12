@@ -65,6 +65,18 @@ public sealed class BindingRegistryHardeningTests
     }
 
     [Fact]
+    public void Binding_registry_rejects_built_in_capability_with_unrelated_effects()
+    {
+        var ex = Assert.Throws<SandboxValidationException>(() => Build(TestBinding(
+            effects: SandboxEffect.GameStateWrite | SandboxEffect.Audit,
+            requiredCapability: "file.read",
+            safety: BindingSafety.SideEffectingExternal,
+            auditLevel: AuditLevel.PerCall)));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-BINDING-CAP-EFFECT");
+    }
+
+    [Fact]
     public void Binding_registry_composes_validators_for_shared_capability()
     {
         var registry = new BindingRegistryBuilder()

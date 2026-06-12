@@ -2,7 +2,8 @@ param(
     [string] $PackageDirectory = "artifacts/packages",
     [switch] $AllowPrereleaseVersions,
     [string[]] $AllowedPrereleasePackageIds = @(),
-    [string] $ExpectedVersion = ""
+    [string] $ExpectedVersion = "",
+    [string] $ExpectedRepositoryCommit = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -23,6 +24,16 @@ if ($normalizedExpectedVersion.StartsWith("v", [StringComparison]::OrdinalIgnore
     $normalizedExpectedVersion = $normalizedExpectedVersion.Substring(1)
 }
 
+$normalizedExpectedRepositoryCommit = $ExpectedRepositoryCommit.Trim()
+if ([string]::IsNullOrWhiteSpace($normalizedExpectedRepositoryCommit)) {
+    $gitHead = & git -C $root rev-parse HEAD 2>$null
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($gitHead)) {
+        throw "ExpectedRepositoryCommit was not provided and the current git commit could not be resolved."
+    }
+
+    $normalizedExpectedRepositoryCommit = ([string] $gitHead).Trim()
+}
+
 $allowedPrereleaseIds = New-Object "System.Collections.Generic.HashSet[string]" ([StringComparer]::Ordinal)
 foreach ($allowedId in $AllowedPrereleasePackageIds) {
     if (-not [string]::IsNullOrWhiteSpace($allowedId)) {
@@ -39,6 +50,24 @@ $allowedPrereleaseDependenciesByPackage = @{
         "ShaRPC.Serializers.MessagePack",
         "ShaRPC.Transports.NamedPipes"
     )
+}
+
+function IsHexString([string] $value, [int] $length) {
+    if ($value.Length -ne $length) {
+        return $false
+    }
+
+    foreach ($character in $value.ToCharArray()) {
+        if (-not [Uri]::IsHexDigit($character)) {
+            return $false
+        }
+    }
+
+    return $true
+}
+
+if (-not (IsHexString $normalizedExpectedRepositoryCommit 40)) {
+    throw "Expected repository commit must be a 40-character hexadecimal git object id."
 }
 
 function RequiredText($metadata, [string] $name, [string] $packageName) {
@@ -183,6 +212,10 @@ foreach ($package in $packages) {
             [string] $repository.url -ne $expectedRepositoryUrl -or
             [string] $repository.type -ne $expectedRepositoryType) {
             throw "Package $($package.Name) must declare repository $expectedRepositoryType $expectedRepositoryUrl."
+        }
+
+        if ([string] $repository.commit -ne $normalizedExpectedRepositoryCommit) {
+            throw "Package $($package.Name) repository commit '$([string] $repository.commit)' does not match current commit '$normalizedExpectedRepositoryCommit'."
         }
 
         if ($id -eq "SafeIR.PluginAnalyzer") {

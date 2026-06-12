@@ -271,6 +271,11 @@ public sealed class SandboxContext
         return DateTimeOffset.UtcNow;
     }
 
+    public DateTimeOffset AuditTimestamp()
+        => Policy.Deterministic
+            ? Policy.LogicalNow ?? DateTimeOffset.UnixEpoch
+            : DateTimeOffset.UtcNow;
+
     public int NextRandomInt32(int minInclusive, int maxExclusive)
     {
         if (minInclusive >= maxExclusive)

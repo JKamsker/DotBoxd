@@ -116,6 +116,29 @@ public sealed class TimeAndRandomTests
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-POLICY-DETERMINISM");
     }
 
+    [Fact]
+    public async Task Deterministic_random_does_not_require_logical_clock_for_audit_timestamp()
+    {
+        var host = SandboxTestHost.Create();
+        var module = await host.ImportJsonAsync(RandomSumJson());
+        var policy = new SandboxPolicy(
+            "deterministic-random-without-clock",
+            SandboxEffects.Pure | SandboxEffect.Random,
+            [new CapabilityGrant("random", new Dictionary<string, string>())],
+            new ResourceLimits(),
+            Deterministic: true,
+            LogicalNow: null,
+            RandomSeed: 123);
+        var plan = await host.PrepareAsync(module, policy);
+
+        var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        Assert.All(
+            result.AuditEvents.Where(e => e.BindingId == "random.nextI32"),
+            e => Assert.Equal(DateTimeOffset.UnixEpoch, e.Timestamp));
+    }
+
     private static string TimeJson()
         => """
         {

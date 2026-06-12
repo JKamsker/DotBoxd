@@ -4,6 +4,8 @@ namespace SafeIR.Tests;
 
 public sealed class WorkerIsolationTests
 {
+    private static readonly string ValidWorkerCacheKey = new('d', 64);
+
     [Fact]
     public async Task Worker_process_isolation_request_fails_closed_when_unconfigured()
     {
@@ -312,7 +314,7 @@ public sealed class WorkerIsolationTests
             var runtimeForm = ResultMode == ExecutionMode.Compiled && !string.IsNullOrWhiteSpace(ResultArtifactHash)
                 ? "LoadedAssembly"
                 : null;
-            var cacheKey = runtimeForm is not null ? "worker-cache-key" : null;
+            var cacheKey = runtimeForm is not null ? ValidWorkerCacheKey : null;
             audit.Write(new SandboxAuditEvent(
                 runId,
                 "RunSummary",
