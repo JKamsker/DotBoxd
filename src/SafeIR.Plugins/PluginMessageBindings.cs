@@ -40,20 +40,22 @@ public static class PluginMessageBindings
 
                 var message = Sanitize(((StringValue)args[1]).Value);
                 await sink.SendAsync(targetId, message, cancellationToken).ConfigureAwait(false);
+                var timestamp = DateTimeOffset.UtcNow;
+                var fields = new Dictionary<string, string>(BindingAuditFields.Create("plugin-message", timestamp), StringComparer.Ordinal)
+                {
+                    ["messageLength"] = message.Length.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                };
                 context.Audit.Write(new SandboxAuditEvent(
                     context.RunId,
                     "PluginMessage",
-                    DateTimeOffset.UtcNow,
+                    timestamp,
                     true,
                     BindingId: SendBindingId,
                     CapabilityId: CapabilityId,
                     Effect: SandboxEffect.GameStateWrite,
                     ResourceId: $"player:{targetId}",
                     Message: AuditTextSanitizer.SanitizeAndRedact(message),
-                    Fields: new Dictionary<string, string>(StringComparer.Ordinal)
-                    {
-                        ["messageLength"] = message.Length.ToString(System.Globalization.CultureInfo.InvariantCulture)
-                    }));
+                    Fields: fields));
                 return SandboxValue.Unit;
             },
             CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)),

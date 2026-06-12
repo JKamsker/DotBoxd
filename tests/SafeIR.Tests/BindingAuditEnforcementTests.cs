@@ -58,6 +58,7 @@ public sealed class BindingAuditEnforcementTests
     [InlineData(TestBindingBehavior.WrongCapability)]
     [InlineData(TestBindingBehavior.EmptyAuditEffect)]
     [InlineData(TestBindingBehavior.EmptyAuditResource)]
+    [InlineData(TestBindingBehavior.EmptyAuditFields)]
     public async Task Malformed_binding_audit_does_not_satisfy_required_audit(TestBindingBehavior behavior)
     {
         var host = Host(behavior);
@@ -185,6 +186,11 @@ public sealed class BindingAuditEnforcementTests
                     WriteAudit(context, "BindingCall", null, SandboxEffect.Cpu, null);
                 }
 
+                if (behavior == TestBindingBehavior.EmptyAuditFields)
+                {
+                    WriteAudit(context, "BindingCall", null, SandboxEffect.Cpu, "test:audit", includeFields: false);
+                }
+
                 return ValueTask.FromResult(SandboxValue.FromInt32(7));
             },
             CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)),
@@ -205,16 +211,21 @@ public sealed class BindingAuditEnforcementTests
         string kind,
         string? capabilityId,
         SandboxEffect effect,
-        string? resourceId)
-        => context.Audit.Write(new SandboxAuditEvent(
+        string? resourceId,
+        bool includeFields = true)
+    {
+        var timestamp = DateTimeOffset.UtcNow;
+        context.Audit.Write(new SandboxAuditEvent(
             context.RunId,
             kind,
-            DateTimeOffset.UtcNow,
+            timestamp,
             true,
             BindingId: "test.audited",
             CapabilityId: capabilityId,
             Effect: effect,
-            ResourceId: resourceId));
+            ResourceId: resourceId,
+            Fields: includeFields ? BindingAuditFields.Create("test", timestamp) : null));
+    }
 
     public enum TestBindingBehavior
     {
@@ -224,7 +235,8 @@ public sealed class BindingAuditEnforcementTests
         WrongAuditKind,
         WrongCapability,
         EmptyAuditEffect,
-        EmptyAuditResource
+        EmptyAuditResource,
+        EmptyAuditFields
     }
 
     private static string ModuleJson()

@@ -131,17 +131,19 @@ public sealed class SandboxContext
             return;
         }
 
+        var timestamp = DateTimeOffset.UtcNow;
         Audit.Write(new SandboxAuditEvent(
             RunId,
             "BindingCall",
-            DateTimeOffset.UtcNow,
+            timestamp,
             Success: false,
             BindingId: descriptor.Id,
             CapabilityId: descriptor.RequiredCapability,
             Effect: descriptor.Effects,
             ResourceId: $"binding:{descriptor.Id}",
             ErrorCode: errorCode,
-            Message: "binding failed before emitting audit"));
+            Message: "binding failed before emitting audit",
+            Fields: BindingAuditFields.Create("binding", timestamp)));
     }
 
     public void ChargeBindingCall(BindingDescriptor descriptor)

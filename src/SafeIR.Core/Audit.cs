@@ -64,6 +64,7 @@ public sealed class InMemoryAuditSink : IAuditSink
             CapabilityMatches(e, descriptor) &&
             EffectMatches(e, descriptor) &&
             !string.IsNullOrWhiteSpace(e.ResourceId) &&
+            HasRequiredFields(e) &&
             (success || e.ErrorCode is not null));
 
     private static bool IsBindingAuditKind(string kind)
@@ -84,5 +85,23 @@ public sealed class InMemoryAuditSink : IAuditSink
         var nonCpuEffects = descriptor.Effects & ~SandboxEffect.Cpu;
         return nonCpuEffects == SandboxEffect.None ||
                (auditEvent.Effect & nonCpuEffects) != SandboxEffect.None;
+    }
+
+    private static bool HasRequiredFields(SandboxAuditEvent auditEvent)
+    {
+        if (auditEvent.Fields is null ||
+            !auditEvent.Fields.TryGetValue("resourceKind", out var resourceKind) ||
+            string.IsNullOrWhiteSpace(resourceKind) ||
+            !auditEvent.Fields.TryGetValue("durationMs", out var durationMs))
+        {
+            return false;
+        }
+
+        return double.TryParse(
+                durationMs,
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var parsed) &&
+            parsed >= 0;
     }
 }
