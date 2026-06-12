@@ -84,7 +84,7 @@ internal static partial class SafeFileNoFollow
         }
 
         var handle = new SafeFileHandle(new IntPtr(fd), ownsHandle: true);
-        // POSIX open returns a synchronous descriptor; FileStream rejects it when marked async.
+        // POSIX open returns a synchronous descriptor; .NET rejects marking that handle async.
         return new FileStream(handle, FileAccess.Read, BufferSize, isAsync: false);
     }
 
