@@ -120,7 +120,7 @@ public sealed class SafeFileSystemReparsePointTests
     {
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson(path));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = FilePolicyBuilder()
             .GrantFileRead(root, 1024)
             .WithFuel(5_000)
             .Build();
@@ -132,7 +132,7 @@ public sealed class SafeFileSystemReparsePointTests
     {
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(FileWriteJson(path, text));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = FilePolicyBuilder()
             .GrantFileWrite(root, 1024)
             .WithFuel(5_000)
             .Build();
@@ -170,6 +170,9 @@ public sealed class SafeFileSystemReparsePointTests
           ]
         }
         """;
+
+    private static SandboxPolicyBuilder FilePolicyBuilder()
+        => SandboxPolicyBuilder.Create().WithWallTime(TimeSpan.FromSeconds(2));
 
     private static bool TryCreateDirectoryLink(string link, string target)
     {

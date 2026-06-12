@@ -97,6 +97,60 @@ function Start-IpcServer([string] $Project, [string] $PipeName) {
     }
 }
 
+function Invoke-IpcClient([string] $Project, [string] $PipeName) {
+    $outputPath = Join-Path ([System.IO.Path]::GetTempPath()) ("safe-ir-ipc-client-" + [Guid]::NewGuid().ToString("N") + ".out")
+    $errorPath = Join-Path ([System.IO.Path]::GetTempPath()) ("safe-ir-ipc-client-" + [Guid]::NewGuid().ToString("N") + ".err")
+    $arguments = @(
+        "run", "--project", $Project,
+        "--configuration", $Configuration,
+        "--no-build", "--", $PipeName)
+    $parameters = @{
+        FilePath = "dotnet"
+        ArgumentList = $arguments
+        RedirectStandardOutput = $outputPath
+        RedirectStandardError = $errorPath
+        PassThru = $true
+    }
+
+    if ($IsWindows) {
+        $parameters.WindowStyle = "Hidden"
+    }
+
+    $process = Start-Process @parameters
+    try {
+        if (-not $process.WaitForExit(30000)) {
+            $process.Kill()
+            $process.WaitForExit()
+            throw "IPC client example smoke test timed out after 30 seconds."
+        }
+
+        $output = if (Test-Path -LiteralPath $outputPath) {
+            Get-Content -Raw -LiteralPath $outputPath
+        } else {
+            ""
+        }
+        $errorOutput = if (Test-Path -LiteralPath $errorPath) {
+            Get-Content -Raw -LiteralPath $errorPath
+        } else {
+            ""
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($output)) {
+            Write-Host $output.TrimEnd()
+        }
+        if (-not [string]::IsNullOrWhiteSpace($errorOutput)) {
+            Write-Error $errorOutput.TrimEnd()
+        }
+
+        if ($process.ExitCode -ne 0) {
+            throw "IPC client example smoke test failed with exit code $($process.ExitCode)"
+        }
+    } finally {
+        $process.Dispose()
+        Remove-Item -LiteralPath $outputPath, $errorPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Wait-IpcServer([object] $Server) {
     $deadline = [DateTimeOffset]::UtcNow.AddSeconds(30)
     while ([DateTimeOffset]::UtcNow -lt $deadline) {
@@ -115,23 +169,24 @@ function Wait-IpcServer([object] $Server) {
     throw "IPC server did not start listening within 30 seconds."
 }
 
-$pipeName = "sir-ipc-" + [Guid]::NewGuid().ToString("N").Substring(0, 12)
-$ipcServer = Start-IpcServer $ipcServerExample $pipeName
-try {
-    Wait-IpcServer $ipcServer
+if ($IsWindows) {
+    $pipeName = "sir-ipc-" + [Guid]::NewGuid().ToString("N").Substring(0, 12)
+    $ipcServer = Start-IpcServer $ipcServerExample $pipeName
+    try {
+        Wait-IpcServer $ipcServer
 
-    & dotnet run --project $ipcClientExample --configuration $Configuration --no-build -- $pipeName
-    if ($LASTEXITCODE -ne 0) {
-        throw "IPC client example smoke test failed with exit code $LASTEXITCODE"
-    }
-} finally {
-    if (-not $ipcServer.Process.HasExited) {
-        $ipcServer.Process.Kill()
-        $ipcServer.Process.WaitForExit()
-    }
+        Invoke-IpcClient $ipcClientExample $pipeName
+    } finally {
+        if (-not $ipcServer.Process.HasExited) {
+            $ipcServer.Process.Kill()
+            $ipcServer.Process.WaitForExit()
+        }
 
-    $ipcServer.Process.Dispose()
-    Remove-Item -LiteralPath $ipcServer.OutputPath, $ipcServer.ErrorPath -Force -ErrorAction SilentlyContinue
+        $ipcServer.Process.Dispose()
+        Remove-Item -LiteralPath $ipcServer.OutputPath, $ipcServer.ErrorPath -Force -ErrorAction SilentlyContinue
+    }
+} else {
+    Write-Host "Skipping named-pipe IPC process smoke on non-Windows runners."
 }
 
 Write-Host "Docs/example smoke checks passed."

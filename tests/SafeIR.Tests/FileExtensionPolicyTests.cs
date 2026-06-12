@@ -34,6 +34,7 @@ public sealed class FileExtensionPolicyTests
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson(path));
         var policy = SandboxPolicyBuilder.Create()
+            .WithWallTime(TimeSpan.FromSeconds(2))
             .Grant(
                 "file.read",
                 new Dictionary<string, string>

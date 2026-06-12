@@ -39,6 +39,7 @@ public sealed class FileWritePolicyTests
         var policy = SandboxPolicyBuilder.Create()
             .GrantFileWrite(temp.Path, 2_000)
             .WithFuel(200)
+            .WithWallTime(TimeSpan.FromSeconds(2))
             .Build();
         var plan = await host.PrepareAsync(module, policy);
 
@@ -62,6 +63,7 @@ public sealed class FileWritePolicyTests
         var policy = SandboxPolicyBuilder.Create()
             .GrantFileWrite(root, 1024, allowCreate, allowOverwrite)
             .WithFuel(5_000)
+            .WithWallTime(TimeSpan.FromSeconds(2))
             .Build();
         var plan = await host.PrepareAsync(module, policy);
         return await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
