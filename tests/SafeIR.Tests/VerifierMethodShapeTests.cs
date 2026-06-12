@@ -39,6 +39,15 @@ public sealed class VerifierMethodShapeTests
             d.Message.Contains("before local calls", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Verifier_rejects_generated_function_with_wrong_signature()
+    {
+        var result = await VerifyAsync(AssemblyWithWrongFunctionSignature());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d => d.Code == "V-FUNCTION-SIGNATURE");
+    }
+
     private static async ValueTask<VerificationResult> VerifyAsync(byte[] bytes)
     {
         var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).ToLowerInvariant();
@@ -140,6 +149,20 @@ public sealed class VerifierMethodShapeTests
             il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.ValidateEntrypointInput))!);
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Call, function);
+            il.Emit(OpCodes.Ret);
+        });
+
+    private static byte[] AssemblyWithWrongFunctionSignature()
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
+            VerifierTestHelpers.DefineValidExecute(type);
+            var method = type.DefineMethod(
+                "Fn_1",
+                MethodAttributes.Private | MethodAttributes.Static,
+                typeof(SandboxValue),
+                [typeof(SandboxValue)]);
+            var il = method.GetILGenerator();
+            il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ret);
         });
 

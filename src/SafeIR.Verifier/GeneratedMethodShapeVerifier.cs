@@ -14,15 +14,19 @@ internal static class GeneratedMethodShapeVerifier
     private static readonly string ValidateInput = $"{Runtime}.ValidateEntrypointInput({Value},{Int32}):{Void}";
     private static readonly string EnterCall = $"{Runtime}.EnterCall({Context}):{Void}";
     private static readonly string ExitCall = $"{Runtime}.ExitCall({Context}):{Void}";
+    private static readonly string RequireValueType = $"{Runtime}.RequireValueType({Value},{SandboxType}):{Value}";
+    private static readonly string TypeScalar = $"{Runtime}.TypeScalar({String}):{SandboxType}";
+    private static readonly string TypeList = $"{Runtime}.TypeList({SandboxType}):{SandboxType}";
+    private static readonly string TypeMap = $"{Runtime}.TypeMap({SandboxType},{SandboxType}):{SandboxType}";
     internal static readonly string ChargeFuelSignature = $"{Runtime}.ChargeFuel({Context},{Int32}):{Void}";
     internal static readonly string ChargeLoopIterationSignature = $"{Runtime}.ChargeLoopIteration({Context},{Int32}):{Void}";
 
     private static readonly HashSet<string> ExecuteAllowedCalls = new(StringComparer.Ordinal) {
         ValidateInput,
         $"{Runtime}.GetInputArgument({Value},{Int32},{Int32},{SandboxType}):{Value}",
-        $"{Runtime}.TypeScalar({String}):{SandboxType}",
-        $"{Runtime}.TypeList({SandboxType}):{SandboxType}",
-        $"{Runtime}.TypeMap({SandboxType},{SandboxType}):{SandboxType}"
+        TypeScalar,
+        TypeList,
+        TypeMap
     };
 
     public static void VerifyBody(
@@ -68,6 +72,16 @@ internal static class GeneratedMethodShapeVerifier
                 {
                     diagnostics.Add(new VerificationDiagnostic("V-COMPILED-SHAPE", "Execute may only call generated function helpers"));
                 }
+
+                var state = analysis.EntryStates.TryGetValue(instruction.Offset, out var entryState)
+                    ? entryState
+                    : GeneratedMeterState.None;
+                if ((state & GeneratedMeterState.ValidateInput) == 0)
+                {
+                    diagnostics.Add(new VerificationDiagnostic(
+                        "V-COMPILED-SHAPE",
+                        "Execute must validate input before dispatching to a generated function"));
+                }
             }
             else if (!ExecuteAllowedCalls.Contains(instruction.CalledMember!))
             {
@@ -97,6 +111,7 @@ internal static class GeneratedMethodShapeVerifier
         }
 
         VerifyMeterOrder(methodName, analysis, diagnostics);
+        VerifyRuntimeCallOrder(methodName, analysis, diagnostics);
         foreach (var instruction in analysis.Instructions.Where(i => i.IsLocalCall))
         {
             var state = analysis.EntryStates.TryGetValue(instruction.Offset, out var entryState)
@@ -115,6 +130,33 @@ internal static class GeneratedMethodShapeVerifier
                 diagnostics.Add(new VerificationDiagnostic(
                     "V-COMPILED-SHAPE",
                     $"method '{methodName}' must not call generated functions after exiting the call meter"));
+            }
+        }
+    }
+
+    private static void VerifyRuntimeCallOrder(
+        string methodName,
+        GeneratedMethodFlow analysis,
+        List<VerificationDiagnostic> diagnostics)
+    {
+        foreach (var instruction in analysis.Instructions.Where(i => IsRuntimeWorkCall(i.CalledMember)))
+        {
+            var state = analysis.EntryStates.TryGetValue(instruction.Offset, out var entryState)
+                ? entryState
+                : GeneratedMeterState.None;
+            var required = GeneratedMeterState.EnterCall | GeneratedMeterState.ChargeFuel;
+            if ((state & required) != required)
+            {
+                diagnostics.Add(new VerificationDiagnostic(
+                    "V-COMPILED-SHAPE",
+                    $"method '{methodName}' must enter call depth and charge fuel before runtime work"));
+            }
+
+            if ((state & GeneratedMeterState.ExitCall) == GeneratedMeterState.ExitCall)
+            {
+                diagnostics.Add(new VerificationDiagnostic(
+                    "V-COMPILED-SHAPE",
+                    $"method '{methodName}' must not call runtime work after exiting the call meter"));
             }
         }
     }
@@ -167,6 +209,18 @@ internal static class GeneratedMethodShapeVerifier
 
     private static bool IsGeneratedFunctionCall(string? calledMember)
         => calledMember is not null && calledMember.StartsWith("Fn_", StringComparison.Ordinal);
+
+    private static bool IsRuntimeWorkCall(string? calledMember)
+        => calledMember is not null &&
+           calledMember.StartsWith(Runtime + ".", StringComparison.Ordinal) &&
+           calledMember != EnterCall &&
+           calledMember != ExitCall &&
+           calledMember != ChargeFuelSignature &&
+           calledMember != ChargeLoopIterationSignature &&
+           calledMember != RequireValueType &&
+           calledMember != TypeScalar &&
+           calledMember != TypeList &&
+           calledMember != TypeMap;
 
     private static void RequireReachable(
         GeneratedMethodFlow analysis,

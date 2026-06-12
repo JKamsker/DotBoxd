@@ -131,6 +131,11 @@ public sealed partial class GeneratedAssemblyVerifier
         {
             diagnostics.Add(new VerificationDiagnostic("V-METHOD-ATTR", $"method '{name}' must be static"));
         }
+
+        if (name.StartsWith("Fn_", StringComparison.Ordinal))
+        {
+            VerifyFunctionSignature(reader, method, name, diagnostics);
+        }
     }
 
     private static void VerifyExecuteSignature(
@@ -147,6 +152,24 @@ public sealed partial class GeneratedAssemblyVerifier
             diagnostics.Add(new VerificationDiagnostic(
                 "V-EXECUTE-SIGNATURE",
                 "Execute must match SandboxValue Execute(SandboxContext, SandboxValue)"));
+        }
+    }
+
+    private static void VerifyFunctionSignature(
+        MetadataReader reader,
+        MethodDefinition method,
+        string name,
+        List<VerificationDiagnostic> diagnostics)
+    {
+        var signature = method.DecodeSignature(MethodSignatureNameProvider.Instance, genericContext: null);
+        if (signature.ReturnType != "SafeIR.SandboxValue" ||
+            signature.ParameterTypes.Length == 0 ||
+            signature.ParameterTypes[0] != "SafeIR.SandboxContext" ||
+            signature.ParameterTypes.Skip(1).Any(t => t != "SafeIR.SandboxValue"))
+        {
+            diagnostics.Add(new VerificationDiagnostic(
+                "V-FUNCTION-SIGNATURE",
+                $"method '{name}' must match SandboxValue Fn_*(SandboxContext, SandboxValue...)"));
         }
     }
 

@@ -60,11 +60,14 @@ internal static class VerifierTestHelpers
             typeof(SandboxValue),
             [typeof(SandboxContext)]);
         var fnIl = fn.GetILGenerator();
+        var value = fnIl.DeclareLocal(typeof(SandboxValue));
         EmitEnterCall(fnIl);
         EmitChargeFuel(fnIl);
-        EmitExitCall(fnIl);
         fnIl.Emit(OpCodes.Ldc_I4_0);
         fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.I32))!);
+        fnIl.Emit(OpCodes.Stloc, value);
+        EmitExitCall(fnIl);
+        fnIl.Emit(OpCodes.Ldloc, value);
         fnIl.Emit(OpCodes.Ret);
 
         var method = type.DefineMethod(
