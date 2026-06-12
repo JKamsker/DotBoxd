@@ -34,7 +34,27 @@ jobs:
         run: dotnet test SafeIR.slnx --configuration Release --no-build
 
       - name: Security boundary tests
-        run: dotnet test tests/SafeIR.Tests/SafeIR.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~SafeFileSystemTests|FullyQualifiedName~SafeFileSystemReparsePointTests|FullyQualifiedName~FileExtensionPolicyTests|FullyQualifiedName~PathUriLiteralValidationTests|FullyQualifiedName~CompiledArtifactGuardTests|FullyQualifiedName~CompiledRuntimeQuotaTests|FullyQualifiedName~VerifierAttackMatrixTests|FullyQualifiedName~VerifierLoopMeteringTests|FullyQualifiedName~BindingRegistryHardeningTests|FullyQualifiedName~PluginPackageValidationTests|FullyQualifiedName~PluginRevocationTests|FullyQualifiedName~PinnedHttpTransportTests|FullyQualifiedName~DifferentialFuzzTests"
+        shell: pwsh
+        run: |
+          ./scripts/run-required-tests.ps1 `
+            -Project tests/SafeIR.Tests/SafeIR.Tests.csproj `
+            -Configuration Release `
+            -NoBuild `
+            -RequiredFullyQualifiedNameContains @(
+              "SafeFileSystemTests",
+              "SafeFileSystemReparsePointTests",
+              "FileExtensionPolicyTests",
+              "PathUriLiteralValidationTests",
+              "CompiledArtifactGuardTests",
+              "CompiledRuntimeQuotaTests",
+              "VerifierAttackMatrixTests",
+              "VerifierLoopMeteringTests",
+              "BindingRegistryHardeningTests",
+              "PluginPackageValidationTests",
+              "PluginRevocationTests",
+              "PinnedHttpTransportTests",
+              "DifferentialFuzzTests"
+            )
 
       - name: Docs and examples smoke
         shell: pwsh
@@ -74,6 +94,9 @@ jobs:
           )
           if ($env:GITHUB_REF -like "refs/tags/*") {
             $args += @("-ExpectedVersion", $env:GITHUB_REF_NAME)
+          } elseif ($env:GITHUB_REF -like "refs/heads/release/*") {
+            $releaseVersion = $env:GITHUB_REF.Substring("refs/heads/release/".Length)
+            $args += @("-ExpectedVersion", $releaseVersion)
           }
 
           ./scripts/check-package-metadata.ps1 @args
@@ -84,5 +107,4 @@ jobs:
           name: packages-${{ matrix.os }}
           path: |
             artifacts/packages/*.nupkg
-            artifacts/packages/*.snupkg
           if-no-files-found: error

@@ -1,4 +1,4 @@
-# 16 — Proposed Public C# API
+# 16 — Public C# API
 
 ## High-level usage
 
@@ -13,9 +13,12 @@ var sandbox = SandboxHost.Create(builder =>
 });
 
 var module = await sandbox.ImportJsonAsync(jsonIr, cancellationToken);
+var hostDataRoot = "/srv/safe-ir";
+var tenantId = "123";
+var configRoot = Path.GetFullPath(Path.Combine(hostDataRoot, "tenants", tenantId, "config"));
 var policy = SandboxPolicyBuilder.Create()
     .AllowPureComputation()
-    .GrantFileRead(root: "tenant://123/config", maxBytesPerRun: 256_000)
+    .GrantFileRead(root: configRoot, maxBytesPerRun: 256_000)
     .WithFuel(100_000)
     .WithWallTime(TimeSpan.FromMilliseconds(50))
     .Build();
@@ -91,9 +94,9 @@ public enum SandboxIsolation
 }
 ```
 
-`Interpreted` means direct execution of the verified IR held by the `ExecutionPlan`; it must not
-compile to IL, create a `DynamicMethod`, or load a DLL. `Compiled` is the only mode that may execute
-generated IL, and only after the compiler has produced a trusted runtime form such as a gated
+`Interpreted` means direct execution of the verified IR held by the `ExecutionPlan`; it must never
+interpret IL, compile to IL, create a `DynamicMethod`, or load a DLL. `Compiled` is the only mode
+that may invoke generated IL, and only after the compiler has produced a trusted runtime form such as a gated
 `DynamicMethod` or a verified generated assembly. The current host accepts verified loaded assembly
 artifacts and rejects `DynamicMethod` artifacts until an equivalent gate exists. `Auto` starts as
 interpreted until the hotness threshold promotes a plan to compiled mode.
@@ -399,16 +402,10 @@ public enum SandboxErrorCode
 }
 ```
 
-## Minimal MVP API
+## Stabilized minimum surface
 
-For first implementation, this is enough:
-
-```csharp
-public sealed class Sandbox
-{
-    public ValueTask<ExecutionPlan> PrepareAsync(SandboxModule module, SandboxPolicy policy);
-    public ValueTask<SandboxExecutionResult> ExecuteAsync(ExecutionPlan plan, string entrypoint, SandboxValue input);
-}
-```
-
-Add compiler/cache after the core model is proven.
+The current package set ships JSON IR import, plan preparation, interpreted IR execution,
+compiled loaded-assembly execution, cache validation, verifier gates, worker delegation, and the
+policy/resource/audit model above. New public APIs should extend this surface without weakening the
+same execution boundary: interpreted mode runs IR, and generated IL is invoked only through an
+approved compiled runtime form.

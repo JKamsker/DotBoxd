@@ -78,7 +78,7 @@ Examples:
 {
   "id": "file.read",
   "parameters": {
-    "roots": ["tenant://123/config"],
+    "roots": ["/srv/safe-ir/tenants/123/config"],
     "maxBytesPerRun": 1000000,
     "allowGlobs": ["*.json", "*.txt"]
   },

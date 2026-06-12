@@ -6,6 +6,7 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $specRoot = Join-Path $root "docs/Specs/Initial/safe-ir-sandbox-spec"
+$addendumRoot = Join-Path $root "docs/Specs/Addendum"
 $manifestPath = Join-Path $specRoot "manifest.json"
 
 if (-not (Test-Path -LiteralPath $manifestPath)) {
@@ -47,19 +48,40 @@ function Get-Sha256Hex {
     return [Convert]::ToHexString($hash).ToLowerInvariant()
 }
 
-foreach ($file in Get-ChildItem -LiteralPath $specRoot -Recurse -File | Sort-Object FullName) {
-    if ($file.FullName -eq $manifestPath) {
-        continue
+$documentSets = @(
+    @{
+        Root = $specRoot
+        Prefix = ""
+    },
+    @{
+        Root = $addendumRoot
+        Prefix = "../Addendum/"
+    }
+)
+
+foreach ($documentSet in $documentSets) {
+    $documentRoot = [string] $documentSet.Root
+    if (-not (Test-Path -LiteralPath $documentRoot)) {
+        throw "Missing spec document root: $documentRoot"
     }
 
-    $relative = [System.IO.Path]::GetRelativePath($specRoot, $file.FullName).Replace('\', '/')
-    $bytes = Get-NormalizedTextBytes -Path $file.FullName
-    $entries += [ordered] @{
-        path = $relative
-        sha256 = Get-Sha256Hex -Bytes $bytes
-        bytes = $bytes.Length
+    foreach ($file in Get-ChildItem -LiteralPath $documentRoot -Recurse -File | Sort-Object FullName) {
+        if ($file.FullName -eq $manifestPath) {
+            continue
+        }
+
+        $relative = [System.IO.Path]::GetRelativePath($documentRoot, $file.FullName).Replace('\', '/')
+        $path = ([string] $documentSet.Prefix) + $relative
+        $bytes = Get-NormalizedTextBytes -Path $file.FullName
+        $entries += [ordered] @{
+            path = $path
+            sha256 = Get-Sha256Hex -Bytes $bytes
+            bytes = $bytes.Length
+        }
     }
 }
+
+$entries = @($entries | Sort-Object { $_["path"] })
 
 $manifest = [ordered] @{
     name = "safe-ir-sandbox-spec"

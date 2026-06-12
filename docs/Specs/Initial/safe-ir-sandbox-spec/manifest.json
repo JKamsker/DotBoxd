@@ -3,6 +3,16 @@
   "created": "2026-06-11",
   "files": [
     {
+      "path": "../Addendum/Addendum.md",
+      "sha256": "e1cf43f161c00887bc5add354ecc1ce6a289741f89e9a4dd205721c8b0e738b2",
+      "bytes": 24462
+    },
+    {
+      "path": "../Addendum/Examples.md",
+      "sha256": "021c0cea55c1e4bf8caa9dbbd8607abe25a886f948caa7da2b48c92a379a3554",
+      "bytes": 10360
+    },
+    {
       "path": "adr/0001-restricted-ir-not-csharp.md",
       "sha256": "553d22b98990bae71d181a25054112a1cf089110120dec3c8443b6fd580aa530",
       "bytes": 1437
@@ -39,8 +49,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "2e4273646a786bff143088c2198d87dd70cd23391825042b6b82f49dcf0b4513",
-      "bytes": 4388
+      "sha256": "2d1d80a438194652e19adc43e70ad5a07646d423cf22bc63e065f5f3024692ce",
+      "bytes": 4387
     },
     {
       "path": "references.md",
@@ -64,8 +74,8 @@
     },
     {
       "path": "spec/03-architecture.md",
-      "sha256": "adfd36f299c3baa2661ae045739454ac6e99d0d6520c1fcd660c05eb6020550a",
-      "bytes": 9886
+      "sha256": "5d93eda9d7ece3e4c1276e1119c63fc7a8126b05d7681040f54d7ba0a5732153",
+      "bytes": 9518
     },
     {
       "path": "spec/04-ir-language.md",
@@ -79,8 +89,8 @@
     },
     {
       "path": "spec/06-effects-capabilities.md",
-      "sha256": "020f0e0fd1b102cb1c4a6906b260a43d48a0c5f67adb4456a425e80b1ff60094",
-      "bytes": 6266
+      "sha256": "b51fee3f7677b5c5671d86131e6d1a63a09a374d3ec1e2afc2e4caef23da1bbd",
+      "bytes": 6278
     },
     {
       "path": "spec/07-bindings.md",
@@ -119,8 +129,8 @@
     },
     {
       "path": "spec/14-observability-audit.md",
-      "sha256": "659e129d0f083a88ba4660ce94a04dbb304013bdf05c65ae3def0aa54b9dcb77",
-      "bytes": 5006
+      "sha256": "47701033424bc634a55775cb4dc4abb3b8b631813c4238262d8eed0f56010486",
+      "bytes": 5020
     },
     {
       "path": "spec/15-testing-red-team.md",
@@ -129,8 +139,8 @@
     },
     {
       "path": "spec/16-public-api.md",
-      "sha256": "683a5bf7b981114aebf00cd21257a360100f3dd0834715604af0eef6397cb2c1",
-      "bytes": 13966
+      "sha256": "cee7fba9c095a0cb74ca5d7d9b8255f7258e5cd1707cf296af783cd4b1b49927",
+      "bytes": 14172
     },
     {
       "path": "spec/17-implementation-plan.md",

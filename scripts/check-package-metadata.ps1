@@ -30,6 +30,17 @@ foreach ($allowedId in $AllowedPrereleasePackageIds) {
     }
 }
 
+$expectedLicenseExpression = "MIT"
+$expectedRepositoryUrl = "https://github.com/JKamsker/Safe-IR"
+$expectedRepositoryType = "git"
+$allowedPrereleaseDependenciesByPackage = @{
+    "SafeIR.Transport.Ipc.ShaRpc" = [string[]] @(
+        "ShaRPC",
+        "ShaRPC.Serializers.MessagePack",
+        "ShaRPC.Transports.NamedPipes"
+    )
+}
+
 function RequiredText($metadata, [string] $name, [string] $packageName) {
     $node = $metadata.SelectSingleNode("*[local-name()='$name']")
     if ($null -eq $node -or [string]::IsNullOrWhiteSpace($node.InnerText)) {
@@ -41,6 +52,39 @@ function RequiredText($metadata, [string] $name, [string] $packageName) {
 
 function IsPrereleaseVersion([string] $version) {
     return $version.Contains("-", [StringComparison]::Ordinal)
+}
+
+function AssertZipEntry($zip, [string] $entryName, [string] $packageName) {
+    $entry = $zip.Entries | Where-Object {
+        $_.FullName.Equals($entryName, [StringComparison]::Ordinal)
+    } | Select-Object -First 1
+
+    if ($null -eq $entry) {
+        throw "Package $packageName is missing expected package entry '$entryName'."
+    }
+}
+
+function AssertNoZipEntryPrefix($zip, [string] $prefix, [string] $packageName) {
+    $entry = $zip.Entries | Where-Object {
+        $_.FullName.StartsWith($prefix, [StringComparison]::Ordinal)
+    } | Select-Object -First 1
+
+    if ($null -ne $entry) {
+        throw "Package $packageName must not include entries under '$prefix'. Found '$($entry.FullName)'."
+    }
+}
+
+function IsAllowedPrereleaseDependency([string] $packageId, [string] $dependencyId, [string] $dependencyVersion) {
+    if (-not $allowedPrereleaseDependenciesByPackage.ContainsKey($packageId)) {
+        return $false
+    }
+
+    $allowedDependencyIds = $allowedPrereleaseDependenciesByPackage[$packageId]
+    if ($dependencyId -notin $allowedDependencyIds) {
+        return $false
+    }
+
+    return $dependencyVersion.StartsWith("1.0.0-ci.", [StringComparison]::Ordinal)
 }
 
 $expectedIds = [string[]] @(
@@ -116,31 +160,56 @@ foreach ($package in $packages) {
 
         [void] (RequiredText $metadata "authors" $package.Name)
         [void] (RequiredText $metadata "description" $package.Name)
-        [void] (RequiredText $metadata "readme" $package.Name)
-        $license = $metadata.SelectSingleNode("*[local-name()='license']")
-        if ($null -eq $license -or [string]::IsNullOrWhiteSpace($license.InnerText)) {
-            throw "Package $($package.Name) must declare a license expression or file."
+        $readme = RequiredText $metadata "readme" $package.Name
+        if ($readme -ne "README.md") {
+            throw "Package $($package.Name) must use README.md as its package readme."
         }
 
-        if ($license.InnerText -eq "MIT" -and -not (Test-Path -LiteralPath (Join-Path $root "LICENSE"))) {
+        AssertZipEntry $zip $readme $package.Name
+
+        $license = $metadata.SelectSingleNode("*[local-name()='license']")
+        if ($null -eq $license -or
+            [string] $license.type -ne "expression" -or
+            $license.InnerText -ne $expectedLicenseExpression) {
+            throw "Package $($package.Name) must declare exact license expression '$expectedLicenseExpression'."
+        }
+
+        if (-not (Test-Path -LiteralPath (Join-Path $root "LICENSE"))) {
             throw "Package $($package.Name) declares MIT but the repository has no LICENSE file."
         }
 
         $repository = $metadata.SelectSingleNode("*[local-name()='repository']")
-        if ($null -eq $repository -or [string]::IsNullOrWhiteSpace($repository.url)) {
-            throw "Package $($package.Name) must declare a repository URL."
+        if ($null -eq $repository -or
+            [string] $repository.url -ne $expectedRepositoryUrl -or
+            [string] $repository.type -ne $expectedRepositoryType) {
+            throw "Package $($package.Name) must declare repository $expectedRepositoryType $expectedRepositoryUrl."
         }
 
-        if (-not $allowPackagePrerelease) {
-            $dependencies = $metadata.SelectNodes(".//*[local-name()='dependency']")
-            foreach ($dependency in $dependencies) {
-                $dependencyId = $dependency.id
-                $dependencyVersion = $dependency.version
-                if (-not [string]::IsNullOrWhiteSpace($dependencyVersion) -and
-                    (IsPrereleaseVersion $dependencyVersion)) {
-                    throw "Stable package $id depends on prerelease package $dependencyId $dependencyVersion."
-                }
+        if ($id -eq "SafeIR.PluginAnalyzer") {
+            AssertZipEntry $zip "analyzers/dotnet/cs/SafeIR.PluginAnalyzer.dll" $package.Name
+            AssertNoZipEntryPrefix $zip "lib/" $package.Name
+        } else {
+            AssertZipEntry $zip "lib/net10.0/$id.dll" $package.Name
+        }
+
+        $dependencies = $metadata.SelectNodes(".//*[local-name()='dependency']")
+        foreach ($dependency in $dependencies) {
+            $dependencyId = [string] $dependency.id
+            $dependencyVersion = [string] $dependency.version
+            if ([string]::IsNullOrWhiteSpace($dependencyVersion) -or
+                -not (IsPrereleaseVersion $dependencyVersion)) {
+                continue
             }
+
+            if ($AllowPrereleaseVersions) {
+                continue
+            }
+
+            if (IsAllowedPrereleaseDependency $id $dependencyId $dependencyVersion) {
+                continue
+            }
+
+            throw "Stable package $id depends on unapproved prerelease package $dependencyId $dependencyVersion."
         }
     } finally {
         $zip.Dispose()

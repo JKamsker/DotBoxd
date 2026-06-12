@@ -90,7 +90,7 @@ Avoid logging:
 Use sanitized resource IDs:
 
 ```text
-tenant://123/config/settings.json
+file-grant:tenant-123-config/settings.json
 https://api.example.com/path without query secrets
 player:5751
 item:quest_reward_001
@@ -136,7 +136,7 @@ Trace spans:
 
 ```text
 Sandbox.Prepare
-Sandbox.Parse
+Sandbox.ImportJson
 Sandbox.Validate
 Sandbox.ResolvePolicy
 Sandbox.Interpret

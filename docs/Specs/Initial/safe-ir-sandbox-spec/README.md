@@ -48,7 +48,7 @@ For hard isolation against runtime bugs, memory exhaustion, process termination,
 | `spec/13-cache-versioning.md` | Cache keys, invalidation, manifests, policy changes |
 | `spec/14-observability-audit.md` | Logs, metrics, traces, audit records |
 | `spec/15-testing-red-team.md` | Required tests and malicious fixtures |
-| `spec/16-public-api.md` | Proposed C# API surface |
+| `spec/16-public-api.md` | Current C# API surface |
 | `spec/17-implementation-plan.md` | Build order and acceptance criteria |
 | `adr/0001-restricted-ir-not-csharp.md` | Decision: no arbitrary C# |
 | `adr/0002-two-execution-backends.md` | Decision: interpreter + compiler |

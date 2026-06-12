@@ -45,8 +45,8 @@
 +-----+------+          |
      |                v
      |       +-----------------+
-     |       | DynamicMethod or|
-     |       | Generated DLL   |
+     |       | Compiled runtime|
+     |       | form            |
      |       +--------+--------+
      |                |
      |                v

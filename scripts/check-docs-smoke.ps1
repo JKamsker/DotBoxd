@@ -42,8 +42,23 @@ function Test-DocumentCommands([string] $Path) {
     }
 }
 
+function Assert-DocsDoNotContain([string] $Pattern, [string] $Description) {
+    $documents = Get-ChildItem -LiteralPath (Join-Path $root "docs/Specs") -Recurse -File -Filter "*.md"
+    $matches = @($documents | Select-String -Pattern $Pattern)
+    if ($matches.Count -gt 0) {
+        $first = $matches[0]
+        throw "Documentation contains stale text ($Description): $($first.Path):$($first.LineNumber)"
+    }
+}
+
 Test-DocumentCommands (Join-Path $root "README.md")
 Test-DocumentCommands (Join-Path $root "docs/Specs/Addendum/Examples.md")
+
+Assert-DocsDoNotContain "Sandbox\.Parse" "JSON IR import is Sandbox.ImportJson"
+Assert-DocsDoNotContain "tenant://123/config" "file grants use canonical filesystem roots"
+Assert-DocsDoNotContain "Proposed Public C# API" "public API document is no longer proposed"
+Assert-DocsDoNotContain "Proposed C# API surface" "public API index is no longer proposed"
+Assert-DocsDoNotContain "Add compiler/cache after the core model is proven" "compiled mode is implemented"
 
 & dotnet run --project $addendumExample --configuration $Configuration --no-build
 if ($LASTEXITCODE -ne 0) {
