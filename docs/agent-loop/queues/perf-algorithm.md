@@ -13,6 +13,18 @@
 - [ ] `ALG-0008` medium - Collection reads recursively revalidate entire values
   - File: `docs/agent-loop/findings/ALG-0008-collection-reads-recursively-revalidate-entire-values.md`
   - Dedup: `algorithm/collections/read/full-value-revalidation`
+- [ ] `ALG-0009` medium - Capability checks rescan grants per binding call
+  - File: `docs/agent-loop/findings/ALG-0009-capability-checks-rescan-grants-per-binding-call.md`
+  - Dedup: `algorithm/policy/capability-lookup/repeated-linear-scans-per-binding`
+- [ ] `ALG-0010` medium - Compiled binding dispatch revalidates arguments per call
+  - File: `docs/agent-loop/findings/ALG-0010-compiled-binding-dispatch-revalidates-arguments-per-call.md`
+  - Dedup: `algorithm/compiled-binding-dispatch/recursive-argument-validation-per-call`
+- [ ] `ALG-0011` medium - Required audit checks rescan prior events
+  - File: `docs/agent-loop/findings/ALG-0011-required-audit-checks-rescan-prior-events.md`
+  - Dedup: `algorithm/audit/required-binding-audit/full-event-rescan`
+- [ ] `ALG-0012` medium - Function analysis clones full local scopes for every branch
+  - File: `docs/agent-loop/findings/ALG-0012-function-analysis-clones-full-local-scopes-for-every-branch.md`
+  - Dedup: `alg/function-analysis/scope-clone-per-branch`
 - [ ] `ALG-0007` low - Plugin package validation rescans module functions for entrypoints
   - File: `docs/agent-loop/findings/ALG-0007-plugin-package-validation-rescans-module-functions-for-entrypoints.md`
   - Dedup: `algorithm/plugin-package-validation/entrypoint-function-rescans`

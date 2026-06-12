@@ -25,6 +25,18 @@
 - [ ] `API-0008` medium - Plugin analyzer package lacks public diagnostic reference
   - File: `docs/agent-loop/findings/API-0008-plugin-analyzer-package-lacks-public-diagnostic-reference.md`
   - Dedup: `api/plugin-analyzer/diagnostic-reference/missing-public-docs`
+- [ ] `API-0010` medium - Public packages do not ship symbol/source-link artifacts
+  - File: `docs/agent-loop/findings/API-0010-public-packages-do-not-ship-symbol-source-link-artifacts.md`
+  - Dedup: `api-package-symbol-source-link-artifacts`
+- [ ] `API-0011` medium - Stable release gate allows a prerelease IPC transport package
+  - File: `docs/agent-loop/findings/API-0011-stable-release-gate-allows-a-prerelease-ipc-transport-package.md`
+  - Dedup: `api-stable-release-allows-prerelease-ipc-package`
+- [ ] `API-0012` medium - Worker-process isolation has no shippable worker host surface
+  - File: `docs/agent-loop/findings/API-0012-worker-process-isolation-has-no-shippable-worker-host-surface.md`
+  - Dedup: `api/worker-process/missing-shipped-worker-host-sample`
+- [ ] `API-0013` medium - Time and random policy grant helpers are missing from public API docs
+  - File: `docs/agent-loop/findings/API-0013-time-and-random-policy-grant-helpers-are-missing-from-public-api-docs.md`
+  - Dedup: `api/policy-builder/time-random-grant-helpers-missing-from-public-docs`
 
 ## Claimed
 

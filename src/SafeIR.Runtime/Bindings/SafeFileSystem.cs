@@ -7,6 +7,8 @@ using SafeIR;
 public static class SafeFileSystem
 {
     private static readonly AsyncLocal<Func<string>?> TempSuffixFactory = new();
+    private static readonly AsyncLocal<Action?> BeforeTempCreateForTests = new();
+    private static readonly AsyncLocal<Action<string>?> BeforeDirectoryCreateForTests = new();
 
     public static async ValueTask<string> ReadTextAsync(
         SandboxContext context,
@@ -88,6 +90,8 @@ public static class SafeFileSystem
             var tempPath = resolved.FullPath + ".tmp-" + CreateTempSuffix();
             try
             {
+                BeforeTempCreateForTests.Value?.Invoke();
+                EnsureNoReparsePoint(resolved.RootFull, tempPath);
                 await using (var temp = SafeFileNoFollow.CreateNewWrite(tempPath))
                 {
                     await temp.WriteAsync(bytes, timeout.Token).ConfigureAwait(false);
@@ -250,6 +254,23 @@ public static class SafeFileSystem
         return new TempSuffixScope(previous);
     }
 
+    internal static IDisposable UseBeforeTempCreateForTests(Action action)
+    {
+        var previous = BeforeTempCreateForTests.Value;
+        BeforeTempCreateForTests.Value = action;
+        return new TempCreateScope(previous);
+    }
+
+    internal static IDisposable UseBeforeDirectoryCreateForTests(Action<string> action)
+    {
+        var previous = BeforeDirectoryCreateForTests.Value;
+        BeforeDirectoryCreateForTests.Value = action;
+        return new DirectoryCreateScope(previous);
+    }
+
+    internal static void InvokeBeforeDirectoryCreateForTests(string path)
+        => BeforeDirectoryCreateForTests.Value?.Invoke(path);
+
     private static string CreateTempSuffix()
         => TempSuffixFactory.Value?.Invoke() ?? Guid.NewGuid().ToString("N");
 
@@ -313,5 +334,15 @@ public static class SafeFileSystem
     private sealed class TempSuffixScope(Func<string>? previous) : IDisposable
     {
         public void Dispose() => TempSuffixFactory.Value = previous;
+    }
+
+    private sealed class TempCreateScope(Action? previous) : IDisposable
+    {
+        public void Dispose() => BeforeTempCreateForTests.Value = previous;
+    }
+
+    private sealed class DirectoryCreateScope(Action<string>? previous) : IDisposable
+    {
+        public void Dispose() => BeforeDirectoryCreateForTests.Value = previous;
     }
 }

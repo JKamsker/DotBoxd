@@ -35,15 +35,49 @@ internal static class SafeFileWritePublisher
         SafeFileWritePermission permission)
     {
         var directory = Path.GetDirectoryName(fullPath);
-        if (string.IsNullOrWhiteSpace(directory) || Directory.Exists(directory)) {
+        if (string.IsNullOrWhiteSpace(directory)) {
             return;
         }
 
-        if (!permission.AllowCreate) {
+        var root = rootFull.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var relative = Path.GetRelativePath(root, directory);
+        if (relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathFullyQualified(relative)) {
+            throw Error(SandboxErrorCode.PermissionDenied, "file access denied: path is outside the granted sandbox root");
+        }
+
+        if (relative is "." or "") {
+            SafeFileSystem.EnsureNoReparsePoint(rootFull, fullPath);
+            return;
+        }
+
+        var current = root;
+        foreach (var part in relative.Split(
+            new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
+            StringSplitOptions.RemoveEmptyEntries)) {
+            current = Path.Combine(current, part);
+            if (Directory.Exists(current) || File.Exists(current)) {
+                SafeFileSystem.EnsureNoReparsePoint(rootFull, current);
+                continue;
+            }
+
+            if (!permission.AllowCreate) {
+                throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: create is not allowed");
+            }
+
+            SafeFileSystem.InvokeBeforeDirectoryCreateForTests(current);
+            if (Directory.Exists(current) || File.Exists(current)) {
+                SafeFileSystem.EnsureNoReparsePoint(rootFull, current);
+                continue;
+            }
+
+            Directory.CreateDirectory(current);
+            SafeFileSystem.EnsureNoReparsePoint(rootFull, current);
+        }
+
+        if (!Directory.Exists(directory)) {
             throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: create is not allowed");
         }
 
-        Directory.CreateDirectory(directory);
         SafeFileSystem.EnsureNoReparsePoint(rootFull, fullPath);
     }
 

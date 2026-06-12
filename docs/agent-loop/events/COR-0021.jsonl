@@ -1,3 +1,4 @@
 {"at":"2026-06-12T22:13:42.8488844\u002B00:00","agent":"security-producer","type":"created","status":"open","message":"Created finding"}
 {"at":"2026-06-12T22:15:47.7402248\u002B00:00","agent":"worker","type":"claimed","status":"claimed","message":"Claimed finding"}
 {"at":"2026-06-12T22:19:05.5159894\u002B00:00","agent":"worker","type":"fixed","status":"fixed_pending_verification","message":"Created write staging files with create-new no-follow semantics and added temp reparse regression coverage."}
+{"at":"2026-06-12T22:27:46.1504335\u002B00:00","agent":"worker","type":"fixed","status":"fixed_pending_verification","message":"Revalidated parent path immediately before temp creation and added parent-swap regression coverage for the verifier gap."}

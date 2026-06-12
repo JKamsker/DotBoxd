@@ -8,12 +8,12 @@ dedup_key: security/file-write/temp-publication/reparse-race
 created_at: 2026-06-12T22:13:42.8442526+00:00
 created_by: security-producer
 created_commit: 
-updated_at: 2026-06-12T22:19:05.5123054+00:00
+updated_at: 2026-06-12T22:27:46.1462068+00:00
 claimed_by: worker
 claimed_at: 2026-06-12T22:15:47.7367750+00:00
 claim_branch: workflow-work
 fixed_by: worker
-fixed_at: 2026-06-12T22:19:05.5123054+00:00
+fixed_at: 2026-06-12T22:27:46.1462068+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 

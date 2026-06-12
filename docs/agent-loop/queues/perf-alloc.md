@@ -19,9 +19,6 @@
 - [ ] `PAL-0017` medium - Verifier decodes member signatures across repeated metadata passes
   - File: `docs/agent-loop/findings/PAL-0017-verifier-decodes-member-signatures-across-repeated-metadata-passes.md`
   - Dedup: `alloc/verifier/metadata/member-signature-decode-repeated-pass`
-- [ ] `PAL-0018` medium - Binding return charging traverses large values repeatedly
-  - File: `docs/agent-loop/findings/PAL-0018-binding-return-charging-traverses-large-values-repeatedly.md`
-  - Dedup: `alloc/binding-return/quota/type-shape-triple-traversal`
 - [ ] `PAL-0019` medium - Canonical module hashing materializes nested records before hashing
   - File: `docs/agent-loop/findings/PAL-0019-canonical-module-hashing-materializes-nested-records-before-hashing.md`
   - Dedup: `alloc/canonical-module-hash/nested-record-materialization`
@@ -34,6 +31,21 @@
 - [ ] `PAL-0022` medium - File grants are reparsed on every file binding call
   - File: `docs/agent-loop/findings/PAL-0022-file-grants-are-reparsed-on-every-file-binding-call.md`
   - Dedup: `alloc/file-grants/runtime/parameter-reparse-per-call`
+- [ ] `PAL-0023` medium - Binding TryGet copies signatures during runtime lookup
+  - File: `docs/agent-loop/findings/PAL-0023-binding-tryget-copies-signatures-during-runtime-lookup.md`
+  - Dedup: `alloc/binding-registry/runtime-tryget-signature-copy`
+- [ ] `PAL-0024` medium - Binding audit fields allocate duplicate dictionaries
+  - File: `docs/agent-loop/findings/PAL-0024-binding-audit-fields-allocate-duplicate-dictionaries.md`
+  - Dedup: `alloc/audit/binding-fields/double-dictionary-per-event`
+- [ ] `PAL-0025` medium - Generated method flow analysis allocates successor arrays per instruction
+  - File: `docs/agent-loop/findings/PAL-0025-generated-method-flow-analysis-allocates-successor-arrays-per-instruction.md`
+  - Dedup: `alloc/generated-verifier/flow-successor-arrays`
+- [ ] `PAL-0026` medium - Generated assembly verifier copies the full PE buffer before metadata reads
+  - File: `docs/agent-loop/findings/PAL-0026-generated-assembly-verifier-copies-the-full-pe-buffer-before-metadata-reads.md`
+  - Dedup: `alloc/generated-verifier/pe-buffer-copy`
+- [ ] `PAL-0027` medium - Audit sanitizer clones and regex-scans clean log messages
+  - File: `docs/agent-loop/findings/PAL-0027-audit-sanitizer-clones-and-regex-scans-clean-log-messages.md`
+  - Dedup: `alloc/audit-sanitizer/clean-message-regex`
 - [ ] `PAL-0010` low - Persistent compiled cache leaves lock files per cache key
   - File: `docs/agent-loop/findings/PAL-0010-persistent-compiled-cache-leaves-lock-files-per-cache-key.md`
   - Dedup: `alloc/compiler-cache/file-locks/persistent-key-files`
@@ -46,6 +58,10 @@
 
 ## Claimed
 
+- [>] `PAL-0018` medium - Binding return charging traverses large values repeatedly
+  - File: `docs/agent-loop/findings/PAL-0018-binding-return-charging-traverses-large-values-repeatedly.md`
+  - Owner: `worker`
+  - Branch: `workflow-work`
 
 ## Fixed pending verification
 

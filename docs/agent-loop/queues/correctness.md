@@ -13,6 +13,15 @@
 - [ ] `COR-0018` high - Plugin kernel revocation does not fence already-running handlers
   - File: `docs/agent-loop/findings/COR-0018-plugin-kernel-revocation-does-not-fence-already-running-handlers.md`
   - Dedup: `security/plugins/revocation/in-flight-handler-not-fenced`
+- [ ] `COR-0027` high - Worker audit validation accepts forged non-summary event evidence
+  - File: `docs/agent-loop/findings/COR-0027-worker-audit-validation-accepts-forged-non-summary-event-evidence.md`
+  - Dedup: `security/hosting/worker-audit/non-summary-event-forgery`
+- [ ] `COR-0028` high - SandboxType exposes mutable argument lists across validation and hashing
+  - File: `docs/agent-loop/findings/COR-0028-sandboxtype-exposes-mutable-argument-lists-across-validation-and-hashing.md`
+  - Dedup: `correctness/public-model/sandbox-type/mutable-arguments`
+- [ ] `COR-0029` high - VerificationPolicy allowlists can mutate after cache-key construction
+  - File: `docs/agent-loop/findings/COR-0029-verificationpolicy-allowlists-can-mutate-after-cache-key-construction.md`
+  - Dedup: `correctness/verifier/policy/mutable-allowlist-cache-verification-drift`
 - [ ] `COR-0010` medium - Compiled executable cache lets first caller cancellation poison shared materialization
   - File: `docs/agent-loop/findings/COR-0010-compiled-executable-cache-lets-first-caller-cancellation-poison-shared-materiali.md`
   - Dedup: `correctness/compiled-cache/shared-materialization/first-caller-cancellation-poisons-waiters`
@@ -22,9 +31,6 @@
 - [ ] `COR-0012` medium - Plugin lifecycle registries can mutate while hooks publish
   - File: `docs/agent-loop/findings/COR-0012-plugin-lifecycle-registries-can-mutate-while-hooks-publish.md`
   - Dedup: `correctness/plugins/lifecycle/hook-registry-unsynchronized-concurrent-mutation`
-- [ ] `COR-0017` medium - String byte quota accounting overflows before widening large text lengths
-  - File: `docs/agent-loop/findings/COR-0017-string-byte-quota-accounting-overflows-before-widening-large-text-lengths.md`
-  - Dedup: `correctness/resource-meter/string-byte-count-overflow-before-widening`
 - [ ] `COR-0022` medium - Worker audit validation accepts undefined non-summary error codes
   - File: `docs/agent-loop/findings/COR-0022-worker-audit-validation-accepts-undefined-non-summary-error-codes.md`
   - Dedup: `correctness/hosting/worker-audit/undefined-non-summary-error-code`
@@ -34,9 +40,16 @@
 - [ ] `COR-0024` medium - Module validation results expose mutable analysis collections
   - File: `docs/agent-loop/findings/COR-0024-module-validation-results-expose-mutable-analysis-collections.md`
   - Dedup: `correctness/validation/module-result/mutable-analysis-collections`
+- [ ] `COR-0025` medium - Verifier manifest and result models expose mutable collections
+  - File: `docs/agent-loop/findings/COR-0025-verifier-manifest-and-result-models-expose-mutable-collections.md`
+  - Dedup: `correctness/compiler/verifier-models/mutable-manifest-verification-collections`
 
 ## Claimed
 
+- [>] `COR-0017` medium - String byte quota accounting overflows before widening large text lengths
+  - File: `docs/agent-loop/findings/COR-0017-string-byte-quota-accounting-overflows-before-widening-large-text-lengths.md`
+  - Owner: `worker`
+  - Branch: `workflow-work`
 
 ## Fixed pending verification
 
@@ -44,12 +57,12 @@
   - File: `docs/agent-loop/findings/COR-0004-http-allowlist-entries-can-expand-through-comma-delimited-grant-serialization.md`
   - Fixed by: `implementer`
   - Commit: `working-tree`
-- [~] `COR-0020` high - File write grants default to create-and-overwrite authority
-  - File: `docs/agent-loop/findings/COR-0020-file-write-grants-default-to-create-and-overwrite-authority.md`
-  - Fixed by: `worker`
-  - Commit: ``
 - [~] `COR-0021` high - File write temp publication can follow a raced reparse point
   - File: `docs/agent-loop/findings/COR-0021-file-write-temp-publication-can-follow-a-raced-reparse-point.md`
+  - Fixed by: `worker`
+  - Commit: ``
+- [~] `COR-0026` high - File write parent directory creation can follow a raced reparse point
+  - File: `docs/agent-loop/findings/COR-0026-file-write-parent-directory-creation-can-follow-a-raced-reparse-point.md`
   - Fixed by: `worker`
   - Commit: ``
 - [~] `COR-0003` medium - Package metadata check fails on stale packages left in output directory
@@ -67,6 +80,8 @@
   - File: `docs/agent-loop/findings/COR-0002-direct-plugin-kernel-invocation-bypasses-adapter-whitelist-validation.md`
 - [x] `COR-0005` high - Release package metadata gate splats named parameters as positional strings
   - File: `docs/agent-loop/findings/COR-0005-release-package-metadata-gate-splats-named-parameters-as-positional-strings.md`
+- [x] `COR-0020` high - File write grants default to create-and-overwrite authority
+  - File: `docs/agent-loop/findings/COR-0020-file-write-grants-default-to-create-and-overwrite-authority.md`
 - [x] `COR-0001` medium - AgentQueue allows self-duplicate findings
   - File: `docs/agent-loop/findings/COR-0001-agentqueue-allows-self-duplicate-findings.md`
 - [x] `COR-0007` medium - AgentQueue doctor accepts statuses the renderer omits

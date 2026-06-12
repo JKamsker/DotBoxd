@@ -25,6 +25,9 @@
 - [ ] `CMP-0012` medium - Public JSON ingestion lacks a versioned schema artifact
   - File: `docs/agent-loop/findings/CMP-0012-public-json-ingestion-lacks-a-versioned-schema-artifact.md`
   - Dedup: `completeness/json-ingestion/versioned-schema-artifact-missing`
+- [ ] `CMP-0013` medium - HTTP transport lacks a runnable docs-smoke example
+  - File: `docs/agent-loop/findings/CMP-0013-http-transport-lacks-a-runnable-docs-smoke-example.md`
+  - Dedup: `completeness/http-transport/runnable-example-smoke-missing`
 
 ## Claimed
 
