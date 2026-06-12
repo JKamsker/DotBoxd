@@ -1,19 +1,19 @@
 ---
 id: PAL-0018
 area: perf_alloc
-status: claimed
+status: fixed_pending_verification
 priority: medium
 title: Binding return charging traverses large values repeatedly
 dedup_key: alloc/binding-return/quota/type-shape-triple-traversal
 created_at: 2026-06-12T22:11:14.0930789+00:00
 created_by: continuous-performance-producer
 created_commit: 
-updated_at: 2026-06-12T22:20:18.1498541+00:00
+updated_at: 2026-06-12T22:38:26.9289973+00:00
 claimed_by: worker
 claimed_at: 2026-06-12T22:20:18.1498541+00:00
 claim_branch: workflow-work
-fixed_by: 
-fixed_at: 
+fixed_by: worker
+fixed_at: 2026-06-12T22:38:26.9289973+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 

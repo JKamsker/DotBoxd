@@ -70,13 +70,13 @@
 
 ## Claimed
 
-- [>] `PAL-0018` medium - Binding return charging traverses large values repeatedly
-  - File: `docs/agent-loop/findings/PAL-0018-binding-return-charging-traverses-large-values-repeatedly.md`
-  - Owner: `worker`
-  - Branch: `workflow-work`
 
 ## Fixed pending verification
 
+- [~] `PAL-0018` medium - Binding return charging traverses large values repeatedly
+  - File: `docs/agent-loop/findings/PAL-0018-binding-return-charging-traverses-large-values-repeatedly.md`
+  - Fixed by: `worker`
+  - Commit: ``
 - [~] `PAL-0005` low - Generated stack verifier allocates while parsing call signatures
   - File: `docs/agent-loop/findings/PAL-0005-generated-stack-verifier-allocates-while-parsing-call-signatures.md`
   - Fixed by: `fixer`

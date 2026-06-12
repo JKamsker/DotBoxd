@@ -101,9 +101,11 @@ public sealed class ResourceMeter
     public void ChargeValue(SandboxValue value, CancellationToken cancellationToken)
         => ChargeMeasuredShape(SandboxValueShapeMeter.Measure(value, Limits, cancellationToken, this));
 
+    internal void ChargeValueShape(ValueShape shape) => ChargeMeasuredShape(shape);
+
     public void ChargeString(string value)
     {
-        var bytes = value.Length * sizeof(char);
+        var bytes = SandboxLiteralConstraints.StringByteCount(value.Length);
         ChargeStringShape(new ValueShape(0, 0, 0, 0, value.Length, bytes));
     }
 
@@ -114,16 +116,7 @@ public sealed class ResourceMeter
             throw new ArgumentOutOfRangeException(nameof(charLength));
         }
 
-        long bytes;
-        try
-        {
-            bytes = checked((long)charLength * sizeof(char));
-        }
-        catch (OverflowException)
-        {
-            throw Quota("string byte budget exhausted");
-        }
-
+        var bytes = SandboxLiteralConstraints.StringByteCount(charLength);
         ChargeStringShape(new ValueShape(0, 0, 0, 0, charLength, bytes));
     }
 

@@ -219,21 +219,23 @@ public sealed class SandboxContext
 
     public SandboxValue ChargeBindingReturn(BindingDescriptor descriptor, SandboxValue value)
     {
-        SandboxValueValidator.RequireType(
+        var shape = SandboxValidatedValueShapeMeter.Measure(
             value,
             descriptor.ReturnType,
             SandboxErrorCode.BindingFailure,
-            $"binding '{descriptor.Id}' returned an unexpected value type");
+            $"binding '{descriptor.Id}' returned an unexpected value type",
+            Budget.Limits,
+            CancellationToken,
+            Budget);
 
-        var bytes = BindingReturnCost.MeasureBytes(value);
         if (!_returnCredits.TryConsume(value))
         {
-            ChargeValue(value);
+            Budget.ChargeValueShape(shape);
         }
 
-        if (bytes > 0 && descriptor.CostModel.PerByteFuel > 0)
+        if (shape.StringBytes > 0 && descriptor.CostModel.PerByteFuel > 0)
         {
-            ChargeFuel(CheckedFuel(bytes, descriptor.CostModel.PerByteFuel));
+            ChargeFuel(CheckedFuel(shape.StringBytes, descriptor.CostModel.PerByteFuel));
         }
 
         return value;

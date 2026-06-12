@@ -125,6 +125,27 @@ public sealed class BindingReturnCostTests
         Assert.Equal(SandboxErrorCode.BindingFailure, result.Error!.Code);
     }
 
+    [Theory]
+    [InlineData(ExecutionMode.Interpreted, false)]
+    [InlineData(ExecutionMode.Compiled, true)]
+    public async Task Binding_return_large_collection_is_charged_from_single_shape_scan(
+        ExecutionMode mode,
+        bool compiler)
+    {
+        var result = await ExecuteAsync(
+            ListBinding(256),
+            SandboxPolicyBuilder.Create()
+                .WithMaxTotalCollectionElements(256)
+                .WithFuel(1_000)
+                .Build(),
+            mode,
+            compiler,
+            """{ "name": "List", "arguments": ["I32"] }""");
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        Assert.Equal(256, result.ResourceUsage.CollectionElements);
+    }
+
     [Fact]
     public async Task Binding_return_type_mismatch_is_sanitized()
     {
@@ -241,6 +262,21 @@ public sealed class BindingReturnCostTests
             BindingSafety.PureHostFacade,
             (_, _, _) => ValueTask.FromResult<SandboxValue>(
                 new ListValue([SandboxValue.FromString("wrong")], SandboxType.I32)),
+            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)));
+
+    private static BindingDescriptor ListBinding(int count)
+        => new(
+            "test.list",
+            SemVersion.One,
+            [],
+            SandboxType.List(SandboxType.I32),
+            SandboxEffect.Cpu | SandboxEffect.Alloc,
+            null,
+            BindingCostModel.Fixed(1),
+            AuditLevel.None,
+            BindingSafety.PureHostFacade,
+            (_, _, _) => ValueTask.FromResult<SandboxValue>(
+                SandboxValue.FromList(Enumerable.Range(0, count).Select(SandboxValue.FromInt32).ToArray())),
             CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)));
 
     private static string ReturnBindingJson(string bindingId, string returnType)

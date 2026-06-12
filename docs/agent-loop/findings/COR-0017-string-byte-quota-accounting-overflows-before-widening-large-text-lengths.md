@@ -1,19 +1,19 @@
 ---
 id: COR-0017
 area: correctness
-status: claimed
+status: fixed_pending_verification
 priority: medium
 title: String byte quota accounting overflows before widening large text lengths
 dedup_key: correctness/resource-meter/string-byte-count-overflow-before-widening
 created_at: 2026-06-12T22:09:35.0577229+00:00
 created_by: correctness-producer
 created_commit: 
-updated_at: 2026-06-12T22:20:15.7584512+00:00
+updated_at: 2026-06-12T22:38:25.6288446+00:00
 claimed_by: worker
 claimed_at: 2026-06-12T22:20:15.7584512+00:00
 claim_branch: workflow-work
-fixed_by: 
-fixed_at: 
+fixed_by: worker
+fixed_at: 2026-06-12T22:38:25.6288446+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 

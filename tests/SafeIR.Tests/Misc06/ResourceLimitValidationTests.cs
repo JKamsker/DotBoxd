@@ -38,6 +38,17 @@ public sealed class ResourceLimitValidationTests
         Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
     }
 
+    [Fact]
+    public void String_byte_count_overflow_fails_as_quota()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxStringLength: int.MaxValue));
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() =>
+            meter.ChargeStringAllocation((int)(int.MaxValue / sizeof(char) + 1L)));
+
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
+    }
+
     public static TheoryData<Func<SandboxPolicyBuilder, SandboxPolicyBuilder>> NegativePolicyLimits()
         => new() {
             builder => builder.WithFuel(-1),

@@ -113,5 +113,19 @@ public static class SandboxLiteralConstraints
     }
 
     internal static ValueShape TextShape(string value)
-        => new(0, 0, 0, 0, value.Length, value.Length * sizeof(char));
+        => new(0, 0, 0, 0, value.Length, StringByteCount(value.Length));
+
+    internal static long StringByteCount(int charLength)
+    {
+        try
+        {
+            return checked((long)charLength * sizeof(char));
+        }
+        catch (OverflowException)
+        {
+            throw new SandboxRuntimeException(new SandboxError(
+                SandboxErrorCode.QuotaExceeded,
+                "string byte budget exhausted"));
+        }
+    }
 }

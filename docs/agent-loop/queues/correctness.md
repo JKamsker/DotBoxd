@@ -64,10 +64,6 @@
 
 ## Claimed
 
-- [>] `COR-0017` medium - String byte quota accounting overflows before widening large text lengths
-  - File: `docs/agent-loop/findings/COR-0017-string-byte-quota-accounting-overflows-before-widening-large-text-lengths.md`
-  - Owner: `worker`
-  - Branch: `workflow-work`
 
 ## Fixed pending verification
 
@@ -91,6 +87,10 @@
   - File: `docs/agent-loop/findings/COR-0006-worker-result-validation-accepts-undefined-failure-error-codes.md`
   - Fixed by: `implementer`
   - Commit: `working-tree`
+- [~] `COR-0017` medium - String byte quota accounting overflows before widening large text lengths
+  - File: `docs/agent-loop/findings/COR-0017-string-byte-quota-accounting-overflows-before-widening-large-text-lengths.md`
+  - Fixed by: `worker`
+  - Commit: ``
 
 ## Verified
 
