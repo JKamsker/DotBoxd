@@ -3,6 +3,7 @@ namespace SafeIR.Verifier;
 using System.Security.Cryptography;
 using System.Text;
 using SafeIR;
+using SafeIR.Runtime;
 
 public sealed record VerificationPolicy(
     IReadOnlySet<string> AllowedAssemblies,
@@ -10,6 +11,7 @@ public sealed record VerificationPolicy(
     IReadOnlySet<string> AllowedTypes,
     IReadOnlySet<string> AllowedMembers,
     IReadOnlySet<string> ForbiddenTypePrefixes,
+    IReadOnlySet<string> RuntimeFacadeIdentities,
     string VerifierVersion,
     VerificationManifestIdentity? ExpectedManifestIdentity = null)
 {
@@ -103,6 +105,7 @@ public sealed record VerificationPolicy(
                 "System.GC", "System.Delegate", "System.IServiceProvider",
                 "System.Linq.Expressions.", "Microsoft.CSharp."
             },
+            RuntimeFacadeIdentityDefaults(),
             "safe-ir-verifier-5");
 
     public bool IsMemberAllowed(string memberSignature) => AllowedMembers.Contains(memberSignature);
@@ -122,7 +125,9 @@ public sealed record VerificationPolicy(
     public string RuntimeFacadeHash
         => Hash(
             "runtime-facade",
-            AllowedMembers.Where(m => m.StartsWith($"{Runtime}.", StringComparison.Ordinal)));
+            AllowedMembers
+                .Where(m => m.StartsWith($"{Runtime}.", StringComparison.Ordinal))
+                .Concat(RuntimeFacadeIdentities));
 
     private static string Hash(string prefix, IEnumerable<string> values)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
@@ -137,4 +142,16 @@ public sealed record VerificationPolicy(
 
     private static string AssemblyIdentity(string name, string version, string culture, string publicKeyToken)
         => $"{name}, Version={version}, Culture={culture}, PublicKeyToken={publicKeyToken}";
+
+    private static IReadOnlySet<string> RuntimeFacadeIdentityDefaults()
+        => new HashSet<string>(StringComparer.Ordinal) {
+            AssemblyModuleIdentity(typeof(SandboxValue).Assembly),
+            AssemblyModuleIdentity(typeof(CompiledRuntime).Assembly)
+        };
+
+    private static string AssemblyModuleIdentity(System.Reflection.Assembly assembly)
+    {
+        var name = assembly.GetName();
+        return $"{name.Name}, Version={name.Version}, Mvid={assembly.ManifestModule.ModuleVersionId:N}";
+    }
 }

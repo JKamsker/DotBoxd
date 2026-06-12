@@ -158,6 +158,10 @@ Changing a binding requires a binding version/hash update if it changes:
 
 The verifier allowlist depends on runtime facade methods. Any change to allowed method signatures should change runtime facade hash.
 
+The runtime facade hash also includes the loaded SafeIR core/runtime assembly identities,
+including module version IDs. This invalidates compiled artifacts when runtime facade
+implementations change without a public signature change.
+
 ## Cache security
 
 Cache storage must be protected:

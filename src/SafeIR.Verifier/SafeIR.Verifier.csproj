@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SafeIR.Core\SafeIR.Core.csproj" />
+    <ProjectReference Include="..\SafeIR.Runtime\SafeIR.Runtime.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
