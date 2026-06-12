@@ -54,6 +54,25 @@ public sealed class CompilerTests
     }
 
     [Fact]
+    public async Task Compiled_mode_ignores_unreachable_effectful_tail_after_return()
+    {
+        var host = SandboxTestHost.Create(compiler: true);
+        var module = await host.ParseJsonAsync(DeadFileReadTailJson());
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(5_000).Build());
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.Unit,
+            new SandboxExecutionOptions { Mode = ExecutionMode.Compiled, AllowFallbackToInterpreter = false });
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        Assert.Equal(1, ((I32Value)result.Value!).Value);
+        Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
+        Assert.False(plan.FunctionAnalysis["main"].Effects.HasFlag(SandboxEffect.FileRead));
+    }
+
+    [Fact]
     public async Task Compiled_module_supports_internal_function_calls()
     {
         var host = SandboxTestHost.Create(compiler: true);
@@ -167,6 +186,32 @@ public sealed class CompilerTests
                 {
                   "op": "return",
                   "value": { "call": "score", "args": [{ "var": "level" }, { "var": "rarity" }] }
+                }
+              ]
+            }
+          ]
+        }
+        """;
+
+    private static string DeadFileReadTailJson()
+        => """
+        {
+          "id": "dead-file-read-tail",
+          "version": "1.0.0",
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [],
+              "returnType": "I32",
+              "body": [
+                { "op": "return", "value": { "i32": 1 } },
+                {
+                  "op": "expr",
+                  "value": {
+                    "call": "file.readText",
+                    "args": [{ "path": "secret.txt" }]
+                  }
                 }
               ]
             }

@@ -198,6 +198,78 @@ public sealed class PluginAnalyzerTests
     }
 
     [Fact]
+    public void Generator_reports_block_bodied_should_handle_with_extra_statements()
+    {
+        var compilation = CreateCompilation("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string DamageType);
+
+            [GamePlugin("bad-block")]
+            public sealed partial class BadKernel : IEventKernel<DamageEvent>
+            {
+                public bool ShouldHandle(DamageEvent e, HookContext ctx)
+                {
+                    if (e.DamageType == "ice")
+                    {
+                        return false;
+                    }
+
+                    return true;
+                }
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send("player-1", "message");
+            }
+            """);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            [new SafeIrPluginPackageGenerator().AsSourceGenerator()],
+            parseOptions: ParseOptions);
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out _,
+            out var generatorDiagnostics);
+
+        Assert.Contains(generatorDiagnostics, d => d.Id == "SGP100");
+        Assert.Empty(driver.GetRunResult().GeneratedTrees);
+    }
+
+    [Fact]
+    public void Generator_reports_unsupported_event_property_type_as_diagnostic()
+    {
+        var compilation = CreateCompilation("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(decimal Amount);
+
+            [GamePlugin("bad-event")]
+            public sealed partial class BadKernel : IEventKernel<DamageEvent>
+            {
+                public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send("player-1", "message");
+            }
+            """);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            [new SafeIrPluginPackageGenerator().AsSourceGenerator()],
+            parseOptions: ParseOptions);
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out _,
+            out var generatorDiagnostics);
+
+        Assert.Contains(generatorDiagnostics, d => d.Id == "SGP100");
+        Assert.Empty(driver.GetRunResult().GeneratedTrees);
+    }
+
+    [Fact]
     public void Generator_reports_handle_that_does_not_call_context_messages_send()
     {
         var compilation = CreateCompilation("""

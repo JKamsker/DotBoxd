@@ -33,6 +33,16 @@ public sealed class PluginPackageJsonTests
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-JSON-SCHEMA");
     }
 
+    [Fact]
+    public void Import_rejects_oversized_package_json_before_dom_parse()
+    {
+        var oversized = "{\"manifest\":\"" + new string('x', 1_048_577) + "\"}";
+
+        var ex = Assert.Throws<SandboxValidationException>(() => PluginPackageJsonSerializer.Import(oversized));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-JSON-LIMIT");
+    }
+
     [Theory]
     [InlineData("Acme.Plugin.Kernel, Acme.Plugin, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null")]
     [InlineData("RuntimeTypeHandle")]

@@ -149,8 +149,10 @@ For event handling:
 [GamePlugin("fire-damage")]
 public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
 {
+    [LiveSetting]
     public string DamageType { get; set; } = "fire";
 
+    [LiveSetting]
     public int MinDamage { get; set; } = 100;
 
     public bool ShouldHandle(DamageEvent e, HookContext context)
@@ -180,15 +182,18 @@ I build and upload a plugin package.
 
 # 4. Live Kernel State
 
-Kernel classes may expose mutable properties.
+Kernel classes may expose runtime-adjustable properties by annotating them with `[LiveSetting]`.
 
-These properties are treated as live runtime-adjustable state.
+Only annotated properties are treated as live runtime-adjustable state and mirrored into the package
+manifest.
 
 ```csharp
 public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
 {
+    [LiveSetting]
     public string DamageType { get; set; } = "fire";
 
+    [LiveSetting]
     public int MinDamage { get; set; } = 100;
 
     public bool ShouldHandle(DamageEvent e, HookContext context)
@@ -344,7 +349,7 @@ public interface DamageSettings
 Usage:
 
 ```csharp
-var settings = server.BindContext<DamageSettings>();
+var settings = server.BindContext<DamageSettings>("damage");
 
 settings.Value.Enabled = true;
 settings.Value.DamageType = "fire";
@@ -629,7 +634,7 @@ server.Hooks.On<DamageEvent>()
 Best for grouped settings.
 
 ```csharp
-var settings = server.BindContext<DamageSettings>();
+var settings = server.BindContext<DamageSettings>("operatorDefaults");
 
 server.Hooks.On<DamageEvent>()
     .Where((e, ctx) => settings.Value.Enabled)
@@ -644,6 +649,7 @@ Best for real plugins.
 ```csharp
 public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
 {
+    [LiveSetting]
     public int MinDamage { get; set; } = 100;
 
     public bool ShouldHandle(DamageEvent e, HookContext ctx)

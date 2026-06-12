@@ -190,17 +190,35 @@ builder.Add(new BindingDescriptor(
 ## Execution plan
 
 ```csharp
-public sealed record ExecutionPlan
+public sealed class ExecutionPlan
 {
-    public string ModuleHash { get; init; }
-    public string PlanHash { get; init; }
-    public string PolicyHash { get; init; }
-    public string BindingManifestHash { get; init; }
-    public SandboxModule Module { get; init; }
-    public SandboxPolicy Policy { get; init; }
-    public BindingRegistry Bindings { get; init; }
-    public ResourceLimits Budget { get; init; }
-    public IReadOnlyDictionary<string, FunctionAnalysis> FunctionAnalysis { get; init; }
+    public ExecutionPlan(
+        string moduleHash,
+        string planHash,
+        ExecutionPlanSeal planSeal,
+        string policyHash,
+        string bindingManifestHash,
+        SandboxModule module,
+        SandboxPolicy policy,
+        BindingRegistry bindings,
+        ResourceLimits budget,
+        IReadOnlyDictionary<string, FunctionAnalysis> functionAnalysis);
+
+    public string ModuleHash { get; }
+    public string PlanHash { get; }
+    public ExecutionPlanSeal PlanSeal { get; }
+    public string PolicyHash { get; }
+    public string BindingManifestHash { get; }
+    public SandboxModule Module { get; }
+    public SandboxPolicy Policy { get; }
+    public BindingRegistry Bindings { get; }
+    public ResourceLimits Budget { get; }
+    public IReadOnlyDictionary<string, FunctionAnalysis> FunctionAnalysis { get; }
+}
+
+public sealed class ExecutionPlanSeal
+{
+    public override string ToString(); // redacted
 }
 ```
 
@@ -244,13 +262,41 @@ public enum CompiledRuntimeFormKind
     DynamicMethod
 }
 
+public enum CompiledCacheStatus
+{
+    None,
+    Hit,
+    Miss,
+    Invalid,
+    Recompiled
+}
+
 public sealed record CompiledArtifact
 {
+    public CompiledArtifact(
+        byte[] assemblyBytes,
+        string assemblyHash,
+        ArtifactManifest manifest,
+        VerificationResult verification,
+        SandboxCompiledEntrypoint entrypoint,
+        CompiledRuntimeFormKind runtimeForm,
+        CompiledCacheStatus cacheStatus = CompiledCacheStatus.None,
+        string? cacheInvalidReason = null);
+
+    public byte[] AssemblyBytes { get; init; }
+    public string AssemblyHash { get; init; }
+    public ArtifactManifest Manifest { get; init; }
+    public VerificationResult Verification { get; init; }
     public CompiledRuntimeFormKind RuntimeForm { get; init; }
     public SandboxCompiledEntrypoint Entrypoint { get; init; }
-    public string ArtifactHash { get; init; }
+    public CompiledCacheStatus CacheStatus { get; init; }
+    public string? CacheInvalidReason { get; init; }
+    public string ArtifactHash { get; }
 }
 ```
+
+`LoadedAssembly` artifacts carry the verified assembly bytes, manifest, and verification result.
+`DynamicMethod` artifacts carry only the gated delegate and must not include assembly bytes.
 
 ## Verifier API
 

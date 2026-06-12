@@ -69,7 +69,7 @@
 
 ## Main packages
 
-### `Sandbox.Core`
+### `SafeIR.Core`
 
 Contains:
 
@@ -82,7 +82,7 @@ Contains:
 
 Must not depend on Reflection.Emit or host app infrastructure.
 
-### `Sandbox.Validation`
+### `SafeIR.Validation`
 
 Contains:
 
@@ -93,7 +93,7 @@ Contains:
 - binding signature validation
 - resource-cost analysis
 
-### `Sandbox.Runtime`
+### `SafeIR.Runtime`
 
 Contains:
 
@@ -105,7 +105,32 @@ Contains:
 - audit sink abstractions
 - binding invocation abstractions
 
-### `Sandbox.Interpreter`
+### `SafeIR.Serialization.Json`
+
+Contains:
+
+- JSON IR importer
+- JSON schema boundary checks
+- import-budget enforcement
+- host parsing/import extension methods
+
+### `SafeIR.Transport.Http`
+
+Contains:
+
+- HTTP binding descriptors
+- HTTP policy/grant helpers
+- pinned HTTP transport
+- HTTP grant validation
+
+### `SafeIR.Transport.Ipc.ShaRpc`
+
+Contains:
+
+- ShaRPC MessagePack named-pipe helpers
+- plugin-control IPC transport primitives
+
+### `SafeIR.Interpreter`
 
 Contains:
 
@@ -114,7 +139,7 @@ Contains:
 - trace events
 - interpreter-specific optimizations
 
-### `Sandbox.Compiler`
+### `SafeIR.Compiler`
 
 Contains:
 
@@ -124,7 +149,7 @@ Contains:
 - cache artifact writer
 - generated symbol/debug info where needed
 
-### `Sandbox.Verifier`
+### `SafeIR.Verifier`
 
 Contains:
 
@@ -134,7 +159,7 @@ Contains:
 - manifest verifier
 - cache artifact verifier
 
-### `Sandbox.Hosting`
+### `SafeIR.Hosting`
 
 Contains:
 
@@ -143,6 +168,23 @@ Contains:
 - binding registry builder
 - execution-mode selector
 - worker-process client if used
+
+### `SafeIR.PluginAnalyzer`
+
+Contains:
+
+- plugin source generator
+- local SDK diagnostics for unsupported kernel shapes
+- live-setting and forbidden host API analyzer rules
+
+### `SafeIR.Plugins`
+
+Contains:
+
+- plugin manifests and packages
+- live settings and typed kernel contexts
+- hook pipelines and event adapters
+- safe plugin message bindings
 
 ## End-to-end pipeline
 

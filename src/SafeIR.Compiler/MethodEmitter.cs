@@ -34,14 +34,14 @@ internal sealed class MethodEmitter
         CompiledMeterEmitter.EnterCall(_il);
         CompiledMeterEmitter.Fuel(_il, 1);
         EmitParameters();
-        foreach (var statement in _function.Body)
-        {
-            EmitStatement(statement);
-        }
+        var returned = EmitBlock(_function.Body);
 
-        CompiledMeterEmitter.ExitCall(_il);
-        _il.Emit(OpCodes.Ldnull);
-        _il.Emit(OpCodes.Ret);
+        if (!returned)
+        {
+            CompiledMeterEmitter.ExitCall(_il);
+            _il.Emit(OpCodes.Ldnull);
+            _il.Emit(OpCodes.Ret);
+        }
     }
 
     private void EmitParameters()
@@ -54,7 +54,20 @@ internal sealed class MethodEmitter
         }
     }
 
-    private void EmitStatement(Statement statement)
+    private bool EmitBlock(IReadOnlyList<Statement> statements)
+    {
+        foreach (var statement in statements)
+        {
+            if (EmitStatement(statement))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool EmitStatement(Statement statement)
     {
         CompiledMeterEmitter.Fuel(_il, 1);
         switch (statement)
@@ -62,41 +75,49 @@ internal sealed class MethodEmitter
             case AssignmentStatement assignment:
                 EmitExpression(assignment.Value);
                 _il.Emit(OpCodes.Stloc, Declare(assignment.Name));
-                break;
+                return false;
             case ReturnStatement ret:
                 EmitExpression(ret.Value);
                 EmitReturnValue();
-                break;
+                return true;
             case ExpressionStatement expression:
                 EmitExpression(expression.Value);
                 _il.Emit(OpCodes.Pop);
-                break;
+                return false;
             case IfStatement branch:
-                EmitIf(branch);
-                break;
+                return EmitIf(branch);
             case ForRangeStatement range:
                 EmitForRange(range);
-                break;
+                return false;
             case WhileStatement loop:
                 EmitWhile(loop);
-                break;
+                return false;
             default:
                 throw Unsupported("statement not supported");
         }
     }
 
-    private void EmitIf(IfStatement branch)
+    private bool EmitIf(IfStatement branch)
     {
         var elseLabel = _il.DefineLabel();
         var endLabel = _il.DefineLabel();
         EmitExpression(branch.Condition);
         _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AsBool)));
         _il.Emit(OpCodes.Brfalse, elseLabel);
-        branch.Then.ToList().ForEach(EmitStatement);
-        _il.Emit(OpCodes.Br, endLabel);
+        var thenReturns = EmitBlock(branch.Then);
+        if (!thenReturns)
+        {
+            _il.Emit(OpCodes.Br, endLabel);
+        }
+
         _il.MarkLabel(elseLabel);
-        branch.Else.ToList().ForEach(EmitStatement);
-        _il.MarkLabel(endLabel);
+        var elseReturns = EmitBlock(branch.Else);
+        if (!thenReturns || !elseReturns)
+        {
+            _il.MarkLabel(endLabel);
+        }
+
+        return thenReturns && elseReturns;
     }
 
     private void EmitForRange(ForRangeStatement range)
@@ -120,7 +141,7 @@ internal sealed class MethodEmitter
         _il.Emit(OpCodes.Ldloc, index);
         _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.I32)));
         _il.Emit(OpCodes.Stloc, Declare(range.LocalName));
-        range.Body.ToList().ForEach(EmitStatement);
+        EmitBlock(range.Body);
         _il.Emit(OpCodes.Ldloc, index);
         EmitInt32(_il, 1);
         _il.Emit(OpCodes.Add);
@@ -138,7 +159,7 @@ internal sealed class MethodEmitter
         _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AsBool)));
         _il.Emit(OpCodes.Brfalse, finishLabel);
         CompiledMeterEmitter.LoopIteration(_il, 5);
-        loop.Body.ToList().ForEach(EmitStatement);
+        EmitBlock(loop.Body);
         _il.Emit(OpCodes.Br, startLabel);
         _il.MarkLabel(finishLabel);
     }

@@ -1,5 +1,7 @@
 namespace SafeIR.Plugins;
 
+using SafeIR;
+
 public sealed class HookRegistry
 {
     private readonly Dictionary<Type, object> _pipelines = [];
@@ -27,12 +29,22 @@ public sealed class HookRegistry
     {
         if (_pipelines.TryGetValue(typeof(TEvent), out var existing))
         {
-            return (HookPipeline<TEvent>)existing;
+            var pipeline = (HookPipeline<TEvent>)existing;
+            if (!pipeline.UsesAdapter(adapter))
+            {
+                throw new SandboxValidationException([
+                    new SandboxDiagnostic(
+                        "SGP034",
+                        $"Hook pipeline for event '{typeof(TEvent).Name}' is already registered with a different adapter.")
+                ]);
+            }
+
+            return pipeline;
         }
 
-        var pipeline = new HookPipeline<TEvent>(adapter, _messages, _kernels);
-        _pipelines[typeof(TEvent)] = pipeline;
-        return pipeline;
+        var created = new HookPipeline<TEvent>(adapter, _messages, _kernels);
+        _pipelines[typeof(TEvent)] = created;
+        return created;
     }
 
     public async ValueTask PublishAsync<TEvent>(TEvent e, CancellationToken cancellationToken = default)
@@ -101,6 +113,9 @@ public sealed class HookPipeline<TEvent>
 
     public HookPipeline<TEvent> UseKernel<TKernel>() where TKernel : class
         => UseKernel(_kernels.GetByKernelType<TKernel>());
+
+    internal bool UsesAdapter(IPluginEventAdapter<TEvent> adapter)
+        => ReferenceEquals(_adapter, adapter);
 
     internal async ValueTask PublishAsync(TEvent e, CancellationToken cancellationToken)
     {

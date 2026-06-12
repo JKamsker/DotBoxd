@@ -124,7 +124,7 @@ public static class SafeHttpClient
         long maxBytes,
         CancellationToken cancellationToken)
     {
-        if (response.Content.Headers.ContentLength is > 0 and var length && length > maxBytes)
+        if (response.Content.Headers.ContentLength is > 0 and var contentLength && contentLength > maxBytes)
         {
             throw Error(SandboxErrorCode.QuotaExceeded, "net.http.get denied: response exceeds byte limit");
         }
@@ -149,15 +149,27 @@ public static class SafeHttpClient
                 throw Error(SandboxErrorCode.QuotaExceeded, "net.http.get denied: response exceeds byte limit");
             }
 
+            context.ChargeAllocation(read);
             memory.Write(buffer, 0, read);
         }
 
-        var bytes = memory.ToArray();
-        context.ChargeFuel(bytes.Length);
-        context.ChargeAllocation(bytes.Length);
-        var text = Encoding.UTF8.GetString(bytes);
-        context.ChargeString(text);
-        return new LimitedText(text, bytes.Length);
+        var bodyLength = CheckedLength(memory.Length);
+        var bytes = memory.GetBuffer();
+        context.ChargeFuel(bodyLength);
+        context.ChargeStringAllocation(Encoding.UTF8.GetCharCount(bytes, 0, bodyLength));
+        var text = Encoding.UTF8.GetString(bytes, 0, bodyLength);
+        context.RecordStringReturnCredit(text);
+        return new LimitedText(text, bodyLength);
+    }
+
+    private static int CheckedLength(long length)
+    {
+        if (length > int.MaxValue)
+        {
+            throw Error(SandboxErrorCode.QuotaExceeded, "net.http.get denied: response exceeds byte limit");
+        }
+
+        return (int)length;
     }
 
     private static void RequireAllowedScheme(CapabilityGrant grant, Uri uri)

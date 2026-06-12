@@ -16,6 +16,8 @@ Interpreted mode executes verified IR directly. Compiled mode is only a runtime 
 - `SafeIR.Compiler`: generated-runtime backend and persistent artifact cache.
 - `SafeIR.Verifier`: generated assembly verifier.
 - `SafeIR.Hosting`: host-facing orchestration API.
+- `SafeIR.PluginAnalyzer`: source generator and analyzer for local plugin packages.
+- `SafeIR.Plugins`: live plugin manifest, hook, kernel, and message-binding APIs.
 
 ## Minimal Host Usage
 

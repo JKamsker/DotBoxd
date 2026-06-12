@@ -14,7 +14,10 @@ internal sealed class PersistentCacheEntryLock : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         var path = LockPath(rootDirectory, cacheKey);
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var lockDirectory = Path.GetDirectoryName(path)!;
+        PersistentCompiledArtifactCachePathGuard.ValidateEntryPath(rootDirectory, lockDirectory);
+        Directory.CreateDirectory(lockDirectory);
+        PersistentCompiledArtifactCachePathGuard.ValidateEntryPath(rootDirectory, lockDirectory);
         while (true) {
             cancellationToken.ThrowIfCancellationRequested();
             try {

@@ -111,6 +111,8 @@ internal static class GeneratedMethodShapeVerifier
         }
 
         VerifyMeterOrder(methodName, analysis, diagnostics);
+        VerifyPositiveMeterAmounts(methodName, analysis, diagnostics);
+        VerifyWorkHasMeterDensity(methodName, analysis, diagnostics);
         VerifyRuntimeCallOrder(methodName, analysis, diagnostics);
         foreach (var instruction in analysis.Instructions.Where(i => i.IsLocalCall))
         {
@@ -191,6 +193,65 @@ internal static class GeneratedMethodShapeVerifier
         }
     }
 
+    private static void VerifyPositiveMeterAmounts(
+        string methodName,
+        GeneratedMethodFlow analysis,
+        List<VerificationDiagnostic> diagnostics)
+    {
+        for (var i = 0; i < analysis.Instructions.Count; i++)
+        {
+            var instruction = analysis.Instructions[i];
+            if (!IsReachable(analysis, instruction) ||
+                !IsFuelMeter(instruction.CalledMember))
+            {
+                continue;
+            }
+
+            var previous = i > 0 ? analysis.Instructions[i - 1] : null;
+            if (previous?.Int32Value is > 0)
+            {
+                continue;
+            }
+
+            diagnostics.Add(new VerificationDiagnostic(
+                "V-COMPILED-SHAPE",
+                $"method '{methodName}' must charge a positive meter amount"));
+        }
+    }
+
+    private static void VerifyWorkHasMeterDensity(
+        string methodName,
+        GeneratedMethodFlow analysis,
+        List<VerificationDiagnostic> diagnostics)
+    {
+        var positiveMeters = analysis.Instructions.Count(i =>
+            IsReachable(analysis, i) &&
+            IsFuelMeter(i.CalledMember) &&
+            PreviousInt32Value(analysis, i) is > 0);
+        var workCalls = analysis.Instructions.Count(i =>
+            IsReachable(analysis, i) &&
+            (IsMeterDensityWorkCall(i.CalledMember) || i.IsLocalCall));
+        if (positiveMeters < workCalls)
+        {
+            diagnostics.Add(new VerificationDiagnostic(
+                "V-COMPILED-SHAPE",
+                $"method '{methodName}' must meter each runtime work call"));
+        }
+    }
+
+    private static int? PreviousInt32Value(GeneratedMethodFlow analysis, GeneratedInstruction instruction)
+    {
+        for (var i = 0; i < analysis.Instructions.Count; i++)
+        {
+            if (analysis.Instructions[i].Offset == instruction.Offset)
+            {
+                return i > 0 ? analysis.Instructions[i - 1].Int32Value : null;
+            }
+        }
+
+        return null;
+    }
+
     private static GeneratedMeterState StateFor(GeneratedInstruction instruction)
     {
         var state = instruction.CalledMember switch
@@ -210,6 +271,12 @@ internal static class GeneratedMethodShapeVerifier
     private static bool IsGeneratedFunctionCall(string? calledMember)
         => calledMember is not null && calledMember.StartsWith("Fn_", StringComparison.Ordinal);
 
+    private static bool IsFuelMeter(string? calledMember)
+        => calledMember == ChargeFuelSignature || calledMember == ChargeLoopIterationSignature;
+
+    private static bool IsReachable(GeneratedMethodFlow analysis, GeneratedInstruction instruction)
+        => analysis.EntryStates.ContainsKey(instruction.Offset);
+
     private static bool IsRuntimeWorkCall(string? calledMember)
         => calledMember is not null &&
            calledMember.StartsWith(Runtime + ".", StringComparison.Ordinal) &&
@@ -221,6 +288,18 @@ internal static class GeneratedMethodShapeVerifier
            calledMember != TypeScalar &&
            calledMember != TypeList &&
            calledMember != TypeMap;
+
+    private static bool IsMeterDensityWorkCall(string? calledMember)
+    {
+        if (!IsRuntimeWorkCall(calledMember) || calledMember is null)
+        {
+            return false;
+        }
+
+        return !calledMember.StartsWith(Runtime + ".CallBinding(" + Context, StringComparison.Ordinal) &&
+               !calledMember.StartsWith(Runtime + ".CreateValueArray(" + Context, StringComparison.Ordinal) &&
+               !calledMember.Contains("(" + Context + ",", StringComparison.Ordinal);
+    }
 
     private static void RequireReachable(
         GeneratedMethodFlow analysis,

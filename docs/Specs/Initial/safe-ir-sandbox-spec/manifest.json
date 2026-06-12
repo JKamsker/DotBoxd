@@ -64,8 +64,8 @@
     },
     {
       "path": "spec/03-architecture.md",
-      "sha256": "339fa40113653e901ad4ddb64e8d40d47b42eeb579f02ab5c529a117e752c081",
-      "bytes": 8882
+      "sha256": "e4379c7e01e7c5fb61baeb4f7a9285180688055aded3513eabf8ff65226c1e9e",
+      "bytes": 9649
     },
     {
       "path": "spec/04-ir-language.md",
@@ -129,8 +129,8 @@
     },
     {
       "path": "spec/16-public-api.md",
-      "sha256": "46c19892df0c4b63ddbbab8529ce908a575e6fee2dc5aeb84748b216d90885a3",
-      "bytes": 12741
+      "sha256": "e12b147cdf606a2a6fa336b7df91e70e86042224c7cc96d3956e3f719e15dba2",
+      "bytes": 14141
     },
     {
       "path": "spec/17-implementation-plan.md",

@@ -170,6 +170,59 @@ public sealed class VerifierCompiledShapeTests
     }
 
     [Fact]
+    public async Task Verifier_rejects_generated_function_with_zero_fuel_meter()
+    {
+        var result = await VerifierTestHelpers.VerifyAsync(VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
+            var fn = DefineFunction(type);
+            var fnIl = fn.GetILGenerator();
+            var value = fnIl.DeclareLocal(typeof(SandboxValue));
+            EmitEnterCall(fnIl);
+            EmitChargeFuel(fnIl, 0);
+            fnIl.Emit(OpCodes.Ldc_I4_1);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.I32))!);
+            fnIl.Emit(OpCodes.Stloc, value);
+            EmitExitCall(fnIl);
+            fnIl.Emit(OpCodes.Ldloc, value);
+            fnIl.Emit(OpCodes.Ret);
+            EmitExecuteCalling(type, fn);
+        }));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d =>
+            d.Code == "V-COMPILED-SHAPE" &&
+            d.Message.Contains("positive meter amount", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Verifier_rejects_more_runtime_work_than_positive_meter_calls()
+    {
+        var result = await VerifierTestHelpers.VerifyAsync(VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
+            var fn = DefineFunction(type);
+            var fnIl = fn.GetILGenerator();
+            var value = fnIl.DeclareLocal(typeof(SandboxValue));
+            EmitEnterCall(fnIl);
+            EmitChargeFuel(fnIl);
+            fnIl.Emit(OpCodes.Ldc_I4_1);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.I32))!);
+            fnIl.Emit(OpCodes.Pop);
+            fnIl.Emit(OpCodes.Ldc_I4_2);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.I32))!);
+            fnIl.Emit(OpCodes.Stloc, value);
+            EmitExitCall(fnIl);
+            fnIl.Emit(OpCodes.Ldloc, value);
+            fnIl.Emit(OpCodes.Ret);
+            EmitExecuteCalling(type, fn);
+        }));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d =>
+            d.Code == "V-COMPILED-SHAPE" &&
+            d.Message.Contains("meter each runtime work call", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Verifier_rejects_generated_function_that_exits_before_entering()
     {
         var result = await VerifierTestHelpers.VerifyAsync(VerifierTestHelpers.BuildGeneratedAssembly(type =>
@@ -264,9 +317,12 @@ public sealed class VerifierCompiledShapeTests
     }
 
     private static void EmitChargeFuel(ILGenerator il)
+        => EmitChargeFuel(il, 1);
+
+    private static void EmitChargeFuel(ILGenerator il, int amount)
     {
         il.Emit(OpCodes.Ldarg_0);
-        il.Emit(OpCodes.Ldc_I4_1);
+        il.Emit(OpCodes.Ldc_I4, amount);
         il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.ChargeFuel))!);
     }
 

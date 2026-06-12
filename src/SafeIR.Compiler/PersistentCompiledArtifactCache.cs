@@ -253,10 +253,13 @@ public sealed class PersistentCompiledArtifactCache
         }
 
         var quarantineRoot = Path.Combine(_rootDirectory, "quarantine");
+        PersistentCompiledArtifactCachePathGuard.ValidateEntryPath(_rootDirectory, quarantineRoot);
         Directory.CreateDirectory(quarantineRoot);
+        PersistentCompiledArtifactCachePathGuard.ValidateEntryPath(_rootDirectory, quarantineRoot);
         var target = Path.Combine(
             quarantineRoot,
             Path.GetFileName(entryPath) + "-" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "-" + Guid.NewGuid().ToString("N"));
+        PersistentCompiledArtifactCachePathGuard.ValidateEntryPath(_rootDirectory, target);
         Directory.Move(entryPath, target);
     }
 

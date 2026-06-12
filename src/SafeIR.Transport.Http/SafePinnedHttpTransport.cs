@@ -42,6 +42,10 @@ internal static class SafePinnedHttpTransport
                             .ConfigureAwait(false);
                         return new NetworkStream(socket, ownsSocket: true);
                     }
+                    catch (Exception) when (cancellationToken.IsCancellationRequested) {
+                        socket.Dispose();
+                        throw;
+                    }
                     catch (Exception) when (!cancellationToken.IsCancellationRequested) {
                         socket.Dispose();
                     }

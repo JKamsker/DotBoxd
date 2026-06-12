@@ -10,6 +10,7 @@ public static class PluginPackageJsonSerializer
         ArgumentNullException.ThrowIfNull(json);
         try
         {
+            JsonImportBudgetGuard.Validate(json);
             using var document = JsonDocument.Parse(json, new JsonDocumentOptions
             {
                 AllowTrailingCommas = false,

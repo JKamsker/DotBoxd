@@ -1,5 +1,6 @@
 param(
-    [string] $PackageDirectory = "artifacts/packages"
+    [string] $PackageDirectory = "artifacts/packages",
+    [switch] $AllowPrereleaseVersions
 )
 
 $ErrorActionPreference = "Stop"
@@ -79,7 +80,11 @@ foreach ($package in $packages) {
             throw "Non-product package '$id' should not be packed."
         }
 
-        [void] (RequiredText $metadata "version" $package.Name)
+        $version = RequiredText $metadata "version" $package.Name
+        if (-not $AllowPrereleaseVersions -and $version.Contains("-", [StringComparison]::Ordinal)) {
+            throw "Package $($package.Name) has prerelease version '$version'. Stable release metadata is required."
+        }
+
         [void] (RequiredText $metadata "authors" $package.Name)
         [void] (RequiredText $metadata "description" $package.Name)
         [void] (RequiredText $metadata "readme" $package.Name)

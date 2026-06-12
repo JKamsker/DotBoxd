@@ -48,6 +48,18 @@ public sealed class PluginHookSignatureTests
         Assert.Equal("record matched", message.Message);
     }
 
+    [Fact]
+    public void On_rejects_different_adapter_after_pipeline_exists()
+    {
+        var server = PluginServer.Create();
+        _ = server.Hooks.On(DamageEventAdapter.Instance);
+
+        var ex = Assert.Throws<SandboxValidationException>(
+            () => server.Hooks.On(new MismatchedDamageEventAdapter()));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "SGP034");
+    }
+
     private sealed class MismatchedDamageEventAdapter : IPluginEventAdapter<DamageEvent>
     {
         public string EventName => "DamageEvent";

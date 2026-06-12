@@ -70,6 +70,22 @@ public sealed partial class SandboxHost : IDisposable
         ThrowIfDisposed();
         options ??= new SandboxExecutionOptions();
         ExecutionPlanGuard.EnsurePrepared(plan, _bindings, _planSigningKey);
+        if (!Enum.IsDefined(options.Mode))
+        {
+            return Publish(InvalidExecutionOptionsResult(
+                plan,
+                options,
+                $"execution mode '{(int)options.Mode}' is not supported"));
+        }
+
+        if (!Enum.IsDefined(options.Isolation))
+        {
+            return Publish(InvalidExecutionOptionsResult(
+                plan,
+                options,
+                $"sandbox isolation '{(int)options.Isolation}' is not supported"));
+        }
+
         if (TryGetRevokedCapability(plan, entrypoint, out var revoked))
         {
             return Publish(CapabilityRevokedResult(plan, options, revoked));
@@ -147,6 +163,14 @@ public sealed partial class SandboxHost : IDisposable
         {
             return await ExecuteInterpretedAsync(plan, entrypoint, input, options, cancellationToken)
                 .ConfigureAwait(false);
+        }
+
+        if (decision.Mode != ExecutionMode.Compiled)
+        {
+            return InvalidExecutionOptionsResult(
+                plan,
+                options,
+                $"execution mode selector returned unsupported mode '{(int)decision.Mode}'");
         }
 
         return await ExecuteCompiledAsync(plan, entrypoint, input, options, cancellationToken)

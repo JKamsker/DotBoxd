@@ -73,6 +73,24 @@ public sealed class PluginAddendumTests
     }
 
     [Fact]
+    public async Task AsyncSet_flush_pushes_direct_kernel_value_updates_before_next_run()
+    {
+        var messages = new InMemoryPluginMessageSink();
+        var server = PluginServer.Create(messages);
+        await server.InstallAsync(FireDamagePluginPackage.Create());
+        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
+
+        kernel.UpdateMode = LiveUpdateMode.AsyncSet;
+        kernel.Value.MinDamage = 250;
+        await kernel.FlushUpdatesAsync();
+        await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
+
+        Assert.Empty(messages.Messages);
+        Assert.Equal(250, kernel.Kernel.Value.Get<int>("MinDamage"));
+    }
+
+    [Fact]
     public async Task ModifyAsync_ignores_update_mode_and_waits_for_batch_commit()
     {
         var messages = new InMemoryPluginMessageSink();

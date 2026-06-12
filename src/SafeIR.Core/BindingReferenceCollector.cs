@@ -36,12 +36,10 @@ public static class BindingReferenceCollector
             return;
         }
 
-        foreach (var statement in function.Body) {
-            CollectStatement(statement, functions, bindings, ids, visited);
-        }
+        CollectBlock(function.Body, functions, bindings, ids, visited);
     }
 
-    private static void CollectStatement(
+    private static bool CollectStatement(
         Statement statement,
         IReadOnlyDictionary<string, SandboxFunction> functions,
         IBindingCatalog bindings,
@@ -51,40 +49,49 @@ public static class BindingReferenceCollector
         switch (statement) {
             case AssignmentStatement assignment:
                 CollectExpression(assignment.Value, functions, bindings, ids, visited);
-                break;
+                return false;
             case ReturnStatement ret:
                 CollectExpression(ret.Value, functions, bindings, ids, visited);
-                break;
+                return true;
             case ExpressionStatement expression:
                 CollectExpression(expression.Value, functions, bindings, ids, visited);
-                break;
+                return false;
             case IfStatement branch:
                 CollectExpression(branch.Condition, functions, bindings, ids, visited);
-                CollectBlock(branch.Then, functions, bindings, ids, visited);
-                CollectBlock(branch.Else, functions, bindings, ids, visited);
-                break;
+                var thenReturns = CollectBlock(branch.Then, functions, bindings, ids, visited);
+                var elseReturns = CollectBlock(branch.Else, functions, bindings, ids, visited);
+                return thenReturns && elseReturns;
             case WhileStatement loop:
                 CollectExpression(loop.Condition, functions, bindings, ids, visited);
                 CollectBlock(loop.Body, functions, bindings, ids, visited);
-                break;
+                return false;
             case ForRangeStatement range:
                 CollectExpression(range.Start, functions, bindings, ids, visited);
                 CollectExpression(range.End, functions, bindings, ids, visited);
                 CollectBlock(range.Body, functions, bindings, ids, visited);
-                break;
+                return false;
+            default:
+                return false;
         }
     }
 
-    private static void CollectBlock(
+    private static bool CollectBlock(
         IReadOnlyList<Statement> statements,
         IReadOnlyDictionary<string, SandboxFunction> functions,
         IBindingCatalog bindings,
         HashSet<string> ids,
         HashSet<string> visited)
     {
+        var alwaysReturns = false;
         foreach (var statement in statements) {
-            CollectStatement(statement, functions, bindings, ids, visited);
+            if (alwaysReturns) {
+                continue;
+            }
+
+            alwaysReturns = CollectStatement(statement, functions, bindings, ids, visited);
         }
+
+        return alwaysReturns;
     }
 
     private static void CollectExpression(

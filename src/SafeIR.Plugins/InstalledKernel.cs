@@ -10,6 +10,7 @@ public sealed class InstalledKernel
     private readonly SemaphoreSlim _executionGate = new(1, 1);
     private readonly SandboxHost _host;
     private readonly ExecutionPlan _plan;
+    private readonly ExecutionMode _executionMode;
     private readonly KernelEntrypoints _entrypoints;
     private readonly List<LiveStateSynchronizer> _stateSynchronizers = [];
     private readonly Dictionary<Type, object> _typedValues = [];
@@ -17,10 +18,15 @@ public sealed class InstalledKernel
     private readonly PendingLiveUpdateQueue _pendingLiveUpdates = new();
     private int _revoked;
 
-    internal InstalledKernel(SandboxHost host, ExecutionPlan plan, PluginPackage package)
+    internal InstalledKernel(
+        SandboxHost host,
+        ExecutionPlan plan,
+        PluginPackage package,
+        ExecutionMode executionMode)
     {
         _host = host;
         _plan = plan;
+        _executionMode = executionMode;
         Package = package;
         Manifest = package.Manifest;
         Value = LiveSettingStore.FromDefinitions(Manifest.LiveSettings);
@@ -74,8 +80,11 @@ public sealed class InstalledKernel
         }
     }
 
-    public ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)
-        => _pendingLiveUpdates.FlushAsync(cancellationToken);
+    public async ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)
+    {
+        SynchronizeLiveStateForFlush();
+        await _pendingLiveUpdates.FlushAsync(cancellationToken).ConfigureAwait(false);
+    }
 
     public async ValueTask<bool> ShouldHandleAsync<TEvent>(
         IPluginEventAdapter<TEvent> adapter,
@@ -232,7 +241,7 @@ public sealed class InstalledKernel
                 _plan,
                 entrypoint,
                 input,
-                new SandboxExecutionOptions { Mode = Manifest.Mode },
+                new SandboxExecutionOptions { Mode = _executionMode },
                 cancellationToken)
             .ConfigureAwait(false);
         if (!result.Succeeded)
@@ -292,6 +301,17 @@ public sealed class InstalledKernel
         }
 
         return deferredUpdates;
+    }
+
+    private void SynchronizeLiveStateForFlush()
+    {
+        foreach (var synchronize in _stateSynchronizers)
+        {
+            if ((GetUpdateMode(synchronize.StateType) & LiveUpdateMode.AsyncSet) == LiveUpdateMode.AsyncSet)
+            {
+                synchronize.Synchronize();
+            }
+        }
     }
 
     private sealed record LiveStateSynchronizer(Type StateType, Action Synchronize);

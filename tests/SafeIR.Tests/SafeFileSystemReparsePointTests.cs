@@ -59,6 +59,63 @@ public sealed class SafeFileSystemReparsePointTests
         }
     }
 
+    [Fact]
+    public async Task File_write_denies_nested_reparse_point()
+    {
+        using var root = TempDirectory.Create();
+        using var outside = TempDirectory.Create();
+        var outsideFile = Path.Combine(outside.Path, "secret.txt");
+        await File.WriteAllTextAsync(outsideFile, "original");
+        var link = Path.Combine(root.Path, "link");
+        Assert.True(
+            TryCreateDirectoryLink(link, outside.Path),
+            "Unable to create a directory symbolic link or junction for the reparse-point test.");
+
+        try {
+            var result = await ExecuteWriteAsync(root.Path, "link/secret.txt", "new");
+
+            Assert.False(result.Succeeded);
+            Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
+            Assert.Equal("original", await File.ReadAllTextAsync(outsideFile));
+        }
+        finally {
+            TryDeleteDirectoryLink(link);
+        }
+    }
+
+    [Fact]
+    public async Task File_write_denies_terminal_reparse_point()
+    {
+        using var root = TempDirectory.Create();
+        using var outside = TempDirectory.Create();
+        var outsideFile = Path.Combine(outside.Path, "secret.txt");
+        await File.WriteAllTextAsync(outsideFile, "original");
+        var link = Path.Combine(root.Path, "secret.txt");
+        var directoryLink = false;
+        if (!TryCreateFileLink(link, outsideFile)) {
+            directoryLink = true;
+            Assert.True(
+                TryCreateDirectoryLink(link, outside.Path),
+                "Unable to create a terminal file symlink or directory reparse point for the test.");
+        }
+
+        try {
+            var result = await ExecuteWriteAsync(root.Path, "secret.txt", "new");
+
+            Assert.False(result.Succeeded);
+            Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
+            Assert.Equal("original", await File.ReadAllTextAsync(outsideFile));
+        }
+        finally {
+            if (directoryLink) {
+                TryDeleteDirectoryLink(link);
+            }
+            else {
+                TryDeleteFileLink(link);
+            }
+        }
+    }
+
     private static async Task<SandboxExecutionResult> ExecuteReadAsync(string root, string path)
     {
         var host = SandboxTestHost.Create();
@@ -70,6 +127,49 @@ public sealed class SafeFileSystemReparsePointTests
         var plan = await host.PrepareAsync(module, policy);
         return await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
     }
+
+    private static async Task<SandboxExecutionResult> ExecuteWriteAsync(string root, string path, string text)
+    {
+        var host = SandboxTestHost.Create();
+        var module = await host.ParseJsonAsync(FileWriteJson(path, text));
+        var policy = SandboxPolicyBuilder.Create()
+            .GrantFileWrite(root, 1024)
+            .WithFuel(5_000)
+            .Build();
+        var plan = await host.PrepareAsync(module, policy);
+        return await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
+    }
+
+    private static string FileWriteJson(string path, string text)
+        => $$"""
+        {
+          "id": "file-writer",
+          "version": "1.0.0",
+          "capabilityRequests": [
+            { "id": "file.write", "reason": "test write" }
+          ],
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [],
+              "returnType": "Unit",
+              "body": [
+                {
+                  "op": "return",
+                  "value": {
+                    "call": "file.writeText",
+                    "args": [
+                      { "path": "{{path.Replace("\\", "\\\\", StringComparison.Ordinal)}}" },
+                      { "string": "{{text}}" }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+        """;
 
     private static bool TryCreateDirectoryLink(string link, string target)
     {

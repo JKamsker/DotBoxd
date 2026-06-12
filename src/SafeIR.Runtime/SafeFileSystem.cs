@@ -28,11 +28,14 @@ public static class SafeFileSystem
                 throw Error(SandboxErrorCode.QuotaExceeded, "file.readText denied: file exceeds read limit");
             }
 
-            var bytes = await ReadLimitedBytesAsync(context, resolved, maxBytes, timeout.Token).ConfigureAwait(false);
-            context.ChargeFuel(bytes.Length);
-            var text = Encoding.UTF8.GetString(bytes);
-            context.ChargeString(text);
-            SafeFileAudit.Read(context, startedAt, true, resolved.SanitizedPath, bytes.Length, null);
+            using var bytes = await ReadLimitedBytesAsync(context, resolved, maxBytes, timeout.Token).ConfigureAwait(false);
+            var length = CheckedLength(bytes.Length);
+            var buffer = bytes.GetBuffer();
+            context.ChargeFuel(length);
+            context.ChargeStringAllocation(Encoding.UTF8.GetCharCount(buffer, 0, length));
+            var text = Encoding.UTF8.GetString(buffer, 0, length);
+            context.RecordStringReturnCredit(text);
+            SafeFileAudit.Read(context, startedAt, true, resolved.SanitizedPath, length, null);
             return text;
         }
         catch (SandboxRuntimeException ex)
@@ -157,7 +160,7 @@ public static class SafeFileSystem
             ? path.RelativePath
             : $"sandbox://{capabilityId}/[invalid-path]";
 
-    private static async ValueTask<byte[]> ReadLimitedBytesAsync(
+    private static async ValueTask<MemoryStream> ReadLimitedBytesAsync(
         SandboxContext context,
         ResolvedPath resolved,
         long maxBytes,
@@ -165,24 +168,43 @@ public static class SafeFileSystem
     {
         await using var stream = SafeFileNoFollow.OpenRead(resolved.FullPath);
         EnsureNoReparsePoint(resolved.RootFull, resolved.FullPath);
-        using var memory = new MemoryStream();
-        var buffer = new byte[4096];
-        while (true)
+        var memory = new MemoryStream();
+        try
         {
-            var read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-            if (read == 0)
+            var buffer = new byte[4096];
+            while (true)
             {
-                return memory.ToArray();
-            }
+                var read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                if (read == 0)
+                {
+                    return memory;
+                }
 
-            context.Budget.ChargeFileRead(read);
-            if (memory.Length + read > maxBytes)
-            {
-                throw Error(SandboxErrorCode.QuotaExceeded, "file.readText denied: file exceeds read limit");
-            }
+                context.Budget.ChargeFileRead(read);
+                if (memory.Length + read > maxBytes)
+                {
+                    throw Error(SandboxErrorCode.QuotaExceeded, "file.readText denied: file exceeds read limit");
+                }
 
-            memory.Write(buffer, 0, read);
+                context.ChargeAllocation(read);
+                memory.Write(buffer, 0, read);
+            }
         }
+        catch
+        {
+            memory.Dispose();
+            throw;
+        }
+    }
+
+    private static int CheckedLength(long length)
+    {
+        if (length > int.MaxValue)
+        {
+            throw Error(SandboxErrorCode.QuotaExceeded, "file.readText denied: file exceeds read limit");
+        }
+
+        return (int)length;
     }
 
     internal static void EnsureNoReparsePoint(string rootFull, string fullPath)

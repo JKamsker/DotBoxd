@@ -131,9 +131,22 @@ internal static class SafeIrPackageSourceEmitter
     }
 
     private static ExpressionSyntax ReturnExpression(MethodDeclarationSyntax method)
-        => method.ExpressionBody?.Expression ??
-           method.Body?.Statements.OfType<ReturnStatementSyntax>().FirstOrDefault()?.Expression ??
-           throw new NotSupportedException("Kernel ShouldHandle must return an expression.");
+    {
+        if (method.ExpressionBody?.Expression is { } expression)
+        {
+            return expression;
+        }
+
+        if (method.Body is null ||
+            method.Body.Statements.Count != 1 ||
+            method.Body.Statements[0] is not ReturnStatementSyntax ret ||
+            ret.Expression is null)
+        {
+            throw new NotSupportedException("Kernel ShouldHandle must return exactly one expression.");
+        }
+
+        return ret.Expression;
+    }
 
     private static string HandleExpression(PluginKernelModel model)
     {

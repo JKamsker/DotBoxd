@@ -55,6 +55,39 @@ public sealed partial class SandboxHost
         };
     }
 
+    private static SandboxExecutionResult InvalidExecutionOptionsResult(
+        ExecutionPlan plan,
+        SandboxExecutionOptions options,
+        string message)
+    {
+        var runId = options.RunId ?? SandboxRunId.New();
+        var budget = new ResourceMeter(plan.Budget);
+        var startedAt = DateTimeOffset.UtcNow;
+        var error = new SandboxError(SandboxErrorCode.ValidationError, message);
+        var audit = new InMemoryAuditSink();
+        audit.Write(new SandboxAuditEvent(
+            runId,
+            "InvalidExecutionOptions",
+            startedAt,
+            false,
+            ResourceId: $"module:{plan.ModuleHash}",
+            ErrorCode: error.Code,
+            Message: error.SafeMessage));
+        WriteFailedRunSummary(audit, runId, startedAt, plan, budget, options.Mode, error);
+
+        return new SandboxExecutionResult
+        {
+            Succeeded = false,
+            Error = error,
+            ResourceUsage = budget.Snapshot(),
+            AuditEvents = audit.Events,
+            ActualMode = options.Mode,
+            ModuleHash = plan.ModuleHash,
+            PlanHash = plan.PlanHash,
+            PolicyHash = plan.PolicyHash
+        };
+    }
+
     private static SandboxExecutionResult CompiledFailureResult(
         ExecutionPlan plan,
         SandboxExecutionOptions options,

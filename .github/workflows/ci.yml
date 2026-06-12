@@ -62,6 +62,11 @@ jobs:
 
       - name: Check package metadata
         shell: pwsh
+        run: ./scripts/check-package-metadata.ps1 -PackageDirectory artifacts/packages -AllowPrereleaseVersions
+
+      - name: Enforce stable package versions
+        if: startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
         run: ./scripts/check-package-metadata.ps1 -PackageDirectory artifacts/packages
 
       - name: Upload package artifacts

@@ -33,6 +33,12 @@ internal static class PluginKernelModelFactory
 
         try
         {
+            var eventProperties = PluginSymbolReader.EventProperties(eventType);
+            if (eventProperties.Any(p => p.Type == "unsupported"))
+            {
+                throw new NotSupportedException("Kernel event properties must use supported scalar types.");
+            }
+
             var model = new PluginKernelModel(
                 PluginId: pluginId,
                 Namespace: type.ContainingNamespace.IsGlobalNamespace ? "" : type.ContainingNamespace.ToDisplayString(),
@@ -43,7 +49,7 @@ internal static class PluginKernelModelFactory
                 ContextParameterName: shouldHandle.ParameterList.Parameters.Skip(1).FirstOrDefault()?.Identifier.ValueText ?? "ctx",
                 HandleEventParameterName: handle.ParameterList.Parameters.FirstOrDefault()?.Identifier.ValueText ?? "e",
                 HandleContextParameterName: handle.ParameterList.Parameters.Skip(1).FirstOrDefault()?.Identifier.ValueText ?? "ctx",
-                EventProperties: PluginSymbolReader.EventProperties(eventType),
+                EventProperties: eventProperties,
                 LiveSettings: PluginSymbolReader.LiveSettings(type),
                 ShouldHandle: shouldHandle,
                 Handle: handle);

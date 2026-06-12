@@ -101,6 +101,15 @@ public sealed class SandboxContext
         _returnCredits.RecordString(value);
     }
 
+    public void ChargeStringAllocation(int charLength)
+    {
+        CancellationToken.ThrowIfCancellationRequested();
+        Budget.ChargeStringAllocation(charLength);
+    }
+
+    public void RecordStringReturnCredit(string value)
+        => _returnCredits.RecordString(value);
+
     public IDisposable BeginBindingReturnCreditScope() => _returnCredits.BeginScope();
 
     public void ChargeLogEvent(string message) => Budget.ChargeLogEvent(message);

@@ -2,7 +2,12 @@ namespace SafeIR.Validation;
 
 using SafeIR;
 
-internal delegate SandboxType ExpressionAnalyzer(Expression expression, FunctionScope scope, ref SandboxEffect effects, ref bool canReorder);
+internal delegate SandboxType ExpressionAnalyzer(
+    Expression expression,
+    FunctionScope scope,
+    ref SandboxEffect effects,
+    ref bool canReorder,
+    bool recordCapabilities);
 
 internal sealed class CollectionCallAnalyzer
 {
@@ -15,7 +20,13 @@ internal sealed class CollectionCallAnalyzer
         _analyzeExpression = analyzeExpression;
     }
 
-    public bool TryAnalyze(CallExpression call, FunctionScope scope, ref SandboxEffect effects, ref bool canReorder, out SandboxType type)
+    public bool TryAnalyze(
+        CallExpression call,
+        FunctionScope scope,
+        ref SandboxEffect effects,
+        ref bool canReorder,
+        bool recordCapabilities,
+        out SandboxType type)
     {
         if (!IsCollectionCall(call.Name))
         {
@@ -26,15 +37,15 @@ internal sealed class CollectionCallAnalyzer
         type = call.Name switch
         {
             "list.empty" => AnalyzeListEmpty(call, ref effects),
-            "list.of" => AnalyzeListOf(call, scope, ref effects, ref canReorder),
-            "list.count" => AnalyzeListCount(call, scope, ref effects, ref canReorder),
-            "list.get" => AnalyzeListGet(call, scope, ref effects, ref canReorder),
-            "list.add" => AnalyzeListAdd(call, scope, ref effects, ref canReorder),
+            "list.of" => AnalyzeListOf(call, scope, ref effects, ref canReorder, recordCapabilities),
+            "list.count" => AnalyzeListCount(call, scope, ref effects, ref canReorder, recordCapabilities),
+            "list.get" => AnalyzeListGet(call, scope, ref effects, ref canReorder, recordCapabilities),
+            "list.add" => AnalyzeListAdd(call, scope, ref effects, ref canReorder, recordCapabilities),
             "map.empty" => AnalyzeMapEmpty(call, ref effects),
-            "map.containsKey" => AnalyzeMapContainsKey(call, scope, ref effects, ref canReorder),
-            "map.get" => AnalyzeMapGet(call, scope, ref effects, ref canReorder),
-            "map.set" => AnalyzeMapSet(call, scope, ref effects, ref canReorder),
-            "map.remove" => AnalyzeMapRemove(call, scope, ref effects, ref canReorder),
+            "map.containsKey" => AnalyzeMapContainsKey(call, scope, ref effects, ref canReorder, recordCapabilities),
+            "map.get" => AnalyzeMapGet(call, scope, ref effects, ref canReorder, recordCapabilities),
+            "map.set" => AnalyzeMapSet(call, scope, ref effects, ref canReorder, recordCapabilities),
+            "map.remove" => AnalyzeMapRemove(call, scope, ref effects, ref canReorder, recordCapabilities),
             _ => SandboxType.Unit
         };
         return true;
@@ -58,13 +69,18 @@ internal sealed class CollectionCallAnalyzer
         return SandboxType.List(call.GenericType);
     }
 
-    private SandboxType AnalyzeListOf(CallExpression call, FunctionScope scope, ref SandboxEffect effects, ref bool canReorder)
+    private SandboxType AnalyzeListOf(
+        CallExpression call,
+        FunctionScope scope,
+        ref SandboxEffect effects,
+        ref bool canReorder,
+        bool recordCapabilities)
     {
         effects |= SandboxEffect.Alloc;
         SandboxType? itemType = null;
         foreach (var arg in call.Arguments)
         {
-            var current = _analyzeExpression(arg, scope, ref effects, ref canReorder);
+            var current = _analyzeExpression(arg, scope, ref effects, ref canReorder, recordCapabilities);
             itemType ??= current;
             Require(current, itemType, arg.Span);
         }
@@ -72,7 +88,12 @@ internal sealed class CollectionCallAnalyzer
         return SandboxType.List(itemType ?? SandboxType.Unit);
     }
 
-    private SandboxType AnalyzeListCount(CallExpression call, FunctionScope scope, ref SandboxEffect effects, ref bool canReorder)
+    private SandboxType AnalyzeListCount(
+        CallExpression call,
+        FunctionScope scope,
+        ref SandboxEffect effects,
+        ref bool canReorder,
+        bool recordCapabilities)
     {
         if (call.Arguments.Count != 1)
         {
@@ -80,11 +101,18 @@ internal sealed class CollectionCallAnalyzer
             return SandboxType.I32;
         }
 
-        RequireList(_analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder), call.Arguments[0].Span);
+        RequireList(
+            _analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder, recordCapabilities),
+            call.Arguments[0].Span);
         return SandboxType.I32;
     }
 
-    private SandboxType AnalyzeListGet(CallExpression call, FunctionScope scope, ref SandboxEffect effects, ref bool canReorder)
+    private SandboxType AnalyzeListGet(
+        CallExpression call,
+        FunctionScope scope,
+        ref SandboxEffect effects,
+        ref bool canReorder,
+        bool recordCapabilities)
     {
         if (call.Arguments.Count != 2)
         {
@@ -92,12 +120,22 @@ internal sealed class CollectionCallAnalyzer
             return SandboxType.Unit;
         }
 
-        var listType = RequireList(_analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder), call.Arguments[0].Span);
-        Require(_analyzeExpression(call.Arguments[1], scope, ref effects, ref canReorder), SandboxType.I32, call.Arguments[1].Span);
+        var listType = RequireList(
+            _analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder, recordCapabilities),
+            call.Arguments[0].Span);
+        Require(
+            _analyzeExpression(call.Arguments[1], scope, ref effects, ref canReorder, recordCapabilities),
+            SandboxType.I32,
+            call.Arguments[1].Span);
         return listType?.Arguments[0] ?? SandboxType.Unit;
     }
 
-    private SandboxType AnalyzeListAdd(CallExpression call, FunctionScope scope, ref SandboxEffect effects, ref bool canReorder)
+    private SandboxType AnalyzeListAdd(
+        CallExpression call,
+        FunctionScope scope,
+        ref SandboxEffect effects,
+        ref bool canReorder,
+        bool recordCapabilities)
     {
         effects |= SandboxEffect.Alloc;
         if (call.Arguments.Count != 2)
@@ -106,8 +144,10 @@ internal sealed class CollectionCallAnalyzer
             return SandboxType.List(SandboxType.Unit);
         }
 
-        var listType = RequireList(_analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder), call.Arguments[0].Span);
-        var itemType = _analyzeExpression(call.Arguments[1], scope, ref effects, ref canReorder);
+        var listType = RequireList(
+            _analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder, recordCapabilities),
+            call.Arguments[0].Span);
+        var itemType = _analyzeExpression(call.Arguments[1], scope, ref effects, ref canReorder, recordCapabilities);
         if (listType is null)
         {
             return SandboxType.List(itemType);
@@ -129,7 +169,12 @@ internal sealed class CollectionCallAnalyzer
         return mapType ?? SandboxType.Map(SandboxType.Unit, SandboxType.Unit);
     }
 
-    private SandboxType AnalyzeMapContainsKey(CallExpression call, FunctionScope scope, ref SandboxEffect effects, ref bool canReorder)
+    private SandboxType AnalyzeMapContainsKey(
+        CallExpression call,
+        FunctionScope scope,
+        ref SandboxEffect effects,
+        ref bool canReorder,
+        bool recordCapabilities)
     {
         if (call.Arguments.Count != 2)
         {
@@ -137,8 +182,10 @@ internal sealed class CollectionCallAnalyzer
             return SandboxType.Bool;
         }
 
-        var mapType = RequireMap(_analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder), call.Arguments[0].Span);
-        var keyType = _analyzeExpression(call.Arguments[1], scope, ref effects, ref canReorder);
+        var mapType = RequireMap(
+            _analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder, recordCapabilities),
+            call.Arguments[0].Span);
+        var keyType = _analyzeExpression(call.Arguments[1], scope, ref effects, ref canReorder, recordCapabilities);
         if (mapType is not null)
         {
             Require(keyType, mapType.Arguments[0], call.Arguments[1].Span);
@@ -147,7 +194,12 @@ internal sealed class CollectionCallAnalyzer
         return SandboxType.Bool;
     }
 
-    private SandboxType AnalyzeMapGet(CallExpression call, FunctionScope scope, ref SandboxEffect effects, ref bool canReorder)
+    private SandboxType AnalyzeMapGet(
+        CallExpression call,
+        FunctionScope scope,
+        ref SandboxEffect effects,
+        ref bool canReorder,
+        bool recordCapabilities)
     {
         if (call.Arguments.Count != 2)
         {
@@ -155,8 +207,10 @@ internal sealed class CollectionCallAnalyzer
             return SandboxType.Unit;
         }
 
-        var mapType = RequireMap(_analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder), call.Arguments[0].Span);
-        var keyType = _analyzeExpression(call.Arguments[1], scope, ref effects, ref canReorder);
+        var mapType = RequireMap(
+            _analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder, recordCapabilities),
+            call.Arguments[0].Span);
+        var keyType = _analyzeExpression(call.Arguments[1], scope, ref effects, ref canReorder, recordCapabilities);
         if (mapType is null)
         {
             return SandboxType.Unit;
@@ -166,7 +220,12 @@ internal sealed class CollectionCallAnalyzer
         return mapType.Arguments[1];
     }
 
-    private SandboxType AnalyzeMapSet(CallExpression call, FunctionScope scope, ref SandboxEffect effects, ref bool canReorder)
+    private SandboxType AnalyzeMapSet(
+        CallExpression call,
+        FunctionScope scope,
+        ref SandboxEffect effects,
+        ref bool canReorder,
+        bool recordCapabilities)
     {
         effects |= SandboxEffect.Alloc;
         if (call.Arguments.Count != 3)
@@ -175,9 +234,11 @@ internal sealed class CollectionCallAnalyzer
             return SandboxType.Map(SandboxType.Unit, SandboxType.Unit);
         }
 
-        var mapType = RequireMap(_analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder), call.Arguments[0].Span);
-        var keyType = _analyzeExpression(call.Arguments[1], scope, ref effects, ref canReorder);
-        var valueType = _analyzeExpression(call.Arguments[2], scope, ref effects, ref canReorder);
+        var mapType = RequireMap(
+            _analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder, recordCapabilities),
+            call.Arguments[0].Span);
+        var keyType = _analyzeExpression(call.Arguments[1], scope, ref effects, ref canReorder, recordCapabilities);
+        var valueType = _analyzeExpression(call.Arguments[2], scope, ref effects, ref canReorder, recordCapabilities);
         if (mapType is null)
         {
             return SandboxType.Map(keyType, valueType);
@@ -188,7 +249,12 @@ internal sealed class CollectionCallAnalyzer
         return mapType;
     }
 
-    private SandboxType AnalyzeMapRemove(CallExpression call, FunctionScope scope, ref SandboxEffect effects, ref bool canReorder)
+    private SandboxType AnalyzeMapRemove(
+        CallExpression call,
+        FunctionScope scope,
+        ref SandboxEffect effects,
+        ref bool canReorder,
+        bool recordCapabilities)
     {
         effects |= SandboxEffect.Alloc;
         if (call.Arguments.Count != 2)
@@ -197,8 +263,10 @@ internal sealed class CollectionCallAnalyzer
             return SandboxType.Map(SandboxType.Unit, SandboxType.Unit);
         }
 
-        var mapType = RequireMap(_analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder), call.Arguments[0].Span);
-        var keyType = _analyzeExpression(call.Arguments[1], scope, ref effects, ref canReorder);
+        var mapType = RequireMap(
+            _analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder, recordCapabilities),
+            call.Arguments[0].Span);
+        var keyType = _analyzeExpression(call.Arguments[1], scope, ref effects, ref canReorder, recordCapabilities);
         if (mapType is not null)
         {
             Require(keyType, mapType.Arguments[0], call.Arguments[1].Span);

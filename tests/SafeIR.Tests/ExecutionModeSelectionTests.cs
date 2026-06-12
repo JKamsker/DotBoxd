@@ -127,6 +127,31 @@ public sealed class ExecutionModeSelectionTests
     }
 
     [Fact]
+    public async Task Invalid_execution_mode_fails_without_compiler_dispatch()
+    {
+        var compiler = new FailingCompiler();
+        var host = HostWithCompiler(compiler);
+        var module = await host.ParseJsonAsync(SandboxTestHost.PureScoreJson());
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var invalidMode = (ExecutionMode)123;
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.FromList([SandboxValue.FromInt32(1), SandboxValue.FromInt32(1)]),
+            new SandboxExecutionOptions { Mode = invalidMode });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.ValidationError, result.Error!.Code);
+        Assert.Equal(invalidMode, result.ActualMode);
+        Assert.Equal(0, compiler.Calls);
+        Assert.Contains(result.AuditEvents, e => e.Kind == "InvalidExecutionOptions");
+        Assert.DoesNotContain(result.AuditEvents, e => e.Kind == "CompilerUnavailable");
+        var summary = Assert.Single(result.AuditEvents, e => e.Kind == "RunSummary");
+        Assert.Equal("123", summary.Fields!["mode"]);
+    }
+
+    [Fact]
     public async Task Compiled_mode_rejects_dynamic_method_artifact_before_delegate_runs()
     {
         var compiler = new DynamicDelegateCompiler();

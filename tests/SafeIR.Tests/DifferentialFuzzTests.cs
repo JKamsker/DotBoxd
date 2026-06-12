@@ -47,6 +47,7 @@ public sealed class DifferentialFuzzTests
     {
         Assert.True(interpreted.Succeeded, $"case {index} interpreted failed: {json}");
         Assert.True(compiled.Succeeded, $"case {index} compiled failed: {compiled.Error?.SafeMessage}; {json}");
+        Assert.Equal(ExecutionMode.Interpreted, interpreted.ActualMode);
         Assert.Equal(ExecutionMode.Compiled, compiled.ActualMode);
         Assert.True(
             interpreted.Value is I32Value expected &&
@@ -54,6 +55,14 @@ public sealed class DifferentialFuzzTests
             expected.Value == actual.Value,
             $"case {index} result mismatch: {json}");
         Assert.Equal(interpreted.ResourceUsage.FuelUsed, compiled.ResourceUsage.FuelUsed);
+        Assert.Equal(0, interpreted.ResourceUsage.HostCalls);
+        Assert.Equal(0, compiled.ResourceUsage.HostCalls);
+        Assert.Equal(0, interpreted.ResourceUsage.FileBytesRead);
+        Assert.Equal(0, compiled.ResourceUsage.FileBytesRead);
+        Assert.Equal(0, interpreted.ResourceUsage.NetworkBytesRead);
+        Assert.Equal(0, compiled.ResourceUsage.NetworkBytesRead);
+        Assert.Contains(interpreted.AuditEvents, e => e.Kind == "RunSummary" && e.Success);
+        Assert.Contains(compiled.AuditEvents, e => e.Kind == "RunSummary" && e.Success);
     }
 
     private static SandboxValue Input(Random random)

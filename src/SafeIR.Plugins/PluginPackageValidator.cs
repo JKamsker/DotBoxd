@@ -24,6 +24,7 @@ internal static class PluginPackageValidator
         }
 
         var metadataKernel = ValidateModuleKernelMetadata(package, diagnostics);
+        ValidateManifestMode(package.Manifest, diagnostics);
         ValidateManifestEffects(package.Manifest, diagnostics);
         ValidateEntrypoints(package, diagnostics);
         foreach (var group in package.Manifest.LiveSettings.GroupBy(s => s.Name, StringComparer.Ordinal)) {
@@ -92,6 +93,14 @@ internal static class PluginPackageValidator
     {
         ValidateEntrypoint(package, package.Entrypoints.ShouldHandle, "ShouldHandle", diagnostics);
         ValidateEntrypoint(package, package.Entrypoints.Handle, "Handle", diagnostics);
+    }
+
+    private static void ValidateManifestMode(PluginManifest manifest, List<SandboxDiagnostic> diagnostics)
+    {
+        if (!Enum.IsDefined(manifest.Mode))
+        {
+            diagnostics.Add(new SandboxDiagnostic("SGP042", "Plugin manifest execution mode is not supported."));
+        }
     }
 
     private static void ValidateEntrypoint(

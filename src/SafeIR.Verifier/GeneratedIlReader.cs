@@ -47,7 +47,8 @@ internal static class GeneratedIlReader
                 operand.SwitchTargets,
                 operand.CalledMember,
                 operand.IsLocalCall,
-                operand.Handle);
+                operand.Handle,
+                operand.Int32Value);
             return true;
         }
         catch (Exception ex) when (IsIlFormatException(ex))
@@ -106,12 +107,63 @@ internal static class GeneratedIlReader
             return new DecodedOperand(BranchTarget: il.Offset + delta);
         }
 
+        if (TryReadInlineInt32(opcode, ref il, out var value))
+        {
+            return new DecodedOperand(Int32Value: value);
+        }
+
         SkipOperand(opcode, ref il);
         return DecodedOperand.None;
     }
 
     private static EntityHandle ReadHandle(ref BlobReader il)
         => MetadataTokens.EntityHandle(il.ReadInt32());
+
+    private static bool TryReadInlineInt32(ILOpCode opcode, ref BlobReader il, out int value)
+    {
+        switch (opcode)
+        {
+            case ILOpCode.Ldc_i4_m1:
+                value = -1;
+                return true;
+            case ILOpCode.Ldc_i4_0:
+                value = 0;
+                return true;
+            case ILOpCode.Ldc_i4_1:
+                value = 1;
+                return true;
+            case ILOpCode.Ldc_i4_2:
+                value = 2;
+                return true;
+            case ILOpCode.Ldc_i4_3:
+                value = 3;
+                return true;
+            case ILOpCode.Ldc_i4_4:
+                value = 4;
+                return true;
+            case ILOpCode.Ldc_i4_5:
+                value = 5;
+                return true;
+            case ILOpCode.Ldc_i4_6:
+                value = 6;
+                return true;
+            case ILOpCode.Ldc_i4_7:
+                value = 7;
+                return true;
+            case ILOpCode.Ldc_i4_8:
+                value = 8;
+                return true;
+            case ILOpCode.Ldc_i4_s:
+                value = il.ReadSByte();
+                return true;
+            case ILOpCode.Ldc_i4:
+                value = il.ReadInt32();
+                return true;
+            default:
+                value = 0;
+                return false;
+        }
+    }
 
     private static void SkipOperand(ILOpCode opcode, ref BlobReader il)
     {
@@ -155,7 +207,8 @@ internal static class GeneratedIlReader
         string? CalledMember = null,
         bool IsLocalCall = false,
         int? BranchTarget = null,
-        IReadOnlyList<int>? SwitchTargetsValue = null)
+        IReadOnlyList<int>? SwitchTargetsValue = null,
+        int? Int32Value = null)
     {
         public static DecodedOperand None { get; } = new();
 

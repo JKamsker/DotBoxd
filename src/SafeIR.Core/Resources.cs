@@ -102,6 +102,26 @@ public sealed class ResourceMeter
         ChargeStringShape(new ValueShape(0, 0, 0, 0, value.Length, bytes));
     }
 
+    public void ChargeStringAllocation(int charLength)
+    {
+        if (charLength < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(charLength));
+        }
+
+        long bytes;
+        try
+        {
+            bytes = checked((long)charLength * sizeof(char));
+        }
+        catch (OverflowException)
+        {
+            throw Quota("string byte budget exhausted");
+        }
+
+        ChargeStringShape(new ValueShape(0, 0, 0, 0, charLength, bytes));
+    }
+
     public void ChargeHostCall(string bindingId, int? maxCallsPerRun = null)
     {
         HostCalls = AddChecked(HostCalls, 1, $"host call budget exhausted at {bindingId}");

@@ -7,11 +7,17 @@ public sealed class PluginServer
 {
     private readonly SandboxHost _host;
     private readonly SandboxPolicy _defaultPolicy;
+    private readonly ExecutionMode _executionMode;
 
-    private PluginServer(SandboxHost host, SandboxPolicy defaultPolicy, IPluginMessageSink messages)
+    private PluginServer(
+        SandboxHost host,
+        SandboxPolicy defaultPolicy,
+        IPluginMessageSink messages,
+        ExecutionMode executionMode)
     {
         _host = host;
         _defaultPolicy = defaultPolicy;
+        _executionMode = executionMode;
         Events = new PluginEventAdapterRegistry();
         Kernels = new KernelRegistry();
         Hooks = new HookRegistry(messages, Events, Kernels);
@@ -24,8 +30,14 @@ public sealed class PluginServer
     public static PluginServer Create(
         IPluginMessageSink? messages = null,
         Action<SandboxHostBuilder>? configureHost = null,
-        SandboxPolicy? defaultPolicy = null)
+        SandboxPolicy? defaultPolicy = null,
+        ExecutionMode executionMode = ExecutionMode.Auto)
     {
+        if (!Enum.IsDefined(executionMode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(executionMode));
+        }
+
         messages ??= new InMemoryPluginMessageSink();
         var host = SandboxHost.Create(builder =>
         {
@@ -42,7 +54,7 @@ public sealed class PluginServer
             .WithFuel(100_000)
             .WithMaxHostCalls(1_000)
             .Build();
-        return new PluginServer(host, defaultPolicy, messages);
+        return new PluginServer(host, defaultPolicy, messages, executionMode);
     }
 
     public LiveValue<T> BindValue<T>(string name, T initialValue)
@@ -66,7 +78,7 @@ public sealed class PluginServer
         var plan = await _host.PrepareAsync(package.Module, policy ?? _defaultPolicy, cancellationToken)
             .ConfigureAwait(false);
         PluginPackageValidator.ValidatePrepared(package, plan);
-        var kernel = new InstalledKernel(_host, plan, package);
+        var kernel = new InstalledKernel(_host, plan, package, _executionMode);
         Kernels.Add(kernel);
         return kernel;
     }

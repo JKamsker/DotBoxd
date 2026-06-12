@@ -81,6 +81,26 @@ public sealed class SafeFileSystemTests
     }
 
     [Fact]
+    public async Task File_read_respects_allocation_quota_while_streaming()
+    {
+        using var temp = TempDirectory.Create();
+        await File.WriteAllTextAsync(Path.Combine(temp.Path, "text.txt"), "hello");
+        var host = SandboxTestHost.Create();
+        var module = await host.ParseJsonAsync(InterpreterAndPolicyTests.FileReadJson("text.txt"));
+        var policy = SandboxPolicyBuilder.Create()
+            .GrantFileRead(temp.Path, 1024)
+            .WithMaxAllocatedBytes(4)
+            .WithFuel(5_000)
+            .Build();
+        var plan = await host.PrepareAsync(module, policy);
+
+        var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, result.Error!.Code);
+    }
+
+    [Fact]
     public async Task File_write_is_denied_without_host_grant()
     {
         var host = SandboxTestHost.Create();
