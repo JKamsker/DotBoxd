@@ -23,9 +23,8 @@ internal static class PluginKernelModelFactory
 
         if (eventType is null)
         {
-            var diagnostic = Diagnostic.Create(
-                PluginAnalyzerDiagnostics.UnsupportedKernelShapeRule,
-                declaration.Identifier.GetLocation(),
+            var diagnostic = PluginKernelDiagnostic.Create(
+                declaration.Identifier,
                 "Game plugins must implement IEventKernel<TEvent>.");
             return new PluginKernelModelResult(null, diagnostic);
         }
@@ -98,10 +97,7 @@ internal static class PluginKernelModelFactory
         }
         catch (NotSupportedException ex)
         {
-            var diagnostic = Diagnostic.Create(
-                PluginAnalyzerDiagnostics.UnsupportedKernelShapeRule,
-                declaration.Identifier.GetLocation(),
-                ex.Message);
+            var diagnostic = PluginKernelDiagnostic.Create(declaration.Identifier, ex.Message);
             return new PluginKernelModelResult(null, diagnostic);
         }
     }

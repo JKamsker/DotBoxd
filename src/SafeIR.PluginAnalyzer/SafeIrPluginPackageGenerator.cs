@@ -18,9 +18,11 @@ public sealed class SafeIrPluginPackageGenerator : IIncrementalGenerator
             .Select(static (result, _) => result!);
 
         var diagnostics = modelResults
-            .Where(static result => result.Diagnostic is not null);
-        context.RegisterSourceOutput(diagnostics, static (context, result) =>
-            context.ReportDiagnostic(result.Diagnostic!));
+            .Where(static result => result.Diagnostic is not null)
+            .Select(static (result, _) => result.Diagnostic!)
+            .WithTrackingName(SafeIrPluginPackageGeneratorTrackingNames.DiagnosticResult);
+        context.RegisterSourceOutput(diagnostics, static (context, diagnostic) =>
+            context.ReportDiagnostic(diagnostic.ToDiagnostic()));
 
         var models = modelResults
             .Where(static result => result.Model is not null)

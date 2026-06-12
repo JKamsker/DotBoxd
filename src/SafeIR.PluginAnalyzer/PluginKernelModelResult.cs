@@ -1,5 +1,3 @@
 namespace SafeIR.PluginAnalyzer;
 
-using Microsoft.CodeAnalysis;
-
-internal sealed record PluginKernelModelResult(PluginKernelModel? Model, Diagnostic? Diagnostic);
+internal sealed record PluginKernelModelResult(PluginKernelModel? Model, PluginKernelDiagnostic? Diagnostic);
