@@ -54,7 +54,14 @@ public static Task<RpcPeerSession> ConnectNamedPipeAsync(
     string pipeName,
     RpcPeerOptions? options = null,
     CancellationToken cancellationToken = default)
-    => ConnectAsync(new NamedPipeClientTransport(pipeName), options, cancellationToken);
+    => ConnectNamedPipeAsync(".", pipeName, options, cancellationToken);
+
+public static Task<RpcPeerSession> ConnectNamedPipeAsync(
+    string serverName,
+    string pipeName,
+    RpcPeerOptions? options = null,
+    CancellationToken cancellationToken = default)
+    => ConnectAsync(new NamedPipeClientTransport(serverName, pipeName), options, cancellationToken);
 ```
 
 ShaRPC now exposes a transport-owned peer session helper, so Safe-IR should not need its own named-pipe-specific disposable wrapper. The host-side usage can become:

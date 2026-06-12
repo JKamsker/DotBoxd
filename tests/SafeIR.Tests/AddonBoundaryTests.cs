@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using System.Text.Json;
 
 namespace SafeIR.Tests;
 
@@ -70,6 +71,30 @@ public sealed class AddonBoundaryTests
         }
     }
 
+    [Theory]
+    [MemberData(nameof(CoreLibraryProjectPaths))]
+    public async Task Core_library_resolved_assets_have_no_addon_dependency_graph(string relativeProject)
+    {
+        var assetsPath = Path.Combine(
+            RepositoryRoot(),
+            Path.GetDirectoryName(relativeProject) ?? "",
+            "obj",
+            "project.assets.json");
+
+        Assert.True(File.Exists(assetsPath), $"Restore assets are missing: {assetsPath}");
+
+        var dependencyIds = await ReadResolvedDependencyIdsAsync(assetsPath);
+        var offenders = dependencyIds
+            .Where(id => ForbiddenAddonReferences.Any(forbidden =>
+                id.Contains(forbidden, StringComparison.Ordinal)))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.True(
+            offenders.Length == 0,
+            $"{relativeProject} resolves forbidden addon dependencies: {string.Join(", ", offenders)}");
+    }
+
     public static TheoryData<string, string> CoreLibraryForbiddenTokens()
     {
         var data = new TheoryData<string, string>();
@@ -90,6 +115,35 @@ public sealed class AddonBoundaryTests
         }
 
         return data;
+    }
+
+    private static async Task<string[]> ReadResolvedDependencyIdsAsync(string assetsPath)
+    {
+        await using var stream = File.OpenRead(assetsPath);
+        using var document = await JsonDocument.ParseAsync(stream);
+        var dependencyIds = new SortedSet<string>(StringComparer.Ordinal);
+
+        if (document.RootElement.TryGetProperty("targets", out var targets)) {
+            foreach (var target in targets.EnumerateObject()) {
+                foreach (var dependency in target.Value.EnumerateObject()) {
+                    dependencyIds.Add(ReadDependencyId(dependency.Name));
+                }
+            }
+        }
+
+        if (document.RootElement.TryGetProperty("libraries", out var libraries)) {
+            foreach (var library in libraries.EnumerateObject()) {
+                dependencyIds.Add(ReadDependencyId(library.Name));
+            }
+        }
+
+        return dependencyIds.ToArray();
+    }
+
+    private static string ReadDependencyId(string dependencyKey)
+    {
+        var separator = dependencyKey.IndexOf('/', StringComparison.Ordinal);
+        return separator < 0 ? dependencyKey : dependencyKey[..separator];
     }
 
     private static string RepositoryRoot()

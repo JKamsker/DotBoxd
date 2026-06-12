@@ -74,8 +74,8 @@
     },
     {
       "path": "spec/03-architecture.md",
-      "sha256": "5d93eda9d7ece3e4c1276e1119c63fc7a8126b05d7681040f54d7ba0a5732153",
-      "bytes": 9518
+      "sha256": "a2bbb02e4949996865fb00a84eaba0cc0ec787adb60822d353b12aa5a2ef123d",
+      "bytes": 9560
     },
     {
       "path": "spec/04-ir-language.md",
