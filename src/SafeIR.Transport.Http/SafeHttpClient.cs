@@ -1,5 +1,6 @@
 namespace SafeIR.Runtime;
 
+using System.Buffers;
 using System.Net;
 using System.Text;
 using SafeIR;
@@ -135,36 +136,75 @@ public static class SafeHttpClient
         }
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        using var memory = new MemoryStream();
-        var buffer = new byte[4096];
-        while (true)
+        var readBuffer = ArrayPool<byte>.Shared.Rent(4096);
+        var bodyBuffer = ArrayPool<byte>.Shared.Rent(InitialBodyCapacity(response.Content.Headers.ContentLength, maxBytes));
+        var bodyLength = 0;
+        try
         {
-            var remaining = maxBytes - memory.Length;
-            var readLimit = remaining >= buffer.Length ? buffer.Length : (int)remaining + 1;
-            var read = await stream.ReadAsync(buffer.AsMemory(0, readLimit), cancellationToken)
-                .ConfigureAwait(false);
-            if (read == 0)
+            while (true)
             {
-                break;
+                var remaining = maxBytes - bodyLength;
+                var readLimit = remaining >= readBuffer.Length ? readBuffer.Length : (int)remaining + 1;
+                var read = await stream.ReadAsync(readBuffer.AsMemory(0, readLimit), cancellationToken)
+                    .ConfigureAwait(false);
+                if (read == 0)
+                {
+                    break;
+                }
+
+                context.Budget.ChargeNetworkRead(read);
+                if (read > remaining)
+                {
+                    throw Error(SandboxErrorCode.QuotaExceeded, "net.http.get denied: response exceeds byte limit");
+                }
+
+                context.ChargeAllocation(read);
+                EnsureBodyCapacity(ref bodyBuffer, bodyLength + read);
+                Buffer.BlockCopy(readBuffer, 0, bodyBuffer, bodyLength, read);
+                bodyLength += read;
             }
 
-            context.Budget.ChargeNetworkRead(read);
-            if (read > remaining)
-            {
-                throw Error(SandboxErrorCode.QuotaExceeded, "net.http.get denied: response exceeds byte limit");
-            }
+            context.ChargeFuel(bodyLength);
+            context.ChargeStringAllocation(Encoding.UTF8.GetCharCount(bodyBuffer, 0, bodyLength));
+            var text = Encoding.UTF8.GetString(bodyBuffer, 0, bodyLength);
+            context.RecordStringReturnCredit(text);
+            return new LimitedText(text, bodyLength);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(readBuffer, clearArray: true);
+            ArrayPool<byte>.Shared.Return(bodyBuffer, clearArray: true);
+        }
+    }
 
-            context.ChargeAllocation(read);
-            memory.Write(buffer, 0, read);
+    private static int InitialBodyCapacity(long? contentLength, long maxBytes)
+    {
+        if (contentLength is > 0)
+        {
+            return CheckedLength(contentLength.Value);
         }
 
-        var bodyLength = CheckedLength(memory.Length);
-        var bytes = memory.GetBuffer();
-        context.ChargeFuel(bodyLength);
-        context.ChargeStringAllocation(Encoding.UTF8.GetCharCount(bytes, 0, bodyLength));
-        var text = Encoding.UTF8.GetString(bytes, 0, bodyLength);
-        context.RecordStringReturnCredit(text);
-        return new LimitedText(text, bodyLength);
+        return maxBytes is > 0 and < 256 ? CheckedLength(maxBytes) : 256;
+    }
+
+    private static void EnsureBodyCapacity(ref byte[] buffer, int required)
+    {
+        if (required <= buffer.Length)
+        {
+            return;
+        }
+
+        var nextLength = buffer.Length;
+        do
+        {
+            nextLength *= 2;
+        }
+        while (nextLength < required);
+
+        var next = ArrayPool<byte>.Shared.Rent(nextLength);
+        Buffer.BlockCopy(buffer, 0, next, 0, buffer.Length);
+        ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
+        buffer = next;
     }
 
     private static int CheckedLength(long length)

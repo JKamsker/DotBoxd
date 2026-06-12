@@ -4,6 +4,12 @@
 
 ## Open
 
+- [ ] `COR-0015` high - Named-pipe plugin IPC control plane has no authentication boundary
+  - File: `docs/agent-loop/findings/COR-0015-named-pipe-plugin-ipc-control-plane-has-no-authentication-boundary.md`
+  - Dedup: `security/plugin-ipc/named-pipe-control-plane/no-auth`
+- [ ] `COR-0016` high - Plugin server default policy grants game-message write to every package
+  - File: `docs/agent-loop/findings/COR-0016-plugin-server-default-policy-grants-game-message-write-to-every-package.md`
+  - Dedup: `security/plugins/default-policy/game-message-write-auto-grant`
 - [ ] `COR-0010` medium - Compiled executable cache lets first caller cancellation poison shared materialization
   - File: `docs/agent-loop/findings/COR-0010-compiled-executable-cache-lets-first-caller-cancellation-poison-shared-materiali.md`
   - Dedup: `correctness/compiled-cache/shared-materialization/first-caller-cancellation-poisons-waiters`
@@ -16,6 +22,9 @@
 - [ ] `COR-0013` medium - Path-shaped audit resources bypass secret redaction
   - File: `docs/agent-loop/findings/COR-0013-path-shaped-audit-resources-bypass-secret-redaction.md`
   - Dedup: `correctness/audit/resource-id/path-secret-redaction`
+- [ ] `COR-0014` medium - Public audit and error payloads expose mutable collection inputs
+  - File: `docs/agent-loop/findings/COR-0014-public-audit-and-error-payloads-expose-mutable-collection-inputs.md`
+  - Dedup: `correctness/public-model/audit-error-mutable-collection-escape`
 
 ## Claimed
 

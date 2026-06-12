@@ -14,13 +14,16 @@ public class HttpGrantParsingBenchmarks
     private SafeInMemoryHttpMessageInvoker _invoker = null!;
     private readonly SandboxUri _uri = new("https://api.example.com/config");
 
+    [Params(0, 32, 1024, 65536)]
+    public int ResponseBytes { get; set; }
+
     [Params(1, 10, 1_000)]
     public int RequestCount { get; set; }
 
     [GlobalSetup]
     public void Setup()
     {
-        _invoker = new SafeInMemoryHttpMessageInvoker("ok");
+        _invoker = new SafeInMemoryHttpMessageInvoker(new byte[ResponseBytes]);
         _bindings = new BindingRegistryBuilder()
             .AddNetworkBindings(_invoker, StaticDns)
             .Build();
