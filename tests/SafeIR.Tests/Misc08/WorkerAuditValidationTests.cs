@@ -98,6 +98,25 @@ public sealed class WorkerAuditValidationTests
     }
 
     [Fact]
+    public async Task Worker_result_with_forged_cache_invalidated_audit_is_rejected()
+    {
+        var worker = new AuditForgingWorker((plan, runId) => new SandboxAuditEvent(
+            runId,
+            "CacheInvalidated",
+            DateTimeOffset.UtcNow,
+            true,
+            ResourceId: $"module:{plan.ModuleHash}"));
+        var host = Host(worker);
+        var plan = await PrepareAsync(host);
+
+        var result = await ExecuteAsync(host, plan);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.DoesNotContain(result.AuditEvents, e => e.Kind == "CacheInvalidated");
+    }
+
+    [Fact]
     public async Task Worker_result_with_forged_audit_timestamp_is_rejected()
     {
         var worker = new AuditForgingWorker((plan, runId) => new SandboxAuditEvent(

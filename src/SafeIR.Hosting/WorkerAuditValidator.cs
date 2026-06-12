@@ -63,7 +63,7 @@ internal static class WorkerAuditValidator
             "RunSummary" => RunSummarySchemaMatches(plan, auditEvent),
             "WorkerExecution" => ModuleAuditMatches(plan, auditEvent),
             "DebugTrace" => options.EnableDebugTrace && ModuleAuditMatches(plan, auditEvent),
-            "CacheInvalidated" => auditEvent.Success && ModuleAuditMatches(plan, auditEvent),
+            "CacheInvalidated" => false,
             "PolicyDenied" => false,
             "BindingCall" or "SandboxLog" or "PluginMessage" => false,
             _ => false
