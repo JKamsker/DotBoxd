@@ -30,7 +30,7 @@ namespace Snap.Vt
         {
             try
             {
-                return new global::System.Threading.Tasks.ValueTask<int>((this._instanceId is null ? this._invoker.InvokeAsync<(int, int), int>("IVtSnap", "AddAsync", (a, b), default) : this._invoker.InvokeOnInstanceAsync<(int, int), int>("IVtSnap", this._instanceId!, "AddAsync", (a, b), default)));
+                return (this._instanceId is null ? this._invoker.InvokeValueAsync<(int, int), int>("IVtSnap", "AddAsync", (a, b), default) : this._invoker.InvokeValueOnInstanceAsync<(int, int), int>("IVtSnap", this._instanceId!, "AddAsync", (a, b), default));
             }
             catch (global::System.OperationCanceledException __sharpc_canceled) when (__sharpc_canceled.CancellationToken.IsCancellationRequested)
             {
@@ -62,7 +62,7 @@ namespace Snap.Vt
         {
             try
             {
-                return new global::System.Threading.Tasks.ValueTask<int>((this._instanceId is null ? this._invoker.InvokeAsync<(int, int), int>("IVtSnap", "AddAsync", (a, b), ct) : this._invoker.InvokeOnInstanceAsync<(int, int), int>("IVtSnap", this._instanceId!, "AddAsync", (a, b), ct)));
+                return (this._instanceId is null ? this._invoker.InvokeValueAsync<(int, int), int>("IVtSnap", "AddAsync", (a, b), ct) : this._invoker.InvokeValueOnInstanceAsync<(int, int), int>("IVtSnap", this._instanceId!, "AddAsync", (a, b), ct));
             }
             catch (global::System.OperationCanceledException __sharpc_canceled) when (__sharpc_canceled.CancellationToken.IsCancellationRequested)
             {

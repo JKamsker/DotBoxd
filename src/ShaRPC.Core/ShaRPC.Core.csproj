@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.IO.Pipelines" Version="8.0.0" />
+    <PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
     <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
 
     <!-- Build the generator before this project so its assembly exists at pack time.

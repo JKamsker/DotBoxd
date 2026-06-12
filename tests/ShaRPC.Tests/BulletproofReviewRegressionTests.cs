@@ -46,7 +46,7 @@ public sealed class BulletproofReviewRegressionTests
     }
 
     [Fact]
-    public async Task NullServiceName_AnsweredWithServiceNotFound_NotInternalError()
+    public async Task NullServiceName_AnsweredWithProtocolError_NotInternalError()
     {
         var serializer = NewSerializer();
         var (clientConnection, serverConnection) = InMemoryPipe.CreateConnectionPair();
@@ -55,8 +55,8 @@ public sealed class BulletproofReviewRegressionTests
             .Over(serverConnection, serializer, new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) })
             .Start();
 
-        // A hostile/malformed envelope can carry a null ServiceName (MessagePack nil). It must map to a
-        // clean ServiceNotFound, not an ArgumentNullException from the dictionary lookup surfaced as
+        // A hostile/malformed envelope can carry a null ServiceName (MessagePack nil). It must map to
+        // a clean protocol error, not an ArgumentNullException from the dictionary lookup surfaced as
         // InternalError.
         using var requestFrame = MessageFramer.FrameMessage(
             serializer,
@@ -78,7 +78,7 @@ public sealed class BulletproofReviewRegressionTests
         Assert.Equal(99, messageId);
         Assert.Equal(MessageType.Error, messageType);
         Assert.False(response.IsSuccess);
-        Assert.Equal(RpcErrorTypes.ServiceNotFound, response.ErrorType);
+        Assert.Equal(RpcErrorTypes.ProtocolError, response.ErrorType);
     }
 
     /// <summary>

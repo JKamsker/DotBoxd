@@ -24,6 +24,7 @@ internal sealed class RpcPeerInboundRequestQueue
     private readonly Func<RpcPeerInboundRequest, Task> _processAsync;
     private readonly Action<RpcPeerInboundRequest> _release;
     private readonly bool _dropIncomingWhenFull;
+    private readonly bool _dispatchSerially;
     private readonly SemaphoreSlim _slots;
     private readonly long _maxInboundBytes;
     private readonly object _byteGate = new();
@@ -45,6 +46,7 @@ internal sealed class RpcPeerInboundRequestQueue
         _processAsync = processAsync;
         _release = release;
         _dropIncomingWhenFull = mode == ShaRpcQueueFullMode.DropIncoming;
+        _dispatchSerially = maxConcurrency == 1;
         // long.MaxValue == byte bound disabled (count-only). Otherwise total in-flight inbound frame
         // bytes are capped at maxInboundBytes, independent of the capacity (count) bound.
         _maxInboundBytes = maxInboundBytes ?? long.MaxValue;
@@ -107,6 +109,12 @@ internal sealed class RpcPeerInboundRequestQueue
         var committed = false;
         try
         {
+            if (_queue.Writer.TryWrite(inbound))
+            {
+                committed = true;
+                return InboundEnqueueResult.Accepted;
+            }
+
             await _queue.Writer.WriteAsync(inbound, ct).ConfigureAwait(false);
             committed = true;
             return InboundEnqueueResult.Accepted;
@@ -222,6 +230,12 @@ internal sealed class RpcPeerInboundRequestQueue
 
     private async Task DispatchAsync(CancellationToken ct)
     {
+        if (_dispatchSerially)
+        {
+            await DispatchSerialAsync(ct).ConfigureAwait(false);
+            return;
+        }
+
         try
         {
             while (await _queue.Reader.WaitToReadAsync(ct).ConfigureAwait(false))
@@ -240,6 +254,38 @@ internal sealed class RpcPeerInboundRequestQueue
                 {
                     // Writer completed with no item left for this slot; hand it back.
                     _slots.Release();
+                }
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Expected during peer shutdown.
+        }
+    }
+
+    private async Task DispatchSerialAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (await _queue.Reader.WaitToReadAsync(ct).ConfigureAwait(false))
+            {
+                while (_queue.Reader.TryRead(out var inbound))
+                {
+                    Interlocked.Increment(ref _inFlightCount);
+                    var bytes = inbound.Frame.Length;
+                    try
+                    {
+                        await _processAsync(inbound).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        RpcDiagnostics.Report("Inbound request dispatch failed", ex);
+                    }
+                    finally
+                    {
+                        ReleaseBytes(bytes);
+                        CompleteInFlight();
+                    }
                 }
             }
         }

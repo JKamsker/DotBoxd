@@ -7,7 +7,7 @@ namespace Snap.Inherit
     /// <summary>
     /// Server dispatcher for IDerived.
     /// </summary>
-    public sealed class DerivedDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher
+    public sealed class DerivedDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher
     {
         private readonly global::Snap.Inherit.IDerived _service;
 
@@ -29,15 +29,21 @@ namespace Snap.Inherit
             {
                 case "DerivedAsync":
                 {
-                    var result = await _service.DerivedAsync();
-                    serializer.Serialize(output, result);
+                    var __sharpc_task = _service.DerivedAsync();
+                    var __sharpc_result = __sharpc_task.IsCompletedSuccessfully
+                        ? __sharpc_task.Result
+                        : await __sharpc_task;
+                    serializer.Serialize(output, __sharpc_result);
                     return;
                 }
                 case "BaseAsync":
                 {
                     var arg = serializer.Deserialize<int>(payload);
-                    var result = await _service.BaseAsync(arg);
-                    serializer.Serialize(output, result);
+                    var __sharpc_task = _service.BaseAsync(arg);
+                    var __sharpc_result = __sharpc_task.IsCompletedSuccessfully
+                        ? __sharpc_task.Result
+                        : await __sharpc_task;
+                    serializer.Serialize(output, __sharpc_result);
                     return;
                 }
                 default:
@@ -60,15 +66,21 @@ namespace Snap.Inherit
             {
                 case "DerivedAsync":
                 {
-                    var result = await __inst.DerivedAsync();
-                    serializer.Serialize(output, result);
+                    var __sharpc_task = __inst.DerivedAsync();
+                    var __sharpc_result = __sharpc_task.IsCompletedSuccessfully
+                        ? __sharpc_task.Result
+                        : await __sharpc_task;
+                    serializer.Serialize(output, __sharpc_result);
                     return;
                 }
                 case "BaseAsync":
                 {
                     var arg = serializer.Deserialize<int>(payload);
-                    var result = await __inst.BaseAsync(arg);
-                    serializer.Serialize(output, result);
+                    var __sharpc_task = __inst.BaseAsync(arg);
+                    var __sharpc_result = __sharpc_task.IsCompletedSuccessfully
+                        ? __sharpc_task.Result
+                        : await __sharpc_task;
+                    serializer.Serialize(output, __sharpc_result);
                     return;
                 }
                 default:

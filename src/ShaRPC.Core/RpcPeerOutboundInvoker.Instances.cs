@@ -5,22 +5,13 @@ namespace ShaRPC.Core;
 
 internal sealed partial class RpcPeerOutboundInvoker
 {
-    public async Task<TResponse> InvokeOnInstanceAsync<TRequest, TResponse>(
+    public Task<TResponse> InvokeOnInstanceAsync<TRequest, TResponse>(
         string service,
         string instanceId,
         string method,
         TRequest request,
-        CancellationToken ct = default)
-    {
-        using var received = await SendRequestAsync(
-            service,
-            method,
-            request,
-            instanceId,
-            streams: null,
-            ct).ConfigureAwait(false);
-        return DeserializeNonStreamingResponse<TResponse>(received);
-    }
+        CancellationToken ct = default) =>
+        SendUnaryRequestAsync<TRequest, TResponse>(service, method, request, instanceId, ct);
 
     public async Task<TResponse> InvokeOnInstanceAsync<TRequest, TResponse>(
         string service,
@@ -35,15 +26,12 @@ internal sealed partial class RpcPeerOutboundInvoker
         return DeserializeNonStreamingResponse<TResponse>(received);
     }
 
-    public async Task<TResponse> InvokeOnInstanceAsync<TResponse>(
+    public Task<TResponse> InvokeOnInstanceAsync<TResponse>(
         string service,
         string instanceId,
         string method,
-        CancellationToken ct = default)
-    {
-        using var received = await SendRequestAsync(service, method, instanceId, ct).ConfigureAwait(false);
-        return DeserializeNonStreamingResponse<TResponse>(received);
-    }
+        CancellationToken ct = default) =>
+        SendUnaryRequestAsync<TResponse>(service, method, instanceId, ct);
 
     public async Task InvokeOnInstanceAsync<TRequest>(
         string service,

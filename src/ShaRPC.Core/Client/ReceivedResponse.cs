@@ -1,6 +1,7 @@
 using ShaRPC.Core.Buffers;
 using ShaRPC.Core.Protocol;
 using ShaRPC.Core.Streaming;
+using ShaRPC.Core.Transport;
 
 namespace ShaRPC.Core.Client;
 
@@ -9,7 +10,7 @@ namespace ShaRPC.Core.Client;
 /// </summary>
 internal sealed class ReceivedResponse : IDisposable
 {
-    private Payload? _frame;
+    private RpcFrame _frame;
     private RpcOutboundStreamSet? _outboundStreams;
     private RpcStreamReceiver? _stream;
 
@@ -17,6 +18,15 @@ internal sealed class ReceivedResponse : IDisposable
         RpcResponse response,
         ReadOnlyMemory<byte> payload,
         Payload frame,
+        RpcStreamReceiver? stream)
+        : this(response, payload, new RpcFrame(frame), stream)
+    {
+    }
+
+    public ReceivedResponse(
+        RpcResponse response,
+        ReadOnlyMemory<byte> payload,
+        RpcFrame frame,
         RpcStreamReceiver? stream)
     {
         Response = response;
@@ -42,7 +52,7 @@ internal sealed class ReceivedResponse : IDisposable
 
     public void Dispose()
     {
-        Interlocked.Exchange(ref _frame, null)?.Dispose();
+        _frame.Dispose();
         if (Interlocked.Exchange(ref _outboundStreams, null) is { } streams)
         {
             _ = streams.DisposeAsync();

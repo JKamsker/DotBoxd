@@ -1,4 +1,6 @@
 using System.Buffers;
+using MessagePack;
+using MessagePack.Resolvers;
 using ShaRPC.Core.Buffers;
 using ShaRPC.Core.Protocol;
 using ShaRPC.Serializers.MessagePack;
@@ -84,6 +86,125 @@ public class EnvelopeRoundTripTests
                 Assert.Equal(102, stream.StreamId);
                 Assert.Equal(RpcStreamKind.Items, stream.Kind);
             });
+    }
+
+    [Fact]
+    public void RpcRequest_ReusesRegisteredServiceAndMethodNames()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var serviceName = new string("CachedService".ToCharArray());
+        var methodName = new string("CachedMethod".ToCharArray());
+        var request = new RpcRequest
+        {
+            MessageId = 42,
+            ServiceName = serviceName,
+            MethodName = methodName,
+        };
+
+        var result = RoundTrip(serializer, request);
+
+        Assert.Same(serviceName, result.ServiceName);
+        Assert.Same(methodName, result.MethodName);
+    }
+
+    [Fact]
+    public void RpcRequest_RemainsReadableByContractlessResolver()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var request = new RpcRequest
+        {
+            MessageId = 42,
+            ServiceName = "CompatService",
+            MethodName = "CompatMethod",
+            InstanceId = "instance-7",
+        };
+        var writer = new ArrayBufferWriter<byte>();
+        serializer.Serialize(writer, request);
+
+        var result = MessagePackSerializer.Deserialize<RpcRequest>(
+            writer.WrittenMemory,
+            MessagePackSerializerOptions.Standard.WithResolver(ContractlessStandardResolver.Instance));
+
+        Assert.Equal(request.MessageId, result.MessageId);
+        Assert.Equal(request.ServiceName, result.ServiceName);
+        Assert.Equal(request.MethodName, result.MethodName);
+        Assert.Equal(request.InstanceId, result.InstanceId);
+    }
+
+    [Fact]
+    public void RpcRequest_ReadsContractlessResolverBytes()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var request = new RpcRequest
+        {
+            MessageId = 43,
+            ServiceName = "CompatService",
+            MethodName = "CompatMethod",
+            InstanceId = "instance-8",
+        };
+        var bytes = MessagePackSerializer.Serialize(
+            request,
+            MessagePackSerializerOptions.Standard.WithResolver(ContractlessStandardResolver.Instance));
+
+        var result = serializer.Deserialize<RpcRequest>(bytes);
+
+        Assert.Equal(request.MessageId, result.MessageId);
+        Assert.Equal(request.ServiceName, result.ServiceName);
+        Assert.Equal(request.MethodName, result.MethodName);
+        Assert.Equal(request.InstanceId, result.InstanceId);
+    }
+
+    [Theory]
+    [InlineData(false, false, true, false, "ServiceName")]
+    [InlineData(true, true, true, false, "ServiceName")]
+    [InlineData(true, false, false, false, "MethodName")]
+    [InlineData(true, false, true, true, "MethodName")]
+    public void RpcRequest_MissingRequiredNames_Throws(
+        bool includeServiceName,
+        bool nilServiceName,
+        bool includeMethodName,
+        bool nilMethodName,
+        string missingName)
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var writer = new ArrayBufferWriter<byte>();
+        var messagePackWriter = new MessagePackWriter(writer);
+        var fieldCount = 1 + (includeServiceName ? 1 : 0) + (includeMethodName ? 1 : 0);
+        messagePackWriter.WriteMapHeader(fieldCount);
+        messagePackWriter.Write("MessageId");
+        messagePackWriter.Write(42);
+
+        if (includeServiceName)
+        {
+            messagePackWriter.Write("ServiceName");
+            if (nilServiceName)
+            {
+                messagePackWriter.WriteNil();
+            }
+            else
+            {
+                messagePackWriter.Write("Svc");
+            }
+        }
+
+        if (includeMethodName)
+        {
+            messagePackWriter.Write("MethodName");
+            if (nilMethodName)
+            {
+                messagePackWriter.WriteNil();
+            }
+            else
+            {
+                messagePackWriter.Write("Op");
+            }
+        }
+
+        messagePackWriter.Flush();
+
+        var ex = Assert.Throws<MessagePackSerializationException>(
+            () => serializer.Deserialize<RpcRequest>(writer.WrittenMemory));
+        Assert.Contains(missingName, ex.ToString());
     }
 
     [Fact]

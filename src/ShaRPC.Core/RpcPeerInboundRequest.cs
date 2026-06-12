@@ -1,16 +1,17 @@
 using ShaRPC.Core.Buffers;
 using ShaRPC.Core.Protocol;
+using ShaRPC.Core.Transport;
 
 namespace ShaRPC.Core;
 
 internal readonly struct RpcPeerInboundRequest
 {
     public RpcPeerInboundRequest(
-        Payload frame,
+        RpcFrame frame,
         RpcRequest request,
         int messageId,
         ReadOnlyMemory<byte> body,
-        CancellationTokenSource requestCts)
+        CancellationTokenSource? requestCts)
     {
         Frame = frame;
         Request = request;
@@ -19,7 +20,7 @@ internal readonly struct RpcPeerInboundRequest
         RequestCts = requestCts;
     }
 
-    public Payload Frame { get; }
+    public RpcFrame Frame { get; }
 
     public RpcRequest Request { get; }
 
@@ -27,5 +28,11 @@ internal readonly struct RpcPeerInboundRequest
 
     public ReadOnlyMemory<byte> Body { get; }
 
-    public CancellationTokenSource RequestCts { get; }
+    public CancellationTokenSource? RequestCts { get; }
+
+    public CancellationToken CancellationToken =>
+        RequestCts?.Token ?? CancellationToken.None;
+
+    public bool IsCancellationRequested =>
+        RequestCts?.IsCancellationRequested == true;
 }

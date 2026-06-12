@@ -30,6 +30,13 @@ public interface IRpcInvoker
         TRequest request,
         CancellationToken ct = default);
 
+    ValueTask<TResponse> InvokeValueAsync<TRequest, TResponse>(
+        string service,
+        string method,
+        TRequest request,
+        CancellationToken ct = default) =>
+        new(InvokeAsync<TRequest, TResponse>(service, method, request, ct));
+
     /// <summary>Invokes a method with a request body that references streamed arguments.</summary>
     Task<TResponse> InvokeAsync<TRequest, TResponse>(
         string service,
@@ -47,6 +54,12 @@ public interface IRpcInvoker
         string service,
         string method,
         CancellationToken ct = default);
+
+    ValueTask<TResponse> InvokeValueAsync<TResponse>(
+        string service,
+        string method,
+        CancellationToken ct = default) =>
+        new(InvokeAsync<TResponse>(service, method, ct));
 
     /// <summary>Invokes a method with a request body and no response body.</summary>
     /// <param name="service">The remote service name.</param>
@@ -146,6 +159,14 @@ public interface IRpcInvoker
         TRequest request,
         CancellationToken ct = default);
 
+    ValueTask<TResponse> InvokeValueOnInstanceAsync<TRequest, TResponse>(
+        string service,
+        string instanceId,
+        string method,
+        TRequest request,
+        CancellationToken ct = default) =>
+        new(InvokeOnInstanceAsync<TRequest, TResponse>(service, instanceId, method, request, ct));
+
     Task<TResponse> InvokeOnInstanceAsync<TRequest, TResponse>(
         string service,
         string instanceId,
@@ -165,6 +186,13 @@ public interface IRpcInvoker
         string instanceId,
         string method,
         CancellationToken ct = default);
+
+    ValueTask<TResponse> InvokeValueOnInstanceAsync<TResponse>(
+        string service,
+        string instanceId,
+        string method,
+        CancellationToken ct = default) =>
+        new(InvokeOnInstanceAsync<TResponse>(service, instanceId, method, ct));
 
     /// <summary>Invokes an instance-scoped method with a request body and no response body.</summary>
     /// <param name="service">The remote service name.</param>

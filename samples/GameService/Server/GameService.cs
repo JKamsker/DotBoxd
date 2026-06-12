@@ -23,12 +23,14 @@ public sealed class GameService : IGameService
 
     public Task<ActionResult> MovePlayerAsync(MoveRequest request, CancellationToken ct = default)
     {
-        if (!_players.TryGetValue(request.PlayerId, out var currentState))
+        var playerId = request.PlayerId;
+        if (string.IsNullOrEmpty(playerId) ||
+            !_players.TryGetValue(playerId, out var currentState))
         {
             return Task.FromResult(new ActionResult
             {
                 Success = false,
-                Message = $"Player '{request.PlayerId}' not found."
+                Message = $"Player '{playerId ?? "<missing>"}' not found."
             });
         }
 

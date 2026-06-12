@@ -7,7 +7,7 @@ namespace Snap.Mixed
     /// <summary>
     /// Server dispatcher for IMix.
     /// </summary>
-    public sealed class MixDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher
+    public sealed class MixDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher
     {
         private readonly global::Snap.Mixed.IMix _service;
 
@@ -29,14 +29,21 @@ namespace Snap.Mixed
             {
                 case "GetNameAsync":
                 {
-                    var result = await _service.GetNameAsync();
-                    serializer.Serialize(output, result);
+                    var __sharpc_task = _service.GetNameAsync();
+                    var __sharpc_result = __sharpc_task.IsCompletedSuccessfully
+                        ? __sharpc_task.Result
+                        : await __sharpc_task;
+                    serializer.Serialize(output, __sharpc_result);
                     return;
                 }
                 case "SaveAsync":
                 {
                     var arg = serializer.Deserialize<string>(payload);
-                    await _service.SaveAsync(arg);
+                    var __sharpc_task = _service.SaveAsync(arg);
+                    if (!__sharpc_task.IsCompletedSuccessfully)
+                    {
+                        await __sharpc_task;
+                    }
                     return;
                 }
                 case "SyncAdd":
@@ -71,14 +78,21 @@ namespace Snap.Mixed
             {
                 case "GetNameAsync":
                 {
-                    var result = await __inst.GetNameAsync();
-                    serializer.Serialize(output, result);
+                    var __sharpc_task = __inst.GetNameAsync();
+                    var __sharpc_result = __sharpc_task.IsCompletedSuccessfully
+                        ? __sharpc_task.Result
+                        : await __sharpc_task;
+                    serializer.Serialize(output, __sharpc_result);
                     return;
                 }
                 case "SaveAsync":
                 {
                     var arg = serializer.Deserialize<string>(payload);
-                    await __inst.SaveAsync(arg);
+                    var __sharpc_task = __inst.SaveAsync(arg);
+                    if (!__sharpc_task.IsCompletedSuccessfully)
+                    {
+                        await __sharpc_task;
+                    }
                     return;
                 }
                 case "SyncAdd":

@@ -7,7 +7,7 @@ namespace Snap.Nested
     /// <summary>
     /// Server dispatcher for ISubSnap.
     /// </summary>
-    public sealed class SubSnapDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher
+    public sealed class SubSnapDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher
     {
         private readonly global::Snap.Nested.ISubSnap _service;
 
@@ -29,8 +29,11 @@ namespace Snap.Nested
             {
                 case "CountAsync":
                 {
-                    var result = await _service.CountAsync();
-                    serializer.Serialize(output, result);
+                    var __sharpc_task = _service.CountAsync();
+                    var __sharpc_result = __sharpc_task.IsCompletedSuccessfully
+                        ? __sharpc_task.Result
+                        : await __sharpc_task;
+                    serializer.Serialize(output, __sharpc_result);
                     return;
                 }
                 default:
@@ -53,8 +56,11 @@ namespace Snap.Nested
             {
                 case "CountAsync":
                 {
-                    var result = await __inst.CountAsync();
-                    serializer.Serialize(output, result);
+                    var __sharpc_task = __inst.CountAsync();
+                    var __sharpc_result = __sharpc_task.IsCompletedSuccessfully
+                        ? __sharpc_task.Result
+                        : await __sharpc_task;
+                    serializer.Serialize(output, __sharpc_result);
                     return;
                 }
                 default:

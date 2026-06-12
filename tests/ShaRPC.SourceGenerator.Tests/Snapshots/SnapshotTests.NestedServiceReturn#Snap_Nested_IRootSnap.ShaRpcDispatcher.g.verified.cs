@@ -7,7 +7,7 @@ namespace Snap.Nested
     /// <summary>
     /// Server dispatcher for IRootSnap.
     /// </summary>
-    public sealed class RootSnapDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher
+    public sealed class RootSnapDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher
     {
         private readonly global::Snap.Nested.IRootSnap _service;
 
@@ -30,7 +30,10 @@ namespace Snap.Nested
                 case "GetSubAsync":
                 {
                     var arg = serializer.Deserialize<string>(payload);
-                    var __sub = await _service.GetSubAsync(arg);
+                    var __sharpc_task = _service.GetSubAsync(arg);
+                    var __sub = __sharpc_task.IsCompletedSuccessfully
+                        ? __sharpc_task.Result
+                        : await __sharpc_task;
                     string __subId;
                     try
                     {
@@ -88,7 +91,10 @@ namespace Snap.Nested
                 case "GetSubAsync":
                 {
                     var arg = serializer.Deserialize<string>(payload);
-                    var __sub = await __inst.GetSubAsync(arg);
+                    var __sharpc_task = __inst.GetSubAsync(arg);
+                    var __sub = __sharpc_task.IsCompletedSuccessfully
+                        ? __sharpc_task.Result
+                        : await __sharpc_task;
                     string __subId;
                     try
                     {

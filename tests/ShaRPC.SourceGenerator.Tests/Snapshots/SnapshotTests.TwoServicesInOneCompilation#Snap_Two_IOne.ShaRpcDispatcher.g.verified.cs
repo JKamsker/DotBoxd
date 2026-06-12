@@ -7,7 +7,7 @@ namespace Snap.Two
     /// <summary>
     /// Server dispatcher for IOne.
     /// </summary>
-    public sealed class OneDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher
+    public sealed class OneDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher
     {
         private readonly global::Snap.Two.IOne _service;
 
@@ -30,8 +30,11 @@ namespace Snap.Two
                 case "AAsync":
                 {
                     var arg = serializer.Deserialize<int>(payload);
-                    var result = await _service.AAsync(arg);
-                    serializer.Serialize(output, result);
+                    var __sharpc_task = _service.AAsync(arg);
+                    var __sharpc_result = __sharpc_task.IsCompletedSuccessfully
+                        ? __sharpc_task.Result
+                        : await __sharpc_task;
+                    serializer.Serialize(output, __sharpc_result);
                     return;
                 }
                 default:
@@ -55,8 +58,11 @@ namespace Snap.Two
                 case "AAsync":
                 {
                     var arg = serializer.Deserialize<int>(payload);
-                    var result = await __inst.AAsync(arg);
-                    serializer.Serialize(output, result);
+                    var __sharpc_task = __inst.AAsync(arg);
+                    var __sharpc_result = __sharpc_task.IsCompletedSuccessfully
+                        ? __sharpc_task.Result
+                        : await __sharpc_task;
+                    serializer.Serialize(output, __sharpc_result);
                     return;
                 }
                 default:

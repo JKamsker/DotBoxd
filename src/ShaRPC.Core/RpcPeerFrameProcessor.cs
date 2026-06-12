@@ -1,6 +1,7 @@
 using ShaRPC.Core.Buffers;
 using ShaRPC.Core.Protocol;
 using ShaRPC.Core.Streaming;
+using ShaRPC.Core.Transport;
 
 namespace ShaRPC.Core;
 
@@ -23,7 +24,7 @@ internal sealed class RpcPeerFrameProcessor
         _protocolError = protocolError;
     }
 
-    public async ValueTask<bool> ShouldDisposeAsync(Payload frame, CancellationToken ct)
+    public async ValueTask<bool> ShouldDisposeAsync(RpcFrame frame, CancellationToken ct)
     {
         if (!MessageFramer.TryReadFrameHeader(frame.Memory, out var messageId, out var messageType))
         {
@@ -45,15 +46,17 @@ internal sealed class RpcPeerFrameProcessor
                 _streams.CancelOutbound(messageId);
                 return true;
             case MessageType.StreamItem:
-                if (_streams.TryAcceptItem(messageId, frame))
+                var itemFrame = frame.DetachPayload();
+                if (_streams.TryAcceptItem(messageId, itemFrame))
                 {
                     return false;
                 }
 
+                itemFrame.Dispose();
                 _protocolError(messageId, messageType, "Unknown stream id.", null);
                 return true;
             case MessageType.StreamComplete:
-                if (!RpcStreamCompleteFrameReader.TryRead(frame, out var streamId))
+                if (!RpcStreamCompleteFrameReader.TryRead(frame.Memory, out var streamId))
                 {
                     _protocolError(messageId, messageType, "Malformed stream complete frame.", null);
                     return true;
@@ -62,14 +65,14 @@ internal sealed class RpcPeerFrameProcessor
                 _streams.CompleteInbound(streamId);
                 return true;
             case MessageType.StreamError:
-                if (!_streams.TryCompleteInboundError(frame))
+                if (!_streams.TryCompleteInboundError(frame.Memory))
                 {
                     _protocolError(messageId, messageType, "Malformed stream error frame.", null);
                 }
 
                 return true;
             case MessageType.StreamCredit:
-                if (!_streams.TryAddCredit(frame))
+                if (!_streams.TryAddCredit(frame.Memory))
                 {
                     _protocolError(messageId, messageType, "Malformed stream credit frame.", null);
                 }
@@ -80,4 +83,7 @@ internal sealed class RpcPeerFrameProcessor
                 return true;
         }
     }
+
+    public ValueTask<bool> ShouldDisposeAsync(Payload frame, CancellationToken ct) =>
+        ShouldDisposeAsync(new RpcFrame(frame), ct);
 }

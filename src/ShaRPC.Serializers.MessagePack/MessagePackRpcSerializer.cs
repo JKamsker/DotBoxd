@@ -79,7 +79,11 @@ public sealed class MessagePackRpcSerializer : ISerializer
 
         return MessagePackSerializerOptions.Standard
             .WithResolver(CompositeResolver.Create(
-                new IMessagePackFormatter[] { ReadOnlyMemoryByteFormatter.Instance },
+                new IMessagePackFormatter[]
+                {
+                    RpcRequestFormatter.Instance,
+                    ReadOnlyMemoryByteFormatter.Instance,
+                },
                 effectiveResolvers))
             .WithSecurity(MessagePackSecurity.UntrustedData);
     }
@@ -122,7 +126,7 @@ public sealed class MessagePackRpcSerializer : ISerializer
         }
     }
 
-    private sealed class ReadOnlyMemoryByteFormatter : IMessagePackFormatter<ReadOnlyMemory<byte>>
+    internal sealed class ReadOnlyMemoryByteFormatter : IMessagePackFormatter<ReadOnlyMemory<byte>>
     {
         public static readonly ReadOnlyMemoryByteFormatter Instance = new();
 

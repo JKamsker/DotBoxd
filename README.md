@@ -254,6 +254,7 @@ preserves server-side state across calls within a connection. See
 - [Quick Start Guide](docs/quick-start.md)
 - [Unity Integration Guide](docs/unity-integration.md)
 - [Generated Service Registry](docs/generated-service-registry.md)
+- [Performance Hot Paths](docs/performance.md)
 - [Named Pipe Transport](docs/named-pipe-transport.md)
 - [API Reference](docs/api-reference.md)
 - [Nested Services Design](docs/design/nested-services.md)

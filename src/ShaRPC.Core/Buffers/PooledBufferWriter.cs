@@ -14,10 +14,15 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
 
     [ThreadStatic]
     private static PooledBufferWriter? s_cachedWriter;
+    private static readonly object s_globalCacheGate = new();
+    private static PooledBufferWriter? s_globalCachedWriter;
 
     private byte[]? _buffer;
     private int _written;
     private bool _returnToCache;
+    private int _cacheThreadId;
+    private int _cached;
+    private PooledBufferWriter? _nextCachedWriter;
 
     public PooledBufferWriter(int initialCapacity = 256)
     {
@@ -40,7 +45,24 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
         var writer = s_cachedWriter;
         if (writer is null)
         {
-            writer = new PooledBufferWriter(initialCapacity) { _returnToCache = true };
+            lock (s_globalCacheGate)
+            {
+                writer = s_globalCachedWriter;
+                if (writer is not null)
+                {
+                    s_globalCachedWriter = writer._nextCachedWriter;
+                    writer._nextCachedWriter = null;
+                }
+            }
+
+            if (writer is null)
+            {
+                writer = new PooledBufferWriter(initialCapacity) { _returnToCache = true };
+            }
+            else
+            {
+                writer.Reset(initialCapacity);
+            }
         }
         else
         {
@@ -48,6 +70,7 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
             writer.Reset(initialCapacity);
         }
 
+        writer._cacheThreadId = Environment.CurrentManagedThreadId;
         return writer;
     }
 
@@ -119,10 +142,24 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
 
         if (_returnToCache)
         {
+            if (Interlocked.Exchange(ref _cached, 1) != 0)
+            {
+                return;
+            }
+
             _written = 0;
-            if (s_cachedWriter is null)
+            if (_cacheThreadId == Environment.CurrentManagedThreadId &&
+                s_cachedWriter is null)
             {
                 s_cachedWriter = this;
+            }
+            else
+            {
+                lock (s_globalCacheGate)
+                {
+                    _nextCachedWriter = s_globalCachedWriter;
+                    s_globalCachedWriter = this;
+                }
             }
         }
     }
@@ -137,6 +174,8 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
         _buffer = ArrayPool<byte>.Shared.Rent(initialCapacity);
         _written = 0;
         _returnToCache = true;
+        _cached = 0;
+        _nextCachedWriter = null;
     }
 
     private void EnsureCapacity(int sizeHint)

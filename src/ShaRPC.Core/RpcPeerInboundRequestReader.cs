@@ -1,13 +1,14 @@
 using ShaRPC.Core.Buffers;
 using ShaRPC.Core.Protocol;
 using ShaRPC.Core.Serialization;
+using ShaRPC.Core.Transport;
 
 namespace ShaRPC.Core;
 
 internal static class RpcPeerInboundRequestReader
 {
     public static bool TryRead(
-        Payload frame,
+        RpcFrame frame,
         ISerializer serializer,
         out RpcRequest request,
         out ReadOnlyMemory<byte> payload,

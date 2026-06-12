@@ -48,7 +48,6 @@ internal static class ProxyInvocationEmitter
             case MethodReturnKind.TaskOfAsyncEnumerable:
                 EmitTaskLikeReturn(sb, method, invocation, locals, ct, indent, captureSynchronousExceptions);
                 break;
-            case MethodReturnKind.ValueTaskOf:
             case MethodReturnKind.ValueTaskOfStream:
             case MethodReturnKind.ValueTaskOfPipe:
             case MethodReturnKind.ValueTaskOfAsyncEnumerable:
@@ -60,6 +59,9 @@ internal static class ProxyInvocationEmitter
                     ct,
                     indent,
                     captureSynchronousExceptions);
+                break;
+            case MethodReturnKind.ValueTaskOf:
+                EmitTaskLikeReturn(sb, method, invocation, locals, ct, indent, captureSynchronousExceptions);
                 break;
             case MethodReturnKind.TaskOfSubService:
             case MethodReturnKind.ValueTaskOfSubService:

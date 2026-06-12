@@ -4,6 +4,7 @@ using ShaRPC.Core.Exceptions;
 using ShaRPC.Core.Protocol;
 using ShaRPC.Core.Serialization;
 using ShaRPC.Core.Streaming;
+using ShaRPC.Core.Transport;
 using System.IO.Pipelines;
 
 namespace ShaRPC.Core;
@@ -13,8 +14,10 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
     private readonly ISerializer _serializer;
     private readonly TimeSpan _timeout;
     private readonly int _maxPendingRequests;
+    private readonly bool _enableLowAllocationValueTaskInvocations;
     private readonly Action _ensureStarted;
     private readonly Func<ReadOnlyMemory<byte>, CancellationToken, Task> _sendAsync;
+    private readonly Func<PooledBufferWriter, CancellationToken, ValueTask>? _sendFrameAsync;
     private readonly RpcStreamManager _streams;
     private readonly RpcPeerStreamingCalls _streamingCalls;
     private readonly ShaRpcPendingRequests _pending = new();
@@ -28,12 +31,25 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         Action ensureStarted,
         Func<ReadOnlyMemory<byte>, CancellationToken, Task> sendAsync,
         RpcStreamManager streams)
+        : this(serializer, options, ensureStarted, sendAsync, sendFrameAsync: null, streams)
+    {
+    }
+
+    public RpcPeerOutboundInvoker(
+        ISerializer serializer,
+        RpcPeerOptions options,
+        Action ensureStarted,
+        Func<ReadOnlyMemory<byte>, CancellationToken, Task> sendAsync,
+        Func<PooledBufferWriter, CancellationToken, ValueTask>? sendFrameAsync,
+        RpcStreamManager streams)
     {
         _serializer = serializer;
         _timeout = options.RequestTimeout;
         _maxPendingRequests = options.MaxPendingRequests;
+        _enableLowAllocationValueTaskInvocations = options.EnableLowAllocationValueTaskInvocations;
         _ensureStarted = ensureStarted;
         _sendAsync = sendAsync;
+        _sendFrameAsync = sendFrameAsync;
         _streams = streams;
         _streamingCalls = new RpcPeerStreamingCalls(serializer);
         _cancelFrames = new RpcPeerCancelFrameSender(sendAsync);
@@ -45,15 +61,12 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
     public void ReleaseStream(RpcStreamHandle handle) =>
         _streams.ReleaseOutboundReservation(handle.StreamId);
 
-    public async Task<TResponse> InvokeAsync<TRequest, TResponse>(
+    public Task<TResponse> InvokeAsync<TRequest, TResponse>(
         string service,
         string method,
         TRequest request,
-        CancellationToken ct = default)
-    {
-        using var received = await SendRequestAsync(service, method, request, instanceId: null, streams: null, ct).ConfigureAwait(false);
-        return DeserializeNonStreamingResponse<TResponse>(received);
-    }
+        CancellationToken ct = default) =>
+        SendUnaryRequestAsync<TRequest, TResponse>(service, method, request, instanceId: null, ct);
 
     public async Task<TResponse> InvokeAsync<TRequest, TResponse>(
         string service,
@@ -66,14 +79,11 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         return DeserializeNonStreamingResponse<TResponse>(received);
     }
 
-    public async Task<TResponse> InvokeAsync<TResponse>(
+    public Task<TResponse> InvokeAsync<TResponse>(
         string service,
         string method,
-        CancellationToken ct = default)
-    {
-        using var received = await SendRequestAsync(service, method, instanceId: null, ct).ConfigureAwait(false);
-        return DeserializeNonStreamingResponse<TResponse>(received);
-    }
+        CancellationToken ct = default) =>
+        SendUnaryRequestAsync<TResponse>(service, method, instanceId: null, ct);
 
     public async Task InvokeAsync<TRequest>(
         string service,
@@ -163,7 +173,7 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         _streamingCalls.ReadAsyncEnumerableAsync<T>(
             SendRequestAsync(service, method, request, instanceId: null, streams, ct));
 
-    public bool TryCompleteResponse(int messageId, Payload frame)
+    public bool TryCompleteResponse(int messageId, RpcFrame frame)
     {
         if (!MessageFramer.TryReadFrame(frame.Memory, out _, out var messageType, out var envelope, out var payload))
         {
@@ -202,29 +212,32 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         RpcStreamReceiver? stream = null;
         try
         {
-            if (response.Stream is { } handle)
+            if (response.Stream is { } handle &&
+                completion.RegistersStreamingResponse)
             {
                 stream = _streams.RegisterInboundResponse(handle, CancellationToken.None);
             }
 
-            var received = new ReceivedResponse(response, payload, frame, stream);
-            if (!completion.TrySetResult(received))
-            {
-                received.Dispose();
-            }
-
-            return true;
+            return completion.TrySetResponse(response, payload, frame, stream, _serializer);
         }
         catch (Exception ex)
         {
-            completion.TrySetException(ex);
+            stream?.Cancel();
+            completion.SetError(ex);
             return false;
         }
     }
 
+    public bool TryCompleteResponse(int messageId, Payload frame) =>
+        TryCompleteResponse(messageId, new RpcFrame(frame));
+
     public void FailPending(Exception error) => _pending.FailAll(error);
 
-    public Task StopCancelFramesAsync() => _cancelFrames.StopAsync();
+    public Task StopCancelFramesAsync()
+    {
+        _pending.Dispose();
+        return _cancelFrames.StopAsync();
+    }
 
     private TResponse DeserializeNonStreamingResponse<TResponse>(ReceivedResponse received)
     {
@@ -241,7 +254,7 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         }
     }
 
-    private async Task<ReceivedResponse> SendRequestAsync<TRequest>(
+    private Task<ReceivedResponse> SendRequestAsync<TRequest>(
         string service,
         string method,
         TRequest request,
@@ -254,23 +267,21 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
             ValidateTarget(service, method);
             _ensureStarted();
         }
-        catch
+        catch (Exception ex)
         {
             _streams.ReleaseOutboundReservations(streams);
-            await DisposeStreamSourcesBestEffortAsync(streams).ConfigureAwait(false);
-            throw;
+            return DisposeStreamSourcesAndThrowAsync(streams, ex);
         }
 
-        (int MessageId, TaskCompletionSource<ReceivedResponse> Completion) pending;
+        PendingReceivedResponse pending;
         try
         {
             pending = ReservePendingRequest(ct);
         }
-        catch
+        catch (Exception ex)
         {
             _streams.ReleaseOutboundReservations(streams);
-            await DisposeStreamSourcesBestEffortAsync(streams).ConfigureAwait(false);
-            throw;
+            return DisposeStreamSourcesAndThrowAsync(streams, ex);
         }
 
         var outboundStreams = RpcOutboundStreamSet.Empty;
@@ -288,30 +299,24 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
                 envelope,
                 request);
         }
-        catch
+        catch (Exception ex)
         {
             // Registration or frame construction threw before SendFrameAndAwaitAsync took
             // ownership of the reserved slot, so release it here; otherwise the admission gate
             // leaks one slot per local setup failure and eventually rejects every call.
-            _pending.Remove(pending.MessageId, pending.Completion.Task, consumed: true);
+            _pending.Remove(pending.MessageId, pending, consumed: true);
             ReleasePendingSlot();
-            await outboundStreams.DisposeAsync().ConfigureAwait(false);
-            if (!registeredStreams)
-            {
-                await DisposeStreamSourcesBestEffortAsync(streams).ConfigureAwait(false);
-            }
-
-            throw;
+            return CleanupOutboundSetupFailureAsync(outboundStreams, streams, registeredStreams, ex);
         }
 
-        return await SendFrameAndAwaitAsync(
+        return SendFrameAndAwaitAsync(
             pending.MessageId,
-            pending.Completion,
+            pending,
             frame,
             service,
             method,
             outboundStreams,
-            ct).ConfigureAwait(false);
+            ct);
     }
 
     private Task<ReceivedResponse> SendRequestAsync(
@@ -334,7 +339,7 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
                 ReadOnlySpan<byte>.Empty);
             return SendFrameAndAwaitAsync(
                 pending.MessageId,
-                pending.Completion,
+                pending,
                 frame,
                 service,
                 method,
@@ -346,59 +351,15 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
             // Frame construction (serialization) threw before SendFrameAndAwaitAsync took
             // ownership of the reserved slot, so release it here; otherwise the admission gate
             // leaks one slot per serialization failure and eventually rejects every call.
-            _pending.Remove(pending.MessageId, pending.Completion.Task, consumed: true);
+            _pending.Remove(pending.MessageId, pending, consumed: true);
             ReleasePendingSlot();
             throw;
         }
     }
 
-    private (int MessageId, TaskCompletionSource<ReceivedResponse> Completion) ReservePendingRequest(CancellationToken ct)
-    {
-        if (Interlocked.Increment(ref _pendingCount) > _maxPendingRequests)
-        {
-            Interlocked.Decrement(ref _pendingCount);
-            throw new ShaRpcException("Maximum pending requests reached.");
-        }
-
-        try
-        {
-            for (var attempts = 0; attempts < _maxPendingRequests; attempts++)
-            {
-                ct.ThrowIfCancellationRequested();
-                var messageId = NextMessageId(ct);
-                if (messageId != 0 && _pending.TryAdd(messageId, out var tcs))
-                {
-                    return (messageId, tcs);
-                }
-            }
-
-            throw new ShaRpcException("Unable to reserve a request message id.");
-        }
-        catch
-        {
-            Interlocked.Decrement(ref _pendingCount);
-            throw;
-        }
-    }
-
-    private void ReleasePendingSlot() => Interlocked.Decrement(ref _pendingCount);
-
-    private int NextMessageId(CancellationToken ct)
-    {
-        while (true)
-        {
-            ct.ThrowIfCancellationRequested();
-            var messageId = Interlocked.Increment(ref _messageIdCounter);
-            if (messageId != 0)
-            {
-                return messageId;
-            }
-        }
-    }
-
     private async Task<ReceivedResponse> SendFrameAndAwaitAsync(
         int messageId,
-        TaskCompletionSource<ReceivedResponse> tcs,
+        PendingReceivedResponse pending,
         PooledBufferWriter frame,
         string service,
         string method,
@@ -416,26 +377,22 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
             }
             outboundStreams.Start();
 
-            using var timeoutCts = ct.CanBeCanceled
-                ? CancellationTokenSource.CreateLinkedTokenSource(ct)
-                : new CancellationTokenSource();
-            timeoutCts.CancelAfter(_timeout);
-
             ReceivedResponse received;
             // Cancel through the pending-request table rather than the TCS directly, so the timeout and
             // an incoming response race on a single atomic removal: whichever removes the entry first
             // wins and the loser is a guaranteed no-op. Cancelling the TCS directly could win the race
             // against TryComplete and discard an already-delivered response as a spurious timeout.
-            var timeoutState = new TimeoutCancelState(_pending, messageId);
-            using (timeoutCts.Token.Register(
-                static state => ((TimeoutCancelState)state!).Cancel(),
-                timeoutState))
+            var callerCancellation = ct.CanBeCanceled
+                ? ct.Register(static state => ((IPendingResponse)state!).CancelByCaller(), pending)
+                : default;
+            using (callerCancellation)
             {
+                _pending.StartTimeout(pending, _timeout);
                 try
                 {
-                    received = await tcs.Task.ConfigureAwait(false);
+                    received = await pending.Task.ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+                catch (OperationCanceledException) when (pending.CancellationKind == PendingCancellationKind.Timeout)
                 {
                     if (requestSent)
                     {
@@ -444,6 +401,16 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
 
                     ct.ThrowIfCancellationRequested();
                     throw new ShaRpcTimeoutException($"Request to {service}.{method} timed out.");
+                }
+                catch (OperationCanceledException) when (pending.CancellationKind == PendingCancellationKind.Caller)
+                {
+                    if (requestSent)
+                    {
+                        _cancelFrames.TrySend(messageId);
+                    }
+
+                    ct.ThrowIfCancellationRequested();
+                    throw;
                 }
             }
 
@@ -462,7 +429,7 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         }
         finally
         {
-            _pending.Remove(messageId, tcs.Task, consumed);
+            _pending.Remove(messageId, pending, consumed);
             ReleasePendingSlot();
             if (!consumed)
             {
@@ -471,17 +438,4 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         }
     }
 
-    private sealed class TimeoutCancelState
-    {
-        private readonly ShaRpcPendingRequests _pending;
-        private readonly int _messageId;
-
-        public TimeoutCancelState(ShaRpcPendingRequests pending, int messageId)
-        {
-            _pending = pending;
-            _messageId = messageId;
-        }
-
-        public void Cancel() => _pending.TryCancel(_messageId);
-    }
 }

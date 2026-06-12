@@ -7,7 +7,7 @@ namespace Snap.RefOut
     /// <summary>
     /// Server dispatcher for IRefOutSnap.
     /// </summary>
-    public sealed class RefOutSnapDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher
+    public sealed class RefOutSnapDispatcher : global::ShaRPC.Core.Server.IServiceDispatcher, global::ShaRPC.Core.Server.INonStreamingServiceDispatcher
     {
         private readonly global::Snap.RefOut.IRefOutSnap _service;
 
@@ -30,8 +30,11 @@ namespace Snap.RefOut
                 case "GoodAsync":
                 {
                     var arg = serializer.Deserialize<int>(payload);
-                    var result = await _service.GoodAsync(arg);
-                    serializer.Serialize(output, result);
+                    var __sharpc_task = _service.GoodAsync(arg);
+                    var __sharpc_result = __sharpc_task.IsCompletedSuccessfully
+                        ? __sharpc_task.Result
+                        : await __sharpc_task;
+                    serializer.Serialize(output, __sharpc_result);
                     return;
                 }
                 default:
@@ -55,8 +58,11 @@ namespace Snap.RefOut
                 case "GoodAsync":
                 {
                     var arg = serializer.Deserialize<int>(payload);
-                    var result = await __inst.GoodAsync(arg);
-                    serializer.Serialize(output, result);
+                    var __sharpc_task = __inst.GoodAsync(arg);
+                    var __sharpc_result = __sharpc_task.IsCompletedSuccessfully
+                        ? __sharpc_task.Result
+                        : await __sharpc_task;
+                    serializer.Serialize(output, __sharpc_result);
                     return;
                 }
                 default:

@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using ShaRPC.Core.Buffers;
 using ShaRPC.Core.Protocol;
 using ShaRPC.Core.Serialization;
@@ -16,7 +15,7 @@ internal sealed class RpcPeerResponseBuilder
     public RpcPeerResponseBuilder(
         ISerializer serializer,
         InstanceRegistry registry,
-        ConcurrentDictionary<string, IServiceDispatcher> dispatchers,
+        IReadOnlyDictionary<string, IServiceDispatcher> dispatchers,
         bool rejectInboundCalls,
         Func<Exception, RpcErrorInfo?>? exceptionTransformer = null)
     {
@@ -25,7 +24,12 @@ internal sealed class RpcPeerResponseBuilder
         _rejectInboundCalls = rejectInboundCalls;
     }
 
-    public async ValueTask<RpcDispatchResult> BuildAsync(
+    public void FreezeDispatchers() => _inner.FreezeDispatchers();
+
+    public bool RequiresStreamingContext(RpcRequest request) =>
+        !_rejectInboundCalls && _inner.RequiresStreamingContext(request);
+
+    public ValueTask<RpcDispatchResult> BuildAsync(
         RpcRequest request,
         int messageId,
         ReadOnlyMemory<byte> payload,
@@ -34,14 +38,14 @@ internal sealed class RpcPeerResponseBuilder
     {
         if (_rejectInboundCalls)
         {
-            return new RpcDispatchResult(
+            return new ValueTask<RpcDispatchResult>(new RpcDispatchResult(
                 _inner.BuildErrorFrame(
                     messageId,
                     new RpcError("This peer does not accept inbound calls.", RpcErrorTypes.InboundRejected)),
-                stream: null);
+                stream: null));
         }
 
-        return await _inner.BuildAsync(request, messageId, payload, _registry, streaming, ct).ConfigureAwait(false);
+        return _inner.BuildAsync(request, messageId, payload, _registry, streaming, ct);
     }
 
     public Payload BuildProtocolErrorFrame(int messageId, string errorMessage) =>

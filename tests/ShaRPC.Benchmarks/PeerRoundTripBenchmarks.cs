@@ -10,7 +10,7 @@ public class PeerRoundTripBenchmarks
 {
     private RpcPeer _leftPeer = null!;
     private RpcPeer _rightPeer = null!;
-    private IGameService _service = null!;
+    private IValueTaskGameService _service = null!;
     private readonly MoveRequest _request = new()
     {
         PlayerId = "player-1",
@@ -19,6 +19,11 @@ public class PeerRoundTripBenchmarks
         Z = 3
     };
 
+    // Combined hot-path profile: no peer timeouts, client pooled ValueTask<T> invocations,
+    // no non-streaming inbound cancellation, and immediate server dispatch.
+    [Params(false, true)]
+    public bool EndToEndLowAllocationProfile { get; set; }
+
     [GlobalSetup]
     public async Task Setup()
     {
@@ -26,15 +31,18 @@ public class PeerRoundTripBenchmarks
         var serializer = new MessagePackRpcSerializer();
 
         _leftPeer = RpcPeer
-            .Over(leftConnection, serializer, new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) })
+            .Over(leftConnection, serializer, CreateOptionsForClient())
             .Start();
 
         _rightPeer = RpcPeer
-            .Over(rightConnection, serializer, new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) })
-            .Provide<IGameService>(new BenchmarkGameService())
+            .Over(
+                rightConnection,
+                serializer,
+                CreateOptionsForServer())
+            .Provide<IValueTaskGameService>(new BenchmarkGameService())
             .Start();
 
-        _service = _leftPeer.Get<IGameService>();
+        _service = _leftPeer.Get<IValueTaskGameService>();
         await _service.RegisterPlayerAsync("player-1").ConfigureAwait(false);
     }
 
@@ -46,32 +54,60 @@ public class PeerRoundTripBenchmarks
     }
 
     [Benchmark]
-    public Task<ActionResult> MovePlayerAsync() =>
+    public ValueTask<ActionResult> MovePlayerAsync() =>
         _service.MovePlayerAsync(_request);
 
-    private sealed class BenchmarkGameService : IGameService
+    private RpcPeerOptions CreateOptionsForClient() =>
+        new()
+        {
+            RequestTimeout = EndToEndLowAllocationProfile
+                ? Timeout.InfiniteTimeSpan
+                : TimeSpan.FromSeconds(5),
+            EnableLowAllocationValueTaskInvocations = EndToEndLowAllocationProfile,
+        };
+
+    private RpcPeerOptions CreateOptionsForServer()
     {
+        if (!EndToEndLowAllocationProfile)
+        {
+            return new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) };
+        }
+
+        return new RpcPeerOptions
+        {
+            DisableInboundRequestCancellation = true,
+            InboundQueueCapacity = null,
+            RequestTimeout = Timeout.InfiniteTimeSpan,
+        };
+    }
+
+    private sealed class BenchmarkGameService : IValueTaskGameService
+    {
+        private static readonly ActionResult MoveResult = new() { Success = true, Message = "Moved" };
+
         private readonly Dictionary<string, PlayerState> _players = new();
 
-        public Task<PlayerState> GetPlayerStateAsync(PlayerId playerId, CancellationToken ct = default) =>
-            Task.FromResult(_players[playerId.Id]);
+        public ValueTask<PlayerState> GetPlayerStateAsync(PlayerId playerId, CancellationToken ct = default) =>
+            new(_players[playerId.Id]);
 
-        public Task<ActionResult> MovePlayerAsync(MoveRequest request, CancellationToken ct = default)
+        public ValueTask<ActionResult> MovePlayerAsync(MoveRequest request, CancellationToken ct = default)
         {
-            var state = _players[request.PlayerId];
+            var playerId = request.PlayerId
+                ?? throw new InvalidOperationException("MoveRequest.PlayerId must not be null.");
+            var state = _players[playerId];
             state.PositionX = request.X;
             state.PositionY = request.Y;
             state.PositionZ = request.Z;
-            return Task.FromResult(new ActionResult { Success = true, Message = "Moved" });
+            return new ValueTask<ActionResult>(MoveResult);
         }
 
-        public Task<ActionResult> PerformActionAsync(ActionRequest request, CancellationToken ct = default) =>
-            Task.FromResult(new ActionResult { Success = true, Message = request.ActionType });
+        public ValueTask<ActionResult> PerformActionAsync(ActionRequest request, CancellationToken ct = default) =>
+            new(new ActionResult { Success = true, Message = request.ActionType });
 
-        public Task<ServerStatus> GetServerStatusAsync(CancellationToken ct = default) =>
-            Task.FromResult(new ServerStatus { PlayerCount = _players.Count, Version = "bench" });
+        public ValueTask<ServerStatus> GetServerStatusAsync(CancellationToken ct = default) =>
+            new(new ServerStatus { PlayerCount = _players.Count, Version = "bench" });
 
-        public Task<PlayerState> RegisterPlayerAsync(string playerName, CancellationToken ct = default)
+        public ValueTask<PlayerState> RegisterPlayerAsync(string playerName, CancellationToken ct = default)
         {
             var state = new PlayerState
             {
@@ -82,7 +118,7 @@ public class PeerRoundTripBenchmarks
                 MaxHealth = 100
             };
             _players[state.PlayerId] = state;
-            return Task.FromResult(state);
+            return new ValueTask<PlayerState>(state);
         }
     }
 }

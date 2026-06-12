@@ -248,10 +248,18 @@ internal static class ProxyGenerator
         var requestParameters = ProxyGenerationHelpers.GetRequestParameters(method.Parameters, ct);
         var streamSetup = ProxyStreamSetupEmitter.Emit(sb, method, requestParameters, locals, ct, indent);
         var streamArray = streamSetup.ArrayName;
+        var useStreamAwareTaskValueInvocation =
+            method.ReturnKind == MethodReturnKind.ValueTaskOf && streamArray is not null;
         var svc = service.ServiceName;
         var rpc = method.RpcName;
-        var singletonMethod = GetInvokerMethod(method.ReturnKind, isInstanceScoped: false);
-        var instanceMethod = GetInvokerMethod(method.ReturnKind, isInstanceScoped: true);
+        var singletonMethod = GetInvokerMethod(
+            method.ReturnKind,
+            isInstanceScoped: false,
+            useStreamAwareTaskValueInvocation);
+        var instanceMethod = GetInvokerMethod(
+            method.ReturnKind,
+            isInstanceScoped: true,
+            useStreamAwareTaskValueInvocation);
 
         // Build the type-parameter list and argument list once; switch between the two
         // overload prefixes via the ternary.
@@ -302,9 +310,14 @@ internal static class ProxyGenerator
             callArgsInst = $"\"{svc}\", this._instanceId!, \"{rpc}\", ({tupleValues}){streamArg}, {ctArg}";
         }
 
-        return (
-            $"(this._instanceId is null ? this._invoker.{singletonMethod}{typeArgs}({callArgs}) : this._invoker.{instanceMethod}{typeArgs}({callArgsInst}))",
-            streamSetup.Reservations);
+        var invocation =
+            $"(this._instanceId is null ? this._invoker.{singletonMethod}{typeArgs}({callArgs}) : this._invoker.{instanceMethod}{typeArgs}({callArgsInst}))";
+        if (useStreamAwareTaskValueInvocation)
+        {
+            invocation = $"new global::System.Threading.Tasks.ValueTask<{returnType}>({invocation})";
+        }
+
+        return (invocation, streamSetup.Reservations);
     }
 
     private static string GetServiceHandleType(MethodModel method) =>
@@ -352,7 +365,10 @@ internal static class ProxyGenerator
             ? ProxyGenerationHelpers.GetWireArgument(parameter)
             : streamHandles[requestIndex];
 
-    private static string GetInvokerMethod(MethodReturnKind returnKind, bool isInstanceScoped)
+    private static string GetInvokerMethod(
+        MethodReturnKind returnKind,
+        bool isInstanceScoped,
+        bool useStreamAwareTaskValueInvocation = false)
     {
         if (NamingHelpers.IsStreamReturn(returnKind))
         {
@@ -371,6 +387,11 @@ internal static class ProxyGenerator
             return isInstanceScoped
                 ? eager ? "InvokeAsyncEnumerableOnInstanceAsync" : "InvokeAsyncEnumerableOnInstance"
                 : eager ? "InvokeAsyncEnumerableAsync" : "InvokeAsyncEnumerable";
+        }
+
+        if (returnKind == MethodReturnKind.ValueTaskOf && !useStreamAwareTaskValueInvocation)
+        {
+            return isInstanceScoped ? "InvokeValueOnInstanceAsync" : "InvokeValueAsync";
         }
 
         return isInstanceScoped ? "InvokeOnInstanceAsync" : "InvokeAsync";

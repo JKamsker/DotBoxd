@@ -23,7 +23,8 @@ internal sealed class TestGameService : IGameService
 
     public Task<ActionResult> MovePlayerAsync(MoveRequest request, CancellationToken ct = default)
     {
-        if (_players.TryGetValue(request.PlayerId, out var state))
+        if (request.PlayerId is { } playerId &&
+            _players.TryGetValue(playerId, out var state))
         {
             state.PositionX = request.X;
             state.PositionY = request.Y;

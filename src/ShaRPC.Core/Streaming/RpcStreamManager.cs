@@ -294,7 +294,10 @@ internal sealed class RpcStreamManager
             _canceledInbound.Remove(streamId);
         }
     }
-    public bool TryCompleteInboundError(Payload frame)
+    public bool TryCompleteInboundError(Payload frame) =>
+        TryCompleteInboundError(frame.Memory);
+
+    public bool TryCompleteInboundError(ReadOnlyMemory<byte> frame)
     {
         if (!RpcStreamErrorFrameReader.TryRead(frame, _serializer, out var streamId, out var response))
         {
@@ -314,10 +317,13 @@ internal sealed class RpcStreamManager
                 response.ErrorType ?? "Unknown"));
         return true;
     }
-    public bool TryAddCredit(Payload frame)
+    public bool TryAddCredit(Payload frame) =>
+        TryAddCredit(frame.Memory);
+
+    public bool TryAddCredit(ReadOnlyMemory<byte> frame)
     {
-        if (!MessageFramer.TryReadFrameHeader(frame.Memory, out var streamId, out _) ||
-            !RpcRawFrame.TryReadInt32(frame.Memory, out var count) ||
+        if (!MessageFramer.TryReadFrameHeader(frame, out var streamId, out _) ||
+            !RpcRawFrame.TryReadInt32(frame, out var count) ||
             count <= 0)
         {
             return false;

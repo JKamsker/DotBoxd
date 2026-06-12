@@ -10,11 +10,18 @@ internal static class RpcStreamErrorFrameReader
         Payload frame,
         ISerializer serializer,
         out int streamId,
+        out RpcResponse response) =>
+        TryRead(frame.Memory, serializer, out streamId, out response);
+
+    public static bool TryRead(
+        ReadOnlyMemory<byte> frame,
+        ISerializer serializer,
+        out int streamId,
         out RpcResponse response)
     {
         response = default;
         if (!MessageFramer.TryReadFrame(
-                frame.Memory,
+                frame,
                 out streamId,
                 out var type,
                 out var envelope,

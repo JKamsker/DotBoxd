@@ -110,9 +110,110 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  benchmarks:
+    name: Benchmarks
+    needs: build-test-pack
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore benchmarks
+        run: dotnet restore tests/ShaRPC.Benchmarks/ShaRPC.Benchmarks.csproj
+
+      - name: Run benchmarks
+        run: |
+          mkdir -p artifacts/benchmarks/raw
+          dotnet run -c $CONFIGURATION --project tests/ShaRPC.Benchmarks -- \
+            --filter "*" \
+            --job short \
+            --warmupCount 1 \
+            --iterationCount 3 \
+            --exporters json \
+            --artifacts artifacts/benchmarks/raw \
+            --stopOnFirstError
+
+      - name: Download previous benchmark artifacts
+        if: always()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BENCHMARK_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($PSVersionTable.PSVersion.Major -ge 7) {
+            $PSNativeCommandUseErrorActionPreference = $true
+          }
+
+          New-Item -ItemType Directory -Force -Path artifacts/benchmark-history | Out-Null
+          try {
+            $runsJson = gh run list `
+              --repo $env:GITHUB_REPOSITORY `
+              --workflow ci.yml `
+              --branch $env:BENCHMARK_BRANCH `
+              --status success `
+              --limit 20 `
+              --json databaseId
+            $runs = $runsJson | ConvertFrom-Json
+            foreach ($run in $runs) {
+              $target = "artifacts/benchmark-history/$($run.databaseId)"
+              New-Item -ItemType Directory -Force -Path $target | Out-Null
+              try {
+                gh run download $run.databaseId `
+                  --repo $env:GITHUB_REPOSITORY `
+                  --name benchmark-results `
+                  --dir $target
+              }
+              catch {
+                Write-Host "No benchmark-results artifact for run $($run.databaseId)."
+              }
+            }
+          }
+          catch {
+            Write-Host "Benchmark history unavailable: $_"
+          }
+          finally {
+            $global:LASTEXITCODE = 0
+          }
+
+      - name: Summarize benchmarks
+        if: always()
+        shell: pwsh
+        env:
+          BENCHMARK_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          ./scripts/Write-BenchmarkSummary.ps1 `
+            -ResultsDirectory artifacts/benchmarks/raw/results `
+            -OutputDirectory artifacts/benchmarks `
+            -HistoryDirectory artifacts/benchmark-history `
+            -RunNumber $env:GITHUB_RUN_NUMBER `
+            -CommitSha $env:GITHUB_SHA `
+            -Branch $env:BENCHMARK_BRANCH `
+            -Repository $env:GITHUB_REPOSITORY
+          Get-Content artifacts/benchmarks/benchmark-summary.md |
+            Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: benchmark-results
+          path: artifacts/benchmarks/**
+          if-no-files-found: error
+          retention-days: 30
+
   publish-nuget:
     name: Publish to NuGet.org
-    needs: build-test-pack
+    needs: [build-test-pack, benchmarks]
     runs-on: ubuntu-latest
     # Publish only from this repo on a push to main or a version tag — never from
     # pull requests or forks (the Bitwarden access token only lives on JKamsker/sharpc).

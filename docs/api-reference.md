@@ -201,8 +201,10 @@ Options for both `RpcPeer` and `RpcHost`.
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `RequestTimeout` | `TimeSpan` | 30s | Per-call timeout for proxies. Use `Timeout.InfiniteTimeSpan` to disable |
+| `EnableLowAllocationValueTaskInvocations` | `bool` | `false` | Opts generated generic `ValueTask<T>` unary proxy calls into the pooled response-source path. This alone does not guarantee that path: the call must use the non-timeout/non-cancellable call shape, and the transport/runtime must support the low-allocation path; otherwise the proxy uses the `Task<T>`-backed path |
 | `ServiceProvider` | `IServiceProvider?` | `null` | Resolves dependencies for dispatcher factories and `Provide<TService>()` |
 | `RejectInboundCalls` | `bool` | `false` | Answers inbound requests with an explicit "does not accept inbound calls" error; makes get-only intent explicit. Not an auth boundary |
+| `DisableInboundRequestCancellation` | `bool` | `false` | Disables per-request cancellation state for non-streaming inbound calls. Handlers receive `CancellationToken.None`; inbound Cancel frames for those calls are ignored |
 | `InboundQueueCapacity` | `int?` | 1024 | Max queued inbound requests (bounded read-side backpressure). `null` dispatches immediately and does not cap concurrent dispatch work — trusted/bounded transports only |
 | `MaxConcurrentInboundDispatch` | `int` | 1 | Max inbound requests dispatched concurrently when `InboundQueueCapacity` is set. Default `1` dispatches serially per connection; raise it for bounded-concurrent per-connection dispatch. Ignored when `InboundQueueCapacity` is `null` |
 | `MaxInboundBytes` | `long?` | 64 MiB | Max total bytes of in-flight inbound request frames when `InboundQueueCapacity` is set. Caps peak memory independent of frame count; `null` disables. An oversized frame is still admitted when nothing else is in flight, so one large request never deadlocks. Ignored when `InboundQueueCapacity` is `null` |
@@ -222,6 +224,11 @@ Setting `InboundQueueCapacity` to `null` dispatches inbound peer requests immedi
 cap concurrent dispatcher work; use that only with trusted peers or externally bounded transports.
 In `Wait` mode, queued requests are bounded and read-side backpressure applies instead of retaining
 unbounded request frames.
+
+The default profile is intentionally safe: outbound calls have timeouts, inbound handlers receive
+cancellable tokens, inbound dispatch is bounded, and generated `ValueTask<T>` proxies use the
+`Task<T>`-backed path. For measured hot paths that can trade those guarantees for lower allocation,
+see [Performance Hot Paths](./performance.md).
 
 ---
 
