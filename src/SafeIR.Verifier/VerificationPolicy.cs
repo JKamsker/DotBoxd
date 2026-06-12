@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using SafeIR;
 using SafeIR.Runtime;
+using static SafeIR.Verifier.VerifierTypeNames;
 
 public sealed record VerificationPolicy(
     IReadOnlySet<string> AllowedAssemblies,
@@ -15,17 +16,6 @@ public sealed record VerificationPolicy(
     string VerifierVersion,
     VerificationManifestIdentity? ExpectedManifestIdentity = null)
 {
-    private const string Context = "SafeIR.SandboxContext";
-    private const string Value = "SafeIR.SandboxValue";
-    private const string ValueArray = "SafeIR.SandboxValue[]";
-    private const string SandboxType = "SafeIR.SandboxType";
-    private const string Runtime = "SafeIR.Runtime.CompiledRuntime";
-    private const string Void = "System.Void";
-    private const string Boolean = "System.Boolean";
-    private const string Int32 = "System.Int32";
-    private const string Double = "System.Double";
-    private const string String = "System.String";
-
     public static VerificationPolicy BoxedValueDefaults()
         => new(
             new HashSet<string>(StringComparer.Ordinal) {
@@ -38,65 +28,66 @@ public sealed record VerificationPolicy(
                 AssemblyIdentity("SafeIR.Runtime", SafeIrAssemblyVersion(), "neutral", "null")
             },
             new HashSet<string>(StringComparer.Ordinal) {
-                "System.Object", "System.Void", "System.Boolean", "System.Int32", "System.String",
-                "System.Double",
-                "SafeIR.SandboxValue", "SafeIR.SandboxContext", "SafeIR.SandboxType", "SafeIR.Runtime.CompiledRuntime"
+                ObjectName, VoidName, BooleanName, Int32Name, Int64Name, StringName, DoubleName,
+                SandboxValueName, SandboxContextName, SandboxTypeName, CompiledRuntimeName
             },
             new HashSet<string>(StringComparer.Ordinal) {
-                RuntimeMember("ChargeFuel", $"{Context},{Int32}", Void),
-                RuntimeMember("ChargeLoopIteration", $"{Context},{Int32}", Void),
-                RuntimeMember("EnterCall", Context, Void),
-                RuntimeMember("ExitCall", Context, Void),
-                RuntimeMember("ValidateEntrypointInput", $"{Value},{Int32}", Void),
-                RuntimeMember("GetInputArgument", $"{Value},{Int32},{Int32},{SandboxType}", Value),
-                RuntimeMember("RequireValueType", $"{Value},{SandboxType}", Value),
-                RuntimeMember("I32", Int32, Value),
-                RuntimeMember("F64", Double, Value),
-                RuntimeMember("Bool", Boolean, Value),
-                RuntimeMember("TypeScalar", String, SandboxType),
-                RuntimeMember("TypeList", SandboxType, SandboxType),
-                RuntimeMember("TypeMap", $"{SandboxType},{SandboxType}", SandboxType),
-                RuntimeMember("StringConst", $"{Context},{String}", Value),
-                RuntimeMember("AsI32", Value, Int32),
-                RuntimeMember("AsBool", Value, Boolean),
-                RuntimeMember("AsF64", Value, Double),
-                RuntimeMember("AddI32", $"{Value},{Value}", Value),
-                RuntimeMember("SubI32", $"{Value},{Value}", Value),
-                RuntimeMember("MulI32", $"{Value},{Value}", Value),
-                RuntimeMember("DivI32", $"{Value},{Value}", Value),
-                RuntimeMember("RemI32", $"{Value},{Value}", Value),
-                RuntimeMember("NegI32", Value, Value),
-                RuntimeMember("NotBool", Value, Value),
-                RuntimeMember("Eq", $"{Value},{Value}", Value),
-                RuntimeMember("Ne", $"{Value},{Value}", Value),
-                RuntimeMember("LtI32", $"{Value},{Value}", Value),
-                RuntimeMember("LteI32", $"{Value},{Value}", Value),
-                RuntimeMember("GtI32", $"{Value},{Value}", Value),
-                RuntimeMember("GteI32", $"{Value},{Value}", Value),
-                RuntimeMember("And", $"{Value},{Value}", Value),
-                RuntimeMember("Or", $"{Value},{Value}", Value),
-                RuntimeMember("StringLength", Value, Value),
-                RuntimeMember("ConcatString", $"{Context},{Value},{Value}", Value),
-                RuntimeMember("AbsI32", Value, Value),
-                RuntimeMember("MinI32", $"{Value},{Value}", Value),
-                RuntimeMember("MaxI32", $"{Value},{Value}", Value),
-                RuntimeMember("ClampI32", $"{Value},{Value},{Value}", Value),
-                RuntimeMember("SqrtF64", Value, Value),
-                RuntimeMember("FloorF64", Value, Value),
-                RuntimeMember("CeilF64", Value, Value),
-                RuntimeMember("RoundF64", Value, Value),
-                RuntimeMember("CreateValueArray", $"{Context},{Int32}", ValueArray),
-                RuntimeMember("ListEmpty", $"{Context},{SandboxType}", Value),
-                RuntimeMember("ListOf", $"{Context},{ValueArray}", Value),
-                RuntimeMember("ListCount", $"{Context},{Value}", Value),
-                RuntimeMember("ListGet", $"{Context},{Value},{Value}", Value),
-                RuntimeMember("ListAdd", $"{Context},{Value},{Value}", Value),
-                RuntimeMember("MapEmpty", $"{Context},{SandboxType},{SandboxType}", Value),
-                RuntimeMember("MapContainsKey", $"{Context},{Value},{Value}", Value),
-                RuntimeMember("MapGet", $"{Context},{Value},{Value}", Value),
-                RuntimeMember("MapSet", $"{Context},{Value},{Value},{Value}", Value),
-                RuntimeMember("MapRemove", $"{Context},{Value},{Value}", Value),
-                RuntimeMember("CallBinding", $"{Context},{String},{ValueArray}", Value)
+                RuntimeMember("ChargeFuel", $"{SandboxContextName},{Int32Name}", VoidName),
+                RuntimeMember("ChargeLoopIteration", $"{SandboxContextName},{Int32Name}", VoidName),
+                RuntimeMember("EnterCall", SandboxContextName, VoidName),
+                RuntimeMember("ExitCall", SandboxContextName, VoidName),
+                RuntimeMember("ValidateEntrypointInput", $"{SandboxValueName},{Int32Name}", VoidName),
+                RuntimeMember("GetInputArgument", $"{SandboxValueName},{Int32Name},{Int32Name},{SandboxTypeName}", SandboxValueName),
+                RuntimeMember("RequireValueType", $"{SandboxValueName},{SandboxTypeName}", SandboxValueName),
+                RuntimeMember("I32", Int32Name, SandboxValueName),
+                RuntimeMember("I64", Int64Name, SandboxValueName),
+                RuntimeMember("F64", DoubleName, SandboxValueName),
+                RuntimeMember("Bool", BooleanName, SandboxValueName),
+                RuntimeMember("TypeScalar", StringName, SandboxTypeName),
+                RuntimeMember("TypeList", SandboxTypeName, SandboxTypeName),
+                RuntimeMember("TypeMap", $"{SandboxTypeName},{SandboxTypeName}", SandboxTypeName),
+                RuntimeMember("StringConst", $"{SandboxContextName},{StringName}", SandboxValueName),
+                RuntimeMember("AsI32", SandboxValueName, Int32Name),
+                RuntimeMember("AsI64", SandboxValueName, Int64Name),
+                RuntimeMember("AsBool", SandboxValueName, BooleanName),
+                RuntimeMember("AsF64", SandboxValueName, DoubleName),
+                RuntimeMember("AddI32", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("SubI32", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("MulI32", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("DivI32", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("RemI32", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("NegI32", SandboxValueName, SandboxValueName),
+                RuntimeMember("NotBool", SandboxValueName, SandboxValueName),
+                RuntimeMember("Eq", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("Ne", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("LtI32", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("LteI32", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("GtI32", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("GteI32", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("And", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("Or", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("StringLength", SandboxValueName, SandboxValueName),
+                RuntimeMember("ConcatString", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("AbsI32", SandboxValueName, SandboxValueName),
+                RuntimeMember("MinI32", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("MaxI32", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("ClampI32", $"{SandboxValueName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("SqrtF64", SandboxValueName, SandboxValueName),
+                RuntimeMember("FloorF64", SandboxValueName, SandboxValueName),
+                RuntimeMember("CeilF64", SandboxValueName, SandboxValueName),
+                RuntimeMember("RoundF64", SandboxValueName, SandboxValueName),
+                RuntimeMember("CreateValueArray", $"{SandboxContextName},{Int32Name}", SandboxValueArrayName),
+                RuntimeMember("ListEmpty", $"{SandboxContextName},{SandboxTypeName}", SandboxValueName),
+                RuntimeMember("ListOf", $"{SandboxContextName},{SandboxValueArrayName}", SandboxValueName),
+                RuntimeMember("ListCount", $"{SandboxContextName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("ListGet", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("ListAdd", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("MapEmpty", $"{SandboxContextName},{SandboxTypeName},{SandboxTypeName}", SandboxValueName),
+                RuntimeMember("MapContainsKey", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("MapGet", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("MapSet", $"{SandboxContextName},{SandboxValueName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("MapRemove", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("CallBinding", $"{SandboxContextName},{StringName},{SandboxValueArrayName}", SandboxValueName)
             },
             new HashSet<string>(StringComparer.Ordinal) {
                 "System.IO.", "System.Net.", "System.Reflection.", "System.Runtime.Loader.",
@@ -106,7 +97,7 @@ public sealed record VerificationPolicy(
                 "System.Linq.Expressions.", "Microsoft.CSharp."
             },
             RuntimeFacadeIdentityDefaults(),
-            "safe-ir-verifier-5");
+            "safe-ir-verifier-6");
 
     public bool IsMemberAllowed(string memberSignature) => AllowedMembers.Contains(memberSignature);
 
@@ -126,7 +117,7 @@ public sealed record VerificationPolicy(
         => Hash(
             "runtime-facade",
             AllowedMembers
-                .Where(m => m.StartsWith($"{Runtime}.", StringComparison.Ordinal))
+                .Where(m => m.StartsWith($"{CompiledRuntimeName}.", StringComparison.Ordinal))
                 .Concat(RuntimeFacadeIdentities));
 
     private static string Hash(string prefix, IEnumerable<string> values)
@@ -135,7 +126,7 @@ public sealed record VerificationPolicy(
             .ToLowerInvariant();
 
     private static string RuntimeMember(string name, string parameters, string returnType)
-        => $"{Runtime}.{name}({parameters}):{returnType}";
+        => $"{CompiledRuntimeName}.{name}({parameters}):{returnType}";
 
     private static string SafeIrAssemblyVersion()
         => typeof(SandboxValue).Assembly.GetName().Version?.ToString() ?? "0.0.0.0";

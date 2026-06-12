@@ -13,7 +13,7 @@ internal static class OpCodeVerifier
         ILOpCode.Stloc, ILOpCode.Stloc_s, ILOpCode.Ldnull, ILOpCode.Ldc_i4, ILOpCode.Ldc_i4_s,
         ILOpCode.Ldc_i4_0, ILOpCode.Ldc_i4_1, ILOpCode.Ldc_i4_2, ILOpCode.Ldc_i4_3, ILOpCode.Ldc_i4_4,
         ILOpCode.Ldc_i4_5, ILOpCode.Ldc_i4_6, ILOpCode.Ldc_i4_7, ILOpCode.Ldc_i4_8, ILOpCode.Ldc_i4_m1,
-        ILOpCode.Ldc_r8, ILOpCode.Ldstr, ILOpCode.Br, ILOpCode.Br_s, ILOpCode.Brtrue, ILOpCode.Brtrue_s,
+        ILOpCode.Ldc_i8, ILOpCode.Ldc_r8, ILOpCode.Ldstr, ILOpCode.Br, ILOpCode.Br_s, ILOpCode.Brtrue, ILOpCode.Brtrue_s,
         ILOpCode.Brfalse, ILOpCode.Brfalse_s, ILOpCode.Beq, ILOpCode.Beq_s, ILOpCode.Bne_un, ILOpCode.Bne_un_s,
         ILOpCode.Blt, ILOpCode.Blt_s, ILOpCode.Bgt, ILOpCode.Bgt_s, ILOpCode.Ble, ILOpCode.Ble_s,
         ILOpCode.Bge, ILOpCode.Bge_s, ILOpCode.Add, ILOpCode.Sub, ILOpCode.Mul, ILOpCode.Div,

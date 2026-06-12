@@ -176,7 +176,7 @@ internal static class GeneratedMethodFlowAnalyzer
     }
 
     private static bool IsLoopIterationCharge(GeneratedInstruction instruction)
-        => instruction.CalledMember == GeneratedMethodShapeVerifier.ChargeLoopIterationSignature;
+        => instruction.CalledMember == GeneratedMethodShapeSignatures.ChargeLoopIterationSignature;
 
     private static int? NextInstructionOffset(
         IReadOnlyList<GeneratedInstruction> instructions,

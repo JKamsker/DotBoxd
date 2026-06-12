@@ -170,7 +170,7 @@ internal sealed class MethodEmitter
         switch (expression)
         {
             case LiteralExpression literal:
-                EmitLiteral(literal.Value);
+                CompiledValueEmitter.EmitLiteral(_il, literal.Value);
                 break;
             case VariableExpression variable:
                 _il.Emit(OpCodes.Ldloc, _locals[variable.Name]);
@@ -186,32 +186,6 @@ internal sealed class MethodEmitter
                 break;
             default:
                 throw Unsupported("expression not supported");
-        }
-    }
-
-    private void EmitLiteral(SandboxValue value)
-    {
-        switch (value)
-        {
-            case I32Value i32:
-                EmitInt32(_il, i32.Value);
-                _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.I32)));
-                break;
-            case BoolValue boolean:
-                EmitInt32(_il, boolean.Value ? 1 : 0);
-                _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.Bool)));
-                break;
-            case F64Value f64:
-                _il.Emit(OpCodes.Ldc_R8, f64.Value);
-                _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.F64)));
-                break;
-            case StringValue text:
-                _il.Emit(OpCodes.Ldarg_0);
-                _il.Emit(OpCodes.Ldstr, text.Value);
-                _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.StringConst)));
-                break;
-            default:
-                throw Unsupported("literal not supported by compiler");
         }
     }
 
@@ -302,36 +276,12 @@ internal sealed class MethodEmitter
         var value = _il.DeclareLocal(typeof(SandboxValue));
         _il.Emit(OpCodes.Stloc, value);
         _il.Emit(OpCodes.Ldloc, value);
-        EmitMeteredSandboxType(_function.ReturnType);
+        CompiledValueEmitter.EmitMeteredSandboxType(_il, _function.ReturnType);
         _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.RequireValueType)));
         _il.Emit(OpCodes.Stloc, value);
         CompiledMeterEmitter.ExitCall(_il);
         _il.Emit(OpCodes.Ldloc, value);
         _il.Emit(OpCodes.Ret);
-    }
-
-    private void EmitMeteredSandboxType(SandboxType type)
-    {
-        if (type is { Name: "List", Arguments.Count: 1 })
-        {
-            EmitMeteredSandboxType(type.Arguments[0]);
-            CompiledMeterEmitter.Fuel(_il, 1);
-            _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.TypeList)));
-            return;
-        }
-
-        if (type is { Name: "Map", Arguments.Count: 2 })
-        {
-            EmitMeteredSandboxType(type.Arguments[0]);
-            EmitMeteredSandboxType(type.Arguments[1]);
-            CompiledMeterEmitter.Fuel(_il, 1);
-            _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.TypeMap)));
-            return;
-        }
-
-        CompiledMeterEmitter.Fuel(_il, 1);
-        _il.Emit(OpCodes.Ldstr, type.Name);
-        _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.TypeScalar)));
     }
 
     private static Exception Unsupported(string message)

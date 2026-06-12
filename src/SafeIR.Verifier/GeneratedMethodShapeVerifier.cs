@@ -1,34 +1,10 @@
 namespace SafeIR.Verifier;
 
 using System.Reflection.Metadata;
+using static SafeIR.Verifier.GeneratedMethodShapeSignatures;
 
 internal static class GeneratedMethodShapeVerifier
 {
-    private const string Runtime = "SafeIR.Runtime.CompiledRuntime";
-    private const string Context = "SafeIR.SandboxContext";
-    private const string Value = "SafeIR.SandboxValue";
-    private const string Int32 = "System.Int32";
-    private const string Void = "System.Void";
-    private const string SandboxType = "SafeIR.SandboxType";
-    private const string String = "System.String";
-    private static readonly string ValidateInput = $"{Runtime}.ValidateEntrypointInput({Value},{Int32}):{Void}";
-    private static readonly string EnterCall = $"{Runtime}.EnterCall({Context}):{Void}";
-    private static readonly string ExitCall = $"{Runtime}.ExitCall({Context}):{Void}";
-    private static readonly string RequireValueType = $"{Runtime}.RequireValueType({Value},{SandboxType}):{Value}";
-    private static readonly string TypeScalar = $"{Runtime}.TypeScalar({String}):{SandboxType}";
-    private static readonly string TypeList = $"{Runtime}.TypeList({SandboxType}):{SandboxType}";
-    private static readonly string TypeMap = $"{Runtime}.TypeMap({SandboxType},{SandboxType}):{SandboxType}";
-    internal static readonly string ChargeFuelSignature = $"{Runtime}.ChargeFuel({Context},{Int32}):{Void}";
-    internal static readonly string ChargeLoopIterationSignature = $"{Runtime}.ChargeLoopIteration({Context},{Int32}):{Void}";
-
-    private static readonly HashSet<string> ExecuteAllowedCalls = new(StringComparer.Ordinal) {
-        ValidateInput,
-        $"{Runtime}.GetInputArgument({Value},{Int32},{Int32},{SandboxType}):{Value}",
-        TypeScalar,
-        TypeList,
-        TypeMap
-    };
-
     public static void VerifyBody(
         MetadataReader reader,
         MethodDefinition method,
@@ -231,51 +207,8 @@ internal static class GeneratedMethodShapeVerifier
         }
     }
 
-    private static GeneratedMeterState StateFor(GeneratedInstruction instruction)
-    {
-        var state = instruction.CalledMember switch
-        {
-            var member when member == ValidateInput => GeneratedMeterState.ValidateInput,
-            var member when member == EnterCall => GeneratedMeterState.EnterCall,
-            var member when member == ExitCall => GeneratedMeterState.ExitCall,
-            var member when member == ChargeFuelSignature => GeneratedMeterState.ChargeFuel,
-            var member when member == ChargeLoopIterationSignature => GeneratedMeterState.ChargeFuel,
-            _ => GeneratedMeterState.None
-        };
-        return instruction.IsLocalCall && IsGeneratedFunctionCall(instruction.CalledMember)
-            ? state | GeneratedMeterState.LocalFunctionCall
-            : state;
-    }
-
-    private static bool IsGeneratedFunctionCall(string? calledMember)
-        => calledMember is not null && calledMember.StartsWith("Fn_", StringComparison.Ordinal);
-
-    private static bool IsFuelMeter(string? calledMember)
-        => calledMember == ChargeFuelSignature || calledMember == ChargeLoopIterationSignature;
-
     private static bool IsReachable(GeneratedMethodFlow analysis, GeneratedInstruction instruction)
         => analysis.EntryStates.ContainsKey(instruction.Offset);
-
-    private static bool IsRuntimeWorkCall(string? calledMember)
-        => calledMember is not null &&
-           calledMember.StartsWith(Runtime + ".", StringComparison.Ordinal) &&
-           calledMember != EnterCall &&
-           calledMember != ExitCall &&
-           calledMember != ChargeFuelSignature &&
-           calledMember != ChargeLoopIterationSignature &&
-           calledMember != RequireValueType;
-
-    private static bool IsMeterDensityWorkCall(string? calledMember)
-    {
-        if (!IsRuntimeWorkCall(calledMember) || calledMember is null)
-        {
-            return false;
-        }
-
-        return !calledMember.StartsWith(Runtime + ".CallBinding(" + Context, StringComparison.Ordinal) &&
-               !calledMember.StartsWith(Runtime + ".CreateValueArray(" + Context, StringComparison.Ordinal) &&
-               !calledMember.Contains("(" + Context + ",", StringComparison.Ordinal);
-    }
 
     private static void RequireReachable(
         GeneratedMethodFlow analysis,

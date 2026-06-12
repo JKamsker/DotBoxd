@@ -64,7 +64,7 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         {
             throw new SandboxRuntimeException(new SandboxError(
                 SandboxErrorCode.VerifierFailure,
-                "compiled artifact failed verification"));
+                VerificationFailureMessage(verification)));
         }
 
         var status = _cache is null
@@ -225,6 +225,19 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         await cache.WriteAsync(cacheKey, plan, entrypoint, assemblyBytes, manifest, verification, _verificationPolicy, cancellationToken)
             .ConfigureAwait(false);
         return existing;
+    }
+
+    private static string VerificationFailureMessage(VerificationResult verification)
+    {
+        if (verification.Diagnostics.Count == 0)
+        {
+            return "compiled artifact failed verification";
+        }
+
+        var diagnostics = string.Join(
+            "; ",
+            verification.Diagnostics.Select(d => $"{d.Code}: {d.Message}"));
+        return $"compiled artifact failed verification: {diagnostics}";
     }
 
     private static SandboxValue UnmaterializedEntrypoint(SandboxContext _, SandboxValue __)

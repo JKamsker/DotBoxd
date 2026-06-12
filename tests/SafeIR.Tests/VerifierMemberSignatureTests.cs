@@ -34,6 +34,45 @@ public sealed class VerifierMemberSignatureTests
     }
 
     [Fact]
+    public async Task Verifier_allows_i64_runtime_facade_signature()
+    {
+        var bytes = VerifierTestHelpers.BuildGeneratedAssembly(type => {
+            var fn = type.DefineMethod(
+                "Fn_0",
+                MethodAttributes.Private | MethodAttributes.Static,
+                typeof(SandboxValue),
+                [typeof(SandboxContext)]);
+            var fnIl = fn.GetILGenerator();
+            var value = fnIl.DeclareLocal(typeof(SandboxValue));
+            EmitRuntimeCall(fnIl, nameof(CompiledRuntime.EnterCall));
+            EmitFuel(fnIl);
+            fnIl.Emit(OpCodes.Ldc_I8, 5L);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.I64))!);
+            fnIl.Emit(OpCodes.Stloc, value);
+            EmitRuntimeCall(fnIl, nameof(CompiledRuntime.ExitCall));
+            fnIl.Emit(OpCodes.Ldloc, value);
+            fnIl.Emit(OpCodes.Ret);
+
+            var execute = type.DefineMethod(
+                "Execute",
+                MethodAttributes.Public | MethodAttributes.Static,
+                typeof(SandboxValue),
+                [typeof(SandboxContext), typeof(SandboxValue)]);
+            var il = execute.GetILGenerator();
+            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Ldc_I4_0);
+            il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.ValidateEntrypointInput))!);
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Call, fn);
+            il.Emit(OpCodes.Ret);
+        });
+
+        var result = await VerifierTestHelpers.VerifyAsync(bytes);
+
+        Assert.True(result.Succeeded, string.Join(Environment.NewLine, result.Diagnostics));
+    }
+
+    [Fact]
     public async Task Verifier_rejects_spoofed_runtime_assembly_identity()
     {
         var fakeRuntimeI32 = FakeRuntimeMethod();

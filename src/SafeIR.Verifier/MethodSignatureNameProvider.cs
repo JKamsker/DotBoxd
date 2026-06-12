@@ -2,6 +2,7 @@ namespace SafeIR.Verifier;
 
 using System.Collections.Immutable;
 using System.Reflection.Metadata;
+using static SafeIR.Verifier.VerifierTypeNames;
 
 internal sealed class MethodSignatureNameProvider : ISignatureTypeProvider<string, object?>
 {
@@ -36,12 +37,13 @@ internal sealed class MethodSignatureNameProvider : ISignatureTypeProvider<strin
 
     public string GetPrimitiveType(PrimitiveTypeCode typeCode)
         => typeCode switch {
-            PrimitiveTypeCode.Void => "System.Void",
-            PrimitiveTypeCode.Boolean => "System.Boolean",
-            PrimitiveTypeCode.Int32 => "System.Int32",
-            PrimitiveTypeCode.String => "System.String",
-            PrimitiveTypeCode.Double => "System.Double",
-            PrimitiveTypeCode.Object => "System.Object",
+            PrimitiveTypeCode.Void => VoidName,
+            PrimitiveTypeCode.Boolean => BooleanName,
+            PrimitiveTypeCode.Int32 => Int32Name,
+            PrimitiveTypeCode.Int64 => Int64Name,
+            PrimitiveTypeCode.String => StringName,
+            PrimitiveTypeCode.Double => DoubleName,
+            PrimitiveTypeCode.Object => ObjectName,
             _ => typeCode.ToString()
         };
 

@@ -31,6 +31,8 @@ public static class CompiledRuntime
 
     public static SandboxValue I32(int value) => SandboxValue.FromInt32(value);
 
+    public static SandboxValue I64(long value) => SandboxValue.FromInt64(value);
+
     public static SandboxValue F64(double value)
         => double.IsFinite(value)
             ? SandboxValue.FromDouble(value)
@@ -53,6 +55,8 @@ public static class CompiledRuntime
     }
 
     public static int AsI32(SandboxValue value) => ((I32Value)value).Value;
+
+    public static long AsI64(SandboxValue value) => ((I64Value)value).Value;
 
     public static bool AsBool(SandboxValue value) => ((BoolValue)value).Value;
 
