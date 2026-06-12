@@ -89,8 +89,8 @@
     },
     {
       "path": "spec/05-type-system.md",
-      "sha256": "1b1a16d6d0f617a60bdf92d8aff9a3081aec08c9673f7059b30abe4f5e58a350",
-      "bytes": 6036
+      "sha256": "84eb8995f28dd5b21df6c4690a86ff38eb3f2b72dd367c759d29c75dc8718d0e",
+      "bytes": 6680
     },
     {
       "path": "spec/06-effects-capabilities.md",

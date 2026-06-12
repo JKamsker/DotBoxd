@@ -122,6 +122,21 @@ public sealed class SandboxContext
         return text;
     }
 
+    public string CreateChargedSubstring(string value, int startIndex, int length)
+    {
+        if (startIndex < 0 || length < 0 || startIndex > value.Length - length)
+        {
+            throw new SandboxRuntimeException(new SandboxError(
+                SandboxErrorCode.InvalidInput,
+                "string substring range is invalid"));
+        }
+
+        ChargeStringAllocation(length);
+        var text = value.Substring(startIndex, length);
+        _returnCredits.RecordString(text);
+        return text;
+    }
+
     internal void RecordStringReturnCredit(string value)
         => _returnCredits.RecordString(value);
 

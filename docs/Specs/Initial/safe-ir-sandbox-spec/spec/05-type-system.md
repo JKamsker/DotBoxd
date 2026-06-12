@@ -232,6 +232,21 @@ string.toLowerInvariant optional
 string.toUpperInvariant optional
 ```
 
+Required string binding signatures:
+
+```text
+string.length(value: String) -> I32
+string.isEmpty(value: String) -> Bool
+string.substringBudgeted(value: String, startIndex: I32, length: I32) -> String
+string.concatBudgeted(left: String, right: String) -> String
+string.equals(left: String, right: String) -> Bool
+string.compareOrdinal(left: String, right: String) -> I32
+```
+
+String length and substring indexes are UTF-16 code-unit counts. `substringBudgeted` must validate
+the range and charge string allocation before creating the result. `equals` and `compareOrdinal`
+use ordinal comparison only; `compareOrdinal` returns `-1`, `0`, or `1`.
+
 Potentially dangerous/expensive operations:
 
 - regex
