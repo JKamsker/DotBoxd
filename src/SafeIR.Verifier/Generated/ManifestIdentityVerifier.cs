@@ -9,6 +9,9 @@ internal static class ManifestIdentityVerifier
     {
         if (policy.ExpectedManifestIdentity is not { } expected)
         {
+            diagnostics.Add(new VerificationDiagnostic(
+                "V-MANIFEST-IDENTITY",
+                "expected manifest identity is required for artifact verification"));
             return;
         }
 

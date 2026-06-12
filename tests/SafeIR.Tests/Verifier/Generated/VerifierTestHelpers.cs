@@ -31,8 +31,11 @@ internal static class VerifierTestHelpers
             hash,
             DateTimeOffset.UtcNow);
 
+        var verificationPolicy = policy.ExpectedManifestIdentity is null
+            ? policy.WithExpectedManifest(VerificationManifestIdentity.FromManifest(manifest))
+            : policy;
         return await new GeneratedAssemblyVerifier()
-            .VerifyAsync(bytes, manifest, policy, CancellationToken.None);
+            .VerifyAsync(bytes, manifest, verificationPolicy, CancellationToken.None);
     }
 
     public static byte[] BuildGeneratedAssembly(Action<TypeBuilder> define)

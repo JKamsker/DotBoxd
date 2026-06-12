@@ -1,19 +1,19 @@
 ---
 id: COR-0032
 area: correctness
-status: open
+status: fixed_pending_verification
 priority: high
 title: Direct verifier success does not require manifest identity binding
 dedup_key: verifier/direct-api/manifest-identity-optional-for-tamper-evidence
 created_at: 2026-06-12T22:35:17.3497558+00:00
 created_by: security-producer
 created_commit: 
-updated_at: 2026-06-12T22:35:17.3497558+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
+updated_at: 2026-06-12T23:51:18.2299427+00:00
+claimed_by: worker
+claimed_at: 2026-06-12T23:50:11.0890366+00:00
+claim_branch: workflow-work
+fixed_by: worker
+fixed_at: 2026-06-12T23:51:18.2299427+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 

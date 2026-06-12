@@ -54,6 +54,23 @@ public sealed class VerifierManifestIdentityTests
     }
 
     [Fact]
+    public async Task Direct_verifier_rejects_manifest_without_expected_identity()
+    {
+        var policy = VerificationPolicy.BoxedValueDefaults();
+        var bytes = VerifierTestHelpers.BuildGeneratedAssembly(type => VerifierTestHelpers.DefineValidExecute(type));
+        var manifest = CurrentManifest(bytes, policy);
+
+        var result = await new GeneratedAssemblyVerifier().VerifyAsync(
+            bytes,
+            manifest,
+            policy,
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d => d.Code == "V-MANIFEST-IDENTITY");
+    }
+
+    [Fact]
     public async Task Direct_verifier_rejects_missing_manifest_assembly_hash()
     {
         var policy = VerificationPolicy.BoxedValueDefaults();
