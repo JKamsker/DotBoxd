@@ -17,10 +17,15 @@ internal static class PluginKernelModelFactory
 
         var pluginId = PluginSymbolReader.PluginId(context.Attributes);
         var eventType = PluginSymbolReader.EventType(type);
-        if (pluginId is null) {
-            return null;
+        if (string.IsNullOrWhiteSpace(pluginId)) {
+            var diagnostic = Diagnostic.Create(
+                PluginAnalyzerDiagnostics.UnsupportedKernelShapeRule,
+                declaration.Identifier.GetLocation(),
+                "GamePlugin id must be a non-empty string.");
+            return new PluginKernelModelResult(null, diagnostic);
         }
 
+        var validatedPluginId = pluginId!;
         if (eventType is null)
         {
             var diagnostic = Diagnostic.Create(
@@ -80,7 +85,7 @@ internal static class PluginKernelModelFactory
                 eventProperties,
                 liveSettings);
             var model = new PluginKernelModel(
-                PluginId: pluginId,
+                PluginId: validatedPluginId,
                 Namespace: type.ContainingNamespace.IsGlobalNamespace ? "" : type.ContainingNamespace.ToDisplayString(),
                 KernelName: type.Name,
                 PackageName: PackageName(type.Name),
