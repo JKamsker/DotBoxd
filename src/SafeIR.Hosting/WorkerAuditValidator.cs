@@ -4,6 +4,42 @@ using SafeIR;
 
 internal static class WorkerAuditValidator
 {
+    private static readonly DateTimeOffset EarliestAcceptedTimestamp = DateTimeOffset.UnixEpoch;
+    private static readonly HashSet<string> CommonRunSummaryFields = [
+        "mode",
+        "executionMode",
+        "executionDispatched",
+        "cacheStatus",
+        "moduleHash",
+        "planHash",
+        "policyId",
+        "policyHash",
+        "bindingManifestHash",
+        "fuelUsed",
+        "maxFuel",
+        "loopIterations",
+        "maxLoopIterations",
+        "allocatedBytes",
+        "allocationCharged",
+        "maxAllocatedBytes",
+        "hostCalls",
+        "maxHostCalls",
+        "fileBytesRead",
+        "maxFileBytesRead",
+        "fileBytesWritten",
+        "maxFileBytesWritten",
+        "networkBytesRead",
+        "maxNetworkBytesRead",
+        "networkBytesWritten",
+        "maxNetworkBytesWritten",
+        "logEvents",
+        "maxLogEvents",
+        "collectionElements",
+        "maxCollectionElements",
+        "stringBytes",
+        "maxStringBytes"
+    ];
+
     public static bool Matches(
         ExecutionPlan plan,
         string entrypoint,
@@ -16,22 +52,68 @@ internal static class WorkerAuditValidator
             !TextIsSafe(auditEvent.Message) ||
             auditEvent.Bytes is < 0 ||
             (auditEvent.ErrorCode is { } code && !Enum.IsDefined(code)) ||
-            (auditEvent.Success && auditEvent.ErrorCode is not null))
+            (auditEvent.Success && auditEvent.ErrorCode is not null) ||
+            !TimestampMatches(plan, auditEvent.Timestamp))
         {
             return false;
         }
 
         return auditEvent.Kind switch
         {
-            "RunSummary" => true,
+            "RunSummary" => RunSummarySchemaMatches(plan, auditEvent),
             "WorkerExecution" => ModuleAuditMatches(plan, auditEvent),
             "DebugTrace" => options.EnableDebugTrace && ModuleAuditMatches(plan, auditEvent),
             "CacheInvalidated" => auditEvent.Success && ModuleAuditMatches(plan, auditEvent),
             "PolicyDenied" => PolicyDeniedAuditMatches(auditEvent),
-            "BindingCall" or "SandboxLog" or "PluginMessage" => BindingAuditMatches(plan, entrypoint, auditEvent),
+            "BindingCall" or "SandboxLog" or "PluginMessage" => false,
             _ => false
         };
     }
+
+    private static bool TimestampMatches(ExecutionPlan plan, DateTimeOffset timestamp)
+    {
+        if (timestamp.Offset != TimeSpan.Zero || timestamp < EarliestAcceptedTimestamp)
+        {
+            return false;
+        }
+
+        if (plan.Policy.Deterministic && plan.Policy.LogicalNow is { } logicalNow)
+        {
+            return timestamp == logicalNow;
+        }
+
+        return timestamp <= DateTimeOffset.UtcNow.AddMinutes(5);
+    }
+
+    private static bool RunSummarySchemaMatches(ExecutionPlan plan, SandboxAuditEvent auditEvent)
+    {
+        if (auditEvent.BindingId is not null ||
+            auditEvent.CapabilityId is not null ||
+            auditEvent.Effect != SandboxEffect.None ||
+            auditEvent.Fields is null ||
+            !string.Equals(auditEvent.ResourceId, $"module:{plan.ModuleHash}", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        foreach (var field in auditEvent.Fields)
+        {
+            if (!FieldNameAllowed(plan, field.Key) ||
+                string.IsNullOrWhiteSpace(field.Key) ||
+                !TextIsSafe(field.Key) ||
+                !TextIsSafe(field.Value))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool FieldNameAllowed(ExecutionPlan plan, string key)
+        => CommonRunSummaryFields.Contains(key) ||
+           (plan.Policy.Deterministic && key == "logicalNow") ||
+           key is "runtimeForm" or "cacheKey" or "artifactHash" or "materializationStatus";
 
     private static bool ModuleAuditMatches(ExecutionPlan plan, SandboxAuditEvent auditEvent)
         => auditEvent.BindingId is null &&
@@ -47,77 +129,6 @@ internal static class WorkerAuditValidator
            auditEvent.Effect == SandboxEffect.None &&
            auditEvent.ErrorCode == SandboxErrorCode.PolicyDenied &&
            string.Equals(auditEvent.ResourceId, $"capability:{auditEvent.CapabilityId}", StringComparison.Ordinal);
-
-    private static bool BindingAuditMatches(
-        ExecutionPlan plan,
-        string entrypoint,
-        SandboxAuditEvent auditEvent)
-    {
-        if (string.IsNullOrWhiteSpace(auditEvent.BindingId) ||
-            !plan.BindingReferences.TryGetValue(entrypoint, out var referencedBindings) ||
-            !referencedBindings.Contains(auditEvent.BindingId) ||
-            !plan.Bindings.TryGet(auditEvent.BindingId, out var binding) ||
-            !CapabilityMatches(auditEvent, binding) ||
-            !EffectMatches(auditEvent, binding) ||
-            string.IsNullOrWhiteSpace(auditEvent.ResourceId) ||
-            auditEvent.Fields is null ||
-            !RequiredBindingFieldsMatch(auditEvent, plan.ModuleHash, plan.PolicyHash) ||
-            (!auditEvent.Success && auditEvent.ErrorCode is null))
-        {
-            return false;
-        }
-
-        return auditEvent.Kind switch
-        {
-            "SandboxLog" => auditEvent.BindingId == "log.write",
-            "PluginMessage" => auditEvent.BindingId == "game.message.send",
-            "BindingCall" => auditEvent.BindingId is not "log.write" and not "game.message.send",
-            _ => false
-        };
-    }
-
-    private static bool CapabilityMatches(SandboxAuditEvent auditEvent, BindingSignature binding)
-        => binding.RequiredCapability is null
-            ? auditEvent.CapabilityId is null
-            : string.Equals(auditEvent.CapabilityId, binding.RequiredCapability, StringComparison.Ordinal);
-
-    private static bool EffectMatches(SandboxAuditEvent auditEvent, BindingSignature binding)
-    {
-        if (auditEvent.Effect == SandboxEffect.None ||
-            (auditEvent.Effect & ~binding.Effects) != SandboxEffect.None)
-        {
-            return false;
-        }
-
-        var nonCpuEffects = binding.Effects & ~SandboxEffect.Cpu;
-        return nonCpuEffects == SandboxEffect.None ||
-               (auditEvent.Effect & nonCpuEffects) != SandboxEffect.None;
-    }
-
-    private static bool RequiredBindingFieldsMatch(
-        SandboxAuditEvent auditEvent,
-        string moduleHash,
-        string policyHash)
-    {
-        if (!auditEvent.Fields!.TryGetValue("resourceKind", out var resourceKind) ||
-            string.IsNullOrWhiteSpace(resourceKind) ||
-            !TextIsSafe(resourceKind) ||
-            !auditEvent.Fields.TryGetValue("durationMs", out var durationMs) ||
-            !auditEvent.Fields.TryGetValue("moduleHash", out var auditModuleHash) ||
-            !string.Equals(auditModuleHash, moduleHash, StringComparison.Ordinal) ||
-            !auditEvent.Fields.TryGetValue("policyHash", out var auditPolicyHash) ||
-            !string.Equals(auditPolicyHash, policyHash, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        return double.TryParse(
-                durationMs,
-                System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out var parsed) &&
-            parsed >= 0;
-    }
 
     private static bool TextIsSafe(string? value)
         => value is null || value.All(c => !char.IsControl(c));

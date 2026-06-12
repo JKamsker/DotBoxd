@@ -32,25 +32,24 @@ public sealed class WorkerAuditValidationTests
             "BindingCall",
             DateTimeOffset.UtcNow,
             true,
-            BindingId: "file.writeText",
-            CapabilityId: "file.write",
-            Effect: SandboxEffect.FileWrite,
-            ResourceId: "file:outside.txt",
+            BindingId: "math.abs",
+            Effect: SandboxEffect.Cpu,
+            ResourceId: "binding:math.abs",
             Fields: new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                ["resourceKind"] = "file",
+                ["resourceKind"] = "binding",
                 ["durationMs"] = "0",
                 ["moduleHash"] = plan.ModuleHash,
                 ["policyHash"] = plan.PolicyHash
             }));
         var host = Host(worker);
-        var plan = await PrepareAsync(host);
+        var plan = await PrepareAsync(host, MathBindingModule());
 
         var result = await ExecuteAsync(host, plan);
 
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
-        Assert.DoesNotContain(result.AuditEvents, e => e.BindingId == "file.writeText");
+        Assert.DoesNotContain(result.AuditEvents, e => e.BindingId == "math.abs");
     }
 
     [Fact]
@@ -72,6 +71,46 @@ public sealed class WorkerAuditValidationTests
         Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
     }
 
+    [Fact]
+    public async Task Worker_result_with_forged_audit_timestamp_is_rejected()
+    {
+        var worker = new AuditForgingWorker((plan, runId) => new SandboxAuditEvent(
+            runId,
+            "WorkerExecution",
+            DateTimeOffset.UtcNow.AddYears(10),
+            true,
+            ResourceId: $"module:{plan.ModuleHash}"));
+        var host = Host(worker);
+        var plan = await PrepareAsync(host);
+
+        var result = await ExecuteAsync(host, plan);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
+    }
+
+    [Fact]
+    public async Task Worker_result_with_extra_run_summary_field_is_rejected()
+    {
+        var worker = new AuditForgingWorker(
+            (plan, runId) => new SandboxAuditEvent(
+                runId,
+                "WorkerExecution",
+                DateTimeOffset.UtcNow,
+                true,
+                ResourceId: $"module:{plan.ModuleHash}"),
+            AddSummaryExtraField: true);
+        var host = Host(worker);
+        var plan = await PrepareAsync(host);
+
+        var result = await ExecuteAsync(host, plan);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
+    }
+
     private static SandboxHost Host(AuditForgingWorker worker)
         => SandboxHost.Create(builder =>
         {
@@ -83,8 +122,11 @@ public sealed class WorkerAuditValidationTests
     private static async ValueTask<ExecutionPlan> PrepareAsync(SandboxHost host)
     {
         var module = await host.ImportJsonAsync(SandboxTestHost.PureScoreJson());
-        return await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        return await PrepareAsync(host, module);
     }
+
+    private static ValueTask<ExecutionPlan> PrepareAsync(SandboxHost host, SandboxModule module)
+        => host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
 
     private static ValueTask<SandboxExecutionResult> ExecuteAsync(SandboxHost host, ExecutionPlan plan)
         => host.ExecuteAsync(
@@ -93,8 +135,33 @@ public sealed class WorkerAuditValidationTests
             SandboxValue.FromList([SandboxValue.FromInt32(1), SandboxValue.FromInt32(1)]),
             new SandboxExecutionOptions { Isolation = SandboxIsolation.WorkerProcess });
 
+    private static SandboxModule MathBindingModule()
+        => new(
+            "worker-audit-validation-math",
+            SemVersion.One,
+            SandboxLanguage.CurrentVersion,
+            [],
+            [
+                new SandboxFunction(
+                    "main",
+                    IsEntrypoint: true,
+                    [],
+                    SandboxType.I32,
+                    [
+                        new ReturnStatement(
+                            new CallExpression(
+                                "math.abs",
+                                [new LiteralExpression(SandboxValue.FromInt32(-1), new SourceSpan(0, 0))],
+                                null,
+                                new SourceSpan(0, 0)),
+                            new SourceSpan(0, 0))
+                    ])
+            ],
+            new Dictionary<string, string>());
+
     private sealed class AuditForgingWorker(
-        Func<ExecutionPlan, SandboxRunId, SandboxAuditEvent> forgeAuditEvent) : ISandboxWorkerClient
+        Func<ExecutionPlan, SandboxRunId, SandboxAuditEvent> forgeAuditEvent,
+        bool AddSummaryExtraField = false) : ISandboxWorkerClient
     {
         public ValueTask<SandboxExecutionResult> ExecuteInWorkerAsync(
             ExecutionPlan plan,
@@ -107,13 +174,21 @@ public sealed class WorkerAuditValidationTests
             var runId = options.RunId ?? SandboxRunId.New();
             var budget = new ResourceMeter(plan.Budget);
             var audit = new InMemoryAuditSink();
+            var summaryFields = new Dictionary<string, string>(
+                RunSummaryAuditFields.Create(plan, budget, ExecutionMode.Interpreted, "None"),
+                StringComparer.Ordinal);
+            if (AddSummaryExtraField)
+            {
+                summaryFields["forged"] = "field";
+            }
+
             audit.Write(new SandboxAuditEvent(
                 runId,
                 "RunSummary",
                 DateTimeOffset.UtcNow,
                 true,
                 ResourceId: $"module:{plan.ModuleHash}",
-                Fields: RunSummaryAuditFields.Create(plan, budget, ExecutionMode.Interpreted, "None")));
+                Fields: summaryFields));
             audit.Write(forgeAuditEvent(plan, runId));
 
             return ValueTask.FromResult(new SandboxExecutionResult

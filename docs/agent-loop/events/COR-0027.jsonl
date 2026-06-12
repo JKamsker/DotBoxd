@@ -1,3 +1,6 @@
 {"at":"2026-06-12T22:23:28.5608979\u002B00:00","agent":"security-producer","type":"created","status":"open","message":"Created finding"}
 {"at":"2026-06-12T22:52:39.7027551\u002B00:00","agent":"worker","type":"claimed","status":"claimed","message":"Claimed finding"}
 {"at":"2026-06-12T23:03:04.6232221\u002B00:00","agent":"worker","type":"fixed","status":"fixed_pending_verification","message":"Worker audit validation now rejects forged non-summary event kinds and binding audit evidence not proven by the validated entrypoint."}
+{"at":"2026-06-12T23:09:04.0920470\u002B00:00","agent":"worker","type":"reopened","status":"open","message":"Verifier found remaining timestamp, binding evidence, and forged field validation gaps."}
+{"at":"2026-06-12T23:09:05.8186417\u002B00:00","agent":"worker","type":"claimed","status":"claimed","message":"Claimed finding"}
+{"at":"2026-06-12T23:11:55.9906030\u002B00:00","agent":"worker","type":"fixed","status":"fixed_pending_verification","message":"Worker audit validation now rejects forged timestamps, worker-supplied binding/resource audit evidence, and unexpected run summary fields."}
