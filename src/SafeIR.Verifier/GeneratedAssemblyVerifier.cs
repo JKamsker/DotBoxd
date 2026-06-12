@@ -22,6 +22,8 @@ public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifi
             diagnostics.Add(new VerificationDiagnostic("V-MANIFEST-HASH", "assembly hash does not match manifest"));
         }
 
+        ManifestIdentityVerifier.Verify(manifest, policy, diagnostics);
+
         try
         {
             using var stream = new MemoryStream(assemblyBytes.ToArray(), writable: false);

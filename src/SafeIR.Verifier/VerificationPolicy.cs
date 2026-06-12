@@ -10,7 +10,8 @@ public sealed record VerificationPolicy(
     IReadOnlySet<string> AllowedTypes,
     IReadOnlySet<string> AllowedMembers,
     IReadOnlySet<string> ForbiddenTypePrefixes,
-    string VerifierVersion)
+    string VerifierVersion,
+    VerificationManifestIdentity? ExpectedManifestIdentity = null)
 {
     private const string Context = "SafeIR.SandboxContext";
     private const string Value = "SafeIR.SandboxValue";
@@ -105,6 +106,9 @@ public sealed record VerificationPolicy(
             "safe-ir-verifier-5");
 
     public bool IsMemberAllowed(string memberSignature) => AllowedMembers.Contains(memberSignature);
+
+    public VerificationPolicy WithExpectedManifest(VerificationManifestIdentity identity)
+        => this with { ExpectedManifestIdentity = identity };
 
     public string AllowlistHash
         => Hash(

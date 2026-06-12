@@ -18,6 +18,40 @@ public sealed record ArtifactManifest(
     string AssemblyHash,
     DateTimeOffset CreatedAt);
 
+public sealed record VerificationManifestIdentity(
+    int? ArtifactVersion = null,
+    string? CacheKey = null,
+    string? ModuleHash = null,
+    string? PlanHash = null,
+    string? PolicyHash = null,
+    string? BindingManifestHash = null,
+    string? RuntimeFacadeHash = null,
+    string? CompilerVersion = null,
+    string? TypeSystemVersion = null,
+    string? EffectAnalysisVersion = null,
+    string? VerifierVersion = null,
+    string? LanguageVersion = null,
+    string? TargetFramework = null,
+    IReadOnlyList<string>? OptimizationFlags = null)
+{
+    public static VerificationManifestIdentity FromManifest(ArtifactManifest manifest)
+        => new(
+            manifest.ArtifactVersion,
+            manifest.CacheKey,
+            manifest.ModuleHash,
+            manifest.PlanHash,
+            manifest.PolicyHash,
+            manifest.BindingManifestHash,
+            manifest.RuntimeFacadeHash,
+            manifest.CompilerVersion,
+            manifest.TypeSystemVersion,
+            manifest.EffectAnalysisVersion,
+            manifest.VerifierVersion,
+            manifest.LanguageVersion,
+            manifest.TargetFramework,
+            manifest.OptimizationFlags.ToArray());
+}
+
 public sealed record VerificationDiagnostic(string Code, string Message);
 
 public sealed record VerificationResult(

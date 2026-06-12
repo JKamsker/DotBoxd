@@ -38,4 +38,25 @@ public static class CacheKeyBuilder
 
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('|', parts)))).ToLowerInvariant();
     }
+
+    public static VerificationManifestIdentity BuildManifestIdentity(
+        ExecutionPlan plan,
+        string entrypoint,
+        VerificationPolicy policy,
+        bool optimize)
+        => new(
+            1,
+            Build(plan, entrypoint, policy, optimize),
+            plan.ModuleHash,
+            plan.PlanHash,
+            plan.PolicyHash,
+            plan.BindingManifestHash,
+            policy.RuntimeFacadeHash,
+            CompilerVersion,
+            TypeSystemVersion,
+            EffectAnalysisVersion,
+            policy.VerifierVersion,
+            LanguageVersion,
+            TargetFramework,
+            [optimize ? "opt" : "boxed-values"]);
 }

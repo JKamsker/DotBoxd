@@ -56,7 +56,10 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
 
         var assemblyBytes = EmitAssembly(plan, function);
         var manifest = BuildManifest(plan, assemblyBytes, options);
-        var verification = await _verifier.VerifyAsync(assemblyBytes, manifest, _verificationPolicy, cancellationToken).ConfigureAwait(false);
+        var verificationPolicy = _verificationPolicy.WithExpectedManifest(
+            CacheKeyBuilder.BuildManifestIdentity(plan, options.Entrypoint, _verificationPolicy, options.Optimize));
+        var verification = await _verifier.VerifyAsync(assemblyBytes, manifest, verificationPolicy, cancellationToken)
+            .ConfigureAwait(false);
         if (!verification.Succeeded)
         {
             throw new SandboxRuntimeException(new SandboxError(

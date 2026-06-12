@@ -262,6 +262,10 @@ public interface IGeneratedAssemblyVerifier
 }
 ```
 
+`VerificationPolicy` may include an expected `VerificationManifestIdentity`. Compiler and cache
+paths must set it from the current plan, policy, binding manifest, compiler/runtime versions,
+target framework, and optimization flags so direct verifier calls reject stale manifests.
+
 ## Execution-mode selector
 
 ```csharp

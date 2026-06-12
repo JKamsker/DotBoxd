@@ -43,6 +43,12 @@ Check:
 - compiler version is allowed
 - target sandbox/runtime version is allowed
 
+Direct verifier use must pass an expected manifest identity through verification policy when
+the caller has plan/cache context. The verifier rejects stale artifact version, cache key,
+module hash, plan hash, policy hash, binding manifest hash, runtime facade hash, compiler
+version, type-system version, effect-analysis version, verifier version, language version,
+target framework, or optimization flags before the artifact can be treated as verified.
+
 ### V2. PE/CLR structure
 
 Check:

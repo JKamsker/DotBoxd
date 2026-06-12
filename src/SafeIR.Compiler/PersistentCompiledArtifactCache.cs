@@ -89,7 +89,13 @@ public sealed class PersistentCompiledArtifactCache
             PersistentCompiledArtifactCacheValidator.ValidateVerification(manifest, cachedVerification, policy);
             var assemblyBytes = await File.ReadAllBytesAsync(Path.Combine(entryPath, "module.dll"), cancellationToken)
                 .ConfigureAwait(false);
-            var verification = await verifier.VerifyAsync(assemblyBytes, manifest, policy, cancellationToken).ConfigureAwait(false);
+            var verification = await verifier
+                .VerifyAsync(
+                    assemblyBytes,
+                    manifest,
+                    policy.WithExpectedManifest(VerificationManifestIdentity.FromManifest(manifest)),
+                    cancellationToken)
+                .ConfigureAwait(false);
             if (!verification.Succeeded)
             {
                 throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.VerifierFailure, "cached artifact failed verification"));

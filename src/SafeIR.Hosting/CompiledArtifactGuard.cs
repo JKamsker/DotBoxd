@@ -24,7 +24,12 @@ internal static class CompiledArtifactGuard
         }
 
         var assemblyBytes = artifact.AssemblyBytes.ToArray();
-        var verification = await Verifier.VerifyAsync(assemblyBytes, artifact.Manifest, DefaultVerificationPolicy, cancellationToken)
+        var verification = await Verifier
+            .VerifyAsync(
+                assemblyBytes,
+                artifact.Manifest,
+                DefaultVerificationPolicy.WithExpectedManifest(VerificationManifestIdentity.FromManifest(artifact.Manifest)),
+                cancellationToken)
             .ConfigureAwait(false);
         if (!verification.Succeeded)
         {
