@@ -18,8 +18,13 @@ internal static class SafeIrPackageSourceEmitter
         builder.AppendLine("{");
         EmitBody(builder, model);
         builder.AppendLine("}");
-        return new GeneratedPluginPackage(model.PackageName + ".g.cs", builder.ToString());
+        return new GeneratedPluginPackage(HintName(model), builder.ToString());
     }
+
+    private static string HintName(PluginKernelModel model)
+        => string.IsNullOrWhiteSpace(model.Namespace)
+            ? model.PackageName + ".g.cs"
+            : model.Namespace + "." + model.PackageName + ".g.cs";
 
     private static void EmitBody(StringBuilder builder, PluginKernelModel model)
     {
