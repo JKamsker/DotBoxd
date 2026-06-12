@@ -53,6 +53,23 @@ public sealed class VerifierManifestIdentityTests
         Assert.True(result.Succeeded, string.Join(", ", result.Diagnostics.Select(d => d.Message)));
     }
 
+    [Fact]
+    public async Task Direct_verifier_rejects_missing_manifest_assembly_hash()
+    {
+        var policy = VerificationPolicy.BoxedValueDefaults();
+        var bytes = VerifierTestHelpers.BuildGeneratedAssembly(type => VerifierTestHelpers.DefineValidExecute(type));
+        var manifest = CurrentManifest(bytes, policy) with { AssemblyHash = "" };
+
+        var result = await new GeneratedAssemblyVerifier().VerifyAsync(
+            bytes,
+            manifest,
+            policy,
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d => d.Code == "V-MANIFEST-HASH");
+    }
+
     private static ArtifactManifest CurrentManifest(byte[] bytes, VerificationPolicy policy)
     {
         var hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();

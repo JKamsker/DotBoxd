@@ -16,8 +16,11 @@ public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifi
     {
         var diagnostics = new List<VerificationDiagnostic>();
         var assemblyHash = Convert.ToHexString(SHA256.HashData(assemblyBytes.Span)).ToLowerInvariant();
-        if (!string.IsNullOrWhiteSpace(manifest.AssemblyHash) &&
-            !StringComparer.Ordinal.Equals(manifest.AssemblyHash, assemblyHash))
+        if (string.IsNullOrWhiteSpace(manifest.AssemblyHash))
+        {
+            diagnostics.Add(new VerificationDiagnostic("V-MANIFEST-HASH", "assembly hash is required"));
+        }
+        else if (!StringComparer.Ordinal.Equals(manifest.AssemblyHash, assemblyHash))
         {
             diagnostics.Add(new VerificationDiagnostic("V-MANIFEST-HASH", "assembly hash does not match manifest"));
         }
