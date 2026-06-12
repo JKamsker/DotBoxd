@@ -19,7 +19,7 @@ public sealed class ModuleValidator
         PolicyResolver.Validate(module, bindings, policy, requiredEffects, requiredCapabilities, diagnostics);
 
         return new ModuleValidationResult(
-            diagnostics.All(d => d.Severity != DiagnosticSeverity.Error),
+            HasNoErrors(diagnostics),
             diagnostics,
             functions,
             requiredEffects,
@@ -29,17 +29,29 @@ public sealed class ModuleValidator
     private static SandboxEffect RequiredEffects(
         SandboxModule module,
         IReadOnlyDictionary<string, FunctionAnalysis> functions)
-        => module.Functions
-            .Where(function => function.IsEntrypoint)
-            .Aggregate(
-                SandboxEffect.None,
-                (current, function) => current | functions[function.Id].Effects);
+    {
+        var effects = SandboxEffect.None;
+        foreach (var function in module.Functions)
+        {
+            if (function.IsEntrypoint)
+            {
+                effects |= functions[function.Id].Effects;
+            }
+        }
+
+        return effects;
+    }
 
     private static IReadOnlySet<string> RequiredCapabilities(SandboxModule module, IBindingCatalog bindings)
     {
         var required = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var function in module.Functions.Where(function => function.IsEntrypoint))
+        foreach (var function in module.Functions)
         {
+            if (!function.IsEntrypoint)
+            {
+                continue;
+            }
+
             foreach (var bindingId in BindingReferenceCollector.Collect(module, bindings, function.Id))
             {
                 if (bindings.TryGet(bindingId, out var binding) &&
@@ -51,5 +63,18 @@ public sealed class ModuleValidator
         }
 
         return required;
+    }
+
+    private static bool HasNoErrors(IReadOnlyList<SandboxDiagnostic> diagnostics)
+    {
+        for (var i = 0; i < diagnostics.Count; i++)
+        {
+            if (diagnostics[i].Severity == DiagnosticSeverity.Error)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
