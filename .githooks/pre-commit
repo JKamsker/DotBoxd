@@ -1,2 +1,4 @@
 #!/usr/bin/env sh
-pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/check-csharp-file-lines.ps1
+set -eu
+
+exec pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/check-csharp-file-lines.ps1
