@@ -86,6 +86,23 @@ public sealed class WorkerResultHardeningTests
     }
 
     [Fact]
+    public async Task Worker_result_with_non_dispatched_run_summary_is_rejected()
+    {
+        var worker = new TestWorker { ReportExecutionDispatched = false };
+        var host = Host(worker);
+        var plan = await PrepareAsync(host, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            Input(),
+            new SandboxExecutionOptions { Isolation = SandboxIsolation.WorkerProcess });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+    }
+
+    [Fact]
     public async Task Compiled_worker_success_requires_runtime_envelope_fields()
     {
         var worker = new TestWorker
@@ -161,6 +178,7 @@ public sealed class WorkerResultHardeningTests
         public bool UnderreportMaxFuel { get; init; }
         public bool OmitSummaryFields { get; init; }
         public bool OmitCompiledEnvelopeFields { get; init; }
+        public bool ReportExecutionDispatched { get; init; } = true;
         public ExecutionMode ResultMode { get; init; } = ExecutionMode.Interpreted;
         public string? ArtifactHash { get; init; }
         public string RuntimeForm { get; init; } = "LoadedAssembly";
@@ -197,7 +215,8 @@ public sealed class WorkerResultHardeningTests
                     "None",
                     ResultMode == ExecutionMode.Compiled && !OmitCompiledEnvelopeFields ? RuntimeForm : null,
                     ResultMode == ExecutionMode.Compiled && !OmitCompiledEnvelopeFields ? CacheKey : null,
-                    ResultMode == ExecutionMode.Compiled && !OmitCompiledEnvelopeFields ? ArtifactHash : null);
+                    ResultMode == ExecutionMode.Compiled && !OmitCompiledEnvelopeFields ? ArtifactHash : null,
+                    executionDispatched: ReportExecutionDispatched);
             audit.Write(new SandboxAuditEvent(
                 runId,
                 "RunSummary",
