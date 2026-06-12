@@ -1,22 +1,22 @@
 ---
 id: COR-0022
 area: correctness
-status: fixed_pending_verification
+status: verified
 priority: medium
 title: Worker audit validation accepts undefined non-summary error codes
 dedup_key: correctness/hosting/worker-audit/undefined-non-summary-error-code
 created_at: 2026-06-12T22:15:24.3439843+00:00
 created_by: correctness-producer
 created_commit: 
-updated_at: 2026-06-12T23:03:02.6840953+00:00
+updated_at: 2026-06-12T23:07:10.7955869+00:00
 claimed_by: worker
 claimed_at: 2026-06-12T22:52:41.0070303+00:00
 claim_branch: workflow-work
 fixed_by: worker
 fixed_at: 2026-06-12T23:03:02.6840953+00:00
 fixed_commit: 
-verified_by: 
-verified_at: 
+verified_by: independent-verifier
+verified_at: 2026-06-12T23:07:10.7955869+00:00
 verified_commit: 
 duplicate_of: 
 ---

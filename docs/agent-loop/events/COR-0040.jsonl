@@ -1,0 +1,2 @@
+{"at":"2026-06-12T22:52:55.6049767\u002B00:00","agent":"security-producer","type":"created","status":"open","message":"Created finding"}
+{"at":"2026-06-12T23:22:15.5737956\u002B00:00","agent":"worker","type":"claimed","status":"claimed","message":"Claimed finding"}

@@ -1,22 +1,22 @@
 ---
 id: COR-0021
 area: correctness
-status: fixed_pending_verification
+status: verified
 priority: high
 title: File write temp publication can follow a raced reparse point
 dedup_key: security/file-write/temp-publication/reparse-race
 created_at: 2026-06-12T22:13:42.8442526+00:00
 created_by: security-producer
 created_commit: 
-updated_at: 2026-06-12T22:33:50.7499314+00:00
+updated_at: 2026-06-12T22:47:35.1410845+00:00
 claimed_by: worker
 claimed_at: 2026-06-12T22:15:47.7367750+00:00
 claim_branch: workflow-work
 fixed_by: worker
 fixed_at: 2026-06-12T22:33:50.7499314+00:00
 fixed_commit: 
-verified_by: 
-verified_at: 
+verified_by: independent-verifier
+verified_at: 2026-06-12T22:47:35.1410845+00:00
 verified_commit: 
 duplicate_of: 
 ---

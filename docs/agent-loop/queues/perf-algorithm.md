@@ -28,6 +28,18 @@
 - [ ] `ALG-0013` medium - Execution plan integrity guard revalidates and reseals modules on every run
   - File: `docs/agent-loop/findings/ALG-0013-execution-plan-integrity-guard-revalidates-and-reseals-modules-on-every-run.md`
   - Dedup: `algorithm/execution-plan/integrity-guard/full-revalidation-per-run`
+- [ ] `ALG-0014` medium - Plugin execution telemetry rescans audit events for markers
+  - File: `docs/agent-loop/findings/ALG-0014-plugin-execution-telemetry-rescans-audit-events-for-markers.md`
+  - Dedup: `algorithm/plugins/execution-telemetry/audit-event-marker-rescans`
+- [ ] `ALG-0015` medium - Policy validation rescans grants for every required capability
+  - File: `docs/agent-loop/findings/ALG-0015-policy-validation-rescans-grants-for-every-required-capability.md`
+  - Dedup: `algorithm/policy-validation/grant-lookup/repeated-linear-scans-per-required-capability`
+- [ ] `ALG-0016` medium - Worker audit validation rescans audit events before accepting results
+  - File: `docs/agent-loop/findings/ALG-0016-worker-audit-validation-rescans-audit-events-before-accepting-results.md`
+  - Dedup: `algorithm/worker-audit-validation/result-event-rescans`
+- [ ] `ALG-0017` medium - Compiled executable cache rehashes artifacts before cache hits
+  - File: `docs/agent-loop/findings/ALG-0017-compiled-executable-cache-rehashes-artifacts-before-cache-hits.md`
+  - Dedup: `algorithm/compiled-executable-cache/full-artifact-validation-before-cache-hit`
 - [ ] `ALG-0007` low - Plugin package validation rescans module functions for entrypoints
   - File: `docs/agent-loop/findings/ALG-0007-plugin-package-validation-rescans-module-functions-for-entrypoints.md`
   - Dedup: `algorithm/plugin-package-validation/entrypoint-function-rescans`

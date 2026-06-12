@@ -1,22 +1,22 @@
 ---
 id: COR-0015
 area: correctness
-status: fixed_pending_verification
+status: verified
 priority: high
 title: Named-pipe plugin IPC control plane has no authentication boundary
 dedup_key: security/plugin-ipc/named-pipe-control-plane/no-auth
 created_at: 2026-06-12T22:06:42.2092451+00:00
 created_by: security-producer
 created_commit: 
-updated_at: 2026-06-12T22:51:06.7342074+00:00
+updated_at: 2026-06-12T22:55:04.4652948+00:00
 claimed_by: worker
 claimed_at: 2026-06-12T22:45:44.6310409+00:00
 claim_branch: workflow-work
 fixed_by: worker
 fixed_at: 2026-06-12T22:51:06.7342074+00:00
 fixed_commit: 
-verified_by: 
-verified_at: 
+verified_by: verifier
+verified_at: 2026-06-12T22:55:04.4652948+00:00
 verified_commit: 
 duplicate_of: 
 ---

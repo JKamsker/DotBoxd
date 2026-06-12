@@ -1,22 +1,22 @@
 ---
 id: COR-0036
 area: correctness
-status: fixed_pending_verification
+status: verified
 priority: medium
 title: ExecutionPlan binding references can mutate after integrity checks
 dedup_key: correctness:executionplan-bindingreferences-mutable-after-guard
 created_at: 2026-06-12T22:48:34.1123907+00:00
 created_by: codex-correctness-producer
 created_commit: 
-updated_at: 2026-06-12T23:18:16.1715325+00:00
+updated_at: 2026-06-12T23:22:21.1773750+00:00
 claimed_by: worker
 claimed_at: 2026-06-12T23:13:17.8378548+00:00
 claim_branch: workflow-work
 fixed_by: worker
 fixed_at: 2026-06-12T23:18:16.1715325+00:00
 fixed_commit: 
-verified_by: 
-verified_at: 
+verified_by: codex-verifier
+verified_at: 2026-06-12T23:22:21.1773750+00:00
 verified_commit: 
 duplicate_of: 
 ---

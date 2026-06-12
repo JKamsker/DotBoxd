@@ -1,3 +1,4 @@
 {"at":"2026-06-12T22:10:50.6385485\u002B00:00","agent":"continuous-security-producer","type":"created","status":"open","message":"Created finding"}
 {"at":"2026-06-12T22:45:47.2313100\u002B00:00","agent":"worker","type":"claimed","status":"claimed","message":"Claimed finding"}
 {"at":"2026-06-12T22:51:09.3678521\u002B00:00","agent":"worker","type":"fixed","status":"fixed_pending_verification","message":"Kernel revocation now cancels linked in-flight execution and fences post-execution results."}
+{"at":"2026-06-12T22:55:07.1199324\u002B00:00","agent":"verifier","type":"verified","status":"verified","message":"Verified kernel revocation cancels linked execution token and built-in message sink observes cancellation; focused revocation tests passed."}

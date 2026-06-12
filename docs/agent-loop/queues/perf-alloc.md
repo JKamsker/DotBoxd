@@ -58,6 +58,21 @@
 - [ ] `PAL-0029` medium - Policy grant setup reflects over parameters per grant
   - File: `docs/agent-loop/findings/PAL-0029-policy-grant-setup-reflects-over-parameters-per-grant.md`
   - Dedup: `alloc/policy-builder/generic-grant/parameter-reflection-per-grant`
+- [ ] `PAL-0032` medium - Class-shaped live state sync reflects over properties on modify and input
+  - File: `docs/agent-loop/findings/PAL-0032-class-shaped-live-state-sync-reflects-over-properties-on-modify-and-input.md`
+  - Dedup: `alloc/plugins/class-live-state/property-reflection-sync`
+- [ ] `PAL-0033` medium - Plugin execution observer retains every run observation
+  - File: `docs/agent-loop/findings/PAL-0033-plugin-execution-observer-retains-every-run-observation.md`
+  - Dedup: `alloc/plugins/execution-observer/unbounded-observation-history`
+- [ ] `PAL-0034` medium - Audit observer dispatch allocates invocation lists per event
+  - File: `docs/agent-loop/findings/PAL-0034-audit-observer-dispatch-allocates-invocation-lists-per-event.md`
+  - Dedup: `alloc/audit-observer/dispatch/invocation-list-per-event`
+- [ ] `PAL-0035` medium - Plugin hook dispatch snapshots handlers on every publish
+  - File: `docs/agent-loop/findings/PAL-0035-plugin-hook-dispatch-snapshots-handlers-on-every-publish.md`
+  - Dedup: `alloc/plugins/hook-dispatch/per-publish-handler-snapshots`
+- [ ] `PAL-0036` medium - Plugin kernel execution links cancellation tokens per entrypoint
+  - File: `docs/agent-loop/findings/PAL-0036-plugin-kernel-execution-links-cancellation-tokens-per-entrypoint.md`
+  - Dedup: `alloc/plugins/kernel-execution/linked-cancellation-source-per-entrypoint`
 - [ ] `PAL-0010` low - Persistent compiled cache leaves lock files per cache key
   - File: `docs/agent-loop/findings/PAL-0010-persistent-compiled-cache-leaves-lock-files-per-cache-key.md`
   - Dedup: `alloc/compiler-cache/file-locks/persistent-key-files`
@@ -73,10 +88,6 @@
 
 ## Fixed pending verification
 
-- [~] `PAL-0018` medium - Binding return charging traverses large values repeatedly
-  - File: `docs/agent-loop/findings/PAL-0018-binding-return-charging-traverses-large-values-repeatedly.md`
-  - Fixed by: `worker`
-  - Commit: ``
 - [~] `PAL-0005` low - Generated stack verifier allocates while parsing call signatures
   - File: `docs/agent-loop/findings/PAL-0005-generated-stack-verifier-allocates-while-parsing-call-signatures.md`
   - Fixed by: `fixer`
@@ -100,6 +111,8 @@
   - File: `docs/agent-loop/findings/PAL-0006-persistent-artifact-cache-retains-entry-locks-per-cache-key.md`
 - [x] `PAL-0007` medium - Compiled artifact guard copies assembly bytes repeatedly
   - File: `docs/agent-loop/findings/PAL-0007-compiled-artifact-guard-copies-assembly-bytes-repeatedly.md`
+- [x] `PAL-0018` medium - Binding return charging traverses large values repeatedly
+  - File: `docs/agent-loop/findings/PAL-0018-binding-return-charging-traverses-large-values-repeatedly.md`
 - [x] `PAL-0008` low - HTTP grants are reparsed into sets per request
   - File: `docs/agent-loop/findings/PAL-0008-http-grants-are-reparsed-into-sets-per-request.md`
 

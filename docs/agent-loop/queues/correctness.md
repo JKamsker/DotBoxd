@@ -4,51 +4,27 @@
 
 ## Open
 
-- [ ] `COR-0015` high - Named-pipe plugin IPC control plane has no authentication boundary
-  - File: `docs/agent-loop/findings/COR-0015-named-pipe-plugin-ipc-control-plane-has-no-authentication-boundary.md`
-  - Dedup: `security/plugin-ipc/named-pipe-control-plane/no-auth`
-- [ ] `COR-0016` high - Plugin server default policy grants game-message write to every package
-  - File: `docs/agent-loop/findings/COR-0016-plugin-server-default-policy-grants-game-message-write-to-every-package.md`
-  - Dedup: `security/plugins/default-policy/game-message-write-auto-grant`
-- [ ] `COR-0018` high - Plugin kernel revocation does not fence already-running handlers
-  - File: `docs/agent-loop/findings/COR-0018-plugin-kernel-revocation-does-not-fence-already-running-handlers.md`
-  - Dedup: `security/plugins/revocation/in-flight-handler-not-fenced`
-- [ ] `COR-0027` high - Worker audit validation accepts forged non-summary event evidence
-  - File: `docs/agent-loop/findings/COR-0027-worker-audit-validation-accepts-forged-non-summary-event-evidence.md`
-  - Dedup: `security/hosting/worker-audit/non-summary-event-forgery`
-- [ ] `COR-0028` high - SandboxType exposes mutable argument lists across validation and hashing
-  - File: `docs/agent-loop/findings/COR-0028-sandboxtype-exposes-mutable-argument-lists-across-validation-and-hashing.md`
-  - Dedup: `correctness/public-model/sandbox-type/mutable-arguments`
-- [ ] `COR-0029` high - VerificationPolicy allowlists can mutate after cache-key construction
-  - File: `docs/agent-loop/findings/COR-0029-verificationpolicy-allowlists-can-mutate-after-cache-key-construction.md`
-  - Dedup: `correctness/verifier/policy/mutable-allowlist-cache-verification-drift`
-- [ ] `COR-0033` high - SandboxPolicy grants can mutate after plan hashes are sealed
-  - File: `docs/agent-loop/findings/COR-0033-sandboxpolicy-grants-can-mutate-after-plan-hashes-are-sealed.md`
-  - Dedup: `correctness/policy/grants/mutable-array-plan-hash-drift`
-- [ ] `COR-0034` high - Binding descriptors can mutate after manifest hash construction
-  - File: `docs/agent-loop/findings/COR-0034-binding-descriptors-can-mutate-after-manifest-hash-construction.md`
-  - Dedup: `correctness/binding-registry/descriptor-parameters/mutable-after-manifest-hash`
-- [ ] `COR-0035` high - Package metadata gate allows unexpected NuGet payloads
-  - File: `docs/agent-loop/findings/COR-0035-package-metadata-gate-allows-unexpected-nuget-payloads.md`
-  - Dedup: `security/release-packaging/nuget/unexpected-package-payloads`
 - [ ] `COR-0030` high - Collection allocation accounting overflows before widening large counts
   - File: `docs/agent-loop/findings/COR-0030-collection-allocation-accounting-overflows-before-widening-large-counts.md`
   - Dedup: `correctness/resource-quota/collection-copy-allocation-int-overflow`
 - [ ] `COR-0032` high - Direct verifier success does not require manifest identity binding
   - File: `docs/agent-loop/findings/COR-0032-direct-verifier-success-does-not-require-manifest-identity-binding.md`
   - Dedup: `verifier/direct-api/manifest-identity-optional-for-tamper-evidence`
+- [ ] `COR-0038` high - Plugin package JSON import returns unvalidated packages
+  - File: `docs/agent-loop/findings/COR-0038-plugin-package-json-import-returns-unvalidated-packages.md`
+  - Dedup: `security/plugin-package-json/import/unvalidated-package-object`
+- [ ] `COR-0039` high - Short-circuit reordering can evaluate throwing pure operands
+  - File: `docs/agent-loop/findings/COR-0039-short-circuit-reordering-can-evaluate-throwing-pure-operands.md`
+  - Dedup: `correctness/short-circuit/reorder-throwing-pure-operands`
+- [ ] `COR-0048` high - Persistent compiled cache accepts verifier-safe artifacts without compiler-origin proof
+  - File: `docs/agent-loop/findings/COR-0048-persistent-compiled-cache-accepts-verifier-safe-artifacts-without-compiler-origi.md`
+  - Dedup: `security/compiled-cache/artifact-origin/semantic-tamper-evidence-missing`
 - [ ] `COR-0010` medium - Compiled executable cache lets first caller cancellation poison shared materialization
   - File: `docs/agent-loop/findings/COR-0010-compiled-executable-cache-lets-first-caller-cancellation-poison-shared-materiali.md`
   - Dedup: `correctness/compiled-cache/shared-materialization/first-caller-cancellation-poisons-waiters`
 - [ ] `COR-0011` medium - AgentQueue same-status claim overwrites existing owner
   - File: `docs/agent-loop/findings/COR-0011-agentqueue-same-status-claim-overwrites-existing-owner.md`
   - Dedup: `correctness/agentqueue/transitions/same-status-claim-overwrites-owner`
-- [ ] `COR-0012` medium - Plugin lifecycle registries can mutate while hooks publish
-  - File: `docs/agent-loop/findings/COR-0012-plugin-lifecycle-registries-can-mutate-while-hooks-publish.md`
-  - Dedup: `correctness/plugins/lifecycle/hook-registry-unsynchronized-concurrent-mutation`
-- [ ] `COR-0022` medium - Worker audit validation accepts undefined non-summary error codes
-  - File: `docs/agent-loop/findings/COR-0022-worker-audit-validation-accepts-undefined-non-summary-error-codes.md`
-  - Dedup: `correctness/hosting/worker-audit/undefined-non-summary-error-code`
 - [ ] `COR-0023` medium - Run summaries expose unsanitized policy IDs
   - File: `docs/agent-loop/findings/COR-0023-run-summaries-expose-unsanitized-policy-ids.md`
   - Dedup: `security/audit/run-summary/policy-id-unredacted`
@@ -61,9 +37,37 @@
 - [ ] `COR-0031` medium - Failed compiled worker results can carry malformed artifact hashes
   - File: `docs/agent-loop/findings/COR-0031-failed-compiled-worker-results-can-carry-malformed-artifact-hashes.md`
   - Dedup: `correctness/worker-result/failed-compiled-artifact-hash-unvalidated`
+- [ ] `COR-0037` medium - Oversized wall-time limits can fail timeout token setup
+  - File: `docs/agent-loop/findings/COR-0037-oversized-wall-time-limits-can-fail-timeout-token-setup.md`
+  - Dedup: `correctness:oversized-walltime-cancelafter-hostfailure`
+- [ ] `COR-0043` medium - Deterministic binding failure audits use wall-clock timestamps
+  - File: `docs/agent-loop/findings/COR-0043-deterministic-binding-failure-audits-use-wall-clock-timestamps.md`
+  - Dedup: `correctness/runtime/deterministic-binding-failure-audit-uses-wall-clock`
+- [ ] `COR-0045` medium - Capability-denial audits omit worker-required resource identity
+  - File: `docs/agent-loop/findings/COR-0045-capability-denial-audits-omit-worker-required-resource-identity.md`
+  - Dedup: `correctness/runtime/policy-denied-audit-resource-id-schema-mismatch`
+- [ ] `COR-0047` medium - Compiled emitter rejects validated collection literals
+  - File: `docs/agent-loop/findings/COR-0047-compiled-emitter-rejects-validated-collection-literals.md`
+  - Dedup: `correctness/compiled/validated-collection-literals-unemittable`
 
 ## Claimed
 
+- [>] `COR-0035` high - Package metadata gate allows unexpected NuGet payloads
+  - File: `docs/agent-loop/findings/COR-0035-package-metadata-gate-allows-unexpected-nuget-payloads.md`
+  - Owner: `worker`
+  - Branch: `workflow-work`
+- [>] `COR-0040` high - Release workflow uses mutable action tags for package-producing jobs
+  - File: `docs/agent-loop/findings/COR-0040-release-workflow-uses-mutable-action-tags-for-package-producing-jobs.md`
+  - Owner: `worker`
+  - Branch: `workflow-work`
+- [>] `COR-0044` high - Package-producing workflow emits unsigned unattested NuGet artifacts
+  - File: `docs/agent-loop/findings/COR-0044-package-producing-workflow-emits-unsigned-unattested-nuget-artifacts.md`
+  - Owner: `worker`
+  - Branch: `workflow-work`
+- [>] `COR-0046` high - Package-producing workflow inherits ambient GitHub token permissions
+  - File: `docs/agent-loop/findings/COR-0046-package-producing-workflow-inherits-ambient-github-token-permissions.md`
+  - Owner: `worker`
+  - Branch: `workflow-work`
 
 ## Fixed pending verification
 
@@ -71,12 +75,12 @@
   - File: `docs/agent-loop/findings/COR-0004-http-allowlist-entries-can-expand-through-comma-delimited-grant-serialization.md`
   - Fixed by: `implementer`
   - Commit: `working-tree`
-- [~] `COR-0021` high - File write temp publication can follow a raced reparse point
-  - File: `docs/agent-loop/findings/COR-0021-file-write-temp-publication-can-follow-a-raced-reparse-point.md`
+- [~] `COR-0027` high - Worker audit validation accepts forged non-summary event evidence
+  - File: `docs/agent-loop/findings/COR-0027-worker-audit-validation-accepts-forged-non-summary-event-evidence.md`
   - Fixed by: `worker`
   - Commit: ``
-- [~] `COR-0026` high - File write parent directory creation can follow a raced reparse point
-  - File: `docs/agent-loop/findings/COR-0026-file-write-parent-directory-creation-can-follow-a-raced-reparse-point.md`
+- [~] `COR-0042` high - Collection literal validation skips nested scalar safety checks
+  - File: `docs/agent-loop/findings/COR-0042-collection-literal-validation-skips-nested-scalar-safety-checks.md`
   - Fixed by: `worker`
   - Commit: ``
 - [~] `COR-0003` medium - Package metadata check fails on stale packages left in output directory
@@ -87,8 +91,8 @@
   - File: `docs/agent-loop/findings/COR-0006-worker-result-validation-accepts-undefined-failure-error-codes.md`
   - Fixed by: `implementer`
   - Commit: `working-tree`
-- [~] `COR-0017` medium - String byte quota accounting overflows before widening large text lengths
-  - File: `docs/agent-loop/findings/COR-0017-string-byte-quota-accounting-overflows-before-widening-large-text-lengths.md`
+- [~] `COR-0041` medium - ModuleValidator can throw instead of returning failed literal validation results
+  - File: `docs/agent-loop/findings/COR-0041-modulevalidator-can-throw-instead-of-returning-failed-literal-validation-results.md`
   - Fixed by: `worker`
   - Commit: ``
 
@@ -98,20 +102,46 @@
   - File: `docs/agent-loop/findings/COR-0002-direct-plugin-kernel-invocation-bypasses-adapter-whitelist-validation.md`
 - [x] `COR-0005` high - Release package metadata gate splats named parameters as positional strings
   - File: `docs/agent-loop/findings/COR-0005-release-package-metadata-gate-splats-named-parameters-as-positional-strings.md`
+- [x] `COR-0015` high - Named-pipe plugin IPC control plane has no authentication boundary
+  - File: `docs/agent-loop/findings/COR-0015-named-pipe-plugin-ipc-control-plane-has-no-authentication-boundary.md`
+- [x] `COR-0016` high - Plugin server default policy grants game-message write to every package
+  - File: `docs/agent-loop/findings/COR-0016-plugin-server-default-policy-grants-game-message-write-to-every-package.md`
+- [x] `COR-0018` high - Plugin kernel revocation does not fence already-running handlers
+  - File: `docs/agent-loop/findings/COR-0018-plugin-kernel-revocation-does-not-fence-already-running-handlers.md`
 - [x] `COR-0020` high - File write grants default to create-and-overwrite authority
   - File: `docs/agent-loop/findings/COR-0020-file-write-grants-default-to-create-and-overwrite-authority.md`
+- [x] `COR-0021` high - File write temp publication can follow a raced reparse point
+  - File: `docs/agent-loop/findings/COR-0021-file-write-temp-publication-can-follow-a-raced-reparse-point.md`
+- [x] `COR-0026` high - File write parent directory creation can follow a raced reparse point
+  - File: `docs/agent-loop/findings/COR-0026-file-write-parent-directory-creation-can-follow-a-raced-reparse-point.md`
+- [x] `COR-0028` high - SandboxType exposes mutable argument lists across validation and hashing
+  - File: `docs/agent-loop/findings/COR-0028-sandboxtype-exposes-mutable-argument-lists-across-validation-and-hashing.md`
+- [x] `COR-0029` high - VerificationPolicy allowlists can mutate after cache-key construction
+  - File: `docs/agent-loop/findings/COR-0029-verificationpolicy-allowlists-can-mutate-after-cache-key-construction.md`
+- [x] `COR-0033` high - SandboxPolicy grants can mutate after plan hashes are sealed
+  - File: `docs/agent-loop/findings/COR-0033-sandboxpolicy-grants-can-mutate-after-plan-hashes-are-sealed.md`
+- [x] `COR-0034` high - Binding descriptors can mutate after manifest hash construction
+  - File: `docs/agent-loop/findings/COR-0034-binding-descriptors-can-mutate-after-manifest-hash-construction.md`
 - [x] `COR-0001` medium - AgentQueue allows self-duplicate findings
   - File: `docs/agent-loop/findings/COR-0001-agentqueue-allows-self-duplicate-findings.md`
 - [x] `COR-0007` medium - AgentQueue doctor accepts statuses the renderer omits
   - File: `docs/agent-loop/findings/COR-0007-agentqueue-doctor-accepts-statuses-the-renderer-omits.md`
 - [x] `COR-0009` medium - Plugin adapter shape discovery crashes on explicit interface implementations
   - File: `docs/agent-loop/findings/COR-0009-plugin-adapter-shape-discovery-crashes-on-explicit-interface-implementations.md`
+- [x] `COR-0012` medium - Plugin lifecycle registries can mutate while hooks publish
+  - File: `docs/agent-loop/findings/COR-0012-plugin-lifecycle-registries-can-mutate-while-hooks-publish.md`
 - [x] `COR-0013` medium - Path-shaped audit resources bypass secret redaction
   - File: `docs/agent-loop/findings/COR-0013-path-shaped-audit-resources-bypass-secret-redaction.md`
 - [x] `COR-0014` medium - Public audit and error payloads expose mutable collection inputs
   - File: `docs/agent-loop/findings/COR-0014-public-audit-and-error-payloads-expose-mutable-collection-inputs.md`
+- [x] `COR-0017` medium - String byte quota accounting overflows before widening large text lengths
+  - File: `docs/agent-loop/findings/COR-0017-string-byte-quota-accounting-overflows-before-widening-large-text-lengths.md`
 - [x] `COR-0019` medium - Capability revocation audit reasons bypass secret redaction
   - File: `docs/agent-loop/findings/COR-0019-capability-revocation-audit-reasons-bypass-secret-redaction.md`
+- [x] `COR-0022` medium - Worker audit validation accepts undefined non-summary error codes
+  - File: `docs/agent-loop/findings/COR-0022-worker-audit-validation-accepts-undefined-non-summary-error-codes.md`
+- [x] `COR-0036` medium - ExecutionPlan binding references can mutate after integrity checks
+  - File: `docs/agent-loop/findings/COR-0036-executionplan-binding-references-can-mutate-after-integrity-checks.md`
 
 ## Rejected / duplicate / obsolete
 

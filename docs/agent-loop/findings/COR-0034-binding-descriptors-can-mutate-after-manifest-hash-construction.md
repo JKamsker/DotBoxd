@@ -1,22 +1,22 @@
 ---
 id: COR-0034
 area: correctness
-status: fixed_pending_verification
+status: verified
 priority: high
 title: Binding descriptors can mutate after manifest hash construction
 dedup_key: correctness/binding-registry/descriptor-parameters/mutable-after-manifest-hash
 created_at: 2026-06-12T22:29:27.3560557+00:00
 created_by: correctness-producer
 created_commit: 
-updated_at: 2026-06-12T23:18:14.0488555+00:00
+updated_at: 2026-06-12T23:22:19.5108221+00:00
 claimed_by: worker
 claimed_at: 2026-06-12T23:13:16.2523974+00:00
 claim_branch: workflow-work
 fixed_by: worker
 fixed_at: 2026-06-12T23:18:14.0488555+00:00
 fixed_commit: 
-verified_by: 
-verified_at: 
+verified_by: codex-verifier
+verified_at: 2026-06-12T23:22:19.5108221+00:00
 verified_commit: 
 duplicate_of: 
 ---

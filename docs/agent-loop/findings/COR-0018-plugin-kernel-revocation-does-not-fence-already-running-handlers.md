@@ -1,22 +1,22 @@
 ---
 id: COR-0018
 area: correctness
-status: fixed_pending_verification
+status: verified
 priority: high
 title: Plugin kernel revocation does not fence already-running handlers
 dedup_key: security/plugins/revocation/in-flight-handler-not-fenced
 created_at: 2026-06-12T22:10:50.6342941+00:00
 created_by: continuous-security-producer
 created_commit: 
-updated_at: 2026-06-12T22:51:09.3639210+00:00
+updated_at: 2026-06-12T22:55:07.1159057+00:00
 claimed_by: worker
 claimed_at: 2026-06-12T22:45:47.2276888+00:00
 claim_branch: workflow-work
 fixed_by: worker
 fixed_at: 2026-06-12T22:51:09.3639210+00:00
 fixed_commit: 
-verified_by: 
-verified_at: 
+verified_by: verifier
+verified_at: 2026-06-12T22:55:07.1159057+00:00
 verified_commit: 
 duplicate_of: 
 ---

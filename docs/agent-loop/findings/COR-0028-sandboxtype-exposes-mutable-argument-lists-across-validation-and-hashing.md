@@ -1,22 +1,22 @@
 ---
 id: COR-0028
 area: correctness
-status: fixed_pending_verification
+status: verified
 priority: high
 title: SandboxType exposes mutable argument lists across validation and hashing
 dedup_key: correctness/public-model/sandbox-type/mutable-arguments
 created_at: 2026-06-12T22:25:03.1520533+00:00
 created_by: correctness-producer
 created_commit: 
-updated_at: 2026-06-12T23:18:08.9864168+00:00
+updated_at: 2026-06-12T23:22:14.4943777+00:00
 claimed_by: worker
 claimed_at: 2026-06-12T23:13:12.0419201+00:00
 claim_branch: workflow-work
 fixed_by: worker
 fixed_at: 2026-06-12T23:18:08.9864168+00:00
 fixed_commit: 
-verified_by: 
-verified_at: 
+verified_by: codex-verifier
+verified_at: 2026-06-12T23:22:14.4943777+00:00
 verified_commit: 
 duplicate_of: 
 ---

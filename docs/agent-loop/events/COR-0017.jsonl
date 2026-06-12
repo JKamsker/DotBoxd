@@ -1,3 +1,4 @@
 {"at":"2026-06-12T22:09:35.0615754\u002B00:00","agent":"correctness-producer","type":"created","status":"open","message":"Created finding"}
 {"at":"2026-06-12T22:20:15.7622378\u002B00:00","agent":"worker","type":"claimed","status":"claimed","message":"Claimed finding"}
 {"at":"2026-06-12T22:38:25.6331453\u002B00:00","agent":"worker","type":"fixed","status":"fixed_pending_verification","message":"Centralized checked string byte accounting before widening and added quota regression coverage through ResourceMeter."}
+{"at":"2026-06-12T22:47:25.2095779\u002B00:00","agent":"verifier","type":"verified","status":"verified","message":"Verified checked long string-byte accounting via SandboxLiteralConstraints.StringByteCount used by ResourceMeter.ChargeString/ChargeStringAllocation and TextShape; targeted ResourceLimit/ResourceMeter/StringQuota/BindingReturnCost tests passed."}

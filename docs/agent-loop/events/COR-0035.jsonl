@@ -1,1 +1,2 @@
 {"at":"2026-06-12T22:31:19.1576455+00:00\r","agent":"security-producer\r","type":"created","status":"open","message":"Created finding after duplicate-ID queue repair"}
+{"at":"2026-06-12T23:22:20.5046343\u002B00:00","agent":"worker","type":"claimed","status":"claimed","message":"Claimed finding"}

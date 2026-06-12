@@ -1,22 +1,22 @@
 ---
 id: COR-0026
 area: correctness
-status: fixed_pending_verification
+status: verified
 priority: high
 title: File write parent directory creation can follow a raced reparse point
 dedup_key: security/file-write/parent-directory/reparse-race
 created_at: 2026-06-12T22:23:27.3023023+00:00
 created_by: security-producer
 created_commit: 
-updated_at: 2026-06-12T22:33:52.0771020+00:00
+updated_at: 2026-06-12T22:47:34.9779625+00:00
 claimed_by: worker
 claimed_at: 2026-06-12T22:24:41.1623949+00:00
 claim_branch: workflow-work
 fixed_by: worker
 fixed_at: 2026-06-12T22:33:52.0771020+00:00
 fixed_commit: 
-verified_by: 
-verified_at: 
+verified_by: independent-verifier
+verified_at: 2026-06-12T22:47:34.9779625+00:00
 verified_commit: 
 duplicate_of: 
 ---

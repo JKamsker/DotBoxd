@@ -46,6 +46,15 @@
 - [ ] `API-0015` medium - Generated runtime facade ships without a public support boundary
   - File: `docs/agent-loop/findings/API-0015-generated-runtime-facade-ships-without-a-public-support-boundary.md`
   - Dedup: `api/public-surface/generated-runtime-facade/support-boundary`
+- [ ] `API-0017` medium - Plugin server hides owned SandboxHost lifetime with no dispose surface
+  - File: `docs/agent-loop/findings/API-0017-plugin-server-hides-owned-sandboxhost-lifetime-with-no-dispose-surface.md`
+  - Dedup: `api/plugins/plugin-server/owned-host-dispose-missing`
+- [ ] `API-0018` medium - Verifier package lacks public diagnostic code reference
+  - File: `docs/agent-loop/findings/API-0018-verifier-package-lacks-public-diagnostic-code-reference.md`
+  - Dedup: `api/verifier/diagnostic-reference/missing-public-docs`
+- [ ] `API-0019` medium - Plugin runtime diagnostics lack public code reference
+  - File: `docs/agent-loop/findings/API-0019-plugin-runtime-diagnostics-lack-public-code-reference.md`
+  - Dedup: `api/plugins/runtime-sgp-diagnostics/missing-public-reference`
 
 ## Claimed
 

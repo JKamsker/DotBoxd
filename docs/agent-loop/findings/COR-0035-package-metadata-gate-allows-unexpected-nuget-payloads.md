@@ -1,17 +1,17 @@
 ---
 id: COR-0035
 area: correctness
-status: open
+status: claimed
 priority: high
 title: Package metadata gate allows unexpected NuGet payloads
 dedup_key: security/release-packaging/nuget/unexpected-package-payloads
 created_at: 2026-06-12T22:31:19.1576455+00:00
 created_by: security-producer
 created_commit: 
-updated_at: 2026-06-12T22:31:19.1576455+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
+updated_at: 2026-06-12T23:22:20.4987227+00:00
+claimed_by: worker
+claimed_at: 2026-06-12T23:22:20.4987227+00:00
+claim_branch: workflow-work
 fixed_by: 
 fixed_at: 
 fixed_commit: 

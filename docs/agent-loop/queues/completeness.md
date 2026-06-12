@@ -28,6 +28,21 @@
 - [ ] `CMP-0013` medium - HTTP transport lacks a runnable docs-smoke example
   - File: `docs/agent-loop/findings/CMP-0013-http-transport-lacks-a-runnable-docs-smoke-example.md`
   - Dedup: `completeness/http-transport/runnable-example-smoke-missing`
+- [ ] `CMP-0014` medium - Transport-agnostic IPC addon lacks a public generic-transport example
+  - File: `docs/agent-loop/findings/CMP-0014-transport-agnostic-ipc-addon-lacks-a-public-generic-transport-example.md`
+  - Dedup: `completeness/ipc-sharpc/generic-transport-example-missing`
+- [ ] `CMP-0015` medium - Compiled cache lacks a runnable user-facing smoke example
+  - File: `docs/agent-loop/findings/CMP-0015-compiled-cache-lacks-a-runnable-user-facing-smoke-example.md`
+  - Dedup: `completeness/compiled-cache/runnable-user-facing-smoke-missing`
+- [ ] `CMP-0016` medium - Filter and formula contracts have no package-backed authoring surface
+  - File: `docs/agent-loop/findings/CMP-0016-filter-and-formula-contracts-have-no-package-backed-authoring-surface.md`
+  - Dedup: `completeness/addendum/simple-filter-formula/no-package-backed-lowering-surface`
+- [ ] `CMP-0017` medium - Audit observer surface lacks a runnable user-facing example
+  - File: `docs/agent-loop/findings/CMP-0017-audit-observer-surface-lacks-a-runnable-user-facing-example.md`
+  - Dedup: `completeness/audit-observer/user-facing-example/missing-smoke`
+- [ ] `CMP-0018` medium - Addendum plugin examples omit explicit message-write policy
+  - File: `docs/agent-loop/findings/CMP-0018-addendum-plugin-examples-omit-explicit-message-write-policy.md`
+  - Dedup: `docs/addendum/plugin-message-policy/examples-missing-explicit-grant`
 
 ## Claimed
 
