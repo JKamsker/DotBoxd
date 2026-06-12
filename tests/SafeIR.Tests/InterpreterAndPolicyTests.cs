@@ -103,6 +103,38 @@ public sealed class InterpreterAndPolicyTests
     }
 
     [Fact]
+    public async Task Interpreted_debug_trace_uses_logical_clock_and_structured_fields()
+    {
+        var logicalNow = new DateTimeOffset(2030, 1, 2, 3, 4, 5, TimeSpan.Zero);
+        var host = SandboxTestHost.Create();
+        var module = await host.ImportJsonAsync(SandboxTestHost.PureScoreJson());
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create()
+                .WithFuel(1_000)
+                .Deterministic(logicalNow, randomSeed: 1)
+                .Build());
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.FromList([SandboxValue.FromInt32(3), SandboxValue.FromInt32(2)]),
+            new SandboxExecutionOptions { Mode = ExecutionMode.Interpreted, EnableDebugTrace = true });
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        var traces = result.AuditEvents.Where(e => e.Kind == "DebugTrace").ToArray();
+        Assert.NotEmpty(traces);
+        Assert.All(traces, trace => Assert.Equal(logicalNow, trace.Timestamp));
+        var statement = traces.First(e =>
+            e.Fields?["category"] == "statement" &&
+            e.Fields["nodeKind"] == nameof(AssignmentStatement));
+        Assert.Equal(plan.ModuleHash, statement.Fields!["moduleHash"]);
+        Assert.Equal("main", statement.Fields["functionId"]);
+        Assert.True(int.TryParse(statement.Fields["sourceLine"], out _));
+        Assert.True(long.TryParse(statement.Fields["fuelRemaining"], out _));
+    }
+
+    [Fact]
     public async Task Interpreted_debug_trace_reports_host_binding_calls()
     {
         using var temp = TempDirectory.Create();
@@ -128,6 +160,8 @@ public sealed class InterpreterAndPolicyTests
             e.BindingId == "file.readText" &&
             e.CapabilityId == "file.read" &&
             e.Effect.HasFlag(SandboxEffect.FileRead) &&
+            e.Fields?["category"] == "binding" &&
+            e.Fields["nodeKind"] == "file.readText" &&
             e.Message?.Contains($"moduleHash={plan.ModuleHash}", StringComparison.Ordinal) == true &&
             e.Message.Contains("hostCall=file.readText", StringComparison.Ordinal) &&
             e.Message.Contains("fuelRemaining=", StringComparison.Ordinal));

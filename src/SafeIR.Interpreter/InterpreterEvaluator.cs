@@ -60,7 +60,14 @@ internal sealed class InterpreterEvaluator
     private async ValueTask<SandboxValue?> ExecuteStatementAsync(Statement statement, InterpreterFrame frame)
     {
         _context.ChargeFuel(1);
-        InterpreterTrace.Write(_context, _options, _moduleHash, frame.FunctionId, "statement", statement.GetType().Name);
+        InterpreterTrace.Write(
+            _context,
+            _options,
+            _moduleHash,
+            frame.FunctionId,
+            "statement",
+            statement.GetType().Name,
+            statement.Span);
         switch (statement)
         {
             case AssignmentStatement assignment:

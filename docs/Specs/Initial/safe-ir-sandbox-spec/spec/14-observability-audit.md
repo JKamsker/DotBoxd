@@ -163,6 +163,22 @@ fuel remaining
 binding call
 ```
 
+Current `DebugTrace` audit events include structured fields for:
+
+```text
+moduleHash
+functionId
+category
+nodeKind
+sourceLine
+sourceColumn
+fuelRemaining
+```
+
+Debug trace timestamps use the same audit timestamp policy as other sandbox events. Under a
+deterministic policy they must use the policy logical clock, or the Unix epoch when the policy has
+no logical clock.
+
 These should be disabled in production by default or heavily limited.
 
 ## Security alerts
