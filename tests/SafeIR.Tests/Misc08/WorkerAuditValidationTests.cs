@@ -72,6 +72,32 @@ public sealed class WorkerAuditValidationTests
     }
 
     [Fact]
+    public async Task Worker_result_with_forged_policy_denied_audit_is_rejected()
+    {
+        var worker = new AuditForgingWorker((_, runId) => new SandboxAuditEvent(
+            runId,
+            "PolicyDenied",
+            DateTimeOffset.UtcNow,
+            false,
+            CapabilityId: "file.write",
+            ResourceId: "capability:file.write",
+            ErrorCode: SandboxErrorCode.PolicyDenied,
+            Fields: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["resourceKind"] = "capability",
+                ["forged"] = "field"
+            }));
+        var host = Host(worker);
+        var plan = await PrepareAsync(host);
+
+        var result = await ExecuteAsync(host, plan);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.DoesNotContain(result.AuditEvents, e => e.Kind == "PolicyDenied");
+    }
+
+    [Fact]
     public async Task Worker_result_with_forged_audit_timestamp_is_rejected()
     {
         var worker = new AuditForgingWorker((plan, runId) => new SandboxAuditEvent(

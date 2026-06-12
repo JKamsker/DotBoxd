@@ -4,3 +4,6 @@
 {"at":"2026-06-12T23:09:04.0920470\u002B00:00","agent":"worker","type":"reopened","status":"open","message":"Verifier found remaining timestamp, binding evidence, and forged field validation gaps."}
 {"at":"2026-06-12T23:09:05.8186417\u002B00:00","agent":"worker","type":"claimed","status":"claimed","message":"Claimed finding"}
 {"at":"2026-06-12T23:11:55.9906030\u002B00:00","agent":"worker","type":"fixed","status":"fixed_pending_verification","message":"Worker audit validation now rejects forged timestamps, worker-supplied binding/resource audit evidence, and unexpected run summary fields."}
+{"at":"2026-06-12T23:16:38.4410863\u002B00:00","agent":"orchestrator","type":"reopened","status":"open","message":"Verifier rejected b070a4f: WorkerAuditValidator still accepts worker-supplied PolicyDenied non-summary events; PolicyDenied validation does not reject Fields, validate field keys/values, or bind CapabilityId to validated entrypoint/plan. Failed verifier: Descartes."}
+{"at":"2026-06-12T23:20:11.9494369\u002B00:00","agent":"worker","type":"claimed","status":"claimed","message":"Claimed finding"}
+{"at":"2026-06-12T23:21:00.9866731\u002B00:00","agent":"worker","type":"fixed","status":"fixed_pending_verification","message":"Worker audit validation now rejects worker-supplied PolicyDenied non-summary events as unproven boundary evidence."}

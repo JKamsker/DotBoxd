@@ -64,7 +64,7 @@ internal static class WorkerAuditValidator
             "WorkerExecution" => ModuleAuditMatches(plan, auditEvent),
             "DebugTrace" => options.EnableDebugTrace && ModuleAuditMatches(plan, auditEvent),
             "CacheInvalidated" => auditEvent.Success && ModuleAuditMatches(plan, auditEvent),
-            "PolicyDenied" => PolicyDeniedAuditMatches(auditEvent),
+            "PolicyDenied" => false,
             "BindingCall" or "SandboxLog" or "PluginMessage" => false,
             _ => false
         };
@@ -121,14 +121,6 @@ internal static class WorkerAuditValidator
            auditEvent.Effect == SandboxEffect.None &&
            auditEvent.Fields is null &&
            string.Equals(auditEvent.ResourceId, $"module:{plan.ModuleHash}", StringComparison.Ordinal);
-
-    private static bool PolicyDeniedAuditMatches(SandboxAuditEvent auditEvent)
-        => !auditEvent.Success &&
-           auditEvent.BindingId is null &&
-           !string.IsNullOrWhiteSpace(auditEvent.CapabilityId) &&
-           auditEvent.Effect == SandboxEffect.None &&
-           auditEvent.ErrorCode == SandboxErrorCode.PolicyDenied &&
-           string.Equals(auditEvent.ResourceId, $"capability:{auditEvent.CapabilityId}", StringComparison.Ordinal);
 
     private static bool TextIsSafe(string? value)
         => value is null || value.All(c => !char.IsControl(c));
