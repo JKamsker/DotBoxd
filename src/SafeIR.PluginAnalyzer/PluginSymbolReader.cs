@@ -13,13 +13,25 @@ internal static class PluginSymbolReader
                 StringComparison.Ordinal))
             ?.ConstructorArguments.FirstOrDefault().Value as string;
 
-    public static INamedTypeSymbol? EventType(INamedTypeSymbol kernelType)
-        => kernelType.AllInterfaces
-            .FirstOrDefault(i => string.Equals(
-                i.OriginalDefinition.ToDisplayString(),
-                SafeIrGenerationNames.Metadata.EventKernelInterface,
-                StringComparison.Ordinal))
-            ?.TypeArguments.FirstOrDefault() as INamedTypeSymbol;
+    public static IReadOnlyList<INamedTypeSymbol> EventTypes(INamedTypeSymbol kernelType)
+    {
+        var eventTypes = new List<INamedTypeSymbol>();
+        foreach (var implementedInterface in kernelType.AllInterfaces.Where(IsEventKernelInterface))
+        {
+            if (implementedInterface.TypeArguments.FirstOrDefault() is INamedTypeSymbol eventType)
+            {
+                eventTypes.Add(eventType);
+            }
+        }
+
+        return eventTypes;
+    }
+
+    private static bool IsEventKernelInterface(INamedTypeSymbol type)
+        => string.Equals(
+            type.OriginalDefinition.ToDisplayString(),
+            SafeIrGenerationNames.Metadata.EventKernelInterface,
+            StringComparison.Ordinal);
 
     public static IReadOnlyList<EventPropertyModel> EventProperties(INamedTypeSymbol eventType)
     {

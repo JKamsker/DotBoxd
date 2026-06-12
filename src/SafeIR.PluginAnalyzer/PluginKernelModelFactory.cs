@@ -16,7 +16,7 @@ internal static class PluginKernelModelFactory
         }
 
         var pluginId = PluginSymbolReader.PluginId(context.Attributes);
-        var eventType = PluginSymbolReader.EventType(type);
+        var eventTypes = PluginSymbolReader.EventTypes(type);
         if (string.IsNullOrWhiteSpace(pluginId)) {
             var diagnostic = Diagnostic.Create(
                 PluginAnalyzerDiagnostics.UnsupportedKernelShapeRule,
@@ -25,8 +25,7 @@ internal static class PluginKernelModelFactory
             return new PluginKernelModelResult(null, diagnostic);
         }
 
-        var validatedPluginId = pluginId!;
-        if (eventType is null)
+        if (eventTypes.Count == 0)
         {
             var diagnostic = Diagnostic.Create(
                 PluginAnalyzerDiagnostics.UnsupportedKernelShapeRule,
@@ -35,6 +34,17 @@ internal static class PluginKernelModelFactory
             return new PluginKernelModelResult(null, diagnostic);
         }
 
+        if (eventTypes.Count > 1)
+        {
+            var diagnostic = Diagnostic.Create(
+                PluginAnalyzerDiagnostics.UnsupportedKernelShapeRule,
+                declaration.Identifier.GetLocation(),
+                "Game plugins must implement exactly one IEventKernel<TEvent>.");
+            return new PluginKernelModelResult(null, diagnostic);
+        }
+
+        var validatedPluginId = pluginId!;
+        var eventType = eventTypes[0];
         try
         {
             var shouldHandle = InterfaceMethodSyntax(context, type, SafeIrGenerationNames.Entrypoints.ShouldHandle, cancellationToken);
