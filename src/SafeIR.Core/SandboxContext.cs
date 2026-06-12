@@ -33,7 +33,8 @@ public sealed class SandboxContext
 
     public void RequireCapability(string capabilityId)
     {
-        if (!Policy.GrantsCapability(capabilityId)) {
+        if (!Policy.GrantsCapability(capabilityId))
+        {
             Audit.Write(new SandboxAuditEvent(
                 RunId,
                 "PolicyDenied",
@@ -62,14 +63,16 @@ public sealed class SandboxContext
 
     public void EnterCall()
     {
-        if (++_callDepth > Budget.Limits.MaxCallDepth) {
+        if (++_callDepth > Budget.Limits.MaxCallDepth)
+        {
             throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.QuotaExceeded, "call depth exceeded"));
         }
     }
 
     public void ExitCall()
     {
-        if (_callDepth > 0) {
+        if (_callDepth > 0)
+        {
             _callDepth--;
         }
     }
@@ -84,15 +87,56 @@ public sealed class SandboxContext
 
     public void ChargeLogEvent(string message) => Budget.ChargeLogEvent(message);
 
+    public long AuditCheckpoint() => Audit.EventsWritten;
+
+    public void EnsureRequiredBindingSuccessAudit(BindingDescriptor descriptor, long checkpoint)
+    {
+        if (descriptor.AuditLevel == AuditLevel.None ||
+            Audit.HasBindingAuditSince(descriptor.Id, checkpoint, success: true))
+        {
+            return;
+        }
+
+        throw new SandboxRuntimeException(new SandboxError(
+            SandboxErrorCode.BindingFailure,
+            $"binding '{descriptor.Id}' did not emit a required audit event"));
+    }
+
+    public void EnsureRequiredBindingFailureAudit(
+        BindingDescriptor descriptor,
+        long checkpoint,
+        SandboxErrorCode errorCode)
+    {
+        if (descriptor.AuditLevel == AuditLevel.None ||
+            Audit.HasBindingAuditSince(descriptor.Id, checkpoint, success: false))
+        {
+            return;
+        }
+
+        Audit.Write(new SandboxAuditEvent(
+            RunId,
+            "BindingCall",
+            DateTimeOffset.UtcNow,
+            Success: false,
+            BindingId: descriptor.Id,
+            CapabilityId: descriptor.RequiredCapability,
+            Effect: descriptor.Effects,
+            ResourceId: $"binding:{descriptor.Id}",
+            ErrorCode: errorCode,
+            Message: "binding failed before emitting audit"));
+    }
+
     public void ChargeBindingCall(BindingDescriptor descriptor)
     {
-        if (AllowedBindingIds is not null && !AllowedBindingIds.Contains(descriptor.Id)) {
+        if (AllowedBindingIds is not null && !AllowedBindingIds.Contains(descriptor.Id))
+        {
             throw new SandboxRuntimeException(new SandboxError(
                 SandboxErrorCode.ValidationError,
                 $"binding '{descriptor.Id}' is not referenced by the verified execution plan"));
         }
 
-        if (descriptor.RequiredCapability is not null) {
+        if (descriptor.RequiredCapability is not null)
+        {
             RequireCapability(descriptor.RequiredCapability);
         }
 
@@ -111,7 +155,8 @@ public sealed class SandboxContext
         var bytes = BindingReturnCost.MeasureBytes(value);
         ChargeValue(value);
 
-        if (bytes > 0 && descriptor.CostModel.PerByteFuel > 0) {
+        if (bytes > 0 && descriptor.CostModel.PerByteFuel > 0)
+        {
             ChargeFuel(CheckedFuel(bytes, descriptor.CostModel.PerByteFuel));
         }
 
@@ -127,10 +172,12 @@ public sealed class SandboxContext
 
     private static long CheckedFuel(long bytes, long perByteFuel)
     {
-        try {
+        try
+        {
             return checked(bytes * perByteFuel);
         }
-        catch (OverflowException) {
+        catch (OverflowException)
+        {
             throw new SandboxRuntimeException(new SandboxError(
                 SandboxErrorCode.QuotaExceeded,
                 "binding return fuel budget exhausted"));
@@ -139,7 +186,8 @@ public sealed class SandboxContext
 
     public DateTimeOffset UtcNow()
     {
-        if (Policy.Deterministic) {
+        if (Policy.Deterministic)
+        {
             return Policy.LogicalNow ?? throw new SandboxRuntimeException(new SandboxError(
                 SandboxErrorCode.PolicyDenied,
                 "deterministic time requires a logical clock"));
@@ -150,14 +198,17 @@ public sealed class SandboxContext
 
     public int NextRandomInt32(int minInclusive, int maxExclusive)
     {
-        if (minInclusive >= maxExclusive) {
+        if (minInclusive >= maxExclusive)
+        {
             throw new SandboxRuntimeException(new SandboxError(
                 SandboxErrorCode.InvalidInput,
                 "random range is invalid"));
         }
 
-        if (Policy.Deterministic) {
-            if (Policy.RandomSeed is null) {
+        if (Policy.Deterministic)
+        {
+            if (Policy.RandomSeed is null)
+            {
                 throw new SandboxRuntimeException(new SandboxError(
                     SandboxErrorCode.PolicyDenied,
                     "deterministic random requires a seed"));

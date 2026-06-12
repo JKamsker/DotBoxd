@@ -340,6 +340,11 @@ Do not leak secrets, full paths, connection strings, stack traces, or internal o
 ## Binding audit
 
 Side-effecting or external-read bindings must emit audit events.
+The runtime enforces this contract for bindings with `AuditLevel` other than `None`:
+successful calls must produce a non-debug success audit event for the binding, and failed calls
+must produce a non-debug failure audit event for the binding. If an audited binding fails before
+emitting its failure audit, the runtime writes a sanitized failure event and keeps the original
+sandbox error. Debug traces never count as binding audit events.
 
 Audit event fields:
 

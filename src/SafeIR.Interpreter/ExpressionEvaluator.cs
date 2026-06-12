@@ -160,32 +160,51 @@ internal sealed class ExpressionEvaluator
     {
         var descriptor = _context.Bindings.GetDescriptor(id);
         InterpreterTrace.WriteBindingCall(_context, _options, _moduleHash, functionId, descriptor);
-        _context.ChargeBindingCall(descriptor);
+        var auditCheckpoint = _context.AuditCheckpoint();
+        try
+        {
+            _context.ChargeBindingCall(descriptor);
+        }
+        catch (SandboxRuntimeException ex)
+        {
+            _context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, ex.Error.Code);
+            throw;
+        }
+
         using var timeout = _context.CreateWallTimeToken();
         try
         {
             var value = await descriptor.Invoke(_context, args, timeout.Token).ConfigureAwait(false);
+            _context.EnsureRequiredBindingSuccessAudit(descriptor, auditCheckpoint);
             return _context.ChargeBindingReturn(descriptor, value);
         }
-        catch (SandboxRuntimeException)
+        catch (SandboxRuntimeException ex)
         {
+            _context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, ex.Error.Code);
             throw;
         }
         catch (OperationCanceledException) when (_context.CancellationToken.IsCancellationRequested)
         {
+            _context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, SandboxErrorCode.Cancelled);
             throw;
         }
         catch (OperationCanceledException) when (timeout.IsCancellationRequested)
         {
-            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.Timeout, $"binding '{id}' timed out"));
+            var error = new SandboxError(SandboxErrorCode.Timeout, $"binding '{id}' timed out");
+            _context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, error.Code);
+            throw new SandboxRuntimeException(error);
         }
         catch (OperationCanceledException)
         {
-            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{id}' failed"));
+            var error = new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{id}' failed");
+            _context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, error.Code);
+            throw new SandboxRuntimeException(error);
         }
         catch (Exception)
         {
-            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{id}' failed"));
+            var error = new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{id}' failed");
+            _context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, error.Code);
+            throw new SandboxRuntimeException(error);
         }
     }
 

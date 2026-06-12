@@ -59,6 +59,16 @@ bytesRead/bytesWritten optional
 errorCode optional
 ```
 
+Runtime enforcement:
+
+- `AuditLevel.None` bindings do not require binding audit events.
+- Any other `AuditLevel` requires a non-debug audit event with the binding ID.
+- A successful binding call must emit a successful audit event before the call is accepted.
+- A failed binding call must leave a failed audit event. If the binding fails before it can emit
+  one, the runtime writes a sanitized `BindingCall` failure event and preserves the original
+  sandbox error.
+- Interpreted debug traces are diagnostics only and never satisfy binding audit requirements.
+
 ## Sanitization
 
 Audit logs should be useful but not leak secrets.

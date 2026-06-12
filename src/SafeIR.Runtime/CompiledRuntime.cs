@@ -102,7 +102,8 @@ public static class CompiledRuntime
     public static SandboxValue AbsI32(SandboxValue value)
     {
         var number = AsI32(value);
-        if (number == int.MinValue) {
+        if (number == int.MinValue)
+        {
             throw InvalidInput("math.abs overflow");
         }
 
@@ -117,7 +118,8 @@ public static class CompiledRuntime
     {
         var minimum = AsI32(min);
         var maximum = AsI32(max);
-        if (minimum > maximum) {
+        if (minimum > maximum)
+        {
             throw InvalidInput("math.clamp range is invalid");
         }
 
@@ -150,7 +152,8 @@ public static class CompiledRuntime
     {
         var values = AsList(list).Values;
         var i = AsI32(index);
-        if (i < 0 || i >= values.Count) {
+        if (i < 0 || i >= values.Count)
+        {
             throw InvalidInput("list index is out of range");
         }
 
@@ -160,7 +163,8 @@ public static class CompiledRuntime
     public static SandboxValue ListAdd(SandboxContext context, SandboxValue list, SandboxValue item)
     {
         var source = AsList(list);
-        if (item.Type != source.ItemType) {
+        if (item.Type != source.ItemType)
+        {
             throw InvalidInput("list item type mismatch");
         }
 
@@ -187,7 +191,8 @@ public static class CompiledRuntime
     {
         var typedMap = AsMap(map);
         RequireType(key, typedMap.KeyType, "map key type mismatch");
-        if (!typedMap.Values.TryGetValue(key, out var value)) {
+        if (!typedMap.Values.TryGetValue(key, out var value))
+        {
             throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.NotFound, "map key was not found"));
         }
 
@@ -199,7 +204,8 @@ public static class CompiledRuntime
         var typedMap = AsMap(map);
         RequireType(key, typedMap.KeyType, "map key type mismatch");
         RequireType(value, typedMap.ValueType, "map value type mismatch");
-        var values = new Dictionary<SandboxValue, SandboxValue>(typedMap.Values) {
+        var values = new Dictionary<SandboxValue, SandboxValue>(typedMap.Values)
+        {
             [key] = value
         };
         context.ChargeAllocation(Math.Max(1, values.Count) * 32);
@@ -217,30 +223,7 @@ public static class CompiledRuntime
     }
 
     public static SandboxValue CallBinding(SandboxContext context, string id, SandboxValue[] args)
-    {
-        var descriptor = context.Bindings.GetDescriptor(id);
-        context.ChargeBindingCall(descriptor);
-        using var timeout = context.CreateWallTimeToken();
-        try {
-            var value = descriptor.Invoke(context, args, timeout.Token).AsTask().GetAwaiter().GetResult();
-            return context.ChargeBindingReturn(descriptor, value);
-        }
-        catch (SandboxRuntimeException) {
-            throw;
-        }
-        catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested) {
-            throw;
-        }
-        catch (OperationCanceledException) when (timeout.IsCancellationRequested) {
-            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.Timeout, $"binding '{id}' timed out"));
-        }
-        catch (OperationCanceledException) {
-            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{id}' failed"));
-        }
-        catch (Exception) {
-            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{id}' failed"));
-        }
-    }
+        => CompiledBindingDispatcher.CallBinding(context, id, args);
 
     private static ListValue AsList(SandboxValue value)
     {
