@@ -29,6 +29,8 @@ internal static class SafeIrExpressionModelFactory
             BinaryExpressionSyntax binary => LowerBinary(binary, context),
             IdentifierNameSyntax identifier => LowerIdentifier(identifier.Identifier.ValueText, context.LiveSettings),
             MemberAccessExpressionSyntax member => LowerMemberAccess(member, context),
+            InterpolatedStringExpressionSyntax interpolated =>
+                SafeIrInterpolatedStringExpressionLowerer.Lower(interpolated, part => Lower(part, context)),
             LiteralExpressionSyntax literal => SafeIrLiteralExpressionLowerer.Lower(literal),
             _ => Unsupported(expression)
         };
