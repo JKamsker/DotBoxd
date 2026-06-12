@@ -26,6 +26,28 @@ public sealed class PluginRevocationTests
     }
 
     [Fact]
+    public async Task Reinstall_revokes_previous_kernel_captured_by_hook_pipeline()
+    {
+        var messages = new InMemoryPluginMessageSink();
+        var server = PluginServer.Create(messages);
+        var first = await server.InstallAsync(FireDamagePluginPackage.Create());
+        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+
+        await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
+        var replacement = await server.InstallAsync(FireDamagePluginPackage.Create());
+        await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-2"));
+        server.Hooks.On<DamageEvent>().UseKernel(replacement);
+        await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-3"));
+        var removed = server.Uninstall("fire-damage");
+        await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-4"));
+
+        Assert.True(first.IsRevoked);
+        Assert.True(removed);
+        Assert.True(replacement.IsRevoked);
+        Assert.Equal(["player-1", "player-3"], messages.Messages.Select(m => m.TargetId));
+    }
+
+    [Fact]
     public async Task Revoked_kernel_handle_rejects_direct_execution()
     {
         var server = PluginServer.Create();

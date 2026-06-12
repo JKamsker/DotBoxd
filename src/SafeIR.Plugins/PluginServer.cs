@@ -91,7 +91,15 @@ public sealed class KernelRegistry
     }
 
     internal void Add(InstalledKernel kernel)
-        => _kernels[kernel.Manifest.PluginId] = kernel;
+    {
+        if (_kernels.TryGetValue(kernel.Manifest.PluginId, out var existing) &&
+            !ReferenceEquals(existing, kernel))
+        {
+            existing.Revoke();
+        }
+
+        _kernels[kernel.Manifest.PluginId] = kernel;
+    }
 
     internal bool Remove(string pluginId)
     {
