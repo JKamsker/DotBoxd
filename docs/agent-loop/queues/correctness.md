@@ -4,9 +4,6 @@
 
 ## Open
 
-- [ ] `COR-0009` medium - Plugin adapter shape discovery crashes on explicit interface implementations
-  - File: `docs/agent-loop/findings/COR-0009-plugin-adapter-shape-discovery-crashes-on-explicit-interface-implementations.md`
-  - Dedup: `correctness/plugins/adapter-registry/explicit-interface-shape-crash`
 
 ## Claimed
 
@@ -27,6 +24,10 @@
   - Commit: `working-tree`
 - [~] `COR-0007` medium - AgentQueue doctor accepts statuses the renderer omits
   - File: `docs/agent-loop/findings/COR-0007-agentqueue-doctor-accepts-statuses-the-renderer-omits.md`
+  - Fixed by: `fixer`
+  - Commit: ``
+- [~] `COR-0009` medium - Plugin adapter shape discovery crashes on explicit interface implementations
+  - File: `docs/agent-loop/findings/COR-0009-plugin-adapter-shape-discovery-crashes-on-explicit-interface-implementations.md`
   - Fixed by: `fixer`
   - Commit: ``
 

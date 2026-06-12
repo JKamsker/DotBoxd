@@ -81,6 +81,15 @@ public sealed class PluginHookSignatureTests
     }
 
     [Fact]
+    public async Task Install_supports_explicit_interface_event_adapter()
+    {
+        var server = PluginServer.Create();
+        server.RegisterEventAdapter(new ExplicitDamageEventAdapter());
+
+        await server.InstallAsync(FireDamagePluginPackage.Create());
+    }
+
+    [Fact]
     public void On_rejects_different_adapter_after_pipeline_exists()
     {
         var server = PluginServer.Create();
@@ -125,7 +134,25 @@ public sealed class PluginHookSignatureTests
                 SandboxValue.FromString(e.DamageType),
             SandboxValue.FromInt32(e.Amount),
             SandboxValue.FromString(e.TargetId)
+            ];
+    }
+
+    private sealed class ExplicitDamageEventAdapter : IPluginEventAdapter<DamageEvent>
+    {
+        string IPluginEventAdapter<DamageEvent>.EventName => "DamageEvent";
+
+        IReadOnlyList<Parameter> IPluginEventAdapter<DamageEvent>.Parameters => [
+            new("e_DamageType", SandboxType.String),
+            new("e_Amount", SandboxType.I32),
+            new("e_TargetId", SandboxType.String)
         ];
+
+        IReadOnlyList<SandboxValue> IPluginEventAdapter<DamageEvent>.ToSandboxValues(DamageEvent e)
+            => [
+                SandboxValue.FromString(e.DamageType),
+                SandboxValue.FromInt32(e.Amount),
+                SandboxValue.FromString(e.TargetId)
+            ];
     }
 
     private sealed record ConventionRecordEvent(int Value, string TargetId);

@@ -5,15 +5,17 @@ using SafeIR;
 
 public sealed class PluginEventAdapterRegistry
 {
-    private readonly Dictionary<Type, object> _adapters = [];
+    private readonly Dictionary<Type, RegisteredPluginEventAdapter> _adapters = [];
 
     public void Register<TEvent>(IPluginEventAdapter<TEvent> adapter)
-        => _adapters[typeof(TEvent)] = adapter;
+        => _adapters[typeof(TEvent)] = new(
+            adapter,
+            new PluginEventShape(adapter.EventName, adapter.Parameters));
 
     public IPluginEventAdapter<TEvent> Resolve<TEvent>()
     {
-        if (_adapters.TryGetValue(typeof(TEvent), out var adapter)) {
-            return (IPluginEventAdapter<TEvent>)adapter;
+        if (_adapters.TryGetValue(typeof(TEvent), out var registered)) {
+            return (IPluginEventAdapter<TEvent>)registered.Adapter;
         }
 
         var discovered = TryDiscoverAdapter<TEvent>() ?? ConventionEventAdapter<TEvent>.Create();
@@ -25,7 +27,7 @@ public sealed class PluginEventAdapterRegistry
     {
         foreach (var adapter in _adapters.Values)
         {
-            var current = ReadShape(adapter);
+            var current = adapter.Shape;
             if (string.Equals(current.EventName, eventName, StringComparison.Ordinal))
             {
                 shape = current;
@@ -35,14 +37,6 @@ public sealed class PluginEventAdapterRegistry
 
         shape = default!;
         return false;
-    }
-
-    private static PluginEventShape ReadShape(object adapter)
-    {
-        var type = adapter.GetType();
-        var eventName = (string)type.GetProperty(nameof(IPluginEventAdapter<object>.EventName))!.GetValue(adapter)!;
-        var parameters = (IReadOnlyList<Parameter>)type.GetProperty(nameof(IPluginEventAdapter<object>.Parameters))!.GetValue(adapter)!;
-        return new PluginEventShape(eventName, parameters);
     }
 
     private static IPluginEventAdapter<TEvent>? TryDiscoverAdapter<TEvent>()
@@ -66,6 +60,8 @@ public sealed class PluginEventAdapterRegistry
                                  type.IsAssignableFrom(p.PropertyType))
             ?.GetValue(null);
 }
+
+internal readonly record struct RegisteredPluginEventAdapter(object Adapter, PluginEventShape Shape);
 
 internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEvent>
 {
