@@ -56,10 +56,6 @@
     {
       "path": "tests/SafeIR.Tests",
       "justification": "Legacy monolithic test project root predates the project-folder limit. New tests should move into focused subdirectories where practical."
-    },
-    {
-      "path": "tools/AgentQueue/src/AgentQueue",
-      "justification": "Existing tool project root predates the project-folder limit. Split future AgentQueue growth into subdirectories."
     }
   ]
 }
