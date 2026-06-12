@@ -223,6 +223,7 @@ internal sealed class SandboxWorkerExecutor(ConfiguredSandboxWorker? worker)
     {
         if (summary.Fields is null ||
             !FieldEquals(summary, "mode", result.ActualMode.ToString()) ||
+            !FieldEquals(summary, "executionDispatched", true) ||
             !HasNonEmptyField(summary, "cacheStatus") ||
             !FieldEquals(summary, "moduleHash", plan.ModuleHash) ||
             !FieldEquals(summary, "planHash", plan.PlanHash) ||
@@ -272,6 +273,9 @@ internal sealed class SandboxWorkerExecutor(ConfiguredSandboxWorker? worker)
            string.Equals(actual, value, StringComparison.Ordinal);
 
     private static bool FieldEquals(SandboxAuditEvent summary, string key, long value)
+        => FieldEquals(summary, key, value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+    private static bool FieldEquals(SandboxAuditEvent summary, string key, bool value)
         => FieldEquals(summary, key, value.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
     private static bool HasNonEmptyField(SandboxAuditEvent summary, string key)

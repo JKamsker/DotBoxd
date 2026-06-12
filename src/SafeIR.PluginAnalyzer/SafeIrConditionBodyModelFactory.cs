@@ -11,6 +11,13 @@ internal static class SafeIrConditionBodyModelFactory
         SafeIrExpressionLoweringContext context)
         => LowerCondition(expression, ReturnBool(value: true), ReturnBool(value: false), context);
 
+    public static SafeIrStatementBodyModel CreateBranch(
+        ExpressionSyntax condition,
+        SafeIrStatementBodyModel whenTrue,
+        SafeIrStatementBodyModel whenFalse,
+        SafeIrExpressionLoweringContext context)
+        => LowerCondition(condition, whenTrue, whenFalse, context);
+
     private static SafeIrStatementBodyModel LowerCondition(
         ExpressionSyntax expression,
         SafeIrStatementBodyModel whenTrue,
@@ -21,6 +28,8 @@ internal static class SafeIrConditionBodyModelFactory
         return expression switch {
             ParenthesizedExpressionSyntax parenthesized =>
                 LowerCondition(parenthesized.Expression, whenTrue, whenFalse, context),
+            ConditionalExpressionSyntax conditional =>
+                LowerConditional(conditional, whenTrue, whenFalse, context),
             PrefixUnaryExpressionSyntax unary when unary.Kind() == SyntaxKind.LogicalNotExpression =>
                 LowerCondition(unary.Operand, whenFalse, whenTrue, context),
             BinaryExpressionSyntax binary when binary.Kind() == SyntaxKind.LogicalAndExpression =>
@@ -59,6 +68,17 @@ internal static class SafeIrConditionBodyModelFactory
             binary.Left,
             whenTrue,
             LowerCondition(binary.Right, whenTrue, whenFalse, context),
+            context);
+
+    private static SafeIrStatementBodyModel LowerConditional(
+        ConditionalExpressionSyntax conditional,
+        SafeIrStatementBodyModel whenTrue,
+        SafeIrStatementBodyModel whenFalse,
+        SafeIrExpressionLoweringContext context)
+        => LowerCondition(
+            conditional.Condition,
+            LowerCondition(conditional.WhenTrue, whenTrue, whenFalse, context),
+            LowerCondition(conditional.WhenFalse, whenTrue, whenFalse, context),
             context);
 
     private static SafeIrStatementBodyModel LowerEagerAnd(

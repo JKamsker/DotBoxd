@@ -16,17 +16,17 @@ internal static class SafeIrNumericConstantPromoter
             return;
         }
 
-        if (TryPromote(binary.Left, context, right.Type) is { } promotedLeft) {
+        if (TryPromoteConstant(binary.Left, context, right.Type) is { } promotedLeft) {
             left = promotedLeft;
             return;
         }
 
-        if (TryPromote(binary.Right, context, left.Type) is { } promotedRight) {
+        if (TryPromoteConstant(binary.Right, context, left.Type) is { } promotedRight) {
             right = promotedRight;
         }
     }
 
-    private static SafeIrExpressionModel? TryPromote(
+    public static SafeIrExpressionModel? TryPromoteConstant(
         ExpressionSyntax expression,
         SafeIrExpressionLoweringContext context,
         string targetType)

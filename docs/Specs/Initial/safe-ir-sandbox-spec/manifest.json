@@ -29,7 +29,7 @@
     },
     {
       "path": "checklists/release-readiness.md",
-      "sha256": "0913db8b7bbd8ed19959ebf9285d224bdcf2cb43423cb152490a4268ae5f5d25",
+      "sha256": "7a15bfec9639829014d5b777995722bcf39f7f37be7aa4d4e1187f907fc22e9f",
       "bytes": 2160
     },
     {
@@ -48,9 +48,14 @@
       "bytes": 2405
     },
     {
+      "path": "operations/runbook.md",
+      "sha256": "e85b7bd22ca8cd914d3c2b6118f1d97b9376dabdfd85e6dbe1723c2258b90408",
+      "bytes": 4469
+    },
+    {
       "path": "README.md",
-      "sha256": "dface1c5d089db46ee0dc572bf5b6f0480d4a10cf52442a81090f61a39e07e8c",
-      "bytes": 4529
+      "sha256": "8da58e53ae298a087b8f4ee32149f995ed52b8a4e2e515e4ba55d331e968648b",
+      "bytes": 4601
     },
     {
       "path": "references.md",
