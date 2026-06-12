@@ -9,7 +9,8 @@ internal static class PureBindingCallEmitter
 {
     public static bool TryEmit(CallExpression call, ILGenerator il, Action<Expression> emitExpression)
     {
-        switch (call.Name) {
+        switch (call.Name)
+        {
             case "list.empty":
                 EmitListEmpty(call, il);
                 return true;
@@ -19,10 +20,10 @@ internal static class PureBindingCallEmitter
                 il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ListOf)));
                 return true;
             case "list.count":
-                EmitCall(il, emitExpression, call, nameof(CompiledRuntime.ListCount));
+                EmitContextCall(il, emitExpression, call, nameof(CompiledRuntime.ListCount));
                 return true;
             case "list.get":
-                EmitCall(il, emitExpression, call, nameof(CompiledRuntime.ListGet));
+                EmitContextCall(il, emitExpression, call, nameof(CompiledRuntime.ListGet));
                 return true;
             case "list.add":
                 il.Emit(OpCodes.Ldarg_0);
@@ -33,10 +34,10 @@ internal static class PureBindingCallEmitter
                 EmitMapEmpty(call, il);
                 return true;
             case "map.containsKey":
-                EmitCall(il, emitExpression, call, nameof(CompiledRuntime.MapContainsKey));
+                EmitContextCall(il, emitExpression, call, nameof(CompiledRuntime.MapContainsKey));
                 return true;
             case "map.get":
-                EmitCall(il, emitExpression, call, nameof(CompiledRuntime.MapGet));
+                EmitContextCall(il, emitExpression, call, nameof(CompiledRuntime.MapGet));
                 return true;
             case "map.set":
                 il.Emit(OpCodes.Ldarg_0);
@@ -63,16 +64,29 @@ internal static class PureBindingCallEmitter
         il.Emit(OpCodes.Call, Runtime(runtimeMethod));
     }
 
+    private static void EmitContextCall(
+        ILGenerator il,
+        Action<Expression> emitExpression,
+        CallExpression call,
+        string runtimeMethod)
+    {
+        il.Emit(OpCodes.Ldarg_0);
+        EmitArguments(call, emitExpression);
+        il.Emit(OpCodes.Call, Runtime(runtimeMethod));
+    }
+
     private static void EmitArguments(CallExpression call, Action<Expression> emitExpression)
     {
-        foreach (var argument in call.Arguments) {
+        foreach (var argument in call.Arguments)
+        {
             emitExpression(argument);
         }
     }
 
     private static void EmitMapEmpty(CallExpression call, ILGenerator il)
     {
-        if (call.GenericType is not { Name: "Map", Arguments.Count: 2 } mapType) {
+        if (call.GenericType is not { Name: "Map", Arguments.Count: 2 } mapType)
+        {
             throw Unsupported("map.empty requires Map<K,V> genericType");
         }
 
@@ -84,7 +98,8 @@ internal static class PureBindingCallEmitter
 
     private static void EmitListEmpty(CallExpression call, ILGenerator il)
     {
-        if (call.GenericType is not { } itemType) {
+        if (call.GenericType is not { } itemType)
+        {
             throw Unsupported("list.empty requires genericType");
         }
 

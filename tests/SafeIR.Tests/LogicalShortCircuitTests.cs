@@ -107,6 +107,48 @@ public sealed partial class LogicalShortCircuitTests
         Assert.Equal(mode, result.ActualMode);
     }
 
+    [Theory]
+    [MemberData(nameof(Modes))]
+    public async Task And_prefers_cheaper_literal_over_collection_intrinsic(ExecutionMode mode)
+    {
+        var host = SandboxTestHost.Create(compiler: true);
+        var module = await host.ParseJsonAsync(ModuleJson("""
+        {
+          "op": "and",
+          "left": {
+            "op": "eq",
+            "left": {
+              "call": "list.count",
+              "args": [
+                {
+                  "call": "list.of",
+                  "args": [{ "i32": 1 }, { "i32": 2 }]
+                }
+              ]
+            },
+            "right": { "i32": 2 }
+          },
+          "right": { "bool": false }
+        }
+        """));
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create()
+                .WithMaxListLength(1)
+                .WithFuel(1_000)
+                .Build());
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.Unit,
+            new SandboxExecutionOptions { Mode = mode, AllowFallbackToInterpreter = false });
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        Assert.False(((BoolValue)result.Value!).Value);
+        Assert.Equal(mode, result.ActualMode);
+    }
+
     [Fact]
     public async Task Cheap_first_does_not_reorder_side_effecting_operands()
     {

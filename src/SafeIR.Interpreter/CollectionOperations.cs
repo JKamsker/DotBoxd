@@ -6,24 +6,32 @@ internal static class CollectionOperations
 {
     public static SandboxValue CreateList(SandboxType itemType, SandboxContext context)
     {
+        context.ChargeFuel(SandboxCollectionFuel.Empty());
         context.ChargeAllocation(8);
         return Charge(context, SandboxValue.FromList([], itemType));
     }
 
     public static SandboxValue BuildList(IReadOnlyList<SandboxValue> values, SandboxContext context)
     {
+        context.ChargeFuel(SandboxCollectionFuel.Copy(values.Count));
         context.ChargeAllocation(values.Count * 16);
         return Charge(context, SandboxValue.FromList(values));
     }
 
-    public static SandboxValue CountList(SandboxValue list)
-        => SandboxValue.FromInt32(AsList(list).Values.Count);
-
-    public static SandboxValue GetListItem(SandboxValue index, SandboxValue list)
+    public static SandboxValue CountList(SandboxValue list, SandboxContext context)
     {
         var values = AsList(list).Values;
+        context.ChargeFuel(SandboxCollectionFuel.Read(values.Count));
+        return SandboxValue.FromInt32(values.Count);
+    }
+
+    public static SandboxValue GetListItem(SandboxValue index, SandboxValue list, SandboxContext context)
+    {
+        var values = AsList(list).Values;
+        context.ChargeFuel(SandboxCollectionFuel.Read(values.Count));
         var i = AsI32(index).Value;
-        if (i < 0 || i >= values.Count) {
+        if (i < 0 || i >= values.Count)
+        {
             throw Error(SandboxErrorCode.InvalidInput, "list index is out of range");
         }
 
@@ -34,6 +42,7 @@ internal static class CollectionOperations
     {
         var source = AsList(list);
         RequireType(item, source.ItemType, "list item type mismatch");
+        context.ChargeFuel(SandboxCollectionFuel.Copy(source.Values.Count, addedCount: 1));
         var values = source.Values.ToList();
         values.Add(item);
         context.ChargeAllocation(values.Count * 16);
@@ -42,28 +51,33 @@ internal static class CollectionOperations
 
     public static SandboxValue CreateMap(SandboxType mapType, SandboxContext context)
     {
-        if (mapType.Name != "Map" || mapType.Arguments.Count != 2) {
+        if (mapType.Name != "Map" || mapType.Arguments.Count != 2)
+        {
             throw Error(SandboxErrorCode.ValidationError, "map.empty requires Map<K,V> type");
         }
 
+        context.ChargeFuel(SandboxCollectionFuel.Empty());
         context.ChargeAllocation(16);
         return Charge(
             context,
             SandboxValue.FromMap(new Dictionary<SandboxValue, SandboxValue>(), mapType.Arguments[0], mapType.Arguments[1]));
     }
 
-    public static SandboxValue ContainsMapKey(SandboxValue key, SandboxValue map)
+    public static SandboxValue ContainsMapKey(SandboxValue key, SandboxValue map, SandboxContext context)
     {
         var typedMap = AsMap(map);
         RequireType(key, typedMap.KeyType, "map key type mismatch");
+        context.ChargeFuel(SandboxCollectionFuel.Read(typedMap.Values.Count));
         return SandboxValue.FromBool(typedMap.Values.ContainsKey(key));
     }
 
-    public static SandboxValue GetMapValue(SandboxValue key, SandboxValue map)
+    public static SandboxValue GetMapValue(SandboxValue key, SandboxValue map, SandboxContext context)
     {
         var typedMap = AsMap(map);
         RequireType(key, typedMap.KeyType, "map key type mismatch");
-        if (!typedMap.Values.TryGetValue(key, out var value)) {
+        context.ChargeFuel(SandboxCollectionFuel.Read(typedMap.Values.Count));
+        if (!typedMap.Values.TryGetValue(key, out var value))
+        {
             throw Error(SandboxErrorCode.NotFound, "map key was not found");
         }
 
@@ -75,7 +89,9 @@ internal static class CollectionOperations
         var typedMap = AsMap(map);
         RequireType(key, typedMap.KeyType, "map key type mismatch");
         RequireType(value, typedMap.ValueType, "map value type mismatch");
-        var values = new Dictionary<SandboxValue, SandboxValue>(typedMap.Values) {
+        context.ChargeFuel(SandboxCollectionFuel.Copy(typedMap.Values.Count, addedCount: 1));
+        var values = new Dictionary<SandboxValue, SandboxValue>(typedMap.Values)
+        {
             [key] = value
         };
         context.ChargeAllocation(Math.Max(1, values.Count) * 32);
@@ -86,6 +102,7 @@ internal static class CollectionOperations
     {
         var typedMap = AsMap(map);
         RequireType(key, typedMap.KeyType, "map key type mismatch");
+        context.ChargeFuel(SandboxCollectionFuel.Copy(typedMap.Values.Count));
         var values = new Dictionary<SandboxValue, SandboxValue>(typedMap.Values);
         values.Remove(key);
         context.ChargeAllocation(Math.Max(1, values.Count) * 32);

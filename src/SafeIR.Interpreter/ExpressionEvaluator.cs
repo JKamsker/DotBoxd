@@ -134,14 +134,14 @@ internal sealed class ExpressionEvaluator
         {
             "list.empty" => CollectionOperations.CreateList(call.GenericType ?? SandboxType.Unit, _context),
             "list.of" => CollectionOperations.BuildList(args, _context),
-            "list.count" => CollectionOperations.CountList(Arg(args, 0)),
-            "list.get" => CollectionOperations.GetListItem(Arg(args, 1), Arg(args, 0)),
+            "list.count" => CollectionOperations.CountList(Arg(args, 0), _context),
+            "list.get" => CollectionOperations.GetListItem(Arg(args, 1), Arg(args, 0), _context),
             "list.add" => CollectionOperations.AddListItem(Arg(args, 1), Arg(args, 0), _context),
             "map.empty" => CollectionOperations.CreateMap(
                 call.GenericType ?? SandboxType.Map(SandboxType.Unit, SandboxType.Unit),
                 _context),
-            "map.containsKey" => CollectionOperations.ContainsMapKey(Arg(args, 1), Arg(args, 0)),
-            "map.get" => CollectionOperations.GetMapValue(Arg(args, 1), Arg(args, 0)),
+            "map.containsKey" => CollectionOperations.ContainsMapKey(Arg(args, 1), Arg(args, 0), _context),
+            "map.get" => CollectionOperations.GetMapValue(Arg(args, 1), Arg(args, 0), _context),
             "map.set" => CollectionOperations.SetMapValue(Arg(args, 2), Arg(args, 1), Arg(args, 0), _context),
             "map.remove" => CollectionOperations.RemoveMapValue(Arg(args, 1), Arg(args, 0), _context),
             _ => SandboxValue.Unit

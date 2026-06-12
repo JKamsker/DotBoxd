@@ -63,6 +63,11 @@ public static class ShortCircuitExpressionOrder
                 IsPure(binding.Effects)));
         }
 
+        if (SandboxCollectionFuel.IsCollectionIntrinsic(call.Name))
+        {
+            return estimate.Combine(CostEstimate.Pure(SandboxCollectionFuel.EstimateCall(call.Name, call.Arguments.Count)));
+        }
+
         return estimate.Combine(CostEstimate.NotReorderable(long.MaxValue / 4));
     }
 
