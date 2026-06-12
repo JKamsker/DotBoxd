@@ -7,10 +7,7 @@ internal static class LiveSettingTypeConverter
 {
     public static string FromClrType(Type type)
     {
-        var actual = Nullable.GetUnderlyingType(type) ?? type;
-        if (actual.IsEnum) {
-            return PluginManifestNames.LiveSettingTypes.String;
-        }
+        var actual = RequireSupportedClrType(type);
 
         if (actual == typeof(bool)) {
             return PluginManifestNames.LiveSettingTypes.Bool;
@@ -47,14 +44,9 @@ internal static class LiveSettingTypeConverter
 
     public static object? DefaultFor(Type type)
     {
-        var actual = Nullable.GetUnderlyingType(type) ?? type;
+        var actual = RequireSupportedClrType(type);
         if (actual == typeof(string)) {
             return string.Empty;
-        }
-
-        if (actual.IsEnum) {
-            var values = Enum.GetNames(actual);
-            return values.Length == 0 ? string.Empty : values[0];
         }
 
         return Activator.CreateInstance(actual);
@@ -62,7 +54,7 @@ internal static class LiveSettingTypeConverter
 
     public static object? CoerceClr(Type targetType, object? value)
     {
-        var actual = Nullable.GetUnderlyingType(targetType) ?? targetType;
+        var actual = RequireSupportedClrType(targetType);
         try {
             return CoerceClrCore(actual, value);
         }
@@ -78,12 +70,6 @@ internal static class LiveSettingTypeConverter
     {
         if (value is null) {
             return actual == typeof(string) ? string.Empty : Activator.CreateInstance(actual);
-        }
-
-        if (actual.IsEnum) {
-            return value is string text
-                ? Enum.Parse(actual, text, ignoreCase: false)
-                : Enum.ToObject(actual, value);
         }
 
         if (actual == typeof(string)) {
@@ -167,6 +153,15 @@ internal static class LiveSettingTypeConverter
 
     public static Exception Diagnostic(string message)
         => new SandboxValidationException([new SandboxDiagnostic("SGP020", message)]);
+
+    private static Type RequireSupportedClrType(Type type)
+    {
+        if (Nullable.GetUnderlyingType(type) is not null || type.IsEnum) {
+            throw Diagnostic($"Live setting type '{type.Name}' is not supported.");
+        }
+
+        return type;
+    }
 
     private static double Number(object? value)
         => FiniteDouble(value);

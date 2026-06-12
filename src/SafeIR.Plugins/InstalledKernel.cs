@@ -13,6 +13,7 @@ public sealed class InstalledKernel
     private readonly ExecutionMode _executionMode;
     private readonly KernelEntrypoints _entrypoints;
     private readonly LiveStateSyncRegistry _liveStateSync;
+    private readonly PluginExecutionObserver _executionObserver = new();
     private readonly Dictionary<Type, object> _typedValues = [];
     private readonly Dictionary<Type, LiveUpdateMode> _updateModes = [];
     private readonly PendingLiveUpdateQueue _pendingLiveUpdates = new();
@@ -38,6 +39,8 @@ public sealed class InstalledKernel
     public PluginManifest Manifest { get; }
     public LiveSettingStore Value { get; }
     public Exception? LastAsyncUpdateError => _pendingLiveUpdates.LastError;
+    public PluginExecutionObservation? LastExecution => _executionObserver.Last;
+    public IReadOnlyList<PluginExecutionObservation> ExecutionObservations => _executionObserver.Snapshot();
     public bool IsRevoked => Volatile.Read(ref _revoked) != 0;
 
     public void Revoke() => Volatile.Write(ref _revoked, 1);
@@ -251,6 +254,7 @@ public sealed class InstalledKernel
                 new SandboxExecutionOptions { Mode = _executionMode },
                 cancellationToken)
             .ConfigureAwait(false);
+        _executionObserver.Record(entrypoint, _executionMode, result);
         if (!result.Succeeded)
         {
             throw new SandboxRuntimeException(result.Error ?? new SandboxError(SandboxErrorCode.HostFailure, "kernel execution failed"));

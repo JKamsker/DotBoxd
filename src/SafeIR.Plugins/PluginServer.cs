@@ -77,7 +77,7 @@ public sealed class PluginServer
         PluginPackageValidator.Validate(package);
         var plan = await _host.PrepareAsync(package.Module, policy ?? _defaultPolicy, cancellationToken)
             .ConfigureAwait(false);
-        PluginPackageValidator.ValidatePrepared(package, plan);
+        PluginPackageValidator.ValidatePrepared(package, plan, Events);
         var kernel = new InstalledKernel(_host, plan, package, _executionMode);
         Kernels.Add(kernel);
         return kernel;

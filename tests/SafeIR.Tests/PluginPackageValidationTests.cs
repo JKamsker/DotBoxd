@@ -160,6 +160,24 @@ public sealed class PluginPackageValidationTests
         Assert.Contains(ex.Diagnostics, d => d.Code == "SGP034" || d.Code == "SGP035");
     }
 
+    [Fact]
+    public async Task Install_rejects_event_and_live_setting_parameters_in_wrong_order()
+    {
+        var server = PluginServer.Create();
+        server.RegisterEventAdapter(DamageEventAdapter.Instance);
+        var package = FireDamagePluginPackage.Create();
+        var functions = package.Module.Functions
+            .Select(f => f.Id == package.Entrypoints.ShouldHandle || f.Id == package.Entrypoints.Handle
+                ? f with { Parameters = f.Parameters.OrderByDescending(p => p.Name == "MinDamage").ToArray() }
+                : f)
+            .ToArray();
+        var invalid = package with { Module = package.Module with { Functions = functions } };
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () => await server.InstallAsync(invalid).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "SGP033");
+    }
+
     private sealed class FailingCompiler : ISandboxCompiler
     {
         public int Calls { get; private set; }

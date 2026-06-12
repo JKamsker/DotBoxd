@@ -95,6 +95,24 @@ public sealed class PluginPackageJsonTests
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-IR-CLR-REF");
     }
 
+    [Theory]
+    [InlineData("assemblyPath", "plugin.dll")]
+    [InlineData("rawDllBase64", "AAAA")]
+    [InlineData("plugin.dll", "loader")]
+    public async Task InstallJsonAsync_rejects_module_metadata_dll_loader_hints(string key, string value)
+    {
+        var server = PluginServer.Create();
+        var json = JsonDamagePackage().Replace(
+            "\"metadata\": { \"pluginId\": \"json-fire-damage\", \"kernel\": \"JsonDamageKernel\" }",
+            $"\"metadata\": {{ \"pluginId\": \"json-fire-damage\", \"kernel\": \"JsonDamageKernel\", \"{key}\": \"{value}\" }}",
+            StringComparison.Ordinal);
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await server.InstallJsonAsync(json).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-IR-CLR-REF");
+    }
+
     [Fact]
     public void Import_converts_live_setting_defaults_to_clr_scalars()
     {

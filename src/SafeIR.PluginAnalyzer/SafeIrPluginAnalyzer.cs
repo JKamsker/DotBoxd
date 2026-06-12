@@ -163,7 +163,9 @@ public sealed class SafeIrPluginAnalyzer : DiagnosticAnalyzer
             "System.Threading.",
             "System.Threading.Tasks.",
             "System.Linq.Expressions.",
-            "Microsoft.CSharp."
+            "System.Data.",
+            "Microsoft.CSharp.",
+            "Microsoft.EntityFrameworkCore."
         ];
         foreach (var prefix in prefixes) {
             if (typeName.StartsWith(prefix, StringComparison.Ordinal)) {

@@ -32,7 +32,7 @@ public static partial class SafeLogBindings
         var sanitized = AuditTextSanitizer.SanitizeAndRedact(message);
         context.ChargeLogEvent(sanitized);
         context.ChargeStringAllocation(sanitized.Length);
-        var timestamp = context.UtcNow();
+        var timestamp = context.AuditTimestamp();
         context.Audit.Write(new SandboxAuditEvent(
             context.RunId,
             "SandboxLog",

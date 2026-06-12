@@ -119,7 +119,7 @@ internal sealed class SandboxWorkerExecutor(ConfiguredSandboxWorker? worker)
             return string.IsNullOrWhiteSpace(result.ArtifactHash);
         }
 
-        return !result.Succeeded || !string.IsNullOrWhiteSpace(result.ArtifactHash);
+        return !result.Succeeded || IsHexSha256(result.ArtifactHash);
     }
 
     private static bool WorkerPayloadMatches(ExecutionPlan plan, string entrypoint, SandboxExecutionResult result)
@@ -252,10 +252,15 @@ internal sealed class SandboxWorkerExecutor(ConfiguredSandboxWorker? worker)
             return true;
         }
 
-        return !string.IsNullOrWhiteSpace(result.ArtifactHash) &&
-               FieldEquals(summary, "artifactHash", result.ArtifactHash) &&
-               HasNonEmptyField(summary, "runtimeForm") &&
-               HasNonEmptyField(summary, "cacheKey");
+        if (!IsHexSha256(result.ArtifactHash))
+        {
+            return false;
+        }
+
+        var artifactHash = result.ArtifactHash!;
+        return FieldEquals(summary, "artifactHash", artifactHash) &&
+               FieldEquals(summary, "runtimeForm", "LoadedAssembly") &&
+               HasHexSha256Field(summary, "cacheKey");
     }
 
     private static bool FieldEquals(SandboxAuditEvent summary, string key, string value)
@@ -268,4 +273,10 @@ internal sealed class SandboxWorkerExecutor(ConfiguredSandboxWorker? worker)
     private static bool HasNonEmptyField(SandboxAuditEvent summary, string key)
         => summary.Fields!.TryGetValue(key, out var value) &&
            !string.IsNullOrWhiteSpace(value);
+
+    private static bool HasHexSha256Field(SandboxAuditEvent summary, string key)
+        => summary.Fields!.TryGetValue(key, out var value) && IsHexSha256(value);
+
+    private static bool IsHexSha256(string? value)
+        => value is { Length: 64 } && value.All(Uri.IsHexDigit);
 }

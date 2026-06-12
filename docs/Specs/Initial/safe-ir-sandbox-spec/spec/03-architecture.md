@@ -127,7 +127,8 @@ Contains:
 
 Contains:
 
-- ShaRPC MessagePack named-pipe helpers
+- ShaRPC MessagePack transport-agnostic helpers
+- named-pipe convenience wrappers
 - plugin-control IPC transport primitives
 
 Packaging note: this addon remains prerelease while the upstream ShaRPC packages it depends on are prerelease-only. Stable SafeIR release gates permit prerelease metadata and dependencies only for this explicitly documented preview addon.

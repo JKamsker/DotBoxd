@@ -61,111 +61,11 @@ internal static class PluginPackageValidator
         ThrowIfErrors(diagnostics);
     }
 
-    public static void ValidatePrepared(PluginPackage package, ExecutionPlan plan)
-    {
-        var diagnostics = new List<SandboxDiagnostic>();
-        var manifestEffects = ValidateManifestEffects(package.Manifest, diagnostics);
-        var planEffects = plan.FunctionAnalysis.Values.Aggregate(
-            SandboxEffect.None,
-            (current, analysis) => current | analysis.Effects);
-        if (diagnostics.Count == 0 && manifestEffects != planEffects) {
-            diagnostics.Add(new SandboxDiagnostic(
-                "SGP041",
-                $"Plugin manifest effects '{manifestEffects}' do not match verified module effects '{planEffects}'."));
-        }
-
-        ValidateContract(package, diagnostics);
-        ValidatePreparedEntrypoints(package, plan, diagnostics);
-        ThrowIfErrors(diagnostics);
-    }
-
-    private static void ValidateContract(PluginPackage package, List<SandboxDiagnostic> diagnostics)
-    {
-        if (!package.Manifest.Contract.StartsWith(PluginManifestNames.EventKernelContract.Prefix, StringComparison.Ordinal) ||
-            !package.Manifest.Contract.EndsWith(PluginManifestNames.EventKernelContract.Suffix, StringComparison.Ordinal) ||
-            package.Manifest.Contract.Length <= PluginManifestNames.EventKernelContract.Empty.Length)
-        {
-            diagnostics.Add(new SandboxDiagnostic(
-                "SGP014",
-                "Plugin manifest contract must be an IEventKernel<TEvent> contract."));
-            return;
-        }
-
-        var eventName = package.Manifest.Contract[
-            PluginManifestNames.EventKernelContract.Prefix.Length..^PluginManifestNames.EventKernelContract.SuffixLength];
-        foreach (var subscription in package.Manifest.Subscriptions)
-        {
-            if (!string.Equals(subscription.Event, eventName, StringComparison.Ordinal))
-            {
-                diagnostics.Add(new SandboxDiagnostic(
-                    "SGP014",
-                    $"Plugin manifest contract event '{eventName}' must match subscription event '{subscription.Event}'."));
-            }
-        }
-    }
-
-    private static void ValidatePreparedEntrypoints(
+    public static void ValidatePrepared(
         PluginPackage package,
         ExecutionPlan plan,
-        List<SandboxDiagnostic> diagnostics)
-    {
-        if (!TryGetEntrypoint(package, package.Entrypoints.ShouldHandle, out var shouldHandle) ||
-            !TryGetEntrypoint(package, package.Entrypoints.Handle, out var handle))
-        {
-            return;
-        }
-
-        if (plan.FunctionAnalysis.TryGetValue(shouldHandle.Id, out var shouldAnalysis) &&
-            shouldAnalysis.ReturnType != SandboxType.Bool)
-        {
-            diagnostics.Add(new SandboxDiagnostic("SGP033", "Kernel ShouldHandle entrypoint must return Bool."));
-        }
-
-        if (plan.FunctionAnalysis.TryGetValue(handle.Id, out var handleAnalysis) &&
-            handleAnalysis.ReturnType != SandboxType.Unit)
-        {
-            diagnostics.Add(new SandboxDiagnostic("SGP033", "Kernel Handle entrypoint must return Unit."));
-        }
-
-        if (!ParametersMatch(shouldHandle.Parameters, handle.Parameters))
-        {
-            diagnostics.Add(new SandboxDiagnostic("SGP034", "Kernel entrypoints must use the same parameter shape."));
-        }
-
-        ValidateLiveSettingParameters(package.Manifest.LiveSettings, shouldHandle, diagnostics);
-        ValidateLiveSettingParameters(package.Manifest.LiveSettings, handle, diagnostics);
-    }
-
-    private static bool TryGetEntrypoint(PluginPackage package, string functionId, out SandboxFunction function)
-    {
-        function = package.Module.Functions.FirstOrDefault(f =>
-            f.IsEntrypoint && string.Equals(f.Id, functionId, StringComparison.Ordinal))!;
-        return function is not null;
-    }
-
-    private static bool ParametersMatch(IReadOnlyList<Parameter> first, IReadOnlyList<Parameter> second)
-        => first.Count == second.Count &&
-           first.Zip(second).All(pair =>
-               string.Equals(pair.First.Name, pair.Second.Name, StringComparison.Ordinal) &&
-               pair.First.Type == pair.Second.Type);
-
-    private static void ValidateLiveSettingParameters(
-        IReadOnlyList<LiveSettingDefinition> settings,
-        SandboxFunction function,
-        List<SandboxDiagnostic> diagnostics)
-    {
-        foreach (var setting in settings)
-        {
-            var expected = LiveSettingTypeConverter.ToSandboxType(setting.Type);
-            var parameter = function.Parameters.FirstOrDefault(p => string.Equals(p.Name, setting.Name, StringComparison.Ordinal));
-            if (parameter is null || parameter.Type != expected)
-            {
-                diagnostics.Add(new SandboxDiagnostic(
-                    "SGP035",
-                    $"Kernel entrypoint '{function.Id}' must include live setting parameter '{setting.Name}' with type '{expected}'."));
-            }
-        }
-    }
+        PluginEventAdapterRegistry events)
+        => PluginPreparedPackageValidator.Validate(package, plan, events, ValidateManifestEffects);
 
     private static string? ValidateModuleKernelMetadata(PluginPackage package, List<SandboxDiagnostic> diagnostics)
     {

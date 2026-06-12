@@ -7,7 +7,8 @@ public static class SandboxDescriptorGuards
         "Environment.", "Thread.", "Task.", "DllImport", "IServiceProvider",
         "RuntimeMethodHandle", "RuntimeTypeHandle", "RuntimeFieldHandle",
         "MetadataToken", "AssemblyQualifiedName", "PublicKeyToken=", "Culture=",
-        "rawIl", "rawMsil", "msil"
+        "assemblyPath", "rawDll", "rawIl", "rawMsil", "plugin.dll",
+        "clrType", "hostCode", "loader", "msil", ".dll"
     ];
 
     private static readonly string[] ForbiddenIlFragments = [

@@ -126,7 +126,7 @@ try {
     }
 } finally {
     if (-not $ipcServer.Process.HasExited) {
-        $ipcServer.Process.Kill($true)
+        $ipcServer.Process.Kill()
         $ipcServer.Process.WaitForExit()
     }
 

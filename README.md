@@ -11,7 +11,7 @@ Interpreted mode executes verified IR directly. Compiled mode is only a runtime 
 - `SafeIR.Runtime`: safe host bindings for files, time, random, logging, strings, and math.
 - `SafeIR.Serialization.Json`: JSON IR importer and host import extensions.
 - `SafeIR.Transport.Http`: HTTP GET binding, grant helpers, pinned transport, and HTTP grant validation.
-- `SafeIR.Transport.Ipc.ShaRpc`: preview MessagePack named-pipe IPC helpers built on the prerelease ShaRPC NuGet packages.
+- `SafeIR.Transport.Ipc.ShaRpc`: preview MessagePack IPC addon built on ShaRPC generic transports, with named-pipe convenience helpers.
 - `SafeIR.Interpreter`: direct IR execution backend.
 - `SafeIR.Compiler`: generated-runtime backend and persistent artifact cache.
 - `SafeIR.Verifier`: generated assembly verifier.

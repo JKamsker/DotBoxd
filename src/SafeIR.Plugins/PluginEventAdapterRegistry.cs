@@ -21,6 +21,30 @@ public sealed class PluginEventAdapterRegistry
         return discovered;
     }
 
+    internal bool TryResolveShape(string eventName, out PluginEventShape shape)
+    {
+        foreach (var adapter in _adapters.Values)
+        {
+            var current = ReadShape(adapter);
+            if (string.Equals(current.EventName, eventName, StringComparison.Ordinal))
+            {
+                shape = current;
+                return true;
+            }
+        }
+
+        shape = default!;
+        return false;
+    }
+
+    private static PluginEventShape ReadShape(object adapter)
+    {
+        var type = adapter.GetType();
+        var eventName = (string)type.GetProperty(nameof(IPluginEventAdapter<object>.EventName))!.GetValue(adapter)!;
+        var parameters = (IReadOnlyList<Parameter>)type.GetProperty(nameof(IPluginEventAdapter<object>.Parameters))!.GetValue(adapter)!;
+        return new PluginEventShape(eventName, parameters);
+    }
+
     private static IPluginEventAdapter<TEvent>? TryDiscoverAdapter<TEvent>()
     {
         var adapterType = typeof(IPluginEventAdapter<TEvent>);
@@ -147,3 +171,5 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
     private static string EventParameterName(string propertyName)
         => PluginManifestNames.EventParameters.Prefix + propertyName;
 }
+
+internal readonly record struct PluginEventShape(string EventName, IReadOnlyList<Parameter> Parameters);

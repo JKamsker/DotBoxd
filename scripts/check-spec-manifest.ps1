@@ -44,8 +44,96 @@ function Get-Sha256Hex {
         [byte[]] $Bytes
     )
 
-    $hash = [System.Security.Cryptography.SHA256]::HashData($Bytes)
-    return [Convert]::ToHexString($hash).ToLowerInvariant()
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $hash = $sha256.ComputeHash($Bytes)
+    } finally {
+        $sha256.Dispose()
+    }
+
+    return -join ($hash | ForEach-Object { $_.ToString("x2") })
+}
+
+function ConvertTo-JsonString {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Value
+    )
+
+    $builder = New-Object System.Text.StringBuilder
+    [void] $builder.Append('"')
+    foreach ($character in $Value.ToCharArray()) {
+        $code = [int] $character
+        if ($code -eq 34) {
+            [void] $builder.Append('\"')
+        } elseif ($code -eq 92) {
+            [void] $builder.Append('\\')
+        } elseif ($code -eq 8) {
+            [void] $builder.Append('\b')
+        } elseif ($code -eq 12) {
+            [void] $builder.Append('\f')
+        } elseif ($code -eq 10) {
+            [void] $builder.Append('\n')
+        } elseif ($code -eq 13) {
+            [void] $builder.Append('\r')
+        } elseif ($code -eq 9) {
+            [void] $builder.Append('\t')
+        } elseif ($code -lt 32) {
+            [void] $builder.Append(('\u{0:x4}' -f $code))
+        } else {
+            [void] $builder.Append($character)
+        }
+    }
+
+    [void] $builder.Append('"')
+    return $builder.ToString()
+}
+
+function ConvertTo-ManifestJson {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.IDictionary] $Manifest
+    )
+
+    $lines = New-Object "System.Collections.Generic.List[string]"
+    $files = @($Manifest["files"])
+    [void] $lines.Add("{")
+    [void] $lines.Add('  "name": ' + (ConvertTo-JsonString ([string] $Manifest["name"])) + ',')
+    [void] $lines.Add('  "created": ' + (ConvertTo-JsonString ([string] $Manifest["created"])) + ',')
+    [void] $lines.Add('  "files": [')
+    for ($i = 0; $i -lt $files.Count; $i++) {
+        $entry = $files[$i]
+        $suffix = if ($i -eq $files.Count - 1) { "" } else { "," }
+        [void] $lines.Add("    {")
+        [void] $lines.Add('      "path": ' + (ConvertTo-JsonString ([string] $entry["path"])) + ',')
+        [void] $lines.Add('      "sha256": ' + (ConvertTo-JsonString ([string] $entry["sha256"])) + ',')
+        [void] $lines.Add('      "bytes": ' + ([string] $entry["bytes"]))
+        [void] $lines.Add("    }$suffix")
+    }
+
+    [void] $lines.Add("  ]")
+    [void] $lines.Add("}")
+    return ($lines.ToArray() -join [Environment]::NewLine) + [Environment]::NewLine
+}
+
+function Get-RelativePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $BasePath,
+        [Parameter(Mandatory = $true)]
+        [string] $TargetPath
+    )
+
+    $baseFullPath = [System.IO.Path]::GetFullPath($BasePath)
+    if (-not $baseFullPath.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
+        $baseFullPath += [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    $targetFullPath = [System.IO.Path]::GetFullPath($TargetPath)
+    $baseUri = [Uri] $baseFullPath
+    $targetUri = [Uri] $targetFullPath
+    $relativeUri = $baseUri.MakeRelativeUri($targetUri)
+    return [Uri]::UnescapeDataString($relativeUri.ToString()).Replace('/', [System.IO.Path]::DirectorySeparatorChar)
 }
 
 $documentSets = @(
@@ -70,7 +158,7 @@ foreach ($documentSet in $documentSets) {
             continue
         }
 
-        $relative = [System.IO.Path]::GetRelativePath($documentRoot, $file.FullName).Replace('\', '/')
+        $relative = (Get-RelativePath -BasePath $documentRoot -TargetPath $file.FullName).Replace('\', '/')
         $path = ([string] $documentSet.Prefix) + $relative
         $bytes = Get-NormalizedTextBytes -Path $file.FullName
         $entries += [ordered] @{
@@ -89,10 +177,10 @@ $manifest = [ordered] @{
     files = $entries
 }
 
-$expectedForWrite = ($manifest | ConvertTo-Json -Depth 8) + [Environment]::NewLine
+$expectedForWrite = ConvertTo-ManifestJson -Manifest $manifest
 $expected = Normalize-LineEndings -Text $expectedForWrite
 if ($Update) {
-    Set-Content -LiteralPath $manifestPath -Value $expectedForWrite -Encoding utf8NoBOM -NoNewline
+    [System.IO.File]::WriteAllText($manifestPath, $expectedForWrite, $utf8)
     Write-Host "Updated spec manifest: $manifestPath"
     return
 }

@@ -54,6 +54,26 @@ public sealed class SafeLoggingTests
     }
 
     [Fact]
+    public async Task Deterministic_log_event_without_logical_clock_uses_logical_epoch()
+    {
+        var policy = new SandboxPolicy(
+            "deterministic-log-without-clock",
+            SandboxEffects.Pure | SandboxEffect.Audit,
+            [new CapabilityGrant("log.write", new Dictionary<string, string>())],
+            new ResourceLimits(),
+            Deterministic: true,
+            LogicalNow: null,
+            RandomSeed: 1);
+        var result = await ExecuteLogAsync(
+            """{ "call": "log.info", "args": [{ "string": "deterministic" }] }""",
+            policy);
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        var audit = Assert.Single(result.AuditEvents, e => e.Kind == "SandboxLog");
+        Assert.Equal(DateTimeOffset.UnixEpoch, audit.Timestamp);
+    }
+
+    [Fact]
     public async Task Log_message_redacts_secret_shaped_values()
     {
         var result = await ExecuteLogAsync(

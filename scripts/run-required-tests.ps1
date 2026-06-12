@@ -90,8 +90,8 @@ if ($executed.Count -eq 0) {
 $missing = @()
 foreach ($requiredName in $requiredNames) {
     $matches = @($executed | Where-Object {
-        $_.FullyQualifiedName.Contains($requiredName, [StringComparison]::Ordinal) -or
-        $_.DisplayName.Contains($requiredName, [StringComparison]::Ordinal)
+        $_.FullyQualifiedName.IndexOf($requiredName, [StringComparison]::Ordinal) -ge 0 -or
+        $_.DisplayName.IndexOf($requiredName, [StringComparison]::Ordinal) -ge 0
     })
     if ($matches.Count -eq 0) {
         $missing += $requiredName
