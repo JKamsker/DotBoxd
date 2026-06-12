@@ -163,13 +163,7 @@ public static class SafeFileSystem
         long maxBytes,
         CancellationToken cancellationToken)
     {
-        await using var stream = new FileStream(
-            resolved.FullPath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            bufferSize: 4096,
-            useAsync: true);
+        await using var stream = SafeFileNoFollow.OpenRead(resolved.FullPath);
         EnsureNoReparsePoint(resolved.RootFull, resolved.FullPath);
         using var memory = new MemoryStream();
         var buffer = new byte[4096];
