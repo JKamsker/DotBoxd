@@ -39,10 +39,6 @@ var result = await sandbox.ExecuteAsync(
 ```csharp
 public sealed class SandboxHost
 {
-    public ValueTask<SandboxModule> ParseJsonAsync(
-        string jsonIr,
-        CancellationToken cancellationToken);
-
     public ValueTask<ExecutionPlan> PrepareAsync(
         SandboxModule module,
         SandboxPolicy policy,
@@ -56,6 +52,8 @@ public sealed class SandboxHost
         CancellationToken cancellationToken);
 }
 ```
+
+`ParseJsonAsync` and `ImportJsonAsync` are extension methods provided by the JSON serialization addon.
 
 ### `SandboxExecutionOptions`
 
@@ -108,6 +106,11 @@ public sealed class SandboxPolicyBuilder
 {
     public SandboxPolicyBuilder AllowPureComputation();
     public SandboxPolicyBuilder Grant(string capabilityId, object parameters);
+    public SandboxPolicyBuilder Grant(
+        string capabilityId,
+        object parameters,
+        SandboxEffect allowedEffects,
+        Func<ResourceLimits, ResourceLimits>? configureLimits = null);
     public SandboxPolicyBuilder GrantFileRead(string root, long maxBytesPerRun);
     public SandboxPolicyBuilder GrantFileWrite(string root, long maxBytesPerRun);
     public SandboxPolicyBuilder GrantLogging();

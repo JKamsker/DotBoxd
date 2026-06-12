@@ -1,14 +1,17 @@
 # Safe-IR
 
-Safe-IR is a JSON IR sandbox for .NET. User-authored work is represented as restricted JSON IR, validated against a capability policy, and then executed either by the IR interpreter or by compiler-owned runtime forms.
+Safe-IR is a restricted IR sandbox for .NET. User-authored work is represented as a safe IR model, optionally imported from JSON, validated against a capability policy, and then executed either by the IR interpreter or by compiler-owned runtime forms.
 
 Interpreted mode executes verified IR directly. Compiled mode is only a runtime optimization: trusted compiler code emits a gated `DynamicMethod` or generated assembly, then the CLR executes that compiled form. User input never supplies C#, raw IL, CLR member names, assemblies, or arbitrary host calls.
 
 ## Current Packages
 
-- `SafeIR.Core`: IR model, policy model, resource metering, JSON import, canonical hashing.
+- `SafeIR.Core`: IR model, policy model, resource metering, canonical hashing.
 - `SafeIR.Validation`: structural, type, effect, policy, and binding validation.
-- `SafeIR.Runtime`: safe host bindings for files, network, time, random, logging, strings, and math.
+- `SafeIR.Runtime`: safe host bindings for files, time, random, logging, strings, and math.
+- `SafeIR.Serialization.Json`: JSON IR importer and host parsing extensions.
+- `SafeIR.Transport.Http`: HTTP GET binding, grant helpers, pinned transport, and HTTP grant validation.
+- `SafeIR.Transport.Ipc.ShaRpc`: MessagePack named-pipe IPC helpers built on the ShaRPC NuGet packages.
 - `SafeIR.Interpreter`: direct IR execution backend.
 - `SafeIR.Compiler`: generated-runtime backend and persistent artifact cache.
 - `SafeIR.Verifier`: generated assembly verifier.
@@ -97,7 +100,7 @@ Run the local live-kernel example:
 dotnet run --project examples\LocalPlugin\SafeIR.PluginLocal\SafeIR.PluginLocal.csproj
 ```
 
-Run the real named-pipe IPC sample with ShaRPC:
+Run the real named-pipe IPC sample with the ShaRPC MessagePack addon:
 
 ```powershell
 dotnet run --project examples\PluginIpc\SafeIR.PluginIpc.Server\SafeIR.PluginIpc.Server.csproj -- safe-ir-plugin-ipc

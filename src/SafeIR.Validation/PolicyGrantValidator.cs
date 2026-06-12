@@ -7,6 +7,7 @@ internal static class PolicyGrantValidator
 {
     public static void Validate(
         SandboxPolicy policy,
+        IBindingCatalog bindings,
         IReadOnlySet<string> requiredCapabilities,
         List<SandboxDiagnostic> diagnostics)
     {
@@ -22,7 +23,7 @@ internal static class PolicyGrantValidator
         }
 
         foreach (var grant in activeGrants) {
-            ValidateGrant(grant, requiredCapabilities, diagnostics);
+            ValidateGrant(grant, bindings, requiredCapabilities, diagnostics);
         }
     }
 
@@ -31,6 +32,7 @@ internal static class PolicyGrantValidator
 
     private static void ValidateGrant(
         CapabilityGrant grant,
+        IBindingCatalog bindings,
         IReadOnlySet<string> requiredCapabilities,
         List<SandboxDiagnostic> diagnostics)
     {
@@ -41,13 +43,15 @@ internal static class PolicyGrantValidator
             case "file.write":
                 ValidateFileGrant(grant, diagnostics, allowWriteFlags: true);
                 break;
-            case "net.http.get":
-                ValidateHttpGrant(grant, diagnostics);
-                break;
             case "time.now" or "random" or "log.write":
                 RequireAllowedKeys(grant, diagnostics, []);
                 break;
             default:
+                if (bindings.TryGetCapabilityGrantValidator(grant.Id, out var validator)) {
+                    validator(grant, diagnostics);
+                    return;
+                }
+
                 if (!requiredCapabilities.Contains(grant.Id)) {
                     diagnostics.Add(new SandboxDiagnostic(
                         "E-POLICY-GRANT",
@@ -73,27 +77,6 @@ internal static class PolicyGrantValidator
             RequireOptionalBool(grant, diagnostics, "allowCreate");
             RequireOptionalBool(grant, diagnostics, "allowOverwrite");
         }
-    }
-
-    private static void ValidateHttpGrant(CapabilityGrant grant, List<SandboxDiagnostic> diagnostics)
-    {
-        RequireAllowedKeys(
-            grant,
-            diagnostics,
-            [
-                "allowedHosts",
-                "allowedSchemes",
-                "maxResponseBytes",
-                "timeoutMs",
-                "allowIpLiterals",
-                "allowPrivateNetwork"
-            ]);
-        RequireCsv(grant, diagnostics, "allowedHosts");
-        RequireCsv(grant, diagnostics, "allowedSchemes");
-        RequireNonNegativeLong(grant, diagnostics, "maxResponseBytes");
-        RequireRangeLong(grant, diagnostics, "timeoutMs", min: 1, max: 60_000);
-        RequireOptionalBool(grant, diagnostics, "allowIpLiterals");
-        RequireOptionalBool(grant, diagnostics, "allowPrivateNetwork");
     }
 
     private static void RequireAllowedKeys(

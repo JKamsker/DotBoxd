@@ -5,6 +5,10 @@ public delegate ValueTask<SandboxValue> BindingInvoker(
     IReadOnlyList<SandboxValue> args,
     CancellationToken cancellationToken);
 
+public delegate void CapabilityGrantValidator(
+    CapabilityGrant grant,
+    ICollection<SandboxDiagnostic> diagnostics);
+
 public enum BindingSafety
 {
     PureIntrinsic,
@@ -57,7 +61,8 @@ public sealed record BindingDescriptor(
     AuditLevel AuditLevel,
     BindingSafety Safety,
     BindingInvoker Invoke,
-    CompiledBinding Compiled)
+    CompiledBinding Compiled,
+    CapabilityGrantValidator? GrantValidator = null)
 {
     public BindingSignature Signature => new(
         Id, Version, Parameters.ToArray(), ReturnType, Effects, RequiredCapability, CostModel, AuditLevel, Safety, Compiled);
@@ -66,6 +71,7 @@ public sealed record BindingDescriptor(
 public interface IBindingCatalog
 {
     bool TryGet(string id, out BindingSignature binding);
+    bool TryGetCapabilityGrantValidator(string capabilityId, out CapabilityGrantValidator validator);
     IReadOnlyList<BindingSignature> Signatures { get; }
     string ManifestHash { get; }
 }
@@ -73,10 +79,16 @@ public interface IBindingCatalog
 public sealed class BindingRegistry : IBindingCatalog
 {
     private readonly Dictionary<string, BindingDescriptor> _bindings;
+    private readonly Dictionary<string, CapabilityGrantValidator> _grantValidators;
 
     public BindingRegistry(IEnumerable<BindingDescriptor> bindings)
     {
-        _bindings = bindings.Select(Freeze).ToDictionary(b => b.Id, StringComparer.Ordinal);
+        var frozen = bindings.Select(Freeze).ToArray();
+        _bindings = frozen.ToDictionary(b => b.Id, StringComparer.Ordinal);
+        _grantValidators = frozen
+            .Where(b => !string.IsNullOrWhiteSpace(b.RequiredCapability) && b.GrantValidator is not null)
+            .GroupBy(b => b.RequiredCapability!, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First().GrantValidator!, StringComparer.Ordinal);
         ManifestHash = ComputeManifestHash(Signatures);
     }
 
@@ -85,6 +97,17 @@ public sealed class BindingRegistry : IBindingCatalog
     public string ManifestHash { get; }
 
     public BindingDescriptor GetDescriptor(string id) => _bindings[id];
+
+    public bool TryGetCapabilityGrantValidator(string capabilityId, out CapabilityGrantValidator validator)
+    {
+        if (_grantValidators.TryGetValue(capabilityId, out var found)) {
+            validator = found;
+            return true;
+        }
+
+        validator = default!;
+        return false;
+    }
 
     public bool TryGet(string id, out BindingSignature binding)
     {

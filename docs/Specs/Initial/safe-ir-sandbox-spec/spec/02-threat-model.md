@@ -86,10 +86,10 @@ For this attacker class, in-process sandboxing is not enough. Use a worker proce
 ## Trust boundaries
 
 ```text
-[User JSON IR]     untrusted
+[Serialized IR]    untrusted
        |
        v
-[JSON importer]    trusted code consuming untrusted input
+[Importer addon]   trusted code consuming untrusted input
        |
        v
 [IR validator]     trusted enforcement
@@ -116,7 +116,7 @@ For this attacker class, in-process sandboxing is not enough. Use a worker proce
 
 The in-process model assumes:
 
-- the JSON importer, validator, interpreter, compiler, verifier, runtime facades, and binding registry are trusted
+- importer addons, validator, interpreter, compiler, verifier, runtime facades, and binding registry are trusted
 - users cannot upload raw DLLs/MSIL
 - users cannot configure granted capabilities
 - all host API access goes through registered bindings

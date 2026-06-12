@@ -38,14 +38,6 @@ public sealed class SandboxHostBuilder
         return this;
     }
 
-    public SandboxHostBuilder AddNetworkBindings(
-        SafeInMemoryHttpMessageInvoker? invoker = null,
-        SafeDnsResolver? dnsResolver = null)
-    {
-        _bindings.AddNetworkBindings(invoker, dnsResolver);
-        return this;
-    }
-
     public SandboxHostBuilder AddLogBindings()
     {
         _bindings.AddLogBindings();

@@ -109,16 +109,17 @@ public sealed class CompilerTests
 
         Assert.Equal(CompiledRuntimeFormKind.LoadedAssembly, artifact.RuntimeForm);
         Assert.NotEmpty(artifact.AssemblyBytes);
-        Assert.Throws<InvalidOperationException>(() =>
-            artifact.Entrypoint(
-                new SandboxContext(
-                    SandboxRunId.New(),
-                    plan.Policy,
-                    new ResourceMeter(plan.Budget),
-                    plan.Bindings,
-                    new InMemoryAuditSink(),
-                    CancellationToken.None),
-                SandboxValue.Unit));
+        Assert.Throws<InvalidOperationException>((Action)(() => {
+            _ = artifact.Entrypoint(
+                    new SandboxContext(
+                        SandboxRunId.New(),
+                        plan.Policy,
+                        new ResourceMeter(plan.Budget),
+                        plan.Bindings,
+                        new InMemoryAuditSink(),
+                        CancellationToken.None),
+                    SandboxValue.Unit);
+        }));
     }
 
     [Fact]

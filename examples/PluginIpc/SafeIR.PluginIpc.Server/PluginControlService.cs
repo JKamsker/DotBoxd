@@ -31,39 +31,45 @@ public sealed class PluginControlService : IPluginControlService
         return new PluginControlService(messages, server, kernel);
     }
 
-    public Task<IReadOnlyList<LiveSettingSnapshot>> GetSettingsAsync(CancellationToken cancellationToken = default)
+    public ValueTask<LiveSettingSnapshot[]> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var snapshots = _kernel.Manifest.LiveSettings
-            .Select(s => new LiveSettingSnapshot {
-                Name = s.Name,
-                Type = s.Type,
-                Value = Convert.ToString(_kernel.Value.GetObject(s.Name), CultureInfo.InvariantCulture) ?? string.Empty
-            })
-            .ToArray();
-        return Task.FromResult<IReadOnlyList<LiveSettingSnapshot>>(snapshots);
+        var settings = _kernel.Manifest.LiveSettings;
+        var snapshots = new LiveSettingSnapshot[settings.Count];
+        for (var i = 0; i < settings.Count; i++) {
+            var setting = settings[i];
+            snapshots[i] = new LiveSettingSnapshot(
+                setting.Name,
+                setting.Type,
+                Convert.ToString(_kernel.Value.GetObject(setting.Name), CultureInfo.InvariantCulture) ?? string.Empty);
+        }
+
+        return ValueTask.FromResult(snapshots);
     }
 
-    public Task SetSettingAsync(string name, string value, CancellationToken cancellationToken = default)
+    public ValueTask SetSettingAsync(string name, string value, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         return _kernel.ModifySettingsAsync(
                 new Dictionary<string, object?> { [name] = value },
-                cancellationToken: cancellationToken)
-            .AsTask();
+                cancellationToken: cancellationToken);
     }
 
-    public Task ModifySettingsAsync(
-        IReadOnlyList<LiveSettingUpdate> settings,
+    public ValueTask ModifySettingsAsync(
+        LiveSettingUpdate[] settings,
         bool atomic = false,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var values = settings.ToDictionary(s => s.Name, s => (object?)s.Value, StringComparer.Ordinal);
-        return _kernel.ModifySettingsAsync(values, atomic, cancellationToken).AsTask();
+        var values = new Dictionary<string, object?>(settings.Length, StringComparer.Ordinal);
+        foreach (var setting in settings) {
+            values[setting.Name] = setting.Value;
+        }
+
+        return _kernel.ModifySettingsAsync(values, atomic, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<string>> PublishDamageAsync(
+    public async ValueTask<string[]> PublishDamageAsync(
         DamageEventRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -72,9 +78,13 @@ public sealed class PluginControlService : IPluginControlService
                 new DamageEvent(request.DamageType, request.Amount, request.TargetId),
                 cancellationToken)
             .ConfigureAwait(false);
-        return _messages.Messages
-            .Skip(start)
-            .Select(m => $"{m.TargetId}: {m.Message}")
-            .ToArray();
+        var messages = _messages.Messages;
+        var result = new string[messages.Count - start];
+        for (var i = 0; i < result.Length; i++) {
+            var message = messages[start + i];
+            result[i] = $"{message.TargetId}: {message.Message}";
+        }
+
+        return result;
     }
 }

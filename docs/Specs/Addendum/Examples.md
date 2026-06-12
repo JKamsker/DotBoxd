@@ -295,16 +295,7 @@ It also demonstrates:
 
 ## Named-Pipe IPC Example
 
-The IPC sample uses ShaRPC over named pipes:
-
-```powershell
-dotnet add package ShaRPC --version 1.0.0-ci.18
-```
-
-The example projects also reference the matching serializer and named-pipe transport packages:
-
-- `ShaRPC.Serializers.MessagePack` `1.0.0-ci.18`
-- `ShaRPC.Transports.NamedPipes` `1.0.0-ci.18`
+The IPC sample uses `SafeIR.Transport.Ipc.ShaRpc`, which wraps ShaRPC named pipes with MessagePack serialization. The shared contract project still references `ShaRPC` and `MessagePack` because service attributes and payload attributes live with the contract types.
 
 Run the server in one terminal:
 

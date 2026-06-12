@@ -24,5 +24,6 @@ public static class SafeHttpBindings
                     cancellationToken).ConfigureAwait(false);
                 return SandboxValue.FromString(text);
             },
-            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)));
+            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)),
+            SafeHttpGrantValidator.Validate);
 }

@@ -1,15 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <PackageReference Include="MessagePack" Version="2.5.187" />
     <PackageReference Include="ShaRPC" Version="1.0.0-ci.20" />
+    <PackageReference Include="ShaRPC.Serializers.MessagePack" Version="1.0.0-ci.20" />
+    <PackageReference Include="ShaRPC.Transports.NamedPipes" Version="1.0.0-ci.20" />
   </ItemGroup>
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <IsPackable>false</IsPackable>
+    <VersionSuffix>ci.0</VersionSuffix>
   </PropertyGroup>
 
 </Project>

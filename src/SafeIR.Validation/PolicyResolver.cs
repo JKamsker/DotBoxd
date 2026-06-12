@@ -6,6 +6,7 @@ internal static class PolicyResolver
 {
     public static void Validate(
         SandboxModule module,
+        IBindingCatalog bindings,
         SandboxPolicy? policy,
         IReadOnlyDictionary<string, FunctionAnalysis> functions,
         IReadOnlySet<string> requiredCapabilities,
@@ -19,7 +20,7 @@ internal static class PolicyResolver
             diagnostics.Add(new SandboxDiagnostic("E-POLICY-EFFECT", "policy declares unknown effects"));
         }
 
-        PolicyGrantValidator.Validate(policy, requiredCapabilities, diagnostics);
+        PolicyGrantValidator.Validate(policy, bindings, requiredCapabilities, diagnostics);
 
         foreach (var request in module.CapabilityRequests) {
             if (!policy.GrantsCapability(request.Id)) {

@@ -7,6 +7,9 @@
         <Project Path="src/SafeIR.Interpreter/SafeIR.Interpreter.csproj" />
         <Project Path="src/SafeIR.Plugins/SafeIR.Plugins.csproj" />
         <Project Path="src/SafeIR.Runtime/SafeIR.Runtime.csproj" />
+        <Project Path="src/SafeIR.Serialization.Json/SafeIR.Serialization.Json.csproj" />
+        <Project Path="src/SafeIR.Transport.Http/SafeIR.Transport.Http.csproj" />
+        <Project Path="src/SafeIR.Transport.Ipc.ShaRpc/SafeIR.Transport.Ipc.ShaRpc.csproj" />
         <Project Path="src/SafeIR.Validation/SafeIR.Validation.csproj" />
         <Project Path="src/SafeIR.Verifier/SafeIR.Verifier.csproj" />
     </Folder>
@@ -17,6 +20,9 @@
         <Project Path="examples/PluginIpc/SafeIR.PluginIpc.Server/SafeIR.PluginIpc.Server.csproj" />
         <Project Path="examples/PluginIpc/SafeIR.PluginIpc.Server.Abstractions/SafeIR.PluginIpc.Server.Abstractions.csproj" />
         <Project Path="examples/PluginIpc/SafeIR.PluginIpc.Shared/SafeIR.PluginIpc.Shared.csproj" />
+    </Folder>
+    <Folder Name="/benchmarks/">
+        <Project Path="benchmarks/SafeIR.Benchmarks/SafeIR.Benchmarks.csproj" />
     </Folder>
     <Folder Name="/tests/">
         <Project Path="tests/SafeIR.Tests/SafeIR.Tests.csproj" />

@@ -139,12 +139,17 @@ public sealed class BindingRegistryValidationTests
     [Fact]
     public void Network_binding_api_only_accepts_in_memory_invokers()
     {
-        var method = typeof(SandboxHostBuilder).GetMethods()
-            .Single(m => m.Name == nameof(SandboxHostBuilder.AddNetworkBindings));
+        Assert.DoesNotContain(
+            typeof(SandboxHostBuilder).GetMethods(),
+            method => method.Name == nameof(SafeHttpHostBuilderExtensions.AddNetworkBindings));
+
+        var method = typeof(SafeHttpHostBuilderExtensions).GetMethods()
+            .Single(m => m.Name == nameof(SafeHttpHostBuilderExtensions.AddNetworkBindings));
         var parameters = method.GetParameters();
 
-        Assert.Equal(typeof(SafeInMemoryHttpMessageInvoker), parameters[0].ParameterType);
-        Assert.Equal(typeof(SafeDnsResolver), parameters[1].ParameterType);
+        Assert.Equal(typeof(SandboxHostBuilder), parameters[0].ParameterType);
+        Assert.Equal(typeof(SafeInMemoryHttpMessageInvoker), parameters[1].ParameterType);
+        Assert.Equal(typeof(SafeDnsResolver), parameters[2].ParameterType);
     }
 
     private static BindingRegistry Build(BindingDescriptor binding)
