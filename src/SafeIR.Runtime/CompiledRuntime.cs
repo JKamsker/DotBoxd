@@ -180,9 +180,9 @@ public static class CompiledRuntime
         }
 
         context.ChargeFuel(SandboxCollectionFuel.Copy(source.Values.Count, addedCount: 1));
+        context.ChargeAllocation((source.Values.Count + 1) * 16);
         var values = source.Values.ToList();
         values.Add(item);
-        context.ChargeAllocation(values.Count * 16);
         return ChargeValue(context, SandboxValue.FromList(values, source.ItemType));
     }
 
@@ -220,11 +220,12 @@ public static class CompiledRuntime
         RequireType(key, typedMap.KeyType, "map key type mismatch");
         context.ChargeFuel(SandboxCollectionFuel.Copy(typedMap.Values.Count, addedCount: 1));
         RequireType(value, typedMap.ValueType, "map value type mismatch");
+        var count = typedMap.Values.ContainsKey(key) ? typedMap.Values.Count : typedMap.Values.Count + 1;
+        context.ChargeAllocation(Math.Max(1, count) * 32);
         var values = new Dictionary<SandboxValue, SandboxValue>(typedMap.Values)
         {
             [key] = value
         };
-        context.ChargeAllocation(Math.Max(1, values.Count) * 32);
         return ChargeValue(context, SandboxValue.FromMap(values, typedMap.KeyType, typedMap.ValueType));
     }
 
@@ -233,9 +234,10 @@ public static class CompiledRuntime
         var typedMap = AsMap(map);
         RequireType(key, typedMap.KeyType, "map key type mismatch");
         context.ChargeFuel(SandboxCollectionFuel.Copy(typedMap.Values.Count));
+        var count = typedMap.Values.ContainsKey(key) ? typedMap.Values.Count - 1 : typedMap.Values.Count;
+        context.ChargeAllocation(Math.Max(1, count) * 32);
         var values = new Dictionary<SandboxValue, SandboxValue>(typedMap.Values);
         values.Remove(key);
-        context.ChargeAllocation(Math.Max(1, values.Count) * 32);
         return ChargeValue(context, SandboxValue.FromMap(values, typedMap.KeyType, typedMap.ValueType));
     }
 
