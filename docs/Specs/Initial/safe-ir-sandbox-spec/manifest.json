@@ -104,8 +104,8 @@
     },
     {
       "path": "spec/08-runtime-safe-apis.md",
-      "sha256": "fa588db7b3566e57353bba1c594e63367a5ff513c44ad3d6a062cf7f4edfc5ff",
-      "bytes": 7861
+      "sha256": "03cc4abe0212a9672aed269019eb01ba98c1907e341ae39ddc3553a4e2220164",
+      "bytes": 8031
     },
     {
       "path": "spec/09-interpreted-mode.md",
@@ -129,8 +129,8 @@
     },
     {
       "path": "spec/13-cache-versioning.md",
-      "sha256": "97f345a820a637a2df4560d9804858c985defa7034e41218c100b5d529bf2407",
-      "bytes": 5396
+      "sha256": "8b1aab85fb7514c6227ad766ed639b957fc747ca699f204ab9abec97ae8e1fe3",
+      "bytes": 5696
     },
     {
       "path": "spec/14-observability-audit.md",

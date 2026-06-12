@@ -232,7 +232,8 @@ plan hash -> validated execution plan
 
 ## Cache eviction
 
-Evict by:
+The current implementation validates, publishes, reads, and quarantines cache entries; it does not
+run an automatic eviction loop. Hosts that need bounded disk usage should evict by:
 
 - least recently used
 - max disk size
@@ -240,7 +241,8 @@ Evict by:
 - tenant deletion
 - policy/binding/runtime version changes
 
-Never evict audit records solely because code cache was evicted.
+Never evict audit records solely because code cache was evicted. Eviction code must use the same
+root/path guards as normal cache access and must not delete outside the configured cache root.
 
 ## Audit
 
