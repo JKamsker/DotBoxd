@@ -5,6 +5,7 @@ using System.Runtime.Loader;
 using System.Security.Cryptography;
 using SafeIR;
 using SafeIR.Compiler;
+using SafeIR.Runtime;
 using SafeIR.Verifier;
 
 internal static class CompiledArtifactGuard
@@ -141,12 +142,65 @@ internal static class CompiledArtifactGuard
         byte[] assemblyBytes,
         string assemblyHash)
     {
-        var context = new AssemblyLoadContext("SafeIR.Generated.Host." + assemblyHash, isCollectible: true);
+        var context = new CompiledArtifactLoadContext(assemblyHash);
         var assembly = context.LoadFromStream(new MemoryStream(assemblyBytes, writable: false));
         var type = assembly.GetTypes().Single(t => t.Name.StartsWith("Module_", StringComparison.Ordinal));
         var method = type.GetMethod("Execute", BindingFlags.Public | BindingFlags.Static) ??
             throw new MissingMethodException(type.FullName, "Execute");
+        EnsureEntrypointSignature(method);
         return (method.CreateDelegate<SandboxCompiledEntrypoint>(), context);
+    }
+
+    private static void EnsureEntrypointSignature(MethodInfo method)
+    {
+        var parameters = method.GetParameters();
+        if (method.ReturnType != typeof(SandboxValue) ||
+            parameters.Length != 2 ||
+            parameters[0].ParameterType != typeof(SandboxContext) ||
+            parameters[1].ParameterType != typeof(SandboxValue))
+        {
+            throw Invalid("compiled artifact entrypoint does not bind to the current runtime facade");
+        }
+    }
+
+    private sealed class CompiledArtifactLoadContext(string assemblyHash)
+        : AssemblyLoadContext("SafeIR.Generated.Host." + assemblyHash, isCollectible: true)
+    {
+        protected override Assembly? Load(AssemblyName assemblyName)
+        {
+            if (MatchesCurrentFacadeAssembly(assemblyName, typeof(SandboxValue).Assembly, out var core))
+            {
+                return core;
+            }
+
+            if (MatchesCurrentFacadeAssembly(assemblyName, typeof(CompiledRuntime).Assembly, out var runtime))
+            {
+                return runtime;
+            }
+
+            return null;
+        }
+
+        private static bool MatchesCurrentFacadeAssembly(
+            AssemblyName requested,
+            Assembly current,
+            out Assembly? resolved)
+        {
+            var currentName = current.GetName();
+            if (!string.Equals(requested.Name, currentName.Name, StringComparison.Ordinal))
+            {
+                resolved = null;
+                return false;
+            }
+
+            if (!AssemblyName.ReferenceMatchesDefinition(requested, currentName))
+            {
+                throw Invalid("compiled artifact runtime facade reference does not match the current assembly");
+            }
+
+            resolved = current;
+            return true;
+        }
     }
 
     private static SandboxRuntimeException Invalid(string message)

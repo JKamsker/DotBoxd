@@ -36,6 +36,10 @@ jobs:
       - name: Security boundary tests
         run: dotnet test tests/SafeIR.Tests/SafeIR.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~SafeFileSystemTests|FullyQualifiedName~SafeFileSystemReparsePointTests|FullyQualifiedName~FileExtensionPolicyTests|FullyQualifiedName~PathUriLiteralValidationTests|FullyQualifiedName~CompiledArtifactGuardTests|FullyQualifiedName~CompiledRuntimeQuotaTests|FullyQualifiedName~VerifierAttackMatrixTests|FullyQualifiedName~VerifierLoopMeteringTests|FullyQualifiedName~BindingRegistryHardeningTests|FullyQualifiedName~PluginPackageValidationTests|FullyQualifiedName~PluginRevocationTests|FullyQualifiedName~PinnedHttpTransportTests|FullyQualifiedName~DifferentialFuzzTests"
 
+      - name: Docs and examples smoke
+        shell: pwsh
+        run: ./scripts/check-docs-smoke.ps1 -Configuration Release
+
       - name: Check C# file lengths
         shell: pwsh
         run: ./scripts/check-csharp-file-lines.ps1
@@ -55,6 +59,10 @@ jobs:
 
       - name: Pack
         run: dotnet pack SafeIR.slnx --configuration Release --no-build --output artifacts/packages
+
+      - name: Check package metadata
+        shell: pwsh
+        run: ./scripts/check-package-metadata.ps1 -PackageDirectory artifacts/packages
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4

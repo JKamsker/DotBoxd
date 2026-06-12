@@ -87,7 +87,11 @@ public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifi
             var reference = reader.GetAssemblyReference(handle);
             var name = reader.GetString(reference.Name);
             var identity = AssemblyReferenceIdentity.Format(reader, reference);
-            if (!policy.AllowedAssemblyIdentities.Contains(identity))
+            if (!policy.AllowedAssemblies.Contains(name))
+            {
+                diagnostics.Add(new VerificationDiagnostic("V-ASM-REF", $"assembly reference '{name}' is not allowed"));
+            }
+            else if (!policy.AllowedAssemblyIdentities.Contains(identity))
             {
                 diagnostics.Add(new VerificationDiagnostic("V-ASM-REF", $"assembly reference '{identity}' is not allowed"));
             }

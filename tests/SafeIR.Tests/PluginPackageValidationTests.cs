@@ -40,4 +40,22 @@ public sealed class PluginPackageValidationTests
 
         Assert.Contains(ex.Diagnostics, d => d.Code == "SGP032");
     }
+
+    [Fact]
+    public async Task Install_rejects_subscription_kernel_that_does_not_match_module_metadata()
+    {
+        var server = PluginServer.Create();
+        var package = FireDamagePluginPackage.Create();
+        var invalid = package with
+        {
+            Manifest = package.Manifest with
+            {
+                Subscriptions = [new HookSubscriptionManifest("DamageEvent", "OtherKernel")]
+            }
+        };
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () => await server.InstallAsync(invalid).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "SGP013");
+    }
 }

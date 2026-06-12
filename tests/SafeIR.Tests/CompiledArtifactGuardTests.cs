@@ -125,6 +125,20 @@ public sealed class CompiledArtifactGuardTests
         Assert.Equal(SandboxValue.FromInt32(123), result.Value);
     }
 
+    [Fact]
+    public async Task Loaded_assembly_uses_materialized_delegate_not_supplied_delegate()
+    {
+        var compiler = new LoadedAssemblyWithStaleDelegateCompiler();
+        var host = HostWithCompiler(compiler);
+        var plan = await PreparePurePlanAsync(host);
+
+        var result = await ExecuteCompiledAsync(host, plan);
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        Assert.Equal(SandboxValue.FromInt32(123), result.Value);
+        Assert.False(compiler.SuppliedDelegateExecuted);
+    }
+
     private static SandboxHost HostWithCompiler(ISandboxCompiler compiler)
         => SandboxHost.Create(builder =>
         {
@@ -225,5 +239,23 @@ public sealed class CompiledArtifactGuardTests
             bytes[0] ^= 0xff;
             return ValueTask.FromResult(artifact);
         }
+    }
+
+    private sealed class LoadedAssemblyWithStaleDelegateCompiler : ISandboxCompiler
+    {
+        public bool SuppliedDelegateExecuted { get; private set; }
+
+        public ValueTask<CompiledArtifact> CompileAsync(
+            ExecutionPlan plan,
+            CompileOptions options,
+            CancellationToken cancellationToken)
+            => ValueTask.FromResult(CompiledArtifactTestFactory.LoadedAssembly(
+                plan,
+                CompiledArtifactTestFactory.BuildI32Assembly(parameterCount: 2, value: 123),
+                (_, _) =>
+                {
+                    SuppliedDelegateExecuted = true;
+                    return SandboxValue.FromInt32(999);
+                }));
     }
 }

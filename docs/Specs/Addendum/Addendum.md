@@ -2,7 +2,9 @@
 
 ## Status
 
-Proposed.
+Accepted for the current SafeIR plugin model. The local SDK/analyzer/generator and server-side
+package installation paths implement the JSON Safe IR package boundary described here; future
+extensions should update this addendum rather than treating it as merely proposed.
 
 ## Purpose
 
@@ -541,6 +543,19 @@ Changing live settings must not require recompilation from the user’s perspect
 
 An implementation may internally specialize or re-optimize, but this must be transparent.
 
+Plugin execution must remain observable across modes. Each plugin hook/kernel run should expose the
+actual backend through the normal execution result and audit stream:
+
+```text
+requested mode: interpreted | compiled | auto
+actual mode: interpreted | compiled
+fallback reason: optional safe error code
+cache/materialization status: None | Hit | Miss | Invalid | Recompiled
+```
+
+Admin/server tooling should display this as runtime status, not as a plugin permission. A plugin
+must not be able to request or force compiled execution; mode selection remains a host policy.
+
 ---
 
 # 12. Hook Subscription Model
@@ -672,7 +687,7 @@ The production package is a JSON envelope with a manifest and a Safe IR module:
     "version": "1.0.0",
     "targetSandboxVersion": "1.0.0",
     "capabilityRequests": [],
-    "metadata": { "pluginId": "fire-damage" },
+    "metadata": { "pluginId": "fire-damage", "kernel": "FireDamageKernel" },
     "functions": [
       {
         "id": "ShouldHandle",

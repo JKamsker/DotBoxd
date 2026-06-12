@@ -19,13 +19,13 @@
     },
     {
       "path": "checklists/release-readiness.md",
-      "sha256": "7ff22e823fa884ffbab0eacf9a59cfb6f97b0f36ba96b543a714d5018e2444cc",
-      "bytes": 1651
+      "sha256": "06b5d37132ad8c423907393179890f0fdeb68b352bbffea822092ef14427ac10",
+      "bytes": 2043
     },
     {
       "path": "checklists/security-review.md",
-      "sha256": "44c2edd5a9cf291422f9ec179b1b5fbf15d314fd5f1c56559bfbf9e8fc9c7659",
-      "bytes": 3611
+      "sha256": "ca0c15710772fc9aaf67c3e5292967a016a9158dcb2e9f033740a5d39a7402b3",
+      "bytes": 3655
     },
     {
       "path": "examples/example-binding-manifest.md",
@@ -94,8 +94,8 @@
     },
     {
       "path": "spec/09-interpreted-mode.md",
-      "sha256": "8c9f4c4046741db13e828ea0933e952a3197d7ce25f61c05e9e6c34cfe29e906",
-      "bytes": 6228
+      "sha256": "18310df8d33a2b2a0cbe963a23d57397dd504179108717337801cb94cdf6240e",
+      "bytes": 6401
     },
     {
       "path": "spec/10-compiled-mode.md",
@@ -124,13 +124,13 @@
     },
     {
       "path": "spec/15-testing-red-team.md",
-      "sha256": "448039b8a657a617651b78061224802b70e8377929bc11aa3bd8cc33d79e9f28",
-      "bytes": 6808
+      "sha256": "4ee8656cb12a7b4cba28c2bc4c5c18ea847abf697f8a71799238874eef6473e3",
+      "bytes": 6928
     },
     {
       "path": "spec/16-public-api.md",
-      "sha256": "a7f6535b26c1f1fbf545b25df721d1d85f1446205c62b8d21452346cec994b3f",
-      "bytes": 11870
+      "sha256": "46c19892df0c4b63ddbbab8529ce908a575e6fee2dc5aeb84748b216d90885a3",
+      "bytes": 12741
     },
     {
       "path": "spec/17-implementation-plan.md",

@@ -23,6 +23,7 @@ internal static class PluginPackageValidator
             diagnostics.Add(new SandboxDiagnostic("SGP012", "Plugin module metadata must bind to the manifest plugin id."));
         }
 
+        var metadataKernel = ValidateModuleKernelMetadata(package, diagnostics);
         ValidateManifestEffects(package.Manifest, diagnostics);
         ValidateEntrypoints(package, diagnostics);
         foreach (var group in package.Manifest.LiveSettings.GroupBy(s => s.Name, StringComparer.Ordinal)) {
@@ -48,6 +49,12 @@ internal static class PluginPackageValidator
 
             ValidateManifestText(subscription.Event, "hook subscription event", diagnostics);
             ValidateManifestText(subscription.Kernel, "hook subscription kernel", diagnostics);
+            if (!string.IsNullOrWhiteSpace(metadataKernel) &&
+                !string.Equals(subscription.Kernel, metadataKernel, StringComparison.Ordinal)) {
+                diagnostics.Add(new SandboxDiagnostic(
+                    "SGP013",
+                    $"Hook subscription kernel '{subscription.Kernel}' must match module kernel '{metadataKernel}'."));
+            }
         }
 
         ThrowIfErrors(diagnostics);
@@ -67,6 +74,18 @@ internal static class PluginPackageValidator
         }
 
         ThrowIfErrors(diagnostics);
+    }
+
+    private static string? ValidateModuleKernelMetadata(PluginPackage package, List<SandboxDiagnostic> diagnostics)
+    {
+        if (!package.Module.Metadata.TryGetValue("kernel", out var metadataKernel) ||
+            string.IsNullOrWhiteSpace(metadataKernel)) {
+            diagnostics.Add(new SandboxDiagnostic("SGP013", "Plugin module metadata must bind to the manifest kernel."));
+            return null;
+        }
+
+        ValidateManifestText(metadataKernel, "kernel metadata", diagnostics);
+        return metadataKernel;
     }
 
     private static void ValidateEntrypoints(PluginPackage package, List<SandboxDiagnostic> diagnostics)

@@ -71,7 +71,7 @@ internal static class SafeIrPackageSourceEmitter
         builder.AppendLine("            global::SafeIR.SemVersion.One,");
         builder.AppendLine("            [new global::SafeIR.CapabilityRequest(global::SafeIR.Plugins.PluginMessageBindings.CapabilityId, \"send damage notifications\")],");
         builder.AppendLine("            [ShouldHandle(settings), Handle(settings)],");
-        builder.AppendLine($"            new global::System.Collections.Generic.Dictionary<string, string> {{ [\"pluginId\"] = {LiteralReader.StringLiteral(model.PluginId)} }});");
+        builder.AppendLine($"            new global::System.Collections.Generic.Dictionary<string, string> {{ [\"pluginId\"] = {LiteralReader.StringLiteral(model.PluginId)}, [\"kernel\"] = {LiteralReader.StringLiteral(model.KernelName)} }});");
         builder.AppendLine();
     }
 

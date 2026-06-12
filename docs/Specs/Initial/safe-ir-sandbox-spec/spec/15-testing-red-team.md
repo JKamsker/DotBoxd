@@ -265,7 +265,8 @@ Required gates before release:
 
 The normal CI workflow may report open checklist items while implementation is still in progress.
 Release branches or release jobs must run `scripts/check-release-readiness.ps1 -RequireComplete`
-and may only pass when the release and security checklists are fully closed.
+and may only pass when all release-gated checklist items are closed. Inventory-only items remain
+visible for host operators and production deployment planning but do not block package publication.
 
 ## Red-team scenarios
 

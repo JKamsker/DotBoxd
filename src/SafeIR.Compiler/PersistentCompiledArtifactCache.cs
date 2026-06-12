@@ -22,7 +22,12 @@ public sealed class PersistentCompiledArtifactCache
         PersistentCompiledArtifactCacheRootGuard.Validate(_rootDirectory);
     }
 
-    public bool EntryExists(string cacheKey) => Directory.Exists(EntryPath(cacheKey));
+    public bool EntryExists(string cacheKey)
+    {
+        var entryPath = EntryPath(cacheKey);
+        PersistentCompiledArtifactCachePathGuard.ValidateEntryPath(_rootDirectory, entryPath);
+        return Directory.Exists(entryPath);
+    }
 
     public async ValueTask<CompiledCacheLookup> TryReadAsync(
         string cacheKey,
@@ -73,6 +78,15 @@ public sealed class PersistentCompiledArtifactCache
         CancellationToken cancellationToken)
     {
         var entryPath = EntryPath(cacheKey);
+        try
+        {
+            PersistentCompiledArtifactCachePathGuard.ValidateEntryPath(_rootDirectory, entryPath);
+        }
+        catch (SandboxRuntimeException ex)
+        {
+            return new CompiledCacheLookup(CompiledCacheStatus.Invalid, null, CacheInvalidReason(ex));
+        }
+
         if (!Directory.Exists(entryPath))
         {
             return new CompiledCacheLookup(CompiledCacheStatus.Miss, null);
@@ -132,6 +146,7 @@ public sealed class PersistentCompiledArtifactCache
         PersistentCompiledArtifactCacheValidator.ValidateVerification(manifest, verification, policy);
 
         var finalPath = EntryPath(cacheKey);
+        PersistentCompiledArtifactCachePathGuard.ValidateEntryPath(_rootDirectory, finalPath);
         var tempPath = Path.Combine(_rootDirectory, ".tmp-" + Guid.NewGuid().ToString("N"));
         var previousPath = Path.Combine(_rootDirectory, ".old-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempPath);
@@ -144,11 +159,13 @@ public sealed class PersistentCompiledArtifactCache
             PersistentCompiledArtifactCachePublisher.ValidateEntryShape(tempPath);
 
             Directory.CreateDirectory(Path.GetDirectoryName(finalPath)!);
+            PersistentCompiledArtifactCachePathGuard.ValidateEntryPath(_rootDirectory, finalPath);
 
             var movedPrevious = PersistentCompiledArtifactCachePublisher.MoveExistingEntryAside(finalPath, previousPath);
             try
             {
                 Directory.Move(tempPath, finalPath);
+                PersistentCompiledArtifactCachePathGuard.ValidateEntryPath(_rootDirectory, finalPath);
                 PersistentCompiledArtifactCachePublisher.ValidateEntryShape(finalPath);
             }
             catch

@@ -33,6 +33,21 @@ public sealed class PluginHookSignatureTests
         Assert.Equal("matched", message.Message);
     }
 
+    [Fact]
+    public async Task Convention_adapter_uses_record_constructor_property_order()
+    {
+        var messages = new InMemoryPluginMessageSink();
+        var server = PluginServer.Create(messages);
+        var kernel = await server.InstallAsync(ConventionRecordPackage());
+
+        server.Hooks.On<ConventionRecordEvent>().UseKernel(kernel);
+        await server.Hooks.PublishAsync(new ConventionRecordEvent(150, "player-1"));
+
+        var message = Assert.Single(messages.Messages);
+        Assert.Equal("player-1", message.TargetId);
+        Assert.Equal("record matched", message.Message);
+    }
+
     private sealed class MismatchedDamageEventAdapter : IPluginEventAdapter<DamageEvent>
     {
         public string EventName => "DamageEvent";
@@ -51,7 +66,70 @@ public sealed class PluginHookSignatureTests
         ];
     }
 
+    private sealed record ConventionRecordEvent(int Value, string TargetId);
+
     private sealed record ConventionDamageEvent(string DamageType, int Amount, string TargetId);
+
+    private static PluginPackage ConventionRecordPackage()
+    {
+        var span = new SourceSpan(1, 1);
+        var parameters = new Parameter[] {
+            new("e_Value", SandboxType.I32),
+            new("e_TargetId", SandboxType.String)
+        };
+
+        return PluginPackage.Create(
+            new PluginManifest(
+                "convention-record-adapter",
+                "IEventKernel<ConventionRecordEvent>",
+                ExecutionMode.Interpreted,
+                ["Cpu", "Alloc", "GameStateWrite", "Audit"],
+                [],
+                [new HookSubscriptionManifest(nameof(ConventionRecordEvent), "ConventionRecordKernel")]),
+            new SandboxModule(
+                "convention-record-adapter",
+                SemVersion.One,
+                SemVersion.One,
+                [new CapabilityRequest(PluginMessageBindings.CapabilityId, "test notification")],
+                [
+                    new SandboxFunction(
+                        "ShouldHandle",
+                        true,
+                        parameters,
+                        SandboxType.Bool,
+                        [
+                            new ReturnStatement(
+                                new BinaryExpression(
+                                    new VariableExpression("e_Value", span),
+                                    ">",
+                                    new LiteralExpression(SandboxValue.FromInt32(100), span),
+                                    span),
+                                span)
+                        ]),
+                    new SandboxFunction(
+                        "Handle",
+                        true,
+                        parameters,
+                        SandboxType.Unit,
+                        [
+                            new ReturnStatement(
+                                new CallExpression(
+                                    PluginMessageBindings.SendBindingId,
+                                    [
+                                        new VariableExpression("e_TargetId", span),
+                                        new LiteralExpression(SandboxValue.FromString("record matched"), span)
+                                    ],
+                                    null,
+                                    span),
+                                span)
+                        ])
+                ],
+                new Dictionary<string, string>
+                {
+                    ["pluginId"] = "convention-record-adapter",
+                    ["kernel"] = "ConventionRecordKernel"
+                }));
+    }
 
     private static PluginPackage ConventionPackage()
     {
@@ -100,6 +178,10 @@ public sealed class PluginHookSignatureTests
                                 span)
                         ])
                 ],
-                new Dictionary<string, string> { ["pluginId"] = "convention-adapter" }));
+                new Dictionary<string, string>
+                {
+                    ["pluginId"] = "convention-adapter",
+                    ["kernel"] = "ConventionKernel"
+                }));
     }
 }

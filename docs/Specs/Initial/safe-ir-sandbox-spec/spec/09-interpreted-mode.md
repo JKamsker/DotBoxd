@@ -171,15 +171,17 @@ host runs in constrained environment
 
 ## Auto mode
 
-Auto mode should begin interpreted and promote to compiled after a threshold.
-Until hotness tracking and a selector are implemented, `Auto` should behave like interpreted mode.
+Auto mode begins interpreted and may promote to compiled after the configured hotness threshold.
+The default selector uses `AutoCompileThreshold`, with an implementation-enforced minimum of two
+observed executions so the first run of a plan never compiles. Debug tracing forces interpreted
+execution because compiled execution does not emit interpreter trace events.
 
 Suggested heuristic:
 
 ```text
 if DebugEnabled: Interpreted
 else if CompiledCacheHitAndVerified: Compiled
-else if EstimatedOps < 10_000 and HistoricalRuns < 20: Interpreted
+else if HistoricalRuns < AutoCompileThreshold: Interpreted
 else CompileAndCacheThenRun
 ```
 

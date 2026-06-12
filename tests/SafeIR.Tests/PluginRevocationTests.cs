@@ -135,7 +135,11 @@ public sealed class PluginRevocationTests
                 SemVersion.One,
                 [new CapabilityRequest(PluginMessageBindings.CapabilityId, "test notification")],
                 [BlockingShouldHandle(span), BlockingHandle(span)],
-                new Dictionary<string, string> { ["pluginId"] = "revocation-blocking" }));
+                new Dictionary<string, string>
+                {
+                    ["pluginId"] = "revocation-blocking",
+                    ["kernel"] = "BlockingKernel"
+                }));
     }
 
     private static SandboxFunction BlockingShouldHandle(SourceSpan span)

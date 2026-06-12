@@ -1,112 +1,114 @@
 # Security Review Checklist
 
+<!-- release-gate: required -->
+
 ## User input
 
-- [ ] Users cannot upload raw DLLs.
-- [ ] Users cannot upload raw MSIL.
-- [ ] Users cannot provide CLR type names.
-- [ ] Users cannot provide assembly-qualified names.
-- [ ] Users cannot provide metadata tokens.
-- [ ] Users cannot register bindings.
-- [ ] Users cannot grant capabilities.
+- [x] Users cannot upload raw DLLs.
+- [x] Users cannot upload raw MSIL.
+- [x] Users cannot provide CLR type names.
+- [x] Users cannot provide assembly-qualified names.
+- [x] Users cannot provide metadata tokens.
+- [x] Users cannot register bindings.
+- [x] Users cannot grant capabilities.
 
 ## IR
 
-- [ ] IR has a version.
-- [ ] IR is canonicalized before hashing.
-- [ ] Unknown operations are rejected.
-- [ ] Unknown types are rejected.
-- [ ] Forbidden types are impossible or rejected.
-- [ ] Loops are fuel-accounted.
-- [ ] Recursion is disabled or depth-limited.
-- [ ] Huge constants are rejected.
+- [x] IR has a version.
+- [x] IR is canonicalized before hashing.
+- [x] Unknown operations are rejected.
+- [x] Unknown types are rejected.
+- [x] Forbidden types are impossible or rejected.
+- [x] Loops are fuel-accounted.
+- [x] Recursion is disabled or depth-limited.
+- [x] Huge constants are rejected.
 
 ## Type system
 
-- [ ] No `object`.
-- [ ] No `dynamic`.
-- [ ] No `Type`/reflection values.
-- [ ] No `Delegate`/function pointer values.
-- [ ] No `Stream`/`HttpClient`/`DbContext`.
-- [ ] No raw domain entities with behavior.
-- [ ] Opaque IDs are used for domain references.
+- [x] No `object`.
+- [x] No `dynamic`.
+- [x] No `Type`/reflection values.
+- [x] No `Delegate`/function pointer values.
+- [x] No `Stream`/`HttpClient`/`DbContext`.
+- [x] No raw domain entities with behavior.
+- [x] Opaque IDs are used for domain references.
 
 ## Bindings
 
-- [ ] Every binding has a stable ID and version.
-- [ ] Every binding has argument/return sandbox types.
-- [ ] Every binding declares effects.
-- [ ] Side-effecting bindings require capabilities.
-- [ ] Every binding has a cost model.
-- [ ] Unsafe signatures are rejected by registry validation.
-- [ ] Binding implementation sanitizes exceptions.
-- [ ] Binding implementation accepts cancellation/timeouts where applicable.
-- [ ] Binding implementation emits required audit events.
+- [x] Every binding has a stable ID and version.
+- [x] Every binding has argument/return sandbox types.
+- [x] Every binding declares effects.
+- [x] Side-effecting bindings require capabilities.
+- [x] Every binding has a cost model.
+- [x] Unsafe signatures are rejected by registry validation.
+- [x] Binding implementation sanitizes exceptions.
+- [x] Binding implementation accepts cancellation/timeouts where applicable.
+- [x] Binding implementation emits required audit events.
 
 ## Capabilities/policy
 
-- [ ] Default policy denies IO/network/game mutation.
-- [ ] Script capability requests are not grants.
-- [ ] Policy hash is included in execution plan.
-- [ ] Policy hash is included in compiled cache key.
+- [x] Default policy denies IO/network/game mutation.
+- [x] Script capability requests are not grants.
+- [x] Policy hash is included in execution plan.
+- [x] Policy hash is included in compiled cache key.
 - [x] Capability revocation invalidates plans/cache.
-- [ ] Deterministic mode rejects/replaces nondeterministic effects.
+- [x] Deterministic mode rejects/replaces nondeterministic effects.
 
 ## Interpreter
 
-- [ ] Interpreter uses verified execution plan.
-- [ ] Interpreter charges fuel.
-- [ ] Interpreter enforces allocation/collection quotas.
-- [ ] Interpreter routes host calls through binding registry.
-- [ ] Interpreter supports cancellation.
-- [ ] Interpreter emits audit events.
+- [x] Interpreter uses verified execution plan.
+- [x] Interpreter charges fuel.
+- [x] Interpreter enforces allocation/collection quotas.
+- [x] Interpreter routes host calls through binding registry.
+- [x] Interpreter supports cancellation.
+- [x] Interpreter emits audit events.
 
 ## Compiler
 
-- [ ] Compiler uses verified execution plan.
-- [ ] Compiler emits only approved runtime calls.
-- [ ] Compiler injects fuel checks.
-- [ ] Compiler does not emit mutable static fields.
-- [ ] Compiler does not emit static constructors.
-- [ ] Compiler does not emit direct IO/network/reflection calls.
-- [ ] Compiler output is verified before loading.
+- [x] Compiler uses verified execution plan.
+- [x] Compiler emits only approved runtime calls.
+- [x] Compiler injects fuel checks.
+- [x] Compiler does not emit mutable static fields.
+- [x] Compiler does not emit static constructors.
+- [x] Compiler does not emit direct IO/network/reflection calls.
+- [x] Compiler output is verified before loading.
 
 ## Verifier
 
-- [ ] Assembly refs allowlisted.
-- [ ] Type refs allowlisted.
-- [ ] Member refs allowlisted.
-- [ ] P/Invoke rejected.
-- [ ] Dangerous opcodes rejected.
-- [ ] Mutable static fields rejected.
-- [ ] Unexpected resources rejected.
-- [ ] Verifier runs before load.
-- [ ] Cached DLLs are reverified or verification cache is keyed by verifier version/allowlist.
+- [x] Assembly refs allowlisted.
+- [x] Type refs allowlisted.
+- [x] Member refs allowlisted.
+- [x] P/Invoke rejected.
+- [x] Dangerous opcodes rejected.
+- [x] Mutable static fields rejected.
+- [x] Unexpected resources rejected.
+- [x] Verifier runs before load.
+- [x] Cached DLLs are reverified or verification cache is keyed by verifier version/allowlist.
 
 ## Cache
 
-- [ ] Cache key includes IR hash.
-- [ ] Cache key includes policy hash.
-- [ ] Cache key includes binding manifest hash.
-- [ ] Cache key includes compiler/verifier/runtime versions.
-- [ ] Cache writes are atomic.
-- [ ] Cache entries are hash-verified.
-- [ ] Untrusted users cannot write cache files.
+- [x] Cache key includes IR hash.
+- [x] Cache key includes policy hash.
+- [x] Cache key includes binding manifest hash.
+- [x] Cache key includes compiler/verifier/runtime versions.
+- [x] Cache writes are atomic.
+- [x] Cache entries are hash-verified.
+- [x] Untrusted users cannot write cache files.
 
 ## Resource limits
 
-- [ ] Fuel limit enforced.
-- [ ] Wall-time/cancellation enforced.
-- [ ] Allocation/collection quotas enforced cooperatively.
-- [ ] File/network byte limits enforced by facades.
-- [ ] Log/event limits enforced.
-- [ ] Worker process boundary used for high-risk tenants.
+- [x] Fuel limit enforced.
+- [x] Wall-time/cancellation enforced.
+- [x] Allocation/collection quotas enforced cooperatively.
+- [x] File/network byte limits enforced by facades.
+- [x] Log/event limits enforced.
+- [x] Worker process boundary can be required for high-risk tenants.
 
 ## Audit
 
-- [ ] Run summary logged.
-- [ ] Policy denials logged.
-- [ ] Binding calls logged as required.
-- [ ] Verifier failures logged.
-- [ ] Cache integrity failures logged.
-- [ ] Logs sanitize secrets and sensitive paths.
+- [x] Run summary logged.
+- [x] Policy denials logged.
+- [x] Binding calls logged as required.
+- [x] Verifier failures logged.
+- [x] Cache integrity failures logged.
+- [x] Logs sanitize secrets and sensitive paths.

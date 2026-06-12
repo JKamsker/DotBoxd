@@ -56,8 +56,8 @@ public sealed class PluginPackageJsonTests
     {
         var server = PluginServer.Create();
         var json = JsonDamagePackage().Replace(
-            "\"metadata\": { \"pluginId\": \"json-fire-damage\" }",
-            "\"metadata\": { \"pluginId\": \"json-fire-damage\", \"rawIlBase64\": \"AAAA\" }",
+            "\"metadata\": { \"pluginId\": \"json-fire-damage\", \"kernel\": \"JsonDamageKernel\" }",
+            "\"metadata\": { \"pluginId\": \"json-fire-damage\", \"kernel\": \"JsonDamageKernel\", \"rawIlBase64\": \"AAAA\" }",
             StringComparison.Ordinal);
 
         var ex = await Assert.ThrowsAsync<SandboxValidationException>(
@@ -115,7 +115,7 @@ public sealed class PluginPackageJsonTests
             "capabilityRequests": [
               { "id": "game.message.write", "reason": "send damage notifications" }
             ],
-            "metadata": { "pluginId": "json-fire-damage" },
+            "metadata": { "pluginId": "json-fire-damage", "kernel": "JsonDamageKernel" },
             "functions": [
               {
                 "id": "ShouldHandle",

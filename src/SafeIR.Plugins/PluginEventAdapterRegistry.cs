@@ -61,12 +61,63 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
 
     public static ConventionEventAdapter<TEvent> Create()
     {
-        var properties = typeof(TEvent)
+        var properties = ReadableProperties(typeof(TEvent));
+        return new ConventionEventAdapter<TEvent>(properties);
+    }
+
+    private static IReadOnlyList<PropertyInfo> ReadableProperties(Type eventType)
+    {
+        var properties = eventType
             .GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Where(p => p.CanRead)
+            .Where(p => p.GetIndexParameters().Length == 0)
             .OrderBy(p => p.MetadataToken)
             .ToArray();
-        return new ConventionEventAdapter<TEvent>(properties);
+
+        return TryConstructorPropertyOrder(eventType, properties, out var ordered)
+            ? ordered
+            : properties;
+    }
+
+    private static bool TryConstructorPropertyOrder(
+        Type eventType,
+        IReadOnlyList<PropertyInfo> properties,
+        out IReadOnlyList<PropertyInfo> ordered)
+    {
+        var byName = properties.ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
+        foreach (var constructor in eventType.GetConstructors(BindingFlags.Instance | BindingFlags.Public))
+        {
+            var parameters = constructor.GetParameters();
+            if (parameters.Length == 0 || parameters.Length != properties.Count)
+            {
+                continue;
+            }
+
+            var selected = new PropertyInfo[parameters.Length];
+            var matched = true;
+            for (var i = 0; i < parameters.Length; i++)
+            {
+                var parameter = parameters[i];
+                if (parameter.Name is null ||
+                    !byName.TryGetValue(parameter.Name, out var property) ||
+                    property.PropertyType != parameter.ParameterType)
+                {
+                    matched = false;
+                    break;
+                }
+
+                selected[i] = property;
+            }
+
+            if (matched)
+            {
+                ordered = selected;
+                return true;
+            }
+        }
+
+        ordered = [];
+        return false;
     }
 
     public IReadOnlyList<SandboxValue> ToSandboxValues(TEvent e)

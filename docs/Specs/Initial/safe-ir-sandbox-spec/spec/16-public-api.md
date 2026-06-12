@@ -230,10 +230,12 @@ public interface ISandboxCompiler
 }
 ```
 
-`CompiledArtifact` represents an already-created compiled runtime form. The host invokes its
-entrypoint delegate; it must not interpret raw IL bytes. Construction must fail unless the
-runtime form has a successful verification/gate result and the artifact hash matches the
-manifest and verification result.
+`CompiledArtifact` represents a verified compiled runtime envelope. For `DynamicMethod`, the
+artifact contains the already-created delegate. For `LoadedAssembly`, the artifact contains the
+verified assembly image and manifest; the host must validate the envelope, verify the assembly
+bytes against the manifest/hash, load the assembly into a controlled runtime context, create the
+entrypoint delegate from the loaded method, and then invoke that materialized delegate. Hosts must
+not interpret raw IL bytes or invoke a stale delegate supplied beside loaded assembly bytes.
 
 ```csharp
 public enum CompiledRuntimeFormKind
@@ -283,6 +285,16 @@ public interface IExecutionModeSelector
 The default selector uses `AutoCompileThreshold`, with a minimum threshold of two so Auto mode never
 compiles the first run. The current host passes `CompiledCacheStatus.None` before compiler/cache
 lookup; cache hit/miss status is emitted later in `RunSummary`.
+
+## Fallback behavior
+
+Compiled execution is an optimization, not a semantic mode change. If compiled execution is
+unavailable, disabled by debug tracing, rejected by the verifier, or rejected by compiled artifact
+envelope validation, the host may fall back to interpreted IR execution only when
+`AllowFallbackToInterpreter` is true. Fallback must emit an `ExecutionFallback` audit event with the
+safe reason code and the final `SandboxExecutionResult.ActualMode` must report the mode that actually
+ran. If fallback is disabled, the result remains a compiled-mode failure and must not invoke the
+interpreter.
 
 ## Worker process API optional
 

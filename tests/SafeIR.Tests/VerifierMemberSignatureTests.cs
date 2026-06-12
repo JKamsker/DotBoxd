@@ -74,6 +74,26 @@ public sealed class VerifierMemberSignatureTests
         Assert.Contains(result.Diagnostics, d => d.Code == "V-ASM-REF");
     }
 
+    [Fact]
+    public async Task Verifier_rejects_assembly_reference_name_missing_from_allowlist()
+    {
+        var defaultPolicy = VerificationPolicy.BoxedValueDefaults();
+        var policy = defaultPolicy with
+        {
+            AllowedAssemblies = defaultPolicy.AllowedAssemblies
+                .Where(name => !string.Equals(name, "SafeIR.Core", StringComparison.Ordinal))
+                .ToHashSet(StringComparer.Ordinal)
+        };
+        var bytes = VerifierTestHelpers.BuildGeneratedAssembly(type => VerifierTestHelpers.DefineValidExecute(type));
+
+        var result = await VerifierTestHelpers.VerifyAsync(bytes, policy);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d =>
+            d.Code == "V-ASM-REF" &&
+            d.Message.Contains("SafeIR.Core", StringComparison.Ordinal));
+    }
+
     private static MethodInfo FakeRuntimeMethod()
     {
         var assembly = new PersistedAssemblyBuilder(
