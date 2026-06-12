@@ -16,9 +16,28 @@ public sealed class VerifierControlFlowTests
         Assert.Contains(result.Diagnostics, d => d.Code == "V-CONTROL-FLOW");
     }
 
+    [Fact]
+    public async Task Verifier_rejects_operand_stack_underflow()
+    {
+        var result = await VerifierTestHelpers.VerifyAsync(StackUnderflowAssembly());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d => d.Code == "V-STACK");
+    }
+
+    [Fact]
+    public async Task Verifier_rejects_inconsistent_branch_stack_height()
+    {
+        var result = await VerifierTestHelpers.VerifyAsync(InconsistentBranchStackAssembly());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d => d.Code == "V-STACK");
+    }
+
     private static byte[] InvalidBranchTargetAssembly()
     {
-        var bytes = VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        var bytes = VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             var method = type.DefineMethod(
                 "Execute",
                 MethodAttributes.Public | MethodAttributes.Static,
@@ -40,16 +59,50 @@ public sealed class VerifierControlFlowTests
         return bytes;
     }
 
+    private static byte[] StackUnderflowAssembly()
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
+            var method = DefineExecute(type);
+            var il = method.GetILGenerator();
+            il.Emit(OpCodes.Pop);
+            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Ret);
+        });
+
+    private static byte[] InconsistentBranchStackAssembly()
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
+            var method = DefineExecute(type);
+            var il = method.GetILGenerator();
+            var join = il.DefineLabel();
+            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Ldc_I4_0);
+            il.Emit(OpCodes.Brtrue_S, join);
+            il.Emit(OpCodes.Pop);
+            il.MarkLabel(join);
+            il.Emit(OpCodes.Ret);
+        });
+
+    private static MethodBuilder DefineExecute(TypeBuilder type)
+        => type.DefineMethod(
+            "Execute",
+            MethodAttributes.Public | MethodAttributes.Static,
+            typeof(SandboxValue),
+            [typeof(SandboxContext), typeof(SandboxValue)]);
+
     private static byte[] ReadExecuteIl(byte[] assemblyBytes)
     {
         using var stream = new MemoryStream(assemblyBytes, writable: false);
         using var peReader = new PEReader(stream);
         var reader = peReader.GetMetadataReader();
-        foreach (var typeHandle in reader.TypeDefinitions) {
+        foreach (var typeHandle in reader.TypeDefinitions)
+        {
             var type = reader.GetTypeDefinition(typeHandle);
-            foreach (var methodHandle in type.GetMethods()) {
+            foreach (var methodHandle in type.GetMethods())
+            {
                 var method = reader.GetMethodDefinition(methodHandle);
-                if (reader.GetString(method.Name) == "Execute") {
+                if (reader.GetString(method.Name) == "Execute")
+                {
                     return peReader.GetMethodBody(method.RelativeVirtualAddress).GetILBytes() ??
                         throw new InvalidOperationException("Execute method has no IL");
                 }
@@ -61,8 +114,10 @@ public sealed class VerifierControlFlowTests
 
     private static int IndexOf(byte[] bytes, byte[] pattern)
     {
-        for (var i = 0; i <= bytes.Length - pattern.Length; i++) {
-            if (bytes.AsSpan(i, pattern.Length).SequenceEqual(pattern)) {
+        for (var i = 0; i <= bytes.Length - pattern.Length; i++)
+        {
+            if (bytes.AsSpan(i, pattern.Length).SequenceEqual(pattern))
+            {
                 return i;
             }
         }
