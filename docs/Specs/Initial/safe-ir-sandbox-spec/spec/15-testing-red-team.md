@@ -84,8 +84,8 @@ Test paths:
 
 ```text
 config.json                    allowed
-./config.json                  allowed after normalization
-sub/../config.json             allowed if final path inside root
+./config.json                  denied; path literals must already be canonical
+sub/../config.json             denied; path literals must not contain traversal segments
 ../secret.txt                  denied
 /rooted/path                   denied
 C:\Windows\win.ini            denied on Windows

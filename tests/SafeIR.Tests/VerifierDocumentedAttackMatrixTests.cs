@@ -14,7 +14,8 @@ public sealed class VerifierDocumentedAttackMatrixTests
             { "embedded resources", EmbeddedResourceAssembly, ["V-RESOURCE"] },
             { "Thread.Start", ThreadStartAssembly, ["V-TYPE-FORBIDDEN", "V-MEMBER"] },
             { "raw Stream", StreamAssembly, ["V-TYPE-FORBIDDEN", "V-MEMBER"] },
-            { "IServiceProvider.GetService", ServiceProviderAssembly, ["V-TYPE-FORBIDDEN", "V-MEMBER"] }
+            { "IServiceProvider.GetService", ServiceProviderAssembly, ["V-TYPE-FORBIDDEN", "V-MEMBER"] },
+            { "unmanaged function pointer signature", FunctionPointerSignatureAssembly, ["V-FUNCTION-SIGNATURE"] }
         };
 
     [Theory]
@@ -110,6 +111,39 @@ public sealed class VerifierDocumentedAttackMatrixTests
             il.Emit(OpCodes.Pop);
             ReturnInput(il);
         });
+
+    private static byte[] FunctionPointerSignatureAssembly()
+    {
+        const string source = """
+            using System.Runtime.CompilerServices;
+
+            namespace SafeIR.Generated;
+
+            public static unsafe class Module_0123456789abcdef
+            {
+                public static SafeIR.SandboxValue Execute(
+                    SafeIR.SandboxContext context,
+                    SafeIR.SandboxValue input) => input;
+
+                private static SafeIR.SandboxValue Fn_0(
+                    SafeIR.SandboxContext context,
+                    delegate* unmanaged[Cdecl]<void> callback) => null!;
+            }
+            """;
+        using var output = new MemoryStream();
+        var compilation = CSharpCompilation.Create(
+            "FunctionPointerAttack",
+            [CSharpSyntaxTree.ParseText(source, CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview))],
+            TrustedPlatformReferences().Append(MetadataReference.CreateFromFile(typeof(SandboxValue).Assembly.Location)),
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, allowUnsafe: true));
+        var result = compilation.Emit(output);
+        if (!result.Success)
+        {
+            throw new InvalidOperationException(string.Join(Environment.NewLine, result.Diagnostics));
+        }
+
+        return output.ToArray();
+    }
 
     private static IEnumerable<MetadataReference> TrustedPlatformReferences()
     {

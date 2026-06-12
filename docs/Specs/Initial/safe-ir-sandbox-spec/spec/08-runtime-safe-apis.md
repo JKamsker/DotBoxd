@@ -47,7 +47,7 @@ Do not expose service providers, host containers, or arbitrary host state from `
 Use a `SandboxPath` value, not raw OS paths.
 
 ```text
-SandboxPath = normalized relative path inside a named root
+SandboxPath = canonical relative path inside a named root
 ```
 
 Examples:
@@ -63,6 +63,7 @@ Reject:
 ../secret.txt
 ./config/settings.json
 config/../secret.txt
+config/./settings.json
 C:\Windows\win.ini
 /etc/passwd
 \\server\share\file
@@ -72,6 +73,9 @@ CON.txt
 paths containing control characters
 segments ending with dot or space
 ```
+
+Path literals must already be canonical. The importer and runtime reject `.` and
+`..` segments instead of normalizing them.
 
 ### Safe facade
 

@@ -33,6 +33,39 @@ public sealed class GoldenCorpusTests
         Assert.Equal(10, compiled.ResourceUsage.FuelUsed);
     }
 
+    [Fact]
+    public async Task Golden_file_read_behavior_is_stable()
+    {
+        using var temp = TempDirectory.Create();
+        await File.WriteAllTextAsync(Path.Combine(temp.Path, "settings.json"), "golden-settings");
+        using var host = SandboxTestHost.Create();
+        var module = await host.ImportJsonAsync(GoldenJson("file-read"));
+
+        var denied = await Assert.ThrowsAsync<SandboxValidationException>(async () =>
+            await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(10_000).Build()));
+        Assert.Contains(denied.Diagnostics, d => d.Code == "E-POLICY-CAP");
+
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create()
+                .GrantFileRead(temp.Path, 1024)
+                .WithFuel(10_000)
+                .Build());
+
+        Assert.Equal(SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.FileRead, plan.FunctionAnalysis["main"].Effects);
+
+        var result = await ExecuteAsync(host, plan, SandboxValue.Unit, ExecutionMode.Interpreted);
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        Assert.Equal("golden-settings", ((StringValue)result.Value!).Value);
+        Assert.Equal(ExecutionMode.Interpreted, result.ActualMode);
+        Assert.Equal(69, result.ResourceUsage.FuelUsed);
+        Assert.Equal(1, result.ResourceUsage.HostCalls);
+        Assert.Equal(15, result.ResourceUsage.FileBytesRead);
+        var audit = Assert.Single(result.AuditEvents, e => e.BindingId == "file.readText" && e.Success);
+        Assert.Equal("15", audit.Fields!["bytesRead"]);
+    }
+
     private static ValueTask<SandboxExecutionResult> ExecuteAsync(
         Hosting.SandboxHost host,
         ExecutionPlan plan,
@@ -99,4 +132,28 @@ public sealed class GoldenCorpusTests
             """,
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, null)
         };
+
+    private sealed class TempDirectory : IDisposable
+    {
+        private TempDirectory(string path) => Path = path;
+
+        public string Path { get; }
+
+        public static TempDirectory Create()
+        {
+            var path = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                "safe-ir-golden-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(path);
+            return new TempDirectory(path);
+        }
+
+        public void Dispose()
+        {
+            if (Directory.Exists(Path))
+            {
+                Directory.Delete(Path, recursive: true);
+            }
+        }
+    }
 }

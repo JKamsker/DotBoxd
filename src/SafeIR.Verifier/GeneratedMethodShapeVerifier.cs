@@ -10,24 +10,12 @@ internal static class GeneratedMethodShapeVerifier
     private const string Int32 = "System.Int32";
     private const string Void = "System.Void";
     private const string SandboxType = "SafeIR.SandboxType";
-    private const string String = "System.String";
     private static readonly string ValidateInput = $"{Runtime}.ValidateEntrypointInput({Value},{Int32}):{Void}";
     private static readonly string EnterCall = $"{Runtime}.EnterCall({Context}):{Void}";
     private static readonly string ExitCall = $"{Runtime}.ExitCall({Context}):{Void}";
     private static readonly string RequireValueType = $"{Runtime}.RequireValueType({Value},{SandboxType}):{Value}";
-    private static readonly string TypeScalar = $"{Runtime}.TypeScalar({String}):{SandboxType}";
-    private static readonly string TypeList = $"{Runtime}.TypeList({SandboxType}):{SandboxType}";
-    private static readonly string TypeMap = $"{Runtime}.TypeMap({SandboxType},{SandboxType}):{SandboxType}";
     internal static readonly string ChargeFuelSignature = $"{Runtime}.ChargeFuel({Context},{Int32}):{Void}";
     internal static readonly string ChargeLoopIterationSignature = $"{Runtime}.ChargeLoopIteration({Context},{Int32}):{Void}";
-
-    private static readonly HashSet<string> ExecuteAllowedCalls = new(StringComparer.Ordinal) {
-        ValidateInput,
-        $"{Runtime}.GetInputArgument({Value},{Int32},{Int32},{SandboxType}):{Value}",
-        TypeScalar,
-        TypeList,
-        TypeMap
-    };
 
     public static void VerifyBody(
         MetadataReader reader,
@@ -40,54 +28,13 @@ internal static class GeneratedMethodShapeVerifier
         GeneratedStackVerifier.Verify(reader, method, analysis, diagnostics);
         if (methodName == "Execute")
         {
-            VerifyExecute(analysis, diagnostics);
+            GeneratedExecuteShapeVerifier.Verify(analysis, diagnostics);
             return;
         }
 
         if (methodName.StartsWith("Fn_", StringComparison.Ordinal))
         {
             VerifyFunction(methodName, analysis, diagnostics);
-        }
-    }
-
-    private static void VerifyExecute(GeneratedMethodFlow analysis, List<VerificationDiagnostic> diagnostics)
-    {
-        RequireReachable(analysis, ValidateInput, diagnostics, "Execute must validate entrypoint input shape");
-        RequireReachable(analysis, GeneratedMeterState.LocalFunctionCall, diagnostics, "Execute must dispatch to a generated function");
-        RequireReturns(
-            analysis,
-            GeneratedMeterState.ValidateInput | GeneratedMeterState.LocalFunctionCall,
-            diagnostics,
-            "Execute must validate input and dispatch before returning");
-        if (analysis.HasUnmeteredCycle || analysis.Instructions.Any(i => i.Opcode.IsBranch()))
-        {
-            diagnostics.Add(new VerificationDiagnostic("V-COMPILED-SHAPE", "Execute must not contain control-flow branches"));
-        }
-
-        VerifyExecuteReturnShape(analysis, diagnostics);
-        foreach (var instruction in analysis.Instructions.Where(i => i.CalledMember is not null))
-        {
-            if (instruction.IsLocalCall)
-            {
-                if (!IsGeneratedFunctionCall(instruction.CalledMember!))
-                {
-                    diagnostics.Add(new VerificationDiagnostic("V-COMPILED-SHAPE", "Execute may only call generated function helpers"));
-                }
-
-                var state = analysis.EntryStates.TryGetValue(instruction.Offset, out var entryState)
-                    ? entryState
-                    : GeneratedMeterState.None;
-                if ((state & GeneratedMeterState.ValidateInput) == 0)
-                {
-                    diagnostics.Add(new VerificationDiagnostic(
-                        "V-COMPILED-SHAPE",
-                        "Execute must validate input before dispatching to a generated function"));
-                }
-            }
-            else if (!ExecuteAllowedCalls.Contains(instruction.CalledMember!))
-            {
-                diagnostics.Add(new VerificationDiagnostic("V-COMPILED-SHAPE", "Execute may only validate input and dispatch"));
-            }
         }
     }
 
@@ -243,30 +190,6 @@ internal static class GeneratedMethodShapeVerifier
             diagnostics.Add(new VerificationDiagnostic(
                 "V-COMPILED-SHAPE",
                 $"method '{methodName}' must not execute long instruction sequences without fuel metering"));
-        }
-    }
-
-    private static void VerifyExecuteReturnShape(
-        GeneratedMethodFlow analysis,
-        List<VerificationDiagnostic> diagnostics)
-    {
-        for (var i = 0; i < analysis.Instructions.Count; i++)
-        {
-            var instruction = analysis.Instructions[i];
-            if (instruction.Opcode != ILOpCode.Ret || !analysis.EntryStates.ContainsKey(instruction.Offset))
-            {
-                continue;
-            }
-
-            var previous = i > 0 ? analysis.Instructions[i - 1] : null;
-            if (previous is null ||
-                !previous.IsLocalCall ||
-                !IsGeneratedFunctionCall(previous.CalledMember))
-            {
-                diagnostics.Add(new VerificationDiagnostic(
-                    "V-COMPILED-SHAPE",
-                    "Execute must directly return the generated function result"));
-            }
         }
     }
 
