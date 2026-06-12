@@ -41,7 +41,7 @@ internal sealed partial class RpcPeerOutboundInvoker
         string? instanceId,
         CancellationToken ct)
     {
-        if (ct.CanBeCanceled || _timeout != Timeout.InfiniteTimeSpan)
+        if (!CanUseLowAllocationValueTaskPath(ct))
         {
             return new ValueTask<TResponse>(
                 SendUnaryRequestAsync<TRequest, TResponse>(service, method, request, instanceId, ct));
@@ -91,7 +91,7 @@ internal sealed partial class RpcPeerOutboundInvoker
         string? instanceId,
         CancellationToken ct)
     {
-        if (ct.CanBeCanceled || _timeout != Timeout.InfiniteTimeSpan)
+        if (!CanUseLowAllocationValueTaskPath(ct))
         {
             return new ValueTask<TResponse>(
                 SendUnaryRequestAsync<TResponse>(service, method, instanceId, ct));
@@ -134,6 +134,11 @@ internal sealed partial class RpcPeerOutboundInvoker
             frame,
             ct);
     }
+
+    private bool CanUseLowAllocationValueTaskPath(CancellationToken ct) =>
+        _enableLowAllocationValueTaskInvocations &&
+        !ct.CanBeCanceled &&
+        _timeout == Timeout.InfiniteTimeSpan;
 
     private ValueTask<TResponse> SendFrameAndReadUnaryValueResponseAsync<TResponse>(
         int messageId,

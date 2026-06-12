@@ -20,7 +20,7 @@ public class PeerRoundTripBenchmarks
     };
 
     [Params(false, true)]
-    public bool LowAllocationInbound { get; set; }
+    public bool LowAllocationMode { get; set; }
 
     [GlobalSetup]
     public async Task Setup()
@@ -58,14 +58,15 @@ public class PeerRoundTripBenchmarks
     private RpcPeerOptions CreateOptionsForClient() =>
         new()
         {
-            RequestTimeout = LowAllocationInbound
+            RequestTimeout = LowAllocationMode
                 ? Timeout.InfiniteTimeSpan
                 : TimeSpan.FromSeconds(5),
+            EnableLowAllocationValueTaskInvocations = LowAllocationMode,
         };
 
     private RpcPeerOptions CreateOptionsForServer()
     {
-        if (!LowAllocationInbound)
+        if (!LowAllocationMode)
         {
             return new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) };
         }

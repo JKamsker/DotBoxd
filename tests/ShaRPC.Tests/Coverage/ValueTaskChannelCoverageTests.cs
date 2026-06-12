@@ -1,5 +1,7 @@
 using ShaRPC.Core;
 using ShaRPC.Core.Buffers;
+using ShaRPC.Core.Exceptions;
+using ShaRPC.Core.Streaming;
 using ShaRPC.Core.Transport;
 using ShaRPC.Serializers.MessagePack;
 using Xunit;
@@ -33,6 +35,81 @@ public sealed class ValueTaskChannelCoverageTests
 
         await peer.DisposeAsync();
         await Assert.ThrowsAnyAsync<Exception>(() => call.WaitAsync(Timeout));
+    }
+
+    [Fact]
+    public async Task InvokeValueAsync_UsesTaskBackedPath_ByDefault()
+    {
+        await using var harness = new ValueTaskInvokerHarness(
+            new RpcPeerOptions { RequestTimeout = System.Threading.Timeout.InfiniteTimeSpan });
+
+        var call = harness.Invoker.InvokeValueAsync<int, string>("Svc", "Op", 42);
+
+        Assert.Equal(1, harness.SendTaskCalls);
+        Assert.Equal(0, harness.SendFrameCalls);
+        await AssertFaultedPendingCallAsync(call, harness);
+    }
+
+    [Fact]
+    public async Task InvokeValueAsync_UsesFrameValueTaskPath_WhenExplicitlyEnabled()
+    {
+        await using var harness = new ValueTaskInvokerHarness(
+            new RpcPeerOptions
+            {
+                EnableLowAllocationValueTaskInvocations = true,
+                RequestTimeout = System.Threading.Timeout.InfiniteTimeSpan,
+            });
+
+        var call = harness.Invoker.InvokeValueAsync<int, string>("Svc", "Op", 42);
+
+        Assert.Equal(0, harness.SendTaskCalls);
+        Assert.Equal(1, harness.SendFrameCalls);
+        await AssertFaultedPendingCallAsync(call, harness);
+    }
+
+    [Fact]
+    public async Task InvokeValueAsync_OptInUsesTaskBackedPath_WhenTimeoutOrCancellationIsRequired()
+    {
+        await using (var timeoutHarness = new ValueTaskInvokerHarness(
+            new RpcPeerOptions
+            {
+                EnableLowAllocationValueTaskInvocations = true,
+                RequestTimeout = TimeSpan.FromSeconds(1),
+            }))
+        {
+            var call = timeoutHarness.Invoker.InvokeValueAsync<int, string>("Svc", "Op", 42);
+
+            Assert.Equal(1, timeoutHarness.SendTaskCalls);
+            Assert.Equal(0, timeoutHarness.SendFrameCalls);
+            await AssertFaultedPendingCallAsync(call, timeoutHarness);
+        }
+
+        using var cts = new CancellationTokenSource();
+        await using var cancellationHarness = new ValueTaskInvokerHarness(
+            new RpcPeerOptions
+            {
+                EnableLowAllocationValueTaskInvocations = true,
+                RequestTimeout = System.Threading.Timeout.InfiniteTimeSpan,
+            });
+
+        var cancellableCall = cancellationHarness.Invoker.InvokeValueAsync<int, string>(
+            "Svc",
+            "Op",
+            42,
+            cts.Token);
+
+        Assert.Equal(1, cancellationHarness.SendTaskCalls);
+        Assert.Equal(0, cancellationHarness.SendFrameCalls);
+        await AssertFaultedPendingCallAsync(cancellableCall, cancellationHarness);
+    }
+
+    private static async Task AssertFaultedPendingCallAsync<T>(
+        ValueTask<T> call,
+        ValueTaskInvokerHarness harness)
+    {
+        harness.Invoker.FailPending(new ShaRpcConnectionException("Connection closed."));
+        await Assert.ThrowsAsync<ShaRpcConnectionException>(
+            () => call.AsTask().WaitAsync(Timeout));
     }
 
     private sealed class CountingValueTaskChannel : IRpcValueTaskChannel
@@ -88,6 +165,64 @@ public sealed class ValueTaskChannelCoverageTests
         {
             _receive.TrySetResult(Payload.Empty);
             return default;
+        }
+    }
+
+    private sealed class ValueTaskInvokerHarness : IAsyncDisposable
+    {
+        private readonly MessagePackRpcSerializer _serializer = new();
+        private readonly RpcStreamManager _streams;
+        private int _disposed;
+
+        public ValueTaskInvokerHarness(RpcPeerOptions options)
+        {
+            _streams = new RpcStreamManager(_serializer, SendAsync, exceptionTransformer: null);
+            Invoker = new RpcPeerOutboundInvoker(
+                _serializer,
+                options,
+                ensureStarted: static () => { },
+                SendAsync,
+                SendFrameValueAsync,
+                _streams);
+        }
+
+        public RpcPeerOutboundInvoker Invoker { get; }
+
+        public int SendTaskCalls { get; private set; }
+
+        public int SendFrameCalls { get; private set; }
+
+        private Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
+        {
+            SendTaskCalls++;
+            ct.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+
+        private ValueTask SendFrameValueAsync(PooledBufferWriter frame, CancellationToken ct = default)
+        {
+            SendFrameCalls++;
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+                return default;
+            }
+            finally
+            {
+                frame.Dispose();
+            }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            {
+                return;
+            }
+
+            Invoker.FailPending(new ShaRpcConnectionException("Connection closed."));
+            await Invoker.StopCancelFramesAsync().ConfigureAwait(false);
+            _streams.Stop();
         }
     }
 }
