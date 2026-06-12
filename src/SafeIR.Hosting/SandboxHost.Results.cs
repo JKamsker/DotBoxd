@@ -122,6 +122,48 @@ public sealed partial class SandboxHost
         };
     }
 
+    private static SandboxExecutionResult CapabilityRevokedResult(
+        ExecutionPlan plan,
+        SandboxExecutionOptions options,
+        RevokedCapability revoked)
+    {
+        var runId = options.RunId ?? SandboxRunId.New();
+        var budget = new ResourceMeter(plan.Budget);
+        var startedAt = DateTimeOffset.UtcNow;
+        var error = new SandboxError(
+            SandboxErrorCode.PolicyDenied,
+            $"capability {revoked.Id} has been revoked");
+        var audit = new InMemoryAuditSink();
+        audit.Write(new SandboxAuditEvent(
+            runId,
+            "CapabilityRevoked",
+            startedAt,
+            false,
+            CapabilityId: revoked.Id,
+            ResourceId: $"capability:{revoked.Id}",
+            ErrorCode: error.Code,
+            Message: revoked.Reason,
+            Fields: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["capabilityId"] = revoked.Id,
+                ["reason"] = revoked.Reason,
+                ["revokedAt"] = revoked.RevokedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture)
+            }));
+        WriteFailedRunSummary(audit, runId, startedAt, plan, budget, options.Mode, error);
+
+        return new SandboxExecutionResult
+        {
+            Succeeded = false,
+            Error = error,
+            ResourceUsage = budget.Snapshot(),
+            AuditEvents = audit.Events,
+            ActualMode = options.Mode,
+            ModuleHash = plan.ModuleHash,
+            PlanHash = plan.PlanHash,
+            PolicyHash = plan.PolicyHash
+        };
+    }
+
     private static SandboxExecutionResult WorkerIsolationUnavailableResult(
         ExecutionPlan plan,
         SandboxExecutionOptions options)

@@ -67,6 +67,24 @@ public sealed class ExecutionModeSelectionTests
     }
 
     [Fact]
+    public async Task Auto_mode_threshold_one_still_starts_interpreted()
+    {
+        var host = SandboxTestHost.Create(compiler: true);
+        var module = await host.ParseJsonAsync(SandboxTestHost.PureScoreJson());
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var options = new SandboxExecutionOptions { Mode = ExecutionMode.Auto, AutoCompileThreshold = 1 };
+        var input = SandboxValue.FromList([SandboxValue.FromInt32(1), SandboxValue.FromInt32(1)]);
+
+        var first = await host.ExecuteAsync(plan, "main", input, options);
+        var second = await host.ExecuteAsync(plan, "main", input, options);
+
+        Assert.True(first.Succeeded, first.Error?.SafeMessage);
+        Assert.True(second.Succeeded, second.Error?.SafeMessage);
+        Assert.Equal(ExecutionMode.Interpreted, first.ActualMode);
+        Assert.Equal(ExecutionMode.Compiled, second.ActualMode);
+    }
+
+    [Fact]
     public async Task Compiled_mode_without_compiler_falls_back_when_allowed()
     {
         var host = SandboxTestHost.Create();

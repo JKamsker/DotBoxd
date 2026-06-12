@@ -53,6 +53,8 @@ old DLL is reused and still calls file.read
 ```
 
 Therefore policy hash must be part of the cache key or execution gate.
+For already-prepared plans, the host revocation gate runs before compiled artifact lookup or
+materialization, so a revoked capability cannot reuse a stale cache entry.
 
 ## Artifact layout
 

@@ -49,7 +49,7 @@
 - [ ] Script capability requests are not grants.
 - [ ] Policy hash is included in execution plan.
 - [ ] Policy hash is included in compiled cache key.
-- [ ] Capability revocation invalidates plans/cache.
+- [x] Capability revocation invalidates plans/cache.
 - [ ] Deterministic mode rejects/replaces nondeterministic effects.
 
 ## Interpreter

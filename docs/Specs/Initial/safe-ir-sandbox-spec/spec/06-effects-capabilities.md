@@ -332,9 +332,10 @@ Examples:
 
 When a capability is revoked:
 
-- existing execution plans using it become invalid
-- compiled cache entries using it must not be reused
+- existing execution plans requesting or reaching it must fail before execution
+- compiled cache entries for affected plans must not be reused after the revoke
 - running executions may be cancelled depending on policy
-- audit log should record revocation reason
+- audit log should record the revocation reason
 
-This is why the policy hash must be part of the execution-plan and compiled-DLL cache key.
+This is why the policy hash must be part of the execution-plan and compiled-DLL cache key,
+and why the host also keeps a runtime revocation gate for already-prepared plans.

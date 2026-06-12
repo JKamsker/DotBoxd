@@ -50,11 +50,17 @@ public sealed class SandboxHost
         SandboxValue input,
         SandboxExecutionOptions options,
         CancellationToken cancellationToken);
+
+    public void RevokeCapability(string capabilityId, string reason = "");
 }
 ```
 
 `ImportJsonAsync` is the preferred extension method provided by the JSON serialization addon.
 `ParseJsonAsync` remains a compatibility alias and does not imply a custom language parser.
+`RevokeCapability` is host-local and applies to already-prepared plans. A plan whose module
+requests or whose selected entrypoint reaches a revoked capability must fail before interpreted
+execution, compiler invocation, or compiled-cache lookup. The failed run emits a
+`CapabilityRevoked` audit event containing the safe revocation reason.
 
 ### `SandboxExecutionOptions`
 
