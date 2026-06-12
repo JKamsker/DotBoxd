@@ -118,6 +118,9 @@ internal static class SafeIrGenerationNames
         public const string Var = "Var";
         public const string Str = "Str";
         public const string ConcatString = "ConcatString";
+        public const string StringLength = "StringLength";
+        public const string StringSubstring = "StringSubstring";
+        public const string StringEquals = "StringEquals";
         public const string I32 = "I32";
         public const string I64 = "I64";
         public const string F64 = "F64";
@@ -147,7 +150,10 @@ internal static class SafeIrGenerationNames
 
     public static class BindingIds
     {
+        public const string StringLength = "string.length";
+        public const string StringSubstringBudgeted = "string.substringBudgeted";
         public const string StringConcatBudgeted = "string.concatBudgeted";
+        public const string StringEquals = "string.equals";
     }
 
     public static class GeneratedVariables

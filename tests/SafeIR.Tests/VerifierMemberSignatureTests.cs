@@ -1,5 +1,8 @@
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
+using System.Reflection.PortableExecutable;
 using SafeIR.Runtime;
 using SafeIR.Verifier;
 
@@ -133,6 +136,19 @@ public sealed class VerifierMemberSignatureTests
             d.Message.Contains("SafeIR.Core", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Verifier_rejects_disallowed_member_reference_even_when_not_called()
+    {
+        var bytes = MinimalAssemblyWithUnusedStringConcatMemberReference();
+
+        var result = await VerifierTestHelpers.VerifyAsync(bytes);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d =>
+            d.Code == "V-MEMBER" &&
+            d.Message.Contains("System.String.Concat", StringComparison.Ordinal));
+    }
+
     private static MethodInfo FakeRuntimeMethod()
     {
         var assembly = new PersistedAssemblyBuilder(
@@ -152,6 +168,83 @@ public sealed class VerifierMemberSignatureTests
         il.Emit(OpCodes.Ret);
         type.CreateType();
         return method;
+    }
+
+    private static byte[] MinimalAssemblyWithUnusedStringConcatMemberReference()
+    {
+        var metadata = new MetadataBuilder();
+        var moduleName = metadata.GetOrAddString("MetadataRefModule");
+        metadata.AddModule(0, moduleName, metadata.GetOrAddGuid(Guid.NewGuid()), default, default);
+        metadata.AddAssembly(
+            metadata.GetOrAddString("MetadataRef"),
+            new Version(1, 0, 0, 0),
+            default,
+            default,
+            (AssemblyFlags)0,
+            AssemblyHashAlgorithm.Sha256);
+
+        var coreLib = AddAssemblyReference(metadata, typeof(object).Assembly.GetName());
+        var objectType = metadata.AddTypeReference(
+            coreLib,
+            metadata.GetOrAddString("System"),
+            metadata.GetOrAddString("Object"));
+        var stringType = metadata.AddTypeReference(
+            coreLib,
+            metadata.GetOrAddString("System"),
+            metadata.GetOrAddString("String"));
+
+        metadata.AddTypeDefinition(
+            default,
+            default,
+            metadata.GetOrAddString("<Module>"),
+            default,
+            MetadataTokens.FieldDefinitionHandle(1),
+            MetadataTokens.MethodDefinitionHandle(1));
+        metadata.AddTypeDefinition(
+            TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed,
+            metadata.GetOrAddString("SafeIR.Generated"),
+            metadata.GetOrAddString("Module_0123456789abcdef"),
+            objectType,
+            MetadataTokens.FieldDefinitionHandle(1),
+            MetadataTokens.MethodDefinitionHandle(1));
+
+        metadata.AddMemberReference(
+            stringType,
+            metadata.GetOrAddString(nameof(string.Concat)),
+            metadata.GetOrAddBlob(StringConcatSignature()));
+
+        var peBuilder = new ManagedPEBuilder(
+            new PEHeaderBuilder(imageCharacteristics: Characteristics.ExecutableImage | Characteristics.Dll),
+            new MetadataRootBuilder(metadata),
+            new BlobBuilder(),
+            flags: CorFlags.ILOnly);
+        var peBlob = new BlobBuilder();
+        peBuilder.Serialize(peBlob);
+        return peBlob.ToArray();
+    }
+
+    private static AssemblyReferenceHandle AddAssemblyReference(MetadataBuilder metadata, AssemblyName name)
+        => metadata.AddAssemblyReference(
+            metadata.GetOrAddString(name.Name!),
+            name.Version ?? new Version(0, 0, 0, 0),
+            default,
+            metadata.GetOrAddBlob(name.GetPublicKeyToken() ?? []),
+            AssemblyFlags.PublicKey,
+            default);
+
+    private static BlobBuilder StringConcatSignature()
+    {
+        var signature = new BlobBuilder();
+        new BlobEncoder(signature)
+            .MethodSignature()
+            .Parameters(
+                2,
+                returnType => returnType.Type().String(),
+                parameters => {
+                    parameters.AddParameter().Type().String();
+                    parameters.AddParameter().Type().String();
+                });
+        return signature;
     }
 
     private static void EmitRuntimeCall(ILGenerator il, string method)

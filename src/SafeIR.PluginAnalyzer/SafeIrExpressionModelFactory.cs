@@ -31,6 +31,9 @@ internal static class SafeIrExpressionModelFactory
                 SafeIrInvocationExpressionLowerer.Lower(invocation, context, part => Lower(part, context)),
             IsPatternExpressionSyntax pattern => SafeIrPatternExpressionLowerer.Lower(pattern, context, part => Lower(part, context)),
             IdentifierNameSyntax identifier => LowerIdentifier(identifier.Identifier.ValueText, context.LiveSettings),
+            MemberAccessExpressionSyntax member
+                when SafeIrStringExpressionLowerer.TryLowerMember(member, context, part => Lower(part, context)) is { } lowered =>
+                lowered,
             MemberAccessExpressionSyntax member => LowerMemberAccess(member, context),
             InterpolatedStringExpressionSyntax interpolated =>
                 SafeIrInterpolatedStringExpressionLowerer.Lower(interpolated, part => Lower(part, context)),

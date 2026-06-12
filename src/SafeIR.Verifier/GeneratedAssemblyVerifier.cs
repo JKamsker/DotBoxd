@@ -63,6 +63,7 @@ public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifi
         PeStructureVerifier.Verify(peReader, diagnostics);
         VerifyAssemblyReferences(reader, policy, diagnostics);
         VerifyTypeReferences(reader, policy, diagnostics);
+        VerifyMemberReferences(reader, policy, diagnostics);
         VerifyCustomAttributes(reader, diagnostics);
         MetadataTableVerifier.Verify(reader, diagnostics);
         VerifyDefinitions(peReader, reader, policy, diagnostics, cancellationToken);
@@ -113,6 +114,21 @@ public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifi
             else if (!policy.AllowedTypes.Contains(name))
             {
                 diagnostics.Add(new VerificationDiagnostic("V-TYPE-REF", $"type reference '{name}' is not allowed"));
+            }
+        }
+    }
+
+    private static void VerifyMemberReferences(
+        MetadataReader reader,
+        VerificationPolicy policy,
+        List<VerificationDiagnostic> diagnostics)
+    {
+        foreach (var handle in reader.MemberReferences)
+        {
+            var member = MetadataName.MemberSignature(reader, handle);
+            if (!policy.IsMemberAllowed(member.Signature))
+            {
+                diagnostics.Add(new VerificationDiagnostic("V-MEMBER", $"member '{member.Signature}' is not allowed"));
             }
         }
     }

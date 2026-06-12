@@ -189,7 +189,10 @@ internal static class SafeIrPackageSourceEmitter
             SafeIrGenerationNames.Helpers.Str,
             Parameter(SafeIrGenerationNames.CSharpTypes.String, "value"),
             "new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromString(value), Span)");
+        EmitStringLengthHelper(builder);
+        EmitStringSubstringHelper(builder);
         EmitStringConcatHelper(builder);
+        EmitStringEqualsHelper(builder);
         EmitHelper(
             builder,
             SafeIrGenerationNames.Helpers.I32,
@@ -237,13 +240,50 @@ internal static class SafeIrPackageSourceEmitter
             .AppendLine(";");
 
     private static void EmitStringConcatHelper(StringBuilder builder)
-        => EmitHelper(
+        => EmitBindingCallHelper(
             builder,
             SafeIrGenerationNames.Helpers.ConcatString,
+            SafeIrGenerationNames.BindingIds.StringConcatBudgeted,
             "global::SafeIR.Expression left, global::SafeIR.Expression right",
+            "left, right");
+
+    private static void EmitStringLengthHelper(StringBuilder builder)
+        => EmitBindingCallHelper(
+            builder,
+            SafeIrGenerationNames.Helpers.StringLength,
+            SafeIrGenerationNames.BindingIds.StringLength,
+            "global::SafeIR.Expression value",
+            "value");
+
+    private static void EmitStringSubstringHelper(StringBuilder builder)
+        => EmitBindingCallHelper(
+            builder,
+            SafeIrGenerationNames.Helpers.StringSubstring,
+            SafeIrGenerationNames.BindingIds.StringSubstringBudgeted,
+            "global::SafeIR.Expression value, global::SafeIR.Expression startIndex, global::SafeIR.Expression length",
+            "value, startIndex, length");
+
+    private static void EmitStringEqualsHelper(StringBuilder builder)
+        => EmitBindingCallHelper(
+            builder,
+            SafeIrGenerationNames.Helpers.StringEquals,
+            SafeIrGenerationNames.BindingIds.StringEquals,
+            "global::SafeIR.Expression left, global::SafeIR.Expression right",
+            "left, right");
+
+    private static void EmitBindingCallHelper(
+        StringBuilder builder,
+        string helper,
+        string bindingId,
+        string parameters,
+        string arguments)
+        => EmitHelper(
+            builder,
+            helper,
+            parameters,
             "new global::SafeIR.CallExpression(" +
-            LiteralReader.StringLiteral(SafeIrGenerationNames.BindingIds.StringConcatBudgeted) +
-            ", [left, right], null, Span)");
+            LiteralReader.StringLiteral(bindingId) +
+            ", [" + arguments + "], null, Span)");
 
     private static string Parameter(string type, string name) => type + " " + name;
 
