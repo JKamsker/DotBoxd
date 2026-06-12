@@ -52,7 +52,7 @@ publishing the SafeIR packages.
 - [x] Binding review process documented.
 - [x] Capability grant process documented.
 - [x] Red-team scenarios run.
-- [ ] Incident response for verifier/cache failures documented.
+- [x] Incident response for verifier/cache failures documented.
 
 ## Documentation
 
@@ -64,4 +64,4 @@ publishing the SafeIR packages.
 - [x] Capability catalog.
 - [x] Error code reference.
 - [x] Debugging guide.
-- [ ] Operational runbook.
+- [x] Operational runbook.

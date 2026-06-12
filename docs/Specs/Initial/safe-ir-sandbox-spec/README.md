@@ -57,6 +57,7 @@ For hard isolation against runtime bugs, memory exhaustion, process termination,
 | `adr/0003-host-granted-bindings.md` | Decision: only host grants bindings |
 | `examples/example-ir.md` | Example IR snippets |
 | `examples/example-binding-manifest.md` | Example binding manifest |
+| `operations/runbook.md` | Operational runbook and incident response |
 | `checklists/security-review.md` | Security checklist |
 | `checklists/release-readiness.md` | Release checklist |
 | `references.md` | External references used |
