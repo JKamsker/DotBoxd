@@ -3,7 +3,7 @@ namespace SafeIR.PluginAnalyzer;
 internal static class SafeIrManifestEffectModel
 {
     public static EquatableArray<string> Create(
-        SafeIrExpressionModel shouldHandle,
+        SafeIrStatementBodyModel shouldHandle,
         SafeIrHandleModel handle)
     {
         var effects = new List<string> { SafeIrGenerationNames.Effects.Cpu };

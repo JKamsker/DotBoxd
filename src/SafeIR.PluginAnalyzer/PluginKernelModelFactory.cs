@@ -83,13 +83,9 @@ internal static class PluginKernelModelFactory
                 liveSettings,
                 context.SemanticModel,
                 cancellationToken);
-            var shouldHandleExpression = SafeIrExpressionModelFactory.Create(
+            var shouldHandleBody = SafeIrConditionBodyModelFactory.Create(
                 ReturnExpression(shouldHandle),
                 shouldHandleContext);
-            if (!string.Equals(shouldHandleExpression.Type, SafeIrGenerationNames.ManifestTypes.Bool, StringComparison.Ordinal))
-            {
-                throw new NotSupportedException("Kernel ShouldHandle must lower to a bool expression.");
-            }
 
             var handleModel = SafeIrHandleModelFactory.Create(
                 handle,
@@ -111,9 +107,9 @@ internal static class PluginKernelModelFactory
                 HandleContextParameterName: handleContextParameterName,
                 EventProperties: eventProperties,
                 LiveSettings: liveSettings,
-                ShouldHandle: shouldHandleExpression,
+                ShouldHandle: shouldHandleBody,
                 Handle: handleModel,
-                ManifestEffects: SafeIrManifestEffectModel.Create(shouldHandleExpression, handleModel));
+                ManifestEffects: SafeIrManifestEffectModel.Create(shouldHandleBody, handleModel));
             return new PluginKernelModelResult(model, null);
         }
         catch (NotSupportedException ex)

@@ -116,7 +116,7 @@ internal static class SafeIrPackageSourceEmitter
             .AppendLine("(global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Plugins.LiveSettingDefinition> settings)");
         builder.AppendLine("        => new(");
         builder.AppendLine($"            {LiteralReader.StringLiteral(SafeIrGenerationNames.Entrypoints.ShouldHandle)}, true, Parameters(settings), global::SafeIR.SandboxType.Bool,");
-        builder.AppendLine($"            [new global::SafeIR.ReturnStatement({model.ShouldHandle.Source}, Span)]);");
+        builder.AppendLine($"            {model.ShouldHandle.Source});");
         builder.AppendLine();
         builder.Append("    private static global::SafeIR.SandboxFunction ")
             .Append(SafeIrGenerationNames.Entrypoints.Handle)

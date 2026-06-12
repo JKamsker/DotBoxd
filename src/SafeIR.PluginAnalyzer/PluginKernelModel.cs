@@ -12,7 +12,7 @@ internal sealed record PluginKernelModel(
     string HandleContextParameterName,
     EquatableArray<EventPropertyModel> EventProperties,
     EquatableArray<LiveSettingModel> LiveSettings,
-    SafeIrExpressionModel ShouldHandle,
+    SafeIrStatementBodyModel ShouldHandle,
     SafeIrHandleModel Handle,
     EquatableArray<string> ManifestEffects);
 

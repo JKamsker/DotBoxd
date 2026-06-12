@@ -139,6 +139,12 @@ internal static class SafeIrGenerationNames
         public const string Mod = "Mod";
     }
 
+    public static class IrTypes
+    {
+        public const string IfStatement = "global::SafeIR.IfStatement";
+        public const string ReturnStatement = "global::SafeIR.ReturnStatement";
+    }
+
     public static class BindingIds
     {
         public const string StringConcatBudgeted = "string.concatBudgeted";

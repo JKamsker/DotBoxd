@@ -32,8 +32,8 @@ public sealed class PluginAnalyzerGenerationTests
             """);
 
         var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
-        Assert.Contains("Bool(true)", generated);
-        Assert.DoesNotContain("Bool(false)", generated);
+        Assert.Contains("new global::SafeIR.IfStatement(Bool(true)", generated);
+        Assert.DoesNotContain("new global::SafeIR.IfStatement(Bool(false)", generated);
     }
 
     [Fact]

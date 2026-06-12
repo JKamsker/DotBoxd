@@ -45,7 +45,7 @@ public sealed class PluginAnalyzerCompletenessTests
         Assert.Empty(diagnostics.Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
         Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
         var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
-        Assert.Contains("Not(Var(\"Disabled\"))", generated);
+        Assert.Contains("new global::SafeIR.IfStatement(Var(\"Disabled\")", generated);
         Assert.Contains("Add(Var(\"e_Amount\"), Var(\"Offset\"))", generated);
         Assert.Contains("Sub(Var(\"MinDamage\"), I32(1))", generated);
         Assert.Contains("Ne(Var(\"e_Message\"), Str(\"\"))", generated);
