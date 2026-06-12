@@ -8,24 +8,28 @@ internal sealed class ExpressionEvaluator
     private readonly InterpreterEvaluator _interpreter;
     private readonly IReadOnlyDictionary<string, FunctionAnalysis> _functionAnalysis;
     private readonly SandboxExecutionOptions _options;
+    private readonly string _moduleHash;
 
     public ExpressionEvaluator(
         SandboxContext context,
         InterpreterEvaluator interpreter,
         IReadOnlyDictionary<string, FunctionAnalysis> functionAnalysis,
-        SandboxExecutionOptions options)
+        SandboxExecutionOptions options,
+        string moduleHash)
     {
         _context = context;
         _interpreter = interpreter;
         _functionAnalysis = functionAnalysis;
         _options = options;
+        _moduleHash = moduleHash;
     }
 
     public async ValueTask<SandboxValue> EvaluateAsync(Expression expression, InterpreterFrame frame)
     {
         _context.ChargeFuel(1);
-        InterpreterTrace.Write(_context, _options, frame.FunctionId, "expression", expression.GetType().Name);
-        var value = expression switch {
+        InterpreterTrace.Write(_context, _options, _moduleHash, frame.FunctionId, "expression", expression.GetType().Name);
+        var value = expression switch
+        {
             LiteralExpression literal => ChargeLiteral(literal.Value),
             VariableExpression variable => frame.Locals[variable.Name],
             UnaryExpression unary => await EvaluateUnaryAsync(unary, frame).ConfigureAwait(false),
@@ -39,7 +43,8 @@ internal sealed class ExpressionEvaluator
     private async ValueTask<SandboxValue> EvaluateUnaryAsync(UnaryExpression unary, InterpreterFrame frame)
     {
         var value = await EvaluateAsync(unary.Operand, frame).ConfigureAwait(false);
-        return unary.Operator switch {
+        return unary.Operator switch
+        {
             "!" => SandboxValue.FromBool(!((BoolValue)value).Value),
             "-" => SandboxValue.FromInt32(SandboxInt32Math.Negate(((I32Value)value).Value)),
             _ => throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "unsupported unary operator"))
@@ -48,10 +53,12 @@ internal sealed class ExpressionEvaluator
 
     private async ValueTask<SandboxValue> EvaluateBinaryAsync(BinaryExpression binary, InterpreterFrame frame)
     {
-        if (binary.Operator == "&&") {
+        if (binary.Operator == "&&")
+        {
             var order = ShortCircuitExpressionOrder.Choose(binary, _context.Bindings, _functionAnalysis);
             var first = (BoolValue)await EvaluateAsync(order.First, frame).ConfigureAwait(false);
-            if (!first.Value) {
+            if (!first.Value)
+            {
                 return SandboxValue.FromBool(false);
             }
 
@@ -59,10 +66,12 @@ internal sealed class ExpressionEvaluator
             return SandboxValue.FromBool(second.Value);
         }
 
-        if (binary.Operator == "||") {
+        if (binary.Operator == "||")
+        {
             var order = ShortCircuitExpressionOrder.Choose(binary, _context.Bindings, _functionAnalysis);
             var first = (BoolValue)await EvaluateAsync(order.First, frame).ConfigureAwait(false);
-            if (first.Value) {
+            if (first.Value)
+            {
                 return SandboxValue.FromBool(true);
             }
 
@@ -72,7 +81,8 @@ internal sealed class ExpressionEvaluator
 
         var left = await EvaluateAsync(binary.Left, frame).ConfigureAwait(false);
         var right = await EvaluateAsync(binary.Right, frame).ConfigureAwait(false);
-        return binary.Operator switch {
+        return binary.Operator switch
+        {
             "+" when left is StringValue l && right is StringValue r => Concat(l.Value, r.Value),
             "+" => SandboxValue.FromInt32(SandboxInt32Math.Add(((I32Value)left).Value, ((I32Value)right).Value)),
             "-" => SandboxValue.FromInt32(SandboxInt32Math.Subtract(((I32Value)left).Value, ((I32Value)right).Value)),
@@ -92,20 +102,24 @@ internal sealed class ExpressionEvaluator
     private async ValueTask<SandboxValue> EvaluateCallAsync(CallExpression call, InterpreterFrame frame)
     {
         var args = new List<SandboxValue>(call.Arguments.Count);
-        foreach (var arg in call.Arguments) {
+        foreach (var arg in call.Arguments)
+        {
             args.Add(await EvaluateAsync(arg, frame).ConfigureAwait(false));
         }
 
-        if (TryEvaluateCollectionCall(call, args, out var collectionValue)) {
+        if (TryEvaluateCollectionCall(call, args, out var collectionValue))
+        {
             return collectionValue;
         }
 
-        if (_interpreter.TryGetFunction(call.Name, out var function)) {
+        if (_interpreter.TryGetFunction(call.Name, out var function))
+        {
             return await _interpreter.InvokeFunctionAsync(function, args).ConfigureAwait(false);
         }
 
-        if (_context.Bindings.TryGet(call.Name, out _)) {
-            return await CallBindingAsync(call.Name, args).ConfigureAwait(false);
+        if (_context.Bindings.TryGet(call.Name, out _))
+        {
+            return await CallBindingAsync(call.Name, args, frame.FunctionId).ConfigureAwait(false);
         }
 
         throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, $"unknown call '{call.Name}' at runtime"));
@@ -116,7 +130,8 @@ internal sealed class ExpressionEvaluator
         IReadOnlyList<SandboxValue> args,
         out SandboxValue value)
     {
-        value = call.Name switch {
+        value = call.Name switch
+        {
             "list.empty" => CollectionOperations.CreateList(call.GenericType ?? SandboxType.Unit, _context),
             "list.of" => CollectionOperations.BuildList(args, _context),
             "list.count" => CollectionOperations.CountList(Arg(args, 0)),
@@ -138,28 +153,38 @@ internal sealed class ExpressionEvaluator
     public async ValueTask<SandboxValue> InvokeFunctionAsync(SandboxFunction function, IReadOnlyList<SandboxValue> args)
         => await _interpreter.InvokeFunctionAsync(function, args).ConfigureAwait(false);
 
-    private async ValueTask<SandboxValue> CallBindingAsync(string id, IReadOnlyList<SandboxValue> args)
+    private async ValueTask<SandboxValue> CallBindingAsync(
+        string id,
+        IReadOnlyList<SandboxValue> args,
+        string functionId)
     {
         var descriptor = _context.Bindings.GetDescriptor(id);
+        InterpreterTrace.WriteBindingCall(_context, _options, _moduleHash, functionId, descriptor);
         _context.ChargeBindingCall(descriptor);
         using var timeout = _context.CreateWallTimeToken();
-        try {
+        try
+        {
             var value = await descriptor.Invoke(_context, args, timeout.Token).ConfigureAwait(false);
             return _context.ChargeBindingReturn(descriptor, value);
         }
-        catch (SandboxRuntimeException) {
+        catch (SandboxRuntimeException)
+        {
             throw;
         }
-        catch (OperationCanceledException) when (_context.CancellationToken.IsCancellationRequested) {
+        catch (OperationCanceledException) when (_context.CancellationToken.IsCancellationRequested)
+        {
             throw;
         }
-        catch (OperationCanceledException) when (timeout.IsCancellationRequested) {
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+        {
             throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.Timeout, $"binding '{id}' timed out"));
         }
-        catch (OperationCanceledException) {
+        catch (OperationCanceledException)
+        {
             throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{id}' failed"));
         }
-        catch (Exception) {
+        catch (Exception)
+        {
             throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{id}' failed"));
         }
     }
@@ -173,7 +198,8 @@ internal sealed class ExpressionEvaluator
 
     private SandboxValue ChargeLiteral(SandboxValue value)
     {
-        if (value is StringValue or SandboxPathValue or SandboxUriValue) {
+        if (value is StringValue or SandboxPathValue or SandboxUriValue)
+        {
             _context.ChargeValue(value);
         }
 
