@@ -17,7 +17,8 @@ internal sealed record GeneratedInstruction(
     int? BranchTarget,
     IReadOnlyList<int> SwitchTargets,
     string? CalledMember,
-    bool IsLocalCall);
+    bool IsLocalCall,
+    EntityHandle? OperandHandle);
 
 [Flags]
 internal enum GeneratedMeterState

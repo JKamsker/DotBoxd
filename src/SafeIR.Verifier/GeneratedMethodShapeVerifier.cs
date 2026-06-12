@@ -32,11 +32,11 @@ internal static class GeneratedMethodShapeVerifier
     public static void VerifyBody(
         MetadataReader reader,
         MethodDefinition method,
-        MethodBodyBlock body,
+        IReadOnlyList<GeneratedInstruction> instructions,
         string methodName,
         List<VerificationDiagnostic> diagnostics)
     {
-        var analysis = GeneratedMethodFlowAnalyzer.Analyze(reader, body, StateFor);
+        var analysis = GeneratedMethodFlowAnalyzer.Analyze(instructions, StateFor);
         GeneratedStackVerifier.Verify(reader, method, analysis, diagnostics);
         if (methodName == "Execute")
         {

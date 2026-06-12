@@ -80,8 +80,9 @@ public sealed partial class GeneratedAssemblyVerifier
             if (method.RelativeVirtualAddress != 0)
             {
                 var body = peReader.GetMethodBody(method.RelativeVirtualAddress);
-                OpCodeVerifier.VerifyBody(reader, policy, body, diagnostics);
-                GeneratedMethodShapeVerifier.VerifyBody(reader, method, body, name, diagnostics);
+                var instructions = GeneratedIlReader.ReadInstructions(reader, body, diagnostics);
+                OpCodeVerifier.VerifyBody(reader, policy, body, instructions, diagnostics);
+                GeneratedMethodShapeVerifier.VerifyBody(reader, method, instructions, name, diagnostics);
             }
         }
 

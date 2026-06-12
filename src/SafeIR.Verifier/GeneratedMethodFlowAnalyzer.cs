@@ -1,16 +1,13 @@
 namespace SafeIR.Verifier;
 
 using System.Reflection.Metadata;
-using System.Reflection.Metadata.Ecma335;
 
 internal static class GeneratedMethodFlowAnalyzer
 {
     public static GeneratedMethodFlow Analyze(
-        MetadataReader reader,
-        MethodBodyBlock body,
+        IReadOnlyList<GeneratedInstruction> instructions,
         Func<GeneratedInstruction, GeneratedMeterState> stateFor)
     {
-        var instructions = ReadInstructions(reader, body);
         var byOffset = instructions.ToDictionary(i => i.Offset);
         var reachableCalls = new HashSet<string>(StringComparer.Ordinal);
         var returnStates = new List<GeneratedMeterState>();
@@ -180,53 +177,6 @@ internal static class GeneratedMethodFlowAnalyzer
 
     private static bool IsLoopIterationCharge(GeneratedInstruction instruction)
         => instruction.CalledMember == GeneratedMethodShapeVerifier.ChargeLoopIterationSignature;
-
-    private static List<GeneratedInstruction> ReadInstructions(MetadataReader reader, MethodBodyBlock body)
-    {
-        var instructions = new List<GeneratedInstruction>();
-        var il = body.GetILReader();
-        while (il.RemainingBytes > 0)
-        {
-            var offset = il.Offset;
-            var opcode = GeneratedIlReader.ReadOpCode(ref il);
-            string? calledMember = null;
-            var isLocalCall = false;
-            int? branchTarget = null;
-            int[] switchTargets = [];
-            if (opcode is ILOpCode.Call or ILOpCode.Callvirt or ILOpCode.Newobj)
-            {
-                var handle = MetadataTokens.EntityHandle(il.ReadInt32());
-                var member = MetadataName.MemberSignature(reader, handle);
-                calledMember = member.Signature;
-                isLocalCall = handle.Kind == HandleKind.MethodDefinition;
-            }
-            else if (opcode == ILOpCode.Switch)
-            {
-                var count = il.ReadInt32();
-                var deltas = new int[count];
-                for (var i = 0; i < count; i++)
-                {
-                    deltas[i] = il.ReadInt32();
-                }
-
-                var nextOffset = il.Offset;
-                switchTargets = deltas.Select(delta => nextOffset + delta).ToArray();
-            }
-            else if (opcode.IsBranch())
-            {
-                var delta = opcode.GetBranchOperandSize() == 1 ? il.ReadSByte() : il.ReadInt32();
-                branchTarget = il.Offset + delta;
-            }
-            else
-            {
-                GeneratedIlReader.SkipOperand(opcode, ref il);
-            }
-
-            instructions.Add(new GeneratedInstruction(offset, opcode, il.Offset, branchTarget, switchTargets, calledMember, isLocalCall));
-        }
-
-        return instructions;
-    }
 
     private static int? NextInstructionOffset(
         IReadOnlyList<GeneratedInstruction> instructions,
