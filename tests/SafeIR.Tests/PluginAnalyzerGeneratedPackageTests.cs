@@ -14,6 +14,7 @@ public sealed class PluginAnalyzerGeneratedPackageTests
     public async Task Generated_package_installs_and_executes_lowered_ir()
     {
         var package = CreateGeneratedPackage("""
+            using System.ComponentModel.DataAnnotations;
             using SafeIR.Plugins;
 
             namespace Sample;
@@ -36,12 +37,15 @@ public sealed class PluginAnalyzerGeneratedPackageTests
                 public string DamageType { get; set; } = "fire";
 
                 [LiveSetting]
+                [Range(0, 200)]
                 public int MinDamage { get; set; } = 100;
 
                 [LiveSetting]
+                [Range(typeof(long), "1", "9")]
                 public long Sequence { get; set; } = 7L;
 
                 [LiveSetting]
+                [Range(0.5D, 2.5D)]
                 public double Ratio { get; set; } = 1.5D;
 
                 public bool ShouldHandle(DamageEvent e, HookContext ctx)
@@ -62,9 +66,9 @@ public sealed class PluginAnalyzerGeneratedPackageTests
             package.Manifest.LiveSettings,
             setting => AssertLiveSetting(setting, "Enabled", "bool", true),
             setting => AssertLiveSetting(setting, "DamageType", "string", "fire"),
-            setting => AssertLiveSetting(setting, "MinDamage", "int", 100),
-            setting => AssertLiveSetting(setting, "Sequence", "long", 7L),
-            setting => AssertLiveSetting(setting, "Ratio", "double", 1.5D));
+            setting => AssertLiveSetting(setting, "MinDamage", "int", 100, 0, 200),
+            setting => AssertLiveSetting(setting, "Sequence", "long", 7L, 1L, 9L),
+            setting => AssertLiveSetting(setting, "Ratio", "double", 1.5D, 0.5D, 2.5D));
 
         var messages = new InMemoryPluginMessageSink();
         var server = PluginServer.Create(messages);
@@ -170,11 +174,15 @@ public sealed class PluginAnalyzerGeneratedPackageTests
         LiveSettingDefinition actual,
         string name,
         string type,
-        object expectedDefault)
+        object expectedDefault,
+        object? expectedMin = null,
+        object? expectedMax = null)
     {
         Assert.Equal(name, actual.Name);
         Assert.Equal(type, actual.Type);
         Assert.Equal(expectedDefault, actual.DefaultValue);
+        Assert.Equal(expectedMin, actual.Min);
+        Assert.Equal(expectedMax, actual.Max);
     }
 
     private static GeneratedDamageEvent EventWithAmount(int amount)

@@ -18,7 +18,7 @@ internal static class PluginPackageValidator
             diagnostics.Add(new SandboxDiagnostic("SGP011", "Plugin manifest id must match module id."));
         }
 
-        if (!package.Module.Metadata.TryGetValue("pluginId", out var metadataPluginId) ||
+        if (!package.Module.Metadata.TryGetValue(PluginManifestNames.ModuleMetadata.PluginId, out var metadataPluginId) ||
             !string.Equals(metadataPluginId, package.Manifest.PluginId, StringComparison.Ordinal)) {
             diagnostics.Add(new SandboxDiagnostic("SGP012", "Plugin module metadata must bind to the manifest plugin id."));
         }
@@ -28,7 +28,7 @@ internal static class PluginPackageValidator
         ValidateManifestEffects(package.Manifest, diagnostics);
         ValidateEntrypoints(package, diagnostics);
         foreach (var group in package.Manifest.LiveSettings.GroupBy(s => s.Name, StringComparer.Ordinal)) {
-            if (group.Take(2).Count() > 1) {
+            if (group.Skip(1).Any()) {
                 diagnostics.Add(new SandboxDiagnostic("SGP021", $"Live setting '{group.Key}' is declared more than once."));
             }
         }
@@ -81,9 +81,9 @@ internal static class PluginPackageValidator
 
     private static void ValidateContract(PluginPackage package, List<SandboxDiagnostic> diagnostics)
     {
-        if (!package.Manifest.Contract.StartsWith("IEventKernel<", StringComparison.Ordinal) ||
-            !package.Manifest.Contract.EndsWith(">", StringComparison.Ordinal) ||
-            package.Manifest.Contract.Length <= "IEventKernel<>".Length)
+        if (!package.Manifest.Contract.StartsWith(PluginManifestNames.EventKernelContract.Prefix, StringComparison.Ordinal) ||
+            !package.Manifest.Contract.EndsWith(PluginManifestNames.EventKernelContract.Suffix, StringComparison.Ordinal) ||
+            package.Manifest.Contract.Length <= PluginManifestNames.EventKernelContract.Empty.Length)
         {
             diagnostics.Add(new SandboxDiagnostic(
                 "SGP014",
@@ -92,7 +92,7 @@ internal static class PluginPackageValidator
         }
 
         var eventName = package.Manifest.Contract[
-            "IEventKernel<".Length..^1];
+            PluginManifestNames.EventKernelContract.Prefix.Length..^PluginManifestNames.EventKernelContract.SuffixLength];
         foreach (var subscription in package.Manifest.Subscriptions)
         {
             if (!string.Equals(subscription.Event, eventName, StringComparison.Ordinal))
@@ -169,7 +169,7 @@ internal static class PluginPackageValidator
 
     private static string? ValidateModuleKernelMetadata(PluginPackage package, List<SandboxDiagnostic> diagnostics)
     {
-        if (!package.Module.Metadata.TryGetValue("kernel", out var metadataKernel) ||
+        if (!package.Module.Metadata.TryGetValue(PluginManifestNames.ModuleMetadata.Kernel, out var metadataKernel) ||
             string.IsNullOrWhiteSpace(metadataKernel)) {
             diagnostics.Add(new SandboxDiagnostic("SGP013", "Plugin module metadata must bind to the manifest kernel."));
             return null;
@@ -181,8 +181,16 @@ internal static class PluginPackageValidator
 
     private static void ValidateEntrypoints(PluginPackage package, List<SandboxDiagnostic> diagnostics)
     {
-        ValidateEntrypoint(package, package.Entrypoints.ShouldHandle, "ShouldHandle", diagnostics);
-        ValidateEntrypoint(package, package.Entrypoints.Handle, "Handle", diagnostics);
+        ValidateEntrypoint(
+            package,
+            package.Entrypoints.ShouldHandle,
+            PluginManifestNames.Entrypoints.ShouldHandle,
+            diagnostics);
+        ValidateEntrypoint(
+            package,
+            package.Entrypoints.Handle,
+            PluginManifestNames.Entrypoints.Handle,
+            diagnostics);
     }
 
     private static void ValidateManifestMode(PluginManifest manifest, List<SandboxDiagnostic> diagnostics)

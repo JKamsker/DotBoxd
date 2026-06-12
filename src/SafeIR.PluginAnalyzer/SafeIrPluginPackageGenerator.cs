@@ -10,7 +10,7 @@ public sealed class SafeIrPluginPackageGenerator : IIncrementalGenerator
     {
         var modelResults = context.SyntaxProvider
             .ForAttributeWithMetadataName(
-                "SafeIR.Plugins.GamePluginAttribute",
+                SafeIrGenerationNames.Metadata.GamePluginAttribute,
                 static (node, _) => node is ClassDeclarationSyntax,
                 static (ctx, ct) => PluginKernelModelFactory.Create(ctx, ct))
             .Where(static result => result is not null)

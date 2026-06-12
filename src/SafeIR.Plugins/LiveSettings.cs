@@ -134,11 +134,11 @@ public sealed class LiveSettingStore
     {
         var settings = definitions.Select(definition => {
             var value = definition.Type switch {
-                "bool" => LiveSettingTypeConverter.CoerceClr(typeof(bool), definition.DefaultValue),
-                "int" => LiveSettingTypeConverter.CoerceClr(typeof(int), definition.DefaultValue),
-                "long" => LiveSettingTypeConverter.CoerceClr(typeof(long), definition.DefaultValue),
-                "double" => LiveSettingTypeConverter.CoerceClr(typeof(double), definition.DefaultValue),
-                "string" => LiveSettingTypeConverter.CoerceClr(typeof(string), definition.DefaultValue),
+                PluginManifestNames.LiveSettingTypes.Bool => LiveSettingTypeConverter.CoerceClr(typeof(bool), definition.DefaultValue),
+                PluginManifestNames.LiveSettingTypes.Int => LiveSettingTypeConverter.CoerceClr(typeof(int), definition.DefaultValue),
+                PluginManifestNames.LiveSettingTypes.Long => LiveSettingTypeConverter.CoerceClr(typeof(long), definition.DefaultValue),
+                PluginManifestNames.LiveSettingTypes.Double => LiveSettingTypeConverter.CoerceClr(typeof(double), definition.DefaultValue),
+                PluginManifestNames.LiveSettingTypes.String => LiveSettingTypeConverter.CoerceClr(typeof(string), definition.DefaultValue),
                 _ => throw LiveSettingTypeConverter.Diagnostic($"Live setting type '{definition.Type}' is not supported.")
             };
             LiveSettingTypeConverter.ValidateRangeValue(definition, value);
@@ -186,11 +186,11 @@ public sealed class LiveSettingStore
         public void SetObject(object? value)
         {
             var coerced = definition.Type switch {
-                "bool" => LiveSettingTypeConverter.CoerceClr(typeof(bool), value),
-                "int" => LiveSettingTypeConverter.CoerceClr(typeof(int), value),
-                "long" => LiveSettingTypeConverter.CoerceClr(typeof(long), value),
-                "double" => LiveSettingTypeConverter.CoerceClr(typeof(double), value),
-                "string" => LiveSettingTypeConverter.CoerceClr(typeof(string), value),
+                PluginManifestNames.LiveSettingTypes.Bool => LiveSettingTypeConverter.CoerceClr(typeof(bool), value),
+                PluginManifestNames.LiveSettingTypes.Int => LiveSettingTypeConverter.CoerceClr(typeof(int), value),
+                PluginManifestNames.LiveSettingTypes.Long => LiveSettingTypeConverter.CoerceClr(typeof(long), value),
+                PluginManifestNames.LiveSettingTypes.Double => LiveSettingTypeConverter.CoerceClr(typeof(double), value),
+                PluginManifestNames.LiveSettingTypes.String => LiveSettingTypeConverter.CoerceClr(typeof(string), value),
                 _ => throw LiveSettingTypeConverter.Diagnostic($"Live setting type '{definition.Type}' is not supported.")
             };
             LiveSettingTypeConverter.ValidateRangeValue(definition, coerced);

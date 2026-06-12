@@ -58,9 +58,9 @@ internal static class SafeIrHandleModelFactory
     private static bool IsContextMessageSend(ExpressionSyntax expression, string contextParameterName)
     {
         if (expression is not MemberAccessExpressionSyntax sendAccess ||
-            !string.Equals(sendAccess.Name.Identifier.ValueText, "Send", StringComparison.Ordinal) ||
+            !string.Equals(sendAccess.Name.Identifier.ValueText, SafeIrGenerationNames.HookContext.SendMethod, StringComparison.Ordinal) ||
             sendAccess.Expression is not MemberAccessExpressionSyntax messagesAccess ||
-            !string.Equals(messagesAccess.Name.Identifier.ValueText, "Messages", StringComparison.Ordinal)) {
+            !string.Equals(messagesAccess.Name.Identifier.ValueText, SafeIrGenerationNames.HookContext.MessagesProperty, StringComparison.Ordinal)) {
             return false;
         }
 
@@ -70,7 +70,7 @@ internal static class SafeIrHandleModelFactory
 
     private static void RequireString(SafeIrExpressionModel expression, string argumentName)
     {
-        if (!string.Equals(expression.Type, "string", StringComparison.Ordinal)) {
+        if (!string.Equals(expression.Type, SafeIrGenerationNames.ManifestTypes.String, StringComparison.Ordinal)) {
             throw new NotSupportedException(
                 $"Kernel Handle {argumentName} argument must lower to a string expression.");
         }

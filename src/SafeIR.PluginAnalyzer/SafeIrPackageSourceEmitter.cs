@@ -23,14 +23,19 @@ internal static class SafeIrPackageSourceEmitter
 
     private static void EmitBody(StringBuilder builder, PluginKernelModel model)
     {
-        builder.AppendLine("    private static readonly global::SafeIR.SourceSpan Span = new(1, 1);");
+        builder.Append("    private static readonly global::SafeIR.SourceSpan Span = new(")
+            .Append(SafeIrGenerationNames.GeneratedSpanLine)
+            .Append(", ")
+            .Append(SafeIrGenerationNames.GeneratedSpanColumn)
+            .AppendLine(");");
         builder.AppendLine();
         builder.AppendLine("    public static global::SafeIR.Plugins.PluginPackage Create()");
         builder.AppendLine("    {");
         EmitSettings(builder, model);
         builder.AppendLine("        var manifest = new global::SafeIR.Plugins.PluginManifest(");
         builder.AppendLine($"            {LiteralReader.StringLiteral(model.PluginId)},");
-        builder.AppendLine($"            {LiteralReader.StringLiteral($"IEventKernel<{model.EventName}>")},");
+        builder.AppendLine(
+            $"            {LiteralReader.StringLiteral(SafeIrGenerationNames.Contracts.EventKernel(model.EventName))},");
         builder.AppendLine("            global::SafeIR.ExecutionMode.Auto,");
         EmitEffects(builder, model.ManifestEffects);
         builder.AppendLine("            settings,");
@@ -82,22 +87,31 @@ internal static class SafeIrPackageSourceEmitter
         builder.AppendLine($"            {LiteralReader.StringLiteral(model.PluginId)},");
         builder.AppendLine("            global::SafeIR.SemVersion.One,");
         builder.AppendLine("            global::SafeIR.SemVersion.One,");
-        builder.AppendLine("            [new global::SafeIR.CapabilityRequest(global::SafeIR.Plugins.PluginMessageBindings.CapabilityId, \"send damage notifications\")],");
-        builder.AppendLine("            [ShouldHandle(settings), Handle(settings)],");
-        builder.AppendLine($"            new global::System.Collections.Generic.Dictionary<string, string> {{ [\"pluginId\"] = {LiteralReader.StringLiteral(model.PluginId)}, [\"kernel\"] = {LiteralReader.StringLiteral(model.KernelName)} }});");
+        builder.AppendLine(
+            $"            [new global::SafeIR.CapabilityRequest(global::SafeIR.Plugins.PluginMessageBindings.CapabilityId, {LiteralReader.StringLiteral(SafeIrGenerationNames.Capabilities.MessageWriteReason)})],");
+        builder.Append("            [")
+            .Append(SafeIrGenerationNames.Entrypoints.ShouldHandle)
+            .Append("(settings), ")
+            .Append(SafeIrGenerationNames.Entrypoints.Handle)
+            .AppendLine("(settings)],");
+        builder.AppendLine($"            new global::System.Collections.Generic.Dictionary<string, string> {{ [{LiteralReader.StringLiteral(SafeIrGenerationNames.ModuleMetadata.PluginId)}] = {LiteralReader.StringLiteral(model.PluginId)}, [{LiteralReader.StringLiteral(SafeIrGenerationNames.ModuleMetadata.Kernel)}] = {LiteralReader.StringLiteral(model.KernelName)} }});");
         builder.AppendLine();
     }
 
     private static void EmitFunctions(StringBuilder builder, PluginKernelModel model)
     {
-        builder.AppendLine("    private static global::SafeIR.SandboxFunction ShouldHandle(global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Plugins.LiveSettingDefinition> settings)");
+        builder.Append("    private static global::SafeIR.SandboxFunction ")
+            .Append(SafeIrGenerationNames.Entrypoints.ShouldHandle)
+            .AppendLine("(global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Plugins.LiveSettingDefinition> settings)");
         builder.AppendLine("        => new(");
-        builder.AppendLine("            \"ShouldHandle\", true, Parameters(settings), global::SafeIR.SandboxType.Bool,");
+        builder.AppendLine($"            {LiteralReader.StringLiteral(SafeIrGenerationNames.Entrypoints.ShouldHandle)}, true, Parameters(settings), global::SafeIR.SandboxType.Bool,");
         builder.AppendLine($"            [new global::SafeIR.ReturnStatement({model.ShouldHandle.Source}, Span)]);");
         builder.AppendLine();
-        builder.AppendLine("    private static global::SafeIR.SandboxFunction Handle(global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Plugins.LiveSettingDefinition> settings)");
+        builder.Append("    private static global::SafeIR.SandboxFunction ")
+            .Append(SafeIrGenerationNames.Entrypoints.Handle)
+            .AppendLine("(global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Plugins.LiveSettingDefinition> settings)");
         builder.AppendLine("        => new(");
-        builder.AppendLine("            \"Handle\", true, Parameters(settings), global::SafeIR.SandboxType.Unit,");
+        builder.AppendLine($"            {LiteralReader.StringLiteral(SafeIrGenerationNames.Entrypoints.Handle)}, true, Parameters(settings), global::SafeIR.SandboxType.Unit,");
         builder.AppendLine($"            [new global::SafeIR.ReturnStatement({HandleExpression(model.Handle)}, Span)]);");
         builder.AppendLine();
     }
@@ -119,37 +133,88 @@ internal static class SafeIrPackageSourceEmitter
 
         builder.AppendLine("        ];");
         builder.AppendLine();
-        builder.AppendLine("    private static global::SafeIR.SandboxType TypeOf(string type) => type switch {");
-        builder.AppendLine("        \"bool\" => global::SafeIR.SandboxType.Bool,");
-        builder.AppendLine("        \"int\" => global::SafeIR.SandboxType.I32,");
-        builder.AppendLine("        \"long\" => global::SafeIR.SandboxType.I64,");
-        builder.AppendLine("        \"double\" => global::SafeIR.SandboxType.F64,");
-        builder.AppendLine("        \"string\" => global::SafeIR.SandboxType.String,");
+        builder.Append("    private static global::SafeIR.SandboxType TypeOf(")
+            .Append(Parameter(SafeIrGenerationNames.CSharpTypes.String, "type"))
+            .AppendLine(") => type switch {");
+        builder.AppendLine($"        {LiteralReader.StringLiteral(SafeIrGenerationNames.ManifestTypes.Bool)} => global::SafeIR.SandboxType.Bool,");
+        builder.AppendLine($"        {LiteralReader.StringLiteral(SafeIrGenerationNames.ManifestTypes.Int)} => global::SafeIR.SandboxType.I32,");
+        builder.AppendLine($"        {LiteralReader.StringLiteral(SafeIrGenerationNames.ManifestTypes.Long)} => global::SafeIR.SandboxType.I64,");
+        builder.AppendLine($"        {LiteralReader.StringLiteral(SafeIrGenerationNames.ManifestTypes.Double)} => global::SafeIR.SandboxType.F64,");
+        builder.AppendLine($"        {LiteralReader.StringLiteral(SafeIrGenerationNames.ManifestTypes.String)} => global::SafeIR.SandboxType.String,");
         builder.AppendLine("        _ => throw new global::System.InvalidOperationException($\"Unsupported generated setting type '{type}'.\")");
         builder.AppendLine("    };");
         builder.AppendLine();
-        builder.AppendLine("    private static global::SafeIR.Expression Var(string name) => new global::SafeIR.VariableExpression(name, Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Str(string value) => new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromString(value), Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression I32(int value) => new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromInt32(value), Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression I64(long value) => new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromInt64(value), Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression F64(double value) => new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromDouble(value), Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Bool(bool value) => new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromBool(value), Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Not(global::SafeIR.Expression operand) => new global::SafeIR.UnaryExpression(\"!\", operand, Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Neg(global::SafeIR.Expression operand) => new global::SafeIR.UnaryExpression(\"-\", operand, Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Eq(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"==\", right, Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Ne(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"!=\", right, Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Ge(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \">=\", right, Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Gt(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \">\", right, Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Le(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"<=\", right, Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Lt(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"<\", right, Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression And(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"&&\", right, Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Or(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"||\", right, Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Add(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"+\", right, Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Sub(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"-\", right, Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Mul(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"*\", right, Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Div(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"/\", right, Span);");
-        builder.AppendLine("    private static global::SafeIR.Expression Mod(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"%\", right, Span);");
+        EmitHelper(
+            builder,
+            SafeIrGenerationNames.Helpers.Var,
+            Parameter(SafeIrGenerationNames.CSharpTypes.String, "name"),
+            "new global::SafeIR.VariableExpression(name, Span)");
+        EmitHelper(
+            builder,
+            SafeIrGenerationNames.Helpers.Str,
+            Parameter(SafeIrGenerationNames.CSharpTypes.String, "value"),
+            "new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromString(value), Span)");
+        EmitHelper(
+            builder,
+            SafeIrGenerationNames.Helpers.I32,
+            Parameter(SafeIrGenerationNames.CSharpTypes.Int, "value"),
+            "new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromInt32(value), Span)");
+        EmitHelper(
+            builder,
+            SafeIrGenerationNames.Helpers.I64,
+            Parameter(SafeIrGenerationNames.CSharpTypes.Long, "value"),
+            "new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromInt64(value), Span)");
+        EmitHelper(
+            builder,
+            SafeIrGenerationNames.Helpers.F64,
+            Parameter(SafeIrGenerationNames.CSharpTypes.Double, "value"),
+            "new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromDouble(value), Span)");
+        EmitHelper(
+            builder,
+            SafeIrGenerationNames.Helpers.Bool,
+            Parameter(SafeIrGenerationNames.CSharpTypes.Bool, "value"),
+            "new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromBool(value), Span)");
+        EmitUnaryHelper(builder, SafeIrGenerationNames.Helpers.Not, SafeIrGenerationNames.Operators.LogicalNot);
+        EmitUnaryHelper(builder, SafeIrGenerationNames.Helpers.Neg, SafeIrGenerationNames.Operators.Minus);
+        EmitBinaryHelper(builder, SafeIrGenerationNames.Helpers.Eq, SafeIrGenerationNames.Operators.EqualTo);
+        EmitBinaryHelper(builder, SafeIrGenerationNames.Helpers.Ne, SafeIrGenerationNames.Operators.NotEqualTo);
+        EmitBinaryHelper(builder, SafeIrGenerationNames.Helpers.Ge, SafeIrGenerationNames.Operators.GreaterThanOrEqual);
+        EmitBinaryHelper(builder, SafeIrGenerationNames.Helpers.Gt, SafeIrGenerationNames.Operators.GreaterThan);
+        EmitBinaryHelper(builder, SafeIrGenerationNames.Helpers.Le, SafeIrGenerationNames.Operators.LessThanOrEqual);
+        EmitBinaryHelper(builder, SafeIrGenerationNames.Helpers.Lt, SafeIrGenerationNames.Operators.LessThan);
+        EmitBinaryHelper(builder, SafeIrGenerationNames.Helpers.And, SafeIrGenerationNames.Operators.LogicalAnd);
+        EmitBinaryHelper(builder, SafeIrGenerationNames.Helpers.Or, SafeIrGenerationNames.Operators.LogicalOr);
+        EmitBinaryHelper(builder, SafeIrGenerationNames.Helpers.Add, SafeIrGenerationNames.Operators.Add);
+        EmitBinaryHelper(builder, SafeIrGenerationNames.Helpers.Sub, SafeIrGenerationNames.Operators.Minus);
+        EmitBinaryHelper(builder, SafeIrGenerationNames.Helpers.Mul, SafeIrGenerationNames.Operators.Multiply);
+        EmitBinaryHelper(builder, SafeIrGenerationNames.Helpers.Div, SafeIrGenerationNames.Operators.Divide);
+        EmitBinaryHelper(builder, SafeIrGenerationNames.Helpers.Mod, SafeIrGenerationNames.Operators.Modulo);
     }
+
+    private static void EmitHelper(StringBuilder builder, string name, string parameters, string expression)
+        => builder.Append("    private static global::SafeIR.Expression ")
+            .Append(name)
+            .Append('(')
+            .Append(parameters)
+            .Append(") => ")
+            .Append(expression)
+            .AppendLine(";");
+
+    private static string Parameter(string type, string name) => type + " " + name;
+
+    private static void EmitUnaryHelper(StringBuilder builder, string name, string op)
+        => EmitHelper(
+            builder,
+            name,
+            "global::SafeIR.Expression operand",
+            $"new global::SafeIR.UnaryExpression({LiteralReader.StringLiteral(op)}, operand, Span)");
+
+    private static void EmitBinaryHelper(StringBuilder builder, string name, string op)
+        => EmitHelper(
+            builder,
+            name,
+            "global::SafeIR.Expression left, global::SafeIR.Expression right",
+            $"new global::SafeIR.BinaryExpression(left, {LiteralReader.StringLiteral(op)}, right, Span)");
 
     private static string HandleExpression(SafeIrHandleModel handle)
         => $"new global::SafeIR.CallExpression(global::SafeIR.Plugins.PluginMessageBindings.SendBindingId, [{handle.Target.Source}, {handle.Message.Source}], null, Span)";

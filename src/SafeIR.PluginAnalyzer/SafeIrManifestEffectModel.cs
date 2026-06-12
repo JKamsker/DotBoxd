@@ -6,13 +6,13 @@ internal static class SafeIrManifestEffectModel
         SafeIrExpressionModel shouldHandle,
         SafeIrHandleModel handle)
     {
-        var effects = new List<string> { "Cpu" };
+        var effects = new List<string> { SafeIrGenerationNames.Effects.Cpu };
         if (shouldHandle.Allocates || handle.Allocates) {
-            effects.Add("Alloc");
+            effects.Add(SafeIrGenerationNames.Effects.Alloc);
         }
 
-        effects.Add("GameStateWrite");
-        effects.Add("Audit");
+        effects.Add(SafeIrGenerationNames.Effects.GameStateWrite);
+        effects.Add(SafeIrGenerationNames.Effects.Audit);
         return new EquatableArray<string>(effects);
     }
 }

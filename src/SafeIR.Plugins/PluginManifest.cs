@@ -39,5 +39,10 @@ public sealed record PluginPackage(
         PluginManifest manifest,
         SandboxModule module,
         KernelEntrypoints? entrypoints = null)
-        => new(manifest, module, entrypoints ?? new KernelEntrypoints("ShouldHandle", "Handle"));
+        => new(
+            manifest,
+            module,
+            entrypoints ?? new KernelEntrypoints(
+                PluginManifestNames.Entrypoints.ShouldHandle,
+                PluginManifestNames.Entrypoints.Handle));
 }

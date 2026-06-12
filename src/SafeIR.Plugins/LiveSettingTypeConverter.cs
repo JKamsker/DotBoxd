@@ -9,27 +9,27 @@ internal static class LiveSettingTypeConverter
     {
         var actual = Nullable.GetUnderlyingType(type) ?? type;
         if (actual.IsEnum) {
-            return "string";
+            return PluginManifestNames.LiveSettingTypes.String;
         }
 
         if (actual == typeof(bool)) {
-            return "bool";
+            return PluginManifestNames.LiveSettingTypes.Bool;
         }
 
         if (actual == typeof(int)) {
-            return "int";
+            return PluginManifestNames.LiveSettingTypes.Int;
         }
 
         if (actual == typeof(long)) {
-            return "long";
+            return PluginManifestNames.LiveSettingTypes.Long;
         }
 
         if (actual == typeof(double)) {
-            return "double";
+            return PluginManifestNames.LiveSettingTypes.Double;
         }
 
         if (actual == typeof(string)) {
-            return "string";
+            return PluginManifestNames.LiveSettingTypes.String;
         }
 
         throw Diagnostic($"Live setting type '{type.Name}' is not supported.");
@@ -37,11 +37,11 @@ internal static class LiveSettingTypeConverter
 
     public static SandboxType ToSandboxType(string type)
         => type switch {
-            "bool" => SandboxType.Bool,
-            "int" => SandboxType.I32,
-            "long" => SandboxType.I64,
-            "double" => SandboxType.F64,
-            "string" => SandboxType.String,
+            PluginManifestNames.LiveSettingTypes.Bool => SandboxType.Bool,
+            PluginManifestNames.LiveSettingTypes.Int => SandboxType.I32,
+            PluginManifestNames.LiveSettingTypes.Long => SandboxType.I64,
+            PluginManifestNames.LiveSettingTypes.Double => SandboxType.F64,
+            PluginManifestNames.LiveSettingTypes.String => SandboxType.String,
             _ => throw Diagnostic($"Live setting type '{type}' is not supported.")
         };
 
@@ -111,21 +111,21 @@ internal static class LiveSettingTypeConverter
 
     public static object? CoerceClr(string type, object? value)
         => type switch {
-            "bool" => CoerceClr(typeof(bool), value),
-            "int" => CoerceClr(typeof(int), value),
-            "long" => CoerceClr(typeof(long), value),
-            "double" => CoerceClr(typeof(double), value),
-            "string" => CoerceClr(typeof(string), value),
+            PluginManifestNames.LiveSettingTypes.Bool => CoerceClr(typeof(bool), value),
+            PluginManifestNames.LiveSettingTypes.Int => CoerceClr(typeof(int), value),
+            PluginManifestNames.LiveSettingTypes.Long => CoerceClr(typeof(long), value),
+            PluginManifestNames.LiveSettingTypes.Double => CoerceClr(typeof(double), value),
+            PluginManifestNames.LiveSettingTypes.String => CoerceClr(typeof(string), value),
             _ => throw Diagnostic($"Live setting type '{type}' is not supported.")
         };
 
     public static SandboxValue ToSandboxValue(string type, object? value)
         => type switch {
-            "bool" => SandboxValue.FromBool((bool)CoerceClr(typeof(bool), value)!),
-            "int" => SandboxValue.FromInt32((int)CoerceClr(typeof(int), value)!),
-            "long" => SandboxValue.FromInt64((long)CoerceClr(typeof(long), value)!),
-            "double" => SandboxValue.FromDouble((double)CoerceClr(typeof(double), value)!),
-            "string" => SandboxValue.FromString((string)CoerceClr(typeof(string), value)!),
+            PluginManifestNames.LiveSettingTypes.Bool => SandboxValue.FromBool((bool)CoerceClr(typeof(bool), value)!),
+            PluginManifestNames.LiveSettingTypes.Int => SandboxValue.FromInt32((int)CoerceClr(typeof(int), value)!),
+            PluginManifestNames.LiveSettingTypes.Long => SandboxValue.FromInt64((long)CoerceClr(typeof(long), value)!),
+            PluginManifestNames.LiveSettingTypes.Double => SandboxValue.FromDouble((double)CoerceClr(typeof(double), value)!),
+            PluginManifestNames.LiveSettingTypes.String => SandboxValue.FromString((string)CoerceClr(typeof(string), value)!),
             _ => throw Diagnostic($"Live setting type '{type}' is not supported.")
         };
 
@@ -135,7 +135,7 @@ internal static class LiveSettingTypeConverter
             return;
         }
 
-        if (definition.Type is not ("int" or "long" or "double")) {
+        if (!PluginManifestNames.LiveSettingTypes.IsNumeric(definition.Type)) {
             throw new SandboxValidationException([
                 new SandboxDiagnostic("SGP022", $"Live setting '{definition.Name}' has a range on non-numeric type '{definition.Type}'.")
             ]);
@@ -184,10 +184,10 @@ internal static class LiveSettingTypeConverter
     }
 
     private static string TypeName(Type type)
-        => type == typeof(int) ? "int" :
-           type == typeof(long) ? "long" :
-           type == typeof(double) ? "double" :
-           type == typeof(bool) ? "bool" :
-           type == typeof(string) ? "string" :
+        => type == typeof(int) ? PluginManifestNames.LiveSettingTypes.Int :
+           type == typeof(long) ? PluginManifestNames.LiveSettingTypes.Long :
+           type == typeof(double) ? PluginManifestNames.LiveSettingTypes.Double :
+           type == typeof(bool) ? PluginManifestNames.LiveSettingTypes.Bool :
+           type == typeof(string) ? PluginManifestNames.LiveSettingTypes.String :
            type.Name;
 }

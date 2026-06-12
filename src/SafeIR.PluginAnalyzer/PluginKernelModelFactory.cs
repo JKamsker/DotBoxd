@@ -32,31 +32,43 @@ internal static class PluginKernelModelFactory
 
         try
         {
-            var shouldHandle = InterfaceMethodSyntax(context, type, "ShouldHandle", cancellationToken);
-            var handle = InterfaceMethodSyntax(context, type, "Handle", cancellationToken);
+            var shouldHandle = InterfaceMethodSyntax(context, type, SafeIrGenerationNames.Entrypoints.ShouldHandle, cancellationToken);
+            var handle = InterfaceMethodSyntax(context, type, SafeIrGenerationNames.Entrypoints.Handle, cancellationToken);
             var eventProperties = new EquatableArray<EventPropertyModel>(PluginSymbolReader.EventProperties(eventType));
-            if (eventProperties.Any(p => p.Type == "unsupported"))
+            if (eventProperties.Any(p => p.Type == SafeIrGenerationNames.ManifestTypes.Unsupported))
             {
                 throw new NotSupportedException("Kernel event properties must use supported scalar types.");
             }
 
             var liveSettings = new EquatableArray<LiveSettingModel>(
                 PluginSymbolReader.LiveSettings(type, context.SemanticModel, cancellationToken));
-            if (liveSettings.Any(s => s.Type == "unsupported"))
+            if (liveSettings.Any(s => s.Type == SafeIrGenerationNames.ManifestTypes.Unsupported))
             {
                 throw new NotSupportedException("Live settings must use supported scalar types.");
             }
 
-            var eventParameterName = shouldHandle.ParameterList.Parameters.FirstOrDefault()?.Identifier.ValueText ?? "e";
-            var contextParameterName = shouldHandle.ParameterList.Parameters.Skip(1).FirstOrDefault()?.Identifier.ValueText ?? "ctx";
-            var handleEventParameterName = handle.ParameterList.Parameters.FirstOrDefault()?.Identifier.ValueText ?? "e";
-            var handleContextParameterName = handle.ParameterList.Parameters.Skip(1).FirstOrDefault()?.Identifier.ValueText ?? "ctx";
+            var eventParameterName = shouldHandle.ParameterList.Parameters
+                .ElementAtOrDefault(SafeIrGenerationNames.KernelMethodParameters.EventIndex)
+                ?.Identifier.ValueText ??
+                SafeIrGenerationNames.DefaultEventParameterName;
+            var contextParameterName = shouldHandle.ParameterList.Parameters
+                .ElementAtOrDefault(SafeIrGenerationNames.KernelMethodParameters.ContextIndex)
+                ?.Identifier.ValueText ??
+                SafeIrGenerationNames.DefaultContextParameterName;
+            var handleEventParameterName = handle.ParameterList.Parameters
+                .ElementAtOrDefault(SafeIrGenerationNames.KernelMethodParameters.EventIndex)
+                ?.Identifier.ValueText ??
+                SafeIrGenerationNames.DefaultEventParameterName;
+            var handleContextParameterName = handle.ParameterList.Parameters
+                .ElementAtOrDefault(SafeIrGenerationNames.KernelMethodParameters.ContextIndex)
+                ?.Identifier.ValueText ??
+                SafeIrGenerationNames.DefaultContextParameterName;
             var shouldHandleExpression = SafeIrExpressionModelFactory.Create(
                 ReturnExpression(shouldHandle),
                 eventParameterName,
                 eventProperties,
                 liveSettings);
-            if (!string.Equals(shouldHandleExpression.Type, "bool", StringComparison.Ordinal))
+            if (!string.Equals(shouldHandleExpression.Type, SafeIrGenerationNames.ManifestTypes.Bool, StringComparison.Ordinal))
             {
                 throw new NotSupportedException("Kernel ShouldHandle must lower to a bool expression.");
             }
@@ -103,7 +115,7 @@ internal static class PluginKernelModelFactory
         var interfaceMember = type.AllInterfaces
             .Where(i => string.Equals(
                 i.OriginalDefinition.ToDisplayString(),
-                "SafeIR.Plugins.IEventKernel<TEvent>",
+                SafeIrGenerationNames.Metadata.EventKernelInterface,
                 StringComparison.Ordinal))
             .SelectMany(i => i.GetMembers(methodName))
             .OfType<IMethodSymbol>()
@@ -131,9 +143,10 @@ internal static class PluginKernelModelFactory
     }
 
     private static string PackageName(string kernelName)
-        => kernelName.EndsWith("Kernel", StringComparison.Ordinal)
-            ? kernelName.Substring(0, kernelName.Length - "Kernel".Length) + "PluginPackage"
-            : kernelName + "PluginPackage";
+        => kernelName.EndsWith(SafeIrGenerationNames.KernelSuffix, StringComparison.Ordinal)
+            ? kernelName.Substring(0, kernelName.Length - SafeIrGenerationNames.KernelSuffix.Length) +
+                SafeIrGenerationNames.PluginPackageSuffix
+            : kernelName + SafeIrGenerationNames.PluginPackageSuffix;
 
     private static ExpressionSyntax ReturnExpression(MethodDeclarationSyntax method)
     {

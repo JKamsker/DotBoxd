@@ -51,7 +51,7 @@ public sealed class SafeIrPluginAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeProperty(SymbolAnalysisContext context)
     {
         var property = (IPropertySymbol)context.Symbol;
-        if (!HasAttribute(property, "SafeIR.Plugins.LiveSettingAttribute")) {
+        if (!HasAttribute(property, SafeIrGenerationNames.Metadata.LiveSettingAttribute)) {
             return;
         }
 
@@ -177,7 +177,7 @@ public sealed class SafeIrPluginAnalyzer : DiagnosticAnalyzer
     internal static bool IsEventKernel(INamedTypeSymbol? type)
         => type?.AllInterfaces.Any(i => string.Equals(
             i.OriginalDefinition.ToDisplayString(),
-            "SafeIR.Plugins.IEventKernel<TEvent>",
+            SafeIrGenerationNames.Metadata.EventKernelInterface,
             StringComparison.Ordinal)) == true;
 
     private static bool IsAllowedLiveSettingType(ITypeSymbol type)
