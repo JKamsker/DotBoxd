@@ -64,6 +64,7 @@ public sealed class PluginAnalyzerTests
     [InlineData("((System.IServiceProvider)null!).GetService(typeof(string));")]
     [InlineData("System.IO.Stream.Synchronized(null!);")]
     [InlineData("System.Reflection.Assembly.Load(\"System.Private.CoreLib\");")]
+    [InlineData("var t = typeof(string);")]
     public async Task Reports_forbidden_host_apis_inside_event_kernel(string statement)
     {
         var diagnostics = await AnalyzeAsync($$"""

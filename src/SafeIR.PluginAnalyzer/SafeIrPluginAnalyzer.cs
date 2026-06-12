@@ -43,6 +43,7 @@ public sealed class SafeIrPluginAnalyzer : DiagnosticAnalyzer
             startContext.RegisterOperationAction(c => AnalyzeObjectCreation(c, helperGraph), OperationKind.ObjectCreation);
             startContext.RegisterOperationAction(c => AnalyzePropertyReference(c, helperGraph), OperationKind.PropertyReference);
             startContext.RegisterOperationAction(c => AnalyzeFieldReference(c, helperGraph), OperationKind.FieldReference);
+            startContext.RegisterOperationAction(c => AnalyzeTypeOf(c, helperGraph), OperationKind.TypeOf);
             startContext.RegisterCompilationEndAction(helperGraph.ReportDiagnostics);
         });
     }
@@ -100,6 +101,15 @@ public sealed class SafeIrPluginAnalyzer : DiagnosticAnalyzer
         ReportAndRecordIfForbidden(context, helperGraph, method, ((IFieldReferenceOperation)context.Operation).Field.ContainingType);
     }
 
+    private static void AnalyzeTypeOf(OperationAnalysisContext context, ForbiddenHelperCallGraph helperGraph)
+    {
+        if (context.ContainingSymbol is not IMethodSymbol method) {
+            return;
+        }
+
+        ReportAndRecordIfForbidden(context, helperGraph, method, ((ITypeOfOperation)context.Operation).Type);
+    }
+
     private static bool HasAttribute(ISymbol symbol, string metadataName)
         => symbol.GetAttributes().Any(a => string.Equals(
             a.AttributeClass?.ToDisplayString(),
@@ -139,7 +149,7 @@ public sealed class SafeIrPluginAnalyzer : DiagnosticAnalyzer
 
     private static bool IsForbiddenExactType(string typeName)
         => typeName is "System.Activator" or "System.Environment" or "System.GC"
-            or "System.Delegate" or "System.IServiceProvider";
+            or "System.Delegate" or "System.IServiceProvider" or "System.Type";
 
     private static bool IsForbiddenNamespace(string typeName)
     {
