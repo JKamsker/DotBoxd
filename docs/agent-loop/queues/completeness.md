@@ -4,6 +4,15 @@
 
 ## Open
 
+- [ ] `CMP-0006` high - Plugin setup docs rely on implicit event adapter discovery instead of explicit server whitelist
+  - File: `docs/agent-loop/findings/CMP-0006-plugin-setup-docs-rely-on-implicit-event-adapter-discovery-instead-of-explicit-s.md`
+  - Dedup: `cmp-plugin-explicit-event-adapter-whitelist-setup-docs`
+- [ ] `CMP-0007` medium - Runnable addendum examples do not exercise production JSON package upload
+  - File: `docs/agent-loop/findings/CMP-0007-runnable-addendum-examples-do-not-exercise-production-json-package-upload.md`
+  - Dedup: `cmp-runnable-addendum-json-upload-example-coverage`
+- [ ] `CMP-0008` medium - Release readiness does not verify evidence for completed documentation inventory items
+  - File: `docs/agent-loop/findings/CMP-0008-release-readiness-does-not-verify-evidence-for-completed-documentation-inventory.md`
+  - Dedup: `cmp-release-readiness-documentation-inventory-evidence-coverage`
 
 ## Claimed
 

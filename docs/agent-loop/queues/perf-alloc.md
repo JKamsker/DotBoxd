@@ -4,9 +4,15 @@
 
 ## Open
 
-- [ ] `PAL-0008` low - HTTP grants are reparsed into sets per request
-  - File: `docs/agent-loop/findings/PAL-0008-http-grants-are-reparsed-into-sets-per-request.md`
-  - Dedup: `alloc/http-grants/runtime/csv-set-reparse-per-request`
+- [ ] `PAL-0009` medium - Stack type verifier copies operand stack state per instruction
+  - File: `docs/agent-loop/findings/PAL-0009-stack-type-verifier-copies-operand-stack-state-per-instruction.md`
+  - Dedup: `alloc/verifier/generated-stack-type/state-copy-per-instruction`
+- [ ] `PAL-0010` low - Persistent compiled cache leaves lock files per cache key
+  - File: `docs/agent-loop/findings/PAL-0010-persistent-compiled-cache-leaves-lock-files-per-cache-key.md`
+  - Dedup: `alloc/compiler-cache/file-locks/persistent-key-files`
+- [ ] `PAL-0011` low - HTTP response reads allocate per-request buffers before decoding
+  - File: `docs/agent-loop/findings/PAL-0011-http-response-reads-allocate-per-request-buffers-before-decoding.md`
+  - Dedup: `alloc/http-response/read-buffer/memorystream-byte-buffer-per-request`
 
 ## Claimed
 
@@ -15,6 +21,10 @@
 
 - [~] `PAL-0005` low - Generated stack verifier allocates while parsing call signatures
   - File: `docs/agent-loop/findings/PAL-0005-generated-stack-verifier-allocates-while-parsing-call-signatures.md`
+  - Fixed by: `fixer`
+  - Commit: ``
+- [~] `PAL-0008` low - HTTP grants are reparsed into sets per request
+  - File: `docs/agent-loop/findings/PAL-0008-http-grants-are-reparsed-into-sets-per-request.md`
   - Fixed by: `fixer`
   - Commit: ``
 

@@ -7,6 +7,9 @@
 - [ ] `ALG-0002` medium - Collection mutations copy whole containers per update
   - File: `docs/agent-loop/findings/ALG-0002-collection-mutations-copy-whole-containers-per-update.md`
   - Dedup: `algorithm/collections/mutation/whole-container-copy`
+- [ ] `ALG-0006` medium - Plugin package JSON import reparses module subtree
+  - File: `docs/agent-loop/findings/ALG-0006-plugin-package-json-import-reparses-module-subtree.md`
+  - Dedup: `algorithm/plugin-package-json/import/module-subtree-reparse`
 
 ## Claimed
 

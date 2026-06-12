@@ -4,6 +4,9 @@
 
 ## Open
 
+- [ ] `API-0003` medium - Plugin JSON upload helpers are omitted from package surface guidance
+  - File: `docs/agent-loop/findings/API-0003-plugin-json-upload-helpers-are-omitted-from-package-surface-guidance.md`
+  - Dedup: `api-plugin-json-upload-package-guidance`
 
 ## Claimed
 

@@ -91,6 +91,7 @@ public static class SafeHttpClient
     {
         context.RequireCapability("net.http.get");
         var grant = context.GetCapability("net.http.get");
+        var grantOptions = SafeHttpGrantReader.Read(grant);
         if (!Uri.TryCreate(sandboxUri.Value, UriKind.Absolute, out var uri) || string.IsNullOrWhiteSpace(uri.Host))
         {
             throw Error(SandboxErrorCode.PermissionDenied, "net.http.get denied: URI must be absolute");
@@ -101,14 +102,14 @@ public static class SafeHttpClient
             throw Error(SandboxErrorCode.PermissionDenied, "net.http.get denied: user info is not allowed");
         }
 
-        RequireAllowedScheme(grant, uri);
-        RequireAllowedHost(grant, uri);
+        RequireAllowedScheme(grantOptions, uri);
+        RequireAllowedHost(grantOptions, uri);
         return new SafeHttpRequest(
-            grant,
+            grantOptions,
             uri,
-            SafeHttpGrantReader.ReadLong(grant, "maxRequestBytes", context.Budget.Limits.MaxNetworkBytesWritten),
-            SafeHttpGrantReader.ReadLong(grant, "maxResponseBytes", context.Budget.Limits.MaxNetworkBytesRead),
-            SafeHttpGrantReader.ReadTimeout(grant));
+            grantOptions.MaxRequestBytes ?? context.Budget.Limits.MaxNetworkBytesWritten,
+            grantOptions.MaxResponseBytes ?? context.Budget.Limits.MaxNetworkBytesRead,
+            grantOptions.Timeout);
     }
 
     private static void ChargeRequestBytes(SandboxContext context, SafeHttpRequest request)
@@ -176,26 +177,24 @@ public static class SafeHttpClient
         return (int)length;
     }
 
-    private static void RequireAllowedScheme(CapabilityGrant grant, Uri uri)
+    private static void RequireAllowedScheme(SafeHttpGrantOptions grant, Uri uri)
     {
-        var allowed = SafeHttpGrantReader.ReadSet(grant, "allowedSchemes", ["https"]);
-        if (!allowed.Contains(uri.Scheme))
+        if (!grant.AllowedSchemes.Contains(uri.Scheme))
         {
             throw Error(SandboxErrorCode.PermissionDenied, "net.http.get denied: scheme is not allowed");
         }
     }
 
-    private static void RequireAllowedHost(CapabilityGrant grant, Uri uri)
+    private static void RequireAllowedHost(SafeHttpGrantOptions grant, Uri uri)
     {
-        var allowed = SafeHttpGrantReader.ReadSet(grant, "allowedHosts", []);
-        if (allowed.Count == 0 || !allowed.Any(host => SafeHttpUriAudit.MatchesAllowedAuthority(host, uri)))
+        if (grant.AllowedHosts.Count == 0 || !grant.AllowedHosts.Any(host => SafeHttpUriAudit.MatchesAllowedAuthority(host, uri)))
         {
             throw Error(SandboxErrorCode.PermissionDenied, "net.http.get denied: host is not allowed");
         }
     }
 
     private static async ValueTask<IReadOnlyList<IPAddress>> ResolveVettedAddressesAsync(
-        CapabilityGrant grant,
+        SafeHttpGrantOptions grant,
         string host,
         SafeDnsResolver dnsResolver,
         CancellationToken cancellationToken)
@@ -206,10 +205,9 @@ public static class SafeHttpClient
             return [address];
         }
 
-        var allowPrivateNetwork = SafeHttpGrantReader.ReadBool(grant, "allowPrivateNetwork");
         var addresses = await dnsResolver(host, cancellationToken).ConfigureAwait(false);
         if (addresses.Count == 0 ||
-            !allowPrivateNetwork && addresses.Any(SafeIpAddressClassifier.IsNonGlobal))
+            !grant.AllowPrivateNetwork && addresses.Any(SafeIpAddressClassifier.IsNonGlobal))
         {
             throw Error(SandboxErrorCode.PermissionDenied, "net.http.get denied: private network targets are not allowed");
         }
@@ -217,14 +215,14 @@ public static class SafeHttpClient
         return addresses;
     }
 
-    private static void RequireIpLiteralAllowed(CapabilityGrant grant, IPAddress address)
+    private static void RequireIpLiteralAllowed(SafeHttpGrantOptions grant, IPAddress address)
     {
-        if (!SafeHttpGrantReader.ReadBool(grant, "allowIpLiterals"))
+        if (!grant.AllowIpLiterals)
         {
             throw Error(SandboxErrorCode.PermissionDenied, "net.http.get denied: IP literals are not allowed");
         }
 
-        if (!SafeHttpGrantReader.ReadBool(grant, "allowPrivateNetwork") && SafeIpAddressClassifier.IsNonGlobal(address))
+        if (!grant.AllowPrivateNetwork && SafeIpAddressClassifier.IsNonGlobal(address))
         {
             throw Error(SandboxErrorCode.PermissionDenied, "net.http.get denied: private network targets are not allowed");
         }
@@ -271,7 +269,12 @@ public static class SafeHttpClient
 
     private static SandboxRuntimeException Error(SandboxErrorCode code, string message) => new(new SandboxError(code, message));
 
-    private sealed record SafeHttpRequest(CapabilityGrant Grant, Uri Uri, long MaxRequestBytes, long MaxResponseBytes, TimeSpan Timeout);
+    private sealed record SafeHttpRequest(
+        SafeHttpGrantOptions Grant,
+        Uri Uri,
+        long MaxRequestBytes,
+        long MaxResponseBytes,
+        TimeSpan Timeout);
 
     private sealed record LimitedText(string Text, long BytesRead);
 }

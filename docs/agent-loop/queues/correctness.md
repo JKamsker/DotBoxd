@@ -4,6 +4,18 @@
 
 ## Open
 
+- [ ] `COR-0010` medium - Compiled executable cache lets first caller cancellation poison shared materialization
+  - File: `docs/agent-loop/findings/COR-0010-compiled-executable-cache-lets-first-caller-cancellation-poison-shared-materiali.md`
+  - Dedup: `correctness/compiled-cache/shared-materialization/first-caller-cancellation-poisons-waiters`
+- [ ] `COR-0011` medium - AgentQueue same-status claim overwrites existing owner
+  - File: `docs/agent-loop/findings/COR-0011-agentqueue-same-status-claim-overwrites-existing-owner.md`
+  - Dedup: `correctness/agentqueue/transitions/same-status-claim-overwrites-owner`
+- [ ] `COR-0012` medium - Plugin lifecycle registries can mutate while hooks publish
+  - File: `docs/agent-loop/findings/COR-0012-plugin-lifecycle-registries-can-mutate-while-hooks-publish.md`
+  - Dedup: `correctness/plugins/lifecycle/hook-registry-unsynchronized-concurrent-mutation`
+- [ ] `COR-0013` medium - Path-shaped audit resources bypass secret redaction
+  - File: `docs/agent-loop/findings/COR-0013-path-shaped-audit-resources-bypass-secret-redaction.md`
+  - Dedup: `correctness/audit/resource-id/path-secret-redaction`
 
 ## Claimed
 

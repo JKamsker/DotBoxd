@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SafeIR.Transport.Ipc.ShaRpc\SafeIR.Transport.Ipc.ShaRpc.csproj" />
+    <ProjectReference Include="..\..\src\SafeIR.Transport.Http\SafeIR.Transport.Http.csproj" />
     <ProjectReference Include="..\..\src\SafeIR.Hosting\SafeIR.Hosting.csproj" />
     <ProjectReference Include="..\..\src\SafeIR.PluginAnalyzer\SafeIR.PluginAnalyzer.csproj" />
     <ProjectReference Include="..\..\src\SafeIR.Plugins\SafeIR.Plugins.csproj" />

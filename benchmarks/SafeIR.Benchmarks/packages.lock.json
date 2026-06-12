@@ -272,6 +272,13 @@
           "SafeIR.Plugins": "[0.1.0, )"
         }
       },
+      "safeir.transport.http": {
+        "type": "Project",
+        "dependencies": {
+          "SafeIR.Hosting": "[0.1.0, )",
+          "SafeIR.Runtime": "[0.1.0, )"
+        }
+      },
       "safeir.transport.ipc.sharpc": {
         "type": "Project",
         "dependencies": {
