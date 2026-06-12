@@ -11,6 +11,13 @@ public sealed class AddonBoundaryTests
         "src/SafeIR.Runtime"
     ];
 
+    private static readonly string[] CoreLibraryProjects = [
+        "src/SafeIR.Core/SafeIR.Core.csproj",
+        "src/SafeIR.Validation/SafeIR.Validation.csproj",
+        "src/SafeIR.Hosting/SafeIR.Hosting.csproj",
+        "src/SafeIR.Runtime/SafeIR.Runtime.csproj"
+    ];
+
     private static readonly string[] ForbiddenCoreTokens = [
         "System.Text.Json",
         "SafeIrJsonImporter",
@@ -18,6 +25,17 @@ public sealed class AddonBoundaryTests
         "JsonElement",
         "SafeHttp",
         "net.http.get",
+        "MessagePack",
+        "ShaRPC"
+    ];
+
+    private static readonly string[] ForbiddenAddonReferences = [
+        "SafeIR.Serialization.Json",
+        "SafeIR.Transport.Http",
+        "SafeIR.Transport.Ipc",
+        "SafeIR.Plugins",
+        "SafeIR.PluginAnalyzer",
+        "System.Text.Json",
         "MessagePack",
         "ShaRPC"
     ];
@@ -36,17 +54,20 @@ public sealed class AddonBoundaryTests
         }
     }
 
-    [Fact]
-    public void Core_project_has_no_addon_dependencies()
+    [Theory]
+    [MemberData(nameof(CoreLibraryProjectPaths))]
+    public void Core_library_projects_have_no_addon_dependencies(string relativeProject)
     {
-        var project = XDocument.Load(Path.Combine(RepositoryRoot(), "src/SafeIR.Core/SafeIR.Core.csproj"));
+        var project = XDocument.Load(Path.Combine(RepositoryRoot(), relativeProject));
         var references = project
             .Descendants()
             .Where(e => e.Name.LocalName is "PackageReference" or "ProjectReference")
             .Select(e => e.Attribute("Include")?.Value ?? "")
             .ToArray();
 
-        Assert.Empty(references);
+        foreach (var forbidden in ForbiddenAddonReferences) {
+            Assert.DoesNotContain(references, reference => reference.Contains(forbidden, StringComparison.Ordinal));
+        }
     }
 
     public static TheoryData<string, string> CoreLibraryForbiddenTokens()
@@ -56,6 +77,16 @@ public sealed class AddonBoundaryTests
             foreach (var token in ForbiddenCoreTokens) {
                 data.Add(directory, token);
             }
+        }
+
+        return data;
+    }
+
+    public static TheoryData<string> CoreLibraryProjectPaths()
+    {
+        var data = new TheoryData<string>();
+        foreach (var project in CoreLibraryProjects) {
+            data.Add(project);
         }
 
         return data;
