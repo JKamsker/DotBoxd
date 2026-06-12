@@ -229,34 +229,7 @@ internal static class PolicyGrantValidator
     }
 
     private static void RequireAllowedExtensions(CapabilityGrant grant, List<SandboxDiagnostic> diagnostics)
-    {
-        const string key = "allowedExtensions";
-        if (!grant.Parameters.TryGetValue(key, out var value))
-        {
-            return;
-        }
-
-        var extensions = value.Split(',', StringSplitOptions.TrimEntries);
-        if (extensions.Length == 0 || extensions.All(string.IsNullOrWhiteSpace))
-        {
-            Add(diagnostics, grant, $"parameter '{key}' must contain at least one extension");
-            return;
-        }
-
-        foreach (var extension in extensions)
-        {
-            if (string.IsNullOrWhiteSpace(extension))
-            {
-                Add(diagnostics, grant, $"parameter '{key}' must not contain empty values");
-                continue;
-            }
-
-            if (!IsValidExtension(extension))
-            {
-                Add(diagnostics, grant, $"parameter '{key}' contains invalid extension '{extension}'");
-            }
-        }
-    }
+        => AllowedExtensionParameterValidator.Validate(grant, diagnostics);
 
     private static void RequireNonNegativeLong(
         CapabilityGrant grant,
@@ -295,11 +268,6 @@ internal static class PolicyGrantValidator
         => diagnostics.Add(new SandboxDiagnostic(
             "E-POLICY-GRANT-PARAM",
             $"grant '{grant.Id}' {message}"));
-
-    private static bool IsValidExtension(string extension)
-        => extension.Length > 1 &&
-           extension[0] == '.' &&
-           extension.Skip(1).All(c => !char.IsControl(c) && !char.IsWhiteSpace(c) && c is not '/' and not '\\' and not '.');
 
     private static string NormalizeRootForCompare(string path)
         => Path.TrimEndingDirectorySeparator(path);
