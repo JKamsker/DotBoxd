@@ -59,6 +59,7 @@ internal static class PluginEventPropertyReader
             }
         }
 
+        Array.Sort(properties, (left, right) => ComparePropertyOrder(left, right, hierarchy));
         return properties;
     }
 
@@ -93,8 +94,43 @@ internal static class PluginEventPropertyReader
     private static bool IsReadableProperty(IPropertySymbol property)
         => property.DeclaredAccessibility == Accessibility.Public &&
            !property.IsStatic &&
-           property.GetMethod is not null &&
+           property.GetMethod?.DeclaredAccessibility == Accessibility.Public &&
            property.Parameters.Length == 0;
+
+    private static int ComparePropertyOrder(
+        IPropertySymbol left,
+        IPropertySymbol right,
+        INamedTypeSymbol[] hierarchy)
+    {
+        var typeComparison = HierarchyIndex(left, hierarchy).CompareTo(HierarchyIndex(right, hierarchy));
+        if (typeComparison != 0)
+        {
+            return typeComparison;
+        }
+
+        var positionComparison = DeclarationPosition(left).CompareTo(DeclarationPosition(right));
+        return positionComparison != 0
+            ? positionComparison
+            : string.Compare(left.MetadataName, right.MetadataName, StringComparison.Ordinal);
+    }
+
+    private static int HierarchyIndex(IPropertySymbol property, INamedTypeSymbol[] hierarchy)
+    {
+        for (var i = 0; i < hierarchy.Length; i++)
+        {
+            if (SymbolEqualityComparer.Default.Equals(property.ContainingType, hierarchy[i]))
+            {
+                return i;
+            }
+        }
+
+        return int.MaxValue;
+    }
+
+    private static int DeclarationPosition(IPropertySymbol property)
+        => property.DeclaringSyntaxReferences.Length == 0
+            ? int.MaxValue
+            : property.DeclaringSyntaxReferences[0].Span.Start;
 
     private static IPropertySymbol[]? ConstructorPropertyOrder(
         INamedTypeSymbol eventType,

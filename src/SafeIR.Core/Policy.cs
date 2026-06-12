@@ -1,6 +1,7 @@
 namespace SafeIR;
 
 using System.Collections.ObjectModel;
+using System.Reflection;
 
 public sealed record CapabilityGrant(
     string Id,
@@ -290,11 +291,16 @@ internal static class ParameterReader
             return new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(values, StringComparer.Ordinal));
         }
 
-        var properties = parameters.GetType().GetProperties();
-        var dictionary = new Dictionary<string, string>(properties.Length, StringComparer.Ordinal);
+        var properties = parameters.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);
+        var dictionary = new Dictionary<string, string>(StringComparer.Ordinal);
         for (var i = 0; i < properties.Length; i++)
         {
             var property = properties[i];
+            if (property.GetMethod?.IsPublic != true || property.GetIndexParameters().Length != 0)
+            {
+                continue;
+            }
+
             dictionary.Add(
                 property.Name,
                 Convert.ToString(property.GetValue(parameters), System.Globalization.CultureInfo.InvariantCulture) ?? "");

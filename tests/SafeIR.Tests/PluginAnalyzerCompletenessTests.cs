@@ -48,7 +48,7 @@ public sealed class PluginAnalyzerCompletenessTests
         Assert.Contains("new global::SafeIR.IfStatement(Var(\"Disabled\")", generated);
         Assert.Contains("Add(Var(\"e_Amount\"), Var(\"Offset\"))", generated);
         Assert.Contains("Sub(Var(\"MinDamage\"), I32(1))", generated);
-        Assert.Contains("Ne(Var(\"e_Message\"), Str(\"\"))", generated);
+        Assert.Contains("Not(StringEquals(Var(\"e_Message\"), Str(\"\")))", generated);
         Assert.Contains("[\"Cpu\", \"Alloc\", \"GameStateWrite\", \"Audit\"]", generated);
     }
 

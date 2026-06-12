@@ -73,6 +73,22 @@ public sealed class CanonicalModuleHasherTests
     }
 
     [Fact]
+    public void Capability_requests_with_matching_ids_are_ordered_by_reason()
+    {
+        var first = ModuleWithCapabilityRequests([
+            new CapabilityRequest("game.message.write", "beta"),
+            new CapabilityRequest("game.message.write", "alpha")
+        ]);
+        var second = ModuleWithCapabilityRequests([
+            new CapabilityRequest("game.message.write", "alpha"),
+            new CapabilityRequest("game.message.write", "beta")
+        ]);
+
+        Assert.Equal(CanonicalModuleHasher.Serialize(first), CanonicalModuleHasher.Serialize(second));
+        Assert.Equal(CanonicalModuleHasher.Hash(first), CanonicalModuleHasher.Hash(second));
+    }
+
+    [Fact]
     public void Floating_point_literals_hash_independently_of_current_culture()
     {
         var module = SafeIrJsonImporter.Import(ModuleWithReturn("""{ "f64": 1.5 }""", "F64"));
@@ -179,6 +195,26 @@ public sealed class CanonicalModuleHasherTests
                                 "+",
                                 new VariableExpression(right, new SourceSpan(0, 0)),
                                 new SourceSpan(0, 0)),
+                            new SourceSpan(0, 0))
+                    ])
+            ],
+            new Dictionary<string, string>());
+
+    private static SandboxModule ModuleWithCapabilityRequests(IReadOnlyList<CapabilityRequest> requests)
+        => new(
+            "canonical-capabilities",
+            SemVersion.One,
+            SemVersion.One,
+            requests,
+            [
+                new SandboxFunction(
+                    "main",
+                    true,
+                    [],
+                    SandboxType.Unit,
+                    [
+                        new ReturnStatement(
+                            new LiteralExpression(SandboxValue.Unit, new SourceSpan(0, 0)),
                             new SourceSpan(0, 0))
                     ])
             ],

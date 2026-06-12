@@ -21,6 +21,7 @@ internal static class InMemoryRpcChannel
         private readonly object _gate = new();
         private readonly Queue<RpcFrame> _inbound = new();
         private ManualResetValueTaskSourceCore<RpcFrame> _receiver;
+        private CancellationTokenRegistration _receiveCancellation;
         private PipeConnection? _remote;
         private bool _disposed;
         private bool _waiting;
@@ -110,7 +111,21 @@ internal static class InMemoryRpcChannel
 
                 _receiver.Reset();
                 _waiting = true;
-                return new ValueTask<RpcFrame>(this, _receiver.Version);
+                var version = _receiver.Version;
+                if (ct.CanBeCanceled) {
+                    var registration = ct.UnsafeRegister(static state => {
+                        var pending = (PendingReceive)state!;
+                        pending.Connection.CancelPendingReceive(pending.Version, pending.CancellationToken);
+                    }, new PendingReceive(this, version, ct));
+                    if (_waiting) {
+                        _receiveCancellation = registration;
+                    }
+                    else {
+                        registration.Dispose();
+                    }
+                }
+
+                return new ValueTask<RpcFrame>(this, version);
             }
         }
 
@@ -145,6 +160,7 @@ internal static class InMemoryRpcChannel
         private bool TryEnqueue(RpcFrame frame)
         {
             var complete = false;
+            CancellationTokenRegistration registration = default;
             lock (_gate) {
                 if (_disposed) {
                     frame.Dispose();
@@ -153,6 +169,8 @@ internal static class InMemoryRpcChannel
 
                 if (_waiting) {
                     _waiting = false;
+                    registration = _receiveCancellation;
+                    _receiveCancellation = default;
                     complete = true;
                 }
                 else {
@@ -161,6 +179,7 @@ internal static class InMemoryRpcChannel
             }
 
             if (complete) {
+                registration.Dispose();
                 _receiver.SetResult(frame);
             }
 
@@ -170,9 +189,12 @@ internal static class InMemoryRpcChannel
         private void Complete()
         {
             var complete = false;
+            CancellationTokenRegistration registration = default;
             lock (_gate) {
                 if (_waiting) {
                     _waiting = false;
+                    registration = _receiveCancellation;
+                    _receiveCancellation = default;
                     complete = true;
                 }
 
@@ -182,7 +204,24 @@ internal static class InMemoryRpcChannel
             }
 
             if (complete) {
+                registration.Dispose();
                 _receiver.SetResult(new RpcFrame(Payload.Empty));
+            }
+        }
+
+        private void CancelPendingReceive(short version, CancellationToken ct)
+        {
+            var complete = false;
+            lock (_gate) {
+                if (_waiting && _receiver.Version == version) {
+                    _waiting = false;
+                    _receiveCancellation = default;
+                    complete = true;
+                }
+            }
+
+            if (complete) {
+                _receiver.SetException(new OperationCanceledException(ct));
             }
         }
 
@@ -191,5 +230,10 @@ internal static class InMemoryRpcChannel
             var received = await frame.ConfigureAwait(false);
             return received.DetachPayload();
         }
+
+        private sealed record PendingReceive(
+            PipeConnection Connection,
+            short Version,
+            CancellationToken CancellationToken);
     }
 }

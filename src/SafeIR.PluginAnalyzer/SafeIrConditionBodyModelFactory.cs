@@ -86,10 +86,11 @@ internal static class SafeIrConditionBodyModelFactory
         SafeIrStatementBodyModel whenTrue,
         SafeIrStatementBodyModel whenFalse,
         SafeIrExpressionLoweringContext context)
-        => LowerCondition(
-            binary.Left,
-            LowerCondition(binary.Right, whenTrue, whenFalse, context),
-            LowerCondition(binary.Right, whenFalse, whenFalse, context),
+        => LowerEagerBoolBinary(
+            binary,
+            SafeIrGenerationNames.Helpers.And,
+            whenTrue,
+            whenFalse,
             context);
 
     private static SafeIrStatementBodyModel LowerEagerOr(
@@ -97,10 +98,11 @@ internal static class SafeIrConditionBodyModelFactory
         SafeIrStatementBodyModel whenTrue,
         SafeIrStatementBodyModel whenFalse,
         SafeIrExpressionLoweringContext context)
-        => LowerCondition(
-            binary.Left,
-            LowerCondition(binary.Right, whenTrue, whenTrue, context),
-            LowerCondition(binary.Right, whenTrue, whenFalse, context),
+        => LowerEagerBoolBinary(
+            binary,
+            SafeIrGenerationNames.Helpers.Or,
+            whenTrue,
+            whenFalse,
             context);
 
     private static SafeIrStatementBodyModel LowerBoolXor(
@@ -108,10 +110,11 @@ internal static class SafeIrConditionBodyModelFactory
         SafeIrStatementBodyModel whenTrue,
         SafeIrStatementBodyModel whenFalse,
         SafeIrExpressionLoweringContext context)
-        => LowerCondition(
-            binary.Left,
-            LowerCondition(binary.Right, whenFalse, whenTrue, context),
-            LowerCondition(binary.Right, whenTrue, whenFalse, context),
+        => LowerEagerBoolBinary(
+            binary,
+            SafeIrGenerationNames.Helpers.Ne,
+            whenTrue,
+            whenFalse,
             context);
 
     private static SafeIrStatementBodyModel LowerBoolEquality(
@@ -120,15 +123,38 @@ internal static class SafeIrConditionBodyModelFactory
         SafeIrStatementBodyModel whenFalse,
         SafeIrExpressionLoweringContext context)
     {
-        var rightMatchesTrue = LowerCondition(binary.Right, whenTrue, whenFalse, context);
-        var rightMatchesFalse = LowerCondition(binary.Right, whenFalse, whenTrue, context);
-        if (binary.Kind() == SyntaxKind.NotEqualsExpression)
-        {
-            (rightMatchesTrue, rightMatchesFalse) = (rightMatchesFalse, rightMatchesTrue);
-        }
-
-        return LowerCondition(binary.Left, rightMatchesTrue, rightMatchesFalse, context);
+        var helper = binary.Kind() == SyntaxKind.NotEqualsExpression
+            ? SafeIrGenerationNames.Helpers.Ne
+            : SafeIrGenerationNames.Helpers.Eq;
+        return LowerEagerBoolBinary(binary, helper, whenTrue, whenFalse, context);
     }
+
+    private static SafeIrStatementBodyModel LowerEagerBoolBinary(
+        BinaryExpressionSyntax binary,
+        string helper,
+        SafeIrStatementBodyModel whenTrue,
+        SafeIrStatementBodyModel whenFalse,
+        SafeIrExpressionLoweringContext context)
+    {
+        var leftName = ConditionTemp(binary.Left);
+        var rightName = ConditionTemp(binary.Right);
+        var leftLowered = LowerConditionValue(binary.Left, leftName, context);
+        var rightLowered = LowerConditionValue(binary.Right, rightName, context);
+        var result = new SafeIrExpressionModel(
+            $"{helper}({Var(leftName)}, {Var(rightName)})",
+            SafeIrGenerationNames.ManifestTypes.Bool,
+            false);
+
+        return Concat(leftLowered, Concat(rightLowered, If(result.Source, whenTrue, whenFalse, false)));
+    }
+
+    private static SafeIrStatementBodyModel LowerConditionValue(
+        ExpressionSyntax expression,
+        string name,
+        SafeIrExpressionLoweringContext context)
+        => Concat(
+            AssignBool(name, value: false),
+            LowerCondition(expression, AssignBool(name, value: true), AssignBool(name, value: false), context));
 
     private static SafeIrStatementBodyModel LowerLeafCondition(
         ExpressionSyntax expression,
@@ -154,7 +180,8 @@ internal static class SafeIrConditionBodyModelFactory
         bool conditionAllocates)
     {
         var source =
-            $"[new {SafeIrGenerationNames.IrTypes.IfStatement}({condition}, {whenTrue.Source}, {whenFalse.Source}, Span)]";
+            $"new global::SafeIR.Statement[] {{ new {SafeIrGenerationNames.IrTypes.IfStatement}(" +
+            $"{condition}, {whenTrue.Source}, {whenFalse.Source}, Span) }}";
         return new SafeIrStatementBodyModel(
             source,
             conditionAllocates || whenTrue.Allocates || whenFalse.Allocates);
@@ -166,7 +193,34 @@ internal static class SafeIrConditionBodyModelFactory
             allocates: false);
 
     private static SafeIrStatementBodyModel ReturnExpression(string expression, bool allocates)
-        => new($"[new {SafeIrGenerationNames.IrTypes.ReturnStatement}({expression}, Span)]", allocates);
+        => new(
+            $"new global::SafeIR.Statement[] {{ new {SafeIrGenerationNames.IrTypes.ReturnStatement}({expression}, Span) }}",
+            allocates);
+
+    private static SafeIrStatementBodyModel AssignBool(string name, bool value)
+    {
+        var source =
+            "new global::SafeIR.Statement[] { new global::SafeIR.AssignmentStatement(" +
+            $"{LiteralReader.StringLiteral(name)}, " +
+            $"{SafeIrGenerationNames.Helpers.Bool}({BoolLiteral(value)}), Span) }}";
+        return new SafeIrStatementBodyModel(source, false);
+    }
+
+    private static SafeIrStatementBodyModel Concat(
+        SafeIrStatementBodyModel first,
+        SafeIrStatementBodyModel second)
+        => new(
+            "global::System.Linq.Enumerable.ToArray(" +
+            "global::System.Linq.Enumerable.Concat<global::SafeIR.Statement>(" +
+            $"{first.Source}, {second.Source}))",
+            first.Allocates || second.Allocates);
+
+    private static string Var(string name)
+        => $"{SafeIrGenerationNames.Helpers.Var}({LiteralReader.StringLiteral(name)})";
+
+    private static string ConditionTemp(ExpressionSyntax expression)
+        => "$safeir.condition." +
+           expression.SpanStart.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     private static string BoolLiteral(bool value)
         => value

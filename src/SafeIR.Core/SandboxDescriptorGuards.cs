@@ -49,7 +49,9 @@ public static class SandboxDescriptorGuards
                 continue;
             }
 
-            if (IsHexRun(value, index + 4, 6))
+            if (IsHexRun(value, index + 4, 6) &&
+                IsTokenBoundary(value, index - 1) &&
+                IsTokenBoundary(value, index + 10))
             {
                 return true;
             }

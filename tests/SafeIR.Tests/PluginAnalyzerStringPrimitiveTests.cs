@@ -39,6 +39,33 @@ public sealed class PluginAnalyzerStringPrimitiveTests
         await AssertShouldHandleAsync(host, plan, package, Input("fir"), expected: false, mode);
     }
 
+    [Fact]
+    public void Generated_should_handle_lowers_string_equality_to_string_binding()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record StringEqualityEvent(string TargetId, string Message);
+
+            [GamePlugin("generated-string-equality")]
+            public sealed partial class StringEqualityKernel : IEventKernel<StringEqualityEvent>
+            {
+                public bool ShouldHandle(StringEqualityEvent e, HookContext ctx)
+                    => e.Message == "fire" && e.TargetId != "";
+
+                public void Handle(StringEqualityEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, e.Message);
+            }
+            """, "Sample.StringEqualityPluginPackage");
+
+        var shouldHandle = package.Module.Functions.Single(
+            function => function.Id == "ShouldHandle");
+
+        Assert.Equal(2, CountCalls(shouldHandle.Body, SafeIrStringEqualsBinding));
+    }
+
     private static PluginPackage CreatePackage()
         => PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
@@ -83,4 +110,41 @@ public sealed class PluginAnalyzerStringPrimitiveTests
             SandboxValue.FromString("player-1"),
             SandboxValue.FromString(message)
         ]);
+
+    private const string SafeIrStringEqualsBinding = "string.equals";
+
+    private static int CountCalls(IReadOnlyList<Statement> statements, string name)
+    {
+        var count = 0;
+        foreach (var statement in statements)
+        {
+            count += CountCalls(statement, name);
+        }
+
+        return count;
+    }
+
+    private static int CountCalls(Statement statement, string name)
+        => statement switch {
+            AssignmentStatement assignment => CountCalls(assignment.Value, name),
+            ReturnStatement ret => CountCalls(ret.Value, name),
+            ExpressionStatement expression => CountCalls(expression.Value, name),
+            IfStatement branch => CountCalls(branch.Then, name) +
+                                  CountCalls(branch.Else, name) +
+                                  CountCalls(branch.Condition, name),
+            WhileStatement loop => CountCalls(loop.Body, name) + CountCalls(loop.Condition, name),
+            ForRangeStatement range => CountCalls(range.Body, name) +
+                                       CountCalls(range.Start, name) +
+                                       CountCalls(range.End, name),
+            _ => 0
+        };
+
+    private static int CountCalls(Expression expression, string name)
+        => expression switch {
+            UnaryExpression unary => CountCalls(unary.Operand, name),
+            BinaryExpression binary => CountCalls(binary.Left, name) + CountCalls(binary.Right, name),
+            CallExpression call => (call.Name == name ? 1 : 0) +
+                                   call.Arguments.Sum(argument => CountCalls(argument, name)),
+            _ => 0
+        };
 }

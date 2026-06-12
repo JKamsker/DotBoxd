@@ -120,7 +120,7 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
             Array.Sort(properties, static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
             foreach (var property in properties)
             {
-                if (property.CanRead && property.GetIndexParameters().Length == 0)
+                if (property.GetMethod?.IsPublic == true && property.GetIndexParameters().Length == 0)
                 {
                     yield return property;
                 }

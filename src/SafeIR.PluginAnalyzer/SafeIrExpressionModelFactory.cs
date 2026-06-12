@@ -88,17 +88,15 @@ internal static class SafeIrExpressionModelFactory
         var allocates = left.Allocates || right.Allocates;
 
         return binary.Kind() switch {
-            SyntaxKind.EqualsExpression => SameType(
-                SafeIrGenerationNames.Helpers.Eq,
-                SafeIrGenerationNames.Operators.EqualTo,
+            SyntaxKind.EqualsExpression => SafeIrEqualityExpressionLowerer.Lower(
                 left,
                 right,
+                negate: false,
                 allocates),
-            SyntaxKind.NotEqualsExpression => SameType(
-                SafeIrGenerationNames.Helpers.Ne,
-                SafeIrGenerationNames.Operators.NotEqualTo,
+            SyntaxKind.NotEqualsExpression => SafeIrEqualityExpressionLowerer.Lower(
                 left,
                 right,
+                negate: true,
                 allocates),
             SyntaxKind.GreaterThanOrEqualExpression => NumericBinary(
                 SafeIrGenerationNames.Helpers.Ge,
@@ -201,24 +199,6 @@ internal static class SafeIrExpressionModelFactory
             allocates);
     }
 
-    private static SafeIrExpressionModel SameType(
-        string helper,
-        string symbol,
-        SafeIrExpressionModel left,
-        SafeIrExpressionModel right,
-        bool allocates)
-    {
-        if (!string.Equals(left.Type, right.Type, StringComparison.Ordinal)) {
-            throw new NotSupportedException(
-                $"Operator '{symbol}' requires operands with the same supported type.");
-        }
-
-        return new SafeIrExpressionModel(
-            $"{helper}({left.Source}, {right.Source})",
-            SafeIrGenerationNames.ManifestTypes.Bool,
-            allocates);
-    }
-
     private static SafeIrExpressionModel NumericBinary(
         string helper,
         string symbol,
@@ -296,7 +276,7 @@ internal static class SafeIrExpressionModelFactory
         }
     }
 
-    private static bool IsString(SafeIrExpressionModel expression)
+    internal static bool IsString(SafeIrExpressionModel expression)
         => string.Equals(expression.Type, SafeIrGenerationNames.ManifestTypes.String, StringComparison.Ordinal);
 
     private static SafeIrExpressionModel Unsupported(ExpressionSyntax expression)

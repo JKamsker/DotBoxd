@@ -35,7 +35,13 @@ public static class CanonicalModuleHasher
             ordered[i] = requests[i];
         }
 
-        Array.Sort(ordered, static (left, right) => string.Compare(left.Id, right.Id, StringComparison.Ordinal));
+        Array.Sort(ordered, static (left, right) =>
+        {
+            var idComparison = string.Compare(left.Id, right.Id, StringComparison.Ordinal);
+            return idComparison != 0
+                ? idComparison
+                : string.Compare(left.Reason ?? "", right.Reason ?? "", StringComparison.Ordinal);
+        });
         for (var i = 0; i < ordered.Length; i++)
         {
             writer.Write("requires", ordered[i].Id, ordered[i].Reason ?? "");

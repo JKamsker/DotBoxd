@@ -28,6 +28,13 @@ public sealed class JsonDescriptorHardeningTests
     }
 
     [Fact]
+    public void Metadata_token_detection_requires_boundaries_around_prefixed_tokens()
+    {
+        Assert.True(SandboxDescriptorGuards.ContainsForbiddenDescriptor("token 0x02000001"));
+        Assert.False(SandboxDescriptorGuards.ContainsForbiddenDescriptor("abc0x02000001def"));
+    }
+
+    [Fact]
     public async Task Duplicate_capability_requests_are_rejected()
     {
         var host = SandboxTestHost.Create();

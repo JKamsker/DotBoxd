@@ -48,6 +48,46 @@ public sealed class PluginAnalyzerPropertyShapeTests
     }
 
     [Fact]
+    public void Generator_ignores_event_properties_without_public_getters()
+    {
+        var result = RunGenerator("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed class DamageEvent
+            {
+                public string TargetId { get; } = "player-1";
+                public string PrivateGetter { private get; set; } = "hidden";
+            }
+
+            [GamePlugin("event-private-getter")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, "message");
+            }
+            """);
+        var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
+
+        Assert.Contains("e_TargetId", generated);
+        Assert.DoesNotContain("e_PrivateGetter", generated);
+    }
+
+    [Fact]
+    public void Convention_adapter_ignores_event_properties_without_public_getters()
+    {
+        var adapter = new PluginEventAdapterRegistry().Resolve<PrivateGetterEvent>();
+
+        var parameter = Assert.Single(adapter.Parameters);
+        var value = Assert.Single(adapter.ToSandboxValues(new PrivateGetterEvent()));
+        Assert.Equal("e_TargetId", parameter.Name);
+        Assert.Equal("player-1", ((StringValue)value).Value);
+    }
+
+    [Fact]
     public void Generator_rejects_live_setting_indexers()
     {
         var result = RunGenerator("""
@@ -169,5 +209,12 @@ public sealed class PluginAnalyzerPropertyShapeTests
         var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries) ?? [];
         return references.Select(reference => MetadataReference.CreateFromFile(reference));
+    }
+
+    private sealed class PrivateGetterEvent
+    {
+        public string TargetId { get; } = "player-1";
+
+        public string PrivateGetter { private get; set; } = "hidden";
     }
 }
