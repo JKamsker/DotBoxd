@@ -12,6 +12,7 @@ public sealed class SandboxHostBuilder
     private ISandboxInterpreter? _interpreter;
     private ISandboxCompiler? _compiler;
     private IExecutionModeSelector _modeSelector = new HotnessExecutionModeSelector();
+    private Action<SandboxAuditEvent>? _auditObserver;
     private string? _compilerCacheDirectory;
     private bool _useCompiler;
 
@@ -76,6 +77,12 @@ public sealed class SandboxHostBuilder
         return this;
     }
 
+    public SandboxHostBuilder ForwardAuditEventsTo(Action<SandboxAuditEvent> observer)
+    {
+        _auditObserver += observer ?? throw new ArgumentNullException(nameof(observer));
+        return this;
+    }
+
     internal SandboxHost Build()
     {
         _interpreter ??= new SandboxInterpreter();
@@ -83,7 +90,7 @@ public sealed class SandboxHostBuilder
             _compiler ??= CreateDefaultCompiler();
         }
 
-        return new SandboxHost(_bindings.Build(), _interpreter, _compiler, _modeSelector);
+        return new SandboxHost(_bindings.Build(), _interpreter, _compiler, _modeSelector, _auditObserver);
     }
 
     private ISandboxCompiler CreateDefaultCompiler()

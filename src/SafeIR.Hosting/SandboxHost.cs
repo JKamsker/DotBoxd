@@ -13,6 +13,7 @@ public sealed partial class SandboxHost
     private readonly ISandboxInterpreter _interpreter;
     private readonly ISandboxCompiler? _compiler;
     private readonly IExecutionModeSelector _modeSelector;
+    private readonly Action<SandboxAuditEvent>? _auditObserver;
     private readonly byte[] _planSigningKey = RandomNumberGenerator.GetBytes(32);
     private readonly ConcurrentDictionary<string, int> _autoRuns = new(StringComparer.Ordinal);
 
@@ -20,12 +21,14 @@ public sealed partial class SandboxHost
         BindingRegistry bindings,
         ISandboxInterpreter interpreter,
         ISandboxCompiler? compiler,
-        IExecutionModeSelector modeSelector)
+        IExecutionModeSelector modeSelector,
+        Action<SandboxAuditEvent>? auditObserver)
     {
         _bindings = bindings;
         _interpreter = interpreter;
         _compiler = compiler;
         _modeSelector = modeSelector;
+        _auditObserver = auditObserver;
     }
 
     public static SandboxHost Create(Action<SandboxHostBuilder>? configure = null)
@@ -62,20 +65,20 @@ public sealed partial class SandboxHost
         ExecutionPlanGuard.EnsurePrepared(plan, _bindings, _planSigningKey);
         if (TryGetRevokedCapability(plan, entrypoint, out var revoked))
         {
-            return CapabilityRevokedResult(plan, options, revoked);
+            return Publish(CapabilityRevokedResult(plan, options, revoked));
         }
 
         if (options.Isolation == SandboxIsolation.WorkerProcess)
         {
-            return WorkerIsolationUnavailableResult(plan, options);
+            return Publish(WorkerIsolationUnavailableResult(plan, options));
         }
 
         if (options.RequireDeterministic && !plan.Policy.Deterministic)
         {
-            return DeterminismRequiredResult(plan, options);
+            return Publish(DeterminismRequiredResult(plan, options));
         }
 
-        return options.Mode switch
+        var result = options.Mode switch
         {
             ExecutionMode.Compiled => await ExecuteCompiledAsync(plan, entrypoint, input, options, cancellationToken)
                 .ConfigureAwait(false),
@@ -90,6 +93,20 @@ public sealed partial class SandboxHost
                 .ConfigureAwait(false),
             _ => CompilerUnavailableResult(plan, options)
         };
+        return Publish(result);
+    }
+
+    private SandboxExecutionResult Publish(SandboxExecutionResult result)
+    {
+        if (_auditObserver is not null)
+        {
+            foreach (var auditEvent in result.AuditEvents)
+            {
+                _auditObserver(auditEvent);
+            }
+        }
+
+        return result;
     }
 
     private async ValueTask<SandboxExecutionResult> ExecuteAutoAsync(

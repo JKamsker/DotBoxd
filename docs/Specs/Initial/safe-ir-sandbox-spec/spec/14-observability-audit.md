@@ -39,6 +39,10 @@ artifactHash optional
 The current `RunSummary` event stores these as structured string fields where possible. Duration,
 completed-at timestamps, and capability-grant/use rollups are recommended operational extensions,
 not required fields in the current public `SandboxAuditEvent` shape.
+Hosts can attach an operational audit observer with `SandboxHostBuilder.ForwardAuditEventsTo(...)`.
+The observer receives the same sequenced events returned in `SandboxExecutionResult.AuditEvents`,
+so callers can forward them to retention, metrics, tracing, and alerting pipelines without
+changing execution behavior.
 
 ## Binding audit events
 
