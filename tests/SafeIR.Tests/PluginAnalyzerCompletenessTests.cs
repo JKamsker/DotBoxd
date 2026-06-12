@@ -166,6 +166,35 @@ public sealed class PluginAnalyzerCompletenessTests
         Assert.Contains("Not(Le(Var(\"e_Ratio\"), F64(1D)))", generated);
     }
 
+    [Fact]
+    public void Generator_lowers_should_handle_conditional_expression_to_ordered_branches()
+    {
+        var (result, outputCompilation, diagnostics) = RunGenerator("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId, string Message, int Amount, bool Enabled);
+
+            [GamePlugin("conditional-expression")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                public bool ShouldHandle(DamageEvent e, HookContext ctx)
+                    => e.Enabled ? e.Amount > 0 : e.Amount == 0;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, e.Message);
+            }
+            """);
+
+        Assert.Empty(diagnostics.Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
+        var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
+        Assert.Contains("new global::SafeIR.IfStatement(Var(\"e_Enabled\")", generated);
+        Assert.Contains("Gt(Var(\"e_Amount\"), I32(0))", generated);
+        Assert.Contains("Eq(Var(\"e_Amount\"), I32(0))", generated);
+    }
+
     [Theory]
     [InlineData("e.Missing == \"fire\"")]
     [InlineData("e.Amount > 0.5D")]
