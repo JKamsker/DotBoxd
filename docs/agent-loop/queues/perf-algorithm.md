@@ -22,12 +22,10 @@
 
 ## Fixed pending verification
 
-- [~] `ALG-0001` high - JSON source map import repeatedly searches raw text
-  - File: `docs/agent-loop/findings/ALG-0001-json-source-map-import-repeatedly-searches-raw-text.md`
-  - Fixed by: `fixer`
-  - Commit: ``
 
 ## Verified
 
+- [x] `ALG-0001` high - JSON source map import repeatedly searches raw text
+  - File: `docs/agent-loop/findings/ALG-0001-json-source-map-import-repeatedly-searches-raw-text.md`
 
 ## Rejected / duplicate / obsolete

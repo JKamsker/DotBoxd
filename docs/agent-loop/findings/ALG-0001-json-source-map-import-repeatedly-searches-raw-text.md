@@ -1,22 +1,22 @@
 ---
 id: ALG-0001
 area: perf_algorithm
-status: fixed_pending_verification
+status: verified
 priority: high
 title: JSON source map import repeatedly searches raw text
 dedup_key: algorithm/json-import/source-map/repeated-rawtext-search
 created_at: 2026-06-12T20:36:49.3206264+00:00
 created_by: perf-reviewer
 created_commit: 
-updated_at: 2026-06-12T21:18:33.5804390+00:00
+updated_at: 2026-06-12T21:21:03.6278384+00:00
 claimed_by: fixer
 claimed_at: 2026-06-12T21:12:42.9080187+00:00
 claim_branch: workflow-work
 fixed_by: fixer
 fixed_at: 2026-06-12T21:18:33.5804390+00:00
 fixed_commit: 
-verified_by: 
-verified_at: 
+verified_by: verifier
+verified_at: 2026-06-12T21:21:03.6278384+00:00
 verified_commit: 
 duplicate_of: 
 ---

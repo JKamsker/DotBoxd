@@ -8,7 +8,7 @@ dedup_key: algorithm/collections/mutation/whole-container-copy
 created_at: 2026-06-12T20:36:50.6172810+00:00
 created_by: perf-reviewer
 created_commit: 
-updated_at: 2026-06-12T20:36:50.6172810+00:00
+updated_at: 2026-06-12T21:22:11.2109550+00:00
 claimed_by: 
 claimed_at: 
 claim_branch: 
