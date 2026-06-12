@@ -7,7 +7,7 @@ public static class BindingReferenceCollector
 
     public static IReadOnlySet<string> Collect(SandboxModule module, IBindingCatalog bindings, string? entrypoint)
     {
-        var functions = module.Functions.ToDictionary(f => f.Id, StringComparer.Ordinal);
+        var functions = FunctionDictionary(module.Functions);
         var ids = new HashSet<string>(StringComparer.Ordinal);
 
         if (entrypoint is not null) {
@@ -23,6 +23,17 @@ public static class BindingReferenceCollector
         }
 
         return ids;
+    }
+
+    private static Dictionary<string, SandboxFunction> FunctionDictionary(IReadOnlyList<SandboxFunction> functions)
+    {
+        var dictionary = new Dictionary<string, SandboxFunction>(functions.Count, StringComparer.Ordinal);
+        for (var i = 0; i < functions.Count; i++)
+        {
+            dictionary.Add(functions[i].Id, functions[i]);
+        }
+
+        return dictionary;
     }
 
     private static void CollectFunction(

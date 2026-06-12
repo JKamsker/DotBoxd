@@ -241,10 +241,15 @@ This is the data a server owner needs to show settings, defaults, ranges, reques
 The production server installs a plugin package from serialized JSON package data. The JSON envelope contains a manifest, entrypoint names if needed, and the Safe IR module. It does not contain an assembly path or plugin DLL reference.
 
 ```csharp
-var kernel = await server.InstallJsonAsync(uploadedPackageJson);
+var package = FireDamagePluginPackage.Create();
+var uploadJson = PluginPackageJsonSerializer.Export(package);
 ```
 
-The local generated factory is still useful for SDK examples and tests, but it is not the production upload boundary:
+```csharp
+var kernel = await server.InstallJsonAsync(uploadJson);
+```
+
+The local generated factory is still useful for SDK examples and tests, but direct in-process install is not the production upload boundary:
 
 ```csharp
 var package = FireDamagePluginPackage.Create();

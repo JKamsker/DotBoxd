@@ -59,9 +59,24 @@ public sealed record SandboxType(string Name, IReadOnlyList<SandboxType> Argumen
         => Arguments.Count == 0 && MapKeyScalars.Contains(Name);
 
     public bool Equals(SandboxType? other)
-        => other is not null &&
-           StringComparer.Ordinal.Equals(Name, other.Name) &&
-           Arguments.SequenceEqual(other.Arguments);
+    {
+        if (other is null ||
+            !StringComparer.Ordinal.Equals(Name, other.Name) ||
+            Arguments.Count != other.Arguments.Count)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < Arguments.Count; i++)
+        {
+            if (!Arguments[i].Equals(other.Arguments[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     public override int GetHashCode()
     {
@@ -84,7 +99,16 @@ public sealed record SandboxType(string Name, IReadOnlyList<SandboxType> Argumen
 
         var builder = new StringBuilder(Name);
         builder.Append('<');
-        builder.Append(string.Join(",", Arguments.Select(a => a.ToString())));
+        for (var i = 0; i < Arguments.Count; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append(',');
+            }
+
+            builder.Append(Arguments[i].ToString());
+        }
+
         builder.Append('>');
         return builder.ToString();
     }
@@ -101,16 +125,33 @@ public sealed record SandboxType(string Name, IReadOnlyList<SandboxType> Argumen
             return type.Arguments.Count == 0;
         }
 
-        return type.Name switch
+        if (type.Name == "List")
         {
-            "List" => type.Arguments.Count == 1 && type.Arguments.All(a => IsKnown(a, depth + 1, maxDepth)),
-            "Map" => type.Arguments.Count == 2 &&
-                type.Arguments[0].IsValidMapKey() &&
-                type.Arguments.All(a => IsKnown(a, depth + 1, maxDepth)),
-            _ => false
-        };
+            return type.Arguments.Count == 1 && IsKnown(type.Arguments[0], depth + 1, maxDepth);
+        }
+
+        return type.Name == "Map" &&
+               type.Arguments.Count == 2 &&
+               type.Arguments[0].IsValidMapKey() &&
+               IsKnown(type.Arguments[0], depth + 1, maxDepth) &&
+               IsKnown(type.Arguments[1], depth + 1, maxDepth);
     }
 
     private static bool IsForbidden(SandboxType type)
-        => IsForbiddenName(type.Name) || type.Arguments.Any(IsForbidden);
+    {
+        if (IsForbiddenName(type.Name))
+        {
+            return true;
+        }
+
+        for (var i = 0; i < type.Arguments.Count; i++)
+        {
+            if (IsForbidden(type.Arguments[i]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

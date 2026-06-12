@@ -34,6 +34,7 @@ public sealed class SafeFileConcurrencyTests
             module,
             SandboxPolicyBuilder.Create()
                 .GrantFileWrite(root, 1024, allowOverwrite: false)
+                .WithWallTime(TimeSpan.FromSeconds(2))
                 .WithFuel(5_000)
                 .Build());
         return await host.ExecuteAsync(plan, "main", SandboxValue.Unit);

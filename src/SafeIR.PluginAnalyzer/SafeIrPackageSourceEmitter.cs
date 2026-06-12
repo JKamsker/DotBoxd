@@ -24,7 +24,10 @@ internal static class SafeIrPackageSourceEmitter
     private static string HintName(PluginKernelModel model)
         => string.IsNullOrWhiteSpace(model.Namespace)
             ? model.PackageName + ".g.cs"
-            : model.Namespace + "." + model.PackageName + ".g.cs";
+            : HintNamePart(model.Namespace) + "." + model.PackageName + ".g.cs";
+
+    private static string HintNamePart(string value)
+        => value.Replace(SafeIrGenerationNames.CSharpIdentifiers.EscapePrefix, string.Empty);
 
     private static void EmitBody(StringBuilder builder, PluginKernelModel model)
     {
@@ -55,6 +58,11 @@ internal static class SafeIrPackageSourceEmitter
 
     private static void EmitSettings(StringBuilder builder, PluginKernelModel model)
     {
+        if (model.LiveSettings.Count == 0) {
+            builder.AppendLine("        var settings = global::System.Array.Empty<global::SafeIR.Plugins.LiveSettingDefinition>();");
+            return;
+        }
+
         builder.AppendLine("        var settings = new global::SafeIR.Plugins.LiveSettingDefinition[] {");
         foreach (var setting in model.LiveSettings) {
             builder.Append("            new global::SafeIR.Plugins.LiveSettingDefinition(");
@@ -91,7 +99,9 @@ internal static class SafeIrPackageSourceEmitter
     private static void EmitModule(StringBuilder builder, PluginKernelModel model)
     {
         builder.AppendLine("    private static global::SafeIR.SandboxModule CreateModule(global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Plugins.LiveSettingDefinition> settings)");
-        builder.AppendLine("        => new(");
+        builder.AppendLine("    {");
+        builder.AppendLine("        var parameters = Parameters(settings);");
+        builder.AppendLine("        return new global::SafeIR.SandboxModule(");
         builder.AppendLine($"            {LiteralReader.StringLiteral(model.PluginId)},");
         builder.AppendLine("            global::SafeIR.SemVersion.One,");
         builder.AppendLine("            global::SafeIR.SemVersion.One,");
@@ -99,10 +109,11 @@ internal static class SafeIrPackageSourceEmitter
             $"            [new global::SafeIR.CapabilityRequest(global::SafeIR.Plugins.PluginMessageBindings.CapabilityId, {LiteralReader.StringLiteral(SafeIrGenerationNames.Capabilities.MessageWriteReason)})],");
         builder.Append("            [")
             .Append(SafeIrGenerationNames.Entrypoints.ShouldHandle)
-            .Append("(settings), ")
+            .Append("(parameters), ")
             .Append(SafeIrGenerationNames.Entrypoints.Handle)
-            .AppendLine("(settings)],");
+            .AppendLine("(parameters)],");
         builder.AppendLine($"            new global::System.Collections.Generic.Dictionary<string, string> {{ [{LiteralReader.StringLiteral(SafeIrGenerationNames.ModuleMetadata.PluginId)}] = {LiteralReader.StringLiteral(model.PluginId)}, [{LiteralReader.StringLiteral(SafeIrGenerationNames.ModuleMetadata.Kernel)}] = {LiteralReader.StringLiteral(model.KernelName)} }});");
+        builder.AppendLine("    }");
         builder.AppendLine();
     }
 
@@ -110,16 +121,16 @@ internal static class SafeIrPackageSourceEmitter
     {
         builder.Append("    private static global::SafeIR.SandboxFunction ")
             .Append(SafeIrGenerationNames.Entrypoints.ShouldHandle)
-            .AppendLine("(global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Plugins.LiveSettingDefinition> settings)");
+            .AppendLine("(global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Parameter> parameters)");
         builder.AppendLine("        => new(");
-        builder.AppendLine($"            {LiteralReader.StringLiteral(SafeIrGenerationNames.Entrypoints.ShouldHandle)}, true, Parameters(settings), global::SafeIR.SandboxType.Bool,");
-        builder.AppendLine($"            [new global::SafeIR.ReturnStatement({model.ShouldHandle.Source}, Span)]);");
+        builder.AppendLine($"            {LiteralReader.StringLiteral(SafeIrGenerationNames.Entrypoints.ShouldHandle)}, true, parameters, global::SafeIR.SandboxType.Bool,");
+        builder.AppendLine($"            {model.ShouldHandle.Source});");
         builder.AppendLine();
         builder.Append("    private static global::SafeIR.SandboxFunction ")
             .Append(SafeIrGenerationNames.Entrypoints.Handle)
-            .AppendLine("(global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Plugins.LiveSettingDefinition> settings)");
+            .AppendLine("(global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Parameter> parameters)");
         builder.AppendLine("        => new(");
-        builder.AppendLine($"            {LiteralReader.StringLiteral(SafeIrGenerationNames.Entrypoints.Handle)}, true, Parameters(settings), global::SafeIR.SandboxType.Unit,");
+        builder.AppendLine($"            {LiteralReader.StringLiteral(SafeIrGenerationNames.Entrypoints.Handle)}, true, parameters, global::SafeIR.SandboxType.Unit,");
         builder.AppendLine($"            [new global::SafeIR.ReturnStatement({HandleExpression(model.Handle)}, Span)]);");
         builder.AppendLine();
     }
@@ -127,19 +138,35 @@ internal static class SafeIrPackageSourceEmitter
     private static void EmitHelpers(StringBuilder builder, PluginKernelModel model)
     {
         builder.AppendLine("    private static global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Parameter> Parameters(global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Plugins.LiveSettingDefinition> settings)");
-        builder.AppendLine("        => global::System.Linq.Enumerable.ToArray(global::System.Linq.Enumerable.Concat(");
-        builder.AppendLine("            EventParameters(),");
-        builder.AppendLine("            global::System.Linq.Enumerable.Select(settings, s => new global::SafeIR.Parameter(s.Name, TypeOf(s.Type)))));");
-        builder.AppendLine();
-        builder.AppendLine("    private static global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Parameter> EventParameters()");
-        builder.AppendLine("        => [");
-        foreach (var property in model.EventProperties) {
-            builder.Append("            new global::SafeIR.Parameter(");
-            builder.Append(LiteralReader.StringLiteral(SafeIrExpressionModelFactory.EventVariable(property.Name)));
-            builder.Append(", TypeOf(").Append(LiteralReader.StringLiteral(property.Type)).AppendLine(")),");
+        builder.AppendLine("    {");
+        if (model.EventProperties.Count == 0) {
+            builder.AppendLine("        if (settings.Count == 0) {");
+            builder.AppendLine("            return global::System.Array.Empty<global::SafeIR.Parameter>();");
+            builder.AppendLine("        }");
         }
 
-        builder.AppendLine("        ];");
+        builder.Append("        var parameters = new global::SafeIR.Parameter[settings.Count + ")
+            .Append(model.EventProperties.Count)
+            .AppendLine("];");
+        var parameterIndex = 0;
+        foreach (var property in model.EventProperties) {
+            builder.Append("        parameters[")
+                .Append(parameterIndex)
+                .Append("] = new global::SafeIR.Parameter(");
+            builder.Append(LiteralReader.StringLiteral(SafeIrExpressionModelFactory.EventVariable(property.Name)));
+            builder.Append(", TypeOf(").Append(LiteralReader.StringLiteral(property.Type)).AppendLine("));");
+            parameterIndex++;
+        }
+
+        builder.AppendLine("        for (var i = 0; i < settings.Count; i++) {");
+        builder.AppendLine("            var setting = settings[i];");
+        builder.Append("            parameters[i + ")
+            .Append(model.EventProperties.Count)
+            .AppendLine("] = new global::SafeIR.Parameter(setting.Name, TypeOf(setting.Type));");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        return parameters;");
+        builder.AppendLine("    }");
         builder.AppendLine();
         builder.Append("    private static global::SafeIR.SandboxType TypeOf(")
             .Append(Parameter(SafeIrGenerationNames.CSharpTypes.String, "type"))
@@ -162,6 +189,10 @@ internal static class SafeIrPackageSourceEmitter
             SafeIrGenerationNames.Helpers.Str,
             Parameter(SafeIrGenerationNames.CSharpTypes.String, "value"),
             "new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromString(value), Span)");
+        EmitStringLengthHelper(builder);
+        EmitStringSubstringHelper(builder);
+        EmitStringConcatHelper(builder);
+        EmitStringEqualsHelper(builder);
         EmitHelper(
             builder,
             SafeIrGenerationNames.Helpers.I32,
@@ -207,6 +238,52 @@ internal static class SafeIrPackageSourceEmitter
             .Append(") => ")
             .Append(expression)
             .AppendLine(";");
+
+    private static void EmitStringConcatHelper(StringBuilder builder)
+        => EmitBindingCallHelper(
+            builder,
+            SafeIrGenerationNames.Helpers.ConcatString,
+            SafeIrGenerationNames.BindingIds.StringConcatBudgeted,
+            "global::SafeIR.Expression left, global::SafeIR.Expression right",
+            "left, right");
+
+    private static void EmitStringLengthHelper(StringBuilder builder)
+        => EmitBindingCallHelper(
+            builder,
+            SafeIrGenerationNames.Helpers.StringLength,
+            SafeIrGenerationNames.BindingIds.StringLength,
+            "global::SafeIR.Expression value",
+            "value");
+
+    private static void EmitStringSubstringHelper(StringBuilder builder)
+        => EmitBindingCallHelper(
+            builder,
+            SafeIrGenerationNames.Helpers.StringSubstring,
+            SafeIrGenerationNames.BindingIds.StringSubstringBudgeted,
+            "global::SafeIR.Expression value, global::SafeIR.Expression startIndex, global::SafeIR.Expression length",
+            "value, startIndex, length");
+
+    private static void EmitStringEqualsHelper(StringBuilder builder)
+        => EmitBindingCallHelper(
+            builder,
+            SafeIrGenerationNames.Helpers.StringEquals,
+            SafeIrGenerationNames.BindingIds.StringEquals,
+            "global::SafeIR.Expression left, global::SafeIR.Expression right",
+            "left, right");
+
+    private static void EmitBindingCallHelper(
+        StringBuilder builder,
+        string helper,
+        string bindingId,
+        string parameters,
+        string arguments)
+        => EmitHelper(
+            builder,
+            helper,
+            parameters,
+            "new global::SafeIR.CallExpression(" +
+            LiteralReader.StringLiteral(bindingId) +
+            ", [" + arguments + "], null, Span)");
 
     private static string Parameter(string type, string name) => type + " " + name;
 

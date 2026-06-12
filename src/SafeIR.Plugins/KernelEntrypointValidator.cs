@@ -17,9 +17,7 @@ internal static class KernelEntrypointValidator
             ]);
         }
 
-        var expected = adapter.Parameters
-            .Concat(manifest.LiveSettings.Select(s => new Parameter(s.Name, LiveSettingTypeConverter.ToSandboxType(s.Type))))
-            .ToArray();
+        var expected = PluginParameterShape.BuildExpected(adapter.Parameters, manifest.LiveSettings);
         ValidateFunction(plan, entrypoints.ShouldHandle, SandboxType.Bool, expected);
         ValidateFunction(plan, entrypoints.Handle, SandboxType.Unit, expected);
     }
@@ -38,18 +36,10 @@ internal static class KernelEntrypointValidator
             ]);
         }
 
-        if (function.ReturnType != returnType || function.Parameters.Count != expected.Count)
+        if (function.ReturnType != returnType ||
+            !PluginParameterShape.Matches(function.Parameters, expected))
         {
             throw SignatureError(functionId);
-        }
-
-        for (var i = 0; i < expected.Count; i++)
-        {
-            if (!string.Equals(function.Parameters[i].Name, expected[i].Name, StringComparison.Ordinal) ||
-                function.Parameters[i].Type != expected[i].Type)
-            {
-                throw SignatureError(functionId);
-            }
         }
     }
 

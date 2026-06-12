@@ -40,10 +40,7 @@ internal static class BindingRegistryValidator
     public static IReadOnlyList<SandboxDiagnostic> Validate(IReadOnlyList<BindingDescriptor> bindings)
     {
         var diagnostics = new List<SandboxDiagnostic>();
-        foreach (var group in bindings.GroupBy(b => b.Id, StringComparer.Ordinal).Where(g => g.Take(2).Count() > 1))
-        {
-            diagnostics.Add(new SandboxDiagnostic("E-BINDING-DUP", $"duplicate binding id '{group.Key}'"));
-        }
+        CheckDuplicateBindingIds(bindings, diagnostics);
 
         foreach (var binding in bindings)
         {
@@ -115,12 +112,87 @@ internal static class BindingRegistryValidator
 
         ValidateCostModel(binding, diagnostics);
         ValidateCompiledTarget(binding, diagnostics);
-        foreach (var type in binding.Parameters.Append(binding.ReturnType))
+        foreach (var type in binding.Parameters)
         {
-            if (!type.IsKnown() || type.IsForbidden())
+            ValidateType(binding, type, diagnostics);
+        }
+
+        ValidateType(binding, binding.ReturnType, diagnostics);
+    }
+
+    private static void CheckDuplicateBindingIds(
+        IReadOnlyList<BindingDescriptor> bindings,
+        List<SandboxDiagnostic> diagnostics)
+    {
+        if (bindings.Count < 2)
+        {
+            return;
+        }
+
+        var counts = new Dictionary<string, int>(bindings.Count, StringComparer.Ordinal);
+        var nullCount = 0;
+        for (var i = 0; i < bindings.Count; i++)
+        {
+            IncrementCount(counts, bindings[i].Id, ref nullCount);
+        }
+
+        var reportedNull = false;
+        for (var i = 0; i < bindings.Count; i++)
+        {
+            var id = bindings[i].Id;
+            if (ShouldReportDuplicate(counts, id, nullCount, ref reportedNull))
             {
-                diagnostics.Add(new SandboxDiagnostic("E-BINDING-TYPE", $"binding '{binding.Id}' exposes forbidden or unknown type '{type}'"));
+                diagnostics.Add(new SandboxDiagnostic("E-BINDING-DUP", $"duplicate binding id '{id}'"));
             }
+        }
+    }
+
+    private static void IncrementCount(Dictionary<string, int> counts, string? value, ref int nullCount)
+    {
+        if (value is null)
+        {
+            nullCount++;
+            return;
+        }
+
+        counts.TryGetValue(value, out var count);
+        counts[value] = count + 1;
+    }
+
+    private static bool ShouldReportDuplicate(
+        Dictionary<string, int> counts,
+        string? value,
+        int nullCount,
+        ref bool reportedNull)
+    {
+        if (value is null)
+        {
+            if (nullCount < 2 || reportedNull)
+            {
+                return false;
+            }
+
+            reportedNull = true;
+            return true;
+        }
+
+        if (!counts.TryGetValue(value, out var count) || count < 2)
+        {
+            return false;
+        }
+
+        counts[value] = 0;
+        return true;
+    }
+
+    private static void ValidateType(
+        BindingDescriptor binding,
+        SandboxType type,
+        List<SandboxDiagnostic> diagnostics)
+    {
+        if (!type.IsKnown() || type.IsForbidden())
+        {
+            diagnostics.Add(new SandboxDiagnostic("E-BINDING-TYPE", $"binding '{binding.Id}' exposes forbidden or unknown type '{type}'"));
         }
     }
 
@@ -139,7 +211,7 @@ internal static class BindingRegistryValidator
         string code,
         List<SandboxDiagnostic> diagnostics)
     {
-        if (string.IsNullOrWhiteSpace(value) || value.Any(char.IsControl))
+        if (string.IsNullOrWhiteSpace(value) || ContainsControlCharacter(value))
         {
             diagnostics.Add(new SandboxDiagnostic(
                 code,
@@ -147,10 +219,36 @@ internal static class BindingRegistryValidator
             return;
         }
 
-        if (ForbiddenReferenceFragments.Any(fragment => value.Contains(fragment, StringComparison.OrdinalIgnoreCase)))
+        if (ContainsForbiddenReferenceFragment(value))
         {
             diagnostics.Add(new SandboxDiagnostic(code, $"{description} '{value}' looks like a forbidden CLR reference"));
         }
+    }
+
+    private static bool ContainsControlCharacter(string value)
+    {
+        for (var i = 0; i < value.Length; i++)
+        {
+            if (char.IsControl(value[i]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ContainsForbiddenReferenceFragment(string value)
+    {
+        for (var i = 0; i < ForbiddenReferenceFragments.Length; i++)
+        {
+            if (value.Contains(ForbiddenReferenceFragments[i], StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool ReachesOutsideSandbox(BindingDescriptor binding)

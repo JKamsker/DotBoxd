@@ -52,24 +52,117 @@ public sealed class SafeIrPluginPackageGenerator : IIncrementalGenerator
 
     private static GeneratedPluginPackageBatch CreatePackageBatch(ImmutableArray<PluginKernelModel> models)
     {
-        var duplicateIdentities = models
-            .GroupBy(PackageIdentity, StringComparer.Ordinal)
-            .Where(group => group.Take(2).Count() > 1)
-            .ToDictionary(group => group.Key, StringComparer.Ordinal);
-        var diagnostics = duplicateIdentities.Values.Select(group => new GeneratedPluginPackageDiagnostic(
-            $"Plugin package name '{group.First().PackageName}' is generated more than once in namespace '{NamespaceDisplay(group.First())}'."));
-        var packages = models
-            .Where(model => !duplicateIdentities.ContainsKey(PackageIdentity(model)))
-            .Select(SafeIrPackageSourceEmitter.Emit);
+        var duplicateIdentities = DuplicateIdentities(models, out var duplicateModelCount);
+        var diagnostics = new GeneratedPluginPackageDiagnostic[duplicateIdentities.Count];
+        var diagnosticIndex = 0;
+        foreach (var duplicate in duplicateIdentities.Values)
+        {
+            var model = duplicate.FirstModel;
+            diagnostics[diagnosticIndex] = new GeneratedPluginPackageDiagnostic(
+                $"Plugin package name '{model.PackageName}' is generated more than once in namespace '{NamespaceDisplay(model)}'.");
+            diagnosticIndex++;
+        }
+
+        var packages = new GeneratedPluginPackage[models.Length - duplicateModelCount];
+        var packageIndex = 0;
+        foreach (var model in models)
+        {
+            if (!duplicateIdentities.ContainsKey(PackageIdentity(model)))
+            {
+                packages[packageIndex] = SafeIrPackageSourceEmitter.Emit(model);
+                packageIndex++;
+            }
+        }
 
         return new GeneratedPluginPackageBatch(
-            new EquatableArray<GeneratedPluginPackage>(packages),
-            new EquatableArray<GeneratedPluginPackageDiagnostic>(diagnostics));
+            EquatableArray<GeneratedPluginPackage>.FromOwned(packages),
+            EquatableArray<GeneratedPluginPackageDiagnostic>.FromOwned(diagnostics));
     }
 
-    private static string PackageIdentity(PluginKernelModel model)
-        => model.Namespace + "\0" + model.PackageName;
+    private static Dictionary<PackageIdentityKey, DuplicatePackageIdentity> DuplicateIdentities(
+        ImmutableArray<PluginKernelModel> models,
+        out int duplicateModelCount)
+    {
+        var counts = new Dictionary<PackageIdentityKey, DuplicatePackageIdentity>();
+        foreach (var model in models)
+        {
+            var identity = PackageIdentity(model);
+            if (counts.TryGetValue(identity, out var duplicate))
+            {
+                counts[identity] = duplicate.Increment();
+            }
+            else
+            {
+                counts.Add(identity, new DuplicatePackageIdentity(model));
+            }
+        }
+
+        duplicateModelCount = 0;
+        var duplicates = new Dictionary<PackageIdentityKey, DuplicatePackageIdentity>();
+        foreach (var pair in counts)
+        {
+            if (pair.Value.Count > 1)
+            {
+                duplicateModelCount += pair.Value.Count;
+                duplicates.Add(pair.Key, pair.Value);
+            }
+        }
+
+        return duplicates;
+    }
+
+    private static PackageIdentityKey PackageIdentity(PluginKernelModel model)
+        => new(model.Namespace, model.PackageName);
 
     private static string NamespaceDisplay(PluginKernelModel model)
         => string.IsNullOrWhiteSpace(model.Namespace) ? "<global>" : model.Namespace;
+
+    private readonly struct PackageIdentityKey : IEquatable<PackageIdentityKey>
+    {
+        public PackageIdentityKey(string @namespace, string packageName)
+        {
+            Namespace = @namespace;
+            PackageName = packageName;
+        }
+
+        private string Namespace { get; }
+
+        private string PackageName { get; }
+
+        public bool Equals(PackageIdentityKey other)
+            => string.Equals(Namespace, other.Namespace, StringComparison.Ordinal) &&
+               string.Equals(PackageName, other.PackageName, StringComparison.Ordinal);
+
+        public override bool Equals(object? obj)
+            => obj is PackageIdentityKey other && Equals(other);
+
+        public override int GetHashCode()
+        {
+            unchecked {
+                return ((Namespace?.GetHashCode() ?? 0) * 397) ^ (PackageName?.GetHashCode() ?? 0);
+            }
+        }
+    }
+
+    private readonly struct DuplicatePackageIdentity
+    {
+        public DuplicatePackageIdentity(PluginKernelModel firstModel)
+        {
+            FirstModel = firstModel;
+            Count = 1;
+        }
+
+        private DuplicatePackageIdentity(PluginKernelModel firstModel, int count)
+        {
+            FirstModel = firstModel;
+            Count = count;
+        }
+
+        public PluginKernelModel FirstModel { get; }
+
+        public int Count { get; }
+
+        public DuplicatePackageIdentity Increment()
+            => new(FirstModel, Count + 1);
+    }
 }

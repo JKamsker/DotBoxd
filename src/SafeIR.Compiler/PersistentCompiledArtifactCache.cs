@@ -5,7 +5,7 @@ using System.Text.Json;
 using SafeIR;
 using SafeIR.Verifier;
 
-public sealed class PersistentCompiledArtifactCache
+public sealed partial class PersistentCompiledArtifactCache
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -157,6 +157,14 @@ public sealed class PersistentCompiledArtifactCache
             await WriteJsonAsync(Path.Combine(tempPath, "manifest.json"), manifest, cancellationToken).ConfigureAwait(false);
             await WriteJsonAsync(Path.Combine(tempPath, "verification.json"), verification, cancellationToken).ConfigureAwait(false);
             PersistentCompiledArtifactCachePublisher.ValidateEntryShape(tempPath);
+            await ValidateTempEntryAsync(
+                    tempPath,
+                    cacheKey,
+                    plan,
+                    entrypoint,
+                    policy,
+                    cancellationToken)
+                .ConfigureAwait(false);
 
             Directory.CreateDirectory(Path.GetDirectoryName(finalPath)!);
             PersistentCompiledArtifactCachePathGuard.ValidateEntryPath(_rootDirectory, finalPath);

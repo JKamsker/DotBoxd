@@ -5,6 +5,11 @@ using SafeIR;
 
 internal static class PolicyGrantValidator
 {
+    private static readonly string[] NoAllowedParameterKeys = [];
+    private static readonly string[] FileReadParameterKeys = ["root", "maxBytesPerRun", "allowedExtensions"];
+    private static readonly string[] FileWriteParameterKeys =
+        ["root", "maxBytesPerRun", "allowCreate", "allowOverwrite", "allowedExtensions"];
+
     public static void Validate(
         SandboxPolicy policy,
         IBindingCatalog bindings,
@@ -12,27 +17,91 @@ internal static class PolicyGrantValidator
         List<SandboxDiagnostic> diagnostics)
     {
         var now = policy.GrantClock;
-        var activeGrants = policy.Grants
-            .Where(grant => IsActive(grant, now))
-            .ToArray();
-        foreach (var group in activeGrants.GroupBy(g => g.Id, StringComparer.Ordinal))
+        AddDuplicateActiveGrantDiagnostics(policy.Grants, now, diagnostics);
+        foreach (var grant in policy.Grants)
         {
-            if (group.Take(2).Count() > 1)
+            if (IsActive(grant, now))
             {
-                diagnostics.Add(new SandboxDiagnostic(
-                    "E-POLICY-GRANT",
-                    $"capability '{group.Key}' has multiple active grants"));
+                ValidateGrant(grant, bindings, requiredCapabilities, diagnostics);
             }
-        }
-
-        foreach (var grant in activeGrants)
-        {
-            ValidateGrant(grant, bindings, requiredCapabilities, diagnostics);
         }
     }
 
     private static bool IsActive(CapabilityGrant grant, DateTimeOffset now)
         => grant.ExpiresAt is null || grant.ExpiresAt > now;
+
+    private static void AddDuplicateActiveGrantDiagnostics(
+        IReadOnlyList<CapabilityGrant> grants,
+        DateTimeOffset now,
+        List<SandboxDiagnostic> diagnostics)
+    {
+        if (grants.Count < 2)
+        {
+            return;
+        }
+
+        var counts = new Dictionary<string, int>(grants.Count, StringComparer.Ordinal);
+        var nullCount = 0;
+        for (var i = 0; i < grants.Count; i++)
+        {
+            var grant = grants[i];
+            if (IsActive(grant, now))
+            {
+                IncrementCount(counts, grant.Id, ref nullCount);
+            }
+        }
+
+        var reportedNull = false;
+        for (var i = 0; i < grants.Count; i++)
+        {
+            var grant = grants[i];
+            if (IsActive(grant, now) &&
+                ShouldReportDuplicate(counts, grant.Id, nullCount, ref reportedNull))
+            {
+                diagnostics.Add(new SandboxDiagnostic(
+                    "E-POLICY-GRANT",
+                    $"capability '{grant.Id}' has multiple active grants"));
+            }
+        }
+    }
+
+    private static void IncrementCount(Dictionary<string, int> counts, string? value, ref int nullCount)
+    {
+        if (value is null)
+        {
+            nullCount++;
+            return;
+        }
+
+        counts.TryGetValue(value, out var count);
+        counts[value] = count + 1;
+    }
+
+    private static bool ShouldReportDuplicate(
+        Dictionary<string, int> counts,
+        string? value,
+        int nullCount,
+        ref bool reportedNull)
+    {
+        if (value is null)
+        {
+            if (nullCount < 2 || reportedNull)
+            {
+                return false;
+            }
+
+            reportedNull = true;
+            return true;
+        }
+
+        if (!counts.TryGetValue(value, out var count) || count < 2)
+        {
+            return false;
+        }
+
+        counts[value] = 0;
+        return true;
+    }
 
     private static void ValidateGrant(
         CapabilityGrant grant,
@@ -49,7 +118,7 @@ internal static class PolicyGrantValidator
                 ValidateFileGrant(grant, diagnostics, allowWriteFlags: true);
                 break;
             case "time.now" or "random" or "log.write":
-                RequireAllowedKeys(grant, diagnostics, []);
+                RequireAllowedKeys(grant, diagnostics, NoAllowedParameterKeys);
                 break;
             default:
                 if (bindings.TryGetCapabilityGrantValidator(grant.Id, out var validator))
@@ -74,9 +143,7 @@ internal static class PolicyGrantValidator
         List<SandboxDiagnostic> diagnostics,
         bool allowWriteFlags)
     {
-        var allowed = allowWriteFlags
-            ? new[] { "root", "maxBytesPerRun", "allowCreate", "allowOverwrite", "allowedExtensions" }
-            : ["root", "maxBytesPerRun", "allowedExtensions"];
+        var allowed = allowWriteFlags ? FileWriteParameterKeys : FileReadParameterKeys;
         RequireAllowedKeys(grant, diagnostics, allowed);
         RequireNonEmpty(grant, diagnostics, "root");
         RequireAbsoluteCanonicalRoot(grant, diagnostics);
@@ -92,16 +159,28 @@ internal static class PolicyGrantValidator
     private static void RequireAllowedKeys(
         CapabilityGrant grant,
         List<SandboxDiagnostic> diagnostics,
-        IEnumerable<string> allowedKeys)
+        IReadOnlyList<string> allowedKeys)
     {
-        var allowed = allowedKeys.ToHashSet(StringComparer.Ordinal);
         foreach (var key in grant.Parameters.Keys)
         {
-            if (!allowed.Contains(key))
+            if (!ContainsKey(allowedKeys, key))
             {
                 Add(diagnostics, grant, $"parameter '{key}' is not supported");
             }
         }
+    }
+
+    private static bool ContainsKey(IReadOnlyList<string> allowedKeys, string key)
+    {
+        for (var i = 0; i < allowedKeys.Count; i++)
+        {
+            if (string.Equals(allowedKeys[i], key, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void RequireNonEmpty(
@@ -150,34 +229,7 @@ internal static class PolicyGrantValidator
     }
 
     private static void RequireAllowedExtensions(CapabilityGrant grant, List<SandboxDiagnostic> diagnostics)
-    {
-        const string key = "allowedExtensions";
-        if (!grant.Parameters.TryGetValue(key, out var value))
-        {
-            return;
-        }
-
-        var extensions = value.Split(',', StringSplitOptions.TrimEntries);
-        if (extensions.Length == 0 || extensions.All(string.IsNullOrWhiteSpace))
-        {
-            Add(diagnostics, grant, $"parameter '{key}' must contain at least one extension");
-            return;
-        }
-
-        foreach (var extension in extensions)
-        {
-            if (string.IsNullOrWhiteSpace(extension))
-            {
-                Add(diagnostics, grant, $"parameter '{key}' must not contain empty values");
-                continue;
-            }
-
-            if (!IsValidExtension(extension))
-            {
-                Add(diagnostics, grant, $"parameter '{key}' contains invalid extension '{extension}'");
-            }
-        }
-    }
+        => AllowedExtensionParameterValidator.Validate(grant, diagnostics);
 
     private static void RequireNonNegativeLong(
         CapabilityGrant grant,
@@ -216,11 +268,6 @@ internal static class PolicyGrantValidator
         => diagnostics.Add(new SandboxDiagnostic(
             "E-POLICY-GRANT-PARAM",
             $"grant '{grant.Id}' {message}"));
-
-    private static bool IsValidExtension(string extension)
-        => extension.Length > 1 &&
-           extension[0] == '.' &&
-           extension.Skip(1).All(c => !char.IsControl(c) && !char.IsWhiteSpace(c) && c is not '/' and not '\\' and not '.');
 
     private static string NormalizeRootForCompare(string path)
         => Path.TrimEndingDirectorySeparator(path);

@@ -35,4 +35,9 @@ internal static class PluginManifestNames
         public const string Suffix = ">";
         public const int SuffixLength = 1;
     }
+
+    public static class EventParameters
+    {
+        public const string Prefix = "e_";
+    }
 }

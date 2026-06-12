@@ -313,3 +313,17 @@ Expected:
 
 - fuel/allocation limit stops execution
 - worker process boundary kills if needed
+
+## Scenario coverage map
+
+| Scenario | Primary test artifacts |
+|---|---|
+| API escape | `HostValueBoundaryTests`, `BindingRegistryHardeningTests`, `VerifierAttackMatrixTests`, `VerifierDocumentedAttackMatrixTests` |
+| File escape | `SafeFileSystemTests`, `SafeFileSystemReparsePointTests`, `FileExtensionPolicyTests`, `PathUriLiteralValidationTests` |
+| Cache confusion | `CompiledCacheTests`, `CompiledCacheMetadataTests`, `CompiledCacheRootGuardTests`, `CacheKeyIdentityTests`, `CapabilityRevocationTests` |
+| Interpreter/compiler mismatch | `DifferentialFuzzTests`, `DifferentialFeatureCoverageTests`, `CompiledArtifactGuardTests`, `CompilerTests` |
+| Resource DoS | `InterpreterAndPolicyTests`, `ResourceMeterTests`, `ResourceScanCancellationTests`, `CollectionQuotaTests`, `CollectionFuelAccountingTests`, `WorkerIsolationTests` |
+
+The release gate runs these through the unit-test suite and the required security-boundary test
+script. When a scenario gains a new bypass class, add the fixture first and then update this map so
+the release review can trace the scenario to executable coverage.

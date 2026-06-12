@@ -106,11 +106,14 @@ For read:
 5. combine root + relative path
 6. canonicalize full path
 7. ensure final path remains inside root
-8. reject disallowed extension/glob
+8. reject disallowed extension
 9. check file size before read if possible
 10. enforce max bytes per file/run
 11. charge fuel/allocation
 12. audit sanitized path
+
+The current policy surface supports `allowedExtensions` on file grants. General path glob matching
+is a host extension point and is not part of the built-in grant validator.
 
 For write:
 

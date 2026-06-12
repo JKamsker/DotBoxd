@@ -15,8 +15,28 @@ internal static class PolicyHash
             ResourceLimitRecord(policy.ResourceLimits)
         };
 
-        records.AddRange(policy.Grants.Select(GrantRecord).Order(StringComparer.Ordinal));
+        AddGrantRecords(records, policy.Grants);
         return CanonicalEncoding.HashRecords(records);
+    }
+
+    private static void AddGrantRecords(List<string> records, IReadOnlyList<CapabilityGrant> grants)
+    {
+        if (grants.Count == 0)
+        {
+            return;
+        }
+
+        var grantRecords = new string[grants.Count];
+        for (var i = 0; i < grants.Count; i++)
+        {
+            grantRecords[i] = GrantRecord(grants[i]);
+        }
+
+        Array.Sort(grantRecords, StringComparer.Ordinal);
+        for (var i = 0; i < grantRecords.Length; i++)
+        {
+            records.Add(grantRecords[i]);
+        }
     }
 
     private static string ResourceLimitRecord(ResourceLimits limits)
@@ -43,17 +63,38 @@ internal static class PolicyHash
 
     private static string GrantRecord(CapabilityGrant grant)
     {
-        var fields = new List<string?> {
+        var fields = new List<string?>(5 + grant.Parameters.Count) {
             "grant",
             grant.Id,
             Format(grant.ExpiresAt?.ToUnixTimeMilliseconds()),
             grant.GrantedBy,
             grant.Reason
         };
-        fields.AddRange(grant.Parameters
-            .OrderBy(p => p.Key, StringComparer.Ordinal)
-            .Select(p => CanonicalEncoding.Record("param", p.Key, p.Value)));
+        AddParameterRecords(fields, grant.Parameters);
         return CanonicalEncoding.Record(fields);
+    }
+
+    private static void AddParameterRecords(
+        List<string?> fields,
+        IReadOnlyDictionary<string, string> parameters)
+    {
+        if (parameters.Count == 0)
+        {
+            return;
+        }
+
+        var ordered = new KeyValuePair<string, string>[parameters.Count];
+        var index = 0;
+        foreach (var parameter in parameters)
+        {
+            ordered[index++] = parameter;
+        }
+
+        Array.Sort(ordered, static (left, right) => string.Compare(left.Key, right.Key, StringComparison.Ordinal));
+        for (var i = 0; i < ordered.Length; i++)
+        {
+            fields.Add(CanonicalEncoding.Record("param", ordered[i].Key, ordered[i].Value));
+        }
     }
 
     private static string? Format(long? value)

@@ -23,6 +23,38 @@ public sealed class CompiledCacheMetadataTests
     public async Task Cached_verification_missing_assembly_hash_is_quarantined_and_recompiled()
         => await CorruptAndRecoverVerificationAsync(v => v with { AssemblyHash = "" });
 
+    [Fact]
+    public async Task Cache_write_rejects_temp_bytes_that_do_not_match_manifest_before_publish()
+    {
+        using var temp = TempDirectory.Create();
+        var host = SandboxTestHost.Create(compiler: true);
+        var module = await host.ImportJsonAsync(SandboxTestHost.PureScoreJson());
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var compiler = new ReflectionEmitSandboxCompiler(new GeneratedAssemblyVerifier());
+        var artifact = await compiler.CompileAsync(plan, new CompileOptions("main"), CancellationToken.None);
+        var cache = new PersistentCompiledArtifactCache(temp.Path);
+        var cacheKey = CacheKeyBuilder.Build(plan, "main", VerificationPolicy.BoxedValueDefaults(), optimize: false);
+
+        var ex = await Assert.ThrowsAsync<SandboxRuntimeException>(async () =>
+            await cache.WriteAsync(
+                    cacheKey,
+                    plan,
+                    "main",
+                    [1, 2, 3, 4],
+                    artifact.Manifest,
+                    artifact.Verification,
+                    VerificationPolicy.BoxedValueDefaults(),
+                    CancellationToken.None)
+                .AsTask());
+
+        Assert.Equal(SandboxErrorCode.CacheInvalid, ex.Error.Code);
+        Assert.False(Directory.Exists(CacheEntry(temp.Path, plan)));
+        Assert.False(Directory.Exists(Path.Combine(temp.Path, cacheKey[..2])));
+        Assert.DoesNotContain(
+            Directory.EnumerateDirectories(temp.Path),
+            path => Path.GetFileName(path).StartsWith(".tmp-", StringComparison.Ordinal));
+    }
+
     private static async Task CorruptAndRecoverManifestAsync(Func<ArtifactManifest, ArtifactManifest> replace)
     {
         using var temp = TempDirectory.Create();

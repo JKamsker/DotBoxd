@@ -28,10 +28,14 @@ internal static class LiveKernelValueFactory
         T state,
         IReadOnlyList<LiveSettingDefinition> settings) where T : class
     {
-        var settingNames = settings.Select(s => s.Name).ToHashSet(StringComparer.Ordinal);
-        return LiveProperties(typeof(T))
-            .Where(p => settingNames.Contains(p.Name))
-            .ToDictionary(p => p.Name, p => p.GetValue(state), StringComparer.Ordinal);
+        var values = new Dictionary<string, object?>(settings.Count, StringComparer.Ordinal);
+        foreach (var property in LiveProperties(typeof(T))) {
+            if (HasSetting(settings, property.Name)) {
+                values[property.Name] = property.GetValue(state);
+            }
+        }
+
+        return values;
     }
 
     public static void CopyLiveProperties<T>(T source, T target) where T : class
@@ -49,22 +53,57 @@ internal static class LiveKernelValueFactory
 
     private static IReadOnlyList<PropertyInfo> LiveProperties(Type type)
     {
-        var marked = type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
-            .Where(p => p.CanRead && p.CanWrite && Attribute.IsDefined(p, typeof(LiveSettingAttribute)))
-            .ToArray();
-        if (marked.Length > 0) {
+        var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public);
+        var marked = FilterLiveProperties(properties, requireAttribute: true);
+        if (marked.Length > 0)
+        {
             return marked;
         }
 
-        return type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
-            .Where(p => p.CanRead && p.CanWrite)
-            .ToArray();
+        return FilterLiveProperties(properties, requireAttribute: false);
+    }
+
+    private static PropertyInfo[] FilterLiveProperties(PropertyInfo[] properties, bool requireAttribute)
+    {
+        var count = 0;
+        for (var i = 0; i < properties.Length; i++) {
+            if (IsLiveProperty(properties[i], requireAttribute)) {
+                count++;
+            }
+        }
+
+        if (count == 0) {
+            return [];
+        }
+
+        if (count == properties.Length) {
+            return properties;
+        }
+
+        var filtered = new PropertyInfo[count];
+        var index = 0;
+        for (var i = 0; i < properties.Length; i++) {
+            var property = properties[i];
+            if (IsLiveProperty(property, requireAttribute)) {
+                filtered[index] = property;
+                index++;
+            }
+        }
+
+        return filtered;
+    }
+
+    private static bool IsLiveProperty(PropertyInfo property, bool requireAttribute)
+    {
+        return property.CanRead &&
+            property.CanWrite &&
+            (!requireAttribute || Attribute.IsDefined(property, typeof(LiveSettingAttribute)));
     }
 
     private static void PullFromStore<T>(InstalledKernel kernel, T state, IReadOnlyList<PropertyInfo> properties)
     {
         foreach (var property in properties) {
-            if (!kernel.Manifest.LiveSettings.Any(s => string.Equals(s.Name, property.Name, StringComparison.Ordinal))) {
+            if (!HasSetting(kernel.Manifest.LiveSettings, property.Name)) {
                 continue;
             }
 
@@ -76,10 +115,24 @@ internal static class LiveKernelValueFactory
     private static void PushToStore<T>(InstalledKernel kernel, T state, IReadOnlyList<PropertyInfo> properties)
     {
         var settings = kernel.Manifest.LiveSettings;
-        var settingNames = settings.Select(s => s.Name).ToHashSet(StringComparer.Ordinal);
-        var values = properties
-            .Where(p => settingNames.Contains(p.Name))
-            .ToDictionary(p => p.Name, p => p.GetValue(state), StringComparer.Ordinal);
+        var values = new Dictionary<string, object?>(settings.Count, StringComparer.Ordinal);
+        foreach (var property in properties) {
+            if (HasSetting(settings, property.Name)) {
+                values[property.Name] = property.GetValue(state);
+            }
+        }
+
         kernel.Value.SetMany(values);
+    }
+
+    private static bool HasSetting(IReadOnlyList<LiveSettingDefinition> settings, string name)
+    {
+        for (var i = 0; i < settings.Count; i++) {
+            if (string.Equals(settings[i].Name, name, StringComparison.Ordinal)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

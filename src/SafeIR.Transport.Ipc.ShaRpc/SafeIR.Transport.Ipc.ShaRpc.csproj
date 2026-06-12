@@ -2,16 +2,16 @@
 
   <ItemGroup>
     <PackageReference Include="MessagePack" Version="3.1.7" />
-    <PackageReference Include="ShaRPC" Version="1.0.0-ci.20" />
-    <PackageReference Include="ShaRPC.Serializers.MessagePack" Version="1.0.0-ci.20" />
-    <PackageReference Include="ShaRPC.Transports.NamedPipes" Version="1.0.0-ci.20" />
+    <PackageReference Include="ShaRPC" Version="1.0.0-ci.30" />
+    <PackageReference Include="ShaRPC.Serializers.MessagePack" Version="1.0.0-ci.30" />
+    <PackageReference Include="ShaRPC.Transports.NamedPipes" Version="1.0.0-ci.30" />
   </ItemGroup>
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <VersionSuffix>sharpc-ci.20</VersionSuffix>
+    <VersionSuffix>sharpc-ci.30</VersionSuffix>
   </PropertyGroup>
 
 </Project>

@@ -55,6 +55,11 @@ internal static class SafeIrGenerationNames
         public const string DoubleRoundTripFormat = "R";
     }
 
+    public static class CSharpIdentifiers
+    {
+        public const string EscapePrefix = "@";
+    }
+
     public static class ManifestTypes
     {
         public const string Bool = "bool";
@@ -102,12 +107,20 @@ internal static class SafeIrGenerationNames
     {
         public const string MessagesProperty = "Messages";
         public const string SendMethod = "Send";
+        public const string SendTargetArgument = "targetId";
+        public const string SendMessageArgument = "message";
+        public const int SendTargetIndex = 0;
+        public const int SendMessageIndex = 1;
     }
 
     public static class Helpers
     {
         public const string Var = "Var";
         public const string Str = "Str";
+        public const string ConcatString = "ConcatString";
+        public const string StringLength = "StringLength";
+        public const string StringSubstring = "StringSubstring";
+        public const string StringEquals = "StringEquals";
         public const string I32 = "I32";
         public const string I64 = "I64";
         public const string F64 = "F64";
@@ -127,6 +140,20 @@ internal static class SafeIrGenerationNames
         public const string Mul = "Mul";
         public const string Div = "Div";
         public const string Mod = "Mod";
+    }
+
+    public static class IrTypes
+    {
+        public const string IfStatement = "global::SafeIR.IfStatement";
+        public const string ReturnStatement = "global::SafeIR.ReturnStatement";
+    }
+
+    public static class BindingIds
+    {
+        public const string StringLength = "string.length";
+        public const string StringSubstringBudgeted = "string.substringBudgeted";
+        public const string StringConcatBudgeted = "string.concatBudgeted";
+        public const string StringEquals = "string.equals";
     }
 
     public static class GeneratedVariables

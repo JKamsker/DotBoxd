@@ -5,7 +5,7 @@ public static class CanonicalModuleHasher
     public const string CanonicalizerVersion = "safe-ir-canonicalizer-1";
 
     public static string Hash(SandboxModule module)
-        => CanonicalEncoding.HashRecords(new[] { Serialize(module) });
+        => CanonicalEncoding.HashRecord(Serialize(module));
 
     public static string Serialize(SandboxModule module)
     {
@@ -13,22 +13,84 @@ public static class CanonicalModuleHasher
         writer.Write("canonicalizer", CanonicalizerVersion);
         writer.Write("module", module.Id, module.Version.ToString(), module.TargetSandboxVersion.ToString());
 
-        foreach (var request in module.CapabilityRequests.OrderBy(r => r.Id, StringComparer.Ordinal))
-        {
-            writer.Write("requires", request.Id, request.Reason ?? "");
-        }
-
-        foreach (var item in module.Metadata.OrderBy(m => m.Key, StringComparer.Ordinal))
-        {
-            writer.Write("metadata", item.Key, item.Value);
-        }
-
-        foreach (var function in module.Functions.OrderBy(f => f.Id, StringComparer.Ordinal))
-        {
-            WriteFunction(writer, function);
-        }
+        WriteCapabilityRequests(writer, module.CapabilityRequests);
+        WriteMetadata(writer, module.Metadata);
+        WriteFunctions(writer, module.Functions);
 
         return writer.ToString();
+    }
+
+    private static void WriteCapabilityRequests(
+        CanonicalWriter writer,
+        IReadOnlyList<CapabilityRequest> requests)
+    {
+        if (requests.Count == 0)
+        {
+            return;
+        }
+
+        var ordered = new CapabilityRequest[requests.Count];
+        for (var i = 0; i < requests.Count; i++)
+        {
+            ordered[i] = requests[i];
+        }
+
+        Array.Sort(ordered, static (left, right) =>
+        {
+            var idComparison = string.Compare(left.Id, right.Id, StringComparison.Ordinal);
+            return idComparison != 0
+                ? idComparison
+                : string.Compare(left.Reason ?? "", right.Reason ?? "", StringComparison.Ordinal);
+        });
+        for (var i = 0; i < ordered.Length; i++)
+        {
+            writer.Write("requires", ordered[i].Id, ordered[i].Reason ?? "");
+        }
+    }
+
+    private static void WriteMetadata(
+        CanonicalWriter writer,
+        IReadOnlyDictionary<string, string> metadata)
+    {
+        if (metadata.Count == 0)
+        {
+            return;
+        }
+
+        var ordered = new KeyValuePair<string, string>[metadata.Count];
+        var index = 0;
+        foreach (var item in metadata)
+        {
+            ordered[index++] = item;
+        }
+
+        Array.Sort(ordered, static (left, right) => string.Compare(left.Key, right.Key, StringComparison.Ordinal));
+        for (var i = 0; i < ordered.Length; i++)
+        {
+            writer.Write("metadata", ordered[i].Key, ordered[i].Value);
+        }
+    }
+
+    private static void WriteFunctions(
+        CanonicalWriter writer,
+        IReadOnlyList<SandboxFunction> functions)
+    {
+        if (functions.Count == 0)
+        {
+            return;
+        }
+
+        var ordered = new SandboxFunction[functions.Count];
+        for (var i = 0; i < functions.Count; i++)
+        {
+            ordered[i] = functions[i];
+        }
+
+        Array.Sort(ordered, static (left, right) => string.Compare(left.Id, right.Id, StringComparison.Ordinal));
+        for (var i = 0; i < ordered.Length; i++)
+        {
+            WriteFunction(writer, ordered[i]);
+        }
     }
 
     private static void WriteFunction(CanonicalWriter writer, SandboxFunction function)
@@ -60,23 +122,31 @@ public static class CanonicalModuleHasher
                 break;
             case IfStatement branch:
                 writer.Write("if", Expr(branch.Condition));
-                branch.Then.ToList().ForEach(s => WriteStatement(writer, s));
+                WriteStatements(writer, branch.Then);
                 writer.Write("else");
-                branch.Else.ToList().ForEach(s => WriteStatement(writer, s));
+                WriteStatements(writer, branch.Else);
                 writer.Write("endif");
                 break;
             case WhileStatement loop:
                 writer.Write("while", Expr(loop.Condition));
-                loop.Body.ToList().ForEach(s => WriteStatement(writer, s));
+                WriteStatements(writer, loop.Body);
                 writer.Write("endwhile");
                 break;
             case ForRangeStatement range:
                 writer.Write("for", range.LocalName, Expr(range.Start), Expr(range.End));
-                range.Body.ToList().ForEach(s => WriteStatement(writer, s));
+                WriteStatements(writer, range.Body);
                 writer.Write("endfor");
                 break;
             default:
                 throw new NotSupportedException(statement.GetType().Name);
+        }
+    }
+
+    private static void WriteStatements(CanonicalWriter writer, IReadOnlyList<Statement> statements)
+    {
+        for (var i = 0; i < statements.Count; i++)
+        {
+            WriteStatement(writer, statements[i]);
         }
     }
 
@@ -109,36 +179,57 @@ public static class CanonicalModuleHasher
 
     private static string Type(SandboxType type)
     {
-        var fields = new List<string?> { "type", type.Name };
-        fields.AddRange(type.Arguments.Select(Type));
+        var fields = new List<string?>(2 + type.Arguments.Count) { "type", type.Name };
+        for (var i = 0; i < type.Arguments.Count; i++)
+        {
+            fields.Add(Type(type.Arguments[i]));
+        }
+
         return Node(fields);
     }
 
     private static string Call(CallExpression call)
     {
-        var fields = new List<string?> {
+        var fields = new List<string?>(3 + call.Arguments.Count) {
             "call",
             call.Name,
             call.GenericType is null ? null : Type(call.GenericType)
         };
-        fields.AddRange(call.Arguments.Select(Expr));
+        for (var i = 0; i < call.Arguments.Count; i++)
+        {
+            fields.Add(Expr(call.Arguments[i]));
+        }
+
         return Node(fields);
     }
 
     private static string ListLiteral(ListValue list)
     {
-        var fields = new List<string?> { "list", Type(list.ItemType) };
-        fields.AddRange(list.Values.Select(Value));
+        var fields = new List<string?>(2 + list.Values.Count) { "list", Type(list.ItemType) };
+        for (var i = 0; i < list.Values.Count; i++)
+        {
+            fields.Add(Value(list.Values[i]));
+        }
+
         return Node(fields);
     }
 
     private static string MapLiteral(MapValue map)
     {
-        var entries = map.Values
-            .Select(p => Node("entry", Value(p.Key), Value(p.Value)))
-            .Order(StringComparer.Ordinal);
-        var fields = new List<string?> { "map", Type(map.KeyType), Type(map.ValueType) };
-        fields.AddRange(entries);
+        var entries = map.Values.Count == 0 ? Array.Empty<string>() : new string[map.Values.Count];
+        var index = 0;
+        foreach (var item in map.Values)
+        {
+            entries[index++] = Node("entry", Value(item.Key), Value(item.Value));
+        }
+
+        Array.Sort(entries, StringComparer.Ordinal);
+        var fields = new List<string?>(3 + entries.Length) { "map", Type(map.KeyType), Type(map.ValueType) };
+        for (var i = 0; i < entries.Length; i++)
+        {
+            fields.Add(entries[i]);
+        }
+
         return Node(fields);
     }
 

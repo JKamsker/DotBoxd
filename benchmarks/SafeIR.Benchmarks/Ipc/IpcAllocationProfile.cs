@@ -10,13 +10,13 @@ internal static class IpcAllocationProfile
     public const string NamedPipeTransport = "namedpipe";
     public const string InMemoryTransport = "inmemory";
 
-    public static async Task RunAsync(string transport, int iterations, bool disableTimeout)
+    public static async Task RunAsync(string transport, int iterations, bool disableTimeout, bool lowAllocationProfile)
     {
         if (iterations <= 0) {
             throw new ArgumentOutOfRangeException(nameof(iterations), iterations, "Iterations must be positive.");
         }
 
-        await using var fixture = await CreateFixtureAsync(transport, disableTimeout).ConfigureAwait(false);
+        await using var fixture = await CreateFixtureAsync(transport, disableTimeout, lowAllocationProfile).ConfigureAwait(false);
         var service = fixture.Session.Get<IAllocationProbeService>();
 
         await service.AddAsync(1).ConfigureAwait(false);
@@ -26,7 +26,8 @@ internal static class IpcAllocationProfile
         var structBytes = await MeasureEchoAllocationsAsync(service, iterations).ConfigureAwait(false);
 
         Console.WriteLine("IPC profile transport: " + transport);
-        Console.WriteLine("IPC profile timeout: " + (disableTimeout ? "disabled" : "default"));
+        Console.WriteLine("IPC profile timeout: " + (disableTimeout || lowAllocationProfile ? "disabled" : "default"));
+        Console.WriteLine("IPC profile low allocation: " + (lowAllocationProfile ? "enabled" : "disabled"));
         Console.WriteLine("IPC profile iterations: " + iterations.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine("AddAsync total allocated bytes: " + intBytes.ToString(CultureInfo.InvariantCulture));
         Console.WriteLine("AddAsync allocated bytes/call: " + FormatBytesPerCall(intBytes, iterations));
@@ -34,14 +35,19 @@ internal static class IpcAllocationProfile
         Console.WriteLine("EchoAsync allocated bytes/call: " + FormatBytesPerCall(structBytes, iterations));
     }
 
-    private static async Task<ProfileFixture> CreateFixtureAsync(string transport, bool disableTimeout)
+    private static async Task<ProfileFixture> CreateFixtureAsync(
+        string transport,
+        bool disableTimeout,
+        bool lowAllocationProfile)
     {
-        var clientOptions = CreateClientOptions(disableTimeout);
+        var clientOptions = CreateClientOptions(disableTimeout, lowAllocationProfile);
+        var serverOptions = CreateServerOptions(disableTimeout, lowAllocationProfile);
         if (transport.Equals(NamedPipeTransport, StringComparison.OrdinalIgnoreCase)) {
             var pipeName = "safe-ir-ipc-profile-" + Guid.NewGuid().ToString("N");
             var host = SafeIrShaRpcMessagePackIpc.ListenNamedPipe(
                 pipeName,
-                peer => peer.Provide<IAllocationProbeService>(new AllocationProbeService()));
+                peer => peer.Provide<IAllocationProbeService>(new AllocationProbeService()),
+                serverOptions);
             await host.StartAsync().ConfigureAwait(false);
             var session = await SafeIrShaRpcMessagePackIpc.ConnectNamedPipeAsync(pipeName, clientOptions)
                 .ConfigureAwait(false);
@@ -53,7 +59,7 @@ internal static class IpcAllocationProfile
             var host = SafeIrShaRpcMessagePackIpc.Listen(
                 new SingleConnectionServerTransport(serverChannel, ownsConnection: true),
                 peer => peer.Provide<IAllocationProbeService>(new AllocationProbeService()),
-                new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) });
+                serverOptions ?? new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) });
             await host.StartAsync().ConfigureAwait(false);
             var session = await SafeIrShaRpcMessagePackIpc.ConnectAsync(
                     new SingleConnectionTransport(clientChannel, ownsConnection: true),
@@ -65,13 +71,35 @@ internal static class IpcAllocationProfile
         throw new ArgumentException($"Unknown IPC profile transport '{transport}'.", nameof(transport));
     }
 
-    private static RpcPeerOptions? CreateClientOptions(bool disableTimeout)
-        => disableTimeout
-            ? new RpcPeerOptions {
+    private static RpcPeerOptions? CreateClientOptions(bool disableTimeout, bool lowAllocationProfile)
+    {
+        if (!disableTimeout && !lowAllocationProfile) {
+            return null;
+        }
+
+        return new RpcPeerOptions {
+            EnableLowAllocationValueTaskInvocations = lowAllocationProfile,
+            RejectInboundCalls = true,
+            RequestTimeout = disableTimeout || lowAllocationProfile
+                ? Timeout.InfiniteTimeSpan
+                : TimeSpan.FromSeconds(30)
+        };
+    }
+
+    private static RpcPeerOptions? CreateServerOptions(bool disableTimeout, bool lowAllocationProfile)
+    {
+        if (lowAllocationProfile) {
+            return new RpcPeerOptions {
+                DisableInboundRequestCancellation = true,
+                InboundQueueCapacity = null,
                 RequestTimeout = Timeout.InfiniteTimeSpan,
-                RejectInboundCalls = true
-            }
+            };
+        }
+
+        return disableTimeout
+            ? new RpcPeerOptions { RequestTimeout = Timeout.InfiniteTimeSpan }
             : null;
+    }
 
     private static string FormatBytesPerCall(long allocatedBytes, int iterations)
         => (allocatedBytes / (double)iterations).ToString("N1", CultureInfo.InvariantCulture);

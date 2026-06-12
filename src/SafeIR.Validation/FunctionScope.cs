@@ -8,8 +8,17 @@ internal sealed class FunctionScope
 
     private FunctionScope(Dictionary<string, SandboxType> locals) => _locals = locals;
 
-    public static FunctionScope FromParameters(IEnumerable<Parameter> parameters)
-        => new(parameters.ToDictionary(p => p.Name, p => p.Type, StringComparer.Ordinal));
+    public static FunctionScope FromParameters(IReadOnlyList<Parameter> parameters)
+    {
+        var locals = new Dictionary<string, SandboxType>(parameters.Count, StringComparer.Ordinal);
+        for (var i = 0; i < parameters.Count; i++)
+        {
+            var parameter = parameters[i];
+            locals.Add(parameter.Name, parameter.Type);
+        }
+
+        return new FunctionScope(locals);
+    }
 
     public FunctionScope Clone() => new(new Dictionary<string, SandboxType>(_locals, StringComparer.Ordinal));
 

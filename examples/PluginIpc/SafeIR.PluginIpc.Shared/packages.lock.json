@@ -15,9 +15,9 @@
       },
       "ShaRPC": {
         "type": "Direct",
-        "requested": "[1.0.0-ci.20, )",
-        "resolved": "1.0.0-ci.20",
-        "contentHash": "llO3Q1zZVfdKD4ydvyPWkyl8lKt7yL77QAqzrS1CLtiKxrpykajqQReZZDm0FrbcUbr4e0ijROPYUDa/aZi6Jw=="
+        "requested": "[1.0.0-ci.30, )",
+        "resolved": "1.0.0-ci.30",
+        "contentHash": "Q3e/tSXJ4jJ+h63mjDqSTqiePKc8uw2XJYtyIueEOxIwNEr7fiI6QTX+1kHWQ9TohooWwnXK7b3miPMjsPbpeQ=="
       },
       "MessagePack.Annotations": {
         "type": "Transitive",

@@ -65,7 +65,23 @@ public sealed record BindingDescriptor(
     CapabilityGrantValidator? GrantValidator = null)
 {
     public BindingSignature Signature => new(
-        Id, Version, Parameters.ToArray(), ReturnType, Effects, RequiredCapability, CostModel, AuditLevel, Safety, Compiled);
+        Id, Version, CopyParameters(Parameters), ReturnType, Effects, RequiredCapability, CostModel, AuditLevel, Safety, Compiled);
+
+    private static SandboxType[] CopyParameters(IReadOnlyList<SandboxType> parameters)
+    {
+        if (parameters.Count == 0)
+        {
+            return Array.Empty<SandboxType>();
+        }
+
+        var copy = new SandboxType[parameters.Count];
+        for (var i = 0; i < parameters.Count; i++)
+        {
+            copy[i] = parameters[i];
+        }
+
+        return copy;
+    }
 }
 
 public interface IBindingCatalog
@@ -83,25 +99,33 @@ public sealed class BindingRegistry : IBindingCatalog
 
     public BindingRegistry(IEnumerable<BindingDescriptor> bindings)
     {
-        var frozen = bindings.Select(Freeze).ToArray();
+        var frozen = FreezeAll(bindings);
         var diagnostics = BindingRegistryValidator.Validate(frozen);
         if (diagnostics.Count > 0)
         {
             throw new SandboxValidationException(diagnostics);
         }
 
-        _bindings = frozen.ToDictionary(b => b.Id, StringComparer.Ordinal);
-        _grantValidators = frozen
-            .Where(b => !string.IsNullOrWhiteSpace(b.RequiredCapability) && b.GrantValidator is not null)
-            .GroupBy(b => b.RequiredCapability!, StringComparer.Ordinal)
-            .ToDictionary(
-                g => g.Key,
-                g => ComposeGrantValidators(g.Select(b => b.GrantValidator!).ToArray()),
-                StringComparer.Ordinal);
+        _bindings = CreateBindingDictionary(frozen);
+        _grantValidators = CreateGrantValidators(frozen);
         ManifestHash = ComputeManifestHash(Signatures);
     }
 
-    public IReadOnlyList<BindingSignature> Signatures => _bindings.Values.Select(b => b.Signature).OrderBy(b => b.Id).ToArray();
+    public IReadOnlyList<BindingSignature> Signatures
+    {
+        get
+        {
+            var signatures = new BindingSignature[_bindings.Count];
+            var index = 0;
+            foreach (var binding in _bindings.Values)
+            {
+                signatures[index++] = binding.Signature;
+            }
+
+            Array.Sort(signatures, static (left, right) => string.Compare(left.Id, right.Id, StringComparison.Ordinal));
+            return signatures;
+        }
+    }
 
     public string ManifestHash { get; }
 
@@ -131,17 +155,109 @@ public sealed class BindingRegistry : IBindingCatalog
         return false;
     }
 
-    private static string ComputeManifestHash(IEnumerable<BindingSignature> signatures)
+    private static BindingDescriptor[] FreezeAll(IEnumerable<BindingDescriptor> bindings)
     {
-        var records = new List<string> {
+        ArgumentNullException.ThrowIfNull(bindings);
+        if (bindings is IReadOnlyCollection<BindingDescriptor> collection)
+        {
+            var frozen = new BindingDescriptor[collection.Count];
+            var index = 0;
+            foreach (var binding in bindings)
+            {
+                frozen[index++] = Freeze(binding);
+            }
+
+            return frozen;
+        }
+
+        var list = new List<BindingDescriptor>();
+        foreach (var binding in bindings)
+        {
+            list.Add(Freeze(binding));
+        }
+
+        return list.ToArray();
+    }
+
+    private static Dictionary<string, BindingDescriptor> CreateBindingDictionary(IReadOnlyList<BindingDescriptor> bindings)
+    {
+        var dictionary = new Dictionary<string, BindingDescriptor>(bindings.Count, StringComparer.Ordinal);
+        for (var i = 0; i < bindings.Count; i++)
+        {
+            dictionary.Add(bindings[i].Id, bindings[i]);
+        }
+
+        return dictionary;
+    }
+
+    private static Dictionary<string, CapabilityGrantValidator> CreateGrantValidators(IReadOnlyList<BindingDescriptor> bindings)
+    {
+        var grouped = new Dictionary<string, List<CapabilityGrantValidator>>(StringComparer.Ordinal);
+        for (var i = 0; i < bindings.Count; i++)
+        {
+            var binding = bindings[i];
+            if (string.IsNullOrWhiteSpace(binding.RequiredCapability) || binding.GrantValidator is null)
+            {
+                continue;
+            }
+
+            if (!grouped.TryGetValue(binding.RequiredCapability, out var validators))
+            {
+                validators = [];
+                grouped.Add(binding.RequiredCapability, validators);
+            }
+
+            validators.Add(binding.GrantValidator);
+        }
+
+        var result = new Dictionary<string, CapabilityGrantValidator>(grouped.Count, StringComparer.Ordinal);
+        foreach (var item in grouped)
+        {
+            var validators = item.Value;
+            result.Add(
+                item.Key,
+                validators.Count == 1 ? validators[0] : ComposeGrantValidators(validators));
+        }
+
+        return result;
+    }
+
+    private static string ComputeManifestHash(IReadOnlyList<BindingSignature> signatures)
+    {
+        var records = new List<string>(signatures.Count + 1) {
             CanonicalEncoding.Record("bindings-v2")
         };
-        records.AddRange(signatures.Select(BindingRecord).Order(StringComparer.Ordinal));
+        for (var i = 0; i < signatures.Count; i++)
+        {
+            records.Add(BindingRecord(signatures[i]));
+        }
+
+        if (records.Count > 2)
+        {
+            records.Sort(1, records.Count - 1, StringComparer.Ordinal);
+        }
+
         return CanonicalEncoding.HashRecords(records);
     }
 
     private static BindingDescriptor Freeze(BindingDescriptor binding)
-        => binding with { Parameters = binding.Parameters.ToArray() };
+        => binding with { Parameters = CopyParameters(binding.Parameters) };
+
+    private static SandboxType[] CopyParameters(IReadOnlyList<SandboxType> parameters)
+    {
+        if (parameters.Count == 0)
+        {
+            return Array.Empty<SandboxType>();
+        }
+
+        var copy = new SandboxType[parameters.Count];
+        for (var i = 0; i < parameters.Count; i++)
+        {
+            copy[i] = parameters[i];
+        }
+
+        return copy;
+    }
 
     private static CapabilityGrantValidator ComposeGrantValidators(IReadOnlyList<CapabilityGrantValidator> validators)
         => (grant, diagnostics) =>
@@ -154,7 +270,7 @@ public sealed class BindingRegistry : IBindingCatalog
 
     private static string BindingRecord(BindingSignature binding)
     {
-        var fields = new List<string?> {
+        var fields = new List<string?>(15 + binding.Parameters.Count) {
             "binding",
             binding.Id,
             binding.Version.ToString(),
@@ -171,14 +287,22 @@ public sealed class BindingRegistry : IBindingCatalog
             binding.Compiled.Type,
             binding.Compiled.Method
         };
-        fields.AddRange(binding.Parameters.Select(Type));
+        for (var i = 0; i < binding.Parameters.Count; i++)
+        {
+            fields.Add(Type(binding.Parameters[i]));
+        }
+
         return CanonicalEncoding.Record(fields);
     }
 
     private static string Type(SandboxType type)
     {
-        var fields = new List<string?> { "type", type.Name };
-        fields.AddRange(type.Arguments.Select(Type));
+        var fields = new List<string?>(2 + type.Arguments.Count) { "type", type.Name };
+        for (var i = 0; i < type.Arguments.Count; i++)
+        {
+            fields.Add(Type(type.Arguments[i]));
+        }
+
         return CanonicalEncoding.Record(fields);
     }
 }

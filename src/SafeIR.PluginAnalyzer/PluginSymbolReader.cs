@@ -7,69 +7,125 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 internal static class PluginSymbolReader
 {
     public static string? PluginId(IReadOnlyList<AttributeData> attributes)
-        => attributes.FirstOrDefault(a => string.Equals(
-                a.AttributeClass?.ToDisplayString(),
-                SafeIrGenerationNames.Metadata.GamePluginAttribute,
-                StringComparison.Ordinal))
-            ?.ConstructorArguments.FirstOrDefault().Value as string;
-
-    public static INamedTypeSymbol? EventType(INamedTypeSymbol kernelType)
-        => kernelType.AllInterfaces
-            .FirstOrDefault(i => string.Equals(
-                i.OriginalDefinition.ToDisplayString(),
-                SafeIrGenerationNames.Metadata.EventKernelInterface,
-                StringComparison.Ordinal))
-            ?.TypeArguments.FirstOrDefault() as INamedTypeSymbol;
-
-    public static IReadOnlyList<EventPropertyModel> EventProperties(INamedTypeSymbol eventType)
     {
-        var properties = eventType.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Where(p => p.DeclaredAccessibility == Accessibility.Public &&
-                        !p.IsStatic &&
-                        p.GetMethod is not null &&
-                        p.Parameters.Length == 0)
-            .ToArray();
+        for (var i = 0; i < attributes.Count; i++) {
+            var attribute = attributes[i];
+            if (string.Equals(
+                    attribute.AttributeClass?.ToDisplayString(),
+                    SafeIrGenerationNames.Metadata.GamePluginAttribute,
+                    StringComparison.Ordinal)) {
+                return attribute.ConstructorArguments.Length > 0
+                    ? attribute.ConstructorArguments[0].Value as string
+                    : null;
+            }
+        }
 
-        properties = ConstructorPropertyOrder(eventType, properties) ?? properties;
-        return properties
-            .Select(p => new EventPropertyModel(p.Name, SandboxTypeName(p.Type)))
-            .ToArray();
+        return null;
     }
 
-    public static IReadOnlyList<LiveSettingModel> LiveSettings(
+    public static IReadOnlyList<INamedTypeSymbol> EventTypes(INamedTypeSymbol kernelType)
+    {
+        var eventTypes = new List<INamedTypeSymbol>();
+        foreach (var implementedInterface in kernelType.AllInterfaces) {
+            if (IsEventKernelInterface(implementedInterface) &&
+                implementedInterface.TypeArguments.Length > 0 &&
+                implementedInterface.TypeArguments[0] is INamedTypeSymbol eventType)
+            {
+                eventTypes.Add(eventType);
+            }
+        }
+
+        return eventTypes;
+    }
+
+    private static bool IsEventKernelInterface(INamedTypeSymbol type)
+        => string.Equals(
+            type.OriginalDefinition.ToDisplayString(),
+            SafeIrGenerationNames.Metadata.EventKernelInterface,
+            StringComparison.Ordinal);
+
+    public static EquatableArray<EventPropertyModel> EventProperties(INamedTypeSymbol eventType)
+    {
+        var properties = PluginEventPropertyReader.Read(eventType);
+        if (properties.Length == 0) {
+            return default;
+        }
+
+        var models = new EventPropertyModel[properties.Length];
+        for (var i = 0; i < properties.Length; i++) {
+            var property = properties[i];
+            models[i] = new EventPropertyModel(property.Name, SafeIrTypeNameReader.SandboxTypeName(property.Type));
+        }
+
+        return EquatableArray<EventPropertyModel>.FromOwned(models);
+    }
+
+    public static EquatableArray<LiveSettingModel> LiveSettings(
         INamedTypeSymbol kernelType,
         SemanticModel semanticModel,
         CancellationToken cancellationToken)
     {
-        var properties = LiveSettingProperties(kernelType).ToArray();
-        foreach (var group in properties.GroupBy(p => p.Name, StringComparer.Ordinal).Where(g => g.Skip(1).Any()))
-        {
-            throw new NotSupportedException($"Live setting '{group.Key}' is declared more than once.");
+        var count = CountLiveSettingProperties(kernelType);
+        if (count == 0) {
+            return default;
         }
 
-        return properties
-            .Select(property => ToLiveSetting(property, semanticModel, cancellationToken))
-            .ToArray();
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        var settings = new LiveSettingModel[count];
+        var index = 0;
+        foreach (var property in LiveSettingProperties(kernelType)) {
+            if (!names.Add(property.Name)) {
+                throw new NotSupportedException($"Live setting '{property.Name}' is declared more than once.");
+            }
+
+            settings[index] = ToLiveSetting(property, semanticModel, cancellationToken);
+            index++;
+        }
+
+        return EquatableArray<LiveSettingModel>.FromOwned(settings);
     }
 
     private static IEnumerable<IPropertySymbol> LiveSettingProperties(INamedTypeSymbol kernelType)
     {
         for (var current = kernelType; current is not null; current = current.BaseType)
         {
-            foreach (var property in current.GetMembers().OfType<IPropertySymbol>().Where(IsLiveSetting))
+            foreach (var member in current.GetMembers())
             {
-                ValidateLiveSettingProperty(property);
-                yield return property;
+                if (member is IPropertySymbol property && IsLiveSetting(property))
+                {
+                    ValidateLiveSettingProperty(property);
+                    yield return property;
+                }
             }
         }
     }
 
+    private static int CountLiveSettingProperties(INamedTypeSymbol kernelType)
+    {
+        var count = 0;
+        foreach (var property in LiveSettingProperties(kernelType)) {
+            _ = property;
+            count++;
+        }
+
+        return count;
+    }
+
     private static bool IsLiveSetting(IPropertySymbol property)
-        => property.GetAttributes().Any(a => string.Equals(
-            a.AttributeClass?.ToDisplayString(),
-            SafeIrGenerationNames.Metadata.LiveSettingAttribute,
-            StringComparison.Ordinal));
+    {
+        foreach (var attribute in property.GetAttributes())
+        {
+            if (string.Equals(
+                    attribute.AttributeClass?.ToDisplayString(),
+                    SafeIrGenerationNames.Metadata.LiveSettingAttribute,
+                    StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static void ValidateLiveSettingProperty(IPropertySymbol property)
     {
@@ -92,8 +148,8 @@ internal static class PluginSymbolReader
         SemanticModel semanticModel,
         CancellationToken cancellationToken)
     {
-        var syntax = property.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken) as PropertyDeclarationSyntax;
-        var type = SandboxTypeName(property.Type);
+        var syntax = DeclaringPropertySyntax(property, cancellationToken);
+        var type = SafeIrTypeNameReader.SandboxTypeName(property.Type);
         var range = Range(property, type);
         return new LiveSettingModel(
             property.Name,
@@ -103,36 +159,15 @@ internal static class PluginSymbolReader
             range.Max);
     }
 
-    private static IPropertySymbol[]? ConstructorPropertyOrder(
-        INamedTypeSymbol eventType,
-        IPropertySymbol[] properties)
+    private static PropertyDeclarationSyntax? DeclaringPropertySyntax(
+        IPropertySymbol property,
+        CancellationToken cancellationToken)
     {
-        var byName = properties.ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
-        foreach (var constructor in eventType.InstanceConstructors.Where(c => c.DeclaredAccessibility == Accessibility.Public))
+        foreach (var reference in property.DeclaringSyntaxReferences)
         {
-            if (constructor.Parameters.Length == 0 || constructor.Parameters.Length != properties.Length)
+            if (reference.GetSyntax(cancellationToken) is PropertyDeclarationSyntax syntax)
             {
-                continue;
-            }
-
-            var selected = new IPropertySymbol[constructor.Parameters.Length];
-            var matched = true;
-            for (var i = 0; i < constructor.Parameters.Length; i++)
-            {
-                var parameter = constructor.Parameters[i];
-                if (!byName.TryGetValue(parameter.Name, out var property) ||
-                    !SymbolEqualityComparer.Default.Equals(property.Type, parameter.Type))
-                {
-                    matched = false;
-                    break;
-                }
-
-                selected[i] = property;
-            }
-
-            if (matched)
-            {
-                return selected;
+                return syntax;
             }
         }
 
@@ -141,10 +176,7 @@ internal static class PluginSymbolReader
 
     private static (string? Min, string? Max) Range(IPropertySymbol property, string type)
     {
-        var range = property.GetAttributes().FirstOrDefault(a => string.Equals(
-            a.AttributeClass?.ToDisplayString(),
-            SafeIrGenerationNames.Metadata.RangeAttribute,
-            StringComparison.Ordinal));
+        var range = RangeAttribute(property);
         if (range is null ||
             range.ConstructorArguments.Length < SafeIrGenerationNames.RangeAttributeArguments.NumericOverloadCount) {
             return (null, null);
@@ -166,6 +198,22 @@ internal static class PluginSymbolReader
         return (LiteralReader.ObjectLiteral(values.Min), LiteralReader.ObjectLiteral(values.Max));
     }
 
+    private static AttributeData? RangeAttribute(IPropertySymbol property)
+    {
+        foreach (var attribute in property.GetAttributes())
+        {
+            if (string.Equals(
+                    attribute.AttributeClass?.ToDisplayString(),
+                    SafeIrGenerationNames.Metadata.RangeAttribute,
+                    StringComparison.Ordinal))
+            {
+                return attribute;
+            }
+        }
+
+        return null;
+    }
+
     private static (object? Min, object? Max) RangeValues(
         IPropertySymbol property,
         string type,
@@ -184,7 +232,7 @@ internal static class PluginSymbolReader
 
         if (range.ConstructorArguments.Length == SafeIrGenerationNames.RangeAttributeArguments.TypeAndStringOverloadCount &&
             range.ConstructorArguments[SafeIrGenerationNames.RangeAttributeArguments.ConversionTypeIndex].Value is INamedTypeSymbol conversionType &&
-            string.Equals(SandboxTypeName(conversionType), type, StringComparison.Ordinal))
+            string.Equals(SafeIrTypeNameReader.SandboxTypeName(conversionType), type, StringComparison.Ordinal))
         {
             return (
                 RangeValue(
@@ -284,13 +332,4 @@ internal static class PluginSymbolReader
     private static NotSupportedException RangeValueException(Exception? inner = null)
         => new("Live setting ranges must be finite numeric values matching the live setting type.", inner);
 
-    private static string SandboxTypeName(ITypeSymbol type)
-        => type.SpecialType switch {
-            SpecialType.System_Boolean => SafeIrGenerationNames.ManifestTypes.Bool,
-            SpecialType.System_Int32 => SafeIrGenerationNames.ManifestTypes.Int,
-            SpecialType.System_Int64 => SafeIrGenerationNames.ManifestTypes.Long,
-            SpecialType.System_Double => SafeIrGenerationNames.ManifestTypes.Double,
-            SpecialType.System_String => SafeIrGenerationNames.ManifestTypes.String,
-            _ => SafeIrGenerationNames.ManifestTypes.Unsupported
-        };
 }

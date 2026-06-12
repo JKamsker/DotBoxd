@@ -56,19 +56,36 @@ public static class SafeIrJsonImporter
         }
 
         RequireArray(array, "capabilityRequests");
-        return array.EnumerateArray()
-            .Select(item =>
-            {
-                RequireAllowedProperties(item, "capability request", ["id", "reason"]);
-                return new CapabilityRequest(RequiredString(item, "id"), OptionalString(item, "reason"));
-            })
-            .ToArray();
+        var requests = AllocateArray<CapabilityRequest>(array, out var count);
+        if (count == 0) {
+            return requests;
+        }
+
+        var index = 0;
+        foreach (var item in array.EnumerateArray())
+        {
+            RequireAllowedProperties(item, "capability request", ["id", "reason"]);
+            requests[index++] = new CapabilityRequest(RequiredString(item, "id"), OptionalString(item, "reason"));
+        }
+
+        return requests;
     }
 
     private static IReadOnlyList<SandboxFunction> ReadFunctions(JsonElement module, JsonSourceMap source)
     {
         var array = RequiredArray(module, "functions");
-        return array.EnumerateArray().Select(function => ReadFunction(function, source)).ToArray();
+        var functions = AllocateArray<SandboxFunction>(array, out var count);
+        if (count == 0) {
+            return functions;
+        }
+
+        var index = 0;
+        foreach (var item in array.EnumerateArray())
+        {
+            functions[index++] = ReadFunction(item, source);
+        }
+
+        return functions;
     }
 
     private static SandboxFunction ReadFunction(JsonElement element, JsonSourceMap source)
@@ -97,17 +114,38 @@ public static class SafeIrJsonImporter
         }
 
         RequireArray(array, "parameters");
-        return array.EnumerateArray()
-            .Select(p =>
-            {
-                RequireAllowedProperties(p, "parameter", ["name", "type"]);
-                return new Parameter(RequiredString(p, "name"), ReadType(Required(p, "type")));
-            })
-            .ToArray();
+        var parameters = AllocateArray<Parameter>(array, out var count);
+        if (count == 0) {
+            return parameters;
+        }
+
+        var index = 0;
+        foreach (var parameter in array.EnumerateArray())
+        {
+            RequireAllowedProperties(parameter, "parameter", ["name", "type"]);
+            parameters[index++] = new Parameter(
+                RequiredString(parameter, "name"),
+                ReadType(Required(parameter, "type")));
+        }
+
+        return parameters;
     }
 
     private static IReadOnlyList<Statement> ReadStatements(JsonElement array, JsonSourceMap source)
-        => array.EnumerateArray().Select(statement => ReadStatement(statement, source)).ToArray();
+    {
+        var statements = AllocateArray<Statement>(array, out var count);
+        if (count == 0) {
+            return statements;
+        }
+
+        var index = 0;
+        foreach (var item in array.EnumerateArray())
+        {
+            statements[index++] = ReadStatement(item, source);
+        }
+
+        return statements;
+    }
 
     private static Statement ReadStatement(JsonElement element, JsonSourceMap source)
     {
@@ -233,7 +271,18 @@ public static class SafeIrJsonImporter
     private static IReadOnlyList<Expression> ReadExpressions(JsonElement array, JsonSourceMap source)
     {
         RequireArray(array, "args");
-        return array.EnumerateArray().Select(expression => ReadExpression(expression, source)).ToArray();
+        var expressions = AllocateArray<Expression>(array, out var count);
+        if (count == 0) {
+            return expressions;
+        }
+
+        var index = 0;
+        foreach (var item in array.EnumerateArray())
+        {
+            expressions[index++] = ReadExpression(item, source);
+        }
+
+        return expressions;
     }
 
     private static SandboxType ReadType(JsonElement element)
@@ -260,9 +309,19 @@ public static class SafeIrJsonImporter
     private static IReadOnlyList<SandboxType> ReadTypeArguments(JsonElement array)
     {
         RequireArray(array, "type arguments");
-        return array.EnumerateArray().Select(ReadType).ToArray();
-    }
+        var arguments = AllocateArray<SandboxType>(array, out var count);
+        if (count == 0) {
+            return arguments;
+        }
 
+        var index = 0;
+        foreach (var item in array.EnumerateArray())
+        {
+            arguments[index++] = ReadType(item);
+        }
+
+        return arguments;
+    }
     private static IReadOnlyDictionary<string, string> ReadMetadata(JsonElement module)
     {
         if (!module.TryGetProperty("metadata", out var metadata))
@@ -272,8 +331,13 @@ public static class SafeIrJsonImporter
 
         RequireObject(metadata, "metadata");
         RequireUniqueProperties(metadata, "metadata");
-        return metadata.EnumerateObject()
-            .ToDictionary(p => p.Name, p => ReadStringValue(p.Value, $"metadata.{p.Name}"), StringComparer.Ordinal);
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var property in metadata.EnumerateObject())
+        {
+            values.Add(property.Name, ReadStringValue(property.Value, $"metadata.{property.Name}"));
+        }
+
+        return values;
     }
 
 }

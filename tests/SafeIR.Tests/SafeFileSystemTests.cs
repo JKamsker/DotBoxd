@@ -13,7 +13,7 @@ public sealed class SafeFileSystemTests
 
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson("config/settings.json"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = FilePolicyBuilder()
             .GrantFileRead(temp.Path, 1024)
             .WithFuel(5_000)
             .Build();
@@ -48,7 +48,7 @@ public sealed class SafeFileSystemTests
         await File.WriteAllTextAsync(Path.Combine(temp.Path, "text.txt"), "hello");
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson("text.txt"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = FilePolicyBuilder()
             .GrantFileRead(temp.Path, 5)
             .WithFuel(5_000)
             .Build();
@@ -68,7 +68,7 @@ public sealed class SafeFileSystemTests
         await File.WriteAllTextAsync(Path.Combine(temp.Path, "text.txt"), "hello");
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson("text.txt"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = FilePolicyBuilder()
             .GrantFileRead(temp.Path, 4)
             .WithFuel(5_000)
             .Build();
@@ -87,7 +87,7 @@ public sealed class SafeFileSystemTests
         await File.WriteAllTextAsync(Path.Combine(temp.Path, "text.txt"), "hello");
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson("text.txt"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = FilePolicyBuilder()
             .GrantFileRead(temp.Path, 1024)
             .WithMaxAllocatedBytes(4)
             .WithFuel(5_000)
@@ -118,7 +118,7 @@ public sealed class SafeFileSystemTests
         using var temp = TempDirectory.Create();
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(FileWriteJson("out/result.txt", "written"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = FilePolicyBuilder()
             .GrantFileWrite(temp.Path, 1024)
             .WithFuel(5_000)
             .Build();
@@ -154,7 +154,7 @@ public sealed class SafeFileSystemTests
         await File.WriteAllTextAsync(Path.Combine(temp.Path, "existing.txt"), "original");
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(FileWriteJson("existing.txt", "new"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = FilePolicyBuilder()
             .GrantFileWrite(temp.Path, 1024, allowOverwrite: false)
             .WithFuel(5_000)
             .Build();
@@ -173,7 +173,7 @@ public sealed class SafeFileSystemTests
         using var temp = TempDirectory.Create();
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(FileWriteJson("too-large.txt", "0123456789"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = FilePolicyBuilder()
             .GrantFileWrite(temp.Path, maxBytesPerRun: 4)
             .WithFuel(5_000)
             .Build();
@@ -192,7 +192,7 @@ public sealed class SafeFileSystemTests
         using var temp = TempDirectory.Create();
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(FileWriteJson("alloc-too-large.txt", "abcde"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = FilePolicyBuilder()
             .GrantFileWrite(temp.Path, maxBytesPerRun: 1024)
             .WithMaxAllocatedBytes(12)
             .WithFuel(5_000)
@@ -236,6 +236,9 @@ public sealed class SafeFileSystemTests
           ]
         }
         """;
+
+    private static SandboxPolicyBuilder FilePolicyBuilder()
+        => SandboxPolicyBuilder.Create().WithWallTime(TimeSpan.FromSeconds(2));
 
     private sealed class TempDirectory : IDisposable
     {

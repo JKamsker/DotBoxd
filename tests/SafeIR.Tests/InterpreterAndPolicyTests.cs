@@ -146,6 +146,7 @@ public sealed class InterpreterAndPolicyTests
             SandboxPolicyBuilder.Create()
                 .GrantFileRead(temp.Path, maxBytesPerRun: 1024)
                 .WithFuel(1_000)
+                .WithWallTime(TimeSpan.FromSeconds(2))
                 .Build());
 
         var result = await host.ExecuteAsync(

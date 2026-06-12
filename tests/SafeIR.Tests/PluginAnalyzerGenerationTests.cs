@@ -32,8 +32,8 @@ public sealed class PluginAnalyzerGenerationTests
             """);
 
         var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
-        Assert.Contains("Bool(true)", generated);
-        Assert.DoesNotContain("Bool(false)", generated);
+        Assert.Contains("new global::SafeIR.IfStatement(Bool(true)", generated);
+        Assert.DoesNotContain("new global::SafeIR.IfStatement(Bool(false)", generated);
     }
 
     [Fact]
@@ -159,10 +159,9 @@ public sealed class PluginAnalyzerGenerationTests
             """);
 
         var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
-        var eventParameters = generated[generated.IndexOf("EventParameters()", StringComparison.Ordinal)..];
         Assert.True(
-            eventParameters.IndexOf("e_DamageType", StringComparison.Ordinal) <
-            eventParameters.IndexOf("e_Amount", StringComparison.Ordinal));
+            generated.IndexOf("parameters[0] = new global::SafeIR.Parameter(\"e_DamageType\"", StringComparison.Ordinal) <
+            generated.IndexOf("parameters[1] = new global::SafeIR.Parameter(\"e_Amount\"", StringComparison.Ordinal));
     }
 
     [Fact]

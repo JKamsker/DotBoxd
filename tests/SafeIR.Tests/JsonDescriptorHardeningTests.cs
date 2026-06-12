@@ -28,6 +28,13 @@ public sealed class JsonDescriptorHardeningTests
     }
 
     [Fact]
+    public void Metadata_token_detection_requires_boundaries_around_prefixed_tokens()
+    {
+        Assert.True(SandboxDescriptorGuards.ContainsForbiddenDescriptor("token 0x02000001"));
+        Assert.False(SandboxDescriptorGuards.ContainsForbiddenDescriptor("abc0x02000001def"));
+    }
+
+    [Fact]
     public async Task Duplicate_capability_requests_are_rejected()
     {
         var host = SandboxTestHost.Create();
@@ -55,6 +62,39 @@ public sealed class JsonDescriptorHardeningTests
             await host.PrepareAsync(module, SandboxPolicyBuilder.Create().Build()));
 
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-STRUCT-DUP-CAP");
+    }
+
+    [Fact]
+    public async Task Duplicate_function_ids_are_rejected()
+    {
+        var host = SandboxTestHost.Create();
+        var module = await host.ImportJsonAsync("""
+        {
+          "id": "duplicate-function",
+          "version": "1.0.0",
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [],
+              "returnType": "I32",
+              "body": [{ "op": "return", "value": { "i32": 1 } }]
+            },
+            {
+              "id": "main",
+              "visibility": "private",
+              "parameters": [],
+              "returnType": "I32",
+              "body": [{ "op": "return", "value": { "i32": 2 } }]
+            }
+          ]
+        }
+        """);
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () =>
+            await host.PrepareAsync(module, SandboxPolicyBuilder.Create().Build()));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-STRUCT-DUP-FN");
     }
 
     private static string MinimalModule(string extraModuleProperty, string returnValue = """{ "i32": 1 }""")

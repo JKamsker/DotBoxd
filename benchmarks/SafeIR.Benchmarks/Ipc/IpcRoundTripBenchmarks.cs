@@ -12,6 +12,9 @@ public class IpcRoundTripBenchmarks
     private RpcHost? _host;
     private IAllocationProbeService? _service;
 
+    [Params(false, true)]
+    public bool LowAllocationProfile { get; set; }
+
     [GlobalSetup]
     public async Task SetupAsync()
     {
@@ -19,10 +22,12 @@ public class IpcRoundTripBenchmarks
         _host = SafeIrShaRpcMessagePackIpc.ListenNamedPipe(
             pipeName,
             peer => peer.Provide<IAllocationProbeService>(new AllocationProbeService()),
-            new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) });
+            CreateServerOptions(LowAllocationProfile));
         await _host.StartAsync().ConfigureAwait(false);
 
-        _client = await SafeIrShaRpcMessagePackIpc.ConnectNamedPipeAsync(pipeName)
+        _client = await SafeIrShaRpcMessagePackIpc.ConnectNamedPipeAsync(
+                pipeName,
+                CreateClientOptions(LowAllocationProfile))
             .ConfigureAwait(false);
         _service = _client.Get<IAllocationProbeService>();
         _ = await _service.AddAsync(1).ConfigureAwait(false);
@@ -50,4 +55,22 @@ public class IpcRoundTripBenchmarks
         var response = await _service!.EchoAsync(_request).ConfigureAwait(false);
         return response.Value;
     }
+
+    private static RpcPeerOptions CreateServerOptions(bool lowAllocationProfile)
+        => lowAllocationProfile
+            ? new RpcPeerOptions {
+                DisableInboundRequestCancellation = true,
+                InboundQueueCapacity = null,
+                RequestTimeout = Timeout.InfiniteTimeSpan
+            }
+            : new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) };
+
+    private static RpcPeerOptions? CreateClientOptions(bool lowAllocationProfile)
+        => lowAllocationProfile
+            ? new RpcPeerOptions {
+                EnableLowAllocationValueTaskInvocations = true,
+                RejectInboundCalls = true,
+                RequestTimeout = Timeout.InfiniteTimeSpan
+            }
+            : null;
 }

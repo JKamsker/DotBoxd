@@ -4,13 +4,13 @@
   "files": [
     {
       "path": "../Addendum/Addendum.md",
-      "sha256": "190760f40bb74d87d71a5bf2f8f835acd500099d5392da964d04efe586b422df",
-      "bytes": 25546
+      "sha256": "062c67a71d39b1f38f153860c9d3f6802c8ceada5384795d631190189e772ae1",
+      "bytes": 26474
     },
     {
       "path": "../Addendum/Examples.md",
-      "sha256": "e1bb23e4e7a94637706768c5a09840a6d0f6f088cd8ef32b1cbba66bac47680e",
-      "bytes": 11689
+      "sha256": "d1baa169181995131cbeb46cd986643c44356a284d9186af60b973024138c3ed",
+      "bytes": 11828
     },
     {
       "path": "adr/0001-restricted-ir-not-csharp.md",
@@ -104,8 +104,8 @@
     },
     {
       "path": "spec/08-runtime-safe-apis.md",
-      "sha256": "fa588db7b3566e57353bba1c594e63367a5ff513c44ad3d6a062cf7f4edfc5ff",
-      "bytes": 7861
+      "sha256": "03cc4abe0212a9672aed269019eb01ba98c1907e341ae39ddc3553a4e2220164",
+      "bytes": 8031
     },
     {
       "path": "spec/09-interpreted-mode.md",
@@ -129,8 +129,8 @@
     },
     {
       "path": "spec/13-cache-versioning.md",
-      "sha256": "97f345a820a637a2df4560d9804858c985defa7034e41218c100b5d529bf2407",
-      "bytes": 5396
+      "sha256": "8b1aab85fb7514c6227ad766ed639b957fc747ca699f204ab9abec97ae8e1fe3",
+      "bytes": 5696
     },
     {
       "path": "spec/14-observability-audit.md",
@@ -139,13 +139,13 @@
     },
     {
       "path": "spec/15-testing-red-team.md",
-      "sha256": "711f95676c4a6aa95ed35491f82617b7b947b3b4e7c6a4a6f56bc31a1920dc9e",
-      "bytes": 6664
+      "sha256": "ea4df41c9fbff293128a5bee9c0fec211405aa68e365241b168e22f819528f0f",
+      "bytes": 7765
     },
     {
       "path": "spec/16-public-api.md",
-      "sha256": "99872317b36b77ba1a3d8c4af7594617f2837798dc0c3aad014d9eef11d1020f",
-      "bytes": 15311
+      "sha256": "ead74d7e1d547be20b0efb3e01c43564298541a05974096759a4aafd80edb326",
+      "bytes": 20837
     },
     {
       "path": "spec/17-implementation-plan.md",

@@ -2,17 +2,27 @@ namespace SafeIR.PluginAnalyzer;
 
 internal static class SafeIrManifestEffectModel
 {
+    private static readonly EquatableArray<string> NonAllocatingEffects =
+        EquatableArray<string>.FromOwned(new[] {
+            SafeIrGenerationNames.Effects.Cpu,
+            SafeIrGenerationNames.Effects.GameStateWrite,
+            SafeIrGenerationNames.Effects.Audit
+        });
+
+    private static readonly EquatableArray<string> AllocatingEffects =
+        EquatableArray<string>.FromOwned(new[] {
+            SafeIrGenerationNames.Effects.Cpu,
+            SafeIrGenerationNames.Effects.Alloc,
+            SafeIrGenerationNames.Effects.GameStateWrite,
+            SafeIrGenerationNames.Effects.Audit
+        });
+
     public static EquatableArray<string> Create(
-        SafeIrExpressionModel shouldHandle,
+        SafeIrStatementBodyModel shouldHandle,
         SafeIrHandleModel handle)
     {
-        var effects = new List<string> { SafeIrGenerationNames.Effects.Cpu };
-        if (shouldHandle.Allocates || handle.Allocates) {
-            effects.Add(SafeIrGenerationNames.Effects.Alloc);
-        }
-
-        effects.Add(SafeIrGenerationNames.Effects.GameStateWrite);
-        effects.Add(SafeIrGenerationNames.Effects.Audit);
-        return new EquatableArray<string>(effects);
+        return shouldHandle.Allocates || handle.Allocates
+            ? AllocatingEffects
+            : NonAllocatingEffects;
     }
 }

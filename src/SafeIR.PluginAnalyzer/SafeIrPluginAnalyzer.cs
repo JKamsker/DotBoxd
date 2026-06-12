@@ -183,13 +183,7 @@ public sealed class SafeIrPluginAnalyzer : DiagnosticAnalyzer
             StringComparison.Ordinal)) == true;
 
     private static bool IsAllowedLiveSettingType(ITypeSymbol type)
-    {
-        return type.SpecialType is SpecialType.System_Boolean
-            or SpecialType.System_Int32
-            or SpecialType.System_Int64
-            or SpecialType.System_Double
-            or SpecialType.System_String;
-    }
+        => SafeIrTypeNameReader.IsSupportedScalar(type);
 
     private sealed class ForbiddenHelperCallGraph
     {

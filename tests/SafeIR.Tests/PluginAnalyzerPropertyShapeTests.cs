@@ -48,6 +48,53 @@ public sealed class PluginAnalyzerPropertyShapeTests
     }
 
     [Fact]
+    public void Generator_ignores_event_properties_without_public_getters()
+    {
+        var result = RunGenerator("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed class DamageEvent
+            {
+                public string TargetId { get; } = "player-1";
+                public string PrivateGetter { private get; set; } = "hidden";
+            }
+
+            [GamePlugin("event-private-getter")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, "message");
+            }
+            """);
+        var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
+
+        Assert.Contains("e_TargetId", generated);
+        Assert.DoesNotContain("e_PrivateGetter", generated);
+    }
+
+    [Fact]
+    public void Convention_adapter_ignores_event_properties_without_public_getters()
+    {
+        var adapter = new PluginEventAdapterRegistry().Resolve<PrivateGetterEvent>();
+
+        var parameter = Assert.Single(adapter.Parameters);
+        var value = Assert.Single(adapter.ToSandboxValues(new PrivateGetterEvent()));
+        Assert.Equal("e_TargetId", parameter.Name);
+        Assert.Equal("player-1", ((StringValue)value).Value);
+    }
+
+    [Fact]
+    public void Convention_adapter_rejects_duplicate_event_property_names()
+    {
+        Assert.Throws<NotSupportedException>(
+            () => new PluginEventAdapterRegistry().Resolve<DuplicateCaseEvent>());
+    }
+
+    [Fact]
     public void Generator_rejects_live_setting_indexers()
     {
         var result = RunGenerator("""
@@ -71,6 +118,66 @@ public sealed class PluginAnalyzerPropertyShapeTests
 
                 public void Handle(DamageEvent e, HookContext ctx)
                     => ctx.Messages.Send(e.TargetId, "message");
+            }
+            """, expectGeneratorErrors: true);
+
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Id == "SGP100");
+        Assert.Empty(result.GeneratedTrees);
+    }
+
+    [Fact]
+    public void Generator_rejects_live_settings_that_collide_with_generated_event_parameters()
+    {
+        var result = RunGenerator("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId, string Message);
+
+            [GamePlugin("parameter-collision")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                [LiveSetting]
+                public string e_Message { get; set; } = "setting";
+
+                public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, e.Message);
+            }
+            """, expectGeneratorErrors: true);
+
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Id == "SGP100");
+        Assert.Empty(result.GeneratedTrees);
+    }
+
+    [Fact]
+    public void Generator_rejects_duplicate_event_property_names()
+    {
+        var result = RunGenerator("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public class BaseDamageEvent
+            {
+                public string Message { get; } = "";
+            }
+
+            public sealed class DamageEvent : BaseDamageEvent
+            {
+                public string TargetId { get; } = "";
+                public new string Message { get; } = "";
+            }
+
+            [GamePlugin("duplicate-event-property")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, e.Message);
             }
             """, expectGeneratorErrors: true);
 
@@ -109,5 +216,19 @@ public sealed class PluginAnalyzerPropertyShapeTests
         var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries) ?? [];
         return references.Select(reference => MetadataReference.CreateFromFile(reference));
+    }
+
+    private sealed class PrivateGetterEvent
+    {
+        public string TargetId { get; } = "player-1";
+
+        public string PrivateGetter { private get; set; } = "hidden";
+    }
+
+    private sealed class DuplicateCaseEvent
+    {
+        public string TargetId { get; } = "player-1";
+
+        public string targetId { get; } = "player-2";
     }
 }

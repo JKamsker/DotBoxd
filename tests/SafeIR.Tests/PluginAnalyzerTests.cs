@@ -158,7 +158,7 @@ public sealed class PluginAnalyzerTests
         Assert.Contains("public static class FireDamagePluginPackage", generated);
         Assert.Contains("new global::SafeIR.Plugins.LiveSettingDefinition(\"DamageType\", \"string\", \"fire\")", generated);
         Assert.Contains("new global::SafeIR.Plugins.LiveSettingDefinition(\"MinDamage\", \"int\", 100, 0, 10000)", generated);
-        Assert.Contains("And(Eq(Var(\"e_DamageType\"), Var(\"DamageType\")), Ge(Var(\"e_Amount\"), Var(\"MinDamage\")))", generated);
+        Assert.Contains("new global::SafeIR.IfStatement(StringEquals(Var(\"e_DamageType\"), Var(\"DamageType\"))", generated);
         Assert.Contains("global::SafeIR.Plugins.PluginMessageBindings.SendBindingId", generated);
         Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
     }
@@ -212,12 +212,8 @@ public sealed class PluginAnalyzerTests
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx)
                 {
-                    if (e.DamageType == "ice")
-                    {
-                        return false;
-                    }
-
-                    return true;
+                    var matched = e.DamageType == "fire";
+                    return matched;
                 }
 
                 public void Handle(DamageEvent e, HookContext ctx)

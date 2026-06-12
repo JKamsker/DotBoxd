@@ -132,9 +132,7 @@ internal static class PluginPreparedPackageValidator
             return null;
         }
 
-        return shape.Parameters
-            .Concat(manifest.LiveSettings.Select(s => new Parameter(s.Name, LiveSettingTypeConverter.ToSandboxType(s.Type))))
-            .ToArray();
+        return PluginParameterShape.BuildExpected(shape.Parameters, manifest.LiveSettings);
     }
 
     private static void ValidateLiveSettingSuffix(
@@ -177,10 +175,7 @@ internal static class PluginPreparedPackageValidator
     }
 
     private static bool ParametersMatch(IReadOnlyList<Parameter> first, IReadOnlyList<Parameter> second)
-        => first.Count == second.Count &&
-           first.Zip(second).All(pair =>
-               string.Equals(pair.First.Name, pair.Second.Name, StringComparison.Ordinal) &&
-               pair.First.Type == pair.Second.Type);
+        => PluginParameterShape.Matches(first, second);
 
     private static void ValidateExactParameters(
         SandboxFunction function,

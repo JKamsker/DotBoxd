@@ -45,10 +45,10 @@ public sealed class PluginAnalyzerCompletenessTests
         Assert.Empty(diagnostics.Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
         Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
         var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
-        Assert.Contains("Not(Var(\"Disabled\"))", generated);
+        Assert.Contains("new global::SafeIR.IfStatement(Var(\"Disabled\")", generated);
         Assert.Contains("Add(Var(\"e_Amount\"), Var(\"Offset\"))", generated);
         Assert.Contains("Sub(Var(\"MinDamage\"), I32(1))", generated);
-        Assert.Contains("Ne(Var(\"e_Message\"), Str(\"\"))", generated);
+        Assert.Contains("Not(StringEquals(Var(\"e_Message\"), Str(\"\")))", generated);
         Assert.Contains("[\"Cpu\", \"Alloc\", \"GameStateWrite\", \"Audit\"]", generated);
     }
 
@@ -80,6 +80,37 @@ public sealed class PluginAnalyzerCompletenessTests
     }
 
     [Fact]
+    public void Generator_emits_direct_parameter_array_construction_without_linq()
+    {
+        var (result, outputCompilation, diagnostics) = RunGenerator("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId, string Message);
+
+            [GamePlugin("direct-parameters")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                [LiveSetting]
+                public int MinDamage { get; set; } = 100;
+
+                public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, e.Message);
+            }
+            """);
+
+        Assert.Empty(diagnostics.Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
+        var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
+        Assert.Contains("var parameters = Parameters(settings);", generated);
+        Assert.Contains("parameters[i + 2] = new global::SafeIR.Parameter(setting.Name, TypeOf(setting.Type));", generated);
+        Assert.DoesNotContain("global::System.Linq.Enumerable.", generated);
+    }
+
+    [Fact]
     public void Generator_lowers_i64_and_f64_equality()
     {
         var (result, outputCompilation, diagnostics) = RunGenerator("""
@@ -107,9 +138,97 @@ public sealed class PluginAnalyzerCompletenessTests
         Assert.Contains("F64(1.5D)", generated);
     }
 
+    [Fact]
+    public void Generator_promotes_numeric_constants_to_supported_operand_type()
+    {
+        var (result, outputCompilation, diagnostics) = RunGenerator("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId, string Message, long Sequence, double Ratio);
+
+            [GamePlugin("promoted-numeric-constants")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                public bool ShouldHandle(DamageEvent e, HookContext ctx)
+                    => e.Sequence + 1 > -1 && e.Ratio * 2 >= 1;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, e.Message);
+            }
+            """);
+
+        Assert.Empty(diagnostics.Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
+        var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
+        Assert.Contains("I64(1L)", generated);
+        Assert.Contains("I64(-1L)", generated);
+        Assert.Contains("F64(2D)", generated);
+        Assert.Contains("F64(1D)", generated);
+    }
+
+    [Fact]
+    public void Generator_lowers_supported_constant_relational_and_not_patterns()
+    {
+        var (result, outputCompilation, diagnostics) = RunGenerator("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId, string Message, long Sequence, double Ratio);
+
+            [GamePlugin("patterns")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                public bool ShouldHandle(DamageEvent e, HookContext ctx)
+                    => e.Message is "fire" && e.Sequence is > 0 && e.Ratio is not <= 1;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, e.Message);
+            }
+            """);
+
+        Assert.Empty(diagnostics.Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
+        var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
+        Assert.Contains("StringEquals(Var(\"e_Message\"), Str(\"fire\"))", generated);
+        Assert.Contains("Gt(Var(\"e_Sequence\"), I64(0L))", generated);
+        Assert.Contains("Not(Le(Var(\"e_Ratio\"), F64(1D)))", generated);
+    }
+
+    [Fact]
+    public void Generator_lowers_should_handle_conditional_expression_to_ordered_branches()
+    {
+        var (result, outputCompilation, diagnostics) = RunGenerator("""
+            using SafeIR.Plugins;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId, string Message, int Amount, bool Enabled);
+
+            [GamePlugin("conditional-expression")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                public bool ShouldHandle(DamageEvent e, HookContext ctx)
+                    => e.Enabled ? e.Amount > 0 : e.Amount == 0;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, e.Message);
+            }
+            """);
+
+        Assert.Empty(diagnostics.Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
+        var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
+        Assert.Contains("new global::SafeIR.IfStatement(Var(\"e_Enabled\")", generated);
+        Assert.Contains("Gt(Var(\"e_Amount\"), I32(0))", generated);
+        Assert.Contains("Eq(Var(\"e_Amount\"), I32(0))", generated);
+    }
+
     [Theory]
     [InlineData("e.Missing == \"fire\"")]
-    [InlineData("e.Amount > 0L")]
+    [InlineData("e.Amount > 0.5D")]
     public void Generator_rejects_csharp_that_cannot_lower_to_valid_ir(string shouldHandleExpression)
     {
         var (result, _, diagnostics) = RunGenerator($$"""

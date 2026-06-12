@@ -266,17 +266,41 @@ public sealed class InstalledKernel
     private SandboxValue BuildInput<TEvent>(IPluginEventAdapter<TEvent> adapter, TEvent e)
     {
         var deferredUpdates = _liveStateSync.SynchronizeForInput();
-        var values = adapter.ToSandboxValues(e)
-            .Concat(Value.ToSandboxValues(Manifest.LiveSettings))
-            .ToArray();
+        var eventValues = adapter.ToSandboxValues(e);
+        var liveSettings = Manifest.LiveSettings;
+        var valueCount = eventValues.Count + liveSettings.Count;
+        var input = valueCount switch
+        {
+            0 => SandboxValue.Unit,
+            1 => eventValues.Count == 1 ? eventValues[0] : Value.ToSandboxValue(liveSettings[0]),
+            _ => BuildInputList(eventValues, liveSettings)
+        };
+
         foreach (var update in deferredUpdates)
         {
             _pendingLiveUpdates.Enqueue(update);
         }
 
-        return values.Length == 0
-            ? SandboxValue.Unit
-            : values.Length == 1 ? values[0] : SandboxValue.FromList(values);
+        return input;
+    }
+
+    private SandboxValue BuildInputList(
+        IReadOnlyList<SandboxValue> eventValues,
+        IReadOnlyList<LiveSettingDefinition> liveSettings)
+    {
+        if (liveSettings.Count == 0)
+        {
+            return SandboxValue.FromList(eventValues, eventValues[0].Type);
+        }
+
+        var values = new SandboxValue[eventValues.Count + liveSettings.Count];
+        for (var i = 0; i < eventValues.Count; i++)
+        {
+            values[i] = eventValues[i];
+        }
+
+        Value.CopySandboxValues(liveSettings, values, eventValues.Count);
+        return SandboxValue.FromList(values, values[0].Type);
     }
 
     private void RefreshTypedValuesFromStore()

@@ -74,9 +74,16 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
     private ConventionEventAdapter(IReadOnlyList<PropertyInfo> properties)
     {
         _properties = properties;
-        Parameters = properties
-            .Select(p => new Parameter(EventParameterName(p.Name), LiveSettingTypeConverter.ToSandboxType(LiveSettingTypeConverter.FromClrType(p.PropertyType))))
-            .ToArray();
+        var parameters = new Parameter[properties.Count];
+        for (var i = 0; i < properties.Count; i++)
+        {
+            var property = properties[i];
+            parameters[i] = new Parameter(
+                EventParameterName(property.Name),
+                LiveSettingTypeConverter.ToSandboxType(LiveSettingTypeConverter.FromClrType(property.PropertyType)));
+        }
+
+        Parameters = parameters;
     }
 
     public string EventName => typeof(TEvent).Name;
@@ -91,16 +98,51 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
 
     private static IReadOnlyList<PropertyInfo> ReadableProperties(Type eventType)
     {
-        var properties = eventType
-            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-            .Where(p => p.CanRead)
-            .Where(p => p.GetIndexParameters().Length == 0)
-            .OrderBy(p => p.MetadataToken)
-            .ToArray();
+        var properties = ReadablePropertiesInHierarchy(eventType).ToArray();
+        ValidatePropertyNames(properties);
 
         return TryConstructorPropertyOrder(eventType, properties, out var ordered)
             ? ordered
             : properties;
+    }
+
+    private static void ValidatePropertyNames(IReadOnlyList<PropertyInfo> properties)
+    {
+        var names = new Dictionary<string, string>(properties.Count, StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < properties.Count; i++)
+        {
+            var propertyName = properties[i].Name;
+            if (names.TryGetValue(propertyName, out var firstName))
+            {
+                throw new NotSupportedException(
+                    $"Event property '{firstName}' is declared more than once or differs only by case.");
+            }
+
+            names.Add(propertyName, propertyName);
+        }
+    }
+
+    private static IEnumerable<PropertyInfo> ReadablePropertiesInHierarchy(Type eventType)
+    {
+        var hierarchy = new Stack<Type>();
+        for (var current = eventType; current is not null && current != typeof(object); current = current.BaseType)
+        {
+            hierarchy.Push(current);
+        }
+
+        while (hierarchy.Count > 0)
+        {
+            var current = hierarchy.Pop();
+            var properties = current.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+            Array.Sort(properties, static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
+            foreach (var property in properties)
+            {
+                if (property.GetMethod?.IsPublic == true && property.GetIndexParameters().Length == 0)
+                {
+                    yield return property;
+                }
+            }
+        }
     }
 
     private static bool TryConstructorPropertyOrder(
@@ -108,7 +150,6 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
         IReadOnlyList<PropertyInfo> properties,
         out IReadOnlyList<PropertyInfo> ordered)
     {
-        var byName = properties.ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
         foreach (var constructor in eventType.GetConstructors(BindingFlags.Instance | BindingFlags.Public))
         {
             var parameters = constructor.GetParameters();
@@ -117,23 +158,13 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
                 continue;
             }
 
-            var selected = new PropertyInfo[parameters.Length];
-            var matched = true;
-            for (var i = 0; i < parameters.Length; i++)
+            if (MatchesDeclaredPropertyOrder(parameters, properties))
             {
-                var parameter = parameters[i];
-                if (parameter.Name is null ||
-                    !byName.TryGetValue(parameter.Name, out var property) ||
-                    property.PropertyType != parameter.ParameterType)
-                {
-                    matched = false;
-                    break;
-                }
-
-                selected[i] = property;
+                ordered = properties;
+                return true;
             }
 
-            if (matched)
+            if (ReorderedConstructorProperties(parameters, properties) is { } selected)
             {
                 ordered = selected;
                 return true;
@@ -144,15 +175,78 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
         return false;
     }
 
+    private static bool MatchesDeclaredPropertyOrder(
+        IReadOnlyList<ParameterInfo> parameters,
+        IReadOnlyList<PropertyInfo> properties)
+    {
+        for (var i = 0; i < properties.Count; i++)
+        {
+            var parameter = parameters[i];
+            var property = properties[i];
+            if (!NameMatches(parameter.Name, property.Name) ||
+                property.PropertyType != parameter.ParameterType)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static PropertyInfo[]? ReorderedConstructorProperties(
+        IReadOnlyList<ParameterInfo> parameters,
+        IReadOnlyList<PropertyInfo> properties)
+    {
+        var selected = new PropertyInfo[parameters.Count];
+        for (var i = 0; i < parameters.Count; i++)
+        {
+            var parameter = parameters[i];
+            var property = FindProperty(properties, parameter);
+            if (property is null)
+            {
+                return null;
+            }
+
+            selected[i] = property;
+        }
+
+        return selected;
+    }
+
+    private static PropertyInfo? FindProperty(IReadOnlyList<PropertyInfo> properties, ParameterInfo parameter)
+    {
+        for (var i = 0; i < properties.Count; i++)
+        {
+            var property = properties[i];
+            if (NameMatches(parameter.Name, property.Name) &&
+                property.PropertyType == parameter.ParameterType)
+            {
+                return property;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool NameMatches(string? parameterName, string propertyName)
+        => string.Equals(parameterName, propertyName, StringComparison.OrdinalIgnoreCase);
+
     public IReadOnlyList<SandboxValue> ToSandboxValues(TEvent e)
-        => _properties
-            .Select(p => LiveSettingTypeConverter.ToSandboxValue(
-                LiveSettingTypeConverter.FromClrType(p.PropertyType),
-                p.GetValue(e)))
-            .ToArray();
+    {
+        var values = new SandboxValue[_properties.Count];
+        for (var i = 0; i < _properties.Count; i++)
+        {
+            var property = _properties[i];
+            values[i] = LiveSettingTypeConverter.ToSandboxValue(
+                LiveSettingTypeConverter.FromClrType(property.PropertyType),
+                property.GetValue(e));
+        }
+
+        return values;
+    }
 
     private static string EventParameterName(string propertyName)
-        => "e_" + propertyName;
+        => PluginManifestNames.EventParameters.Prefix + propertyName;
 }
 
 internal readonly record struct PluginEventShape(string EventName, IReadOnlyList<Parameter> Parameters);

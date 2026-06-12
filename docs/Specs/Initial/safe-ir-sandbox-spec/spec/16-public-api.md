@@ -3,12 +3,14 @@
 ## High-level usage
 
 ```csharp
-var sandbox = SandboxHost.Create(builder =>
+using var sandbox = SandboxHost.Create(builder =>
 {
     builder.AddDefaultPureBindings();
     builder.AddFileBindings();
     builder.UseInterpreter();
     builder.UseCompilerIfAvailable();
+    builder.UseCompilerCache("/var/cache/safe-ir");
+    builder.ForwardAuditEventsTo(audit => auditSink.Write(audit));
     // Optional: builder.UseWorkerClient(workerClient, SandboxWorkerProfile.HardenedOutOfProcess);
 });
 
@@ -41,30 +43,61 @@ var result = await sandbox.ExecuteAsync(
 ### `SandboxHost`
 
 ```csharp
-public sealed class SandboxHost
+public sealed class SandboxHost : IDisposable
 {
+    public static SandboxHost Create(Action<SandboxHostBuilder>? configure = null);
+
     public ValueTask<ExecutionPlan> PrepareAsync(
         SandboxModule module,
         SandboxPolicy policy,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken = default);
 
     public ValueTask<SandboxExecutionResult> ExecuteAsync(
         ExecutionPlan plan,
         string entrypoint,
         SandboxValue input,
-        SandboxExecutionOptions options,
-        CancellationToken cancellationToken);
+        SandboxExecutionOptions? options = null,
+        CancellationToken cancellationToken = default);
 
     public void RevokeCapability(string capabilityId, string reason = "");
+    public void Dispose();
 }
 ```
 
 `ImportJsonAsync` is the extension method provided by the JSON serialization addon.
 SafeIR does not expose a custom language parser; hosts import JSON IR into the safe model.
+`SandboxHost` owns materialized compiled delegates and should be disposed by long-lived hosts when
+the host instance is retired.
 `RevokeCapability` is host-local and applies to already-prepared plans. A plan whose module
 requests or whose selected entrypoint reaches a revoked capability must fail before interpreted
 execution, compiler invocation, or compiled-cache lookup. The failed run emits a
 `CapabilityRevoked` audit event containing the safe revocation reason.
+
+### `SandboxHostBuilder`
+
+```csharp
+public sealed class SandboxHostBuilder
+{
+    public SandboxHostBuilder AddDefaultPureBindings();
+    public SandboxHostBuilder AddFileBindings();
+    public SandboxHostBuilder AddTimeBindings();
+    public SandboxHostBuilder AddRandomBindings();
+    public SandboxHostBuilder AddLogBindings();
+    public SandboxHostBuilder AddBinding(BindingDescriptor descriptor);
+    public SandboxHostBuilder UseInterpreter(ISandboxInterpreter? interpreter = null);
+    public SandboxHostBuilder UseCompilerIfAvailable(ISandboxCompiler? compiler = null);
+    public SandboxHostBuilder UseCompilerCache(string cacheDirectory);
+    public SandboxHostBuilder UseExecutionModeSelector(IExecutionModeSelector selector);
+    public SandboxHostBuilder ForwardAuditEventsTo(Action<SandboxAuditEvent> observer);
+    public SandboxHostBuilder UseWorkerClient(
+        ISandboxWorkerClient workerClient,
+        SandboxWorkerProfile profile);
+}
+```
+
+`ForwardAuditEventsTo` registers operational observers. Observer failures are isolated and do not
+change the returned `SandboxExecutionResult` or prevent later observers from receiving the same
+sequenced audit events.
 
 ### `SandboxExecutionOptions`
 
@@ -115,13 +148,13 @@ public sealed record SandboxExecutionResult
     public bool Succeeded { get; init; }
     public SandboxValue? Value { get; init; }
     public SandboxError? Error { get; init; }
-    public SandboxResourceUsage ResourceUsage { get; init; }
-    public IReadOnlyList<SandboxAuditEvent> AuditEvents { get; init; }
+    public required SandboxResourceUsage ResourceUsage { get; init; }
+    public required IReadOnlyList<SandboxAuditEvent> AuditEvents { get; init; }
     public ExecutionMode ActualMode { get; init; }
     public bool ExecutionDispatched { get; init; }
-    public string ModuleHash { get; init; }
-    public string PlanHash { get; init; }
-    public string PolicyHash { get; init; }
+    public required string ModuleHash { get; init; }
+    public required string PlanHash { get; init; }
+    public required string PolicyHash { get; init; }
     public string? ArtifactHash { get; init; }
 }
 ```
@@ -133,6 +166,8 @@ compiler and fallback disabled, `ActualMode` retains the requested or effective 
 correlation and `ExecutionDispatched` is `false`. Fallback results report the backend that actually
 ran, so a compiled request that safely falls back to the interpreter has
 `ActualMode = Interpreted` and `ExecutionDispatched = true`.
+Successful results have `Succeeded = true`, `Value` set, and `Error = null`. Failed results have
+`Succeeded = false`, `Value = null`, and a sanitized `SandboxError`.
 
 ## Policy builder
 
@@ -260,6 +295,13 @@ public interface ISandboxCompiler
 }
 ```
 
+```csharp
+public sealed record CompileOptions(string Entrypoint, bool Optimize = false);
+public delegate SandboxValue SandboxCompiledEntrypoint(
+    SandboxContext context,
+    SandboxValue input);
+```
+
 `CompiledArtifact` represents a verified compiled runtime envelope. For `DynamicMethod`, the
 artifact contains the already-created delegate. For `LoadedAssembly`, the artifact contains the
 verified assembly image and manifest; the host must validate the envelope, verify the assembly
@@ -309,6 +351,111 @@ public sealed record CompiledArtifact
 
 `LoadedAssembly` artifacts carry the verified assembly bytes, manifest, and verification result.
 `DynamicMethod` artifacts carry only the gated delegate and must not include assembly bytes.
+
+### Compiled cache API
+
+```csharp
+public sealed class PersistentCompiledArtifactCache
+{
+    public PersistentCompiledArtifactCache(string rootDirectory);
+    public bool EntryExists(string cacheKey);
+    public string EntryPath(string cacheKey);
+
+    public ValueTask<CompiledCacheLookup> TryReadAsync(
+        string cacheKey,
+        ExecutionPlan plan,
+        string entrypoint,
+        IGeneratedAssemblyVerifier verifier,
+        VerificationPolicy policy,
+        CancellationToken cancellationToken);
+
+    public ValueTask WriteAsync(
+        string cacheKey,
+        ExecutionPlan plan,
+        string entrypoint,
+        byte[] assemblyBytes,
+        ArtifactManifest manifest,
+        VerificationResult verification,
+        VerificationPolicy policy,
+        CancellationToken cancellationToken);
+}
+
+public static class CacheKeyBuilder
+{
+    public const string CompilerVersion = "safe-ir-compiler-9";
+    public const string TypeSystemVersion = "safe-ir-type-system-2";
+    public const string EffectAnalysisVersion = "safe-ir-effect-analysis-3";
+    public const string CanonicalizerVersion = CanonicalModuleHasher.CanonicalizerVersion;
+    public const string TargetFramework = "net10.0";
+    public static string LanguageVersion { get; }
+    public static string RuntimeFacadeHash { get; }
+
+    public static string Build(
+        ExecutionPlan plan,
+        string entrypoint,
+        VerificationPolicy policy,
+        bool optimize);
+
+    public static VerificationManifestIdentity BuildManifestIdentity(
+        ExecutionPlan plan,
+        string entrypoint,
+        VerificationPolicy policy,
+        bool optimize);
+}
+
+public sealed record CompiledCacheLookup(
+    CompiledCacheStatus Status,
+    CompiledArtifact? Artifact,
+    string? InvalidReason = null);
+```
+
+Cache reads validate the cache key, manifest identity, verification metadata, artifact hash, and
+fresh verifier result before returning a hit. Invalid entries are quarantined and reported as
+`CompiledCacheStatus.Invalid` or `Recompiled` rather than executed.
+
+## JSON addon API
+
+```csharp
+public static class SandboxHostJsonExtensions
+{
+    public static ValueTask<SandboxModule> ImportJsonAsync(
+        this SandboxHost host,
+        string jsonIr,
+        CancellationToken cancellationToken = default);
+}
+
+public static class SafeIrJsonImporter
+{
+    public static SandboxModule Import(string json);
+}
+
+public static class SafeIrJsonExporter
+{
+    public static string Export(SandboxModule module, bool indented = false);
+}
+
+public static class PluginPackageJsonSerializer
+{
+    public static string Export(PluginPackage package, bool indented = false);
+    public static PluginPackage Import(string json);
+}
+
+public static class PluginServerJsonExtensions
+{
+    public static ValueTask<InstalledKernel> InstallJsonAsync(
+        this PluginServer server,
+        string json,
+        SandboxPolicy? policy = null,
+        CancellationToken cancellationToken = default);
+}
+```
+
+JSON import is the only built-in text ingestion path for Safe IR. It preserves source locations for
+diagnostics and debug traces; it is not a lexer/parser for a custom script language.
+Generated plugin package factories return in-memory `PluginPackage` instances for SDK and test
+use. Production upload should serialize that package with `PluginPackageJsonSerializer.Export`,
+send the JSON envelope, and install it through `InstallJsonAsync`; the envelope contains manifest
+metadata plus JSON Safe IR and does not contain assembly loader instructions.
 
 ## Verifier API
 

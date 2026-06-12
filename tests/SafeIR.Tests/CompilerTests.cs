@@ -39,7 +39,11 @@ public sealed class CompilerTests
         await File.WriteAllTextAsync(Path.Combine(temp.Path, "config.json"), "from-file");
         var host = SandboxTestHost.Create(compiler: true);
         var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson("config.json"));
-        var policy = SandboxPolicyBuilder.Create().GrantFileRead(temp.Path, 1024).WithFuel(5_000).Build();
+        var policy = SandboxPolicyBuilder.Create()
+            .GrantFileRead(temp.Path, 1024)
+            .WithFuel(5_000)
+            .WithWallTime(TimeSpan.FromSeconds(2))
+            .Build();
         var plan = await host.PrepareAsync(module, policy);
 
         var result = await host.ExecuteAsync(
@@ -48,7 +52,7 @@ public sealed class CompilerTests
             SandboxValue.Unit,
             new SandboxExecutionOptions { Mode = ExecutionMode.Auto });
 
-        Assert.True(result.Succeeded);
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
         Assert.Equal(ExecutionMode.Interpreted, result.ActualMode);
         Assert.Equal("from-file", ((StringValue)result.Value!).Value);
     }

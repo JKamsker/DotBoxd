@@ -87,6 +87,36 @@ public sealed class PluginAnalyzerHintNameTests
         Assert.Empty(result.GeneratedTrees);
     }
 
+    [Fact]
+    public void Generator_escapes_keyword_namespace_identifiers()
+    {
+        var result = RunGenerator("""
+            using SafeIR.Plugins;
+
+            namespace Sample.@event
+            {
+
+            public sealed record DamageEvent(string TargetId);
+
+            [GamePlugin("keyword-namespace")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, "keyword");
+            }
+            }
+            """);
+        Assert.Null(result.Results[0].Exception);
+        Assert.Empty(result.Diagnostics.Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
+        var tree = Assert.Single(result.GeneratedTrees);
+        var generated = tree.GetText().ToString();
+
+        Assert.Equal("Sample.event.DamagePluginPackage.g.cs", Path.GetFileName(tree.FilePath));
+        Assert.Contains("namespace Sample.@event;", generated);
+    }
+
     private static GeneratorDriverRunResult RunGenerator(string source, bool expectGeneratorErrors = false)
     {
         var compilation = CSharpCompilation.Create(

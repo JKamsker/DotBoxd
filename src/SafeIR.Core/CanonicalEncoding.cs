@@ -21,8 +21,14 @@ internal static class CanonicalEncoding
     public static string HashRecords(IEnumerable<string> records)
     {
         var text = string.Join('\n', records);
-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text))).ToLowerInvariant();
+        return HashText(text);
     }
+
+    public static string HashRecord(string record)
+        => HashText(record);
+
+    private static string HashText(string text)
+        => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text))).ToLowerInvariant();
 
     private static void AppendField(StringBuilder builder, string? value)
     {

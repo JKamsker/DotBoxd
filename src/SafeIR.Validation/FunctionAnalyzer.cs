@@ -15,7 +15,12 @@ internal sealed class FunctionAnalyzer
     {
         _bindings = bindings;
         _diagnostics = diagnostics;
-        _functions = module.Functions.ToDictionary(f => f.Id, StringComparer.Ordinal);
+        _functions = new Dictionary<string, SandboxFunction>(module.Functions.Count, StringComparer.Ordinal);
+        foreach (var function in module.Functions)
+        {
+            _functions.Add(function.Id, function);
+        }
+
         _collections = new CollectionCallAnalyzer(diagnostics, AnalyzeExpression);
     }
 
@@ -333,7 +338,7 @@ internal sealed class FunctionAnalyzer
         {
             CheckArguments(
                 call,
-                function.Parameters.Select(p => p.Type).ToArray(),
+                function.Parameters,
                 scope,
                 ref effects,
                 ref canReorder,
@@ -377,6 +382,29 @@ internal sealed class FunctionAnalyzer
         if (call.Name is not ("list.empty" or "map.empty"))
         {
             _diagnostics.Add(new SandboxDiagnostic("E-CALL-GENERIC", $"call '{call.Name}' does not accept genericType", Span: call.Span));
+        }
+    }
+
+    private void CheckArguments(
+        CallExpression call,
+        IReadOnlyList<Parameter> expected,
+        FunctionScope scope,
+        ref SandboxEffect effects,
+        ref bool canReorder,
+        bool recordCapabilities)
+    {
+        if (call.Arguments.Count != expected.Count)
+        {
+            _diagnostics.Add(new SandboxDiagnostic("E-CALL-ARITY", $"call '{call.Name}' expects {expected.Count} arguments", Span: call.Span));
+            return;
+        }
+
+        for (var i = 0; i < expected.Count; i++)
+        {
+            Require(
+                AnalyzeExpression(call.Arguments[i], scope, ref effects, ref canReorder, recordCapabilities),
+                expected[i].Type,
+                call.Arguments[i].Span);
         }
     }
 

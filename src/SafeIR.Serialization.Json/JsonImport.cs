@@ -107,6 +107,12 @@ internal static class JsonImport
         return value;
     }
 
+    public static T[] AllocateArray<T>(JsonElement array, out int count)
+    {
+        count = array.GetArrayLength();
+        return count == 0 ? Array.Empty<T>() : new T[count];
+    }
+
     public static void RequireAllowedProperties(JsonElement value, string name, params string[] allowed)
     {
         RequireUniqueProperties(value, name);

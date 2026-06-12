@@ -23,18 +23,18 @@ internal static class DangerousReferenceDetector
                 break;
             case IfStatement branch:
                 Scan(branch.Condition, diagnostics);
-                branch.Then.ToList().ForEach(s => Scan(s, diagnostics));
-                branch.Else.ToList().ForEach(s => Scan(s, diagnostics));
+                ScanStatements(branch.Then, diagnostics);
+                ScanStatements(branch.Else, diagnostics);
                 break;
             case WhileStatement loop:
                 Scan(loop.Condition, diagnostics);
-                loop.Body.ToList().ForEach(s => Scan(s, diagnostics));
+                ScanStatements(loop.Body, diagnostics);
                 break;
             case ForRangeStatement range:
                 Check(range.LocalName, diagnostics, range.Span);
                 Scan(range.Start, diagnostics);
                 Scan(range.End, diagnostics);
-                range.Body.ToList().ForEach(s => Scan(s, diagnostics));
+                ScanStatements(range.Body, diagnostics);
                 break;
         }
     }
@@ -58,14 +58,30 @@ internal static class DangerousReferenceDetector
                 break;
             case CallExpression call:
                 Check(call.Name, diagnostics, call.Span);
-                call.Arguments.ToList().ForEach(a => Scan(a, diagnostics));
+                ScanExpressions(call.Arguments, diagnostics);
                 break;
         }
     }
 
-    private static void Check(string value, List<SandboxDiagnostic> diagnostics, SourceSpan span)
+    private static void ScanStatements(IReadOnlyList<Statement> statements, List<SandboxDiagnostic> diagnostics)
     {
-        if (string.IsNullOrWhiteSpace(value) || value.Any(char.IsControl))
+        for (var i = 0; i < statements.Count; i++)
+        {
+            Scan(statements[i], diagnostics);
+        }
+    }
+
+    private static void ScanExpressions(IReadOnlyList<Expression> expressions, List<SandboxDiagnostic> diagnostics)
+    {
+        for (var i = 0; i < expressions.Count; i++)
+        {
+            Scan(expressions[i], diagnostics);
+        }
+    }
+
+    private static void Check(string? value, List<SandboxDiagnostic> diagnostics, SourceSpan span)
+    {
+        if (string.IsNullOrWhiteSpace(value) || ContainsControlCharacter(value))
         {
             diagnostics.Add(new SandboxDiagnostic(
                 "E-IR-ID",
@@ -78,6 +94,19 @@ internal static class DangerousReferenceDetector
         {
             diagnostics.Add(new SandboxDiagnostic("E-IR-CLR-REF", $"forbidden CLR reference '{value}'", Span: span));
         }
+    }
+
+    private static bool ContainsControlCharacter(string value)
+    {
+        for (var i = 0; i < value.Length; i++)
+        {
+            if (char.IsControl(value[i]))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void CheckLiteral(LiteralExpression literal, List<SandboxDiagnostic> diagnostics)

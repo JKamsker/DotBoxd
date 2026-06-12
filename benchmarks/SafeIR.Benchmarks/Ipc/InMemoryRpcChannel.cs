@@ -1,8 +1,6 @@
 namespace SafeIR.Benchmarks.Ipc;
 
-using System.Buffers;
-using System.Buffers.Binary;
-using System.IO.Pipelines;
+using System.Threading.Tasks.Sources;
 using ShaRPC.Core.Buffers;
 using ShaRPC.Core.Transport;
 
@@ -10,106 +8,232 @@ internal static class InMemoryRpcChannel
 {
     public static (IRpcChannel Server, IRpcChannel Client) CreatePair()
     {
-        var clientToServer = new Pipe();
-        var serverToClient = new Pipe();
+        var server = new PipeConnection("memory://client");
+        var client = new PipeConnection("memory://server");
+        server.Connect(client);
+        client.Connect(server);
 
-        return (
-            new PipeConnection(clientToServer.Reader, serverToClient.Writer, "memory://client"),
-            new PipeConnection(serverToClient.Reader, clientToServer.Writer, "memory://server"));
+        return (server, client);
     }
 
-    private sealed class PipeConnection : IRpcChannel
+    private sealed class PipeConnection : IRpcFrameChannel, IValueTaskSource<RpcFrame>
     {
-        private const int MaxMessageSize = 16 * 1024 * 1024;
-        private readonly PipeReader _inbound;
-        private readonly PipeWriter _outbound;
-        private readonly SemaphoreSlim _sendLock = new(1, 1);
-        private int _disposed;
+        private readonly object _gate = new();
+        private readonly Queue<RpcFrame> _inbound = new();
+        private ManualResetValueTaskSourceCore<RpcFrame> _receiver;
+        private CancellationTokenRegistration _receiveCancellation;
+        private PipeConnection? _remote;
+        private bool _disposed;
+        private bool _waiting;
 
-        public PipeConnection(PipeReader inbound, PipeWriter outbound, string remoteEndpoint)
+        public PipeConnection(string remoteEndpoint)
         {
-            _inbound = inbound;
-            _outbound = outbound;
             RemoteEndpoint = remoteEndpoint;
+            _receiver.RunContinuationsAsynchronously = true;
         }
 
-        public bool IsConnected => Volatile.Read(ref _disposed) == 0;
+        public bool IsConnected => !_disposed;
 
         public string RemoteEndpoint { get; }
 
-        public async Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
+        public void Connect(PipeConnection remote) => _remote = remote;
+
+        public Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default) =>
+            SendValueAsync(data, ct).AsTask();
+
+        public ValueTask SendValueAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
         {
-            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
-            await _sendLock.WaitAsync(ct).ConfigureAwait(false);
-            try {
-                await _outbound.WriteAsync(data, ct).ConfigureAwait(false);
-            }
-            finally {
-                _sendLock.Release();
-            }
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            ct.ThrowIfCancellationRequested();
+
+            var remote = _remote ?? throw new InvalidOperationException("Pipe is not connected.");
+            var frame = Payload.Rent(data.Length);
+            data.Span.CopyTo(frame.Memory.Span);
+            return remote.TryEnqueue(new RpcFrame(frame))
+                ? default
+                : new ValueTask(Task.FromException(new ObjectDisposedException(nameof(PipeConnection))));
         }
 
-        public async Task<Payload> ReceiveAsync(CancellationToken ct = default)
+        public ValueTask SendFrameValueAsync(PooledBufferWriter frame, CancellationToken ct = default)
         {
-            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            if (_disposed) {
+                frame.Dispose();
+                throw new ObjectDisposedException(nameof(PipeConnection));
+            }
 
-            while (true) {
-                var result = await _inbound.ReadAsync(ct).ConfigureAwait(false);
-                var buffer = result.Buffer;
+            if (ct.IsCancellationRequested) {
+                frame.Dispose();
+                return new ValueTask(Task.FromCanceled(ct));
+            }
 
-                if (TryReadFrame(buffer, out var frame, out var consumed)) {
-                    _inbound.AdvanceTo(consumed);
-                    return frame;
+            var remote = _remote;
+            if (remote is null) {
+                frame.Dispose();
+                throw new InvalidOperationException("Pipe is not connected.");
+            }
+
+            return remote.TryEnqueue(new RpcFrame(frame))
+                ? default
+                : new ValueTask(Task.FromException(new ObjectDisposedException(nameof(PipeConnection))));
+        }
+
+        public Task<Payload> ReceiveAsync(CancellationToken ct = default) =>
+            ReceiveValueAsync(ct).AsTask();
+
+        public ValueTask<Payload> ReceiveValueAsync(CancellationToken ct = default)
+        {
+            var frame = ReceiveFrameValueAsync(ct);
+            if (frame.IsCompletedSuccessfully) {
+                return new ValueTask<Payload>(frame.Result.DetachPayload());
+            }
+
+            return AwaitPayloadAsync(frame);
+        }
+
+        public ValueTask<RpcFrame> ReceiveFrameValueAsync(CancellationToken ct = default)
+        {
+            if (ct.IsCancellationRequested) {
+                return new ValueTask<RpcFrame>(Task.FromCanceled<RpcFrame>(ct));
+            }
+
+            lock (_gate) {
+                if (_inbound.TryDequeue(out var frame)) {
+                    return new ValueTask<RpcFrame>(frame);
                 }
 
-                if (result.IsCompleted) {
-                    _inbound.AdvanceTo(buffer.Start, buffer.End);
-                    return Payload.Empty;
+                if (_disposed) {
+                    return new ValueTask<RpcFrame>(new RpcFrame(Payload.Empty));
                 }
 
-                _inbound.AdvanceTo(buffer.Start, buffer.End);
+                if (_waiting) {
+                    throw new InvalidOperationException("Only one pending receive is supported.");
+                }
+
+                _receiver.Reset();
+                _waiting = true;
+                var version = _receiver.Version;
+                if (ct.CanBeCanceled) {
+                    var registration = ct.UnsafeRegister(static state => {
+                        var pending = (PendingReceive)state!;
+                        pending.Connection.CancelPendingReceive(pending.Version, pending.CancellationToken);
+                    }, new PendingReceive(this, version, ct));
+                    if (_waiting) {
+                        _receiveCancellation = registration;
+                    }
+                    else {
+                        registration.Dispose();
+                    }
+                }
+
+                return new ValueTask<RpcFrame>(this, version);
             }
         }
 
-        public async ValueTask DisposeAsync()
+        public ValueTask DisposeAsync()
         {
-            if (Interlocked.Exchange(ref _disposed, 1) != 0) {
-                return;
+            PipeConnection? remote;
+            lock (_gate) {
+                if (_disposed) {
+                    return default;
+                }
+
+                _disposed = true;
+                remote = _remote;
             }
 
-            await _outbound.CompleteAsync().ConfigureAwait(false);
-            await _inbound.CompleteAsync().ConfigureAwait(false);
-            _sendLock.Dispose();
+            remote?.Complete();
+            Complete();
+            return default;
         }
 
-        private static bool TryReadFrame(
-            in ReadOnlySequence<byte> buffer,
-            out Payload frame,
-            out SequencePosition consumed)
+        public RpcFrame GetResult(short token) => _receiver.GetResult(token);
+
+        public ValueTaskSourceStatus GetStatus(short token) => _receiver.GetStatus(token);
+
+        public void OnCompleted(
+            Action<object?> continuation,
+            object? state,
+            short token,
+            ValueTaskSourceOnCompletedFlags flags) =>
+            _receiver.OnCompleted(continuation, state, token, flags);
+
+        private bool TryEnqueue(RpcFrame frame)
         {
-            frame = Payload.Empty;
-            consumed = buffer.Start;
+            var complete = false;
+            CancellationTokenRegistration registration = default;
+            lock (_gate) {
+                if (_disposed) {
+                    frame.Dispose();
+                    return false;
+                }
 
-            if (buffer.Length < 4) {
-                return false;
+                if (_waiting) {
+                    _waiting = false;
+                    registration = _receiveCancellation;
+                    _receiveCancellation = default;
+                    complete = true;
+                }
+                else {
+                    _inbound.Enqueue(frame);
+                }
             }
 
-            Span<byte> lengthBytes = stackalloc byte[4];
-            buffer.Slice(0, 4).CopyTo(lengthBytes);
-            var totalLength = BinaryPrimitives.ReadInt32LittleEndian(lengthBytes);
-            if (totalLength < 4 || totalLength > MaxMessageSize) {
-                throw new InvalidDataException($"Invalid ShaRPC frame length: {totalLength}.");
+            if (complete) {
+                registration.Dispose();
+                _receiver.SetResult(frame);
             }
 
-            if (buffer.Length < totalLength) {
-                return false;
-            }
-
-            var frameSlice = buffer.Slice(0, totalLength);
-            frame = Payload.Rent(totalLength);
-            frameSlice.CopyTo(frame.Memory.Span);
-            consumed = frameSlice.End;
             return true;
         }
+
+        private void Complete()
+        {
+            var complete = false;
+            CancellationTokenRegistration registration = default;
+            lock (_gate) {
+                if (_waiting) {
+                    _waiting = false;
+                    registration = _receiveCancellation;
+                    _receiveCancellation = default;
+                    complete = true;
+                }
+
+                while (_inbound.TryDequeue(out var frame)) {
+                    frame.Dispose();
+                }
+            }
+
+            if (complete) {
+                registration.Dispose();
+                _receiver.SetResult(new RpcFrame(Payload.Empty));
+            }
+        }
+
+        private void CancelPendingReceive(short version, CancellationToken ct)
+        {
+            var complete = false;
+            lock (_gate) {
+                if (_waiting && _receiver.Version == version) {
+                    _waiting = false;
+                    _receiveCancellation = default;
+                    complete = true;
+                }
+            }
+
+            if (complete) {
+                _receiver.SetException(new OperationCanceledException(ct));
+            }
+        }
+
+        private static async ValueTask<Payload> AwaitPayloadAsync(ValueTask<RpcFrame> frame)
+        {
+            var received = await frame.ConfigureAwait(false);
+            return received.DetachPayload();
+        }
+
+        private sealed record PendingReceive(
+            PipeConnection Connection,
+            short Version,
+            CancellationToken CancellationToken);
     }
 }

@@ -29,24 +29,24 @@
       },
       "ShaRPC": {
         "type": "Transitive",
-        "resolved": "1.0.0-ci.20",
-        "contentHash": "llO3Q1zZVfdKD4ydvyPWkyl8lKt7yL77QAqzrS1CLtiKxrpykajqQReZZDm0FrbcUbr4e0ijROPYUDa/aZi6Jw=="
+        "resolved": "1.0.0-ci.30",
+        "contentHash": "Q3e/tSXJ4jJ+h63mjDqSTqiePKc8uw2XJYtyIueEOxIwNEr7fiI6QTX+1kHWQ9TohooWwnXK7b3miPMjsPbpeQ=="
       },
       "ShaRPC.Serializers.MessagePack": {
         "type": "Transitive",
-        "resolved": "1.0.0-ci.20",
-        "contentHash": "a6nQwKG8b49mYqS8S4Zg3pdUiEVSJ60t17V48PVgHB00Qhr0bZV5eNUQ8w+rvl5GWc6Tv//YDmgD3CxbtzbMPQ==",
+        "resolved": "1.0.0-ci.30",
+        "contentHash": "lCrHVITMOt9KZmW33zBeeDmH4i1K3+5Ixc5Ihu1jq/ujjltRkLpNjSD6dwIgUuYv/B3jtnu4ODljxIHvDb+C8A==",
         "dependencies": {
-          "MessagePack": "2.5.187",
-          "ShaRPC": "1.0.0-ci.20"
+          "MessagePack": "3.1.7",
+          "ShaRPC": "1.0.0-ci.30"
         }
       },
       "ShaRPC.Transports.NamedPipes": {
         "type": "Transitive",
-        "resolved": "1.0.0-ci.20",
-        "contentHash": "ZPFx27R9pFQuLjFbpbls2WnTKgQ5tGveiCk0NUvLGfWPeHNi/QKgArxpTaY9zGl4xbVVlCE9gPu20TuXNdKcRw==",
+        "resolved": "1.0.0-ci.30",
+        "contentHash": "tbHpzuBs1H2cyawUxVlgr1GN3IHwE7q3hIoulNsriAOQ62AYKN/a1os139uW5PHqJkTO7YSvrHTn6H35NjQXyg==",
         "dependencies": {
-          "ShaRPC": "1.0.0-ci.20"
+          "ShaRPC": "1.0.0-ci.30"
         }
       },
       "safeir.compiler": {
@@ -91,7 +91,7 @@
         "type": "Project",
         "dependencies": {
           "MessagePack": "[3.1.7, )",
-          "ShaRPC": "[1.0.0-ci.20, )"
+          "ShaRPC": "[1.0.0-ci.30, )"
         }
       },
       "safeir.pluginlocal": {
@@ -120,9 +120,9 @@
         "type": "Project",
         "dependencies": {
           "MessagePack": "[3.1.7, )",
-          "ShaRPC": "[1.0.0-ci.20, )",
-          "ShaRPC.Serializers.MessagePack": "[1.0.0-ci.20, )",
-          "ShaRPC.Transports.NamedPipes": "[1.0.0-ci.20, )"
+          "ShaRPC": "[1.0.0-ci.30, )",
+          "ShaRPC.Serializers.MessagePack": "[1.0.0-ci.30, )",
+          "ShaRPC.Transports.NamedPipes": "[1.0.0-ci.30, )"
         }
       },
       "safeir.validation": {

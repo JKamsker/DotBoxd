@@ -117,6 +117,37 @@ public sealed class BindingRegistryHardeningTests
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-BINDING-TYPE");
     }
 
+    [Theory]
+    [InlineData("Object")]
+    [InlineData("Dynamic")]
+    [InlineData("Type")]
+    [InlineData("IServiceProvider")]
+    [InlineData("Stream")]
+    [InlineData("HttpClient")]
+    [InlineData("DbContext")]
+    public void Binding_registry_rejects_forbidden_parameter_types(string typeName)
+    {
+        var ex = Assert.Throws<SandboxValidationException>(() => Build(TestBinding(
+            parameters: [SandboxType.Scalar(typeName)])));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-BINDING-TYPE");
+    }
+
+    [Theory]
+    [InlineData("Object")]
+    [InlineData("Type")]
+    [InlineData("Delegate")]
+    [InlineData("Stream")]
+    [InlineData("HttpClient")]
+    [InlineData("RawDomainEntity")]
+    public void Binding_registry_rejects_forbidden_return_types(string typeName)
+    {
+        var ex = Assert.Throws<SandboxValidationException>(() => Build(TestBinding(
+            returnType: SandboxType.Scalar(typeName))));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-BINDING-TYPE");
+    }
+
     [Fact]
     public void Binding_registry_rejects_non_hashable_map_key_type()
     {
@@ -137,12 +168,13 @@ public sealed class BindingRegistryHardeningTests
         BindingSafety safety = BindingSafety.PureHostFacade,
         AuditLevel auditLevel = AuditLevel.None,
         CapabilityGrantValidator? grantValidator = null,
-        IReadOnlyList<SandboxType>? parameters = null)
+        IReadOnlyList<SandboxType>? parameters = null,
+        SandboxType? returnType = null)
         => new(
             id,
             SemVersion.One,
             parameters ?? [],
-            SandboxType.Unit,
+            returnType ?? SandboxType.Unit,
             effects,
             requiredCapability,
             BindingCostModel.Fixed(1),
