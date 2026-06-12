@@ -11,8 +11,12 @@ internal sealed class PendingUnaryResponse<TResponse> :
     IPendingResponse
 {
     private readonly ShaRpcPendingRequests _owner;
+    private RpcPeerOutboundInvoker? _directOwner;
+    private string? _service;
+    private string? _method;
     private long _timeoutDeadline = long.MaxValue;
     private int _cancellationKind;
+    private int _completed;
 
     public PendingUnaryResponse(ShaRpcPendingRequests owner, int messageId)
         : base(TaskCreationOptions.RunContinuationsAsynchronously)
@@ -41,7 +45,22 @@ internal sealed class PendingUnaryResponse<TResponse> :
     }
 
     public void SetError(Exception error) =>
-        TrySetException(error);
+        CompleteAndSetException(error);
+
+    public void EnableDirectCompletion(
+        RpcPeerOutboundInvoker owner,
+        string service,
+        string method)
+    {
+        _service = service;
+        _method = method;
+        Volatile.Write(ref _directOwner, owner);
+
+        if (Task.IsCompleted)
+        {
+            CompleteDirect(sendCancel: false);
+        }
+    }
 
     public bool TrySetResponse(
         RpcResponse response,
@@ -65,11 +84,11 @@ internal sealed class PendingUnaryResponse<TResponse> :
                     "Response opened a stream for a non-streaming invocation.");
             }
 
-            TrySetResult(serializer.Deserialize<TResponse>(payload));
+            CompleteAndSetResult(serializer.Deserialize<TResponse>(payload));
         }
         catch (Exception ex)
         {
-            TrySetException(ex);
+            CompleteAndSetException(ex);
         }
         finally
         {
@@ -83,6 +102,53 @@ internal sealed class PendingUnaryResponse<TResponse> :
     public void TrySetCanceled(PendingCancellationKind kind)
     {
         Volatile.Write(ref _cancellationKind, (int)kind);
-        TrySetCanceled();
+        if (!IsDirectCompletion)
+        {
+            TrySetCanceled();
+            return;
+        }
+
+        CompleteDirect(sendCancel: true);
+        if (kind == PendingCancellationKind.Timeout)
+        {
+            TrySetException(new ShaRpcTimeoutException(
+                $"Request to {_service}.{_method} timed out."));
+            return;
+        }
+
+        TrySetException(new OperationCanceledException());
+    }
+
+    private bool IsDirectCompletion =>
+        Volatile.Read(ref _directOwner) is not null;
+
+    private void CompleteAndSetResult(TResponse response)
+    {
+        if (IsDirectCompletion)
+        {
+            CompleteDirect(sendCancel: false);
+        }
+
+        TrySetResult(response);
+    }
+
+    private void CompleteAndSetException(Exception error)
+    {
+        if (IsDirectCompletion)
+        {
+            CompleteDirect(sendCancel: false);
+        }
+
+        TrySetException(error);
+    }
+
+    private void CompleteDirect(bool sendCancel)
+    {
+        if (Interlocked.Exchange(ref _completed, 1) != 0)
+        {
+            return;
+        }
+
+        Volatile.Read(ref _directOwner)?.CompleteUnaryPending(this, sendCancel);
     }
 }

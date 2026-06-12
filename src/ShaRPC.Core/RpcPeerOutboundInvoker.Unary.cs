@@ -98,10 +98,54 @@ internal sealed partial class RpcPeerOutboundInvoker
             ct);
     }
 
-    private async Task<TResponse> SendFrameAndReadUnaryResponseAsync<TResponse>(
+    private Task<TResponse> SendFrameAndReadUnaryResponseAsync<TResponse>(
         int messageId,
         PendingUnaryResponse<TResponse> pending,
         PooledBufferWriter frame,
+        string service,
+        string method,
+        CancellationToken ct)
+    {
+        Task sendTask;
+        try
+        {
+            sendTask = _sendAsync(frame.WrittenMemory, ct);
+        }
+        catch (Exception ex)
+        {
+            frame.Dispose();
+            _pending.Remove(messageId, pending, consumed: true);
+            ReleasePendingSlot();
+            return ToFaultedTask<TResponse>(ex);
+        }
+
+        if (!ct.CanBeCanceled && sendTask.IsCompletedSuccessfully)
+        {
+            frame.Dispose();
+            pending.EnableDirectCompletion(this, service, method);
+            if (!pending.Task.IsCompleted)
+            {
+                _pending.StartTimeout(pending, _timeout);
+            }
+
+            return pending.Task;
+        }
+
+        return AwaitUnaryResponseAsync(
+            messageId,
+            pending,
+            frame,
+            sendTask,
+            service,
+            method,
+            ct);
+    }
+
+    private async Task<TResponse> AwaitUnaryResponseAsync<TResponse>(
+        int messageId,
+        PendingUnaryResponse<TResponse> pending,
+        PooledBufferWriter frame,
+        Task sendTask,
         string service,
         string method,
         CancellationToken ct)
@@ -112,7 +156,7 @@ internal sealed partial class RpcPeerOutboundInvoker
         {
             using (frame)
             {
-                await _sendAsync(frame.WrittenMemory, ct).ConfigureAwait(false);
+                await sendTask.ConfigureAwait(false);
                 requestSent = true;
             }
 

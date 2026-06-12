@@ -109,6 +109,12 @@ internal sealed class RpcPeerInboundRequestQueue
         var committed = false;
         try
         {
+            if (_queue.Writer.TryWrite(inbound))
+            {
+                committed = true;
+                return InboundEnqueueResult.Accepted;
+            }
+
             await _queue.Writer.WriteAsync(inbound, ct).ConfigureAwait(false);
             committed = true;
             return InboundEnqueueResult.Accepted;

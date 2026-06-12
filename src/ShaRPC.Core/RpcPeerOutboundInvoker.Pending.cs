@@ -75,6 +75,16 @@ internal sealed partial class RpcPeerOutboundInvoker
     private void ReleasePendingSlot() =>
         Interlocked.Decrement(ref _pendingCount);
 
+    internal void CompleteUnaryPending(IPendingResponse pending, bool sendCancel)
+    {
+        if (sendCancel)
+        {
+            _cancelFrames.TrySend(pending.MessageId);
+        }
+
+        ReleasePendingSlot();
+    }
+
     private int NextMessageId(CancellationToken ct)
     {
         while (true)
