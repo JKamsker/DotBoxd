@@ -1,22 +1,22 @@
 ---
 id: PAL-0006
 area: perf_alloc
-status: fixed_pending_verification
+status: verified
 priority: medium
 title: Persistent artifact cache retains entry locks per cache key
 dedup_key: alloc/compiler-cache/entry-locks/unbounded-key-retention
 created_at: 2026-06-12T21:03:29.0265407+00:00
 created_by: performance-producer
 created_commit: 
-updated_at: 2026-06-12T21:53:55.6814818+00:00
+updated_at: 2026-06-12T21:55:54.9137935+00:00
 claimed_by: fixer
 claimed_at: 2026-06-12T21:50:28.2244969+00:00
 claim_branch: workflow-work
 fixed_by: fixer
 fixed_at: 2026-06-12T21:53:55.6814818+00:00
 fixed_commit: 
-verified_by: 
-verified_at: 
+verified_by: verifier
+verified_at: 2026-06-12T21:55:54.9137935+00:00
 verified_commit: 
 duplicate_of: 
 ---

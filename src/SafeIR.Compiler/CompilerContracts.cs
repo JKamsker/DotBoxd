@@ -35,6 +35,29 @@ public sealed record CompiledArtifact
         CompiledRuntimeFormKind runtimeForm,
         CompiledCacheStatus cacheStatus = CompiledCacheStatus.None,
         string? cacheInvalidReason = null)
+        : this(
+            assemblyBytes,
+            assemblyHash,
+            manifest,
+            verification,
+            entrypoint,
+            runtimeForm,
+            cacheStatus,
+            cacheInvalidReason,
+            copyAssemblyBytes: true)
+    {
+    }
+
+    internal CompiledArtifact(
+        byte[] assemblyBytes,
+        string assemblyHash,
+        ArtifactManifest manifest,
+        VerificationResult verification,
+        SandboxCompiledEntrypoint entrypoint,
+        CompiledRuntimeFormKind runtimeForm,
+        CompiledCacheStatus cacheStatus,
+        string? cacheInvalidReason,
+        bool copyAssemblyBytes)
     {
         ArgumentNullException.ThrowIfNull(assemblyBytes);
         ArgumentNullException.ThrowIfNull(assemblyHash);
@@ -72,7 +95,7 @@ public sealed record CompiledArtifact
                 nameof(AssemblyBytes));
         }
 
-        AssemblyBytes = assemblyBytes;
+        _assemblyBytes = copyAssemblyBytes ? assemblyBytes.ToArray() : assemblyBytes;
         AssemblyHash = assemblyHash;
         Manifest = manifest;
         Verification = verification;
@@ -87,6 +110,8 @@ public sealed record CompiledArtifact
         get => _assemblyBytes.ToArray();
         init => _assemblyBytes = value?.ToArray() ?? throw new ArgumentNullException(nameof(value));
     }
+    internal ReadOnlyMemory<byte> AssemblyBytesMemory => _assemblyBytes;
+    internal byte[] AssemblyBytesUnsafe => _assemblyBytes;
     public string AssemblyHash { get; init; }
     public ArtifactManifest Manifest { get; init; }
     public VerificationResult Verification { get; init; }

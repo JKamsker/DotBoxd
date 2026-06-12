@@ -1,19 +1,19 @@
 ---
 id: PAL-0007
 area: perf_alloc
-status: open
+status: fixed_pending_verification
 priority: medium
 title: Compiled artifact guard copies assembly bytes repeatedly
 dedup_key: alloc/compiled-artifact/assembly-bytes/repeated-defensive-copies
 created_at: 2026-06-12T21:03:30.3274123+00:00
 created_by: performance-producer
 created_commit: 
-updated_at: 2026-06-12T21:03:30.3274123+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
+updated_at: 2026-06-12T21:57:10.4412769+00:00
+claimed_by: fixer
+claimed_at: 2026-06-12T21:54:58.3645782+00:00
+claim_branch: workflow-work
+fixed_by: fixer
+fixed_at: 2026-06-12T21:57:10.4412769+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 

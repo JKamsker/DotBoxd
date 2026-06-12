@@ -4,9 +4,6 @@
 
 ## Open
 
-- [ ] `PAL-0007` medium - Compiled artifact guard copies assembly bytes repeatedly
-  - File: `docs/agent-loop/findings/PAL-0007-compiled-artifact-guard-copies-assembly-bytes-repeatedly.md`
-  - Dedup: `alloc/compiled-artifact/assembly-bytes/repeated-defensive-copies`
 - [ ] `PAL-0005` low - Generated stack verifier allocates while parsing call signatures
   - File: `docs/agent-loop/findings/PAL-0005-generated-stack-verifier-allocates-while-parsing-call-signatures.md`
   - Dedup: `alloc/verifier/generated-stack/call-signature-split-per-call`
@@ -19,8 +16,8 @@
 
 ## Fixed pending verification
 
-- [~] `PAL-0006` medium - Persistent artifact cache retains entry locks per cache key
-  - File: `docs/agent-loop/findings/PAL-0006-persistent-artifact-cache-retains-entry-locks-per-cache-key.md`
+- [~] `PAL-0007` medium - Compiled artifact guard copies assembly bytes repeatedly
+  - File: `docs/agent-loop/findings/PAL-0007-compiled-artifact-guard-copies-assembly-bytes-repeatedly.md`
   - Fixed by: `fixer`
   - Commit: ``
 
@@ -34,5 +31,7 @@
   - File: `docs/agent-loop/findings/PAL-0003-map-validation-and-metering-buffer-reversed-entries.md`
 - [x] `PAL-0004` medium - Convention event adapter reflects and allocates per event
   - File: `docs/agent-loop/findings/PAL-0004-convention-event-adapter-reflects-and-allocates-per-event.md`
+- [x] `PAL-0006` medium - Persistent artifact cache retains entry locks per cache key
+  - File: `docs/agent-loop/findings/PAL-0006-persistent-artifact-cache-retains-entry-locks-per-cache-key.md`
 
 ## Rejected / duplicate / obsolete

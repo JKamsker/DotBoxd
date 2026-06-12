@@ -25,10 +25,10 @@ internal static class CompiledArtifactGuard
             throw Invalid("dynamic method artifacts require an independent verifier gate before execution");
         }
 
-        var assemblyBytes = artifact.AssemblyBytes.ToArray();
+        var assemblyBytes = artifact.AssemblyBytesUnsafe;
         var verification = await Verifier
             .VerifyAsync(
-                assemblyBytes,
+                artifact.AssemblyBytesMemory,
                 artifact.Manifest,
                 DefaultVerificationPolicy.WithExpectedManifest(VerificationManifestIdentity.FromManifest(artifact.Manifest)),
                 cancellationToken)
@@ -54,7 +54,8 @@ internal static class CompiledArtifactGuard
             loaded.Entrypoint,
             CompiledRuntimeFormKind.LoadedAssembly,
             artifact.CacheStatus,
-            artifact.CacheInvalidReason),
+            artifact.CacheInvalidReason,
+            copyAssemblyBytes: false),
             loaded.Context);
     }
 
@@ -80,12 +81,12 @@ internal static class CompiledArtifactGuard
             throw Invalid("compiled artifact verification does not match artifact hash");
         }
 
-        if (artifact.RuntimeForm == CompiledRuntimeFormKind.LoadedAssembly && artifact.AssemblyBytes.Length == 0)
+        if (artifact.RuntimeForm == CompiledRuntimeFormKind.LoadedAssembly && artifact.AssemblyBytesMemory.Length == 0)
         {
             throw Invalid("loaded compiled artifact did not include assembly bytes");
         }
 
-        if (artifact.RuntimeForm == CompiledRuntimeFormKind.DynamicMethod && artifact.AssemblyBytes.Length != 0)
+        if (artifact.RuntimeForm == CompiledRuntimeFormKind.DynamicMethod && artifact.AssemblyBytesMemory.Length != 0)
         {
             throw Invalid("dynamic method artifact must not include assembly bytes");
         }
@@ -131,7 +132,7 @@ internal static class CompiledArtifactGuard
 
     private static void EnsureAssemblyBytesMatchHash(CompiledArtifact artifact)
     {
-        var actual = Convert.ToHexString(SHA256.HashData(artifact.AssemblyBytes)).ToLowerInvariant();
+        var actual = Convert.ToHexString(SHA256.HashData(artifact.AssemblyBytesMemory.Span)).ToLowerInvariant();
         if (!StringComparer.Ordinal.Equals(actual, artifact.AssemblyHash))
         {
             throw Invalid("compiled artifact bytes do not match artifact hash");
