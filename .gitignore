@@ -9,3 +9,5 @@ TestResults/
 *.snupkg
 artifacts/
 BenchmarkDotNet.Artifacts/
+docs/agent-loop/.agentq.lock
+docs/agent-loop/tmp/

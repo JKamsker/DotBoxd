@@ -17,9 +17,17 @@ function Resolve-RelativePath {
 }
 
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
-$files = Get-ChildItem -Path $root -Recurse -File -Filter "*.cs" |
+$filePaths = & git -C $root ls-files --cached -- "*.cs"
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to list tracked C# files."
+}
+
+$files = $filePaths |
     Where-Object {
-        $_.FullName -notmatch "\\(bin|obj)\\|\\.g\\.cs$|\\.Designer\\.cs$"
+        $_ -notmatch "(^|/)(bin|obj)/|\.g\.cs$|\.Designer\.cs$"
+    } |
+    ForEach-Object {
+        Get-Item -LiteralPath (Join-Path $root $_)
     }
 
 $failed = $false
