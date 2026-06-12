@@ -30,6 +30,8 @@
     <Folder Name="/tools/">
         <Project Path="tools/AgentQueue/src/AgentQueue/AgentQueue.csproj" />
         <Project Path="tools/AgentQueue/tests/AgentQueue.Tests/AgentQueue.Tests.csproj" />
+        <Project Path="tools/CodeEnforcer/src/CodeEnforcer/CodeEnforcer.csproj" />
+        <Project Path="tools/CodeEnforcer/tests/CodeEnforcer.Tests/CodeEnforcer.Tests.csproj" />
     </Folder>
     <!-- Solution Items -->
 <!--

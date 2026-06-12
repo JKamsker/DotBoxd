@@ -13,7 +13,9 @@
 ## C# Size Guard
 
 - Non-generated C# files should stay under 300 lines where practical.
-- Files over 500 lines fail the repository hook unless there is a specific, justified exception.
+- `CodeEnforcer` fails tracked C# files over 350 lines unless they are listed in `tools/CodeEnforcer/code-enforcer.json`.
+- Files over 500 lines require both an exclusion and a non-empty justification.
+- Folders over 15 tracked C# files must be listed in `tools/CodeEnforcer/code-enforcer.json`; prefer focused subdirectories and namespaces for new code.
 - Split large code through composition and focused helper types, not partial classes used only to hide line count.
 
 ## Agent Queue Workflow
