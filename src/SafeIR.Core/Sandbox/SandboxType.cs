@@ -4,6 +4,10 @@ namespace SafeIR;
 
 public sealed record SandboxType(string Name, IReadOnlyList<SandboxType> Arguments)
 {
+    private IReadOnlyList<SandboxType> _arguments = ModelCopy.List(Arguments);
+
+    public IReadOnlyList<SandboxType> Arguments { get => _arguments; init => _arguments = ModelCopy.List(value); }
+
     private static readonly HashSet<string> AllowedScalars = new(StringComparer.Ordinal) {
         "Unit", "Bool", "I32", "I64", "F64", "String",
         "SandboxPath", "SandboxUri", "PlayerId", "ItemId", "QuestId", "MapId"

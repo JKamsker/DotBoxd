@@ -1,5 +1,7 @@
 namespace SafeIR;
 
+using System.Collections.Frozen;
+
 public sealed record FunctionAnalysis(SandboxType ReturnType, SandboxEffect Effects, bool CanReorder);
 
 public sealed class ExecutionPlan
@@ -57,7 +59,7 @@ public sealed class ExecutionPlan
     {
         var copy = new Dictionary<string, IReadOnlySet<string>>(bindingReferences.Count, StringComparer.Ordinal);
         foreach (var item in bindingReferences) {
-            copy.Add(item.Key, new HashSet<string>(item.Value, StringComparer.Ordinal));
+            copy.Add(item.Key, item.Value.ToFrozenSet(StringComparer.Ordinal));
         }
 
         return new System.Collections.ObjectModel.ReadOnlyDictionary<string, IReadOnlySet<string>>(copy);

@@ -1,19 +1,19 @@
 ---
 id: COR-0033
 area: correctness
-status: open
+status: fixed_pending_verification
 priority: high
 title: SandboxPolicy grants can mutate after plan hashes are sealed
 dedup_key: correctness/policy/grants/mutable-array-plan-hash-drift
 created_at: 2026-06-12T22:29:25.9434588+00:00
 created_by: correctness-producer
 created_commit: 
-updated_at: 2026-06-12T22:29:25.9434588+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
+updated_at: 2026-06-12T23:18:12.4113447+00:00
+claimed_by: worker
+claimed_at: 2026-06-12T23:13:14.8314599+00:00
+claim_branch: workflow-work
+fixed_by: worker
+fixed_at: 2026-06-12T23:18:12.4113447+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 

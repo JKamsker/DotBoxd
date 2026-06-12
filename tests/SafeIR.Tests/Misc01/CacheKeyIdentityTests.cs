@@ -94,6 +94,25 @@ public sealed class CacheKeyIdentityTests
         Assert.All(policy.RuntimeFacadeIdentities, i => Assert.Contains(", Mvid=", i, StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Verification_policy_copies_allowlist_inputs()
+    {
+        var members = VerificationPolicy.BoxedValueDefaults()
+            .AllowedMembers
+            .ToHashSet(StringComparer.Ordinal);
+        var policy = VerificationPolicy.BoxedValueDefaults() with { AllowedMembers = members };
+        var allowlistHash = policy.AllowlistHash;
+        var runtimeFacadeHash = policy.RuntimeFacadeHash;
+        const string forgedMember = "SafeIR.Runtime.CompiledRuntime.TestOnly(SafeIR.SandboxContext):System.Void";
+
+        members.Add(forgedMember);
+
+        Assert.Equal(allowlistHash, policy.AllowlistHash);
+        Assert.Equal(runtimeFacadeHash, policy.RuntimeFacadeHash);
+        Assert.False(policy.IsMemberAllowed(forgedMember));
+        Assert.False(policy.AllowedMembers is HashSet<string>);
+    }
+
     private static string HashParts(params string[] parts)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('|', parts)))).ToLowerInvariant();
 }

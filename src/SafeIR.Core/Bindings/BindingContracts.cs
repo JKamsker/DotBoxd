@@ -48,7 +48,12 @@ public sealed record BindingSignature(
     BindingCostModel CostModel,
     AuditLevel AuditLevel,
     BindingSafety Safety,
-    CompiledBinding Compiled);
+    CompiledBinding Compiled)
+{
+    private IReadOnlyList<SandboxType> _parameters = ModelCopy.List(Parameters);
+
+    public IReadOnlyList<SandboxType> Parameters { get => _parameters; init => _parameters = ModelCopy.List(value); }
+}
 
 public sealed record BindingDescriptor(
     string Id,
@@ -64,6 +69,10 @@ public sealed record BindingDescriptor(
     CompiledBinding Compiled,
     CapabilityGrantValidator? GrantValidator = null)
 {
+    private IReadOnlyList<SandboxType> _parameters = ModelCopy.List(Parameters);
+
+    public IReadOnlyList<SandboxType> Parameters { get => _parameters; init => _parameters = ModelCopy.List(value); }
+
     public BindingSignature Signature => new(
         Id, Version, CopyParameters(Parameters), ReturnType, Effects, RequiredCapability, CostModel, AuditLevel, Safety, Compiled);
 

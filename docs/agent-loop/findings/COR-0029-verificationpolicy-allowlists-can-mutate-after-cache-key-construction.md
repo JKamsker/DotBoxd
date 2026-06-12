@@ -1,19 +1,19 @@
 ---
 id: COR-0029
 area: correctness
-status: open
+status: fixed_pending_verification
 priority: high
 title: VerificationPolicy allowlists can mutate after cache-key construction
 dedup_key: correctness/verifier/policy/mutable-allowlist-cache-verification-drift
 created_at: 2026-06-12T22:25:04.4795505+00:00
 created_by: correctness-producer
 created_commit: 
-updated_at: 2026-06-12T22:25:04.4795505+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
+updated_at: 2026-06-12T23:18:10.5051498+00:00
+claimed_by: worker
+claimed_at: 2026-06-12T23:13:13.4509144+00:00
+claim_branch: workflow-work
+fixed_by: worker
+fixed_at: 2026-06-12T23:18:10.5051498+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 

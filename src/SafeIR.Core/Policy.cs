@@ -23,7 +23,9 @@ public sealed record SandboxPolicy(
     DateTimeOffset? LogicalNow = null,
     ulong? RandomSeed = null)
 {
-    public IReadOnlyList<CapabilityGrant> Grants { get; init; } = Grants.ToArray();
+    private IReadOnlyList<CapabilityGrant> _grants = ModelCopy.List(Grants);
+
+    public IReadOnlyList<CapabilityGrant> Grants { get => _grants; init => _grants = ModelCopy.List(value); }
 
     public string Hash => StableHash();
 

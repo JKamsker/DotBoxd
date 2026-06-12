@@ -62,6 +62,109 @@ public sealed class PublicModelImmutabilityTests
     }
 
     [Fact]
+    public void Sandbox_type_copies_argument_inputs()
+    {
+        var arguments = new List<SandboxType> { SandboxType.I32 };
+        var type = new SandboxType("List", arguments);
+        var hash = type.GetHashCode();
+        arguments[0] = SandboxType.String;
+
+        var updateArguments = new List<SandboxType> { SandboxType.String };
+        var updated = type with { Arguments = updateArguments };
+        updateArguments[0] = SandboxType.I64;
+
+        Assert.Equal("List<I32>", type.ToString());
+        Assert.Equal(hash, type.GetHashCode());
+        Assert.Equal("List<String>", updated.ToString());
+        Assert.False(type.Arguments is SandboxType[]);
+        Assert.False(updated.Arguments is SandboxType[]);
+    }
+
+    [Fact]
+    public void Sandbox_policy_copies_grant_inputs()
+    {
+        var grants = new List<CapabilityGrant> { new("log.write", new Dictionary<string, string>()) };
+        var policy = new SandboxPolicy("policy", SandboxEffect.Audit, grants, new ResourceLimits());
+        var hash = policy.Hash;
+        grants[0] = new CapabilityGrant("random", new Dictionary<string, string>());
+
+        var updateGrants = new List<CapabilityGrant> { new("time.now", new Dictionary<string, string>()) };
+        var updated = policy with { Grants = updateGrants };
+        var updatedHash = updated.Hash;
+        updateGrants[0] = new CapabilityGrant("random", new Dictionary<string, string>());
+
+        Assert.True(policy.GrantsCapability("log.write"));
+        Assert.False(policy.GrantsCapability("random"));
+        Assert.Equal(hash, policy.Hash);
+        Assert.True(updated.GrantsCapability("time.now"));
+        Assert.False(updated.GrantsCapability("random"));
+        Assert.Equal(updatedHash, updated.Hash);
+        Assert.False(policy.Grants is CapabilityGrant[]);
+        Assert.False(updated.Grants is CapabilityGrant[]);
+    }
+
+    [Fact]
+    public void Binding_registry_copies_descriptor_parameter_inputs()
+    {
+        var parameters = new List<SandboxType> { SandboxType.I32 };
+        var descriptor = new BindingDescriptor(
+            "test.binding",
+            SemVersion.One,
+            parameters,
+            SandboxType.I32,
+            SandboxEffect.Cpu,
+            null,
+            BindingCostModel.Fixed(1),
+            AuditLevel.None,
+            BindingSafety.PureHostFacade,
+            (_, _, _) => ValueTask.FromResult(SandboxValue.FromInt32(0)),
+            CompiledBinding.RuntimeStub(
+                typeof(Runtime.CompiledRuntime).FullName!,
+                nameof(Runtime.CompiledRuntime.CallBinding)));
+        var registry = new BindingRegistry([descriptor]);
+        var manifestHash = registry.ManifestHash;
+        parameters[0] = SandboxType.String;
+
+        var exposed = registry.GetDescriptor("test.binding");
+        Assert.True(registry.TryGet("test.binding", out var signature));
+
+        Assert.Equal(manifestHash, registry.ManifestHash);
+        Assert.Equal(SandboxType.I32, exposed.Parameters[0]);
+        Assert.Equal(SandboxType.I32, signature.Parameters[0]);
+        Assert.False(exposed.Parameters is SandboxType[]);
+        Assert.False(signature.Parameters is SandboxType[]);
+    }
+
+    [Fact]
+    public void Execution_plan_copies_binding_reference_sets()
+    {
+        var references = new HashSet<string>(StringComparer.Ordinal) { "math.abs" };
+        var plan = new ExecutionPlan(
+            "module",
+            "plan",
+            new ExecutionPlanSeal("seal"),
+            "policy",
+            "bindings",
+            EmptyModule(),
+            SandboxPolicyBuilder.Create().Build(),
+            new BindingRegistryBuilder().Build(),
+            new ResourceLimits(),
+            new Dictionary<string, FunctionAnalysis>
+            {
+                ["main"] = new(SandboxType.I32, SandboxEffect.Cpu, true)
+            },
+            new Dictionary<string, IReadOnlySet<string>>(StringComparer.Ordinal)
+            {
+                ["main"] = references
+            });
+        references.Add("file.writeText");
+
+        Assert.Contains("math.abs", plan.BindingReferences["main"]);
+        Assert.DoesNotContain("file.writeText", plan.BindingReferences["main"]);
+        Assert.False(plan.BindingReferences["main"] is HashSet<string>);
+    }
+
+    [Fact]
     public void Plugin_manifest_copies_collection_inputs()
     {
         var effects = new List<string> { "Cpu" };
