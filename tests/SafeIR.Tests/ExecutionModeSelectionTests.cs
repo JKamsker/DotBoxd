@@ -102,6 +102,10 @@ public sealed class ExecutionModeSelectionTests
         Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
         Assert.Null(result.ArtifactHash);
         Assert.Contains(result.AuditEvents, e => e.Kind == "CompilerUnavailable");
+        var summary = Assert.Single(result.AuditEvents, e => e.Kind == "RunSummary");
+        Assert.False(summary.Success);
+        Assert.Equal(SandboxErrorCode.ValidationError, summary.ErrorCode);
+        Assert.Equal("Compiled", summary.Fields!["mode"]);
     }
 
     [Fact]
@@ -124,6 +128,8 @@ public sealed class ExecutionModeSelectionTests
         Assert.Null(result.ArtifactHash);
         Assert.Equal(1, compiler.Calls);
         Assert.False(compiler.DelegateExecuted);
+        Assert.Contains(result.AuditEvents, e =>
+            e.Kind == "RunSummary" && !e.Success && e.ErrorCode == SandboxErrorCode.ValidationError);
     }
 
     [Fact]
@@ -164,6 +170,8 @@ public sealed class ExecutionModeSelectionTests
         Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
         Assert.Null(result.ArtifactHash);
         Assert.Contains(result.AuditEvents, e => e.Kind == "CompiledExecutionFailed");
+        Assert.Contains(result.AuditEvents, e =>
+            e.Kind == "RunSummary" && !e.Success && e.ErrorCode == SandboxErrorCode.VerifierFailure);
     }
 
     [Fact]
@@ -183,6 +191,8 @@ public sealed class ExecutionModeSelectionTests
         Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
         Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
         Assert.Null(result.ArtifactHash);
+        Assert.Contains(result.AuditEvents, e =>
+            e.Kind == "RunSummary" && !e.Success && e.ErrorCode == SandboxErrorCode.HostFailure);
     }
 
     private static SandboxHost HostWithCompiler(ISandboxCompiler compiler)

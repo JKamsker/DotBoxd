@@ -156,7 +156,8 @@ public sealed partial class SandboxHost
         var fallbackOptions = options with { RunId = runId };
         var result = await ExecuteInterpretedAsync(plan, entrypoint, input, fallbackOptions, cancellationToken)
             .ConfigureAwait(false);
-        var audit = new[] { FallbackAudit(plan, runId, reason) }
+        var audit = FallbackSecurityAudits(plan, runId, reason)
+            .Concat([FallbackAudit(plan, runId, reason)])
             .Concat(result.AuditEvents)
             .ToArray();
         return result with { AuditEvents = audit };

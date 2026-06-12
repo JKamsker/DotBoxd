@@ -23,5 +23,9 @@ public sealed class WorkerIsolationTests
         Assert.Equal(SandboxErrorCode.PolicyDenied, result.Error!.Code);
         Assert.Null(result.ArtifactHash);
         Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationUnavailable");
+        var summary = Assert.Single(result.AuditEvents, e => e.Kind == "RunSummary");
+        Assert.False(summary.Success);
+        Assert.Equal(SandboxErrorCode.PolicyDenied, summary.ErrorCode);
+        Assert.Equal("Auto", summary.Fields!["mode"]);
     }
 }

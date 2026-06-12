@@ -119,8 +119,9 @@ internal static class CompiledExecutionRunner
             runId,
             "CacheInvalidated",
             startedAt,
-            true,
+            false,
             ResourceId: $"cache:{artifact.Manifest.CacheKey}",
+            ErrorCode: SandboxErrorCode.CacheInvalid,
             Message: "compiled cache entry was quarantined and regenerated",
             Fields: new Dictionary<string, string>(StringComparer.Ordinal)
             {

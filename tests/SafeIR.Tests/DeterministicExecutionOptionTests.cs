@@ -21,7 +21,10 @@ public sealed class DeterministicExecutionOptionTests
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.PolicyDenied, result.Error!.Code);
         Assert.Contains(result.AuditEvents, e => e.Kind == "PolicyDenied" && !e.Success);
-        Assert.DoesNotContain(result.AuditEvents, e => e.Kind == "RunSummary");
+        var summary = Assert.Single(result.AuditEvents, e => e.Kind == "RunSummary");
+        Assert.False(summary.Success);
+        Assert.Equal(SandboxErrorCode.PolicyDenied, summary.ErrorCode);
+        Assert.Equal("Interpreted", summary.Fields!["mode"]);
     }
 
     [Fact]
@@ -63,6 +66,9 @@ public sealed class DeterministicExecutionOptionTests
         Assert.Equal(SandboxErrorCode.PolicyDenied, result.Error!.Code);
         Assert.Equal(0, compiler.Calls);
         Assert.Null(result.ArtifactHash);
+        var summary = Assert.Single(result.AuditEvents, e => e.Kind == "RunSummary");
+        Assert.False(summary.Success);
+        Assert.Equal("Compiled", summary.Fields!["mode"]);
     }
 
     private static Hosting.SandboxHost SandboxHostForCompiler(ISandboxCompiler compiler)

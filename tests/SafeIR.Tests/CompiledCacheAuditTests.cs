@@ -27,6 +27,8 @@ public sealed class CompiledCacheAuditTests
 
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
         var invalidated = Assert.Single(result.AuditEvents, e => e.Kind == "CacheInvalidated");
+        Assert.False(invalidated.Success);
+        Assert.Equal(SandboxErrorCode.CacheInvalid, invalidated.ErrorCode);
         Assert.Equal("cache:" + CacheKey(plan), invalidated.ResourceId);
         Assert.Equal(plan.PlanHash, invalidated.Fields!["planHash"]);
         Assert.Equal(SandboxErrorCode.CacheInvalid.ToString(), invalidated.Fields["reason"]);

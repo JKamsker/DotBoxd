@@ -31,6 +31,10 @@ public sealed class CompiledFallbackAuditTests
 
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
         Assert.Equal(ExecutionMode.Interpreted, result.ActualMode);
+        Assert.Contains(result.AuditEvents, e =>
+            e.Kind == "VerifierFailure" &&
+            !e.Success &&
+            e.ErrorCode == SandboxErrorCode.VerifierFailure);
         Assert.Contains(result.AuditEvents, IsFallback(SandboxErrorCode.VerifierFailure));
     }
 
@@ -50,6 +54,8 @@ public sealed class CompiledFallbackAuditTests
         Assert.False(result.Succeeded);
         Assert.Contains(result.AuditEvents, e =>
             e.Kind == "VerifierFailure" && e.ErrorCode == SandboxErrorCode.VerifierFailure);
+        Assert.Contains(result.AuditEvents, e =>
+            e.Kind == "RunSummary" && !e.Success && e.ErrorCode == SandboxErrorCode.VerifierFailure);
     }
 
     private static async Task<SandboxExecutionResult> ExecuteCompiledAsync(SandboxHost host, ExecutionPlan plan)

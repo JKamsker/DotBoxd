@@ -14,20 +14,33 @@ public sealed partial class SandboxHost
             ErrorCode: reason.Code,
             Message: $"compiled execution fell back to interpreted mode: {reason.SafeMessage}");
 
+    private static IEnumerable<SandboxAuditEvent> FallbackSecurityAudits(
+        ExecutionPlan plan,
+        SandboxRunId runId,
+        SandboxError reason)
+    {
+        if (reason.Code == SandboxErrorCode.VerifierFailure)
+        {
+            yield return VerifierFailureAudit(plan, runId, reason);
+        }
+    }
+
     private static SandboxExecutionResult CompilerUnavailableResult(ExecutionPlan plan, SandboxExecutionOptions options)
     {
         var runId = options.RunId ?? SandboxRunId.New();
         var budget = new ResourceMeter(plan.Budget);
+        var startedAt = DateTimeOffset.UtcNow;
         var error = new SandboxError(SandboxErrorCode.ValidationError, "compiled execution is not available for this run");
         var audit = new InMemoryAuditSink();
         audit.Write(new SandboxAuditEvent(
             runId,
             "CompilerUnavailable",
-            DateTimeOffset.UtcNow,
+            startedAt,
             false,
             ResourceId: $"module:{plan.ModuleHash}",
             ErrorCode: error.Code,
             Message: error.SafeMessage));
+        WriteFailedRunSummary(audit, runId, startedAt, plan, budget, ExecutionMode.Compiled, error);
 
         return new SandboxExecutionResult
         {
@@ -49,26 +62,22 @@ public sealed partial class SandboxHost
     {
         var runId = options.RunId ?? SandboxRunId.New();
         var budget = new ResourceMeter(plan.Budget);
+        var startedAt = DateTimeOffset.UtcNow;
         var audit = new InMemoryAuditSink();
         audit.Write(new SandboxAuditEvent(
             runId,
             "CompiledExecutionFailed",
-            DateTimeOffset.UtcNow,
+            startedAt,
             false,
             ResourceId: $"module:{plan.ModuleHash}",
             ErrorCode: error.Code,
             Message: error.SafeMessage));
         if (error.Code == SandboxErrorCode.VerifierFailure)
         {
-            audit.Write(new SandboxAuditEvent(
-                runId,
-                "VerifierFailure",
-                DateTimeOffset.UtcNow,
-                false,
-                ResourceId: $"module:{plan.ModuleHash}",
-                ErrorCode: error.Code,
-                Message: error.SafeMessage));
+            audit.Write(VerifierFailureAudit(plan, runId, error));
         }
+
+        WriteFailedRunSummary(audit, runId, startedAt, plan, budget, ExecutionMode.Compiled, error);
 
         return new SandboxExecutionResult
         {
@@ -87,16 +96,18 @@ public sealed partial class SandboxHost
     {
         var runId = options.RunId ?? SandboxRunId.New();
         var budget = new ResourceMeter(plan.Budget);
+        var startedAt = DateTimeOffset.UtcNow;
         var error = new SandboxError(SandboxErrorCode.PolicyDenied, "deterministic execution is required");
         var audit = new InMemoryAuditSink();
         audit.Write(new SandboxAuditEvent(
             runId,
             "PolicyDenied",
-            DateTimeOffset.UtcNow,
+            startedAt,
             false,
             ResourceId: $"module:{plan.ModuleHash}",
             ErrorCode: error.Code,
             Message: error.SafeMessage));
+        WriteFailedRunSummary(audit, runId, startedAt, plan, budget, options.Mode, error);
 
         return new SandboxExecutionResult
         {
@@ -117,6 +128,7 @@ public sealed partial class SandboxHost
     {
         var runId = options.RunId ?? SandboxRunId.New();
         var budget = new ResourceMeter(plan.Budget);
+        var startedAt = DateTimeOffset.UtcNow;
         var error = new SandboxError(
             SandboxErrorCode.PolicyDenied,
             "worker process isolation is not configured");
@@ -124,11 +136,12 @@ public sealed partial class SandboxHost
         audit.Write(new SandboxAuditEvent(
             runId,
             "WorkerIsolationUnavailable",
-            DateTimeOffset.UtcNow,
+            startedAt,
             false,
             ResourceId: $"module:{plan.ModuleHash}",
             ErrorCode: error.Code,
             Message: error.SafeMessage));
+        WriteFailedRunSummary(audit, runId, startedAt, plan, budget, options.Mode, error);
 
         return new SandboxExecutionResult
         {
@@ -141,5 +154,41 @@ public sealed partial class SandboxHost
             PlanHash = plan.PlanHash,
             PolicyHash = plan.PolicyHash
         };
+    }
+
+    private static SandboxAuditEvent VerifierFailureAudit(
+        ExecutionPlan plan,
+        SandboxRunId runId,
+        SandboxError error)
+        => new(
+            runId,
+            "VerifierFailure",
+            DateTimeOffset.UtcNow,
+            false,
+            ResourceId: $"module:{plan.ModuleHash}",
+            ErrorCode: error.Code,
+            Message: error.SafeMessage);
+
+    private static void WriteFailedRunSummary(
+        InMemoryAuditSink audit,
+        SandboxRunId runId,
+        DateTimeOffset startedAt,
+        ExecutionPlan plan,
+        ResourceMeter budget,
+        ExecutionMode mode,
+        SandboxError error)
+    {
+        var cacheStatus = "None";
+        audit.Write(new SandboxAuditEvent(
+            runId,
+            "RunSummary",
+            startedAt,
+            false,
+            ResourceId: $"module:{plan.ModuleHash}",
+            ErrorCode: error.Code,
+            Message: $"mode={mode.ToString().ToLowerInvariant()} cacheStatus={cacheStatus} " +
+                     $"plan={plan.PlanHash} policy={plan.PolicyHash} " +
+                     $"bindings={plan.BindingManifestHash} fuel={budget.FuelUsed}/{budget.Limits.MaxFuel}",
+            Fields: RunSummaryAuditFields.Create(plan, budget, mode, cacheStatus)));
     }
 }
