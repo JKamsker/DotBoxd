@@ -112,7 +112,7 @@ public sealed class PluginAnalyzerCompletenessTests
 
     [Theory]
     [InlineData("e.Missing == \"fire\"")]
-    [InlineData("e.Amount > 0L")]
+    [InlineData("e.Amount > 0")]
     public void Generator_rejects_csharp_that_cannot_lower_to_valid_ir(string shouldHandleExpression)
     {
         var (result, _, diagnostics) = RunGenerator($$"""

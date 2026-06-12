@@ -53,12 +53,10 @@ internal static class SafeIrExpressionModelFactory
                 operand,
                 SafeIrGenerationNames.ManifestTypes.Bool,
                 SafeIrGenerationNames.ManifestTypes.Bool),
-            SyntaxKind.UnaryMinusExpression => Unary(
+            SyntaxKind.UnaryMinusExpression => SafeIrNumericExpressionLowerer.Unary(
                 SafeIrGenerationNames.Helpers.Neg,
                 SafeIrGenerationNames.Operators.Minus,
-                operand,
-                SafeIrGenerationNames.ManifestTypes.Int,
-                SafeIrGenerationNames.ManifestTypes.Int),
+                operand),
             _ => Unsupported(unary)
         };
     }
@@ -95,33 +93,33 @@ internal static class SafeIrExpressionModelFactory
                 left,
                 right,
                 allocates),
-            SyntaxKind.GreaterThanOrEqualExpression => IntBinary(
+            SyntaxKind.GreaterThanOrEqualExpression => NumericBinary(
                 SafeIrGenerationNames.Helpers.Ge,
                 SafeIrGenerationNames.Operators.GreaterThanOrEqual,
                 left,
                 right,
-                SafeIrGenerationNames.ManifestTypes.Bool,
+                comparison: true,
                 allocates),
-            SyntaxKind.GreaterThanExpression => IntBinary(
+            SyntaxKind.GreaterThanExpression => NumericBinary(
                 SafeIrGenerationNames.Helpers.Gt,
                 SafeIrGenerationNames.Operators.GreaterThan,
                 left,
                 right,
-                SafeIrGenerationNames.ManifestTypes.Bool,
+                comparison: true,
                 allocates),
-            SyntaxKind.LessThanOrEqualExpression => IntBinary(
+            SyntaxKind.LessThanOrEqualExpression => NumericBinary(
                 SafeIrGenerationNames.Helpers.Le,
                 SafeIrGenerationNames.Operators.LessThanOrEqual,
                 left,
                 right,
-                SafeIrGenerationNames.ManifestTypes.Bool,
+                comparison: true,
                 allocates),
-            SyntaxKind.LessThanExpression => IntBinary(
+            SyntaxKind.LessThanExpression => NumericBinary(
                 SafeIrGenerationNames.Helpers.Lt,
                 SafeIrGenerationNames.Operators.LessThan,
                 left,
                 right,
-                SafeIrGenerationNames.ManifestTypes.Bool,
+                comparison: true,
                 allocates),
             SyntaxKind.LogicalAndExpression => BoolBinary(
                 SafeIrGenerationNames.Helpers.And,
@@ -136,33 +134,33 @@ internal static class SafeIrExpressionModelFactory
                 right,
                 allocates),
             SyntaxKind.AddExpression => AddBinary(left, right, allocates),
-            SyntaxKind.SubtractExpression => IntBinary(
+            SyntaxKind.SubtractExpression => NumericBinary(
                 SafeIrGenerationNames.Helpers.Sub,
                 SafeIrGenerationNames.Operators.Minus,
                 left,
                 right,
-                SafeIrGenerationNames.ManifestTypes.Int,
+                comparison: false,
                 allocates),
-            SyntaxKind.MultiplyExpression => IntBinary(
+            SyntaxKind.MultiplyExpression => NumericBinary(
                 SafeIrGenerationNames.Helpers.Mul,
                 SafeIrGenerationNames.Operators.Multiply,
                 left,
                 right,
-                SafeIrGenerationNames.ManifestTypes.Int,
+                comparison: false,
                 allocates),
-            SyntaxKind.DivideExpression => IntBinary(
+            SyntaxKind.DivideExpression => NumericBinary(
                 SafeIrGenerationNames.Helpers.Div,
                 SafeIrGenerationNames.Operators.Divide,
                 left,
                 right,
-                SafeIrGenerationNames.ManifestTypes.Int,
+                comparison: false,
                 allocates),
-            SyntaxKind.ModuloExpression => IntBinary(
+            SyntaxKind.ModuloExpression => NumericBinary(
                 SafeIrGenerationNames.Helpers.Mod,
                 SafeIrGenerationNames.Operators.Modulo,
                 left,
                 right,
-                SafeIrGenerationNames.ManifestTypes.Int,
+                comparison: false,
                 allocates),
             _ => Unsupported(binary)
         };
@@ -183,15 +181,16 @@ internal static class SafeIrExpressionModelFactory
 
         if (IsString(left) || IsString(right))
         {
-            throw new NotSupportedException("Operator '+' requires both operands to be strings or both operands to be ints.");
+            throw new NotSupportedException(
+                "Operator '+' requires both operands to be strings or matching numeric operands.");
         }
 
-        return IntBinary(
+        return NumericBinary(
             SafeIrGenerationNames.Helpers.Add,
             SafeIrGenerationNames.Operators.Add,
             left,
             right,
-            SafeIrGenerationNames.ManifestTypes.Int,
+            comparison: false,
             allocates);
     }
 
@@ -213,18 +212,14 @@ internal static class SafeIrExpressionModelFactory
             allocates);
     }
 
-    private static SafeIrExpressionModel IntBinary(
+    private static SafeIrExpressionModel NumericBinary(
         string helper,
         string symbol,
         SafeIrExpressionModel left,
         SafeIrExpressionModel right,
-        string resultType,
+        bool comparison,
         bool allocates)
-    {
-        RequireType(left, SafeIrGenerationNames.ManifestTypes.Int, $"Operator '{symbol}'");
-        RequireType(right, SafeIrGenerationNames.ManifestTypes.Int, $"Operator '{symbol}'");
-        return new SafeIrExpressionModel($"{helper}({left.Source}, {right.Source})", resultType, allocates);
-    }
+        => SafeIrNumericExpressionLowerer.Binary(helper, symbol, left, right, comparison, allocates);
 
     private static SafeIrExpressionModel BoolBinary(
         string helper,
