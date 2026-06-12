@@ -28,6 +28,7 @@ public sealed record SandboxAuditEvent(
     SandboxErrorCode? ErrorCode = null,
     string? Message = null,
     long? Bytes = null,
+    IReadOnlyDictionary<string, string>? Fields = null,
     long SequenceNumber = 0);
 
 public interface IAuditSink

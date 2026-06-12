@@ -7,7 +7,8 @@ using SafeIR.Verifier;
 
 public sealed class PersistentCompiledArtifactCache
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
         WriteIndented = true
     };
 
@@ -71,11 +72,13 @@ public sealed class PersistentCompiledArtifactCache
         CancellationToken cancellationToken)
     {
         var entryPath = EntryPath(cacheKey);
-        if (!Directory.Exists(entryPath)) {
+        if (!Directory.Exists(entryPath))
+        {
             return new CompiledCacheLookup(CompiledCacheStatus.Miss, null);
         }
 
-        try {
+        try
+        {
             var manifest = await ReadJsonAsync<ArtifactManifest>(Path.Combine(entryPath, "manifest.json"), cancellationToken)
                 .ConfigureAwait(false);
             PersistentCompiledArtifactCacheValidator.ValidateManifest(cacheKey, plan, entrypoint, manifest, policy);
@@ -87,7 +90,8 @@ public sealed class PersistentCompiledArtifactCache
             var assemblyBytes = await File.ReadAllBytesAsync(Path.Combine(entryPath, "module.dll"), cancellationToken)
                 .ConfigureAwait(false);
             var verification = await verifier.VerifyAsync(assemblyBytes, manifest, policy, cancellationToken).ConfigureAwait(false);
-            if (!verification.Succeeded) {
+            if (!verification.Succeeded)
+            {
                 throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.VerifierFailure, "cached artifact failed verification"));
             }
 
@@ -100,9 +104,10 @@ public sealed class PersistentCompiledArtifactCache
                 CompiledRuntimeFormKind.LoadedAssembly,
                 CompiledCacheStatus.Hit));
         }
-        catch (Exception ex) when (ex is IOException or JsonException or SandboxRuntimeException or UnauthorizedAccessException or ArgumentException) {
+        catch (Exception ex) when (ex is IOException or JsonException or SandboxRuntimeException or UnauthorizedAccessException or ArgumentException)
+        {
             Quarantine(entryPath);
-            return new CompiledCacheLookup(CompiledCacheStatus.Invalid, null);
+            return new CompiledCacheLookup(CompiledCacheStatus.Invalid, null, CacheInvalidReason(ex));
         }
     }
 
@@ -123,20 +128,23 @@ public sealed class PersistentCompiledArtifactCache
         var tempPath = Path.Combine(_rootDirectory, ".tmp-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempPath);
 
-        try {
-            await File.WriteAllBytesAsync(Path.Combine(tempPath, "module.dll"), assemblyBytes, cancellationToken)
-                .ConfigureAwait(false);
+        try
+        {
+            await WriteBytesAsync(Path.Combine(tempPath, "module.dll"), assemblyBytes, cancellationToken).ConfigureAwait(false);
             await WriteJsonAsync(Path.Combine(tempPath, "manifest.json"), manifest, cancellationToken).ConfigureAwait(false);
             await WriteJsonAsync(Path.Combine(tempPath, "verification.json"), verification, cancellationToken).ConfigureAwait(false);
             Directory.CreateDirectory(Path.GetDirectoryName(finalPath)!);
-            if (Directory.Exists(finalPath)) {
+            if (Directory.Exists(finalPath))
+            {
                 Directory.Delete(finalPath, recursive: true);
             }
 
             Directory.Move(tempPath, finalPath);
         }
-        finally {
-            if (Directory.Exists(tempPath)) {
+        finally
+        {
+            if (Directory.Exists(tempPath))
+            {
                 Directory.Delete(tempPath, recursive: true);
             }
         }
@@ -151,8 +159,18 @@ public sealed class PersistentCompiledArtifactCache
 
     private static async ValueTask WriteJsonAsync<T>(string path, T value, CancellationToken cancellationToken)
     {
-        await using var stream = File.Create(path);
+        await using var stream = DurableCreate(path);
         await JsonSerializer.SerializeAsync(stream, value, JsonOptions, cancellationToken).ConfigureAwait(false);
+        await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+        stream.Flush(flushToDisk: true);
+    }
+
+    private static async ValueTask WriteBytesAsync(string path, byte[] bytes, CancellationToken cancellationToken)
+    {
+        await using var stream = DurableCreate(path);
+        await stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+        await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+        stream.Flush(flushToDisk: true);
     }
 
     private async ValueTask<T> WithEntryLockAsync<T>(
@@ -162,13 +180,15 @@ public sealed class PersistentCompiledArtifactCache
     {
         var entryLock = _entryLocks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
         await entryLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try {
+        try
+        {
             await using var fileLock = await PersistentCacheEntryLock
                 .AcquireAsync(_rootDirectory, cacheKey, cancellationToken)
                 .ConfigureAwait(false);
             return await action().ConfigureAwait(false);
         }
-        finally {
+        finally
+        {
             entryLock.Release();
         }
     }
@@ -180,20 +200,23 @@ public sealed class PersistentCompiledArtifactCache
     {
         var entryLock = _entryLocks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
         await entryLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try {
+        try
+        {
             await using var fileLock = await PersistentCacheEntryLock
                 .AcquireAsync(_rootDirectory, cacheKey, cancellationToken)
                 .ConfigureAwait(false);
             await action().ConfigureAwait(false);
         }
-        finally {
+        finally
+        {
             entryLock.Release();
         }
     }
 
     private void Quarantine(string entryPath)
     {
-        if (!Directory.Exists(entryPath)) {
+        if (!Directory.Exists(entryPath))
+        {
             return;
         }
 
@@ -205,6 +228,28 @@ public sealed class PersistentCompiledArtifactCache
         Directory.Move(entryPath, target);
     }
 
+    private static FileStream DurableCreate(string path)
+        => new(
+            path,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 4096,
+            FileOptions.WriteThrough);
+
+    private static string CacheInvalidReason(Exception exception)
+        => exception switch
+        {
+            SandboxRuntimeException runtime => runtime.Error.Code.ToString(),
+            JsonException => "InvalidJson",
+            IOException => "IoFailure",
+            UnauthorizedAccessException => "Unauthorized",
+            ArgumentException => "InvalidMetadata",
+            _ => exception.GetType().Name
+        };
 }
 
-public sealed record CompiledCacheLookup(CompiledCacheStatus Status, CompiledArtifact? Artifact);
+public sealed record CompiledCacheLookup(
+    CompiledCacheStatus Status,
+    CompiledArtifact? Artifact,
+    string? InvalidReason = null);

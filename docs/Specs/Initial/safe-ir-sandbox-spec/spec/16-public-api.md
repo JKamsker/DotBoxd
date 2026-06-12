@@ -61,6 +61,7 @@ public sealed class SandboxHost
 public sealed record SandboxExecutionOptions
 {
     public ExecutionMode Mode { get; init; } = ExecutionMode.Auto;
+    public SandboxIsolation Isolation { get; init; } = SandboxIsolation.InProcess;
     public bool EnableDebugTrace { get; init; }
     public bool AllowFallbackToInterpreter { get; init; } = true;
     public bool RequireDeterministic { get; init; }
@@ -73,6 +74,12 @@ public enum ExecutionMode
     Compiled,
     Auto
 }
+
+public enum SandboxIsolation
+{
+    InProcess,
+    WorkerProcess
+}
 ```
 
 `Interpreted` means direct execution of the verified IR held by the `ExecutionPlan`; it must not
@@ -80,6 +87,10 @@ compile to IL, create a `DynamicMethod`, or load a DLL. `Compiled` is the only m
 generated IL, and only after the compiler has produced a trusted runtime form such as a gated
 `DynamicMethod` or a verified generated assembly. `Auto` starts as interpreted until a hotness/cache
 selector explicitly promotes a plan to compiled mode.
+
+`Isolation = WorkerProcess` means the caller requires an out-of-process worker boundary. If the
+host has not configured a worker client, execution must fail closed with a policy error rather than
+falling back to in-process execution.
 
 ### `SandboxExecutionResult`
 
@@ -115,6 +126,7 @@ public sealed class SandboxPolicyBuilder
     public SandboxPolicyBuilder GrantFileWrite(string root, long maxBytesPerRun);
     public SandboxPolicyBuilder GrantLogging();
     public SandboxPolicyBuilder WithFuel(long maxFuel);
+    public SandboxPolicyBuilder WithMaxLoopIterations(long iterations);
     public SandboxPolicyBuilder WithMaxHostCalls(int calls);
     public SandboxPolicyBuilder WithMaxCallDepth(int depth);
     public SandboxPolicyBuilder WithWallTime(TimeSpan maxWallTime);
@@ -132,7 +144,7 @@ public sealed class SandboxPolicyBuilder
 }
 ```
 
-`SandboxResourceUsage` reports fuel, allocation bytes, host calls, file/network bytes,
+`SandboxResourceUsage` reports fuel, loop iterations, allocation bytes, host calls, file/network bytes,
 log events, cumulative collection elements, and string bytes charged during the run.
 
 ## Binding registration
@@ -265,6 +277,9 @@ public interface ISandboxWorkerClient
         CancellationToken cancellationToken);
 }
 ```
+
+Until a host wires an `ISandboxWorkerClient`, `SandboxIsolation.WorkerProcess` is an explicit
+deny-only mode. Use it for high-risk tenants only when the worker boundary is actually configured.
 
 ## Error model
 

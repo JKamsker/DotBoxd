@@ -169,7 +169,7 @@ var minDamage = server.BindValue("minDamage", 100);
 
 server.Hooks.On<DamageEvent>()
     .Where((e, _) => e.Amount >= minDamage.Value)
-    .InvokeKernel((e, ctx) => ctx.Messages.Send(e.TargetId, "matched"));
+    .InvokeHostHandler((e, ctx) => ctx.Messages.Send(e.TargetId, "matched"));
 
 minDamage.Value = 250;
 ```

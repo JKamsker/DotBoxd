@@ -154,6 +154,11 @@ public sealed class SandboxPolicyBuilder
         _limits = _limits with { MaxFuel = maxFuel };
         return this;
     }
+    public SandboxPolicyBuilder WithMaxLoopIterations(long iterations)
+    {
+        _limits = _limits with { MaxLoopIterations = iterations };
+        return this;
+    }
     public SandboxPolicyBuilder WithMaxHostCalls(int calls)
     {
         _limits = _limits with { MaxHostCalls = calls };

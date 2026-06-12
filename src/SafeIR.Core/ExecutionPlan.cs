@@ -17,6 +17,7 @@ public sealed record ExecutionPlan(
 public sealed record SandboxExecutionOptions
 {
     public ExecutionMode Mode { get; init; } = ExecutionMode.Auto;
+    public SandboxIsolation Isolation { get; init; } = SandboxIsolation.InProcess;
     public bool EnableDebugTrace { get; init; }
     public bool AllowFallbackToInterpreter { get; init; } = true;
     public bool RequireDeterministic { get; init; }
@@ -29,6 +30,12 @@ public enum ExecutionMode
     Interpreted,
     Compiled,
     Auto
+}
+
+public enum SandboxIsolation
+{
+    InProcess,
+    WorkerProcess
 }
 
 public sealed record SandboxExecutionResult

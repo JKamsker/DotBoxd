@@ -13,7 +13,8 @@ internal static class BindingCallEmitter
         ILGenerator il,
         Action<Expression> emitExpression)
     {
-        if (!bindings.TryGet(call.Name, out var binding) || !IsCallBindingStub(binding)) {
+        if (!bindings.TryGet(call.Name, out var binding) || !IsCompiledPureBinding(binding))
+        {
             return false;
         }
 
@@ -24,8 +25,11 @@ internal static class BindingCallEmitter
         return true;
     }
 
-    private static bool IsCallBindingStub(BindingSignature binding)
+    private static bool IsCompiledPureBinding(BindingSignature binding)
         => binding.Compiled.Kind == "RuntimeStub" &&
            binding.Compiled.Type == typeof(CompiledRuntime).FullName &&
-           binding.Compiled.Method == nameof(CompiledRuntime.CallBinding);
+           binding.Compiled.Method == nameof(CompiledRuntime.CallBinding) &&
+           binding.RequiredCapability is null &&
+           binding.Safety is BindingSafety.PureHostFacade or BindingSafety.PureIntrinsic &&
+           (binding.Effects & ~(SandboxEffect.Cpu | SandboxEffect.Alloc)) == SandboxEffect.None;
 }

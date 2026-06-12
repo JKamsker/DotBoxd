@@ -179,7 +179,8 @@ internal static class GeneratedMethodFlowAnalyzer
     }
 
     private static bool IsFuelCharge(GeneratedInstruction instruction)
-        => instruction.CalledMember == GeneratedMethodShapeVerifier.ChargeFuelSignature;
+        => instruction.CalledMember == GeneratedMethodShapeVerifier.ChargeFuelSignature ||
+           instruction.CalledMember == GeneratedMethodShapeVerifier.ChargeLoopIterationSignature;
 
     private static List<GeneratedInstruction> ReadInstructions(MetadataReader reader, MethodBodyBlock body)
     {

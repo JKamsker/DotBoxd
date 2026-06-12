@@ -15,7 +15,8 @@ public sealed class VerifierAttackMatrixTests
             { "System.Diagnostics.Process.Start", ProcessStartAssembly, ["V-TYPE-FORBIDDEN", "V-MEMBER"] },
             { "System.Threading.Tasks.Task.Run", TaskRunAssembly, ["V-TYPE-FORBIDDEN", "V-MEMBER"] },
             { "calli opcode", CalliAssembly, ["V-OPCODE"] },
-            { "ldftn opcode", LdftnAssembly, ["V-OPCODE"] }
+            { "ldftn opcode", LdftnAssembly, ["V-OPCODE"] },
+            { "raw SandboxValue array allocation", RawSandboxValueArrayAssembly, ["V-OPCODE"] }
         };
 
     [Theory]
@@ -33,7 +34,8 @@ public sealed class VerifierAttackMatrixTests
     }
 
     private static byte[] HttpClientAssembly()
-        => VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             var method = DefineExecute(type);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Newobj, typeof(HttpClient).GetConstructor(Type.EmptyTypes)!);
@@ -42,7 +44,8 @@ public sealed class VerifierAttackMatrixTests
         });
 
     private static byte[] ProcessStartAssembly()
-        => VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             var method = DefineExecute(type);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldstr, "cmd.exe");
@@ -52,7 +55,8 @@ public sealed class VerifierAttackMatrixTests
         });
 
     private static byte[] TaskRunAssembly()
-        => VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             var method = DefineExecute(type);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldnull);
@@ -62,7 +66,8 @@ public sealed class VerifierAttackMatrixTests
         });
 
     private static byte[] CalliAssembly()
-        => VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             var method = DefineExecute(type);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldc_I4_0);
@@ -71,12 +76,24 @@ public sealed class VerifierAttackMatrixTests
         });
 
     private static byte[] LdftnAssembly()
-        => VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             var helper = type.DefineMethod("Fn_1", MethodAttributes.Private | MethodAttributes.Static, typeof(void), []);
             helper.GetILGenerator().Emit(OpCodes.Ret);
             var method = DefineExecute(type);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldftn, helper);
+            il.Emit(OpCodes.Pop);
+            ReturnInput(il);
+        });
+
+    private static byte[] RawSandboxValueArrayAssembly()
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
+            var method = DefineExecute(type);
+            var il = method.GetILGenerator();
+            il.Emit(OpCodes.Ldc_I4_0);
+            il.Emit(OpCodes.Newarr, typeof(SandboxValue));
             il.Emit(OpCodes.Pop);
             ReturnInput(il);
         });

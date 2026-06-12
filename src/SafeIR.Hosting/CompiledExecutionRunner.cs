@@ -24,6 +24,7 @@ internal static class CompiledExecutionRunner
         {
             budget.CheckDeadline();
             context.ChargeValue(input);
+            WriteCacheInvalidated(audit, runId, startedAt, plan, artifact);
             var value = artifact.Entrypoint(context, input);
             EnsureReturnType(plan, entrypoint, value);
             WriteSummary(audit, runId, startedAt, plan, artifact, budget, true, null);
@@ -79,17 +80,56 @@ internal static class CompiledExecutionRunner
         ResourceMeter budget,
         bool success,
         SandboxError? error)
-        => audit.Write(new SandboxAuditEvent(
+    {
+        var cacheStatus = artifact.CacheStatus.ToString();
+        audit.Write(new SandboxAuditEvent(
             runId,
             "RunSummary",
             startedAt,
             success,
             ResourceId: $"module:{plan.ModuleHash}",
             ErrorCode: error?.Code,
-            Message: $"mode=compiled runtimeForm={artifact.RuntimeForm} cacheStatus={artifact.CacheStatus} " +
+            Message: $"mode=compiled runtimeForm={artifact.RuntimeForm} cacheStatus={cacheStatus} " +
                      $"cacheKey={artifact.Manifest.CacheKey} artifact={artifact.ArtifactHash} " +
                      $"plan={plan.PlanHash} policy={plan.PolicyHash} bindings={plan.BindingManifestHash} " +
-                     $"fuel={budget.FuelUsed}/{budget.Limits.MaxFuel}"));
+                     $"fuel={budget.FuelUsed}/{budget.Limits.MaxFuel}",
+            Fields: RunSummaryAuditFields.Create(
+                plan,
+                budget,
+                ExecutionMode.Compiled,
+                cacheStatus,
+                artifact.RuntimeForm.ToString(),
+                artifact.Manifest.CacheKey,
+                artifact.ArtifactHash)));
+    }
+
+    private static void WriteCacheInvalidated(
+        InMemoryAuditSink audit,
+        SandboxRunId runId,
+        DateTimeOffset startedAt,
+        ExecutionPlan plan,
+        CompiledArtifact artifact)
+    {
+        if (artifact.CacheInvalidReason is null)
+        {
+            return;
+        }
+
+        audit.Write(new SandboxAuditEvent(
+            runId,
+            "CacheInvalidated",
+            startedAt,
+            true,
+            ResourceId: $"cache:{artifact.Manifest.CacheKey}",
+            Message: "compiled cache entry was quarantined and regenerated",
+            Fields: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["cacheKey"] = artifact.Manifest.CacheKey,
+                ["moduleHash"] = plan.ModuleHash,
+                ["planHash"] = plan.PlanHash,
+                ["reason"] = artifact.CacheInvalidReason
+            }));
+    }
 
     private static void EnsureReturnType(ExecutionPlan plan, string entrypoint, SandboxValue? value)
     {

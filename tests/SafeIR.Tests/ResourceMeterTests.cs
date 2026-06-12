@@ -38,4 +38,18 @@ public sealed class ResourceMeterTests
         Assert.Equal(3, meter.NetworkBytesWritten);
         Assert.Throws<SandboxRuntimeException>(() => meter.ChargeNetworkWrite(1));
     }
+
+    [Fact]
+    public void Resource_meter_enforces_loop_iteration_budget()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxLoopIterations: 2, MaxFuel: 100));
+
+        meter.ChargeLoopIteration(5);
+        meter.ChargeLoopIteration(5);
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() => meter.ChargeLoopIteration(5));
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
+        Assert.Equal(3, meter.LoopIterations);
+        Assert.Equal(10, meter.FuelUsed);
+    }
 }

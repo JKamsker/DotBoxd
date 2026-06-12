@@ -2,6 +2,7 @@ namespace SafeIR;
 
 public sealed record ResourceLimits(
     long MaxFuel = 100_000,
+    long MaxLoopIterations = 100_000,
     TimeSpan? MaxWallTime = null,
     long MaxAllocatedBytes = 1_048_576,
     int MaxCallDepth = 64,

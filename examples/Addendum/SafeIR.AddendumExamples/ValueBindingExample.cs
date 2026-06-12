@@ -15,7 +15,7 @@ internal static class ValueBindingExample
         server.Hooks.On<DamageEvent>()
             .Where((e, _) => e.DamageType == damageType.Value)
             .Where((e, _) => e.Amount >= minDamage.Value)
-            .InvokeKernel((e, ctx) => HandleDamage(e, ctx, "value binding matched"));
+            .InvokeHostHandler((e, ctx) => HandleDamage(e, ctx, "value binding matched"));
 
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
         damageType.Value = "ice";

@@ -82,5 +82,6 @@ public sealed class SandboxInterpreter : ISandboxInterpreter
             ErrorCode: error?.Code,
             Message: $"mode=interpreted cacheStatus=None plan={plan.PlanHash} " +
                      $"policy={plan.PolicyHash} bindings={plan.BindingManifestHash} " +
-                     $"fuel={budget.FuelUsed}/{budget.Limits.MaxFuel}"));
+                     $"fuel={budget.FuelUsed}/{budget.Limits.MaxFuel}",
+            Fields: RunSummaryAuditFields.Create(plan, budget, ExecutionMode.Interpreted, "None")));
 }

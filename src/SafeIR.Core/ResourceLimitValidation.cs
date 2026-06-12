@@ -6,6 +6,7 @@ public static class ResourceLimitValidation
     {
         ArgumentNullException.ThrowIfNull(limits);
         ThrowIfNegative(limits.MaxFuel, nameof(ResourceLimits.MaxFuel));
+        ThrowIfNegative(limits.MaxLoopIterations, nameof(ResourceLimits.MaxLoopIterations));
         ThrowIfNegative(limits.MaxAllocatedBytes, nameof(ResourceLimits.MaxAllocatedBytes));
         ThrowIfNegative(limits.MaxCallDepth, nameof(ResourceLimits.MaxCallDepth));
         ThrowIfNegative(limits.MaxHostCalls, nameof(ResourceLimits.MaxHostCalls));

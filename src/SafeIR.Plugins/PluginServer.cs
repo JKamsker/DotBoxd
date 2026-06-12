@@ -27,7 +27,8 @@ public sealed class PluginServer
         SandboxPolicy? defaultPolicy = null)
     {
         messages ??= new InMemoryPluginMessageSink();
-        var host = SandboxHost.Create(builder => {
+        var host = SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.AddLogBindings();
             builder.AddPluginMessageBindings(messages);
@@ -68,6 +69,9 @@ public sealed class PluginServer
         Kernels.Add(kernel);
         return kernel;
     }
+
+    public bool Uninstall(string pluginId)
+        => Kernels.Remove(pluginId);
 }
 
 public sealed class KernelRegistry
@@ -87,4 +91,15 @@ public sealed class KernelRegistry
 
     internal void Add(InstalledKernel kernel)
         => _kernels[kernel.Manifest.PluginId] = kernel;
+
+    internal bool Remove(string pluginId)
+    {
+        if (!_kernels.Remove(pluginId, out var kernel))
+        {
+            return false;
+        }
+
+        kernel.Revoke();
+        return true;
+    }
 }

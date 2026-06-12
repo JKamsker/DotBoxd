@@ -15,6 +15,7 @@ public sealed class InstalledKernel
     private readonly Dictionary<Type, object> _typedValues = [];
     private readonly Dictionary<Type, LiveUpdateMode> _updateModes = [];
     private readonly PendingLiveUpdateQueue _pendingLiveUpdates = new();
+    private int _revoked;
 
     internal InstalledKernel(SandboxHost host, ExecutionPlan plan, PluginPackage package)
     {
@@ -30,18 +31,24 @@ public sealed class InstalledKernel
     public PluginManifest Manifest { get; }
     public LiveSettingStore Value { get; }
     public Exception? LastAsyncUpdateError => _pendingLiveUpdates.LastError;
+    public bool IsRevoked => Volatile.Read(ref _revoked) != 0;
+
+    public void Revoke() => Volatile.Write(ref _revoked, 1);
 
     internal void RegisterStateSynchronizer(Type stateType, Action synchronize)
         => _stateSynchronizers.Add(new LiveStateSynchronizer(stateType, synchronize));
 
     internal TSettings GetTypedValue<TSettings>() where TSettings : class
     {
-        if (typeof(TSettings).IsInterface) {
+        if (typeof(TSettings).IsInterface)
+        {
             return Value.As<TSettings>();
         }
 
-        lock (_typedValueGate) {
-            if (_typedValues.TryGetValue(typeof(TSettings), out var value)) {
+        lock (_typedValueGate)
+        {
+            if (_typedValues.TryGetValue(typeof(TSettings), out var value))
+            {
                 return (TSettings)value;
             }
 
@@ -53,14 +60,16 @@ public sealed class InstalledKernel
 
     internal LiveUpdateMode GetUpdateMode(Type stateType)
     {
-        lock (_updateModeGate) {
+        lock (_updateModeGate)
+        {
             return _updateModes.TryGetValue(stateType, out var mode) ? mode : LiveUpdateMode.Sync;
         }
     }
 
     internal void SetUpdateMode(Type stateType, LiveUpdateMode mode)
     {
-        lock (_updateModeGate) {
+        lock (_updateModeGate)
+        {
             _updateModes[stateType] = mode;
         }
     }
@@ -74,12 +83,15 @@ public sealed class InstalledKernel
         CancellationToken cancellationToken = default)
     {
         await _executionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try {
+        try
+        {
+            PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
             var input = BuildInput(adapter, e);
             var result = await ExecutePreparedAsync(_entrypoints.ShouldHandle, input, cancellationToken).ConfigureAwait(false);
             return AsShouldHandleResult(result);
         }
-        finally {
+        finally
+        {
             _executionGate.Release();
         }
     }
@@ -90,11 +102,14 @@ public sealed class InstalledKernel
         CancellationToken cancellationToken = default)
     {
         await _executionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try {
+        try
+        {
+            PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
             var input = BuildInput(adapter, e);
             _ = await ExecutePreparedAsync(_entrypoints.Handle, input, cancellationToken).ConfigureAwait(false);
         }
-        finally {
+        finally
+        {
             _executionGate.Release();
         }
     }
@@ -105,14 +120,22 @@ public sealed class InstalledKernel
         CancellationToken cancellationToken = default)
     {
         await _executionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try {
+        try
+        {
+            if (IsRevoked)
+            {
+                return;
+            }
+
             var input = BuildInput(adapter, e);
             var result = await ExecutePreparedAsync(_entrypoints.ShouldHandle, input, cancellationToken).ConfigureAwait(false);
-            if (AsShouldHandleResult(result)) {
+            if (AsShouldHandleResult(result))
+            {
                 _ = await ExecutePreparedAsync(_entrypoints.Handle, input, cancellationToken).ConfigureAwait(false);
             }
         }
-        finally {
+        finally
+        {
             _executionGate.Release();
         }
     }
@@ -122,16 +145,21 @@ public sealed class InstalledKernel
         bool atomic = false,
         CancellationToken cancellationToken = default)
     {
-        if (atomic) {
+        if (atomic)
+        {
             await _executionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        try {
+        try
+        {
+            PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
             Value.SetMany(values);
             RefreshTypedValuesFromStore();
         }
-        finally {
-            if (atomic) {
+        finally
+        {
+            if (atomic)
+            {
                 _executionGate.Release();
             }
         }
@@ -144,12 +172,16 @@ public sealed class InstalledKernel
         CancellationToken cancellationToken) where TState : class
     {
         ArgumentNullException.ThrowIfNull(modify);
-        if (atomic) {
+        if (atomic)
+        {
             await _executionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        try {
-            if (typeof(TState).IsInterface) {
+        try
+        {
+            PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
+            if (typeof(TState).IsInterface)
+            {
                 var draftStore = Value.Copy(Manifest.LiveSettings);
                 var draft = draftStore.As<TState>();
                 modify(draft);
@@ -164,8 +196,10 @@ public sealed class InstalledKernel
             LiveKernelValueFactory.CopyLiveProperties(classDraft, current);
             RefreshTypedValuesFromStore();
         }
-        finally {
-            if (atomic) {
+        finally
+        {
+            if (atomic)
+            {
                 _executionGate.Release();
             }
         }
@@ -173,7 +207,8 @@ public sealed class InstalledKernel
 
     private static bool AsShouldHandleResult(SandboxValue result)
     {
-        if (result is not BoolValue handled) {
+        if (result is not BoolValue handled)
+        {
             throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "kernel ShouldHandle returned a non-bool value"));
         }
 
@@ -181,19 +216,7 @@ public sealed class InstalledKernel
     }
 
     internal void ValidateFor<TEvent>(IPluginEventAdapter<TEvent> adapter)
-    {
-        if (!Manifest.Subscriptions.Any(s => string.Equals(s.Event, adapter.EventName, StringComparison.Ordinal))) {
-            throw new SandboxValidationException([
-                new SandboxDiagnostic("SGP031", $"Plugin '{Manifest.PluginId}' is not subscribed to event '{adapter.EventName}'.")
-            ]);
-        }
-
-        var expected = adapter.Parameters
-            .Concat(Manifest.LiveSettings.Select(s => new Parameter(s.Name, LiveSettingTypeConverter.ToSandboxType(s.Type))))
-            .ToArray();
-        ValidateFunction(_entrypoints.ShouldHandle, SandboxType.Bool, expected);
-        ValidateFunction(_entrypoints.Handle, SandboxType.Unit, expected);
-    }
+        => KernelEntrypointValidator.Validate(Manifest, _plan, _entrypoints, adapter);
 
     private async ValueTask<SandboxValue> ExecutePreparedAsync(
         string entrypoint,
@@ -207,7 +230,8 @@ public sealed class InstalledKernel
                 new SandboxExecutionOptions { Mode = Manifest.Mode },
                 cancellationToken)
             .ConfigureAwait(false);
-        if (!result.Succeeded) {
+        if (!result.Succeeded)
+        {
             throw new SandboxRuntimeException(result.Error ?? new SandboxError(SandboxErrorCode.HostFailure, "kernel execution failed"));
         }
 
@@ -220,7 +244,8 @@ public sealed class InstalledKernel
         var values = adapter.ToSandboxValues(e)
             .Concat(Value.ToSandboxValues(Manifest.LiveSettings))
             .ToArray();
-        foreach (var update in deferredUpdates) {
+        foreach (var update in deferredUpdates)
+        {
             _pendingLiveUpdates.Enqueue(update);
         }
 
@@ -229,10 +254,13 @@ public sealed class InstalledKernel
 
     private void RefreshTypedValuesFromStore()
     {
-        lock (_typedValueGate) {
-            foreach (var value in _typedValues.Values) {
+        lock (_typedValueGate)
+        {
+            foreach (var value in _typedValues.Values)
+            {
                 var type = value.GetType();
-                if (type.IsInterface) {
+                if (type.IsInterface)
+                {
                     continue;
                 }
 
@@ -244,9 +272,11 @@ public sealed class InstalledKernel
     private List<Action> SynchronizeLiveStateForInput()
     {
         var deferredUpdates = new List<Action>();
-        foreach (var synchronize in _stateSynchronizers) {
+        foreach (var synchronize in _stateSynchronizers)
+        {
             var mode = GetUpdateMode(synchronize.StateType);
-            if ((mode & LiveUpdateMode.AsyncSet) == LiveUpdateMode.AsyncSet) {
+            if ((mode & LiveUpdateMode.AsyncSet) == LiveUpdateMode.AsyncSet)
+            {
                 deferredUpdates.Add(synchronize.Synchronize);
                 continue;
             }
@@ -256,29 +286,6 @@ public sealed class InstalledKernel
 
         return deferredUpdates;
     }
-
-    private void ValidateFunction(string functionId, SandboxType returnType, IReadOnlyList<Parameter> expected)
-    {
-        var function = _plan.Module.Functions.FirstOrDefault(f => string.Equals(f.Id, functionId, StringComparison.Ordinal));
-        if (function is null || !function.IsEntrypoint) {
-            throw new SandboxValidationException([
-                new SandboxDiagnostic("SGP032", $"Kernel entrypoint '{functionId}' is missing or not public.")
-            ]);
-        }
-
-        if (function.ReturnType != returnType || function.Parameters.Count != expected.Count) {
-            throw SignatureError(functionId);
-        }
-
-        for (var i = 0; i < expected.Count; i++) {
-            if (function.Parameters[i].Type != expected[i].Type) {
-                throw SignatureError(functionId);
-            }
-        }
-    }
-
-    private SandboxValidationException SignatureError(string functionId)
-        => new([new SandboxDiagnostic("SGP033", $"Kernel entrypoint '{functionId}' does not match the hook event and live settings.")]);
 
     private sealed record LiveStateSynchronizer(Type StateType, Action Synchronize);
 }

@@ -7,7 +7,7 @@ using SafeIR.Verifier;
 
 public static class CacheKeyBuilder
 {
-    public const string CompilerVersion = "safe-ir-compiler-7";
+    public const string CompilerVersion = "safe-ir-compiler-9";
     public const string TypeSystemVersion = "safe-ir-type-system-2";
     public const string EffectAnalysisVersion = "safe-ir-effect-analysis-2";
     public const string TargetFramework = "net10.0";

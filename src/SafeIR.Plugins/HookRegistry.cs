@@ -25,7 +25,8 @@ public sealed class HookRegistry
 
     public HookPipeline<TEvent> On<TEvent>(IPluginEventAdapter<TEvent> adapter)
     {
-        if (_pipelines.TryGetValue(typeof(TEvent), out var existing)) {
+        if (_pipelines.TryGetValue(typeof(TEvent), out var existing))
+        {
             return (HookPipeline<TEvent>)existing;
         }
 
@@ -36,7 +37,8 @@ public sealed class HookRegistry
 
     public async ValueTask PublishAsync<TEvent>(TEvent e, CancellationToken cancellationToken = default)
     {
-        if (_pipelines.TryGetValue(typeof(TEvent), out var pipeline)) {
+        if (_pipelines.TryGetValue(typeof(TEvent), out var pipeline))
+        {
             await ((HookPipeline<TEvent>)pipeline).PublishAsync(e, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -69,17 +71,26 @@ public sealed class HookPipeline<TEvent>
         return this;
     }
 
-    public HookPipeline<TEvent> InvokeKernel(Func<TEvent, HookContext, ValueTask> handler)
+    public HookPipeline<TEvent> InvokeHostHandler(Func<TEvent, HookContext, ValueTask> handler)
     {
         _handlers.Add(handler);
         return this;
     }
 
-    public HookPipeline<TEvent> InvokeKernel(Action<TEvent, HookContext> handler)
-        => InvokeKernel((e, context) => {
+    public HookPipeline<TEvent> InvokeHostHandler(Action<TEvent, HookContext> handler)
+        => InvokeHostHandler((e, context) =>
+        {
             handler(e, context);
             return ValueTask.CompletedTask;
         });
+
+    [Obsolete("Delegate handlers are host-owned code, not plugin kernels. Use UseKernel for plugins or InvokeHostHandler for explicit host handlers.", error: true)]
+    public HookPipeline<TEvent> InvokeKernel(Func<TEvent, HookContext, ValueTask> handler)
+        => InvokeHostHandler(handler);
+
+    [Obsolete("Delegate handlers are host-owned code, not plugin kernels. Use UseKernel for plugins or InvokeHostHandler for explicit host handlers.", error: true)]
+    public HookPipeline<TEvent> InvokeKernel(Action<TEvent, HookContext> handler)
+        => InvokeHostHandler(handler);
 
     public HookPipeline<TEvent> UseKernel(InstalledKernel kernel)
     {
@@ -94,13 +105,16 @@ public sealed class HookPipeline<TEvent>
     internal async ValueTask PublishAsync(TEvent e, CancellationToken cancellationToken)
     {
         var context = new HookContext(_messages, cancellationToken);
-        foreach (var filter in _filters) {
-            if (!await filter(e, context).ConfigureAwait(false)) {
+        foreach (var filter in _filters)
+        {
+            if (!await filter(e, context).ConfigureAwait(false))
+            {
                 return;
             }
         }
 
-        foreach (var handler in _handlers) {
+        foreach (var handler in _handlers)
+        {
             await handler(e, context).ConfigureAwait(false);
         }
     }

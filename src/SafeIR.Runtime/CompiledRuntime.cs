@@ -6,6 +6,9 @@ public static class CompiledRuntime
 {
     public static void ChargeFuel(SandboxContext context, int amount) => context.ChargeFuel(amount);
 
+    public static void ChargeLoopIteration(SandboxContext context, int fuelAmount)
+        => context.ChargeLoopIteration(fuelAmount);
+
     public static void EnterCall(SandboxContext context) => context.EnterCall();
 
     public static void ExitCall(SandboxContext context) => context.ExitCall();
@@ -238,6 +241,18 @@ public static class CompiledRuntime
 
     public static SandboxValue CallBinding(SandboxContext context, string id, SandboxValue[] args)
         => CompiledBindingDispatcher.CallBinding(context, id, args);
+
+    public static SandboxValue[] CreateValueArray(SandboxContext context, int count)
+    {
+        if (count < 0)
+        {
+            throw InvalidInput("array length must be non-negative");
+        }
+
+        context.ChargeFuel(Math.Max(1, count));
+        context.ChargeAllocation(Math.Max(1, count) * 8);
+        return new SandboxValue[count];
+    }
 
     private static ListValue AsList(SandboxValue value)
     {

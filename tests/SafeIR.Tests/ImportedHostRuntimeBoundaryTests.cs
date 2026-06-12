@@ -16,7 +16,8 @@ public sealed class ImportedHostRuntimeBoundaryTests
     public async Task Cancellation_is_observed_after_straight_line_statement(ExecutionMode mode)
     {
         using var cancellation = new CancellationTokenSource();
-        var host = SandboxHost.Create(builder => {
+        var host = SandboxHost.Create(builder =>
+        {
             builder.AddBinding(CancelBinding(cancellation.Cancel));
             builder.UseInterpreter();
             builder.UseCompilerIfAvailable();
@@ -28,7 +29,8 @@ public sealed class ImportedHostRuntimeBoundaryTests
             plan,
             "main",
             SandboxValue.Unit,
-            new SandboxExecutionOptions {
+            new SandboxExecutionOptions
+            {
                 Mode = mode,
                 AllowFallbackToInterpreter = false
             },
@@ -53,7 +55,8 @@ public sealed class ImportedHostRuntimeBoundaryTests
             plan,
             "main",
             SandboxValue.Unit,
-            new SandboxExecutionOptions {
+            new SandboxExecutionOptions
+            {
                 Mode = mode,
                 AllowFallbackToInterpreter = false
             },
@@ -69,7 +72,8 @@ public sealed class ImportedHostRuntimeBoundaryTests
     public async Task Cancellation_is_observed_at_loop_back_edge(ExecutionMode mode)
     {
         using var cancellation = new CancellationTokenSource();
-        var host = SandboxHost.Create(builder => {
+        var host = SandboxHost.Create(builder =>
+        {
             builder.AddBinding(CancelBinding(cancellation.Cancel));
             builder.UseInterpreter();
             builder.UseCompilerIfAvailable();
@@ -81,7 +85,8 @@ public sealed class ImportedHostRuntimeBoundaryTests
             plan,
             "main",
             SandboxValue.Unit,
-            new SandboxExecutionOptions {
+            new SandboxExecutionOptions
+            {
                 Mode = mode,
                 AllowFallbackToInterpreter = false
             },
@@ -97,7 +102,8 @@ public sealed class ImportedHostRuntimeBoundaryTests
     public async Task Host_binding_base_cost_is_charged_before_dispatch(ExecutionMode mode)
     {
         var calls = 0;
-        var host = SandboxHost.Create(builder => {
+        var host = SandboxHost.Create(builder =>
+        {
             builder.AddBinding(CostlyBinding(() => calls++));
             builder.UseInterpreter();
             builder.UseCompilerIfAvailable();
@@ -111,7 +117,8 @@ public sealed class ImportedHostRuntimeBoundaryTests
             plan,
             "main",
             SandboxValue.Unit,
-            new SandboxExecutionOptions {
+            new SandboxExecutionOptions
+            {
                 Mode = mode,
                 AllowFallbackToInterpreter = false
             });
@@ -133,7 +140,8 @@ public sealed class ImportedHostRuntimeBoundaryTests
             plan,
             "main",
             SandboxValue.Unit,
-            new SandboxExecutionOptions {
+            new SandboxExecutionOptions
+            {
                 Mode = ExecutionMode.Compiled,
                 AllowFallbackToInterpreter = false
             });
@@ -154,7 +162,8 @@ public sealed class ImportedHostRuntimeBoundaryTests
             BindingCostModel.Fixed(1),
             AuditLevel.None,
             BindingSafety.PureHostFacade,
-            (_, _, _) => {
+            (_, _, _) =>
+            {
                 cancel();
                 return ValueTask.FromResult(SandboxValue.Unit);
             },
@@ -171,7 +180,8 @@ public sealed class ImportedHostRuntimeBoundaryTests
             BindingCostModel.Fixed(10),
             AuditLevel.None,
             BindingSafety.PureHostFacade,
-            (_, _, _) => {
+            (_, _, _) =>
+            {
                 invoke();
                 return ValueTask.FromResult(SandboxValue.FromInt32(1));
             },

@@ -76,10 +76,34 @@ public sealed class CustomEffectBindingTests
         Assert.Equal(7, observed);
     }
 
+    [Fact]
+    public async Task Compiled_mode_rejects_capability_gated_binding_even_when_effects_are_pure()
+    {
+        var observed = 0;
+        var host = HostWithBinding(CapabilityGatedPureBinding(() => observed++));
+        var module = await host.ParseJsonAsync(CapabilityGatedPureModule());
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create().Grant("game.write", new { }).WithFuel(1_000).Build());
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.Unit,
+            new SandboxExecutionOptions { Mode = ExecutionMode.Compiled, AllowFallbackToInterpreter = false });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.ValidationError, result.Error!.Code);
+        Assert.Equal(0, observed);
+    }
+
     private static SandboxHost HostWithCounterBinding(Action<int> record)
+        => HostWithBinding(CounterBinding(record));
+
+    private static SandboxHost HostWithBinding(BindingDescriptor binding)
         => SandboxHost.Create(builder =>
         {
-            builder.AddBinding(CounterBinding(record));
+            builder.AddBinding(binding);
             builder.UseInterpreter();
             builder.UseCompilerIfAvailable();
         });
@@ -120,6 +144,25 @@ public sealed class CustomEffectBindingTests
             CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)),
             NoParameterGrant);
 
+    private static BindingDescriptor CapabilityGatedPureBinding(Action record)
+        => new(
+            "app.gatedPure",
+            SemVersion.One,
+            [],
+            SandboxType.I32,
+            SandboxEffect.Cpu,
+            "game.write",
+            BindingCostModel.Fixed(1),
+            AuditLevel.None,
+            BindingSafety.PureHostFacade,
+            (_, _, _) =>
+            {
+                record();
+                return ValueTask.FromResult(SandboxValue.FromInt32(7));
+            },
+            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)),
+            NoParameterGrant);
+
     private static void NoParameterGrant(CapabilityGrant grant, ICollection<SandboxDiagnostic> diagnostics)
     {
         foreach (var key in grant.Parameters.Keys)
@@ -142,6 +185,23 @@ public sealed class CustomEffectBindingTests
               "parameters": [],
               "returnType": "I32",
               "body": [{ "op": "return", "value": { "call": "app.counter", "args": [{ "i32": 7 }] } }]
+            }
+          ]
+        }
+        """;
+
+    private static string CapabilityGatedPureModule()
+        => """
+        {
+          "id": "capability-gated-pure-binding",
+          "version": "1.0.0",
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [],
+              "returnType": "I32",
+              "body": [{ "op": "return", "value": { "call": "app.gatedPure", "args": [] } }]
             }
           ]
         }

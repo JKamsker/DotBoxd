@@ -24,6 +24,8 @@ public enum CompiledCacheStatus
 
 public sealed record CompiledArtifact
 {
+    private byte[] _assemblyBytes = [];
+
     public CompiledArtifact(
         byte[] assemblyBytes,
         string assemblyHash,
@@ -31,7 +33,8 @@ public sealed record CompiledArtifact
         VerificationResult verification,
         SandboxCompiledEntrypoint entrypoint,
         CompiledRuntimeFormKind runtimeForm,
-        CompiledCacheStatus cacheStatus = CompiledCacheStatus.None)
+        CompiledCacheStatus cacheStatus = CompiledCacheStatus.None,
+        string? cacheInvalidReason = null)
     {
         ArgumentNullException.ThrowIfNull(assemblyBytes);
         ArgumentNullException.ThrowIfNull(assemblyHash);
@@ -39,47 +42,58 @@ public sealed record CompiledArtifact
         ArgumentNullException.ThrowIfNull(verification);
         ArgumentNullException.ThrowIfNull(entrypoint);
 
-        if (!Enum.IsDefined(runtimeForm)) {
+        if (!Enum.IsDefined(runtimeForm))
+        {
             throw new ArgumentOutOfRangeException(nameof(runtimeForm), runtimeForm, "Compiled runtime form is not supported.");
         }
 
-        if (!verification.Succeeded) {
+        if (!verification.Succeeded)
+        {
             throw new ArgumentException("Compiled runtime form must be verified or gated before execution.", nameof(verification));
         }
 
         if (!StringComparer.Ordinal.Equals(assemblyHash, verification.AssemblyHash) ||
-            !StringComparer.Ordinal.Equals(assemblyHash, manifest.AssemblyHash)) {
+            !StringComparer.Ordinal.Equals(assemblyHash, manifest.AssemblyHash))
+        {
             throw new ArgumentException("Compiled artifact hash must match its manifest and verification result.", nameof(assemblyHash));
         }
 
-        if (runtimeForm == CompiledRuntimeFormKind.DynamicMethod && assemblyBytes.Length != 0) {
+        if (runtimeForm == CompiledRuntimeFormKind.DynamicMethod && assemblyBytes.Length != 0)
+        {
             throw new ArgumentException(
                 "DynamicMethod artifacts expose only the created delegate, not assembly bytes.",
                 nameof(AssemblyBytes));
         }
 
-        if (runtimeForm == CompiledRuntimeFormKind.LoadedAssembly && assemblyBytes.Length == 0) {
+        if (runtimeForm == CompiledRuntimeFormKind.LoadedAssembly && assemblyBytes.Length == 0)
+        {
             throw new ArgumentException(
                 "LoadedAssembly artifacts must include the verified assembly image used to create the delegate.",
                 nameof(AssemblyBytes));
         }
 
-        AssemblyBytes = assemblyBytes.ToArray();
+        AssemblyBytes = assemblyBytes;
         AssemblyHash = assemblyHash;
         Manifest = manifest;
         Verification = verification;
         Entrypoint = entrypoint;
         RuntimeForm = runtimeForm;
         CacheStatus = cacheStatus;
+        CacheInvalidReason = cacheInvalidReason;
     }
 
-    public byte[] AssemblyBytes { get; init; }
+    public byte[] AssemblyBytes
+    {
+        get => _assemblyBytes.ToArray();
+        init => _assemblyBytes = value?.ToArray() ?? throw new ArgumentNullException(nameof(value));
+    }
     public string AssemblyHash { get; init; }
     public ArtifactManifest Manifest { get; init; }
     public VerificationResult Verification { get; init; }
     public SandboxCompiledEntrypoint Entrypoint { get; init; }
     public CompiledRuntimeFormKind RuntimeForm { get; init; }
     public CompiledCacheStatus CacheStatus { get; init; }
+    public string? CacheInvalidReason { get; init; }
     public string ArtifactHash => AssemblyHash;
 }
 

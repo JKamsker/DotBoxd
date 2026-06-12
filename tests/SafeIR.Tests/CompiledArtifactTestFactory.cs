@@ -80,8 +80,9 @@ internal static class CompiledArtifactTestFactory
         {
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldstr, bindingId);
+            il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldc_I4_0);
-            il.Emit(OpCodes.Newarr, typeof(SandboxValue));
+            il.Emit(OpCodes.Call, RuntimeMethod(nameof(CompiledRuntime.CreateValueArray)));
             il.Emit(OpCodes.Call, RuntimeMethod(nameof(CompiledRuntime.CallBinding)));
         });
 

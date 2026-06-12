@@ -31,21 +31,23 @@ internal sealed class MethodEmitter
 
     public void Emit()
     {
-        EmitEnterCall();
-        EmitFuel(1);
+        CompiledMeterEmitter.EnterCall(_il);
+        CompiledMeterEmitter.Fuel(_il, 1);
         EmitParameters();
-        foreach (var statement in _function.Body) {
+        foreach (var statement in _function.Body)
+        {
             EmitStatement(statement);
         }
 
-        EmitExitCall();
+        CompiledMeterEmitter.ExitCall(_il);
         _il.Emit(OpCodes.Ldnull);
         _il.Emit(OpCodes.Ret);
     }
 
     private void EmitParameters()
     {
-        for (var i = 0; i < _function.Parameters.Count; i++) {
+        for (var i = 0; i < _function.Parameters.Count; i++)
+        {
             var local = Declare(_function.Parameters[i].Name);
             _il.Emit(OpCodes.Ldarg, i + 1);
             _il.Emit(OpCodes.Stloc, local);
@@ -54,8 +56,9 @@ internal sealed class MethodEmitter
 
     private void EmitStatement(Statement statement)
     {
-        EmitFuel(1);
-        switch (statement) {
+        CompiledMeterEmitter.Fuel(_il, 1);
+        switch (statement)
+        {
             case AssignmentStatement assignment:
                 EmitExpression(assignment.Value);
                 _il.Emit(OpCodes.Stloc, Declare(assignment.Name));
@@ -113,7 +116,7 @@ internal sealed class MethodEmitter
         _il.Emit(OpCodes.Ldloc, index);
         _il.Emit(OpCodes.Ldloc, end);
         _il.Emit(OpCodes.Bge, finishLabel);
-        EmitFuel(5);
+        CompiledMeterEmitter.LoopIteration(_il, 5);
         _il.Emit(OpCodes.Ldloc, index);
         _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.I32)));
         _il.Emit(OpCodes.Stloc, Declare(range.LocalName));
@@ -134,7 +137,7 @@ internal sealed class MethodEmitter
         EmitExpression(loop.Condition);
         _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AsBool)));
         _il.Emit(OpCodes.Brfalse, finishLabel);
-        EmitFuel(5);
+        CompiledMeterEmitter.LoopIteration(_il, 5);
         loop.Body.ToList().ForEach(EmitStatement);
         _il.Emit(OpCodes.Br, startLabel);
         _il.MarkLabel(finishLabel);
@@ -142,8 +145,9 @@ internal sealed class MethodEmitter
 
     private void EmitExpression(Expression expression)
     {
-        EmitFuel(1);
-        switch (expression) {
+        CompiledMeterEmitter.Fuel(_il, 1);
+        switch (expression)
+        {
             case LiteralExpression literal:
                 EmitLiteral(literal.Value);
                 break;
@@ -166,7 +170,8 @@ internal sealed class MethodEmitter
 
     private void EmitLiteral(SandboxValue value)
     {
-        switch (value) {
+        switch (value)
+        {
             case I32Value i32:
                 EmitInt32(_il, i32.Value);
                 _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.I32)));
@@ -192,7 +197,8 @@ internal sealed class MethodEmitter
     private void EmitUnary(UnaryExpression unary)
     {
         EmitExpression(unary.Operand);
-        var method = unary.Operator switch {
+        var method = unary.Operator switch
+        {
             "!" => nameof(CompiledRuntime.NotBool),
             "-" => nameof(CompiledRuntime.NegI32),
             _ => throw Unsupported("unary operator not supported by compiler")
@@ -202,14 +208,16 @@ internal sealed class MethodEmitter
 
     private void EmitBinary(BinaryExpression binary)
     {
-        if (binary.Operator is "&&" or "||") {
+        if (binary.Operator is "&&" or "||")
+        {
             ShortCircuitBooleanEmitter.Emit(binary, _il, _bindings, _functionAnalysis, EmitExpression);
             return;
         }
 
         EmitExpression(binary.Left);
         EmitExpression(binary.Right);
-        var method = binary.Operator switch {
+        var method = binary.Operator switch
+        {
             "+" => nameof(CompiledRuntime.AddI32),
             "-" => nameof(CompiledRuntime.SubI32),
             "*" => nameof(CompiledRuntime.MulI32),
@@ -228,16 +236,19 @@ internal sealed class MethodEmitter
 
     private void EmitCall(CallExpression call)
     {
-        if (PureBindingCallEmitter.TryEmit(call, _il, EmitExpression)) {
+        if (PureBindingCallEmitter.TryEmit(call, _il, EmitExpression))
+        {
             return;
         }
 
-        if (_functions.TryGetValue(call.Name, out var method)) {
+        if (_functions.TryGetValue(call.Name, out var method))
+        {
             EmitFunctionCall(call, method);
             return;
         }
 
-        if (!BindingCallEmitter.TryEmit(call, _bindings, _il, EmitExpression)) {
+        if (!BindingCallEmitter.TryEmit(call, _bindings, _il, EmitExpression))
+        {
             throw Unsupported($"call '{call.Name}' is not supported by compiler");
         }
     }
@@ -245,7 +256,8 @@ internal sealed class MethodEmitter
     private void EmitFunctionCall(CallExpression call, MethodInfo method)
     {
         _il.Emit(OpCodes.Ldarg_0);
-        foreach (var argument in call.Arguments) {
+        foreach (var argument in call.Arguments)
+        {
             EmitExpression(argument);
         }
 
@@ -254,7 +266,8 @@ internal sealed class MethodEmitter
 
     private LocalBuilder Declare(string name)
     {
-        if (_locals.TryGetValue(name, out var existing)) {
+        if (_locals.TryGetValue(name, out var existing))
+        {
             return existing;
         }
 
@@ -263,30 +276,11 @@ internal sealed class MethodEmitter
         return local;
     }
 
-    private void EmitFuel(int amount)
-    {
-        _il.Emit(OpCodes.Ldarg_0);
-        EmitInt32(_il, amount);
-        _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ChargeFuel)));
-    }
-
-    private void EmitEnterCall()
-    {
-        _il.Emit(OpCodes.Ldarg_0);
-        _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.EnterCall)));
-    }
-
-    private void EmitExitCall()
-    {
-        _il.Emit(OpCodes.Ldarg_0);
-        _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ExitCall)));
-    }
-
     private void EmitReturnValue()
     {
         var value = _il.DeclareLocal(typeof(SandboxValue));
         _il.Emit(OpCodes.Stloc, value);
-        EmitExitCall();
+        CompiledMeterEmitter.ExitCall(_il);
         _il.Emit(OpCodes.Ldloc, value);
         EmitSandboxType(_il, _function.ReturnType);
         _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.RequireValueType)));

@@ -28,9 +28,16 @@ jobs:
       - name: Test
         run: dotnet test SafeIR.slnx --configuration Release --no-build
 
+      - name: Security boundary tests
+        run: dotnet test tests/SafeIR.Tests/SafeIR.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~SafeFileSystemTests|FullyQualifiedName~PathUriLiteralValidationTests|FullyQualifiedName~CompiledArtifactGuardTests|FullyQualifiedName~VerifierAttackMatrixTests"
+
       - name: Check C# file lengths
         shell: pwsh
         run: ./scripts/check-csharp-file-lines.ps1
+
+      - name: Check release readiness checklist
+        shell: pwsh
+        run: ./scripts/check-release-readiness.ps1
 
       - name: Pack
         run: dotnet pack SafeIR.slnx --configuration Release --no-build --output artifacts/packages

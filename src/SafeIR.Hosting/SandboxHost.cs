@@ -54,6 +54,11 @@ public sealed partial class SandboxHost
     {
         options ??= new SandboxExecutionOptions();
         ExecutionPlanGuard.EnsurePrepared(plan, _bindings, _planSigningKey);
+        if (options.Isolation == SandboxIsolation.WorkerProcess)
+        {
+            return WorkerIsolationUnavailableResult(plan, options);
+        }
+
         if (options.RequireDeterministic && !plan.Policy.Deterministic)
         {
             return DeterminismRequiredResult(plan, options);

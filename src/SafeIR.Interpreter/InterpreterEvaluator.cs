@@ -92,7 +92,7 @@ internal sealed class InterpreterEvaluator
     {
         while (((BoolValue)await EvaluateAsync(statement.Condition, frame).ConfigureAwait(false)).Value)
         {
-            _context.ChargeFuel(5);
+            _context.ChargeLoopIteration(5);
             var value = await ExecuteBlockAsync(statement.Body, frame).ConfigureAwait(false);
             if (value is not null)
             {
@@ -109,7 +109,7 @@ internal sealed class InterpreterEvaluator
         var end = ((I32Value)await EvaluateAsync(statement.End, frame).ConfigureAwait(false)).Value;
         for (var i = start; i < end; i++)
         {
-            _context.ChargeFuel(5);
+            _context.ChargeLoopIteration(5);
             frame.Locals[statement.LocalName] = SandboxValue.FromInt32(i);
             var value = await ExecuteBlockAsync(statement.Body, frame).ConfigureAwait(false);
             if (value is not null)

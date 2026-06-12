@@ -45,7 +45,8 @@ internal static class CompiledArtifactGuard
             verification,
             LoadEntrypoint(assemblyBytes),
             CompiledRuntimeFormKind.LoadedAssembly,
-            artifact.CacheStatus);
+            artifact.CacheStatus,
+            artifact.CacheInvalidReason);
     }
 
     private static void EnsureMatchesPlan(CompiledArtifact artifact, ExecutionPlan plan, string entrypoint)
@@ -120,7 +121,18 @@ internal static class CompiledArtifactGuard
         var type = assembly.GetTypes().Single(t => t.Name.StartsWith("Module_", StringComparison.Ordinal));
         var method = type.GetMethod("Execute", BindingFlags.Public | BindingFlags.Static) ??
             throw new MissingMethodException(type.FullName, "Execute");
-        return method.CreateDelegate<SandboxCompiledEntrypoint>();
+        var entrypoint = method.CreateDelegate<SandboxCompiledEntrypoint>();
+        return (sandboxContext, input) =>
+        {
+            try
+            {
+                return entrypoint(sandboxContext, input);
+            }
+            finally
+            {
+                context.Unload();
+            }
+        };
     }
 
     private static SandboxRuntimeException Invalid(string message)

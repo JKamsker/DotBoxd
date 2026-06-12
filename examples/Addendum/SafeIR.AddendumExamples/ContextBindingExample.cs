@@ -11,7 +11,8 @@ internal static class ContextBindingExample
         var server = PluginServer.Create(messages);
         var settings = server.BindContext<DamageSettings>(
             "damage",
-            value => {
+            value =>
+            {
                 value.Enabled = true;
                 value.DamageType = "fire";
                 value.MinDamage = 100;
@@ -21,7 +22,7 @@ internal static class ContextBindingExample
             .Where((_, _) => settings.Value.Enabled)
             .Where((e, _) => e.DamageType == settings.Value.DamageType)
             .Where((e, _) => e.Amount >= settings.Value.MinDamage)
-            .InvokeKernel((e, ctx) => ctx.Messages.Send(e.TargetId, "context binding matched"));
+            .InvokeHostHandler((e, ctx) => ctx.Messages.Send(e.TargetId, "context binding matched"));
 
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
         settings.Value.DamageType = "ice";

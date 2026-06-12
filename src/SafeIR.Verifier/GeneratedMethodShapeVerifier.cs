@@ -15,6 +15,7 @@ internal static class GeneratedMethodShapeVerifier
     private static readonly string EnterCall = $"{Runtime}.EnterCall({Context}):{Void}";
     private static readonly string ExitCall = $"{Runtime}.ExitCall({Context}):{Void}";
     internal static readonly string ChargeFuelSignature = $"{Runtime}.ChargeFuel({Context},{Int32}):{Void}";
+    internal static readonly string ChargeLoopIterationSignature = $"{Runtime}.ChargeLoopIteration({Context},{Int32}):{Void}";
 
     private static readonly HashSet<string> ExecuteAllowedCalls = new(StringComparer.Ordinal) {
         ValidateInput,
@@ -91,6 +92,7 @@ internal static class GeneratedMethodShapeVerifier
             diagnostics.Add(new VerificationDiagnostic("V-COMPILED-SHAPE", $"method '{methodName}' must charge fuel in every control-flow cycle"));
         }
 
+        VerifyMeterOrder(methodName, analysis, diagnostics);
         foreach (var instruction in analysis.Instructions.Where(i => i.IsLocalCall))
         {
             var state = analysis.EntryStates.TryGetValue(instruction.Offset, out var entryState)
@@ -103,6 +105,43 @@ internal static class GeneratedMethodShapeVerifier
                     "V-COMPILED-SHAPE",
                     $"method '{methodName}' must enter call depth and charge fuel before local calls"));
             }
+
+            if ((state & GeneratedMeterState.ExitCall) == GeneratedMeterState.ExitCall)
+            {
+                diagnostics.Add(new VerificationDiagnostic(
+                    "V-COMPILED-SHAPE",
+                    $"method '{methodName}' must not call generated functions after exiting the call meter"));
+            }
+        }
+    }
+
+    private static void VerifyMeterOrder(
+        string methodName,
+        GeneratedMethodFlow analysis,
+        List<VerificationDiagnostic> diagnostics)
+    {
+        foreach (var instruction in analysis.Instructions.Where(i => i.CalledMember == EnterCall || i.CalledMember == ExitCall))
+        {
+            if (!analysis.EntryStates.TryGetValue(instruction.Offset, out var state))
+            {
+                continue;
+            }
+
+            if (instruction.CalledMember == ExitCall && (state & GeneratedMeterState.EnterCall) == 0)
+            {
+                diagnostics.Add(new VerificationDiagnostic(
+                    "V-COMPILED-SHAPE",
+                    $"method '{methodName}' must not exit the call meter before entering it"));
+            }
+
+            if (instruction.CalledMember == EnterCall &&
+                (state & GeneratedMeterState.EnterCall) != 0 &&
+                (state & GeneratedMeterState.ExitCall) == 0)
+            {
+                diagnostics.Add(new VerificationDiagnostic(
+                    "V-COMPILED-SHAPE",
+                    $"method '{methodName}' must not enter the call meter twice without exiting"));
+            }
         }
     }
 
@@ -114,6 +153,7 @@ internal static class GeneratedMethodShapeVerifier
             var member when member == EnterCall => GeneratedMeterState.EnterCall,
             var member when member == ExitCall => GeneratedMeterState.ExitCall,
             var member when member == ChargeFuelSignature => GeneratedMeterState.ChargeFuel,
+            var member when member == ChargeLoopIterationSignature => GeneratedMeterState.ChargeFuel,
             _ => GeneratedMeterState.None
         };
         return instruction.IsLocalCall && IsGeneratedFunctionCall(instruction.CalledMember)

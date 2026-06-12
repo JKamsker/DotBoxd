@@ -41,6 +41,7 @@ public sealed class ResourceLimitValidationTests
     public static TheoryData<Func<SandboxPolicyBuilder, SandboxPolicyBuilder>> NegativePolicyLimits()
         => new() {
             builder => builder.WithFuel(-1),
+            builder => builder.WithMaxLoopIterations(-1),
             builder => builder.WithWallTime(TimeSpan.FromTicks(-1)),
             builder => builder.WithMaxAllocatedBytes(-1),
             builder => builder.WithMaxCallDepth(-1),

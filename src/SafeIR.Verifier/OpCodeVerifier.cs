@@ -20,7 +20,7 @@ internal static class OpCodeVerifier
         ILOpCode.Bge, ILOpCode.Bge_s, ILOpCode.Add, ILOpCode.Sub, ILOpCode.Mul, ILOpCode.Div,
         ILOpCode.Rem, ILOpCode.Neg, ILOpCode.And, ILOpCode.Or, ILOpCode.Xor, ILOpCode.Not,
         ILOpCode.Ceq, ILOpCode.Clt, ILOpCode.Cgt, ILOpCode.Call, ILOpCode.Ret, ILOpCode.Pop, ILOpCode.Dup,
-        ILOpCode.Newarr, ILOpCode.Stelem_ref
+        ILOpCode.Stelem_ref
     ];
 
     private static readonly HashSet<ILOpCode> Forbidden = [
@@ -37,25 +37,30 @@ internal static class OpCodeVerifier
         MethodBodyBlock body,
         List<VerificationDiagnostic> diagnostics)
     {
-        if (body.ExceptionRegions.Any()) {
+        if (body.ExceptionRegions.Any())
+        {
             diagnostics.Add(new VerificationDiagnostic("V-EXCEPTION", "exception handlers are not allowed"));
         }
 
         var il = body.GetILReader();
         var instructionOffsets = new HashSet<int>();
         var branchTargets = new HashSet<int>();
-        while (il.RemainingBytes > 0) {
+        while (il.RemainingBytes > 0)
+        {
             instructionOffsets.Add(il.Offset);
             var opcode = ReadOpCode(ref il);
-            if (Forbidden.Contains(opcode) || !Allowed.Contains(opcode)) {
+            if (Forbidden.Contains(opcode) || !Allowed.Contains(opcode))
+            {
                 diagnostics.Add(new VerificationDiagnostic("V-OPCODE", $"opcode '{opcode}' is not allowed"));
             }
 
             VerifyOperand(reader, policy, opcode, ref il, diagnostics, branchTargets);
         }
 
-        foreach (var target in branchTargets) {
-            if (!instructionOffsets.Contains(target)) {
+        foreach (var target in branchTargets)
+        {
+            if (!instructionOffsets.Contains(target))
+            {
                 diagnostics.Add(new VerificationDiagnostic(
                     "V-CONTROL-FLOW",
                     $"branch target offset {target} is not a valid instruction"));
@@ -66,7 +71,8 @@ internal static class OpCodeVerifier
     private static ILOpCode ReadOpCode(ref BlobReader il)
     {
         var first = il.ReadByte();
-        if (first != 0xFE) {
+        if (first != 0xFE)
+        {
             return (ILOpCode)first;
         }
 
@@ -81,25 +87,30 @@ internal static class OpCodeVerifier
         List<VerificationDiagnostic> diagnostics,
         HashSet<int> branchTargets)
     {
-        if (opcode is ILOpCode.Call or ILOpCode.Callvirt or ILOpCode.Newobj) {
+        if (opcode is ILOpCode.Call or ILOpCode.Callvirt or ILOpCode.Newobj)
+        {
             var handle = MetadataTokens.EntityHandle(il.ReadInt32());
-            if (opcode == ILOpCode.Call && handle.Kind == HandleKind.MethodDefinition) {
+            if (opcode == ILOpCode.Call && handle.Kind == HandleKind.MethodDefinition)
+            {
                 VerifyLocalCall(reader, (MethodDefinitionHandle)handle, diagnostics);
                 return;
             }
 
             var member = MetadataName.MemberSignature(reader, handle);
-            if (!policy.IsMemberAllowed(member.Signature)) {
+            if (!policy.IsMemberAllowed(member.Signature))
+            {
                 diagnostics.Add(new VerificationDiagnostic("V-MEMBER", $"member '{member.Signature}' is not allowed"));
             }
 
             return;
         }
 
-        if (opcode == ILOpCode.Newarr) {
+        if (opcode == ILOpCode.Newarr)
+        {
             var handle = MetadataTokens.EntityHandle(il.ReadInt32());
             var name = MetadataName.Type(reader, handle);
-            if (!StringComparer.Ordinal.Equals(name, "SafeIR.SandboxValue")) {
+            if (!StringComparer.Ordinal.Equals(name, "SafeIR.SandboxValue"))
+            {
                 diagnostics.Add(new VerificationDiagnostic("V-ARRAY", $"array element type '{name}' is not allowed"));
             }
 
@@ -115,35 +126,41 @@ internal static class OpCodeVerifier
         List<VerificationDiagnostic> diagnostics)
     {
         var method = reader.GetMethodDefinition(handle);
-        if ((method.Attributes & MethodAttributes.Static) == 0) {
+        if ((method.Attributes & MethodAttributes.Static) == 0)
+        {
             diagnostics.Add(new VerificationDiagnostic("V-MEMBER", "local method calls must target static methods"));
         }
     }
 
     private static void SkipOperand(ILOpCode opcode, ref BlobReader il, HashSet<int> branchTargets)
     {
-        if (opcode == ILOpCode.Switch) {
+        if (opcode == ILOpCode.Switch)
+        {
             var count = il.ReadInt32();
             var deltas = new int[count];
-            for (var i = 0; i < count; i++) {
+            for (var i = 0; i < count; i++)
+            {
                 deltas[i] = il.ReadInt32();
             }
 
             var nextOffset = il.Offset;
-            foreach (var delta in deltas) {
+            foreach (var delta in deltas)
+            {
                 branchTargets.Add(nextOffset + delta);
             }
 
             return;
         }
 
-        if (opcode.IsBranch()) {
+        if (opcode.IsBranch())
+        {
             var delta = opcode.GetBranchOperandSize() == 1 ? il.ReadSByte() : il.ReadInt32();
             branchTargets.Add(il.Offset + delta);
             return;
         }
 
-        switch (opcode) {
+        switch (opcode)
+        {
             case ILOpCode.Ldarg or ILOpCode.Starg or ILOpCode.Ldloc or ILOpCode.Stloc:
                 _ = il.ReadUInt16();
                 break;
@@ -158,7 +175,8 @@ internal static class OpCodeVerifier
                 break;
             case ILOpCode.Switch:
                 var count = il.ReadInt32();
-                for (var i = 0; i < count; i++) {
+                for (var i = 0; i < count; i++)
+                {
                     _ = il.ReadInt32();
                 }
 

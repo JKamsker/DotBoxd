@@ -262,7 +262,7 @@ var minDamage = server.BindValue("minDamage", 100);
 
 server.Hooks.On<DamageEvent>()
     .Where((e, ctx) => e.Amount >= minDamage.Value)
-    .InvokeKernel((e, ctx) => HandleDamage(e, ctx));
+    .InvokeHostHandler((e, ctx) => HandleDamage(e, ctx));
 ```
 
 However, kernel classes are the preferred ergonomic model for real plugins.
@@ -282,7 +282,7 @@ var minDamage = server.BindValue("minDamage", 100);
 server.Hooks.On<DamageEvent>()
     .Where((e, ctx) => e.DamageType == damageType.Value)
     .Where((e, ctx) => e.Amount >= minDamage.Value)
-    .InvokeKernel((e, ctx) => HandleDamage(e, ctx));
+    .InvokeHostHandler((e, ctx) => HandleDamage(e, ctx));
 ```
 
 Runtime updates:
@@ -343,7 +343,7 @@ server.Hooks.On<DamageEvent>()
     .Where((e, ctx) => settings.Value.Enabled)
     .Where((e, ctx) => e.DamageType == settings.Value.DamageType)
     .Where((e, ctx) => e.Amount >= settings.Value.MinDamage)
-    .InvokeKernel((e, ctx) => HandleDamage(e, ctx));
+    .InvokeHostHandler((e, ctx) => HandleDamage(e, ctx));
 ```
 
 Conceptually:
@@ -597,7 +597,7 @@ var minDamage = server.BindValue("minDamage", 100);
 
 server.Hooks.On<DamageEvent>()
     .Where((e, ctx) => e.Amount >= minDamage.Value)
-    .InvokeKernel((e, ctx) => Handle(e, ctx));
+    .InvokeHostHandler((e, ctx) => Handle(e, ctx));
 ```
 
 ## Level 2: Context Bindings
@@ -610,7 +610,7 @@ var settings = server.BindContext<DamageSettings>();
 server.Hooks.On<DamageEvent>()
     .Where((e, ctx) => settings.Value.Enabled)
     .Where((e, ctx) => e.Amount >= settings.Value.MinDamage)
-    .InvokeKernel((e, ctx) => Handle(e, ctx));
+    .InvokeHostHandler((e, ctx) => Handle(e, ctx));
 ```
 
 ## Level 3: Kernel Classes

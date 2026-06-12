@@ -98,6 +98,23 @@ public sealed class BackendIsolationTests
         Assert.Equal("runtimeForm", ex.ParamName);
     }
 
+    [Fact]
+    public void Compiled_artifact_assembly_bytes_are_defensive_copies()
+    {
+        var artifact = new CompiledArtifact(
+            [0x4d, 0x5a],
+            "assembly-artifact",
+            Manifest("assembly-artifact"),
+            Verification("assembly-artifact"),
+            (_, _) => SandboxValue.Unit,
+            CompiledRuntimeFormKind.LoadedAssembly);
+
+        var bytes = artifact.AssemblyBytes;
+        bytes[0] = 0;
+
+        Assert.Equal(0x4d, artifact.AssemblyBytes[0]);
+    }
+
     private static string[] ReferencedAssemblyNames(System.Reflection.Assembly assembly)
         => assembly.GetReferencedAssemblies().Select(reference => reference.Name ?? string.Empty).ToArray();
 

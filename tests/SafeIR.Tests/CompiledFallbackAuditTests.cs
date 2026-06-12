@@ -34,6 +34,24 @@ public sealed class CompiledFallbackAuditTests
         Assert.Contains(result.AuditEvents, IsFallback(SandboxErrorCode.VerifierFailure));
     }
 
+    [Fact]
+    public async Task Compiled_verifier_failure_without_fallback_emits_verifier_audit()
+    {
+        var host = HostWithCompiler(new VerifierFailureCompiler());
+        var module = await host.ParseJsonAsync(SandboxTestHost.PureScoreJson());
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.FromList([SandboxValue.FromInt32(1), SandboxValue.FromInt32(1)]),
+            new SandboxExecutionOptions { Mode = ExecutionMode.Compiled, AllowFallbackToInterpreter = false });
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.AuditEvents, e =>
+            e.Kind == "VerifierFailure" && e.ErrorCode == SandboxErrorCode.VerifierFailure);
+    }
+
     private static async Task<SandboxExecutionResult> ExecuteCompiledAsync(SandboxHost host, ExecutionPlan plan)
         => await host.ExecuteAsync(
             plan,
@@ -47,7 +65,8 @@ public sealed class CompiledFallbackAuditTests
                 e.Message?.Contains("fell back to interpreted mode", StringComparison.Ordinal) == true;
 
     private static SandboxHost HostWithCompiler(ISandboxCompiler compiler)
-        => SandboxHost.Create(builder => {
+        => SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.UseInterpreter();
             builder.UseCompilerIfAvailable(compiler);

@@ -23,6 +23,7 @@ internal static class PolicyHash
         => CanonicalEncoding.Record(
             "limits",
             Format(limits.MaxFuel),
+            Format(limits.MaxLoopIterations),
             Format(limits.EffectiveWallTime.Ticks),
             Format(limits.MaxAllocatedBytes),
             Format(limits.MaxCallDepth),

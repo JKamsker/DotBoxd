@@ -183,7 +183,7 @@ public sealed class PluginAddendumTests
         var handled = 0;
         server.Hooks.On<DamageEvent>()
             .Where((e, _) => e.Amount >= minimum.Value)
-            .InvokeKernel((_, _) => handled++);
+            .InvokeHostHandler((_, _) => handled++);
 
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
         minimum.Value = 200;

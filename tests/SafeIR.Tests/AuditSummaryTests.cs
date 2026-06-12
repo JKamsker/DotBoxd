@@ -20,6 +20,10 @@ public sealed class AuditSummaryTests
         AssertSummaryContainsExecutionHashes(summary, plan);
         Assert.Contains("mode=interpreted", summary.Message!);
         Assert.Contains("cacheStatus=None", summary.Message!);
+        Assert.Equal("Interpreted", summary.Fields!["mode"]);
+        Assert.Equal(plan.PlanHash, summary.Fields["planHash"]);
+        Assert.Equal("None", summary.Fields["cacheStatus"]);
+        Assert.Equal("1000", summary.Fields["maxFuel"]);
     }
 
     [Fact]
@@ -41,6 +45,10 @@ public sealed class AuditSummaryTests
         Assert.Contains("mode=compiled", summary.Message!);
         Assert.Contains("cacheKey=", summary.Message!);
         Assert.Contains($"artifact={result.ArtifactHash}", summary.Message!);
+        Assert.Equal("Compiled", summary.Fields!["mode"]);
+        Assert.Equal(plan.PolicyHash, summary.Fields["policyHash"]);
+        Assert.Equal(result.ArtifactHash, summary.Fields["artifactHash"]);
+        Assert.Equal("LoadedAssembly", summary.Fields["runtimeForm"]);
     }
 
     private static void AssertSummaryContainsExecutionHashes(SandboxAuditEvent summary, ExecutionPlan plan)

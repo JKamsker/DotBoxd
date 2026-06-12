@@ -31,6 +31,7 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         var function = ResolveSupportedFunction(plan, options.Entrypoint);
         var cacheKey = CacheKeyBuilder.Build(plan, options.Entrypoint, _verificationPolicy, options.Optimize);
         var lookupStatus = CompiledCacheStatus.None;
+        string? cacheInvalidReason = null;
         if (_cache is not null)
         {
             var cached = await _cache.TryReadAsync(
@@ -50,6 +51,7 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
             }
 
             lookupStatus = cached.Status;
+            cacheInvalidReason = cached.InvalidReason;
         }
 
         var assemblyBytes = EmitAssembly(plan, function);
@@ -81,7 +83,8 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
             verification,
             UnmaterializedEntrypoint,
             CompiledRuntimeFormKind.LoadedAssembly,
-            status);
+            status,
+            lookupStatus == CompiledCacheStatus.Invalid ? cacheInvalidReason : null);
     }
 
     private static SandboxFunction ResolveSupportedFunction(ExecutionPlan plan, string entrypoint)

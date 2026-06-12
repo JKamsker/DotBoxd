@@ -41,6 +41,7 @@ public sealed record VerificationPolicy(
             },
             new HashSet<string>(StringComparer.Ordinal) {
                 RuntimeMember("ChargeFuel", $"{Context},{Int32}", Void),
+                RuntimeMember("ChargeLoopIteration", $"{Context},{Int32}", Void),
                 RuntimeMember("EnterCall", Context, Void),
                 RuntimeMember("ExitCall", Context, Void),
                 RuntimeMember("ValidateEntrypointInput", $"{Value},{Int32}", Void),
@@ -81,6 +82,7 @@ public sealed record VerificationPolicy(
                 RuntimeMember("FloorF64", Value, Value),
                 RuntimeMember("CeilF64", Value, Value),
                 RuntimeMember("RoundF64", Value, Value),
+                RuntimeMember("CreateValueArray", $"{Context},{Int32}", ValueArray),
                 RuntimeMember("ListEmpty", $"{Context},{SandboxType}", Value),
                 RuntimeMember("ListOf", $"{Context},{ValueArray}", Value),
                 RuntimeMember("ListCount", $"{Context},{Value}", Value),
@@ -99,7 +101,7 @@ public sealed record VerificationPolicy(
                 "System.Threading.Tasks.", "System.Activator", "System.Environment",
                 "System.GC", "System.Delegate", "System.Linq.Expressions.", "Microsoft.CSharp."
             },
-            "safe-ir-verifier-3");
+            "safe-ir-verifier-5");
 
     public bool IsMemberAllowed(string memberSignature) => AllowedMembers.Contains(memberSignature);
 

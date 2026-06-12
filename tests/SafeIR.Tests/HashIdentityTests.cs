@@ -18,12 +18,14 @@ public sealed class HashIdentityTests
     {
         var first = PolicyWithGrant(new CapabilityGrant(
             "test.capability",
-            new Dictionary<string, string> {
+            new Dictionary<string, string>
+            {
                 ["a=b"] = "c"
             }));
         var second = PolicyWithGrant(new CapabilityGrant(
             "test.capability",
-            new Dictionary<string, string> {
+            new Dictionary<string, string>
+            {
                 ["a"] = "b=c"
             }));
 
@@ -59,6 +61,15 @@ public sealed class HashIdentityTests
         Assert.NotEqual(first.ManifestHash, second.ManifestHash);
     }
 
+    [Fact]
+    public void Policy_hash_includes_loop_iteration_limit()
+    {
+        var first = SandboxPolicyBuilder.Create().WithMaxLoopIterations(10).Build();
+        var second = SandboxPolicyBuilder.Create().WithMaxLoopIterations(11).Build();
+
+        Assert.NotEqual(first.Hash, second.Hash);
+    }
+
     private static SandboxPolicy PolicyWithGrant(CapabilityGrant grant)
         => new(
             "hash-test",
@@ -69,7 +80,8 @@ public sealed class HashIdentityTests
     private static CapabilityGrant FileReadGrant(DateTimeOffset expiresAt)
         => new(
             "file.read",
-            new Dictionary<string, string> {
+            new Dictionary<string, string>
+            {
                 ["root"] = "root",
                 ["maxBytesPerRun"] = "1024"
             },

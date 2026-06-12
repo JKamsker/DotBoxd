@@ -2,6 +2,7 @@ namespace SafeIR.Compiler;
 
 using System.Reflection.Emit;
 using SafeIR;
+using SafeIR.Runtime;
 using static IlEmitterPrimitives;
 
 internal static class ValueArrayEmitter
@@ -11,9 +12,11 @@ internal static class ValueArrayEmitter
         IReadOnlyList<Expression> arguments,
         Action<Expression> emitExpression)
     {
+        il.Emit(OpCodes.Ldarg_0);
         EmitInt32(il, arguments.Count);
-        il.Emit(OpCodes.Newarr, typeof(SandboxValue));
-        for (var i = 0; i < arguments.Count; i++) {
+        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CreateValueArray)));
+        for (var i = 0; i < arguments.Count; i++)
+        {
             il.Emit(OpCodes.Dup);
             EmitInt32(il, i);
             emitExpression(arguments[i]);

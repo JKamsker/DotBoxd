@@ -17,6 +17,7 @@ public sealed class ResourceMeter
 
     public ResourceLimits Limits { get; }
     public long FuelUsed { get; private set; }
+    public long LoopIterations { get; private set; }
     public long AllocatedBytes { get; private set; }
     public int HostCalls { get; private set; }
     public long FileBytesRead { get; private set; }
@@ -31,6 +32,7 @@ public sealed class ResourceMeter
         => new(
             FuelUsed,
             Limits.MaxFuel,
+            LoopIterations,
             AllocatedBytes,
             HostCalls,
             FileBytesRead,
@@ -59,6 +61,17 @@ public sealed class ResourceMeter
             _chargesSinceDeadlineCheck = 0;
             CheckDeadline();
         }
+    }
+
+    public void ChargeLoopIteration(long fuelAmount)
+    {
+        LoopIterations = AddChecked(LoopIterations, 1, "loop iteration budget exhausted");
+        if (LoopIterations > Limits.MaxLoopIterations)
+        {
+            throw Quota("loop iteration budget exhausted");
+        }
+
+        ChargeFuel(fuelAmount);
     }
 
     public void ChargeAllocation(long bytes)

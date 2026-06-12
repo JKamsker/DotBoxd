@@ -58,6 +58,18 @@ public sealed partial class SandboxHost
             ResourceId: $"module:{plan.ModuleHash}",
             ErrorCode: error.Code,
             Message: error.SafeMessage));
+        if (error.Code == SandboxErrorCode.VerifierFailure)
+        {
+            audit.Write(new SandboxAuditEvent(
+                runId,
+                "VerifierFailure",
+                DateTimeOffset.UtcNow,
+                false,
+                ResourceId: $"module:{plan.ModuleHash}",
+                ErrorCode: error.Code,
+                Message: error.SafeMessage));
+        }
+
         return new SandboxExecutionResult
         {
             Succeeded = false,
@@ -80,6 +92,38 @@ public sealed partial class SandboxHost
         audit.Write(new SandboxAuditEvent(
             runId,
             "PolicyDenied",
+            DateTimeOffset.UtcNow,
+            false,
+            ResourceId: $"module:{plan.ModuleHash}",
+            ErrorCode: error.Code,
+            Message: error.SafeMessage));
+
+        return new SandboxExecutionResult
+        {
+            Succeeded = false,
+            Error = error,
+            ResourceUsage = budget.Snapshot(),
+            AuditEvents = audit.Events,
+            ActualMode = options.Mode,
+            ModuleHash = plan.ModuleHash,
+            PlanHash = plan.PlanHash,
+            PolicyHash = plan.PolicyHash
+        };
+    }
+
+    private static SandboxExecutionResult WorkerIsolationUnavailableResult(
+        ExecutionPlan plan,
+        SandboxExecutionOptions options)
+    {
+        var runId = options.RunId ?? SandboxRunId.New();
+        var budget = new ResourceMeter(plan.Budget);
+        var error = new SandboxError(
+            SandboxErrorCode.PolicyDenied,
+            "worker process isolation is not configured");
+        var audit = new InMemoryAuditSink();
+        audit.Write(new SandboxAuditEvent(
+            runId,
+            "WorkerIsolationUnavailable",
             DateTimeOffset.UtcNow,
             false,
             ResourceId: $"module:{plan.ModuleHash}",

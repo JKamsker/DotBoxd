@@ -3,6 +3,7 @@ namespace SafeIR;
 public sealed record SandboxResourceUsage(
     long FuelUsed,
     long MaxFuel,
+    long LoopIterations,
     long AllocatedBytes,
     int HostCalls,
     long FileBytesRead,
