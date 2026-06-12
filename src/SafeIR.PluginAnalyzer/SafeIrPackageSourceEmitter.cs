@@ -1,7 +1,6 @@
 namespace SafeIR.PluginAnalyzer;
 
 using System.Text;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 internal static class SafeIrPackageSourceEmitter
 {
@@ -33,7 +32,7 @@ internal static class SafeIrPackageSourceEmitter
         builder.AppendLine($"            {LiteralReader.StringLiteral(model.PluginId)},");
         builder.AppendLine($"            {LiteralReader.StringLiteral($"IEventKernel<{model.EventName}>")},");
         builder.AppendLine("            global::SafeIR.ExecutionMode.Auto,");
-        builder.AppendLine("            [\"Cpu\", \"Alloc\", \"GameStateWrite\", \"Audit\"],");
+        EmitEffects(builder, model.ManifestEffects);
         builder.AppendLine("            settings,");
         builder.AppendLine($"            [new global::SafeIR.Plugins.HookSubscriptionManifest({LiteralReader.StringLiteral(model.EventName)}, {LiteralReader.StringLiteral(model.KernelName)})]);");
         builder.AppendLine("        return global::SafeIR.Plugins.PluginPackage.Create(manifest, CreateModule(settings));");
@@ -62,6 +61,20 @@ internal static class SafeIrPackageSourceEmitter
         builder.AppendLine("        };");
     }
 
+    private static void EmitEffects(StringBuilder builder, EquatableArray<string> effects)
+    {
+        builder.Append("            [");
+        for (var i = 0; i < effects.Count; i++) {
+            if (i > 0) {
+                builder.Append(", ");
+            }
+
+            builder.Append(LiteralReader.StringLiteral(effects[i]));
+        }
+
+        builder.AppendLine("],");
+    }
+
     private static void EmitModule(StringBuilder builder, PluginKernelModel model)
     {
         builder.AppendLine("    private static global::SafeIR.SandboxModule CreateModule(global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Plugins.LiveSettingDefinition> settings)");
@@ -77,16 +90,15 @@ internal static class SafeIrPackageSourceEmitter
 
     private static void EmitFunctions(StringBuilder builder, PluginKernelModel model)
     {
-        var expressionEmitter = new SafeIrExpressionEmitter(model);
         builder.AppendLine("    private static global::SafeIR.SandboxFunction ShouldHandle(global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Plugins.LiveSettingDefinition> settings)");
         builder.AppendLine("        => new(");
         builder.AppendLine("            \"ShouldHandle\", true, Parameters(settings), global::SafeIR.SandboxType.Bool,");
-        builder.AppendLine($"            [new global::SafeIR.ReturnStatement({expressionEmitter.Emit(ReturnExpression(model.ShouldHandle))}, Span)]);");
+        builder.AppendLine($"            [new global::SafeIR.ReturnStatement({model.ShouldHandle.Source}, Span)]);");
         builder.AppendLine();
         builder.AppendLine("    private static global::SafeIR.SandboxFunction Handle(global::System.Collections.Generic.IReadOnlyList<global::SafeIR.Plugins.LiveSettingDefinition> settings)");
         builder.AppendLine("        => new(");
         builder.AppendLine("            \"Handle\", true, Parameters(settings), global::SafeIR.SandboxType.Unit,");
-        builder.AppendLine($"            [new global::SafeIR.ReturnStatement({HandleExpression(model)}, Span)]);");
+        builder.AppendLine($"            [new global::SafeIR.ReturnStatement({HandleExpression(model.Handle)}, Span)]);");
         builder.AppendLine();
     }
 
@@ -101,7 +113,7 @@ internal static class SafeIrPackageSourceEmitter
         builder.AppendLine("        => [");
         foreach (var property in model.EventProperties) {
             builder.Append("            new global::SafeIR.Parameter(");
-            builder.Append(LiteralReader.StringLiteral(SafeIrExpressionEmitter.EventVariable(property.Name)));
+            builder.Append(LiteralReader.StringLiteral(SafeIrExpressionModelFactory.EventVariable(property.Name)));
             builder.Append(", TypeOf(").Append(LiteralReader.StringLiteral(property.Type)).AppendLine(")),");
         }
 
@@ -119,7 +131,11 @@ internal static class SafeIrPackageSourceEmitter
         builder.AppendLine("    private static global::SafeIR.Expression Var(string name) => new global::SafeIR.VariableExpression(name, Span);");
         builder.AppendLine("    private static global::SafeIR.Expression Str(string value) => new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromString(value), Span);");
         builder.AppendLine("    private static global::SafeIR.Expression I32(int value) => new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromInt32(value), Span);");
+        builder.AppendLine("    private static global::SafeIR.Expression I64(long value) => new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromInt64(value), Span);");
+        builder.AppendLine("    private static global::SafeIR.Expression F64(double value) => new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromDouble(value), Span);");
         builder.AppendLine("    private static global::SafeIR.Expression Bool(bool value) => new global::SafeIR.LiteralExpression(global::SafeIR.SandboxValue.FromBool(value), Span);");
+        builder.AppendLine("    private static global::SafeIR.Expression Not(global::SafeIR.Expression operand) => new global::SafeIR.UnaryExpression(\"!\", operand, Span);");
+        builder.AppendLine("    private static global::SafeIR.Expression Neg(global::SafeIR.Expression operand) => new global::SafeIR.UnaryExpression(\"-\", operand, Span);");
         builder.AppendLine("    private static global::SafeIR.Expression Eq(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"==\", right, Span);");
         builder.AppendLine("    private static global::SafeIR.Expression Ne(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"!=\", right, Span);");
         builder.AppendLine("    private static global::SafeIR.Expression Ge(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \">=\", right, Span);");
@@ -128,61 +144,13 @@ internal static class SafeIrPackageSourceEmitter
         builder.AppendLine("    private static global::SafeIR.Expression Lt(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"<\", right, Span);");
         builder.AppendLine("    private static global::SafeIR.Expression And(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"&&\", right, Span);");
         builder.AppendLine("    private static global::SafeIR.Expression Or(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"||\", right, Span);");
+        builder.AppendLine("    private static global::SafeIR.Expression Add(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"+\", right, Span);");
+        builder.AppendLine("    private static global::SafeIR.Expression Sub(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"-\", right, Span);");
+        builder.AppendLine("    private static global::SafeIR.Expression Mul(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"*\", right, Span);");
+        builder.AppendLine("    private static global::SafeIR.Expression Div(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"/\", right, Span);");
+        builder.AppendLine("    private static global::SafeIR.Expression Mod(global::SafeIR.Expression left, global::SafeIR.Expression right) => new global::SafeIR.BinaryExpression(left, \"%\", right, Span);");
     }
 
-    private static ExpressionSyntax ReturnExpression(MethodDeclarationSyntax method)
-    {
-        if (method.ExpressionBody?.Expression is { } expression)
-        {
-            return expression;
-        }
-
-        if (method.Body is null ||
-            method.Body.Statements.Count != 1 ||
-            method.Body.Statements[0] is not ReturnStatementSyntax ret ||
-            ret.Expression is null)
-        {
-            throw new NotSupportedException("Kernel ShouldHandle must return exactly one expression.");
-        }
-
-        return ret.Expression;
-    }
-
-    private static string HandleExpression(PluginKernelModel model)
-    {
-        var invocation = FindMessageSendInvocation(model);
-        if (invocation is null || invocation.ArgumentList.Arguments.Count != 2) {
-            throw new NotSupportedException("Kernel Handle must call ctx.Messages.Send(targetId, message).");
-        }
-
-        var emitter = new SafeIrExpressionEmitter(model, model.HandleEventParameterName);
-        return $"new global::SafeIR.CallExpression(global::SafeIR.Plugins.PluginMessageBindings.SendBindingId, [{emitter.Emit(invocation.ArgumentList.Arguments[0].Expression)}, {emitter.Emit(invocation.ArgumentList.Arguments[1].Expression)}], null, Span)";
-    }
-
-    private static InvocationExpressionSyntax? FindMessageSendInvocation(PluginKernelModel model)
-    {
-        var invocation = model.Handle.ExpressionBody?.Expression as InvocationExpressionSyntax ??
-            model.Handle.Body?.Statements.OfType<ExpressionStatementSyntax>()
-                .Select(s => s.Expression)
-                .OfType<InvocationExpressionSyntax>()
-                .FirstOrDefault();
-        if (invocation is null || !IsContextMessageSend(invocation.Expression, model.HandleContextParameterName)) {
-            return null;
-        }
-
-        return invocation;
-    }
-
-    private static bool IsContextMessageSend(ExpressionSyntax expression, string contextParameterName)
-    {
-        if (expression is not MemberAccessExpressionSyntax sendAccess ||
-            !string.Equals(sendAccess.Name.Identifier.ValueText, "Send", StringComparison.Ordinal) ||
-            sendAccess.Expression is not MemberAccessExpressionSyntax messagesAccess ||
-            !string.Equals(messagesAccess.Name.Identifier.ValueText, "Messages", StringComparison.Ordinal)) {
-            return false;
-        }
-
-        return messagesAccess.Expression is IdentifierNameSyntax context &&
-            string.Equals(context.Identifier.ValueText, contextParameterName, StringComparison.Ordinal);
-    }
+    private static string HandleExpression(SafeIrHandleModel handle)
+        => $"new global::SafeIR.CallExpression(global::SafeIR.Plugins.PluginMessageBindings.SendBindingId, [{handle.Target.Source}, {handle.Message.Source}], null, Span)";
 }

@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 internal static class PluginKernelModelFactory
 {
-    public static GeneratedPluginPackageResult? Create(
+    public static PluginKernelModelResult? Create(
         GeneratorAttributeSyntaxContext context,
         CancellationToken cancellationToken)
     {
@@ -27,34 +27,62 @@ internal static class PluginKernelModelFactory
                 PluginAnalyzerDiagnostics.UnsupportedKernelShapeRule,
                 declaration.Identifier.GetLocation(),
                 "Game plugins must implement IEventKernel<TEvent>.");
-            return new GeneratedPluginPackageResult(null, diagnostic);
+            return new PluginKernelModelResult(null, diagnostic);
         }
 
         try
         {
             var shouldHandle = InterfaceMethodSyntax(context, type, "ShouldHandle", cancellationToken);
             var handle = InterfaceMethodSyntax(context, type, "Handle", cancellationToken);
-            var eventProperties = PluginSymbolReader.EventProperties(eventType);
+            var eventProperties = new EquatableArray<EventPropertyModel>(PluginSymbolReader.EventProperties(eventType));
             if (eventProperties.Any(p => p.Type == "unsupported"))
             {
                 throw new NotSupportedException("Kernel event properties must use supported scalar types.");
             }
 
+            var liveSettings = new EquatableArray<LiveSettingModel>(
+                PluginSymbolReader.LiveSettings(type, context.SemanticModel, cancellationToken));
+            if (liveSettings.Any(s => s.Type == "unsupported"))
+            {
+                throw new NotSupportedException("Live settings must use supported scalar types.");
+            }
+
+            var eventParameterName = shouldHandle.ParameterList.Parameters.FirstOrDefault()?.Identifier.ValueText ?? "e";
+            var contextParameterName = shouldHandle.ParameterList.Parameters.Skip(1).FirstOrDefault()?.Identifier.ValueText ?? "ctx";
+            var handleEventParameterName = handle.ParameterList.Parameters.FirstOrDefault()?.Identifier.ValueText ?? "e";
+            var handleContextParameterName = handle.ParameterList.Parameters.Skip(1).FirstOrDefault()?.Identifier.ValueText ?? "ctx";
+            var shouldHandleExpression = SafeIrExpressionModelFactory.Create(
+                ReturnExpression(shouldHandle),
+                eventParameterName,
+                eventProperties,
+                liveSettings);
+            if (!string.Equals(shouldHandleExpression.Type, "bool", StringComparison.Ordinal))
+            {
+                throw new NotSupportedException("Kernel ShouldHandle must lower to a bool expression.");
+            }
+
+            var handleModel = SafeIrHandleModelFactory.Create(
+                handle,
+                handleEventParameterName,
+                handleContextParameterName,
+                eventProperties,
+                liveSettings);
             var model = new PluginKernelModel(
                 PluginId: pluginId,
                 Namespace: type.ContainingNamespace.IsGlobalNamespace ? "" : type.ContainingNamespace.ToDisplayString(),
                 KernelName: type.Name,
                 PackageName: PackageName(type.Name),
                 EventName: eventType.Name,
-                EventParameterName: shouldHandle.ParameterList.Parameters.FirstOrDefault()?.Identifier.ValueText ?? "e",
-                ContextParameterName: shouldHandle.ParameterList.Parameters.Skip(1).FirstOrDefault()?.Identifier.ValueText ?? "ctx",
-                HandleEventParameterName: handle.ParameterList.Parameters.FirstOrDefault()?.Identifier.ValueText ?? "e",
-                HandleContextParameterName: handle.ParameterList.Parameters.Skip(1).FirstOrDefault()?.Identifier.ValueText ?? "ctx",
+                EventParameterName: eventParameterName,
+                ContextParameterName: contextParameterName,
+                HandleEventParameterName: handleEventParameterName,
+                HandleContextParameterName: handleContextParameterName,
                 EventProperties: eventProperties,
-                LiveSettings: PluginSymbolReader.LiveSettings(type, context.SemanticModel, cancellationToken),
-                ShouldHandle: shouldHandle,
-                Handle: handle);
-            return new GeneratedPluginPackageResult(SafeIrPackageSourceEmitter.Emit(model), null);
+                LiveSettings: liveSettings,
+                ShouldHandle: shouldHandleExpression,
+                Handle: handleModel,
+                ManifestEffects: SafeIrManifestEffectModel.Create(shouldHandleExpression, handleModel));
+            return new PluginKernelModelResult(model, null);
         }
         catch (NotSupportedException ex)
         {
@@ -62,7 +90,7 @@ internal static class PluginKernelModelFactory
                 PluginAnalyzerDiagnostics.UnsupportedKernelShapeRule,
                 declaration.Identifier.GetLocation(),
                 ex.Message);
-            return new GeneratedPluginPackageResult(null, diagnostic);
+            return new PluginKernelModelResult(null, diagnostic);
         }
     }
 
@@ -106,4 +134,22 @@ internal static class PluginKernelModelFactory
         => kernelName.EndsWith("Kernel", StringComparison.Ordinal)
             ? kernelName.Substring(0, kernelName.Length - "Kernel".Length) + "PluginPackage"
             : kernelName + "PluginPackage";
+
+    private static ExpressionSyntax ReturnExpression(MethodDeclarationSyntax method)
+    {
+        if (method.ExpressionBody?.Expression is { } expression)
+        {
+            return expression;
+        }
+
+        if (method.Body is null ||
+            method.Body.Statements.Count != 1 ||
+            method.Body.Statements[0] is not ReturnStatementSyntax ret ||
+            ret.Expression is null)
+        {
+            throw new NotSupportedException("Kernel ShouldHandle must return exactly one expression.");
+        }
+
+        return ret.Expression;
+    }
 }

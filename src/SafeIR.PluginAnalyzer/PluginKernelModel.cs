@@ -1,7 +1,5 @@
 namespace SafeIR.PluginAnalyzer;
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 internal sealed record PluginKernelModel(
     string PluginId,
     string Namespace,
@@ -12,10 +10,11 @@ internal sealed record PluginKernelModel(
     string ContextParameterName,
     string HandleEventParameterName,
     string HandleContextParameterName,
-    IReadOnlyList<EventPropertyModel> EventProperties,
-    IReadOnlyList<LiveSettingModel> LiveSettings,
-    MethodDeclarationSyntax ShouldHandle,
-    MethodDeclarationSyntax Handle);
+    EquatableArray<EventPropertyModel> EventProperties,
+    EquatableArray<LiveSettingModel> LiveSettings,
+    SafeIrExpressionModel ShouldHandle,
+    SafeIrHandleModel Handle,
+    EquatableArray<string> ManifestEffects);
 
 internal sealed record EventPropertyModel(string Name, string Type);
 

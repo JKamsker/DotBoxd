@@ -8,26 +8,30 @@ public sealed class SafeIrPluginPackageGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var packages = context.SyntaxProvider
+        var modelResults = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 "SafeIR.Plugins.GamePluginAttribute",
                 static (node, _) => node is ClassDeclarationSyntax,
                 static (ctx, ct) => PluginKernelModelFactory.Create(ctx, ct))
-            .Where(static result => result is not null);
+            .Where(static result => result is not null)
+            .Select(static (result, _) => result!);
 
-        context.RegisterSourceOutput(packages, static (context, result) => {
-            if (result is null) {
-                return;
-            }
+        var diagnostics = modelResults
+            .Where(static result => result.Diagnostic is not null);
+        context.RegisterSourceOutput(diagnostics, static (context, result) =>
+            context.ReportDiagnostic(result.Diagnostic!));
 
-            if (result.Diagnostic is not null) {
-                context.ReportDiagnostic(result.Diagnostic);
-                return;
-            }
+        var models = modelResults
+            .Where(static result => result.Model is not null)
+            .Select(static (result, _) => result.Model!)
+            .WithTrackingName(SafeIrPluginPackageGeneratorTrackingNames.ModelResult);
 
-            if (result.Package is not null) {
-                context.AddSource(result.Package.HintName, result.Package.Source);
-            }
+        var packages = models
+            .Select(static (model, _) => SafeIrPackageSourceEmitter.Emit(model))
+            .WithTrackingName(SafeIrPluginPackageGeneratorTrackingNames.PackageResult);
+
+        context.RegisterSourceOutput(packages, static (context, package) => {
+            context.AddSource(package.HintName, package.Source);
         });
     }
 }
