@@ -40,6 +40,10 @@ jobs:
         shell: pwsh
         run: ./scripts/check-csharp-file-lines.ps1
 
+      - name: Check spec manifest
+        shell: pwsh
+        run: ./scripts/check-spec-manifest.ps1
+
       - name: Report release readiness checklist
         shell: pwsh
         run: ./scripts/check-release-readiness.ps1
