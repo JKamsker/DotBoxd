@@ -12,9 +12,9 @@ public sealed class SafeFileSystemReparsePointTests
         Directory.CreateDirectory(Path.Combine(outside.Path, "sub"));
         await File.WriteAllTextAsync(Path.Combine(outside.Path, "sub", "secret.txt"), "secret");
         var link = Path.Combine(root.Path, "link");
-        if (!TryCreateDirectoryLink(link, outside.Path)) {
-            return;
-        }
+        Assert.True(
+            TryCreateDirectoryLink(link, outside.Path),
+            "Unable to create a directory symbolic link or junction for the reparse-point test.");
 
         try {
             var result = await ExecuteReadAsync(root.Path, "link/sub/secret.txt");
@@ -28,15 +28,19 @@ public sealed class SafeFileSystemReparsePointTests
     }
 
     [Fact]
-    public async Task File_read_denies_terminal_file_reparse_point()
+    public async Task File_read_denies_terminal_reparse_point()
     {
         using var root = TempDirectory.Create();
         using var outside = TempDirectory.Create();
         var secret = Path.Combine(outside.Path, "secret.txt");
         await File.WriteAllTextAsync(secret, "secret");
         var link = Path.Combine(root.Path, "secret.txt");
+        var directoryLink = false;
         if (!TryCreateFileLink(link, secret)) {
-            return;
+            directoryLink = true;
+            Assert.True(
+                TryCreateDirectoryLink(link, outside.Path),
+                "Unable to create a terminal file symlink or directory reparse point for the test.");
         }
 
         try {
@@ -46,7 +50,12 @@ public sealed class SafeFileSystemReparsePointTests
             Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
         }
         finally {
-            TryDeleteFileLink(link);
+            if (directoryLink) {
+                TryDeleteDirectoryLink(link);
+            }
+            else {
+                TryDeleteFileLink(link);
+            }
         }
     }
 
