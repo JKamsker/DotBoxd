@@ -8,7 +8,16 @@ public sealed record PluginManifest(
     ExecutionMode Mode,
     IReadOnlyList<string> Effects,
     IReadOnlyList<LiveSettingDefinition> LiveSettings,
-    IReadOnlyList<HookSubscriptionManifest> Subscriptions);
+    IReadOnlyList<HookSubscriptionManifest> Subscriptions)
+{
+    private IReadOnlyList<string> _effects = PluginModelCopy.List(Effects);
+    private IReadOnlyList<LiveSettingDefinition> _liveSettings = PluginModelCopy.List(LiveSettings);
+    private IReadOnlyList<HookSubscriptionManifest> _subscriptions = PluginModelCopy.List(Subscriptions);
+
+    public IReadOnlyList<string> Effects { get => _effects; init => _effects = PluginModelCopy.List(value); }
+    public IReadOnlyList<LiveSettingDefinition> LiveSettings { get => _liveSettings; init => _liveSettings = PluginModelCopy.List(value); }
+    public IReadOnlyList<HookSubscriptionManifest> Subscriptions { get => _subscriptions; init => _subscriptions = PluginModelCopy.List(value); }
+}
 
 public sealed record LiveSettingDefinition(
     string Name,
