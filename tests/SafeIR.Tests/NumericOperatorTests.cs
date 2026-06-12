@@ -58,6 +58,26 @@ public sealed class NumericOperatorTests
                 """{ "op": "add", "left": { "i64": 9223372036854775807 }, "right": { "i64": 1 } }""",
                 mode);
             data.Add(
+                "I32",
+                """{ "op": "rem", "left": { "i32": -2147483648 }, "right": { "i32": -1 } }""",
+                mode);
+            data.Add(
+                "I64",
+                """{ "op": "div", "left": { "i64": 1 }, "right": { "i64": 0 } }""",
+                mode);
+            data.Add(
+                "I64",
+                """{ "op": "rem", "left": { "i64": 1 }, "right": { "i64": 0 } }""",
+                mode);
+            data.Add(
+                "I64",
+                """{ "op": "div", "left": { "i64": -9223372036854775808 }, "right": { "i64": -1 } }""",
+                mode);
+            data.Add(
+                "I64",
+                """{ "op": "rem", "left": { "i64": -9223372036854775808 }, "right": { "i64": -1 } }""",
+                mode);
+            data.Add(
                 "F64",
                 """{ "op": "mul", "left": { "f64": 1e308 }, "right": { "f64": 1e308 } }""",
                 mode);
