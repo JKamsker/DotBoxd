@@ -19,6 +19,7 @@ internal sealed record GeneratedInstruction(
     string? CalledMember,
     bool IsLocalCall,
     EntityHandle? OperandHandle,
+    int? OperandIndex,
     int? Int32Value);
 
 [Flags]

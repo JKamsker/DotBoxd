@@ -2,12 +2,15 @@ namespace SafeIR;
 
 public static class CanonicalModuleHasher
 {
+    public const string CanonicalizerVersion = "safe-ir-canonicalizer-1";
+
     public static string Hash(SandboxModule module)
         => CanonicalEncoding.HashRecords(new[] { Serialize(module) });
 
     public static string Serialize(SandboxModule module)
     {
         var writer = new CanonicalWriter();
+        writer.Write("canonicalizer", CanonicalizerVersion);
         writer.Write("module", module.Id, module.Version.ToString(), module.TargetSandboxVersion.ToString());
 
         foreach (var request in module.CapabilityRequests.OrderBy(r => r.Id, StringComparer.Ordinal))

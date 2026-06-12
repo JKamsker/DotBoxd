@@ -14,6 +14,15 @@ public sealed class CanonicalModuleHasherTests
     }
 
     [Fact]
+    public void Canonical_serialization_records_canonicalizer_version()
+    {
+        var module = SafeIrJsonImporter.Import(SumModule());
+        var serialized = CanonicalModuleHasher.Serialize(module);
+
+        Assert.Contains(CanonicalModuleHasher.CanonicalizerVersion, serialized);
+    }
+
+    [Fact]
     public void Statement_order_is_semantic()
     {
         var declareThenOther = SafeIrJsonImporter.Import(ModuleWithBody(

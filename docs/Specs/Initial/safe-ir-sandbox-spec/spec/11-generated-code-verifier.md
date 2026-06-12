@@ -250,6 +250,22 @@ For every `call`, `callvirt`, and `newobj` token:
 - resolve token
 - match exact assembly/type/member/signature allowlist
 - reject otherwise
+- verify the evaluation stack contains values assignable to the callee's declared parameter
+  types before the call
+
+### V12a. Operand indexes and stack types
+
+For every method body, decode and validate argument and local operands before treating the
+assembly as verified:
+
+- `ldarg.*` and `starg.*` indexes must be inside the method's declared argument list
+- `ldloc.*` and `stloc.*` indexes must be inside the method body's declared local list
+- store instructions must receive values assignable to the target argument or local type
+- `ret` must leave a value assignable to the method return type, or an empty stack for
+  `void`
+- branch joins must agree on stack height and stack value types
+- primitive stack checks must account for CLR evaluation-stack normalization, including
+  `System.Boolean` values represented as `System.Int32`
 
 ### V13. Control-flow sanity
 
@@ -258,7 +274,7 @@ Check:
 - branches target valid instruction offsets
 - no invalid exception handlers
 - no unverifiable control-flow patterns
-- stack height consistency if using stack IL analysis
+- stack height and stack type consistency
 
 ### V14. Exception handlers
 
@@ -320,6 +336,8 @@ Verifier test suite must include DLLs with:
 - static mutable fields
 - embedded resources
 - unexpected assembly refs
+- out-of-range `ldarg.*`, `starg.*`, `ldloc.*`, and `stloc.*`
+- call operands whose stack types do not match the exact callee signature
 - direct `HttpClient`
 - `Thread.Start`
 - exception handlers

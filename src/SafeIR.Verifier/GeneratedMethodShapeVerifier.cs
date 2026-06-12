@@ -1,6 +1,7 @@
 namespace SafeIR.Verifier;
 
 using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
 using static SafeIR.Verifier.GeneratedMethodShapeSignatures;
 
 internal static class GeneratedMethodShapeVerifier
@@ -8,12 +9,14 @@ internal static class GeneratedMethodShapeVerifier
     public static void VerifyBody(
         MetadataReader reader,
         MethodDefinition method,
+        MethodBodyBlock body,
         IReadOnlyList<GeneratedInstruction> instructions,
         string methodName,
         List<VerificationDiagnostic> diagnostics)
     {
         var analysis = GeneratedMethodFlowAnalyzer.Analyze(instructions, StateFor);
         GeneratedStackVerifier.Verify(reader, method, analysis, diagnostics);
+        GeneratedStackTypeVerifier.Verify(reader, method, body, analysis, diagnostics);
         if (methodName == "Execute")
         {
             GeneratedExecuteShapeVerifier.Verify(analysis, diagnostics);

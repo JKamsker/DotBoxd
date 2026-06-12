@@ -114,8 +114,8 @@
     },
     {
       "path": "spec/11-generated-code-verifier.md",
-      "sha256": "dbfd7c23a04d9d4cbfe044467e612e7d296167ed8cf1471108e885e7c55efc37",
-      "bytes": 7171
+      "sha256": "17a1373793d0d1beb5bf9e0f3bcb5529a2886ad41bd2f5fb11ee28fcd66b229e",
+      "bytes": 8134
     },
     {
       "path": "spec/12-resource-limits.md",
@@ -124,8 +124,8 @@
     },
     {
       "path": "spec/13-cache-versioning.md",
-      "sha256": "3ddbedc691fc871960579ff404d4fa6dd0ebbd0e370fcaa8256c6df69f074744",
-      "bytes": 5313
+      "sha256": "97f345a820a637a2df4560d9804858c985defa7034e41218c100b5d529bf2407",
+      "bytes": 5396
     },
     {
       "path": "spec/14-observability-audit.md",

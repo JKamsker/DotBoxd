@@ -87,7 +87,7 @@ public sealed partial class GeneratedAssemblyVerifier
                 var body = peReader.GetMethodBody(method.RelativeVirtualAddress);
                 var instructions = GeneratedIlReader.ReadInstructions(reader, body, diagnostics);
                 OpCodeVerifier.VerifyBody(reader, policy, body, instructions, diagnostics);
-                GeneratedMethodShapeVerifier.VerifyBody(reader, method, instructions, name, diagnostics);
+                GeneratedMethodShapeVerifier.VerifyBody(reader, method, body, instructions, name, diagnostics);
             }
         }
 

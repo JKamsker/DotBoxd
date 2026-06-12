@@ -12,6 +12,7 @@ Required parts:
 
 ```text
 canonical IR hash
+canonicalizer version
 sandbox language version
 type system version
 compiler version
@@ -30,6 +31,7 @@ Example:
 sha256(
   "safe-ir-cache-v1" +
   moduleHash +
+  canonicalizerVersion +
   languageVersion +
   compilerVersion +
   verifierVersion +
@@ -132,12 +134,12 @@ On mismatch:
 
 Invalidate when any of these changes:
 
+- canonicalizer version or canonical IR encoding rules
 - compiler version
 - verifier version
 - runtime facade assembly
 - binding manifest
 - policy
-- IR canonicalizer
 - type checker/effect system semantics
 - target framework/runtime strategy
 - optimization flags

@@ -48,6 +48,7 @@ internal static class GeneratedIlReader
                 operand.CalledMember,
                 operand.IsLocalCall,
                 operand.Handle,
+                operand.OperandIndex,
                 operand.Int32Value);
             return true;
         }
@@ -105,6 +106,11 @@ internal static class GeneratedIlReader
         {
             var delta = opcode.GetBranchOperandSize() == 1 ? il.ReadSByte() : il.ReadInt32();
             return new DecodedOperand(BranchTarget: il.Offset + delta);
+        }
+
+        if (TryReadOperandIndex(opcode, ref il, out var index))
+        {
+            return new DecodedOperand(OperandIndex: index);
         }
 
         if (TryReadInlineInt32(opcode, ref il, out var value))
@@ -165,15 +171,53 @@ internal static class GeneratedIlReader
         }
     }
 
+    private static bool TryReadOperandIndex(ILOpCode opcode, ref BlobReader il, out int index)
+    {
+        switch (opcode)
+        {
+            case ILOpCode.Ldarg_0:
+            case ILOpCode.Ldloc_0:
+            case ILOpCode.Stloc_0:
+                index = 0;
+                return true;
+            case ILOpCode.Ldarg_1:
+            case ILOpCode.Ldloc_1:
+            case ILOpCode.Stloc_1:
+                index = 1;
+                return true;
+            case ILOpCode.Ldarg_2:
+            case ILOpCode.Ldloc_2:
+            case ILOpCode.Stloc_2:
+                index = 2;
+                return true;
+            case ILOpCode.Ldarg_3:
+            case ILOpCode.Ldloc_3:
+            case ILOpCode.Stloc_3:
+                index = 3;
+                return true;
+            case ILOpCode.Ldarg:
+            case ILOpCode.Starg:
+            case ILOpCode.Ldloc:
+            case ILOpCode.Stloc:
+                index = il.ReadUInt16();
+                return true;
+            case ILOpCode.Ldarg_s:
+            case ILOpCode.Starg_s:
+            case ILOpCode.Ldloc_s:
+            case ILOpCode.Stloc_s:
+                index = il.ReadByte();
+                return true;
+            default:
+                index = 0;
+                return false;
+        }
+    }
+
     private static void SkipOperand(ILOpCode opcode, ref BlobReader il)
     {
         switch (opcode)
         {
-            case ILOpCode.Ldarg or ILOpCode.Starg or ILOpCode.Ldloc or ILOpCode.Stloc:
-                _ = il.ReadUInt16();
-                break;
-            case ILOpCode.Ldarg_s or ILOpCode.Starg_s or ILOpCode.Ldloc_s or ILOpCode.Stloc_s
-                or ILOpCode.Ldc_i4_s or ILOpCode.Unaligned:
+            case ILOpCode.Ldc_i4_s or ILOpCode.Unaligned:
                 _ = il.ReadByte();
                 break;
             case ILOpCode.Ldc_i4 or ILOpCode.Ldstr:
@@ -208,6 +252,7 @@ internal static class GeneratedIlReader
         bool IsLocalCall = false,
         int? BranchTarget = null,
         IReadOnlyList<int>? SwitchTargetsValue = null,
+        int? OperandIndex = null,
         int? Int32Value = null)
     {
         public static DecodedOperand None { get; } = new();

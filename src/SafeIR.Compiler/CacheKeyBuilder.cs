@@ -10,6 +10,7 @@ public static class CacheKeyBuilder
     public const string CompilerVersion = "safe-ir-compiler-9";
     public const string TypeSystemVersion = "safe-ir-type-system-2";
     public const string EffectAnalysisVersion = "safe-ir-effect-analysis-3";
+    public const string CanonicalizerVersion = CanonicalModuleHasher.CanonicalizerVersion;
     public const string TargetFramework = "net10.0";
 
     public static string LanguageVersion => SandboxLanguage.CurrentVersionText;
@@ -21,6 +22,7 @@ public static class CacheKeyBuilder
         var parts = new[] {
             "safe-ir-cache-v1",
             plan.ModuleHash,
+            CanonicalizerVersion,
             entrypoint,
             LanguageVersion,
             CompilerVersion,

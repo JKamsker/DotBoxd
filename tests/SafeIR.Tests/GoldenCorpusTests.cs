@@ -5,8 +5,8 @@ namespace SafeIR.Tests;
 public sealed class GoldenCorpusTests
 {
     [Theory]
-    [InlineData("pure-score", "cbdaa1be5d4ca6ae2c0bdbe3ca30c7b2614671754d5d0240af4dbb06c0bbeddd")]
-    [InlineData("file-read", "70e12b0a9a08f9b2c5fccd2f7c52bc43439d99e7dd3cdb43907a31baf349af90")]
+    [InlineData("pure-score", "b0e9799ca19d664f4a0350d322d3e8225515a25ee21818d873c3e688bdc1f198")]
+    [InlineData("file-read", "708b368d05cbebd566d7801a117999e5f695f06e4e491d8d794fd5c5de02d3dc")]
     public void Golden_modules_preserve_canonical_hashes(string name, string expectedHash)
     {
         var module = SafeIrJsonImporter.Import(GoldenJson(name));

@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using SafeIR.Compiler;
 using SafeIR.Verifier;
 
@@ -22,6 +24,36 @@ public sealed class CacheKeyIdentityTests
         Assert.NotEqual(
             CacheKeyBuilder.Build(plan, "main", policy, optimize: false),
             CacheKeyBuilder.Build(plan, "main", extendedPolicy, optimize: false));
+    }
+
+    [Fact]
+    public async Task Cache_key_identity_includes_canonicalizer_version()
+    {
+        var host = SandboxTestHost.Create(compiler: true);
+        var module = await host.ImportJsonAsync(SandboxTestHost.PureScoreJson());
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var policy = VerificationPolicy.BoxedValueDefaults();
+
+        var expected = HashParts(
+            "safe-ir-cache-v1",
+            plan.ModuleHash,
+            CacheKeyBuilder.CanonicalizerVersion,
+            "main",
+            CacheKeyBuilder.LanguageVersion,
+            CacheKeyBuilder.CompilerVersion,
+            CacheKeyBuilder.TypeSystemVersion,
+            CacheKeyBuilder.EffectAnalysisVersion,
+            policy.VerifierVersion,
+            policy.AllowlistHash,
+            policy.RuntimeFacadeHash,
+            plan.BindingManifestHash,
+            plan.PolicyHash,
+            CacheKeyBuilder.TargetFramework,
+            "boxed-values",
+            plan.Policy.Deterministic ? "deterministic" : "nondeterministic");
+
+        Assert.Equal(CanonicalModuleHasher.CanonicalizerVersion, CacheKeyBuilder.CanonicalizerVersion);
+        Assert.Equal(expected, CacheKeyBuilder.Build(plan, "main", policy, optimize: false));
     }
 
     [Fact]
@@ -61,4 +93,7 @@ public sealed class CacheKeyIdentityTests
         Assert.Contains(policy.RuntimeFacadeIdentities, i => i.StartsWith("SafeIR.Runtime, Version=", StringComparison.Ordinal));
         Assert.All(policy.RuntimeFacadeIdentities, i => Assert.Contains(", Mvid=", i, StringComparison.Ordinal));
     }
+
+    private static string HashParts(params string[] parts)
+        => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('|', parts)))).ToLowerInvariant();
 }
