@@ -25,7 +25,10 @@ internal static class PluginSymbolReader
     {
         var properties = eventType.GetMembers()
             .OfType<IPropertySymbol>()
-            .Where(p => p.DeclaredAccessibility == Accessibility.Public && !p.IsStatic && p.GetMethod is not null)
+            .Where(p => p.DeclaredAccessibility == Accessibility.Public &&
+                        !p.IsStatic &&
+                        p.GetMethod is not null &&
+                        p.Parameters.Length == 0)
             .ToArray();
 
         properties = ConstructorPropertyOrder(eventType, properties) ?? properties;
@@ -72,6 +75,7 @@ internal static class PluginSymbolReader
     {
         if (property.DeclaredAccessibility != Accessibility.Public ||
             property.IsStatic ||
+            property.Parameters.Length != 0 ||
             property.GetMethod is null ||
             property.SetMethod is null ||
             property.GetMethod.DeclaredAccessibility != Accessibility.Public ||
