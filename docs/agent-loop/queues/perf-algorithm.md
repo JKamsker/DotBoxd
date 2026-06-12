@@ -19,14 +19,12 @@
 
 ## Fixed pending verification
 
-- [~] `ALG-0003` medium - Generated meter analysis repeatedly rescans predecessors
-  - File: `docs/agent-loop/findings/ALG-0003-generated-meter-analysis-repeatedly-rescans-predecessors.md`
-  - Fixed by: `fixer`
-  - Commit: ``
 
 ## Verified
 
 - [x] `ALG-0001` high - JSON source map import repeatedly searches raw text
   - File: `docs/agent-loop/findings/ALG-0001-json-source-map-import-repeatedly-searches-raw-text.md`
+- [x] `ALG-0003` medium - Generated meter analysis repeatedly rescans predecessors
+  - File: `docs/agent-loop/findings/ALG-0003-generated-meter-analysis-repeatedly-rescans-predecessors.md`
 
 ## Rejected / duplicate / obsolete

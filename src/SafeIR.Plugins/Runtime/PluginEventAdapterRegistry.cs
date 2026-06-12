@@ -63,20 +63,31 @@ public sealed class PluginEventAdapterRegistry
 
 internal readonly record struct RegisteredPluginEventAdapter(object Adapter, PluginEventShape Shape);
 
-internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEvent>
+internal interface IPluginEventValueWriter<in TEvent>
 {
-    private readonly IReadOnlyList<PropertyInfo> _properties;
+    int EventValueCount { get; }
+    SandboxValue ToSandboxValue(TEvent e, int index);
+    void CopySandboxValues(TEvent e, SandboxValue[] destination, int destinationIndex);
+}
+
+internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEvent>, IPluginEventValueWriter<TEvent>
+{
+    private readonly ConventionEventProperty<TEvent>[] _properties;
 
     private ConventionEventAdapter(IReadOnlyList<PropertyInfo> properties)
     {
-        _properties = properties;
+        _properties = new ConventionEventProperty<TEvent>[properties.Count];
         var parameters = new Parameter[properties.Count];
         for (var i = 0; i < properties.Count; i++)
         {
             var property = properties[i];
+            var settingType = LiveSettingTypeConverter.FromClrType(property.PropertyType);
+            _properties[i] = new ConventionEventProperty<TEvent>(
+                settingType,
+                CreateGetter(property));
             parameters[i] = new Parameter(
                 EventParameterName(property.Name),
-                LiveSettingTypeConverter.ToSandboxType(LiveSettingTypeConverter.FromClrType(property.PropertyType)));
+                LiveSettingTypeConverter.ToSandboxType(settingType));
         }
 
         Parameters = parameters;
@@ -85,6 +96,8 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
     public string EventName => typeof(TEvent).Name;
 
     public IReadOnlyList<Parameter> Parameters { get; }
+
+    public int EventValueCount => _properties.Length;
 
     public static ConventionEventAdapter<TEvent> Create()
     {
@@ -229,20 +242,40 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
 
     public IReadOnlyList<SandboxValue> ToSandboxValues(TEvent e)
     {
-        var values = new SandboxValue[_properties.Count];
-        for (var i = 0; i < _properties.Count; i++)
-        {
-            var property = _properties[i];
-            values[i] = LiveSettingTypeConverter.ToSandboxValue(
-                LiveSettingTypeConverter.FromClrType(property.PropertyType),
-                property.GetValue(e));
-        }
-
+        var values = new SandboxValue[_properties.Length];
+        CopySandboxValues(e, values, 0);
         return values;
+    }
+
+    public SandboxValue ToSandboxValue(TEvent e, int index)
+        => _properties[index].ToSandboxValue(e);
+
+    public void CopySandboxValues(TEvent e, SandboxValue[] destination, int destinationIndex)
+    {
+        for (var i = 0; i < _properties.Length; i++)
+        {
+            destination[destinationIndex + i] = _properties[i].ToSandboxValue(e);
+        }
+    }
+
+    private static Func<TEvent, object?> CreateGetter(PropertyInfo property)
+    {
+        var instance = System.Linq.Expressions.Expression.Parameter(typeof(TEvent), "e");
+        var propertyAccess = System.Linq.Expressions.Expression.Property(instance, property);
+        var convert = System.Linq.Expressions.Expression.Convert(propertyAccess, typeof(object));
+        return System.Linq.Expressions.Expression.Lambda<Func<TEvent, object?>>(convert, instance).Compile();
     }
 
     private static string EventParameterName(string propertyName)
         => PluginManifestNames.EventParameters.Prefix + propertyName;
+}
+
+internal readonly record struct ConventionEventProperty<TEvent>(
+    string SettingType,
+    Func<TEvent, object?> Getter)
+{
+    public SandboxValue ToSandboxValue(TEvent e)
+        => LiveSettingTypeConverter.ToSandboxValue(SettingType, Getter(e));
 }
 
 internal readonly record struct PluginEventShape(string EventName, IReadOnlyList<Parameter> Parameters);

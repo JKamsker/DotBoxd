@@ -4,9 +4,6 @@
 
 ## Open
 
-- [ ] `PAL-0004` medium - Convention event adapter reflects and allocates per event
-  - File: `docs/agent-loop/findings/PAL-0004-convention-event-adapter-reflects-and-allocates-per-event.md`
-  - Dedup: `alloc/plugins/convention-event-adapter/reflection-array-per-event`
 - [ ] `PAL-0006` medium - Persistent artifact cache retains entry locks per cache key
   - File: `docs/agent-loop/findings/PAL-0006-persistent-artifact-cache-retains-entry-locks-per-cache-key.md`
   - Dedup: `alloc/compiler-cache/entry-locks/unbounded-key-retention`
@@ -25,8 +22,8 @@
 
 ## Fixed pending verification
 
-- [~] `PAL-0003` medium - Map validation and metering buffer reversed entries
-  - File: `docs/agent-loop/findings/PAL-0003-map-validation-and-metering-buffer-reversed-entries.md`
+- [~] `PAL-0004` medium - Convention event adapter reflects and allocates per event
+  - File: `docs/agent-loop/findings/PAL-0004-convention-event-adapter-reflects-and-allocates-per-event.md`
   - Fixed by: `fixer`
   - Commit: ``
 
@@ -36,5 +33,7 @@
   - File: `docs/agent-loop/findings/PAL-0001-interpreter-allocates-expressionevaluator-per-expression.md`
 - [x] `PAL-0002` medium - Live setting proxy reflects on every property access
   - File: `docs/agent-loop/findings/PAL-0002-live-setting-proxy-reflects-on-every-property-access.md`
+- [x] `PAL-0003` medium - Map validation and metering buffer reversed entries
+  - File: `docs/agent-loop/findings/PAL-0003-map-validation-and-metering-buffer-reversed-entries.md`
 
 ## Rejected / duplicate / obsolete

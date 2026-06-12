@@ -1,19 +1,19 @@
 ---
 id: PAL-0004
 area: perf_alloc
-status: open
+status: fixed_pending_verification
 priority: medium
 title: Convention event adapter reflects and allocates per event
 dedup_key: alloc/plugins/convention-event-adapter/reflection-array-per-event
 created_at: 2026-06-12T21:00:44.3235962+00:00
 created_by: performance-producer
 created_commit: 
-updated_at: 2026-06-12T21:00:44.3235962+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
+updated_at: 2026-06-12T21:37:25.5004534+00:00
+claimed_by: fixer
+claimed_at: 2026-06-12T21:33:30.7527803+00:00
+claim_branch: workflow-work
+fixed_by: fixer
+fixed_at: 2026-06-12T21:37:25.5004534+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 
