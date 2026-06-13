@@ -6,6 +6,25 @@ earlier doc ([plan.md](plan.md), [ownership-auth-and-policy.md](ownership-auth-a
 walkthroughs), **this doc wins** — those remain as design rationale but contain sketch code and a few
 claims the reviews corrected (noted inline there).
 
+## Implementation status
+
+| Phase | Status |
+|---|---|
+| **A** — rename, Program classes, slnx, cleanup | ✅ done, example runs e2e |
+| **B2** — convention adapters (delete hand-written), shape wiring via `On<TEvent>()` | ✅ done |
+| **B1** — ownership: `PluginSession`, owner-checked registry (SGP060), revoke-on-disconnect (`RpcPeer.Disconnected`), 4 concurrency fixes, owner-checked settings (SGP061) | ✅ done, tested |
+| **B (fluent surface)** — `HookStage<TEvent,TCurrent>`, `Select`, `InvokeLocal`, `InvokeKernel`(throws SGP062 until lowered) | ✅ done, tested |
+| **B4** — service contracts (`IFooService : IEventKernel<TEvent>`), `Kernels.Register<TService,TKernel>()`, `Get<TKernel>().SetValuesAsync`, `KernelPackageRegistry` | ✅ done, example uses it e2e |
+| **B3 (core)** — hierarchical/wildcard capability matching (`game.world.monster.*`) | ✅ done, tested |
+| **C-0** — analyzer detection of un-lowered `InvokeKernel(lambda)` chains (SGP110) | ✅ done, tested |
+| **C-1** — kernel-type → package resolution | ✅ done via reflection-based `KernelPackageRegistry` (the `[ModuleInitializer]` emit is the optional AOT path, deferred to avoid generator/golden-snapshot churn) |
+| **C-2 / C-3** — **lower** `Where`/`Select`/`InvokeKernel` lambda bodies to verified SafeIR | ⏳ **remaining** — the large multi-PR analyzer effort; the runtime surface + detection are in place. Until lowering lands, `InvokeKernel(lambda)` throws `SGP062` and the analyzer flags `SGP110`. Use `UseKernel`/`Register` with a kernel class (fully working) for sandboxed behavior. |
+| **B3 (example gating)** — gated game-world ctx bindings + analyzer-derived `RequiredCapabilities` | ⏳ remaining — entangled with C lowering (needs the analyzer to lower custom binding calls + emit derived caps) |
+| **Auth/signing/policy-resolver** | deferred appendix (no consumer; see §below) |
+
+Every shipped item above is committed with a green `dotnet build SafeIR.slnx -c Release` and a green
+`tests/SafeIR.Tests` run.
+
 ## What the reviews changed (the short version)
 
 - **Cut the security platform.** Auth / mTLS / cert signing / `SignedPluginGrant` / `IPluginPolicyResolver`
