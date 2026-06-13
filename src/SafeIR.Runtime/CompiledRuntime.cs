@@ -58,6 +58,15 @@ public static class CompiledRuntime
         return SandboxValue.FromUri(value);
     }
 
+    public static SandboxValue StringLiteralValue(string value) => SandboxValue.FromString(value);
+
+    public static SandboxValue OpaqueIdLiteralValue(string typeName, string value)
+        => SandboxValue.FromOpaqueId(typeName, value);
+
+    public static SandboxValue PathLiteralValue(string value) => SandboxValue.FromPath(value);
+
+    public static SandboxValue UriLiteralValue(string value) => SandboxValue.FromUri(value);
+
     public static int AsI32(SandboxValue value) => ((I32Value)value).Value;
     public static long AsI64(SandboxValue value) => ((I64Value)value).Value;
     public static bool AsBool(SandboxValue value) => ((BoolValue)value).Value;
@@ -144,6 +153,12 @@ public static class CompiledRuntime
         return ChargeValue(context, SandboxValue.FromList(values));
     }
 
+    public static SandboxValue ListLiteral(SandboxContext context, SandboxType itemType, SandboxValue[] values)
+        => CompiledLiteralRuntime.ListLiteral(context, itemType, values);
+
+    public static SandboxValue ListLiteralValue(SandboxType itemType, SandboxValue[] values)
+        => CompiledLiteralRuntime.ListLiteralValue(itemType, values);
+
     public static SandboxValue ListEmpty(SandboxContext context, SandboxType itemType)
     {
         context.ChargeFuel(SandboxCollectionFuel.Empty());
@@ -195,6 +210,21 @@ public static class CompiledRuntime
         context.ChargeAllocation(16);
         return ChargeValue(context, SandboxValue.FromMap(new Dictionary<SandboxValue, SandboxValue>(), keyType, valueType));
     }
+
+    public static SandboxValue MapLiteral(
+        SandboxContext context,
+        SandboxType keyType,
+        SandboxType valueType,
+        SandboxValue[] keys,
+        SandboxValue[] values)
+        => CompiledLiteralRuntime.MapLiteral(context, keyType, valueType, keys, values);
+
+    public static SandboxValue MapLiteralValue(
+        SandboxType keyType,
+        SandboxType valueType,
+        SandboxValue[] keys,
+        SandboxValue[] values)
+        => CompiledLiteralRuntime.MapLiteralValue(keyType, valueType, keys, values);
 
     public static SandboxValue MapContainsKey(SandboxContext context, SandboxValue map, SandboxValue key)
     {
@@ -263,6 +293,9 @@ public static class CompiledRuntime
         context.ChargeAllocation(checked(elementCount * 8));
         return new SandboxValue[count];
     }
+
+    public static SandboxValue[] CreateLiteralValueArray(int count)
+        => CompiledLiteralRuntime.CreateValueArray(count);
 
     private static ListValue AsList(SandboxValue value)
     {

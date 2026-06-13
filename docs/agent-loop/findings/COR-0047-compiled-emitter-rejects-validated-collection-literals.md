@@ -1,20 +1,20 @@
 ---
 id: COR-0047
 area: correctness
-status: open
+status: fixed_pending_verification
 priority: medium
 title: Compiled emitter rejects validated collection literals
 dedup_key: correctness/compiled/validated-collection-literals-unemittable
 created_at: 2026-06-12T23:16:33.6029810+00:00
 created_by: codex-correctness-producer
 created_commit: 
-updated_at: 2026-06-12T23:16:33.6029810+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
-fixed_commit: 
+updated_at: 2026-06-13T00:49:49.6793537+00:00
+claimed_by: worker
+claimed_at: 2026-06-13T00:42:40.0396558+00:00
+claim_branch: workflow-work
+fixed_by: worker
+fixed_at: 2026-06-13T00:49:49.6793537+00:00
+fixed_commit: pending
 verified_by: 
 verified_at: 
 verified_commit: 
