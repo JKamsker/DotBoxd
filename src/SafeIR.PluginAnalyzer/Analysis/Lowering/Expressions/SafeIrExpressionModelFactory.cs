@@ -1,5 +1,6 @@
 namespace SafeIR.PluginAnalyzer;
 
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -259,6 +260,7 @@ internal static class SafeIrExpressionModelFactory
             for (var i = 0; i < context.EventProperties.Count; i++) {
                 var property = context.EventProperties[i];
                 if (string.Equals(property.Name, memberName, StringComparison.Ordinal)) {
+                    CollectEventPropertyCapability(member, context);
                     return new SafeIrExpressionModel(
                         $"{SafeIrGenerationNames.Helpers.Var}({LiteralReader.StringLiteral(EventVariable(memberName))})",
                         property.Type,
@@ -274,6 +276,36 @@ internal static class SafeIrExpressionModelFactory
         }
 
         return Unsupported(member);
+    }
+
+    /// <summary>
+    /// Records the capability gating a <c>[Capability]</c>-annotated event property so reading it
+    /// contributes to the kernel's required capabilities (deny-at-install if the policy lacks it).
+    /// Unannotated properties stay ungated.
+    /// </summary>
+    private static void CollectEventPropertyCapability(
+        MemberAccessExpressionSyntax member,
+        SafeIrExpressionLoweringContext context)
+    {
+        if (context.Capabilities is null ||
+            context.SemanticModel.GetSymbolInfo(member, context.CancellationToken).Symbol is not IPropertySymbol property)
+        {
+            return;
+        }
+
+        foreach (var attribute in property.GetAttributes())
+        {
+            if (string.Equals(
+                    attribute.AttributeClass?.ToDisplayString(),
+                    SafeIrGenerationNames.Metadata.CapabilityAttribute,
+                    StringComparison.Ordinal) &&
+                attribute.ConstructorArguments.Length == 1 &&
+                attribute.ConstructorArguments[0].Value is string id &&
+                !string.IsNullOrEmpty(id))
+            {
+                context.Capabilities.Add(id);
+            }
+        }
     }
 
     public static string EventVariable(string name) => SafeIrGenerationNames.GeneratedVariables.EventPrefix + name;

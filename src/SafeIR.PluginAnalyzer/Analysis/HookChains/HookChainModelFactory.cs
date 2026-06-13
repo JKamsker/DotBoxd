@@ -90,6 +90,12 @@ internal static class HookChainModelFactory
             return null;
         }
 
+        // Collectors for the whole chain: every Where/Select/terminal-Send deposits the capabilities its
+        // IR needs (Send, [HostBinding] calls, gated event-property reads) and every extra sandbox effect
+        // a [HostBinding] declares. Sorted for deterministic, incrementality-stable output.
+        var capabilities = new SortedSet<string>(StringComparer.Ordinal);
+        var effects = new SortedSet<string>(StringComparer.Ordinal);
+
         // Forward pass: track the projected-element binding; record each Where with the context that
         // was current at its position (event mode, or projected after a Select).
         var whereStages = new List<(ExpressionSyntax Body, SafeIrExpressionLoweringContext Context)>();
@@ -104,7 +110,7 @@ internal static class HookChainModelFactory
                 return null;
             }
 
-            var context = Context(elementParam, eventProperties, projected, model, cancellationToken);
+            var context = Context(elementParam, eventProperties, projected, model, cancellationToken, capabilities, effects);
             if (stage.IsSelect)
             {
                 projected = SafeIrExpressionModelFactory.Create(body, context);
@@ -131,7 +137,7 @@ internal static class HookChainModelFactory
                 whereStages[i].Context);
         }
 
-        var handleContext = Context(terminalElementParam, eventProperties, projected, model, cancellationToken);
+        var handleContext = Context(terminalElementParam, eventProperties, projected, model, cancellationToken, capabilities, effects);
         var handle = SafeIrHandleModelFactory.CreateFromSend(sendInvocation, handleContext);
 
         var chainId = HookChainIdentity.Compute(invocation);
@@ -150,7 +156,8 @@ internal static class HookChainModelFactory
             LiveSettings: default,
             ShouldHandle: shouldHandle,
             Handle: handle,
-            ManifestEffects: SafeIrManifestEffectModel.Create(shouldHandle, handle));
+            ManifestEffects: SafeIrManifestEffectModel.Create(shouldHandle, handle, effects),
+            RequiredCapabilities: EquatableArray<string>.FromOwned([.. capabilities]));
 
         return new HookChainResult(modelResult, Interception(invocation, model, eventType, modelResult, receiverIsPipeline, cancellationToken));
     }
@@ -196,11 +203,16 @@ internal static class HookChainModelFactory
         EquatableArray<EventPropertyModel> eventProperties,
         SafeIrExpressionModel? projected,
         SemanticModel model,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ICollection<string> capabilities,
+        ICollection<string> effects)
         => projected is null
-            ? new SafeIrExpressionLoweringContext(elementParam, eventProperties, default, model, cancellationToken)
+            ? new SafeIrExpressionLoweringContext(
+                elementParam, eventProperties, default, model, cancellationToken,
+                capabilities: capabilities, effects: effects)
             : new SafeIrExpressionLoweringContext(
-                elementParam, eventProperties, default, model, cancellationToken, elementParam, projected);
+                elementParam, eventProperties, default, model, cancellationToken, elementParam, projected,
+                capabilities, effects);
 
     private static InvocationExpressionSyntax? WalkToSeed(ExpressionSyntax receiver, List<Stage> stages)
     {

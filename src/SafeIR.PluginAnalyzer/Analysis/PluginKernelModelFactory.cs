@@ -76,12 +76,19 @@ internal static class PluginKernelModelFactory
                 handle,
                 SafeIrGenerationNames.KernelMethodParameters.ContextIndex,
                 SafeIrGenerationNames.DefaultContextParameterName);
+            // Collectors for the whole kernel: ShouldHandle + Handle lowering deposit every capability the
+            // verified IR needs (Send, [HostBinding] calls, gated event-property reads) and every extra
+            // sandbox effect a [HostBinding] declares. Sorted for deterministic, incrementality-stable output.
+            var capabilities = new SortedSet<string>(StringComparer.Ordinal);
+            var effects = new SortedSet<string>(StringComparer.Ordinal);
             var shouldHandleContext = new SafeIrExpressionLoweringContext(
                 eventParameterName,
                 eventProperties,
                 liveSettings,
                 context.SemanticModel,
-                cancellationToken);
+                cancellationToken,
+                capabilities: capabilities,
+                effects: effects);
             var shouldHandleBody = SafeIrShouldHandleBodyModelFactory.Create(shouldHandle, shouldHandleContext);
 
             var handleModel = SafeIrHandleModelFactory.Create(
@@ -91,7 +98,9 @@ internal static class PluginKernelModelFactory
                 eventProperties,
                 liveSettings,
                 context.SemanticModel,
-                cancellationToken);
+                cancellationToken,
+                capabilities,
+                effects);
             var model = new PluginKernelModel(
                 PluginId: validatedPluginId,
                 Namespace: type.ContainingNamespace.IsGlobalNamespace ? "" : type.ContainingNamespace.ToDisplayString(),
@@ -106,7 +115,8 @@ internal static class PluginKernelModelFactory
                 LiveSettings: liveSettings,
                 ShouldHandle: shouldHandleBody,
                 Handle: handleModel,
-                ManifestEffects: SafeIrManifestEffectModel.Create(shouldHandleBody, handleModel));
+                ManifestEffects: SafeIrManifestEffectModel.Create(shouldHandleBody, handleModel, effects),
+                RequiredCapabilities: EquatableArray<string>.FromOwned([.. capabilities]));
             return new PluginKernelModelResult(model, null);
         }
         catch (NotSupportedException ex)

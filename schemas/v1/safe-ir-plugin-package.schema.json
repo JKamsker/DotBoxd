@@ -37,6 +37,11 @@
         "subscriptions": {
           "type": "array",
           "items": { "$ref": "#/$defs/subscription" }
+        },
+        "requiredCapabilities": {
+          "type": "array",
+          "description": "Analyzer-derived capabilities the verified IR requires. Optional for back-compat.",
+          "items": { "type": "string" }
         }
       }
     },

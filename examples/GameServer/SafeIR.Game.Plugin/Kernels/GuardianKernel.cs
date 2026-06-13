@@ -28,7 +28,11 @@ public sealed partial class GuardianKernel : IMonsterAggroService
     public bool ShouldHandle(MonsterAggroEvent e, HookContext ctx)
         => e.MonsterLevel - e.PlayerLevel >= LevelGap &&
            e.Distance <= AggroRange &&
-           e.PlayerLevel <= ProtectMaxLevel;
+           e.PlayerLevel <= ProtectMaxLevel &&
+           // Gated host-world read: only calm a monster that is still alive. The call lowers to the
+           // host.world.getHealth binding and requires game.world.monster.read.health, which the server
+           // grants via game.world.monster.read.*.
+           ctx.Host<IGameWorldAccess>().GetHealth(e.MonsterId) > 0;
 
     public void Handle(MonsterAggroEvent e, HookContext ctx)
         => ctx.Messages.Send(e.MonsterId, "calm:" + e.PlayerId + ":" + CalmStrength);

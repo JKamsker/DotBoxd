@@ -60,6 +60,7 @@ public IReadOnlyList<LiveSettingDefinition> Definitions
 public IReadOnlyList<LiveSettingDefinition> LiveSettings { get => _liveSettings; init => _liveSettings = PluginModelCopy.List(value); }
 public IReadOnlyList<PluginExecutionObservation> ExecutionObservations => _executionObserver.Snapshot()
 public IReadOnlyList<string> Effects { get => _effects; init => _effects = PluginModelCopy.List(value); }
+public IReadOnlyList<string> RequiredCapabilities
 public KernelRegistry Kernels { get; }
 public LiveContext<T> BindContext<T>(string name, Action<T>? initialize = null) where T : class
 public LiveSettingDefinition Definition { get; }

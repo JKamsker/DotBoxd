@@ -20,14 +20,18 @@ internal static class SafeIrHandleModelFactory
         EquatableArray<EventPropertyModel> eventProperties,
         EquatableArray<LiveSettingModel> liveSettings,
         SemanticModel semanticModel,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ICollection<string>? capabilities = null,
+        ICollection<string>? effects = null)
         => CreateFromSend(
             SingleSendInvocation(method, contextParameterName),
             eventParameterName,
             eventProperties,
             liveSettings,
             semanticModel,
-            cancellationToken);
+            cancellationToken,
+            capabilities,
+            effects);
 
     /// <summary>
     /// Lowers a single <c>ctx.Messages.Send(targetId, message)</c> invocation to a handle model. Shared
@@ -39,11 +43,14 @@ internal static class SafeIrHandleModelFactory
         EquatableArray<EventPropertyModel> eventProperties,
         EquatableArray<LiveSettingModel> liveSettings,
         SemanticModel semanticModel,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ICollection<string>? capabilities = null,
+        ICollection<string>? effects = null)
         => CreateFromSend(
             sendInvocation,
             new SafeIrExpressionLoweringContext(
-                eventParameterName, eventProperties, liveSettings, semanticModel, cancellationToken));
+                eventParameterName, eventProperties, liveSettings, semanticModel, cancellationToken,
+                capabilities: capabilities, effects: effects));
 
     /// <summary>Lowers a send using a prebuilt context (e.g. one carrying a Select-projected element).</summary>
     public static SafeIrHandleModel CreateFromSend(
@@ -55,6 +62,7 @@ internal static class SafeIrHandleModelFactory
         var message = SafeIrExpressionModelFactory.Create(arguments.Message, loweringContext);
         RequireString(target, "targetId");
         RequireString(message, "message");
+        loweringContext.Capabilities?.Add(SafeIrGenerationNames.Capabilities.MessageWrite);
         return new SafeIrHandleModel(target, message);
     }
 

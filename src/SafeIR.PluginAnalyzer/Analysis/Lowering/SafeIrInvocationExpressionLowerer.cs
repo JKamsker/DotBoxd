@@ -26,6 +26,11 @@ internal static class SafeIrInvocationExpressionLowerer
         Func<ExpressionSyntax, SafeIrExpressionModel> lowerExpression)
     {
         context.CancellationToken.ThrowIfCancellationRequested();
+        if (SafeIrHostBindingExpressionLowerer.TryLower(invocation, context, lowerExpression) is { } hostCall)
+        {
+            return hostCall;
+        }
+
         if (invocation.Expression is MemberAccessExpressionSyntax member &&
             string.Equals(member.Name.Identifier.ValueText, EqualsMethodName, StringComparison.Ordinal))
         {

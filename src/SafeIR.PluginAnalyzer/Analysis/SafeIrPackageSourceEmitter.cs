@@ -47,7 +47,8 @@ internal static class SafeIrPackageSourceEmitter
         builder.AppendLine("            global::SafeIR.ExecutionMode.Auto,");
         EmitEffects(builder, model.ManifestEffects);
         builder.AppendLine("            settings,");
-        builder.AppendLine($"            [new global::SafeIR.Plugins.HookSubscriptionManifest({LiteralReader.StringLiteral(model.EventName)}, {LiteralReader.StringLiteral(model.KernelName)})]);");
+        builder.AppendLine($"            [new global::SafeIR.Plugins.HookSubscriptionManifest({LiteralReader.StringLiteral(model.EventName)}, {LiteralReader.StringLiteral(model.KernelName)})])");
+        EmitRequiredCapabilities(builder, model.RequiredCapabilities);
         builder.AppendLine("        return global::SafeIR.Plugins.PluginPackage.Create(manifest, CreateModule(settings));");
         builder.AppendLine("    }");
         builder.AppendLine();
@@ -94,6 +95,22 @@ internal static class SafeIrPackageSourceEmitter
         }
 
         builder.AppendLine("],");
+    }
+
+    private static void EmitRequiredCapabilities(StringBuilder builder, EquatableArray<string> capabilities)
+    {
+        builder.AppendLine("        {");
+        builder.Append("            RequiredCapabilities = [");
+        for (var i = 0; i < capabilities.Count; i++) {
+            if (i > 0) {
+                builder.Append(", ");
+            }
+
+            builder.Append(LiteralReader.StringLiteral(capabilities[i]));
+        }
+
+        builder.AppendLine("],");
+        builder.AppendLine("        };");
     }
 
     private static void EmitModule(StringBuilder builder, PluginKernelModel model)

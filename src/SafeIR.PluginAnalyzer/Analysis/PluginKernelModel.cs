@@ -14,7 +14,8 @@ internal sealed record PluginKernelModel(
     EquatableArray<LiveSettingModel> LiveSettings,
     SafeIrStatementBodyModel ShouldHandle,
     SafeIrHandleModel Handle,
-    EquatableArray<string> ManifestEffects);
+    EquatableArray<string> ManifestEffects,
+    EquatableArray<string> RequiredCapabilities);
 
 internal sealed record EventPropertyModel(string Name, string Type);
 

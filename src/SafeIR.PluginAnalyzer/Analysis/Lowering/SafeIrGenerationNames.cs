@@ -21,6 +21,8 @@ internal static class SafeIrGenerationNames
         public const string LiveSettingAttribute = "SafeIR.Server.Abstractions.LiveSettingAttribute";
         public const string EventKernelInterface = "SafeIR.Server.Abstractions.IEventKernel<TEvent>";
         public const string RangeAttribute = "System.ComponentModel.DataAnnotations.RangeAttribute";
+        public const string HostBindingAttribute = "SafeIR.Server.Abstractions.HostBindingAttribute";
+        public const string CapabilityAttribute = "SafeIR.Server.Abstractions.CapabilityAttribute";
     }
 
     public static class Contracts
@@ -95,6 +97,10 @@ internal static class SafeIrGenerationNames
     public static class Capabilities
     {
         public const string MessageWriteReason = "send host messages";
+
+        /// <summary>The capability a <c>ctx.Messages.Send</c> requires — kept in step with
+        /// <c>SafeIR.Plugins.PluginMessageBindings.CapabilityId</c>.</summary>
+        public const string MessageWrite = "host.message.write";
     }
 
     public static class Entrypoints

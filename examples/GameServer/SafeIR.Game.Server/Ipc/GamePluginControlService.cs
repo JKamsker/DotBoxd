@@ -33,7 +33,13 @@ internal sealed class GamePluginControlService : IGamePluginControlService
     public async ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(packageJson);
-        var kernel = await _session.InstallJsonAsync(packageJson, cancellationToken: ct).ConfigureAwait(false);
+
+        // Grant each kernel exactly what its analyzer-derived manifest declares it needs (least
+        // privilege). The plugin cannot widen this: RequiredCapabilities reflects what the verified IR
+        // actually touches, not what the plugin asserts.
+        var package = PluginPackageJsonSerializer.Import(packageJson);
+        var policy = ServerPolicy.ForKernel(package.Manifest.RequiredCapabilities);
+        var kernel = await _session.InstallAsync(package, policy, ct).ConfigureAwait(false);
         WireHook(kernel);
         return kernel.Manifest.PluginId;
     }

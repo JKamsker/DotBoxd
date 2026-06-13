@@ -10,11 +10,17 @@ public interface IPluginEventAdapter<in TEvent>
 public interface IPluginMessageSink
 public IPluginMessageSink Messages { get; }
 public IReadOnlyList<PluginMessage> Messages => _readOnlyMessages
+public SandboxEffect Effects { get; } = effects
+public sealed class CapabilityAttribute(string id) : Attribute
 public sealed class HookContext
+public sealed class HostBindingAttribute(string bindingId, string capability, SandboxEffect effects) : Attribute
 public sealed class InMemoryPluginMessageSink : IPluginMessageSink
 public sealed class LiveSettingAttribute : Attribute
 public sealed class PluginAttribute(string id) : Attribute
 public sealed record PluginMessage(string TargetId, string Message)
+public string BindingId { get; } = bindingId
+public string Capability { get; } = capability
 public string Id { get; } = id
+public THost Host<THost>()
 public ValueTask SendAsync(string targetId, string message, CancellationToken cancellationToken = default)
 public void Send(string targetId, string message)

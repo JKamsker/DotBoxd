@@ -17,9 +17,14 @@ internal static class Program
     public static async Task<int> Main(string[] args)
     {
         // (a) Build the world and plugin server. The command sink is the example-defined capability
-        // that turns plugin messages into game-state changes; it is bound to the world once it exists.
+        // that turns plugin messages into game-state changes; the world host backs the gated
+        // ctx.Host<IGameWorldAccess>() read bindings. Both are bound to the world once it exists.
         var sink = new GameCommandSink();
-        using var server = PluginServer.Create(sink, defaultPolicy: ServerPolicy.Create());
+        var worldHost = new GameWorldHost();
+        using var server = PluginServer.Create(
+            sink,
+            configureHost: worldHost.AddBindings,
+            defaultPolicy: ServerPolicy.Create());
 
         // Register convention adapters for the events plugins may subscribe to. No hand-written
         // adapter is needed — the sandbox shape is inferred from each record's properties. Resolving
@@ -29,6 +34,7 @@ internal static class Program
 
         var world = GameWorld.CreateDefault(server.Hooks);
         sink.Bind(world);
+        worldHost.Bind(world);
 
         var playerHpBaseline = PlayerHpById(world);
 

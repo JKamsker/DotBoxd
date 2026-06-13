@@ -105,7 +105,7 @@ public sealed class Fix_CMP_0012_Tests
     [InlineData(ModuleSchemaRelative, ExpressionReaderRelative, "binary expression", new[] { "op", "left", "right" })]
     // Plugin package envelope objects.
     [InlineData(PackageSchemaRelative, SerializerRelative, "plugin package", new[] { "manifest", "module", "entrypoints" })]
-    [InlineData(PackageSchemaRelative, SerializerRelative, "plugin manifest", new[] { "pluginId", "contract", "mode", "effects", "liveSettings", "subscriptions" })]
+    [InlineData(PackageSchemaRelative, SerializerRelative, "plugin manifest", new[] { "pluginId", "contract", "mode", "effects", "liveSettings", "subscriptions", "requiredCapabilities" })]
     [InlineData(PackageSchemaRelative, SerializerRelative, "live setting", new[] { "name", "type", "defaultValue", "min", "max" })]
     [InlineData(PackageSchemaRelative, SerializerRelative, "hook subscription", new[] { "event", "kernel" })]
     [InlineData(PackageSchemaRelative, SerializerRelative, "kernel entrypoints", new[] { "shouldHandle", "handle" })]

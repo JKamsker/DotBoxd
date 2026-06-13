@@ -67,6 +67,7 @@ public static class PluginPackageJsonSerializer
         WriteStringArray(writer, "effects", manifest.Effects);
         WriteLiveSettings(writer, manifest.LiveSettings);
         WriteSubscriptions(writer, manifest.Subscriptions);
+        WriteStringArray(writer, "requiredCapabilities", manifest.RequiredCapabilities);
         writer.WriteEndObject();
     }
 
@@ -183,7 +184,7 @@ public static class PluginPackageJsonSerializer
         RequireAllowedProperties(
             element,
             "plugin manifest",
-            ["pluginId", "contract", "mode", "effects", "liveSettings", "subscriptions"]);
+            ["pluginId", "contract", "mode", "effects", "liveSettings", "subscriptions", "requiredCapabilities"]);
 
         return new PluginManifest(
             RequiredString(element, "pluginId"),
@@ -191,7 +192,13 @@ public static class PluginPackageJsonSerializer
             ReadExecutionMode(RequiredString(element, "mode")),
             ReadStringArray(RequiredArray(element, "effects"), "effects"),
             ReadLiveSettings(RequiredArray(element, "liveSettings")),
-            ReadSubscriptions(RequiredArray(element, "subscriptions")));
+            ReadSubscriptions(RequiredArray(element, "subscriptions")))
+        {
+            // Optional for back-compat: manifests exported before required-capability derivation omit it.
+            RequiredCapabilities = element.TryGetProperty("requiredCapabilities", out var requiredCapabilities)
+                ? ReadStringArray(requiredCapabilities, "requiredCapabilities")
+                : []
+        };
     }
 
     private static ExecutionMode ReadExecutionMode(string value)
