@@ -25,7 +25,7 @@ public sealed class PluginAnalyzerGenericEventTests
             }
             """, "Sample.GenericDamagePluginPackage");
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(package);
 
         server.Hooks.On<GenericDamageEvent<string>>().UseKernel(kernel);

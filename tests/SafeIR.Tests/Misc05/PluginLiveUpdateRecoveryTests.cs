@@ -8,7 +8,7 @@ public sealed class PluginLiveUpdateRecoveryTests
     [Fact]
     public async Task AsyncSet_flush_recovers_after_later_successful_update()
     {
-        var server = PluginServer.Create();
+        var server = PluginAddendumTestPolicies.CreateServer();
         await server.InstallAsync(FireDamagePluginPackage.Create());
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
 

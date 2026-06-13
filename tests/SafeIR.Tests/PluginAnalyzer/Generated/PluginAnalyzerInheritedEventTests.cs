@@ -44,7 +44,7 @@ public sealed class PluginAnalyzerInheritedEventTests
             }
             """);
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(package);
 
         server.Hooks.On<InheritedDamageEvent>().UseKernel(kernel);

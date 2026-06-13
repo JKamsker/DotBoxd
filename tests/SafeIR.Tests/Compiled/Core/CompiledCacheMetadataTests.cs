@@ -3,6 +3,7 @@ using SafeIR.Compiler.Emitters;
 using SafeIR.Hosting;
 using SafeIR.Verifier;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace SafeIR.Tests;
 
@@ -14,7 +15,10 @@ public sealed class CompiledCacheMetadataTests
 
     [Fact]
     public async Task Cached_manifest_missing_optimization_flags_is_quarantined_and_recompiled()
-        => await CorruptAndRecoverManifestAsync(m => m with { OptimizationFlags = null! });
+        // OptimizationFlags can no longer be nulled through the typed model (ArtifactManifest
+        // defensively copies it and rejects null), so corrupt the on-disk JSON directly to
+        // reproduce a cached manifest whose optimizationFlags field is null.
+        => await CorruptAndRecoverManifestJsonAsync(node => node["optimizationFlags"] = null);
 
     [Fact]
     public async Task Cached_manifest_missing_assembly_hash_is_quarantined_and_recompiled()
@@ -78,6 +82,17 @@ public sealed class CompiledCacheMetadataTests
         AssertRecovered(temp.Path, result);
     }
 
+    private static async Task CorruptAndRecoverManifestJsonAsync(Action<JsonObject> mutate)
+    {
+        using var temp = TempDirectory.Create();
+        var (host, plan, input) = await PrepareCachedEntryAsync(temp.Path);
+        await CorruptManifestJsonAsync(CacheEntry(temp.Path, plan), mutate);
+
+        var result = await ExecuteCompiled(host, plan, input);
+
+        AssertRecovered(temp.Path, result);
+    }
+
     private static async Task<(SandboxHost Host, ExecutionPlan Plan, SandboxValue Input)> PrepareCachedEntryAsync(string cachePath)
     {
         var host = SandboxTestHost.Create(compiler: true, compilerCache: cachePath);
@@ -124,6 +139,23 @@ public sealed class CompiledCacheMetadataTests
 
         await using var write = File.Create(path);
         await JsonSerializer.SerializeAsync(write, replace(manifest), JsonOptions);
+    }
+
+    private static async Task CorruptManifestJsonAsync(string entryPath, Action<JsonObject> mutate)
+    {
+        var path = Path.Combine(entryPath, "manifest.json");
+        JsonObject manifest;
+        await using (var read = File.OpenRead(path))
+        {
+            manifest = await JsonNode.ParseAsync(read) as JsonObject ??
+                throw new JsonException("empty manifest");
+        }
+
+        mutate(manifest);
+
+        await using var write = File.Create(path);
+        await using var writer = new Utf8JsonWriter(write, new JsonWriterOptions { Indented = true });
+        manifest.WriteTo(writer);
     }
 
     private static async Task ReplaceVerificationAsync(

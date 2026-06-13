@@ -47,7 +47,7 @@ public sealed class PluginAnalyzerConstantExpressionTests
         await AssertCompiledShouldHandleAsync(package, matching: false);
 
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(package);
         var adapter = new ConstantDamageEventAdapter();
 

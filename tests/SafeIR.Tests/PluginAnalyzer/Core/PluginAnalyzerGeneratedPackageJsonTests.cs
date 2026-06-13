@@ -39,7 +39,7 @@ public sealed class PluginAnalyzerGeneratedPackageJsonTests
         Assert.DoesNotContain("rawDllBase64", json, StringComparison.OrdinalIgnoreCase);
 
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallJsonAsync(json);
         var adapter = new DamageEventAdapter();
         var matching = new DamageEvent("player-1", "matched", "fire", 150);

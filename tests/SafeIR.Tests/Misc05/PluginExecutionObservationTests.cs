@@ -10,7 +10,7 @@ public sealed class PluginExecutionObservationTests
     public async Task Installed_kernel_exposes_execution_observability_for_each_entrypoint_run()
     {
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages, executionMode: ExecutionMode.Interpreted);
+        var server = PluginServer.Create(messages, defaultPolicy: PluginAddendumTestPolicies.LongWall(), executionMode: ExecutionMode.Interpreted);
         var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
         server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
 
@@ -39,7 +39,7 @@ public sealed class PluginExecutionObservationTests
     public async Task Server_execution_mode_controls_plugin_dispatch_request(ExecutionMode mode)
     {
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages, executionMode: mode);
+        var server = PluginServer.Create(messages, defaultPolicy: PluginAddendumTestPolicies.LongWall(), executionMode: mode);
         var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
         server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
 

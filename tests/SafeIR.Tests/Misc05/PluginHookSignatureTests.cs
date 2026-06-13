@@ -9,7 +9,7 @@ public sealed class PluginHookSignatureTests
     [Fact]
     public async Task UseKernel_rejects_adapter_parameter_name_mismatch()
     {
-        var server = PluginServer.Create();
+        var server = PluginAddendumTestPolicies.CreateServer();
         await server.InstallAsync(FireDamagePluginPackage.Create());
 
         var ex = Assert.Throws<SandboxValidationException>(
@@ -22,7 +22,7 @@ public sealed class PluginHookSignatureTests
     public async Task Convention_adapter_uses_generated_event_parameter_names()
     {
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(ConventionPackage());
 
         server.Hooks.On<ConventionDamageEvent>().UseKernel(kernel);
@@ -37,7 +37,7 @@ public sealed class PluginHookSignatureTests
     public async Task Convention_adapter_uses_record_constructor_property_order()
     {
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(ConventionRecordPackage());
 
         server.Hooks.On<ConventionRecordEvent>().UseKernel(kernel);
@@ -52,7 +52,7 @@ public sealed class PluginHookSignatureTests
     public async Task Direct_handle_rejects_unsubscribed_adapter_before_execution()
     {
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
 
         var ex = await Assert.ThrowsAsync<SandboxValidationException>(
@@ -68,7 +68,7 @@ public sealed class PluginHookSignatureTests
     [Fact]
     public async Task Direct_should_handle_rejects_adapter_signature_mismatch_before_execution()
     {
-        var server = PluginServer.Create();
+        var server = PluginAddendumTestPolicies.CreateServer();
         var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
 
         var ex = await Assert.ThrowsAsync<SandboxValidationException>(
@@ -83,7 +83,7 @@ public sealed class PluginHookSignatureTests
     [Fact]
     public async Task Install_supports_explicit_interface_event_adapter()
     {
-        var server = PluginServer.Create();
+        var server = PluginAddendumTestPolicies.CreateServer();
         server.RegisterEventAdapter(new ExplicitDamageEventAdapter());
 
         await server.InstallAsync(FireDamagePluginPackage.Create());

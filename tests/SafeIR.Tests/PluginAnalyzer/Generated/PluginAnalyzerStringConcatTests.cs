@@ -10,7 +10,7 @@ public sealed class PluginAnalyzerStringConcatTests
     {
         var package = CreatePackage();
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(package);
 
         await kernel.HandleAsync(new StringConcatEventAdapter(), new StringConcatEvent("player-1", "matched"));

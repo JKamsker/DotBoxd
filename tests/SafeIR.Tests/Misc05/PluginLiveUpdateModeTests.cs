@@ -8,7 +8,7 @@ public sealed class PluginLiveUpdateModeTests
     [Fact]
     public async Task Kernel_rejects_unsupported_live_update_mode()
     {
-        var server = PluginServer.Create();
+        var server = PluginAddendumTestPolicies.CreateServer();
         await server.InstallAsync(FireDamagePluginPackage.Create());
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
 

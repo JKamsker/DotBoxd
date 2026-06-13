@@ -42,12 +42,18 @@ public sealed class SafeFileAuditRedactionTests
             "main",
             new SandboxPathValue(new SandboxPath("../secret.txt")));
 
+        // A malformed (non-portable, traversal) SandboxPath input is now rejected at the
+        // entrypoint value boundary (SandboxValueValidator.RequireScalarInvariants) before the
+        // file.readText binding runs, so the failure is InvalidInput. Regardless of where it is
+        // rejected, no audit event may echo the traversal path or its secret-shaped token.
         Assert.False(result.Succeeded);
-        Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
-        var audit = Assert.Single(result.AuditEvents, e => e.BindingId == "file.readText" && !e.Success);
-        Assert.Equal("sandbox://file.read/[invalid-path]", audit.ResourceId);
-        Assert.DoesNotContain("secret", audit.ResourceId, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("..", audit.ResourceId, StringComparison.Ordinal);
+        Assert.Equal(SandboxErrorCode.InvalidInput, result.Error!.Code);
+        Assert.All(result.AuditEvents, e =>
+        {
+            Assert.DoesNotContain("secret", e.ResourceId ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("secret", e.Message ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("..", e.ResourceId ?? string.Empty, StringComparison.Ordinal);
+        });
     }
 
     [Fact]

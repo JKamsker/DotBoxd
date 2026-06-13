@@ -39,7 +39,7 @@ public sealed class PluginAnalyzerStringInterpolationTests
         await AssertCompiledShouldHandleAsync(package, "ice", expected: false);
 
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(package);
 
         await kernel.HandleAsync(new InterpolationEventAdapter(), new InterpolationEvent("player-1", "fire", "matched"));

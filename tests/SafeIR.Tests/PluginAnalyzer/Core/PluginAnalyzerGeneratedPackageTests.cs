@@ -66,7 +66,7 @@ public sealed class PluginAnalyzerGeneratedPackageTests
             setting => AssertLiveSetting(setting, "Ratio", "double", 1.5D, 0.5D, 2.5D));
 
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(package);
         var adapter = new GeneratedDamageEventAdapter();
 
@@ -123,7 +123,7 @@ public sealed class PluginAnalyzerGeneratedPackageTests
             }
             """);
 
-        var server = PluginServer.Create();
+        var server = PluginAddendumTestPolicies.CreateServer();
         var kernel = await server.InstallAsync(package);
         var adapter = new GeneratedDamageEventAdapter();
 

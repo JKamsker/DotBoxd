@@ -29,7 +29,7 @@ public sealed class PluginAnalyzerNegativeLiteralTests
                     => ctx.Messages.Send(e.TargetId, e.Message);
             }
             """, "Sample.NegativeLiteralPluginPackage");
-        var server = PluginServer.Create();
+        var server = PluginAddendumTestPolicies.CreateServer();
         var kernel = await server.InstallAsync(package);
         var adapter = new NegativeLiteralEventAdapter();
 

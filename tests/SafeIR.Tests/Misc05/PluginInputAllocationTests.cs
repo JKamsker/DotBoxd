@@ -8,7 +8,7 @@ public sealed class PluginInputAllocationTests
     public async Task Kernel_input_building_does_not_enumerate_event_value_list_when_live_settings_exist()
     {
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(InputBuildPackage());
 
         await kernel.HandleAsync(new IndexOnlyEventAdapter(), new IndexOnlyEvent("player-1"));

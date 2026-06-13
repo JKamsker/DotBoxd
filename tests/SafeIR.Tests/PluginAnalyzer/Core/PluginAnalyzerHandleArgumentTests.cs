@@ -24,7 +24,7 @@ public sealed class PluginAnalyzerHandleArgumentTests
             }
             """, "Sample.NamedSendPluginPackage");
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(package);
 
         await kernel.HandleAsync(new NamedSendEventAdapter(), new NamedSendEvent("player-1", "named message"));
@@ -57,7 +57,7 @@ public sealed class PluginAnalyzerHandleArgumentTests
             }
             """, "Sample.NamedSendPluginPackage");
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(package);
 
         await kernel.HandleAsync(new NamedSendEventAdapter(), new NamedSendEvent("player-1", "returned"));
