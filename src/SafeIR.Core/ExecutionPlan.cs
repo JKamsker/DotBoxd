@@ -143,7 +143,7 @@ public sealed record SandboxExecutionResult
     // hot path) can be adopted directly; any other input is still defensively copied so
     // external list/array identity never escapes into the public result.
     private static IReadOnlyList<SandboxAuditEvent> AdoptOrCopy(IReadOnlyList<SandboxAuditEvent> value)
-        => value is System.Collections.ObjectModel.ReadOnlyCollection<SandboxAuditEvent> owned
+        => value is OwnedAuditEventSnapshot owned
             ? owned
             : ModelCopy.List(value);
 

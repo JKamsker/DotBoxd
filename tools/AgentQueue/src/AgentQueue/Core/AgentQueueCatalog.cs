@@ -81,11 +81,6 @@ internal static class AgentQueueCatalog
 
     public static bool CanTransition(string current, string next, bool force)
     {
-        if (current == next)
-        {
-            return true;
-        }
-
         if (IsFinalStatus(current))
         {
             return force && next == "open";

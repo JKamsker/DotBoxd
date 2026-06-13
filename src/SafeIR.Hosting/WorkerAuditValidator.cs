@@ -1,5 +1,6 @@
 namespace SafeIR.Hosting;
 
+using System.Globalization;
 using SafeIR;
 
 internal static class WorkerAuditValidator
@@ -65,7 +66,7 @@ internal static class WorkerAuditValidator
             "DebugTrace" => options.EnableDebugTrace && ModuleAuditMatches(plan, auditEvent),
             "CacheInvalidated" => false,
             "PolicyDenied" => false,
-            "BindingCall" or "SandboxLog" or "PluginMessage" => false,
+            "BindingCall" or "SandboxLog" or "PluginMessage" => BindingAuditMatches(plan, entrypoint, auditEvent),
             _ => false
         };
     }
@@ -121,6 +122,80 @@ internal static class WorkerAuditValidator
            auditEvent.Effect == SandboxEffect.None &&
            auditEvent.Fields is null &&
            string.Equals(auditEvent.ResourceId, $"module:{plan.ModuleHash}", StringComparison.Ordinal);
+
+    private static bool BindingAuditMatches(
+        ExecutionPlan plan,
+        string entrypoint,
+        SandboxAuditEvent auditEvent)
+    {
+        if (string.IsNullOrWhiteSpace(auditEvent.BindingId) ||
+            !plan.BindingReferences.TryGetValue(entrypoint, out var entrypointBindings) ||
+            !entrypointBindings.Contains(auditEvent.BindingId) ||
+            !plan.Bindings.TryGet(auditEvent.BindingId, out var binding) ||
+            binding.AuditLevel is AuditLevel.None or AuditLevel.Summary ||
+            string.IsNullOrWhiteSpace(auditEvent.ResourceId) ||
+            !CapabilityMatches(auditEvent, binding) ||
+            !EffectMatches(auditEvent, binding) ||
+            !ResultMatches(auditEvent) ||
+            !RequiredBindingFieldsMatch(plan, auditEvent))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool CapabilityMatches(SandboxAuditEvent auditEvent, BindingSignature binding)
+        => binding.RequiredCapability is null ||
+           string.Equals(auditEvent.CapabilityId, binding.RequiredCapability, StringComparison.Ordinal);
+
+    private static bool EffectMatches(SandboxAuditEvent auditEvent, BindingSignature binding)
+    {
+        if (auditEvent.Effect == SandboxEffect.None ||
+            (auditEvent.Effect & ~binding.Effects) != SandboxEffect.None)
+        {
+            return false;
+        }
+
+        var nonCpuEffects = binding.Effects & ~SandboxEffect.Cpu;
+        return nonCpuEffects == SandboxEffect.None ||
+               (auditEvent.Effect & nonCpuEffects) != SandboxEffect.None;
+    }
+
+    private static bool ResultMatches(SandboxAuditEvent auditEvent)
+        => auditEvent.Success ? auditEvent.ErrorCode is null : auditEvent.ErrorCode is not null;
+
+    private static bool RequiredBindingFieldsMatch(ExecutionPlan plan, SandboxAuditEvent auditEvent)
+    {
+        if (auditEvent.Fields is null ||
+            !auditEvent.Fields.TryGetValue("resourceKind", out var resourceKind) ||
+            string.IsNullOrWhiteSpace(resourceKind) ||
+            !auditEvent.Fields.TryGetValue("durationMs", out var durationMs) ||
+            !auditEvent.Fields.TryGetValue("moduleHash", out var moduleHash) ||
+            !string.Equals(moduleHash, plan.ModuleHash, StringComparison.Ordinal) ||
+            !auditEvent.Fields.TryGetValue("policyHash", out var policyHash) ||
+            !string.Equals(policyHash, plan.PolicyHash, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        foreach (var field in auditEvent.Fields)
+        {
+            if (string.IsNullOrWhiteSpace(field.Key) ||
+                !TextIsSafe(field.Key) ||
+                !TextIsSafe(field.Value))
+            {
+                return false;
+            }
+        }
+
+        return double.TryParse(
+                durationMs,
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out var parsedDuration) &&
+            parsedDuration >= 0;
+    }
 
     private static bool TextIsSafe(string? value)
         => value is null || value.All(c => !char.IsControl(c));

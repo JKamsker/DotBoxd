@@ -1,7 +1,5 @@
 namespace SafeIR.Hosting;
 
-using System.Collections.ObjectModel;
-
 using SafeIR;
 
 public sealed partial class SandboxHost
@@ -346,5 +344,5 @@ internal static class SandboxAuditEventSequence
     /// it again, producing an owned immutable snapshot that result construction can adopt.
     /// </summary>
     internal static IReadOnlyList<SandboxAuditEvent> OwnedEventSnapshot(this InMemoryAuditSink sink)
-        => new ReadOnlyCollection<SandboxAuditEvent>((IList<SandboxAuditEvent>)sink.Events);
+        => sink.SnapshotEvents();
 }

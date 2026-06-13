@@ -41,6 +41,9 @@ public sealed record SandboxAuditEvent(
         => fields is null ? null : ModelCopy.StringDictionary(fields);
 }
 
+internal sealed class OwnedAuditEventSnapshot(IList<SandboxAuditEvent> list)
+    : ReadOnlyCollection<SandboxAuditEvent>(list);
+
 public interface IAuditSink
 {
     long EventsWritten { get; }
@@ -72,7 +75,7 @@ public sealed class InMemoryAuditSink : IAuditSink
     /// retained by the sink, so result construction can adopt it without copying again.
     /// </summary>
     internal IReadOnlyList<SandboxAuditEvent> SnapshotEvents()
-        => new ReadOnlyCollection<SandboxAuditEvent>(_events.ToArray());
+        => new OwnedAuditEventSnapshot(_events.ToArray());
 
     public void Write(SandboxAuditEvent auditEvent)
     {

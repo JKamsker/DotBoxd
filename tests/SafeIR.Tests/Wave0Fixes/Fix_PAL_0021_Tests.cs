@@ -37,7 +37,7 @@ public sealed class Fix_PAL_0021_Tests
 
         var snapshot = sink.SnapshotEvents();
 
-        Assert.IsType<ReadOnlyCollection<SandboxAuditEvent>>(snapshot);
+        Assert.IsAssignableFrom<ReadOnlyCollection<SandboxAuditEvent>>(snapshot);
         Assert.Single(snapshot);
     }
 
@@ -63,7 +63,7 @@ public sealed class Fix_PAL_0021_Tests
 
         var result = ResultWith(snapshot);
 
-        Assert.IsType<ReadOnlyCollection<SandboxAuditEvent>>(snapshot);
+        Assert.IsAssignableFrom<ReadOnlyCollection<SandboxAuditEvent>>(snapshot);
         Assert.Same(snapshot, result.AuditEvents);
     }
 
@@ -84,6 +84,22 @@ public sealed class Fix_PAL_0021_Tests
     }
 
     [Fact]
+    public void Public_read_only_collection_input_is_still_defensively_copied()
+    {
+        var events = new List<SandboxAuditEvent>
+        {
+            new(SandboxRunId.New(), "RunSummary", DateTimeOffset.UtcNow, true)
+        };
+        var wrapper = new ReadOnlyCollection<SandboxAuditEvent>(events);
+
+        var result = ResultWith(wrapper);
+        events.Clear();
+
+        Assert.NotSame(wrapper, result.AuditEvents);
+        Assert.Single(result.AuditEvents);
+    }
+
+    [Fact]
     public void Resequencing_returns_owned_snapshot_adopted_without_copying_again()
     {
         var runId = SandboxRunId.New();
@@ -96,7 +112,7 @@ public sealed class Fix_PAL_0021_Tests
         var sequenced = events.ToSequencedArray();
         var result = ResultWith(sequenced);
 
-        Assert.IsType<ReadOnlyCollection<SandboxAuditEvent>>(sequenced);
+        Assert.IsAssignableFrom<ReadOnlyCollection<SandboxAuditEvent>>(sequenced);
         Assert.Same(sequenced, result.AuditEvents);
         Assert.Equal(2, result.AuditEvents.Count);
         Assert.Equal(1, result.AuditEvents[0].SequenceNumber);

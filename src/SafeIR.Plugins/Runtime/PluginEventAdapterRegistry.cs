@@ -277,5 +277,3 @@ internal readonly record struct ConventionEventProperty<TEvent>(
     public SandboxValue ToSandboxValue(TEvent e)
         => LiveSettingTypeConverter.ToSandboxValue(SettingType, Getter(e));
 }
-
-internal readonly record struct PluginEventShape(string EventName, IReadOnlyList<Parameter> Parameters);

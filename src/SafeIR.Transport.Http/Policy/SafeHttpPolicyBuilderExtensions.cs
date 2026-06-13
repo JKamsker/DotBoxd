@@ -5,6 +5,10 @@ using SafeIR.Transport.Http.Internal;
 
 public static class SafeHttpPolicyBuilderExtensions
 {
+    private const long DefaultTimeoutMilliseconds = 2_000;
+    private const long MinTimeoutMilliseconds = 1;
+    private const long MaxTimeoutMilliseconds = 60_000;
+
     public static SandboxPolicyBuilder GrantHttpGet(
         this SandboxPolicyBuilder builder,
         IEnumerable<string> allowedHosts,
@@ -23,11 +27,6 @@ public static class SafeHttpPolicyBuilderExtensions
             throw new ArgumentOutOfRangeException(nameof(maxRequestBytes));
         }
 
-        if (timeout is not null && timeout.Value < TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(nameof(timeout));
-        }
-
         var hosts = ValidateEntries(
             allowedHosts,
             nameof(allowedHosts),
@@ -39,6 +38,7 @@ public static class SafeHttpPolicyBuilderExtensions
             SafeHttpGrantValueValidator.IsAllowedScheme,
             "http or https");
         var requestBytes = maxRequestBytes ?? 1_048_576;
+        var timeoutMs = TimeoutMilliseconds(timeout);
         return builder.Grant(
             "net.http.get",
             new Dictionary<string, string>
@@ -47,7 +47,7 @@ public static class SafeHttpPolicyBuilderExtensions
                 ["allowedSchemes"] = string.Join(',', schemes),
                 ["maxRequestBytes"] = requestBytes.ToString(CultureInfo.InvariantCulture),
                 ["maxResponseBytes"] = maxResponseBytes.ToString(CultureInfo.InvariantCulture),
-                ["timeoutMs"] = ((long)(timeout ?? TimeSpan.FromSeconds(2)).TotalMilliseconds).ToString(CultureInfo.InvariantCulture),
+                ["timeoutMs"] = timeoutMs.ToString(CultureInfo.InvariantCulture),
                 ["allowIpLiterals"] = allowIpLiterals.ToString(CultureInfo.InvariantCulture),
                 ["allowPrivateNetwork"] = allowPrivateNetwork.ToString(CultureInfo.InvariantCulture)
             },
@@ -80,6 +80,17 @@ public static class SafeHttpPolicyBuilderExtensions
         }
 
         return entries;
+    }
+
+    private static long TimeoutMilliseconds(TimeSpan? timeout)
+    {
+        var effective = timeout ?? TimeSpan.FromMilliseconds(DefaultTimeoutMilliseconds);
+        if (effective.TotalMilliseconds is < MinTimeoutMilliseconds or > MaxTimeoutMilliseconds)
+        {
+            throw new ArgumentOutOfRangeException(nameof(timeout));
+        }
+
+        return (long)effective.TotalMilliseconds;
     }
 
     private static void ThrowIfNegative(long value, string paramName)

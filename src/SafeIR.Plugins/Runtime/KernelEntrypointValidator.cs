@@ -10,14 +10,23 @@ internal static class KernelEntrypointValidator
         KernelEntrypoints entrypoints,
         IPluginEventAdapter<TEvent> adapter)
     {
-        if (!manifest.Subscriptions.Any(s => string.Equals(s.Event, adapter.EventName, StringComparison.Ordinal)))
+        Validate(manifest, plan, entrypoints, PluginEventShape.From(adapter));
+    }
+
+    public static void Validate(
+        PluginManifest manifest,
+        ExecutionPlan plan,
+        KernelEntrypoints entrypoints,
+        PluginEventShape adapterShape)
+    {
+        if (!manifest.Subscriptions.Any(s => string.Equals(s.Event, adapterShape.EventName, StringComparison.Ordinal)))
         {
             throw new SandboxValidationException([
-                new SandboxDiagnostic("SGP031", $"Plugin '{manifest.PluginId}' is not subscribed to event '{adapter.EventName}'.")
+                new SandboxDiagnostic("SGP031", $"Plugin '{manifest.PluginId}' is not subscribed to event '{adapterShape.EventName}'.")
             ]);
         }
 
-        var expected = PluginParameterShape.BuildExpected(adapter.Parameters, manifest.LiveSettings);
+        var expected = PluginParameterShape.BuildExpected(adapterShape.Parameters, manifest.LiveSettings);
         ValidateFunction(plan, entrypoints.ShouldHandle, SandboxType.Bool, expected);
         ValidateFunction(plan, entrypoints.Handle, SandboxType.Unit, expected);
     }

@@ -156,7 +156,7 @@ public sealed class WorkerAuditValidationTests
         Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
     }
 
-    private static SandboxHost Host(AuditForgingWorker worker)
+    private static SandboxHost Host(ISandboxWorkerClient worker)
         => SandboxHost.Create(builder =>
         {
             builder.AddDefaultPureBindings();

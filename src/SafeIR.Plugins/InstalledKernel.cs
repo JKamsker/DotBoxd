@@ -1,6 +1,5 @@
 namespace SafeIR.Plugins;
 
-using System.Runtime.CompilerServices;
 using SafeIR;
 using SafeIR.Hosting;
 
@@ -15,9 +14,9 @@ public sealed class InstalledKernel
     private readonly KernelEntrypoints _entrypoints;
     private readonly LiveStateSyncRegistry _liveStateSync;
     private readonly PluginExecutionObserver _executionObserver = new();
+    private readonly PluginEventAdapterValidationCache _adapterValidation = new();
     private readonly Dictionary<Type, object> _typedValues = [];
     private readonly Dictionary<Type, LiveUpdateMode> _updateModes = [];
-    private readonly ConditionalWeakTable<object, object> _validatedAdapters = new();
     private readonly PendingLiveUpdateQueue _pendingLiveUpdates = new();
     private readonly CancellationTokenSource _revocation = new();
     private int _revoked;
@@ -159,6 +158,7 @@ public sealed class InstalledKernel
                 return;
             }
 
+            ValidateFor(adapter);
             var input = BuildInput(adapter, e);
             var result = await ExecutePreparedAsync(_entrypoints.ShouldHandle, input, cancellationToken).ConfigureAwait(false);
             if (AsShouldHandleResult(result))
@@ -253,22 +253,7 @@ public sealed class InstalledKernel
     }
 
     internal void ValidateFor<TEvent>(IPluginEventAdapter<TEvent> adapter)
-    {
-        ArgumentNullException.ThrowIfNull(adapter);
-
-        // The manifest, execution plan, and entrypoints are immutable for the
-        // lifetime of this kernel, so a successful validation for a given adapter
-        // instance stays valid. Cache by adapter identity to avoid rebuilding the
-        // expected parameter shape and rescanning module functions on every direct
-        // dispatch. Unseen adapter instances still fail closed via full validation.
-        if (_validatedAdapters.TryGetValue(adapter, out _))
-        {
-            return;
-        }
-
-        KernelEntrypointValidator.Validate(Manifest, _plan, _entrypoints, adapter);
-        _validatedAdapters.AddOrUpdate(adapter, this);
-    }
+        => _adapterValidation.Validate(Manifest, _plan, _entrypoints, adapter);
 
     private async ValueTask<SandboxValue> ExecutePreparedAsync(
         string entrypoint,

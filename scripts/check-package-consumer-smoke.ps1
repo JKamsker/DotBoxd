@@ -127,17 +127,19 @@ using SafeIR.Serialization.Json;
 using SafeIR.Transport.Http;
 using SafeIR.Transport.Ipc;
 using SafeIR.PackageConsumerSmoke;
+using System.IO;
 
 var host = SandboxHost.Create(builder =>
 {
     builder.AddDefaultPureBindings();
     builder.AddFileBindings();
     builder.AddLogBindings();
+    builder.AddNetworkBindings();
     builder.UseInterpreter();
 });
 
 var policy = SandboxPolicyBuilder.Create()
-    .GrantFileRead("config", 1024)
+    .GrantFileRead(Path.GetTempPath(), 1024)
     .GrantLogging()
     .GrantHttpGet(new[] { "example.com" }, 4096)
     .Build();
@@ -241,6 +243,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 dotnet build $resolvedWorkRoot --configuration $Configuration --no-restore
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
+dotnet run --project $resolvedWorkRoot --configuration $Configuration --no-build
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

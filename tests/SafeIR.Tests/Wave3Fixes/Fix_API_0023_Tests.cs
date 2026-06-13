@@ -71,6 +71,18 @@ public sealed class Fix_API_0023_Tests
         Assert.Contains("package.Entrypoints.Handle", script);
     }
 
+    [Fact]
+    public void Smoke_runs_the_generated_consumer_after_building_it()
+    {
+        var script = SmokeScript();
+
+        Assert.Contains("dotnet run", script, StringComparison.Ordinal);
+        Assert.Contains("--no-build", script, StringComparison.Ordinal);
+        Assert.Contains("builder.AddNetworkBindings();", script, StringComparison.Ordinal);
+        Assert.Contains("GrantFileRead(Path.GetTempPath(), 1024)", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("GrantFileRead(\"config\"", script, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// The generated factory name is derived by stripping the <c>Kernel</c> suffix and appending
     /// <c>PluginPackage</c>. This pins the contract the smoke depends on so a generator rename

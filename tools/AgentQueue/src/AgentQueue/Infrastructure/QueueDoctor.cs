@@ -142,20 +142,30 @@ internal sealed class QueueDoctor
         string lastStatus = string.Empty;
         foreach (string line in File.ReadLines(path).Where(line => !string.IsNullOrWhiteSpace(line)))
         {
-            string? status = ReadEventStatus(line, finding.Id, errors);
-            if (status is null)
+            FindingEvent? current = ReadEvent(line, finding.Id, errors);
+            if (current is null)
             {
                 continue;
             }
 
-            if (lastStatus.Length > 0 && !AgentQueueCatalog.CanTransition(lastStatus, status, force: false))
+            if (lastStatus.Length > 0 && !EventTransitionMatches(lastStatus, current))
             {
-                errors.Add($"{finding.Id} has implausible event transition {lastStatus} -> {status}.");
+                errors.Add($"{finding.Id} has implausible event transition {lastStatus} -> {current.Status}.");
             }
 
-            lastStatus = status;
+            lastStatus = current.Status;
+        }
+
+        if (lastStatus.Length > 0 &&
+            !string.Equals(lastStatus, finding.Status, StringComparison.Ordinal))
+        {
+            errors.Add($"{finding.Id} status {finding.Status} does not match event log status {lastStatus}.");
         }
     }
+
+    private static bool EventTransitionMatches(string currentStatus, FindingEvent current)
+        => string.Equals(current.Status, currentStatus, StringComparison.Ordinal) ||
+           AgentQueueCatalog.CanTransition(currentStatus, current.Status, force: false);
 
     private static void CheckDuplicateReferences(IReadOnlyList<Finding> findings, List<string> errors)
     {
@@ -178,7 +188,7 @@ internal sealed class QueueDoctor
         }
     }
 
-    private static string? ReadEventStatus(string line, string id, List<string> errors)
+    private static FindingEvent? ReadEvent(string line, string id, List<string> errors)
     {
         try
         {
@@ -196,7 +206,7 @@ internal sealed class QueueDoctor
                 return null;
             }
 
-            return status;
+            return new FindingEvent(status);
         }
         catch (JsonException ex)
         {
@@ -232,4 +242,6 @@ internal sealed class QueueDoctor
 
     private static string Display(Finding finding) =>
         string.IsNullOrWhiteSpace(finding.Id) ? "<unknown>" : finding.Id;
+
+    private sealed record FindingEvent(string Status);
 }

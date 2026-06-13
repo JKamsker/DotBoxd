@@ -20,6 +20,17 @@ public sealed class SafeNetworkGrantValidationTests
     }
 
     [Theory]
+    [MemberData(nameof(InvalidTimeouts))]
+    public void Http_grant_builder_rejects_timeouts_outside_serialized_range(TimeSpan timeout)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            SandboxPolicyBuilder.Create().GrantHttpGet(
+                ["api.example.com"],
+                maxResponseBytes: 1024,
+                timeout: timeout));
+    }
+
+    [Theory]
     [InlineData("api.example.com,,evil.example", "https")]
     [InlineData("https://api.example.com", "https")]
     [InlineData("api.example.com", "ftp")]
@@ -48,4 +59,12 @@ public sealed class SafeNetworkGrantValidationTests
 
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-POLICY-GRANT-PARAM");
     }
+
+    public static TheoryData<TimeSpan> InvalidTimeouts()
+        => new()
+        {
+            TimeSpan.Zero,
+            TimeSpan.FromTicks(1),
+            TimeSpan.FromMilliseconds(60_001)
+        };
 }

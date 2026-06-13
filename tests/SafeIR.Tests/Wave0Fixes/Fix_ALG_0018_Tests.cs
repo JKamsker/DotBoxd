@@ -9,14 +9,14 @@ namespace SafeIR.Tests;
 /// on every <see cref="InstalledKernel.ShouldHandleAsync{TEvent}"/> and
 /// <see cref="InstalledKernel.HandleAsync{TEvent}"/> call. The manifest, execution
 /// plan, and entrypoints are immutable for the lifetime of a kernel, so a successful
-/// validation for a given adapter instance is cached by identity. These tests assert
-/// the cache reuses the validation (validation no longer reads <c>adapter.Parameters</c>
-/// after the first success) while still failing closed for new or invalid adapters.
+/// validation for a stable adapter instance is cached by identity and shape. These tests
+/// assert the cache reuses full validation while still checking current adapter shape on
+/// every dispatch and failing closed for new, invalid, or mutated adapters.
 /// </summary>
 public sealed class Fix_ALG_0018_Tests
 {
     [Fact]
-    public async Task Repeated_direct_dispatch_validates_adapter_shape_only_once()
+    public async Task Repeated_direct_dispatch_checks_adapter_shape_each_time()
     {
         var server = PluginAddendumTestPolicies.CreateServer();
         var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
@@ -33,8 +33,8 @@ public sealed class Fix_ALG_0018_Tests
         Assert.True(first);
         // First call performs full validation (reads the adapter parameter shape once).
         Assert.Equal(1, validationsAfterFirst);
-        // Subsequent calls with the same adapter instance reuse the cached validation.
-        Assert.Equal(1, adapter.ParametersAccessCount);
+        // Subsequent calls reuse full validation, but still re-read shape to catch mutation.
+        Assert.Equal(4, adapter.ParametersAccessCount);
     }
 
     [Fact]
@@ -73,6 +73,40 @@ public sealed class Fix_ALG_0018_Tests
         Assert.Empty(kernel.ExecutionObservations);
     }
 
+    [Fact]
+    public async Task Mutated_adapter_shape_after_success_is_revalidated_fail_closed()
+    {
+        var server = PluginAddendumTestPolicies.CreateServer();
+        var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
+        var adapter = new MutableDamageEventAdapter();
+        var e = new DamageEvent("fire", 120, "player-1");
+
+        Assert.True(await kernel.ShouldHandleAsync(adapter, e));
+        adapter.DropTargetParameter = true;
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await kernel.ShouldHandleAsync(adapter, e));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "SGP033");
+        Assert.Single(kernel.ExecutionObservations);
+    }
+
+    [Fact]
+    public async Task Hook_dispatch_revalidates_adapter_shape_after_registration()
+    {
+        var server = PluginAddendumTestPolicies.CreateServer();
+        var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
+        var adapter = new MutableDamageEventAdapter();
+        server.Hooks.On(adapter).UseKernel(kernel);
+        adapter.DropTargetParameter = true;
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1")));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "SGP033");
+        Assert.Empty(kernel.ExecutionObservations);
+    }
+
     private sealed class CountingDamageEventAdapter : IPluginEventAdapter<DamageEvent>
     {
         private readonly IReadOnlyList<Parameter> _parameters = [
@@ -93,6 +127,34 @@ public sealed class Fix_ALG_0018_Tests
                 return _parameters;
             }
         }
+
+        public IReadOnlyList<SandboxValue> ToSandboxValues(DamageEvent e)
+            => [
+                SandboxValue.FromString(e.DamageType),
+                SandboxValue.FromInt32(e.Amount),
+                SandboxValue.FromString(e.TargetId)
+            ];
+    }
+
+    private sealed class MutableDamageEventAdapter : IPluginEventAdapter<DamageEvent>
+    {
+        private static readonly IReadOnlyList<Parameter> ValidParameters = [
+            new("e_DamageType", SandboxType.String),
+            new("e_Amount", SandboxType.I32),
+            new("e_TargetId", SandboxType.String)
+        ];
+
+        private static readonly IReadOnlyList<Parameter> InvalidParameters = [
+            new("e_DamageType", SandboxType.String),
+            new("e_Amount", SandboxType.I32)
+        ];
+
+        public bool DropTargetParameter { get; set; }
+
+        public string EventName => "DamageEvent";
+
+        public IReadOnlyList<Parameter> Parameters
+            => DropTargetParameter ? InvalidParameters : ValidParameters;
 
         public IReadOnlyList<SandboxValue> ToSandboxValues(DamageEvent e)
             => [
