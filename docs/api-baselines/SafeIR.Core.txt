@@ -287,12 +287,15 @@ public static bool IsOpaqueId(string? value)
 public static bool IsPortableRelativePath(string? path)
 public static bool IsSandboxUri(string? value)
 public static bool IsWellFormedOpaqueIdName(string name)
+public static bool IsWildcard(string capabilityId)
+public static bool Matches(string grantPattern, string requiredId)
 public static bool RequiresCapability(this SandboxEffect effects)
 public static bool Supports(SemVersion target)
 public static bool TryParse(string text, out SemVersion version)
 public static class BindingAuditFields
 public static class BindingReferenceCollector
 public static class CanonicalModuleHasher
+public static class CapabilityPattern
 public static class EntrypointBinder
 public static class ResourceLimitValidation
 public static class RunSummaryAuditFields

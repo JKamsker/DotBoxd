@@ -71,7 +71,6 @@ public PluginSession CreateSession()
 public SandboxValue ToSandboxValue()
 public sealed class HookPipeline<TEvent>
 public sealed class HookRegistry
-public sealed class InstalledKernel
 public sealed class KernelRegistry : IEnumerable<InstalledKernel>
 public sealed class LiveContext<T> where T : class
 public sealed class LiveSettingStore
@@ -80,6 +79,7 @@ public sealed class PluginEventAdapterRegistry
 public sealed class PluginServer : IDisposable
 public sealed class PluginSession : IDisposable, IAsyncDisposable
 public sealed class TypedInstalledKernel<TSettings> where TSettings : class
+public sealed partial class InstalledKernel
 public sealed record HookSubscriptionManifest(string Event, string Kernel)
 public sealed record KernelEntrypoints(string ShouldHandle, string Handle)
 public sealed record LiveSettingDefinition( string Name, string Type, object? DefaultValue, object? Min = null, object? Max = null)

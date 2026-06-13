@@ -43,6 +43,10 @@ public sealed record SandboxPolicy(
     // candidate) instead of an O(grant-count) scan. Reset when the grant list changes.
     private Lazy<Dictionary<string, CapabilityGrant[]>>? _grantIndex;
 
+    // Wildcard grants (id "*" or "....*"), scanned only after an exact-id miss so the common exact
+    // path is unchanged. Built at most once per distinct policy; reset when the grant list changes.
+    private Lazy<CapabilityGrant[]>? _wildcardGrants;
+
     public string PolicyId { get => _policyId; init { _policyId = value; ResetHash(); } }
 
     public SandboxEffect AllowedEffects { get => _allowedEffects; init { _allowedEffects = value; ResetHash(); } }
@@ -50,7 +54,7 @@ public sealed record SandboxPolicy(
     public IReadOnlyList<CapabilityGrant> Grants
     {
         get => _grants;
-        init { _grants = ModelCopy.List(value); _grantIndex = null; ResetHash(); }
+        init { _grants = ModelCopy.List(value); _grantIndex = null; _wildcardGrants = null; ResetHash(); }
     }
 
     public ResourceLimits ResourceLimits { get => _resourceLimits; init { _resourceLimits = value; ResetHash(); } }
@@ -132,8 +136,39 @@ public sealed record SandboxPolicy(
             }
         }
 
+        // Exact miss: fall back to wildcard grants (e.g. "game.world.monster.*" authorizes the
+        // concrete "game.world.monster.health.get"). First active match in original order wins.
+        var wildcards = (_wildcardGrants ??= CreateWildcardGrantsCache()).Value;
+        for (var i = 0; i < wildcards.Length; i++)
+        {
+            var candidate = wildcards[i];
+            if ((candidate.ExpiresAt is null || candidate.ExpiresAt > now) &&
+                CapabilityPattern.Matches(candidate.Id, capabilityId))
+            {
+                grant = candidate;
+                return true;
+            }
+        }
+
         grant = null!;
         return false;
+    }
+
+    private Lazy<CapabilityGrant[]> CreateWildcardGrantsCache()
+        => new(() => BuildWildcardGrants(_grants), LazyThreadSafetyMode.ExecutionAndPublication);
+
+    private static CapabilityGrant[] BuildWildcardGrants(IReadOnlyList<CapabilityGrant> grants)
+    {
+        var wildcards = new List<CapabilityGrant>();
+        for (var i = 0; i < grants.Count; i++)
+        {
+            if (CapabilityPattern.IsWildcard(grants[i].Id))
+            {
+                wildcards.Add(grants[i]);
+            }
+        }
+
+        return wildcards.ToArray();
     }
 
     private Lazy<Dictionary<string, CapabilityGrant[]>> CreateGrantIndexCache()
