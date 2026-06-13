@@ -147,6 +147,10 @@ dotnet pack SafeIR.slnx --configuration Release --no-build --output artifacts/pa
 
 `SafeIR.Transport.Ipc.ShaRpc` is intentionally packed as a prerelease package while its upstream ShaRPC dependencies are prerelease-only. Stable release gates fail if this preview addon is included in a stable package set before its package version and dependencies are stable.
 
+CI builds and tests on Windows, Ubuntu, and macOS, but NuGet packages are produced only by the
+canonical `ubuntu-latest` matrix leg and uploaded as `packages-canonical`. Treat that canonical
+artifact set as the only publishable package output for a release.
+
 ## Plugin Addendum Examples
 
 The addendum implementation lives in `src/SafeIR.Plugins`.

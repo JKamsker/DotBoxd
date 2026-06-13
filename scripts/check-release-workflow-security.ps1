@@ -34,6 +34,18 @@ if ($workflow -notmatch "actions/attest-build-provenance@[0-9a-fA-F]{40}") {
     throw "Release package workflow must attest package artifacts with a pinned attest-build-provenance action."
 }
 
+if ($workflow -match "packages-\$\{\{\s*matrix\.os\s*\}\}") {
+    throw "Package-producing workflow must upload one canonical package artifact set, not OS-specific package sets."
+}
+
+if ($workflow -notmatch "(?ms)- name: Pack\s*\r?\n\s+if:\s+\$\{\{\s*matrix\.os\s*==\s*'ubuntu-latest'\s*\}\}") {
+    throw "Package pack step must run only on the canonical ubuntu-latest matrix leg."
+}
+
+if ($workflow -notmatch "(?ms)- name: Upload package artifacts.*?name:\s+packages-canonical") {
+    throw "Package upload step must publish the canonical package artifact set as 'packages-canonical'."
+}
+
 if ($workflow -notmatch "artifacts/packages/\*\.nupkg") {
     throw "Package attestation must cover every .nupkg in artifacts/packages."
 }

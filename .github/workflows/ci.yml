@@ -104,6 +104,7 @@ jobs:
         run: ./scripts/check-release-readiness.ps1 -RequireComplete
 
       - name: Pack
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         shell: pwsh
         run: |
           Remove-Item artifacts/packages/*.nupkg -Force -ErrorAction SilentlyContinue
@@ -111,15 +112,17 @@ jobs:
           dotnet pack SafeIR.slnx --configuration Release --no-build --output artifacts/packages
 
       - name: Check package metadata
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         shell: pwsh
         run: ./scripts/check-package-metadata.ps1 -PackageDirectory artifacts/packages -AllowPrereleaseVersions
 
       - name: Check package consumer smoke
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         shell: pwsh
         run: ./scripts/check-package-consumer-smoke.ps1 -PackageDirectory artifacts/packages -Configuration Release
 
       - name: Enforce stable package versions
-        if: startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/tags/')
+        if: ${{ matrix.os == 'ubuntu-latest' && (startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/tags/')) }}
         shell: pwsh
         run: |
           $metadataArgs = @{
@@ -135,7 +138,7 @@ jobs:
           ./scripts/check-package-metadata.ps1 @metadataArgs
 
       - name: Attest package artifacts
-        if: startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/tags/')
+        if: ${{ matrix.os == 'ubuntu-latest' && (startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/tags/')) }}
         uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45
         with:
           subject-path: |
@@ -143,9 +146,10 @@ jobs:
             artifacts/packages/*.snupkg
 
       - name: Upload package artifacts
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: packages-${{ matrix.os }}
+          name: packages-canonical
           path: |
             artifacts/packages/*.nupkg
             artifacts/packages/*.snupkg
