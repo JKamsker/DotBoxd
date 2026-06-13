@@ -120,6 +120,38 @@ public sealed record ListValue(IReadOnlyList<SandboxValue> Values, SandboxType I
     public IReadOnlyList<SandboxValue> Values { get => _values; init => _values = ModelCopy.List(value); }
 
     public override SandboxType Type => SandboxType.List(ItemType);
+
+    public bool Equals(ListValue? other)
+    {
+        if (other is null ||
+            !ItemType.Equals(other.ItemType) ||
+            Values.Count != other.Values.Count)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < Values.Count; i++)
+        {
+            if (!Values[i].Equals(other.Values[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(ItemType);
+        foreach (var value in Values)
+        {
+            hash.Add(value);
+        }
+
+        return hash.ToHashCode();
+    }
 }
 
 public sealed record MapValue(
@@ -132,4 +164,41 @@ public sealed record MapValue(
     public IReadOnlyDictionary<SandboxValue, SandboxValue> Values { get => _values; init => _values = ModelCopy.ValueDictionary(value); }
 
     public override SandboxType Type => SandboxType.Map(KeyType, ValueType);
+
+    public bool Equals(MapValue? other)
+    {
+        if (other is null ||
+            !KeyType.Equals(other.KeyType) ||
+            !ValueType.Equals(other.ValueType) ||
+            Values.Count != other.Values.Count)
+        {
+            return false;
+        }
+
+        foreach (var entry in Values)
+        {
+            if (!other.Values.TryGetValue(entry.Key, out var otherValue) ||
+                !entry.Value.Equals(otherValue))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public override int GetHashCode()
+    {
+        // Maps have no defined enumeration order, so combine entry hashes
+        // commutatively (XOR) to keep the hash order-independent.
+        var keyTypeHash = KeyType.GetHashCode();
+        var valueTypeHash = ValueType.GetHashCode();
+        var entriesHash = 0;
+        foreach (var entry in Values)
+        {
+            entriesHash ^= HashCode.Combine(entry.Key, entry.Value);
+        }
+
+        return HashCode.Combine(keyTypeHash, valueTypeHash, entriesHash);
+    }
 }
