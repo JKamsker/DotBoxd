@@ -28,7 +28,8 @@ $packages = @(
 )
 
 function Normalize-ApiLine([string] $Line) {
-    $trimmed = $Line.Trim()
+    $trimmed = Remove-LineComment $Line
+    $trimmed = $trimmed.Trim()
     if ([string]::IsNullOrWhiteSpace($trimmed) -or
         $trimmed.StartsWith("//", [StringComparison]::Ordinal) -or
         $trimmed.StartsWith("[", [StringComparison]::Ordinal)) {
@@ -52,6 +53,122 @@ function Normalize-ApiLine([string] $Line) {
     return $normalized
 }
 
+function Remove-LineComment([string] $Line) {
+    $commentIndex = $Line.IndexOf("//", [StringComparison]::Ordinal)
+    if ($commentIndex -lt 0) {
+        return $Line
+    }
+
+    return $Line.Substring(0, $commentIndex)
+}
+
+function Get-ParenthesisDelta([string] $Text) {
+    $delta = 0
+    foreach ($character in $Text.ToCharArray()) {
+        if ($character -eq "(") {
+            $delta++
+        } elseif ($character -eq ")") {
+            $delta--
+        }
+    }
+
+    return $delta
+}
+
+function Normalize-ApiDeclaration([string] $Declaration) {
+    $lines = New-Object "System.Collections.Generic.List[string]"
+    foreach ($line in ($Declaration -split "\r?\n")) {
+        $trimmed = (Remove-LineComment $line).Trim()
+        if (-not [string]::IsNullOrWhiteSpace($trimmed) -and
+            -not $trimmed.StartsWith("[", [StringComparison]::Ordinal)) {
+            $lines.Add($trimmed)
+        }
+    }
+
+    if ($lines.Count -eq 0) {
+        return $null
+    }
+
+    $normalized = ($lines -join " ") -replace "\s+", " "
+    $normalized = $normalized.TrimEnd("{", ";").Trim()
+    if ([string]::IsNullOrWhiteSpace($normalized) -or
+        $normalized -notmatch "^(public|protected\s+internal|protected)\b") {
+        return $null
+    }
+
+    if ($normalized -match "^(public|protected)\s+(get|set|init)\b") {
+        return $null
+    }
+
+    return $normalized
+}
+
+function Add-EnumMembers([string[]] $Lines, [System.Collections.Generic.HashSet[string]] $Api) {
+    $enumName = $null
+    $pendingEnumName = $null
+    $braceDepth = 0
+
+    foreach ($line in $Lines) {
+        $trimmed = (Remove-LineComment $line).Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed) -or
+            $trimmed.StartsWith("[", [StringComparison]::Ordinal)) {
+            continue
+        }
+
+        if ($null -eq $enumName) {
+            if ($null -eq $pendingEnumName -and
+                $trimmed -match "^(public|protected\s+internal|protected)\s+.*\benum\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\b") {
+                $pendingEnumName = $Matches.name
+            }
+
+            if ($null -ne $pendingEnumName -and $trimmed.Contains("{")) {
+                $enumName = $pendingEnumName
+                $pendingEnumName = $null
+                $braceDepth = 1
+                $afterOpen = $trimmed.Substring($trimmed.IndexOf("{", [StringComparison]::Ordinal) + 1)
+                Add-EnumMemberFragments $afterOpen $enumName $Api
+                if ($trimmed.Contains("}")) {
+                    $braceDepth = 0
+                    $enumName = $null
+                }
+            }
+
+            continue
+        }
+
+        $memberText = $trimmed
+        if ($memberText.Contains("}")) {
+            $memberText = $memberText.Substring(0, $memberText.IndexOf("}", [StringComparison]::Ordinal))
+            $braceDepth--
+        }
+
+        Add-EnumMemberFragments $memberText $enumName $Api
+        if ($braceDepth -le 0) {
+            $enumName = $null
+        }
+    }
+}
+
+function Add-EnumMemberFragments([string] $Text, [string] $EnumName, [System.Collections.Generic.HashSet[string]] $Api) {
+    foreach ($fragment in ($Text -split ",")) {
+        $candidate = $fragment.Trim()
+        if ([string]::IsNullOrWhiteSpace($candidate) -or
+            $candidate.StartsWith("[", [StringComparison]::Ordinal) -or
+            $candidate.StartsWith("{", [StringComparison]::Ordinal)) {
+            continue
+        }
+
+        if ($candidate -match "^(?<name>[A-Za-z_][A-Za-z0-9_]*)(?<value>\s*=\s*.+)?$") {
+            $entry = "public enum $EnumName.$($Matches.name)"
+            if (-not [string]::IsNullOrWhiteSpace($Matches.value)) {
+                $entry = "$entry $($Matches.value.Trim())"
+            }
+
+            [void] $Api.Add($entry)
+        }
+    }
+}
+
 function Get-PackageApi([hashtable] $Package) {
     $packagePath = Join-Path $root $Package.Path
     if (-not (Test-Path -LiteralPath $packagePath)) {
@@ -66,11 +183,41 @@ function Get-PackageApi([hashtable] $Package) {
         }
 
     foreach ($file in $files) {
-        foreach ($line in Get-Content -LiteralPath $file.FullName) {
-            $apiLine = Normalize-ApiLine $line
-            if ($null -ne $apiLine) {
-                [void] $api.Add($apiLine)
+        $lines = @(Get-Content -LiteralPath $file.FullName)
+        Add-EnumMembers $lines $api
+
+        $pendingDeclaration = $null
+        $pendingParenDepth = 0
+        foreach ($line in $lines) {
+            if ($null -ne $pendingDeclaration) {
+                $pendingDeclaration = "$pendingDeclaration`n$line"
+                $pendingParenDepth += Get-ParenthesisDelta $line
+                if ($pendingParenDepth -le 0) {
+                    $apiLine = Normalize-ApiDeclaration $pendingDeclaration
+                    if ($null -ne $apiLine) {
+                        [void] $api.Add($apiLine)
+                    }
+
+                    $pendingDeclaration = $null
+                    $pendingParenDepth = 0
+                }
+
+                continue
             }
+
+            $apiLine = Normalize-ApiLine $line
+            if ($null -eq $apiLine) {
+                continue
+            }
+
+            $parenDepth = Get-ParenthesisDelta $line
+            if ($parenDepth -gt 0 -and $apiLine -notmatch "=>") {
+                $pendingDeclaration = $line
+                $pendingParenDepth = $parenDepth
+                continue
+            }
+
+            [void] $api.Add($apiLine)
         }
     }
 

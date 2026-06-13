@@ -19,7 +19,7 @@ public bool Equals(ExecutionPlanSeal? other)
 public bool Equals(SandboxType? other)
 public bool ExecutionDispatched { get; init; }
 public bool GrantsCapability(string capabilityId)
-public bool HasBindingAuditSince(
+public bool HasBindingAuditSince( BindingDescriptor descriptor, long checkpoint, bool success, SandboxRunId runId, string moduleHash, string policyHash)
 public bool IsForbidden() => IsForbidden(this)
 public bool IsKnown(int maxDepth = 8) => IsKnown(this, 0, maxDepth)
 public bool IsValidMapKey()
@@ -38,18 +38,61 @@ public const string CanonicalizerVersion = "safe-ir-canonicalizer-1"
 public DateTimeOffset AuditTimestamp()
 public DateTimeOffset GrantClock
 public DateTimeOffset UtcNow()
-public delegate ValueTask<SandboxValue> BindingInvoker(
-public delegate void CapabilityGrantValidator(
+public delegate ValueTask<SandboxValue> BindingInvoker( SandboxContext context, IReadOnlyList<SandboxValue> args, CancellationToken cancellationToken)
+public delegate void CapabilityGrantValidator( CapabilityGrant grant, ICollection<SandboxDiagnostic> diagnostics)
 public enum AuditLevel
+public enum AuditLevel.FullInputOutput
+public enum AuditLevel.None
+public enum AuditLevel.PerCall
+public enum AuditLevel.PerResource
+public enum AuditLevel.Summary
 public enum BindingSafety
+public enum BindingSafety.DangerousRequiresReview
+public enum BindingSafety.PureHostFacade
+public enum BindingSafety.PureIntrinsic
+public enum BindingSafety.ReadOnlyExternal
+public enum BindingSafety.SideEffectingExternal
 public enum DiagnosticSeverity
+public enum DiagnosticSeverity.Error
+public enum DiagnosticSeverity.Info
+public enum DiagnosticSeverity.Warning
 public enum ExecutionMode
+public enum ExecutionMode.Auto
+public enum ExecutionMode.Compiled
+public enum ExecutionMode.Interpreted
 public enum SandboxEffect
+public enum SandboxEffect.Alloc = 1 << 1
+public enum SandboxEffect.Audit = 1 << 11
+public enum SandboxEffect.Cpu = 1 << 0
+public enum SandboxEffect.DatabaseRead = 1 << 9
+public enum SandboxEffect.DatabaseWrite = 1 << 10
+public enum SandboxEffect.FileRead = 1 << 4
+public enum SandboxEffect.FileWrite = 1 << 5
+public enum SandboxEffect.GameStateRead = 1 << 7
+public enum SandboxEffect.GameStateWrite = 1 << 8
+public enum SandboxEffect.Network = 1 << 6
+public enum SandboxEffect.None = 0
+public enum SandboxEffect.Random = 1 << 3
+public enum SandboxEffect.Time = 1 << 2
 public enum SandboxErrorCode
+public enum SandboxErrorCode.BindingFailure
+public enum SandboxErrorCode.CacheInvalid
+public enum SandboxErrorCode.Cancelled
+public enum SandboxErrorCode.HostFailure
+public enum SandboxErrorCode.InvalidInput
+public enum SandboxErrorCode.NotFound
+public enum SandboxErrorCode.PermissionDenied
+public enum SandboxErrorCode.PolicyDenied
+public enum SandboxErrorCode.QuotaExceeded
+public enum SandboxErrorCode.Timeout
+public enum SandboxErrorCode.ValidationError
+public enum SandboxErrorCode.VerifierFailure
 public enum SandboxIsolation
+public enum SandboxIsolation.InProcess
+public enum SandboxIsolation.WorkerProcess
 public ExecutionMode ActualMode { get; init; }
 public ExecutionMode Mode { get; init; } = ExecutionMode.Auto
-public ExecutionPlan(
+public ExecutionPlan( string moduleHash, string planHash, ExecutionPlanSeal planSeal, string policyHash, string bindingManifestHash, SandboxModule module, SandboxPolicy policy, BindingRegistry bindings, ResourceLimits budget, IReadOnlyDictionary<string, FunctionAnalysis> functionAnalysis, IReadOnlyDictionary<string, IReadOnlySet<string>>? bindingReferences = null)
 public ExecutionPlanSeal PlanSeal { get; }
 public ExecutionPlanSeal(string value)
 public IAuditSink Audit { get; }
@@ -67,7 +110,7 @@ public IReadOnlyDictionary<SandboxValue, SandboxValue> Values { get => _values; 
 public IReadOnlyDictionary<string, FunctionAnalysis> FunctionAnalysis { get; }
 public IReadOnlyDictionary<string, IReadOnlySet<string>> BindingReferences { get; }
 public IReadOnlyDictionary<string, IReadOnlySet<string>> Collect()
-public IReadOnlyDictionary<string, string> BindingAuditFields(
+public IReadOnlyDictionary<string, string> BindingAuditFields( string resourceKind, DateTimeOffset startedAt, long? bytesRead = null, long? bytesWritten = null)
 public IReadOnlyDictionary<string, string> Metadata { get => _metadata; init => _metadata = ModelCopy.StringDictionary(value); }
 public IReadOnlyDictionary<string, string> Parameters { get; init; } =
 public IReadOnlyDictionary<string, string>? Fields { get => _fields; init => _fields = CopyFields(value); }
@@ -128,7 +171,7 @@ public ResourceLimits Budget { get; }
 public ResourceLimits Limits { get; }
 public ResourceMeter Budget { get; }
 public ResourceMeter(ResourceLimits limits)
-public SandboxContext(
+public SandboxContext( SandboxRunId runId, SandboxPolicy policy, ResourceMeter budget, BindingRegistry bindings, IAuditSink audit, CancellationToken cancellationToken, IReadOnlySet<string>? allowedBindingIds = null, string? moduleHash = null, string? policyHash = null)
 public SandboxError Error { get; }
 public SandboxError? Error { get; init; }
 public SandboxIsolation Isolation { get; init; } = SandboxIsolation.InProcess
@@ -137,10 +180,10 @@ public SandboxPolicy Build()
 public SandboxPolicy Policy { get; }
 public SandboxPolicyBuilder AllowPureComputation()
 public SandboxPolicyBuilder Deterministic(DateTimeOffset logicalNow, ulong randomSeed)
-public SandboxPolicyBuilder Grant(
+public SandboxPolicyBuilder Grant( string capabilityId, object parameters, SandboxEffect allowedEffects, Func<ResourceLimits, ResourceLimits>? configureLimits = null)
 public SandboxPolicyBuilder Grant(string capabilityId, object parameters)
 public SandboxPolicyBuilder GrantFileRead(string root, long maxBytesPerRun)
-public SandboxPolicyBuilder GrantFileWrite(
+public SandboxPolicyBuilder GrantFileWrite( string root, long maxBytesPerRun, bool allowCreate = false, bool allowOverwrite = false)
 public SandboxPolicyBuilder GrantGameMessageWrite()
 public SandboxPolicyBuilder GrantLogging()
 public SandboxPolicyBuilder GrantRandom()
@@ -175,15 +218,15 @@ public sealed class ResourceMeter
 public sealed class SandboxContext
 public sealed class SandboxPolicyBuilder
 public sealed class SandboxRuntimeException : Exception
-public sealed class SandboxValidationException(
+public sealed class SandboxValidationException( IReadOnlyList<SandboxDiagnostic> diagnostics)
 public sealed record AssignmentStatement(string Name, Expression Value, SourceSpan Span) : Statement(Span)
 public sealed record BinaryExpression(Expression Left, string Operator, Expression Right, SourceSpan Span) : Expression(Span)
-public sealed record BindingCostModel(
-public sealed record BindingDescriptor(
-public sealed record BindingSignature(
+public sealed record BindingCostModel( long BaseFuel, long PerByteFuel = 0, bool AllocationFromReturnBytes = false, int? MaxCallsPerRun = null)
+public sealed record BindingDescriptor( string Id, SemVersion Version, IReadOnlyList<SandboxType> Parameters, SandboxType ReturnType, SandboxEffect Effects, string? RequiredCapability, BindingCostModel CostModel, AuditLevel AuditLevel, BindingSafety Safety, BindingInvoker Invoke, CompiledBinding Compiled, CapabilityGrantValidator? GrantValidator = null)
+public sealed record BindingSignature( string Id, SemVersion Version, IReadOnlyList<SandboxType> Parameters, SandboxType ReturnType, SandboxEffect Effects, string? RequiredCapability, BindingCostModel CostModel, AuditLevel AuditLevel, BindingSafety Safety, CompiledBinding Compiled)
 public sealed record BoolValue(bool Value) : SandboxValue
 public sealed record CallExpression(string Name, IReadOnlyList<Expression> Arguments, SandboxType? GenericType, SourceSpan Span)
-public sealed record CapabilityGrant(
+public sealed record CapabilityGrant( string Id, IReadOnlyDictionary<string, string> Parameters, DateTimeOffset? ExpiresAt = null, string GrantedBy = "host-policy", string Reason = "")
 public sealed record CapabilityRequest(string Id, string? Reason)
 public sealed record CompiledBinding(string Kind, string Type, string Method)
 public sealed record ExpressionStatement(Expression Value, SourceSpan Span) : Statement(Span)
@@ -195,22 +238,22 @@ public sealed record I64Value(long Value) : SandboxValue
 public sealed record IfStatement(Expression Condition, IReadOnlyList<Statement> Then, IReadOnlyList<Statement> Else, SourceSpan Span)
 public sealed record ListValue(IReadOnlyList<SandboxValue> Values, SandboxType ItemType) : SandboxValue
 public sealed record LiteralExpression(SandboxValue Value, SourceSpan Span) : Expression(Span)
-public sealed record MapValue(
+public sealed record MapValue( IReadOnlyDictionary<SandboxValue, SandboxValue> Values, SandboxType KeyType, SandboxType ValueType) : SandboxValue
 public sealed record OpaqueIdValue(string TypeName, string Value) : SandboxValue
 public sealed record Parameter(string Name, SandboxType Type)
-public sealed record ResourceLimits(
+public sealed record ResourceLimits( long MaxFuel = 100_000, long MaxLoopIterations = 100_000, TimeSpan? MaxWallTime = null, long MaxAllocatedBytes = 1_048_576, int MaxCallDepth = 64, int MaxHostCalls = 100, int MaxListLength = 10_000, int MaxMapEntries = 10_000, int MaxCollectionDepth = 32, long MaxTotalCollectionElements = 100_000, long MaxFileBytesRead = 1_048_576, long MaxFileBytesWritten = 0, long MaxNetworkBytesRead = 1_048_576, long MaxNetworkBytesWritten = 1_048_576, int MaxLogEvents = 100, int MaxLogMessageLength = 4_096, int MaxStringLength = 65_536, long MaxTotalStringBytes = 1_048_576)
 public sealed record ReturnStatement(Expression Value, SourceSpan Span) : Statement(Span)
-public sealed record SandboxAuditEvent(
-public sealed record SandboxDiagnostic(
-public sealed record SandboxError(
+public sealed record SandboxAuditEvent( SandboxRunId RunId, string Kind, DateTimeOffset Timestamp, bool Success, string? BindingId = null, string? CapabilityId = null, SandboxEffect Effect = SandboxEffect.None, string? ResourceId = null, SandboxErrorCode? ErrorCode = null, string? Message = null, long? Bytes = null, IReadOnlyDictionary<string, string>? Fields = null, long SequenceNumber = 0)
+public sealed record SandboxDiagnostic( string Code, string Message, DiagnosticSeverity Severity = DiagnosticSeverity.Error, SourceSpan? Span = null)
+public sealed record SandboxError( SandboxErrorCode Code, string SafeMessage, string? DiagnosticId = null)
 public sealed record SandboxExecutionOptions
 public sealed record SandboxExecutionResult
-public sealed record SandboxFunction(
-public sealed record SandboxModule(
+public sealed record SandboxFunction( string Id, bool IsEntrypoint, IReadOnlyList<Parameter> Parameters, SandboxType ReturnType, IReadOnlyList<Statement> Body, SandboxEffect? DeclaredEffects = null)
+public sealed record SandboxModule( string Id, SemVersion Version, SemVersion TargetSandboxVersion, IReadOnlyList<CapabilityRequest> CapabilityRequests, IReadOnlyList<SandboxFunction> Functions, IReadOnlyDictionary<string, string> Metadata)
 public sealed record SandboxPath(string RelativePath)
 public sealed record SandboxPathValue(SandboxPath Value) : SandboxValue
-public sealed record SandboxPolicy(
-public sealed record SandboxResourceUsage(
+public sealed record SandboxPolicy( string PolicyId, SandboxEffect AllowedEffects, IReadOnlyList<CapabilityGrant> Grants, ResourceLimits ResourceLimits, bool Deterministic = false, DateTimeOffset? LogicalNow = null, ulong? RandomSeed = null)
+public sealed record SandboxResourceUsage( long FuelUsed, long MaxFuel, long LoopIterations, long AllocatedBytes, int HostCalls, long FileBytesRead, long FileBytesWritten, long NetworkBytesRead, long NetworkBytesWritten, int LogEvents, long CollectionElements, long StringBytes)
 public sealed record SandboxRunId(Guid Value)
 public sealed record SandboxType(string Name, IReadOnlyList<SandboxType> Arguments)
 public sealed record SandboxUri(string Value)
@@ -266,12 +309,14 @@ public static int Multiply(int left, int right) => Checked(() => checked(left * 
 public static int Negate(int value) => Checked(() => checked(-value))
 public static int Remainder(int left, int right)
 public static int Subtract(int left, int right) => Checked(() => checked(left - right))
-public static IReadOnlyDictionary<SandboxValue, SandboxValue> ValueDictionary(
-public static IReadOnlyDictionary<string, IReadOnlySet<string>> CollectByFunction(
-public static IReadOnlyDictionary<string, string> Create(
+public static IReadOnlyDictionary<SandboxValue, SandboxValue> ValueDictionary( IReadOnlyDictionary<SandboxValue, SandboxValue> values)
+public static IReadOnlyDictionary<string, IReadOnlySet<string>> CollectByFunction( SandboxModule module, IBindingCatalog bindings)
+public static IReadOnlyDictionary<string, string> Create( ExecutionPlan plan, ResourceMeter budget, ExecutionMode mode, string cacheStatus, string? runtimeForm = null, string? cacheKey = null, string? artifactHash = null, string? materializationStatus = null, bool executionDispatched = true)
+public static IReadOnlyDictionary<string, string> Create( string resourceKind, DateTimeOffset startedAt, bool deterministic = false, long? bytesRead = null, long? bytesWritten = null)
+public static IReadOnlyDictionary<string, string> Create( string resourceKind, DateTimeOffset startedAt, string moduleHash, string policyHash, bool deterministic, long? bytesRead = null, long? bytesWritten = null)
 public static IReadOnlyDictionary<string, string> Read(object parameters)
-public static IReadOnlyDictionary<string, string> StringDictionary(
-public static IReadOnlyDictionary<string, TValue> Dictionary<TValue>(
+public static IReadOnlyDictionary<string, string> StringDictionary( IReadOnlyDictionary<string, string> values)
+public static IReadOnlyDictionary<string, TValue> Dictionary<TValue>( IReadOnlyDictionary<string, TValue> values)
 public static IReadOnlyList<SandboxDiagnostic> Validate(IReadOnlyList<BindingDescriptor> bindings)
 public static IReadOnlyList<SandboxValue> BindArguments(SandboxFunction function, SandboxValue input)
 public static IReadOnlyList<T> List<T>(IEnumerable<T> values)
@@ -315,7 +360,7 @@ public static SandboxValue FromInt64(long value) => new I64Value(value)
 public static SandboxValue FromItemId(string value) => FromOpaqueId("ItemId", value)
 public static SandboxValue FromList(IReadOnlyList<SandboxValue> values, SandboxType itemType)
 public static SandboxValue FromList(IReadOnlyList<SandboxValue> values)
-public static SandboxValue FromMap(
+public static SandboxValue FromMap( IReadOnlyDictionary<SandboxValue, SandboxValue> values, SandboxType keyType, SandboxType valueType)
 public static SandboxValue FromMapId(string value) => FromOpaqueId("MapId", value)
 public static SandboxValue FromOpaqueId(string typeName, string value)
 public static SandboxValue FromPath(string value)
@@ -323,7 +368,7 @@ public static SandboxValue FromPlayerId(string value) => FromOpaqueId("PlayerId"
 public static SandboxValue FromQuestId(string value) => FromOpaqueId("QuestId", value)
 public static SandboxValue FromString(string value) => new StringValue(value)
 public static SandboxValue FromUri(string value)
-public static SandboxValue GetArgument(
+public static SandboxValue GetArgument( SandboxValue input, int index, int parameterCount, SandboxType expectedType)
 public static SandboxValue GreaterThan(SandboxValue left, SandboxValue right)
 public static SandboxValue GreaterThanOrEqual(SandboxValue left, SandboxValue right)
 public static SandboxValue LessThan(SandboxValue left, SandboxValue right)
@@ -336,7 +381,7 @@ public static SandboxValue Unit { get; } = new UnitValue()
 public static SemVersion CurrentVersion { get; } = SemVersion.One
 public static SemVersion One { get; } = new(1, 0, 0)
 public static SemVersion Parse(string text)
-public static ShortCircuitOperands Choose(
+public static ShortCircuitOperands Choose( BinaryExpression expression, IBindingCatalog bindings, IReadOnlyDictionary<string, FunctionAnalysis> functions)
 public static string Compute(SandboxPolicy policy)
 public static string CurrentVersionText => CurrentVersion.ToString()
 public static string Hash(SandboxModule module)
@@ -345,8 +390,9 @@ public static string HashRecords(IEnumerable<string> records)
 public static string Record(IEnumerable<string?> fields)
 public static string Record(params string?[] fields)
 public static string Serialize(SandboxModule module)
-public static ValueShape Measure(
-public static void RequireType(
+public static ValueShape Measure( SandboxValue value, ResourceLimits? limits = null, CancellationToken cancellationToken = default, ResourceMeter? meter = null)
+public static ValueShape Measure( SandboxValue value, SandboxType expectedType, SandboxErrorCode errorCode, string message, ResourceLimits? limits = null, CancellationToken cancellationToken = default, ResourceMeter? meter = null)
+public static void RequireType( SandboxValue value, SandboxType expectedType, SandboxErrorCode errorCode, string message)
 public static void RequireType(SandboxValue value, SandboxType expectedType, string message)
 public static void Validate(ResourceLimits limits)
 public static void ValidateInputShape(SandboxValue input, int parameterCount)
@@ -383,7 +429,7 @@ public void ChargeValue(SandboxValue value) => Budget.ChargeValue(value, Cancell
 public void ChargeValue(SandboxValue value) => ChargeValue(value, CancellationToken.None)
 public void CheckDeadline()
 public void Dispose()
-public void EnsureRequiredBindingFailureAudit(
+public void EnsureRequiredBindingFailureAudit( BindingDescriptor descriptor, long checkpoint, SandboxErrorCode errorCode)
 public void EnsureRequiredBindingSuccessAudit(BindingDescriptor descriptor, long checkpoint)
 public void EnterCall()
 public void ExitCall()

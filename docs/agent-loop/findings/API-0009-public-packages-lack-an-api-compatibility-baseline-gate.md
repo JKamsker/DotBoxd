@@ -8,12 +8,12 @@ dedup_key: api/package-release/public-api-compatibility-baseline-missing
 created_at: 2026-06-12T22:16:43.7897045+00:00
 created_by: completeness-api-producer
 created_commit: 
-updated_at: 2026-06-13T00:13:10.6553053+00:00
+updated_at: 2026-06-13T00:25:13.4335052+00:00
 claimed_by: worker
-claimed_at: 2026-06-13T00:11:26.2198382+00:00
+claimed_at: 2026-06-13T00:22:52.1031063+00:00
 claim_branch: workflow-work
 fixed_by: worker
-fixed_at: 2026-06-13T00:13:10.6553053+00:00
+fixed_at: 2026-06-13T00:25:13.4335052+00:00
 fixed_commit: pending
 verified_by: 
 verified_at: 

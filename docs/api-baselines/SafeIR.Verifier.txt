@@ -25,49 +25,52 @@ public IReadOnlySet<string> ForbiddenTypePrefixes { get => _forbiddenTypePrefixe
 public IReadOnlySet<string> RuntimeFacadeIdentities { get => _runtimeFacadeIdentities; init => _runtimeFacadeIdentities = Freeze(value); }
 public sealed partial class GeneratedAssemblyVerifier
 public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifier
-public sealed record ArtifactManifest(
+public sealed record ArtifactManifest( int ArtifactVersion, string CacheKey, string ModuleHash, string PlanHash, string PolicyHash, string BindingManifestHash, string RuntimeFacadeHash, string CompilerVersion, string TypeSystemVersion, string EffectAnalysisVersion, string VerifierVersion, string LanguageVersion, string TargetFramework, IReadOnlyList<string> OptimizationFlags, string AssemblyHash, DateTimeOffset CreatedAt)
 public sealed record VerificationDiagnostic(string Code, string Message)
-public sealed record VerificationManifestIdentity(
-public sealed record VerificationPolicy(
-public sealed record VerificationResult(
-public static (string TypeName, string MemberName, string Signature) MemberSignature(
+public sealed record VerificationManifestIdentity( int? ArtifactVersion = null, string? CacheKey = null, string? ModuleHash = null, string? PlanHash = null, string? PolicyHash = null, string? BindingManifestHash = null, string? RuntimeFacadeHash = null, string? CompilerVersion = null, string? TypeSystemVersion = null, string? EffectAnalysisVersion = null, string? VerifierVersion = null, string? LanguageVersion = null, string? TargetFramework = null, IReadOnlyList<string>? OptimizationFlags = null)
+public sealed record VerificationPolicy( IReadOnlySet<string> AllowedAssemblies, IReadOnlySet<string> AllowedAssemblyIdentities, IReadOnlySet<string> AllowedTypes, IReadOnlySet<string> AllowedMembers, IReadOnlySet<string> ForbiddenTypePrefixes, IReadOnlySet<string> RuntimeFacadeIdentities, string VerifierVersion, VerificationManifestIdentity? ExpectedManifestIdentity = null)
+public sealed record VerificationResult( bool Succeeded, IReadOnlyList<VerificationDiagnostic> Diagnostics, string AssemblyHash, string VerifierVersion, DateTimeOffset VerifiedAt)
+public static (string TypeName, string MemberName, string Signature) MemberSignature( MetadataReader reader, EntityHandle handle)
 public static (string TypeName, string MemberName) Member(MetadataReader reader, EntityHandle handle)
 public static bool HasPositiveImmediateMeterAmount(GeneratedMethodFlow analysis, int instructionIndex)
-public static bool HasSparseMeterPath(
-public static bool HasUnmeteredWorkPath(
+public static bool HasSparseMeterPath( GeneratedMethodFlow analysis, Func<string?, bool> isFuelMeter)
+public static bool HasUnmeteredWorkPath( GeneratedMethodFlow analysis, Func<string?, bool> isFuelMeter, Func<string?, bool> isMeterDensityWorkCall)
 public static bool IsAllowedMethodName(string name)
 public static DecodedOperand None { get; } = new()
-public static GeneratedMethodFlow Analyze(
-public static GeneratedMethodSignature Read(
-public static IEnumerable<int> Successors(
-public static IReadOnlyList<GeneratedInstruction> ReadInstructions(
+public static GeneratedMethodFlow Analyze( IReadOnlyList<GeneratedInstruction> instructions, Func<GeneratedInstruction, GeneratedMeterState> stateFor)
+public static GeneratedMethodSignature Read( MetadataReader reader, MethodDefinition method, MethodBodyBlock body)
+public static IEnumerable<int> Successors( IReadOnlyList<GeneratedInstruction> instructions, IReadOnlyDictionary<int, GeneratedInstruction> byOffset, GeneratedInstruction instruction)
+public static IReadOnlyList<GeneratedInstruction> ReadInstructions( MetadataReader reader, MethodBodyBlock body, List<VerificationDiagnostic> diagnostics)
 public static MethodSignatureNameProvider Instance { get; } = new()
 public static ParsedCallSignature Parse(string? signature)
 public static string Format(MetadataReader reader, AssemblyReference reference)
-public static string PopAny(
+public static string PopAny( GeneratedInstruction instruction, List<string> stack, List<VerificationDiagnostic> diagnostics)
 public static string Type(MetadataReader reader, EntityHandle handle)
 public static string TypeDefinition(MetadataReader reader, TypeDefinitionHandle handle)
 public static string TypeReference(MetadataReader reader, TypeReferenceHandle handle)
 public static VerificationManifestIdentity FromManifest(ArtifactManifest manifest)
 public static VerificationPolicy BoxedValueDefaults()
-public static void BinaryNumeric(
-public static void BranchCondition(
-public static void Call(
-public static void Compare(
-public static void CompareBranch(
-public static void Duplicate(
-public static void PopExpected(
-public static void Return(
-public static void StoreElement(
-public static void UnaryNumeric(
-public static void Verify(
+public static void BinaryNumeric( GeneratedInstruction instruction, List<string> stack, List<VerificationDiagnostic> diagnostics)
+public static void BranchCondition( GeneratedInstruction instruction, List<string> stack, List<VerificationDiagnostic> diagnostics)
+public static void Call( GeneratedInstruction instruction, List<string> stack, List<VerificationDiagnostic> diagnostics)
+public static void Compare( GeneratedInstruction instruction, List<string> stack, List<VerificationDiagnostic> diagnostics)
+public static void CompareBranch( GeneratedInstruction instruction, List<string> stack, List<VerificationDiagnostic> diagnostics)
+public static void Duplicate( GeneratedInstruction instruction, List<string> stack, List<VerificationDiagnostic> diagnostics)
+public static void PopExpected( GeneratedInstruction instruction, List<string> stack, string expected, List<VerificationDiagnostic> diagnostics)
+public static void Return( GeneratedInstruction instruction, List<string> stack, string returnType, List<VerificationDiagnostic> diagnostics)
+public static void StoreElement( GeneratedInstruction instruction, List<string> stack, List<VerificationDiagnostic> diagnostics)
+public static void UnaryNumeric( GeneratedInstruction instruction, List<string> stack, List<VerificationDiagnostic> diagnostics)
+public static void Verify( ArtifactManifest manifest, VerificationPolicy policy, List<VerificationDiagnostic> diagnostics)
+public static void Verify( MetadataReader reader, MethodDefinition method, GeneratedMethodFlow analysis, List<VerificationDiagnostic> diagnostics)
+public static void Verify( MetadataReader reader, MethodDefinition method, MethodBodyBlock body, GeneratedMethodFlow analysis, List<VerificationDiagnostic> diagnostics)
 public static void Verify(GeneratedMethodFlow analysis, List<VerificationDiagnostic> diagnostics)
 public static void Verify(MetadataReader reader, List<VerificationDiagnostic> diagnostics)
 public static void Verify(PEReader peReader, List<VerificationDiagnostic> diagnostics)
-public static void VerifyBody(
-public static void VerifyMethod(
-public static void VerifyType(
-public static void VerifyTypeName(
+public static void VerifyBody( MetadataReader reader, MethodDefinition method, MethodBodyBlock body, IReadOnlyList<GeneratedInstruction> instructions, string methodName, List<VerificationDiagnostic> diagnostics)
+public static void VerifyBody( MetadataReader reader, VerificationPolicy policy, MethodBodyBlock body, IReadOnlyList<GeneratedInstruction> instructions, List<VerificationDiagnostic> diagnostics)
+public static void VerifyMethod( MetadataReader reader, MethodDefinition method, string methodName, List<VerificationDiagnostic> diagnostics)
+public static void VerifyType( MetadataReader reader, TypeDefinition type, List<VerificationDiagnostic> diagnostics)
+public static void VerifyTypeName( MetadataReader reader, TypeDefinition type, List<VerificationDiagnostic> diagnostics)
 public string AllowlistHash
 public string GetArrayType(string elementType, ArrayShape shape)
 public string GetByReferenceType(string elementType)
@@ -82,7 +85,7 @@ public string GetPrimitiveType(PrimitiveTypeCode typeCode)
 public string GetSZArrayType(string elementType)
 public string GetTypeFromDefinition(MetadataReader reader, TypeDefinitionHandle handle, byte rawTypeKind)
 public string GetTypeFromReference(MetadataReader reader, TypeReferenceHandle handle, byte rawTypeKind)
-public string GetTypeFromSpecification(
+public string GetTypeFromSpecification( MetadataReader reader, object? genericContext, TypeSpecificationHandle handle, byte rawTypeKind)
 public string RuntimeFacadeHash
-public ValueTask<VerificationResult> VerifyAsync(
+public ValueTask<VerificationResult> VerifyAsync( ReadOnlyMemory<byte> assemblyBytes, ArtifactManifest manifest, VerificationPolicy policy, CancellationToken cancellationToken)
 public VerificationPolicy WithExpectedManifest(VerificationManifestIdentity identity)

@@ -3,14 +3,14 @@
 # Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
 
 public ArtifactManifest Manifest { get; init; }
-public async ValueTask WriteAsync(
-public async ValueTask<CompiledArtifact> CompileAsync(
-public async ValueTask<CompiledCacheLookup> TryReadAsync(
+public async ValueTask WriteAsync( string cacheKey, ExecutionPlan plan, string entrypoint, byte[] assemblyBytes, ArtifactManifest manifest, VerificationResult verification, VerificationPolicy policy, CancellationToken cancellationToken)
+public async ValueTask<CompiledArtifact> CompileAsync( ExecutionPlan plan, CompileOptions options, CancellationToken cancellationToken)
+public async ValueTask<CompiledCacheLookup> TryReadAsync( string cacheKey, ExecutionPlan plan, string entrypoint, IGeneratedAssemblyVerifier verifier, VerificationPolicy policy, CancellationToken cancellationToken)
 public bool EntryExists(string cacheKey)
 public bool Release()
 public bool TryRetain()
 public byte[] AssemblyBytes
-public CompiledArtifact(
+public CompiledArtifact( byte[] assemblyBytes, string assemblyHash, ArtifactManifest manifest, VerificationResult verification, SandboxCompiledEntrypoint entrypoint, CompiledRuntimeFormKind runtimeForm, CompiledCacheStatus cacheStatus = CompiledCacheStatus.None, string? cacheInvalidReason = null)
 public CompiledCacheStatus CacheStatus { get; init; }
 public CompiledRuntimeFormKind RuntimeForm { get; init; }
 public const string CanonicalizerVersion = CanonicalModuleHasher.CanonicalizerVersion
@@ -20,25 +20,32 @@ public const string ProofFileName = "origin.json"
 public const string TargetFramework = "net10.0"
 public const string TypeSystemVersion = "safe-ir-type-system-2"
 public delegate SandboxValue SandboxCompiledEntrypoint(SandboxContext context, SandboxValue input)
-public EntryLockLease(
+public EntryLockLease( PersistentCompiledArtifactCache owner, string cacheKey, EntryLock entryLock)
 public enum CompiledCacheStatus
+public enum CompiledCacheStatus.Hit
+public enum CompiledCacheStatus.Invalid
+public enum CompiledCacheStatus.Miss
+public enum CompiledCacheStatus.None
+public enum CompiledCacheStatus.Recompiled
 public enum CompiledRuntimeFormKind
+public enum CompiledRuntimeFormKind.DynamicMethod
+public enum CompiledRuntimeFormKind.LoadedAssembly
 public interface ISandboxCompiler
-public MethodEmitter(
+public MethodEmitter( ILGenerator il, SandboxFunction function, IReadOnlyDictionary<string, MethodInfo> functions, IBindingCatalog bindings, IReadOnlyDictionary<string, FunctionAnalysis> functionAnalysis)
 public PersistentCompiledArtifactCache(string rootDirectory)
-public ReflectionEmitSandboxCompiler(
+public ReflectionEmitSandboxCompiler( IGeneratedAssemblyVerifier verifier, VerificationPolicy? verificationPolicy = null, PersistentCompiledArtifactCache? cache = null)
 public SandboxCompiledEntrypoint Entrypoint { get; init; }
 public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
 public sealed partial class PersistentCompiledArtifactCache
 public sealed record CompiledArtifact
-public sealed record CompiledCacheLookup(
+public sealed record CompiledCacheLookup( CompiledCacheStatus Status, CompiledArtifact? Artifact, string? InvalidReason = null)
 public sealed record CompileOptions(string Entrypoint, bool Optimize = false)
 public SemaphoreSlim Semaphore { get; } = new(1, 1)
-public static async ValueTask ValidateProofAsync(
-public static async ValueTask WriteProofAsync(
-public static async ValueTask<PersistentCacheEntryLock> AcquireAsync(
+public static async ValueTask ValidateProofAsync( string entryPath, string cacheKey, ExecutionPlan plan, string entrypoint, ArtifactManifest manifest, VerificationResult verification, byte[] assemblyBytes, CancellationToken cancellationToken)
+public static async ValueTask WriteProofAsync( string entryPath, string cacheKey, ExecutionPlan plan, string entrypoint, ArtifactManifest manifest, VerificationResult verification, byte[] assemblyBytes, CancellationToken cancellationToken)
+public static async ValueTask<PersistentCacheEntryLock> AcquireAsync( string rootDirectory, string cacheKey, CancellationToken cancellationToken)
 public static bool MoveExistingEntryAside(string finalPath, string previousPath)
-public static bool TryEmit(
+public static bool TryEmit( CallExpression call, IBindingCatalog bindings, ILGenerator il, Action<Expression> emitExpression)
 public static bool TryEmit(CallExpression call, ILGenerator il, Action<Expression> emitExpression)
 public static class CacheKeyBuilder
 public static IReadOnlyList<SandboxFunction> Collect(ExecutionPlan plan, SandboxFunction entrypoint)
@@ -46,9 +53,10 @@ public static MethodInfo Runtime(string name)
 public static string Build(ExecutionPlan plan, string entrypoint, VerificationPolicy policy, bool optimize)
 public static string LanguageVersion => SandboxLanguage.CurrentVersionText
 public static string RuntimeFacadeHash => VerificationPolicy.BoxedValueDefaults().RuntimeFacadeHash
-public static VerificationManifestIdentity BuildManifestIdentity(
+public static VerificationManifestIdentity BuildManifestIdentity( ExecutionPlan plan, string entrypoint, VerificationPolicy policy, bool optimize)
 public static void DeleteEntryIfExists(string path)
-public static void Emit(
+public static void Emit( BinaryExpression binary, ILGenerator il, IBindingCatalog bindings, IReadOnlyDictionary<string, FunctionAnalysis> functionAnalysis, Action<Expression> emitExpression)
+public static void Emit( ILGenerator il, IReadOnlyList<Expression> arguments, Action<Expression> emitExpression)
 public static void Emit(ILGenerator il, SandboxValue value)
 public static void EmitInt32(ILGenerator il, int value)
 public static void EmitMetered(ILGenerator il, SandboxType type)
@@ -62,8 +70,8 @@ public static void Validate(string rootDirectory)
 public static void ValidateCacheKey(string cacheKey)
 public static void ValidateEntryPath(string rootDirectory, string entryPath)
 public static void ValidateEntryShape(string entryPath)
-public static void ValidateManifest(
-public static void ValidateVerification(
+public static void ValidateManifest( string cacheKey, ExecutionPlan plan, string entrypoint, ArtifactManifest manifest, VerificationPolicy policy)
+public static void ValidateVerification( ArtifactManifest manifest, VerificationResult verification, VerificationPolicy policy)
 public string ArtifactHash => AssemblyHash
 public string AssemblyHash { get; init; }
 public string EntryPath(string cacheKey)

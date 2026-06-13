@@ -5,11 +5,11 @@
 protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
 public async ValueTask FlushAsync(CancellationToken cancellationToken = default)
 public async ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)
-public async ValueTask HandleAsync<TEvent>(
-public async ValueTask ModifySettingsAsync(
+public async ValueTask HandleAsync<TEvent>( IPluginEventAdapter<TEvent> adapter, TEvent e, CancellationToken cancellationToken = default)
+public async ValueTask ModifySettingsAsync( IReadOnlyDictionary<string, object?> values, bool atomic = false, CancellationToken cancellationToken = default)
 public async ValueTask PublishAsync<TEvent>(TEvent e, CancellationToken cancellationToken = default)
-public async ValueTask<bool> ShouldHandleAsync<TEvent>(
-public async ValueTask<InstalledKernel> InstallAsync(
+public async ValueTask<bool> ShouldHandleAsync<TEvent>( IPluginEventAdapter<TEvent> adapter, TEvent e, CancellationToken cancellationToken = default)
+public async ValueTask<InstalledKernel> InstallAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public bool IsRevoked => Volatile.Read(ref _revoked) != 0
 public bool Uninstall(string pluginId)
 public CancellationToken CancellationToken { get; }
@@ -30,6 +30,8 @@ public const string ShouldHandle = "ShouldHandle"
 public const string String = "string"
 public const string Suffix = ">"
 public enum LiveUpdateMode
+public enum LiveUpdateMode.AsyncSet = 1
+public enum LiveUpdateMode.Sync = 0
 public Exception? LastAsyncUpdateError => _pendingLiveUpdates.LastError
 public Exception? LastAsyncUpdateError => Kernel.LastAsyncUpdateError
 public Exception? LastError
@@ -102,11 +104,11 @@ public sealed class PluginServer
 public sealed class TypedInstalledKernel<TSettings> where TSettings : class
 public sealed record HookSubscriptionManifest(string Event, string Kernel)
 public sealed record KernelEntrypoints(string ShouldHandle, string Handle)
-public sealed record LiveSettingDefinition(
-public sealed record PluginExecutionObservation(
-public sealed record PluginManifest(
+public sealed record LiveSettingDefinition( string Name, string Type, object? DefaultValue, object? Min = null, object? Max = null)
+public sealed record PluginExecutionObservation( string Entrypoint, ExecutionMode RequestedMode, ExecutionMode ActualMode, bool Succeeded, SandboxErrorCode? ErrorCode, SandboxErrorCode? FallbackReason, string CacheStatus, string? RuntimeForm, string? CacheKey, string? ArtifactHash, string? MaterializationStatus)
+public sealed record PluginManifest( string PluginId, string Contract, ExecutionMode Mode, IReadOnlyList<string> Effects, IReadOnlyList<LiveSettingDefinition> LiveSettings, IReadOnlyList<HookSubscriptionManifest> Subscriptions)
 public sealed record PluginMessage(string TargetId, string Message)
-public sealed record PluginPackage(
+public sealed record PluginPackage( PluginManifest Manifest, SandboxModule Module, KernelEntrypoints Entrypoints)
 public static BindingDescriptor CreateSend(IPluginMessageSink sink)
 public static bool IsNumeric(string type)
 public static bool Matches(IReadOnlyList<Parameter> first, IReadOnlyList<Parameter> second)
@@ -118,18 +120,18 @@ public static class ModuleMetadata
 public static class PluginMessageBindings
 public static ConventionEventAdapter<TEvent> Create()
 public static Exception Diagnostic(string message)
-public static IReadOnlyDictionary<string, object?> ExtractSettings<T>(
+public static IReadOnlyDictionary<string, object?> ExtractSettings<T>( T state, IReadOnlyList<LiveSettingDefinition> settings) where T : class
 public static IReadOnlyList<T> List<T>(IEnumerable<T> values)
 public static LiveContext<T> Create<T>(string name, Action<T>? initialize = null) where T : class
 public static object? CoerceClr(string type, object? value)
 public static object? CoerceClr(Type targetType, object? value)
 public static object? DefaultFor(Type type)
-public static Parameter[] BuildExpected(
-public static PluginPackage Create(
-public static PluginServer Create(
-public static SandboxHostBuilder AddPluginMessageBindings(
+public static Parameter[] BuildExpected( IReadOnlyList<Parameter> eventParameters, IReadOnlyList<LiveSettingDefinition> liveSettings)
+public static PluginPackage Create( PluginManifest manifest, SandboxModule module, KernelEntrypoints? entrypoints = null)
+public static PluginServer Create( IPluginMessageSink? messages = null, Action<SandboxHostBuilder>? configureHost = null, SandboxPolicy? defaultPolicy = null, ExecutionMode executionMode = ExecutionMode.Auto)
+public static SandboxHostBuilder AddPluginMessageBindings( this SandboxHostBuilder builder, IPluginMessageSink sink)
 public static SandboxType ToSandboxType(string type)
-public static SandboxValue Build<TEvent>(
+public static SandboxValue Build<TEvent>( IPluginEventAdapter<TEvent> adapter, TEvent e, IReadOnlyList<Action> deferredUpdates, IReadOnlyList<LiveSettingDefinition> liveSettings, LiveSettingStore value, Action<Action> enqueueUpdate)
 public static SandboxValue ToSandboxValue(string type, object? value)
 public static string FromClrType(Type type)
 public static string PluginId(Type kernelType)
@@ -140,10 +142,10 @@ public static void CopyLiveProperties<T>(T source, T target) where T : class
 public static void PullFromStore(InstalledKernel kernel, object state)
 public static void PullFromStore<T>(InstalledKernel kernel, T state) where T : class
 public static void ThrowIfRevoked(bool revoked)
-public static void Validate(
+public static void Validate( PluginPackage package, ExecutionPlan plan, PluginEventAdapterRegistry events, ManifestEffectsValidator validateManifestEffects)
 public static void Validate(PluginPackage package)
-public static void Validate<TEvent>(
-public static void ValidatePrepared(
+public static void Validate<TEvent>( PluginManifest manifest, ExecutionPlan plan, KernelEntrypoints entrypoints, IPluginEventAdapter<TEvent> adapter)
+public static void ValidatePrepared( PluginPackage package, ExecutionPlan plan, PluginEventAdapterRegistry events)
 public static void ValidateRangeDefinition(LiveSettingDefinition definition)
 public static void ValidateRangeValue(LiveSettingDefinition definition, object? value)
 public string EventName => typeof(TEvent).Name
@@ -158,7 +160,7 @@ public T Value { get; }
 public TSettings Value { get; }
 public TypedInstalledKernel<TState> Get<TState>(string pluginId) where TState : class
 public ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)
-public ValueTask ModifyAsync(
+public ValueTask ModifyAsync( Action<TSettings> modify, bool atomic = false, CancellationToken cancellationToken = default)
 public ValueTask SendAsync(string targetId, string message, CancellationToken cancellationToken = default)
 public void ClearError()
 public void CopySandboxValues(TEvent e, SandboxValue[] destination, int destinationIndex)

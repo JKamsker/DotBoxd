@@ -37,8 +37,8 @@ public static string RequiredString(JsonElement element, string name)
 public static string UnaryOperator(string op)
 public static string? OptionalString(JsonElement element, string name)
 public static T[] AllocateArray<T>(JsonElement array, out int count)
-public static ValueTask<InstalledKernel> InstallJsonAsync(
-public static ValueTask<SandboxModule> ImportJsonAsync(
+public static ValueTask<InstalledKernel> InstallJsonAsync( this PluginServer server, string json, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
+public static ValueTask<SandboxModule> ImportJsonAsync( this SandboxHost host, string jsonIr, CancellationToken cancellationToken = default)
 public static void RequireAllowedProperties(JsonElement value, string name, params string[] allowed)
 public static void RequireObject(JsonElement value, string name)
 public static void RequireUniqueProperties(JsonElement value, string name)

@@ -2,14 +2,14 @@
 # Package: SafeIR.Runtime
 # Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
 
-public static async ValueTask WriteTextAsync(
-public static async ValueTask<string> ReadTextAsync(
+public static async ValueTask WriteTextAsync( SandboxContext context, SandboxPath path, string text, CancellationToken cancellationToken)
+public static async ValueTask<string> ReadTextAsync( SandboxContext context, SandboxPath path, CancellationToken cancellationToken)
 public static BindingDescriptor Info { get; } = Create("log.info", "info")
-public static BindingDescriptor NextI32 { get; } = new(
-public static BindingDescriptor NowUnixMillis { get; } = new(
-public static BindingDescriptor ReadText { get; } = new(
+public static BindingDescriptor NextI32 { get; } = new( "random.nextI32", SemVersion.One, SandboxType.I32, SandboxEffect.Cpu | SandboxEffect.Random, "random", BindingCostModel.Fixed(3), AuditLevel.PerCall, BindingSafety.ReadOnlyExternal, (context, args, _) => { var startedAt = DateTimeOffset.UtcNow; var min = ((I32Value)args[0]).Value; var max = ((I32Value)args[1]).Value; var value = context.NextRandomInt32(min, max); var timestamp = context.AuditTimestamp(); context.Audit.Write(new SandboxAuditEvent( context.RunId, "BindingCall", timestamp, true, BindingId: "random.nextI32", CapabilityId: "random", Effect: SandboxEffect.Random, ResourceId: "random:i32", Fields: context.BindingAuditFields("random", startedAt))); return ValueTask.FromResult(SandboxValue.FromInt32(value)); }, CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)))
+public static BindingDescriptor NowUnixMillis { get; } = new( "time.nowUnixMillis", SemVersion.One, SandboxType.I64, SandboxEffect.Cpu | SandboxEffect.Time, "time.now", BindingCostModel.Fixed(2), AuditLevel.PerCall, BindingSafety.ReadOnlyExternal, (context, _, _) => { var startedAt = DateTimeOffset.UtcNow; var timestamp = context.UtcNow(); var value = timestamp.ToUnixTimeMilliseconds(); context.Audit.Write(new SandboxAuditEvent( context.RunId, "BindingCall", timestamp, true, BindingId: "time.nowUnixMillis", CapabilityId: "time.now", Effect: SandboxEffect.Time, ResourceId: "clock:utc", Fields: context.BindingAuditFields("clock", startedAt))); return ValueTask.FromResult(SandboxValue.FromInt64(value)); }, CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)))
+public static BindingDescriptor ReadText { get; } = new( "file.readText", SemVersion.One, SandboxType.String, SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.FileRead, "file.read", BindingCostModel.Fixed(50), AuditLevel.PerResource, BindingSafety.ReadOnlyExternal, async (context, args, cancellationToken) => { var text = await SafeFileSystem.ReadTextAsync(context, ((SandboxPathValue)args[0]).Value, cancellationToken) .ConfigureAwait(false); return SandboxValue.FromString(text); }, CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)))
 public static BindingDescriptor Warn { get; } = Create("log.warn", "warn")
-public static BindingDescriptor WriteText { get; } = new(
+public static BindingDescriptor WriteText { get; } = new( "file.writeText", SemVersion.One, SandboxType.Unit, SandboxEffect.Cpu | SandboxEffect.FileWrite | SandboxEffect.Audit, "file.write", BindingCostModel.Fixed(50), AuditLevel.PerResource, BindingSafety.SideEffectingExternal, async (context, args, cancellationToken) => { await SafeFileSystem.WriteTextAsync( context, ((SandboxPathValue)args[0]).Value, ((StringValue)args[1]).Value, cancellationToken).ConfigureAwait(false); return SandboxValue.Unit; }, CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)))
 public static BindingRegistryBuilder AddDefaultPureBindings(this BindingRegistryBuilder builder)
 public static BindingRegistryBuilder AddFileBindings(this BindingRegistryBuilder builder)
 public static BindingRegistryBuilder AddLogBindings(this BindingRegistryBuilder builder)
@@ -32,7 +32,7 @@ public static long AsI64(SandboxValue value) => ((I64Value)value).Value
 public static partial class AuditTextSanitizer
 public static partial class SafeFileSystem
 public static partial class SafeLogBindings
-public static SafeFileWritePermission EnsureAllowed(
+public static SafeFileWritePermission EnsureAllowed( CapabilityGrant grant, string fullPath, long byteCount)
 public static SandboxType TypeList(SandboxType itemType) => SandboxType.List(itemType)
 public static SandboxType TypeMap(SandboxType keyType, SandboxType valueType) => SandboxType.Map(keyType, valueType)
 public static SandboxType TypeScalar(string name) => SandboxType.Scalar(name)
@@ -96,17 +96,17 @@ public static SandboxValue UriConst(SandboxContext context, string value)
 public static SandboxValue[] CreateValueArray(SandboxContext context, int count)
 public static string RedactPathSegments(string path)
 public static string SanitizeAndRedact(string message)
-public static ValueTask<int> ReadAsync(
+public static ValueTask<int> ReadAsync( FileStream stream, byte[] buffer, CancellationToken cancellationToken)
 public static void ChargeFuel(SandboxContext context, int amount) => context.ChargeFuel(amount)
 public static void ChargeLoopIteration(SandboxContext context, int fuelAmount)
-public static void EnsureParentDirectory(
+public static void EnsureParentDirectory( string rootFull, string fullPath, SafeFileWritePermission permission)
 public static void EnterCall(SandboxContext context) => context.EnterCall()
 public static void ExitCall(SandboxContext context) => context.ExitCall()
-public static void PublishTempFile(
-public static void Read(
+public static void PublishTempFile( string tempPath, string finalPath, SafeFileWritePermission permission)
+public static void Read( SandboxContext context, DateTimeOffset startedAt, bool success, string resource, long? bytes, SandboxErrorCode? error)
 public static void TryDelete(string path)
 public static void ValidateEntrypointInput(SandboxValue input, int parameterCount)
-public static void Write(
+public static void Write( SandboxContext context, DateTimeOffset startedAt, bool success, string resource, long? bytes, SandboxErrorCode? error)
 public System.Runtime.InteropServices.ComTypes.FILETIME CreationTime
 public System.Runtime.InteropServices.ComTypes.FILETIME LastAccessTime
 public System.Runtime.InteropServices.ComTypes.FILETIME LastWriteTime

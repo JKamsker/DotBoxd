@@ -130,7 +130,7 @@ public override int GetHashCode()
 public override void Initialize(AnalysisContext context)
 public PackageIdentityKey(string @namespace, string packageName)
 public PluginKernelModel FirstModel { get; }
-public SafeIrExpressionLoweringContext(
+public SafeIrExpressionLoweringContext( string eventParameterName, EquatableArray<EventPropertyModel> eventProperties, EquatableArray<LiveSettingModel> liveSettings, SemanticModel semanticModel, CancellationToken cancellationToken)
 public sealed class SafeIrPluginAnalyzer : DiagnosticAnalyzer
 public sealed class SafeIrPluginPackageGenerator : IIncrementalGenerator
 public SemanticModel SemanticModel { get; }
@@ -156,38 +156,43 @@ public static class ModuleMetadata
 public static class Operators
 public static class RangeAttributeArguments
 public static EquatableArray<EventPropertyModel> EventProperties(INamedTypeSymbol eventType)
-public static EquatableArray<LiveSettingModel> LiveSettings(
-public static EquatableArray<string> Create(
+public static EquatableArray<LiveSettingModel> LiveSettings( INamedTypeSymbol kernelType, SemanticModel semanticModel, CancellationToken cancellationToken)
+public static EquatableArray<string> Create( SafeIrStatementBodyModel shouldHandle, SafeIrHandleModel handle)
 public static EquatableArray<T> FromOwned(T[] items)
 public static GeneratedPluginPackage Emit(PluginKernelModel model)
 public static IPropertySymbol[] Read(INamedTypeSymbol eventType)
 public static IReadOnlyList<INamedTypeSymbol> EventTypes(INamedTypeSymbol kernelType)
 public static PluginDiagnosticLocation From(Location location)
 public static PluginKernelDiagnostic Create(SyntaxToken token, string message)
-public static PluginKernelModelResult? Create(
-public static readonly DiagnosticDescriptor ForbiddenHostApiRule = new(
-public static readonly DiagnosticDescriptor LiveSettingTypeRule = new(
-public static readonly DiagnosticDescriptor UnsupportedKernelShapeRule = new(
-public static SafeIrExpressionModel Binary(
-public static SafeIrExpressionModel Create(
-public static SafeIrExpressionModel Lower(
+public static PluginKernelModelResult? Create( GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken)
+public static readonly DiagnosticDescriptor ForbiddenHostApiRule = new( "SGP001", "Forbidden host API is not allowed in plugin kernels", "Forbidden host API '{0}' is not allowed in this plugin contract", "SafeIR.Security", DiagnosticSeverity.Error, isEnabledByDefault: true, description: "Hook filters and kernel handlers must use approved safe facades instead of host APIs.", customTags: [WellKnownDiagnosticTags.CompilationEnd])
+public static readonly DiagnosticDescriptor LiveSettingTypeRule = new( "SGP020", "Live setting type is not supported", "Live setting type '{0}' is not supported", "SafeIR.Security", DiagnosticSeverity.Error, isEnabledByDefault: true, description: "Live settings must use supported scalar types.")
+public static readonly DiagnosticDescriptor UnsupportedKernelShapeRule = new( "SGP100", "Plugin kernel shape is not supported", "{0}", "SafeIR.Generation", DiagnosticSeverity.Error, isEnabledByDefault: true, description: "Plugin package generation supports a restricted kernel expression subset.")
+public static SafeIrExpressionModel Binary( string helper, string symbol, SafeIrExpressionModel left, SafeIrExpressionModel right, bool comparison, bool allocates)
+public static SafeIrExpressionModel Create( ExpressionSyntax expression, SafeIrExpressionLoweringContext context)
+public static SafeIrExpressionModel Lower( InterpolatedStringExpressionSyntax expression, Func<ExpressionSyntax, SafeIrExpressionModel> lowerExpression)
+public static SafeIrExpressionModel Lower( InvocationExpressionSyntax invocation, SafeIrExpressionLoweringContext context, Func<ExpressionSyntax, SafeIrExpressionModel> lowerExpression)
+public static SafeIrExpressionModel Lower( IsPatternExpressionSyntax expression, SafeIrExpressionLoweringContext context, Func<ExpressionSyntax, SafeIrExpressionModel> lowerExpression)
+public static SafeIrExpressionModel Lower( SafeIrExpressionModel left, SafeIrExpressionModel right, bool negate, bool allocates)
 public static SafeIrExpressionModel Lower(LiteralExpressionSyntax literal)
-public static SafeIrExpressionModel Unary(
-public static SafeIrExpressionModel? TryLower(
-public static SafeIrExpressionModel? TryLowerMember(
+public static SafeIrExpressionModel Unary( string helper, string symbol, SafeIrExpressionModel operand)
+public static SafeIrExpressionModel? TryLower( ExpressionSyntax expression, SemanticModel semanticModel, CancellationToken cancellationToken, string? targetType)
+public static SafeIrExpressionModel? TryLower( ExpressionSyntax expression, SemanticModel semanticModel, CancellationToken cancellationToken)
+public static SafeIrExpressionModel? TryLowerMember( MemberAccessExpressionSyntax member, SafeIrExpressionLoweringContext context, Func<ExpressionSyntax, SafeIrExpressionModel> lowerExpression)
 public static SafeIrExpressionModel? TryLowerNegative(PrefixUnaryExpressionSyntax unary)
-public static SafeIrExpressionModel? TryPromoteConstant(
-public static SafeIrHandleModel Create(
-public static SafeIrStatementBodyModel Create(
-public static SafeIrStatementBodyModel CreateBranch(
-public static string DefaultValue(
+public static SafeIrExpressionModel? TryPromoteConstant( ExpressionSyntax expression, SafeIrExpressionLoweringContext context, string targetType)
+public static SafeIrHandleModel Create( MethodDeclarationSyntax method, string eventParameterName, string contextParameterName, EquatableArray<EventPropertyModel> eventProperties, EquatableArray<LiveSettingModel> liveSettings, SemanticModel semanticModel, CancellationToken cancellationToken)
+public static SafeIrStatementBodyModel Create( ExpressionSyntax expression, SafeIrExpressionLoweringContext context)
+public static SafeIrStatementBodyModel Create( MethodDeclarationSyntax method, SafeIrExpressionLoweringContext context)
+public static SafeIrStatementBodyModel CreateBranch( ExpressionSyntax condition, SafeIrStatementBodyModel whenTrue, SafeIrStatementBodyModel whenFalse, SafeIrExpressionLoweringContext context)
+public static string DefaultValue( ITypeSymbol type, ExpressionSyntax? expression, SemanticModel semanticModel, CancellationToken cancellationToken)
 public static string EventKernel(string eventName)
 public static string EventVariable(string name) => SafeIrGenerationNames.GeneratedVariables.EventPrefix + name
 public static string ObjectLiteral(object? value)
 public static string SandboxTypeName(ITypeSymbol type)
 public static string StringLiteral(string value) => SymbolDisplay.FormatLiteral(value, quote: true)
 public static string? PluginId(IReadOnlyList<AttributeData> attributes)
-public static void Promote(
+public static void Promote( BinaryExpressionSyntax binary, SafeIrExpressionLoweringContext context, ref SafeIrExpressionModel left, ref SafeIrExpressionModel right)
 public string EventParameterName { get; }
 public struct Enumerator
 public T Current => _items[_index]
