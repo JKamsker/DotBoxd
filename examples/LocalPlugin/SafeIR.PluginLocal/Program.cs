@@ -1,9 +1,11 @@
+using SafeIR;
 using SafeIR.PluginLocal;
 using SafeIR.PluginIpc.Server.Abstractions;
 using SafeIR.Plugins;
 
 var messages = new InMemoryPluginMessageSink();
-var server = PluginServer.Create(messages);
+var server = PluginServer.Create(messages, defaultPolicy: PluginPolicy());
+server.RegisterEventAdapter(DamageEventAdapter.Instance);
 
 var serverGate = server.BindValue("serverGateMinDamage", 0);
 var groupedSettings = server.BindContext<IFireDamageSettings>(
@@ -32,3 +34,11 @@ Console.WriteLine("Messages:");
 foreach (var message in messages.Messages) {
     Console.WriteLine($"  {message.TargetId}: {message.Message}");
 }
+
+static SandboxPolicy PluginPolicy()
+    => SandboxPolicyBuilder.Create()
+        .GrantLogging()
+        .GrantGameMessageWrite()
+        .WithFuel(100_000)
+        .WithMaxHostCalls(1_000)
+        .Build();

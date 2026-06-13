@@ -8,7 +8,8 @@ internal static class DesignGuidanceExample
     public static async Task RunAsync()
     {
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginServer.Create(messages, defaultPolicy: PluginExamplePolicies.MessageWrite());
+        server.RegisterEventAdapter(MyEventAdapter.Instance);
 
         await server.InstallAsync(MyPluginPackage.Create());
         server.Hooks.On<MyEvent>().UseKernel<MyKernel>();

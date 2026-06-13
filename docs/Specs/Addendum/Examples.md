@@ -112,12 +112,17 @@ The server registers hooks against event adapters. Event adapters convert truste
 
 ```csharp
 var messages = new InMemoryPluginMessageSink();
-var server = PluginServer.Create(messages);
+var server = PluginServer.Create(messages, defaultPolicy: PluginMessagePolicy());
+server.RegisterEventAdapter(DamageEventAdapter.Instance);
 await server.InstallAsync(FireDamagePluginPackage.Create());
 
 server.Hooks.On<DamageEvent>()
     .UseKernel<FireDamageKernel>();
 ```
+
+Production servers should register reviewed event adapters before installing packages or wiring
+hooks. Convention/discovery adapters are a development convenience; the production posture is an
+explicit server-owned whitelist of event shapes and fields.
 
 The pipeline flow is:
 
@@ -256,15 +261,17 @@ var package = FireDamagePluginPackage.Create();
 var kernel = await server.InstallAsync(package);
 ```
 
-The default plugin server policy grants the safe message capability:
+The default plugin server policy does not grant message-write capability. Message-sending plugins
+must install with an explicit policy grant:
 
 ```csharp
-SandboxPolicyBuilder.Create()
-    .GrantLogging()
-    .GrantGameMessageWrite()
-    .WithFuel(100_000)
-    .WithMaxHostCalls(1_000)
-    .Build();
+static SandboxPolicy PluginMessagePolicy()
+    => SandboxPolicyBuilder.Create()
+        .GrantLogging()
+        .GrantGameMessageWrite()
+        .WithFuel(100_000)
+        .WithMaxHostCalls(1_000)
+        .Build();
 ```
 
 If the policy does not grant `game.message.write`, package preparation fails closed with a policy diagnostic. The server still re-validates uploaded JSON packages; local analyzer diagnostics are developer-experience feedback, not the trust boundary.

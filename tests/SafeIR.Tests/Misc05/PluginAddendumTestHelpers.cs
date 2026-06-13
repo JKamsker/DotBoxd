@@ -16,6 +16,11 @@ internal sealed class BlockingPluginMessageSink : IPluginMessageSink
 
 internal static class PluginAddendumTestPolicies
 {
+    public static PluginServer CreateServer(
+        IPluginMessageSink? messages = null,
+        ExecutionMode executionMode = ExecutionMode.Auto)
+        => PluginServer.Create(messages, defaultPolicy: LongWall(), executionMode: executionMode);
+
     public static SandboxPolicy LongWall()
         => SandboxPolicyBuilder.Create().GrantLogging().GrantGameMessageWrite()
             .WithFuel(100_000).WithMaxHostCalls(1_000)

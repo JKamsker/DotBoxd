@@ -9,6 +9,7 @@ internal static class ValueBindingExample
     {
         var messages = new InMemoryPluginMessageSink();
         var server = PluginServer.Create(messages);
+        server.RegisterEventAdapter(DamageEventAdapter.Instance);
         var damageType = server.BindValue("damageType", "fire");
         var minDamage = server.BindValue("minDamage", 100);
 

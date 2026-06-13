@@ -8,7 +8,8 @@ internal static class RuntimeConfigurationExample
     public static async Task RunAsync()
     {
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginServer.Create(messages, defaultPolicy: PluginExamplePolicies.MessageWrite());
+        server.RegisterEventAdapter(DamageEventAdapter.Instance);
         var config = FireDamageConfiguration.Default with {
             Settings = new Dictionary<string, object?> {
                 ["DamageType"] = "ice",

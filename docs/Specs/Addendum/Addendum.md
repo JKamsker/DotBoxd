@@ -251,6 +251,8 @@ The plugin server exposes hooks as server-side pipelines.
 Example:
 
 ```csharp
+server.RegisterEventAdapter(DamageEventAdapter.Instance);
+
 server.Hooks.On<DamageEvent>()
     .UseKernel<FireDamageKernel>();
 ```
@@ -289,6 +291,9 @@ must declare the event adapter parameters first, followed by live setting
 parameters, with exact names, types, and order.
 Event shape validation is owned by the trusted event adapter; the adapter must expose only approved
 snapshot fields and convert them to the declared `SandboxValue` inputs.
+Production servers should register reviewed event adapters before installing packages or wiring
+hooks. Convention/discovery adapters are a development convenience, not the recommended production
+boundary.
 
 ---
 
@@ -435,6 +440,8 @@ public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
 Registration:
 
 ```csharp
+server.RegisterEventAdapter(DamageEventAdapter.Instance);
+
 server.Hooks.On<DamageEvent>()
     .UseKernel<FireDamageKernel>();
 ```
@@ -994,6 +1001,8 @@ public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
 Registration:
 
 ```csharp
+server.RegisterEventAdapter(DamageEventAdapter.Instance);
+
 server.Hooks.On<DamageEvent>()
     .UseKernel<FireDamageKernel>();
 ```

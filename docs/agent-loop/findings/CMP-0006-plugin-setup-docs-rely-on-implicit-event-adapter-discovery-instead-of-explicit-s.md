@@ -1,20 +1,20 @@
 ---
 id: CMP-0006
 area: completeness
-status: open
+status: fixed_pending_verification
 priority: high
 title: Plugin setup docs rely on implicit event adapter discovery instead of explicit server whitelist
 dedup_key: cmp-plugin-explicit-event-adapter-whitelist-setup-docs
 created_at: 2026-06-12T22:03:18.4741568+00:00
 created_by: Codex completeness auditor
 created_commit: 
-updated_at: 2026-06-12T22:03:18.4741568+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
-fixed_commit: 
+updated_at: 2026-06-13T00:10:34.0212720+00:00
+claimed_by: worker
+claimed_at: 2026-06-13T00:04:19.4252521+00:00
+claim_branch: workflow-work
+fixed_by: worker
+fixed_at: 2026-06-13T00:10:34.0212720+00:00
+fixed_commit: pending
 verified_by: 
 verified_at: 
 verified_commit: 

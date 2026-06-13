@@ -26,6 +26,7 @@ public sealed class PluginControlService : IPluginControlService
     {
         var messages = new InMemoryPluginMessageSink();
         var server = PluginServer.Create(messages, defaultPolicy: PluginPolicy());
+        server.RegisterEventAdapter(DamageEventAdapter.Instance);
         var kernel = await server.InstallAsync(FireDamagePluginPackage.Create()).ConfigureAwait(false);
         server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
         return new PluginControlService(messages, server, kernel);

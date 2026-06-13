@@ -219,7 +219,7 @@ function Wait-IpcServer([object] $Server) {
     throw "IPC server did not start listening within 30 seconds."
 }
 
-$pipeName = "sir-ipc-" + [Guid]::NewGuid().ToString("N").Substring(0, 12)
+$pipeName = "sir-ipc-" + [Guid]::NewGuid().ToString("N")
 $ipcServer = Start-IpcServer $ipcServerExample $pipeName
 try {
     Wait-IpcServer $ipcServer

@@ -9,6 +9,7 @@ internal static class ContextBindingExample
     {
         var messages = new InMemoryPluginMessageSink();
         var server = PluginServer.Create(messages);
+        server.RegisterEventAdapter(DamageEventAdapter.Instance);
         var settings = server.BindContext<DamageSettings>(
             "damage",
             value =>

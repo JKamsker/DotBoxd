@@ -18,7 +18,7 @@ public sealed class PluginAddendumTests
     public async Task Kernel_live_settings_affect_future_hook_runs()
     {
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
         server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
 
@@ -48,7 +48,7 @@ public sealed class PluginAddendumTests
             .Select(setting => setting.Name)
             .ToHashSet(StringComparer.Ordinal);
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         var installed = await server.InstallAsync(package);
 
         Assert.All(settings.Keys, key => Assert.Contains(key, declared));
@@ -62,7 +62,7 @@ public sealed class PluginAddendumTests
     public async Task Direct_kernel_value_updates_are_full_sync_by_default()
     {
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
         server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
@@ -79,7 +79,7 @@ public sealed class PluginAddendumTests
     public async Task AsyncSet_direct_kernel_value_updates_do_not_wait_for_server_ack()
     {
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
         server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
@@ -99,7 +99,7 @@ public sealed class PluginAddendumTests
     public async Task AsyncSet_flush_pushes_direct_kernel_value_updates_before_next_run()
     {
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
         server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
@@ -117,7 +117,7 @@ public sealed class PluginAddendumTests
     public async Task ModifyAsync_ignores_update_mode_and_waits_for_batch_commit()
     {
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
         server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
@@ -134,7 +134,7 @@ public sealed class PluginAddendumTests
     public async Task ModifyAsync_commits_class_kernel_settings_as_a_batch()
     {
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
         server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
@@ -158,7 +158,7 @@ public sealed class PluginAddendumTests
     [Fact]
     public async Task ModifyAsync_rejects_invalid_batch_without_changing_current_settings()
     {
-        var server = PluginServer.Create();
+        var server = PluginAddendumTestPolicies.CreateServer();
         await server.InstallAsync(FireDamagePluginPackage.Create());
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
 
@@ -179,7 +179,7 @@ public sealed class PluginAddendumTests
     [Fact]
     public async Task ModifyAsync_supports_interface_shaped_kernel_settings()
     {
-        var server = PluginServer.Create();
+        var server = PluginAddendumTestPolicies.CreateServer();
         await server.InstallAsync(FireDamagePluginPackage.Create());
         var settings = server.Kernels.Get<IFireDamageSettings>("fire-damage");
 
@@ -199,7 +199,7 @@ public sealed class PluginAddendumTests
     public async Task ModifyAsync_atomic_waits_for_in_flight_kernel_execution()
     {
         var messages = new BlockingPluginMessageSink();
-        var server = PluginServer.Create(messages, defaultPolicy: PluginAddendumTestPolicies.LongWall());
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
         server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
@@ -219,7 +219,7 @@ public sealed class PluginAddendumTests
     [Fact]
     public async Task Value_binding_filter_updates_without_rebuilding_pipeline()
     {
-        var server = PluginServer.Create();
+        var server = PluginAddendumTestPolicies.CreateServer();
         var minimum = server.BindValue("minimum", 100);
         var handled = 0;
         server.Hooks.On<DamageEvent>()
@@ -237,7 +237,7 @@ public sealed class PluginAddendumTests
     [Fact]
     public void Context_binding_exposes_typed_live_properties()
     {
-        var server = PluginServer.Create();
+        var server = PluginAddendumTestPolicies.CreateServer();
         var settings = server.BindContext<IFireDamageSettings>(
             "damage",
             value =>
@@ -256,7 +256,7 @@ public sealed class PluginAddendumTests
     [Fact]
     public async Task Unsupported_live_setting_type_reports_local_diagnostic()
     {
-        var server = PluginServer.Create();
+        var server = PluginAddendumTestPolicies.CreateServer();
         var package = FireDamagePluginPackage.Create();
         var invalid = package with
         {
@@ -274,7 +274,7 @@ public sealed class PluginAddendumTests
     [Fact]
     public async Task Live_setting_updates_enforce_manifest_ranges()
     {
-        var server = PluginServer.Create();
+        var server = PluginAddendumTestPolicies.CreateServer();
         var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
 
         var ex = Assert.Throws<SandboxValidationException>(() => kernel.Value.Set("MinDamage", 10_001));
@@ -285,7 +285,7 @@ public sealed class PluginAddendumTests
     [Fact]
     public async Task Class_kernel_setting_updates_are_validated_before_execution()
     {
-        var server = PluginServer.Create();
+        var server = PluginAddendumTestPolicies.CreateServer();
         await server.InstallAsync(FireDamagePluginPackage.Create());
         server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
@@ -301,7 +301,7 @@ public sealed class PluginAddendumTests
     public async Task Class_kernel_setting_value_is_stable_for_repeated_gets()
     {
         var messages = new InMemoryPluginMessageSink();
-        var server = PluginServer.Create(messages);
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
         server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
         var first = server.Kernels.Get<FireDamageKernel>("fire-damage");
