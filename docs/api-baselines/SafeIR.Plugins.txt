@@ -2,8 +2,6 @@
 # Package: SafeIR.Plugins
 # Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
 
-protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
-public async ValueTask FlushAsync(CancellationToken cancellationToken = default)
 public async ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)
 public async ValueTask HandleAsync<TEvent>( IPluginEventAdapter<TEvent> adapter, TEvent e, CancellationToken cancellationToken = default)
 public async ValueTask ModifySettingsAsync( IReadOnlyDictionary<string, object?> values, bool atomic = false, CancellationToken cancellationToken = default)
@@ -13,28 +11,13 @@ public async ValueTask<InstalledKernel> InstallAsync( PluginPackage package, San
 public bool IsRevoked => Volatile.Read(ref _revoked) != 0
 public bool Uninstall(string pluginId)
 public CancellationToken CancellationToken { get; }
-public const int SuffixLength = 1
-public const string Bool = "bool"
 public const string CapabilityId = "game.message.write"
-public const string Double = "double"
-public const string Empty = "IEventKernel<>"
-public const string Handle = "Handle"
-public const string Int = "int"
-public const string Kernel = "kernel"
-public const string Long = "long"
-public const string PluginId = "pluginId"
-public const string Prefix = "e_"
-public const string Prefix = "IEventKernel<"
 public const string SendBindingId = "game.message.send"
-public const string ShouldHandle = "ShouldHandle"
-public const string String = "string"
-public const string Suffix = ">"
 public enum LiveUpdateMode
 public enum LiveUpdateMode.AsyncSet = 1
 public enum LiveUpdateMode.Sync = 0
 public Exception? LastAsyncUpdateError => _pendingLiveUpdates.LastError
 public Exception? LastAsyncUpdateError => Kernel.LastAsyncUpdateError
-public Exception? LastError
 public HookContext(IPluginMessageSink messages, CancellationToken cancellationToken)
 public HookPipeline<TEvent> InvokeHostHandler(Action<TEvent, HookContext> handler)
 public HookPipeline<TEvent> InvokeHostHandler(Func<TEvent, HookContext, ValueTask> handler)
@@ -49,45 +32,35 @@ public HookPipeline<TEvent> Where(Func<TEvent, HookContext, ValueTask<bool>> fil
 public HookRegistry Hooks { get; }
 public InstalledKernel Get(string pluginId)
 public InstalledKernel Kernel { get; }
-public int EventValueCount => _properties.Length
 public interface IEventKernel<TEvent>
 public interface ILiveSetting
 public interface IPluginEventAdapter<in TEvent>
 public interface IPluginMessageSink
 public IPluginEventAdapter<TEvent> Resolve<TEvent>()
 public IPluginMessageSink Messages { get; }
-public IReadOnlyList<Action> SynchronizeForInput()
 public IReadOnlyList<HookSubscriptionManifest> Subscriptions { get => _subscriptions; init => _subscriptions = PluginModelCopy.List(value); }
 public IReadOnlyList<LiveSettingDefinition> Definitions
 public IReadOnlyList<LiveSettingDefinition> LiveSettings { get => _liveSettings; init => _liveSettings = PluginModelCopy.List(value); }
-public IReadOnlyList<Parameter> Parameters { get; }
 public IReadOnlyList<PluginExecutionObservation> ExecutionObservations => _executionObserver.Snapshot()
-public IReadOnlyList<PluginExecutionObservation> Snapshot()
 public IReadOnlyList<PluginMessage> Messages => _messages
-public IReadOnlyList<SandboxValue> ToSandboxValues(TEvent e)
 public IReadOnlyList<string> Effects { get => _effects; init => _effects = PluginModelCopy.List(value); }
 public KernelRegistry Kernels { get; }
 public LiveContext<T> BindContext<T>(string name, Action<T>? initialize = null) where T : class
 public LiveSettingDefinition Definition { get; }
-public LiveSettingDefinition Definition => definition
 public LiveSettingStore Settings { get; }
 public LiveSettingStore Value { get; }
 public LiveSettingStore(IEnumerable<ILiveSetting> settings)
 public LiveUpdateMode UpdateMode
 public LiveValue(string name, T value)
 public LiveValue<T> BindValue<T>(string name, T initialValue)
-public object? CurrentValue
 public object? CurrentValue => Value
 public object? GetObject(string name)
 public PluginEventAdapterRegistry Events { get; }
-public PluginExecutionObservation? Last
 public PluginExecutionObservation? LastExecution => _executionObserver.Last
 public PluginManifest Manifest { get; }
 public PluginPackage Package { get; }
 public PluginServer RegisterEventAdapter<TEvent>(IPluginEventAdapter<TEvent> adapter)
 public SandboxValue ToSandboxValue()
-public SandboxValue ToSandboxValue(TEvent e, int index)
-public SandboxValue ToSandboxValue(TEvent e)
 public sealed class GamePluginAttribute(string id) : Attribute
 public sealed class HookContext
 public sealed class HookPipeline<TEvent>
@@ -110,48 +83,12 @@ public sealed record PluginManifest( string PluginId, string Contract, Execution
 public sealed record PluginMessage(string TargetId, string Message)
 public sealed record PluginPackage( PluginManifest Manifest, SandboxModule Module, KernelEntrypoints Entrypoints)
 public static BindingDescriptor CreateSend(IPluginMessageSink sink)
-public static bool IsNumeric(string type)
-public static bool Matches(IReadOnlyList<Parameter> first, IReadOnlyList<Parameter> second)
-public static class Entrypoints
-public static class EventKernelContract
-public static class EventParameters
-public static class LiveSettingTypes
-public static class ModuleMetadata
 public static class PluginMessageBindings
-public static ConventionEventAdapter<TEvent> Create()
-public static Exception Diagnostic(string message)
-public static IReadOnlyDictionary<string, object?> ExtractSettings<T>( T state, IReadOnlyList<LiveSettingDefinition> settings) where T : class
-public static IReadOnlyList<T> List<T>(IEnumerable<T> values)
-public static LiveContext<T> Create<T>(string name, Action<T>? initialize = null) where T : class
-public static object? CoerceClr(string type, object? value)
-public static object? CoerceClr(Type targetType, object? value)
-public static object? DefaultFor(Type type)
-public static Parameter[] BuildExpected( IReadOnlyList<Parameter> eventParameters, IReadOnlyList<LiveSettingDefinition> liveSettings)
 public static PluginPackage Create( PluginManifest manifest, SandboxModule module, KernelEntrypoints? entrypoints = null)
 public static PluginServer Create( IPluginMessageSink? messages = null, Action<SandboxHostBuilder>? configureHost = null, SandboxPolicy? defaultPolicy = null, ExecutionMode executionMode = ExecutionMode.Auto)
 public static SandboxHostBuilder AddPluginMessageBindings( this SandboxHostBuilder builder, IPluginMessageSink sink)
-public static SandboxType ToSandboxType(string type)
-public static SandboxValue Build<TEvent>( IPluginEventAdapter<TEvent> adapter, TEvent e, IReadOnlyList<Action> deferredUpdates, IReadOnlyList<LiveSettingDefinition> liveSettings, LiveSettingStore value, Action<Action> enqueueUpdate)
-public static SandboxValue ToSandboxValue(string type, object? value)
-public static string FromClrType(Type type)
-public static string PluginId(Type kernelType)
-public static T Create(LiveSettingStore settings)
-public static T Create<T>(InstalledKernel kernel) where T : class
-public static T CreateDraft<T>(T source) where T : class
-public static void CopyLiveProperties<T>(T source, T target) where T : class
-public static void PullFromStore(InstalledKernel kernel, object state)
-public static void PullFromStore<T>(InstalledKernel kernel, T state) where T : class
-public static void ThrowIfRevoked(bool revoked)
-public static void Validate( PluginPackage package, ExecutionPlan plan, PluginEventAdapterRegistry events, ManifestEffectsValidator validateManifestEffects)
-public static void Validate(PluginPackage package)
-public static void Validate<TEvent>( PluginManifest manifest, ExecutionPlan plan, KernelEntrypoints entrypoints, IPluginEventAdapter<TEvent> adapter)
-public static void ValidatePrepared( PluginPackage package, ExecutionPlan plan, PluginEventAdapterRegistry events)
-public static void ValidateRangeDefinition(LiveSettingDefinition definition)
-public static void ValidateRangeValue(LiveSettingDefinition definition, object? value)
-public string EventName => typeof(TEvent).Name
 public string Id { get; } = id
 public string Name { get; }
-public string Name => definition.Name
 public string Name => Definition.Name
 public T As<T>() where T : class => LiveContextProxy<T>.Create(this)
 public T Get<T>(string name)
@@ -162,11 +99,6 @@ public TypedInstalledKernel<TState> Get<TState>(string pluginId) where TState : 
 public ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)
 public ValueTask ModifyAsync( Action<TSettings> modify, bool atomic = false, CancellationToken cancellationToken = default)
 public ValueTask SendAsync(string targetId, string message, CancellationToken cancellationToken = default)
-public void ClearError()
-public void CopySandboxValues(TEvent e, SandboxValue[] destination, int destinationIndex)
-public void Enqueue(Action update)
-public void Record(string entrypoint, ExecutionMode requestedMode, SandboxExecutionResult result)
-public void Register(Type stateType, Action synchronize)
 public void Register<TEvent>(IPluginEventAdapter<TEvent> adapter)
 public void Revoke()
 public void Send(string targetId, string message)
@@ -174,4 +106,3 @@ public void Set<T>(string name, T value)
 public void SetMany(IReadOnlyDictionary<string, object?> values)
 public void SetObject(object? value)
 public void SetObject(string name, object? value)
-public void SynchronizeForFlush()

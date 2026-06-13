@@ -121,8 +121,16 @@ public sealed record SandboxExecutionResult
     public required IReadOnlyList<SandboxAuditEvent> AuditEvents
     {
         get => _auditEvents;
-        init => _auditEvents = ModelCopy.List(value);
+        init => _auditEvents = AdoptOrCopy(value);
     }
+
+    // An already-owned, immutable snapshot (for example the one produced on the execution
+    // hot path) can be adopted directly; any other input is still defensively copied so
+    // external list/array identity never escapes into the public result.
+    private static IReadOnlyList<SandboxAuditEvent> AdoptOrCopy(IReadOnlyList<SandboxAuditEvent> value)
+        => value is System.Collections.ObjectModel.ReadOnlyCollection<SandboxAuditEvent> owned
+            ? owned
+            : ModelCopy.List(value);
 
     public ExecutionMode ActualMode { get; init; }
     public bool ExecutionDispatched { get; init; }

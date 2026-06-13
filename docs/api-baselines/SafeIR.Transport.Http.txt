@@ -2,36 +2,17 @@
 # Package: SafeIR.Transport.Http
 # Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
 
-protected override async Task<HttpResponseMessage> SendAsync( HttpRequestMessage request, CancellationToken cancellationToken)
 public delegate ValueTask<IReadOnlyList<IPAddress>> SafeDnsResolver(string host, CancellationToken cancellationToken)
-public HttpResponseMessage Message { get; } = message
-public InMemoryHandler( byte[] responseBytes, HttpStatusCode statusCode, Uri? location, Uri? finalRequestUri, TimeSpan? responseDelay)
-public override bool CanSeek => false
-public override long Length => throw new NotSupportedException()
-public override long Position
-public override long Seek(long offset, SeekOrigin loc) => throw new NotSupportedException()
 public SafeInMemoryHttpMessageInvoker( byte[] responseBytes, HttpStatusCode statusCode = HttpStatusCode.OK, string? location = null, string? finalRequestUri = null, TimeSpan? responseDelay = null)
 public SafeInMemoryHttpMessageInvoker( string response, HttpStatusCode statusCode = HttpStatusCode.OK, string? location = null, string? finalRequestUri = null, TimeSpan? responseDelay = null)
 public sealed class SafeInMemoryHttpMessageInvoker : HttpMessageInvoker
-public static async ValueTask<SafePinnedHttpResponse> SendAsync( SafeInMemoryHttpMessageInvoker? invoker, HttpRequestMessage message, IReadOnlyList<IPAddress> vettedAddresses, CancellationToken cancellationToken)
 public static async ValueTask<string> GetTextAsync( SandboxContext context, SandboxUri uri, SafeInMemoryHttpMessageInvoker? invoker, SafeDnsResolver? dnsResolver, CancellationToken cancellationToken)
 public static BindingDescriptor GetText(SafeInMemoryHttpMessageInvoker? invoker = null, SafeDnsResolver? dnsResolver = null)
 public static BindingRegistryBuilder AddNetworkBindings( this BindingRegistryBuilder builder, SafeInMemoryHttpMessageInvoker? invoker = null, SafeDnsResolver? dnsResolver = null)
-public static bool IsAllowedAuthority(string value)
-public static bool IsAllowedScheme(string value)
-public static bool IsNonGlobal(IPAddress address)
-public static bool MatchesAllowedAuthority(string allowed, Uri uri)
-public static bool SameUri(Uri left, Uri right)
 public static class SafeHttpBindingExtensions
 public static class SafeHttpBindings
 public static class SafeHttpClient
 public static class SafeHttpHostBuilderExtensions
 public static class SafeHttpPolicyBuilderExtensions
-public static long ChargeMetadata( SandboxContext context, HttpResponseMessage response, long maxBytes)
-public static long MeasureMetadataBytes(HttpResponseMessage response)
-public static SafeHttpGrantOptions Read(CapabilityGrant grant)
 public static SandboxHostBuilder AddNetworkBindings( this SandboxHostBuilder builder, SafeInMemoryHttpMessageInvoker? invoker = null, SafeDnsResolver? dnsResolver = null)
 public static SandboxPolicyBuilder GrantHttpGet( this SandboxPolicyBuilder builder, IEnumerable<string> allowedHosts, long maxResponseBytes, IEnumerable<string>? allowedSchemes = null, TimeSpan? timeout = null, bool allowIpLiterals = false, bool allowPrivateNetwork = false, long? maxRequestBytes = null)
-public static string Sanitize(string value)
-public static void Validate(CapabilityGrant grant, ICollection<SandboxDiagnostic> diagnostics)
-public void Dispose()

@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "safeir.compiler": {
+        "type": "Project",
+        "dependencies": {
+          "SafeIR.Core": "[0.1.0, )",
+          "SafeIR.Runtime": "[0.1.0, )",
+          "SafeIR.Validation": "[0.1.0, )",
+          "SafeIR.Verifier": "[0.1.0, )"
+        }
+      },
+      "safeir.core": {
+        "type": "Project"
+      },
+      "safeir.hosting": {
+        "type": "Project",
+        "dependencies": {
+          "SafeIR.Compiler": "[0.1.0, )",
+          "SafeIR.Core": "[0.1.0, )",
+          "SafeIR.Interpreter": "[0.1.0, )",
+          "SafeIR.Runtime": "[0.1.0, )",
+          "SafeIR.Validation": "[0.1.0, )",
+          "SafeIR.Verifier": "[0.1.0, )"
+        }
+      },
+      "safeir.interpreter": {
+        "type": "Project",
+        "dependencies": {
+          "SafeIR.Core": "[0.1.0, )",
+          "SafeIR.Runtime": "[0.1.0, )",
+          "SafeIR.Validation": "[0.1.0, )"
+        }
+      },
+      "safeir.plugins": {
+        "type": "Project",
+        "dependencies": {
+          "SafeIR.Core": "[0.1.0, )",
+          "SafeIR.Hosting": "[0.1.0, )",
+          "SafeIR.Runtime": "[0.1.0, )"
+        }
+      },
+      "safeir.runtime": {
+        "type": "Project",
+        "dependencies": {
+          "SafeIR.Core": "[0.1.0, )",
+          "SafeIR.Validation": "[0.1.0, )"
+        }
+      },
+      "safeir.serialization.json": {
+        "type": "Project",
+        "dependencies": {
+          "SafeIR.Core": "[0.1.0, )",
+          "SafeIR.Hosting": "[0.1.0, )",
+          "SafeIR.Plugins": "[0.1.0, )"
+        }
+      },
+      "safeir.transport.http": {
+        "type": "Project",
+        "dependencies": {
+          "SafeIR.Hosting": "[0.1.0, )",
+          "SafeIR.Runtime": "[0.1.0, )"
+        }
+      },
+      "safeir.validation": {
+        "type": "Project",
+        "dependencies": {
+          "SafeIR.Core": "[0.1.0, )"
+        }
+      },
+      "safeir.verifier": {
+        "type": "Project",
+        "dependencies": {
+          "SafeIR.Core": "[0.1.0, )",
+          "SafeIR.Runtime": "[0.1.0, )"
+        }
+      }
+    }
+  }
+}

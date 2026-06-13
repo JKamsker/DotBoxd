@@ -50,6 +50,23 @@ internal static class PersistentCompiledArtifactCacheOriginKeyGuard
     }
 
     /// <summary>
+    /// Best-effort restore of owner read/write/delete access to a key file whose ACL has
+    /// locked out the current principal (for example a key hardened by a now-defunct identity).
+    /// Used only to recover from a corrupted on-disk key before recreating it. On Unix this
+    /// resets the mode to owner read/write; on Windows it grants the current user FullControl.
+    /// </summary>
+    public static void RestoreOwnerAccess(string filePath)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            GrantWindowsOwnerFullControl(new FileInfo(filePath));
+            return;
+        }
+
+        File.SetUnixFileMode(filePath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+    }
+
+    /// <summary>
     /// Fails closed if the directory grants group/world or broad-principal access,
     /// or if its permissions cannot be read.
     /// </summary>
@@ -198,6 +215,22 @@ internal static class PersistentCompiledArtifactCacheOriginKeyGuard
             inheritanceFlags,
             PropagationFlags.None,
             AccessControlType.Allow));
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void GrantWindowsOwnerFullControl(FileInfo info)
+    {
+        var security = info.GetAccessControl(AccessControlSections.Access);
+        var owner = WindowsIdentity.GetCurrent().User
+            ?? throw Denied("origin key owner identity is unavailable");
+        security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        security.AddAccessRule(new FileSystemAccessRule(
+            owner,
+            FileSystemRights.FullControl,
+            InheritanceFlags.None,
+            PropagationFlags.None,
+            AccessControlType.Allow));
+        info.SetAccessControl(security);
     }
 
     [SupportedOSPlatform("windows")]

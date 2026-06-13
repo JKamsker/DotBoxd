@@ -73,7 +73,7 @@ internal static class CompiledExecutionRunner
             Value = value,
             Error = error,
             ResourceUsage = budget.Snapshot(),
-            AuditEvents = audit.Events,
+            AuditEvents = audit.OwnedEventSnapshot(),
             ActualMode = ExecutionMode.Compiled,
             ExecutionDispatched = true,
             ModuleHash = plan.ModuleHash,

@@ -17,6 +17,7 @@ public sealed class SafeIrPluginAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "Hook filters and kernel handlers must use approved safe facades instead of host APIs.",
+        helpLinkUri: PluginAnalyzerDiagnostics.ShippedRulesHelpLinkBase + "SGP001",
         customTags: [WellKnownDiagnosticTags.CompilationEnd]);
 
     public static readonly DiagnosticDescriptor LiveSettingTypeRule = new(
@@ -26,7 +27,8 @@ public sealed class SafeIrPluginAnalyzer : DiagnosticAnalyzer
         "SafeIR.Security",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Live settings must use supported scalar types.");
+        description: "Live settings must use supported scalar types.",
+        helpLinkUri: PluginAnalyzerDiagnostics.ShippedRulesHelpLinkBase + "SGP020");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
         => ImmutableArray.Create(ForbiddenHostApiRule, LiveSettingTypeRule);

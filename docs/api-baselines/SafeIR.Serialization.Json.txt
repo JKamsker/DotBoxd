@@ -2,44 +2,14 @@
 # Package: SafeIR.Serialization.Json
 # Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
 
-public SourcePositionTracker(string json)
-public SourceSpan SpanAt(long byteOffset)
-public SourceSpan SpanFor(JsonElement element)
-public static bool ReadBoolValue(JsonElement value, string name)
-public static bool TryRead(JsonElement element, out SandboxValue value, out string literalName)
 public static class PluginPackageJsonSerializer
 public static class PluginServerJsonExtensions
 public static class SafeIrJsonExporter
 public static class SafeIrJsonImporter
 public static class SandboxHostJsonExtensions
-public static double ReadDoubleValue(JsonElement value, string name)
-public static int ReadInt32Value(JsonElement value, string name)
-public static IReadOnlyList<SourceSpan> Read(string json)
-public static JsonElement RequireArray(JsonElement value, string name)
-public static JsonElement Required(JsonElement element, string name)
-public static JsonElement RequiredArray(JsonElement element, string name)
-public static JsonSourceMap Create(string json, JsonElement root)
-public static long ReadInt64Value(JsonElement value, string name)
 public static PluginPackage Import(string json)
-public static readonly SourceSpan JsonSpan = new(0, 0)
 public static SandboxModule Import(string json)
-public static SandboxValidationException Error(string code, string message)
-public static string BinaryOperator(string op)
 public static string Export(PluginPackage package, bool indented = false)
 public static string Export(SandboxModule module, bool indented = false)
-public static string NormalizeBinary(string op)
-public static string NormalizeUnary(string op)
-public static string OpaqueIdName(string typeName)
-public static string ReadPathValue(JsonElement value, string name)
-public static string ReadStringValue(JsonElement value, string name)
-public static string ReadUriValue(JsonElement value, string name)
-public static string RequiredString(JsonElement element, string name)
-public static string UnaryOperator(string op)
-public static string? OptionalString(JsonElement element, string name)
-public static T[] AllocateArray<T>(JsonElement array, out int count)
 public static ValueTask<InstalledKernel> InstallJsonAsync( this PluginServer server, string json, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public static ValueTask<SandboxModule> ImportJsonAsync( this SandboxHost host, string jsonIr, CancellationToken cancellationToken = default)
-public static void RequireAllowedProperties(JsonElement value, string name, params string[] allowed)
-public static void RequireObject(JsonElement value, string name)
-public static void RequireUniqueProperties(JsonElement value, string name)
-public static void Validate(string json)

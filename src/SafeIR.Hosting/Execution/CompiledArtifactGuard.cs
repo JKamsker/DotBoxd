@@ -1,5 +1,6 @@
 namespace SafeIR.Hosting;
 
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Security.Cryptography;
@@ -12,6 +13,14 @@ internal static class CompiledArtifactGuard
 {
     private static readonly VerificationPolicy DefaultVerificationPolicy = VerificationPolicy.BoxedValueDefaults();
     private static readonly IGeneratedAssemblyVerifier Verifier = new GeneratedAssemblyVerifier();
+
+    // The boxed/optimized cache keys for a prepared plan and entrypoint are a pure, deterministic
+    // function of the plan identity, the entrypoint, and the static default verification policy.
+    // Memoize them so steady-state dispatches do not rebuild and re-hash both cache-key strings on
+    // every compiled run. Keyed by plan identity (PlanHash folds the module/policy/binding hashes
+    // and determinism flag that CacheKeyBuilder.Build reads) plus the entrypoint.
+    private static readonly ConcurrentDictionary<(string PlanHash, string Entrypoint), ExpectedCacheKeys> ExpectedCacheKeyCache =
+        new();
 
     public static async ValueTask<MaterializedCompiledArtifact> MaterializeExecutableAsync(
         CompiledArtifact artifact,
@@ -117,18 +126,29 @@ internal static class CompiledArtifactGuard
 
     private static string[] ExpectedOptimizationFlags(string cacheKey, ExecutionPlan plan, string entrypoint)
     {
-        if (cacheKey == CacheKeyBuilder.Build(plan, entrypoint, DefaultVerificationPolicy, optimize: false))
+        var expected = ExpectedKeysFor(plan, entrypoint);
+        if (cacheKey == expected.BoxedValues)
         {
             return ["boxed-values"];
         }
 
-        if (cacheKey == CacheKeyBuilder.Build(plan, entrypoint, DefaultVerificationPolicy, optimize: true))
+        if (cacheKey == expected.Optimized)
         {
             return ["opt"];
         }
 
         throw Invalid("compiled artifact cache key does not match execution plan");
     }
+
+    private static ExpectedCacheKeys ExpectedKeysFor(ExecutionPlan plan, string entrypoint)
+        => ExpectedCacheKeyCache.GetOrAdd(
+            (plan.PlanHash, entrypoint),
+            static (_, state) => new ExpectedCacheKeys(
+                CacheKeyBuilder.Build(state.Plan, state.Entrypoint, DefaultVerificationPolicy, optimize: false),
+                CacheKeyBuilder.Build(state.Plan, state.Entrypoint, DefaultVerificationPolicy, optimize: true)),
+            (Plan: plan, Entrypoint: entrypoint));
+
+    private readonly record struct ExpectedCacheKeys(string BoxedValues, string Optimized);
 
     private static void EnsureAssemblyBytesMatchHash(CompiledArtifact artifact)
     {

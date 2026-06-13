@@ -6,6 +6,7 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $addendumExample = Join-Path $root "examples/Addendum/SafeIR.AddendumExamples/SafeIR.AddendumExamples.csproj"
+$httpTransportExample = Join-Path $root "examples/HttpTransport/SafeIR.HttpTransportExample/SafeIR.HttpTransportExample.csproj"
 $localPluginExample = Join-Path $root "examples/LocalPlugin/SafeIR.PluginLocal/SafeIR.PluginLocal.csproj"
 $ipcServerExample = Join-Path $root "examples/PluginIpc/SafeIR.PluginIpc.Server/SafeIR.PluginIpc.Server.csproj"
 $ipcClientExample = Join-Path $root "examples/PluginIpc/SafeIR.PluginIpc.Client/SafeIR.PluginIpc.Client.csproj"
@@ -129,6 +130,7 @@ Assert-DocsDoNotContain "Proposed C# API surface" "public API index is no longer
 Assert-DocsDoNotContain "Add compiler/cache after the core model is proven" "compiled mode is implemented"
 
 Invoke-DotNetProject "Addendum example smoke test" @("run", "--project", $addendumExample, "--configuration", $Configuration, "--no-build")
+Invoke-DotNetProject "HTTP transport example smoke test" @("run", "--project", $httpTransportExample, "--configuration", $Configuration, "--no-build")
 Invoke-DotNetProject "Local plugin example smoke test" @("run", "--project", $localPluginExample, "--configuration", $Configuration, "--no-build")
 
 if (-not $IsWindows) {

@@ -75,6 +75,110 @@ function Get-ParenthesisDelta([string] $Text) {
     return $delta
 }
 
+function Test-TypeDeclaration([string] $Trimmed) {
+    # Matches class/struct/record/interface/enum declarations regardless of the
+    # leading access modifier so we can track the accessibility of containing types.
+    return $Trimmed -match "\b(class|struct|interface|enum|record(\s+(class|struct))?)\s+[A-Za-z_@]"
+}
+
+function Test-TypeDeclarationPublic([string] $Trimmed) {
+    # A type contributes to the effective public surface only when its own
+    # declaration is public, protected, or protected internal.
+    if ($Trimmed -notmatch "^(public|protected\s+internal|protected)\b") {
+        return $false
+    }
+
+    # protected internal and internal protected are public-surface-visible; a bare
+    # internal/private/file modifier is not.
+    if ($Trimmed -match "^internal\b" -or $Trimmed -match "^private\b" -or $Trimmed -match "^file\b") {
+        return $false
+    }
+
+    return $true
+}
+
+# Computes, for each source line, whether the innermost enclosing type scope is
+# effectively public. A line declared inside an internal/private/file type (or a
+# public type nested inside such a type) is reported as not effectively public, so
+# its members are excluded from the public API surface. Top-level (namespace) lines
+# have no enclosing type and are reported as public; their own access modifier still
+# gates whether they are recorded. Fails closed: an unrecognized type modifier is
+# treated as non-public.
+function Get-ContainingTypePublicFlags([string[]] $Lines) {
+    $flags = New-Object "System.Collections.Generic.List[bool]"
+
+    # Stack of effective-public flags, one entry per open brace scope. A scope value
+    # is the effective public-ness of the nearest enclosing type at that depth.
+    $scopeStack = New-Object "System.Collections.Generic.List[bool]"
+
+    # A type declaration and its opening brace can span multiple lines (for example a
+    # base list before the brace). $pendingTypePublic holds the effective public-ness of
+    # such a declaration until its opening brace is consumed.
+    $hasPendingType = $false
+    $pendingTypePublic = $true
+
+    foreach ($line in $Lines) {
+        $trimmed = (Remove-LineComment $line).Trim()
+
+        # The flag for this line reflects the type scope in effect at the start of the
+        # line, before this line opens or closes any braces. A type declaration line is
+        # therefore evaluated against its parent scope, while members appear after the
+        # type's opening brace and see the pushed type scope.
+        $containingPublic = if ($scopeStack.Count -gt 0) {
+            $scopeStack[$scopeStack.Count - 1]
+        } else {
+            $true
+        }
+
+        $flags.Add($containingPublic)
+
+        if ([string]::IsNullOrWhiteSpace($trimmed) -or
+            $trimmed.StartsWith("[", [StringComparison]::Ordinal)) {
+            continue
+        }
+
+        # Determine whether this line introduces a type scope and, if so, its effective
+        # public-ness relative to the current containing type scope. A pending type from
+        # an earlier line takes precedence until its brace is found.
+        if (-not $hasPendingType -and (Test-TypeDeclaration $trimmed)) {
+            $hasPendingType = $true
+            $pendingTypePublic = (Test-TypeDeclarationPublic $trimmed) -and $containingPublic
+        }
+
+        foreach ($character in $trimmed.ToCharArray()) {
+            if ($character -eq "{") {
+                if ($hasPendingType) {
+                    # The opening brace belongs to the pending type declaration.
+                    [void] $scopeStack.Add($pendingTypePublic)
+                    $hasPendingType = $false
+                } else {
+                    # Non-type block (method body, accessor, initializer): inherit the
+                    # current containing type scope so nested members stay gated correctly.
+                    $inherited = if ($scopeStack.Count -gt 0) {
+                        $scopeStack[$scopeStack.Count - 1]
+                    } else {
+                        $true
+                    }
+
+                    [void] $scopeStack.Add($inherited)
+                }
+            } elseif ($character -eq "}") {
+                if ($scopeStack.Count -gt 0) {
+                    $scopeStack.RemoveAt($scopeStack.Count - 1)
+                }
+            } elseif ($character -eq ";" -and $hasPendingType) {
+                # A positional record without a body (for example
+                # `public record Foo(int X);`) terminates with a semicolon and opens no
+                # type scope. Clear the pending state so a later unrelated brace is not
+                # mistaken for this type's body.
+                $hasPendingType = $false
+            }
+        }
+    }
+
+    return $flags
+}
+
 function Normalize-ApiDeclaration([string] $Declaration) {
     $lines = New-Object "System.Collections.Generic.List[string]"
     foreach ($line in ($Declaration -split "\r?\n")) {
@@ -103,12 +207,13 @@ function Normalize-ApiDeclaration([string] $Declaration) {
     return $normalized
 }
 
-function Add-EnumMembers([string[]] $Lines, [System.Collections.Generic.HashSet[string]] $Api) {
+function Add-EnumMembers([string[]] $Lines, [System.Collections.Generic.HashSet[string]] $Api, [System.Collections.Generic.List[bool]] $ContainingTypePublic) {
     $enumName = $null
     $pendingEnumName = $null
     $braceDepth = 0
 
-    foreach ($line in $Lines) {
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        $line = $Lines[$index]
         $trimmed = (Remove-LineComment $line).Trim()
         if ([string]::IsNullOrWhiteSpace($trimmed) -or
             $trimmed.StartsWith("[", [StringComparison]::Ordinal)) {
@@ -116,7 +221,10 @@ function Add-EnumMembers([string[]] $Lines, [System.Collections.Generic.HashSet[
         }
 
         if ($null -eq $enumName) {
+            # Only treat this as a public enum when its containing type is effectively
+            # public; a public enum nested in an internal type is not consumer-visible.
             if ($null -eq $pendingEnumName -and
+                $ContainingTypePublic[$index] -and
                 $trimmed -match "^(public|protected\s+internal|protected)\s+.*\benum\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\b") {
                 $pendingEnumName = $Matches.name
             }
@@ -184,11 +292,13 @@ function Get-PackageApi([hashtable] $Package) {
 
     foreach ($file in $files) {
         $lines = @(Get-Content -LiteralPath $file.FullName)
-        Add-EnumMembers $lines $api
+        $containingTypePublic = Get-ContainingTypePublicFlags $lines
+        Add-EnumMembers $lines $api $containingTypePublic
 
         $pendingDeclaration = $null
         $pendingParenDepth = 0
-        foreach ($line in $lines) {
+        for ($index = 0; $index -lt $lines.Count; $index++) {
+            $line = $lines[$index]
             if ($null -ne $pendingDeclaration) {
                 $pendingDeclaration = "$pendingDeclaration`n$line"
                 $pendingParenDepth += Get-ParenthesisDelta $line
@@ -202,6 +312,12 @@ function Get-PackageApi([hashtable] $Package) {
                     $pendingParenDepth = 0
                 }
 
+                continue
+            }
+
+            # Skip declarations whose containing type is not effectively public; only
+            # members of public/protected types form the supported consumer surface.
+            if (-not $containingTypePublic[$index]) {
                 continue
             }
 
@@ -285,6 +401,13 @@ function Compare-Baseline([string] $PackageId, [string[]] $Expected, [string[]] 
     }
 
     throw "Public API baseline mismatch for $PackageId.`n$($details -join [Environment]::NewLine)`nIf this is intentional, update the baseline and document the versioning decision."
+}
+
+# When the script is dot-sourced (for example by tests), only its functions are
+# defined; the baseline check is not executed. Normal invocation (&, direct call, or
+# CI) still runs the gate below.
+if ($MyInvocation.InvocationName -eq ".") {
+    return
 }
 
 if ($Update) {

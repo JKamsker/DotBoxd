@@ -4,6 +4,10 @@
     {
       "path": "src/SafeIR.Validation/FunctionAnalyzer.cs",
       "justification": "Legacy validation analyzer over the soft limit. Do not grow it; split during the next validation refactor."
+    },
+    {
+      "path": "src/SafeIR.Verifier/Diagnostics/VerifierDiagnosticCodes.cs",
+      "justification": "Public verifier diagnostic-code reference (API-0018): an intentionally exhaustive, flat catalog of V-* codes with doc comments. Kept as one reference file by design."
     }
   ],
   "folders": [],

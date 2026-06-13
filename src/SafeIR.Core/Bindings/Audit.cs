@@ -1,5 +1,7 @@
 namespace SafeIR;
 
+using System.Collections.ObjectModel;
+
 public sealed record SandboxRunId(Guid Value)
 {
     public static SandboxRunId New() => new(Guid.NewGuid());
@@ -63,6 +65,14 @@ public sealed class InMemoryAuditSink : IAuditSink
     public IReadOnlyList<SandboxAuditEvent> Events => _events.ToArray();
 
     public long EventsWritten => _sequence;
+
+    /// <summary>
+    /// Produces a single owned, immutable snapshot of the recorded events.
+    /// The returned <see cref="ReadOnlyCollection{T}"/> wraps a fresh array that is not
+    /// retained by the sink, so result construction can adopt it without copying again.
+    /// </summary>
+    internal IReadOnlyList<SandboxAuditEvent> SnapshotEvents()
+        => new ReadOnlyCollection<SandboxAuditEvent>(_events.ToArray());
 
     public void Write(SandboxAuditEvent auditEvent)
     {

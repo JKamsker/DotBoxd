@@ -2,18 +2,10 @@
 # Package: SafeIR.Hosting
 # Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
 
-protected override Assembly? Load(AssemblyName assemblyName)
-public async ValueTask<CompiledExecutable> GetAsync( CompiledArtifact artifact, ExecutionPlan plan, string entrypoint, CancellationToken cancellationToken)
-public async ValueTask<SandboxExecutionResult> ExecuteAsync( ExecutionPlan plan, string entrypoint, SandboxValue input, SandboxExecutionOptions options, CancellationToken cancellationToken)
 public async ValueTask<SandboxExecutionResult> ExecuteAsync( ExecutionPlan plan, string entrypoint, SandboxValue input, SandboxExecutionOptions? options = null, CancellationToken cancellationToken = default)
-public AutoHotnessAttempt BeginAttempt()
-public AutoHotnessAttempt BeginAttempt(ExecutionPlan plan, string entrypoint)
-public CompiledArtifact Artifact { get; } = artifact
-public CompiledExecutableCache()
 public ExecutionModeDecision Choose( ExecutionPlan plan, SandboxExecutionOptions options, ModuleHotnessStats hotness, CompiledCacheStatus cacheStatus)
 public interface IExecutionModeSelector
 public interface ISandboxWorkerClient
-public ModuleHotnessStats Stats { get; } = stats
 public ModuleHotnessStats(int runCount)
 public SandboxHostBuilder AddBinding(BindingDescriptor descriptor)
 public SandboxHostBuilder AddDefaultPureBindings()
@@ -34,20 +26,10 @@ public sealed partial class SandboxHost : IDisposable
 public sealed record ExecutionModeDecision(ExecutionMode Mode)
 public sealed record ModuleHotnessStats( string PlanHash, string Entrypoint, int RunCount, int CompletedRunCount, TimeSpan AverageInterpretedDuration, long AverageFuelUsed, DateTimeOffset? LastRunAt, int CompileFailures, string? LastCompiledArtifactHash)
 public sealed record SandboxWorkerProfile( bool OutOfProcess, bool SecretsIsolated, bool ResourceLimitsConfigured)
-public static async ValueTask<MaterializedCompiledArtifact> MaterializeExecutableAsync( CompiledArtifact artifact, ExecutionPlan plan, string entrypoint, CancellationToken cancellationToken)
-public static bool Matches( ExecutionPlan plan, string entrypoint, SandboxExecutionOptions options, SandboxAuditEvent auditEvent)
 public static ExecutionModeDecision Compiled { get; } = new(ExecutionMode.Compiled)
 public static ExecutionModeDecision Interpreted { get; } = new(ExecutionMode.Interpreted)
-public static ExecutionPlan Build( SandboxModule module, SandboxPolicy policy, BindingRegistry bindings, IReadOnlyDictionary<string, FunctionAnalysis> functions, IReadOnlyDictionary<string, IReadOnlySet<string>> bindingReferences, byte[] planSigningKey)
-public static IReadOnlyList<SandboxAuditEvent> ToSequencedArray(this IEnumerable<SandboxAuditEvent> events)
 public static SandboxHost Create(Action<SandboxHostBuilder>? configure = null)
 public static SandboxWorkerProfile HardenedOutOfProcess { get; } = new( OutOfProcess: true, SecretsIsolated: true, ResourceLimitsConfigured: true)
-public static ValueTask<SandboxExecutionResult> ExecuteAsync( CompiledExecutable executable, ExecutionPlan plan, string entrypoint, SandboxValue input, SandboxExecutionOptions options, CancellationToken cancellationToken)
-public static void EnsurePolicyLimits(SandboxPolicy policy)
-public static void EnsurePrepared(ExecutionPlan plan, BindingRegistry hostBindings, byte[] planSigningKey)
-public static void ValidateExecutableEnvelope(CompiledArtifact artifact, ExecutionPlan plan, string entrypoint)
 public ValueTask<ExecutionPlan> PrepareAsync( SandboxModule module, SandboxPolicy policy, CancellationToken cancellationToken = default)
-public void Complete(SandboxExecutionResult result, TimeSpan elapsed)
 public void Dispose()
-public void RecordResult(SandboxExecutionResult result, TimeSpan elapsed)
 public void RevokeCapability(string capabilityId, string reason = "")

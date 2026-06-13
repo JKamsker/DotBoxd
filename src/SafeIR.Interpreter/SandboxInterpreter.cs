@@ -67,7 +67,7 @@ public sealed class SandboxInterpreter : ISandboxInterpreter
             Value = value,
             Error = error,
             ResourceUsage = budget.Snapshot(),
-            AuditEvents = audit.Events,
+            AuditEvents = audit.SnapshotEvents(),
             ActualMode = ExecutionMode.Interpreted,
             ExecutionDispatched = true,
             ModuleHash = plan.ModuleHash,

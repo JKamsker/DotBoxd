@@ -152,6 +152,19 @@ CI builds and tests on Windows, Ubuntu, and macOS, but NuGet packages are produc
 canonical `ubuntu-latest` matrix leg and uploaded as `packages-canonical`. Treat that canonical
 artifact set as the only publishable package output for a release.
 
+## HTTP Transport Example
+
+`examples/HttpTransport` is the maintained safe-setup path for the `SafeIR.Transport.Http`
+package. It registers `AddNetworkBindings(...)` with a deterministic in-memory invoker, grants a
+single host through `GrantHttpGet(...)` with explicit response-byte and timeout limits, runs a
+module that calls `net.http.get`, and proves both an allowed request and a denied out-of-allowlist
+request. Allowlist semantics, byte limits, timeout capping, and private-network defaults match the
+production pinned transport; only the invoker is swapped for determinism.
+
+```powershell
+dotnet run --project examples\HttpTransport\SafeIR.HttpTransportExample\SafeIR.HttpTransportExample.csproj
+```
+
 ## Plugin Addendum Examples
 
 The addendum implementation lives in `src/SafeIR.Plugins`.

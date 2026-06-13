@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\SafeIR.Hosting\SafeIR.Hosting.csproj" />
+    <ProjectReference Include="..\..\..\src\SafeIR.Runtime\SafeIR.Runtime.csproj" />
+    <ProjectReference Include="..\..\..\src\SafeIR.Serialization.Json\SafeIR.Serialization.Json.csproj" />
+    <ProjectReference Include="..\..\..\src\SafeIR.Transport.Http\SafeIR.Transport.Http.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+</Project>

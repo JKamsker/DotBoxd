@@ -16,6 +16,8 @@ public BindingSignature Signature => new(
 public bool AllowFallbackToInterpreter { get; init; } = true
 public bool EnableDebugTrace { get; init; }
 public bool Equals(ExecutionPlanSeal? other)
+public bool Equals(ListValue? other)
+public bool Equals(MapValue? other)
 public bool Equals(SandboxType? other)
 public bool ExecutionDispatched { get; init; }
 public bool GrantsCapability(string capabilityId)
@@ -25,7 +27,6 @@ public bool IsKnown(int maxDepth = 8) => IsKnown(this, 0, maxDepth)
 public bool IsValidMapKey()
 public bool RequireDeterministic { get; init; }
 public bool Succeeded { get; init; }
-public bool TryConsume(SandboxValue value)
 public bool TryGet(string id, out BindingSignature binding)
 public bool TryGetCapabilityGrantValidator(string capabilityId, out CapabilityGrantValidator validator)
 public CancellationToken CancellationToken { get; }
@@ -97,14 +98,12 @@ public ExecutionPlanSeal PlanSeal { get; }
 public ExecutionPlanSeal(string value)
 public IAuditSink Audit { get; }
 public IDisposable BeginBindingReturnCreditScope() => _returnCredits.BeginScope()
-public IDisposable BeginScope()
 public int AutoCompileThreshold { get; init; } = 20
 public int CompareTo(SemVersion? other)
 public int HostCalls { get; private set; }
 public int LogEvents { get; private set; }
 public int Major { get => _major; init => _major = RequireNonNegative(value, nameof(Major)); }
 public int Minor { get => _minor; init => _minor = RequireNonNegative(value, nameof(Minor)); }
-public int Next(int minInclusive, int maxExclusive)
 public int NextRandomInt32(int minInclusive, int maxExclusive)
 public int Patch { get => _patch; init => _patch = RequireNonNegative(value, nameof(Patch)); }
 public interface IAuditSink
@@ -112,7 +111,6 @@ public interface IBindingCatalog
 public IReadOnlyDictionary<SandboxValue, SandboxValue> Values { get => _values; init => _values = ModelCopy.ValueDictionary(value); }
 public IReadOnlyDictionary<string, FunctionAnalysis> FunctionAnalysis { get; }
 public IReadOnlyDictionary<string, IReadOnlySet<string>> BindingReferences { get; }
-public IReadOnlyDictionary<string, IReadOnlySet<string>> Collect()
 public IReadOnlyDictionary<string, string> BindingAuditFields( string resourceKind, DateTimeOffset startedAt, long? bytesRead = null, long? bytesWritten = null)
 public IReadOnlyDictionary<string, string> Metadata { get => _metadata; init => _metadata = ModelCopy.StringDictionary(value); }
 public IReadOnlyDictionary<string, string> Parameters { get; init; } =
@@ -142,7 +140,6 @@ public long LoopIterations { get; private set; }
 public long NetworkBytesRead { get; private set; }
 public long NetworkBytesWritten { get; private set; }
 public long StringBytes { get; private set; }
-public ModuleBindingReferenceCollector(SandboxModule module, IBindingCatalog bindings)
 public override bool Equals(object? obj) => Equals(obj as ExecutionPlanSeal)
 public override int GetHashCode()
 public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(_value)
@@ -158,7 +155,6 @@ public override SandboxType Type => SandboxType.Scalar(TypeName)
 public override SandboxType Type => SandboxType.String
 public override SandboxType Type => SandboxType.Unit
 public override string ToString()
-public override string ToString() => _builder.ToString()
 public override string ToString() => "[redacted]"
 public override string ToString() => $"{Major}.{Minor}.{Patch}"
 public override string ToString() => RelativePath
@@ -187,6 +183,7 @@ public SandboxPolicyBuilder Grant( string capabilityId, object parameters, Sandb
 public SandboxPolicyBuilder Grant(string capabilityId, object parameters)
 public SandboxPolicyBuilder GrantFileRead(string root, long maxBytesPerRun)
 public SandboxPolicyBuilder GrantFileWrite( string root, long maxBytesPerRun, bool allowCreate = false, bool allowOverwrite = false)
+public SandboxPolicyBuilder GrantGameMessageWrite( IEnumerable<string>? allowedTargets = null, IEnumerable<string>? targetPrefixes = null, int? maxMessageLength = null)
 public SandboxPolicyBuilder GrantGameMessageWrite()
 public SandboxPolicyBuilder GrantLogging()
 public SandboxPolicyBuilder GrantRandom()
@@ -312,17 +309,11 @@ public static int Multiply(int left, int right) => Checked(() => checked(left * 
 public static int Negate(int value) => Checked(() => checked(-value))
 public static int Remainder(int left, int right)
 public static int Subtract(int left, int right) => Checked(() => checked(left - right))
-public static IReadOnlyDictionary<SandboxValue, SandboxValue> ValueDictionary( IReadOnlyDictionary<SandboxValue, SandboxValue> values)
 public static IReadOnlyDictionary<string, IReadOnlySet<string>> CollectByFunction( SandboxModule module, IBindingCatalog bindings)
 public static IReadOnlyDictionary<string, string> Create( ExecutionPlan plan, ResourceMeter budget, ExecutionMode mode, string cacheStatus, string? runtimeForm = null, string? cacheKey = null, string? artifactHash = null, string? materializationStatus = null, bool executionDispatched = true)
 public static IReadOnlyDictionary<string, string> Create( string resourceKind, DateTimeOffset startedAt, bool deterministic = false, long? bytesRead = null, long? bytesWritten = null)
 public static IReadOnlyDictionary<string, string> Create( string resourceKind, DateTimeOffset startedAt, string moduleHash, string policyHash, bool deterministic, long? bytesRead = null, long? bytesWritten = null)
-public static IReadOnlyDictionary<string, string> Read(object parameters)
-public static IReadOnlyDictionary<string, string> StringDictionary( IReadOnlyDictionary<string, string> values)
-public static IReadOnlyDictionary<string, TValue> Dictionary<TValue>( IReadOnlyDictionary<string, TValue> values)
-public static IReadOnlyList<SandboxDiagnostic> Validate(IReadOnlyList<BindingDescriptor> bindings)
 public static IReadOnlyList<SandboxValue> BindArguments(SandboxFunction function, SandboxValue input)
-public static IReadOnlyList<T> List<T>(IEnumerable<T> values)
 public static IReadOnlySet<string> Collect(SandboxModule module, IBindingCatalog bindings, string? entrypoint)
 public static IReadOnlySet<string> Collect(SandboxModule module, IBindingCatalog bindings)
 public static long Add(long left, long right) => Checked(() => checked(left + right))
@@ -330,8 +321,6 @@ public static long Copy(int sourceCount, int addedCount = 0)
 public static long Divide(long left, long right)
 public static long Empty() => BaseCost
 public static long EstimateCall(string callName, int argumentCount)
-public static long MeasureBytes(SandboxValue value)
-public static long MeasureBytes(ValueShape shape) => shape.StringBytes
 public static long Multiply(long left, long right) => Checked(() => checked(left * right))
 public static long Negate(long value) => Checked(() => checked(-value))
 public static long Read(int count = 0) => BaseCost + Math.Max(0, count)
@@ -385,16 +374,9 @@ public static SemVersion CurrentVersion { get; } = SemVersion.One
 public static SemVersion One { get; } = new(1, 0, 0)
 public static SemVersion Parse(string text)
 public static ShortCircuitOperands Choose( BinaryExpression expression, IBindingCatalog bindings, IReadOnlyDictionary<string, FunctionAnalysis> functions)
-public static string Compute(SandboxPolicy policy)
 public static string CurrentVersionText => CurrentVersion.ToString()
 public static string Hash(SandboxModule module)
-public static string HashRecord(string record)
-public static string HashRecords(IEnumerable<string> records)
-public static string Record(IEnumerable<string?> fields)
-public static string Record(params string?[] fields)
 public static string Serialize(SandboxModule module)
-public static ValueShape Measure( SandboxValue value, ResourceLimits? limits = null, CancellationToken cancellationToken = default, ResourceMeter? meter = null)
-public static ValueShape Measure( SandboxValue value, SandboxType expectedType, SandboxErrorCode errorCode, string message, ResourceLimits? limits = null, CancellationToken cancellationToken = default, ResourceMeter? meter = null)
 public static void RequireType( SandboxValue value, SandboxType expectedType, SandboxErrorCode errorCode, string message)
 public static void RequireType(SandboxValue value, SandboxType expectedType, string message)
 public static void Validate(ResourceLimits limits)
@@ -410,7 +392,6 @@ public string PolicyHash { get; }
 public string? ArtifactHash { get; init; }
 public TimeSpan EffectiveWallTime => MaxWallTime ?? TimeSpan.FromMilliseconds(100)
 public TimeSpan RemainingWallTime()
-public ValueShape Combine(ValueShape nested)
 public void ChargeAllocation(long bytes)
 public void ChargeBindingCall(BindingDescriptor descriptor)
 public void ChargeCollection(SandboxValue value, CancellationToken cancellationToken)
@@ -431,12 +412,9 @@ public void ChargeValue(SandboxValue value, CancellationToken cancellationToken)
 public void ChargeValue(SandboxValue value) => Budget.ChargeValue(value, CancellationToken)
 public void ChargeValue(SandboxValue value) => ChargeValue(value, CancellationToken.None)
 public void CheckDeadline()
-public void Dispose()
 public void EnsureRequiredBindingFailureAudit( BindingDescriptor descriptor, long checkpoint, SandboxErrorCode errorCode)
 public void EnsureRequiredBindingSuccessAudit(BindingDescriptor descriptor, long checkpoint)
 public void EnterCall()
 public void ExitCall()
-public void RecordString(string value)
 public void RequireCapability(string capabilityId)
-public void Write(params string[] fields)
 public void Write(SandboxAuditEvent auditEvent)
