@@ -3,6 +3,7 @@
 # Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
 
 public async ValueTask<SandboxExecutionResult> ExecuteAsync( ExecutionPlan plan, string entrypoint, SandboxValue input, SandboxExecutionOptions? options = null, CancellationToken cancellationToken = default)
+public async ValueTask<SandboxExecutionResult> ExecuteInWorkerAsync( ExecutionPlan plan, string entrypoint, SandboxValue input, SandboxExecutionOptions options, CancellationToken cancellationToken = default)
 public ExecutionModeDecision Choose( ExecutionPlan plan, SandboxExecutionOptions options, ModuleHotnessStats hotness, CompiledCacheStatus cacheStatus)
 public interface IExecutionModeSelector
 public interface ISandboxWorkerClient
@@ -19,8 +20,10 @@ public SandboxHostBuilder UseCompilerIfAvailable(ISandboxCompiler? compiler = nu
 public SandboxHostBuilder UseExecutionModeSelector(IExecutionModeSelector selector)
 public SandboxHostBuilder UseInterpreter(ISandboxInterpreter? interpreter = null)
 public SandboxHostBuilder UseWorkerClient( ISandboxWorkerClient workerClient, SandboxWorkerProfile profile)
+public SandboxHostWorkerClient(Func<SandboxHost> hostFactory)
 public sealed class HotnessExecutionModeSelector : IExecutionModeSelector
 public sealed class SandboxHostBuilder
+public sealed class SandboxHostWorkerClient : ISandboxWorkerClient
 public sealed partial class SandboxHost
 public sealed partial class SandboxHost : IDisposable
 public sealed record ExecutionModeDecision(ExecutionMode Mode)

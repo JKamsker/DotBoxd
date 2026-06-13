@@ -24,7 +24,7 @@ internal static class CompiledBindingDispatcher
         {
             timeout = context.CreateWallTimeToken();
             using var returnCredits = context.BeginBindingReturnCreditScope();
-            var value = descriptor.Invoke(context, args, timeout.Token).AsTask().GetAwaiter().GetResult();
+            var value = AwaitBinding(descriptor.Invoke(context, args, timeout.Token));
             value = context.ChargeBindingReturn(descriptor, value);
             context.EnsureRequiredBindingSuccessAudit(descriptor, auditCheckpoint);
             return value;
@@ -61,6 +61,19 @@ internal static class CompiledBindingDispatcher
         {
             timeout?.Dispose();
         }
+    }
+
+    private static SandboxValue AwaitBinding(ValueTask<SandboxValue> pending)
+    {
+        // Synchronous bindings (the common case) complete inline, so read the
+        // result directly and avoid allocating a Task<SandboxValue> wrapper.
+        // Only genuinely asynchronous completions fall back to AsTask().
+        if (pending.IsCompletedSuccessfully)
+        {
+            return pending.Result;
+        }
+
+        return pending.AsTask().GetAwaiter().GetResult();
     }
 
     private static void ValidateArguments(BindingDescriptor descriptor, IReadOnlyList<SandboxValue> args)

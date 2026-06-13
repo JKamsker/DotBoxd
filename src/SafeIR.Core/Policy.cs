@@ -23,11 +23,38 @@ public sealed record SandboxPolicy(
     DateTimeOffset? LogicalNow = null,
     ulong? RandomSeed = null)
 {
+    private readonly string _policyId = PolicyId;
+    private readonly SandboxEffect _allowedEffects = AllowedEffects;
     private IReadOnlyList<CapabilityGrant> _grants = ModelCopy.List(Grants);
+    private readonly ResourceLimits _resourceLimits = ResourceLimits;
+    private readonly bool _deterministic = Deterministic;
+    private readonly DateTimeOffset? _logicalNow = LogicalNow;
+    private readonly ulong? _randomSeed = RandomSeed;
 
-    public IReadOnlyList<CapabilityGrant> Grants { get => _grants; init => _grants = ModelCopy.List(value); }
+    // Lazily computed and cached so the canonical hash is built at most once per distinct
+    // policy instance. Every hash-relevant property resets this so `with` copies recompute,
+    // preserving the original recompute-on-change semantics while removing redundant work.
+    private Lazy<string>? _hash;
 
-    public string Hash => StableHash();
+    public string PolicyId { get => _policyId; init { _policyId = value; ResetHash(); } }
+
+    public SandboxEffect AllowedEffects { get => _allowedEffects; init { _allowedEffects = value; ResetHash(); } }
+
+    public IReadOnlyList<CapabilityGrant> Grants
+    {
+        get => _grants;
+        init { _grants = ModelCopy.List(value); ResetHash(); }
+    }
+
+    public ResourceLimits ResourceLimits { get => _resourceLimits; init { _resourceLimits = value; ResetHash(); } }
+
+    public bool Deterministic { get => _deterministic; init { _deterministic = value; ResetHash(); } }
+
+    public DateTimeOffset? LogicalNow { get => _logicalNow; init { _logicalNow = value; ResetHash(); } }
+
+    public ulong? RandomSeed { get => _randomSeed; init { _randomSeed = value; ResetHash(); } }
+
+    public string Hash => (_hash ??= CreateHashCache()).Value;
 
     public DateTimeOffset GrantClock
         => Deterministic && LogicalNow is not null ? LogicalNow.Value : DateTimeOffset.UtcNow;
@@ -49,7 +76,10 @@ public sealed record SandboxPolicy(
         => StringComparer.Ordinal.Equals(grant.Id, capabilityId) &&
            (grant.ExpiresAt is null || grant.ExpiresAt > now);
 
-    private string StableHash() => PolicyHash.Compute(this);
+    private void ResetHash() => _hash = null;
+
+    private Lazy<string> CreateHashCache()
+        => new(() => PolicyHash.Compute(this), LazyThreadSafetyMode.ExecutionAndPublication);
 }
 
 public sealed class SandboxPolicyBuilder

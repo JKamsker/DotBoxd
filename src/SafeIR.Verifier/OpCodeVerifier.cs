@@ -89,10 +89,12 @@ internal static class OpCodeVerifier
                 return;
             }
 
-            var member = MetadataName.MemberSignature(reader, handle);
-            if (!policy.IsMemberAllowed(member.Signature))
+            // Reuse the member signature decoded once during IL reading
+            // (GeneratedInstruction.CalledMember) instead of decoding it again here.
+            var signature = instruction.CalledMember ?? MetadataName.MemberSignature(reader, handle).Signature;
+            if (!policy.IsMemberAllowed(signature))
             {
-                diagnostics.Add(new VerificationDiagnostic("V-MEMBER", $"member '{member.Signature}' is not allowed"));
+                diagnostics.Add(new VerificationDiagnostic("V-MEMBER", $"member '{signature}' is not allowed"));
             }
 
             return;

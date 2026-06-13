@@ -1,5 +1,6 @@
 namespace SafeIR.Compiler;
 
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Reflection.Emit;
 using SafeIR;
@@ -7,6 +8,8 @@ using SafeIR.Runtime;
 
 internal static class IlEmitterPrimitives
 {
+    private static readonly ConcurrentDictionary<string, MethodInfo> RuntimeMethodCache = new();
+
     public static void EmitInt32(ILGenerator il, int value)
     {
         switch (value) {
@@ -50,7 +53,11 @@ internal static class IlEmitterPrimitives
     }
 
     public static MethodInfo Runtime(string name)
-        => typeof(CompiledRuntime).GetMethods(BindingFlags.Public | BindingFlags.Static).Single(m => m.Name == name);
+        => RuntimeMethodCache.GetOrAdd(
+            name,
+            static key => typeof(CompiledRuntime)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Single(m => m.Name == key));
 
     public static void EmitSandboxType(ILGenerator il, SandboxType type)
     {

@@ -168,14 +168,14 @@ public static class CompiledRuntime
 
     public static SandboxValue ListCount(SandboxContext context, SandboxValue list)
     {
-        var values = AsList(list).Values;
+        var values = AsListReadOnly(list).Values;
         context.ChargeFuel(SandboxCollectionFuel.Read(values.Count));
         return I32(values.Count);
     }
 
     public static SandboxValue ListGet(SandboxContext context, SandboxValue list, SandboxValue index)
     {
-        var values = AsList(list).Values;
+        var values = AsListReadOnly(list).Values;
         context.ChargeFuel(SandboxCollectionFuel.Read(values.Count));
         var i = AsI32(index);
         if (i < 0 || i >= values.Count)
@@ -228,7 +228,7 @@ public static class CompiledRuntime
 
     public static SandboxValue MapContainsKey(SandboxContext context, SandboxValue map, SandboxValue key)
     {
-        var typedMap = AsMap(map);
+        var typedMap = AsMapReadOnly(map);
         RequireType(key, typedMap.KeyType, "map key type mismatch");
         context.ChargeFuel(SandboxCollectionFuel.Read(typedMap.Values.Count));
         return Bool(typedMap.Values.ContainsKey(key));
@@ -236,7 +236,7 @@ public static class CompiledRuntime
 
     public static SandboxValue MapGet(SandboxContext context, SandboxValue map, SandboxValue key)
     {
-        var typedMap = AsMap(map);
+        var typedMap = AsMapReadOnly(map);
         RequireType(key, typedMap.KeyType, "map key type mismatch");
         context.ChargeFuel(SandboxCollectionFuel.Read(typedMap.Values.Count));
         if (!typedMap.Values.TryGetValue(key, out var value))
@@ -310,6 +310,17 @@ public static class CompiledRuntime
         SandboxValueValidator.RequireType(map, map.Type, "map entry type mismatch");
         return map;
     }
+
+    // Read-only collection operations only need the runtime kind, not a recursive
+    // re-walk of every element. Collection contents are already validated against
+    // their declared element types at trust boundaries (entrypoint inputs via
+    // EntrypointBinder and binding returns via ChargeBindingReturn) and stay typed
+    // through every internal constructor, so reads can trust the snapshotted value.
+    private static ListValue AsListReadOnly(SandboxValue value)
+        => value as ListValue ?? throw InvalidInput("expected list value");
+
+    private static MapValue AsMapReadOnly(SandboxValue value)
+        => value as MapValue ?? throw InvalidInput("expected map value");
 
     private static SandboxValue RequireType(SandboxValue value, SandboxType expected, string message)
     {

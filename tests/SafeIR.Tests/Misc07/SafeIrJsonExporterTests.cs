@@ -104,6 +104,37 @@ public sealed class SafeIrJsonExporterTests
             statement => Assert.IsType<UnitValue>(LiteralValue(statement)));
     }
 
+    [Fact]
+    public void Export_returns_complete_json_for_large_module_after_buffer_writer_change()
+    {
+        var statements = new List<Statement>();
+        for (var i = 0; i < 2000; i++) {
+            statements.Add(new AssignmentStatement($"total_{i}", I32(i), Span));
+        }
+
+        statements.Add(new ReturnStatement(new VariableExpression("total_0", Span), Span));
+
+        var module = new SandboxModule(
+            "large-export",
+            SemVersion.One,
+            SemVersion.One,
+            [],
+            [new SandboxFunction("Big", true, [], SandboxType.I32, statements)],
+            new Dictionary<string, string> { ["pluginId"] = "large-export" });
+
+        var json = SafeIrJsonExporter.Export(module);
+
+        // Switching from MemoryStream.ToArray() to ArrayBufferWriter.WrittenSpan must
+        // still decode the full payload: no truncation, and no trailing pooled-buffer
+        // slack leaking into the string. A large module exercises buffer growth.
+        Assert.EndsWith("}", json);
+        Assert.Equal(json.Length, json.TrimEnd('\0').Length);
+
+        var roundTrip = SafeIrJsonImporter.Import(json);
+        var function = Assert.Single(roundTrip.Functions);
+        Assert.Equal(statements.Count, function.Body.Count);
+    }
+
     private static SandboxFunction MainFunction()
         => new(
             "Main",

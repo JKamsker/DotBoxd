@@ -13,10 +13,13 @@ internal static class GeneratedIlReader
         List<VerificationDiagnostic> diagnostics)
     {
         var instructions = new List<GeneratedInstruction>();
+        // Decode each call target signature once per token; repeated call sites to the
+        // same runtime helper then reuse the cached immutable signature string.
+        var signatureCache = new Dictionary<int, string>();
         var il = body.GetILReader();
         while (il.RemainingBytes > 0)
         {
-            if (!TryReadInstruction(reader, ref il, out var instruction, out var diagnostic))
+            if (!TryReadInstruction(reader, signatureCache, ref il, out var instruction, out var diagnostic))
             {
                 diagnostics.Add(diagnostic!);
                 break;
@@ -30,6 +33,7 @@ internal static class GeneratedIlReader
 
     private static bool TryReadInstruction(
         MetadataReader reader,
+        Dictionary<int, string> signatureCache,
         ref BlobReader il,
         out GeneratedInstruction instruction,
         out VerificationDiagnostic? diagnostic)
@@ -40,7 +44,7 @@ internal static class GeneratedIlReader
         try
         {
             var opcode = ReadOpCode(ref il);
-            var operand = ReadOperand(reader, opcode, ref il);
+            var operand = ReadOperand(reader, signatureCache, opcode, ref il);
             instruction = new GeneratedInstruction(
                 offset,
                 opcode,
@@ -69,15 +73,25 @@ internal static class GeneratedIlReader
         return first == 0xFE ? (ILOpCode)(0xFE00 | il.ReadByte()) : (ILOpCode)first;
     }
 
-    private static DecodedOperand ReadOperand(MetadataReader reader, ILOpCode opcode, ref BlobReader il)
+    private static DecodedOperand ReadOperand(
+        MetadataReader reader,
+        Dictionary<int, string> signatureCache,
+        ILOpCode opcode,
+        ref BlobReader il)
     {
         if (opcode is ILOpCode.Call or ILOpCode.Callvirt or ILOpCode.Newobj)
         {
-            var handle = MetadataTokens.EntityHandle(il.ReadInt32());
-            var member = MetadataName.MemberSignature(reader, handle);
+            var token = il.ReadInt32();
+            var handle = MetadataTokens.EntityHandle(token);
+            if (!signatureCache.TryGetValue(token, out var signature))
+            {
+                signature = MetadataName.MemberSignature(reader, handle).Signature;
+                signatureCache[token] = signature;
+            }
+
             return new DecodedOperand(
                 handle,
-                member.Signature,
+                signature,
                 handle.Kind == HandleKind.MethodDefinition);
         }
 

@@ -958,6 +958,15 @@ The server must still re-validate the uploaded package.
 
 Local tooling is a developer-experience feature, not the final trust boundary.
 
+When the server re-validates an uploaded or generated package, the `SafeIR.Plugins` runtime emits
+stable `SGP*` diagnostics from package install, prepared-package validation, kernel-entrypoint
+checks, and live-setting validation. These runtime diagnostics are distinct from the analyzer-local
+`SGP001`/`SGP020` SDK diagnostics shown above. The public `PluginDiagnosticCodes` reference in the
+`SafeIR.Plugins` namespace documents every runtime `SGP*` code with its emitting phase, the
+audience that must fix it (plugin author vs. host operator), the likely cause, and a remediation
+note. See the "Plugin Runtime Diagnostics" section of the repository `README.md` for the full code
+table and a triage example.
+
 ---
 
 # 17. Recommended Documentation Examples

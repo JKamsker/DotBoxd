@@ -8,6 +8,10 @@
     {
       "path": "src/SafeIR.Verifier/Diagnostics/VerifierDiagnosticCodes.cs",
       "justification": "Public verifier diagnostic-code reference (API-0018): an intentionally exhaustive, flat catalog of V-* codes with doc comments. Kept as one reference file by design."
+    },
+    {
+      "path": "src/SafeIR.Core/Policy.cs",
+      "justification": "Core policy + builder; pushed just over the limit by PAL-0020 hash caching. Split SandboxPolicyBuilder into its own file in a future refactor."
     }
   ],
   "folders": [],

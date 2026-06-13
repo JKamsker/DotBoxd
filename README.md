@@ -19,7 +19,10 @@ Interpreted mode executes verified IR directly. Compiled mode is only a runtime 
 - `SafeIR.Verifier`: generated assembly verifier.
 - `SafeIR.Hosting`: host-facing orchestration API.
 - `SafeIR.PluginAnalyzer`: source generator and analyzer for local plugin packages.
-- `SafeIR.Plugins`: live plugin manifest, hook, kernel, and message-binding APIs.
+- `SafeIR.Plugins`: live plugin manifest, hook, kernel, and message-binding APIs. Runtime
+  package-install, prepared-package, kernel-entrypoint, and live-setting rejections surface stable
+  `SGP*` diagnostics catalogued by the public `PluginDiagnosticCodes` reference (see
+  [Plugin Runtime Diagnostics](#plugin-runtime-diagnostics)).
 
 ## Installing from NuGet
 
@@ -196,3 +199,59 @@ dotnet run --project examples\PluginIpc\SafeIR.PluginIpc.Client\SafeIR.PluginIpc
 ```
 
 See `docs\Specs\Addendum\Examples.md` for details.
+
+## Plugin Runtime Diagnostics
+
+The `SafeIR.Plugins` package emits stable `SGP*` `SandboxDiagnostic` codes when an uploaded or
+generated plugin package is rejected. These runtime diagnostics are distinct from the compile-time
+`SafeIR.PluginAnalyzer` SDK diagnostics (which share the `SGP` namespace) and from verifier `V-*`
+diagnostics. The public `PluginDiagnosticCodes` reference in the `SafeIR.Plugins` namespace
+catalogues every runtime `SGP*` code with its emitting phase, the audience that must fix it
+(plugin author vs. host operator), the likely cause, and a remediation note:
+
+```csharp
+using SafeIR.Plugins;
+
+try
+{
+    pluginServer.Install(package);
+}
+catch (SandboxValidationException ex)
+{
+    foreach (var diagnostic in ex.Diagnostics)
+    {
+        if (PluginDiagnosticCodes.TryGetReference(diagnostic.Code, out var reference))
+        {
+            // reference.Phase, reference.Audience, reference.Meaning, reference.Remediation
+            // give upload UIs and hosts triage guidance instead of an opaque code.
+        }
+    }
+}
+```
+
+| Code | Phase | Audience | Meaning |
+|------|-------|----------|---------|
+| SGP010 | Package validation | Plugin author | Manifest does not declare a plugin id. |
+| SGP011 | Package validation | Plugin author | Manifest plugin id does not match the module id. |
+| SGP012 | Package validation | Plugin author | Module metadata does not bind to the manifest plugin id. |
+| SGP013 | Package validation | Plugin author | Module kernel metadata is missing or a subscription targets a different kernel. |
+| SGP014 | Prepared-package validation | Plugin author | Contract is not a valid `IEventKernel<TEvent>` or its event does not match a subscription. |
+| SGP020 | Live setting | Plugin author | Live setting type is unsupported or its default value is invalid. |
+| SGP021 | Package validation | Plugin author | A live setting name is declared more than once. |
+| SGP022 | Live setting | Plugin author | A range is declared on a non-numeric live setting type. |
+| SGP023 | Live setting | Host operator | A live setting value is outside its allowed range. |
+| SGP024 | Live setting | Plugin author | A live setting minimum is greater than its maximum. |
+| SGP030 | Package validation | Plugin author | The manifest declares no hook subscriptions. |
+| SGP031 | Package validation | Plugin author | A subscription is missing event/kernel, or a kernel is wired to an unsubscribed event. |
+| SGP032 | Package validation | Plugin author | A required kernel entrypoint is missing or not public. |
+| SGP033 | Prepared-package validation | Plugin author | An entrypoint signature does not match the hook event and live settings. |
+| SGP034 | Prepared-package validation | Plugin author | Entrypoints disagree on parameter shape, or a pipeline uses a conflicting adapter. |
+| SGP035 | Prepared-package validation | Plugin author | Live settings are not declared as trailing entrypoint parameters. |
+| SGP040 | Package validation | Plugin author | An effect is unsupported or no verified effects are declared. |
+| SGP041 | Prepared-package validation | Plugin author | Manifest effects do not match the verified entrypoint effects. |
+| SGP042 | Package validation | Plugin author | The manifest execution mode is unsupported. |
+| SGP050 | Package validation | Plugin author | Manifest text is empty, has control characters, or looks like a forbidden CLR/IL descriptor. |
+
+`PluginDiagnosticCodes.All` is the maintained source of truth; a regression test fails if the
+runtime emits an `SGP*` code that the reference does not document, so new runtime plugin
+diagnostics cannot ship without user-facing guidance.

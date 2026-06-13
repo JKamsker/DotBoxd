@@ -1,5 +1,6 @@
 namespace SafeIR;
 
+using System.Buffers;
 using System.Text;
 using System.Text.Json;
 
@@ -9,11 +10,11 @@ public static class SafeIrJsonExporter
     {
         ArgumentNullException.ThrowIfNull(module);
 
-        using var stream = new MemoryStream();
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = indented });
+        var buffer = new ArrayBufferWriter<byte>();
+        using var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = indented });
         Write(writer, module);
         writer.Flush();
-        return Encoding.UTF8.GetString(stream.ToArray());
+        return Encoding.UTF8.GetString(buffer.WrittenSpan);
     }
 
     internal static void Write(Utf8JsonWriter writer, SandboxModule module)

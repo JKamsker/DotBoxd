@@ -1,5 +1,6 @@
 namespace SafeIR.Plugins;
 
+using System.Buffers;
 using System.Text;
 using System.Text.Json;
 using static SafeIR.JsonImport;
@@ -10,11 +11,11 @@ public static class PluginPackageJsonSerializer
     {
         ArgumentNullException.ThrowIfNull(package);
 
-        using var stream = new MemoryStream();
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = indented });
+        var buffer = new ArrayBufferWriter<byte>();
+        using var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = indented });
         WritePackage(writer, package);
         writer.Flush();
-        return Encoding.UTF8.GetString(stream.ToArray());
+        return Encoding.UTF8.GetString(buffer.WrittenSpan);
     }
 
     public static PluginPackage Import(string json)
