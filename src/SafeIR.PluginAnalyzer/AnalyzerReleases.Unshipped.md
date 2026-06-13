@@ -6,3 +6,4 @@
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
 SGP100 | SafeIR.Generation | Error | Plugin kernel shape is not supported
+SGP110 | SafeIR.Generation | Info | InvokeKernel(lambda) chain is not yet lowered to verified IR

@@ -30,14 +30,28 @@ public sealed class SafeIrPluginAnalyzer : DiagnosticAnalyzer
         description: "Live settings must use supported scalar types.",
         helpLinkUri: PluginAnalyzerDiagnostics.ShippedRulesHelpLinkBase + "SGP020");
 
+    // Phase C-0 (detection only): flag an inline InvokeKernel(lambda) hook chain. Lowering these
+    // lambdas to verified SafeIR is a later analyzer phase; until then the runtime terminal throws,
+    // so this informational diagnostic warns the author at compile time.
+    public static readonly DiagnosticDescriptor InvokeKernelNotLoweredRule = new(
+        "SGP110",
+        "InvokeKernel chain is not yet lowered to verified IR",
+        "InvokeKernel(lambda) is not yet lowered to verified IR and will throw at runtime; bind a kernel class with UseKernel/Register, or use InvokeLocal for native host code",
+        "SafeIR.Generation",
+        DiagnosticSeverity.Info,
+        isEnabledByDefault: true,
+        description: "Detection only: lowering inline Where/Select/InvokeKernel chains to verified SafeIR is a future analyzer phase.",
+        helpLinkUri: PluginAnalyzerDiagnostics.UnshippedRulesHelpLinkBase + "SGP110");
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
-        => ImmutableArray.Create(ForbiddenHostApiRule, LiveSettingTypeRule);
+        => ImmutableArray.Create(ForbiddenHostApiRule, LiveSettingTypeRule, InvokeKernelNotLoweredRule);
 
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
         context.RegisterSymbolAction(AnalyzeProperty, SymbolKind.Property);
+        context.RegisterOperationAction(AnalyzeHookChainTerminal, OperationKind.Invocation);
         context.RegisterCompilationStartAction(startContext =>
         {
             var helperGraph = new ForbiddenHelperCallGraph();
@@ -48,6 +62,25 @@ public sealed class SafeIrPluginAnalyzer : DiagnosticAnalyzer
             startContext.RegisterOperationAction(c => AnalyzeTypeOf(c, helperGraph), OperationKind.TypeOf);
             startContext.RegisterCompilationEndAction(helperGraph.ReportDiagnostics);
         });
+    }
+
+    private static void AnalyzeHookChainTerminal(OperationAnalysisContext context)
+    {
+        var invocation = (IInvocationOperation)context.Operation;
+        if (!string.Equals(invocation.TargetMethod.Name, "InvokeKernel", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var containing = invocation.TargetMethod.ContainingType;
+        if (containing is null ||
+            !string.Equals(containing.ContainingNamespace?.ToDisplayString(), "SafeIR.Plugins", StringComparison.Ordinal) ||
+            containing.Name is not ("HookPipeline" or "HookStage"))
+        {
+            return;
+        }
+
+        context.ReportDiagnostic(Diagnostic.Create(InvokeKernelNotLoweredRule, invocation.Syntax.GetLocation()));
     }
 
     private static void AnalyzeProperty(SymbolAnalysisContext context)
