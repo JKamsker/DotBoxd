@@ -12,7 +12,7 @@ public sealed partial class SandboxHost : IDisposable
     private readonly ISandboxInterpreter _interpreter;
     private readonly ISandboxCompiler? _compiler;
     private readonly IExecutionModeSelector _modeSelector;
-    private readonly Action<SandboxAuditEvent>? _auditObserver;
+    private readonly Action<SandboxAuditEvent>[] _auditObservers;
     private readonly SandboxWorkerExecutor _workerExecutor;
     private readonly byte[] _planSigningKey = RandomNumberGenerator.GetBytes(32);
     private readonly AutoExecutionHotness _autoHotness = new();
@@ -32,7 +32,7 @@ public sealed partial class SandboxHost : IDisposable
         _interpreter = interpreter;
         _compiler = compiler;
         _modeSelector = modeSelector;
-        _auditObserver = auditObserver;
+        _auditObservers = SnapshotAuditObservers(auditObserver);
         _workerExecutor = new SandboxWorkerExecutor(worker);
     }
 
@@ -131,7 +131,7 @@ public sealed partial class SandboxHost : IDisposable
 
     private SandboxExecutionResult Publish(SandboxExecutionResult result)
     {
-        if (_auditObserver is null)
+        if (_auditObservers.Length == 0)
         {
             return result;
         }
@@ -146,17 +146,37 @@ public sealed partial class SandboxHost : IDisposable
 
     private void PublishToAuditObservers(SandboxAuditEvent auditEvent)
     {
-        foreach (var observer in _auditObserver!.GetInvocationList())
+        // The observer set is fixed for the lifetime of the host, so dispatch reuses the
+        // snapshot captured at construction instead of materializing the multicast invocation
+        // list per audit event.
+        foreach (var observer in _auditObservers)
         {
             try
             {
-                ((Action<SandboxAuditEvent>)observer)(auditEvent);
+                observer(auditEvent);
             }
             catch (Exception)
             {
                 // Operational forwarding failures must not change sandbox execution behavior.
             }
         }
+    }
+
+    private static Action<SandboxAuditEvent>[] SnapshotAuditObservers(Action<SandboxAuditEvent>? auditObserver)
+    {
+        if (auditObserver is null)
+        {
+            return [];
+        }
+
+        var observers = auditObserver.GetInvocationList();
+        var snapshot = new Action<SandboxAuditEvent>[observers.Length];
+        for (var i = 0; i < observers.Length; i++)
+        {
+            snapshot[i] = (Action<SandboxAuditEvent>)observers[i];
+        }
+
+        return snapshot;
     }
 
     private async ValueTask<SandboxExecutionResult> ExecuteCompiledAsync(

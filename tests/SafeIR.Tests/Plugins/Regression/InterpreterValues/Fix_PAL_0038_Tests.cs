@@ -23,7 +23,13 @@ namespace SafeIR.Tests;
 /// 2. Allocation: executing many fixed-arity collection calls no longer allocates an
 ///    argument array per call, so steady-state per-call allocation stays below the size of
 ///    even a one-element <c>SandboxValue[]</c> that the bug allocated on every call.
+///
+/// The allocation assertion samples a thread-local byte counter around a tight measured
+/// window, so it must run in the serial <see cref="AllocationMeasurementCollection"/> to keep
+/// concurrent GC pressure from inflating the sample. The collection only changes scheduling;
+/// it does not weaken the &lt; 64 byte/call threshold or any measured value.
 /// </summary>
+[Collection(AllocationMeasurementCollection.Name)]
 public sealed class Fix_PAL_0038_Tests
 {
     [Fact]

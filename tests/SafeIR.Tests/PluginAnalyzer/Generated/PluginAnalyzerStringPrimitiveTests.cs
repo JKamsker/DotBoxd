@@ -30,6 +30,7 @@ public sealed class PluginAnalyzerStringPrimitiveTests
         var policy = SandboxPolicyBuilder.Create()
             .GrantGameMessageWrite()
             .WithFuel(FuelLimit)
+            .WithWallTime(TimeSpan.FromSeconds(30))
             .WithMaxHostCalls(HostCallLimit)
             .Build();
         var plan = await host.PrepareAsync(package.Module, policy);

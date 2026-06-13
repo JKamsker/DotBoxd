@@ -168,6 +168,7 @@ public sealed class PluginAnalyzerGeneratedPackageTests
         var policy = SandboxPolicyBuilder.Create()
             .GrantGameMessageWrite()
             .WithFuel(100_000)
+            .WithWallTime(TimeSpan.FromSeconds(30))
             .WithMaxHostCalls(1_000)
             .Build();
         var plan = await host.PrepareAsync(package.Module, policy);
