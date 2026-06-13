@@ -23,8 +23,16 @@ public sealed class PluginServer : IDisposable
         _executionMode = executionMode;
         Events = new PluginEventAdapterRegistry();
         Kernels = new KernelRegistry();
-        Hooks = new HookRegistry(messages, Events, Kernels);
+        Hooks = new HookRegistry(messages, Events, Kernels, InstallChainPackage);
     }
+
+    // Synchronous installer the hook pipelines use to wire analyzer-generated chain packages at
+    // setup time (the generated interceptor calls HookPipeline.UseGeneratedChain).
+    private InstalledKernel InstallChainPackage(PluginPackage package)
+        => InstallCoreAsync(package, policy: null, owner: null, CancellationToken.None)
+            .AsTask()
+            .GetAwaiter()
+            .GetResult();
 
     public HookRegistry Hooks { get; }
     public KernelRegistry Kernels { get; }

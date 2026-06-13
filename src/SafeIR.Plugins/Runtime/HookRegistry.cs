@@ -9,15 +9,18 @@ public sealed class HookRegistry
     private readonly IPluginMessageSink _messages;
     private readonly PluginEventAdapterRegistry _events;
     private readonly KernelRegistry _kernels;
+    private readonly Func<PluginPackage, InstalledKernel>? _installer;
 
     internal HookRegistry(
         IPluginMessageSink messages,
         PluginEventAdapterRegistry events,
-        KernelRegistry kernels)
+        KernelRegistry kernels,
+        Func<PluginPackage, InstalledKernel>? installer = null)
     {
         _messages = messages;
         _events = events;
         _kernels = kernels;
+        _installer = installer;
     }
 
     public HookPipeline<TEvent> On<TEvent>()
@@ -45,7 +48,7 @@ public sealed class HookRegistry
                 return pipeline;
             }
 
-            var created = new HookPipeline<TEvent>(adapter, _messages, _kernels);
+            var created = new HookPipeline<TEvent>(adapter, _messages, _kernels, _installer);
             _pipelines[typeof(TEvent)] = created;
             return created;
         }
@@ -79,15 +82,38 @@ public sealed class HookPipeline<TEvent>
     private readonly IPluginEventAdapter<TEvent> _adapter;
     private readonly IPluginMessageSink _messages;
     private readonly KernelRegistry _kernels;
+    private readonly Func<PluginPackage, InstalledKernel>? _installer;
 
     internal HookPipeline(
         IPluginEventAdapter<TEvent> adapter,
         IPluginMessageSink messages,
-        KernelRegistry kernels)
+        KernelRegistry kernels,
+        Func<PluginPackage, InstalledKernel>? installer = null)
     {
         _adapter = adapter;
         _messages = messages;
         _kernels = kernels;
+        _installer = installer;
+    }
+
+    /// <summary>
+    /// Installs an analyzer-generated hook-chain package and wires it into this pipeline. Called by
+    /// the generated interceptor that replaces an <c>InvokeKernel(lambda)</c> call site, so the lowered
+    /// chain runs as verified IR instead of throwing. Blocks on install at setup time.
+    /// </summary>
+    public HookPipeline<TEvent> UseGeneratedChain(PluginPackage package)
+    {
+        ArgumentNullException.ThrowIfNull(package);
+        if (_installer is null)
+        {
+            throw new SandboxValidationException([
+                new SandboxDiagnostic(
+                    "SGP063",
+                    "this hook pipeline has no installer; create it from a PluginServer to use generated chains.")
+            ]);
+        }
+
+        return UseKernel(_installer(package));
     }
 
     public HookPipeline<TEvent> Where(Func<TEvent, HookContext, bool> filter)

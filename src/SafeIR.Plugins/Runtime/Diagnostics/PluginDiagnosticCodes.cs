@@ -174,6 +174,10 @@ public static class PluginDiagnosticCodes
             "An InvokeKernel(lambda) hook terminal was not lowered to verified IR and cannot run as host code.",
             "InvokeKernel(lambda) was invoked at runtime without the SafeIR analyzer lowering it (analyzer not referenced, or an unsupported construct in the chain).",
             "Reference SafeIR.PluginAnalyzer so InvokeKernel chains are lowered, or bind a kernel class with UseKernel/Register instead."),
+        new("SGP063", PluginDiagnosticPhase.RuntimeEntrypoint, PluginDiagnosticAudience.HostOperator,
+            "A generated hook-chain package was wired into a pipeline that has no installer.",
+            "UseGeneratedChain was called on a HookPipeline created without a PluginServer-backed installer.",
+            "Create the hook pipeline from PluginServer (server.Hooks) so generated chains can be installed."),
     ];
 
     private static readonly IReadOnlyDictionary<string, PluginDiagnosticReference> ReferencesByCode =

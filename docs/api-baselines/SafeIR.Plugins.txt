@@ -40,6 +40,7 @@ public HookPipeline<TEvent> InvokeLocal(Func<TCurrent, HookContext, ValueTask> h
 public HookPipeline<TEvent> InvokeLocal(Func<TEvent, HookContext, ValueTask> handler)
 public HookPipeline<TEvent> On<TEvent>()
 public HookPipeline<TEvent> On<TEvent>(IPluginEventAdapter<TEvent> adapter)
+public HookPipeline<TEvent> UseGeneratedChain(PluginPackage package)
 public HookPipeline<TEvent> UseKernel(InstalledKernel kernel)
 public HookPipeline<TEvent> UseKernel<TKernel>() where TKernel : class
 public HookPipeline<TEvent> Where(Func<TEvent, HookContext, bool> filter)
