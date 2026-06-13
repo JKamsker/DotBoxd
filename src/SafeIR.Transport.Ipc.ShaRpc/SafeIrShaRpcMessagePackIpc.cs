@@ -10,12 +10,32 @@ public static class SafeIrShaRpcMessagePackIpc
     private const int MinimumSafePipeNameLength = 32;
     private const int MinimumSafePipeNameDistinctCharacters = 8;
     private static readonly MessagePackRpcSerializer Serializer = new();
+    // Get-only client default. SafeIR plugin IPC clients are pure callers, so this opts into the
+    // ShaRPC low-allocation unary ValueTask<T> path: that pooled path is only taken when
+    // RequestTimeout is Timeout.InfiniteTimeSpan AND EnableLowAllocationValueTaskInvocations is set
+    // (and the caller passes no cancellable token). Keeping the convenience default on this profile
+    // means the easy path is the measured low-allocation path (PAL-0014). Callers needing a per-call
+    // timeout can pass their own RpcPeerOptions or a CancellationToken.
     private static readonly RpcPeerOptions DefaultClientOptions = new() {
-        RequestTimeout = TimeSpan.FromSeconds(10),
+        RequestTimeout = Timeout.InfiniteTimeSpan,
+        EnableLowAllocationValueTaskInvocations = true,
         RejectInboundCalls = true
     };
     private static readonly RpcPeerOptions DefaultBidirectionalClientOptions = new() {
         RequestTimeout = TimeSpan.FromSeconds(10)
+    };
+    // Server-side convenience default. SafeIR plugin IPC hosts answer unary calls from trusted
+    // clients, so this opts the convenience listen path into the matching ShaRPC low-allocation
+    // profile: an infinite request timeout plus DisableInboundRequestCancellation so non-streaming
+    // inbound calls do not allocate per-request cancellation state, and an unbounded inbound queue so
+    // requests dispatch immediately without per-request queue bookkeeping. Keeping the convenience
+    // default on this profile means the easy listen path is the measured low-allocation path
+    // (PAL-0014). Hosts needing bounded backpressure or cancellable handlers can pass their own
+    // RpcPeerOptions.
+    private static readonly RpcPeerOptions DefaultServerOptions = new() {
+        RequestTimeout = Timeout.InfiniteTimeSpan,
+        DisableInboundRequestCancellation = true,
+        InboundQueueCapacity = null
     };
 
     public static RpcHost Listen(
@@ -25,7 +45,7 @@ public static class SafeIrShaRpcMessagePackIpc
     {
         ArgumentNullException.ThrowIfNull(transport);
         ArgumentNullException.ThrowIfNull(configurePeer);
-        return RpcHost.Listen(transport, Serializer, options).ForEachPeer(configurePeer);
+        return RpcHost.Listen(transport, Serializer, options ?? DefaultServerOptions).ForEachPeer(configurePeer);
     }
 
     public static Task<RpcPeerSession> ConnectAsync(

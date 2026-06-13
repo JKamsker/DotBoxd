@@ -30,6 +30,7 @@ namespace SafeIR.Tests;
 /// so the per-call overhead must stay below the size of one empty dictionary
 /// instance. The assertion is RED while every frame allocates its own dictionary.
 /// </summary>
+[Collection(AllocationMeasurementCollection.Name)]
 public sealed class Fix_PAL_0042_Tests
 {
     // Two iteration counts whose difference is large enough that one allocation

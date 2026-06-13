@@ -40,6 +40,7 @@ public HookPipeline<TEvent> Where(Func<TEvent, HookContext, bool> filter)
 public HookPipeline<TEvent> Where(Func<TEvent, HookContext, ValueTask<bool>> filter)
 public HookRegistry Hooks { get; }
 public IEnumerator<InstalledKernel> GetEnumerator() => Snapshot().GetEnumerator()
+public InMemoryPluginMessageSink()
 public InstalledKernel Get(string pluginId)
 public InstalledKernel Kernel { get; }
 public interface IEventKernel<TEvent>
@@ -53,7 +54,7 @@ public IReadOnlyList<InstalledKernel> Snapshot()
 public IReadOnlyList<LiveSettingDefinition> Definitions
 public IReadOnlyList<LiveSettingDefinition> LiveSettings { get => _liveSettings; init => _liveSettings = PluginModelCopy.List(value); }
 public IReadOnlyList<PluginExecutionObservation> ExecutionObservations => _executionObserver.Snapshot()
-public IReadOnlyList<PluginMessage> Messages => _messages
+public IReadOnlyList<PluginMessage> Messages => _readOnlyMessages
 public IReadOnlyList<string> Effects { get => _effects; init => _effects = PluginModelCopy.List(value); }
 public KernelRegistry Kernels { get; }
 public LiveContext<T> BindContext<T>(string name, Action<T>? initialize = null) where T : class
@@ -84,7 +85,7 @@ public sealed class LiveSettingAttribute : Attribute
 public sealed class LiveSettingStore
 public sealed class LiveValue<T> : ICoercibleLiveSetting
 public sealed class PluginEventAdapterRegistry
-public sealed class PluginServer
+public sealed class PluginServer : IDisposable
 public sealed class TypedInstalledKernel<TSettings> where TSettings : class
 public sealed record HookSubscriptionManifest(string Event, string Kernel)
 public sealed record KernelEntrypoints(string ShouldHandle, string Handle)
@@ -114,6 +115,7 @@ public TypedInstalledKernel<TState> Get<TState>(string pluginId) where TState : 
 public ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)
 public ValueTask ModifyAsync( Action<TSettings> modify, bool atomic = false, CancellationToken cancellationToken = default)
 public ValueTask SendAsync(string targetId, string message, CancellationToken cancellationToken = default)
+public void Dispose()
 public void Register<TEvent>(IPluginEventAdapter<TEvent> adapter)
 public void Revoke()
 public void Send(string targetId, string message)
