@@ -1,19 +1,19 @@
 ---
 id: COR-0024
 area: correctness
-status: open
+status: fixed_pending_verification
 priority: medium
 title: Module validation results expose mutable analysis collections
 dedup_key: correctness/validation/module-result/mutable-analysis-collections
 created_at: 2026-06-12T22:19:03.7448666+00:00
 created_by: correctness-producer
 created_commit: 
-updated_at: 2026-06-12T22:19:03.7448666+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
+updated_at: 2026-06-13T05:54:20.7072928+00:00
+claimed_by: worker
+claimed_at: 2026-06-13T05:51:07.6803710+00:00
+claim_branch: workflow-work
+fixed_by: worker
+fixed_at: 2026-06-13T05:54:20.7072928+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 

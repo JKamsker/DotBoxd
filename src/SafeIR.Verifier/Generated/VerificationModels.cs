@@ -1,5 +1,7 @@
 namespace SafeIR.Verifier;
 
+using System.Collections.ObjectModel;
+
 public sealed record ArtifactManifest(
     int ArtifactVersion,
     string CacheKey,
@@ -16,7 +18,16 @@ public sealed record ArtifactManifest(
     string TargetFramework,
     IReadOnlyList<string> OptimizationFlags,
     string AssemblyHash,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt)
+{
+    private IReadOnlyList<string> _optimizationFlags = VerificationModelCopy.List(OptimizationFlags);
+
+    public IReadOnlyList<string> OptimizationFlags
+    {
+        get => _optimizationFlags;
+        init => _optimizationFlags = VerificationModelCopy.List(value);
+    }
+}
 
 public sealed record VerificationManifestIdentity(
     int? ArtifactVersion = null,
@@ -34,6 +45,14 @@ public sealed record VerificationManifestIdentity(
     string? TargetFramework = null,
     IReadOnlyList<string>? OptimizationFlags = null)
 {
+    private IReadOnlyList<string>? _optimizationFlags = VerificationModelCopy.NullableList(OptimizationFlags);
+
+    public IReadOnlyList<string>? OptimizationFlags
+    {
+        get => _optimizationFlags;
+        init => _optimizationFlags = VerificationModelCopy.NullableList(value);
+    }
+
     public static VerificationManifestIdentity FromManifest(ArtifactManifest manifest)
         => new(
             manifest.ArtifactVersion,
@@ -59,7 +78,28 @@ public sealed record VerificationResult(
     IReadOnlyList<VerificationDiagnostic> Diagnostics,
     string AssemblyHash,
     string VerifierVersion,
-    DateTimeOffset VerifiedAt);
+    DateTimeOffset VerifiedAt)
+{
+    private IReadOnlyList<VerificationDiagnostic> _diagnostics = VerificationModelCopy.List(Diagnostics);
+
+    public IReadOnlyList<VerificationDiagnostic> Diagnostics
+    {
+        get => _diagnostics;
+        init => _diagnostics = VerificationModelCopy.List(value);
+    }
+}
+
+internal static class VerificationModelCopy
+{
+    public static IReadOnlyList<T> List<T>(IEnumerable<T> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        return new ReadOnlyCollection<T>(values.ToArray());
+    }
+
+    public static IReadOnlyList<T>? NullableList<T>(IEnumerable<T>? values)
+        => values is null ? null : List(values);
+}
 
 public interface IGeneratedAssemblyVerifier
 {

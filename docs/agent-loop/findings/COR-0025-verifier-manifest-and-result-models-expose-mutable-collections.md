@@ -1,19 +1,19 @@
 ---
 id: COR-0025
 area: correctness
-status: open
+status: fixed_pending_verification
 priority: medium
 title: Verifier manifest and result models expose mutable collections
 dedup_key: correctness/compiler/verifier-models/mutable-manifest-verification-collections
 created_at: 2026-06-12T22:19:57.5017303+00:00
 created_by: correctness-producer
 created_commit: 
-updated_at: 2026-06-12T22:19:57.5017303+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
+updated_at: 2026-06-13T05:54:21.8353123+00:00
+claimed_by: worker
+claimed_at: 2026-06-13T05:51:08.8259078+00:00
+claim_branch: workflow-work
+fixed_by: worker
+fixed_at: 2026-06-13T05:54:21.8353123+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 
