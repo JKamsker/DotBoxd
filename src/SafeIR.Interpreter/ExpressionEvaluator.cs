@@ -54,20 +54,12 @@ internal sealed class ExpressionEvaluator
     {
         var operand = EvaluateAsync(unary.Operand, frame);
         return operand.IsCompletedSuccessfully
-            ? new ValueTask<SandboxValue>(ApplyUnary(unary, operand.Result))
+            ? new ValueTask<SandboxValue>(OperatorEvaluator.ApplyUnary(unary, operand.Result))
             : AwaitUnary(unary, operand);
     }
 
     private async ValueTask<SandboxValue> AwaitUnary(UnaryExpression unary, ValueTask<SandboxValue> operand)
-        => ApplyUnary(unary, await operand.ConfigureAwait(false));
-
-    private SandboxValue ApplyUnary(UnaryExpression unary, SandboxValue value)
-        => unary.Operator switch
-        {
-            "!" => SandboxValue.FromBool(!((BoolValue)value).Value),
-            "-" => SandboxNumericOperations.Negate(value),
-            _ => throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "unsupported unary operator"))
-        };
+        => OperatorEvaluator.ApplyUnary(unary, await operand.ConfigureAwait(false));
 
     private ValueTask<SandboxValue> EvaluateBinary(BinaryExpression binary, InterpreterFrame frame)
     {
@@ -88,7 +80,7 @@ internal sealed class ExpressionEvaluator
             return AwaitBinaryRight(binary, leftTask.Result, rightTask);
         }
 
-        return new ValueTask<SandboxValue>(ApplyBinary(binary, leftTask.Result, rightTask.Result));
+        return new ValueTask<SandboxValue>(OperatorEvaluator.ApplyBinary(binary, leftTask.Result, rightTask.Result, _context));
     }
 
     private async ValueTask<SandboxValue> AwaitBinary(
@@ -98,14 +90,14 @@ internal sealed class ExpressionEvaluator
     {
         var left = await leftTask.ConfigureAwait(false);
         var right = await EvaluateAsync(binary.Right, frame).ConfigureAwait(false);
-        return ApplyBinary(binary, left, right);
+        return OperatorEvaluator.ApplyBinary(binary, left, right, _context);
     }
 
     private async ValueTask<SandboxValue> AwaitBinaryRight(
         BinaryExpression binary,
         SandboxValue left,
         ValueTask<SandboxValue> rightTask)
-        => ApplyBinary(binary, left, await rightTask.ConfigureAwait(false));
+        => OperatorEvaluator.ApplyBinary(binary, left, await rightTask.ConfigureAwait(false), _context);
 
     private ValueTask<SandboxValue> EvaluateShortCircuit(BinaryExpression binary, InterpreterFrame frame)
     {
@@ -147,25 +139,88 @@ internal sealed class ExpressionEvaluator
     private static async ValueTask<SandboxValue> AwaitShortCircuitSecond(ValueTask<SandboxValue> secondTask)
         => SandboxValue.FromBool(((BoolValue)await secondTask.ConfigureAwait(false)).Value);
 
-    private SandboxValue ApplyBinary(BinaryExpression binary, SandboxValue left, SandboxValue right)
-        => binary.Operator switch
-        {
-            "+" when left is StringValue l && right is StringValue r => Concat(l.Value, r.Value),
-            "+" => SandboxNumericOperations.Add(left, right),
-            "-" => SandboxNumericOperations.Subtract(left, right),
-            "*" => SandboxNumericOperations.Multiply(left, right),
-            "/" => SandboxNumericOperations.Divide(left, right),
-            "%" => SandboxNumericOperations.Remainder(left, right),
-            "==" => SandboxValue.FromBool(Equals(left, right)),
-            "!=" => SandboxValue.FromBool(!Equals(left, right)),
-            "<" => SandboxNumericOperations.LessThan(left, right),
-            "<=" => SandboxNumericOperations.LessThanOrEqual(left, right),
-            ">" => SandboxNumericOperations.GreaterThan(left, right),
-            ">=" => SandboxNumericOperations.GreaterThanOrEqual(left, right),
-            _ => throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "unsupported binary operator"))
-        };
-
     private ValueTask<SandboxValue> EvaluateCall(CallExpression call, InterpreterFrame frame)
+    {
+        // Fixed-arity collection intrinsics complete synchronously and never let an
+        // argument escape, so they can be dispatched straight from locals without
+        // allocating a per-call argument array. Operands are evaluated in source order;
+        // a pending operand continues on the array-free async path below rather than
+        // falling back to the array path, so no already-evaluated operand is re-run.
+        // Variadic list.of, local functions, and host bindings still use the array path
+        // so callees that may retain the list see a stable, exact-length sequence.
+        var fixedArity = CollectionIntrinsicDispatcher.FixedArity(call.Name);
+        if (fixedArity >= 0 && fixedArity == call.Arguments.Count)
+        {
+            return EvaluateFixedArityCollectionCall(call, fixedArity, frame);
+        }
+
+        return EvaluateCallViaArray(call, frame);
+    }
+
+    // Evaluates up to three operands for a fixed-arity collection intrinsic and
+    // dispatches without an argument array. Each operand is evaluated exactly once: if
+    // one is still pending, the already-evaluated operands are carried into an async
+    // continuation instead of being recomputed.
+    private ValueTask<SandboxValue> EvaluateFixedArityCollectionCall(
+        CallExpression call,
+        int arity,
+        InterpreterFrame frame)
+    {
+        var arg0 = SandboxValue.Unit;
+        var arg1 = SandboxValue.Unit;
+        var arg2 = SandboxValue.Unit;
+        for (var i = 0; i < arity; i++)
+        {
+            var argTask = EvaluateAsync(call.Arguments[i], frame);
+            if (!argTask.IsCompletedSuccessfully)
+            {
+                return AwaitCollectionOperands(call, arity, i, argTask, arg0, arg1, frame);
+            }
+
+            switch (i)
+            {
+                case 0: arg0 = argTask.Result; break;
+                case 1: arg1 = argTask.Result; break;
+                default: arg2 = argTask.Result; break;
+            }
+        }
+
+        return new ValueTask<SandboxValue>(
+            CollectionIntrinsicDispatcher.Dispatch(call, arg0, arg1, arg2, _context));
+    }
+
+    private async ValueTask<SandboxValue> AwaitCollectionOperands(
+        CallExpression call,
+        int arity,
+        int pending,
+        ValueTask<SandboxValue> pendingTask,
+        SandboxValue arg0,
+        SandboxValue arg1,
+        InterpreterFrame frame)
+    {
+        var arg2 = SandboxValue.Unit;
+        var resolved = await pendingTask.ConfigureAwait(false);
+        switch (pending)
+        {
+            case 0: arg0 = resolved; break;
+            case 1: arg1 = resolved; break;
+            default: arg2 = resolved; break;
+        }
+
+        for (var i = pending + 1; i < arity; i++)
+        {
+            var operand = await EvaluateAsync(call.Arguments[i], frame).ConfigureAwait(false);
+            switch (i)
+            {
+                case 1: arg1 = operand; break;
+                default: arg2 = operand; break;
+            }
+        }
+
+        return CollectionIntrinsicDispatcher.Dispatch(call, arg0, arg1, arg2, _context);
+    }
+
+    private ValueTask<SandboxValue> EvaluateCallViaArray(CallExpression call, InterpreterFrame frame)
     {
         var arguments = call.Arguments;
         var argCount = arguments.Count;
@@ -217,7 +272,8 @@ internal sealed class ExpressionEvaluator
 
         if (_context.Bindings.Contains(call.Name))
         {
-            return CallBindingAsync(call.Name, args, frame.FunctionId);
+            return InterpreterBindingCaller.CallAsync(
+                _context, _options, _moduleHash, call.Name, args, frame.FunctionId);
         }
 
         throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, $"unknown call '{call.Name}' at runtime"));
@@ -250,74 +306,6 @@ internal sealed class ExpressionEvaluator
 
     public ValueTask<SandboxValue> InvokeFunctionAsync(SandboxFunction function, IReadOnlyList<SandboxValue> args)
         => _interpreter.InvokeFunctionAsync(function, args);
-
-    private async ValueTask<SandboxValue> CallBindingAsync(
-        string id,
-        IReadOnlyList<SandboxValue> args,
-        string functionId)
-    {
-        var descriptor = _context.Bindings.GetDescriptor(id);
-        InterpreterTrace.WriteBindingCall(_context, _options, _moduleHash, functionId, descriptor);
-        var auditCheckpoint = _context.AuditCheckpoint();
-        try
-        {
-            _context.ChargeBindingCall(descriptor);
-        }
-        catch (SandboxRuntimeException ex)
-        {
-            _context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, ex.Error.Code);
-            throw;
-        }
-
-        CancellationTokenSource? timeout = null;
-        try
-        {
-            timeout = _context.CreateWallTimeToken();
-            using var returnCredits = _context.BeginBindingReturnCreditScope();
-            var value = await descriptor.Invoke(_context, args, timeout.Token).ConfigureAwait(false);
-            value = _context.ChargeBindingReturn(descriptor, value);
-            _context.EnsureRequiredBindingSuccessAudit(descriptor, auditCheckpoint);
-            return value;
-        }
-        catch (SandboxRuntimeException ex)
-        {
-            _context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, ex.Error.Code);
-            throw;
-        }
-        catch (OperationCanceledException) when (_context.CancellationToken.IsCancellationRequested)
-        {
-            _context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, SandboxErrorCode.Cancelled);
-            throw;
-        }
-        catch (OperationCanceledException) when (timeout?.IsCancellationRequested == true)
-        {
-            var error = new SandboxError(SandboxErrorCode.Timeout, $"binding '{id}' timed out");
-            _context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, error.Code);
-            throw new SandboxRuntimeException(error);
-        }
-        catch (OperationCanceledException)
-        {
-            var error = new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{id}' failed");
-            _context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, error.Code);
-            throw new SandboxRuntimeException(error);
-        }
-        catch (Exception)
-        {
-            var error = new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{id}' failed");
-            _context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, error.Code);
-            throw new SandboxRuntimeException(error);
-        }
-        finally
-        {
-            timeout?.Dispose();
-        }
-    }
-
-    private SandboxValue Concat(string left, string right)
-    {
-        var text = _context.CreateChargedStringConcat(left, right);
-        return SandboxValue.FromString(text);
-    }
 
     private SandboxValue ChargeLiteral(SandboxValue value)
     {

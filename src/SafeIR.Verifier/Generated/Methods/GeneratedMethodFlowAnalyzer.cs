@@ -214,27 +214,76 @@ internal static class GeneratedMethodFlowAnalyzer
         HashSet<int> reachable,
         Dictionary<int, VisitColor> colors)
     {
-        if (!reachable.Contains(offset) || !byOffset.TryGetValue(offset, out var instruction) || IsLoopIterationCharge(instruction))
+        // Iterative depth-first search. The recursive form blew the call stack for methods
+        // with long linear instruction chains (e.g. large constant collection literals), so
+        // the traversal frame is kept on an explicit stack instead. The grey/black coloring
+        // and the "a grey successor is a back edge" cycle rule are preserved exactly: a node
+        // is marked Visiting when first entered, its successors are explored, then it is marked
+        // Visited once its whole subtree completes.
+        if (!IsTraversable(offset, byOffset, reachable))
         {
             return false;
         }
 
-        if (colors.TryGetValue(offset, out var color))
+        if (colors.TryGetValue(offset, out var existing))
         {
-            return color == VisitColor.Visiting;
+            return existing == VisitColor.Visiting;
         }
 
+        var stack = new Stack<Frame>();
         colors[offset] = VisitColor.Visiting;
-        foreach (var successor in successorsByOffset[offset])
+        stack.Push(new Frame(offset, successorsByOffset[offset].GetEnumerator()));
+
+        while (stack.Count > 0)
         {
-            if (Visit(successor, byOffset, successorsByOffset, reachable, colors))
+            var frame = stack.Peek();
+            if (frame.Successors.MoveNext())
             {
-                return true;
+                var successor = frame.Successors.Current;
+
+                if (!IsTraversable(successor, byOffset, reachable))
+                {
+                    continue;
+                }
+
+                if (colors.TryGetValue(successor, out var color))
+                {
+                    if (color == VisitColor.Visiting)
+                    {
+                        return true;
+                    }
+
+                    continue;
+                }
+
+                colors[successor] = VisitColor.Visiting;
+                stack.Push(new Frame(successor, successorsByOffset[successor].GetEnumerator()));
+                continue;
             }
+
+            colors[frame.Offset] = VisitColor.Visited;
+            stack.Pop();
         }
 
-        colors[offset] = VisitColor.Visited;
         return false;
+    }
+
+    private static bool IsTraversable(
+        int offset,
+        IReadOnlyDictionary<int, GeneratedInstruction> byOffset,
+        HashSet<int> reachable)
+        => reachable.Contains(offset)
+            && byOffset.TryGetValue(offset, out var instruction)
+            && !IsLoopIterationCharge(instruction);
+
+    // Reference type with a mutable enumerator field: SuccessorSet.Enumerator is a mutable
+    // struct, so it must live in an addressable field that MoveNext() can advance in place.
+    // Exposing it through a property would mutate a throwaway copy and never advance.
+    private sealed class Frame(int offset, SuccessorSet.Enumerator successors)
+    {
+        public int Offset { get; } = offset;
+
+        public SuccessorSet.Enumerator Successors = successors;
     }
 
     private static bool IsLoopIterationCharge(GeneratedInstruction instruction)

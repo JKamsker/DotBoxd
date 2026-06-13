@@ -9,8 +9,8 @@
     },
     {
       "path": "../Addendum/Examples.md",
-      "sha256": "bb13ece3499da8ea7e2b93e55a18a5d6e2db2b037e15bcbb255e245e935b6b72",
-      "bytes": 15778
+      "sha256": "c4fa46ef4c1148b24d6de185900d5c3492f5903cdaa937d5c0b83086e5a19685",
+      "bytes": 19224
     },
     {
       "path": "adr/0001-restricted-ir-not-csharp.md",
@@ -48,14 +48,19 @@
       "bytes": 2405
     },
     {
+      "path": "operations/error-codes.md",
+      "sha256": "7ccdfe74b1369acb84c4fe31038fe8b0ed67a89e1955b7931b0b9e0b4d1eef8e",
+      "bytes": 11153
+    },
+    {
       "path": "operations/runbook.md",
       "sha256": "e85b7bd22ca8cd914d3c2b6118f1d97b9376dabdfd85e6dbe1723c2258b90408",
       "bytes": 4469
     },
     {
       "path": "README.md",
-      "sha256": "8da58e53ae298a087b8f4ee32149f995ed52b8a4e2e515e4ba55d331e968648b",
-      "bytes": 4601
+      "sha256": "e55a2a6212296f30d7c2c33433c37c1eb0210c262a96969ed3338432992e7c1a",
+      "bytes": 4695
     },
     {
       "path": "references.md",
@@ -144,8 +149,8 @@
     },
     {
       "path": "spec/16-public-api.md",
-      "sha256": "ead74d7e1d547be20b0efb3e01c43564298541a05974096759a4aafd80edb326",
-      "bytes": 20837
+      "sha256": "c98ff76b61a8df3dca13fe4b36038a2f0ed134dd68131d62002446579ca40647",
+      "bytes": 24411
     },
     {
       "path": "spec/17-implementation-plan.md",

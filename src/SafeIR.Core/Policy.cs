@@ -1,7 +1,6 @@
 namespace SafeIR;
 
 using System.Collections.ObjectModel;
-using System.Reflection;
 
 public sealed record CapabilityGrant(
     string Id,
@@ -147,32 +146,4 @@ public sealed record SandboxPolicy(
 
     private Lazy<string> CreateHashCache()
         => new(() => PolicyHash.Compute(this), LazyThreadSafetyMode.ExecutionAndPublication);
-}
-
-internal static class ParameterReader
-{
-    public static IReadOnlyDictionary<string, string> Read(object parameters)
-    {
-        if (parameters is IReadOnlyDictionary<string, string> values)
-        {
-            return new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(values, StringComparer.Ordinal));
-        }
-
-        var properties = parameters.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);
-        var dictionary = new Dictionary<string, string>(StringComparer.Ordinal);
-        for (var i = 0; i < properties.Length; i++)
-        {
-            var property = properties[i];
-            if (property.GetMethod?.IsPublic != true || property.GetIndexParameters().Length != 0)
-            {
-                continue;
-            }
-
-            dictionary.Add(
-                property.Name,
-                Convert.ToString(property.GetValue(parameters), System.Globalization.CultureInfo.InvariantCulture) ?? "");
-        }
-
-        return new ReadOnlyDictionary<string, string>(dictionary);
-    }
 }

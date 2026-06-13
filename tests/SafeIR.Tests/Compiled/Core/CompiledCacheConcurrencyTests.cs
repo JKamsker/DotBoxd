@@ -90,7 +90,9 @@ public sealed class CompiledCacheConcurrencyTests
 
         Assert.All(results, AssertSuccessfulCompiledResult);
         Assert.Single(Directory.EnumerateFiles(temp.Path, "module.dll", SearchOption.AllDirectories));
-        Assert.NotEmpty(Directory.EnumerateFiles(Path.Combine(temp.Path, ".locks"), "*.lock", SearchOption.AllDirectories));
+        // The cross-process file lock coordinated the cold compiles (its ".locks" tree was created),
+        // but released lock files are removed on dispose, so we no longer assert leaked "*.lock" files.
+        Assert.True(Directory.Exists(Path.Combine(temp.Path, ".locks")));
     }
 
     [Fact]

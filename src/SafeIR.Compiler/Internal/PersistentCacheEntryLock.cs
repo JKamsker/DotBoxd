@@ -27,7 +27,7 @@ internal sealed class PersistentCacheEntryLock : IAsyncDisposable
                     FileAccess.ReadWrite,
                     FileShare.None,
                     bufferSize: 1,
-                    FileOptions.Asynchronous);
+                    FileOptions.Asynchronous | FileOptions.DeleteOnClose);
                 return new PersistentCacheEntryLock(stream);
             }
             catch (IOException) {
