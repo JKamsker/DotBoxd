@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using SafeIR;
 using SafeIR.Compiler;
+using SafeIR.Compiler.Internal;
 using SafeIR.Hosting;
 using SafeIR.Verifier;
 
@@ -18,11 +19,14 @@ public sealed class CompiledCacheOriginTests
     public async Task Verifier_safe_cache_entry_with_stale_origin_proof_is_quarantined_and_recompiled()
     {
         using var temp = TempDirectory.Create();
+        using var originKey = PersistentCompiledArtifactCacheOrigin.UseOriginKeyPathForCurrentAsyncFlow(
+            Path.Combine(temp.Path, "compiled-cache-origin.key"));
         var host = SandboxTestHost.Create(compiler: true, compilerCache: temp.Path);
         var module = await host.ImportJsonAsync(SandboxTestHost.PureScoreJson());
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
         var input = SandboxValue.FromList([SandboxValue.FromInt32(2), SandboxValue.FromInt32(1)]);
-        _ = await ExecuteCompiled(host, plan, input);
+        var seed = await ExecuteCompiled(host, plan, input);
+        Assert.True(seed.Succeeded, seed.Error?.SafeMessage);
 
         var entryPath = CacheEntry(temp.Path, plan);
         var forgedBytes = CompiledArtifactTestFactory.BuildI32Assembly(2, 2);

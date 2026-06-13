@@ -16,11 +16,19 @@ internal static class PersistentCompiledArtifactCacheOrigin
     private const string ProofAlgorithm = "HMAC-SHA256";
 
     private static readonly SemaphoreSlim OriginKeyGate = new(1, 1);
+    private static readonly AsyncLocal<string?> OriginKeyPathOverride = new();
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
     };
+
+    internal static IDisposable UseOriginKeyPathForCurrentAsyncFlow(string keyPath)
+    {
+        var previous = OriginKeyPathOverride.Value;
+        OriginKeyPathOverride.Value = Path.GetFullPath(keyPath);
+        return new OriginKeyPathOverrideScope(previous);
+    }
 
     public static async ValueTask WriteProofAsync(
         string entryPath,
@@ -195,24 +203,17 @@ internal static class PersistentCompiledArtifactCacheOrigin
         try
         {
             var keyPath = OriginKeyPath();
-            Directory.CreateDirectory(Path.GetDirectoryName(keyPath)!);
-            if (File.Exists(keyPath))
-            {
-                var existingKey = await File.ReadAllBytesAsync(keyPath, cancellationToken).ConfigureAwait(false);
-                if (existingKey.Length == OriginKeyByteLength)
-                {
-                    return existingKey;
-                }
+            var keyDirectory = Path.GetDirectoryName(keyPath)!;
+            Directory.CreateDirectory(keyDirectory);
+            PersistentCompiledArtifactCacheOriginKeyGuard.HardenDirectory(keyDirectory);
+            PersistentCompiledArtifactCacheOriginKeyGuard.ValidateDirectory(keyDirectory);
 
-                File.Delete(keyPath);
+            if (await TryAdoptExistingKeyAsync(keyPath, cancellationToken).ConfigureAwait(false) is { } existingKey)
+            {
+                return existingKey;
             }
 
-            var key = RandomNumberGenerator.GetBytes(OriginKeyByteLength);
-            await using var stream = DurableCreate(keyPath);
-            await stream.WriteAsync(key, cancellationToken).ConfigureAwait(false);
-            await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-            stream.Flush(flushToDisk: true);
-            return key;
+            return await CreateOriginKeyAsync(keyPath, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -222,6 +223,11 @@ internal static class PersistentCompiledArtifactCacheOrigin
 
     private static string OriginKeyPath()
     {
+        if (!string.IsNullOrWhiteSpace(OriginKeyPathOverride.Value))
+        {
+            return OriginKeyPathOverride.Value;
+        }
+
         var baseDirectory = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         if (string.IsNullOrWhiteSpace(baseDirectory))
         {
@@ -262,6 +268,11 @@ internal static class PersistentCompiledArtifactCacheOrigin
 
     private static SandboxRuntimeException CacheInvalid(string message)
         => new(new SandboxError(SandboxErrorCode.CacheInvalid, message));
+
+    private sealed class OriginKeyPathOverrideScope(string? previous) : IDisposable
+    {
+        public void Dispose() => OriginKeyPathOverride.Value = previous;
+    }
 
     private sealed record CacheOriginProof(int Version, string Algorithm, string Signature);
 }
