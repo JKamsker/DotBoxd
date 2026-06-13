@@ -69,8 +69,13 @@ public sealed class HookRegistry
 public sealed class HookPipeline<TEvent>
 {
     private readonly object _gate = new();
-    private readonly List<Func<TEvent, HookContext, ValueTask<bool>>> _filters = [];
-    private readonly List<Func<TEvent, HookContext, ValueTask>> _handlers = [];
+
+    // Copy-on-write snapshots: publish reads these references without locking or allocating,
+    // while mutation replaces the whole array under _gate. Reading each reference once at the
+    // start of a publish preserves stable per-publish semantics, because installed delegates
+    // never mutate an existing array in place.
+    private volatile Func<TEvent, HookContext, ValueTask<bool>>[] _filters = [];
+    private volatile Func<TEvent, HookContext, ValueTask>[] _handlers = [];
     private readonly IPluginEventAdapter<TEvent> _adapter;
     private readonly IPluginMessageSink _messages;
     private readonly KernelRegistry _kernels;
@@ -92,7 +97,7 @@ public sealed class HookPipeline<TEvent>
     {
         lock (_gate)
         {
-            _filters.Add(filter);
+            _filters = [.. _filters, filter];
         }
 
         return this;
@@ -102,7 +107,7 @@ public sealed class HookPipeline<TEvent>
     {
         lock (_gate)
         {
-            _handlers.Add(handler);
+            _handlers = [.. _handlers, handler];
         }
 
         return this;
@@ -137,13 +142,10 @@ public sealed class HookPipeline<TEvent>
 
     internal async ValueTask PublishAsync(TEvent e, CancellationToken cancellationToken)
     {
-        Func<TEvent, HookContext, ValueTask<bool>>[] filters;
-        Func<TEvent, HookContext, ValueTask>[] handlers;
-        lock (_gate)
-        {
-            filters = _filters.ToArray();
-            handlers = _handlers.ToArray();
-        }
+        // Read each copy-on-write reference once for a stable per-publish snapshot. No lock or
+        // allocation: a concurrent mutation replaces the array reference rather than editing it.
+        var filters = _filters;
+        var handlers = _handlers;
 
         var context = new HookContext(_messages, cancellationToken);
         foreach (var filter in filters)

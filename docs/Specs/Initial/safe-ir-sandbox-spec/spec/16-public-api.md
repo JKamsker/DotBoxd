@@ -187,6 +187,8 @@ public sealed class SandboxPolicyBuilder
         long maxBytesPerRun,
         bool allowCreate = false,
         bool allowOverwrite = false);
+    public SandboxPolicyBuilder GrantTimeNow();
+    public SandboxPolicyBuilder GrantRandom();
     public SandboxPolicyBuilder GrantLogging();
     public SandboxPolicyBuilder WithFuel(long maxFuel);
     public SandboxPolicyBuilder WithMaxLoopIterations(long iterations);
@@ -236,6 +238,45 @@ var createOnly = SandboxPolicyBuilder.Create()
 // Overwrite-enabled grant: existing files may be replaced (typically alongside allowCreate).
 var overwrite = SandboxPolicyBuilder.Create()
     .GrantFileWrite(root: outputRoot, maxBytesPerRun: 256_000, allowCreate: true, allowOverwrite: true)
+    .Build();
+```
+
+### `GrantTimeNow` and `GrantRandom` capability grants
+
+Time and random are capability-gated runtime features served by the `SafeIR.Runtime` host bindings
+(`SandboxHostBuilder.AddTimeBindings()` and `AddRandomBindings()`). The matching policy-builder
+helpers are the intended safe way to authorize a module that declares those capability requests:
+
+- `GrantTimeNow()` grants the `time.now` capability and enables the `Time` effect. Modules that call
+  `time.nowUnixMillis` require this grant; without it preparation fails closed with an `E-POLICY-CAP`
+  diagnostic.
+- `GrantRandom()` grants the `random` capability and enables the `Random` effect. Modules that call
+  `random.nextI32` require this grant.
+
+Both helpers are first-class alternatives to the generic `Grant(...)` escape hatch, so deterministic
+host setup stays copyable without source or test spelunking.
+
+`Deterministic(logicalNow, randomSeed)` pairs with these grants to make time and random replayable:
+
+- For `time.now`, `LogicalNow` becomes the logical clock. A deterministic run reads `time.now` from
+  `LogicalNow` instead of the wall clock, and time binding audit events are stamped with `LogicalNow`.
+- For `random`, `RandomSeed` seeds the deterministic generator so the same seed replays the same
+  sequence across runs. A deterministic random policy must supply a seed; omitting it fails closed
+  with an `E-POLICY-DETERMINISM` diagnostic. Random audit timestamps fall back to `UnixEpoch` when no
+  `LogicalNow` is set.
+
+```csharp
+using var host = SandboxHost.Create(builder =>
+{
+    builder.AddDefaultPureBindings();
+    builder.AddTimeBindings();
+    builder.AddRandomBindings();
+});
+
+var policy = SandboxPolicyBuilder.Create()
+    .GrantTimeNow()
+    .GrantRandom()
+    .Deterministic(DateTimeOffset.UnixEpoch, randomSeed: 123)
     .Build();
 ```
 

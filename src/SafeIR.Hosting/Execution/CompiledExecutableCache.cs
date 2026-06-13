@@ -1,13 +1,19 @@
 namespace SafeIR.Hosting;
 
-using System.Collections.Concurrent;
 using SafeIR;
 using SafeIR.Compiler;
 
 internal sealed class CompiledExecutableCache : IDisposable
 {
-    private readonly ConcurrentDictionary<string, Lazy<Task<MaterializedCompiledArtifact>>> _entries =
-        new(StringComparer.Ordinal);
+    // Bounded retention: a long-lived host can materialize many unique compiled artifacts
+    // (generated modules, policy/binding variants, plugin entrypoints). Each unique identity
+    // occupies a distinct slot, so the cache evicts the least-recently-used materialized
+    // executable once this capacity is exceeded instead of retaining all of them for the host
+    // lifetime. Same-key requests still coalesce onto a single materialization.
+    private const int Capacity = 64;
+
+    private readonly Dictionary<string, LinkedListNode<CacheEntry>> _entries = new(StringComparer.Ordinal);
+    private readonly LinkedList<CacheEntry> _recency = new();
     private readonly Func<CompiledArtifact, ExecutionPlan, string, CancellationToken, ValueTask<MaterializedCompiledArtifact>> _materialize;
     private readonly object _gate = new();
     private int _disposed;
@@ -37,13 +43,16 @@ internal sealed class CompiledExecutableCache : IDisposable
             () => _materialize(artifact, plan, entrypoint, CancellationToken.None).AsTask(),
             LazyThreadSafetyMode.ExecutionAndPublication);
         Lazy<Task<MaterializedCompiledArtifact>> lazy;
+        LinkedListNode<CacheEntry>? evicted;
+        bool isMiss;
         lock (_gate)
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
-            lazy = _entries.GetOrAdd(key, candidate);
+            (lazy, isMiss, evicted) = TouchOrAdd(key, candidate);
         }
 
-        var status = ReferenceEquals(lazy, candidate) ? "Miss" : "Hit";
+        DisposeEntry(evicted);
+        var status = isMiss ? "Miss" : "Hit";
 
         try
         {
@@ -69,7 +78,7 @@ internal sealed class CompiledExecutableCache : IDisposable
 
     public void Dispose()
     {
-        Lazy<Task<MaterializedCompiledArtifact>>[] entries;
+        LinkedListNode<CacheEntry>[] entries;
         lock (_gate)
         {
             if (Interlocked.Exchange(ref _disposed, 1) != 0)
@@ -77,14 +86,52 @@ internal sealed class CompiledExecutableCache : IDisposable
                 return;
             }
 
-            entries = _entries.Values.ToArray();
+            entries = new LinkedListNode<CacheEntry>[_recency.Count];
+            var index = 0;
+            for (var node = _recency.First; node is not null; node = node.Next)
+            {
+                entries[index++] = node;
+            }
+
             _entries.Clear();
+            _recency.Clear();
         }
 
-        foreach (var lazy in entries)
+        foreach (var node in entries)
         {
-            DisposeWhenMaterialized(lazy);
+            DisposeWhenMaterialized(node.Value.Lazy);
         }
+    }
+
+    private (Lazy<Task<MaterializedCompiledArtifact>> Lazy, bool IsMiss, LinkedListNode<CacheEntry>? Evicted) TouchOrAdd(
+        string key,
+        Lazy<Task<MaterializedCompiledArtifact>> candidate)
+    {
+        if (_entries.TryGetValue(key, out var existing))
+        {
+            _recency.Remove(existing);
+            _recency.AddLast(existing);
+            return (existing.Value.Lazy, false, null);
+        }
+
+        var node = _recency.AddLast(new CacheEntry(key, candidate));
+        _entries[key] = node;
+
+        var evicted = _entries.Count > Capacity ? EvictOldest() : null;
+        return (candidate, true, evicted);
+    }
+
+    private LinkedListNode<CacheEntry>? EvictOldest()
+    {
+        var oldest = _recency.First;
+        if (oldest is null)
+        {
+            return null;
+        }
+
+        _recency.Remove(oldest);
+        _entries.Remove(oldest.Value.Key);
+        return oldest;
     }
 
     private static string Key(CompiledArtifact artifact)
@@ -99,9 +146,21 @@ internal sealed class CompiledExecutableCache : IDisposable
 
     private void RemoveIfCurrent(string key, Lazy<Task<MaterializedCompiledArtifact>> lazy)
     {
-        if (_entries.TryGetValue(key, out var current) && ReferenceEquals(current, lazy))
+        lock (_gate)
         {
-            _entries.TryRemove(key, out _);
+            if (_entries.TryGetValue(key, out var current) && ReferenceEquals(current.Value.Lazy, lazy))
+            {
+                _recency.Remove(current);
+                _entries.Remove(key);
+            }
+        }
+    }
+
+    private static void DisposeEntry(LinkedListNode<CacheEntry>? node)
+    {
+        if (node is not null)
+        {
+            DisposeWhenMaterialized(node.Value.Lazy);
         }
     }
 
@@ -131,4 +190,6 @@ internal sealed class CompiledExecutableCache : IDisposable
             TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default);
     }
+
+    private readonly record struct CacheEntry(string Key, Lazy<Task<MaterializedCompiledArtifact>> Lazy);
 }

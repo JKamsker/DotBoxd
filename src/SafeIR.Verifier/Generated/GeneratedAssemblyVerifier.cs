@@ -29,7 +29,7 @@ public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifi
 
         try
         {
-            using var stream = new MemoryStream(assemblyBytes.ToArray(), writable: false);
+            using var stream = new ReadOnlyMemoryStream(assemblyBytes);
             using var peReader = new PEReader(stream);
             if (!peReader.HasMetadata)
             {

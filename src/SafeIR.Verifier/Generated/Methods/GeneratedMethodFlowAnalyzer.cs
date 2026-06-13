@@ -14,7 +14,7 @@ internal static class GeneratedMethodFlowAnalyzer
         var predecessorsByOffset = PredecessorMap(instructions, successorsByOffset);
         var reachableCalls = new HashSet<string>(StringComparer.Ordinal);
         var returnStates = new List<GeneratedMeterState>();
-        var states = ReachableStates(instructions, byOffset, reachableCalls, returnStates, stateFor);
+        var states = ReachableStates(instructions, byOffset, successorsByOffset, reachableCalls, returnStates, stateFor);
         return new GeneratedMethodFlow(
             instructions,
             byOffset,
@@ -24,7 +24,7 @@ internal static class GeneratedMethodFlowAnalyzer
             reachableCalls,
             states,
             returnStates,
-            HasUnmeteredCycle(instructions, byOffset, states.Keys));
+            HasUnmeteredCycle(byOffset, successorsByOffset, states.Keys));
     }
 
     private static Dictionary<int, int> InstructionIndexes(IReadOnlyList<GeneratedInstruction> instructions)
@@ -38,14 +38,21 @@ internal static class GeneratedMethodFlowAnalyzer
         return indexes;
     }
 
-    private static Dictionary<int, IReadOnlyList<int>> SuccessorMap(
+    private static Dictionary<int, SuccessorSet> SuccessorMap(
         IReadOnlyList<GeneratedInstruction> instructions,
         IReadOnlyDictionary<int, GeneratedInstruction> byOffset)
     {
-        var successors = new Dictionary<int, IReadOnlyList<int>>(instructions.Count);
+        var successors = new Dictionary<int, SuccessorSet>(instructions.Count);
+        var buffer = new List<int>();
         foreach (var instruction in instructions)
         {
-            successors[instruction.Offset] = Successors(instructions, byOffset, instruction).ToArray();
+            buffer.Clear();
+            foreach (var successor in Successors(instructions, byOffset, instruction))
+            {
+                buffer.Add(successor);
+            }
+
+            successors[instruction.Offset] = SuccessorSet.From(buffer);
         }
 
         return successors;
@@ -53,7 +60,7 @@ internal static class GeneratedMethodFlowAnalyzer
 
     private static Dictionary<int, IReadOnlyList<GeneratedInstruction>> PredecessorMap(
         IReadOnlyList<GeneratedInstruction> instructions,
-        IReadOnlyDictionary<int, IReadOnlyList<int>> successorsByOffset)
+        IReadOnlyDictionary<int, SuccessorSet> successorsByOffset)
     {
         var predecessors = new Dictionary<int, List<GeneratedInstruction>>();
         foreach (var instruction in instructions)
@@ -134,6 +141,7 @@ internal static class GeneratedMethodFlowAnalyzer
     private static Dictionary<int, GeneratedMeterState> ReachableStates(
         IReadOnlyList<GeneratedInstruction> instructions,
         IReadOnlyDictionary<int, GeneratedInstruction> byOffset,
+        IReadOnlyDictionary<int, SuccessorSet> successorsByOffset,
         HashSet<string> reachableCalls,
         List<GeneratedMeterState> returnStates,
         Func<GeneratedInstruction, GeneratedMeterState> stateFor)
@@ -163,7 +171,7 @@ internal static class GeneratedMethodFlowAnalyzer
                 continue;
             }
 
-            foreach (var successor in Successors(instructions, byOffset, instruction))
+            foreach (var successor in successorsByOffset[offset])
             {
                 if (!byOffset.ContainsKey(successor))
                 {
@@ -190,19 +198,19 @@ internal static class GeneratedMethodFlowAnalyzer
     }
 
     private static bool HasUnmeteredCycle(
-        IReadOnlyList<GeneratedInstruction> instructions,
         IReadOnlyDictionary<int, GeneratedInstruction> byOffset,
+        IReadOnlyDictionary<int, SuccessorSet> successorsByOffset,
         IEnumerable<int> reachableOffsets)
     {
         var reachable = reachableOffsets.ToHashSet();
         var colors = new Dictionary<int, VisitColor>();
-        return reachable.Any(offset => Visit(offset, instructions, byOffset, reachable, colors));
+        return reachable.Any(offset => Visit(offset, byOffset, successorsByOffset, reachable, colors));
     }
 
     private static bool Visit(
         int offset,
-        IReadOnlyList<GeneratedInstruction> instructions,
         IReadOnlyDictionary<int, GeneratedInstruction> byOffset,
+        IReadOnlyDictionary<int, SuccessorSet> successorsByOffset,
         HashSet<int> reachable,
         Dictionary<int, VisitColor> colors)
     {
@@ -217,9 +225,9 @@ internal static class GeneratedMethodFlowAnalyzer
         }
 
         colors[offset] = VisitColor.Visiting;
-        foreach (var successor in Successors(instructions, byOffset, instruction))
+        foreach (var successor in successorsByOffset[offset])
         {
-            if (Visit(successor, instructions, byOffset, reachable, colors))
+            if (Visit(successor, byOffset, successorsByOffset, reachable, colors))
             {
                 return true;
             }

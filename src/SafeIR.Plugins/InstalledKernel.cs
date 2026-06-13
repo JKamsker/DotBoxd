@@ -275,7 +275,7 @@ public sealed class InstalledKernel
         SandboxValue input,
         CancellationToken cancellationToken)
     {
-        using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+        using var executionCancellation = PluginExecutionCancellation.Create(
             cancellationToken,
             _revocation.Token);
         var result = await _host.ExecuteAsync(
@@ -283,7 +283,7 @@ public sealed class InstalledKernel
                 entrypoint,
                 input,
                 new SandboxExecutionOptions { Mode = _executionMode },
-                linkedCancellation.Token)
+                executionCancellation.Token)
             .ConfigureAwait(false);
         _executionObserver.Record(entrypoint, _executionMode, result);
         if (IsRevoked)

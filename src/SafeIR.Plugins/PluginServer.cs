@@ -5,11 +5,12 @@ using System.Diagnostics.CodeAnalysis;
 using SafeIR;
 using SafeIR.Hosting;
 
-public sealed class PluginServer
+public sealed class PluginServer : IDisposable
 {
     private readonly SandboxHost _host;
     private readonly SandboxPolicy _defaultPolicy;
     private readonly ExecutionMode _executionMode;
+    private int _disposed;
 
     private PluginServer(
         SandboxHost host,
@@ -75,6 +76,7 @@ public sealed class PluginServer
         SandboxPolicy? policy = null,
         CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
         PluginPackageValidator.Validate(package);
         var plan = await _host.PrepareAsync(package.Module, policy ?? _defaultPolicy, cancellationToken)
             .ConfigureAwait(false);
@@ -85,7 +87,29 @@ public sealed class PluginServer
     }
 
     public bool Uninstall(string pluginId)
-        => Kernels.Remove(pluginId);
+    {
+        ThrowIfDisposed();
+        return Kernels.Remove(pluginId);
+    }
+
+    /// <summary>
+    /// Releases the owned <see cref="SandboxHost"/> (compiled executable cache, generated load
+    /// contexts, hotness state, and other host-owned execution resources) so a host that retires a
+    /// plugin server (per tenant, world, test, or reload) can deterministically reclaim them through
+    /// the public plugin API. After disposal the lifecycle entrypoints
+    /// (<see cref="InstallAsync"/>, <see cref="Uninstall"/>) throw <see cref="ObjectDisposedException"/>.
+    /// Disposal is idempotent.
+    /// </summary>
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) == 0)
+        {
+            _host.Dispose();
+        }
+    }
+
+    private void ThrowIfDisposed()
+        => ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 }
 
 public sealed class KernelRegistry : IEnumerable<InstalledKernel>

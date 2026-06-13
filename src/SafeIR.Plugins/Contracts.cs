@@ -38,8 +38,12 @@ public interface IPluginMessageSink
 public sealed class InMemoryPluginMessageSink : IPluginMessageSink
 {
     private readonly List<PluginMessage> _messages = [];
+    private readonly IReadOnlyList<PluginMessage> _readOnlyMessages;
 
-    public IReadOnlyList<PluginMessage> Messages => _messages;
+    public InMemoryPluginMessageSink()
+        => _readOnlyMessages = _messages.AsReadOnly();
+
+    public IReadOnlyList<PluginMessage> Messages => _readOnlyMessages;
 
     public void Send(string targetId, string message)
         => _messages.Add(new PluginMessage(targetId, message));

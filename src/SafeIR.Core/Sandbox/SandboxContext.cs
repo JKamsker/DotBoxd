@@ -251,8 +251,23 @@ public sealed partial class SandboxContext
         return value;
     }
 
+    private SharedWallTimeTokenSource? _sharedWallTimeToken;
+
     public CancellationTokenSource CreateWallTimeToken()
     {
+        // Fast path: when the run token cannot be canceled there is no
+        // asynchronous run cancellation to link, so reuse one wall-time source
+        // for the whole run instead of allocating a linked source plus a fresh
+        // CancelAfter timer per binding call. The deadline is otherwise tracked
+        // by the ResourceMeter; we still (re)arm the shared timer so bindings
+        // that await external work observe the wall-time timeout.
+        if (!CancellationToken.CanBeCanceled)
+        {
+            var shared = _sharedWallTimeToken ??= new SharedWallTimeTokenSource();
+            shared.ArmDeadline(Budget.RemainingWallTime());
+            return shared;
+        }
+
         var timeout = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken);
         timeout.CancelAfter(Budget.RemainingWallTime());
         return timeout;

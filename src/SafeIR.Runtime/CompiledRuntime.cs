@@ -1,7 +1,25 @@
 namespace SafeIR.Runtime;
 
+using System.ComponentModel;
 using SafeIR;
 
+/// <summary>
+/// Generated-code ABI surface for SafeIR-compiled assemblies. This facade is owned by the
+/// SafeIR compiler and verifier (see <c>VerifierTypeNames.CompiledRuntimeName</c>,
+/// <c>VerificationPolicy.BoxedValueDefaults</c>, and the approved compiled binding target in
+/// <c>BindingRegistryValidator</c>). Its members exist solely so that verified, generated
+/// assemblies can call them; they are NOT a supported host API.
+/// </summary>
+/// <remarks>
+/// Do not call these members from host code. Use <c>SandboxHost</c>, bindings, policies, and
+/// verified modules instead. This type stays <see langword="public"/> because the CLR requires
+/// generated assemblies to bind against it, but it is marked
+/// <see cref="EditorBrowsableAttribute"/> <see cref="EditorBrowsableState.Never"/> so it does not
+/// surface in normal IntelliSense or API discovery as supported host surface. Method names,
+/// signatures, and metering semantics are generated-code ABI and may change without notice; they
+/// are kept in lockstep with the verifier allowlist and runtime-facade hash.
+/// </remarks>
+[EditorBrowsable(EditorBrowsableState.Never)]
 public static class CompiledRuntime
 {
     public static void ChargeFuel(SandboxContext context, int amount) => context.ChargeFuel(amount);
