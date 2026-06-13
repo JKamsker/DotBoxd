@@ -1,19 +1,19 @@
 ---
 id: API-0011
 area: api_coherence
-status: open
+status: fixed_pending_verification
 priority: medium
 title: Stable release gate allows a prerelease IPC transport package
 dedup_key: api-stable-release-allows-prerelease-ipc-package
 created_at: 2026-06-12T22:20:26.1230485+00:00
 created_by: codex-api-producer
 created_commit: 
-updated_at: 2026-06-12T22:20:26.1230485+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
+updated_at: 2026-06-13T06:08:27.7747472+00:00
+claimed_by: worker
+claimed_at: 2026-06-13T06:01:48.1965060+00:00
+claim_branch: workflow-work
+fixed_by: worker
+fixed_at: 2026-06-13T06:08:27.7747472+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 

@@ -1,6 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
+  
+  <PropertyGroup>
+    <Description>SafeIR host orchestration APIs for import, preparation, execution, isolation, and runtime selection.</Description>
+    <PackageTags>safe-ir;sandbox;hosting;orchestration;isolation</PackageTags>
+  </PropertyGroup>
+<ItemGroup>
     <ProjectReference Include="..\SafeIR.Core\SafeIR.Core.csproj" />
     <ProjectReference Include="..\SafeIR.Validation\SafeIR.Validation.csproj" />
     <ProjectReference Include="..\SafeIR.Runtime\SafeIR.Runtime.csproj" />

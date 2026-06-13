@@ -1,19 +1,19 @@
 ---
 id: API-0006
 area: api_coherence
-status: open
+status: fixed_pending_verification
 priority: medium
 title: Package release gates lack a clean NuGet consumer smoke test
 dedup_key: api/package-consumer-smoke/missing-clean-nuget-consumer
 created_at: 2026-06-12T22:11:36.2964856+00:00
 created_by: completeness-api-producer
 created_commit: 
-updated_at: 2026-06-12T22:11:36.2964856+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
+updated_at: 2026-06-13T06:08:24.0051978+00:00
+claimed_by: worker
+claimed_at: 2026-06-13T06:01:44.8441977+00:00
+claim_branch: workflow-work
+fixed_by: worker
+fixed_at: 2026-06-13T06:08:24.0051978+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 

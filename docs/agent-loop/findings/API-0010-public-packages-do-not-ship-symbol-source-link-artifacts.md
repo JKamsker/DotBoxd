@@ -1,19 +1,19 @@
 ---
 id: API-0010
 area: api_coherence
-status: open
+status: fixed_pending_verification
 priority: medium
 title: Public packages do not ship symbol/source-link artifacts
 dedup_key: api-package-symbol-source-link-artifacts
 created_at: 2026-06-12T22:20:24.8148737+00:00
 created_by: codex-api-producer
 created_commit: 
-updated_at: 2026-06-12T22:20:24.8148737+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
+updated_at: 2026-06-13T06:08:26.5406304+00:00
+claimed_by: worker
+claimed_at: 2026-06-13T06:01:47.0739351+00:00
+claim_branch: workflow-work
+fixed_by: worker
+fixed_at: 2026-06-13T06:08:26.5406304+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 

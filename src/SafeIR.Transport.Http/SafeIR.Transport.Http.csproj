@@ -1,6 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
+  
+  <PropertyGroup>
+    <Description>SafeIR HTTP GET transport bindings, grant helpers, and pinned HTTP policy validation.</Description>
+    <PackageTags>safe-ir;sandbox;http;transport;network;policy</PackageTags>
+  </PropertyGroup>
+<ItemGroup>
     <ProjectReference Include="..\SafeIR.Hosting\SafeIR.Hosting.csproj" />
     <ProjectReference Include="..\SafeIR.Runtime\SafeIR.Runtime.csproj" />
   </ItemGroup>

@@ -1,19 +1,19 @@
 ---
 id: API-0004
 area: api_coherence
-status: open
+status: fixed_pending_verification
 priority: medium
 title: Public packages do not generate XML documentation files
 dedup_key: api/package-xml-docs/not-generated-for-public-packages
 created_at: 2026-06-12T22:08:10.8259915+00:00
 created_by: continuous-completeness-producer
 created_commit: 
-updated_at: 2026-06-12T22:08:10.8259915+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
+updated_at: 2026-06-13T06:08:21.5139129+00:00
+claimed_by: worker
+claimed_at: 2026-06-13T06:01:42.5815099+00:00
+claim_branch: workflow-work
+fixed_by: worker
+fixed_at: 2026-06-13T06:08:21.5139129+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 

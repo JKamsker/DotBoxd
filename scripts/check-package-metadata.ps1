@@ -44,12 +44,55 @@ foreach ($allowedId in $AllowedPrereleasePackageIds) {
 $expectedLicenseExpression = "MIT"
 $expectedRepositoryUrl = "https://github.com/JKamsker/Safe-IR"
 $expectedRepositoryType = "git"
-$allowedPrereleaseDependenciesByPackage = @{
-    "SafeIR.Transport.Ipc.ShaRpc" = [string[]] @(
-        "ShaRPC",
-        "ShaRPC.Serializers.MessagePack",
-        "ShaRPC.Transports.NamedPipes"
-    )
+$expectedPackageMetadata = @{
+    "SafeIR.Core" = @{
+        Description = "Core SafeIR model, policy, resource metering, diagnostics, and canonical hashing primitives."
+        Tags = @("safe-ir", "core", "policy", "resources", "hashing")
+    }
+    "SafeIR.Validation" = @{
+        Description = "SafeIR structural, type, effect, policy, and binding validation APIs."
+        Tags = @("safe-ir", "validation", "type-checking", "policy")
+    }
+    "SafeIR.Runtime" = @{
+        Description = "SafeIR safe host runtime bindings for files, time, random, logging, strings, and math."
+        Tags = @("safe-ir", "runtime", "bindings", "files", "logging")
+    }
+    "SafeIR.Serialization.Json" = @{
+        Description = "SafeIR JSON IR import, export, and plugin package serialization helpers."
+        Tags = @("safe-ir", "json", "serialization", "plugins")
+    }
+    "SafeIR.Transport.Http" = @{
+        Description = "SafeIR HTTP GET transport bindings, grant helpers, and pinned HTTP policy validation."
+        Tags = @("safe-ir", "http", "transport", "network", "policy")
+    }
+    "SafeIR.Transport.Ipc.ShaRpc" = @{
+        Description = "Preview SafeIR ShaRPC MessagePack IPC transport addon with named-pipe helpers."
+        Tags = @("safe-ir", "ipc", "transport", "sharpc", "preview")
+    }
+    "SafeIR.Interpreter" = @{
+        Description = "SafeIR interpreted execution backend for validated IR modules."
+        Tags = @("safe-ir", "interpreter", "execution")
+    }
+    "SafeIR.Compiler" = @{
+        Description = "SafeIR generated-runtime compiler backend and persistent compiled artifact cache."
+        Tags = @("safe-ir", "compiler", "cache", "generated-runtime")
+    }
+    "SafeIR.Verifier" = @{
+        Description = "SafeIR generated assembly verifier and artifact manifest models."
+        Tags = @("safe-ir", "verifier", "assemblies", "manifests")
+    }
+    "SafeIR.Hosting" = @{
+        Description = "SafeIR host orchestration APIs for import, preparation, execution, isolation, and runtime selection."
+        Tags = @("safe-ir", "hosting", "orchestration", "isolation")
+    }
+    "SafeIR.PluginAnalyzer" = @{
+        Description = "SafeIR plugin source analyzer and generator package for package-backed plugins."
+        Tags = @("safe-ir", "plugins", "analyzer", "source-generator")
+    }
+    "SafeIR.Plugins" = @{
+        Description = "SafeIR plugin manifest, installed kernel, hook, and message-binding APIs."
+        Tags = @("safe-ir", "plugins", "hooks", "kernels")
+    }
 }
 
 function IsHexString([string] $value, [int] $length) {
@@ -113,8 +156,10 @@ function AssertPackageEntryAllowlist($zip, [string] $id, [string] $readme, [stri
 
     if ($id -eq "SafeIR.PluginAnalyzer") {
         [void] $allowedExact.Add("analyzers/dotnet/cs/SafeIR.PluginAnalyzer.dll")
+        [void] $allowedExact.Add("analyzers/dotnet/cs/SafeIR.PluginAnalyzer.xml")
     } else {
         [void] $allowedExact.Add("lib/net10.0/$id.dll")
+        [void] $allowedExact.Add("lib/net10.0/$id.xml")
     }
 
     foreach ($entry in $zip.Entries) {
@@ -137,16 +182,90 @@ function AssertPackageEntryAllowlist($zip, [string] $id, [string] $readme, [stri
 }
 
 function IsAllowedPrereleaseDependency([string] $packageId, [string] $dependencyId, [string] $dependencyVersion) {
-    if (-not $allowedPrereleaseDependenciesByPackage.ContainsKey($packageId)) {
-        return $false
+    return $false
+}
+
+function AssertPackageMetadata($metadata, [string] $id, [string] $packageName) {
+    if (-not $expectedPackageMetadata.ContainsKey($id)) {
+        throw "Package $packageName has no expected metadata inventory entry."
     }
 
-    $allowedDependencyIds = $allowedPrereleaseDependenciesByPackage[$packageId]
-    if ($dependencyId -notin $allowedDependencyIds) {
-        return $false
+    $expected = $expectedPackageMetadata[$id]
+    $description = RequiredText $metadata "description" $packageName
+    if ($description -ne $expected.Description) {
+        throw "Package $packageName description must be package-specific. Expected '$($expected.Description)', found '$description'."
     }
 
-    return $dependencyVersion.StartsWith("1.0.0-ci.", [StringComparison]::Ordinal)
+    $tagsValue = RequiredText $metadata "tags" $packageName
+    $tags = New-Object "System.Collections.Generic.HashSet[string]" ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($tag in [regex]::Split($tagsValue, '[;\s]+')) {
+        $trimmed = $tag.Trim()
+        if ($trimmed.Length -gt 0) {
+            [void] $tags.Add($trimmed)
+        }
+    }
+
+    foreach ($requiredTag in $expected.Tags) {
+        if (-not $tags.Contains($requiredTag)) {
+            throw "Package $packageName tags must include '$requiredTag'. Found '$tagsValue'."
+        }
+    }
+}
+
+function AssertReadmeGuidance($zip, [string] $readme, [string] $packageName) {
+    $entry = $zip.Entries | Where-Object {
+        $_.FullName.Equals($readme, [StringComparison]::Ordinal)
+    } | Select-Object -First 1
+
+    if ($null -eq $entry) {
+        throw "Package $packageName is missing expected readme '$readme'."
+    }
+
+    $reader = New-Object System.IO.StreamReader($entry.Open())
+    try {
+        $content = $reader.ReadToEnd()
+    } finally {
+        $reader.Dispose()
+    }
+
+    $requiredReadmePatterns = @(
+        "## Installing from NuGet",
+        "dotnet add package SafeIR.Hosting",
+        "dotnet add package SafeIR.Serialization.Json",
+        "dotnet add package SafeIR.Transport.Http",
+        "dotnet add package SafeIR.PluginAnalyzer",
+        "dotnet add package SafeIR.Transport.Ipc.ShaRpc",
+        "PluginPackageJsonSerializer"
+    )
+    foreach ($pattern in $requiredReadmePatterns) {
+        if ($content.IndexOf($pattern, [StringComparison]::Ordinal) -lt 0) {
+            throw "Package $packageName readme must include NuGet install guidance containing '$pattern'."
+        }
+    }
+}
+
+function AssertSymbolPackage(
+    [System.IO.FileInfo] $package,
+    [string] $id,
+    [string] $version,
+    [System.Collections.IDictionary] $symbolPackages) {
+    if ($id -eq "SafeIR.PluginAnalyzer") {
+        return
+    }
+
+    $symbolName = "$id.$version.snupkg"
+    if (-not $symbolPackages.Contains($symbolName)) {
+        throw "Package $($package.Name) must have matching symbol package '$symbolName'."
+    }
+
+    $symbolPackage = $symbolPackages[$symbolName]
+    $zip = [System.IO.Compression.ZipFile]::OpenRead($symbolPackage.FullName)
+    try {
+        AssertZipEntry $zip "$id.nuspec" $symbolPackage.Name
+        AssertZipEntry $zip "lib/net10.0/$id.pdb" $symbolPackage.Name
+    } finally {
+        $zip.Dispose()
+    }
 }
 
 $expectedIds = [string[]] @(
@@ -169,6 +288,10 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $packages = Get-ChildItem -LiteralPath $fullPackageDirectory -Filter "*.nupkg" -File |
     Where-Object { $_.Name -notlike "*.symbols.nupkg" } |
     Sort-Object Name
+$symbolPackages = @{}
+foreach ($symbolPackage in Get-ChildItem -LiteralPath $fullPackageDirectory -Filter "*.snupkg" -File) {
+    $symbolPackages[$symbolPackage.Name] = $symbolPackage
+}
 
 if ($packages.Count -eq 0) {
     throw "No .nupkg files found in $fullPackageDirectory"
@@ -221,13 +344,14 @@ foreach ($package in $packages) {
         }
 
         [void] (RequiredText $metadata "authors" $package.Name)
-        [void] (RequiredText $metadata "description" $package.Name)
+        AssertPackageMetadata $metadata $id $package.Name
         $readme = RequiredText $metadata "readme" $package.Name
         if ($readme -ne "README.md") {
             throw "Package $($package.Name) must use README.md as its package readme."
         }
 
         AssertZipEntry $zip $readme $package.Name
+        AssertReadmeGuidance $zip $readme $package.Name
 
         $license = $metadata.SelectSingleNode("*[local-name()='license']")
         if ($null -eq $license -or
@@ -253,12 +377,15 @@ foreach ($package in $packages) {
 
         if ($id -eq "SafeIR.PluginAnalyzer") {
             AssertZipEntry $zip "analyzers/dotnet/cs/SafeIR.PluginAnalyzer.dll" $package.Name
+            AssertZipEntry $zip "analyzers/dotnet/cs/SafeIR.PluginAnalyzer.xml" $package.Name
             AssertNoZipEntryPrefix $zip "lib/" $package.Name
         } else {
             AssertZipEntry $zip "lib/net10.0/$id.dll" $package.Name
+            AssertZipEntry $zip "lib/net10.0/$id.xml" $package.Name
         }
 
         AssertPackageEntryAllowlist $zip $id $readme $package.Name
+        AssertSymbolPackage $package $id $version $symbolPackages
 
         $dependencies = $metadata.SelectNodes(".//*[local-name()='dependency']")
         foreach ($dependency in $dependencies) {

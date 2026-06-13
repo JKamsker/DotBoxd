@@ -1,6 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
+  
+  <PropertyGroup>
+    <Description>SafeIR JSON IR import, export, and plugin package serialization helpers.</Description>
+    <PackageTags>safe-ir;sandbox;json;serialization;plugins</PackageTags>
+  </PropertyGroup>
+<ItemGroup>
     <ProjectReference Include="..\SafeIR.Core\SafeIR.Core.csproj" />
     <ProjectReference Include="..\SafeIR.Hosting\SafeIR.Hosting.csproj" />
     <ProjectReference Include="..\SafeIR.Plugins\SafeIR.Plugins.csproj" />

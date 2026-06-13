@@ -1,6 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
+  
+  <PropertyGroup>
+    <Description>SafeIR structural, type, effect, policy, and binding validation APIs.</Description>
+    <PackageTags>safe-ir;sandbox;validation;type-checking;policy</PackageTags>
+  </PropertyGroup>
+<ItemGroup>
     <ProjectReference Include="..\SafeIR.Core\SafeIR.Core.csproj" />
   </ItemGroup>
 

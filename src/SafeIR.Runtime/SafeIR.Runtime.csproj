@@ -1,6 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
+  
+  <PropertyGroup>
+    <Description>SafeIR safe host runtime bindings for files, time, random, logging, strings, and math.</Description>
+    <PackageTags>safe-ir;sandbox;runtime;bindings;files;logging</PackageTags>
+  </PropertyGroup>
+<ItemGroup>
     <ProjectReference Include="..\SafeIR.Core\SafeIR.Core.csproj" />
     <ProjectReference Include="..\SafeIR.Validation\SafeIR.Validation.csproj" />
   </ItemGroup>

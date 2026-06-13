@@ -1,6 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
+  
+  <PropertyGroup>
+    <Description>SafeIR interpreted execution backend for validated IR modules.</Description>
+    <PackageTags>safe-ir;sandbox;interpreter;execution</PackageTags>
+  </PropertyGroup>
+<ItemGroup>
     <ProjectReference Include="..\SafeIR.Core\SafeIR.Core.csproj" />
     <ProjectReference Include="..\SafeIR.Validation\SafeIR.Validation.csproj" />
     <ProjectReference Include="..\SafeIR.Runtime\SafeIR.Runtime.csproj" />

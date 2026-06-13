@@ -1,19 +1,19 @@
 ---
 id: API-0005
 area: api_coherence
-status: open
+status: fixed_pending_verification
 priority: medium
 title: Package metadata uses one generic description and tag set for all packages
 dedup_key: api/package-metadata/generic-description-tags-for-all-packages
 created_at: 2026-06-12T22:08:12.1827040+00:00
 created_by: continuous-completeness-producer
 created_commit: 
-updated_at: 2026-06-12T22:08:12.1827040+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
+updated_at: 2026-06-13T06:08:22.7706086+00:00
+claimed_by: worker
+claimed_at: 2026-06-13T06:01:43.6900294+00:00
+claim_branch: workflow-work
+fixed_by: worker
+fixed_at: 2026-06-13T06:08:22.7706086+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 

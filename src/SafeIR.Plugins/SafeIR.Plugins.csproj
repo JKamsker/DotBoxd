@@ -1,6 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
+  
+  <PropertyGroup>
+    <Description>SafeIR plugin manifest, installed kernel, hook, and message-binding APIs.</Description>
+    <PackageTags>safe-ir;sandbox;plugins;hooks;kernels</PackageTags>
+  </PropertyGroup>
+<ItemGroup>
     <ProjectReference Include="..\SafeIR.Core\SafeIR.Core.csproj" />
     <ProjectReference Include="..\SafeIR.Hosting\SafeIR.Hosting.csproj" />
     <ProjectReference Include="..\SafeIR.Runtime\SafeIR.Runtime.csproj" />

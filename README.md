@@ -21,6 +21,38 @@ Interpreted mode executes verified IR directly. Compiled mode is only a runtime 
 - `SafeIR.PluginAnalyzer`: source generator and analyzer for local plugin packages.
 - `SafeIR.Plugins`: live plugin manifest, hook, kernel, and message-binding APIs.
 
+## Installing from NuGet
+
+Use the package set that matches the host surface you are compiling against:
+
+```powershell
+# Minimal host execution with JSON import and safe runtime bindings.
+dotnet add package SafeIR.Hosting
+dotnet add package SafeIR.Runtime
+dotnet add package SafeIR.Serialization.Json
+
+# HTTP GET transport and policy helpers.
+dotnet add package SafeIR.Transport.Http
+
+# Plugin manifests/kernels plus production JSON upload helpers.
+dotnet add package SafeIR.Plugins
+dotnet add package SafeIR.Serialization.Json
+
+# Source-generated plugin package factories.
+dotnet add package SafeIR.PluginAnalyzer
+
+# Preview IPC addon. This package currently follows a prerelease channel while ShaRPC dependencies are prerelease.
+dotnet add package SafeIR.Transport.Ipc.ShaRpc --prerelease
+```
+
+Common namespaces:
+
+- `SafeIR`, `SafeIR.Hosting`, and `SafeIR.Runtime` for host setup and execution.
+- `SafeIR.Serialization.Json` for `ImportJsonAsync` and `SafeIrJsonImporter`.
+- `SafeIR.Transport.Http` for HTTP binding registration and `GrantHttpGet`.
+- `SafeIR.Plugins` for plugin manifests, `PluginPackage`, and `PluginPackageJsonSerializer` upload/export helpers.
+- `SafeIR.Transport.Ipc` for the preview ShaRPC MessagePack IPC addon.
+
 ## Minimal Host Usage
 
 ```csharp
@@ -110,10 +142,10 @@ dotnet test SafeIR.slnx --configuration Release --no-build
 Remove-Item artifacts\packages\*.nupkg -Force -ErrorAction SilentlyContinue
 dotnet pack SafeIR.slnx --configuration Release --no-build --output artifacts/packages
 .\scripts\check-package-metadata.ps1 -PackageDirectory artifacts\packages -AllowPrereleaseVersions
-.\scripts\check-package-metadata.ps1 -PackageDirectory artifacts\packages -AllowedPrereleasePackageIds SafeIR.Transport.Ipc.ShaRpc
+.\scripts\check-package-consumer-smoke.ps1 -PackageDirectory artifacts\packages -Configuration Release
 ```
 
-`SafeIR.Transport.Ipc.ShaRpc` is intentionally packed as a prerelease package while its upstream ShaRPC dependencies are prerelease-only. Stable release gates allow only that preview addon to carry prerelease metadata and dependencies.
+`SafeIR.Transport.Ipc.ShaRpc` is intentionally packed as a prerelease package while its upstream ShaRPC dependencies are prerelease-only. Stable release gates fail if this preview addon is included in a stable package set before its package version and dependencies are stable.
 
 ## Plugin Addendum Examples
 

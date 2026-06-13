@@ -1,6 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
+  
+  <PropertyGroup>
+    <Description>Preview SafeIR ShaRPC MessagePack IPC transport addon with named-pipe helpers.</Description>
+    <PackageTags>safe-ir;sandbox;ipc;transport;sharpc;preview</PackageTags>
+  </PropertyGroup>
+<ItemGroup>
     <PackageReference Include="MessagePack" Version="3.1.7" />
     <PackageReference Include="ShaRPC" Version="1.0.0-ci.30" />
     <PackageReference Include="ShaRPC.Serializers.MessagePack" Version="1.0.0-ci.30" />

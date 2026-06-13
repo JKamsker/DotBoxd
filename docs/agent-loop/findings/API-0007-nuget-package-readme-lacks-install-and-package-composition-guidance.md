@@ -1,19 +1,19 @@
 ---
 id: API-0007
 area: api_coherence
-status: open
+status: fixed_pending_verification
 priority: medium
 title: NuGet package readme lacks install and package-composition guidance
 dedup_key: api/nuget-readme/missing-install-package-composition-guidance
 created_at: 2026-06-12T22:12:14.6495604+00:00
 created_by: completeness-api-producer
 created_commit: 
-updated_at: 2026-06-12T22:12:14.6495604+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
+updated_at: 2026-06-13T06:08:25.2526843+00:00
+claimed_by: worker
+claimed_at: 2026-06-13T06:01:45.9617307+00:00
+claim_branch: workflow-work
+fixed_by: worker
+fixed_at: 2026-06-13T06:08:25.2526843+00:00
 fixed_commit: 
 verified_by: 
 verified_at: 

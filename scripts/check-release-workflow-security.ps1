@@ -34,8 +34,12 @@ if ($workflow -notmatch "actions/attest-build-provenance@[0-9a-fA-F]{40}") {
     throw "Release package workflow must attest package artifacts with a pinned attest-build-provenance action."
 }
 
-if ($workflow -notmatch "subject-path:\s+artifacts/packages/\*\.nupkg") {
+if ($workflow -notmatch "artifacts/packages/\*\.nupkg") {
     throw "Package attestation must cover every .nupkg in artifacts/packages."
+}
+
+if ($workflow -notmatch "artifacts/packages/\*\.snupkg") {
+    throw "Package attestation must cover every .snupkg in artifacts/packages."
 }
 
 if ($lineGuard -match "(?im)^\s*&?\s*dotnet\s+(tool\s+(install|restore|run)|new\s+tool-manifest)\b") {
