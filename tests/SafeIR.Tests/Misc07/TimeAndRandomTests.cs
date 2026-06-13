@@ -139,6 +139,34 @@ public sealed class TimeAndRandomTests
             e => Assert.Equal(DateTimeOffset.UnixEpoch, e.Timestamp));
     }
 
+    [Fact]
+    public async Task Deterministic_random_failure_audit_uses_policy_logical_clock()
+    {
+        var host = SandboxTestHost.Create();
+        var logicalNow = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var module = await host.ImportJsonAsync(InvalidRandomRangeJson());
+        var policy = SandboxPolicyBuilder.Create()
+            .GrantRandom()
+            .Deterministic(logicalNow, randomSeed: 123)
+            .Build();
+        var plan = await host.PrepareAsync(module, policy);
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.Unit,
+            new SandboxExecutionOptions { Mode = ExecutionMode.Interpreted });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.InvalidInput, result.Error!.Code);
+        var audit = Assert.Single(result.AuditEvents, e =>
+            e.Kind == "BindingCall" &&
+            e.BindingId == "random.nextI32" &&
+            e.Success == false);
+        Assert.Equal(SandboxErrorCode.InvalidInput, audit.ErrorCode);
+        Assert.Equal(logicalNow, audit.Timestamp);
+    }
+
     private static string TimeJson()
         => """
         {
@@ -206,6 +234,32 @@ public sealed class TimeAndRandomTests
                 {
                   "op": "return",
                   "value": { "op": "add", "left": { "var": "first" }, "right": { "var": "second" } }
+                }
+              ]
+            }
+          ]
+        }
+        """;
+
+    private static string InvalidRandomRangeJson()
+        => """
+        {
+          "id": "invalid-random-range",
+          "version": "1.0.0",
+          "capabilityRequests": [{ "id": "random" }],
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [],
+              "returnType": "I32",
+              "body": [
+                {
+                  "op": "return",
+                  "value": {
+                    "call": "random.nextI32",
+                    "args": [{ "i32": 10 }, { "i32": 5 }]
+                  }
                 }
               ]
             }

@@ -171,7 +171,7 @@ public sealed class SandboxContext
             return;
         }
 
-        var timestamp = DateTimeOffset.UtcNow;
+        var timestamp = AuditTimestamp();
         Audit.Write(new SandboxAuditEvent(
             RunId,
             "BindingCall",

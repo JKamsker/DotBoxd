@@ -53,6 +53,35 @@ public sealed class BindingAuditConsistencyTests
             e.ErrorCode == SandboxErrorCode.QuotaExceeded);
     }
 
+    [Theory]
+    [MemberData(nameof(Modes))]
+    public async Task Deterministic_fallback_failure_audit_uses_policy_logical_clock(ExecutionMode mode)
+    {
+        var logicalNow = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var host = Host(TestBindingBehavior.ThrowsWithoutAudit);
+        var module = await host.ImportJsonAsync(ModuleJson());
+        var policy = SandboxPolicyBuilder.Create()
+            .WithFuel(1_000)
+            .Deterministic(logicalNow, randomSeed: 1)
+            .Build();
+        var plan = await host.PrepareAsync(module, policy);
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.Unit,
+            new SandboxExecutionOptions { Mode = mode, AllowFallbackToInterpreter = false });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, result.Error!.Code);
+        var audit = Assert.Single(result.AuditEvents, e =>
+            e.Kind == "BindingCall" &&
+            e.BindingId == "test.audited" &&
+            e.Success == false);
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, audit.ErrorCode);
+        Assert.Equal(logicalNow, audit.Timestamp);
+    }
+
     [Fact]
     public void Capability_denial_audit_includes_resource_identity()
     {
@@ -104,6 +133,13 @@ public sealed class BindingAuditConsistencyTests
                         "test quota exceeded"));
                 }
 
+                if (behavior == TestBindingBehavior.ThrowsWithoutAudit)
+                {
+                    throw new SandboxRuntimeException(new SandboxError(
+                        SandboxErrorCode.QuotaExceeded,
+                        "test quota exceeded"));
+                }
+
                 WriteAudit(context, success: true, SandboxErrorCode.PermissionDenied);
                 return ValueTask.FromResult(SandboxValue.FromInt32(7));
             },
@@ -144,6 +180,7 @@ public sealed class BindingAuditConsistencyTests
     private enum TestBindingBehavior
     {
         WritesSuccessAuditWithErrorCode,
-        WritesWrongFailureAuditAndThrows
+        WritesWrongFailureAuditAndThrows,
+        ThrowsWithoutAudit
     }
 }

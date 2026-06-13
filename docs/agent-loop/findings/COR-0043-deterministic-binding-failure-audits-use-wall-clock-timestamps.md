@@ -1,20 +1,20 @@
 ---
 id: COR-0043
 area: correctness
-status: open
+status: fixed_pending_verification
 priority: medium
 title: Deterministic binding failure audits use wall-clock timestamps
 dedup_key: correctness/runtime/deterministic-binding-failure-audit-uses-wall-clock
 created_at: 2026-06-12T23:02:29.8762248+00:00
 created_by: codex-correctness-producer
 created_commit: 
-updated_at: 2026-06-12T23:02:29.8762248+00:00
-claimed_by: 
-claimed_at: 
-claim_branch: 
-fixed_by: 
-fixed_at: 
-fixed_commit: 
+updated_at: 2026-06-13T00:40:26.2871949+00:00
+claimed_by: worker
+claimed_at: 2026-06-13T00:38:39.2047911+00:00
+claim_branch: workflow-work
+fixed_by: worker
+fixed_at: 2026-06-13T00:40:26.2871949+00:00
+fixed_commit: pending
 verified_by: 
 verified_at: 
 verified_commit: 
