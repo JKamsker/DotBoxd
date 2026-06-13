@@ -17,7 +17,7 @@ public sealed class BindingRegistryHardeningTests
     public void Binding_registry_rejects_external_binding_without_audit()
     {
         var ex = Assert.Throws<SandboxValidationException>(() => Build(TestBinding(
-            effects: SandboxEffect.GameStateRead,
+            effects: SandboxEffect.HostStateRead,
             requiredCapability: "game.read",
             safety: BindingSafety.ReadOnlyExternal,
             grantValidator: NoParameters)));
@@ -56,7 +56,7 @@ public sealed class BindingRegistryHardeningTests
     public void Binding_registry_rejects_custom_capability_without_validator()
     {
         var ex = Assert.Throws<SandboxValidationException>(() => Build(TestBinding(
-            effects: SandboxEffect.GameStateRead | SandboxEffect.Audit,
+            effects: SandboxEffect.HostStateRead | SandboxEffect.Audit,
             requiredCapability: "game.read",
             safety: BindingSafety.ReadOnlyExternal,
             auditLevel: AuditLevel.PerCall)));
@@ -68,7 +68,7 @@ public sealed class BindingRegistryHardeningTests
     public void Binding_registry_rejects_built_in_capability_with_unrelated_effects()
     {
         var ex = Assert.Throws<SandboxValidationException>(() => Build(TestBinding(
-            effects: SandboxEffect.GameStateWrite | SandboxEffect.Audit,
+            effects: SandboxEffect.HostStateWrite | SandboxEffect.Audit,
             requiredCapability: "file.read",
             safety: BindingSafety.SideEffectingExternal,
             auditLevel: AuditLevel.PerCall)));
@@ -82,14 +82,14 @@ public sealed class BindingRegistryHardeningTests
         var registry = new BindingRegistryBuilder()
             .Add(TestBinding(
                 id: "test.first",
-                effects: SandboxEffect.GameStateRead | SandboxEffect.Audit,
+                effects: SandboxEffect.HostStateRead | SandboxEffect.Audit,
                 requiredCapability: "game.read",
                 safety: BindingSafety.ReadOnlyExternal,
                 auditLevel: AuditLevel.PerCall,
                 grantValidator: (_, diagnostics) => diagnostics.Add(new SandboxDiagnostic("FIRST", "first"))))
             .Add(TestBinding(
                 id: "test.second",
-                effects: SandboxEffect.GameStateRead | SandboxEffect.Audit,
+                effects: SandboxEffect.HostStateRead | SandboxEffect.Audit,
                 requiredCapability: "game.read",
                 safety: BindingSafety.ReadOnlyExternal,
                 auditLevel: AuditLevel.PerCall,

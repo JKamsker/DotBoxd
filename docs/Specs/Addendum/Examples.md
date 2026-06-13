@@ -51,8 +51,14 @@ lowers `IEventKernel<TEvent>` kernels into plugin packages.
 
 Use kernels when the plugin needs both a server-side filter and an approved action path. The current sample kernel lives at `examples\LocalPlugin\SafeIR.PluginLocal\FireDamageKernel.cs`.
 
+The authoring contracts (`[Plugin]`, `IEventKernel<TEvent>`, `HookContext`, `IPluginMessageSink`,
+`IPluginEventAdapter<TEvent>`, `LiveSettingAttribute`) live in the purpose-agnostic
+`SafeIR.Server.Abstractions` package; add `using SafeIR.Server.Abstractions;` to kernel sources.
+
 ```csharp
-[GamePlugin("fire-damage")]
+using SafeIR.Server.Abstractions;
+
+[Plugin("fire-damage")]
 public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
 {
     public bool ShouldHandle(DamageEvent e, HookContext ctx)
@@ -74,7 +80,7 @@ public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
 Kernel properties become live settings when the generated package manifest exposes them as live state metadata. The authoring-side C# uses `[LiveSetting]`; the source generator mirrors the same settings into the manifest.
 
 ```csharp
-[GamePlugin("fire-damage")]
+[Plugin("fire-damage")]
 public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
 {
     [LiveSetting]
@@ -229,11 +235,11 @@ The sample package requests:
 Effects:
   Cpu
   Alloc
-  GameStateWrite
+  HostStateWrite
   Audit
 
 Capability request:
-  game.message.write
+  host.message.write
 
 Subscription:
   DamageEvent -> FireDamageKernel
@@ -245,9 +251,10 @@ This is the data a server owner needs to show settings, defaults, ranges, reques
 
 The production server installs a plugin package from serialized JSON package data. The JSON envelope contains a manifest, entrypoint names if needed, and the Safe IR module. It does not contain an assembly path or plugin DLL reference.
 
-Reference the `SafeIR.Serialization.Json` package for `PluginPackageJsonSerializer` and the
+Reference the `SafeIR.Plugins` package for `PluginPackageJsonSerializer` and the
 `InstallJsonAsync` extension. The helper types are plugin-facing APIs used from the
-`SafeIR.Plugins` namespace:
+`SafeIR.Plugins` namespace (the package references `SafeIR.Serialization.Json` for the module-IR
+round trip):
 
 ```csharp
 using SafeIR.Plugins;
@@ -276,13 +283,13 @@ must install with an explicit policy grant:
 static SandboxPolicy PluginMessagePolicy()
     => SandboxPolicyBuilder.Create()
         .GrantLogging()
-        .GrantGameMessageWrite()
+        .GrantHostMessageWrite()
         .WithFuel(100_000)
         .WithMaxHostCalls(1_000)
         .Build();
 ```
 
-If the policy does not grant `game.message.write`, package preparation fails closed with a policy diagnostic. The server still re-validates uploaded JSON packages; local analyzer diagnostics are developer-experience feedback, not the trust boundary.
+If the policy does not grant `host.message.write`, package preparation fails closed with a policy diagnostic. The server still re-validates uploaded JSON packages; local analyzer diagnostics are developer-experience feedback, not the trust boundary.
 
 ### 8. Observe Runtime Execution
 
@@ -316,7 +323,7 @@ new BindingDescriptor(
     [SandboxType.I32],
     SandboxType.I32,
     // Read-only external access still emits audit, so include the Audit effect.
-    SandboxEffect.Cpu | SandboxEffect.DatabaseRead | SandboxEffect.Audit,
+    SandboxEffect.Cpu | SandboxEffect.HostStateRead | SandboxEffect.Audit,
     "tenant.read",                       // required capability (custom, so a grant validator is mandatory)
     BindingCostModel.Fixed(8),           // deterministic cost: one host call, flat fuel
     AuditLevel.PerCall,                  // external bindings must be audited
@@ -341,7 +348,7 @@ using var host = SandboxHost.Create(builder =>
 var module = await host.ImportJsonAsync(tenantLookupJsonIr);
 var policy = SandboxPolicyBuilder.Create()
     .Grant("tenant.read", new { maxTenantId = 100 },
-        SandboxEffect.Cpu | SandboxEffect.DatabaseRead | SandboxEffect.Audit)
+        SandboxEffect.Cpu | SandboxEffect.HostStateRead | SandboxEffect.Audit)
     .WithFuel(10_000)
     .WithMaxHostCalls(16)
     .Build();
@@ -517,7 +524,7 @@ generator lowers arithmetic and comparisons in `ShouldHandle` and a single strin
 `ctx.Messages.Send(...)` in `Handle`:
 
 ```csharp
-[GamePlugin("guardian")]
+[Plugin("guardian")]
 public sealed partial class GuardianKernel : IEventKernel<MonsterAggroEvent>
 {
     public bool ShouldHandle(MonsterAggroEvent e, HookContext ctx)
@@ -542,7 +549,7 @@ The host ships each kernel as opaque verified IR with `PluginPackageJsonSerializ
 `server.InstallJsonAsync(...)` and wires the hook for whichever event the kernel's manifest
 subscription declares.
 
-The plugin's only sandbox capability is `game.message.write`. The *meaning* of those messages is
+The plugin's only sandbox capability is `host.message.write`. The *meaning* of those messages is
 defined by the example, not by SafeIR core: `Simulation\GameCommandSink.cs` implements
 `IPluginMessageSink`, parses the `calm:`/`taunt:` DSL, validates it (known verb, known/opaque entity
 ids, clamped strength), and applies it to the world. Invalid or unknown commands are ignored safely

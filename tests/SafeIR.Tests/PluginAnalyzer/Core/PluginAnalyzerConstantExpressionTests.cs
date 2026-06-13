@@ -10,6 +10,7 @@ public sealed class PluginAnalyzerConstantExpressionTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
@@ -21,7 +22,7 @@ public sealed class PluginAnalyzerConstantExpressionTests
                 long Sequence,
                 double Ratio);
 
-            [GamePlugin("generated-constant-expressions")]
+            [Plugin("generated-constant-expressions")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 private const bool Enabled = true;
@@ -67,7 +68,7 @@ public sealed class PluginAnalyzerConstantExpressionTests
             builder.UseCompilerIfAvailable();
         });
         var policy = SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite()
+            .GrantHostMessageWrite()
             .WithFuel(100_000)
             .WithWallTime(TimeSpan.FromSeconds(30))
             .WithMaxHostCalls(1_000)

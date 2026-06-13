@@ -15,13 +15,14 @@ public sealed class PluginAnalyzerContractShapeTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId);
             public sealed record HealEvent(string TargetId);
 
-            [GamePlugin("multiple-contracts")]
+            [Plugin("multiple-contracts")]
             public sealed partial class DamageKernel :
                 IEventKernel<DamageEvent>,
                 IEventKernel<HealEvent>
@@ -48,7 +49,7 @@ public sealed class PluginAnalyzerContractShapeTests
             "SafeIrPluginContractShapeTest",
             [CSharpSyntaxTree.ParseText(source, ParseOptions)],
             TrustedPlatformReferences()
-                .Append(MetadataReference.CreateFromFile(typeof(GamePluginAttribute).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(

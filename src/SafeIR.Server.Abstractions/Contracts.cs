@@ -1,9 +1,9 @@
-namespace SafeIR.Plugins;
+namespace SafeIR.Server.Abstractions;
 
 using SafeIR;
 
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
-public sealed class GamePluginAttribute(string id) : Attribute
+public sealed class PluginAttribute(string id) : Attribute
 {
     public string Id { get; } = id;
 }

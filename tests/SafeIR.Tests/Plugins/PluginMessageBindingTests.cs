@@ -33,7 +33,7 @@ public sealed class PluginMessageBindingTests
         {
           "id": "plugin-message-target",
           "version": "1.0.0",
-          "capabilityRequests": [{ "id": "game.message.write" }],
+          "capabilityRequests": [{ "id": "host.message.write" }],
           "functions": [
             {
               "id": "main",
@@ -44,7 +44,7 @@ public sealed class PluginMessageBindingTests
                 {
                   "op": "return",
                   "value": {
-                    "call": "game.message.send",
+                    "call": "host.message.send",
                     "args": [
                       { "string": "player\n1" },
                       { "string": "message" }
@@ -57,7 +57,7 @@ public sealed class PluginMessageBindingTests
         }
         """);
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite()
+            .GrantHostMessageWrite()
             .WithFuel(10_000)
             .Build());
 
@@ -82,7 +82,7 @@ public sealed class PluginMessageBindingTests
         {
           "id": "plugin-message-redaction",
           "version": "1.0.0",
-          "capabilityRequests": [{ "id": "game.message.write" }],
+          "capabilityRequests": [{ "id": "host.message.write" }],
           "functions": [
             {
               "id": "main",
@@ -93,7 +93,7 @@ public sealed class PluginMessageBindingTests
                 {
                   "op": "return",
                   "value": {
-                    "call": "game.message.send",
+                    "call": "host.message.send",
                     "args": [
                       { "string": "player-1" },
                       { "string": "token=abc123\nBearer secret-value" }
@@ -106,7 +106,7 @@ public sealed class PluginMessageBindingTests
         }
         """);
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite()
+            .GrantHostMessageWrite()
             .WithFuel(10_000)
             .Build());
 
@@ -133,7 +133,7 @@ public sealed class PluginMessageBindingTests
         {
           "id": "plugin-message-target-redaction",
           "version": "1.0.0",
-          "capabilityRequests": [{ "id": "game.message.write" }],
+          "capabilityRequests": [{ "id": "host.message.write" }],
           "functions": [
             {
               "id": "main",
@@ -144,7 +144,7 @@ public sealed class PluginMessageBindingTests
                 {
                   "op": "return",
                   "value": {
-                    "call": "game.message.send",
+                    "call": "host.message.send",
                     "args": [
                       { "string": "token:abc123" },
                       { "string": "message" }
@@ -157,7 +157,7 @@ public sealed class PluginMessageBindingTests
         }
         """);
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite()
+            .GrantHostMessageWrite()
             .WithFuel(10_000)
             .Build());
 
@@ -166,7 +166,7 @@ public sealed class PluginMessageBindingTests
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
         Assert.Equal("token:abc123", Assert.Single(messages.Messages).TargetId);
         var audit = Assert.Single(result.AuditEvents, e => e.Kind == "PluginMessage");
-        Assert.Equal("player:[redacted]", audit.ResourceId);
+        Assert.Equal("target:[redacted]", audit.ResourceId);
         Assert.DoesNotContain("abc123", audit.ResourceId);
         Assert.DoesNotContain("token:", audit.ResourceId);
     }

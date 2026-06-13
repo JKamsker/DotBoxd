@@ -4,10 +4,14 @@ using SafeIR;
 
 public sealed class ModuleValidator
 {
+    private static readonly IReadOnlySet<string> NoDeclaredOpaqueIdTypes =
+        new HashSet<string>(StringComparer.Ordinal);
+
     public ModuleValidationResult Validate(SandboxModule module, IBindingCatalog bindings, SandboxPolicy? policy = null)
     {
         var diagnostics = new List<SandboxDiagnostic>();
-        StructuralValidator.Validate(module, diagnostics);
+        var declaredOpaqueIdTypes = policy?.DeclaredOpaqueIdTypes ?? NoDeclaredOpaqueIdTypes;
+        StructuralValidator.Validate(module, diagnostics, declaredOpaqueIdTypes);
         if (diagnostics.Count > 0) {
             return ModuleValidationResult.Failure(diagnostics);
         }
@@ -18,7 +22,7 @@ public sealed class ModuleValidator
         SandboxEffect requiredEffects;
         try
         {
-            var analyzer = new FunctionAnalyzer(module, bindings, diagnostics);
+            var analyzer = new FunctionAnalyzer(module, bindings, diagnostics, declaredOpaqueIdTypes);
             functions = analyzer.AnalyzeAll();
             requiredEffects = RequiredEffects(module, functions);
             bindingReferences = BindingReferenceCollector.CollectByFunction(module, bindings);

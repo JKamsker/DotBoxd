@@ -53,7 +53,7 @@ internal static class CustomBindingExample
             .Grant(
                 TenantReadCapability,
                 new { maxTenantId },
-                SandboxEffect.Cpu | SandboxEffect.DatabaseRead | SandboxEffect.Audit)
+                SandboxEffect.Cpu | SandboxEffect.HostStateRead | SandboxEffect.Audit)
             .WithFuel(10_000)
             .WithMaxHostCalls(16)
             .Build();
@@ -65,7 +65,7 @@ internal static class CustomBindingExample
             [SandboxType.I32],
             SandboxType.I32,
             // Read-only external access still emits audit, so include the Audit effect.
-            SandboxEffect.Cpu | SandboxEffect.DatabaseRead | SandboxEffect.Audit,
+            SandboxEffect.Cpu | SandboxEffect.HostStateRead | SandboxEffect.Audit,
             TenantReadCapability,
             // Deterministic, fixed cost: one host call charged a flat fuel amount.
             BindingCostModel.Fixed(8),
@@ -87,7 +87,7 @@ internal static class CustomBindingExample
                     Success: true,
                     BindingId: TenantLookupBindingId,
                     CapabilityId: TenantReadCapability,
-                    Effect: SandboxEffect.DatabaseRead,
+                    Effect: SandboxEffect.HostStateRead,
                     ResourceId: $"tenant:{tenantId}",
                     Fields: context.BindingAuditFields("tenant", startedAt)));
 

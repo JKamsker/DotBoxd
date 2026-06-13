@@ -13,11 +13,13 @@ internal sealed class CollectionCallAnalyzer
 {
     private readonly List<SandboxDiagnostic> _diagnostics;
     private readonly ExpressionAnalyzer _analyzeExpression;
+    private readonly IReadOnlySet<string> _declaredOpaqueIdTypes;
 
-    public CollectionCallAnalyzer(List<SandboxDiagnostic> diagnostics, ExpressionAnalyzer analyzeExpression)
+    public CollectionCallAnalyzer(List<SandboxDiagnostic> diagnostics, ExpressionAnalyzer analyzeExpression, IReadOnlySet<string> declaredOpaqueIdTypes)
     {
         _diagnostics = diagnostics;
         _analyzeExpression = analyzeExpression;
+        _declaredOpaqueIdTypes = declaredOpaqueIdTypes;
     }
 
     public bool TryAnalyze(
@@ -312,7 +314,7 @@ internal sealed class CollectionCallAnalyzer
 
     private void RequireMapKey(SandboxType keyType, SourceSpan span)
     {
-        if (keyType.IsValidMapKey())
+        if (keyType.IsValidMapKey(_declaredOpaqueIdTypes))
         {
             return;
         }
@@ -336,7 +338,7 @@ internal sealed class CollectionCallAnalyzer
 
     private void CheckKnownType(SandboxType type, SourceSpan span)
     {
-        if (!type.IsKnown() || type.IsForbidden())
+        if (!type.IsKnown(_declaredOpaqueIdTypes) || type.IsForbidden())
         {
             _diagnostics.Add(new SandboxDiagnostic("E-TYPE-UNKNOWN", $"unknown or forbidden type '{type}'", Span: span));
         }

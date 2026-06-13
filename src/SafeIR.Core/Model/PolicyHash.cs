@@ -16,7 +16,29 @@ internal static class PolicyHash
         };
 
         AddGrantRecords(records, policy.Grants);
+        AddDeclaredOpaqueIdTypeRecords(records, policy.DeclaredOpaqueIdTypes);
         return CanonicalEncoding.HashRecords(records);
+    }
+
+    private static void AddDeclaredOpaqueIdTypeRecords(List<string> records, IReadOnlySet<string> declaredOpaqueIdTypes)
+    {
+        if (declaredOpaqueIdTypes.Count == 0)
+        {
+            return;
+        }
+
+        var names = new string[declaredOpaqueIdTypes.Count];
+        var index = 0;
+        foreach (var name in declaredOpaqueIdTypes)
+        {
+            names[index++] = name;
+        }
+
+        Array.Sort(names, StringComparer.Ordinal);
+        for (var i = 0; i < names.Length; i++)
+        {
+            records.Add(CanonicalEncoding.Record("opaque-id-type", names[i]));
+        }
     }
 
     private static void AddGrantRecords(List<string> records, IReadOnlyList<CapabilityGrant> grants)

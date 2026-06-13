@@ -8,20 +8,26 @@ internal sealed class FunctionAnalyzer
     private readonly List<SandboxDiagnostic> _diagnostics;
     private readonly Dictionary<string, SandboxFunction> _functions;
     private readonly CollectionCallAnalyzer _collections;
+    private readonly IReadOnlySet<string> _declaredOpaqueIdTypes;
     private readonly Dictionary<string, FunctionAnalysis> _analyzed = new(StringComparer.Ordinal);
     private readonly HashSet<string> _analyzing = new(StringComparer.Ordinal);
 
-    public FunctionAnalyzer(SandboxModule module, IBindingCatalog bindings, List<SandboxDiagnostic> diagnostics)
+    public FunctionAnalyzer(
+        SandboxModule module,
+        IBindingCatalog bindings,
+        List<SandboxDiagnostic> diagnostics,
+        IReadOnlySet<string> declaredOpaqueIdTypes)
     {
         _bindings = bindings;
         _diagnostics = diagnostics;
+        _declaredOpaqueIdTypes = declaredOpaqueIdTypes;
         _functions = new Dictionary<string, SandboxFunction>(module.Functions.Count, StringComparer.Ordinal);
         foreach (var function in module.Functions)
         {
             _functions.Add(function.Id, function);
         }
 
-        _collections = new CollectionCallAnalyzer(diagnostics, AnalyzeExpression);
+        _collections = new CollectionCallAnalyzer(diagnostics, AnalyzeExpression, declaredOpaqueIdTypes);
     }
 
     public HashSet<string> RequiredCapabilities { get; } = new(StringComparer.Ordinal);
@@ -374,7 +380,7 @@ internal sealed class FunctionAnalyzer
             return;
         }
 
-        if (!call.GenericType.IsKnown() || call.GenericType.IsForbidden())
+        if (!call.GenericType.IsKnown(_declaredOpaqueIdTypes) || call.GenericType.IsForbidden())
         {
             _diagnostics.Add(new SandboxDiagnostic("E-TYPE-UNKNOWN", $"unknown or forbidden type '{call.GenericType}'", Span: call.Span));
         }

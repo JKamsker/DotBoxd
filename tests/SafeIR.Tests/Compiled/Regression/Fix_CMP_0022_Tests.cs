@@ -49,7 +49,7 @@ public sealed class Fix_CMP_0022_Tests
             result.AuditEvents,
             e => e.Kind == "BindingCall" && e.BindingId == TenantLookupBindingId);
         Assert.Equal(TenantReadCapability, audit.CapabilityId);
-        Assert.Equal(SandboxEffect.DatabaseRead, audit.Effect);
+        Assert.Equal(SandboxEffect.HostStateRead, audit.Effect);
         Assert.Equal("tenant:7", audit.ResourceId);
         Assert.Equal("tenant", audit.Fields?["resourceKind"]);
     }
@@ -75,7 +75,7 @@ public sealed class Fix_CMP_0022_Tests
             .Grant(
                 TenantReadCapability,
                 new { region = "eu" },
-                SandboxEffect.Cpu | SandboxEffect.DatabaseRead | SandboxEffect.Audit)
+                SandboxEffect.Cpu | SandboxEffect.HostStateRead | SandboxEffect.Audit)
             .WithFuel(10_000)
             .WithMaxHostCalls(16)
             .Build();
@@ -98,7 +98,7 @@ public sealed class Fix_CMP_0022_Tests
             .Grant(
                 TenantReadCapability,
                 new { maxTenantId },
-                SandboxEffect.Cpu | SandboxEffect.DatabaseRead | SandboxEffect.Audit)
+                SandboxEffect.Cpu | SandboxEffect.HostStateRead | SandboxEffect.Audit)
             .WithFuel(10_000)
             .WithMaxHostCalls(16)
             .Build();
@@ -109,7 +109,7 @@ public sealed class Fix_CMP_0022_Tests
             SemVersion.One,
             [SandboxType.I32],
             SandboxType.I32,
-            SandboxEffect.Cpu | SandboxEffect.DatabaseRead | SandboxEffect.Audit,
+            SandboxEffect.Cpu | SandboxEffect.HostStateRead | SandboxEffect.Audit,
             TenantReadCapability,
             BindingCostModel.Fixed(8),
             AuditLevel.PerCall,
@@ -125,7 +125,7 @@ public sealed class Fix_CMP_0022_Tests
                     Success: true,
                     BindingId: TenantLookupBindingId,
                     CapabilityId: TenantReadCapability,
-                    Effect: SandboxEffect.DatabaseRead,
+                    Effect: SandboxEffect.HostStateRead,
                     ResourceId: $"tenant:{tenantId}",
                     Fields: context.BindingAuditFields("tenant", startedAt)));
 

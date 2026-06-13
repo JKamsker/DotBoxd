@@ -44,12 +44,12 @@
       }
     },
     {
-      "id": "game.message.send",
+      "id": "host.message.send",
       "version": "1.0.0",
       "parameters": ["String", "String"],
       "returnType": "Unit",
-      "effects": ["Cpu", "Alloc", "GameStateWrite", "Audit"],
-      "requiredCapability": "game.message.write",
+      "effects": ["Cpu", "Alloc", "HostStateWrite", "Audit"],
+      "requiredCapability": "host.message.write",
       "costModel": {
         "baseFuel": 5,
         "maxCallsPerRun": 100

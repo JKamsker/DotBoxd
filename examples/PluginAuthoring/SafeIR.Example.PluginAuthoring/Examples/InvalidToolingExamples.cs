@@ -12,7 +12,7 @@ internal static class InvalidToolingExamples
 }
 
 #if INVALID_PLUGIN_EXAMPLES
-[GamePlugin("bad-file-io")]
+[Plugin("bad-file-io")]
 public sealed partial class FileIoKernel : IEventKernel<DamageEvent>
 {
     public bool ShouldHandle(DamageEvent e, HookContext ctx)
@@ -25,7 +25,7 @@ public sealed partial class FileIoKernel : IEventKernel<DamageEvent>
         => ctx.Messages.Send(e.TargetId, "bad");
 }
 
-[GamePlugin("bad-live-setting")]
+[Plugin("bad-live-setting")]
 public sealed partial class BadLiveSettingKernel : IEventKernel<DamageEvent>
 {
     [LiveSetting]

@@ -8,8 +8,8 @@ using SafeIR.Runtime;
 
 public static class PluginMessageBindings
 {
-    public const string SendBindingId = "game.message.send";
-    public const string CapabilityId = "game.message.write";
+    public const string SendBindingId = "host.message.send";
+    public const string CapabilityId = "host.message.write";
 
     private static readonly string[] AllowedGrantKeys =
         ["allowedTargets", "targetPrefixes", "maxMessageLength"];
@@ -30,7 +30,7 @@ public static class PluginMessageBindings
             SemVersion.One,
             [SandboxType.String, SandboxType.String],
             SandboxType.Unit,
-            SandboxEffect.Cpu | SandboxEffect.GameStateWrite | SandboxEffect.Audit,
+            SandboxEffect.Cpu | SandboxEffect.HostStateWrite | SandboxEffect.Audit,
             CapabilityId,
             new BindingCostModel(5, MaxCallsPerRun: 100),
             AuditLevel.PerResource,
@@ -42,7 +42,7 @@ public static class PluginMessageBindings
                 {
                     throw new SandboxRuntimeException(new SandboxError(
                         SandboxErrorCode.InvalidInput,
-                        "game.message.send denied: target ID is invalid"));
+                        "host.message.send denied: target ID is invalid"));
                 }
 
                 var options = ReadGrantOptions(context.GetCapability(CapabilityId));
@@ -50,7 +50,7 @@ public static class PluginMessageBindings
                 {
                     throw new SandboxRuntimeException(new SandboxError(
                         SandboxErrorCode.PermissionDenied,
-                        "game.message.send denied: target is not in the granted recipient set"));
+                        "host.message.send denied: target is not in the granted recipient set"));
                 }
 
                 var message = Sanitize(((StringValue)args[1]).Value);
@@ -58,7 +58,7 @@ public static class PluginMessageBindings
                 {
                     throw new SandboxRuntimeException(new SandboxError(
                         SandboxErrorCode.QuotaExceeded,
-                        "game.message.send denied: message exceeds the granted length limit"));
+                        "host.message.send denied: message exceeds the granted length limit"));
                 }
 
                 await sink.SendAsync(targetId, message, cancellationToken).ConfigureAwait(false);
@@ -76,8 +76,8 @@ public static class PluginMessageBindings
                     true,
                     BindingId: SendBindingId,
                     CapabilityId: CapabilityId,
-                    Effect: SandboxEffect.GameStateWrite,
-                    ResourceId: $"player:{SanitizeResourceTargetId(targetId)}",
+                    Effect: SandboxEffect.HostStateWrite,
+                    ResourceId: $"target:{SanitizeResourceTargetId(targetId)}",
                     Message: AuditTextSanitizer.SanitizeAndRedact(message),
                     Fields: fields));
                 return SandboxValue.Unit;
@@ -170,7 +170,7 @@ public static class PluginMessageBindings
         {
             throw new SandboxRuntimeException(new SandboxError(
                 SandboxErrorCode.PermissionDenied,
-                "game.message.send denied: maxMessageLength grant is invalid"));
+                "host.message.send denied: maxMessageLength grant is invalid"));
         }
 
         return parsed;

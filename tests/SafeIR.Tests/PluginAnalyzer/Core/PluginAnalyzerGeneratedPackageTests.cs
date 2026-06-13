@@ -11,6 +11,7 @@ public sealed class PluginAnalyzerGeneratedPackageTests
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using System.ComponentModel.DataAnnotations;
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
@@ -22,7 +23,7 @@ public sealed class PluginAnalyzerGeneratedPackageTests
                 long Sequence,
                 double Ratio);
 
-            [GamePlugin("generated-runtime")]
+            [Plugin("generated-runtime")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 [LiveSetting]
@@ -56,7 +57,7 @@ public sealed class PluginAnalyzerGeneratedPackageTests
             """);
 
         Assert.Equal("generated-runtime", package.Manifest.PluginId);
-        Assert.Equal(["Cpu", "GameStateWrite", "Audit"], package.Manifest.Effects);
+        Assert.Equal(["Cpu", "HostStateWrite", "Audit"], package.Manifest.Effects);
         Assert.Collection(
             package.Manifest.LiveSettings,
             setting => AssertLiveSetting(setting, "Enabled", "bool", true),
@@ -88,6 +89,7 @@ public sealed class PluginAnalyzerGeneratedPackageTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
@@ -99,7 +101,7 @@ public sealed class PluginAnalyzerGeneratedPackageTests
                 long Sequence,
                 double Ratio);
 
-            [GamePlugin("generated-i32-operators")]
+            [Plugin("generated-i32-operators")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 [LiveSetting]
@@ -138,6 +140,7 @@ public sealed class PluginAnalyzerGeneratedPackageTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
@@ -149,7 +152,7 @@ public sealed class PluginAnalyzerGeneratedPackageTests
                 long Sequence,
                 double Ratio);
 
-            [GamePlugin("generated-i64-literal")]
+            [Plugin("generated-i64-literal")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx)
@@ -166,7 +169,7 @@ public sealed class PluginAnalyzerGeneratedPackageTests
             builder.UseCompilerIfAvailable();
         });
         var policy = SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite()
+            .GrantHostMessageWrite()
             .WithFuel(100_000)
             .WithWallTime(TimeSpan.FromSeconds(30))
             .WithMaxHostCalls(1_000)

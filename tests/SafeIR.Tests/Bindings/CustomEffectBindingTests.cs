@@ -101,7 +101,7 @@ public sealed class CustomEffectBindingTests
     private static SandboxPolicy GameWritePolicy()
         => new(
             "game-write",
-            SandboxEffect.Cpu | SandboxEffect.GameStateWrite | SandboxEffect.Audit,
+            SandboxEffect.Cpu | SandboxEffect.HostStateWrite | SandboxEffect.Audit,
             [new CapabilityGrant("game.write", new Dictionary<string, string>())],
             new ResourceLimits(MaxFuel: 1_000));
 
@@ -111,7 +111,7 @@ public sealed class CustomEffectBindingTests
             SemVersion.One,
             [SandboxType.I32],
             SandboxType.I32,
-            SandboxEffect.Cpu | SandboxEffect.GameStateWrite | SandboxEffect.Audit,
+            SandboxEffect.Cpu | SandboxEffect.HostStateWrite | SandboxEffect.Audit,
             "game.write",
             BindingCostModel.Fixed(1),
             AuditLevel.PerCall,
@@ -128,7 +128,7 @@ public sealed class CustomEffectBindingTests
                     true,
                     BindingId: "app.counter",
                     CapabilityId: "game.write",
-                    Effect: SandboxEffect.GameStateWrite,
+                    Effect: SandboxEffect.HostStateWrite,
                     ResourceId: "counter:test",
                     Fields: context.BindingAuditFields("counter", timestamp)));
                 return ValueTask.FromResult(SandboxValue.FromInt32(value));

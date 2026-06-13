@@ -22,15 +22,7 @@ public abstract record SandboxValue
     public static SandboxValue FromOpaqueId(string typeName, string value)
         => SandboxType.IsKnownOpaqueId(typeName) && SandboxLiteralConstraints.IsOpaqueId(value)
             ? new OpaqueIdValue(typeName, value)
-            : throw new ArgumentException("Opaque IDs must use a known ID type and a safe ID value.", nameof(value));
-
-    public static SandboxValue FromPlayerId(string value) => FromOpaqueId("PlayerId", value);
-
-    public static SandboxValue FromItemId(string value) => FromOpaqueId("ItemId", value);
-
-    public static SandboxValue FromQuestId(string value) => FromOpaqueId("QuestId", value);
-
-    public static SandboxValue FromMapId(string value) => FromOpaqueId("MapId", value);
+            : throw new ArgumentException("Opaque IDs must use a well-formed brand type and a safe ID value.", nameof(value));
 
     public static SandboxValue FromPath(string value)
         => SandboxLiteralConstraints.IsPortableRelativePath(value)

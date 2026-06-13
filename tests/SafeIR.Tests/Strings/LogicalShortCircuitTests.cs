@@ -227,7 +227,7 @@ public sealed partial class LogicalShortCircuitTests
             SemVersion.One,
             [],
             SandboxType.Bool,
-            SandboxEffect.Cpu | SandboxEffect.GameStateRead | SandboxEffect.Audit,
+            SandboxEffect.Cpu | SandboxEffect.HostStateRead | SandboxEffect.Audit,
             "game.read",
             BindingCostModel.Fixed(1),
             AuditLevel.PerCall,
@@ -243,7 +243,7 @@ public sealed partial class LogicalShortCircuitTests
                     true,
                     BindingId: "test.effectfulBool",
                     CapabilityId: "game.read",
-                    Effect: SandboxEffect.GameStateRead,
+                    Effect: SandboxEffect.HostStateRead,
                     ResourceId: "game:test",
                     Fields: context.BindingAuditFields("game", timestamp)));
                 return ValueTask.FromResult(SandboxValue.FromBool(true));
@@ -254,7 +254,7 @@ public sealed partial class LogicalShortCircuitTests
     private static SandboxPolicy GameReadPolicy()
         => new(
             "game-read",
-            SandboxEffect.Cpu | SandboxEffect.GameStateRead | SandboxEffect.Audit,
+            SandboxEffect.Cpu | SandboxEffect.HostStateRead | SandboxEffect.Audit,
             [new CapabilityGrant("game.read", new Dictionary<string, string>())],
             new ResourceLimits(MaxFuel: 1_000));
 

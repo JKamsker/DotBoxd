@@ -15,13 +15,14 @@ public sealed class PluginAnalyzerHintNameTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Alpha
             {
 
             public sealed record DamageEvent(string TargetId);
 
-            [GamePlugin("alpha-damage")]
+            [Plugin("alpha-damage")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
@@ -36,7 +37,7 @@ public sealed class PluginAnalyzerHintNameTests
 
             public sealed record DamageEvent(string TargetId);
 
-            [GamePlugin("beta-damage")]
+            [Plugin("beta-damage")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
@@ -59,12 +60,13 @@ public sealed class PluginAnalyzerHintNameTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId);
 
-            [GamePlugin("damage")]
+            [Plugin("damage")]
             public sealed partial class Damage : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
@@ -73,7 +75,7 @@ public sealed class PluginAnalyzerHintNameTests
                     => ctx.Messages.Send(e.TargetId, "damage");
             }
 
-            [GamePlugin("damage-kernel")]
+            [Plugin("damage-kernel")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
@@ -92,13 +94,14 @@ public sealed class PluginAnalyzerHintNameTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample.@event
             {
 
             public sealed record DamageEvent(string TargetId);
 
-            [GamePlugin("keyword-namespace")]
+            [Plugin("keyword-namespace")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
@@ -123,7 +126,7 @@ public sealed class PluginAnalyzerHintNameTests
             "SafeIrPluginHintNameTest",
             [CSharpSyntaxTree.ParseText(source, ParseOptions)],
             TrustedPlatformReferences()
-                .Append(MetadataReference.CreateFromFile(typeof(GamePluginAttribute).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(

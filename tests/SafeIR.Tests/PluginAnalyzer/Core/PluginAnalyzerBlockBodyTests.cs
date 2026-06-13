@@ -107,7 +107,7 @@ public sealed class PluginAnalyzerBlockBodyTests
             builder.UseCompilerIfAvailable();
         });
         var policy = SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite()
+            .GrantHostMessageWrite()
             .WithFuel(FuelLimit)
             .WithWallTime(TimeSpan.FromSeconds(30))
             .WithMaxHostCalls(HostCallLimit)
@@ -131,12 +131,13 @@ public sealed class PluginAnalyzerBlockBodyTests
 
     private const string IfElseSource = """
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message, int Amount, bool Enabled);
 
-            [GamePlugin("generated-block-body")]
+            [Plugin("generated-block-body")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx)
@@ -158,12 +159,13 @@ public sealed class PluginAnalyzerBlockBodyTests
 
     private const string MultiGuardReturnSource = """
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message, int Amount, bool Enabled);
 
-            [GamePlugin("generated-block-body")]
+            [Plugin("generated-block-body")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx)
@@ -188,12 +190,13 @@ public sealed class PluginAnalyzerBlockBodyTests
 
     private const string GuardReturnSource = """
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message, int Amount, bool Enabled);
 
-            [GamePlugin("generated-block-body")]
+            [Plugin("generated-block-body")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx)

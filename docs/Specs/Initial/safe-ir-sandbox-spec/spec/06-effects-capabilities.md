@@ -20,8 +20,8 @@ An effect is a category of behavior:
 FileRead
 FileWrite
 Network
-GameStateRead
-GameStateWrite
+HostStateRead
+HostStateWrite
 Random
 Time
 Alloc
@@ -51,8 +51,8 @@ public enum SandboxEffect
     FileRead = 1 << 4,
     FileWrite = 1 << 5,
     Network = 1 << 6,
-    GameStateRead = 1 << 7,
-    GameStateWrite = 1 << 8,
+    HostStateRead = 1 << 7,
+    HostStateWrite = 1 << 8,
     DatabaseRead = 1 << 9,
     DatabaseWrite = 1 << 10,
     Audit = 1 << 11
@@ -163,7 +163,7 @@ Examples:
 | `random.next` | `Cpu | Random` |
 | `file.readText` | `Cpu | Alloc | FileRead` |
 | `log.info` / `log.warn` | `Cpu | Audit` |
-| `game.inventory.grant` | `Cpu | GameStateWrite | Audit` |
+| `game.inventory.grant` | `Cpu | HostStateWrite | Audit` |
 
 Function effects are the union of all reachable operation effects.
 
@@ -183,7 +183,7 @@ Example policy:
 ```json
 {
   "policyId": "tenant-basic-readonly-v1",
-  "allowedEffects": ["Cpu", "Alloc", "FileRead", "GameStateRead"],
+  "allowedEffects": ["Cpu", "Alloc", "FileRead", "HostStateRead"],
   "capabilities": [
     {
       "id": "file.read",

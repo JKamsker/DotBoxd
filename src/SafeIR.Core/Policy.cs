@@ -20,7 +20,8 @@ public sealed record SandboxPolicy(
     ResourceLimits ResourceLimits,
     bool Deterministic = false,
     DateTimeOffset? LogicalNow = null,
-    ulong? RandomSeed = null)
+    ulong? RandomSeed = null,
+    IReadOnlySet<string>? DeclaredOpaqueIdTypes = null)
 {
     private readonly string _policyId = PolicyId;
     private readonly SandboxEffect _allowedEffects = AllowedEffects;
@@ -29,6 +30,7 @@ public sealed record SandboxPolicy(
     private readonly bool _deterministic = Deterministic;
     private readonly DateTimeOffset? _logicalNow = LogicalNow;
     private readonly ulong? _randomSeed = RandomSeed;
+    private IReadOnlySet<string> _declaredOpaqueIdTypes = NormalizeOpaqueIdTypes(DeclaredOpaqueIdTypes);
 
     // Lazily computed and cached so the canonical hash is built at most once per distinct
     // policy instance. Every hash-relevant property resets this so `with` copies recompute,
@@ -59,7 +61,26 @@ public sealed record SandboxPolicy(
 
     public ulong? RandomSeed { get => _randomSeed; init { _randomSeed = value; ResetHash(); } }
 
+    /// <summary>
+    /// Host-declared opaque-id brand type names this policy permits a module to use, in
+    /// type or literal position. Empty by default (fail-closed): a module that references
+    /// an opaque-id brand the host did not declare fails validation with E-POLICY-OPAQUE-ID.
+    /// </summary>
+    public IReadOnlySet<string> DeclaredOpaqueIdTypes
+    {
+        get => _declaredOpaqueIdTypes;
+        init { _declaredOpaqueIdTypes = NormalizeOpaqueIdTypes(value); ResetHash(); }
+    }
+
     public string Hash => (_hash ??= CreateHashCache()).Value;
+
+    private static IReadOnlySet<string> NormalizeOpaqueIdTypes(IReadOnlySet<string>? declared)
+        => declared is null || declared.Count == 0
+            ? EmptyOpaqueIdTypes
+            : new HashSet<string>(declared, StringComparer.Ordinal);
+
+    private static readonly IReadOnlySet<string> EmptyOpaqueIdTypes =
+        new HashSet<string>(StringComparer.Ordinal);
 
     public DateTimeOffset GrantClock
         => Deterministic && LogicalNow is not null ? LogicalNow.Value : DateTimeOffset.UtcNow;

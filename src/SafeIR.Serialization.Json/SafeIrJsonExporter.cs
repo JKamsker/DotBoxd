@@ -230,7 +230,10 @@ public static class SafeIrJsonExporter
                 writer.WriteString("string", text.Value);
                 break;
             case OpaqueIdValue id:
-                writer.WriteString(JsonExportNames.OpaqueIdName(id.TypeName), id.Value);
+                writer.WriteStartObject("opaqueId");
+                writer.WriteString("type", id.TypeName);
+                writer.WriteString("value", id.Value);
+                writer.WriteEndObject();
                 break;
             case SandboxPathValue path:
                 writer.WriteString("path", path.Value.RelativePath);

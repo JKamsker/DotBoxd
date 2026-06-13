@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using SafeIR.PluginIpc.Server.Abstractions;
 using SafeIR.Plugins;
 
-[GamePlugin("fire-damage")]
+[Plugin("fire-damage")]
 public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
 {
     [LiveSetting]

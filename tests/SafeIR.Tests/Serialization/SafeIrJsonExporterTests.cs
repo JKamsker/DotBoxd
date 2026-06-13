@@ -12,7 +12,7 @@ public sealed class SafeIrJsonExporterTests
             SemVersion.One,
             SemVersion.One,
             [
-                new CapabilityRequest("game.message.write", null),
+                new CapabilityRequest("host.message.write", null),
                 new CapabilityRequest("test.audit", "observe test execution")
             ],
             [
@@ -74,10 +74,10 @@ public sealed class SafeIrJsonExporterTests
                         Literal(SandboxValue.FromInt64(8L)),
                         Literal(SandboxValue.FromDouble(1.5D)),
                         Literal(SandboxValue.FromString("text")),
-                        Literal(SandboxValue.FromPlayerId("player-1")),
-                        Literal(SandboxValue.FromItemId("item-1")),
-                        Literal(SandboxValue.FromQuestId("quest-1")),
-                        Literal(SandboxValue.FromMapId("map-1")),
+                        Literal(SandboxValue.FromOpaqueId("PlayerId", "player-1")),
+                        Literal(SandboxValue.FromOpaqueId("ItemId", "item-1")),
+                        Literal(SandboxValue.FromOpaqueId("QuestId", "quest-1")),
+                        Literal(SandboxValue.FromOpaqueId("MapId", "map-1")),
                         Literal(SandboxValue.FromPath("config/plugin.json")),
                         Literal(SandboxValue.FromUri("https://example.test/config")),
                         new ReturnStatement(new LiteralExpression(SandboxValue.Unit, Span), Span)

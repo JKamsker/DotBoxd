@@ -16,12 +16,13 @@ public sealed class PluginAnalyzerRangeCompletenessTests
         var result = RunGenerator("""
             using System.ComponentModel.DataAnnotations;
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message);
 
-            [GamePlugin("ranges")]
+            [Plugin("ranges")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 [LiveSetting]
@@ -66,12 +67,13 @@ public sealed class PluginAnalyzerRangeCompletenessTests
         var result = RunGenerator($$"""
             using System.ComponentModel.DataAnnotations;
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message);
 
-            [GamePlugin("bad-range")]
+            [Plugin("bad-range")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 {{property}}
@@ -93,7 +95,7 @@ public sealed class PluginAnalyzerRangeCompletenessTests
             "SafeIrPluginRangeCompletenessTest",
             [CSharpSyntaxTree.ParseText(source, ParseOptions)],
             TrustedPlatformReferences()
-                .Append(MetadataReference.CreateFromFile(typeof(GamePluginAttribute).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(

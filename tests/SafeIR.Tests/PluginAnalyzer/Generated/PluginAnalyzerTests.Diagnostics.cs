@@ -17,8 +17,9 @@ public sealed partial class PluginAnalyzerTests
     {
         var diagnostics = await AnalyzeAsync("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
-            [GamePlugin("bad")]
+            [Plugin("bad")]
             public sealed class BadKernel : IEventKernel<string>
             {
                 [LiveSetting]
@@ -38,8 +39,9 @@ public sealed partial class PluginAnalyzerTests
     {
         var diagnostics = await AnalyzeAsync("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
-            [GamePlugin("bad")]
+            [Plugin("bad")]
             public sealed class BadKernel : IEventKernel<string>
             {
                 public bool ShouldHandle(string e, HookContext context)
@@ -69,8 +71,9 @@ public sealed partial class PluginAnalyzerTests
     {
         var diagnostics = await AnalyzeAsync($$"""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
-            [GamePlugin("bad")]
+            [Plugin("bad")]
             public sealed class BadKernel : IEventKernel<string>
             {
                 public bool ShouldHandle(string e, HookContext context)
@@ -91,13 +94,14 @@ public sealed partial class PluginAnalyzerTests
     {
         var diagnostics = await AnalyzeAsync("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             public static class BadHelper
             {
                 public static void Write() => System.IO.File.WriteAllText("x.txt", "bad");
             }
 
-            [GamePlugin("bad")]
+            [Plugin("bad")]
             public sealed class BadKernel : IEventKernel<string>
             {
                 public bool ShouldHandle(string e, HookContext context)
@@ -118,6 +122,7 @@ public sealed partial class PluginAnalyzerTests
     {
         var diagnostics = await AnalyzeAsync("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             public static class BadHelper
             {
@@ -128,7 +133,7 @@ public sealed partial class PluginAnalyzerTests
                 public static void Step4() => System.IO.File.WriteAllText("x.txt", "bad");
             }
 
-            [GamePlugin("bad")]
+            [Plugin("bad")]
             public sealed class BadKernel : IEventKernel<string>
             {
                 public bool ShouldHandle(string e, HookContext context)
@@ -160,7 +165,7 @@ public sealed partial class PluginAnalyzerTests
             "SafeIrPluginAnalyzerTest",
             [syntaxTree],
             TrustedPlatformReferences()
-                .Append(MetadataReference.CreateFromFile(typeof(GamePluginAttribute).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
     }

@@ -57,7 +57,7 @@ public class PluginAnalyzerHelperGraphBenchmarks
         }
 
         source.AppendLine("}");
-        source.AppendLine("[GamePlugin(\"bad\")]");
+        source.AppendLine("[Plugin(\"bad\")]");
         source.AppendLine("public sealed class BadKernel : IEventKernel<string>");
         source.AppendLine("{");
         source.AppendLine("    public bool ShouldHandle(string e, HookContext context)");
@@ -75,7 +75,7 @@ public class PluginAnalyzerHelperGraphBenchmarks
             "SafeIrPluginAnalyzerBenchmark",
             [CSharpSyntaxTree.ParseText(source, ParseOptions)],
             TrustedPlatformReferences()
-                .Append(MetadataReference.CreateFromFile(typeof(GamePluginAttribute).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 

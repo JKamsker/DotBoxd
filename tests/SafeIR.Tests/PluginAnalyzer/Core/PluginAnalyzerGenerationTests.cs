@@ -14,12 +14,13 @@ public sealed class PluginAnalyzerGenerationTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId);
 
-            [GamePlugin("method-selection")]
+            [Plugin("method-selection")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 private bool ShouldHandle() => false;
@@ -41,12 +42,13 @@ public sealed class PluginAnalyzerGenerationTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId);
 
-            [GamePlugin("constant-defaults")]
+            [Plugin("constant-defaults")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 [LiveSetting]
@@ -72,12 +74,13 @@ public sealed class PluginAnalyzerGenerationTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId);
 
-            [GamePlugin("bad-default")]
+            [Plugin("bad-default")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 [LiveSetting]
@@ -104,12 +107,13 @@ public sealed class PluginAnalyzerGenerationTests
     {
         var result = RunGenerator($$"""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId);
 
-            [GamePlugin("bad-double-default")]
+            [Plugin("bad-double-default")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 [LiveSetting]
@@ -131,6 +135,7 @@ public sealed class PluginAnalyzerGenerationTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
@@ -148,7 +153,7 @@ public sealed class PluginAnalyzerGenerationTests
                 }
             }
 
-            [GamePlugin("event-order")]
+            [Plugin("event-order")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => e.Amount > 0;
@@ -169,10 +174,11 @@ public sealed class PluginAnalyzerGenerationTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
-            [GamePlugin("wrong-contract")]
+            [Plugin("wrong-contract")]
             public sealed partial class DamageFilter
             {
             }
@@ -191,12 +197,13 @@ public sealed class PluginAnalyzerGenerationTests
     {
         var result = RunGenerator($$"""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId);
 
-            [GamePlugin("bad-live-setting")]
+            [Plugin("bad-live-setting")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 {{property}}
@@ -217,6 +224,7 @@ public sealed class PluginAnalyzerGenerationTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
@@ -228,7 +236,7 @@ public sealed class PluginAnalyzerGenerationTests
                 public int MinDamage { get; set; } = 1;
             }
 
-            [GamePlugin("duplicate-live-setting")]
+            [Plugin("duplicate-live-setting")]
             public sealed partial class DamageKernel : BaseKernel, IEventKernel<DamageEvent>
             {
                 [LiveSetting]
@@ -251,7 +259,7 @@ public sealed class PluginAnalyzerGenerationTests
             "SafeIrPluginGenerationTest",
             [CSharpSyntaxTree.ParseText(source, ParseOptions)],
             TrustedPlatformReferences()
-                .Append(MetadataReference.CreateFromFile(typeof(GamePluginAttribute).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(

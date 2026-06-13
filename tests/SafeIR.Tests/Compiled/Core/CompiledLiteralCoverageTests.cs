@@ -9,7 +9,7 @@ public sealed class CompiledLiteralCoverageTests
             { "I64", """{ "i64": 9223372036854775807 }""" },
             { "SandboxPath", """{ "path": "config/settings.json" }""" },
             { "SandboxUri", """{ "uri": "https://api.example.com/config" }""" },
-            { "PlayerId", """{ "playerId": "player-1" }""" }
+            { "PlayerId", """{ "opaqueId": { "type": "PlayerId", "value": "player-1" } }""" }
         };
 
     [Theory]
@@ -18,7 +18,9 @@ public sealed class CompiledLiteralCoverageTests
     {
         var host = SandboxTestHost.Create(compiler: true);
         var module = await host.ImportJsonAsync(ModuleWithReturn(returnType, expression));
-        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create().DeclareOpaqueIdType("PlayerId").WithFuel(1_000).Build());
 
         var interpreted = await host.ExecuteAsync(
             plan,

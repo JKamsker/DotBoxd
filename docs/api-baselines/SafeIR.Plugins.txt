@@ -11,9 +11,8 @@ public async ValueTask<InstalledKernel> InstallAsync( PluginPackage package, San
 public bool IsRevoked => Volatile.Read(ref _revoked) != 0
 public bool TryGet(string pluginId, [MaybeNullWhen(false)] out InstalledKernel kernel)
 public bool Uninstall(string pluginId)
-public CancellationToken CancellationToken { get; }
-public const string CapabilityId = "game.message.write"
-public const string SendBindingId = "game.message.send"
+public const string CapabilityId = "host.message.write"
+public const string SendBindingId = "host.message.send"
 public enum LiveUpdateMode
 public enum LiveUpdateMode.AsyncSet = 1
 public enum LiveUpdateMode.Sync = 0
@@ -27,7 +26,6 @@ public enum PluginDiagnosticPhase.PreparedPackageValidation
 public enum PluginDiagnosticPhase.RuntimeEntrypoint
 public Exception? LastAsyncUpdateError => _pendingLiveUpdates.LastError
 public Exception? LastAsyncUpdateError => Kernel.LastAsyncUpdateError
-public HookContext(IPluginMessageSink messages, CancellationToken cancellationToken)
 public HookPipeline<TEvent> InvokeHostHandler(Action<TEvent, HookContext> handler)
 public HookPipeline<TEvent> InvokeHostHandler(Func<TEvent, HookContext, ValueTask> handler)
 public HookPipeline<TEvent> InvokeKernel(Action<TEvent, HookContext> handler)
@@ -40,21 +38,15 @@ public HookPipeline<TEvent> Where(Func<TEvent, HookContext, bool> filter)
 public HookPipeline<TEvent> Where(Func<TEvent, HookContext, ValueTask<bool>> filter)
 public HookRegistry Hooks { get; }
 public IEnumerator<InstalledKernel> GetEnumerator() => Snapshot().GetEnumerator()
-public InMemoryPluginMessageSink()
 public InstalledKernel Get(string pluginId)
 public InstalledKernel Kernel { get; }
-public interface IEventKernel<TEvent>
 public interface ILiveSetting
-public interface IPluginEventAdapter<in TEvent>
-public interface IPluginMessageSink
 public IPluginEventAdapter<TEvent> Resolve<TEvent>()
-public IPluginMessageSink Messages { get; }
 public IReadOnlyList<HookSubscriptionManifest> Subscriptions { get => _subscriptions; init => _subscriptions = PluginModelCopy.List(value); }
 public IReadOnlyList<InstalledKernel> Snapshot()
 public IReadOnlyList<LiveSettingDefinition> Definitions
 public IReadOnlyList<LiveSettingDefinition> LiveSettings { get => _liveSettings; init => _liveSettings = PluginModelCopy.List(value); }
 public IReadOnlyList<PluginExecutionObservation> ExecutionObservations => _executionObserver.Snapshot()
-public IReadOnlyList<PluginMessage> Messages => _readOnlyMessages
 public IReadOnlyList<string> Effects { get => _effects; init => _effects = PluginModelCopy.List(value); }
 public KernelRegistry Kernels { get; }
 public LiveContext<T> BindContext<T>(string name, Action<T>? initialize = null) where T : class
@@ -73,15 +65,11 @@ public PluginManifest Manifest { get; }
 public PluginPackage Package { get; }
 public PluginServer RegisterEventAdapter<TEvent>(IPluginEventAdapter<TEvent> adapter)
 public SandboxValue ToSandboxValue()
-public sealed class GamePluginAttribute(string id) : Attribute
-public sealed class HookContext
 public sealed class HookPipeline<TEvent>
 public sealed class HookRegistry
-public sealed class InMemoryPluginMessageSink : IPluginMessageSink
 public sealed class InstalledKernel
 public sealed class KernelRegistry : IEnumerable<InstalledKernel>
 public sealed class LiveContext<T> where T : class
-public sealed class LiveSettingAttribute : Attribute
 public sealed class LiveSettingStore
 public sealed class LiveValue<T> : ICoercibleLiveSetting
 public sealed class PluginEventAdapterRegistry
@@ -93,17 +81,26 @@ public sealed record LiveSettingDefinition( string Name, string Type, object? De
 public sealed record PluginDiagnosticReference( string Code, PluginDiagnosticPhase Phase, PluginDiagnosticAudience Audience, string Meaning, string LikelyCause, string Remediation)
 public sealed record PluginExecutionObservation( string Entrypoint, ExecutionMode RequestedMode, ExecutionMode ActualMode, bool Succeeded, SandboxErrorCode? ErrorCode, SandboxErrorCode? FallbackReason, string CacheStatus, string? RuntimeForm, string? CacheKey, string? ArtifactHash, string? MaterializationStatus)
 public sealed record PluginManifest( string PluginId, string Contract, ExecutionMode Mode, IReadOnlyList<string> Effects, IReadOnlyList<LiveSettingDefinition> LiveSettings, IReadOnlyList<HookSubscriptionManifest> Subscriptions)
-public sealed record PluginMessage(string TargetId, string Message)
 public sealed record PluginPackage( PluginManifest Manifest, SandboxModule Module, KernelEntrypoints Entrypoints)
 public static BindingDescriptor CreateSend(IPluginMessageSink sink)
 public static bool TryGetReference(string code, out PluginDiagnosticReference reference)
+public static class HostMessagePolicyBuilderExtensions
 public static class PluginDiagnosticCodes
 public static class PluginMessageBindings
+public static class PluginPackageJsonSchemas
+public static class PluginPackageJsonSerializer
+public static class PluginServerJsonExtensions
 public static IReadOnlyList<PluginDiagnosticReference> All => References
 public static PluginPackage Create( PluginManifest manifest, SandboxModule module, KernelEntrypoints? entrypoints = null)
+public static PluginPackage Import(string json)
 public static PluginServer Create( IPluginMessageSink? messages = null, Action<SandboxHostBuilder>? configureHost = null, SandboxPolicy? defaultPolicy = null, ExecutionMode executionMode = ExecutionMode.Auto)
 public static SandboxHostBuilder AddPluginMessageBindings( this SandboxHostBuilder builder, IPluginMessageSink sink)
-public string Id { get; } = id
+public static SandboxPolicyBuilder GrantHostMessageWrite( this SandboxPolicyBuilder builder, IEnumerable<string>? allowedTargets = null, IEnumerable<string>? targetPrefixes = null, int? maxMessageLength = null)
+public static SandboxPolicyBuilder GrantHostMessageWrite(this SandboxPolicyBuilder builder)
+public static string Export(PluginPackage package, bool indented = false)
+public static string PackageEnvelope => ReadResource(PluginPackageResourceName)
+public static string SchemaVersion => SafeIrJsonSchemas.SchemaVersion
+public static ValueTask<InstalledKernel> InstallJsonAsync( this PluginServer server, string json, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public string Name { get; }
 public string Name => Definition.Name
 public T As<T>() where T : class => LiveContextProxy<T>.Create(this)
@@ -114,11 +111,9 @@ public TSettings Value { get; }
 public TypedInstalledKernel<TState> Get<TState>(string pluginId) where TState : class
 public ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)
 public ValueTask ModifyAsync( Action<TSettings> modify, bool atomic = false, CancellationToken cancellationToken = default)
-public ValueTask SendAsync(string targetId, string message, CancellationToken cancellationToken = default)
 public void Dispose()
 public void Register<TEvent>(IPluginEventAdapter<TEvent> adapter)
 public void Revoke()
-public void Send(string targetId, string message)
 public void Set<T>(string name, T value)
 public void SetMany(IReadOnlyDictionary<string, object?> values)
 public void SetObject(object? value)

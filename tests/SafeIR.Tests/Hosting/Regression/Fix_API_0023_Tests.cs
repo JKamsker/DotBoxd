@@ -46,7 +46,7 @@ public sealed class Fix_API_0023_Tests
         var script = SmokeScript();
 
         // The consumer must author a real kernel so the packaged generator has something to lower.
-        Assert.Contains("[GamePlugin(\"package-consumer-smoke\")]", script);
+        Assert.Contains("[Plugin(\"package-consumer-smoke\")]", script);
         Assert.Matches(
             new Regex(@"class\s+SmokeKernel\s*:\s*IEventKernel<SmokeEvent>"),
             script);

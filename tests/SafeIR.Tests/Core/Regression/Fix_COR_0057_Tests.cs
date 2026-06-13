@@ -4,7 +4,7 @@ using SafeIR.Plugins;
 namespace SafeIR.Tests;
 
 /// <summary>
-/// Regression coverage for COR-0057: the <c>game.message.write</c> grant must be
+/// Regression coverage for COR-0057: the <c>host.message.write</c> grant must be
 /// able to scope which recipients a plugin can message and how large a payload it
 /// can send. The grant exposes typed <c>allowedTargets</c>, <c>targetPrefixes</c>,
 /// and <c>maxMessageLength</c> parameters that are validated during policy
@@ -20,7 +20,7 @@ public sealed class Fix_COR_0057_Tests
         var host = CreateHost(messages);
         var module = await host.ImportJsonAsync(SendModule("player-1", "hello"));
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite(allowedTargets: ["player-1", "player-2"])
+            .GrantHostMessageWrite(allowedTargets: ["player-1", "player-2"])
             .WithFuel(10_000)
             .Build());
 
@@ -37,7 +37,7 @@ public sealed class Fix_COR_0057_Tests
         var host = CreateHost(messages);
         var module = await host.ImportJsonAsync(SendModule("player-999", "hello"));
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite(allowedTargets: ["player-1"])
+            .GrantHostMessageWrite(allowedTargets: ["player-1"])
             .WithFuel(10_000)
             .Build());
 
@@ -55,7 +55,7 @@ public sealed class Fix_COR_0057_Tests
         var host = CreateHost(messages);
         var module = await host.ImportJsonAsync(SendModule("team.red.player-1", "hello"));
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite(targetPrefixes: ["team.red."])
+            .GrantHostMessageWrite(targetPrefixes: ["team.red."])
             .WithFuel(10_000)
             .Build());
 
@@ -72,7 +72,7 @@ public sealed class Fix_COR_0057_Tests
         var host = CreateHost(messages);
         var module = await host.ImportJsonAsync(SendModule("team.blue.player-1", "hello"));
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite(targetPrefixes: ["team.red."])
+            .GrantHostMessageWrite(targetPrefixes: ["team.red."])
             .WithFuel(10_000)
             .Build());
 
@@ -90,7 +90,7 @@ public sealed class Fix_COR_0057_Tests
         var host = CreateHost(messages);
         var module = await host.ImportJsonAsync(SendModule("player-1", "0123456789"));
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite(maxMessageLength: 4)
+            .GrantHostMessageWrite(maxMessageLength: 4)
             .WithFuel(10_000)
             .Build());
 
@@ -108,7 +108,7 @@ public sealed class Fix_COR_0057_Tests
         var host = CreateHost(messages);
         var module = await host.ImportJsonAsync(SendModule("player-1", "1234"));
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite(maxMessageLength: 4)
+            .GrantHostMessageWrite(maxMessageLength: 4)
             .WithFuel(10_000)
             .Build());
 
@@ -125,7 +125,7 @@ public sealed class Fix_COR_0057_Tests
         var host = CreateHost(messages);
         var module = await host.ImportJsonAsync(SendModule("anything", "hello"));
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite()
+            .GrantHostMessageWrite()
             .WithFuel(10_000)
             .Build());
 
@@ -140,7 +140,7 @@ public sealed class Fix_COR_0057_Tests
     public void Empty_allowed_target_scope_is_rejected(string[] allowedTargets)
     {
         var ex = Assert.Throws<ArgumentException>(() =>
-            SandboxPolicyBuilder.Create().GrantGameMessageWrite(allowedTargets: allowedTargets));
+            SandboxPolicyBuilder.Create().GrantHostMessageWrite(allowedTargets: allowedTargets));
 
         Assert.Equal("allowedTargets", ex.ParamName);
     }
@@ -150,7 +150,7 @@ public sealed class Fix_COR_0057_Tests
     public void Empty_target_prefix_scope_is_rejected(string[] targetPrefixes)
     {
         var ex = Assert.Throws<ArgumentException>(() =>
-            SandboxPolicyBuilder.Create().GrantGameMessageWrite(targetPrefixes: targetPrefixes));
+            SandboxPolicyBuilder.Create().GrantHostMessageWrite(targetPrefixes: targetPrefixes));
 
         Assert.Equal("targetPrefixes", ex.ParamName);
     }
@@ -162,7 +162,7 @@ public sealed class Fix_COR_0057_Tests
         var host = CreateHost(messages);
         var module = await host.ImportJsonAsync(SendModule("player-1", "hello"));
         var policy = SandboxPolicyBuilder.Create()
-            .Grant("game.message.write", new { unsupportedKey = "value" })
+            .Grant("host.message.write", new { unsupportedKey = "value" })
             .WithFuel(10_000)
             .Build();
 
@@ -179,7 +179,7 @@ public sealed class Fix_COR_0057_Tests
         var host = CreateHost(messages);
         var module = await host.ImportJsonAsync(SendModule("player-1", "hello"));
         var policy = SandboxPolicyBuilder.Create()
-            .Grant("game.message.write", new { maxMessageLength = "not-a-number" })
+            .Grant("host.message.write", new { maxMessageLength = "not-a-number" })
             .WithFuel(10_000)
             .Build();
 
@@ -210,7 +210,7 @@ public sealed class Fix_COR_0057_Tests
         {
           "id": "cor-0057-message",
           "version": "1.0.0",
-          "capabilityRequests": [{ "id": "game.message.write" }],
+          "capabilityRequests": [{ "id": "host.message.write" }],
           "functions": [
             {
               "id": "main",
@@ -221,7 +221,7 @@ public sealed class Fix_COR_0057_Tests
                 {
                   "op": "return",
                   "value": {
-                    "call": "game.message.send",
+                    "call": "host.message.send",
                     "args": [
                       { "string": "{{targetId}}" },
                       { "string": "{{message}}" }

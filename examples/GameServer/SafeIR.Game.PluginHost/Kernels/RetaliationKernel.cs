@@ -6,7 +6,7 @@ using System.ComponentModel.DataAnnotations;
 /// Untrusted plugin kernel. Taunts a strong attacker so it switches away from the player it is
 /// hitting. Lowered to verified SafeIR and shipped as opaque IR over IPC.
 /// </summary>
-[GamePlugin("retaliation")]
+[Plugin("retaliation")]
 public sealed partial class RetaliationKernel : IEventKernel<AttackEvent>
 {
     [LiveSetting]

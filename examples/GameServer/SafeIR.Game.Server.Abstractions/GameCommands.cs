@@ -4,7 +4,7 @@ using System.Globalization;
 
 /// <summary>
 /// The plugin -&gt; server command DSL. A kernel's only sandbox capability is
-/// <c>game.message.write</c>; the meaning of the message text is defined here in the example, not in
+/// <c>host.message.write</c>; the meaning of the message text is defined here in the example, not in
 /// the SafeIR core. Two verbs are understood:
 /// <list type="bullet">
 ///   <item><description><c>calm:&lt;playerId&gt;:&lt;strength&gt;</c> sent to a monster id — reduce

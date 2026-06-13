@@ -31,7 +31,7 @@ public sealed class PluginAnalyzerStringConcatTests
             builder.UseCompilerIfAvailable();
         });
         var policy = SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite()
+            .GrantHostMessageWrite()
             .WithFuel(100_000)
             .WithWallTime(TimeSpan.FromSeconds(30))
             .WithMaxHostCalls(1_000)
@@ -60,12 +60,13 @@ public sealed class PluginAnalyzerStringConcatTests
     private static PluginPackage CreatePackage()
         => PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record StringConcatEvent(string TargetId, string Message);
 
-            [GamePlugin("generated-string-concat")]
+            [Plugin("generated-string-concat")]
             public sealed partial class StringConcatKernel : IEventKernel<StringConcatEvent>
             {
                 public bool ShouldHandle(StringConcatEvent e, HookContext ctx)

@@ -4,7 +4,10 @@ using SafeIR;
 
 internal static class StructuralValidator
 {
-    public static void Validate(SandboxModule module, List<SandboxDiagnostic> diagnostics)
+    public static void Validate(
+        SandboxModule module,
+        List<SandboxDiagnostic> diagnostics,
+        IReadOnlySet<string> declaredOpaqueIdTypes)
     {
         CheckIdentifier(module.Id, "module id", diagnostics);
         if (!SandboxLanguage.Supports(module.TargetSandboxVersion))
@@ -37,20 +40,23 @@ internal static class StructuralValidator
 
         foreach (var function in module.Functions)
         {
-            ValidateFunction(function, diagnostics);
+            ValidateFunction(function, diagnostics, declaredOpaqueIdTypes);
         }
     }
 
-    private static void ValidateFunction(SandboxFunction function, List<SandboxDiagnostic> diagnostics)
+    private static void ValidateFunction(
+        SandboxFunction function,
+        List<SandboxDiagnostic> diagnostics,
+        IReadOnlySet<string> declaredOpaqueIdTypes)
     {
         CheckIdentifier(function.Id, "function id", diagnostics);
-        CheckType(function.ReturnType, diagnostics);
+        CheckType(function.ReturnType, diagnostics, declaredOpaqueIdTypes);
         CheckDuplicateParameters(function, diagnostics);
 
         foreach (var parameter in function.Parameters)
         {
             CheckIdentifier(parameter.Name, "parameter name", diagnostics);
-            CheckType(parameter.Type, diagnostics);
+            CheckType(parameter.Type, diagnostics, declaredOpaqueIdTypes);
         }
 
         foreach (var statement in function.Body)
@@ -193,14 +199,17 @@ internal static class StructuralValidator
         return false;
     }
 
-    private static void CheckType(SandboxType type, List<SandboxDiagnostic> diagnostics)
+    private static void CheckType(
+        SandboxType type,
+        List<SandboxDiagnostic> diagnostics,
+        IReadOnlySet<string> declaredOpaqueIdTypes)
     {
-        if (type.Name == "Map" && type.Arguments.Count == 2 && !type.Arguments[0].IsValidMapKey())
+        if (type.Name == "Map" && type.Arguments.Count == 2 && !type.Arguments[0].IsValidMapKey(declaredOpaqueIdTypes))
         {
             diagnostics.Add(new SandboxDiagnostic("E-TYPE-MAP-KEY", $"map key type '{type.Arguments[0]}' is not supported"));
         }
 
-        if (!type.IsKnown() || type.IsForbidden())
+        if (!type.IsKnown(declaredOpaqueIdTypes) || type.IsForbidden())
         {
             diagnostics.Add(new SandboxDiagnostic("E-TYPE-UNKNOWN", $"unknown or forbidden type '{type}'"));
         }

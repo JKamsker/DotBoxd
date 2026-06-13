@@ -131,7 +131,7 @@ public sealed class PluginRevocationTests
                 "revocation-blocking",
                 "IEventKernel<BlockingEvent>",
                 ExecutionMode.Interpreted,
-                ["Cpu", "Alloc", "GameStateWrite", "Audit"],
+                ["Cpu", "Alloc", "HostStateWrite", "Audit"],
                 [],
                 [new HookSubscriptionManifest(nameof(BlockingEvent), "BlockingKernel")]),
             new SandboxModule(
@@ -175,7 +175,7 @@ public sealed class PluginRevocationTests
     private static SandboxPolicy LongWallPluginPolicy()
         => SandboxPolicyBuilder.Create()
             .GrantLogging()
-            .GrantGameMessageWrite()
+            .GrantHostMessageWrite()
             .WithFuel(100_000)
             .WithMaxHostCalls(1_000)
             .WithWallTime(TimeSpan.FromSeconds(10))

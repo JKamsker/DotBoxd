@@ -19,7 +19,11 @@ Interpreted mode executes verified IR directly. Compiled mode is only a runtime 
 - `SafeIR.Verifier`: generated assembly verifier.
 - `SafeIR.Hosting`: host-facing orchestration API.
 - `SafeIR.PluginAnalyzer`: source generator and analyzer for local plugin packages.
-- `SafeIR.Plugins`: live plugin manifest, hook, kernel, and message-binding APIs. Runtime
+- `SafeIR.Server.Abstractions`: purpose-agnostic plugin-to-host contracts a plugin author compiles
+  against — `[Plugin]`, `IEventKernel<TEvent>`, `HookContext`, `IPluginMessageSink`,
+  `IPluginEventAdapter<TEvent>`, and `LiveSettingAttribute`. Depends only on `SafeIR.Core`.
+- `SafeIR.Plugins`: the host/server runtime that loads, validates, and dispatches plugins — plugin
+  manifest, installed kernel, hook, message-binding, and plugin-package JSON APIs. Runtime
   package-install, prepared-package, kernel-entrypoint, and live-setting rejections surface stable
   `SGP*` diagnostics catalogued by the public `PluginDiagnosticCodes` reference (see
   [Plugin Runtime Diagnostics](#plugin-runtime-diagnostics)).
@@ -53,9 +57,11 @@ Common namespaces:
 - `SafeIR`, `SafeIR.Hosting`, and `SafeIR.Runtime` for host setup and execution.
 - `SafeIR.Serialization.Json` for `ImportJsonAsync`, `SafeIrJsonImporter`, and `SafeIrJsonExporter` (the module export side of the JSON IR round trip).
 - `SafeIR.Transport.Http` for HTTP binding registration and `GrantHttpGet`.
-- `SafeIR.Plugins` for plugin manifests and `PluginPackage`; use
-  `SafeIR.Serialization.Json.PluginPackageJsonSerializer` from the `SafeIR.Serialization.Json`
-  package for production JSON plugin upload/import and export.
+- `SafeIR.Server.Abstractions` for the plugin authoring contracts (`[Plugin]`,
+  `IEventKernel<TEvent>`, `HookContext`).
+- `SafeIR.Plugins` for plugin manifests, `PluginPackage`, and `PluginPackageJsonSerializer` (the
+  production JSON plugin upload/import and export helper now lives in this package, which references
+  `SafeIR.Serialization.Json` for the module-IR round trip).
 - `SafeIR.Transport.Ipc` for the preview ShaRPC MessagePack IPC addon.
 
 ## Minimal Host Usage
@@ -141,11 +147,12 @@ instead of inferring the contract from importer source:
 - [`schemas/v1/safe-ir-plugin-package.schema.json`](schemas/v1/safe-ir-plugin-package.schema.json)
   describes the plugin package envelope accepted by `PluginPackageJsonSerializer.Import(string)`.
 
-The same artifacts are embedded in the `SafeIR.Serialization.Json` package and exposed through
-`SafeIrJsonSchemas.ModuleEnvelope`, `SafeIrJsonSchemas.PluginPackageEnvelope`, and
-`SafeIrJsonSchemas.SchemaVersion`. The schemas are kept in sync with the importer's strict shape by
-a regression test; the `v1` directory segment and `SchemaVersion` are bumped together whenever the
-JSON contract changes.
+The module schema is embedded in the `SafeIR.Serialization.Json` package and exposed through
+`SafeIrJsonSchemas.ModuleEnvelope` and `SafeIrJsonSchemas.SchemaVersion`; the plugin-package schema
+is embedded in the `SafeIR.Plugins` package and exposed through
+`PluginPackageJsonSchemas.PackageEnvelope`. The schemas are kept in sync with the importer's strict
+shape by a regression test; the `v1` directory segment and `SchemaVersion` are bumped together
+whenever the JSON contract changes.
 
 ## Local Verification
 
@@ -283,7 +290,7 @@ The golden example runs an aggro/combat simulation server that exposes hooks and
 separate plugin host that authors kernels, previews them locally, ships them as opaque verified IR
 over IPC, and tunes live settings. The server runs the untrusted kernels sandboxed; they change game
 behavior only through an example-defined command sink (the plugin's sole sandbox capability stays
-`game.message.write`, while the game semantics live in the example, not in core). The server
+`host.message.write`, while the game semantics live in the example, not in core). The server
 self-launches the plugin host child process, so a single command drives the whole demo: it prints a
 baseline phase where monsters bully low-level players, the host's local preview and ship/settings
 logs, and a with-plugin phase where guardian/retaliation kernels keep the weak players alive.

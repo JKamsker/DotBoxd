@@ -2,7 +2,7 @@ namespace SafeIR.Game.Server;
 
 /// <summary>
 /// The extended capability defined by this example. The plugin's only sandbox grant is
-/// <c>game.message.write</c>; the meaning of those messages is defined HERE, not in SafeIR core.
+/// <c>host.message.write</c>; the meaning of those messages is defined HERE, not in SafeIR core.
 /// This sink parses the command DSL, validates it (known verb, known/opaque entity ids, clamped
 /// strength), and applies it to the <see cref="GameWorld"/>. Unknown or invalid commands are ignored
 /// safely and never throw back into the sandbox.

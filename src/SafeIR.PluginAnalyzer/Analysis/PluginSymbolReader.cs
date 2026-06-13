@@ -12,7 +12,7 @@ internal static class PluginSymbolReader
             var attribute = attributes[i];
             if (string.Equals(
                     attribute.AttributeClass?.ToDisplayString(),
-                    SafeIrGenerationNames.Metadata.GamePluginAttribute,
+                    SafeIrGenerationNames.Metadata.PluginAttribute,
                     StringComparison.Ordinal)) {
                 return attribute.ConstructorArguments.Length > 0
                     ? attribute.ConstructorArguments[0].Value as string

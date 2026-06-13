@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using SafeIR.PluginIpc.Server.Abstractions;
 using SafeIR.Plugins;
 
-[GamePlugin("fire-damage")]
+[Plugin("fire-damage")]
 public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
 {
     [LiveSetting]
@@ -26,7 +26,7 @@ public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
         => context.Messages.Send(e.TargetId, "Fire damage detected.");
 }
 
-[GamePlugin("threshold-guidance")]
+[Plugin("threshold-guidance")]
 public sealed partial class MyKernel : IEventKernel<MyEvent>
 {
     [LiveSetting]

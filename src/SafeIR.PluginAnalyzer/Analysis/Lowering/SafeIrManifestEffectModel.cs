@@ -5,7 +5,7 @@ internal static class SafeIrManifestEffectModel
     private static readonly EquatableArray<string> NonAllocatingEffects =
         EquatableArray<string>.FromOwned(new[] {
             SafeIrGenerationNames.Effects.Cpu,
-            SafeIrGenerationNames.Effects.GameStateWrite,
+            SafeIrGenerationNames.Effects.HostStateWrite,
             SafeIrGenerationNames.Effects.Audit
         });
 
@@ -13,7 +13,7 @@ internal static class SafeIrManifestEffectModel
         EquatableArray<string>.FromOwned(new[] {
             SafeIrGenerationNames.Effects.Cpu,
             SafeIrGenerationNames.Effects.Alloc,
-            SafeIrGenerationNames.Effects.GameStateWrite,
+            SafeIrGenerationNames.Effects.HostStateWrite,
             SafeIrGenerationNames.Effects.Audit
         });
 

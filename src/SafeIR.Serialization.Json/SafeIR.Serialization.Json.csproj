@@ -2,30 +2,30 @@
 
   
   <PropertyGroup>
-    <Description>SafeIR JSON IR import, export, and plugin package serialization helpers.</Description>
-    <PackageTags>safe-ir;sandbox;json;serialization;plugins</PackageTags>
+    <Description>SafeIR JSON IR import and export helpers for the module envelope.</Description>
+    <PackageTags>safe-ir;sandbox;json;serialization</PackageTags>
   </PropertyGroup>
 <ItemGroup>
     <ProjectReference Include="..\SafeIR.Core\SafeIR.Core.csproj" />
     <ProjectReference Include="..\SafeIR.Hosting\SafeIR.Hosting.csproj" />
-    <ProjectReference Include="..\SafeIR.Plugins\SafeIR.Plugins.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SafeIR.Plugins" />
   </ItemGroup>
 
   <!--
-    Versioned JSON ingestion schema artifacts (CMP-0012). The checked-in files under
-    schemas/v1 are embedded so consumers can load the contract via SafeIrJsonSchemas, and
-    packed so they ship with the NuGet package. LogicalName pins the resource name used by
-    SafeIrJsonSchemas regardless of build host or link path.
+    Versioned JSON ingestion schema artifact (CMP-0012). The checked-in module schema under
+    schemas/v1 is embedded so consumers can load the contract via SafeIrJsonSchemas, and
+    packed so it ships with the NuGet package. LogicalName pins the resource name used by
+    SafeIrJsonSchemas regardless of build host or link path. The plugin-package schema is
+    embedded by SafeIR.Plugins (see PluginPackageJsonSchemas).
   -->
   <ItemGroup>
     <EmbeddedResource Include="..\..\schemas\v1\safe-ir-module.schema.json"
                       LogicalName="SafeIR.Serialization.Json.schemas.v1.safe-ir-module.schema.json"
                       Pack="true"
                       PackagePath="schemas\v1\safe-ir-module.schema.json" />
-    <EmbeddedResource Include="..\..\schemas\v1\safe-ir-plugin-package.schema.json"
-                      LogicalName="SafeIR.Serialization.Json.schemas.v1.safe-ir-plugin-package.schema.json"
-                      Pack="true"
-                      PackagePath="schemas\v1\safe-ir-plugin-package.schema.json" />
   </ItemGroup>
 
   <PropertyGroup>

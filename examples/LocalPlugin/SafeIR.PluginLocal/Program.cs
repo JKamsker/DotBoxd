@@ -38,7 +38,7 @@ foreach (var message in messages.Messages) {
 static SandboxPolicy PluginPolicy()
     => SandboxPolicyBuilder.Create()
         .GrantLogging()
-        .GrantGameMessageWrite()
+        .GrantHostMessageWrite()
         .WithFuel(100_000)
         .WithMaxHostCalls(1_000)
         .Build();

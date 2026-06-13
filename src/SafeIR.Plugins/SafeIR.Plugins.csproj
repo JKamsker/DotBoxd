@@ -9,6 +9,20 @@
     <ProjectReference Include="..\SafeIR.Core\SafeIR.Core.csproj" />
     <ProjectReference Include="..\SafeIR.Hosting\SafeIR.Hosting.csproj" />
     <ProjectReference Include="..\SafeIR.Runtime\SafeIR.Runtime.csproj" />
+    <ProjectReference Include="..\SafeIR.Serialization.Json\SafeIR.Serialization.Json.csproj" />
+    <ProjectReference Include="..\SafeIR.Server.Abstractions\SafeIR.Server.Abstractions.csproj" />
+  </ItemGroup>
+
+  <!--
+    Versioned plugin-package JSON ingestion schema artifact (CMP-0012). Embedded here (rather than
+    in the purpose-agnostic SafeIR.Serialization.Json package) and loaded via PluginPackageJsonSchemas.
+    LogicalName pins the resource name regardless of build host or link path.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\schemas\v1\safe-ir-plugin-package.schema.json"
+                      LogicalName="SafeIR.Plugins.schemas.v1.safe-ir-plugin-package.schema.json"
+                      Pack="true"
+                      PackagePath="schemas\v1\safe-ir-plugin-package.schema.json" />
   </ItemGroup>
 
   <PropertyGroup>

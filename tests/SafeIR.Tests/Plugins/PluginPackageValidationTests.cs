@@ -25,7 +25,7 @@ public sealed class PluginPackageValidationTests
     {
         var server = PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
         var package = FireDamagePluginPackage.Create();
-        var invalid = package with { Manifest = package.Manifest with { Effects = ["Cpu", "GameStateWrite", "Audit"] } };
+        var invalid = package with { Manifest = package.Manifest with { Effects = ["Cpu", "HostStateWrite", "Audit"] } };
 
         var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () => await server.InstallAsync(invalid).AsTask());
 

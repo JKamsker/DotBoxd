@@ -17,9 +17,9 @@ internal static class SafeIrGenerationNames
 
     public static class Metadata
     {
-        public const string GamePluginAttribute = "SafeIR.Plugins.GamePluginAttribute";
-        public const string LiveSettingAttribute = "SafeIR.Plugins.LiveSettingAttribute";
-        public const string EventKernelInterface = "SafeIR.Plugins.IEventKernel<TEvent>";
+        public const string PluginAttribute = "SafeIR.Server.Abstractions.PluginAttribute";
+        public const string LiveSettingAttribute = "SafeIR.Server.Abstractions.LiveSettingAttribute";
+        public const string EventKernelInterface = "SafeIR.Server.Abstractions.IEventKernel<TEvent>";
         public const string RangeAttribute = "System.ComponentModel.DataAnnotations.RangeAttribute";
     }
 
@@ -88,13 +88,13 @@ internal static class SafeIrGenerationNames
     {
         public const string Cpu = "Cpu";
         public const string Alloc = "Alloc";
-        public const string GameStateWrite = "GameStateWrite";
+        public const string HostStateWrite = "HostStateWrite";
         public const string Audit = "Audit";
     }
 
     public static class Capabilities
     {
-        public const string MessageWriteReason = "send damage notifications";
+        public const string MessageWriteReason = "send host messages";
     }
 
     public static class Entrypoints

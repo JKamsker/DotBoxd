@@ -2,6 +2,8 @@ namespace SafeIR.Tests;
 
 public sealed class OpaqueIdLiteralTests
 {
+    private static readonly string[] TestOpaqueIdTypes = ["PlayerId", "ItemId", "QuestId", "MapId"];
+
     [Fact]
     public async Task Json_unit_literal_executes()
     {
@@ -12,13 +14,15 @@ public sealed class OpaqueIdLiteralTests
     }
 
     [Theory]
-    [InlineData("PlayerId", "playerId")]
-    [InlineData("ItemId", "itemId")]
-    [InlineData("QuestId", "questId")]
-    [InlineData("MapId", "mapId")]
-    public async Task Json_opaque_id_literals_execute_as_declared_scalar_type(string typeName, string literalKey)
+    [InlineData("PlayerId")]
+    [InlineData("ItemId")]
+    [InlineData("QuestId")]
+    [InlineData("MapId")]
+    public async Task Json_opaque_id_literals_execute_as_declared_scalar_type(string typeName)
     {
-        var result = await ExecuteAsync(typeName, $$"""{ "{{literalKey}}": "tenant:alpha_01" }""");
+        var result = await ExecuteAsync(
+            typeName,
+            $$"""{ "opaqueId": { "type": "{{typeName}}", "value": "tenant:alpha_01" } }""");
 
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
         var value = Assert.IsType<OpaqueIdValue>(result.Value);
@@ -56,11 +60,11 @@ public sealed class OpaqueIdLiteralTests
                               "arguments": ["PlayerId", "I32"]
                             }
                           },
-                          { "playerId": "player:1" },
+                          { "opaqueId": { "type": "PlayerId", "value": "player:1" } },
                           { "i32": 7 }
                         ]
                       },
-                      { "playerId": "player:1" }
+                      { "opaqueId": { "type": "PlayerId", "value": "player:1" } }
                     ]
                   }
                 }
@@ -69,7 +73,9 @@ public sealed class OpaqueIdLiteralTests
           ]
         }
         """);
-        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create().DeclareOpaqueIdType("PlayerId").WithFuel(1_000).Build());
 
         var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
 
@@ -82,7 +88,7 @@ public sealed class OpaqueIdLiteralTests
     {
         var ex = Assert.Throws<SandboxValidationException>(() => SafeIrJsonImporter.Import(Module(
             "PlayerId",
-            """{ "playerId": "../secret" }""")));
+            """{ "opaqueId": { "type": "PlayerId", "value": "../secret" } }""")));
 
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-JSON-ID");
     }
@@ -91,7 +97,9 @@ public sealed class OpaqueIdLiteralTests
     {
         var host = SandboxTestHost.Create(compiler: false);
         var module = await host.ImportJsonAsync(Module(returnType, literalJson));
-        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create().DeclareOpaqueIdTypes(TestOpaqueIdTypes).WithFuel(1_000).Build());
         return await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
     }
 

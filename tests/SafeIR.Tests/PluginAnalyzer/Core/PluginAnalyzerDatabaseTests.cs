@@ -27,8 +27,9 @@ public sealed class PluginAnalyzerDatabaseTests
             namespace Sample
             {
                 using SafeIR.Plugins;
+                using SafeIR.Server.Abstractions;
 
-                [GamePlugin("bad-db")]
+                [Plugin("bad-db")]
                 public sealed class BadKernel : IEventKernel<string>
                 {
                     public bool ShouldHandle(string e, HookContext context)
@@ -59,7 +60,7 @@ public sealed class PluginAnalyzerDatabaseTests
             "SafeIrPluginAnalyzerDatabaseTest",
             [syntaxTree],
             TrustedPlatformReferences()
-                .Append(MetadataReference.CreateFromFile(typeof(GamePluginAttribute).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
     }

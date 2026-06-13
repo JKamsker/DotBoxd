@@ -201,10 +201,15 @@
         "i64": { "type": "integer" },
         "f64": { "type": "number" },
         "string": { "type": "string" },
-        "playerId": { "type": "string" },
-        "itemId": { "type": "string" },
-        "questId": { "type": "string" },
-        "mapId": { "type": "string" },
+        "opaqueId": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string" },
+            "value": { "type": "string" }
+          }
+        },
         "path": { "type": "string" },
         "uri": { "type": "string" }
       }

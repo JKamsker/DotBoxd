@@ -45,7 +45,9 @@
         "dependencies": {
           "SafeIR.Core": "[0.1.0, )",
           "SafeIR.Hosting": "[0.1.0, )",
-          "SafeIR.Runtime": "[0.1.0, )"
+          "SafeIR.Runtime": "[0.1.0, )",
+          "SafeIR.Serialization.Json": "[0.1.0, )",
+          "SafeIR.Server.Abstractions": "[0.1.0, )"
         }
       },
       "safeir.runtime": {
@@ -53,6 +55,19 @@
         "dependencies": {
           "SafeIR.Core": "[0.1.0, )",
           "SafeIR.Validation": "[0.1.0, )"
+        }
+      },
+      "safeir.serialization.json": {
+        "type": "Project",
+        "dependencies": {
+          "SafeIR.Core": "[0.1.0, )",
+          "SafeIR.Hosting": "[0.1.0, )"
+        }
+      },
+      "safeir.server.abstractions": {
+        "type": "Project",
+        "dependencies": {
+          "SafeIR.Core": "[0.1.0, )"
         }
       },
       "safeir.validation": {

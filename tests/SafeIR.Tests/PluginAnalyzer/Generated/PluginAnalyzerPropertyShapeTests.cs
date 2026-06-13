@@ -15,6 +15,7 @@ public sealed class PluginAnalyzerPropertyShapeTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
@@ -31,7 +32,7 @@ public sealed class PluginAnalyzerPropertyShapeTests
                 public string this[int index] => "ignored";
             }
 
-            [GamePlugin("event-indexer")]
+            [Plugin("event-indexer")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
@@ -52,6 +53,7 @@ public sealed class PluginAnalyzerPropertyShapeTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
@@ -61,7 +63,7 @@ public sealed class PluginAnalyzerPropertyShapeTests
                 public string PrivateGetter { private get; set; } = "hidden";
             }
 
-            [GamePlugin("event-private-getter")]
+            [Plugin("event-private-getter")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
@@ -99,12 +101,13 @@ public sealed class PluginAnalyzerPropertyShapeTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId);
 
-            [GamePlugin("live-indexer")]
+            [Plugin("live-indexer")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 [LiveSetting]
@@ -130,12 +133,13 @@ public sealed class PluginAnalyzerPropertyShapeTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message);
 
-            [GamePlugin("parameter-collision")]
+            [Plugin("parameter-collision")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 [LiveSetting]
@@ -157,6 +161,7 @@ public sealed class PluginAnalyzerPropertyShapeTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
@@ -171,7 +176,7 @@ public sealed class PluginAnalyzerPropertyShapeTests
                 public new string Message { get; } = "";
             }
 
-            [GamePlugin("duplicate-event-property")]
+            [Plugin("duplicate-event-property")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
@@ -191,7 +196,7 @@ public sealed class PluginAnalyzerPropertyShapeTests
             "SafeIrPluginPropertyShapeTest",
             [CSharpSyntaxTree.ParseText(source, ParseOptions)],
             TrustedPlatformReferences()
-                .Append(MetadataReference.CreateFromFile(typeof(GamePluginAttribute).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(

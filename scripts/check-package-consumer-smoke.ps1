@@ -58,6 +58,7 @@ $requiredIds = @(
     "SafeIR.Serialization.Json",
     "SafeIR.Transport.Http",
     "SafeIR.Plugins",
+    "SafeIR.Server.Abstractions",
     "SafeIR.PluginAnalyzer",
     "SafeIR.Transport.Ipc.ShaRpc"
 )
@@ -85,14 +86,37 @@ function XmlEscape([string] $value) {
     return [System.Security.SecurityElement]::Escape($value)
 }
 
+$isolatedPackagesFolder = Join-Path $resolvedWorkRoot ".nuget-packages"
 $nugetConfig = @"
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
+  <!--
+    Isolate the restore cache to this work directory. Pinning version 0.1.0 collides with any
+    previously published 0.1.0 on nuget.org; the global packages folder caches by id+version, so a
+    once-cached published package would shadow the freshly-built local build. A per-run folder keeps
+    the smoke hermetic.
+  -->
+  <config>
+    <add key="globalPackagesFolder" value="$(XmlEscape $isolatedPackagesFolder)" />
+  </config>
   <packageSources>
     <clear />
     <add key="local" value="$(XmlEscape $fullPackageDirectory)" />
     <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
   </packageSources>
+  <!--
+    Resolve the SafeIR.* packages from the freshly-built local feed only. Pinning version 0.1.0
+    can otherwise collide with a previously published 0.1.0 on nuget.org, so the smoke would test
+    stale package contents instead of the local build.
+  -->
+  <packageSourceMapping>
+    <packageSource key="local">
+      <package pattern="SafeIR.*" />
+    </packageSource>
+    <packageSource key="nuget.org">
+      <package pattern="*" />
+    </packageSource>
+  </packageSourceMapping>
 </configuration>
 "@
 Set-Content -LiteralPath (Join-Path $resolvedWorkRoot "NuGet.config") -Value $nugetConfig
@@ -112,6 +136,7 @@ $project = @"
     <PackageReference Include="SafeIR.Serialization.Json" Version="$($versions["SafeIR.Serialization.Json"])" />
     <PackageReference Include="SafeIR.Transport.Http" Version="$($versions["SafeIR.Transport.Http"])" />
     <PackageReference Include="SafeIR.Plugins" Version="$($versions["SafeIR.Plugins"])" />
+    <PackageReference Include="SafeIR.Server.Abstractions" Version="$($versions["SafeIR.Server.Abstractions"])" />
     <PackageReference Include="SafeIR.Transport.Ipc.ShaRpc" Version="$($versions["SafeIR.Transport.Ipc.ShaRpc"])" />
     <PackageReference Include="SafeIR.PluginAnalyzer" Version="$($versions["SafeIR.PluginAnalyzer"])" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
@@ -188,7 +213,7 @@ if (!roundTripPlan.Module.Functions.Any(f => f.Id == "main"))
 }
 
 // Prove the packaged SafeIR.PluginAnalyzer source generator produced a callable
-// *PluginPackage.Create() factory for the [GamePlugin] kernel defined below. If the
+// *PluginPackage.Create() factory for the [Plugin] kernel defined below. If the
 // analyzer asset is missing from the package, the generator fails to initialize, or the
 // generated factory cannot build a valid PluginPackage, this consumer will not compile or
 // the runtime assertions below will throw, failing the smoke.
@@ -218,11 +243,11 @@ Set-Content -LiteralPath (Join-Path $resolvedWorkRoot "Program.cs") -Value $prog
 $kernel = @"
 namespace SafeIR.PackageConsumerSmoke;
 
-using SafeIR.Plugins;
+using SafeIR.Server.Abstractions;
 
 public sealed record SmokeEvent(string TargetId, string Message, int Amount);
 
-[GamePlugin("package-consumer-smoke")]
+[Plugin("package-consumer-smoke")]
 public sealed partial class SmokeKernel : IEventKernel<SmokeEvent>
 {
     [LiveSetting]

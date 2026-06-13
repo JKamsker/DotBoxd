@@ -21,12 +21,13 @@ public sealed class PluginAnalyzerIncrementalityTests
     {
         var (first, second) = RunGeneratorTwice("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message, int Amount);
 
-            [GamePlugin("cacheable")]
+            [Plugin("cacheable")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 [LiveSetting]
@@ -48,10 +49,11 @@ public sealed class PluginAnalyzerIncrementalityTests
     {
         var (first, second) = RunGeneratorTwice("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
-            [GamePlugin("invalid-cacheable")]
+            [Plugin("invalid-cacheable")]
             public sealed partial class MissingKernel
             {
             }
@@ -84,7 +86,7 @@ public sealed class PluginAnalyzerIncrementalityTests
             "SafeIrPluginIncrementalityTest",
             [CSharpSyntaxTree.ParseText(source, ParseOptions)],
             TrustedPlatformReferences()
-                .Append(MetadataReference.CreateFromFile(typeof(GamePluginAttribute).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 

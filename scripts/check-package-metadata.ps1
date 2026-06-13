@@ -58,8 +58,12 @@ $expectedPackageMetadata = @{
         Tags = @("safe-ir", "runtime", "bindings", "files", "logging")
     }
     "SafeIR.Serialization.Json" = @{
-        Description = "SafeIR JSON IR import, export, and plugin package serialization helpers."
-        Tags = @("safe-ir", "json", "serialization", "plugins")
+        Description = "SafeIR JSON IR import and export helpers for the module envelope."
+        Tags = @("safe-ir", "json", "serialization")
+    }
+    "SafeIR.Server.Abstractions" = @{
+        Description = "SafeIR plugin-to-host contracts: plugin marker attribute, event kernel, hook context, message sink, and event adapter abstractions."
+        Tags = @("safe-ir", "plugins", "contracts", "abstractions")
     }
     "SafeIR.Transport.Http" = @{
         Description = "SafeIR HTTP GET transport bindings, grant helpers, and pinned HTTP policy validation."
@@ -160,6 +164,17 @@ function AssertPackageEntryAllowlist($zip, [string] $id, [string] $readme, [stri
     } else {
         [void] $allowedExact.Add("lib/net10.0/$id.dll")
         [void] $allowedExact.Add("lib/net10.0/$id.xml")
+    }
+
+    # Embedded, machine-readable JSON ingestion schemas (CMP-0012) are also packed so consumers can
+    # load the contract from the package. The module envelope ships with the purpose-agnostic
+    # serialization package; the plugin-package envelope ships with the plugin package.
+    if ($id -eq "SafeIR.Serialization.Json") {
+        [void] $allowedExact.Add("schemas/v1/safe-ir-module.schema.json")
+    }
+
+    if ($id -eq "SafeIR.Plugins") {
+        [void] $allowedExact.Add("schemas/v1/safe-ir-plugin-package.schema.json")
     }
 
     foreach ($entry in $zip.Entries) {
@@ -280,7 +295,8 @@ $expectedIds = [string[]] @(
     "SafeIR.Verifier",
     "SafeIR.Hosting",
     "SafeIR.PluginAnalyzer",
-    "SafeIR.Plugins"
+    "SafeIR.Plugins",
+    "SafeIR.Server.Abstractions"
 )
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem

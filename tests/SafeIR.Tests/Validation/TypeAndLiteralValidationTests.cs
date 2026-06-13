@@ -107,15 +107,17 @@ public sealed class TypeAndLiteralValidationTests
     [InlineData("String", """{ "string": "IL_0001: calli" }""")]
     [InlineData("SandboxPath", """{ "path": "System.IO.File" }""")]
     [InlineData("SandboxUri", """{ "uri": "https://api.example.com/0x06000001" }""")]
-    [InlineData("PlayerId", """{ "playerId": "0x06000001" }""")]
-    [InlineData("PlayerId", """{ "playerId": "System.Type" }""")]
+    [InlineData("PlayerId", """{ "opaqueId": { "type": "PlayerId", "value": "0x06000001" } }""")]
+    [InlineData("PlayerId", """{ "opaqueId": { "type": "PlayerId", "value": "System.Type" } }""")]
     public async Task Literals_reject_clr_and_il_payloads(string returnType, string literalJson)
     {
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(ModuleReturning(returnType, literalJson));
 
         var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () =>
-            await host.PrepareAsync(module, SandboxPolicyBuilder.Create().Build()));
+            await host.PrepareAsync(
+                module,
+                SandboxPolicyBuilder.Create().DeclareOpaqueIdType("PlayerId").Build()));
 
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-IR-CLR-REF");
     }

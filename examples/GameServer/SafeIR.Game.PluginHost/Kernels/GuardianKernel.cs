@@ -7,7 +7,7 @@ using System.ComponentModel.DataAnnotations;
 /// authored as plain C#, lowered to verified SafeIR by the source generator, and shipped to the
 /// server as opaque IR — the server never compiles this source.
 /// </summary>
-[GamePlugin("guardian")]
+[Plugin("guardian")]
 public sealed partial class GuardianKernel : IEventKernel<MonsterAggroEvent>
 {
     [LiveSetting]

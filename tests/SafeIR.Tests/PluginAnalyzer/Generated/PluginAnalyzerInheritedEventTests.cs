@@ -9,6 +9,7 @@ public sealed class PluginAnalyzerInheritedEventTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
@@ -33,7 +34,7 @@ public sealed class PluginAnalyzerInheritedEventTests
                 public string Message { get; }
             }
 
-            [GamePlugin("generated-inherited-event")]
+            [Plugin("generated-inherited-event")]
             public sealed partial class DamageKernel : IEventKernel<InheritedDamageEvent>
             {
                 public bool ShouldHandle(InheritedDamageEvent e, HookContext ctx)

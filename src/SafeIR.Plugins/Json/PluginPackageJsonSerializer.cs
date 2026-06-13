@@ -3,6 +3,7 @@ namespace SafeIR.Plugins;
 using System.Buffers;
 using System.Text;
 using System.Text.Json;
+using SafeIR.Serialization.Json.Internal;
 using static SafeIR.JsonImport;
 
 public static class PluginPackageJsonSerializer

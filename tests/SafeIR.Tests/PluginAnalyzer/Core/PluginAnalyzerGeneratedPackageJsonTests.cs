@@ -9,12 +9,13 @@ public sealed class PluginAnalyzerGeneratedPackageJsonTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message, string DamageType, int Amount);
 
-            [GamePlugin("generated-json-export")]
+            [Plugin("generated-json-export")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 [LiveSetting]

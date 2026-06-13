@@ -21,12 +21,13 @@ public sealed class PluginAnalyzerInvocationExpressionTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record EqualsEvent(string TargetId, string Message, int Amount, bool Enabled);
 
-            [GamePlugin("generated-instance-equals")]
+            [Plugin("generated-instance-equals")]
             public sealed partial class EqualsKernel : IEventKernel<EqualsEvent>
             {
                 public bool ShouldHandle(EqualsEvent e, HookContext ctx)
@@ -45,7 +46,7 @@ public sealed class PluginAnalyzerInvocationExpressionTests
             builder.UseCompilerIfAvailable();
         });
         var policy = SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite()
+            .GrantHostMessageWrite()
             .WithFuel(FuelLimit)
             .WithWallTime(TimeSpan.FromSeconds(30))
             .WithMaxHostCalls(HostCallLimit)

@@ -10,12 +10,13 @@ public sealed class PluginAnalyzerGeneratedPackageCompiledTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message, int Amount, bool Disabled);
 
-            [GamePlugin("generated-compiled-expression-subset")]
+            [Plugin("generated-compiled-expression-subset")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx)
@@ -32,7 +33,7 @@ public sealed class PluginAnalyzerGeneratedPackageCompiledTests
             builder.UseCompilerIfAvailable();
         });
         var policy = SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite()
+            .GrantHostMessageWrite()
             .WithFuel(100_000)
             .WithWallTime(TimeSpan.FromSeconds(30))
             .WithMaxHostCalls(1_000)

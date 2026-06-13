@@ -173,7 +173,7 @@ public sealed class PluginPackageJsonTests
             "pluginId": "json-fire-damage",
             "contract": "IEventKernel<DamageEvent>",
             "mode": "Interpreted",
-            "effects": ["Cpu", "Alloc", "GameStateWrite", "Audit"],
+            "effects": ["Cpu", "Alloc", "HostStateWrite", "Audit"],
             "liveSettings": [{{liveSettings}}],
             "subscriptions": [
               { "event": "DamageEvent", "kernel": "JsonDamageKernel" }
@@ -184,7 +184,7 @@ public sealed class PluginPackageJsonTests
             "version": "1.0.0",
             "targetSandboxVersion": "1.0.0",
             "capabilityRequests": [
-              { "id": "game.message.write", "reason": "send damage notifications" }
+              { "id": "host.message.write", "reason": "send host messages" }
             ],
             "metadata": { "pluginId": "json-fire-damage", "kernel": "JsonDamageKernel" },
             "functions": [
@@ -214,7 +214,7 @@ public sealed class PluginPackageJsonTests
                   {
                     "op": "return",
                     "value": {
-                      "call": "game.message.send",
+                      "call": "host.message.send",
                       "args": [
                         { "var": "e_TargetId" },
                         { "string": "json package handled damage" }

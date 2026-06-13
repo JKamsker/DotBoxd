@@ -76,12 +76,12 @@ public sealed class CanonicalModuleHasherTests
     public void Capability_requests_with_matching_ids_are_ordered_by_reason()
     {
         var first = ModuleWithCapabilityRequests([
-            new CapabilityRequest("game.message.write", "beta"),
-            new CapabilityRequest("game.message.write", "alpha")
+            new CapabilityRequest("host.message.write", "beta"),
+            new CapabilityRequest("host.message.write", "alpha")
         ]);
         var second = ModuleWithCapabilityRequests([
-            new CapabilityRequest("game.message.write", "alpha"),
-            new CapabilityRequest("game.message.write", "beta")
+            new CapabilityRequest("host.message.write", "alpha"),
+            new CapabilityRequest("host.message.write", "beta")
         ]);
 
         Assert.Equal(CanonicalModuleHasher.Serialize(first), CanonicalModuleHasher.Serialize(second));

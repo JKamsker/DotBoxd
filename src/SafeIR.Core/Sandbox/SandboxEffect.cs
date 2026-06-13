@@ -11,10 +11,8 @@ public enum SandboxEffect
     FileRead = 1 << 4,
     FileWrite = 1 << 5,
     Network = 1 << 6,
-    GameStateRead = 1 << 7,
-    GameStateWrite = 1 << 8,
-    DatabaseRead = 1 << 9,
-    DatabaseWrite = 1 << 10,
+    HostStateRead = 1 << 7,
+    HostStateWrite = 1 << 8,
     Audit = 1 << 11
 }
 
@@ -32,10 +30,8 @@ public static class SandboxEffects
             SandboxEffect.FileRead |
             SandboxEffect.FileWrite |
             SandboxEffect.Network |
-            SandboxEffect.GameStateRead |
-            SandboxEffect.GameStateWrite |
-            SandboxEffect.DatabaseRead |
-            SandboxEffect.DatabaseWrite |
+            SandboxEffect.HostStateRead |
+            SandboxEffect.HostStateWrite |
             SandboxEffect.Audit;
 
         return (effects & ~allKnown) == SandboxEffect.None;

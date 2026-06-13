@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using SafeIR.Plugins;
 using SafeIR.Serialization.Json;
 
 namespace SafeIR.Tests;
@@ -34,7 +35,7 @@ public sealed class Fix_CMP_0012_Tests
         "src/SafeIR.Serialization.Json/Internal/JsonExpressionReader.cs";
 
     private const string SerializerRelative =
-        "src/SafeIR.Serialization.Json/PluginPackageJsonSerializer.cs";
+        "src/SafeIR.Plugins/Json/PluginPackageJsonSerializer.cs";
 
     [Fact]
     public void Versioned_schema_artifacts_are_checked_in_under_a_version_segment()
@@ -81,11 +82,11 @@ public sealed class Fix_CMP_0012_Tests
             Normalize(SafeIrJsonSchemas.ModuleEnvelope));
         Assert.Equal(
             Normalize(File.ReadAllText(RepositoryPath(PackageSchemaRelative))),
-            Normalize(SafeIrJsonSchemas.PluginPackageEnvelope));
+            Normalize(PluginPackageJsonSchemas.PackageEnvelope));
 
         // The exposed schema version must agree with the embedded documents and the v1 segment.
         Assert.Equal(SchemaVersionOf(SafeIrJsonSchemas.ModuleEnvelope), SafeIrJsonSchemas.SchemaVersion);
-        Assert.Equal(SchemaVersionOf(SafeIrJsonSchemas.PluginPackageEnvelope), SafeIrJsonSchemas.SchemaVersion);
+        Assert.Equal(SchemaVersionOf(PluginPackageJsonSchemas.PackageEnvelope), SafeIrJsonSchemas.SchemaVersion);
     }
 
     [Theory]

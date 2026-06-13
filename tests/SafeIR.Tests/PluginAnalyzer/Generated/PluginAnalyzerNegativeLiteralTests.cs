@@ -9,6 +9,7 @@ public sealed class PluginAnalyzerNegativeLiteralTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
@@ -19,7 +20,7 @@ public sealed class PluginAnalyzerNegativeLiteralTests
                 double Ratio,
                 int Amount);
 
-            [GamePlugin("generated-negative-literals")]
+            [Plugin("generated-negative-literals")]
             public sealed partial class NegativeLiteralKernel : IEventKernel<NegativeLiteralEvent>
             {
                 public bool ShouldHandle(NegativeLiteralEvent e, HookContext ctx)

@@ -89,6 +89,9 @@ public interface IDamageFormula
     int Calculate(DamageInput input);
 }
 
+// Defined in the purpose-agnostic SafeIR.Server.Abstractions package
+// (namespace SafeIR.Server.Abstractions), alongside [Plugin], HookContext,
+// IPluginMessageSink, IPluginEventAdapter<TEvent>, and LiveSettingAttribute.
 public interface IEventKernel<TEvent>
 {
     bool ShouldHandle(TEvent e, HookContext context);
@@ -135,7 +138,7 @@ Plugin developers write normal-looking C# against approved contracts.
 Example:
 
 ```csharp
-[GamePlugin("epic-items-only")]
+[Plugin("epic-items-only")]
 public sealed partial class EpicItemsOnly : IItemFilter
 {
     public bool Accept(ItemView item, PlayerView player)
@@ -151,7 +154,7 @@ contract guidance until the host provides a matching adapter/lowering path.
 For event handling:
 
 ```csharp
-[GamePlugin("fire-damage")]
+[Plugin("fire-damage")]
 public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
 {
     [LiveSetting]
@@ -410,7 +413,7 @@ This is the preferred main plugin authoring model.
 Example:
 
 ```csharp
-[GamePlugin("fire-damage")]
+[Plugin("fire-damage")]
 public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
 {
     [LiveSetting]
@@ -773,7 +776,7 @@ Example:
   "effects": [
     "Cpu",
     "Alloc",
-    "GameStateWrite",
+    "HostStateWrite",
     "Audit"
   ],
   "liveSettings": [
@@ -984,7 +987,7 @@ The public documentation should introduce the system in this order:
 Recommended flagship example:
 
 ```csharp
-[GamePlugin("fire-damage")]
+[Plugin("fire-damage")]
 public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
 {
     [LiveSetting]

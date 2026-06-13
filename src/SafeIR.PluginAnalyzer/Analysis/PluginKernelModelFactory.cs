@@ -20,7 +20,7 @@ internal static class PluginKernelModelFactory
         if (string.IsNullOrWhiteSpace(pluginId)) {
             var diagnostic = PluginKernelDiagnostic.Create(
                 declaration.Identifier,
-                "GamePlugin id must be a non-empty string.");
+                "Plugin id must be a non-empty string.");
             return new PluginKernelModelResult(null, diagnostic);
         }
 
@@ -28,7 +28,7 @@ internal static class PluginKernelModelFactory
         {
             var diagnostic = PluginKernelDiagnostic.Create(
                 declaration.Identifier,
-                "Game plugins must implement IEventKernel<TEvent>.");
+                "Plugin kernels must implement IEventKernel<TEvent>.");
             return new PluginKernelModelResult(null, diagnostic);
         }
 
@@ -36,7 +36,7 @@ internal static class PluginKernelModelFactory
         {
             var diagnostic = PluginKernelDiagnostic.Create(
                 declaration.Identifier,
-                "Game plugins must implement exactly one IEventKernel<TEvent>.");
+                "Plugin kernels must implement exactly one IEventKernel<TEvent>.");
             return new PluginKernelModelResult(null, diagnostic);
         }
 

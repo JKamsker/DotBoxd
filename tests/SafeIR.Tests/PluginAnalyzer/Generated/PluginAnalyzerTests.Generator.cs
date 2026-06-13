@@ -16,12 +16,13 @@ public sealed partial class PluginAnalyzerTests
         var compilation = CreateCompilation("""
             using System.ComponentModel.DataAnnotations;
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string DamageType, int Amount, string TargetId);
 
-            [GamePlugin("fire-damage")]
+            [Plugin("fire-damage")]
             public sealed partial class FireDamageKernel : IEventKernel<DamageEvent>
             {
                 [LiveSetting]
@@ -65,12 +66,13 @@ public sealed partial class PluginAnalyzerTests
     {
         var compilation = CreateCompilation("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string DamageType);
 
-            [GamePlugin("bad-shape")]
+            [Plugin("bad-shape")]
             public sealed partial class BadKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => IsFire(e);
@@ -99,12 +101,13 @@ public sealed partial class PluginAnalyzerTests
     {
         var compilation = CreateCompilation("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string DamageType);
 
-            [GamePlugin("bad-block")]
+            [Plugin("bad-block")]
             public sealed partial class BadKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx)
@@ -135,12 +138,13 @@ public sealed partial class PluginAnalyzerTests
     {
         var compilation = CreateCompilation("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(decimal Amount);
 
-            [GamePlugin("bad-event")]
+            [Plugin("bad-event")]
             public sealed partial class BadKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
@@ -167,12 +171,13 @@ public sealed partial class PluginAnalyzerTests
     {
         var compilation = CreateCompilation("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId);
 
-            [GamePlugin("bad-handle")]
+            [Plugin("bad-handle")]
             public sealed partial class BadKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
@@ -201,12 +206,13 @@ public sealed partial class PluginAnalyzerTests
     {
         var compilation = CreateCompilation("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId);
 
-            [GamePlugin("different-handle-name")]
+            [Plugin("different-handle-name")]
             public sealed partial class GoodKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;

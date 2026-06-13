@@ -9,12 +9,13 @@ public sealed class PluginAnalyzerGenericEventTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record GenericDamageEvent<T>(T Payload, string TargetId, string Message);
 
-            [GamePlugin("generated-generic-event")]
+            [Plugin("generated-generic-event")]
             public sealed partial class GenericDamageKernel : IEventKernel<GenericDamageEvent<string>>
             {
                 public bool ShouldHandle(GenericDamageEvent<string> e, HookContext ctx)

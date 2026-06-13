@@ -9,12 +9,13 @@ public sealed class PluginAnalyzerHandleArgumentTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record NamedSendEvent(string TargetId, string Message);
 
-            [GamePlugin("generated-named-send")]
+            [Plugin("generated-named-send")]
             public sealed partial class NamedSendKernel : IEventKernel<NamedSendEvent>
             {
                 public bool ShouldHandle(NamedSendEvent e, HookContext ctx) => true;
@@ -39,12 +40,13 @@ public sealed class PluginAnalyzerHandleArgumentTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record NamedSendEvent(string TargetId, string Message);
 
-            [GamePlugin("generated-return-after-send")]
+            [Plugin("generated-return-after-send")]
             public sealed partial class NamedSendKernel : IEventKernel<NamedSendEvent>
             {
                 public bool ShouldHandle(NamedSendEvent e, HookContext ctx) => true;

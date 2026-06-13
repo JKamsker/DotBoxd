@@ -67,8 +67,6 @@ internal static class PolicyResolver
             SandboxEffect.FileRead |
             SandboxEffect.FileWrite |
             SandboxEffect.Network |
-            SandboxEffect.GameStateRead |
-            SandboxEffect.GameStateWrite |
-            SandboxEffect.DatabaseRead |
-            SandboxEffect.DatabaseWrite);
+            SandboxEffect.HostStateRead |
+            SandboxEffect.HostStateWrite);
 }

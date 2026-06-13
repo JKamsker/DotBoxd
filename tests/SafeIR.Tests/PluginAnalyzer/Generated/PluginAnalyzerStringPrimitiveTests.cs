@@ -28,7 +28,7 @@ public sealed class PluginAnalyzerStringPrimitiveTests
             builder.UseCompilerIfAvailable();
         });
         var policy = SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite()
+            .GrantHostMessageWrite()
             .WithFuel(FuelLimit)
             .WithWallTime(TimeSpan.FromSeconds(30))
             .WithMaxHostCalls(HostCallLimit)
@@ -45,12 +45,13 @@ public sealed class PluginAnalyzerStringPrimitiveTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record StringEqualityEvent(string TargetId, string Message);
 
-            [GamePlugin("generated-string-equality")]
+            [Plugin("generated-string-equality")]
             public sealed partial class StringEqualityKernel : IEventKernel<StringEqualityEvent>
             {
                 public bool ShouldHandle(StringEqualityEvent e, HookContext ctx)
@@ -70,12 +71,13 @@ public sealed class PluginAnalyzerStringPrimitiveTests
     private static PluginPackage CreatePackage()
         => PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record StringPrimitiveEvent(string TargetId, string Message);
 
-            [GamePlugin("generated-string-primitives")]
+            [Plugin("generated-string-primitives")]
             public sealed partial class StringPrimitiveKernel : IEventKernel<StringPrimitiveEvent>
             {
                 public bool ShouldHandle(StringPrimitiveEvent e, HookContext ctx)

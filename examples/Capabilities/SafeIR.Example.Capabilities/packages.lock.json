@@ -38,7 +38,8 @@
         "dependencies": {
           "SafeIR.Core": "[0.1.0, )",
           "SafeIR.Hosting": "[0.1.0, )",
-          "SafeIR.Runtime": "[0.1.0, )"
+          "SafeIR.Runtime": "[0.1.0, )",
+          "SafeIR.Server.Abstractions": "[0.1.0, )"
         }
       },
       "safeir.runtime": {
@@ -54,6 +55,12 @@
           "SafeIR.Core": "[0.1.0, )",
           "SafeIR.Hosting": "[0.1.0, )",
           "SafeIR.Plugins": "[0.1.0, )"
+        }
+      },
+      "safeir.server.abstractions": {
+        "type": "Project",
+        "dependencies": {
+          "SafeIR.Core": "[0.1.0, )"
         }
       },
       "safeir.validation": {

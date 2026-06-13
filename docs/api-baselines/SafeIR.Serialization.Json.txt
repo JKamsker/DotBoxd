@@ -2,18 +2,12 @@
 # Package: SafeIR.Serialization.Json
 # Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
 
-public static class PluginPackageJsonSerializer
-public static class PluginServerJsonExtensions
 public static class SafeIrJsonExporter
 public static class SafeIrJsonImporter
 public static class SafeIrJsonSchemas
 public static class SandboxHostJsonExtensions
-public static PluginPackage Import(string json)
 public static SandboxModule Import(string json)
-public static string Export(PluginPackage package, bool indented = false)
 public static string Export(SandboxModule module, bool indented = false)
 public static string ModuleEnvelope => ReadResource(ModuleResourceName)
-public static string PluginPackageEnvelope => ReadResource(PluginPackageResourceName)
 public static string SchemaVersion => "1.0.0"
-public static ValueTask<InstalledKernel> InstallJsonAsync( this PluginServer server, string json, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public static ValueTask<SandboxModule> ImportJsonAsync( this SandboxHost host, string jsonIr, CancellationToken cancellationToken = default)

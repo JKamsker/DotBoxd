@@ -54,11 +54,10 @@ internal static class JsonLiteralReader
             return true;
         }
 
-        if (TryReadOpaqueId(element, "playerId", "PlayerId", SandboxValue.FromPlayerId, out value, out literalName) ||
-            TryReadOpaqueId(element, "itemId", "ItemId", SandboxValue.FromItemId, out value, out literalName) ||
-            TryReadOpaqueId(element, "questId", "QuestId", SandboxValue.FromQuestId, out value, out literalName) ||
-            TryReadOpaqueId(element, "mapId", "MapId", SandboxValue.FromMapId, out value, out literalName))
+        if (element.TryGetProperty("opaqueId", out var opaqueId))
         {
+            value = ReadOpaqueId(opaqueId);
+            literalName = "opaqueId";
             return true;
         }
 
@@ -81,29 +80,45 @@ internal static class JsonLiteralReader
         return false;
     }
 
-    private static bool TryReadOpaqueId(
-        JsonElement element,
-        string literalKey,
-        string typeName,
-        Func<string, SandboxValue> create,
-        out SandboxValue value,
-        out string literalName)
+    private static SandboxValue ReadOpaqueId(JsonElement element)
     {
-        if (!element.TryGetProperty(literalKey, out var id))
+        if (element.ValueKind != JsonValueKind.Object)
         {
-            value = SandboxValue.Unit;
-            literalName = "";
-            return false;
+            throw Error("E-JSON-TYPE", "'opaqueId' must be an object with 'type' and 'value'");
         }
 
-        var text = ReadStringValue(id, literalKey);
-        if (!SandboxLiteralConstraints.IsOpaqueId(text))
+        string? typeName = null;
+        string? idValue = null;
+        foreach (var property in element.EnumerateObject())
         {
-            throw Error("E-JSON-ID", $"'{literalKey}' must be a safe {typeName} value");
+            switch (property.Name)
+            {
+                case "type":
+                    typeName = ReadStringValue(property.Value, "opaqueId.type");
+                    break;
+                case "value":
+                    idValue = ReadStringValue(property.Value, "opaqueId.value");
+                    break;
+                default:
+                    throw Error("E-JSON-ID", $"'opaqueId' has an unexpected property '{property.Name}'");
+            }
         }
 
-        value = create(text);
-        literalName = literalKey;
-        return true;
+        if (typeName is null || idValue is null)
+        {
+            throw Error("E-JSON-ID", "'opaqueId' must declare 'type' and 'value'");
+        }
+
+        if (!SandboxType.IsWellFormedOpaqueIdName(typeName))
+        {
+            throw Error("E-JSON-ID", "'opaqueId.type' must be a well-formed opaque-id brand");
+        }
+
+        if (!SandboxLiteralConstraints.IsOpaqueId(idValue))
+        {
+            throw Error("E-JSON-ID", "'opaqueId.value' must be a safe opaque-id value");
+        }
+
+        return SandboxValue.FromOpaqueId(typeName, idValue);
     }
 }

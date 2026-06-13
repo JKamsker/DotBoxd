@@ -15,12 +15,13 @@ public sealed class PluginAnalyzerCompletenessTests
     {
         var (result, outputCompilation, diagnostics) = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message, int Amount);
 
-            [GamePlugin("complete-expression")]
+            [Plugin("complete-expression")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 [LiveSetting]
@@ -49,7 +50,7 @@ public sealed class PluginAnalyzerCompletenessTests
         Assert.Contains("Add(Var(\"e_Amount\"), Var(\"Offset\"))", generated);
         Assert.Contains("Sub(Var(\"MinDamage\"), I32(1))", generated);
         Assert.Contains("Not(StringEquals(Var(\"e_Message\"), Str(\"\")))", generated);
-        Assert.Contains("[\"Cpu\", \"Alloc\", \"GameStateWrite\", \"Audit\"]", generated);
+        Assert.Contains("[\"Cpu\", \"Alloc\", \"HostStateWrite\", \"Audit\"]", generated);
     }
 
     [Fact]
@@ -57,12 +58,13 @@ public sealed class PluginAnalyzerCompletenessTests
     {
         var (result, outputCompilation, diagnostics) = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message);
 
-            [GamePlugin("no-alloc")]
+            [Plugin("no-alloc")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
@@ -75,7 +77,7 @@ public sealed class PluginAnalyzerCompletenessTests
         Assert.Empty(diagnostics.Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
         Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
         var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
-        Assert.Contains("[\"Cpu\", \"GameStateWrite\", \"Audit\"]", generated);
+        Assert.Contains("[\"Cpu\", \"HostStateWrite\", \"Audit\"]", generated);
         Assert.DoesNotContain("\"Alloc\"", generated);
     }
 
@@ -84,12 +86,13 @@ public sealed class PluginAnalyzerCompletenessTests
     {
         var (result, outputCompilation, diagnostics) = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message);
 
-            [GamePlugin("direct-parameters")]
+            [Plugin("direct-parameters")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 [LiveSetting]
@@ -115,12 +118,13 @@ public sealed class PluginAnalyzerCompletenessTests
     {
         var (result, outputCompilation, diagnostics) = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message, long Sequence, double Ratio);
 
-            [GamePlugin("wide-equality")]
+            [Plugin("wide-equality")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx)
@@ -143,12 +147,13 @@ public sealed class PluginAnalyzerCompletenessTests
     {
         var (result, outputCompilation, diagnostics) = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message, long Sequence, double Ratio);
 
-            [GamePlugin("promoted-numeric-constants")]
+            [Plugin("promoted-numeric-constants")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx)
@@ -173,12 +178,13 @@ public sealed class PluginAnalyzerCompletenessTests
     {
         var (result, outputCompilation, diagnostics) = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message, long Sequence, double Ratio);
 
-            [GamePlugin("patterns")]
+            [Plugin("patterns")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx)
@@ -202,12 +208,13 @@ public sealed class PluginAnalyzerCompletenessTests
     {
         var (result, outputCompilation, diagnostics) = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message, int Amount, bool Enabled);
 
-            [GamePlugin("conditional-expression")]
+            [Plugin("conditional-expression")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx)
@@ -233,12 +240,13 @@ public sealed class PluginAnalyzerCompletenessTests
     {
         var (result, _, diagnostics) = RunGenerator($$"""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message, long Amount);
 
-            [GamePlugin("invalid-lowering")]
+            [Plugin("invalid-lowering")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => {{shouldHandleExpression}};
@@ -257,12 +265,13 @@ public sealed class PluginAnalyzerCompletenessTests
     {
         var (result, _, diagnostics) = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string Message);
 
-            [GamePlugin("invalid-handle")]
+            [Plugin("invalid-handle")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
@@ -298,7 +307,7 @@ public sealed class PluginAnalyzerCompletenessTests
             "SafeIrPluginCompletenessTest",
             [CSharpSyntaxTree.ParseText(source, ParseOptions)],
             TrustedPlatformReferences()
-                .Append(MetadataReference.CreateFromFile(typeof(GamePluginAttribute).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 

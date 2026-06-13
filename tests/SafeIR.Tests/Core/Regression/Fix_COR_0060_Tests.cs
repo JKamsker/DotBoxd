@@ -93,7 +93,7 @@ public sealed class Fix_COR_0060_Tests
             "pluginId": "json-fire-damage",
             "contract": "IEventKernel<DamageEvent>",
             "mode": "Interpreted",
-            "effects": ["Cpu", "Alloc", "GameStateWrite", "Audit"],
+            "effects": ["Cpu", "Alloc", "HostStateWrite", "Audit"],
             "liveSettings": [
               { "name": "Threshold", "type": "long", "defaultValue": {{min}}, "min": {{min}}, "max": {{max}} }
             ],
@@ -106,7 +106,7 @@ public sealed class Fix_COR_0060_Tests
             "version": "1.0.0",
             "targetSandboxVersion": "1.0.0",
             "capabilityRequests": [
-              { "id": "game.message.write", "reason": "send damage notifications" }
+              { "id": "host.message.write", "reason": "send host messages" }
             ],
             "metadata": { "pluginId": "json-fire-damage", "kernel": "JsonDamageKernel" },
             "functions": [
@@ -136,7 +136,7 @@ public sealed class Fix_COR_0060_Tests
                   {
                     "op": "return",
                     "value": {
-                      "call": "game.message.send",
+                      "call": "host.message.send",
                       "args": [
                         { "var": "e_TargetId" },
                         { "string": "json package handled damage" }

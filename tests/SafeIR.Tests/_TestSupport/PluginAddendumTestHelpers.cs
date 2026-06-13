@@ -22,7 +22,7 @@ internal static class PluginAddendumTestPolicies
         => PluginServer.Create(messages, defaultPolicy: LongWall(), executionMode: executionMode);
 
     public static SandboxPolicy LongWall()
-        => SandboxPolicyBuilder.Create().GrantLogging().GrantGameMessageWrite()
+        => SandboxPolicyBuilder.Create().GrantLogging().GrantHostMessageWrite()
             .WithFuel(100_000).WithMaxHostCalls(1_000)
             .WithWallTime(TimeSpan.FromSeconds(10)).Build();
 }

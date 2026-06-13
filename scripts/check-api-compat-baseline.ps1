@@ -24,7 +24,8 @@ $packages = @(
     @{ Id = "SafeIR.Verifier"; Path = "src/SafeIR.Verifier" },
     @{ Id = "SafeIR.Hosting"; Path = "src/SafeIR.Hosting" },
     @{ Id = "SafeIR.PluginAnalyzer"; Path = "src/SafeIR.PluginAnalyzer" },
-    @{ Id = "SafeIR.Plugins"; Path = "src/SafeIR.Plugins" }
+    @{ Id = "SafeIR.Plugins"; Path = "src/SafeIR.Plugins" },
+    @{ Id = "SafeIR.Server.Abstractions"; Path = "src/SafeIR.Server.Abstractions" }
 )
 
 function Normalize-ApiLine([string] $Line) {

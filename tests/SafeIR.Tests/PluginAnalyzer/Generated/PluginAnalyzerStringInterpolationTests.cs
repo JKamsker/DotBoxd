@@ -16,12 +16,13 @@ public sealed class PluginAnalyzerStringInterpolationTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, string DamageType, string Message);
 
-            [GamePlugin("generated-string-interpolation")]
+            [Plugin("generated-string-interpolation")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 private const string RequiredType = "fire";
@@ -54,12 +55,13 @@ public sealed class PluginAnalyzerStringInterpolationTests
     {
         var result = RunGenerator("""
             using SafeIR.Plugins;
+            using SafeIR.Server.Abstractions;
 
             namespace Sample;
 
             public sealed record DamageEvent(string TargetId, int Amount);
 
-            [GamePlugin("bad-string-interpolation")]
+            [Plugin("bad-string-interpolation")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
@@ -85,7 +87,7 @@ public sealed class PluginAnalyzerStringInterpolationTests
             builder.UseCompilerIfAvailable();
         });
         var policy = SandboxPolicyBuilder.Create()
-            .GrantGameMessageWrite()
+            .GrantHostMessageWrite()
             .WithFuel(100_000)
             .WithWallTime(TimeSpan.FromSeconds(30))
             .WithMaxHostCalls(1_000)
@@ -108,7 +110,7 @@ public sealed class PluginAnalyzerStringInterpolationTests
             "SafeIrPluginStringInterpolationTest",
             [CSharpSyntaxTree.ParseText(source, ParseOptions)],
             TrustedPlatformReferences()
-                .Append(MetadataReference.CreateFromFile(typeof(GamePluginAttribute).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(

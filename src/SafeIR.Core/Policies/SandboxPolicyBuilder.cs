@@ -3,6 +3,7 @@ namespace SafeIR;
 public sealed class SandboxPolicyBuilder
 {
     private readonly List<CapabilityGrant> _grants = [];
+    private readonly HashSet<string> _declaredOpaqueIdTypes = new(StringComparer.Ordinal);
     private SandboxEffect _allowedEffects = SandboxEffects.Pure;
     private ResourceLimits _limits = new();
     private bool _deterministic;
@@ -97,51 +98,31 @@ public sealed class SandboxPolicyBuilder
         _grants.Add(new CapabilityGrant("log.write", new Dictionary<string, string>()));
         return this;
     }
-    public SandboxPolicyBuilder GrantGameMessageWrite()
-        => GrantGameMessageWrite(allowedTargets: null, targetPrefixes: null, maxMessageLength: null);
 
-    public SandboxPolicyBuilder GrantGameMessageWrite(
-        IEnumerable<string>? allowedTargets = null,
-        IEnumerable<string>? targetPrefixes = null,
-        int? maxMessageLength = null)
+    public SandboxPolicyBuilder DeclareOpaqueIdType(string name)
     {
-        _allowedEffects |= SandboxEffect.GameStateWrite | SandboxEffect.Audit;
-        var parameters = new Dictionary<string, string>(StringComparer.Ordinal);
-        AddCsvParameter(parameters, "allowedTargets", allowedTargets);
-        AddCsvParameter(parameters, "targetPrefixes", targetPrefixes);
-        if (maxMessageLength is { } limit)
+        if (!SandboxType.IsWellFormedOpaqueIdName(name))
         {
-            ThrowIfNegative(limit, nameof(maxMessageLength));
-            parameters["maxMessageLength"] = limit.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            throw new ArgumentException(
+                "An opaque-id type name must be a well-formed brand identifier that is not a built-in scalar.",
+                nameof(name));
         }
 
-        _grants.Add(new CapabilityGrant("game.message.write", parameters));
+        _declaredOpaqueIdTypes.Add(name);
         return this;
     }
 
-    private static void AddCsvParameter(
-        IDictionary<string, string> parameters,
-        string key,
-        IEnumerable<string>? values)
+    public SandboxPolicyBuilder DeclareOpaqueIdTypes(IEnumerable<string> names)
     {
-        if (values is null) return;
-
-        var normalized = values
-            .Select(value => (value ?? "").Trim())
-            .Where(value => value.Length > 0)
-            .ToArray();
-        if (normalized.Length == 0)
+        ArgumentNullException.ThrowIfNull(names);
+        foreach (var name in names)
         {
-            throw new ArgumentException($"{key} must contain at least one non-empty value", key);
+            DeclareOpaqueIdType(name);
         }
 
-        if (normalized.Any(value => value.Contains(',')))
-        {
-            throw new ArgumentException($"{key} values must not contain commas", key);
-        }
-
-        parameters[key] = string.Join(',', normalized);
+        return this;
     }
+
     public SandboxPolicyBuilder WithFuel(long maxFuel)
     {
         _limits = _limits with { MaxFuel = maxFuel };
@@ -234,7 +215,15 @@ public sealed class SandboxPolicyBuilder
     public SandboxPolicy Build()
     {
         ResourceLimitValidation.Validate(_limits);
-        return new SandboxPolicy(_policyId, _allowedEffects, _grants.ToArray(), _limits, _deterministic, _logicalNow, _randomSeed);
+        return new SandboxPolicy(
+            _policyId,
+            _allowedEffects,
+            _grants.ToArray(),
+            _limits,
+            _deterministic,
+            _logicalNow,
+            _randomSeed,
+            new HashSet<string>(_declaredOpaqueIdTypes, StringComparer.Ordinal));
     }
 
     private static void ThrowIfNegative(long value, string paramName)

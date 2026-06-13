@@ -13,7 +13,7 @@ namespace SafeIR.Tests;
 ///
 /// These tests prove (a) the omitted review data is already reachable through public package APIs and
 /// (b) the maintained example source still omits both, so they stay red until the example renders the
-/// full review surface (the <c>game.message.write</c> capability request and the <c>MinDamage</c>
+/// full review surface (the <c>host.message.write</c> capability request and the <c>MinDamage</c>
 /// range bounds).
 /// </summary>
 public sealed class Fix_CMP_0010_Tests
@@ -27,10 +27,10 @@ public sealed class Fix_CMP_0010_Tests
         // The data the admin review surface must show is already available on the public package.
         var package = FireDamagePluginPackage.Create();
 
-        // Capability requests live on the module and include game.message.write.
+        // Capability requests live on the module and include host.message.write.
         Assert.Contains(
             package.Module.CapabilityRequests,
-            request => request.Id == "game.message.write");
+            request => request.Id == "host.message.write");
 
         // The MinDamage live setting declares numeric range bounds that the runtime enforces.
         var minDamage = Assert.Single(
@@ -46,7 +46,7 @@ public sealed class Fix_CMP_0010_Tests
         var example = ReadExampleSource();
 
         // The pre-install review surface must enumerate the package's requested capabilities so an
-        // admin sees the game.message.write permission before approving the plugin.
+        // admin sees the host.message.write permission before approving the plugin.
         Assert.Contains("CapabilityRequests", example);
     }
 
