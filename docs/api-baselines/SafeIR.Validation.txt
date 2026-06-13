@@ -1,0 +1,25 @@
+# SafeIR public API baseline
+# Package: SafeIR.Validation
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+public bool TryAnalyze(
+public CollectionCallAnalyzer(List<SandboxDiagnostic> diagnostics, ExpressionAnalyzer analyzeExpression)
+public FunctionAnalyzer(SandboxModule module, IBindingCatalog bindings, List<SandboxDiagnostic> diagnostics)
+public FunctionScope Clone() => new(new Dictionary<string, SandboxType>(_locals, StringComparer.Ordinal))
+public HashSet<string> RequiredCapabilities { get; } = new(StringComparer.Ordinal)
+public IReadOnlyDictionary<string, FunctionAnalysis> AnalyzeAll()
+public ModuleValidationResult Validate(SandboxModule module, IBindingCatalog bindings, SandboxPolicy? policy = null)
+public SandboxType Get(string name, List<SandboxDiagnostic> diagnostics, SourceSpan span)
+public sealed class ModuleValidator
+public sealed record ModuleValidationResult(
+public static bool ContainsDangerousReference(SandboxValue value)
+public static bool IsDangerousReference(string value)
+public static bool Validate(SandboxValue value)
+public static FunctionScope FromParameters(IReadOnlyList<Parameter> parameters)
+public static ModuleValidationResult Failure(IReadOnlyList<SandboxDiagnostic> diagnostics)
+public static SandboxType Analyze(LiteralExpression literal, ref SandboxEffect effects)
+public static void Scan(Statement statement, List<SandboxDiagnostic> diagnostics)
+public static void Validate(
+public static void Validate(CapabilityGrant grant, List<SandboxDiagnostic> diagnostics)
+public static void Validate(SandboxModule module, List<SandboxDiagnostic> diagnostics)
+public void Set(string name, SandboxType type, List<SandboxDiagnostic> diagnostics, SourceSpan span)

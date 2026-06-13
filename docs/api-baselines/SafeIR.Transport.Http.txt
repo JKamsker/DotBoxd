@@ -1,0 +1,36 @@
+# SafeIR public API baseline
+# Package: SafeIR.Transport.Http
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+protected override async Task<HttpResponseMessage> SendAsync(
+public delegate ValueTask<IReadOnlyList<IPAddress>> SafeDnsResolver(string host, CancellationToken cancellationToken)
+public HttpResponseMessage Message { get; } = message
+public InMemoryHandler(
+public override bool CanSeek => false
+public override long Length => throw new NotSupportedException()
+public override long Position
+public override long Seek(long offset, SeekOrigin loc) => throw new NotSupportedException()
+public SafeInMemoryHttpMessageInvoker(
+public sealed class SafeInMemoryHttpMessageInvoker : HttpMessageInvoker
+public static async ValueTask<SafePinnedHttpResponse> SendAsync(
+public static async ValueTask<string> GetTextAsync(
+public static BindingDescriptor GetText(SafeInMemoryHttpMessageInvoker? invoker = null, SafeDnsResolver? dnsResolver = null)
+public static BindingRegistryBuilder AddNetworkBindings(
+public static bool IsAllowedAuthority(string value)
+public static bool IsAllowedScheme(string value)
+public static bool IsNonGlobal(IPAddress address)
+public static bool MatchesAllowedAuthority(string allowed, Uri uri)
+public static bool SameUri(Uri left, Uri right)
+public static class SafeHttpBindingExtensions
+public static class SafeHttpBindings
+public static class SafeHttpClient
+public static class SafeHttpHostBuilderExtensions
+public static class SafeHttpPolicyBuilderExtensions
+public static long ChargeMetadata(
+public static long MeasureMetadataBytes(HttpResponseMessage response)
+public static SafeHttpGrantOptions Read(CapabilityGrant grant)
+public static SandboxHostBuilder AddNetworkBindings(
+public static SandboxPolicyBuilder GrantHttpGet(
+public static string Sanitize(string value)
+public static void Validate(CapabilityGrant grant, ICollection<SandboxDiagnostic> diagnostics)
+public void Dispose()

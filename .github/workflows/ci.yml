@@ -90,6 +90,10 @@ jobs:
         shell: pwsh
         run: ./scripts/check-release-workflow-security.ps1
 
+      - name: Check public API baseline
+        shell: pwsh
+        run: ./scripts/check-api-compat-baseline.ps1
+
       - name: Report release readiness checklist
         shell: pwsh
         run: ./scripts/check-release-readiness.ps1

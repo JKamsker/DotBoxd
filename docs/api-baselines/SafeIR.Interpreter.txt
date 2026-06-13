@@ -1,0 +1,28 @@
+# SafeIR public API baseline
+# Package: SafeIR.Interpreter
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+public async ValueTask<SandboxExecutionResult> ExecuteAsync(
+public async ValueTask<SandboxValue> EvaluateAsync(Expression expression, InterpreterFrame frame)
+public async ValueTask<SandboxValue> InvokeFunctionAsync(SandboxFunction function, IReadOnlyList<SandboxValue> args)
+public bool TryGetFunction(string id, out SandboxFunction function) => _functions.TryGetValue(id, out function!)
+public Dictionary<string, SandboxValue> Locals { get; }
+public ExpressionEvaluator(
+public interface ISandboxInterpreter
+public InterpreterEvaluator(ExecutionPlan plan, SandboxContext context, SandboxExecutionOptions options)
+public sealed class SandboxInterpreter : ISandboxInterpreter
+public static InterpreterFrame Create(SandboxFunction function, IReadOnlyList<SandboxValue> args)
+public static SandboxValue AddListItem(SandboxValue item, SandboxValue list, SandboxContext context)
+public static SandboxValue BuildList(IReadOnlyList<SandboxValue> values, SandboxContext context)
+public static SandboxValue ContainsMapKey(SandboxValue key, SandboxValue map, SandboxContext context)
+public static SandboxValue CountList(SandboxValue list, SandboxContext context)
+public static SandboxValue CreateList(SandboxType itemType, SandboxContext context)
+public static SandboxValue CreateMap(SandboxType mapType, SandboxContext context)
+public static SandboxValue GetListItem(SandboxValue index, SandboxValue list, SandboxContext context)
+public static SandboxValue GetMapValue(SandboxValue key, SandboxValue map, SandboxContext context)
+public static SandboxValue RemoveMapValue(SandboxValue key, SandboxValue map, SandboxContext context)
+public static SandboxValue SetMapValue(SandboxValue value, SandboxValue key, SandboxValue map, SandboxContext context)
+public static void Write(
+public static void WriteBindingCall(
+public string FunctionId { get; }
+public ValueTask<SandboxValue> ExecuteEntrypointAsync(string entrypoint, SandboxValue input)

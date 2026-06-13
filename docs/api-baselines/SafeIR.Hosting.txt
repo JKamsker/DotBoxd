@@ -1,0 +1,52 @@
+# SafeIR public API baseline
+# Package: SafeIR.Hosting
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+protected override Assembly? Load(AssemblyName assemblyName)
+public async ValueTask<CompiledExecutable> GetAsync(
+public async ValueTask<SandboxExecutionResult> ExecuteAsync(
+public AutoHotnessAttempt BeginAttempt()
+public AutoHotnessAttempt BeginAttempt(ExecutionPlan plan, string entrypoint)
+public CompiledArtifact Artifact { get; } = artifact
+public CompiledExecutableCache()
+public ExecutionModeDecision Choose(
+public interface IExecutionModeSelector
+public interface ISandboxWorkerClient
+public ModuleHotnessStats Stats { get; } = stats
+public ModuleHotnessStats(int runCount)
+public SandboxHostBuilder AddBinding(BindingDescriptor descriptor)
+public SandboxHostBuilder AddDefaultPureBindings()
+public SandboxHostBuilder AddFileBindings()
+public SandboxHostBuilder AddLogBindings()
+public SandboxHostBuilder AddRandomBindings()
+public SandboxHostBuilder AddTimeBindings()
+public SandboxHostBuilder ForwardAuditEventsTo(Action<SandboxAuditEvent> observer)
+public SandboxHostBuilder UseCompilerCache(string cacheDirectory)
+public SandboxHostBuilder UseCompilerIfAvailable(ISandboxCompiler? compiler = null)
+public SandboxHostBuilder UseExecutionModeSelector(IExecutionModeSelector selector)
+public SandboxHostBuilder UseInterpreter(ISandboxInterpreter? interpreter = null)
+public SandboxHostBuilder UseWorkerClient(
+public sealed class HotnessExecutionModeSelector : IExecutionModeSelector
+public sealed class SandboxHostBuilder
+public sealed partial class SandboxHost
+public sealed partial class SandboxHost : IDisposable
+public sealed record ExecutionModeDecision(ExecutionMode Mode)
+public sealed record ModuleHotnessStats(
+public sealed record SandboxWorkerProfile(
+public static async ValueTask<MaterializedCompiledArtifact> MaterializeExecutableAsync(
+public static bool Matches(
+public static ExecutionModeDecision Compiled { get; } = new(ExecutionMode.Compiled)
+public static ExecutionModeDecision Interpreted { get; } = new(ExecutionMode.Interpreted)
+public static ExecutionPlan Build(
+public static IReadOnlyList<SandboxAuditEvent> ToSequencedArray(this IEnumerable<SandboxAuditEvent> events)
+public static SandboxHost Create(Action<SandboxHostBuilder>? configure = null)
+public static SandboxWorkerProfile HardenedOutOfProcess { get; } = new(
+public static ValueTask<SandboxExecutionResult> ExecuteAsync(
+public static void EnsurePolicyLimits(SandboxPolicy policy)
+public static void EnsurePrepared(ExecutionPlan plan, BindingRegistry hostBindings, byte[] planSigningKey)
+public static void ValidateExecutableEnvelope(CompiledArtifact artifact, ExecutionPlan plan, string entrypoint)
+public ValueTask<ExecutionPlan> PrepareAsync(
+public void Complete(SandboxExecutionResult result, TimeSpan elapsed)
+public void Dispose()
+public void RecordResult(SandboxExecutionResult result, TimeSpan elapsed)
+public void RevokeCapability(string capabilityId, string reason = "")
