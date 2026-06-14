@@ -10,15 +10,30 @@ to its current head.
 ## Current reviewed source heads
 
 - `claude/charming-napier-4d62f4`
-  - Reviewed through: `79c2494092b6c7d4bee70117e7d85dc729e7e370`
-  - Previous reviewed head: `aea170e1fb68a3466c5727b85fae78db66f97d52`
+  - Reviewed through: `462c109227e19c8e4ec6b463f5abb63723d92805`
+  - Previous reviewed head: `79c2494092b6c7d4bee70117e7d85dc729e7e370`
   - Decision: imported into `integration/best-of-performance`
-  - Integration tip after import: `b2138f71591222ca9b164d322b0cea96708fbb97`
+  - Integration tip after import: `395317867463597425b918dddb76105c15cd3a57`
 - `perf/improve-performance1`
-  - Reviewed through: `30e2f7263f0bb2328aa984d291ffa2e80875633c`
-  - Previous reviewed head: `ed1923d87382a84b2df98e03310cfa924a585794`
+  - Reviewed through: `e526193bbfa9c7944ebd4302979e953e7c475e1f`
+  - Previous reviewed head: `30e2f7263f0bb2328aa984d291ffa2e80875633c`
   - Decision: routed to topic PRs, not directly imported into integration
-  - Primary topic branch: `topic/best-of/plugin-allocation-trims`
+  - Primary topic branch: `topic/best-of/two-arg-binding-fastpath`
+
+## 2026-06-14 second follow-up sync
+
+Integration base before sync:
+
+- `ce7495543fbc8a21b2ee64bfd2359ce6ead0b986`
+
+Imported from `claude/charming-napier-4d62f4`:
+
+- `96223ab` -> `75469c85277f131a9a78f631723e93bde167de02`: unboxed interpreter branched-f64 loop runner and collapsed loop dispatch
+- `462c109` -> `395317867463597425b918dddb76105c15cd3a57`: branched-f64 benchmark result and bulk-metering direction notes
+
+Reviewed from `perf/improve-performance1` and routed to `topic/best-of/two-arg-binding-fastpath`:
+
+- `e526193`: fast-path two-argument compiled binding calls
 
 ## 2026-06-14 follow-up sync
 
