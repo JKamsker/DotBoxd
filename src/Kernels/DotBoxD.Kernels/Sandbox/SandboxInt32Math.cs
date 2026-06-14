@@ -143,6 +143,39 @@ public static class SandboxInt32Math
         }
     }
 
+    internal static int AddModuloBranchDeltasFromZero(
+        int value,
+        int iterations,
+        int divisor,
+        int matchRemainder,
+        int thenDelta,
+        int elseDelta)
+    {
+        if (iterations < 0)
+        {
+            throw InvalidInput("repeat count must be non-negative");
+        }
+
+        if (divisor <= 0)
+        {
+            throw InvalidInput("integer division by zero");
+        }
+
+        var thenCount = CountRemainderMatches(iterations, divisor, matchRemainder);
+        var withThen = AddRepeated(value, thenDelta, thenCount);
+        return AddRepeated(withThen, elseDelta, iterations - thenCount);
+    }
+
+    private static int CountRemainderMatches(int iterations, int divisor, int matchRemainder)
+    {
+        if (iterations == 0 || matchRemainder < 0 || matchRemainder >= divisor || iterations <= matchRemainder)
+        {
+            return 0;
+        }
+
+        return 1 + (iterations - 1 - matchRemainder) / divisor;
+    }
+
     private static SandboxRuntimeException InvalidInput(string message)
         => new(new SandboxError(SandboxErrorCode.InvalidInput, message));
 }

@@ -183,6 +183,12 @@ internal sealed class MethodEmitter
             return;
         }
 
+        if (I32ModuloBranchAccumulatorLoopFastPathEmitter.TryEmit(range, _il, _stackPlan, Declare))
+        {
+            _nonNegativeF64Locals.Clear();
+            return;
+        }
+
         if (I32RepeatedAddCallLoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _functionModels, Declare))
         {
             _nonNegativeF64Locals.Clear();
