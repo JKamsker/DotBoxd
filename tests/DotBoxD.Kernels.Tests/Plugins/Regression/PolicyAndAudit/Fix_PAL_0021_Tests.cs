@@ -10,8 +10,12 @@ namespace DotBoxD.Kernels.Tests;
 /// <see cref="SandboxExecutionResult.AuditEvents"/> setter adopts that snapshot without
 /// allocating another copy, while still defending against mutable inputs (COR-0014).
 /// </summary>
+[Collection(AllocationMeasurementCollection.Name)]
 public sealed class Fix_PAL_0021_Tests
 {
+    private const int EmptySinkWarmupIterations = 1_000;
+    private const int EmptySinkMeasuredIterations = 20_000;
+
     private static SandboxResourceUsage Usage()
         => new ResourceMeter(new ResourceLimits(MaxFuel: 1_000)).Snapshot();
 
@@ -39,6 +43,27 @@ public sealed class Fix_PAL_0021_Tests
 
         Assert.IsAssignableFrom<ReadOnlyCollection<SandboxAuditEvent>>(snapshot);
         Assert.Single(snapshot);
+    }
+
+    [Fact]
+    public void Empty_sink_construction_does_not_allocate_an_event_list()
+    {
+        for (var i = 0; i < EmptySinkWarmupIterations; i++)
+        {
+            GC.KeepAlive(new InMemoryAuditSink().SnapshotEvents());
+        }
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < EmptySinkMeasuredIterations; i++)
+        {
+            GC.KeepAlive(new InMemoryAuditSink().SnapshotEvents());
+        }
+
+        var perSink = (GC.GetAllocatedBytesForCurrentThread() - before) / EmptySinkMeasuredIterations;
+
+        Assert.True(
+            perSink < 56,
+            $"Empty audit sink construction allocated {perSink} bytes/sink; the event list should be created lazily.");
     }
 
     [Fact]

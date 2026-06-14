@@ -65,10 +65,11 @@ public sealed class InMemoryAuditSink : IAuditSink
     private static readonly IReadOnlyList<SandboxAuditEvent> EmptySnapshot =
         new OwnedAuditEventSnapshot(Array.Empty<SandboxAuditEvent>());
 
-    private readonly List<SandboxAuditEvent> _events = [];
+    private List<SandboxAuditEvent>? _events;
     private long _sequence;
 
-    public IReadOnlyList<SandboxAuditEvent> Events => _events.ToArray();
+    public IReadOnlyList<SandboxAuditEvent> Events
+        => _events is null ? Array.Empty<SandboxAuditEvent>() : _events.ToArray();
 
     public long EventsWritten => _sequence;
 
@@ -78,11 +79,12 @@ public sealed class InMemoryAuditSink : IAuditSink
     /// retained by the sink, so result construction can adopt it without copying again.
     /// </summary>
     internal IReadOnlyList<SandboxAuditEvent> SnapshotEvents()
-        => _events.Count == 0 ? EmptySnapshot : new OwnedAuditEventSnapshot(_events.ToArray());
+        => _events is null || _events.Count == 0 ? EmptySnapshot : new OwnedAuditEventSnapshot(_events.ToArray());
 
     public void Write(SandboxAuditEvent auditEvent)
     {
         var sequence = ++_sequence;
+        _events ??= new List<SandboxAuditEvent>();
         _events.Add(auditEvent with { SequenceNumber = sequence });
     }
 
@@ -102,9 +104,15 @@ public sealed class InMemoryAuditSink : IAuditSink
         // the first event with SequenceNumber > checkpoint lives at list index
         // checkpoint. Start enumeration there instead of rescanning prior
         // events, avoiding O(N^2) enforcement work over a run.
-        for (var index = StartIndexAfter(checkpoint); index < _events.Count; index++)
+        var events = _events;
+        if (events is null)
         {
-            var e = _events[index];
+            return false;
+        }
+
+        for (var index = StartIndexAfter(checkpoint, events.Count); index < events.Count; index++)
+        {
+            var e = events[index];
             if (e.RunId == runId &&
                 e.Success == success &&
                 IsBindingAuditKind(e.Kind) &&
@@ -122,7 +130,7 @@ public sealed class InMemoryAuditSink : IAuditSink
         return false;
     }
 
-    private int StartIndexAfter(long checkpoint)
+    private static int StartIndexAfter(long checkpoint, int eventCount)
     {
         // Fail closed against an out-of-range checkpoint: a negative checkpoint
         // means "scan all events", and one beyond the recorded count yields an
@@ -132,7 +140,7 @@ public sealed class InMemoryAuditSink : IAuditSink
             return 0;
         }
 
-        return checkpoint >= _events.Count ? _events.Count : (int)checkpoint;
+        return checkpoint >= eventCount ? eventCount : (int)checkpoint;
     }
 
     private static bool IsBindingAuditKind(string kind)
