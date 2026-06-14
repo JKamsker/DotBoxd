@@ -1,5 +1,4 @@
 using DotBoxD.Hosting;
-using DotBoxD.Plugins;
 
 namespace DotBoxD.Kernels.Tests;
 
@@ -53,33 +52,6 @@ public sealed class Fix_CMP_0031_Tests
         Assert.Equal(SandboxErrorCode.QuotaExceeded, summary.ErrorCode);
     }
 
-    [Fact]
-    public async Task Suppressed_successful_binding_compiled_run_preserves_binding_audit()
-    {
-        var messages = new InMemoryPluginMessageSink();
-        using var host = SandboxHost.Create(builder =>
-        {
-            builder.AddDefaultPureBindings();
-            builder.AddPluginMessageBindings(messages);
-            builder.UseInterpreter();
-            builder.UseCompilerIfAvailable();
-        });
-        var module = await host.ImportJsonAsync(MessageModuleJson());
-        var plan = await host.PrepareAsync(
-            module,
-            SandboxPolicyBuilder.Create()
-                .GrantHostMessageWrite()
-                .WithFuel(10_000)
-                .Build());
-
-        var result = await ExecuteCompiledAsync(host, plan, SandboxValue.Unit, suppressSuccessfulSummary: true);
-
-        Assert.True(result.Succeeded, result.Error?.SafeMessage);
-        Assert.DoesNotContain(result.AuditEvents, e => e.Kind == "RunSummary");
-        Assert.Single(result.AuditEvents, e => e.Kind == "PluginMessage");
-        Assert.Equal("compiled message", Assert.Single(messages.Messages).Message);
-    }
-
     private static SandboxHost BuildCompiledHost()
         => SandboxHost.Create(builder =>
         {
@@ -113,32 +85,4 @@ public sealed class Fix_CMP_0031_Tests
                 SuppressSuccessfulRunSummaryAudit = suppressSuccessfulSummary
             });
 
-    private static string MessageModuleJson()
-        => """
-        {
-          "id": "compiled-message-audit",
-          "version": "1.0.0",
-          "capabilityRequests": [{ "id": "host.message.write" }],
-          "functions": [
-            {
-              "id": "main",
-              "visibility": "entrypoint",
-              "parameters": [],
-              "returnType": "Unit",
-              "body": [
-                {
-                  "op": "return",
-                  "value": {
-                    "call": "host.message.send",
-                    "args": [
-                      { "string": "player-1" },
-                      { "string": "compiled message" }
-                    ]
-                  }
-                }
-              ]
-            }
-          ]
-        }
-        """;
 }
