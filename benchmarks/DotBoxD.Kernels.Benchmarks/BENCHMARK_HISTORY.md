@@ -584,3 +584,35 @@ is at target or a documented, rigorously-argued floor:
 
 The only further lever is an i64 reciprocal modulo (interp i64 ~11x -> a few × lower) via 128-bit multiply —
 diminishing returns, still tree-walk bound. Documented for completeness; not pursued.
+
+## i64 finished + re-architecture analysis (tiered execution understood)
+
+Completed i64: reciprocal modulo in the interpreter, and branchless i64 overflow detection in SandboxInt64Math
+(mirroring SandboxInt32Math — removed the try/catch inlining barrier). Compiled i64 5.2ms/1.8x -> 3.3ms/1.3x;
+interpreted i64 ~10x (tree-walk + checked-multiply floor). A 128-bit Int128 multiply check was tried and reverted
+(slow in the non-inlined interpreter: i64 interp 10x->26x).
+
+**Architecture (confirmed): tiered execution.** Interpreter = the no-codegen *cold* tier (runs IR immediately,
+emits no un-unloadable assemblies); compiler = the *hot* tier, tiered up to after `AutoCompileThreshold` runs
+(like expression-tree / .NET tiered-JIT warmup). Implications for the matrix:
+
+- **Hot/repeat code runs compiled, which is at target** (<=2x on every benchmark except f64 ~6x and the trivial
+  diagnostic). This is the perf-critical path.
+- **The interpreted ratios on 1M-iteration loops measure the cold tier on a hot workload** — a scenario Auto mode
+  avoids by tiering up. The interpreter's job is fast startup + light/one-shot runs, not long-loop throughput.
+
+### Re-architecture levers (and why they're not pursued)
+
+1. **Compiled f64 (~6x), the only hot-tier gap:** per-op finiteness checks serialize the FP pipeline vs a
+   JIT-tight baseline. Moving finiteness to store/observation points (security-equivalent — observed values stay
+   finite) only reaches ~5x (the FP ops + one remaining check + loop meter remain) and changes a tested spec
+   (transient Inf->finite would stop throwing). Not worth a spec change for 6x->5x. Floor.
+2. **Interpreter tree-walk (cold tier, ~7-20x on long loops):** beating it without codegen means a bytecode-VM
+   rewrite (flatten the plan tree to a switch loop, ~1.5-2x, large); beating it *with* codegen means tiering up,
+   which the architecture already does for hot code. A mid-invocation tier-up (OSR) would close the one-shot
+   long-loop case but is a major state-transfer undertaking for a narrow scenario.
+
+**Conclusion:** the architecture is sound and the hot path is at target. The remaining ratios are the cold-tier
+tree-walk (by design, mooted by tier-up) and the f64 finiteness/pipeline floor. No further semantics-preserving
+gain reaches target; the only levers are a spec change (f64, doesn't reach target anyway) or a major cold-tier
+rewrite (OSR/bytecode-VM) whose payoff is mooted by tiering up.
