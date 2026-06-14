@@ -1,6 +1,5 @@
 namespace DotBoxD.Kernels.Compiler.Emitters;
 
-using System.Collections.Concurrent;
 using System.Reflection;
 using System.Reflection.Emit;
 using DotBoxD.Kernels;
@@ -10,18 +9,10 @@ using static DotBoxD.Kernels.Compiler.IlEmitterPrimitives;
 
 public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
 {
-    // Compilation (Reflection.Emit + verification) is a pure, deterministic function of the cache key
-    // (plan identity + entrypoint + policy + optimize). Without it, the same prepared plan re-emits and
-    // re-verifies its assembly on every ExecuteAsync — a multi-millisecond fixed cost that dominates the
-    // compiled path for the common "prepare once, execute many" pattern. Memoize the emitted+verified
-    // artifact in-memory so repeat compiles short-circuit both. Bounded to avoid unbounded growth across
-    // many distinct modules; the artifact is immutable and already verified, so reuse is safe.
-    private const int MaxInMemoryArtifacts = 256;
-    private readonly ConcurrentDictionary<string, CompiledArtifact> _inMemoryArtifacts = new(StringComparer.Ordinal);
-
     private readonly IGeneratedAssemblyVerifier _verifier;
     private readonly VerificationPolicy _verificationPolicy;
     private readonly PersistentCompiledArtifactCache? _cache;
+    private readonly ReflectionEmitMemoryCache? _memoryCache;
 
     public ReflectionEmitSandboxCompiler(
         IGeneratedAssemblyVerifier verifier,
@@ -31,7 +22,10 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         _verifier = verifier;
         _verificationPolicy = verificationPolicy ?? VerificationPolicy.BoxedValueDefaults();
         _cache = cache;
+        _memoryCache = cache is null ? new ReflectionEmitMemoryCache() : null;
     }
+
+    internal bool UsesPersistentCache => _cache is not null;
 
     public async ValueTask<CompiledArtifact> CompileAsync(
         ExecutionPlan plan,
@@ -41,13 +35,9 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         var function = ResolveSupportedFunction(plan, options.Entrypoint);
         var cacheKey = CacheKeyBuilder.Build(plan, options.Entrypoint, _verificationPolicy, options.Optimize);
 
-        // In-memory hit: the artifact for this exact plan/entrypoint/policy was already emitted and verified,
-        // so skip re-emitting and re-verifying (the dominant per-execution compiled cost). Only when no disk
-        // cache is configured — a disk cache must be consulted every call so it can detect entry invalidation
-        // and emit the corresponding cache audits, which an in-memory short-circuit would mask.
-        if (_cache is null && _inMemoryArtifacts.TryGetValue(cacheKey, out var memoized))
+        if (_memoryCache?.TryGet(cacheKey, out var cachedArtifact) == true)
         {
-            return memoized;
+            return cachedArtifact;
         }
 
         var lookupStatus = CompiledCacheStatus.None;
@@ -108,20 +98,7 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
             CompiledRuntimeFormKind.LoadedAssembly,
             status,
             lookupStatus == CompiledCacheStatus.Invalid ? cacheInvalidReason : null);
-        return _cache is null ? Memoize(cacheKey, artifact) : artifact;
-    }
-
-    // Bounded in-memory memo of emitted+verified artifacts (only used when no disk cache is configured).
-    // Clears wholesale on overflow rather than tracking LRU recency — simple and adequate for the
-    // steady-state "few hot modules" case.
-    private CompiledArtifact Memoize(string cacheKey, CompiledArtifact artifact)
-    {
-        if (_inMemoryArtifacts.Count >= MaxInMemoryArtifacts)
-        {
-            _inMemoryArtifacts.Clear();
-        }
-
-        _inMemoryArtifacts[cacheKey] = artifact;
+        _memoryCache?.Add(cacheKey, artifact);
         return artifact;
     }
 
