@@ -155,6 +155,14 @@ public static partial class CompiledRuntime
     [MethodImpl(AggressiveInlining)] public static int AddRemI32Raw(int left, int right, int divisor) => SandboxInt32Math.Remainder(SandboxInt32Math.Add(left, right), divisor);
     [MethodImpl(AggressiveInlining)] public static int NegI32Raw(int value) => SandboxInt32Math.Negate(value);
 
+    // Unboxed f64 arithmetic: identical semantics to the boxed Add/Sub/Mul/Div (SandboxFloat64Math enforces the
+    // same finiteness check), but keeps the operand and result as `double` on the stack instead of allocating an
+    // F64Value per operation. Lets f64 arithmetic loops/expressions run without per-op boxing.
+    [MethodImpl(AggressiveInlining)] public static double AddF64Raw(double left, double right) => SandboxFloat64Math.Add(left, right);
+    [MethodImpl(AggressiveInlining)] public static double SubF64Raw(double left, double right) => SandboxFloat64Math.Subtract(left, right);
+    [MethodImpl(AggressiveInlining)] public static double MulF64Raw(double left, double right) => SandboxFloat64Math.Multiply(left, right);
+    [MethodImpl(AggressiveInlining)] public static double DivF64Raw(double left, double right) => SandboxFloat64Math.Divide(left, right);
+
     public static SandboxValue AddI32(SandboxValue left, SandboxValue right) => I32(SandboxInt32Math.Add(AsI32(left), AsI32(right)));
     public static SandboxValue SubI32(SandboxValue left, SandboxValue right) => I32(SandboxInt32Math.Subtract(AsI32(left), AsI32(right)));
     public static SandboxValue MulI32(SandboxValue left, SandboxValue right) => I32(SandboxInt32Math.Multiply(AsI32(left), AsI32(right)));
