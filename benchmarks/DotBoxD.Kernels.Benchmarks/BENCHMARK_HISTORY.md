@@ -352,3 +352,44 @@ Decision (user-confirmed): accept 7.2x as the documented interpreter floor for c
 - `trivial no-loop` (compiled 12.2x): a single no-op invocation isolating fixed host-pipeline overhead
   (~0.5 ms, down from the ~16 ms per-call re-emit floor we fixed). Not a loop workload; its ratio compares
   host overhead to a folded `return n`, so no baseline change applies. Kept as a diagnostic row.
+
+## Expanded coverage round (f64 arithmetic, nested loop, branch-in-loop)
+
+Probing patterns *outside* the original eight cases surfaced two compiled rogues that the original matrix
+never exercised. Both were fixed by extending the unboxed-scalar codegen:
+
+- **f64 arithmetic** (`total * 0.9 + 0.1`): `EmitBinary` had a raw path only for i32, so f64 boxed every operand
+  and result. Added `AddF64Raw/SubF64Raw/MulF64Raw/DivF64Raw` (thin wrappers over `SandboxFloat64Math`, same
+  finiteness check) + a fast-path arithmetic plan. Compiled **84.9x/104ms -> 5.8x/6.9ms**.
+- **branch-in-loop** (`if (i % 2 < 1) ...`): i32 comparisons boxed both operands and the BoolValue. Added
+  `LtI32Raw/.../NeI32Raw` returning unboxed bool + a Bool->Boxed coercion. Compiled **18.7x/41ms -> 8.4x/20.8ms**;
+  speeds every i32 conditional.
+
+Latest `--probe-matrix` (machine lightly loaded; interpreted figures are GC-noisy on this run):
+
+```
+case                         handwritten   compiled      x   interpreted      x
+i32 add/rem loop                 23.1 ms     23.7 ms   1.0       86.5 ms    3.8
+math.sqrt binding                 7.7 ms      8.0 ms   1.0       18.4 ms    2.4
+math.sqrt x3 binding             11.5 ms     12.1 ms   1.1       20.1 ms    1.7
+string.length binding             0.2 ms      0.3 ms   1.3        0.9 ms    4.7
+list.count intrinsic              0.2 ms      0.3 ms   1.3        1.0 ms    4.6
+list.get intrinsic                0.5 ms      0.3 ms   0.5        1.7 ms    3.4
+map.get intrinsic                 5.1 ms      0.7 ms   0.1        0.5 ms    0.1
+local function call               2.3 ms      2.7 ms   1.2       15.5 ms    6.8
+f64 arithmetic loop               1.2 ms      6.9 ms   5.8      680.4 ms  567.4
+nested loop                       2.4 ms      2.9 ms   1.2       10.1 ms    4.2
+branch in loop                    2.5 ms     20.8 ms   8.4      406.0 ms  163.5
+trivial no-loop (diagnostic)      0.0 ms      0.5 ms  14.5        0.1 ms    1.7
+```
+
+### Remaining gaps after this round (improvable, NOT yet at target)
+
+- **Interpreted f64 arithmetic / branch (boxing).** The interpreter has an unboxed i32 expression plan
+  (`I32ExpressionPlan`) but **no unboxed f64 or bool plan** — f64 arithmetic and branched bodies box every
+  intermediate, so they are very slow (and GC-noisy). Fixable with an `F64ExpressionPlan` analogous to the i32
+  one; substantial but high-value. NOT attempted yet.
+- **Compiled f64 arithmetic 5.8x / branch 8.4x.** Both fell off the bulk-charge fast paths into the general
+  emitter, which charges fuel per-subexpression and (f64) does a mandatory per-op finiteness check the FMA'd
+  baseline skips. Further gains need a bulk-charge fast path for these shapes (branched-loop / multi-statement);
+  diminishing returns vs the i32 case. Absolute cost is already small (7 ms / 21 ms per 1M).
