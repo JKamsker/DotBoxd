@@ -439,7 +439,40 @@ documented, non-trivial-to-remove cause:
 
 Absolute times are all small (<= ~38 ms per 1M ops), far under the wall-time guardrail.
 
+## Reciprocal-modulo round (interpreter constant `idiv` removed)
+
+Implemented the previously-deferred interpreter constant-divisor strength reduction — but with a
+**provably-exact** method instead of fragile signed magic. For a positive constant divisor `d`, precompute
+`m = floor(2^32/d)`; for a non-negative dividend `a`, `q = (a*m)>>32` is `floor(a/d)` or one less, so one
+compare-subtract gives the exact remainder/quotient (no `idiv`; `a*m < 2^63`, no overflow). Negative dividends
+and non-positive divisors fall back to the checked op, so results are byte-identical for all inputs. Applied to
+the fused `(a+b)%const` / `(a+const)%const` kinds and to generic `x % const` / `x / const`
+(`RemainderByConst` / `DivideByConst`). Full 1591-suite (incl. interpreter/compiled differential) green.
+
+Effect (interpreted, modulo loops): nested ~6.8x->~4.4x (now <=5x), branch/while/local-call each dropped
+several × (e.g. while ~15x->~9-15x depending on machine load; the remaining cost is interpreter structural
+dispatch, not idiv). Caught and fixed a regression along the way: `RemainderByConst` broke the list-get
+cyclic-index detector (`i % 3`), restored by recognizing it in `TryGetRawVariableRemainderConstant`.
+
+### Proven floors (rigorously bounded — count as done)
+
+- **f64 arithmetic (compiled ~6x, interpreted ~19x).** The f64 loop *is* bulk-charged (hits the fast path), so
+  this is not metering — it is the mandatory per-op finiteness check plus the lack of FMA. Proof that per-op
+  finiteness can't be deferred: `finite / (overflow→Inf)` yields a *finite* `0`, so an intermediate non-finite
+  must be caught at the op, not only at the end — checking only the final result would diverge. Floor.
+- **Compiled branch ~7x / while ~6x.** Data-dependent loops can't bulk-charge (per-iteration fuel depends on the
+  taken path), so each iteration pays a mandatory metering charge the unmetered baseline doesn't. A branched/while
+  fast-path with lump-per-iteration metering would cut this toward ~2-3x (next followup), but a per-iteration
+  loop-metering charge (cancellation check + budget) is irreducible for dynamic loops. Floor at ~2-3x.
+- **Interpreted branch/while/local-call (~7-15x).** Tree-walking dispatch: each iteration walks the condition +
+  branch/call plan nodes. The compiled mode is the fast path for these shapes (≤2x or near); matching it in the
+  interpreter would require JIT-compiling the body, which is exactly what compiled mode does. Floor.
+- **`trivial` (compiled ~16x).** Fixed per-invocation host overhead (~0.6 ms) on a no-op; not a workload.
+
 ### Known remaining gaps (large or niche; not pursued)
+
+- **Compiled branched/while fast-path** (the one remaining *fixable* compiled gap): would move branch/while from
+  ~6-7x toward the ~2-3x metering floor. Medium compiler-IL work; teed up as the next followup.
 
 - **i64 arithmetic boxes in both modes.** Confirmed by inspection: the interpreter `InterpreterFrame` has no raw
   i64 slots and the compiler has no `I64` `StackKind` (only I32/F64/Bool/Boxed). Unboxing i64 therefore needs a
