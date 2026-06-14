@@ -18,7 +18,7 @@
     <!-- Roslyn. Central = 4.8.0 so the shipped generators load in the widest range of
          consumer SDKs. Test/host projects that need newer APIs use VersionOverride
          (DotBoxd.Plugins.Analyzer + DotBoxd.Kernels.Tests -> 4.14.0, DotBoxd.Services.SourceGenerator.Tests -> 4.11.0). -->
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" />
 
     <!-- Benchmarks -->
@@ -27,14 +27,14 @@
     <!-- Test stack (winner = newest, matches DotBoxd.Kernels.Tests config) -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
 
     <!-- Source-generator snapshot/verification stack -->
     <PackageVersion Include="Verify.Xunit" Version="26.6.0" />
     <PackageVersion Include="Verify.SourceGenerators" Version="2.5.0" />
-    <PackageVersion Include="Verify.DiffPlex" Version="3.1.2" />
-    <PackageVersion Include="FluentAssertions" Version="6.12.0" />
-    <PackageVersion Include="Basic.Reference.Assemblies.Net80" Version="1.7.9" />
+    <PackageVersion Include="Verify.DiffPlex" Version="3.2.0" />
+    <PackageVersion Include="FluentAssertions" Version="6.12.2" />
+    <PackageVersion Include="Basic.Reference.Assemblies.Net80" Version="1.8.8" />
   </ItemGroup>
 </Project>
