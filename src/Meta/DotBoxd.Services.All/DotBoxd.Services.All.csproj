@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <PackageId>DotBoxd.Services.All</PackageId>
+    <IsPackable>true</IsPackable>
+    <Description>DotBoxd service/channels bundle: the source-generated RPC core (DotBoxd.Services) together with the MessagePack codec and the TCP and named-pipe transports. Targets netstandard2.1 and is Unity/IL2CPP compatible for service-only consumers that do not need the Kernels or Pushdown stack.</Description>
+    <PackageTags>dotboxd;rpc;services;channels;transport;messagepack;unity;il2cpp;meta</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Services\DotBoxd.Services\DotBoxd.Services.csproj" />
+    <ProjectReference Include="..\..\Channels\DotBoxd.Transports.Tcp\DotBoxd.Transports.Tcp.csproj" />
+    <ProjectReference Include="..\..\Channels\DotBoxd.Transports.NamedPipes\DotBoxd.Transports.NamedPipes.csproj" />
+    <ProjectReference Include="..\..\Channels\DotBoxd.Codecs.MessagePack\DotBoxd.Codecs.MessagePack.csproj" />
+  </ItemGroup>
+
+</Project>

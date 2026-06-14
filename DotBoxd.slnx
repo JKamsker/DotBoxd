@@ -11,6 +11,11 @@
     <Project Path="src/Services/DotBoxd.Services/DotBoxd.Services.csproj" />
   </Folder>
 
+  <Folder Name="/src/Meta/">
+    <Project Path="src/Meta/DotBoxd/DotBoxd.csproj" />
+    <Project Path="src/Meta/DotBoxd.Services.All/DotBoxd.Services.All.csproj" />
+  </Folder>
+
   <Folder Name="/src/Channels/">
     <Project Path="src/Channels/DotBoxd.Transports.Tcp/DotBoxd.Transports.Tcp.csproj" />
     <Project Path="src/Channels/DotBoxd.Transports.NamedPipes/DotBoxd.Transports.NamedPipes.csproj" />
@@ -80,6 +85,7 @@
     <Project Path="samples/Pushdown/PluginIpc/DotBoxd.Kernels.PluginIpc.Server.Abstractions/DotBoxd.Kernels.PluginIpc.Server.Abstractions.csproj" />
     <Project Path="samples/Pushdown/PluginIpc/DotBoxd.Kernels.PluginIpc.Server/DotBoxd.Kernels.PluginIpc.Server.csproj" />
     <Project Path="samples/Pushdown/PluginIpc/DotBoxd.Kernels.PluginIpc.Client/DotBoxd.Kernels.PluginIpc.Client.csproj" />
+    <Project Path="samples/Pushdown/DotBoxd.EndToEnd/DotBoxd.EndToEnd.csproj" />
   </Folder>
 
   <Folder Name="/tools/">
