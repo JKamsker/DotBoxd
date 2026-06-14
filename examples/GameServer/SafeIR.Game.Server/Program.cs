@@ -21,10 +21,13 @@ internal static class Program
         // ctx.Host<IGameWorldAccess>() read bindings. Both are bound to the world once it exists.
         var sink = new GameCommandSink();
         var worldHost = new GameWorldHost();
+        // Compiled mode: the plugin's verified IR is JIT-compiled to fast, verifier-checked IL (rather
+        // than interpreted) — proving the IR library compiles valid IL from the kernels this plugin ships.
         using var server = PluginServer.Create(
             sink,
             configureHost: worldHost.AddBindings,
-            defaultPolicy: ServerPolicy.Create());
+            defaultPolicy: ServerPolicy.Create(),
+            executionMode: ExecutionMode.Compiled);
 
         // Register convention adapters for the events plugins may subscribe to. No hand-written
         // adapter is needed — the sandbox shape is inferred from each record's properties. Resolving

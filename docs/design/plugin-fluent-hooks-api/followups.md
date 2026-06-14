@@ -128,10 +128,13 @@ through the interpreter, validator, value validation, shape metering, canonical 
 record is a **positional** tuple; field *names* live in the analyzer and the host marshaling layer, which
 map a C# DTO's members to record fields by **declaration order**. `List<Record>` is a list of objects.
 
-Records run in the **interpreter** (the full sandbox semantics: validation, capabilities, resource
-limits). Compiled-mode record emission is deferred — the verifier permits `newarr` only for
-`SandboxValue`, so variable-arity record *types* can't yet be emitted as IL — so RPC kernels always
-install interpreted (`PluginServer.InstallRpcAsync`).
+Records run under both execution modes. The **interpreter** is the reference (validation, capabilities,
+resource limits); the **compiler** emits fast, verifier-checked IL for `record.new`/`record.get` —
+`EmitSandboxType` builds the field-type array through the trusted `CompiledRuntime.CreateTypeArray`
+facade (like the value-array path), so the verifier's `newarr` restriction (SandboxValue only) is
+unchanged, and the allowlist simply gains `RecordNew`/`RecordGet`/`TypeRecord`/`CreateTypeArray`.
+`PluginServer.InstallRpcAsync` honors the server's execution mode (Auto/Compiled), so RPC kernels
+compile to IL like event kernels.
 
 ### The pieces
 
@@ -151,7 +154,8 @@ builds lists/records) + the binding effects, matched against the verified entryp
 
 ### Constraints / current scope
 
-- **Interpreted only** (compiled-mode record emission deferred, as above).
+- Runs interpreted **or compiled** — record IR compiles to verified IL (the GameServer example installs
+  its kernels in `ExecutionMode.Compiled`).
 - One batch method per service; parameters/return/DTO fields use the supported scalars, lists, or nested
   DTOs. DTO fields map by **declaration order** (positional records → constructor-parameter order).
 - The typed proxy supports synchronous, `Task<T>`, and `ValueTask<T>` return shapes.
