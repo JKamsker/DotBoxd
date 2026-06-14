@@ -79,7 +79,7 @@ internal static class SafeIrHostBindingExpressionLowerer
         return new SafeIrExpressionModel(source, returnType, allocates);
     }
 
-    private static (string BindingId, string Capability, IReadOnlyList<string> Effects)? HostBinding(IMethodSymbol method)
+    internal static (string BindingId, string Capability, IReadOnlyList<string> Effects)? HostBinding(IMethodSymbol method)
     {
         foreach (var attribute in method.GetAttributes())
         {

@@ -74,6 +74,37 @@ public sealed class CapabilityAttribute(string id) : Attribute
 [AttributeUsage(AttributeTargets.Method, Inherited = false)]
 public sealed class KernelMethodAttribute : Attribute;
 
+/// <summary>
+/// Marks a class as a <b>kernel RPC service</b>: a batch operation the plugin ships as verified IR and
+/// the server runs request/response in a single roundtrip, so a loop over many entities executes
+/// server-side (calling the host's existing bindings) instead of one network call per entity. The
+/// generator lowers the class's single public batch method — its body may use locals, a <c>foreach</c>
+/// over a list parameter, host bindings via <c>ctx.Host&lt;T&gt;()</c>, and may build and return complex
+/// objects (records/DTOs) and lists of them. For example:
+/// <code>
+/// [KernelRpcService("monster-killer")]
+/// public sealed partial class MonsterKillerKernel
+/// {
+///     public List&lt;KillResult&gt; KillMonsters(List&lt;int&gt; monsterIds, HookContext ctx)
+///     {
+///         var results = new List&lt;KillResult&gt;();
+///         foreach (var id in monsterIds)
+///             results.Add(new KillResult(id, ctx.Host&lt;IGameWorld&gt;().Kill(id)));
+///         return results;
+///     }
+/// }
+/// public readonly record struct KillResult(int MonsterId, bool Success);
+/// </code>
+/// The trailing <see cref="HookContext"/> parameter is the lowering marker for host bindings (as in a
+/// kernel's <c>Handle</c>) and is not part of the wire signature. Parameters, return type, and DTO
+/// fields must use the supported scalar types, lists, or nested DTOs.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class KernelRpcServiceAttribute(string id) : Attribute
+{
+    public string Id { get; } = id;
+}
+
 public interface IEventKernel<TEvent>
 {
     bool ShouldHandle(TEvent e, HookContext context);

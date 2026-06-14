@@ -24,6 +24,8 @@ internal static class SafeIrGenerationNames
         public const string HostBindingAttribute = "SafeIR.Server.Abstractions.HostBindingAttribute";
         public const string CapabilityAttribute = "SafeIR.Server.Abstractions.CapabilityAttribute";
         public const string KernelMethodAttribute = "SafeIR.Server.Abstractions.KernelMethodAttribute";
+        public const string KernelRpcServiceAttribute = "SafeIR.Server.Abstractions.KernelRpcServiceAttribute";
+        public const string HookContextType = "SafeIR.Server.Abstractions.HookContext";
     }
 
     public static class Contracts

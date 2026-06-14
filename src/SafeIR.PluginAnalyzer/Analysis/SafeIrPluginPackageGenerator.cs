@@ -41,6 +41,23 @@ public sealed class SafeIrPluginPackageGenerator : IIncrementalGenerator
             .Where(static result => result is not null)
             .Select(static (result, _) => result!);
 
+        // Kernel RPC services: lower a [KernelRpcService] class's batch method to a verified-IR package
+        // whose Create() imports the JSON. Unsupported shapes emit a diagnostic and no package.
+        var rpcResults = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                SafeIrGenerationNames.Metadata.KernelRpcServiceAttribute,
+                static (node, _) => node is ClassDeclarationSyntax,
+                static (ctx, ct) => RpcKernelModelFactory.Create(ctx, ct))
+            .Where(static result => result is not null)
+            .Select(static (result, _) => result!);
+
+        context.RegisterSourceOutput(
+            rpcResults.Where(static result => result.Diagnostic is not null).Select(static (result, _) => result.Diagnostic!),
+            static (sourceContext, diagnostic) => sourceContext.ReportDiagnostic(diagnostic.ToDiagnostic()));
+        context.RegisterSourceOutput(
+            rpcResults.Where(static result => result.Package is not null).Select(static (result, _) => result.Package!),
+            static (sourceContext, package) => sourceContext.AddSource(package.HintName, package.Source));
+
         var packages = models
             .Collect()
             .Combine(chainResults.Select(static (result, _) => result.Model).Collect())
