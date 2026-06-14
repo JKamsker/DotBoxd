@@ -103,6 +103,7 @@ public sealed partial class SandboxContext
         Budget.CheckDeadline();
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnterCall()
     {
         if (++_callDepth > Budget.Limits.MaxCallDepth)
@@ -111,6 +112,7 @@ public sealed partial class SandboxContext
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ExitCall()
     {
         if (_callDepth > 0)
