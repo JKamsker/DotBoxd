@@ -101,6 +101,7 @@ public static class CompiledRuntime
     [MethodImpl(AggressiveInlining)] public static int MulI32Raw(int left, int right) => SandboxInt32Math.Multiply(left, right);
     [MethodImpl(AggressiveInlining)] public static int DivI32Raw(int left, int right) => SandboxInt32Math.Divide(left, right);
     [MethodImpl(AggressiveInlining)] public static int RemI32Raw(int left, int right) => SandboxInt32Math.Remainder(left, right);
+    [MethodImpl(AggressiveInlining)] public static int AddRemI32Raw(int left, int right, int divisor) => SandboxInt32Math.Remainder(SandboxInt32Math.Add(left, right), divisor);
     [MethodImpl(AggressiveInlining)] public static int NegI32Raw(int value) => SandboxInt32Math.Negate(value);
 
     public static SandboxValue AddI32(SandboxValue left, SandboxValue right) => I32(SandboxInt32Math.Add(AsI32(left), AsI32(right)));

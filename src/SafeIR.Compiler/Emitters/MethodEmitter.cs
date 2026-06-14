@@ -121,6 +121,11 @@ internal sealed class MethodEmitter
 
     private void EmitForRange(ForRangeStatement range)
     {
+        if (I32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, Declare))
+        {
+            return;
+        }
+
         var index = _il.DeclareLocal(typeof(int));
         var end = _il.DeclareLocal(typeof(int));
         _expressions.EmitAs(range.Start, StackKind.I32);

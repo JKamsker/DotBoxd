@@ -111,8 +111,8 @@ internal static class GeneratedMethodMeterAnalyzer
         GeneratedMethodFlow analysis,
         GeneratedInstruction instruction,
         Func<string?, bool> isFuelMeter)
-        => isFuelMeter(instruction.CalledMember) && HasPositiveImmediateMeterAmount(analysis, instruction)
-            ? 1
+        => isFuelMeter(instruction.CalledMember)
+            ? Math.Min(PositiveImmediateMeterAmount(analysis, instruction), analysis.Instructions.Count)
             : 0;
 
     private static int WorkCost(GeneratedInstruction instruction, Func<string?, bool> isMeterDensityWorkCall)
@@ -124,8 +124,14 @@ internal static class GeneratedMethodMeterAnalyzer
     private static bool HasPositiveImmediateMeterAmount(
         GeneratedMethodFlow analysis,
         GeneratedInstruction instruction)
-    {
-        return analysis.IndexByOffset.TryGetValue(instruction.Offset, out var index) &&
-               HasPositiveImmediateMeterAmount(analysis, index);
-    }
+        => PositiveImmediateMeterAmount(analysis, instruction) > 0;
+
+    private static int PositiveImmediateMeterAmount(
+        GeneratedMethodFlow analysis,
+        GeneratedInstruction instruction)
+        => analysis.IndexByOffset.TryGetValue(instruction.Offset, out var index) &&
+           index > 0 &&
+           HasPositiveImmediateMeterAmount(analysis, index)
+            ? analysis.Instructions[index - 1].Int32Value!.Value
+            : 0;
 }

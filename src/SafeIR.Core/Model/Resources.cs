@@ -5,6 +5,9 @@ namespace SafeIR;
 
 public sealed class ResourceMeter
 {
+    private const int FuelDeadlineCheckInterval = 64;
+    private const int LoopDeadlineCheckInterval = 4096;
+
     private readonly Dictionary<string, int> _callsByBinding = new(StringComparer.Ordinal);
     private readonly long _deadline;
     private int _chargesSinceDeadlineCheck;
@@ -51,19 +54,23 @@ public sealed class ResourceMeter
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ChargeFuel(long amount)
+        => ChargeFuel(amount, FuelDeadlineCheckInterval);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ChargeFuel(long amount, int deadlineCheckInterval)
     {
         if (amount < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(amount));
         }
 
-        FuelUsed = AddChecked(FuelUsed, amount, "fuel exhausted");
+        FuelUsed = AddNonNegativeChecked(FuelUsed, amount, "fuel exhausted");
         if (FuelUsed > Limits.MaxFuel)
         {
             throw Quota("fuel exhausted");
         }
 
-        if (++_chargesSinceDeadlineCheck >= 64)
+        if (++_chargesSinceDeadlineCheck >= deadlineCheckInterval)
         {
             _chargesSinceDeadlineCheck = 0;
             CheckDeadline();
@@ -75,13 +82,13 @@ public sealed class ResourceMeter
     {
         if (fuelAmount <= 0) { throw new ArgumentOutOfRangeException(nameof(fuelAmount)); }
 
-        LoopIterations = AddChecked(LoopIterations, 1, "loop iteration budget exhausted");
+        LoopIterations = AddNonNegativeChecked(LoopIterations, 1, "loop iteration budget exhausted");
         if (LoopIterations > Limits.MaxLoopIterations)
         {
             throw Quota("loop iteration budget exhausted");
         }
 
-        ChargeFuel(fuelAmount);
+        ChargeFuel(fuelAmount, LoopDeadlineCheckInterval);
     }
 
     public void ChargeLoopIterations(long iterations, long fuelPerIteration)
@@ -304,6 +311,12 @@ public sealed class ResourceMeter
         {
             throw Quota(quotaMessage);
         }
+    }
+
+    private static long AddNonNegativeChecked(long current, long amount, string quotaMessage)
+    {
+        var result = unchecked(current + amount);
+        return result < current ? throw Quota(quotaMessage) : result;
     }
 
     private static int AddChecked(int current, int amount, string quotaMessage)

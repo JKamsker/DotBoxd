@@ -81,6 +81,7 @@ public sealed record VerificationPolicy(
                 RuntimeMember("MulI32Raw", $"{Int32Name},{Int32Name}", Int32Name),
                 RuntimeMember("DivI32Raw", $"{Int32Name},{Int32Name}", Int32Name),
                 RuntimeMember("RemI32Raw", $"{Int32Name},{Int32Name}", Int32Name),
+                RuntimeMember("AddRemI32Raw", $"{Int32Name},{Int32Name},{Int32Name}", Int32Name),
                 RuntimeMember("NegI32Raw", Int32Name, Int32Name),
                 RuntimeMember("AddI32", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("SubI32", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),

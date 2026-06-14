@@ -38,6 +38,23 @@ public sealed class CompiledFuelAccountingTests
         Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
     }
 
+    [Fact]
+    public async Task Compiled_i32_loop_fast_path_preserves_successful_fuel_accounting()
+    {
+        var host = SandboxTestHost.Create(compiler: true);
+        var module = await host.ImportJsonAsync(I32LoopModuleJson());
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+
+        var interpreted = await ExecuteAsync(host, plan, ExecutionMode.Interpreted, SandboxValue.FromInt32(8));
+        var compiled = await ExecuteAsync(host, plan, ExecutionMode.Compiled, SandboxValue.FromInt32(8));
+
+        Assert.True(interpreted.Succeeded, interpreted.Error?.SafeMessage);
+        Assert.True(compiled.Succeeded, compiled.Error?.SafeMessage);
+        Assert.Equal(((I32Value)interpreted.Value!).Value, ((I32Value)compiled.Value!).Value);
+        Assert.Equal(interpreted.ResourceUsage.LoopIterations, compiled.ResourceUsage.LoopIterations);
+        Assert.Equal(1, compiled.ResourceUsage.FuelUsed - interpreted.ResourceUsage.FuelUsed);
+    }
+
     private static async ValueTask<SandboxExecutionResult> ExecuteAsync(
         SafeIR.Hosting.SandboxHost host,
         ExecutionPlan plan,
@@ -46,6 +63,17 @@ public sealed class CompiledFuelAccountingTests
             plan,
             "main",
             SandboxValue.Unit,
+            new SandboxExecutionOptions { Mode = mode, AllowFallbackToInterpreter = false });
+
+    private static async ValueTask<SandboxExecutionResult> ExecuteAsync(
+        SafeIR.Hosting.SandboxHost host,
+        ExecutionPlan plan,
+        ExecutionMode mode,
+        SandboxValue input)
+        => await host.ExecuteAsync(
+            plan,
+            "main",
+            input,
             new SandboxExecutionOptions { Mode = mode, AllowFallbackToInterpreter = false });
 
     private static string ExpressionModuleJson()
@@ -84,6 +112,43 @@ public sealed class CompiledFuelAccountingTests
                     }
                   }
                 }
+              ]
+            }
+          ]
+        }
+        """;
+
+    private static string I32LoopModuleJson()
+        => """
+        {
+          "id": "compiled-i32-loop-fuel",
+          "version": "1.0.0",
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [{ "name": "iterations", "type": "I32" }],
+              "returnType": "I32",
+              "body": [
+                { "op": "set", "name": "total", "value": { "i32": 0 } },
+                {
+                  "op": "forRange",
+                  "local": "i",
+                  "start": { "i32": 0 },
+                  "end": { "var": "iterations" },
+                  "body": [
+                    {
+                      "op": "set",
+                      "name": "total",
+                      "value": {
+                        "op": "rem",
+                        "left": { "op": "add", "left": { "var": "total" }, "right": { "var": "i" } },
+                        "right": { "i32": 1000003 }
+                      }
+                    }
+                  ]
+                },
+                { "op": "return", "value": { "var": "total" } }
               ]
             }
           ]

@@ -19,17 +19,20 @@ internal sealed class LocalStackKindPlanner
         => _localKinds.TryGetValue(name, out var kind) ? kind : StackKind.Boxed;
 
     public SandboxType? Infer(Expression expression)
+        => Infer(expression, _localKinds);
+
+    private SandboxType? Infer(Expression expression, IReadOnlyDictionary<string, StackKind> localKinds)
         => expression switch
         {
             LiteralExpression literal => literal.Value.Type,
-            VariableExpression variable => LocalKind(variable.Name) == StackKind.I32
+            VariableExpression variable => localKinds.TryGetValue(variable.Name, out var kind) && kind == StackKind.I32
                 ? SandboxType.I32
                 : LocalSeedType(variable.Name),
             UnaryExpression { Operator: "!" } => SandboxType.Bool,
-            UnaryExpression unary => Infer(unary.Operand),
+            UnaryExpression unary => Infer(unary.Operand, localKinds),
             BinaryExpression binary => binary.Operator is "&&" or "||" or "==" or "!=" or "<" or "<=" or ">" or ">="
                 ? SandboxType.Bool
-                : Infer(binary.Left),
+                : Infer(binary.Left, localKinds),
             CallExpression call => InferCallType(call),
             _ => null
         };
@@ -59,7 +62,7 @@ internal sealed class LocalStackKindPlanner
             switch (statement)
             {
                 case AssignmentStatement assignment:
-                    Observe(candidates, assignment.Name, KindOf(Infer(assignment.Value)));
+                    Observe(candidates, assignment.Name, KindOf(Infer(assignment.Value, candidates)));
                     break;
                 case IfStatement branch:
                     ScanLocalKinds(branch.Then, candidates);

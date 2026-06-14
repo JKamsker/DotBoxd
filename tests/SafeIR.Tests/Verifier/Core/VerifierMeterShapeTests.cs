@@ -134,6 +134,32 @@ public sealed class VerifierMeterShapeTests
             d.Message.Contains("meter each runtime work call", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Verifier_accepts_multiple_runtime_work_calls_covered_by_meter_amount()
+    {
+        var result = await VerifierTestHelpers.VerifyAsync(VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
+            var fn = DefineFunction(type);
+            var fnIl = fn.GetILGenerator();
+            var value = fnIl.DeclareLocal(typeof(SandboxValue));
+            EmitEnterCall(fnIl);
+            EmitChargeFuel(fnIl, 2);
+            EmitTypeScalar(fnIl);
+            fnIl.Emit(OpCodes.Pop);
+            EmitTypeScalar(fnIl);
+            fnIl.Emit(OpCodes.Pop);
+            fnIl.Emit(OpCodes.Ldc_I4_1);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.I32))!);
+            fnIl.Emit(OpCodes.Stloc, value);
+            EmitExitCall(fnIl);
+            fnIl.Emit(OpCodes.Ldloc, value);
+            fnIl.Emit(OpCodes.Ret);
+            EmitExecuteCalling(type, fn);
+        }));
+
+        Assert.True(result.Succeeded, string.Join(Environment.NewLine, result.Diagnostics.Select(d => d.Message)));
+    }
+
     private static MethodBuilder DefineFunction(TypeBuilder type)
         => type.DefineMethod(
             "Fn_0",
@@ -164,9 +190,12 @@ public sealed class VerifierMeterShapeTests
     }
 
     private static void EmitChargeFuel(ILGenerator il)
+        => EmitChargeFuel(il, 1);
+
+    private static void EmitChargeFuel(ILGenerator il, int amount)
     {
         il.Emit(OpCodes.Ldarg_0);
-        il.Emit(OpCodes.Ldc_I4_1);
+        il.Emit(OpCodes.Ldc_I4, amount);
         il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.ChargeFuel))!);
     }
 
