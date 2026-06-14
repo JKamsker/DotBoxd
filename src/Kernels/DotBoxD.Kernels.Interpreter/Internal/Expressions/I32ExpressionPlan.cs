@@ -180,15 +180,15 @@ internal sealed partial class I32ExpressionPlan
 
     private int EvaluateInlineCall(InterpreterFrame frame, SandboxContext context)
     {
+        // No try/finally: the inline body is pure i32 arithmetic whose only throws (overflow / fuel /
+        // cancellation) abort the entire run, after which the context is discarded — so a skipped ExitCall
+        // on the throw path can never be observed. EnterCall still runs its depth-limit check before the body,
+        // and over-counting depth on an (aborted) throw is strictly conservative. Dropping the finally lets
+        // the JIT keep this hot path inlined.
         context.EnterCall();
-        try
-        {
-            return _left!.Evaluate(frame, context);
-        }
-        finally
-        {
-            context.ExitCall();
-        }
+        var result = _left!.Evaluate(frame, context);
+        context.ExitCall();
+        return result;
     }
 
     private static bool TryCreateSpecialBinary(
