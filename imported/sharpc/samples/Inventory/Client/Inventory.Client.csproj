@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Inventory.Client</RootNamespace>
+    <Description>Inventory sample client — exercises sync, async-sibling, and nested-service call paths.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\ShaRPC.Core\ShaRPC.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\ShaRPC.Transports.Tcp\ShaRPC.Transports.Tcp.csproj" />
+    <ProjectReference Include="..\..\..\src\ShaRPC.Serializers.MessagePack\ShaRPC.Serializers.MessagePack.csproj" />
+    <ProjectReference Include="..\Shared\Inventory.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

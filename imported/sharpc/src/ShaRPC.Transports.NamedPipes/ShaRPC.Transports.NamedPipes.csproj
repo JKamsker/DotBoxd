@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <PackageId>ShaRPC.Transports.NamedPipes</PackageId>
+    <Description>Named pipe transport implementation for ShaRPC process-boundary IPC.</Description>
+    <PackageReadmeFile>named-pipe-transport.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ShaRPC.Core\ShaRPC.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Expose the internal connect-published seam to the test assembly for a deterministic red→green
+         dispose-vs-connect race test. No external surface. -->
+    <InternalsVisibleTo Include="ShaRPC.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\docs\named-pipe-transport.md"
+          Pack="true"
+          PackagePath="\" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,84 @@
+[
+  {
+    "round": 10,
+    "id": "R10-1",
+    "status": "confirmed",
+    "title": "MessagePack deserialization accepts a valid value followed by trailing bytes",
+    "file": "src/ShaRPC.Serializers.MessagePack/MessagePackRpcSerializer.cs",
+    "symbol": "MessagePackRpcSerializer.Deserialize<T>; MessagePackRpcSerializer.Deserialize(ReadOnlyMemory<byte>, Type)",
+    "line": [99, 104],
+    "quote": [
+      "return MessagePackSerializer.Deserialize<T>(data, _options);",
+      "return MessagePackSerializer.Deserialize(type, data, _options);"
+    ],
+    "whyReal": "Both overloads delegate to MessagePack without checking exact consumption. Runtime verification on MessagePack 2.5.187 showed payloads such as 0x7b 0xc1 deserialize to 123 instead of rejecting the invalid suffix. MessageFramer rejects bytes after a full declared frame, but callers pass envelope and payload slices directly to the serializer, so trailing bytes inside those slices are not mitigated.",
+    "repro": "new MessagePackRpcSerializer().Deserialize<int>(new byte[] { 0x7b, 0xc1 }) returns 123 on current source; the non-generic overload with typeof(int) also returns 123.",
+    "verification": {
+      "correctness": "confirmed",
+      "reproducibility": "confirmed",
+      "alreadyHandled": "confirmed"
+    }
+  },
+  {
+    "round": 10,
+    "id": "R10-2",
+    "status": "confirmed",
+    "title": "Error frames can complete as successful outbound responses",
+    "file": "src/ShaRPC.Core/RpcPeerFrameProcessor.cs",
+    "symbol": "RpcPeerFrameProcessor.ShouldDisposeAsync",
+    "line": 32,
+    "quote": "case MessageType.Response:\ncase MessageType.Error:\n    return !_outbound.TryCompleteResponse(messageId, frame);",
+    "whyReal": "The frame processor routes Response and Error frames through the same outbound completion path. RpcPeerOutboundInvoker.TryCompleteResponse parses the frame type as discard, completes the pending request with RpcResponse, and later decides success solely from RpcResponse.IsSuccess. A hostile Error frame with IsSuccess=true and a valid result payload can therefore satisfy InvokeAsync successfully.",
+    "repro": "Start InvokeAsync<int,string>, then enqueue MessageFramer.FrameMessage(serializer, 1, MessageType.Error, new RpcResponse { MessageId = 1, IsSuccess = true }, serialized string payload). Current source returns the string.",
+    "verification": {
+      "correctness": "confirmed",
+      "reproducibility": "confirmed",
+      "alreadyHandled": "confirmed"
+    }
+  },
+  {
+    "round": 10,
+    "id": "R10-3",
+    "status": "confirmed",
+    "title": "SingleConnectionServerTransport starts despite a pre-cancelled token",
+    "file": "src/ShaRPC.Core/Transport/SingleConnectionTransport.cs",
+    "symbol": "SingleConnectionServerTransport.StartAsync",
+    "line": 71,
+    "quote": "Interlocked.Exchange(ref _started, 1);",
+    "whyReal": "StartAsync accepts a CancellationToken but never observes it. A pre-cancelled call marks the transport started, and the first AcceptAsync then returns the stored channel. Sibling server transports check pre-cancellation before publishing started state, and existing tests cover that behavior for TCP and named pipes.",
+    "repro": "Create SingleConnectionServerTransport with a ScriptedConnection, cancel a CancellationTokenSource, await StartAsync(cts.Token), then await AcceptAsync(). Current source completes start and returns the channel.",
+    "verification": {
+      "correctness": "confirmed",
+      "reproducibility": "confirmed",
+      "alreadyHandled": "confirmed"
+    }
+  },
+  {
+    "round": 10,
+    "id": "R10-FP-1",
+    "status": "false_positive",
+    "title": "NamedPipeClientTransport lacks a finite StreamConnection frame idle timeout",
+    "reason": "Rejected by already-handled verification. StreamConnection's null timeout default is documented as preserving original direct/client behavior, while NamedPipeServerTransport accepted connections already pass FrameReadIdleTimeout ?? DefaultFrameReadIdleTimeout. The candidate conflated client/direct semantics with server accepted connection semantics."
+  },
+  {
+    "round": 10,
+    "id": "R10-FP-2",
+    "status": "false_positive",
+    "title": "SingleConnectionServerTransport.StopAsync ignores pre-cancelled token",
+    "reason": "Rejected by correctness verification. StopAsync is the operation intended to publish the one-shot stop signal; the existing bricking bug was pre-cancelled AcceptAsync completing that signal accidentally, which is already guarded. This is an API inconsistency, not a confirmed defect."
+  },
+  {
+    "round": 10,
+    "id": "R10-FP-3",
+    "status": "false_positive",
+    "title": "TcpServerTransport.StopAsync ignores pre-cancelled token",
+    "reason": "Rejected by correctness verification. The transport has synchronous immediate-stop semantics and IServerTransport does not currently define a no-side-effect pre-cancelled StopAsync contract. NamedPipeServerTransport's stricter behavior is implementation-specific."
+  },
+  {
+    "round": 10,
+    "id": "R10-FP-4",
+    "status": "false_positive",
+    "title": "Concurrent RpcHost.DisposeAsync callers do not join the in-flight dispose",
+    "reason": "Rejected by correctness verification. The behavior matches IAsyncDisposable idempotency expectations: repeat DisposeAsync calls can be ignored and return a completed ValueTask. Stronger join-on-concurrent-dispose semantics would be an API-policy enhancement, not a confirmed bug."
+  }
+]

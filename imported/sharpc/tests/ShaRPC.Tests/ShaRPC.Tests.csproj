@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <RollForward>LatestMajor</RollForward>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector" Version="6.0.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ShaRPC.Core\ShaRPC.Core.csproj" />
+    <ProjectReference Include="..\..\src\ShaRPC.Transports.Tcp\ShaRPC.Transports.Tcp.csproj" />
+    <ProjectReference Include="..\..\src\ShaRPC.Serializers.MessagePack\ShaRPC.Serializers.MessagePack.csproj" />
+    <ProjectReference Include="..\..\samples\GameService\Shared\Shared.csproj" />
+    <ProjectReference Include="..\ShaRPC.Tests.GeneratedFixtures\ShaRPC.Tests.GeneratedFixtures.csproj" />
+    <ProjectReference Include="..\..\src\ShaRPC.Transports.NamedPipes\ShaRPC.Transports.NamedPipes.csproj" />
+  </ItemGroup>
+
+</Project>
