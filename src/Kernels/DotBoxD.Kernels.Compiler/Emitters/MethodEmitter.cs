@@ -184,6 +184,12 @@ internal sealed class MethodEmitter
             return;
         }
 
+        if (I64LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, Declare))
+        {
+            _nonNegativeF64Locals.Clear();
+            return;
+        }
+
         _nonNegativeF64Locals.Clear();
         var index = _il.DeclareLocal(typeof(int));
         var end = _il.DeclareLocal(typeof(int));
