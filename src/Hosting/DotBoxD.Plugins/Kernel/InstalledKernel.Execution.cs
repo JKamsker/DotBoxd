@@ -5,7 +5,7 @@ using DotBoxD.Kernels;
 
 public sealed partial class InstalledKernel
 {
-    private ResourceMeter? _preparedValueBudget;
+    private CompiledNoAuditRunState? _preparedValueState;
 
     private async ValueTask<SandboxValue> ExecutePreparedAsync(
         string entrypoint,
@@ -21,7 +21,7 @@ public sealed partial class InstalledKernel
                 input,
                 _executionOptions,
                 executionCancellation.Token,
-                ReusableNoAuditBudget(entrypoint))
+                ReusableNoAuditState(entrypoint))
             .ConfigureAwait(false);
         _executionObserver.Record(entrypoint, _executionMode, result);
         if (IsRevoked)
@@ -37,7 +37,7 @@ public sealed partial class InstalledKernel
         return result.Value ?? SandboxValue.Unit;
     }
 
-    private ResourceMeter? ReusableNoAuditBudget(string entrypoint)
+    private CompiledNoAuditRunState? ReusableNoAuditState(string entrypoint)
     {
         if (_executionMode != ExecutionMode.Compiled ||
             !_plan.BindingReferences.TryGetValue(entrypoint, out var bindings) ||
@@ -46,6 +46,6 @@ public sealed partial class InstalledKernel
             return null;
         }
 
-        return _preparedValueBudget ??= new ResourceMeter(_plan.Budget);
+        return _preparedValueState ??= new CompiledNoAuditRunState(_plan);
     }
 }

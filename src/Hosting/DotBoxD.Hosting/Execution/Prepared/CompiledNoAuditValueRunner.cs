@@ -12,21 +12,21 @@ internal static class CompiledNoAuditValueRunner
         SandboxExecutionOptions options,
         IReadOnlySet<string> allowedBindings,
         CancellationToken cancellationToken,
-        ResourceMeter? reusableBudget)
+        CompiledNoAuditRunState? reusableState)
     {
         var artifact = executable.Artifact;
-        var budget = reusableBudget ?? new ResourceMeter(plan.Budget);
-        reusableBudget?.ResetForReuse();
-        var context = new SandboxContext(
-            SandboxRunId.Suppressed,
-            plan.Policy,
-            budget,
-            plan.Bindings,
-            NoopAuditSink.Instance,
-            cancellationToken,
-            allowedBindings,
-            plan.ModuleHash,
-            plan.PolicyHash);
+        var budget = reusableState?.Budget ?? new ResourceMeter(plan.Budget);
+        var context = reusableState?.ContextFor(allowedBindings, cancellationToken) ??
+            new SandboxContext(
+                SandboxRunId.Suppressed,
+                plan.Policy,
+                budget,
+                plan.Bindings,
+                NoopAuditSink.Instance,
+                cancellationToken,
+                allowedBindings,
+                plan.ModuleHash,
+                plan.PolicyHash);
 
         try
         {
