@@ -161,7 +161,7 @@ internal sealed partial class I32ExpressionPlan
             ExpressionKind.RawVariable => frame.ReadRawInt32Slot(_value),
             ExpressionKind.BoxedVariable => frame.ReadInt32Slot(_value),
             ExpressionKind.Negate => SandboxInt32Math.Negate(_left!.Evaluate(frame, context)),
-            ExpressionKind.InlineCall => EvaluateInlineCall(frame, context),
+            ExpressionKind.InlineCall => _left!.Evaluate(frame, context),
             ExpressionKind.RemainderAddRawRawConst => FastRemainder(
                 SandboxInt32Math.Add(frame.ReadRawInt32Slot(_value), frame.ReadRawInt32Slot(_value2)),
                 _value3,
