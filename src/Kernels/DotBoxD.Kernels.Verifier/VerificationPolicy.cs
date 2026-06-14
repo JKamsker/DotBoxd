@@ -53,6 +53,7 @@ public sealed record VerificationPolicy(
                 RuntimeMember("CanBulkChargeLoopIterations", $"{SandboxContextName},{Int32Name},{Int32Name}", BooleanName),
                 RuntimeMember("RequireAdditionalCallDepth", $"{SandboxContextName},{Int32Name}", VoidName),
                 RuntimeMember("AddRepeatedI32LoopRaw", $"{SandboxContextName},{Int32Name},{Int32Name},{Int32Name},{Int32Name}", Int32Name),
+                RuntimeMember("AddRemainderCycleI32LoopRaw", $"{SandboxContextName},{Int32Name},{Int32Name},{Int32Name},{Int32Name}", Int32Name),
                 RuntimeMember("CanBulkChargeFuel", $"{SandboxContextName},{Int64Name},{Int32Name}", BooleanName),
                 RuntimeMember("ChargeBulkFuel", $"{SandboxContextName},{Int64Name},{Int32Name}", VoidName),
                 RuntimeMember("ChargeFuel64", $"{SandboxContextName},{Int64Name}", VoidName),

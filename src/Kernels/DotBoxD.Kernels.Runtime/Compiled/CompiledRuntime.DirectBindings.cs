@@ -34,6 +34,18 @@ public static partial class CompiledRuntime
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int AddRemainderCycleI32LoopRaw(
+        SandboxContext context,
+        int current,
+        int iterations,
+        int divisor,
+        int loopFuelPerIteration)
+    {
+        context.ChargeLoopIterations(iterations, loopFuelPerIteration);
+        return SandboxInt32Math.AddRemainderCycleFromZero(current, iterations, divisor);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ChargeFuel64(SandboxContext context, long amount) => context.ChargeFuel(amount);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

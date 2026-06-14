@@ -111,6 +111,38 @@ public static class SandboxInt32Math
         }
     }
 
+    internal static int AddRemainderCycleFromZero(int value, int iterations, int divisor)
+    {
+        if (iterations < 0)
+        {
+            throw InvalidInput("repeat count must be non-negative");
+        }
+
+        if (divisor <= 0)
+        {
+            throw InvalidInput("integer division by zero");
+        }
+
+        var cycles = iterations / divisor;
+        var remainder = iterations % divisor;
+        try
+        {
+            var cycleSum = (long)divisor * (divisor - 1) / 2;
+            var remainderSum = (long)remainder * (remainder - 1) / 2;
+            var result = checked(value + checked(cycleSum * cycles) + remainderSum);
+            if (result < int.MinValue || result > int.MaxValue)
+            {
+                throw InvalidInput("integer overflow");
+            }
+
+            return (int)result;
+        }
+        catch (OverflowException)
+        {
+            throw InvalidInput("integer overflow");
+        }
+    }
+
     private static SandboxRuntimeException InvalidInput(string message)
         => new(new SandboxError(SandboxErrorCode.InvalidInput, message));
 }

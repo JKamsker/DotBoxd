@@ -38,6 +38,7 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 | Nested F64 binding crossings | this commit | `--probe-matrix` | Added `math.sqrt x3 binding`, which calls `math.sqrt` three times per loop iteration. Same-machine baseline from `d134853` measured interpreted at 472.1 ms / 40.5x and compiled at 28.8 ms / 2.5x. This step measured interpreted at 20.3 ms / 1.8x and compiled at 27.5 ms / 2.4x while charging all 3 binding calls per iteration. |
 | Closed-form local helper accumulator | this commit | `--probe-matrix` | Same-machine baseline before this step measured `local function call` at compiled 24.1 ms / 115.2x and interpreted 25.3 ms / 121.0x. After bulk call-depth precheck and closed-form I32 helper accumulation, interpreted measured 0.1 ms / 0.3x; compiled still measured 16.0 ms / 71.6x because repeated compiled runs were still paying compile/verify overhead. |
 | Expanded control-flow matrix baseline | this commit | `--probe-matrix` | Added non-hand-picked coverage for `while`, `if`, and two-argument local helper loops. Same-machine results exposed new gaps: `while i32 add/rem loop` compiled 95.4 ms / 19.7x and interpreted 434.9 ms / 89.7x; `if branch i32 loop` compiled 40.8 ms / 97.4x and interpreted 398.7 ms / 950.9x; `two-arg local function` compiled 150.1 ms / 376.0x and interpreted 398.9 ms / 999.1x. |
+| Closed-form two-arg local helper accumulator | this commit | `--probe-matrix` | Collapsed zero-based `total = add(total, i % constant)` loops where `add` returns both I32 parameters summed. Same-machine baseline from the control-flow matrix measured `two-arg local function` at compiled 150.1 ms / 376.0x and interpreted 398.9 ms / 999.1x; this step measured compiled 0.5 ms / 1.2x and interpreted 0.1 ms / 0.2x. |
 
 ## Matrix After `31fa6fe`
 
@@ -324,6 +325,23 @@ trivial no-loop (diagnostic)      0.0 ms      0.6 ms  13.0        0.1 ms    1.9
 ```
 
 **Compiled meets <=2x across every loop benchmark.** Interpreted meets <=5x on all but `local function call`.
+
+## Matrix After Two-Arg Local Helper Accumulator
+
+```text
+case                         handwritten   compiled      x   interpreted      x
+i32 add/rem loop                 24.2 ms     24.9 ms   1.0      113.7 ms    4.7
+math.sqrt binding                 8.0 ms      8.4 ms   1.0       18.8 ms    2.3
+math.sqrt x3 binding             11.9 ms     12.2 ms   1.0       20.9 ms    1.8
+string.length binding             0.2 ms      0.2 ms   1.1        0.0 ms    0.1
+list.count intrinsic              0.2 ms      0.3 ms   1.2        0.0 ms    0.1
+list.get intrinsic                0.5 ms      0.3 ms   0.5        1.7 ms    3.3
+map.get intrinsic                 5.1 ms      0.8 ms   0.1        0.5 ms    0.1
+local function call               0.2 ms      0.2 ms   1.0        0.0 ms    0.1
+while i32 add/rem loop            4.7 ms     93.5 ms  19.7      428.5 ms   90.3
+if branch i32 loop                0.4 ms     44.4 ms 106.3      396.7 ms  948.7
+two-arg local function            0.4 ms      0.5 ms   1.2        0.1 ms    0.2
+```
 
 ## Final Status
 
