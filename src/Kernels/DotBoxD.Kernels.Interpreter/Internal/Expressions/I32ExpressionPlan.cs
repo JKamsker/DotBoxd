@@ -50,6 +50,21 @@ internal sealed partial class I32ExpressionPlan
         return r >= divisor ? r - divisor : r;
     }
 
+    // Exact `a / d` (truncated) for a positive constant divisor d, same reciprocal as FastRemainder: the
+    // quotient estimate q = (a*m)>>32 is floor(a/d) or one less, corrected up when the remainder reaches d.
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static int FastDivide(int a, int divisor, uint magic)
+    {
+        if (magic == 0u || a < 0)
+        {
+            return SandboxInt32Math.Divide(a, divisor);
+        }
+
+        var q = (int)(((ulong)(uint)a * magic) >> 32);
+        var r = a - (q * divisor);
+        return r >= divisor ? q + 1 : q;
+    }
+
     public int FuelCost { get; }
 
     public static I32ExpressionPlan InlineCall(I32ExpressionPlan body)
@@ -140,6 +155,8 @@ internal sealed partial class I32ExpressionPlan
                 SandboxInt32Math.Add(frame.ReadRawInt32Slot(_value), _value2),
                 _value3,
                 _magic),
+            ExpressionKind.RemainderByConst => FastRemainder(_left!.Evaluate(frame, context), _value3, _magic),
+            ExpressionKind.DivideByConst => FastDivide(_left!.Evaluate(frame, context), _value3, _magic),
             ExpressionKind.AddRawMultiplyRawConst => SandboxInt32Math.Add(
                 frame.ReadRawInt32Slot(_value),
                 SandboxInt32Math.Multiply(frame.ReadRawInt32Slot(_value2), _value3)),
@@ -246,6 +263,22 @@ internal sealed partial class I32ExpressionPlan
             return false;
         }
 
+        // `x % const` / `x / const` with a positive constant: carry the divisor + precomputed reciprocal so the
+        // runtime op uses the exact reciprocal multiply (FastRemainder/FastDivide) instead of an idiv. Fuel is the
+        // same as the generic Remainder/Divide plan (1 + left + right) so metering is unchanged.
+        if (binary.Operator is "%" or "/" &&
+            right._kind == ExpressionKind.Literal &&
+            right._value > 0)
+        {
+            plan = new I32ExpressionPlan(
+                binary.Operator == "%" ? ExpressionKind.RemainderByConst : ExpressionKind.DivideByConst,
+                0,
+                left: left,
+                value3: right._value,
+                fuelCost: 1 + left.FuelCost + right.FuelCost);
+            return true;
+        }
+
         plan = new I32ExpressionPlan(BinaryKind(binary.Operator), 0, left, right);
         return true;
     }
@@ -291,6 +324,8 @@ internal sealed partial class I32ExpressionPlan
         InlineCall,
         RemainderAddRawRawConst,
         RemainderAddRawConstConst,
+        RemainderByConst,
+        DivideByConst,
         AddRawMultiplyRawConst,
         Add,
         Subtract,
