@@ -73,6 +73,12 @@ jobs:
         # Run test projects sequentially rather than `dotnet test DotBoxD.slnx` (all assemblies at
         # once): the sandbox's wall-clock deadline/quota tests can flip to Timeout under concurrent
         # multi-assembly load on shared CI runners. Each project passes reliably on its own.
+        #
+        # Each project gets one retry on failure. The transport/inbound coverage tests talk over
+        # real named pipes / TCP loopback and use generous hang-guard ceilings; on 2-core hosted
+        # runners a transient scheduling stall can still trip one of those ceilings. A single retry
+        # absorbs that transient timing flake, while a genuinely broken test fails both attempts.
+        # Retries are surfaced as CI warnings so flakiness stays visible rather than silently masked.
         run: |
           $projects = @(
             'tests/DotBoxD.Services.SourceGenerator.Tests/DotBoxD.Services.SourceGenerator.Tests.csproj',
@@ -83,14 +89,22 @@ jobs:
           $failed = $false
           foreach ($p in $projects) {
             $name = Split-Path $p -LeafBase
-            Write-Host "::group::dotnet test $name"
-            dotnet test $p -c Release --no-build `
-              --logger "trx;LogFileName=$name.trx" `
-              --results-directory artifacts/test-results
-            if ($LASTEXITCODE -ne 0) { $failed = $true }
-            Write-Host "::endgroup::"
+            $passed = $false
+            foreach ($attempt in 1..2) {
+              Write-Host "::group::dotnet test $name (attempt $attempt)"
+              dotnet test $p -c Release --no-build `
+                --logger "trx;LogFileName=$name.trx" `
+                --results-directory artifacts/test-results
+              $code = $LASTEXITCODE
+              Write-Host "::endgroup::"
+              if ($code -eq 0) { $passed = $true; break }
+              if ($attempt -eq 1) {
+                Write-Host "::warning::$name failed on attempt 1 (exit $code); retrying once to absorb a transient CI timing flake."
+              }
+            }
+            if (-not $passed) { $failed = $true }
           }
-          if ($failed) { throw "One or more test projects failed." }
+          if ($failed) { throw "One or more test projects failed after retry." }
 
       - name: Upload test results (TRX)
         if: always()

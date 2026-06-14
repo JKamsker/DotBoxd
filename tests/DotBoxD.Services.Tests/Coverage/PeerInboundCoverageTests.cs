@@ -22,7 +22,10 @@ namespace DotBoxD.Services.Tests.Cov.PeerInbound;
 /// </summary>
 public sealed class PeerInboundCoverageTests
 {
-    private static readonly TimeSpan ShortTimeout = TimeSpan.FromSeconds(5);
+    // Hang-guard ceiling only (used for .WaitAsync(...) and as a never-expected-to-fire
+    // RequestTimeout). Kept generous so 2-core CI runners under parallel load don't trip it;
+    // negative timeout tests assert against their own small RequestTimeout literals elsewhere.
+    private static readonly TimeSpan ShortTimeout = TimeSpan.FromSeconds(30);
 
     private static MessagePackRpcSerializer NewSerializer() => new();
 
