@@ -58,7 +58,7 @@ jobs:
         uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         with:
           category: '/language:csharp'
-          output: ../results
+          output: codeql-results
           # This private repository does not currently have GitHub code scanning enabled.
           # Keep CodeQL extraction/query failures in CI, and publish the SARIF as a normal artifact.
           upload: never
@@ -68,6 +68,6 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: codeql-sarif-csharp
-          path: ../results/**/*.sarif
+          path: codeql-results/**/*.sarif
           if-no-files-found: warn
           retention-days: 7
