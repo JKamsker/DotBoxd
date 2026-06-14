@@ -655,3 +655,23 @@ are i32-only). A fast-path for them would mirror the i32 machinery for f64/i64 �
 showing the pattern is a real bottleneck, and (as the short-circuit attempt showed) edge-case codegen changes
 risk hidden verifier-invariant breakage. Mixed i32/i64 operands in one expression similarly fall back. These are
 speculative; left documented rather than implemented.
+
+## Branched-f64 + the combinatorial-fast-path signal
+
+Added i64 comparisons (all scalar comparisons i32/i64/f64 now unboxed) and a `branched f64 loop` probe
+(confirmed gap: compiled 21x, interpreted 251x). Built BranchedF64ForLoopRunner — interpreted 251x -> 34x
+(boxing gone; residual is per-op f64 finiteness + tree-walk). Compiled branched-f64 remains ~22x (the compiled
+branched fast-path is i32-only, so f64 bodies hit the general per-node-metered path).
+
+**Architectural signal:** the loop fast-paths are now indexed by (loop shape) x (scalar type): straight/branched/
+while x i32/i64/f64. Hand-mirroring each cell is combinatorial — branched-f64 compiled is one empty cell; while-
+f64, branched-i64, while-i64, nested-non-i32 are others. The right fix is NOT N more emitters but a **general
+bulk-metered unboxed loop-body mechanism**: emit the body via the existing (already type-correct, unboxed)
+general ExpressionEmitter while charging the body's statically-known fuel once per branch/iteration instead of
+per node. That's a focused change to metering granularity (a "no-per-node-meter + bulk charge" mode) shared by
+all shapes/types — but it touches core emit + must keep cross-mode fuel identical and stay verifier-legal (the
+short-circuit attempt showed core boolean/emit changes can break verifier invariants), so it warrants a careful
+dedicated pass rather than a context-tail hand-edit.
+
+Each remaining combinatorial cell is at worst the general path's per-node metering (compiled, ~20x for f64 due
+to the finiteness branches) or, where an interpreter runner is missing, boxing — both already characterized.
