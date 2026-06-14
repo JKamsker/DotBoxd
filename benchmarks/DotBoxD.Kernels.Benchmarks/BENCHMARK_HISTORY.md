@@ -547,3 +547,40 @@ coercions, `Ldc_I8` literals, verifier allowlist.
   a RawI64ExpressionPlan). Currently i64 loops use the general per-node-metered path. Medium (mostly mirroring).
 - **Interpreted i64:** needs unboxed i64 in the interpreter — raw i64 frame slots in InterpreterFrame (the
   delicate part), an I64ExpressionPlan, and an I64ForLoopRunner (mirror the f64 trio). Larger.
+
+## i64 fully unboxed (both tiers) — ledger closed
+
+Added unboxed i64 to the interpreter: raw i64 frame slots (`InterpreterFrame` + `SlotKind.I64`),
+`I64ExpressionPlan`, `I64ForLoopRunner`. With the earlier compiled i64 fast-path and the lambda-allocation fix,
+i64 is now unboxed in both tiers.
+
+- i64 arithmetic compiled: 16.8x -> **1.9x**; interpreted 133x -> **~10-12x** (boxing gone; residual is i64
+  idiv + tree-walk dispatch — the same floor class as the other structured interpreter loops).
+
+### Final closed state
+
+```
+case                  compiled x   interpreted x   status
+i32 / nested             1.0/1.2      4.6/4.2      both at target
+math.sqrt /x3            ~1.0         1.7-2.4      both at target
+string.length            1.4          4.9          both at target
+list.count / list.get    1.3/0.6      4.4/2.9      both at target
+map.get                  0.1          0.1          both at target
+local function call      1.1          6.5          compiled target; interp tree-walk floor
+branch in loop           1.4          7.0          compiled target; interp tree-walk floor
+while loop               1.3          8.5          compiled target; interp tree-walk floor
+i64 arithmetic           1.9          ~11          both unboxed; interp idiv+tree-walk floor
+f64 arithmetic           6.3          19.8         finiteness/FMA floor (both)
+trivial (diagnostic)     11.7         1.6          host-overhead floor (compiled)
+```
+
+**No remaining boxing / missing-fast-path gaps exist** for any scalar type (i32/i64/f64) or loop shape
+(forRange/nested/branch/while) or operation (arithmetic/comparison/intrinsic/call/collection). Every benchmark
+is at target or a documented, rigorously-argued floor:
+- **Compiled <=2x everywhere** except f64 (per-op finiteness, no FMA) and trivial (host-overhead diagnostic).
+- **Interpreted over-5x cases** (local-call, branch, while, i64, f64) are all the interpreter's tree-walking
+  per-iteration dispatch (+ i64 idiv / f64 finiteness). Compiled is the fast path for every one of these shapes
+  and meets target; matching it in a tree-walker means JIT-compiling, which *is* compiled mode.
+
+The only further lever is an i64 reciprocal modulo (interp i64 ~11x -> a few × lower) via 128-bit multiply —
+diminishing returns, still tree-walk bound. Documented for completeness; not pursued.
