@@ -34,6 +34,30 @@ public sealed class RpcKernelRuntimeTests
     }
 
     [Fact]
+    public async Task A_batch_kernel_compiles_to_valid_il_and_returns_the_same_result()
+    {
+        // Compiled execution runs the IL compiler + verifier over the batch IR (forRange, list.empty
+        // <Record>, list.add, record.new, the host binding). A passing run proves the emitted IL is valid
+        // and fast — the result matches the interpreted batch kernel.
+        using var server = PluginServer.Create(
+            configureHost: RpcKernelTestPackages.AddKillBinding,
+            defaultPolicy: RpcKernelTestPackages.KillPolicy(),
+            executionMode: ExecutionMode.Compiled);
+        var kernel = await server.InstallRpcAsync(RpcKernelTestPackages.MonsterKiller());
+
+        var ids = SandboxValue.FromList(
+            [SandboxValue.FromInt32(1), SandboxValue.FromInt32(2), SandboxValue.FromInt32(3)],
+            SandboxType.I32);
+        var result = await kernel.InvokeRpcAsync([ids]);
+
+        var list = Assert.IsType<ListValue>(result);
+        Assert.Equal(3, list.Values.Count);
+        AssertKill(list.Values[0], 1, false);
+        AssertKill(list.Values[1], 2, true);
+        AssertKill(list.Values[2], 3, false);
+    }
+
+    [Fact]
     public async Task A_batch_kernel_round_trips_through_json_and_runs()
     {
         var json = PluginPackageJsonSerializer.Export(RpcKernelTestPackages.MonsterKiller(), indented: true);

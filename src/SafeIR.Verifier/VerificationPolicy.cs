@@ -62,6 +62,8 @@ public sealed record VerificationPolicy(
                 RuntimeMember("TypeScalar", StringName, SandboxTypeName),
                 RuntimeMember("TypeList", SandboxTypeName, SandboxTypeName),
                 RuntimeMember("TypeMap", $"{SandboxTypeName},{SandboxTypeName}", SandboxTypeName),
+                RuntimeMember("TypeRecord", SandboxTypeArrayName, SandboxTypeName),
+                RuntimeMember("CreateTypeArray", Int32Name, SandboxTypeArrayName),
                 RuntimeMember("StringConst", $"{SandboxContextName},{StringName}", SandboxValueName),
                 RuntimeMember("OpaqueIdConst", $"{SandboxContextName},{StringName},{StringName}", SandboxValueName),
                 RuntimeMember("PathConst", $"{SandboxContextName},{StringName}", SandboxValueName),
@@ -125,6 +127,8 @@ public sealed record VerificationPolicy(
                 RuntimeMember("MapGet", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("MapSet", $"{SandboxContextName},{SandboxValueName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("MapRemove", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
+                RuntimeMember("RecordNew", $"{SandboxContextName},{SandboxValueArrayName}", SandboxValueName),
+                RuntimeMember("RecordGet", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("CallBinding", $"{SandboxContextName},{StringName},{SandboxValueArrayName}", SandboxValueName)
             },
             new HashSet<string>(StringComparer.Ordinal) {

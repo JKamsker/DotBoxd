@@ -167,9 +167,9 @@ public sealed partial class PluginServer : IDisposable
         var plan = await _host.PrepareAsync(package.Module, policy ?? _defaultPolicy, cancellationToken)
             .ConfigureAwait(false);
         RpcKernelPackageValidator.ValidatePrepared(package, plan);
-        // Record/object I/O is interpreter-only (the verifier permits newarr only for SandboxValue), so
-        // RPC kernels always run interpreted regardless of the server's default execution mode.
-        var kernel = new InstalledKernel(_host, plan, package, ExecutionMode.Interpreted, owner);
+        // RPC kernels honor the server's execution mode like event kernels — their record/list IR
+        // compiles to verified IL (record.new/record.get) so Auto/Compiled produces fast code.
+        var kernel = new InstalledKernel(_host, plan, package, _executionMode, owner);
         Kernels.Add(kernel);
         return kernel;
     }

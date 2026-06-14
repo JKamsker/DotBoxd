@@ -80,6 +80,22 @@ internal static class IlEmitterPrimitives
             return;
         }
 
+        if (type.IsRecord) {
+            // Build SafeIR.SandboxType[] via the trusted runtime facade (no newarr in verified IL),
+            // populate each field type, then fold into a record type — mirrors the value-array path.
+            EmitInt32(il, type.Arguments.Count);
+            il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CreateTypeArray)));
+            for (var i = 0; i < type.Arguments.Count; i++) {
+                il.Emit(OpCodes.Dup);
+                EmitInt32(il, i);
+                EmitSandboxType(il, type.Arguments[i]);
+                il.Emit(OpCodes.Stelem_Ref);
+            }
+
+            il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.TypeRecord)));
+            return;
+        }
+
         throw new SandboxRuntimeException(new SandboxError(
             SandboxErrorCode.ValidationError,
             $"type '{type}' is not supported by compiler"));

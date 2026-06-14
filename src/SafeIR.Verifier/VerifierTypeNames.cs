@@ -13,5 +13,6 @@ internal static class VerifierTypeNames
     public const string SandboxValueName = "SafeIR.SandboxValue";
     public const string SandboxValueArrayName = SandboxValueName + "[]";
     public const string SandboxTypeName = "SafeIR.SandboxType";
+    public const string SandboxTypeArrayName = SandboxTypeName + "[]";
     public const string CompiledRuntimeName = "SafeIR.Runtime.CompiledRuntime";
 }

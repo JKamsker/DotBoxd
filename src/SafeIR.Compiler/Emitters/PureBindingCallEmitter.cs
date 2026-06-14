@@ -30,6 +30,14 @@ internal static class PureBindingCallEmitter
                 EmitArguments(call, emitExpression);
                 il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ListAdd)));
                 return true;
+            case "record.new":
+                il.Emit(OpCodes.Ldarg_0);
+                ValueArrayEmitter.Emit(il, call.Arguments, emitExpression);
+                il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.RecordNew)));
+                return true;
+            case "record.get":
+                EmitContextCall(il, emitExpression, call, nameof(CompiledRuntime.RecordGet));
+                return true;
             case "map.empty":
                 EmitMapEmpty(call, il);
                 return true;

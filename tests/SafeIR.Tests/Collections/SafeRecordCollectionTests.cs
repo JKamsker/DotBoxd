@@ -107,6 +107,51 @@ public sealed class SafeRecordCollectionTests
         Assert.Equal([SandboxValue.FromInt32(99), SandboxValue.FromBool(false)], second.Fields);
     }
 
+    private const string ListOfRecordsModule = """
+        {
+          "id": "list-of-records",
+          "version": "1.0.0",
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [ { "name": "monsterId", "type": "I32" } ],
+              "returnType": "I32",
+              "body": [
+                { "op": "set", "name": "results", "value": { "call": "list.empty", "genericType": { "name": "Record", "arguments": ["I32", "Bool"] } } },
+                { "op": "set", "name": "results", "value": { "call": "list.add", "args": [
+                  { "var": "results" },
+                  { "call": "record.new", "genericType": { "name": "Record", "arguments": ["I32", "Bool"] }, "args": [ { "var": "monsterId" }, { "bool": true } ] }
+                ] } },
+                { "op": "return", "value": { "call": "record.get", "args": [ { "call": "list.get", "args": [ { "var": "results" }, { "i32": 0 } ] }, { "i32": 0 } ] } }
+              ]
+            }
+          ]
+        }
+        """;
+
+    [Fact]
+    public async Task Records_compile_to_valid_il_and_match_the_interpreter()
+    {
+        // Running the same record IR in Compiled mode exercises the IL compiler + verifier end to end
+        // (record.new / record.get / list.empty<Record> / list.add). A passing run proves the emitted
+        // IL is valid (the verifier runs during compilation) and matches the interpreter.
+        var interpreted = await RunListOfRecords(SandboxTestHost.Create(), ExecutionMode.Interpreted);
+        var compiled = await RunListOfRecords(SandboxTestHost.Create(compiler: true), ExecutionMode.Compiled);
+
+        Assert.Equal(SandboxValue.FromInt32(42), interpreted);
+        Assert.Equal(interpreted, compiled);
+    }
+
+    private static async Task<SandboxValue?> RunListOfRecords(SafeIR.Hosting.SandboxHost host, ExecutionMode mode)
+    {
+        var module = await host.ImportJsonAsync(ListOfRecordsModule);
+        var plan = await host.PrepareAsync(module, RecordPolicy());
+        var result = await host.ExecuteAsync(plan, "main", SandboxValue.FromInt32(42), new SandboxExecutionOptions { Mode = mode });
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        return result.Value;
+    }
+
     [Fact]
     public async Task record_get_requires_a_constant_field_index()
     {
