@@ -144,7 +144,7 @@ function Assert-CompletedItemEvidence {
         },
         @{
             Text = "Generated assemblies use runtime stubs only."
-            Path = "src/DotBoxD.Kernels.Compiler/Emitters/MethodEmitter.cs"
+            Path = "src/DotBoxD.Kernels.Compiler/Emitters/ExpressionEmitter.cs"
             Patterns = @("CompiledRuntime", "EmitCall")
         },
         @{
