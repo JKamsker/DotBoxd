@@ -109,7 +109,14 @@ public sealed partial class ResourceMeter
     public void ChargeValue(SandboxValue value) => ChargeValue(value, CancellationToken.None);
 
     public void ChargeValue(SandboxValue value, CancellationToken cancellationToken)
-        => ChargeMeasuredShape(SandboxValueShapeMeter.Measure(value, Limits, cancellationToken, this));
+    {
+        if (TryChargeFlatScalarValue(value, cancellationToken))
+        {
+            return;
+        }
+
+        ChargeMeasuredShape(SandboxValueShapeMeter.Measure(value, Limits, cancellationToken, this));
+    }
 
     internal void ChargeValueShape(ValueShape shape) => ChargeMeasuredShape(shape);
 

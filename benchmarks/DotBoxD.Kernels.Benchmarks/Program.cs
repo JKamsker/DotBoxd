@@ -37,6 +37,11 @@ if (args.Contains("--probe-runtime-types", StringComparer.OrdinalIgnoreCase)) {
     return;
 }
 
+if (args.Contains("--probe-resource-meter", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.ResourceMeterProbe.Run();
+    return;
+}
+
 var profileIndex = Array.FindIndex(args, arg => arg.Equals("--profile-ipc", StringComparison.OrdinalIgnoreCase));
 if (profileIndex >= 0) {
     var transport = args.ElementAtOrDefault(profileIndex + 1) ?? IpcAllocationProfile.NamedPipeTransport;
