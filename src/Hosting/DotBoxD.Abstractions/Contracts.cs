@@ -82,7 +82,7 @@ public sealed class KernelMethodAttribute : Attribute;
 /// over a list parameter, host bindings via <c>ctx.Host&lt;T&gt;()</c> or constructor-injected service
 /// fields, and may build and return complex objects (records/DTOs) and lists of them. For example:
 /// <code>
-/// [KernelRpcService("monster-killer")]
+/// [KernelRpcService("monster-killer", typeof(IMonsterKillerService))]
 /// public sealed partial class MonsterKillerKernel
 /// {
 ///     private readonly IGameWorld _world;
@@ -100,12 +100,24 @@ public sealed class KernelMethodAttribute : Attribute;
 /// </code>
 /// The trailing <see cref="HookContext"/> parameter is the lowering marker for host bindings (as in a
 /// kernel's <c>Handle</c>) and is not part of the wire signature. Parameters, return type, and DTO
-/// fields must use the supported scalar types, lists, or nested DTOs.
+/// fields must use the supported scalar types, lists, or nested DTOs. Supplying the optional service
+/// interface type lets the analyzer emit a source-generated plugin-side client that marshals directly to
+/// compact kernel RPC IR bytes instead of using a reflection proxy.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
-public sealed class KernelRpcServiceAttribute(string id) : Attribute
+public sealed class KernelRpcServiceAttribute : Attribute
 {
-    public string Id { get; } = id;
+    public KernelRpcServiceAttribute(string id) => Id = id;
+
+    public KernelRpcServiceAttribute(string id, Type serviceType)
+    {
+        Id = id;
+        ServiceType = serviceType;
+    }
+
+    public string Id { get; }
+
+    public Type? ServiceType { get; }
 }
 
 public interface IEventKernel<TEvent>

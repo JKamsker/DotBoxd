@@ -13,6 +13,7 @@ public async ValueTask<InstalledKernel> InstallAsync( PluginPackage package, San
 public async ValueTask<InstalledKernel> InstallRpcAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public async ValueTask<SandboxValue> InvokeRpcAsync( IReadOnlyList<SandboxValue> arguments, CancellationToken cancellationToken = default)
 public async ValueTask<string> RegisterRpcServiceAsync<TService, TKernel>( SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
+public bool BoolValue
 public bool IsRevoked => Volatile.Read(ref _revoked) != 0
 public bool Owns(string pluginId)
 public bool TryGet(string pluginId, [MaybeNullWhen(false)] out InstalledKernel kernel)
@@ -20,6 +21,16 @@ public bool Uninstall(string pluginId)
 public class KernelRpcServiceProxy : DispatchProxy
 public const string CapabilityId = "host.message.write"
 public const string SendBindingId = "host.message.send"
+public double DoubleValue
+public enum KernelRpcValueKind : byte
+public enum KernelRpcValueKind.Bool = 1
+public enum KernelRpcValueKind.F64 = 4
+public enum KernelRpcValueKind.I32 = 2
+public enum KernelRpcValueKind.I64 = 3
+public enum KernelRpcValueKind.List = 6
+public enum KernelRpcValueKind.Record = 7
+public enum KernelRpcValueKind.String = 5
+public enum KernelRpcValueKind.Unit = 0
 public enum LiveUpdateMode
 public enum LiveUpdateMode.AsyncSet = 1
 public enum LiveUpdateMode.Sync = 0
@@ -72,6 +83,8 @@ public HookStage<TEvent, TNext> Select<TNext>(Func<TEvent, TNext> projection)
 public IEnumerator<InstalledKernel> GetEnumerator() => Snapshot().GetEnumerator()
 public InstalledKernel Get(string pluginId)
 public InstalledKernel Kernel { get; }
+public int Int32Value
+public interface IKernelRpcWireClient
 public interface ILiveSetting
 public IPluginEventAdapter<TEvent> Resolve<TEvent>()
 public IReadOnlyList<HookSubscriptionManifest> Subscriptions { get => _subscriptions; init => _subscriptions = PluginModelCopy.List(value); }
@@ -82,6 +95,8 @@ public IReadOnlyList<PluginExecutionObservation> ExecutionObservations => _execu
 public IReadOnlyList<string> Effects { get => _effects; init => _effects = PluginModelCopy.List(value); }
 public IReadOnlyList<string> RequiredCapabilities
 public KernelRegistry Kernels { get; }
+public KernelRpcValue[] Items { get; }
+public KernelRpcValueKind Kind { get; }
 public LiveContext<T> BindContext<T>(string name, Action<T>? initialize = null) where T : class
 public LiveSettingDefinition Definition { get; }
 public LiveSettingStore Settings { get; }
@@ -90,6 +105,7 @@ public LiveSettingStore(IEnumerable<ILiveSetting> settings)
 public LiveUpdateMode UpdateMode
 public LiveValue(string name, T value)
 public LiveValue<T> BindValue<T>(string name, T initialValue)
+public long Int64Value
 public object? CurrentValue => Value
 public object? GetObject(string name)
 public object? OwnerId => _ownerId
@@ -99,6 +115,7 @@ public PluginManifest Manifest { get; }
 public PluginPackage Package { get; }
 public PluginServer RegisterEventAdapter<TEvent>(IPluginEventAdapter<TEvent> adapter)
 public PluginSession CreateSession()
+public readonly struct KernelRpcValue
 public SandboxValue ToSandboxValue()
 public sealed class HookPipeline<TEvent>
 public sealed class HookRegistry
@@ -122,14 +139,29 @@ public sealed record PluginManifest( string PluginId, string Contract, Execution
 public sealed record PluginPackage( PluginManifest Manifest, SandboxModule Module, KernelEntrypoints Entrypoints)
 public static BindingDescriptor CreateSend(IPluginMessageSink sink)
 public static bool TryGetReference(string code, out PluginDiagnosticReference reference)
+public static byte[] EncodeArguments(IReadOnlyList<KernelRpcValue> arguments)
+public static byte[] EncodeValue(KernelRpcValue value)
 public static class HostMessagePolicyBuilderExtensions
 public static class KernelPackageRegistry
+public static class KernelRpcBinaryCodec
 public static class KernelRpcMarshaller
+public static class KernelRpcValueConverter
 public static class PluginDiagnosticCodes
 public static class PluginMessageBindings
 public static class PluginPackageJsonSchemas
 public static class PluginServerJsonExtensions
 public static IReadOnlyList<PluginDiagnosticReference> All => References
+public static KernelRpcValue Bool(bool value)
+public static KernelRpcValue DecodeValue(ReadOnlyMemory<byte> payload)
+public static KernelRpcValue Double(double value)
+public static KernelRpcValue FromSandboxValue(SandboxValue value)
+public static KernelRpcValue Int32(int value)
+public static KernelRpcValue Int64(long value)
+public static KernelRpcValue List(KernelRpcValue[] items)
+public static KernelRpcValue Record(KernelRpcValue[] fields)
+public static KernelRpcValue String(string value)
+public static KernelRpcValue Unit()
+public static KernelRpcValue[] DecodeArguments(ReadOnlyMemory<byte> payload)
 public static object? FromSandboxValue(SandboxValue value, Type type)
 public static partial class PluginPackageJsonSerializer
 public static PluginPackage Create( PluginManifest manifest, SandboxModule module, KernelEntrypoints? entrypoints = null)
@@ -141,6 +173,7 @@ public static SandboxHostBuilder AddPluginMessageBindings( this SandboxHostBuild
 public static SandboxPolicyBuilder GrantHostMessageWrite( this SandboxPolicyBuilder builder, IEnumerable<string>? allowedTargets = null, IEnumerable<string>? targetPrefixes = null, int? maxMessageLength = null)
 public static SandboxPolicyBuilder GrantHostMessageWrite(this SandboxPolicyBuilder builder)
 public static SandboxType SandboxTypeOf(Type type)
+public static SandboxValue ToSandboxValue(KernelRpcValue value, SandboxType expectedType)
 public static SandboxValue ToSandboxValue(object? value, Type type)
 public static string Export(PluginPackage package, bool indented = false)
 public static string PackageEnvelope => ReadResource(PluginPackageResourceName)
@@ -151,6 +184,7 @@ public static ValueTask<InstalledKernel> InstallJsonAsync( this PluginSession se
 public static void Register(Type kernelType, Func<PluginPackage> factory)
 public string Name { get; }
 public string Name => Definition.Name
+public string TextValue
 public string? RpcEntrypoint { get; init; }
 public T As<T>() where T : class => LiveContextProxy<T>.Create(this)
 public T Get<T>(string name)
@@ -166,6 +200,7 @@ public ValueTask<InstalledKernel> InstallAsync( PluginPackage package, SandboxPo
 public ValueTask<InstalledKernel> InstallRpcAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public void Dispose()
 public void Register<TEvent>(IPluginEventAdapter<TEvent> adapter)
+public void RequireKind(KernelRpcValueKind expected)
 public void Revoke()
 public void Set<T>(string name, T value)
 public void SetMany(IReadOnlyDictionary<string, object?> values)

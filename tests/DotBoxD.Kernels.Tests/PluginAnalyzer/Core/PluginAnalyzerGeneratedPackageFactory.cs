@@ -13,6 +13,14 @@ internal static class PluginAnalyzerGeneratedPackageFactory
 
     public static PluginPackage Create(string source, string factoryTypeName = "Sample.DamagePluginPackage")
     {
+        var loaded = CreateAssembly(source);
+        var factory = loaded.GetType(factoryTypeName, throwOnError: true)!;
+        var create = factory.GetMethod("Create", BindingFlags.Public | BindingFlags.Static)!;
+        return Assert.IsType<PluginPackage>(create.Invoke(null, null));
+    }
+
+    public static Assembly CreateAssembly(string source)
+    {
         var compilation = CSharpCompilation.Create(
             "DotBoxDGeneratedPackageRuntimeTest",
             [CSharpSyntaxTree.ParseText(source, ParseOptions)],
@@ -38,10 +46,7 @@ internal static class PluginAnalyzerGeneratedPackageFactory
             emit.Success,
             string.Join(Environment.NewLine, emit.Diagnostics.Select(d => d.ToString())));
 
-        var loaded = Assembly.Load(assembly.ToArray());
-        var factory = loaded.GetType(factoryTypeName, throwOnError: true)!;
-        var create = factory.GetMethod("Create", BindingFlags.Public | BindingFlags.Static)!;
-        return Assert.IsType<PluginPackage>(create.Invoke(null, null));
+        return Assembly.Load(assembly.ToArray());
     }
 
     private static IEnumerable<MetadataReference> TrustedPlatformReferences()

@@ -49,7 +49,8 @@ internal static class Program
 
         // Kernel RPC keeps the plugin-owned loop on the server. The plugin sends one request, the
         // server executes the generated verified IR, and the result list comes back as plugin DTOs.
-        var killResults = await server.KernelRpc.Get<IMonsterKillerService>()
+        var monsterKiller = MonsterKillerKernelRpcClient.Create(server.KernelRpc, killerId);
+        var killResults = await monsterKiller
             .KillMonstersAsync(["monster-3", "monster-4", "player-1", "monster-missing"])
             .ConfigureAwait(false);
         Console.WriteLine("[plugin] kernel RPC KillMonsters(...) => " + FormatKillResults(killResults));

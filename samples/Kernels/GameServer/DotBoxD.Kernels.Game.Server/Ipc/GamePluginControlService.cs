@@ -54,9 +54,9 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         return kernel.Manifest.PluginId;
     }
 
-    public async ValueTask<KernelRpcWireValue> InvokeKernelRpcAsync(
+    public async ValueTask<byte[]> InvokeKernelRpcAsync(
         string pluginId,
-        KernelRpcWireValue[] arguments,
+        byte[] arguments,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(pluginId);
@@ -68,22 +68,23 @@ internal sealed class GamePluginControlService : IGamePluginControlService
 
         var kernel = _server.Kernels.Get(pluginId);
         var function = RpcEntrypoint(kernel);
+        var rpcArguments = KernelRpcBinaryCodec.DecodeArguments(arguments);
         var liveSettings = kernel.Manifest.LiveSettings.Count;
         var callerCount = function.Parameters.Count - liveSettings;
-        if (callerCount < 0 || arguments.Length != callerCount)
+        if (callerCount < 0 || rpcArguments.Length != callerCount)
         {
             throw new InvalidOperationException(
-                $"Kernel RPC service '{pluginId}' expects {callerCount} argument(s) but received {arguments.Length}.");
+                $"Kernel RPC service '{pluginId}' expects {callerCount} argument(s) but received {rpcArguments.Length}.");
         }
 
-        var sandboxArguments = new SandboxValue[arguments.Length];
-        for (var i = 0; i < arguments.Length; i++)
+        var sandboxArguments = new SandboxValue[rpcArguments.Length];
+        for (var i = 0; i < rpcArguments.Length; i++)
         {
-            sandboxArguments[i] = KernelRpcWireValueConverter.ToSandboxValue(arguments[i], function.Parameters[i].Type);
+            sandboxArguments[i] = KernelRpcValueConverter.ToSandboxValue(rpcArguments[i], function.Parameters[i].Type);
         }
 
         var result = await kernel.InvokeRpcAsync(sandboxArguments, ct).ConfigureAwait(false);
-        return KernelRpcWireValueConverter.FromSandboxValue(result);
+        return KernelRpcBinaryCodec.EncodeValue(KernelRpcValueConverter.FromSandboxValue(result));
     }
 
     public ValueTask UpdateSettingsAsync(

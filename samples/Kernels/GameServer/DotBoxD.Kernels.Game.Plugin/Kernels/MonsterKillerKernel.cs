@@ -17,7 +17,7 @@ public readonly record struct MonsterKillResult(
 /// Plugin-owned batch operation. The class and service contract live in the plugin assembly, but the
 /// generated verified IR is installed and executed on the server through the kernel RPC IPC bridge.
 /// </summary>
-[KernelRpcService("monster-killer")]
+[KernelRpcService("monster-killer", typeof(IMonsterKillerService))]
 public sealed partial class MonsterKillerKernel
 {
     private readonly IGameWorldAccess _world;

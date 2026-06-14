@@ -31,6 +31,10 @@ internal static class RpcKernelModelFactory
             return Fail(declaration, "Kernel RPC service id must be a non-empty string.");
         }
 
+        var serviceType = context.Attributes.Length > 0 && context.Attributes[0].ConstructorArguments.Length > 1
+            ? context.Attributes[0].ConstructorArguments[1].Value as INamedTypeSymbol
+            : null;
+
         try
         {
             var method = ResolveBatchMethod(type);
@@ -46,7 +50,7 @@ internal static class RpcKernelModelFactory
                 effects.Add("Alloc");
             }
 
-            var source = EmitPackage(type, pluginId!, method, bodyJson, effects, capabilities);
+            var source = EmitPackage(type, pluginId!, method, bodyJson, effects, capabilities, serviceType);
             return new RpcKernelModelResult(source, null);
         }
         catch (NotSupportedException ex)
@@ -103,7 +107,8 @@ internal static class RpcKernelModelFactory
         IMethodSymbol method,
         string bodyJson,
         SortedSet<string> effects,
-        SortedSet<string> capabilities)
+        SortedSet<string> capabilities,
+        INamedTypeSymbol? serviceType)
     {
         var methodName = method.Name;
         var returnType = DotBoxDRpcTypeMapper.JsonType(method.ReturnType);
@@ -136,10 +141,14 @@ internal static class RpcKernelModelFactory
             $"\"returnType\":{returnType}," +
             $"\"body\":{bodyJson}}}]}}}}";
 
-        return new GeneratedPluginPackage(HintName(type), BuildSource(type, json));
+        return new GeneratedPluginPackage(HintName(type), BuildSource(type, json, method, serviceType));
     }
 
-    private static string BuildSource(INamedTypeSymbol type, string json)
+    private static string BuildSource(
+        INamedTypeSymbol type,
+        string json,
+        IMethodSymbol method,
+        INamedTypeSymbol? serviceType)
     {
         var ns = type.ContainingNamespace.IsGlobalNamespace ? "" : type.ContainingNamespace.ToDisplayString();
         var builder = new System.Text.StringBuilder();
@@ -158,6 +167,12 @@ internal static class RpcKernelModelFactory
             .Append(json.Replace("\\", "\\\\").Replace("\"", "\\\""))
             .AppendLine("\");");
         builder.AppendLine("}");
+        if (serviceType is not null)
+        {
+            builder.AppendLine();
+            builder.Append(RpcKernelClientProxyEmitter.Emit(type, method, serviceType));
+        }
+
         return builder.ToString();
     }
 

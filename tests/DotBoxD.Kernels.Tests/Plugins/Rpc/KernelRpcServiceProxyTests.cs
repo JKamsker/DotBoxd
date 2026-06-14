@@ -1,3 +1,4 @@
+using System.Reflection;
 using DotBoxD.Kernels;
 using DotBoxD.Plugins;
 
@@ -59,6 +60,41 @@ public sealed class KernelRpcServiceProxyTests
         }
         """;
 
+    private const string MonsterKillerWithGeneratedClientSource = """
+        using System.Collections.Generic;
+        using System.Threading.Tasks;
+        using DotBoxD.Kernels;
+        using DotBoxD.Plugins;
+        using DotBoxD.Abstractions;
+
+        namespace Sample;
+
+        public interface IMonsterKillerService
+        {
+            ValueTask<List<KillResult>> KillMonstersAsync(List<int> monsterIds);
+        }
+
+        public interface IGameWorld
+        {
+            [HostBinding("host.world.kill", "game.world.monster.write.kill", SandboxEffect.Cpu | SandboxEffect.HostStateWrite)]
+            bool Kill(int id);
+        }
+
+        public readonly record struct KillResult(int MonsterId, bool Success);
+
+        [KernelRpcService("monster-killer", typeof(IMonsterKillerService))]
+        public sealed partial class MonsterKillerKernel
+        {
+            public List<KillResult> KillMonsters(List<int> monsterIds, HookContext ctx)
+            {
+                var results = new List<KillResult>();
+                foreach (var id in monsterIds)
+                    results.Add(new KillResult(id, ctx.Host<IGameWorld>().Kill(id)));
+                return results;
+            }
+        }
+        """;
+
     [Fact]
     public async Task A_typed_proxy_over_a_generated_kernel_returns_dtos_as_real_objects()
     {
@@ -99,5 +135,79 @@ public sealed class KernelRpcServiceProxyTests
 
         var roundTripped = (List<KillResult>)KernelRpcMarshaller.FromSandboxValue(sandbox, typeof(List<KillResult>))!;
         Assert.Equal(original, roundTripped);
+    }
+
+    [Fact]
+    public async Task A_generated_ipc_client_uses_compact_ir_without_dispatch_proxy()
+    {
+        var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly(MonsterKillerWithGeneratedClientSource);
+        var clientType = assembly.GetType("Sample.MonsterKillerKernelRpcClient", throwOnError: true)!;
+        Assert.False(typeof(DispatchProxy).IsAssignableFrom(clientType));
+
+        var wireClient = new RecordingKernelRpcWireClient(KillResultsResponse());
+        var create = clientType.GetMethod("Create", BindingFlags.Public | BindingFlags.Static)!;
+        var service = create.Invoke(null, [wireClient, "monster-killer"])!;
+        var method = service.GetType().GetMethod("KillMonstersAsync", BindingFlags.Public | BindingFlags.Instance)!;
+
+        var result = await AwaitValueTaskResult(
+            method.Invoke(service, [new List<int> { 4, 5 }])!);
+
+        Assert.Equal("monster-killer", wireClient.LastPluginId);
+        var arguments = KernelRpcBinaryCodec.DecodeArguments(wireClient.LastArguments);
+        var listArgument = Assert.Single(arguments);
+        listArgument.RequireKind(KernelRpcValueKind.List);
+        Assert.Equal(2, listArgument.Items.Length);
+        Assert.Equal(4, listArgument.Items[0].Int32Value);
+        Assert.Equal(5, listArgument.Items[1].Int32Value);
+        Assert.True(wireClient.LastArguments.Length < 32);
+
+        var results = Assert.IsAssignableFrom<System.Collections.IEnumerable>(result).Cast<object>().ToArray();
+        Assert.Equal(2, results.Length);
+        AssertGeneratedKillResult(results[0], 4, true);
+        AssertGeneratedKillResult(results[1], 5, false);
+    }
+
+    private static byte[] KillResultsResponse()
+        => KernelRpcBinaryCodec.EncodeValue(KernelRpcValue.List(
+        [
+            KernelRpcValue.Record([KernelRpcValue.Int32(4), KernelRpcValue.Bool(true)]),
+            KernelRpcValue.Record([KernelRpcValue.Int32(5), KernelRpcValue.Bool(false)])
+        ]));
+
+    private static async Task<object?> AwaitValueTaskResult(object valueTask)
+    {
+        var asTask = valueTask.GetType().GetMethod("AsTask", Type.EmptyTypes)!;
+        var task = (Task)asTask.Invoke(valueTask, null)!;
+        await task.ConfigureAwait(false);
+        return task.GetType().GetProperty("Result")!.GetValue(task);
+    }
+
+    private static void AssertGeneratedKillResult(object result, int monsterId, bool success)
+    {
+        var type = result.GetType();
+        Assert.Equal(monsterId, type.GetProperty("MonsterId")!.GetValue(result));
+        Assert.Equal(success, type.GetProperty("Success")!.GetValue(result));
+    }
+
+    private sealed class RecordingKernelRpcWireClient : IKernelRpcWireClient
+    {
+        private readonly byte[] _response;
+
+        public RecordingKernelRpcWireClient(byte[] response) => _response = response;
+
+        public string? LastPluginId { get; private set; }
+
+        public byte[] LastArguments { get; private set; } = [];
+
+        public ValueTask<byte[]> InvokeKernelRpcAsync(
+            string pluginId,
+            byte[] arguments,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            LastPluginId = pluginId;
+            LastArguments = arguments;
+            return ValueTask.FromResult(_response);
+        }
     }
 }

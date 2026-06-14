@@ -10,19 +10,23 @@ public interface IPluginEventAdapter<in TEvent>
 public interface IPluginMessageSink
 public IPluginMessageSink Messages { get; }
 public IReadOnlyList<PluginMessage> Messages => _readOnlyMessages
+public KernelRpcServiceAttribute(string id, Type serviceType)
+public KernelRpcServiceAttribute(string id) => Id = id
 public SandboxEffect Effects { get; } = effects
 public sealed class CapabilityAttribute(string id) : Attribute
 public sealed class HookContext
 public sealed class HostBindingAttribute(string bindingId, string capability, SandboxEffect effects) : Attribute
 public sealed class InMemoryPluginMessageSink : IPluginMessageSink
 public sealed class KernelMethodAttribute : Attribute
-public sealed class KernelRpcServiceAttribute(string id) : Attribute
+public sealed class KernelRpcServiceAttribute : Attribute
 public sealed class LiveSettingAttribute : Attribute
 public sealed class PluginAttribute(string id) : Attribute
 public sealed record PluginMessage(string TargetId, string Message)
 public string BindingId { get; } = bindingId
 public string Capability { get; } = capability
+public string Id { get; }
 public string Id { get; } = id
 public THost Host<THost>()
+public Type? ServiceType { get; }
 public ValueTask SendAsync(string targetId, string message, CancellationToken cancellationToken = default)
 public void Send(string targetId, string message)
