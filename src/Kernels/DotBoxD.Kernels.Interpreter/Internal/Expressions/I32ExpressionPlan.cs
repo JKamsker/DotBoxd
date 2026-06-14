@@ -8,6 +8,7 @@ internal sealed partial class I32ExpressionPlan
     private readonly int _value;
     private readonly int _value2;
     private readonly int _value3;
+    private readonly uint _magic;
     private readonly I32ExpressionPlan? _left;
     private readonly I32ExpressionPlan? _right;
 
@@ -24,9 +25,29 @@ internal sealed partial class I32ExpressionPlan
         _value = value;
         _value2 = value2;
         _value3 = value3;
+        // For the fused `(... ) % const` kinds, precompute floor(2^32 / divisor) so the runtime modulo can use an
+        // exact reciprocal multiply (FastRemainder) instead of a hardware idiv. Only valid for a positive divisor.
+        _magic = value3 > 0 ? (uint)((1UL << 32) / (uint)value3) : 0u;
         _left = left;
         _right = right;
         FuelCost = fuelCost ?? 1 + (left?.FuelCost ?? 0) + (right?.FuelCost ?? 0);
+    }
+
+    // Exact `a % d` for a positive constant divisor d, using the precomputed reciprocal m = floor(2^32 / d).
+    // For a >= 0: q = (a*m)>>32 is floor(a/d) or one less, so r = a - q*d lands in [0, 2d) and a single
+    // compare-subtract yields the exact remainder (no idiv; a*m < 2^63 so no overflow). Negative dividends fall
+    // back to the checked modulo, keeping the result byte-identical to SandboxInt32Math.Remainder for all inputs.
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static int FastRemainder(int a, int divisor, uint magic)
+    {
+        if (magic == 0u || a < 0)
+        {
+            return SandboxInt32Math.Remainder(a, divisor);
+        }
+
+        var q = (int)(((ulong)(uint)a * magic) >> 32);
+        var r = a - (q * divisor);
+        return r >= divisor ? r - divisor : r;
     }
 
     public int FuelCost { get; }
@@ -111,12 +132,14 @@ internal sealed partial class I32ExpressionPlan
             ExpressionKind.BoxedVariable => frame.ReadInt32Slot(_value),
             ExpressionKind.Negate => SandboxInt32Math.Negate(_left!.Evaluate(frame, context)),
             ExpressionKind.InlineCall => EvaluateInlineCall(frame, context),
-            ExpressionKind.RemainderAddRawRawConst => SandboxInt32Math.Remainder(
+            ExpressionKind.RemainderAddRawRawConst => FastRemainder(
                 SandboxInt32Math.Add(frame.ReadRawInt32Slot(_value), frame.ReadRawInt32Slot(_value2)),
-                _value3),
-            ExpressionKind.RemainderAddRawConstConst => SandboxInt32Math.Remainder(
+                _value3,
+                _magic),
+            ExpressionKind.RemainderAddRawConstConst => FastRemainder(
                 SandboxInt32Math.Add(frame.ReadRawInt32Slot(_value), _value2),
-                _value3),
+                _value3,
+                _magic),
             ExpressionKind.AddRawMultiplyRawConst => SandboxInt32Math.Add(
                 frame.ReadRawInt32Slot(_value),
                 SandboxInt32Math.Multiply(frame.ReadRawInt32Slot(_value2), _value3)),
