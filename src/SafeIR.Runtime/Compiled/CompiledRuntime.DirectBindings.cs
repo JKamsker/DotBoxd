@@ -6,6 +6,17 @@ using SafeIR;
 public static partial class CompiledRuntime
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool CanBulkChargeFuel(SandboxContext context, long fuelPerUnit, int count)
+        => context.CanBulkChargeFuel(fuelPerUnit, count);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ChargeBulkFuel(SandboxContext context, long fuelPerUnit, int count)
+        => context.ChargeBulkFuel(fuelPerUnit, count);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ChargeFuel64(SandboxContext context, long amount) => context.ChargeFuel(amount);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool CanBulkChargeBindingCalls(SandboxContext context, string id, int count)
         => context.CanBulkChargeBindingCalls(context.Bindings.GetDescriptor(id), count);
 
@@ -15,6 +26,13 @@ public static partial class CompiledRuntime
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int StringLengthRaw(SandboxValue value) => ((StringValue)value).Value.Length;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int ListCountRaw(SandboxValue value)
+        => value is ListValue list ? list.Values.Count : throw InvalidInput("expected list value");
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static long ListReadFuelRaw(int count) => SandboxCollectionFuel.Read(count);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double SqrtF64Raw(double value)

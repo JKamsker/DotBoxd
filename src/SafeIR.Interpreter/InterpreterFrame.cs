@@ -114,6 +114,15 @@ internal sealed class InterpreterFrame
     public int ReadStringLengthSlot(int slot)
         => _slots[slot] is StringValue value ? value.Value.Length : throw UnassignedSlot();
 
+    public bool TryGetListSlot(string name, out int slot)
+    {
+        slot = _layout.GetSlot(name);
+        return _slots[slot] is ListValue;
+    }
+
+    public int ReadListCountSlot(int slot)
+        => _slots[slot] is ListValue value ? value.Values.Count : throw UnassignedSlot();
+
     public bool TryReadDouble(string name, out double value)
     {
         var slot = _layout.GetSlot(name);

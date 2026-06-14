@@ -49,6 +49,9 @@ public sealed record VerificationPolicy(
             new HashSet<string>(StringComparer.Ordinal) {
                 RuntimeMember("ChargeFuel", $"{SandboxContextName},{Int32Name}", VoidName),
                 RuntimeMember("ChargeLoopIteration", $"{SandboxContextName},{Int32Name}", VoidName),
+                RuntimeMember("CanBulkChargeFuel", $"{SandboxContextName},{Int64Name},{Int32Name}", BooleanName),
+                RuntimeMember("ChargeBulkFuel", $"{SandboxContextName},{Int64Name},{Int32Name}", VoidName),
+                RuntimeMember("ChargeFuel64", $"{SandboxContextName},{Int64Name}", VoidName),
                 RuntimeMember("ChargeBindingCall", $"{SandboxContextName},{StringName}", VoidName),
                 RuntimeMember("CanBulkChargeBindingCalls", $"{SandboxContextName},{StringName},{Int32Name}", BooleanName),
                 RuntimeMember("ChargeBindingCalls", $"{SandboxContextName},{StringName},{Int32Name}", VoidName),
@@ -115,6 +118,8 @@ public sealed record VerificationPolicy(
                 RuntimeMember("Or", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("StringLength", SandboxValueName, SandboxValueName),
                 RuntimeMember("StringLengthRaw", SandboxValueName, Int32Name),
+                RuntimeMember("ListCountRaw", SandboxValueName, Int32Name),
+                RuntimeMember("ListReadFuelRaw", Int32Name, Int64Name),
                 RuntimeMember("ConcatString", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("AbsI32", SandboxValueName, SandboxValueName),
                 RuntimeMember("MinI32", $"{SandboxValueName},{SandboxValueName}", SandboxValueName),

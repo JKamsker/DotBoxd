@@ -26,7 +26,8 @@ dotnet run -c Release --project benchmarks/SafeIR.Benchmarks -p:UseSharedCompila
 | Binding crossing optimization | `216eec6` | `--probe-bindings` | `math.sqrt` crossing improved from compiled 542.1 ms / 68.8x to 196.7 ms / 25.1x; interpreted improved from 677.7 ms / 86.0x to 514.7 ms / 65.6x. |
 | Performance matrix and string length direct path | `31fa6fe` | `--probe-matrix` | Added a matrix for worse cases. `string.length` compiled improved from about 426 ms to 59-62 ms for 1M calls; interpreted improved from about 411 ms to 299-305 ms. |
 | Local function call in I32 loop fast path | `fe7c6ef` | `--probe-matrix` | `local function call` improved from compiled 73.1 ms / 352.2x and interpreted 266.6 ms / 1284.3x to compiled 20.6 ms / 97.7x and interpreted 23.2 ms / 109.8x. |
-| Direct binding loop adapters | this commit | `--probe-matrix` | Added direct F64 math and `string.length` loop adapters with bulk binding charges. `math.sqrt` improved from compiled 177.2 ms / 22.9x and interpreted 374.8 ms / 48.4x to compiled 23.1 ms / 3.0x and interpreted 18.2 ms / 2.4x. `string.length` improved from compiled 64.7 ms / 303.4x and interpreted 311.0 ms / 1457.4x to compiled 17.5 ms / 87.6x and interpreted 1.0 ms / 4.9x; its ratio remains distorted by the sub-millisecond handwritten baseline. |
+| Direct binding loop adapters | `9cece3c` | `--probe-matrix` | Added direct F64 math and `string.length` loop adapters with bulk binding charges. `math.sqrt` improved from compiled 177.2 ms / 22.9x and interpreted 374.8 ms / 48.4x to compiled 23.1 ms / 3.0x and interpreted 18.2 ms / 2.4x. `string.length` improved from compiled 64.7 ms / 303.4x and interpreted 311.0 ms / 1457.4x to compiled 17.5 ms / 87.6x and interpreted 1.0 ms / 4.9x; its ratio remains distorted by the sub-millisecond handwritten baseline. |
+| Direct `list.count` loop adapter | this commit | `--probe-matrix` | `list.count` improved from compiled 72.9 ms / 314.8x and interpreted 196.6 ms / 848.5x to compiled 18.2 ms / 83.6x and interpreted 1.0 ms / 4.6x by bulk-charging collection read fuel and reusing the raw count in the loop. |
 
 ## Matrix After `31fa6fe`
 
@@ -67,10 +68,23 @@ map.get intrinsic                 2.4 ms    180.3 ms  76.5      270.2 ms  114.7
 local function call               0.2 ms     20.9 ms 103.7       23.3 ms  115.6
 ```
 
+## Matrix After Direct List Count Loop Adapter
+
+```text
+case                         handwritten   compiled      x   interpreted      x
+i32 add/rem loop                 23.3 ms     39.2 ms   1.7      106.6 ms    4.6
+math.sqrt binding                 7.8 ms     23.2 ms   3.0       18.4 ms    2.4
+string.length binding             0.2 ms     18.7 ms  92.5        1.0 ms    4.9
+list.count intrinsic              0.2 ms     18.2 ms  83.6        1.0 ms    4.6
+list.get intrinsic                0.5 ms     74.7 ms 137.6      270.1 ms  497.7
+map.get intrinsic                 2.2 ms    163.8 ms  73.2      295.4 ms  132.0
+local function call               0.2 ms     23.6 ms 112.5       23.1 ms  110.1
+```
+
 ## Current Gaps
 
 The broad performance target is not met yet. The matrix still exposes several
-bad cases, especially collection intrinsics, map access, local function calls,
-and tiny operations where the handwritten timing is sub-millisecond. `math.sqrt`
-now meets the interpreted target on this probe, but compiled is still about 3x
+bad cases, especially `list.get`, map access, local function calls, and tiny
+operations where the handwritten timing is sub-millisecond. `math.sqrt` now
+meets the interpreted target on this probe, but compiled is still about 3x
 handwritten and remains above the 2x target.
