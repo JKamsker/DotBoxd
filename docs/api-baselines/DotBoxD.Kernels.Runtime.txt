@@ -126,6 +126,7 @@ public static void ChargeBindingCalls(SandboxContext context, string id, int cou
 public static void ChargeBindingCallsScaled( SandboxContext context, string id, int iterations, int callsPerIteration)
 public static void ChargeBulkFuel(SandboxContext context, long fuelPerUnit, int count)
 public static void ChargeFuel64(SandboxContext context, long amount) => context.ChargeFuel(amount)
+public static void ChargeLoopBatch(SandboxContext context, int iterations, int fuelPerIteration)
 public static void ChargeSandboxValue(SandboxContext context, SandboxValue value) => context.ChargeValue(value)
 public static void ChargeSandboxValues(SandboxContext context, SandboxValue value, int count)
 public static void EnterCall(SandboxContext context) => context.EnterCall()
