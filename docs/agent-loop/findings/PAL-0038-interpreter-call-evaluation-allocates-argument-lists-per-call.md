@@ -29,11 +29,11 @@ Interpreted call evaluation allocates a fresh argument list for every `CallExpre
 
 ## Evidence
 
-- `src/SafeIR.Interpreter/ExpressionEvaluator.cs:109` enters `EvaluateCallAsync` for every interpreted call expression.
-- `src/SafeIR.Interpreter/ExpressionEvaluator.cs:111` allocates `new List<SandboxValue>(call.Arguments.Count)` unconditionally.
-- `src/SafeIR.Interpreter/ExpressionEvaluator.cs:112` through `src/SafeIR.Interpreter/ExpressionEvaluator.cs:115` fills that list before dispatch knows whether the target is a fixed-arity collection intrinsic, a private function, or a host binding.
-- `src/SafeIR.Interpreter/ExpressionEvaluator.cs:117` through `src/SafeIR.Interpreter/ExpressionEvaluator.cs:129` then routes the same allocated list through collection helpers, `_interpreter.InvokeFunctionAsync`, or `CallBindingAsync`.
-- `benchmarks/SafeIR.Benchmarks/Interpreter/InterpreterExpressionBenchmarks.cs:33` through `benchmarks/SafeIR.Benchmarks/Interpreter/InterpreterExpressionBenchmarks.cs:39` currently benchmark an arithmetic loop, but not repeated interpreted helper/binding/collection calls that expose argument-list allocation.
+- `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:109` enters `EvaluateCallAsync` for every interpreted call expression.
+- `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:111` allocates `new List<SandboxValue>(call.Arguments.Count)` unconditionally.
+- `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:112` through `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:115` fills that list before dispatch knows whether the target is a fixed-arity collection intrinsic, a private function, or a host binding.
+- `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:117` through `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:129` then routes the same allocated list through collection helpers, `_interpreter.InvokeFunctionAsync`, or `CallBindingAsync`.
+- `benchmarks/DotBoxd.Kernels.Benchmarks/Interpreter/InterpreterExpressionBenchmarks.cs:33` through `benchmarks/DotBoxd.Kernels.Benchmarks/Interpreter/InterpreterExpressionBenchmarks.cs:39` currently benchmark an arithmetic loop, but not repeated interpreted helper/binding/collection calls that expose argument-list allocation.
 - Existing `PAL-0013` covers compiled binding argument arrays, and `PAL-0001` covers evaluator object lifetime. This finding is separate: the interpreted call dispatcher allocates argument storage per call even after evaluator reuse and even when compiled mode is not involved.
 
 ## Impact

@@ -29,7 +29,7 @@ HTTP response body reading allocates a fresh `MemoryStream` and 4 KiB byte buffe
 
 ## Evidence
 
-- `src/SafeIR.Transport.Http/SafeHttpClient.cs` reads every successful response through `ReadLimitedTextAsync`.
+- `src/DotBoxd.Hosting.Http/SafeHttpClient.cs` reads every successful response through `ReadLimitedTextAsync`.
 - `ReadLimitedTextAsync` creates `using var memory = new MemoryStream()` and `var buffer = new byte[4096]` for each request.
 - The loop writes all chunks into the `MemoryStream`, then reads `memory.GetBuffer()` and calls `Encoding.UTF8.GetString(...)` to allocate the final string.
 - `PAL-0008` covers grant parameter reparsing before the request. This finding is separate: the response-read path allocates per request even when grants are cached and the response is small.

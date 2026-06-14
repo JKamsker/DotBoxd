@@ -25,17 +25,17 @@ duplicate_of:
 
 ## Claim
 
-`SafeIR.PluginAnalyzer` ships as a public SDK package with stable diagnostic IDs, but the public docs/examples do not provide a diagnostic reference or remediation guide for those IDs.
+`DotBoxd.Plugins.Analyzer` ships as a public SDK package with stable diagnostic IDs, but the public docs/examples do not provide a diagnostic reference or remediation guide for those IDs.
 
 ## Evidence
 
-- `src/SafeIR.PluginAnalyzer/Analysis/SafeIrPluginAnalyzer.cs:12` defines `SGP001` for forbidden host APIs in plugin kernels.
-- `src/SafeIR.PluginAnalyzer/Analysis/SafeIrPluginAnalyzer.cs:22` defines `SGP020` for unsupported live setting types.
-- `src/SafeIR.PluginAnalyzer/Analysis/PluginAnalyzerDiagnostics.cs:7` defines `SGP100` for unsupported plugin kernel generation shapes.
-- `src/SafeIR.PluginAnalyzer/AnalyzerReleases.Shipped.md:8` tracks `SGP001` and `SGP020`, and `src/SafeIR.PluginAnalyzer/AnalyzerReleases.Unshipped.md:8` tracks `SGP100`, so the package already treats the IDs as user-facing analyzer rules.
-- `README.md:19` only lists `SafeIR.PluginAnalyzer` as a source generator/analyzer package, without showing diagnostic IDs, categories, supported language subset, or fixes.
-- `docs/Specs/Addendum/Examples.md:6` says the analyzer provides diagnostics for forbidden File IO and unsupported live setting types, but the walkthrough does not name `SGP001`, `SGP020`, or `SGP100`, and it does not tell plugin authors how to remediate each rule.
-- `examples/LocalPlugin/SafeIR.PluginLocal/SafeIR.PluginLocal.csproj:4` and `examples/Addendum/SafeIR.AddendumExamples/SafeIR.AddendumExamples.csproj:4` wire the analyzer through project references, so source-tree examples prove local wiring but do not provide package-consumer diagnostic documentation.
+- `src/DotBoxd.Plugins.Analyzer/Analysis/DotBoxdPluginAnalyzer.cs:12` defines `DBXK001` for forbidden host APIs in plugin kernels.
+- `src/DotBoxd.Plugins.Analyzer/Analysis/DotBoxdPluginAnalyzer.cs:22` defines `DBXK020` for unsupported live setting types.
+- `src/DotBoxd.Plugins.Analyzer/Analysis/PluginAnalyzerDiagnostics.cs:7` defines `DBXK100` for unsupported plugin kernel generation shapes.
+- `src/DotBoxd.Plugins.Analyzer/AnalyzerReleases.Shipped.md:8` tracks `DBXK001` and `DBXK020`, and `src/DotBoxd.Plugins.Analyzer/AnalyzerReleases.Unshipped.md:8` tracks `DBXK100`, so the package already treats the IDs as user-facing analyzer rules.
+- `README.md:19` only lists `DotBoxd.Plugins.Analyzer` as a source generator/analyzer package, without showing diagnostic IDs, categories, supported language subset, or fixes.
+- `docs/Specs/Addendum/Examples.md:6` says the analyzer provides diagnostics for forbidden File IO and unsupported live setting types, but the walkthrough does not name `DBXK001`, `DBXK020`, or `DBXK100`, and it does not tell plugin authors how to remediate each rule.
+- `examples/LocalPlugin/DotBoxd.Kernels.PluginLocal/DotBoxd.Kernels.PluginLocal.csproj:4` and `examples/Addendum/DotBoxd.Kernels.AddendumExamples/DotBoxd.Kernels.AddendumExamples.csproj:4` wire the analyzer through project references, so source-tree examples prove local wiring but do not provide package-consumer diagnostic documentation.
 
 ## Impact
 
@@ -43,7 +43,7 @@ Plugin authors consuming the analyzer from NuGet can receive build-breaking `SGP
 
 ## Better target
 
-Add a public analyzer diagnostics reference, linked from the README and addendum walkthrough, that lists each shipped/unshipped rule ID, category, severity, trigger, supported examples, unsupported examples, and remediation. Include the source-generator subset behind `SGP100` so authors know which kernel shapes are currently complete.
+Add a public analyzer diagnostics reference, linked from the README and addendum walkthrough, that lists each shipped/unshipped rule ID, category, severity, trigger, supported examples, unsupported examples, and remediation. Include the source-generator subset behind `DBXK100` so authors know which kernel shapes are currently complete.
 
 ## Test/release gate idea
 

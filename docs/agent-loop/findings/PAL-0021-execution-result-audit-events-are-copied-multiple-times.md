@@ -29,13 +29,13 @@ Execution result creation copies audit event lists twice on normal interpreted/c
 
 ## Evidence
 
-- `InMemoryAuditSink.Events` returns `_events.ToArray()` at `src/SafeIR.Core/Bindings/Audit.cs:62`, allocating a fresh array snapshot.
-- `SandboxExecutionResult.AuditEvents` copies any assigned sequence through `ModelCopy.List(value)` at `src/SafeIR.Core/ExecutionPlan.cs:119` through `src/SafeIR.Core/ExecutionPlan.cs:122`.
-- `ModelCopy.List` allocates another array with `values.ToArray()` and wraps it in a `ReadOnlyCollection<T>` at `src/SafeIR.Core/Model/ModelCopy.cs:5` through `src/SafeIR.Core/Model/ModelCopy.cs:9`.
-- The interpreted runner assigns `AuditEvents = audit.Events` at `src/SafeIR.Interpreter/SandboxInterpreter.cs:70`, so every interpreted result snapshots the sink and then copies that snapshot into the result.
-- The compiled runner does the same at `src/SafeIR.Hosting/Execution/CompiledExecutionRunner.cs:76`.
-- Host-side failure result builders repeat the same pattern, for example `src/SafeIR.Hosting/SandboxHost.Results.cs:53`, `src/SafeIR.Hosting/SandboxHost.Results.cs:87`, `src/SafeIR.Hosting/SandboxHost.Results.cs:125`, `src/SafeIR.Hosting/SandboxHost.Results.cs:156`, `src/SafeIR.Hosting/SandboxHost.Results.cs:199`, `src/SafeIR.Hosting/SandboxHost.Results.cs:238`, and `src/SafeIR.Hosting/SandboxHost.Results.cs:271`.
-- `SandboxAuditEventSequence.ToSequencedArray` builds a new sink and then returns `sink.Events.ToArray()` at `src/SafeIR.Hosting/SandboxHost.Results.cs:332` through `src/SafeIR.Hosting/SandboxHost.Results.cs:338`; because `sink.Events` already allocated an array, the trailing `ToArray()` copies it again before the `SandboxExecutionResult` init setter may copy it once more.
+- `InMemoryAuditSink.Events` returns `_events.ToArray()` at `src/DotBoxd.Kernels/Bindings/Audit.cs:62`, allocating a fresh array snapshot.
+- `SandboxExecutionResult.AuditEvents` copies any assigned sequence through `ModelCopy.List(value)` at `src/DotBoxd.Kernels/ExecutionPlan.cs:119` through `src/DotBoxd.Kernels/ExecutionPlan.cs:122`.
+- `ModelCopy.List` allocates another array with `values.ToArray()` and wraps it in a `ReadOnlyCollection<T>` at `src/DotBoxd.Kernels/Model/ModelCopy.cs:5` through `src/DotBoxd.Kernels/Model/ModelCopy.cs:9`.
+- The interpreted runner assigns `AuditEvents = audit.Events` at `src/DotBoxd.Kernels.Interpreter/SandboxInterpreter.cs:70`, so every interpreted result snapshots the sink and then copies that snapshot into the result.
+- The compiled runner does the same at `src/DotBoxd.Hosting/Execution/CompiledExecutionRunner.cs:76`.
+- Host-side failure result builders repeat the same pattern, for example `src/DotBoxd.Hosting/SandboxHost.Results.cs:53`, `src/DotBoxd.Hosting/SandboxHost.Results.cs:87`, `src/DotBoxd.Hosting/SandboxHost.Results.cs:125`, `src/DotBoxd.Hosting/SandboxHost.Results.cs:156`, `src/DotBoxd.Hosting/SandboxHost.Results.cs:199`, `src/DotBoxd.Hosting/SandboxHost.Results.cs:238`, and `src/DotBoxd.Hosting/SandboxHost.Results.cs:271`.
+- `SandboxAuditEventSequence.ToSequencedArray` builds a new sink and then returns `sink.Events.ToArray()` at `src/DotBoxd.Hosting/SandboxHost.Results.cs:332` through `src/DotBoxd.Hosting/SandboxHost.Results.cs:338`; because `sink.Events` already allocated an array, the trailing `ToArray()` copies it again before the `SandboxExecutionResult` init setter may copy it once more.
 - Existing `COR-0014` covers public audit immutability. This finding is distinct: after snapshotting was introduced, the current result path now performs redundant full-list copies.
 
 ## Impact

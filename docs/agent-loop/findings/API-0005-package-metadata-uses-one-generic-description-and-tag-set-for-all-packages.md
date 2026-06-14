@@ -29,19 +29,19 @@ All product packages inherit the same generic NuGet description and tags from `D
 
 ## Why this matters
 
-Package consumers see metadata before opening the repository README. A generic description/tag set makes `SafeIR.Core`, `SafeIR.Hosting`, `SafeIR.PluginAnalyzer`, `SafeIR.Transport.Http`, and the preview ShaRPC addon look interchangeable in package feeds, which weakens discoverability and makes safe package selection harder.
+Package consumers see metadata before opening the repository README. A generic description/tag set makes `DotBoxd.Kernels`, `DotBoxd.Hosting`, `DotBoxd.Plugins.Analyzer`, `DotBoxd.Hosting.Http`, and the preview DotBoxd addon look interchangeable in package feeds, which weakens discoverability and makes safe package selection harder.
 
 ## Evidence
 
-- `Directory.Build.props:15` sets one repository-wide `<Description>`: `SafeIR sandbox components for validating, interpreting, compiling, hosting, serializing, and transporting restricted .NET workloads.`
+- `Directory.Build.props:15` sets one repository-wide `<Description>`: `DotBoxd.Kernels sandbox components for validating, interpreting, compiling, hosting, serializing, and transporting restricted .NET workloads.`
 - `Directory.Build.props:16` sets one repository-wide `<PackageTags>` list for every package.
-- `README.md:5` through `README.md:19` gives package-specific roles for `SafeIR.Core`, `SafeIR.Validation`, `SafeIR.Runtime`, `SafeIR.Serialization.Json`, `SafeIR.Transport.Http`, `SafeIR.Transport.Ipc.ShaRpc`, `SafeIR.Interpreter`, `SafeIR.Compiler`, `SafeIR.Verifier`, `SafeIR.Hosting`, `SafeIR.PluginAnalyzer`, and `SafeIR.Plugins`.
-- A targeted metadata scan over `src -g "*.csproj"` found only target-framework/build settings such as `src/SafeIR.PluginAnalyzer/SafeIR.PluginAnalyzer.csproj:15` and `src/SafeIR.Transport.Ipc.ShaRpc/SafeIR.Transport.Ipc.ShaRpc.csproj:14`; it found no project-specific `<Description>` or `<PackageTags>` overrides.
+- `README.md:5` through `README.md:19` gives package-specific roles for `DotBoxd.Kernels`, `DotBoxd.Kernels.Validation`, `DotBoxd.Kernels.Runtime`, `DotBoxd.Kernels.Serialization.Json`, `DotBoxd.Hosting.Http`, `DotBoxd.Pushdown.Services`, `DotBoxd.Kernels.Interpreter`, `DotBoxd.Kernels.Compiler`, `DotBoxd.Kernels.Verifier`, `DotBoxd.Hosting`, `DotBoxd.Plugins.Analyzer`, and `DotBoxd.Plugins`.
+- A targeted metadata scan over `src -g "*.csproj"` found only target-framework/build settings such as `src/DotBoxd.Plugins.Analyzer/DotBoxd.Plugins.Analyzer.csproj:15` and `src/DotBoxd.Pushdown.Services/DotBoxd.Pushdown.Services.csproj:14`; it found no project-specific `<Description>` or `<PackageTags>` overrides.
 - `scripts/check-package-metadata.ps1` requires a non-empty `description`, but it does not require package-specific descriptions or tags, so the current generic metadata shape is accepted.
 
 ## Suggested acceptance test
 
-Extend `check-package-metadata.ps1` or add a package metadata test with an expected metadata inventory. It should fail if every package has the same description/tags and should assert that each package's description identifies its package-specific role, with explicit preview wording for `SafeIR.Transport.Ipc.ShaRpc`.
+Extend `check-package-metadata.ps1` or add a package metadata test with an expected metadata inventory. It should fail if every package has the same description/tags and should assert that each package's description identifies its package-specific role, with explicit preview wording for `DotBoxd.Pushdown.Services`.
 
 ## Suggested fix direction
 

@@ -29,7 +29,7 @@ Successful worker-process results only type-check the returned `SandboxValue`; t
 
 ## Evidence
 
-`src/SafeIR.Hosting/SandboxWorkerExecutor.cs` validates a successful worker payload in `WorkerPayloadMatches(...)` by requiring a non-null `Value`, no `Error`, a known entrypoint analysis, and `EntrypointBinder.RequireType(result.Value, analysis.ReturnType, "worker result return type mismatch")`.
+`src/DotBoxd.Hosting/SandboxWorkerExecutor.cs` validates a successful worker payload in `WorkerPayloadMatches(...)` by requiring a non-null `Value`, no `Error`, a known entrypoint analysis, and `EntrypointBinder.RequireType(result.Value, analysis.ReturnType, "worker result return type mismatch")`.
 
 `EntrypointBinder.RequireType(...)` delegates to `SandboxValueValidator.RequireType(...)`, which verifies the value kind, declared type, nested element types, and scalar invariants. It does not enforce `ResourceLimits.MaxStringLength`, `MaxTotalStringBytes`, `MaxListLength`, `MaxMapEntries`, `MaxCollectionDepth`, or `MaxTotalCollectionElements`.
 

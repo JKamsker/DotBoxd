@@ -29,11 +29,11 @@ Persistent compiled cache cleanup quarantines invalid cache entries into a `quar
 
 ## Evidence
 
-- `src/SafeIR.Compiler/PersistentCompiledArtifactCache.cs:128` catches invalid cached entries and calls `Quarantine(entryPath)` before returning `CompiledCacheStatus.Invalid`.
-- `src/SafeIR.Compiler/PersistentCompiledArtifactCache.cs:217` creates a `quarantine` directory under the cache root.
-- `src/SafeIR.Compiler/PersistentCompiledArtifactCache.cs:221` builds a unique quarantine target from the cache key, timestamp, and GUID, and `src/SafeIR.Compiler/PersistentCompiledArtifactCache.cs:226` moves the invalid entry there.
-- `src/SafeIR.Compiler/Internal/PersistentCompiledArtifactCachePublisher.cs:28` deletes temp/old paths during publish cleanup, but there is no corresponding retention policy or cleanup path for the `quarantine` tree.
-- Existing compiled cache tests exercise quarantining and recompilation (`tests/SafeIR.Tests/Compiled/Core/CompiledCacheTests.cs`), while PAL-0010 separately covers `.locks` files; neither covers bounded quarantine cleanup.
+- `src/DotBoxd.Kernels.Compiler/PersistentCompiledArtifactCache.cs:128` catches invalid cached entries and calls `Quarantine(entryPath)` before returning `CompiledCacheStatus.Invalid`.
+- `src/DotBoxd.Kernels.Compiler/PersistentCompiledArtifactCache.cs:217` creates a `quarantine` directory under the cache root.
+- `src/DotBoxd.Kernels.Compiler/PersistentCompiledArtifactCache.cs:221` builds a unique quarantine target from the cache key, timestamp, and GUID, and `src/DotBoxd.Kernels.Compiler/PersistentCompiledArtifactCache.cs:226` moves the invalid entry there.
+- `src/DotBoxd.Kernels.Compiler/Internal/PersistentCompiledArtifactCachePublisher.cs:28` deletes temp/old paths during publish cleanup, but there is no corresponding retention policy or cleanup path for the `quarantine` tree.
+- Existing compiled cache tests exercise quarantining and recompilation (`tests/DotBoxd.Kernels.Tests/Compiled/Core/CompiledCacheTests.cs`), while PAL-0010 separately covers `.locks` files; neither covers bounded quarantine cleanup.
 
 ## Impact
 

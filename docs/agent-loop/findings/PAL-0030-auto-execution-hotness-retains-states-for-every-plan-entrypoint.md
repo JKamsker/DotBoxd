@@ -29,10 +29,10 @@ Auto execution mode retains one `AutoHotnessState` per `planHash|entrypoint` for
 
 ## Evidence
 
-- `src/SafeIR.Hosting/Internal/AutoExecutionHotness.cs:8` stores states in a `ConcurrentDictionary<string, AutoHotnessState>`.
-- `src/SafeIR.Hosting/Internal/AutoExecutionHotness.cs:12` uses `_states.GetOrAdd(Key(plan.PlanHash, entrypoint), ...)` for every auto-mode attempt.
-- `src/SafeIR.Hosting/Internal/AutoExecutionHotness.cs:17` builds the key from `planHash + "|" + entrypoint`, so every distinct prepared plan and entrypoint creates a separate retained state.
-- `src/SafeIR.Hosting/Execution/SandboxHost.Auto.cs:21` calls `_autoHotness.BeginAttempt(plan, entrypoint)` on the auto execution path.
+- `src/DotBoxd.Hosting/Internal/AutoExecutionHotness.cs:8` stores states in a `ConcurrentDictionary<string, AutoHotnessState>`.
+- `src/DotBoxd.Hosting/Internal/AutoExecutionHotness.cs:12` uses `_states.GetOrAdd(Key(plan.PlanHash, entrypoint), ...)` for every auto-mode attempt.
+- `src/DotBoxd.Hosting/Internal/AutoExecutionHotness.cs:17` builds the key from `planHash + "|" + entrypoint`, so every distinct prepared plan and entrypoint creates a separate retained state.
+- `src/DotBoxd.Hosting/Execution/SandboxHost.Auto.cs:21` calls `_autoHotness.BeginAttempt(plan, entrypoint)` on the auto execution path.
 - The type exposes no removal, maximum size, age cutoff, or host-dispose cleanup for `_states`.
 - This is distinct from persistent compiled-cache lock/quarantine findings: the retained data is host-local auto-mode scheduling/index state, not disk cache content or cache entry locks.
 

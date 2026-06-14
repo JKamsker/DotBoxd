@@ -29,11 +29,11 @@ Installed plugin kernels build multi-argument hook inputs as a homogeneous `List
 
 ## Evidence
 
-`src/SafeIR.Plugins/InstalledKernel.cs` builds hook/direct-invocation input in `BuildInput`. When there is more than one event/live-setting value it calls `BuildInputList`. If there are only event values, `BuildInputList` returns `SandboxValue.FromList(eventValues, eventValues[0].Type)`. If live settings are appended, it fills a `SandboxValue[]` and returns `SandboxValue.FromList(values, values[0].Type)`.
+`src/DotBoxd.Plugins/InstalledKernel.cs` builds hook/direct-invocation input in `BuildInput`. When there is more than one event/live-setting value it calls `BuildInputList`. If there are only event values, `BuildInputList` returns `SandboxValue.FromList(eventValues, eventValues[0].Type)`. If live settings are appended, it fills a `SandboxValue[]` and returns `SandboxValue.FromList(values, values[0].Type)`.
 
-Entrypoint binding for multi-parameter functions does not require a homogeneous list; `src/SafeIR.Core/Model/EntrypointBinder.cs` only requires that multi-parameter input is a `ListValue` with the correct count, then validates each element against that parameter's expected type in `GetArgument`. Using the first argument's type as the list item type conflicts with that model when parameters are mixed, for example `String, I32, String`.
+Entrypoint binding for multi-parameter functions does not require a homogeneous list; `src/DotBoxd.Kernels/Model/EntrypointBinder.cs` only requires that multi-parameter input is a `ListValue` with the correct count, then validates each element against that parameter's expected type in `GetArgument`. Using the first argument's type as the list item type conflicts with that model when parameters are mixed, for example `String, I32, String`.
 
-The plugin validation path allows mixed shapes: `KernelEntrypointValidator` compares adapter parameter names/types against the function parameters, and convention event adapters derive parameters from CLR property types. Existing tests include mixed convention events such as `ConventionDamageEvent(string DamageType, int Amount, string TargetId)` in `tests/SafeIR.Tests/Misc05/PluginHookSignatureTests.cs`, which demonstrates that heterogeneous plugin event parameter shapes are intended.
+The plugin validation path allows mixed shapes: `KernelEntrypointValidator` compares adapter parameter names/types against the function parameters, and convention event adapters derive parameters from CLR property types. Existing tests include mixed convention events such as `ConventionDamageEvent(string DamageType, int Amount, string TargetId)` in `tests/DotBoxd.Kernels.Tests/Misc05/PluginHookSignatureTests.cs`, which demonstrates that heterogeneous plugin event parameter shapes are intended.
 
 ## Risk
 
@@ -45,7 +45,7 @@ Add a plugin runtime test with an adapter exposing parameters `[String, I32, Str
 
 ## Expected behavior
 
-Plugin event/live-setting input should preserve positional argument values for heterogeneous entrypoint parameters. A valid adapter shape with mixed parameter types should execute the same way as any other multi-parameter SafeIR entrypoint.
+Plugin event/live-setting input should preserve positional argument values for heterogeneous entrypoint parameters. A valid adapter shape with mixed parameter types should execute the same way as any other multi-parameter DotBoxd.Kernels entrypoint.
 
 ## Suggested fix direction
 

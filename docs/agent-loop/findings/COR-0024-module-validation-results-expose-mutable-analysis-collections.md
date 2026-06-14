@@ -29,11 +29,11 @@ duplicate_of:
 
 ## Evidence
 
-`src/SafeIR.Validation/ModuleValidator.cs:9` creates a mutable `List<SandboxDiagnostic>` and passes that same list to `ModuleValidationResult.Failure` at `src/SafeIR.Validation/ModuleValidator.cs:12`. On the success path, `src/SafeIR.Validation/ModuleValidator.cs:16` through `src/SafeIR.Validation/ModuleValidator.cs:22` passes the mutable `functions` dictionary, `requiredCapabilities` hash set, and `bindingReferences` dictionary directly into the result.
+`src/DotBoxd.Kernels.Validation/ModuleValidator.cs:9` creates a mutable `List<SandboxDiagnostic>` and passes that same list to `ModuleValidationResult.Failure` at `src/DotBoxd.Kernels.Validation/ModuleValidator.cs:12`. On the success path, `src/DotBoxd.Kernels.Validation/ModuleValidator.cs:16` through `src/DotBoxd.Kernels.Validation/ModuleValidator.cs:22` passes the mutable `functions` dictionary, `requiredCapabilities` hash set, and `bindingReferences` dictionary directly into the result.
 
-`src/SafeIR.Validation/Internal/ModuleValidationResult.cs:5` through `src/SafeIR.Validation/Internal/ModuleValidationResult.cs:11` declares the public result as a plain record with `IReadOnlyList`, `IReadOnlyDictionary`, and `IReadOnlySet` properties, but it has no constructor body or init accessors that copy those inputs. `ModuleValidationResult.Failure` at `src/SafeIR.Validation/Internal/ModuleValidationResult.cs:13` also returns the caller-provided diagnostics list directly.
+`src/DotBoxd.Kernels.Validation/Internal/ModuleValidationResult.cs:5` through `src/DotBoxd.Kernels.Validation/Internal/ModuleValidationResult.cs:11` declares the public result as a plain record with `IReadOnlyList`, `IReadOnlyDictionary`, and `IReadOnlySet` properties, but it has no constructor body or init accessors that copy those inputs. `ModuleValidationResult.Failure` at `src/DotBoxd.Kernels.Validation/Internal/ModuleValidationResult.cs:13` also returns the caller-provided diagnostics list directly.
 
-Existing public immutability coverage in `tests/SafeIR.Tests/Misc06/PublicModelImmutabilityTests.cs` covers modules, statement/expression nodes, plugin manifests, sandbox values, validation exceptions, audit events, sinks, and execution results, but it does not cover `ModuleValidationResult` or its nested analysis collections.
+Existing public immutability coverage in `tests/DotBoxd.Kernels.Tests/Misc06/PublicModelImmutabilityTests.cs` covers modules, statement/expression nodes, plugin manifests, sandbox values, validation exceptions, audit events, sinks, and execution results, but it does not cover `ModuleValidationResult` or its nested analysis collections.
 
 A minimal repro shape is:
 

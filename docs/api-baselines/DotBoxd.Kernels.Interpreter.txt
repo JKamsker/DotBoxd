@@ -1,0 +1,7 @@
+# DotBoxd.Kernels public API baseline
+# Package: DotBoxd.Kernels.Interpreter
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+public async ValueTask<SandboxExecutionResult> ExecuteAsync( ExecutionPlan plan, string entrypoint, SandboxValue input, SandboxExecutionOptions options, CancellationToken cancellationToken)
+public interface ISandboxInterpreter
+public sealed class SandboxInterpreter : ISandboxInterpreter

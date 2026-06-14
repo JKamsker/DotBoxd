@@ -29,11 +29,11 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Core/Model/Resources.cs:99` and `src/SafeIR.Core/Model/Resources.cs:101` route every value charge through `SandboxValueShapeMeter.Measure(...)`.
-- `src/SafeIR.Core/Sandbox/Values/SandboxValueShapeMeter.cs:11` and `src/SafeIR.Core/Sandbox/Values/SandboxValueShapeMeter.cs:12` allocate a reference-tracking `HashSet<object>` and traversal `Stack<Frame>` before looking at the value kind.
-- `src/SafeIR.Core/Sandbox/Values/SandboxValueShapeMeter.cs:52` and `src/SafeIR.Core/Sandbox/Values/SandboxValueShapeMeter.cs:53` show `UnitValue`, `BoolValue`, `I32Value`, `I64Value`, and `F64Value` do no traversal work after those allocations have already happened.
-- `src/SafeIR.Interpreter/ExpressionEvaluator.cs:231` through `src/SafeIR.Interpreter/ExpressionEvaluator.cs:234` charge every interpreted literal expression through this path.
-- `src/SafeIR.Interpreter/InterpreterEvaluator.cs:31` and `src/SafeIR.Hosting/Execution/CompiledExecutionRunner.cs:36` charge entrypoint input before each interpreted or compiled run, so scalar inputs also pay the traversal-state allocation on every execution.
+- `src/DotBoxd.Kernels/Model/Resources.cs:99` and `src/DotBoxd.Kernels/Model/Resources.cs:101` route every value charge through `SandboxValueShapeMeter.Measure(...)`.
+- `src/DotBoxd.Kernels/Sandbox/Values/SandboxValueShapeMeter.cs:11` and `src/DotBoxd.Kernels/Sandbox/Values/SandboxValueShapeMeter.cs:12` allocate a reference-tracking `HashSet<object>` and traversal `Stack<Frame>` before looking at the value kind.
+- `src/DotBoxd.Kernels/Sandbox/Values/SandboxValueShapeMeter.cs:52` and `src/DotBoxd.Kernels/Sandbox/Values/SandboxValueShapeMeter.cs:53` show `UnitValue`, `BoolValue`, `I32Value`, `I64Value`, and `F64Value` do no traversal work after those allocations have already happened.
+- `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:231` through `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:234` charge every interpreted literal expression through this path.
+- `src/DotBoxd.Kernels.Interpreter/InterpreterEvaluator.cs:31` and `src/DotBoxd.Hosting/Execution/CompiledExecutionRunner.cs:36` charge entrypoint input before each interpreted or compiled run, so scalar inputs also pay the traversal-state allocation on every execution.
 - Existing `PAL-0018` covers repeated binding-return traversal, `PAL-0003` covers map traversal buffering, and `ALG-0021` covers entrypoint charge-plus-bind double traversal. This finding is narrower: a single scalar `ChargeValue` call allocates traversal collections even though scalar shape can be computed directly.
 
 ## Impact

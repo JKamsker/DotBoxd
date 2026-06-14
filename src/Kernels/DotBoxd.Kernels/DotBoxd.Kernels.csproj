@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  
+  <PropertyGroup>
+    <Description>Core DotBoxd.Kernels model, policy, resource metering, diagnostics, and canonical hashing primitives.</Description>
+    <PackageTags>dotboxd;sandbox;core;policy;resources;hashing</PackageTags>
+  </PropertyGroup>
+<PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

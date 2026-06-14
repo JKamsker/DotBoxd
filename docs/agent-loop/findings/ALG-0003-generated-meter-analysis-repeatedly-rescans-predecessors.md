@@ -29,11 +29,11 @@ Generated method metering analysis repeatedly scans the full instruction list to
 
 ## Evidence
 
-- `src/SafeIR.Verifier/Generated/Methods/GeneratedMethodMeterAnalyzer.cs:64` materializes `Predecessors(analysis, instruction.Offset).ToArray()` for an immediate-meter check.
-- `src/SafeIR.Verifier/Generated/Methods/GeneratedMethodMeterAnalyzer.cs:126` scans `analysis.Instructions` from the beginning to find the current instruction index every time `HasPositiveImmediateMeterAmount(analysis, instruction)` is called.
-- `src/SafeIR.Verifier/Generated/Methods/GeneratedMethodMeterAnalyzer.cs:136` implements `Predecessors` as `analysis.Instructions.Where(...)`, and each candidate asks `GeneratedMethodFlowAnalyzer.Successors(...).Contains(offset)`.
-- `src/SafeIR.Verifier/Generated/Methods/GeneratedMethodMeterAnalyzer.cs:21` and `src/SafeIR.Verifier/Generated/Methods/GeneratedMethodMeterAnalyzer.cs:83` call successor traversal inside queue-based graph walks, so the immediate-meter helper can be reached for many instructions during both unmetered-work and sparse-meter checks.
-- Existing benchmarks are under `benchmarks/SafeIR.Benchmarks/Ipc`; there is no verifier benchmark that scales generated method size, branch count, or meter density.
+- `src/DotBoxd.Kernels.Verifier/Generated/Methods/GeneratedMethodMeterAnalyzer.cs:64` materializes `Predecessors(analysis, instruction.Offset).ToArray()` for an immediate-meter check.
+- `src/DotBoxd.Kernels.Verifier/Generated/Methods/GeneratedMethodMeterAnalyzer.cs:126` scans `analysis.Instructions` from the beginning to find the current instruction index every time `HasPositiveImmediateMeterAmount(analysis, instruction)` is called.
+- `src/DotBoxd.Kernels.Verifier/Generated/Methods/GeneratedMethodMeterAnalyzer.cs:136` implements `Predecessors` as `analysis.Instructions.Where(...)`, and each candidate asks `GeneratedMethodFlowAnalyzer.Successors(...).Contains(offset)`.
+- `src/DotBoxd.Kernels.Verifier/Generated/Methods/GeneratedMethodMeterAnalyzer.cs:21` and `src/DotBoxd.Kernels.Verifier/Generated/Methods/GeneratedMethodMeterAnalyzer.cs:83` call successor traversal inside queue-based graph walks, so the immediate-meter helper can be reached for many instructions during both unmetered-work and sparse-meter checks.
+- Existing benchmarks are under `benchmarks/DotBoxd.Kernels.Benchmarks/Ipc`; there is no verifier benchmark that scales generated method size, branch count, or meter density.
 
 ## Impact
 

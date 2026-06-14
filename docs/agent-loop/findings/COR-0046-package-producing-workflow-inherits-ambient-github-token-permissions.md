@@ -32,7 +32,7 @@ The package-producing CI workflow does not declare explicit GitHub Actions `perm
 - `.github/workflows/ci.yml:3` through `.github/workflows/ci.yml:7` runs the workflow on pushes to `main`, `master`, `release/**`, and `v*` tags, plus pull requests.
 - `.github/workflows/ci.yml:10` defines the `build-test-pack` job, but the workflow has no top-level or job-level `permissions:` stanza.
 - `.github/workflows/ci.yml:27` through `.github/workflows/ci.yml:34` run restore/build/test, and `.github/workflows/ci.yml:36` through `.github/workflows/ci.yml:92` run repository scripts and release-readiness gates before packing.
-- `.github/workflows/ci.yml:94` through `.github/workflows/ci.yml:126` pack `SafeIR.slnx`, run package metadata checks, and upload `artifacts/packages/*.nupkg` from the same token-bearing job.
+- `.github/workflows/ci.yml:94` through `.github/workflows/ci.yml:126` pack `DotBoxd.Kernels.slnx`, run package metadata checks, and upload `artifacts/packages/*.nupkg` from the same token-bearing job.
 - Existing release findings cover unexpected NuGet payloads, OS-specific artifact canonicality, mutable action tags, and unsigned/unattested artifacts; none require least-privilege workflow token scopes for the package-producing job.
 
 ## Risk

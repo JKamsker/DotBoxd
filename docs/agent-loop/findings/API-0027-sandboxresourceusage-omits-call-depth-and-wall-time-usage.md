@@ -25,19 +25,19 @@ duplicate_of:
 
 ## Claim
 
-`SafeIR.Core` exposes call-depth and wall-time limits as first-class public policy knobs, and the runtime enforces them, but the typed execution result does not report the corresponding usage or applied ceilings. `SandboxResourceUsage` reports fuel, loops, allocations, host calls, I/O, network, log, collection, and string counters, but it omits peak/current call depth and elapsed/effective wall time.
+`DotBoxd.Kernels` exposes call-depth and wall-time limits as first-class public policy knobs, and the runtime enforces them, but the typed execution result does not report the corresponding usage or applied ceilings. `SandboxResourceUsage` reports fuel, loops, allocations, host calls, I/O, network, log, collection, and string counters, but it omits peak/current call depth and elapsed/effective wall time.
 
 This leaves two public resource-limit dimensions without consistent public result-model coverage.
 
 ## Evidence
 
-- `src/SafeIR.Core/Model/ResourceLimits.cs` defines public `MaxWallTime` and `MaxCallDepth` alongside the other resource ceilings.
-- `src/SafeIR.Core/Policy.cs` exposes `SandboxPolicyBuilder.WithMaxCallDepth(...)` and `SandboxPolicyBuilder.WithWallTime(...)` as public builder methods.
-- `src/SafeIR.Core/Sandbox/SandboxContext.cs` enforces call-depth through `EnterCall()` / `ExitCall()` against `Budget.Limits.MaxCallDepth`.
-- `src/SafeIR.Core/Model/Resources.cs` enforces wall time through a private deadline, `CheckDeadline()`, and `RemainingWallTime()`.
-- `src/SafeIR.Core/Sandbox/SandboxResourceUsage.cs` contains `FuelUsed`, `MaxFuel`, `LoopIterations`, `AllocatedBytes`, `HostCalls`, file/network byte counters, `LogEvents`, `CollectionElements`, and `StringBytes`, but no call-depth or wall-time fields.
-- `src/SafeIR.Core/Model/Resources.cs` `Snapshot()` constructs `SandboxResourceUsage` without any call-depth or wall-time data.
-- `src/SafeIR.Core/Model/RunSummaryAuditFields.cs` emits usage and ceiling fields for many resources, but it also omits call-depth and wall-time usage/ceiling fields, so callers cannot recover this data from the structured audit summary either.
+- `src/DotBoxd.Kernels/Model/ResourceLimits.cs` defines public `MaxWallTime` and `MaxCallDepth` alongside the other resource ceilings.
+- `src/DotBoxd.Kernels/Policy.cs` exposes `SandboxPolicyBuilder.WithMaxCallDepth(...)` and `SandboxPolicyBuilder.WithWallTime(...)` as public builder methods.
+- `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs` enforces call-depth through `EnterCall()` / `ExitCall()` against `Budget.Limits.MaxCallDepth`.
+- `src/DotBoxd.Kernels/Model/Resources.cs` enforces wall time through a private deadline, `CheckDeadline()`, and `RemainingWallTime()`.
+- `src/DotBoxd.Kernels/Sandbox/SandboxResourceUsage.cs` contains `FuelUsed`, `MaxFuel`, `LoopIterations`, `AllocatedBytes`, `HostCalls`, file/network byte counters, `LogEvents`, `CollectionElements`, and `StringBytes`, but no call-depth or wall-time fields.
+- `src/DotBoxd.Kernels/Model/Resources.cs` `Snapshot()` constructs `SandboxResourceUsage` without any call-depth or wall-time data.
+- `src/DotBoxd.Kernels/Model/RunSummaryAuditFields.cs` emits usage and ceiling fields for many resources, but it also omits call-depth and wall-time usage/ceiling fields, so callers cannot recover this data from the structured audit summary either.
 
 ## Impact
 

@@ -1,4 +1,4 @@
-using ShaRPC.Core.Attributes;
+using DotBoxd.Services.Attributes;
 
 namespace Inventory.Shared;
 
@@ -10,14 +10,14 @@ namespace Inventory.Shared;
 ///      that exposes <c>GetPlayerAsync</c> / <c>ListPlayerIdsAsync</c> for callers
 ///      that must not block.
 ///
-///   2. <see cref="OpenInventoryAsync"/> returns ANOTHER <c>[ShaRpcService]</c>.
+///   2. <see cref="OpenInventoryAsync"/> returns ANOTHER <c>[DotBoxdService]</c>.
 ///      The generator detects this and emits a proxy method that returns a
 ///      sub-service proxy bound to the server-side inventory instance that
 ///      <c>OpenInventoryAsync</c> created. Every subsequent call on the returned
 ///      <see cref="IPlayerInventory"/> hits the same server-side object — so add /
 ///      remove / query stay consistent across calls within a connection.
 /// </summary>
-[ShaRpcService]
+[DotBoxdService]
 public interface IInventoryService
 {
     /// <summary>Synchronous — exists to show the async sibling generation.</summary>
@@ -38,7 +38,7 @@ public interface IInventoryService
 /// proxy from <see cref="IInventoryService.OpenInventoryAsync"/>. The server-side
 /// instance lives for the duration of the connection that opened it.
 /// </summary>
-[ShaRpcService]
+[DotBoxdService]
 public interface IPlayerInventory
 {
     Task<IReadOnlyList<Item>> ListItemsAsync(CancellationToken ct = default);

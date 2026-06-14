@@ -25,16 +25,16 @@ duplicate_of:
 
 ## Claim
 
-`SafeIrJsonImporter.Import` builds source spans with repeated raw-text extraction and string searches, making import cost grow poorly for large JSON IR documents.
+`DotBoxdJsonImporter.Import` builds source spans with repeated raw-text extraction and string searches, making import cost grow poorly for large JSON IR documents.
 
 ## Evidence
 
-- `src/SafeIR.Serialization.Json/SafeIrJsonImporter.cs:12` first scans the full JSON with `JsonImportBudgetGuard.Validate`, then `JsonDocument.Parse` parses it again at `src/SafeIR.Serialization.Json/SafeIrJsonImporter.cs:13`.
-- `src/SafeIR.Serialization.Json/SafeIrJsonImporter.cs:20` always constructs a `JsonSourceMap` for the whole document before reading the module.
-- `src/SafeIR.Serialization.Json/Internal/JsonSourceMap.cs:38` calls `JsonElement.GetRawText()` for every visited element, allocating a raw JSON string per node.
-- `src/SafeIR.Serialization.Json/Internal/JsonSourceMap.cs:39` searches the full JSON with `IndexOf(rawText, cursor, Ordinal)` per element, falling back to another full search at `src/SafeIR.Serialization.Json/Internal/JsonSourceMap.cs:42`.
-- `src/SafeIR.Serialization.Json/Internal/JsonSourceMap.cs:81` computes line/column by scanning from the beginning of `_json` to the found index for each span.
-- `src/SafeIR.Serialization.Json/Internal/JsonSourceMap.cs:24` repeats `GetRawText()` for every `SpanFor` lookup while importing statements and expressions.
+- `src/DotBoxd.Kernels.Serialization.Json/DotBoxdJsonImporter.cs:12` first scans the full JSON with `JsonImportBudgetGuard.Validate`, then `JsonDocument.Parse` parses it again at `src/DotBoxd.Kernels.Serialization.Json/DotBoxdJsonImporter.cs:13`.
+- `src/DotBoxd.Kernels.Serialization.Json/DotBoxdJsonImporter.cs:20` always constructs a `JsonSourceMap` for the whole document before reading the module.
+- `src/DotBoxd.Kernels.Serialization.Json/Internal/JsonSourceMap.cs:38` calls `JsonElement.GetRawText()` for every visited element, allocating a raw JSON string per node.
+- `src/DotBoxd.Kernels.Serialization.Json/Internal/JsonSourceMap.cs:39` searches the full JSON with `IndexOf(rawText, cursor, Ordinal)` per element, falling back to another full search at `src/DotBoxd.Kernels.Serialization.Json/Internal/JsonSourceMap.cs:42`.
+- `src/DotBoxd.Kernels.Serialization.Json/Internal/JsonSourceMap.cs:81` computes line/column by scanning from the beginning of `_json` to the found index for each span.
+- `src/DotBoxd.Kernels.Serialization.Json/Internal/JsonSourceMap.cs:24` repeats `GetRawText()` for every `SpanFor` lookup while importing statements and expressions.
 
 ## Impact
 
@@ -46,4 +46,4 @@ Track byte offsets/line starts during a single UTF-8 reader pass, or maintain a 
 
 ## Benchmark idea
 
-Add a BenchmarkDotNet import benchmark that generates modules with 100, 1,000, and 10,000 simple statements/expressions and measures `SafeIrJsonImporter.Import` time plus allocated bytes. Include a duplicate-looking literal-heavy case to expose `_spansByRawText` queue behavior.
+Add a BenchmarkDotNet import benchmark that generates modules with 100, 1,000, and 10,000 simple statements/expressions and measures `DotBoxdJsonImporter.Import` time plus allocated bytes. Include a duplicate-looking literal-heavy case to expose `_spansByRawText` queue behavior.

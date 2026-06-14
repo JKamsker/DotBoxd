@@ -1,0 +1,17 @@
+﻿{
+  Diagnostics: [
+    {
+      Location: : (8,28)-(8,29),
+      Message: DotBoxd cannot generate code for 'Snap.RefOut.IRefOutSnap.BadOut': parameter 'x' uses an unsupported pass-by-reference kind 'out',
+      Severity: Error,
+      Descriptor: {
+        Id: DBXS002,
+        Title: Unsupported DotBoxd method shape,
+        MessageFormat: DotBoxd cannot generate code for '{0}.{1}': {2},
+        Category: DotBoxd.Services.SourceGenerator,
+        DefaultSeverity: Error,
+        IsEnabledByDefault: true
+      }
+    }
+  ]
+}

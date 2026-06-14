@@ -16,8 +16,8 @@
     <VersionPrefix>0.1.0</VersionPrefix>
     <Authors>JKamsker</Authors>
     <Company>JKamsker</Company>
-    <Description>SafeIR sandbox components for validating, interpreting, compiling, hosting, serializing, and transporting restricted .NET workloads.</Description>
-    <PackageTags>safe-ir;sandbox;ir;interpreter;compiler;serialization;transport</PackageTags>
+    <Description>DotBoxd.Kernels sandbox components for validating, interpreting, compiling, hosting, serializing, and transporting restricted .NET workloads.</Description>
+    <PackageTags>dotboxd;sandbox;ir;interpreter;compiler;serialization;transport</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>

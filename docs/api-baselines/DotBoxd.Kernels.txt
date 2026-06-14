@@ -1,0 +1,439 @@
+# DotBoxd.Kernels public API baseline
+# Package: DotBoxd.Kernels
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+public abstract record Expression(SourceSpan Span)
+public abstract record SandboxValue
+public abstract record Statement(SourceSpan Span)
+public abstract SandboxType Type { get; }
+public BindingDescriptor GetDescriptor(string id) => _bindings[id]
+public BindingRegistry Bindings { get; }
+public BindingRegistry Build()
+public BindingRegistry(IEnumerable<BindingDescriptor> bindings)
+public BindingRegistryBuilder Add(BindingDescriptor descriptor)
+public BindingRegistryBuilder AddRange(IEnumerable<BindingDescriptor> descriptors)
+public BindingSignature Signature => new(
+public bool AllowFallbackToInterpreter { get; init; } = true
+public bool Contains(string id) => _bindings.ContainsKey(id)
+public bool Deterministic { get => _deterministic; init { _deterministic = value; ResetHash(); } }
+public bool EnableDebugTrace { get; init; }
+public bool Equals(ExecutionPlanSeal? other)
+public bool Equals(ListValue? other)
+public bool Equals(MapValue? other)
+public bool Equals(RecordValue? other)
+public bool Equals(SandboxType? other)
+public bool ExecutionDispatched { get; init; }
+public bool GrantsCapability(string capabilityId, DateTimeOffset now)
+public bool GrantsCapability(string capabilityId)
+public bool HasBindingAuditSince( BindingDescriptor descriptor, long checkpoint, bool success, SandboxErrorCode? expectedErrorCode, SandboxRunId runId, string moduleHash, string policyHash)
+public bool IsForbidden() => IsForbidden(this)
+public bool IsKnown(int maxDepth = 8) => IsKnown(this, 0, maxDepth, declaredOpaqueIdTypes: null)
+public bool IsKnown(IReadOnlySet<string> declaredOpaqueIdTypes, int maxDepth = 8)
+public bool IsKnownBuiltIn(int maxDepth = 8) => IsKnown(this, 0, maxDepth, EmptyOpaqueIdTypes)
+public bool IsRecord => Arguments.Count > 0 && StringComparer.Ordinal.Equals(Name, RecordName)
+public bool IsValidMapKey() => IsValidMapKey(declaredOpaqueIdTypes: null)
+public bool IsValidMapKey(IReadOnlySet<string>? declaredOpaqueIdTypes)
+public bool RequireDeterministic { get; init; }
+public bool Succeeded { get; init; }
+public bool TryGet(string id, out BindingSignature binding)
+public bool TryGetCapabilityGrantValidator(string capabilityId, out CapabilityGrantValidator validator)
+public bool TryGetGrant(string capabilityId, out CapabilityGrant grant)
+public CancellationToken CancellationToken { get; }
+public CancellationTokenSource CreateWallTimeToken()
+public CapabilityGrant GetCapability(string capabilityId)
+public CapabilityGrant GetGrant(string capabilityId)
+public const int MaxTextLiteralLength = 65_536
+public const SandboxEffect Pure = SandboxEffect.Cpu | SandboxEffect.Alloc
+public const string CanonicalizerVersion = "dotboxd-canonicalizer-1"
+public const string RecordName = "Record"
+public DateTimeOffset AuditTimestamp()
+public DateTimeOffset GrantClock
+public DateTimeOffset UtcNow()
+public DateTimeOffset? LogicalNow { get => _logicalNow; init { _logicalNow = value; ResetHash(); } }
+public delegate ValueTask<SandboxValue> BindingInvoker( SandboxContext context, IReadOnlyList<SandboxValue> args, CancellationToken cancellationToken)
+public delegate void CapabilityGrantValidator( CapabilityGrant grant, ICollection<SandboxDiagnostic> diagnostics)
+public enum AuditLevel
+public enum AuditLevel.FullInputOutput
+public enum AuditLevel.None
+public enum AuditLevel.PerCall
+public enum AuditLevel.PerResource
+public enum AuditLevel.Summary
+public enum BindingSafety
+public enum BindingSafety.DangerousRequiresReview
+public enum BindingSafety.PureHostFacade
+public enum BindingSafety.PureIntrinsic
+public enum BindingSafety.ReadOnlyExternal
+public enum BindingSafety.SideEffectingExternal
+public enum DiagnosticSeverity
+public enum DiagnosticSeverity.Error
+public enum DiagnosticSeverity.Info
+public enum DiagnosticSeverity.Warning
+public enum ExecutionMode
+public enum ExecutionMode.Auto
+public enum ExecutionMode.Compiled
+public enum ExecutionMode.Interpreted
+public enum SandboxEffect
+public enum SandboxEffect.Alloc = 1 << 1
+public enum SandboxEffect.Audit = 1 << 11
+public enum SandboxEffect.Cpu = 1 << 0
+public enum SandboxEffect.FileRead = 1 << 4
+public enum SandboxEffect.FileWrite = 1 << 5
+public enum SandboxEffect.HostStateRead = 1 << 7
+public enum SandboxEffect.HostStateWrite = 1 << 8
+public enum SandboxEffect.Network = 1 << 6
+public enum SandboxEffect.None = 0
+public enum SandboxEffect.Random = 1 << 3
+public enum SandboxEffect.Time = 1 << 2
+public enum SandboxErrorCode
+public enum SandboxErrorCode.BindingFailure
+public enum SandboxErrorCode.CacheInvalid
+public enum SandboxErrorCode.Cancelled
+public enum SandboxErrorCode.HostFailure
+public enum SandboxErrorCode.InvalidInput
+public enum SandboxErrorCode.NotFound
+public enum SandboxErrorCode.PermissionDenied
+public enum SandboxErrorCode.PolicyDenied
+public enum SandboxErrorCode.QuotaExceeded
+public enum SandboxErrorCode.Timeout
+public enum SandboxErrorCode.ValidationError
+public enum SandboxErrorCode.VerifierFailure
+public enum SandboxIsolation
+public enum SandboxIsolation.InProcess
+public enum SandboxIsolation.WorkerProcess
+public ExecutionMode ActualMode { get; init; }
+public ExecutionMode Mode { get; init; } = ExecutionMode.Auto
+public ExecutionPlan( string moduleHash, string planHash, ExecutionPlanSeal planSeal, string policyHash, string bindingManifestHash, SandboxModule module, SandboxPolicy policy, BindingRegistry bindings, ResourceLimits budget, IReadOnlyDictionary<string, FunctionAnalysis> functionAnalysis, IReadOnlyDictionary<string, IReadOnlySet<string>>? bindingReferences = null)
+public ExecutionPlanSeal PlanSeal { get; }
+public ExecutionPlanSeal(string value)
+public IAuditSink Audit { get; }
+public IDisposable BeginBindingReturnCreditScope() => _returnCredits.BeginScope()
+public int AutoCompileThreshold { get; init; } = 20
+public int CompareTo(SemVersion? other)
+public int HostCalls { get; private set; }
+public int LogEvents { get; private set; }
+public int Major { get => _major; init => _major = RequireNonNegative(value, nameof(Major)); }
+public int Minor { get => _minor; init => _minor = RequireNonNegative(value, nameof(Minor)); }
+public int NextRandomInt32(int minInclusive, int maxExclusive)
+public int Patch { get => _patch; init => _patch = RequireNonNegative(value, nameof(Patch)); }
+public interface IAuditSink
+public interface IBindingCatalog
+public IReadOnlyDictionary<SandboxValue, SandboxValue> Values { get => _values; init => _values = ModelCopy.ValueDictionary(value); }
+public IReadOnlyDictionary<string, FunctionAnalysis> FunctionAnalysis { get; }
+public IReadOnlyDictionary<string, IReadOnlySet<string>> BindingReferences { get; }
+public IReadOnlyDictionary<string, SandboxFunction> FunctionLookup
+public IReadOnlyDictionary<string, string> BindingAuditFields( string resourceKind, DateTimeOffset startedAt, long? bytesRead = null, long? bytesWritten = null)
+public IReadOnlyDictionary<string, string> Metadata { get => _metadata; init => _metadata = ModelCopy.StringDictionary(value); }
+public IReadOnlyDictionary<string, string> Parameters { get; init; } =
+public IReadOnlyDictionary<string, string>? Fields { get => _fields; init => _fields = CopyFields(value); }
+public IReadOnlyList<BindingSignature> Signatures
+public IReadOnlyList<CapabilityGrant> Grants
+public IReadOnlyList<CapabilityRequest> CapabilityRequests { get => _capabilityRequests; init => _capabilityRequests = ModelCopy.List(value); }
+public IReadOnlyList<Expression> Arguments { get => _arguments; init => _arguments = ModelCopy.List(value); }
+public IReadOnlyList<Parameter> Parameters { get => _parameters; init => _parameters = ModelCopy.List(value); }
+public IReadOnlyList<SandboxAuditEvent> Events => _events.ToArray()
+public IReadOnlyList<SandboxDiagnostic> Diagnostics { get; } = ModelCopy.List(diagnostics)
+public IReadOnlyList<SandboxFunction> Functions { get => _functions; init => _functions = ModelCopy.List(value); }
+public IReadOnlyList<SandboxType> Arguments { get => _arguments; init => _arguments = ModelCopy.List(value); }
+public IReadOnlyList<SandboxType> Parameters { get => _parameters; init => _parameters = ModelCopy.List(value); }
+public IReadOnlyList<SandboxValue> Fields { get => _fields; init => _fields = Snapshot(value); }
+public IReadOnlyList<SandboxValue> Values { get => _values; init => _values = Snapshot(value); }
+public IReadOnlyList<Statement> Body { get => _body; init => _body = ModelCopy.List(value); }
+public IReadOnlyList<Statement> Else { get => _else; init => _else = ModelCopy.List(value); }
+public IReadOnlyList<Statement> Then { get => _then; init => _then = ModelCopy.List(value); }
+public IReadOnlySet<string> DeclaredOpaqueIdTypes
+public long AllocatedBytes { get; private set; }
+public long AuditCheckpoint() => Audit.EventsWritten
+public long CollectionElements { get; private set; }
+public long EventsWritten => _sequence
+public long FileBytesRead { get; private set; }
+public long FileBytesWritten { get; private set; }
+public long FuelUsed { get; private set; }
+public long LoopIterations { get; private set; }
+public long NetworkBytesRead { get; private set; }
+public long NetworkBytesWritten { get; private set; }
+public long StringBytes { get; private set; }
+public override bool Equals(object? obj) => Equals(obj as ExecutionPlanSeal)
+public override int GetHashCode()
+public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(_value)
+public override SandboxType Type
+public override SandboxType Type => SandboxType.Bool
+public override SandboxType Type => SandboxType.F64
+public override SandboxType Type => SandboxType.I32
+public override SandboxType Type => SandboxType.I64
+public override SandboxType Type => SandboxType.List(ItemType)
+public override SandboxType Type => SandboxType.Map(KeyType, ValueType)
+public override SandboxType Type => SandboxType.SandboxPath
+public override SandboxType Type => SandboxType.Scalar("SandboxUri")
+public override SandboxType Type => SandboxType.Scalar(TypeName)
+public override SandboxType Type => SandboxType.String
+public override SandboxType Type => SandboxType.Unit
+public override string ToString()
+public override string ToString() => "[redacted]"
+public override string ToString() => $"{Major}.{Minor}.{Patch}"
+public override string ToString() => RelativePath
+public override string ToString() => Value
+public override string ToString() => Value.ToString("N")
+public readonly record struct ShortCircuitOperands(Expression First, Expression Second, bool Reordered)
+public RecordValue(IReadOnlyList<SandboxValue> Fields)
+public required IReadOnlyList<SandboxAuditEvent> AuditEvents
+public required SandboxResourceUsage ResourceUsage { get; init; }
+public required string ModuleHash { get; init; }
+public required string PlanHash { get; init; }
+public required string PolicyHash { get; init; }
+public ResourceLimits Budget { get; }
+public ResourceLimits Limits { get; }
+public ResourceLimits ResourceLimits { get => _resourceLimits; init { _resourceLimits = value; ResetHash(); } }
+public ResourceMeter Budget { get; }
+public ResourceMeter(ResourceLimits limits)
+public SandboxContext( SandboxRunId runId, SandboxPolicy policy, ResourceMeter budget, BindingRegistry bindings, IAuditSink audit, CancellationToken cancellationToken, IReadOnlySet<string>? allowedBindingIds = null, string? moduleHash = null, string? policyHash = null)
+public SandboxEffect AllowedEffects { get => _allowedEffects; init { _allowedEffects = value; ResetHash(); } }
+public SandboxError Error { get; }
+public SandboxError? Error { get; init; }
+public SandboxIsolation Isolation { get; init; } = SandboxIsolation.InProcess
+public SandboxModule Module { get; }
+public SandboxPolicy Build()
+public SandboxPolicy Policy { get; }
+public SandboxPolicyBuilder AllowPureComputation()
+public SandboxPolicyBuilder DeclareOpaqueIdType(string name)
+public SandboxPolicyBuilder DeclareOpaqueIdTypes(IEnumerable<string> names)
+public SandboxPolicyBuilder Deterministic(DateTimeOffset logicalNow, ulong randomSeed)
+public SandboxPolicyBuilder Grant( string capabilityId, object parameters, SandboxEffect allowedEffects, Func<ResourceLimits, ResourceLimits>? configureLimits = null)
+public SandboxPolicyBuilder Grant(string capabilityId, object parameters)
+public SandboxPolicyBuilder GrantFileRead(string root, long maxBytesPerRun)
+public SandboxPolicyBuilder GrantFileWrite( string root, long maxBytesPerRun, bool allowCreate = false, bool allowOverwrite = false)
+public SandboxPolicyBuilder GrantLogging()
+public SandboxPolicyBuilder GrantRandom()
+public SandboxPolicyBuilder GrantTimeNow()
+public SandboxPolicyBuilder WithFuel(long maxFuel)
+public SandboxPolicyBuilder WithMaxAllocatedBytes(long bytes)
+public SandboxPolicyBuilder WithMaxCallDepth(int depth)
+public SandboxPolicyBuilder WithMaxCollectionDepth(int depth)
+public SandboxPolicyBuilder WithMaxHostCalls(int calls)
+public SandboxPolicyBuilder WithMaxListLength(int length)
+public SandboxPolicyBuilder WithMaxLogEvents(int events)
+public SandboxPolicyBuilder WithMaxLogMessageLength(int length)
+public SandboxPolicyBuilder WithMaxLoopIterations(long iterations)
+public SandboxPolicyBuilder WithMaxMapEntries(int entries)
+public SandboxPolicyBuilder WithMaxStringLength(int length)
+public SandboxPolicyBuilder WithMaxTotalCollectionElements(long elements)
+public SandboxPolicyBuilder WithMaxTotalStringBytes(long bytes)
+public SandboxPolicyBuilder WithPolicyId(string policyId)
+public SandboxPolicyBuilder WithWallTime(TimeSpan maxWallTime)
+public SandboxResourceUsage Snapshot()
+public SandboxRunId RunId { get; }
+public SandboxRunId? RunId { get; init; }
+public SandboxRuntimeException(SandboxError error)
+public SandboxValue ChargeBindingReturn(BindingDescriptor descriptor, SandboxValue value)
+public SandboxValue? Value { get; init; }
+public sealed class BindingRegistry : IBindingCatalog
+public sealed class BindingRegistryBuilder
+public sealed class ExecutionPlan
+public sealed class ExecutionPlanSeal : IEquatable<ExecutionPlanSeal>
+public sealed class InMemoryAuditSink : IAuditSink
+public sealed class SandboxPolicyBuilder
+public sealed class SandboxRuntimeException : Exception
+public sealed class SandboxValidationException( IReadOnlyList<SandboxDiagnostic> diagnostics)
+public sealed partial class ResourceMeter
+public sealed partial class SandboxContext
+public sealed record AssignmentStatement(string Name, Expression Value, SourceSpan Span) : Statement(Span)
+public sealed record BinaryExpression(Expression Left, string Operator, Expression Right, SourceSpan Span) : Expression(Span)
+public sealed record BindingCostModel( long BaseFuel, long PerByteFuel = 0, bool AllocationFromReturnBytes = false, int? MaxCallsPerRun = null)
+public sealed record BindingDescriptor( string Id, SemVersion Version, IReadOnlyList<SandboxType> Parameters, SandboxType ReturnType, SandboxEffect Effects, string? RequiredCapability, BindingCostModel CostModel, AuditLevel AuditLevel, BindingSafety Safety, BindingInvoker Invoke, CompiledBinding Compiled, CapabilityGrantValidator? GrantValidator = null)
+public sealed record BindingSignature( string Id, SemVersion Version, IReadOnlyList<SandboxType> Parameters, SandboxType ReturnType, SandboxEffect Effects, string? RequiredCapability, BindingCostModel CostModel, AuditLevel AuditLevel, BindingSafety Safety, CompiledBinding Compiled)
+public sealed record BoolValue(bool Value) : SandboxValue
+public sealed record CallExpression(string Name, IReadOnlyList<Expression> Arguments, SandboxType? GenericType, SourceSpan Span)
+public sealed record CapabilityGrant( string Id, IReadOnlyDictionary<string, string> Parameters, DateTimeOffset? ExpiresAt = null, string GrantedBy = "host-policy", string Reason = "")
+public sealed record CapabilityRequest(string Id, string? Reason)
+public sealed record CompiledBinding(string Kind, string Type, string Method)
+public sealed record ExpressionStatement(Expression Value, SourceSpan Span) : Statement(Span)
+public sealed record F64Value(double Value) : SandboxValue
+public sealed record ForRangeStatement(string LocalName, Expression Start, Expression End, IReadOnlyList<Statement> Body, SourceSpan Span)
+public sealed record FunctionAnalysis(SandboxType ReturnType, SandboxEffect Effects, bool CanReorder)
+public sealed record I32Value(int Value) : SandboxValue
+public sealed record I64Value(long Value) : SandboxValue
+public sealed record IfStatement(Expression Condition, IReadOnlyList<Statement> Then, IReadOnlyList<Statement> Else, SourceSpan Span)
+public sealed record ListValue(IReadOnlyList<SandboxValue> Values, SandboxType ItemType) : SandboxValue
+public sealed record LiteralExpression(SandboxValue Value, SourceSpan Span) : Expression(Span)
+public sealed record MapValue( IReadOnlyDictionary<SandboxValue, SandboxValue> Values, SandboxType KeyType, SandboxType ValueType) : SandboxValue
+public sealed record OpaqueIdValue(string TypeName, string Value) : SandboxValue
+public sealed record Parameter(string Name, SandboxType Type)
+public sealed record RecordValue : SandboxValue
+public sealed record ResourceLimits( long MaxFuel = 100_000, long MaxLoopIterations = 100_000, TimeSpan? MaxWallTime = null, long MaxAllocatedBytes = 1_048_576, int MaxCallDepth = 64, int MaxHostCalls = 100, int MaxListLength = 10_000, int MaxMapEntries = 10_000, int MaxCollectionDepth = 32, long MaxTotalCollectionElements = 100_000, long MaxFileBytesRead = 1_048_576, long MaxFileBytesWritten = 0, long MaxNetworkBytesRead = 1_048_576, long MaxNetworkBytesWritten = 1_048_576, int MaxLogEvents = 100, int MaxLogMessageLength = 4_096, int MaxStringLength = 65_536, long MaxTotalStringBytes = 1_048_576)
+public sealed record ReturnStatement(Expression Value, SourceSpan Span) : Statement(Span)
+public sealed record SandboxAuditEvent( SandboxRunId RunId, string Kind, DateTimeOffset Timestamp, bool Success, string? BindingId = null, string? CapabilityId = null, SandboxEffect Effect = SandboxEffect.None, string? ResourceId = null, SandboxErrorCode? ErrorCode = null, string? Message = null, long? Bytes = null, IReadOnlyDictionary<string, string>? Fields = null, long SequenceNumber = 0)
+public sealed record SandboxDiagnostic( string Code, string Message, DiagnosticSeverity Severity = DiagnosticSeverity.Error, SourceSpan? Span = null)
+public sealed record SandboxError( SandboxErrorCode Code, string SafeMessage, string? DiagnosticId = null)
+public sealed record SandboxExecutionOptions
+public sealed record SandboxExecutionResult
+public sealed record SandboxFunction( string Id, bool IsEntrypoint, IReadOnlyList<Parameter> Parameters, SandboxType ReturnType, IReadOnlyList<Statement> Body, SandboxEffect? DeclaredEffects = null)
+public sealed record SandboxModule( string Id, SemVersion Version, SemVersion TargetSandboxVersion, IReadOnlyList<CapabilityRequest> CapabilityRequests, IReadOnlyList<SandboxFunction> Functions, IReadOnlyDictionary<string, string> Metadata)
+public sealed record SandboxPath(string RelativePath)
+public sealed record SandboxPathValue(SandboxPath Value) : SandboxValue
+public sealed record SandboxPolicy( string PolicyId, SandboxEffect AllowedEffects, IReadOnlyList<CapabilityGrant> Grants, ResourceLimits ResourceLimits, bool Deterministic = false, DateTimeOffset? LogicalNow = null, ulong? RandomSeed = null, IReadOnlySet<string>? DeclaredOpaqueIdTypes = null)
+public sealed record SandboxResourceUsage( long FuelUsed, long MaxFuel, long LoopIterations, long AllocatedBytes, int HostCalls, long FileBytesRead, long FileBytesWritten, long NetworkBytesRead, long NetworkBytesWritten, int LogEvents, long CollectionElements, long StringBytes)
+public sealed record SandboxRunId(Guid Value)
+public sealed record SandboxType(string Name, IReadOnlyList<SandboxType> Arguments)
+public sealed record SandboxUri(string Value)
+public sealed record SandboxUriValue(SandboxUri Value) : SandboxValue
+public sealed record SemVersion(int Major, int Minor, int Patch)
+public sealed record SourceSpan(int Line, int Column)
+public sealed record StringValue(string Value) : SandboxValue
+public sealed record UnaryExpression(string Operator, Expression Operand, SourceSpan Span) : Expression(Span)
+public sealed record UnitValue : SandboxValue
+public sealed record VariableExpression(string Name, SourceSpan Span) : Expression(Span)
+public sealed record WhileStatement(Expression Condition, IReadOnlyList<Statement> Body, SourceSpan Span) : Statement(Span)
+public static BindingCostModel Fixed(long baseFuel) => new(baseFuel)
+public static BindingCostModel PerByte(long baseFuel, long perByteFuel)
+public static BindingCostModel PerReturnedByte(long baseFuel, long perByteFuel)
+public static bool ContainsForbiddenDescriptor(string value)
+public static bool ContainsOnlyKnownBits(this SandboxEffect effects)
+public static bool IsCollectionIntrinsic(string callName)
+public static bool IsForbiddenName(string name)
+public static bool IsKnownOpaqueId(string name)
+public static bool IsOpaqueId(string? value)
+public static bool IsPortableRelativePath(string? path)
+public static bool IsSandboxUri(string? value)
+public static bool IsWellFormedOpaqueIdName(string name)
+public static bool IsWildcard(string capabilityId)
+public static bool Matches(string grantPattern, string requiredId)
+public static bool RequiresCapability(this SandboxEffect effects)
+public static bool Supports(SemVersion target)
+public static bool TryParse(string text, out SemVersion version)
+public static class BindingAuditFields
+public static class BindingReferenceCollector
+public static class CanonicalModuleHasher
+public static class CapabilityPattern
+public static class EntrypointBinder
+public static class ResourceLimitValidation
+public static class RunSummaryAuditFields
+public static class SandboxCollectionFuel
+public static class SandboxDescriptorGuards
+public static class SandboxEffects
+public static class SandboxFloat64Math
+public static class SandboxInt32Math
+public static class SandboxInt64Math
+public static class SandboxLanguage
+public static class SandboxLiteralConstraints
+public static class SandboxNumericOperations
+public static class SandboxValueValidator
+public static class ShortCircuitExpressionOrder
+public static CompiledBinding RuntimeStub(string type, string method) => new("RuntimeStub", type, method)
+public static double Add(double left, double right) => Finite(left + right)
+public static double Divide(double left, double right) => Finite(left / right)
+public static double Multiply(double left, double right) => Finite(left * right)
+public static double Negate(double value) => Finite(-value)
+public static double Remainder(double left, double right) => Finite(left % right)
+public static double Subtract(double left, double right) => Finite(left - right)
+public static int Add(int left, int right)
+public static int Divide(int left, int right)
+public static int Multiply(int left, int right)
+public static int Negate(int value)
+public static int Remainder(int left, int right)
+public static int Subtract(int left, int right)
+public static IReadOnlyDictionary<string, IReadOnlySet<string>> CollectByFunction( SandboxModule module, IBindingCatalog bindings)
+public static IReadOnlyDictionary<string, string> Create( ExecutionPlan plan, ResourceMeter budget, ExecutionMode mode, string cacheStatus, string? runtimeForm = null, string? cacheKey = null, string? artifactHash = null, string? materializationStatus = null, bool executionDispatched = true)
+public static IReadOnlyDictionary<string, string> Create( string resourceKind, DateTimeOffset startedAt, bool deterministic = false, long? bytesRead = null, long? bytesWritten = null)
+public static IReadOnlyDictionary<string, string> Create( string resourceKind, DateTimeOffset startedAt, string moduleHash, string policyHash, bool deterministic, long? bytesRead = null, long? bytesWritten = null)
+public static IReadOnlyList<SandboxValue> BindArguments(SandboxFunction function, SandboxValue input)
+public static IReadOnlySet<string> Collect(SandboxModule module, IBindingCatalog bindings, string? entrypoint)
+public static IReadOnlySet<string> Collect(SandboxModule module, IBindingCatalog bindings)
+public static long Add(long left, long right) => Checked(() => checked(left + right))
+public static long Copy(int sourceCount, int addedCount = 0)
+public static long Divide(long left, long right)
+public static long Empty() => BaseCost
+public static long EstimateCall(string callName, int argumentCount)
+public static long Multiply(long left, long right) => Checked(() => checked(left * right))
+public static long Negate(long value) => Checked(() => checked(-value))
+public static long Read(int count = 0) => BaseCost + Math.Max(0, count)
+public static long Remainder(long left, long right)
+public static long Subtract(long left, long right) => Checked(() => checked(left - right))
+public static SandboxPolicyBuilder Create() => new()
+public static SandboxRunId New() => new(Guid.NewGuid())
+public static SandboxType Bool { get; } = Scalar("Bool")
+public static SandboxType F64 { get; } = Scalar("F64")
+public static SandboxType I32 { get; } = Scalar("I32")
+public static SandboxType I64 { get; } = Scalar("I64")
+public static SandboxType List(SandboxType item) => new("List", [item])
+public static SandboxType Map(SandboxType key, SandboxType value) => new("Map", [key, value])
+public static SandboxType Record(IReadOnlyList<SandboxType> fields) => new(RecordName, fields)
+public static SandboxType SandboxPath { get; } = Scalar("SandboxPath")
+public static SandboxType SandboxUri { get; } = Scalar("SandboxUri")
+public static SandboxType Scalar(string name) => new(name, [])
+public static SandboxType String { get; } = Scalar("String")
+public static SandboxType Unit { get; } = Scalar("Unit")
+public static SandboxValue Add(SandboxValue left, SandboxValue right)
+public static SandboxValue Divide(SandboxValue left, SandboxValue right)
+public static SandboxValue FromBool(bool value) => new BoolValue(value)
+public static SandboxValue FromDouble(double value)
+public static SandboxValue FromInt32(int value) => new I32Value(value)
+public static SandboxValue FromInt64(long value) => new I64Value(value)
+public static SandboxValue FromList(IReadOnlyList<SandboxValue> values, SandboxType itemType)
+public static SandboxValue FromList(IReadOnlyList<SandboxValue> values)
+public static SandboxValue FromMap( IReadOnlyDictionary<SandboxValue, SandboxValue> values, SandboxType keyType, SandboxType valueType)
+public static SandboxValue FromOpaqueId(string typeName, string value)
+public static SandboxValue FromPath(string value)
+public static SandboxValue FromRecord(IReadOnlyList<SandboxValue> fields) => new RecordValue(fields)
+public static SandboxValue FromString(string value) => new StringValue(value)
+public static SandboxValue FromUri(string value)
+public static SandboxValue GetArgument( SandboxValue input, int index, int parameterCount, SandboxType expectedType)
+public static SandboxValue GreaterThan(SandboxValue left, SandboxValue right)
+public static SandboxValue GreaterThanOrEqual(SandboxValue left, SandboxValue right)
+public static SandboxValue LessThan(SandboxValue left, SandboxValue right)
+public static SandboxValue LessThanOrEqual(SandboxValue left, SandboxValue right)
+public static SandboxValue Multiply(SandboxValue left, SandboxValue right)
+public static SandboxValue Negate(SandboxValue value)
+public static SandboxValue Remainder(SandboxValue left, SandboxValue right)
+public static SandboxValue Subtract(SandboxValue left, SandboxValue right)
+public static SandboxValue Unit { get; } = new UnitValue()
+public static SemVersion CurrentVersion { get; } = SemVersion.One
+public static SemVersion One { get; } = new(1, 0, 0)
+public static SemVersion Parse(string text)
+public static ShortCircuitOperands Choose( BinaryExpression expression, IBindingCatalog bindings, IReadOnlyDictionary<string, FunctionAnalysis> functions)
+public static string CurrentVersionText => CurrentVersion.ToString()
+public static string Hash(SandboxModule module)
+public static string Serialize(SandboxModule module)
+public static void RequireType( SandboxValue value, SandboxType expectedType, SandboxErrorCode errorCode, string message)
+public static void RequireType(SandboxValue value, SandboxType expectedType, string message)
+public static void Validate(ResourceLimits limits)
+public static void ValidateInputShape(SandboxValue input, int parameterCount)
+public string BindingManifestHash { get; }
+public string CreateChargedStringConcat(string left, string right)
+public string CreateChargedSubstring(string value, int startIndex, int length)
+public string Hash => (_hash ??= CreateHashCache()).Value
+public string ManifestHash { get; }
+public string ModuleHash { get; }
+public string PlanHash { get; }
+public string PolicyHash { get; }
+public string PolicyId { get => _policyId; init { _policyId = value; ResetHash(); } }
+public string? ArtifactHash { get; init; }
+public TimeSpan EffectiveWallTime => MaxWallTime ?? TimeSpan.FromMilliseconds(100)
+public TimeSpan RemainingWallTime()
+public ulong? RandomSeed { get => _randomSeed; init { _randomSeed = value; ResetHash(); } }
+public void ChargeAllocation(long bytes)
+public void ChargeBindingCall(BindingDescriptor descriptor)
+public void ChargeCollection(SandboxValue value, CancellationToken cancellationToken)
+public void ChargeCollection(SandboxValue value) => Budget.ChargeCollection(value, CancellationToken)
+public void ChargeCollection(SandboxValue value) => ChargeCollection(value, CancellationToken.None)
+public void ChargeFileRead(long bytes)
+public void ChargeFileWrite(long bytes)
+public void ChargeFuel(long amount)
+public void ChargeHostCall(string bindingId, int? maxCallsPerRun = null)
+public void ChargeLogEvent(string message)
+public void ChargeLogEvent(string message) => Budget.ChargeLogEvent(message)
+public void ChargeLoopIteration(long fuelAmount)
+public void ChargeLoopIterations(long iterations, long fuelPerIteration)
+public void ChargeNetworkRead(long bytes)
+public void ChargeNetworkWrite(long bytes)
+public void ChargeString(string value)
+public void ChargeStringAllocation(int charLength)
+public void ChargeValue(SandboxValue value, CancellationToken cancellationToken)
+public void ChargeValue(SandboxValue value) => Budget.ChargeValue(value, CancellationToken)
+public void ChargeValue(SandboxValue value) => ChargeValue(value, CancellationToken.None)
+public void CheckDeadline()
+public void Checkpoint()
+public void EnsureRequiredBindingFailureAudit( BindingDescriptor descriptor, long checkpoint, SandboxErrorCode errorCode)
+public void EnsureRequiredBindingSuccessAudit(BindingDescriptor descriptor, long checkpoint)
+public void EnterCall()
+public void ExitCall()
+public void RequireCapability(string capabilityId)
+public void Write(SandboxAuditEvent auditEvent)

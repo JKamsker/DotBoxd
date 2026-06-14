@@ -29,13 +29,13 @@ Policy validation walks active grants once, then separately rescans the same gra
 
 ## Evidence
 
-- `src/SafeIR.Validation/PolicyGrantValidator.cs:19` captures the policy grant clock, `src/SafeIR.Validation/PolicyGrantValidator.cs:20` checks duplicate active grants, and `src/SafeIR.Validation/PolicyGrantValidator.cs:21` through `src/SafeIR.Validation/PolicyGrantValidator.cs:26` walks `policy.Grants` to validate each active grant.
-- `src/SafeIR.Validation/Internal/PolicyResolver.cs:23` calls `PolicyGrantValidator.Validate(...)` before doing capability-presence checks, so the active grant list has already been traversed for the current validation pass.
-- `src/SafeIR.Validation/Internal/PolicyResolver.cs:25` through `src/SafeIR.Validation/Internal/PolicyResolver.cs:29` then loops over `module.CapabilityRequests` and calls `policy.GrantsCapability(request.Id)` for each request.
-- `src/SafeIR.Validation/Internal/PolicyResolver.cs:31` through `src/SafeIR.Validation/Internal/PolicyResolver.cs:35` repeats the same pattern for every inferred required capability in `requiredCapabilities`.
-- `src/SafeIR.Core/Policy.cs:33` through `src/SafeIR.Core/Policy.cs:36` implements `GrantsCapability` with `Grants.Any(...)`, so each request/capability check starts another linear scan of the policy grant list.
-- `src/SafeIR.Core/Policy.cs:30` exposes `GrantClock` as `DateTimeOffset.UtcNow` for nondeterministic policies, which is evaluated by every `GrantsCapability` call rather than once for the validation pass.
-- `src/SafeIR.Hosting/Execution/SandboxHost.cs:52` validates policy and module during `PrepareAsync`, making this a production setup path. `ALG-0013` covers that `ExecutionPlanGuard` repeats the whole validation per execution; this finding is the avoidable repeated grant lookup inside one validation pass. `ALG-0009` covers per-binding-call runtime authorization, not prepare-time policy validation.
+- `src/DotBoxd.Kernels.Validation/PolicyGrantValidator.cs:19` captures the policy grant clock, `src/DotBoxd.Kernels.Validation/PolicyGrantValidator.cs:20` checks duplicate active grants, and `src/DotBoxd.Kernels.Validation/PolicyGrantValidator.cs:21` through `src/DotBoxd.Kernels.Validation/PolicyGrantValidator.cs:26` walks `policy.Grants` to validate each active grant.
+- `src/DotBoxd.Kernels.Validation/Internal/PolicyResolver.cs:23` calls `PolicyGrantValidator.Validate(...)` before doing capability-presence checks, so the active grant list has already been traversed for the current validation pass.
+- `src/DotBoxd.Kernels.Validation/Internal/PolicyResolver.cs:25` through `src/DotBoxd.Kernels.Validation/Internal/PolicyResolver.cs:29` then loops over `module.CapabilityRequests` and calls `policy.GrantsCapability(request.Id)` for each request.
+- `src/DotBoxd.Kernels.Validation/Internal/PolicyResolver.cs:31` through `src/DotBoxd.Kernels.Validation/Internal/PolicyResolver.cs:35` repeats the same pattern for every inferred required capability in `requiredCapabilities`.
+- `src/DotBoxd.Kernels/Policy.cs:33` through `src/DotBoxd.Kernels/Policy.cs:36` implements `GrantsCapability` with `Grants.Any(...)`, so each request/capability check starts another linear scan of the policy grant list.
+- `src/DotBoxd.Kernels/Policy.cs:30` exposes `GrantClock` as `DateTimeOffset.UtcNow` for nondeterministic policies, which is evaluated by every `GrantsCapability` call rather than once for the validation pass.
+- `src/DotBoxd.Hosting/Execution/SandboxHost.cs:52` validates policy and module during `PrepareAsync`, making this a production setup path. `ALG-0013` covers that `ExecutionPlanGuard` repeats the whole validation per execution; this finding is the avoidable repeated grant lookup inside one validation pass. `ALG-0009` covers per-binding-call runtime authorization, not prepare-time policy validation.
 
 ## Impact
 

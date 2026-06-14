@@ -29,11 +29,11 @@ The plugin analyzer propagates forbidden-helper taint by repeatedly scanning the
 
 ## Evidence
 
-- `src/SafeIR.PluginAnalyzer/Analysis/SafeIrPluginAnalyzer.cs:181` stores all helper calls in a `ConcurrentBag<HelperCall>` as operation analysis records invocations.
-- `src/SafeIR.PluginAnalyzer/Analysis/SafeIrPluginAnalyzer.cs:207` calls `PropagateForbiddenHelpers()` during compilation-end reporting.
-- `src/SafeIR.PluginAnalyzer/Analysis/SafeIrPluginAnalyzer.cs:224` loops `while (changed)`.
-- `src/SafeIR.PluginAnalyzer/Analysis/SafeIrPluginAnalyzer.cs:226` scans every recorded helper call on every propagation pass.
-- `src/SafeIR.PluginAnalyzer/Analysis/SafeIrPluginAnalyzer.cs:227` only taints a caller when the callee is already tainted, so a long chain discovered in an unfavorable bag order can require one full scan per chain level.
+- `src/DotBoxd.Plugins.Analyzer/Analysis/DotBoxdPluginAnalyzer.cs:181` stores all helper calls in a `ConcurrentBag<HelperCall>` as operation analysis records invocations.
+- `src/DotBoxd.Plugins.Analyzer/Analysis/DotBoxdPluginAnalyzer.cs:207` calls `PropagateForbiddenHelpers()` during compilation-end reporting.
+- `src/DotBoxd.Plugins.Analyzer/Analysis/DotBoxdPluginAnalyzer.cs:224` loops `while (changed)`.
+- `src/DotBoxd.Plugins.Analyzer/Analysis/DotBoxdPluginAnalyzer.cs:226` scans every recorded helper call on every propagation pass.
+- `src/DotBoxd.Plugins.Analyzer/Analysis/DotBoxdPluginAnalyzer.cs:227` only taints a caller when the callee is already tainted, so a long chain discovered in an unfavorable bag order can require one full scan per chain level.
 - Analyzer tests cover diagnostics, but the benchmark project has no Roslyn analyzer performance benchmark for helper graph size, call-chain depth, or fan-out.
 
 ## Impact

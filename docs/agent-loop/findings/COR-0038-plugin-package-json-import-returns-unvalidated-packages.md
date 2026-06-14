@@ -29,10 +29,10 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Serialization.Json/PluginPackageJsonSerializer.cs` exposes public `PluginPackageJsonSerializer.Import(string json)` and returns `ReadPackage(document.RootElement)` after JSON shape parsing.
-- `src/SafeIR.Serialization.Json/PluginPackageJsonSerializer.cs` `ReadPackage` constructs `PluginPackage.Create(manifest, module, entrypoints)` directly; it does not call package semantic validation before returning.
-- `src/SafeIR.Plugins/Runtime/PluginPackageValidator.cs` is `internal` and enforces the security-relevant package checks: manifest plugin id must match module id, module metadata must bind to the manifest plugin id and kernel, entrypoints must exist and be public, manifest effects must parse to known effects, live settings must have supported types/ranges, and subscriptions must bind to the module kernel.
-- `src/SafeIR.Plugins/PluginServer.cs` calls `PluginPackageValidator.Validate(package)` and `ValidatePrepared(...)` inside `InstallAsync`, but callers using `PluginPackageJsonSerializer.Import` directly cannot run the same validator because it is not public.
+- `src/DotBoxd.Kernels.Serialization.Json/PluginPackageJsonSerializer.cs` exposes public `PluginPackageJsonSerializer.Import(string json)` and returns `ReadPackage(document.RootElement)` after JSON shape parsing.
+- `src/DotBoxd.Kernels.Serialization.Json/PluginPackageJsonSerializer.cs` `ReadPackage` constructs `PluginPackage.Create(manifest, module, entrypoints)` directly; it does not call package semantic validation before returning.
+- `src/DotBoxd.Plugins/Runtime/PluginPackageValidator.cs` is `internal` and enforces the security-relevant package checks: manifest plugin id must match module id, module metadata must bind to the manifest plugin id and kernel, entrypoints must exist and be public, manifest effects must parse to known effects, live settings must have supported types/ranges, and subscriptions must bind to the module kernel.
+- `src/DotBoxd.Plugins/PluginServer.cs` calls `PluginPackageValidator.Validate(package)` and `ValidatePrepared(...)` inside `InstallAsync`, but callers using `PluginPackageJsonSerializer.Import` directly cannot run the same validator because it is not public.
 - This is separate from `COR-0016`, which covers the default policy used during install. This finding is about the pre-install deserialization trust boundary and the absence of a public validated-import result.
 
 ## Impact

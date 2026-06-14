@@ -29,11 +29,11 @@ Path-shaped audit `ResourceId` values preserve valid HTTP and file path segments
 
 ## Evidence
 
-`src/SafeIR.Transport.Http/SafeHttpClient.cs` computes `resource = SafeHttpUriAudit.Sanitize(uri.Value)` before request validation and passes that same value to audit records on success and failure. `src/SafeIR.Transport.Http/SafeHttpUriAudit.cs` implements `Sanitize` as `scheme://authority + uri.AbsolutePath`, which strips query/userinfo but keeps every path segment. A URI such as `https://api.example.com/download/token/abc123?ignored=secret` is therefore materialized as `https://api.example.com/download/token/abc123` in `SandboxAuditEvent.ResourceId`.
+`src/DotBoxd.Hosting.Http/SafeHttpClient.cs` computes `resource = SafeHttpUriAudit.Sanitize(uri.Value)` before request validation and passes that same value to audit records on success and failure. `src/DotBoxd.Hosting.Http/SafeHttpUriAudit.cs` implements `Sanitize` as `scheme://authority + uri.AbsolutePath`, which strips query/userinfo but keeps every path segment. A URI such as `https://api.example.com/download/token/abc123?ignored=secret` is therefore materialized as `https://api.example.com/download/token/abc123` in `SandboxAuditEvent.ResourceId`.
 
-`src/SafeIR.Runtime/Bindings/SafeFileSystem.cs` has the same shape for file failures: `FailureResource` returns `path.RelativePath` whenever the value is a portable relative path, and `SafeFileAudit` only replaces backslashes before writing `ResourceId`. A denied read/write for `profiles/token-abc123.json` can therefore record the secret-shaped path directly.
+`src/DotBoxd.Kernels.Runtime/Bindings/SafeFileSystem.cs` has the same shape for file failures: `FailureResource` returns `path.RelativePath` whenever the value is a portable relative path, and `SafeFileAudit` only replaces backslashes before writing `ResourceId`. A denied read/write for `profiles/token-abc123.json` can therefore record the secret-shaped path directly.
 
-Existing coverage confirms only narrower redaction behavior: `tests/SafeIR.Tests/Misc07/SafeNetworkTests.cs` checks that HTTP query strings are removed, and `tests/SafeIR.Tests/Misc07/SafeFileAuditRedactionTests.cs` checks invalid `../secret.txt` paths become `[invalid-path]`. I did not find coverage for secret-like but syntactically valid path segments.
+Existing coverage confirms only narrower redaction behavior: `tests/DotBoxd.Kernels.Tests/Misc07/SafeNetworkTests.cs` checks that HTTP query strings are removed, and `tests/DotBoxd.Kernels.Tests/Misc07/SafeFileAuditRedactionTests.cs` checks invalid `../secret.txt` paths become `[invalid-path]`. I did not find coverage for secret-like but syntactically valid path segments.
 
 ## Impact
 

@@ -29,10 +29,10 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Hosting/Execution/SandboxHost.cs` calls `ExecutionPlanGuard.EnsurePrepared(plan, _bindings, _planSigningKey)` at the start of every `ExecuteAsync` call before mode selection or dispatch.
-- `src/SafeIR.Hosting/Execution/ExecutionPlanGuard.cs:32` constructs a fresh `ModuleValidator` and validates `plan.Module` against the host bindings and policy on each execution.
-- When validation succeeds, `src/SafeIR.Hosting/Execution/ExecutionPlanGuard.cs:39` calls `ExecutionPlanBuilder.Build(...)` again to produce an expected plan for comparison.
-- `src/SafeIR.Hosting/Execution/ExecutionPlanBuilder.cs:17` hashes the whole module during each build, and `Seal(...)` materializes ordered function-analysis and binding-reference records before HMAC sealing.
+- `src/DotBoxd.Hosting/Execution/SandboxHost.cs` calls `ExecutionPlanGuard.EnsurePrepared(plan, _bindings, _planSigningKey)` at the start of every `ExecuteAsync` call before mode selection or dispatch.
+- `src/DotBoxd.Hosting/Execution/ExecutionPlanGuard.cs:32` constructs a fresh `ModuleValidator` and validates `plan.Module` against the host bindings and policy on each execution.
+- When validation succeeds, `src/DotBoxd.Hosting/Execution/ExecutionPlanGuard.cs:39` calls `ExecutionPlanBuilder.Build(...)` again to produce an expected plan for comparison.
+- `src/DotBoxd.Hosting/Execution/ExecutionPlanBuilder.cs:17` hashes the whole module during each build, and `Seal(...)` materializes ordered function-analysis and binding-reference records before HMAC sealing.
 - Existing PAL-0019 and PAL-0020 cover specific hashing allocation inside this path; this finding is the broader execution algorithm: the guard repeats the entire prepare-time validation/seal pipeline for every run of an already prepared plan.
 
 ## Impact

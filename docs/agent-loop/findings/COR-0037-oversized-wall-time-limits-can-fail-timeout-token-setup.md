@@ -29,9 +29,9 @@ Very large non-negative wall-time limits can survive validation and later produc
 
 ## Evidence
 
-`src/SafeIR.Core/Model/ResourceLimitValidation.cs` only rejects negative `ResourceLimits.MaxWallTime` values. `src/SafeIR.Core/Model/Resources.cs` accepts those limits, caps its internal deadline arithmetic, and `RemainingWallTime()` can return `TimeSpan.MaxValue` for a far-future deadline.
+`src/DotBoxd.Kernels/Model/ResourceLimitValidation.cs` only rejects negative `ResourceLimits.MaxWallTime` values. `src/DotBoxd.Kernels/Model/Resources.cs` accepts those limits, caps its internal deadline arithmetic, and `RemainingWallTime()` can return `TimeSpan.MaxValue` for a far-future deadline.
 
-`src/SafeIR.Core/Sandbox/SandboxContext.cs` exposes `CreateWallTimeToken()` that calls `CancelAfter(Budget.RemainingWallTime())`. `src/SafeIR.Runtime/Bindings/SafeFileSystem.cs` similarly creates a linked token and calls `timeout.CancelAfter(remaining)`. `src/SafeIR.Transport.Http/SafeHttpClient.cs` computes `EffectiveTimeout(...)` from `RemainingWallTime()` and passes it to `CancelAfter`.
+`src/DotBoxd.Kernels/Sandbox/SandboxContext.cs` exposes `CreateWallTimeToken()` that calls `CancelAfter(Budget.RemainingWallTime())`. `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileSystem.cs` similarly creates a linked token and calls `timeout.CancelAfter(remaining)`. `src/DotBoxd.Hosting.Http/SafeHttpClient.cs` computes `EffectiveTimeout(...)` from `RemainingWallTime()` and passes it to `CancelAfter`.
 
 `CancellationTokenSource.CancelAfter(TimeSpan)` rejects delays outside its supported range. With a policy such as `new ResourceLimits(MaxWallTime: TimeSpan.MaxValue)`, the limit is considered valid but binding setup can throw an argument error that is converted to a generic host failure rather than applying a bounded timeout or rejecting the policy as invalid.
 

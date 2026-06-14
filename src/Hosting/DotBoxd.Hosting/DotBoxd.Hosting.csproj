@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  
+  <PropertyGroup>
+    <Description>DotBoxd.Kernels host orchestration APIs for import, preparation, execution, isolation, and runtime selection.</Description>
+    <PackageTags>dotboxd;sandbox;hosting;orchestration;isolation</PackageTags>
+  </PropertyGroup>
+<ItemGroup>
+    <ProjectReference Include="..\..\Kernels\DotBoxd.Kernels\DotBoxd.Kernels.csproj" />
+    <ProjectReference Include="..\..\Kernels\DotBoxd.Kernels.Validation\DotBoxd.Kernels.Validation.csproj" />
+    <ProjectReference Include="..\..\Kernels\DotBoxd.Kernels.Runtime\DotBoxd.Kernels.Runtime.csproj" />
+    <ProjectReference Include="..\..\Kernels\DotBoxd.Kernels.Interpreter\DotBoxd.Kernels.Interpreter.csproj" />
+    <ProjectReference Include="..\..\Kernels\DotBoxd.Kernels.Compiler\DotBoxd.Kernels.Compiler.csproj" />
+    <ProjectReference Include="..\..\Kernels\DotBoxd.Kernels.Verifier\DotBoxd.Kernels.Verifier.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

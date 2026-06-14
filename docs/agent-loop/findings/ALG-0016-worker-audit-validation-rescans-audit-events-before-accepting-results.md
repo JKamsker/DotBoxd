@@ -29,9 +29,9 @@ Worker-process execution validates every accepted worker result by scanning `res
 
 ## Evidence
 
-- `src/SafeIR.Hosting/SandboxWorkerExecutor.cs` validates worker results in `ValidateWorkerResult`, and every worker-process execution reaches `WorkerAuditMatches` before accepted results are returned.
+- `src/DotBoxd.Hosting/SandboxWorkerExecutor.cs` validates worker results in `ValidateWorkerResult`, and every worker-process execution reaches `WorkerAuditMatches` before accepted results are returned.
 - `WorkerAuditMatches` reads the first run id, then scans all audit events with `result.AuditEvents.Any(e => e.RunId != runId)` to enforce a common run id.
-- The same method immediately loops over every audit event again and calls `WorkerAuditValidator.Matches(...)`, which performs per-event safety/schema checks in `src/SafeIR.Hosting/WorkerAuditValidator.cs`.
+- The same method immediately loops over every audit event again and calls `WorkerAuditValidator.Matches(...)`, which performs per-event safety/schema checks in `src/DotBoxd.Hosting/WorkerAuditValidator.cs`.
 - `WorkerAuditMatches` then scans the same list a third time with `result.AuditEvents.Where(e => e.Kind == "RunSummary").ToArray()`, allocating an array just to require one run summary and compare it with the result.
 - On success, `SandboxWorkerExecutor.ExecuteAsync` still resequences the accepted events with `result.AuditEvents.ToSequencedArray()` before returning the result to `SandboxHost.Publish`.
 - Existing `PAL-0021` covers redundant copying while constructing/resequencing execution-result audit events, `ALG-0011` covers in-run required-binding audit rescans, and `ALG-0014` covers plugin telemetry marker scans. This finding is separate: worker isolation boundary validation performs repeated full-list scans and a summary array allocation for every worker result before the host trusts or publishes it.

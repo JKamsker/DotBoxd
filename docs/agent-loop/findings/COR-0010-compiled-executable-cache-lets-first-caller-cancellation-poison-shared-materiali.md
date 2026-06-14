@@ -29,7 +29,7 @@ duplicate_of:
 
 ## Evidence
 
-`src/SafeIR.Hosting/Execution/CompiledExecutableCache.cs` builds the cached lazy task as:
+`src/DotBoxd.Hosting/Execution/CompiledExecutableCache.cs` builds the cached lazy task as:
 
 ```csharp
 var candidate = new Lazy<Task<MaterializedCompiledArtifact>>(

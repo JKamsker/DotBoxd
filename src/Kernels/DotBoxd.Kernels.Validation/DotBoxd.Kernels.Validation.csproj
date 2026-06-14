@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  
+  <PropertyGroup>
+    <Description>DotBoxd.Kernels structural, type, effect, policy, and binding validation APIs.</Description>
+    <PackageTags>dotboxd;sandbox;validation;type-checking;policy</PackageTags>
+  </PropertyGroup>
+<ItemGroup>
+    <ProjectReference Include="..\DotBoxd.Kernels\DotBoxd.Kernels.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

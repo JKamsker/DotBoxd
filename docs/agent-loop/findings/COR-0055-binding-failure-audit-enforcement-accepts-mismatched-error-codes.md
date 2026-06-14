@@ -29,11 +29,11 @@ Required binding failure audit enforcement accepts any failed binding audit afte
 
 ## Evidence
 
-`src/SafeIR.Core/Sandbox/SandboxContext.cs` passes the actual failure code into `EnsureRequiredBindingFailureAudit(BindingDescriptor descriptor, long checkpoint, SandboxErrorCode errorCode)`. The interpreter and compiled dispatchers call this method from failure paths with `ex.Error.Code`, timeout, cancellation, or generic binding-failure codes.
+`src/DotBoxd.Kernels/Sandbox/SandboxContext.cs` passes the actual failure code into `EnsureRequiredBindingFailureAudit(BindingDescriptor descriptor, long checkpoint, SandboxErrorCode errorCode)`. The interpreter and compiled dispatchers call this method from failure paths with `ex.Error.Code`, timeout, cancellation, or generic binding-failure codes.
 
 Inside `EnsureRequiredBindingFailureAudit(...)`, the supplied `errorCode` is only used when synthesizing a fallback audit. The method first calls `Audit.HasBindingAuditSince(descriptor, checkpoint, success: false, RunId, ModuleHash, PolicyHash)`, which has no parameter for the expected error code.
 
-`src/SafeIR.Core/Bindings/Audit.cs` implements `InMemoryAuditSink.HasBindingAuditSince(...)` by checking binding id, capability, effect, resource id, required fields, and for failures only `(success || e.ErrorCode is not null)`. It does not require `e.ErrorCode == errorCode` for the failure being handled.
+`src/DotBoxd.Kernels/Bindings/Audit.cs` implements `InMemoryAuditSink.HasBindingAuditSince(...)` by checking binding id, capability, effect, resource id, required fields, and for failures only `(success || e.ErrorCode is not null)`. It does not require `e.ErrorCode == errorCode` for the failure being handled.
 
 A binding can therefore write a structurally valid failed `BindingCall` audit with `ErrorCode = SandboxErrorCode.NotFound` and then throw `new SandboxRuntimeException(new SandboxError(SandboxErrorCode.QuotaExceeded, ...))`. The runtime sees a failed audit since the checkpoint and does not synthesize the correct `QuotaExceeded` failure audit, so the returned `SandboxExecutionResult.Error.Code` and the binding audit evidence disagree.
 

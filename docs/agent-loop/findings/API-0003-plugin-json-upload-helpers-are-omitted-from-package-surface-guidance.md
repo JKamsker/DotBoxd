@@ -25,7 +25,7 @@ duplicate_of:
 
 ## Claim
 
-The package surface guidance does not tell plugin hosts that the production JSON package upload APIs live in `SafeIR.Serialization.Json`, not `SafeIR.Plugins`. A consumer following the README package list can reasonably install/reference `SafeIR.Plugins` for plugin manifest, hook, kernel, and message-binding APIs, then fail to find `PluginPackageJsonSerializer` or `InstallJsonAsync` from the addendum upload snippets.
+The package surface guidance does not tell plugin hosts that the production JSON package upload APIs live in `DotBoxd.Kernels.Serialization.Json`, not `DotBoxd.Plugins`. A consumer following the README package list can reasonably install/reference `DotBoxd.Plugins` for plugin manifest, hook, kernel, and message-binding APIs, then fail to find `PluginPackageJsonSerializer` or `InstallJsonAsync` from the addendum upload snippets.
 
 ## Why this matters
 
@@ -33,19 +33,19 @@ The addendum positions JSON package upload as the production boundary. If the pa
 
 ## Evidence
 
-- `README.md:12` describes `SafeIR.Serialization.Json` only as "JSON IR importer and host import extensions".
-- `README.md:19` describes `SafeIR.Plugins` as the package for live plugin manifest, hook, kernel, and message-binding APIs.
-- `src/SafeIR.Serialization.Json/SafeIR.Serialization.Json.csproj` references `SafeIR.Plugins`, while `src/SafeIR.Plugins/SafeIR.Plugins.csproj` does not reference `SafeIR.Serialization.Json`; the JSON upload helpers are therefore in the JSON addon package boundary.
-- `src/SafeIR.Serialization.Json/PluginPackageJsonSerializer.cs:7` defines `PluginPackageJsonSerializer`, and `src/SafeIR.Serialization.Json/PluginPackageJsonSerializer.cs:315` defines `PluginServerJsonExtensions.InstallJsonAsync`.
-- `docs/Specs/Addendum/Examples.md:245` and `docs/Specs/Addendum/Examples.md:249` show `PluginPackageJsonSerializer.Export` and `server.InstallJsonAsync`, but the surrounding setup does not call out the required `SafeIR.Serialization.Json` package/reference/namespace.
+- `README.md:12` describes `DotBoxd.Kernels.Serialization.Json` only as "JSON IR importer and host import extensions".
+- `README.md:19` describes `DotBoxd.Plugins` as the package for live plugin manifest, hook, kernel, and message-binding APIs.
+- `src/DotBoxd.Kernels.Serialization.Json/DotBoxd.Kernels.Serialization.Json.csproj` references `DotBoxd.Plugins`, while `src/DotBoxd.Plugins/DotBoxd.Plugins.csproj` does not reference `DotBoxd.Kernels.Serialization.Json`; the JSON upload helpers are therefore in the JSON addon package boundary.
+- `src/DotBoxd.Kernels.Serialization.Json/PluginPackageJsonSerializer.cs:7` defines `PluginPackageJsonSerializer`, and `src/DotBoxd.Kernels.Serialization.Json/PluginPackageJsonSerializer.cs:315` defines `PluginServerJsonExtensions.InstallJsonAsync`.
+- `docs/Specs/Addendum/Examples.md:245` and `docs/Specs/Addendum/Examples.md:249` show `PluginPackageJsonSerializer.Export` and `server.InstallJsonAsync`, but the surrounding setup does not call out the required `DotBoxd.Kernels.Serialization.Json` package/reference/namespace.
 
 ## Suggested test or benchmark
 
-Add a consumer-facing compile/API test or docs smoke fixture for the production upload snippet that references the intended package set and imports the intended public namespace. The test should fail if only `SafeIR.Plugins` is referenced for `PluginPackageJsonSerializer`/`InstallJsonAsync`, and the docs should explicitly include `SafeIR.Serialization.Json` for the upload path.
+Add a consumer-facing compile/API test or docs smoke fixture for the production upload snippet that references the intended package set and imports the intended public namespace. The test should fail if only `DotBoxd.Plugins` is referenced for `PluginPackageJsonSerializer`/`InstallJsonAsync`, and the docs should explicitly include `DotBoxd.Kernels.Serialization.Json` for the upload path.
 
 ## Suggested fix direction
 
-Update `README.md` current package descriptions and the addendum upload/setup section to state that plugin JSON export/import and `InstallJsonAsync` are provided by `SafeIR.Serialization.Json`. Include the expected `using SafeIR.Serialization.Json;` and package/project reference in the production upload snippet.
+Update `README.md` current package descriptions and the addendum upload/setup section to state that plugin JSON export/import and `InstallJsonAsync` are provided by `DotBoxd.Kernels.Serialization.Json`. Include the expected `using DotBoxd.Kernels.Serialization.Json;` and package/project reference in the production upload snippet.
 
 ## Scope boundaries
 

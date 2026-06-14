@@ -29,20 +29,20 @@ Public direct plugin kernel invocation bypasses the server-side event adapter wh
 
 ## Evidence
 
-- `src/SafeIR.Plugins/Runtime/HookRegistry.cs:107` calls `kernel.ValidateFor(_adapter)` before adding a kernel to a hook pipeline.
-- `src/SafeIR.Plugins/Runtime/KernelEntrypointValidator.cs:13` rejects adapters whose `EventName` is not present in `manifest.Subscriptions`, and it also validates the entrypoint parameter shape against the adapter and live settings.
-- `src/SafeIR.Plugins/InstalledKernel.cs:99` (`ShouldHandleAsync`) and `src/SafeIR.Plugins/InstalledKernel.cs:118` (`HandleAsync`) accept an arbitrary `IPluginEventAdapter<TEvent>`, build input, and execute the prepared entrypoint without calling `ValidateFor(adapter)`.
-- `src/SafeIR.Plugins/InstalledKernel.cs:242` exposes the validation helper, but only the hook pipeline path uses it.
-- `src/SafeIR.Plugins/Runtime/PluginPreparedPackageValidator.cs:124` through `src/SafeIR.Plugins/Runtime/PluginPreparedPackageValidator.cs:132` skips exact adapter parameter validation when the server has not registered an adapter shape for the manifest event. In that case, the direct public methods become the first runtime boundary that sees the caller-supplied adapter, but they do not enforce the manifest subscription or expected shape.
+- `src/DotBoxd.Plugins/Runtime/HookRegistry.cs:107` calls `kernel.ValidateFor(_adapter)` before adding a kernel to a hook pipeline.
+- `src/DotBoxd.Plugins/Runtime/KernelEntrypointValidator.cs:13` rejects adapters whose `EventName` is not present in `manifest.Subscriptions`, and it also validates the entrypoint parameter shape against the adapter and live settings.
+- `src/DotBoxd.Plugins/InstalledKernel.cs:99` (`ShouldHandleAsync`) and `src/DotBoxd.Plugins/InstalledKernel.cs:118` (`HandleAsync`) accept an arbitrary `IPluginEventAdapter<TEvent>`, build input, and execute the prepared entrypoint without calling `ValidateFor(adapter)`.
+- `src/DotBoxd.Plugins/InstalledKernel.cs:242` exposes the validation helper, but only the hook pipeline path uses it.
+- `src/DotBoxd.Plugins/Runtime/PluginPreparedPackageValidator.cs:124` through `src/DotBoxd.Plugins/Runtime/PluginPreparedPackageValidator.cs:132` skips exact adapter parameter validation when the server has not registered an adapter shape for the manifest event. In that case, the direct public methods become the first runtime boundary that sees the caller-supplied adapter, but they do not enforce the manifest subscription or expected shape.
 
 ## Risk
 
-SafeIR's plugin model treats hook subscriptions and server event adapters as the whitelist for which server events a plugin may observe. A host or integration that uses the public direct `InstalledKernel.ShouldHandleAsync` / `HandleAsync` helpers can execute a plugin for an event adapter that is not in the plugin manifest, as long as the adapter produces values compatible with the IR entrypoint. That bypasses the same verifier boundary enforced by `HookPipeline.UseKernel` and weakens explicit server whitelisting for direct invocation callers.
+DotBoxd.Kernels's plugin model treats hook subscriptions and server event adapters as the whitelist for which server events a plugin may observe. A host or integration that uses the public direct `InstalledKernel.ShouldHandleAsync` / `HandleAsync` helpers can execute a plugin for an event adapter that is not in the plugin manifest, as long as the adapter produces values compatible with the IR entrypoint. That bypasses the same verifier boundary enforced by `HookPipeline.UseKernel` and weakens explicit server whitelisting for direct invocation callers.
 
 ## Suggested acceptance tests
 
-- Installing a package subscribed to `DamageEvent`, then calling `kernel.HandleAsync` with an adapter whose `EventName` is `AdminEvent` but whose values match the entrypoint parameter types, must throw `SandboxValidationException` with `SGP031` and must not invoke side-effect bindings such as `game.message.send`.
-- Calling `kernel.ShouldHandleAsync` with a subscribed event name but adapter `Parameters` that do not exactly match the installed entrypoints must throw `SandboxValidationException` with `SGP033` before sandbox execution.
+- Installing a package subscribed to `DamageEvent`, then calling `kernel.HandleAsync` with an adapter whose `EventName` is `AdminEvent` but whose values match the entrypoint parameter types, must throw `SandboxValidationException` with `DBXK031` and must not invoke side-effect bindings such as `game.message.send`.
+- Calling `kernel.ShouldHandleAsync` with a subscribed event name but adapter `Parameters` that do not exactly match the installed entrypoints must throw `SandboxValidationException` with `DBXK033` before sandbox execution.
 - Keep an existing hook-pipeline test showing `server.Hooks.On(adapter).UseKernel(kernel)` still validates once at registration and then executes normally.
 
 ## Expected behavior

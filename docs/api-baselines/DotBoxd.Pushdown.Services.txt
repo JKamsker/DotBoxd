@@ -1,0 +1,17 @@
+# DotBoxd.Kernels public API baseline
+# Package: DotBoxd.Pushdown.Services
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+public sealed record DotBoxdNamedPipeOptions(bool AllowUnsafeLowEntropyName = false)
+public static class DotBoxdDotBoxdRpcMessagePackIpc
+public static DotBoxdNamedPipeOptions Default { get; } = new()
+public static DotBoxdNamedPipeOptions UnsafeDevelopment { get; } = new(AllowUnsafeLowEntropyName: true)
+public static RpcHost Listen( IServerTransport transport, Action<RpcPeer> configurePeer, RpcPeerOptions? options = null)
+public static RpcHost ListenNamedPipe( string pipeName, Action<RpcPeer> configurePeer, DotBoxdNamedPipeOptions namedPipeOptions, RpcPeerOptions? options = null)
+public static RpcHost ListenNamedPipe( string pipeName, Action<RpcPeer> configurePeer, RpcPeerOptions? options = null)
+public static Task<RpcPeerSession> ConnectAsync( ITransport transport, Action<RpcPeer> configurePeer, RpcPeerOptions? options = null, CancellationToken cancellationToken = default)
+public static Task<RpcPeerSession> ConnectAsync( ITransport transport, RpcPeerOptions? options = null, CancellationToken cancellationToken = default)
+public static Task<RpcPeerSession> ConnectNamedPipeAsync( string pipeName, DotBoxdNamedPipeOptions namedPipeOptions, RpcPeerOptions? options = null, CancellationToken cancellationToken = default)
+public static Task<RpcPeerSession> ConnectNamedPipeAsync( string pipeName, RpcPeerOptions? options = null, CancellationToken cancellationToken = default)
+public static Task<RpcPeerSession> ConnectNamedPipeAsync( string serverName, string pipeName, DotBoxdNamedPipeOptions namedPipeOptions, RpcPeerOptions? options = null, CancellationToken cancellationToken = default)
+public static Task<RpcPeerSession> ConnectNamedPipeAsync( string serverName, string pipeName, RpcPeerOptions? options = null, CancellationToken cancellationToken = default)

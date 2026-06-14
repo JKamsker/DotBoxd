@@ -29,9 +29,9 @@ The interpreter allocates a string-keyed local dictionary for every function inv
 
 ## Evidence
 
-- `src/SafeIR.Interpreter/InterpreterEvaluator.cs` calls `InterpreterFrame.Create(function, args)` at the start of every `InvokeFunctionAsync`.
-- `src/SafeIR.Interpreter/InterpreterFrame.cs` allocates `new Dictionary<string, SandboxValue>(StringComparer.Ordinal)` and populates parameters by name for every frame.
-- `src/SafeIR.Interpreter/ExpressionEvaluator.cs` resolves helper calls through `_interpreter.InvokeFunctionAsync(function, args)`, so loops that call small helpers allocate one local dictionary per helper invocation.
+- `src/DotBoxd.Kernels.Interpreter/InterpreterEvaluator.cs` calls `InterpreterFrame.Create(function, args)` at the start of every `InvokeFunctionAsync`.
+- `src/DotBoxd.Kernels.Interpreter/InterpreterFrame.cs` allocates `new Dictionary<string, SandboxValue>(StringComparer.Ordinal)` and populates parameters by name for every frame.
+- `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs` resolves helper calls through `_interpreter.InvokeFunctionAsync(function, args)`, so loops that call small helpers allocate one local dictionary per helper invocation.
 - Local reads and writes use `frame.Locals[...]` in `ExpressionEvaluator` and `InterpreterEvaluator`, keeping the runtime path tied to string hashing even though validation has already seen the function's local/parameter names.
 - Existing `PAL-0038` covers the caller-side argument list allocation. This finding is the callee frame/local storage allocation that remains after argument list allocation is removed.
 

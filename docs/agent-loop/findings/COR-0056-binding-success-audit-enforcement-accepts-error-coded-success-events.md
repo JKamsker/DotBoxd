@@ -29,11 +29,11 @@ Required binding success audit enforcement accepts successful binding audit even
 
 ## Evidence
 
-`src/SafeIR.Core/Sandbox/SandboxContext.cs` calls `Audit.HasBindingAuditSince(descriptor, checkpoint, success: true, RunId, ModuleHash, PolicyHash)` from `EnsureRequiredBindingSuccessAudit(...)` after a binding returns successfully.
+`src/DotBoxd.Kernels/Sandbox/SandboxContext.cs` calls `Audit.HasBindingAuditSince(descriptor, checkpoint, success: true, RunId, ModuleHash, PolicyHash)` from `EnsureRequiredBindingSuccessAudit(...)` after a binding returns successfully.
 
-`src/SafeIR.Core/Bindings/Audit.cs` implements `InMemoryAuditSink.HasBindingAuditSince(...)` by checking sequence number, run id, `e.Success == success`, binding id, capability, effect, resource id, and required fields. The final predicate is `(success || e.ErrorCode is not null)`, so when `success` is true the check does not require `e.ErrorCode` to be null.
+`src/DotBoxd.Kernels/Bindings/Audit.cs` implements `InMemoryAuditSink.HasBindingAuditSince(...)` by checking sequence number, run id, `e.Success == success`, binding id, capability, effect, resource id, and required fields. The final predicate is `(success || e.ErrorCode is not null)`, so when `success` is true the check does not require `e.ErrorCode` to be null.
 
-By contrast, worker audit validation in `src/SafeIR.Hosting/WorkerAuditValidator.cs` explicitly rejects contradictory audit events with `(auditEvent.Success && auditEvent.ErrorCode is not null)`. The in-process required binding audit gate has no equivalent check before accepting the event as satisfying the binding's audit requirement.
+By contrast, worker audit validation in `src/DotBoxd.Hosting/WorkerAuditValidator.cs` explicitly rejects contradictory audit events with `(auditEvent.Success && auditEvent.ErrorCode is not null)`. The in-process required binding audit gate has no equivalent check before accepting the event as satisfying the binding's audit requirement.
 
 This is distinct from `COR-0055`, which covers failed binding audits whose error code does not match the thrown error. This issue covers successful binding calls that can be audited as both successful and error-bearing.
 

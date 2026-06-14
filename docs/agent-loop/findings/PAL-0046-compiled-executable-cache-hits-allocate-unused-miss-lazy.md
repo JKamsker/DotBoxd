@@ -29,10 +29,10 @@ Warm `CompiledExecutableCache` hits still allocate a miss candidate on every loo
 
 ## Evidence
 
-- `src/SafeIR.Hosting/Execution/CompiledExecutableCache.cs:33` through `src/SafeIR.Hosting/Execution/CompiledExecutableCache.cs:38` validate the artifact and then allocate a fresh `Lazy<Task<MaterializedCompiledArtifact>>` candidate with a materialization lambda for every call.
-- `src/SafeIR.Hosting/Execution/CompiledExecutableCache.cs:43` calls `_entries.GetOrAdd(key, candidate)`. On a cache hit, the existing lazy is returned and the newly allocated candidate is discarded.
-- `src/SafeIR.Hosting/Execution/CompiledExecutableCache.cs:46` classifies hit/miss by comparing the returned lazy with that candidate, confirming the candidate is created even when it is only needed for the miss case.
-- `src/SafeIR.Hosting/Execution/SandboxHost.cs:19` stores a host-lifetime `CompiledExecutableCache`, and `src/SafeIR.Hosting/Execution/SandboxHost.cs:234` through `src/SafeIR.Hosting/Execution/SandboxHost.cs:237` calls `GetAsync` for compiled execution before running the cached delegate.
+- `src/DotBoxd.Hosting/Execution/CompiledExecutableCache.cs:33` through `src/DotBoxd.Hosting/Execution/CompiledExecutableCache.cs:38` validate the artifact and then allocate a fresh `Lazy<Task<MaterializedCompiledArtifact>>` candidate with a materialization lambda for every call.
+- `src/DotBoxd.Hosting/Execution/CompiledExecutableCache.cs:43` calls `_entries.GetOrAdd(key, candidate)`. On a cache hit, the existing lazy is returned and the newly allocated candidate is discarded.
+- `src/DotBoxd.Hosting/Execution/CompiledExecutableCache.cs:46` classifies hit/miss by comparing the returned lazy with that candidate, confirming the candidate is created even when it is only needed for the miss case.
+- `src/DotBoxd.Hosting/Execution/SandboxHost.cs:19` stores a host-lifetime `CompiledExecutableCache`, and `src/DotBoxd.Hosting/Execution/SandboxHost.cs:234` through `src/DotBoxd.Hosting/Execution/SandboxHost.cs:237` calls `GetAsync` for compiled execution before running the cached delegate.
 - Existing `ALG-0017` covers full artifact hashing and cache-key reconstruction before host-local materialized-cache hits. Existing `PAL-0031` covers unbounded retention of materialized executables. This finding is separate: even after hit validation is made cheap and retention is bounded, the hit path still allocates an unused miss `Lazy` and closure per lookup.
 
 ## Impact

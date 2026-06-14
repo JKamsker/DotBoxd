@@ -29,9 +29,9 @@ Both interpreted and compiled binding dispatch create a linked wall-time `Cancel
 
 ## Evidence
 
-- `src/SafeIR.Core/Sandbox/SandboxContext.cs:245` through `src/SafeIR.Core/Sandbox/SandboxContext.cs:249` implements `CreateWallTimeToken()` by always calling `CancellationTokenSource.CreateLinkedTokenSource(CancellationToken)` and then `CancelAfter(Budget.RemainingWallTime())`.
-- `src/SafeIR.Interpreter/ExpressionEvaluator.cs:181` through `src/SafeIR.Interpreter/ExpressionEvaluator.cs:186` calls `CreateWallTimeToken()` for every interpreted binding invocation before awaiting `descriptor.Invoke(...)`.
-- `src/SafeIR.Runtime/CompiledBindingDispatcher.cs:22` through `src/SafeIR.Runtime/CompiledBindingDispatcher.cs:27` does the same for every compiled binding invocation before synchronously reading the binding result.
+- `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:245` through `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:249` implements `CreateWallTimeToken()` by always calling `CancellationTokenSource.CreateLinkedTokenSource(CancellationToken)` and then `CancelAfter(Budget.RemainingWallTime())`.
+- `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:181` through `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:186` calls `CreateWallTimeToken()` for every interpreted binding invocation before awaiting `descriptor.Invoke(...)`.
+- `src/DotBoxd.Kernels.Runtime/CompiledBindingDispatcher.cs:22` through `src/DotBoxd.Kernels.Runtime/CompiledBindingDispatcher.cs:27` does the same for every compiled binding invocation before synchronously reading the binding result.
 - Many built-in bindings are cheap and usually complete synchronously, so this timer/linked-token allocation sits on the fast path before binding work actually starts.
 - Existing `PAL-0036` covers plugin kernel entrypoint cancellation linking, `PAL-0037` covers compiled `ValueTask.AsTask()` boxing, and `PAL-0013` covers compiled argument arrays. This finding is the independent per-binding wall-time CTS/timer allocation shared by interpreted and compiled binding dispatch.
 

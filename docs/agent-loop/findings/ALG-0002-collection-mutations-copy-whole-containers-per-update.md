@@ -29,11 +29,11 @@ List and map mutation APIs copy the entire collection on every single update in 
 
 ## Evidence
 
-- Interpreted `list.add` copies all existing values with `source.Values.ToList()` at `src/SafeIR.Interpreter/Internal/CollectionOperations.cs:47`, then wraps the new list at `src/SafeIR.Interpreter/Internal/CollectionOperations.cs:49`.
-- Interpreted `map.set` and `map.remove` copy the whole dictionary at `src/SafeIR.Interpreter/Internal/CollectionOperations.cs:95` and `src/SafeIR.Interpreter/Internal/CollectionOperations.cs:109`.
-- Compiled mode mirrors the same behavior: `CompiledRuntime.ListAdd` copies with `source.Values.ToList()` at `src/SafeIR.Runtime/CompiledRuntime.cs:184`, while `MapSet` and `MapRemove` copy whole dictionaries at `src/SafeIR.Runtime/CompiledRuntime.cs:225` and `src/SafeIR.Runtime/CompiledRuntime.cs:239`.
-- Existing collection tests validate single-operation behavior and quota accounting, for example `tests/SafeIR.Tests/Misc06/SafeCollectionTests.cs:131` and `tests/SafeIR.Tests/Misc07/SafeMapCollectionTests.cs:258`, but there is no throughput/allocation benchmark for repeated growth.
-- The benchmark project currently only contains IPC benchmarks under `benchmarks/SafeIR.Benchmarks/Ipc`, leaving collection growth unmeasured.
+- Interpreted `list.add` copies all existing values with `source.Values.ToList()` at `src/DotBoxd.Kernels.Interpreter/Internal/CollectionOperations.cs:47`, then wraps the new list at `src/DotBoxd.Kernels.Interpreter/Internal/CollectionOperations.cs:49`.
+- Interpreted `map.set` and `map.remove` copy the whole dictionary at `src/DotBoxd.Kernels.Interpreter/Internal/CollectionOperations.cs:95` and `src/DotBoxd.Kernels.Interpreter/Internal/CollectionOperations.cs:109`.
+- Compiled mode mirrors the same behavior: `CompiledRuntime.ListAdd` copies with `source.Values.ToList()` at `src/DotBoxd.Kernels.Runtime/CompiledRuntime.cs:184`, while `MapSet` and `MapRemove` copy whole dictionaries at `src/DotBoxd.Kernels.Runtime/CompiledRuntime.cs:225` and `src/DotBoxd.Kernels.Runtime/CompiledRuntime.cs:239`.
+- Existing collection tests validate single-operation behavior and quota accounting, for example `tests/DotBoxd.Kernels.Tests/Misc06/SafeCollectionTests.cs:131` and `tests/DotBoxd.Kernels.Tests/Misc07/SafeMapCollectionTests.cs:258`, but there is no throughput/allocation benchmark for repeated growth.
+- The benchmark project currently only contains IPC benchmarks under `benchmarks/DotBoxd.Kernels.Benchmarks/Ipc`, leaving collection growth unmeasured.
 
 ## Impact
 

@@ -54,7 +54,7 @@ value-passing protocol, one module contract, the gate runs before the kernel bod
 
 **Type constraint (unchanged from plan B3).** `UseKernel<T>()` is offered only while the flowing
 element is still `TEvent` (a kernel consumes the original event via its adapter). `Select` to a
-different type *then* `UseKernel<T>()` is a diagnostic (`SGP1xx`); after a `Select` the terminal must
+different type *then* `UseKernel<T>()` is a diagnostic (`DBXK1xx`); after a `Select` the terminal must
 be `InvokeKernel`/`InvokeLocal`.
 
 **Why this is strictly better than `filter:`** — it unifies the surface (one way to gate), it makes
@@ -70,7 +70,7 @@ goes away, its kernel goes away too (`IDisposable`, server-side IPC watching).
 ### 2.1 The vulnerability today
 
 `KernelRegistry` is keyed by `pluginId` **string only**, with no owner identity
-([PluginServer.cs:115-209](../../../src/SafeIR.Plugins/PluginServer.cs)). Worse, `Add` *silently
+([PluginServer.cs:115-209](../../../src/DotBoxd.Plugins/PluginServer.cs)). Worse, `Add` *silently
 revokes and replaces* any incumbent with the same id:
 
 ```csharp
@@ -94,7 +94,7 @@ Introduce a server-side **`PluginSession : IDisposable`**, one per *authenticate
 (identity from §4). A session owns the kernels it installs; disposing it revokes them.
 
 ```csharp
-namespace SafeIR.Plugins;
+namespace DotBoxd.Plugins;
 
 /// <summary>
 /// Server-side owner of every kernel installed over one authenticated connection. Disposing the
@@ -153,7 +153,7 @@ internal void Add(InstalledKernel kernel)
             && existing.OwnerId != kernel.OwnerId)
         {
             throw new SandboxValidationException([ new SandboxDiagnostic(
-                "SGP060",
+                "DBXK060",
                 $"plugin id '{kernel.Manifest.PluginId}' is owned by another session and cannot be replaced.") ]);
         }
         _kernels[kernel.Manifest.PluginId] = kernel;   // same-owner reinstall (hot reload) still allowed
@@ -170,12 +170,12 @@ internal void Add(InstalledKernel kernel)
 
 ### 2.4 Disconnect = revoke (the "IPC watching" part)
 
-The control service is created **per peer** and bound to a session; when the ShaRPC peer disconnects,
-the session is disposed. ShaRPC's `ForEachPeer` gives the per-connection hook
-([SafeIrShaRpcMessagePackIpc.cs:41-49](../../../src/SafeIR.Transport.Ipc.ShaRpc/SafeIrShaRpcMessagePackIpc.cs)):
+The control service is created **per peer** and bound to a session; when the DotBoxd peer disconnects,
+the session is disposed. DotBoxd's `ForEachPeer` gives the per-connection hook
+([DotBoxdDotBoxdRpcMessagePackIpc.cs:41-49](../../../src/DotBoxd.Pushdown.Services/DotBoxdDotBoxdRpcMessagePackIpc.cs)):
 
 ```csharp
-await using var host = SafeIrShaRpcMessagePackIpc.ListenNamedPipe(pipeName, peer =>
+await using var host = DotBoxdDotBoxdRpcMessagePackIpc.ListenNamedPipe(pipeName, peer =>
 {
     var identity = authenticator.Authenticate(peer);          // §4
     var session  = pluginServer.CreateSession(identity);
@@ -184,15 +184,15 @@ await using var host = SafeIrShaRpcMessagePackIpc.ListenNamedPipe(pipeName, peer
 });
 ```
 
-> **Integration point to verify (flagged for critique).** The exact ShaRPC disconnect hook
+> **Integration point to verify (flagged for critique).** The exact DotBoxd disconnect hook
 > (`peer.OnDisconnected`/session-completion task/`IDisposable` on the peer) must be confirmed against
-> the ShaRPC package — it is referenced as a NuGet dependency, not vendored, so the precise name is
+> the DotBoxd package — it is referenced as a NuGet dependency, not vendored, so the precise name is
 > unverified here. If no event exists, fall back to a heartbeat/keepalive timeout owned by the
 > control service. The *design* (session disposal revokes owned kernels) is transport-agnostic.
 
 **Revocation already exists.** `InstalledKernel.Revoke()` cancels a per-kernel `CancellationTokenSource`
 and every entrypoint checks `IsRevoked` under the execution gate
-([InstalledKernel.cs:46-54, 107-178](../../../src/SafeIR.Plugins/InstalledKernel.cs)). **[already
+([InstalledKernel.cs:46-54, 107-178](../../../src/DotBoxd.Plugins/InstalledKernel.cs)). **[already
 exists]** — sessions just need to call it on dispose. No new revocation machinery.
 
 ---
@@ -203,7 +203,7 @@ exists]** — sessions just need to call it on dispose. No new revocation machin
 
 **Answer: it is already optional. [already exists]** `PluginEventAdapterRegistry.Resolve<T>()` falls
 back to a `ConventionEventAdapter<T>` when no adapter is registered
-([PluginEventAdapterRegistry.cs:15-24, 73-271](../../../src/SafeIR.Plugins/Runtime/PluginEventAdapterRegistry.cs)).
+([PluginEventAdapterRegistry.cs:15-24, 73-271](../../../src/DotBoxd.Plugins/Runtime/PluginEventAdapterRegistry.cs)).
 The convention adapter:
 - reads public readable properties in **constructor/metadata order** (so positional records work),
 - infers each sandbox parameter name as `e_<PropertyName>`,
@@ -213,7 +213,7 @@ So the hand-written adapter in the walkthroughs is pure boilerplate and should b
 example**. The events collapse to plain records:
 
 ```csharp
-// SafeIR.Game.Server.Abstractions — this is the whole thing now.
+// DotBoxd.Kernels.Game.Server.Abstractions — this is the whole thing now.
 public sealed record MonsterAggroEvent(string MonsterId, string PlayerId, int Distance, int MonsterLevel, int PlayerLevel);
 public sealed record AttackEvent(string AttackerId, string TargetId, int Damage, int AttackerLevel);
 ```
@@ -224,7 +224,7 @@ adapter class.
 ### 3.1 Two gaps worth closing (proposed, not yet built)
 
 1. **AOT / allocation.** `ConventionEventAdapter` reflects at runtime and compiles a getter expression
-   per property ([…EventAdapterRegistry.cs:261-267](../../../src/SafeIR.Plugins/Runtime/PluginEventAdapterRegistry.cs)).
+   per property ([…EventAdapterRegistry.cs:261-267](../../../src/DotBoxd.Plugins/Runtime/PluginEventAdapterRegistry.cs)).
    For NativeAOT and zero-alloc hot paths, the **analyzer should source-generate** a static adapter
    from the event type (it already inspects the assembly for lowering). The reflection adapter stays
    as the zero-config fallback. Generated adapter is selected automatically via the existing
@@ -243,7 +243,7 @@ adapter class.
    ```
 
    - `[OpaqueId("Foo")]` → emits the property as opaque-id type `Foo` and auto-declares it in the
-     policy (`DeclareOpaqueIdType`, [SandboxPolicyBuilder.cs:102-113](../../../src/SafeIR.Core/Policies/SandboxPolicyBuilder.cs)).
+     policy (`DeclareOpaqueIdType`, [SandboxPolicyBuilder.cs:102-113](../../../src/DotBoxd.Kernels/Policies/SandboxPolicyBuilder.cs)).
    - `[SandboxParam("name")]` → overrides the inferred `e_<Name>`.
    - `[SandboxIgnore]` → drops a property the kernel never reads.
 
@@ -293,7 +293,7 @@ public interface IPluginAuthenticator
 - **`LocalProcessAuthenticator`** (named pipe / stdio, server-spawned). The server *launched* the
   child, so the child is trusted by construction; identity is taken from launch config. Hardening:
   - the pipe name already requires a 128-bit random component
-    ([SafeIrShaRpcMessagePackIpc.cs:122-142](../../../src/SafeIR.Transport.Ipc.ShaRpc/SafeIrShaRpcMessagePackIpc.cs)) —
+    ([DotBoxdDotBoxdRpcMessagePackIpc.cs:122-142](../../../src/DotBoxd.Pushdown.Services/DotBoxdDotBoxdRpcMessagePackIpc.cs)) —
     keep that (it stops other local processes guessing the pipe);
   - tighten the **named-pipe ACL to the current user** so a different local user can't connect;
   - pass a **one-time bootstrap token** to the child (env var / first stdin line) that it echoes on
@@ -305,8 +305,8 @@ public interface IPluginAuthenticator
   `AllowedPluginIds` and `ApprovedGrant` from cert extensions or a management lookup keyed by the
   cert thumbprint). This is the "dev gets a cert from server management" path.
 
-> **Transport note.** TCP/mTLS is not in `SafeIR.Transport.Ipc.ShaRpc` today (pipes only). The
-> authenticator interface is transport-agnostic; a `SafeIR.Transport.Tcp.ShaRpc` with mTLS is the
+> **Transport note.** TCP/mTLS is not in `DotBoxd.Pushdown.Services` today (pipes only). The
+> authenticator interface is transport-agnostic; a `DotBoxd.Kernels.Transport.Tcp.DotBoxdRpc` with mTLS is the
 > implementation vehicle and is **explicitly out of scope for the example** — the design just must not
 > preclude it. Flagged for the simplicity critic (§6): do we build the interface now or only when TCP
 > lands? Proposal: ship the interface + `LocalProcessAuthenticator` now (it's needed for §2 sessions
@@ -343,7 +343,7 @@ public sealed record PluginGrant(
 On install the server: verifies the signature + chain, recomputes the package hash and checks it
 equals `SignedPluginGrant.PackageHash` (so the grant can't be lifted onto a different package), checks
 `NotAfter`. `PackageHash` reuses the existing canonical hashing approach
-(`PolicyHash`/module hashing — [Policy.cs:75](../../../src/SafeIR.Core/Policy.cs) shows the canonical-hash
+(`PolicyHash`/module hashing — [Policy.cs:75](../../../src/DotBoxd.Kernels/Policy.cs) shows the canonical-hash
 pattern already in the codebase). **[partially exists]** — canonical hashing exists; the signing
 envelope + verification is new.
 
@@ -354,7 +354,7 @@ mode" that weakens verification — just a different trusted CA set.
 ### 4.3 Per-plugin effective policy — a resolver, not one default
 
 Replace `PluginServer`'s single `_defaultPolicy`
-([PluginServer.cs:11, 54-58, 81](../../../src/SafeIR.Plugins/PluginServer.cs)) with a resolver. The
+([PluginServer.cs:11, 54-58, 81](../../../src/DotBoxd.Plugins/PluginServer.cs)) with a resolver. The
 effective policy for a kernel is the **intersection (clamp to the minimum)** of every ceiling:
 
 ```csharp
@@ -376,9 +376,9 @@ Resolution rules (all **fail-closed**):
   and the manifest request narrows within it (this is the "trusted local dev, no signing yet" path).
 
 `ResourceLimits` is already an immutable record with every knob
-([ResourceLimits.cs](../../../src/SafeIR.Core/Model/ResourceLimits.cs)), so the clamp is a pure
+([ResourceLimits.cs](../../../src/DotBoxd.Kernels/Model/ResourceLimits.cs)), so the clamp is a pure
 field-wise `Math.Min` producing a new record — no mutation. `SandboxPolicy` is similarly immutable
-with `with` semantics ([Policy.cs:16-75](../../../src/SafeIR.Core/Policy.cs)). **[building blocks
+with `with` semantics ([Policy.cs:16-75](../../../src/DotBoxd.Kernels/Policy.cs)). **[building blocks
 exist]**.
 
 The example's `ServerPolicy.Create()` becomes the **global ceiling** fed to the resolver; per-plugin
@@ -407,7 +407,7 @@ Each arrow is fail-closed: any failure refuses the install and the kernel never 
 **Request.** Mirror the plugin: make the server `Program` a real class.
 
 ```csharp
-namespace SafeIR.Game.Server;
+namespace DotBoxd.Kernels.Game.Server;
 
 internal static class Program
 {
@@ -436,7 +436,7 @@ on `Program`.
    hash (proposed), or sign the package itself and put approved limits inside the signed manifest?
    Trade-off: envelope lets management re-issue limits without a rebuild; signed-manifest is simpler
    but couples limits to the build.
-4. **Disconnect hook** (§2.4): confirm the real ShaRPC peer-lifecycle API; design must not depend on
+4. **Disconnect hook** (§2.4): confirm the real DotBoxd peer-lifecycle API; design must not depend on
    a hook that doesn't exist.
 5. **Clamp vs reject** (§4.3): silently clamp an over-broad manifest request, or reject loudly?
    (Proposal: reject, so misconfiguration is visible — but that can break a plugin when management

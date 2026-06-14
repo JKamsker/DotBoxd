@@ -29,10 +29,10 @@ Compiled binding dispatch forces every binding `ValueTask<SandboxValue>` through
 
 ## Evidence
 
-- `src/SafeIR.Core/Bindings/BindingContracts.cs:3` defines `BindingInvoker` as returning `ValueTask<SandboxValue>`, which lets synchronous bindings return a result without allocating a `Task`.
-- `src/SafeIR.Runtime/CompiledBindingDispatcher.cs:27` invokes the descriptor and immediately calls `.AsTask().GetAwaiter().GetResult()`. For a `ValueTask` completed from a direct result, `AsTask()` has to create a `Task<SandboxValue>` wrapper before the dispatcher can read the result.
-- Built-in low-cost bindings commonly complete synchronously, for example `src/SafeIR.Runtime/Bindings/MathBindings.cs:33`, `src/SafeIR.Runtime/Bindings/StringBindings.cs:14`, `src/SafeIR.Runtime/Bindings/SafeRandomBindings.cs:33`, `src/SafeIR.Runtime/Bindings/SafeTimeBindings.cs:31`, and `src/SafeIR.Runtime/Bindings/SafeLogBindings.cs:25` all return `ValueTask.FromResult(...)` or `ValueTask.CompletedTask`-style results.
-- The interpreted dispatcher does not force this conversion: `src/SafeIR.Interpreter/ExpressionEvaluator.cs:186` awaits `descriptor.Invoke(...)` directly, preserving the `ValueTask` fast path.
+- `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:3` defines `BindingInvoker` as returning `ValueTask<SandboxValue>`, which lets synchronous bindings return a result without allocating a `Task`.
+- `src/DotBoxd.Kernels.Runtime/CompiledBindingDispatcher.cs:27` invokes the descriptor and immediately calls `.AsTask().GetAwaiter().GetResult()`. For a `ValueTask` completed from a direct result, `AsTask()` has to create a `Task<SandboxValue>` wrapper before the dispatcher can read the result.
+- Built-in low-cost bindings commonly complete synchronously, for example `src/DotBoxd.Kernels.Runtime/Bindings/MathBindings.cs:33`, `src/DotBoxd.Kernels.Runtime/Bindings/StringBindings.cs:14`, `src/DotBoxd.Kernels.Runtime/Bindings/SafeRandomBindings.cs:33`, `src/DotBoxd.Kernels.Runtime/Bindings/SafeTimeBindings.cs:31`, and `src/DotBoxd.Kernels.Runtime/Bindings/SafeLogBindings.cs:25` all return `ValueTask.FromResult(...)` or `ValueTask.CompletedTask`-style results.
+- The interpreted dispatcher does not force this conversion: `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:186` awaits `descriptor.Invoke(...)` directly, preserving the `ValueTask` fast path.
 - Existing `PAL-0013` covers compiled binding argument-array allocation, `ALG-0010` covers per-call argument revalidation, and `PAL-0036` covers cancellation token linking. This finding is separate: even after those are fixed, compiled synchronous binding dispatch still allocates through `ValueTask.AsTask()`.
 
 ## Impact

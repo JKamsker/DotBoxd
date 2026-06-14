@@ -29,9 +29,9 @@ Worker-process run-summary validation accepts forged cache and materialization s
 
 ## Evidence
 
-- `src/SafeIR.Hosting/SandboxWorkerExecutor.cs` validates worker run summaries in `WorkerRunSummaryMatches(...)`, but it only checks `HasNonEmptyField(summary, "cacheStatus")`. For interpreted results it rejects compiled-only fields, but still accepts any cache status text. For compiled success it checks `artifactHash`, `runtimeForm`, and `cacheKey`, but it never validates `cacheStatus` or a present `materializationStatus` value.
-- `src/SafeIR.Hosting/WorkerAuditValidator.cs` explicitly whitelists `materializationStatus` as an allowed run-summary field and only requires field values to be control-character-free.
-- In-process summaries are produced from trusted state: `src/SafeIR.Hosting/Execution/CompiledExecutionRunner.cs` writes `artifact.CacheStatus.ToString()` and the cache materialization status into `RunSummaryAuditFields.Create(...)`. The worker boundary instead trusts the worker-supplied strings after the shallow checks above.
+- `src/DotBoxd.Hosting/SandboxWorkerExecutor.cs` validates worker run summaries in `WorkerRunSummaryMatches(...)`, but it only checks `HasNonEmptyField(summary, "cacheStatus")`. For interpreted results it rejects compiled-only fields, but still accepts any cache status text. For compiled success it checks `artifactHash`, `runtimeForm`, and `cacheKey`, but it never validates `cacheStatus` or a present `materializationStatus` value.
+- `src/DotBoxd.Hosting/WorkerAuditValidator.cs` explicitly whitelists `materializationStatus` as an allowed run-summary field and only requires field values to be control-character-free.
+- In-process summaries are produced from trusted state: `src/DotBoxd.Hosting/Execution/CompiledExecutionRunner.cs` writes `artifact.CacheStatus.ToString()` and the cache materialization status into `RunSummaryAuditFields.Create(...)`. The worker boundary instead trusts the worker-supplied strings after the shallow checks above.
 
 ## Impact
 

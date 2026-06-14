@@ -10,7 +10,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$root = Split-Path -Parent $PSScriptRoot
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $projectPath = if ([System.IO.Path]::IsPathRooted($Project)) {
     $Project
 } else {

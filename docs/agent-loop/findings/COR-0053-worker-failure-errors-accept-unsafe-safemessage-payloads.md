@@ -29,11 +29,11 @@ Host-side worker result validation accepts failed worker results with arbitrary 
 
 ## Evidence
 
-`src/SafeIR.Hosting/SandboxWorkerExecutor.cs` validates failed worker payloads in `WorkerPayloadMatches(...)` with only `result.Value is null`, `result.Error is not null`, and `Enum.IsDefined(result.Error.Code)`. It does not validate `result.Error.SafeMessage` or `result.Error.DiagnosticId` for null/empty values, control characters, excessive length, or secret-shaped text.
+`src/DotBoxd.Hosting/SandboxWorkerExecutor.cs` validates failed worker payloads in `WorkerPayloadMatches(...)` with only `result.Value is null`, `result.Error is not null`, and `Enum.IsDefined(result.Error.Code)`. It does not validate `result.Error.SafeMessage` or `result.Error.DiagnosticId` for null/empty values, control characters, excessive length, or secret-shaped text.
 
-`src/SafeIR.Core/Sandbox/SandboxError.cs` defines `SandboxError` as a public record with `SandboxErrorCode Code`, `string SafeMessage`, and optional `string? DiagnosticId`; there is no constructor guard on those text fields. `src/SafeIR.Core/Model/Diagnostics.cs` also forwards `error.SafeMessage` to `SandboxRuntimeException.Message`, reinforcing that this field is expected to be safe for host-facing diagnostics.
+`src/DotBoxd.Kernels/Sandbox/SandboxError.cs` defines `SandboxError` as a public record with `SandboxErrorCode Code`, `string SafeMessage`, and optional `string? DiagnosticId`; there is no constructor guard on those text fields. `src/DotBoxd.Kernels/Model/Diagnostics.cs` also forwards `error.SafeMessage` to `SandboxRuntimeException.Message`, reinforcing that this field is expected to be safe for host-facing diagnostics.
 
-The audit validator is stricter for audit envelopes: `src/SafeIR.Hosting/WorkerAuditValidator.cs` rejects audit `Kind`, `ResourceId`, `Message`, field keys, and field values containing control characters. That protection does not apply to the top-level `result.Error` returned to callers from `SandboxWorkerExecutor.ExecuteAsync(...)`.
+The audit validator is stricter for audit envelopes: `src/DotBoxd.Hosting/WorkerAuditValidator.cs` rejects audit `Kind`, `ResourceId`, `Message`, field keys, and field values containing control characters. That protection does not apply to the top-level `result.Error` returned to callers from `SandboxWorkerExecutor.ExecuteAsync(...)`.
 
 This is distinct from the existing worker error-code findings: `COR-0006` and `COR-0022` cover undefined enum values, while this issue covers trusted top-level error text attached to a defined code.
 

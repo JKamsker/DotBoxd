@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>DotBoxd.Kernels plugin-to-host contracts: plugin marker attribute, event kernel, hook context, message sink, and event adapter abstractions.</Description>
+    <PackageTags>dotboxd;sandbox;plugins;contracts;abstractions</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Kernels\DotBoxd.Kernels\DotBoxd.Kernels.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

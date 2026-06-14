@@ -29,8 +29,8 @@ Generated assembly verification hashes the input assembly from `ReadOnlyMemory<b
 
 ## Evidence
 
-- `src/SafeIR.Verifier/Generated/GeneratedAssemblyVerifier.cs:18` computes the assembly hash directly from `assemblyBytes.Span`, proving the input can already be consumed without copying.
-- `src/SafeIR.Verifier/Generated/GeneratedAssemblyVerifier.cs:32` then constructs `new MemoryStream(assemblyBytes.ToArray(), writable: false)`, allocating and copying the complete assembly image before constructing `PEReader`.
+- `src/DotBoxd.Kernels.Verifier/Generated/GeneratedAssemblyVerifier.cs:18` computes the assembly hash directly from `assemblyBytes.Span`, proving the input can already be consumed without copying.
+- `src/DotBoxd.Kernels.Verifier/Generated/GeneratedAssemblyVerifier.cs:32` then constructs `new MemoryStream(assemblyBytes.ToArray(), writable: false)`, allocating and copying the complete assembly image before constructing `PEReader`.
 - `VerifyMetadata` and its callees only read PE metadata and method bodies; they do not mutate or retain the copied array.
 - Existing PAL-0007 covers repeated defensive copies in compiled artifact guard/materialization. This finding is separate: the generated verifier itself performs a full PE copy even when its caller already supplied a `ReadOnlyMemory<byte>` buffer.
 

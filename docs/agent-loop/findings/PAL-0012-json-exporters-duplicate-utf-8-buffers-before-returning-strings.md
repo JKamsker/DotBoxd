@@ -25,15 +25,15 @@ duplicate_of:
 
 ## Claim
 
-`SafeIrJsonExporter.Export` and `PluginPackageJsonSerializer.Export` serialize through a `MemoryStream`, call `ToArray()`, and then decode that copied UTF-8 buffer into the returned string, so large module/package export pays an avoidable full-payload byte-array allocation in addition to the final string.
+`DotBoxdJsonExporter.Export` and `PluginPackageJsonSerializer.Export` serialize through a `MemoryStream`, call `ToArray()`, and then decode that copied UTF-8 buffer into the returned string, so large module/package export pays an avoidable full-payload byte-array allocation in addition to the final string.
 
 ## Evidence
 
-- `src/SafeIR.Serialization.Json/SafeIrJsonExporter.cs:12` creates a fresh `MemoryStream` for every module export.
-- `src/SafeIR.Serialization.Json/SafeIrJsonExporter.cs:13` writes UTF-8 JSON into that stream, then `src/SafeIR.Serialization.Json/SafeIrJsonExporter.cs:16` calls `stream.ToArray()` before `Encoding.UTF8.GetString(...)` creates the returned string.
-- `src/SafeIR.Serialization.Json/PluginPackageJsonSerializer.cs:13` repeats the same `MemoryStream` pattern for plugin packages, and `src/SafeIR.Serialization.Json/PluginPackageJsonSerializer.cs:17` performs the same `ToArray()` plus string decode.
-- `src/SafeIR.Serialization.Json/PluginPackageJsonSerializer.cs:52` embeds module export through `SafeIrJsonExporter.Write`, so package export pays this on the package-sized payload.
-- Existing tests cover round-trip correctness (`tests/SafeIR.Tests/Misc07/SafeIrJsonExporterTests.cs:34`, `tests/SafeIR.Tests/PluginAnalyzer/Core/PluginAnalyzerGeneratedPackageJsonTests.cs:34`), and the benchmark project has `JsonImportBenchmarks` but no JSON export/package export allocation benchmark.
+- `src/DotBoxd.Kernels.Serialization.Json/DotBoxdJsonExporter.cs:12` creates a fresh `MemoryStream` for every module export.
+- `src/DotBoxd.Kernels.Serialization.Json/DotBoxdJsonExporter.cs:13` writes UTF-8 JSON into that stream, then `src/DotBoxd.Kernels.Serialization.Json/DotBoxdJsonExporter.cs:16` calls `stream.ToArray()` before `Encoding.UTF8.GetString(...)` creates the returned string.
+- `src/DotBoxd.Kernels.Serialization.Json/PluginPackageJsonSerializer.cs:13` repeats the same `MemoryStream` pattern for plugin packages, and `src/DotBoxd.Kernels.Serialization.Json/PluginPackageJsonSerializer.cs:17` performs the same `ToArray()` plus string decode.
+- `src/DotBoxd.Kernels.Serialization.Json/PluginPackageJsonSerializer.cs:52` embeds module export through `DotBoxdJsonExporter.Write`, so package export pays this on the package-sized payload.
+- Existing tests cover round-trip correctness (`tests/DotBoxd.Kernels.Tests/Misc07/DotBoxdJsonExporterTests.cs:34`, `tests/DotBoxd.Kernels.Tests/PluginAnalyzer/Core/PluginAnalyzerGeneratedPackageJsonTests.cs:34`), and the benchmark project has `JsonImportBenchmarks` but no JSON export/package export allocation benchmark.
 
 ## Impact
 
@@ -45,4 +45,4 @@ Use a writer that avoids the extra full `ToArray()` copy, such as `ArrayBufferWr
 
 ## Benchmark/allocation test idea
 
-Add BenchmarkDotNet cases for `SafeIrJsonExporter.Export` and `PluginPackageJsonSerializer.Export` with 100, 1,000, and 10,000 statements plus metadata/live settings. Measure allocated bytes and assert export does not allocate an extra byte array proportional to the full output size beyond the returned string.
+Add BenchmarkDotNet cases for `DotBoxdJsonExporter.Export` and `PluginPackageJsonSerializer.Export` with 100, 1,000, and 10,000 statements plus metadata/live settings. Measure allocated bytes and assert export does not allocate an extra byte array proportional to the full output size beyond the returned string.

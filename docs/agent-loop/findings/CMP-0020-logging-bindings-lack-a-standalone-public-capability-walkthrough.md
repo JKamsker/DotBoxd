@@ -25,7 +25,7 @@ duplicate_of:
 
 ## Claim
 
-SafeIR ships sandbox-visible logging bindings and policy/log quota APIs, but there is no standalone public walkthrough or runnable smoke that shows a host registering `log.info`/`log.warn`, granting `log.write`, applying log limits, and inspecting the resulting audit/resource output.
+DotBoxd.Kernels ships sandbox-visible logging bindings and policy/log quota APIs, but there is no standalone public walkthrough or runnable smoke that shows a host registering `log.info`/`log.warn`, granting `log.write`, applying log limits, and inspecting the resulting audit/resource output.
 
 The current docs mention logging in package summaries, specs, and plugin defaults, but they do not prove the logging binding as a first-class runtime feature outside the plugin message examples.
 
@@ -35,13 +35,13 @@ Logging is a user-facing safe API. Hosts need to know that logging requires both
 
 ## Evidence
 
-- `src/SafeIR.Runtime/Bindings/DefaultSandboxBindings.cs:19` exposes `AddLogBindings` for the runtime binding catalog.
-- `src/SafeIR.Runtime/Bindings/SafeLogBindings.cs:7` and `src/SafeIR.Runtime/Bindings/SafeLogBindings.cs:9` define `log.info` and `log.warn`; `src/SafeIR.Runtime/Bindings/SafeLogBindings.cs:18` requires `log.write`, and `src/SafeIR.Runtime/Bindings/SafeLogBindings.cs:42` records that capability in audit fields.
-- `src/SafeIR.Core/Policy.cs:146` exposes `GrantLogging`, while `src/SafeIR.Core/Policy.cs:215` and `src/SafeIR.Core/Policy.cs:221` expose the log event and message-length quotas.
-- `README.md:11` lists logging as a shipped `SafeIR.Runtime` feature, but the minimal host sample does not call `AddLogBindings()` or `GrantLogging()`.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/04-ir-language.md:75` shows an isolated `log.info` IR expression, and `docs/Specs/Initial/safe-ir-sandbox-spec/spec/08-runtime-safe-apis.md:291` through `docs/Specs/Initial/safe-ir-sandbox-spec/spec/08-runtime-safe-apis.md:300` describes the safe logging API, but neither is a runnable public package example.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:85`, `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:186`, `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:197`, and `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:198` list the API signatures without showing the end-to-end usage pattern.
-- `examples/PluginIpc/SafeIR.PluginIpc.Server/PluginControlService.cs:36` grants logging only as part of a plugin server policy, so it does not demonstrate standalone sandbox logging behavior.
+- `src/DotBoxd.Kernels.Runtime/Bindings/DefaultSandboxBindings.cs:19` exposes `AddLogBindings` for the runtime binding catalog.
+- `src/DotBoxd.Kernels.Runtime/Bindings/SafeLogBindings.cs:7` and `src/DotBoxd.Kernels.Runtime/Bindings/SafeLogBindings.cs:9` define `log.info` and `log.warn`; `src/DotBoxd.Kernels.Runtime/Bindings/SafeLogBindings.cs:18` requires `log.write`, and `src/DotBoxd.Kernels.Runtime/Bindings/SafeLogBindings.cs:42` records that capability in audit fields.
+- `src/DotBoxd.Kernels/Policy.cs:146` exposes `GrantLogging`, while `src/DotBoxd.Kernels/Policy.cs:215` and `src/DotBoxd.Kernels/Policy.cs:221` expose the log event and message-length quotas.
+- `README.md:11` lists logging as a shipped `DotBoxd.Kernels.Runtime` feature, but the minimal host sample does not call `AddLogBindings()` or `GrantLogging()`.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/04-ir-language.md:75` shows an isolated `log.info` IR expression, and `docs/Specs/Initial/dotboxd-sandbox-spec/spec/08-runtime-safe-apis.md:291` through `docs/Specs/Initial/dotboxd-sandbox-spec/spec/08-runtime-safe-apis.md:300` describes the safe logging API, but neither is a runnable public package example.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:85`, `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:186`, `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:197`, and `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:198` list the API signatures without showing the end-to-end usage pattern.
+- `examples/PluginIpc/DotBoxd.Kernels.PluginIpc.Server/PluginControlService.cs:36` grants logging only as part of a plugin server policy, so it does not demonstrate standalone sandbox logging behavior.
 
 ## Suggested test or benchmark
 

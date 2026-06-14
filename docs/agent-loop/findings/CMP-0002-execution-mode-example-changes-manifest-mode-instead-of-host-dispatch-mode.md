@@ -29,10 +29,10 @@ The addendum execution-mode example changes `PluginManifest.Mode` for each itera
 
 ## Evidence
 
-- `examples/Addendum/SafeIR.AddendumExamples/Examples/ExecutionModeExample.cs` loops over `ExecutionMode.Interpreted`, `Compiled`, and `Auto`, then calls `await server.InstallAsync(WithMode(FireDamagePluginPackage.Create(), mode));`.
+- `examples/Addendum/DotBoxd.Kernels.AddendumExamples/Examples/ExecutionModeExample.cs` loops over `ExecutionMode.Interpreted`, `Compiled`, and `Auto`, then calls `await server.InstallAsync(WithMode(FireDamagePluginPackage.Create(), mode));`.
 - `PluginServer.Create` defaults its server-level `executionMode` parameter to `ExecutionMode.Auto` and passes that value into `InstalledKernel` during `InstallAsync`.
 - `InstalledKernel.ExecutePreparedAsync` executes with `new SandboxExecutionOptions { Mode = _executionMode }`, which is the server-level mode captured at install time, not `Package.Manifest.Mode`.
-- `tests/SafeIR.Tests/Misc06/PluginPackageValidationTests.cs` contains `Manifest_compiled_mode_does_not_force_plugin_compiler_dispatch`, which confirms manifest `Mode = ExecutionMode.Compiled` intentionally does not force compiled execution.
+- `tests/DotBoxd.Kernels.Tests/Misc06/PluginPackageValidationTests.cs` contains `Manifest_compiled_mode_does_not_force_plugin_compiler_dispatch`, which confirms manifest `Mode = ExecutionMode.Compiled` intentionally does not force compiled execution.
 
 ## User impact
 

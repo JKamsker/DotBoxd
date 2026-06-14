@@ -24,7 +24,7 @@ and observing the test fail), except the dead-code removal which is behaviour-pr
 | #8/#9 dead branch | behaviour-preserving removal — nothing to red-test |
 
 The four races that resisted plain testing were made deterministically testable with **minimal internal
-test seams** (exposed via `InternalsVisibleTo("ShaRPC.Tests")`): `RpcPeer.HasStarted` (#2), a
+test seams** (exposed via `InternalsVisibleTo("DotBoxd.Services.Tests")`): `RpcPeer.HasStarted` (#2), a
 connect-published hook on `NamedPipeClientTransport` (#5), an atomic `ClaimPendingAccept` consume with a
 seam on `TcpServerTransport` (#6), and `EvictFaultedAttempt` + attempt accessors on the catalog (#10).
 The earlier `BugFixStressTests` guards for #2/#6 are kept as cheap concurrency smoke tests; the
@@ -38,7 +38,7 @@ Dekker) residual hole that independent review flagged.
 
 ## #2 — `RpcHost`: `PeerConnected` could be raised after `PeerDisconnected`
 
-**Location:** `src/ShaRPC.Core/RpcHost.cs`, `AddPeerAsync`.
+**Location:** `src/DotBoxd.Services/RpcHost.cs`, `AddPeerAsync`.
 
 **Defect.** `peer.Start()` (which launches the read loop on the thread pool via `Task.Run`) was called
 *inside* `_lifecycleLock`, but the `PeerConnected` event was raised *after* the lock was released. For a
@@ -80,7 +80,7 @@ behavioural smoke test.
 
 ## #5 — `NamedPipeClientTransport`: connection leak if `DisposeAsync` races `ConnectAsync`
 
-**Location:** `src/ShaRPC.Transports.NamedPipes/NamedPipeClientTransport.cs`, `ConnectAsync`.
+**Location:** `src/DotBoxd.Transports.NamedPipes/NamedPipeClientTransport.cs`, `ConnectAsync`.
 
 **Defect.** If `DisposeAsync` runs after `stream.ConnectAsync(ct)` succeeds but before/while
 `_connection` is assigned, `DisposeAsync` observes `_connection == null` and disposes only `_stream`
@@ -120,7 +120,7 @@ guard test remains as a smoke test.
 
 ## #6 — `TcpServerTransport`: stashed `_pendingAccept` could be double-consumed
 
-**Location:** `src/ShaRPC.Transports.Tcp/TcpServerTransport.cs`, `AcceptAsync` + `ObservePendingAccept`.
+**Location:** `src/DotBoxd.Transports.Tcp/TcpServerTransport.cs`, `AcceptAsync` + `ObservePendingAccept`.
 
 **Defect.** When an `AcceptAsync` is cancelled it stashes the in-flight `Task<TcpClient>` in
 `_pendingAccept` to hand back on the next call. The next `AcceptAsync` consumed it with a **non-atomic**
@@ -158,7 +158,7 @@ reverting). The functional stash/reuse regression test remains as a smoke test.
 
 ## #8/#9 — `StreamConnection`: removed unreachable `totalLength == 4` branch
 
-**Location:** `src/ShaRPC.Core/Transport/StreamConnection.cs`, `ReceiveAsync`.
+**Location:** `src/DotBoxd.Services/Transport/StreamConnection.cs`, `ReceiveAsync`.
 
 **Not a behavior bug — dead-code cleanup.** `ValidateIncomingLength(totalLength)` runs first and throws
 `InvalidDataException` for any `totalLength < MessageFramer.HeaderSize` (= 9). The subsequent
@@ -183,9 +183,9 @@ minimal-valid-frame boundary still works). There is nothing to red-test because 
 
 ---
 
-## #10 — `ShaRpcGeneratedAssemblyCatalog`: fault-recovery could evict a successor entry
+## #10 — `DotBoxdGeneratedAssemblyCatalog`: fault-recovery could evict a successor entry
 
-**Location:** `src/ShaRPC.Core/Generated/ShaRpcGeneratedAssemblyCatalog.cs`, `EnsureRegistered`.
+**Location:** `src/DotBoxd.Services/Generated/DotBoxdGeneratedAssemblyCatalog.cs`, `EnsureRegistered`.
 
 **Defect.** On a faulted registration the catch did `s_registrationAttempts.TryRemove(assembly, out _)`
 — a **key-only** removal. If another thread had already replaced the faulted `Lazy<bool>` with a fresh
@@ -202,7 +202,7 @@ in progress or had succeeded. (Independent review note: this is recoverable — 
 +                .Remove(new KeyValuePair<Assembly, Lazy<bool>>(assembly, registration));
 ```
 
-**Proven by:** `RaceConditionDeterministicTests.ShaRpcGeneratedAssemblyCatalog_FaultRecovery_PreservesSuccessor`.
+**Proven by:** `RaceConditionDeterministicTests.DotBoxdGeneratedAssemblyCatalog_FaultRecovery_PreservesSuccessor`.
 The eviction was factored into an internal `EvictFaultedAttempt(assembly, faulted)`. Using a unique
 throwaway `AssemblyBuilder` assembly (so it never collides with a real catalog entry), the test installs a
 faulted attempt, replaces it with a successor `Lazy`, then runs `EvictFaultedAttempt` holding only the

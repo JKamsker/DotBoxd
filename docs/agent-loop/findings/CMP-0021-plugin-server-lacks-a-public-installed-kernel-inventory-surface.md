@@ -25,7 +25,7 @@ duplicate_of:
 
 ## Claim
 
-`SafeIR.Plugins` exposes `PluginServer.InstallAsync(...)`, `PluginServer.Uninstall(...)`, and `PluginServer.Kernels`, but the public registry only supports throwing lookups by plugin id. There is no public way to enumerate installed kernels, try-get a kernel, or obtain a stable snapshot of installed plugin manifests for an admin UI.
+`DotBoxd.Plugins` exposes `PluginServer.InstallAsync(...)`, `PluginServer.Uninstall(...)`, and `PluginServer.Kernels`, but the public registry only supports throwing lookups by plugin id. There is no public way to enumerate installed kernels, try-get a kernel, or obtain a stable snapshot of installed plugin manifests for an admin UI.
 
 The addendum documentation positions manifest data as server-owner/admin UI inventory material, but the shipped server surface does not let that UI discover which plugins are currently installed without maintaining a separate shadow index outside the server.
 
@@ -35,11 +35,11 @@ A real plugin host needs to show currently installed plugins, their live setting
 
 ## Evidence
 
-- `README.md:20` presents `SafeIR.Plugins` as the package for live plugin manifest, hook, kernel, and message-binding APIs.
+- `README.md:20` presents `DotBoxd.Plugins` as the package for live plugin manifest, hook, kernel, and message-binding APIs.
 - `docs/Specs/Addendum/Examples.md:207` says the plugin package manifest exposes permissions and subscriptions that an admin UI or server owner can inspect before enabling the plugin.
 - `docs/Specs/Addendum/Examples.md:237` says this is the data a server owner needs to show settings, defaults, ranges, requested effects, and hook subscriptions before install.
-- `src/SafeIR.Plugins/PluginServer.cs:27` exposes `public KernelRegistry Kernels { get; }`, and `src/SafeIR.Plugins/PluginServer.cs:81` stores installed kernels in that registry.
-- `src/SafeIR.Plugins/PluginServer.cs:86` exposes uninstall by plugin id, but `src/SafeIR.Plugins/PluginServer.cs:89` through `src/SafeIR.Plugins/PluginServer.cs:108` only provide `Get(string pluginId)` and `Get<TState>(string pluginId)` as public registry methods. The add, remove, and replacement paths are internal, and there is no `TryGet`, `List`, `Snapshot`, or manifest inventory API.
+- `src/DotBoxd.Plugins/PluginServer.cs:27` exposes `public KernelRegistry Kernels { get; }`, and `src/DotBoxd.Plugins/PluginServer.cs:81` stores installed kernels in that registry.
+- `src/DotBoxd.Plugins/PluginServer.cs:86` exposes uninstall by plugin id, but `src/DotBoxd.Plugins/PluginServer.cs:89` through `src/DotBoxd.Plugins/PluginServer.cs:108` only provide `Get(string pluginId)` and `Get<TState>(string pluginId)` as public registry methods. The add, remove, and replacement paths are internal, and there is no `TryGet`, `List`, `Snapshot`, or manifest inventory API.
 
 ## Suggested test or benchmark
 

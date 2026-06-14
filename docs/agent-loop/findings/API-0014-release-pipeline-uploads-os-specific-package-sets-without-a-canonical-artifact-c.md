@@ -27,16 +27,16 @@ duplicate_of:
 
 ## Problem
 
-The CI package job runs in a Windows, Ubuntu, and macOS matrix, and each matrix leg runs `dotnet pack` for the same public SafeIR package IDs and versions. The workflow then uploads `artifacts/packages/*.nupkg` separately as `packages-${{ matrix.os }}`. The metadata gate checks each leg's packages independently, but no release gate chooses one canonical package set or proves that the three OS-built package sets are byte-for-byte identical.
+The CI package job runs in a Windows, Ubuntu, and macOS matrix, and each matrix leg runs `dotnet pack` for the same public DotBoxd.Kernels package IDs and versions. The workflow then uploads `artifacts/packages/*.nupkg` separately as `packages-${{ matrix.os }}`. The metadata gate checks each leg's packages independently, but no release gate chooses one canonical package set or proves that the three OS-built package sets are byte-for-byte identical.
 
 ## Why this matters
 
-SafeIR's public NuGet packages should have one reproducible artifact set for a given package ID, version, and repository commit. If cross-OS packing produces different nupkg bytes, nuspec metadata, embedded paths, generated files, timestamps, or analyzer/package layout, the current release pipeline can still pass and leave maintainers with multiple valid-looking artifacts for the same version. A later publish step could upload whichever artifact set was downloaded first, making package provenance ambiguous and making release reproduction harder.
+DotBoxd.Kernels's public NuGet packages should have one reproducible artifact set for a given package ID, version, and repository commit. If cross-OS packing produces different nupkg bytes, nuspec metadata, embedded paths, generated files, timestamps, or analyzer/package layout, the current release pipeline can still pass and leave maintainers with multiple valid-looking artifacts for the same version. A later publish step could upload whichever artifact set was downloaded first, making package provenance ambiguous and making release reproduction harder.
 
 ## Evidence
 
 - `.github/workflows/ci.yml` defines `build-test-pack` with `matrix.os: [ windows-latest, ubuntu-latest, macos-latest ]`.
-- The `Pack` step runs inside that matrix and writes `dotnet pack SafeIR.slnx --configuration Release --no-build --output artifacts/packages` on every OS.
+- The `Pack` step runs inside that matrix and writes `dotnet pack DotBoxd.Kernels.slnx --configuration Release --no-build --output artifacts/packages` on every OS.
 - The `Upload package artifacts` step uploads the same package glob as `packages-${{ matrix.os }}`, producing three artifact sets for the same package IDs and versions.
 - `scripts/check-package-metadata.ps1` validates fields, expected package IDs, repository commit, package layout, and prerelease policy for the packages in one directory, but it does not compare package hashes across matrix legs or designate a canonical publish source.
 

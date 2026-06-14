@@ -1,0 +1,12 @@
+# DotBoxd.Kernels public API baseline
+# Package: DotBoxd.Kernels.Validation
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+public IReadOnlyDictionary<string, FunctionAnalysis> Functions
+public IReadOnlyDictionary<string, IReadOnlySet<string>> BindingReferences
+public IReadOnlyList<SandboxDiagnostic> Diagnostics
+public IReadOnlySet<string> RequiredCapabilities
+public ModuleValidationResult Validate(SandboxModule module, IBindingCatalog bindings, SandboxPolicy? policy = null)
+public sealed class ModuleValidator
+public sealed record ModuleValidationResult( bool Succeeded, IReadOnlyList<SandboxDiagnostic> Diagnostics, IReadOnlyDictionary<string, FunctionAnalysis> Functions, SandboxEffect ModuleEffects, IReadOnlySet<string> RequiredCapabilities, IReadOnlyDictionary<string, IReadOnlySet<string>> BindingReferences)
+public static ModuleValidationResult Failure(IReadOnlyList<SandboxDiagnostic> diagnostics)

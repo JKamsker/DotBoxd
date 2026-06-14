@@ -29,10 +29,10 @@ Sandbox map validation and shape metering allocate a reversed buffer for every m
 
 ## Evidence
 
-- `src/SafeIR.Core/Sandbox/Values/SandboxValueShapeMeter.cs:16` walks arbitrary nested `SandboxValue` graphs to measure resource shape.
-- `src/SafeIR.Core/Sandbox/Values/SandboxValueShapeMeter.cs:96` iterates `foreach (var pair in map.Values.Reverse())` before pushing key/value frames.
-- `src/SafeIR.Core/Sandbox/SandboxValueValidator.cs:17` separately walks arbitrary nested values for type validation.
-- `src/SafeIR.Core/Sandbox/SandboxValueValidator.cs:88` also iterates `foreach (var pair in map.Values.Reverse())` before pushing key/value frames.
+- `src/DotBoxd.Kernels/Sandbox/Values/SandboxValueShapeMeter.cs:16` walks arbitrary nested `SandboxValue` graphs to measure resource shape.
+- `src/DotBoxd.Kernels/Sandbox/Values/SandboxValueShapeMeter.cs:96` iterates `foreach (var pair in map.Values.Reverse())` before pushing key/value frames.
+- `src/DotBoxd.Kernels/Sandbox/SandboxValueValidator.cs:17` separately walks arbitrary nested values for type validation.
+- `src/DotBoxd.Kernels/Sandbox/SandboxValueValidator.cs:88` also iterates `foreach (var pair in map.Values.Reverse())` before pushing key/value frames.
 - LINQ `Enumerable.Reverse()` buffers the source sequence before yielding in reverse order, so each visited map creates temporary storage proportional to the number of entries.
 - The test suite has quota and behavior tests around collections, but the benchmark project only contains IPC benchmarks and no allocation test for validating or metering large nested map inputs.
 

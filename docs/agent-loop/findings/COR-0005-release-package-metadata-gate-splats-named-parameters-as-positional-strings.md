@@ -42,7 +42,7 @@ Local reproduction using the same array-splatting pattern after a clean pack dir
 ```powershell
 $env:GITHUB_REF='refs/tags/v0.1.0'
 $env:GITHUB_REF_NAME='v0.1.0'
-$args = @('-PackageDirectory','artifacts/packages','-AllowedPrereleasePackageIds','SafeIR.Transport.Ipc.ShaRpc','-ExpectedVersion',$env:GITHUB_REF_NAME)
+$args = @('-PackageDirectory','artifacts/packages','-AllowedPrereleasePackageIds','DotBoxd.Pushdown.Services','-ExpectedVersion',$env:GITHUB_REF_NAME)
 .\scripts\check-package-metadata.ps1 @args
 ```
 
@@ -59,14 +59,14 @@ Add a CI-equivalent script test or runbook validation that exercises the release
 
 ```powershell
 Remove-Item artifacts\packages\*.nupkg -Force
- dotnet pack SafeIR.slnx --configuration Release --no-build --output artifacts/packages
-.\scripts\check-package-metadata.ps1 -PackageDirectory artifacts/packages -AllowedPrereleasePackageIds SafeIR.Transport.Ipc.ShaRpc -ExpectedVersion v0.1.0
+ dotnet pack DotBoxd.Kernels.slnx --configuration Release --no-build --output artifacts/packages
+.\scripts\check-package-metadata.ps1 -PackageDirectory artifacts/packages -AllowedPrereleasePackageIds DotBoxd.Pushdown.Services -ExpectedVersion v0.1.0
 ```
 
 Then validate the workflow snippet no longer uses array splatting for named parameters.
 
 ## Suggested fix direction
-Use direct named-parameter invocation or a hashtable splat. For example, build `$metadataArgs = @{ PackageDirectory = 'artifacts/packages'; AllowedPrereleasePackageIds = @('SafeIR.Transport.Ipc.ShaRpc') }`, add `ExpectedVersion` when needed, and invoke `./scripts/check-package-metadata.ps1 @metadataArgs`.
+Use direct named-parameter invocation or a hashtable splat. For example, build `$metadataArgs = @{ PackageDirectory = 'artifacts/packages'; AllowedPrereleasePackageIds = @('DotBoxd.Pushdown.Services') }`, add `ExpectedVersion` when needed, and invoke `./scripts/check-package-metadata.ps1 @metadataArgs`.
 
 ## Scope boundaries
 Do not weaken stable package validation and do not change package version policy. This is only about making the release/tag-only gate invoke the existing checker correctly.

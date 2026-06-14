@@ -29,14 +29,14 @@ Worker-process execution can reject otherwise valid debug-traced runs. The host 
 
 ## Evidence
 
-- `src/SafeIR.Hosting/SandboxWorkerExecutor.cs` creates `workerOptions = options with { Isolation = SandboxIsolation.InProcess }`, preserving `EnableDebugTrace` when it asks the worker to execute the plan.
-- `src/SafeIR.Interpreter/InterpreterEvaluator.cs:65` and `src/SafeIR.Interpreter/ExpressionEvaluator.cs:30` call `InterpreterTrace.Write(...)` during interpreted execution when debug tracing is enabled.
-- `src/SafeIR.Interpreter/Internal/InterpreterTrace.cs:23` writes `Kind = "DebugTrace"` events with a message and `Fields: DebugFields(...)`.
-- `src/SafeIR.Interpreter/Internal/InterpreterTrace.cs:44` writes binding debug traces with `BindingId`, `CapabilityId`, `Effect`, a message, and structured fields.
-- `src/SafeIR.Hosting/WorkerAuditValidator.cs:65` accepts worker `DebugTrace` events only through `ModuleAuditMatches(...)`.
-- `src/SafeIR.Hosting/WorkerAuditValidator.cs:118` to `src/SafeIR.Hosting/WorkerAuditValidator.cs:123` requires module-shaped events: no binding id, no capability id, `Effect == SandboxEffect.None`, `Fields is null`, and `ResourceId == module:{plan.ModuleHash}`.
-- `src/SafeIR.Hosting/SandboxWorkerExecutor.cs:211` to `src/SafeIR.Hosting/SandboxWorkerExecutor.cs:217` rejects the entire worker envelope when any returned audit event fails that validator.
-- The worker hardening tests in `tests/SafeIR.Tests/Misc08/WorkerAuditValidationTests.cs` and `tests/SafeIR.Tests/Misc08/WorkerResultHardeningTests.cs` cover forged audit shapes and malformed summaries, but there is no worker-process test that executes with `EnableDebugTrace = true` and expects valid trace events to survive.
+- `src/DotBoxd.Hosting/SandboxWorkerExecutor.cs` creates `workerOptions = options with { Isolation = SandboxIsolation.InProcess }`, preserving `EnableDebugTrace` when it asks the worker to execute the plan.
+- `src/DotBoxd.Kernels.Interpreter/InterpreterEvaluator.cs:65` and `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:30` call `InterpreterTrace.Write(...)` during interpreted execution when debug tracing is enabled.
+- `src/DotBoxd.Kernels.Interpreter/Internal/InterpreterTrace.cs:23` writes `Kind = "DebugTrace"` events with a message and `Fields: DebugFields(...)`.
+- `src/DotBoxd.Kernels.Interpreter/Internal/InterpreterTrace.cs:44` writes binding debug traces with `BindingId`, `CapabilityId`, `Effect`, a message, and structured fields.
+- `src/DotBoxd.Hosting/WorkerAuditValidator.cs:65` accepts worker `DebugTrace` events only through `ModuleAuditMatches(...)`.
+- `src/DotBoxd.Hosting/WorkerAuditValidator.cs:118` to `src/DotBoxd.Hosting/WorkerAuditValidator.cs:123` requires module-shaped events: no binding id, no capability id, `Effect == SandboxEffect.None`, `Fields is null`, and `ResourceId == module:{plan.ModuleHash}`.
+- `src/DotBoxd.Hosting/SandboxWorkerExecutor.cs:211` to `src/DotBoxd.Hosting/SandboxWorkerExecutor.cs:217` rejects the entire worker envelope when any returned audit event fails that validator.
+- The worker hardening tests in `tests/DotBoxd.Kernels.Tests/Misc08/WorkerAuditValidationTests.cs` and `tests/DotBoxd.Kernels.Tests/Misc08/WorkerResultHardeningTests.cs` cover forged audit shapes and malformed summaries, but there is no worker-process test that executes with `EnableDebugTrace = true` and expects valid trace events to survive.
 
 ## Impact
 

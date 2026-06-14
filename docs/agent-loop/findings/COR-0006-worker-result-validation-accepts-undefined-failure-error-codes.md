@@ -29,9 +29,9 @@ Worker-process result validation accepts failed worker results whose `SandboxErr
 
 ## Evidence
 
-`src/SafeIR.Hosting/SandboxWorkerExecutor.cs` validates worker results before returning them from `ExecuteAsync`. `WorkerPayloadMatches` only requires failed results to have `Value is null` and `Error is not null`; it does not validate that `result.Error.Code` is a defined enum value. `WorkerAuditMatches` then accepts the failure when the single `RunSummary` has `ErrorCode == result.Error.Code`, so a compromised or buggy worker can return `(SandboxErrorCode)123456` consistently in both places and the host will publish that malformed error to callers.
+`src/DotBoxd.Hosting/SandboxWorkerExecutor.cs` validates worker results before returning them from `ExecuteAsync`. `WorkerPayloadMatches` only requires failed results to have `Value is null` and `Error is not null`; it does not validate that `result.Error.Code` is a defined enum value. `WorkerAuditMatches` then accepts the failure when the single `RunSummary` has `ErrorCode == result.Error.Code`, so a compromised or buggy worker can return `(SandboxErrorCode)123456` consistently in both places and the host will publish that malformed error to callers.
 
-`src/SafeIR.Core/Sandbox/SandboxError.cs` defines `SandboxError` as a plain record over `SandboxErrorCode`; there is no constructor guard that rejects undefined enum values. Existing worker hardening tests cover wrong plan identity, invalid mode, wrong return type, missing error, malformed resource usage, and malformed summary fields, but there is no test for an undefined failure error code.
+`src/DotBoxd.Kernels/Sandbox/SandboxError.cs` defines `SandboxError` as a plain record over `SandboxErrorCode`; there is no constructor guard that rejects undefined enum values. Existing worker hardening tests cover wrong plan identity, invalid mode, wrong return type, missing error, malformed resource usage, and malformed summary fields, but there is no test for an undefined failure error code.
 
 ## Risk
 

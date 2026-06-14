@@ -29,10 +29,10 @@ The persistent compiled artifact cache now removes in-memory entry locks, but cr
 
 ## Evidence
 
-- `src/SafeIR.Compiler/Internal/PersistentCacheEntryLock.cs` computes lock paths under `.locks/<prefix>/<prefix>/<cacheKey>.lock`.
+- `src/DotBoxd.Kernels.Compiler/Internal/PersistentCacheEntryLock.cs` computes lock paths under `.locks/<prefix>/<prefix>/<cacheKey>.lock`.
 - `AcquireAsync` opens each lock path with `FileMode.OpenOrCreate`, creating a persistent filesystem entry for every unique cache key that reaches a cache read/write lock.
 - `DisposeAsync` only disposes the `FileStream`; it does not remove the lock file after the lock is released.
-- `src/SafeIR.Compiler/Internal/PersistentCompiledArtifactCachePublisher.cs` deletes temp/old/final cache entries, but cache entry cleanup does not include the `.locks` tree.
+- `src/DotBoxd.Kernels.Compiler/Internal/PersistentCompiledArtifactCachePublisher.cs` deletes temp/old/final cache entries, but cache entry cleanup does not include the `.locks` tree.
 - This is distinct from `PAL-0006`: the in-memory `ConcurrentDictionary<string, EntryLock>` now releases entries, but the filesystem lock artifacts remain unbounded.
 
 ## Impact

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  
+  <PropertyGroup>
+    <Description>DotBoxd.Kernels generated-runtime compiler backend and persistent compiled artifact cache.</Description>
+    <PackageTags>dotboxd;sandbox;compiler;cache;generated-runtime</PackageTags>
+  </PropertyGroup>
+<ItemGroup>
+    <ProjectReference Include="..\DotBoxd.Kernels\DotBoxd.Kernels.csproj" />
+    <ProjectReference Include="..\DotBoxd.Kernels.Validation\DotBoxd.Kernels.Validation.csproj" />
+    <ProjectReference Include="..\DotBoxd.Kernels.Runtime\DotBoxd.Kernels.Runtime.csproj" />
+    <ProjectReference Include="..\DotBoxd.Kernels.Verifier\DotBoxd.Kernels.Verifier.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

@@ -1,12 +1,12 @@
-# ShaRPC Peer Model
+# DotBoxd Peer Model
 
-Status: implemented on `feature/peer-model`. The legacy `ShaRpcClient` / `ShaRpcServer` /
-`ShaRpcPeer` and the `DuplexConnectionSplitter` have since been **removed** — `RpcPeer` and
+Status: implemented on `feature/peer-model`. The legacy `DotBoxdRpcClient` / `DotBoxdRpcServer` /
+`DotBoxdRpcPeer` and the `DuplexConnectionSplitter` have since been **removed** — `RpcPeer` and
 `RpcHost` are the only surface. The wire format is unchanged, so the removal is API-only.
 
 This document describes the move from a `client` / `server` mental model to a single,
 symmetric **peer** model: two sides connect over a transport, either side can *provide*
-implementations of `[ShaRpcService]` interfaces, and either side can *call* the
+implementations of `[DotBoxdService]` interfaces, and either side can *call* the
 implementations the other side provides. Bidirectional is the default capability;
 one-directional ("I call you and get data back, you cannot call me") is just the
 asymmetric configuration of the same type.
@@ -40,7 +40,7 @@ The four message types already encode *direction* independently of *who sent the
 So message-id spaces never collide across directions even when both peers number their
 outbound requests from the same counter: the *type* tells you which way a frame flows. The
 old `DuplexConnectionSplitter` was an elaborate way of exploiting that fact by physically
-separating the two streams so a stock `ShaRpcServer` and stock `ShaRpcClient` could each
+separating the two streams so a stock `DotBoxdRpcServer` and stock `DotBoxdRpcClient` could each
 pretend they owned the socket. `RpcPeer` exploits it directly with a single loop.
 
 ## Core abstractions
@@ -48,7 +48,7 @@ pretend they owned the socket. `RpcPeer` exploits it directly with a single loop
 ### `IRpcChannel` — the transport unit
 
 ```csharp
-namespace ShaRPC.Core.Transport;
+namespace DotBoxd.Services.Transport;
 
 // A duplex, framed, bidirectional channel. One per peer.
 public interface IRpcChannel : IAsyncDisposable
@@ -71,7 +71,7 @@ public interface IRpcChannel : IAsyncDisposable
 ### `IRpcInvoker` — what generated proxies depend on
 
 ```csharp
-namespace ShaRPC.Core;
+namespace DotBoxd.Services;
 
 public interface IRpcInvoker
 {
@@ -95,7 +95,7 @@ required.
 ### `RpcPeer`
 
 ```csharp
-namespace ShaRPC.Core;
+namespace DotBoxd.Services;
 
 public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
 {
@@ -167,18 +167,18 @@ public sealed class RpcPeerOptions
     // under-sized Wait queue can stall a reentrant response until RequestTimeout.
     public int? InboundQueueCapacity { get; init; } = 1024;
     public int MaxPendingRequests { get; init; } = 4096;
-    public ShaRpcQueueFullMode QueueFullMode { get; init; } = ShaRpcQueueFullMode.Wait;
+    public DotBoxdRpcQueueFullMode QueueFullMode { get; init; } = DotBoxdRpcQueueFullMode.Wait;
 }
 ```
 
 ### `RpcHost` — accepting many connections
 
-The accept loop that lived inside `ShaRpcServer` moves into a host whose *output is peers*.
+The accept loop that lived inside `DotBoxdRpcServer` moves into a host whose *output is peers*.
 Because each accepted connection is a full peer, the host can also call back into
 connecting peers.
 
 ```csharp
-namespace ShaRPC.Core;
+namespace DotBoxd.Services;
 
 public sealed class RpcHost : IAsyncDisposable
 {
@@ -200,7 +200,7 @@ public sealed class RpcHost : IAsyncDisposable
 `IServerTransport` is kept as the listener abstraction (it yields `IRpcChannel`).
 "IChannelListener" is the conceptual name for the same role.
 
-## Generated surface (per `[ShaRpcService] IGameService`)
+## Generated surface (per `[DotBoxdService] IGameService`)
 
 The generator emits the same proxy + dispatcher pair. The proxy's backing field is typed
 `IRpcInvoker` and named `_invoker` internally. The generated extension methods target
@@ -208,7 +208,7 @@ The generator emits the same proxy + dispatcher pair. The proxy's backing field 
 along with the client/server types.
 
 ```csharp
-public static class ShaRpcGeneratedExtensions
+public static class DotBoxdGeneratedExtensions
 {
     public static RpcPeer ProvideGameService(this RpcPeer peer, IGameService impl);   // → Provide<IGameService>(impl)
     public static IGameService GetGameService(this RpcPeer peer);                      // → Get<IGameService>()
@@ -256,9 +256,9 @@ await notifier.MessageReceivedAsync("welcome");
 
 | Was | Now | Notes |
 |---|---|---|
-| `ShaRpcClient` / `IShaRpcClient` | `RpcPeer` (get-only) / `IRpcInvoker` | legacy client **removed** |
-| `ShaRpcServer` + accept loop | `RpcHost` + per-conn `RpcPeer` | legacy server **removed**; accept concern is `RpcHost` |
-| `ShaRpcPeer` + `DuplexConnectionSplitter` | `RpcPeer` (one loop) | both **removed** |
+| `DotBoxdRpcClient` / `IDotBoxdRpcClient` | `RpcPeer` (get-only) / `IRpcInvoker` | legacy client **removed** |
+| `DotBoxdRpcServer` + accept loop | `RpcHost` + per-conn `RpcPeer` | legacy server **removed**; accept concern is `RpcHost` |
+| `DotBoxdRpcPeer` + `DuplexConnectionSplitter` | `RpcPeer` (one loop) | both **removed** |
 | `IConnection` | `IRpcChannel` | `IConnection` **removed**; transports return `IRpcChannel` directly (impls unchanged — `IConnection` added no members) |
 | `serverBuilder.AddGameService(impl)` | `peer.ProvideGameService(impl)` | generated `Add…` extension **removed** |
 | `client.CreateGameServiceProxy()` | `peer.GetGameService()` | generated `Create…Proxy` extension **removed** |

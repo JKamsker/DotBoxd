@@ -27,9 +27,9 @@ duplicate_of:
 Collection copy allocation charges multiply collection counts by per-element byte constants as `int` values before passing the result to `ChargeAllocation`. Large, policy-permitted list/map sizes can overflow before the quota meter sees the amount, producing a negative or wrapped allocation charge instead of a deterministic `QuotaExceeded` failure.
 
 ## Evidence
-- `src/SafeIR.Interpreter/Internal/CollectionOperations.cs` charges `values.Count * 16`, `(source.Values.Count + 1) * 16`, and `Math.Max(1, count) * 32` before the value is widened for `ResourceMeter.ChargeAllocation(long)`.
-- `src/SafeIR.Runtime/CompiledRuntime.cs` uses the same unchecked shapes for compiled list/map operations.
-- `src/SafeIR.Runtime/CompiledRuntime.cs` already uses `checked(elementCount * 8)` for `CreateValueArray`, which shows the generated runtime has an explicit fail-closed pattern for size-derived allocation charges, but the collection operations do not use it.
+- `src/DotBoxd.Kernels.Interpreter/Internal/CollectionOperations.cs` charges `values.Count * 16`, `(source.Values.Count + 1) * 16`, and `Math.Max(1, count) * 32` before the value is widened for `ResourceMeter.ChargeAllocation(long)`.
+- `src/DotBoxd.Kernels.Runtime/CompiledRuntime.cs` uses the same unchecked shapes for compiled list/map operations.
+- `src/DotBoxd.Kernels.Runtime/CompiledRuntime.cs` already uses `checked(elementCount * 8)` for `CreateValueArray`, which shows the generated runtime has an explicit fail-closed pattern for size-derived allocation charges, but the collection operations do not use it.
 - `ResourceLimitValidation` permits large positive `MaxListLength`, `MaxMapEntries`, `MaxTotalCollectionElements`, and `MaxAllocatedBytes` values, so validation does not cap counts below the overflow thresholds.
 
 ## Why it matters

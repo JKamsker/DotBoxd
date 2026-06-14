@@ -29,9 +29,9 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Compiler/PersistentCompiledArtifactCache.cs` reads `manifest.json`, validates `verification.json`, reads `module.dll`, and calls `PersistentCompiledArtifactCacheOrigin.ValidateProofAsync` inside `TryReadCoreAsync`.
+- `src/DotBoxd.Kernels.Compiler/PersistentCompiledArtifactCache.cs` reads `manifest.json`, validates `verification.json`, reads `module.dll`, and calls `PersistentCompiledArtifactCacheOrigin.ValidateProofAsync` inside `TryReadCoreAsync`.
 - The same method then calls `verifier.VerifyAsync(assemblyBytes, manifest, policy.WithExpectedManifest(...))` before returning `CompiledCacheStatus.Hit`.
-- `src/SafeIR.Hosting/Execution/CompiledArtifactGuard.cs` calls `Verifier.VerifyAsync(...)` again inside `MaterializeExecutableAsync` before loading a `LoadedAssembly` artifact.
+- `src/DotBoxd.Hosting/Execution/CompiledArtifactGuard.cs` calls `Verifier.VerifyAsync(...)` again inside `MaterializeExecutableAsync` before loading a `LoadedAssembly` artifact.
 - Existing `ALG-0017` covers host-local `CompiledExecutableCache` validating artifacts before in-memory materialized-cache hits. This finding is separate: the persistent disk-cache hit path re-runs verifier work before an artifact reaches the host-local executable cache.
 
 ## Impact

@@ -29,14 +29,14 @@ duplicate_of:
 
 ## Affected public API
 
-- `src/SafeIR.Plugins/PluginServer.cs:6` declares `public sealed class PluginServer` with no disposal interface.
-- `src/SafeIR.Plugins/PluginServer.cs:8` stores the owned `SandboxHost` in a private `_host` field.
-- `src/SafeIR.Plugins/PluginServer.cs:30` exposes `PluginServer.Create(...)` as the construction API.
-- `src/SafeIR.Plugins/PluginServer.cs:42` constructs the host through `SandboxHost.Create(...)`.
-- `src/SafeIR.Plugins/PluginServer.cs:57` returns a new `PluginServer` that owns that host.
-- `src/SafeIR.Hosting/Execution/SandboxHost.cs:9` declares `SandboxHost : IDisposable`.
-- `src/SafeIR.Hosting/Execution/SandboxHost.cs:275` disposes the compiled executable cache from `SandboxHost.Dispose()`.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:43` through `:69` documents `SandboxHost` as disposable and says long-lived hosts should dispose it when retired.
+- `src/DotBoxd.Plugins/PluginServer.cs:6` declares `public sealed class PluginServer` with no disposal interface.
+- `src/DotBoxd.Plugins/PluginServer.cs:8` stores the owned `SandboxHost` in a private `_host` field.
+- `src/DotBoxd.Plugins/PluginServer.cs:30` exposes `PluginServer.Create(...)` as the construction API.
+- `src/DotBoxd.Plugins/PluginServer.cs:42` constructs the host through `SandboxHost.Create(...)`.
+- `src/DotBoxd.Plugins/PluginServer.cs:57` returns a new `PluginServer` that owns that host.
+- `src/DotBoxd.Hosting/Execution/SandboxHost.cs:9` declares `SandboxHost : IDisposable`.
+- `src/DotBoxd.Hosting/Execution/SandboxHost.cs:275` disposes the compiled executable cache from `SandboxHost.Dispose()`.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:43` through `:69` documents `SandboxHost` as disposable and says long-lived hosts should dispose it when retired.
 - `README.md:29` shows direct `SandboxHost.Create(...)` for minimal host usage, but the plugin examples use `PluginServer.Create(...)` and do not show any equivalent lifetime boundary.
 
 ## Inconsistency

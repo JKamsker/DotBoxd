@@ -39,15 +39,15 @@ Local reproduction:
 Failure:
 
 ```text
-CE0004 src/SafeIR.Compiler: contains a .csproj and 6 C# files, exceeding the project-folder limit of 5.
-CE0004 src/SafeIR.Interpreter: contains a .csproj and 6 C# files, exceeding the project-folder limit of 5.
-CE0004 src/SafeIR.Serialization.Json: contains a .csproj and 6 C# files, exceeding the project-folder limit of 5.
-CE0004 src/SafeIR.Validation: contains a .csproj and 6 C# files, exceeding the project-folder limit of 5.
+CE0004 src/DotBoxd.Kernels.Compiler: contains a .csproj and 6 C# files, exceeding the project-folder limit of 5.
+CE0004 src/DotBoxd.Kernels.Interpreter: contains a .csproj and 6 C# files, exceeding the project-folder limit of 5.
+CE0004 src/DotBoxd.Kernels.Serialization.Json: contains a .csproj and 6 C# files, exceeding the project-folder limit of 5.
+CE0004 src/DotBoxd.Kernels.Validation: contains a .csproj and 6 C# files, exceeding the project-folder limit of 5.
 CE0004 tools/AgentQueue/src/AgentQueue: contains a .csproj and 6 C# files, exceeding the project-folder limit of 5.
 CodeEnforcer found 5 violation(s).
 ```
 
-The committed justification config currently contains only a file-level justification for `src/SafeIR.Validation/FunctionAnalyzer.cs` and no folder/root-folder exclusions for these project folders.
+The committed justification config currently contains only a file-level justification for `src/DotBoxd.Kernels.Validation/FunctionAnalyzer.cs` and no folder/root-folder exclusions for these project folders.
 
 ## Suggested test or benchmark
 Run the CI CodeEnforcer gate after the fix:

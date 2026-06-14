@@ -29,11 +29,11 @@ Worker-isolated results can include a non-summary `WorkerExecution` audit event 
 
 ## Evidence
 
-- `src/SafeIR.Hosting/WorkerAuditValidator.cs:61` accepts `WorkerExecution` events through `ModuleAuditMatches(...)`.
-- `src/SafeIR.Hosting/WorkerAuditValidator.cs:118` to `src/SafeIR.Hosting/WorkerAuditValidator.cs:123` checks only module-shaped fields: no binding/capability/effect fields and `ResourceId == module:{plan.ModuleHash}`.
-- `src/SafeIR.Hosting/SandboxWorkerExecutor.cs:211` to `src/SafeIR.Hosting/SandboxWorkerExecutor.cs:217` applies that schema to each event.
-- `src/SafeIR.Hosting/SandboxWorkerExecutor.cs:219` to `src/SafeIR.Hosting/SandboxWorkerExecutor.cs:230` reconciles only the single `RunSummary` with the result, not the accepted `WorkerExecution` events.
-- `tests/SafeIR.Tests/Misc08/WorkerAuditValidationTests.cs` covers undefined error codes, forged binding/policy/cache events, unknown kinds, and timestamps, but it does not cover a `WorkerExecution` event with a defined failure code attached to an otherwise successful result.
+- `src/DotBoxd.Hosting/WorkerAuditValidator.cs:61` accepts `WorkerExecution` events through `ModuleAuditMatches(...)`.
+- `src/DotBoxd.Hosting/WorkerAuditValidator.cs:118` to `src/DotBoxd.Hosting/WorkerAuditValidator.cs:123` checks only module-shaped fields: no binding/capability/effect fields and `ResourceId == module:{plan.ModuleHash}`.
+- `src/DotBoxd.Hosting/SandboxWorkerExecutor.cs:211` to `src/DotBoxd.Hosting/SandboxWorkerExecutor.cs:217` applies that schema to each event.
+- `src/DotBoxd.Hosting/SandboxWorkerExecutor.cs:219` to `src/DotBoxd.Hosting/SandboxWorkerExecutor.cs:230` reconciles only the single `RunSummary` with the result, not the accepted `WorkerExecution` events.
+- `tests/DotBoxd.Kernels.Tests/Misc08/WorkerAuditValidationTests.cs` covers undefined error codes, forged binding/policy/cache events, unknown kinds, and timestamps, but it does not cover a `WorkerExecution` event with a defined failure code attached to an otherwise successful result.
 
 ## Impact
 

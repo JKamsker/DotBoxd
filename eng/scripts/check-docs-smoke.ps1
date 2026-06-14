@@ -4,16 +4,16 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$root = Split-Path -Parent $PSScriptRoot
-$capabilitiesExample = Join-Path $root "examples/Capabilities/SafeIR.Example.Capabilities/SafeIR.Example.Capabilities.csproj"
-$hostingExample = Join-Path $root "examples/Hosting/SafeIR.Example.Hosting/SafeIR.Example.Hosting.csproj"
-$pluginAuthoringExample = Join-Path $root "examples/PluginAuthoring/SafeIR.Example.PluginAuthoring/SafeIR.Example.PluginAuthoring.csproj"
-$httpTransportExample = Join-Path $root "examples/HttpTransport/SafeIR.HttpTransportExample/SafeIR.HttpTransportExample.csproj"
-$localPluginExample = Join-Path $root "examples/LocalPlugin/SafeIR.PluginLocal/SafeIR.PluginLocal.csproj"
-$ipcServerExample = Join-Path $root "examples/PluginIpc/SafeIR.PluginIpc.Server/SafeIR.PluginIpc.Server.csproj"
-$ipcClientExample = Join-Path $root "examples/PluginIpc/SafeIR.PluginIpc.Client/SafeIR.PluginIpc.Client.csproj"
-$gameServerExample = Join-Path $root "examples/GameServer/SafeIR.Game.Server/SafeIR.Game.Server.csproj"
-$gamePluginExample = Join-Path $root "examples/GameServer/SafeIR.Game.Plugin/SafeIR.Game.Plugin.csproj"
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$capabilitiesExample = Join-Path $root "examples/Capabilities/DotBoxd.Kernels.Example.Capabilities/DotBoxd.Kernels.Example.Capabilities.csproj"
+$hostingExample = Join-Path $root "examples/Hosting/DotBoxd.Kernels.Example.Hosting/DotBoxd.Kernels.Example.Hosting.csproj"
+$pluginAuthoringExample = Join-Path $root "examples/PluginAuthoring/DotBoxd.Kernels.Example.PluginAuthoring/DotBoxd.Kernels.Example.PluginAuthoring.csproj"
+$httpTransportExample = Join-Path $root "examples/HttpTransport/DotBoxd.Kernels.HttpTransportExample/DotBoxd.Kernels.HttpTransportExample.csproj"
+$localPluginExample = Join-Path $root "examples/LocalPlugin/DotBoxd.Kernels.PluginLocal/DotBoxd.Kernels.PluginLocal.csproj"
+$ipcServerExample = Join-Path $root "examples/PluginIpc/DotBoxd.Kernels.PluginIpc.Server/DotBoxd.Kernels.PluginIpc.Server.csproj"
+$ipcClientExample = Join-Path $root "examples/PluginIpc/DotBoxd.Kernels.PluginIpc.Client/DotBoxd.Kernels.PluginIpc.Client.csproj"
+$gameServerExample = Join-Path $root "examples/GameServer/DotBoxd.Kernels.Game.Server/DotBoxd.Kernels.Game.Server.csproj"
+$gamePluginExample = Join-Path $root "examples/GameServer/DotBoxd.Kernels.Game.Plugin/DotBoxd.Kernels.Game.Plugin.csproj"
 
 function Resolve-RepoPath([string] $Path) {
     $normalized = $Path.Trim().Trim('"').Replace('\', [System.IO.Path]::DirectorySeparatorChar)
@@ -92,8 +92,8 @@ function Stop-ProcessTree([System.Diagnostics.Process] $Process) {
 }
 
 function Invoke-DotNetProject([string] $Description, [string[]] $Arguments, [int] $TimeoutSeconds = 60) {
-    $outputPath = Join-Path ([System.IO.Path]::GetTempPath()) ("safe-ir-smoke-" + [Guid]::NewGuid().ToString("N") + ".out")
-    $errorPath = Join-Path ([System.IO.Path]::GetTempPath()) ("safe-ir-smoke-" + [Guid]::NewGuid().ToString("N") + ".err")
+    $outputPath = Join-Path ([System.IO.Path]::GetTempPath()) ("dotboxd-smoke-" + [Guid]::NewGuid().ToString("N") + ".out")
+    $errorPath = Join-Path ([System.IO.Path]::GetTempPath()) ("dotboxd-smoke-" + [Guid]::NewGuid().ToString("N") + ".err")
     $parameters = @{
         FilePath = "dotnet"
         ArgumentList = $Arguments
@@ -146,8 +146,8 @@ if (-not $IsWindows) {
 }
 
 function Start-IpcServer([string] $Project, [string] $PipeName) {
-    $outputPath = Join-Path ([System.IO.Path]::GetTempPath()) ("safe-ir-ipc-server-" + [Guid]::NewGuid().ToString("N") + ".out")
-    $errorPath = Join-Path ([System.IO.Path]::GetTempPath()) ("safe-ir-ipc-server-" + [Guid]::NewGuid().ToString("N") + ".err")
+    $outputPath = Join-Path ([System.IO.Path]::GetTempPath()) ("dotboxd-ipc-server-" + [Guid]::NewGuid().ToString("N") + ".out")
+    $errorPath = Join-Path ([System.IO.Path]::GetTempPath()) ("dotboxd-ipc-server-" + [Guid]::NewGuid().ToString("N") + ".err")
     $arguments = @(
         "run", "--project", $Project,
         "--configuration", $Configuration,
@@ -173,8 +173,8 @@ function Start-IpcServer([string] $Project, [string] $PipeName) {
 }
 
 function Invoke-IpcClient([string] $Project, [string] $PipeName) {
-    $outputPath = Join-Path ([System.IO.Path]::GetTempPath()) ("safe-ir-ipc-client-" + [Guid]::NewGuid().ToString("N") + ".out")
-    $errorPath = Join-Path ([System.IO.Path]::GetTempPath()) ("safe-ir-ipc-client-" + [Guid]::NewGuid().ToString("N") + ".err")
+    $outputPath = Join-Path ([System.IO.Path]::GetTempPath()) ("dotboxd-ipc-client-" + [Guid]::NewGuid().ToString("N") + ".out")
+    $errorPath = Join-Path ([System.IO.Path]::GetTempPath()) ("dotboxd-ipc-client-" + [Guid]::NewGuid().ToString("N") + ".err")
     $arguments = @(
         "run", "--project", $Project,
         "--configuration", $Configuration,
@@ -246,8 +246,8 @@ try {
 # only needs to run the server once and assert exit 0. Point the server at the built plugin dll so it
 # can launch it under --no-build.
 function Invoke-GameServer([string] $ServerProject, [string] $HostDll) {
-    $outputPath = Join-Path ([System.IO.Path]::GetTempPath()) ("safe-ir-game-" + [Guid]::NewGuid().ToString("N") + ".out")
-    $errorPath = Join-Path ([System.IO.Path]::GetTempPath()) ("safe-ir-game-" + [Guid]::NewGuid().ToString("N") + ".err")
+    $outputPath = Join-Path ([System.IO.Path]::GetTempPath()) ("dotboxd-game-" + [Guid]::NewGuid().ToString("N") + ".out")
+    $errorPath = Join-Path ([System.IO.Path]::GetTempPath()) ("dotboxd-game-" + [Guid]::NewGuid().ToString("N") + ".err")
     $arguments = @(
         "run", "--project", $ServerProject,
         "--configuration", $Configuration,
@@ -290,7 +290,7 @@ function Invoke-GameServer([string] $ServerProject, [string] $HostDll) {
     }
 }
 
-$gamePluginDll = Join-Path $root "examples/GameServer/SafeIR.Game.Plugin/bin/$Configuration/net10.0/SafeIR.Game.Plugin.dll"
+$gamePluginDll = Join-Path $root "examples/GameServer/DotBoxd.Kernels.Game.Plugin/bin/$Configuration/net10.0/DotBoxd.Kernels.Game.Plugin.dll"
 if (-not (Test-Path -LiteralPath $gamePluginDll)) {
     throw "Game server smoke prerequisite missing: $gamePluginDll (build the solution first)."
 }

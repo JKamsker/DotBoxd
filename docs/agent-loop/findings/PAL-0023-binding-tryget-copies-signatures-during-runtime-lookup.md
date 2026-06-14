@@ -29,13 +29,13 @@ Runtime binding existence and metadata checks call `BindingRegistry.TryGet`, whi
 
 ## Evidence
 
-- `src/SafeIR.Interpreter/ExpressionEvaluator.cs:127` checks `_context.Bindings.TryGet(call.Name, out _)` to decide whether a call name is a binding.
-- `src/SafeIR.Interpreter/ExpressionEvaluator.cs:168` then fetches the actual descriptor separately with `GetDescriptor` when invoking the binding, so the `TryGet` signature object was not used for dispatch.
-- `src/SafeIR.Core/Model/ShortCircuitExpressionOrder.cs:59` also calls `bindings.TryGet(call.Name, out var binding)` while choosing evaluation order for short-circuit expressions, which can run during interpreted expression evaluation.
-- `src/SafeIR.Core/Bindings/BindingContracts.cs:146` through `src/SafeIR.Core/Bindings/BindingContracts.cs:156` implements `BindingRegistry.TryGet` by assigning `descriptor.Signature` on success.
-- `src/SafeIR.Core/Bindings/BindingContracts.cs:67` through `src/SafeIR.Core/Bindings/BindingContracts.cs:68` constructs a new `BindingSignature` for every `descriptor.Signature` access.
-- `src/SafeIR.Core/Bindings/BindingContracts.cs:70` through `src/SafeIR.Core/Bindings/BindingContracts.cs:84` copies the descriptor parameter list into a new array for that signature.
-- `src/SafeIR.Core/Bindings/BindingContracts.cs:132` exposes `GetDescriptor`, which already performs a direct dictionary lookup without materializing a public signature.
+- `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:127` checks `_context.Bindings.TryGet(call.Name, out _)` to decide whether a call name is a binding.
+- `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:168` then fetches the actual descriptor separately with `GetDescriptor` when invoking the binding, so the `TryGet` signature object was not used for dispatch.
+- `src/DotBoxd.Kernels/Model/ShortCircuitExpressionOrder.cs:59` also calls `bindings.TryGet(call.Name, out var binding)` while choosing evaluation order for short-circuit expressions, which can run during interpreted expression evaluation.
+- `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:146` through `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:156` implements `BindingRegistry.TryGet` by assigning `descriptor.Signature` on success.
+- `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:67` through `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:68` constructs a new `BindingSignature` for every `descriptor.Signature` access.
+- `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:70` through `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:84` copies the descriptor parameter list into a new array for that signature.
+- `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:132` exposes `GetDescriptor`, which already performs a direct dictionary lookup without materializing a public signature.
 - This is distinct from `PAL-0013` compiled argument-array allocation and from verifier member-signature findings. The allocation here is a runtime registry abstraction leak: successful `TryGet` creates a signature copy even for existence checks.
 
 ## Impact

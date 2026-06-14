@@ -25,7 +25,7 @@ duplicate_of:
 
 ## Claim
 
-`SafeIR.Transport.Http` is presented as a current shipped package with HTTP GET bindings, grant helpers, pinned transport, and grant validation, but the maintained examples and docs smoke pipeline do not include a runnable HTTP transport scenario. The feature is exercised in unit tests only, so public docs can claim HTTP support without proving the consumer-facing `AddNetworkBindings()` plus `GrantHttpGet(...)` setup in a maintained example.
+`DotBoxd.Hosting.Http` is presented as a current shipped package with HTTP GET bindings, grant helpers, pinned transport, and grant validation, but the maintained examples and docs smoke pipeline do not include a runnable HTTP transport scenario. The feature is exercised in unit tests only, so public docs can claim HTTP support without proving the consumer-facing `AddNetworkBindings()` plus `GrantHttpGet(...)` setup in a maintained example.
 
 ## Why this matters
 
@@ -33,25 +33,25 @@ The HTTP transport is a security-sensitive addon: hosts must configure allowlist
 
 ## Evidence
 
-- `README.md:13` lists `SafeIR.Transport.Http` as a current package for HTTP GET binding, grant helpers, pinned transport, and HTTP grant validation.
-- `src/SafeIR.Transport.Http/Hosting/SafeHttpHostBuilderExtensions.cs:8` exposes the public host setup method `AddNetworkBindings(...)`.
-- `src/SafeIR.Transport.Http/Policy/SafeHttpPolicyBuilderExtensions.cs:8` exposes the public policy setup method `GrantHttpGet(...)` with allowlist, byte limit, scheme, request-byte, timeout, and private-network options.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/08-runtime-safe-apis.md:141` through `:169` describe the safe network API requirements, including disabled-by-default networking, allowlisted schemes/hosts, DNS pinning, byte limits, wall-time timeout capping, and sanitized audit.
-- `tests/SafeIR.Tests/Misc07/SafeNetworkTests.cs:22` and `tests/SafeIR.Tests/Misc04/NetworkRequestQuotaTests.cs:9` exercise HTTP behavior through test fixtures, but those are not consumer examples.
+- `README.md:13` lists `DotBoxd.Hosting.Http` as a current package for HTTP GET binding, grant helpers, pinned transport, and HTTP grant validation.
+- `src/DotBoxd.Hosting.Http/Hosting/SafeHttpHostBuilderExtensions.cs:8` exposes the public host setup method `AddNetworkBindings(...)`.
+- `src/DotBoxd.Hosting.Http/Policy/SafeHttpPolicyBuilderExtensions.cs:8` exposes the public policy setup method `GrantHttpGet(...)` with allowlist, byte limit, scheme, request-byte, timeout, and private-network options.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/08-runtime-safe-apis.md:141` through `:169` describe the safe network API requirements, including disabled-by-default networking, allowlisted schemes/hosts, DNS pinning, byte limits, wall-time timeout capping, and sanitized audit.
+- `tests/DotBoxd.Kernels.Tests/Misc07/SafeNetworkTests.cs:22` and `tests/DotBoxd.Kernels.Tests/Misc04/NetworkRequestQuotaTests.cs:9` exercise HTTP behavior through test fixtures, but those are not consumer examples.
 - `scripts/check-docs-smoke.ps1:8` through `:11` declares only addendum, local plugin, IPC server, and IPC client example projects; `scripts/check-docs-smoke.ps1:131` through `:132` runs only addendum and local plugin examples before the optional IPC smoke. No HTTP example project is part of docs smoke.
-- Repository examples are plugin/addendum/IPC-focused; the targeted scan for `GrantHttpGet`, `AddNetworkBindings`, `SafeIR.Transport.Http`, and `net.http.get` found no example project using the HTTP transport package.
+- Repository examples are plugin/addendum/IPC-focused; the targeted scan for `GrantHttpGet`, `AddNetworkBindings`, `DotBoxd.Hosting.Http`, and `net.http.get` found no example project using the HTTP transport package.
 - Existing API-0006 covers a clean NuGet consumer smoke test for package layout, and API-0002 covers namespace exposure. This finding is narrower: the shipped HTTP feature lacks a maintained runnable example proving safe feature setup and behavior.
 
 ## Suggested acceptance test
 
-Add a runnable example project or example mode that imports `SafeIR.Transport.Http`, registers `AddNetworkBindings(...)` with a deterministic/in-memory invoker, prepares a JSON module that calls `net.http.get`, grants only an explicit host through `GrantHttpGet(...)`, executes it, and prints/asserts the sanitized successful audit plus one denied-host case. Include that example in `check-docs-smoke.ps1`.
+Add a runnable example project or example mode that imports `DotBoxd.Hosting.Http`, registers `AddNetworkBindings(...)` with a deterministic/in-memory invoker, prepares a JSON module that calls `net.http.get`, grants only an explicit host through `GrantHttpGet(...)`, executes it, and prints/asserts the sanitized successful audit plus one denied-host case. Include that example in `check-docs-smoke.ps1`.
 
 ## Suggested fix direction
 
 Create `examples/HttpTransport` or a focused docs-smoke fixture showing:
 
 ```csharp
-using SafeIR.Transport.Http;
+using DotBoxd.Hosting.Http;
 
 using var host = SandboxHost.Create(builder => {
     builder.AddDefaultPureBindings();
@@ -76,7 +76,7 @@ Do not change HTTP runtime behavior or grant validation as part of this finding.
 ## Verification checklist
 
 - [ ] A runnable HTTP transport example exists outside unit tests.
-- [ ] The example uses the public `SafeIR.Transport.Http` namespace, `AddNetworkBindings(...)`, and `GrantHttpGet(...)`.
+- [ ] The example uses the public `DotBoxd.Hosting.Http` namespace, `AddNetworkBindings(...)`, and `GrantHttpGet(...)`.
 - [ ] The example demonstrates at least one allowed request and one denied unsafe/out-of-allowlist request.
 - [ ] `check-docs-smoke.ps1` runs the example.
 - [ ] README or runtime docs link to the example as the safe HTTP setup path.

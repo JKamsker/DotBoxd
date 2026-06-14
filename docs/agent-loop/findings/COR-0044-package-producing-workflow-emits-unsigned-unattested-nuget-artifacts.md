@@ -29,7 +29,7 @@ The package-producing workflow creates and uploads NuGet artifacts for release b
 
 ## Evidence
 
-- `.github/workflows/ci.yml` runs on pushes to `release/**` branches and `v*` tags, runs `dotnet pack SafeIR.slnx --configuration Release --no-build --output artifacts/packages`, checks the packages, and uploads `artifacts/packages/*.nupkg`.
+- `.github/workflows/ci.yml` runs on pushes to `release/**` branches and `v*` tags, runs `dotnet pack DotBoxd.Kernels.slnx --configuration Release --no-build --output artifacts/packages`, checks the packages, and uploads `artifacts/packages/*.nupkg`.
 - `.github/workflows/ci.yml` has no signing, `dotnet nuget verify --signatures`, artifact attestation, provenance upload, or trusted-publisher verification step after packing.
 - `scripts/check-package-metadata.ps1` opens each `.nupkg` and validates package ID, version, license, repository URL, repository commit, dependency prerelease policy, and selected payload entries, but it never checks for a NuGet package signature, a `.signature.p7s` entry, a trusted signer, or external provenance evidence.
 - This is distinct from `COR-0035`, which covers unexpected package payloads, from `API-0014`, which covers OS-specific package sets without a canonical artifact check, and from `COR-0040`, which covers mutable GitHub Action tags in package-producing jobs. This finding is about cryptographic tamper evidence for the package artifact itself after it has been packed and metadata-checked.

@@ -25,16 +25,16 @@ duplicate_of:
 
 ## Claim
 
-`SafeIR.Hosting` exposes capability revocation as a public runtime control-plane operation, but the surface is write-only. Hosts can call `SandboxHost.RevokeCapability(...)`, yet there is no public way to query whether a capability is revoked, enumerate revoked capabilities, inspect the sanitized revocation reason/timestamp, or clear/replace a revocation intentionally.
+`DotBoxd.Hosting` exposes capability revocation as a public runtime control-plane operation, but the surface is write-only. Hosts can call `SandboxHost.RevokeCapability(...)`, yet there is no public way to query whether a capability is revoked, enumerate revoked capabilities, inspect the sanitized revocation reason/timestamp, or clear/replace a revocation intentionally.
 
 That makes an advertised host control-plane capability incomplete for operational callers.
 
 ## Evidence
 
-- `src/SafeIR.Hosting/Execution/SandboxHost.Capabilities.cs` declares public `RevokeCapability(string capabilityId, string reason = "")`.
+- `src/DotBoxd.Hosting/Execution/SandboxHost.Capabilities.cs` declares public `RevokeCapability(string capabilityId, string reason = "")`.
 - The same file stores revocations in a private `_revokedCapabilities` dictionary and a private `RevokedCapability` record.
 - `TryGetRevokedCapability(...)` is private and is only used during `SandboxHost.ExecuteAsync(...)` before dispatch.
-- `CapabilityRevokedResult(...)` in `src/SafeIR.Hosting/SandboxHost.Results.cs` emits the revoked id, reason, and timestamp into audit fields when a run is blocked, but consumers cannot inspect that state directly before attempting execution.
+- `CapabilityRevokedResult(...)` in `src/DotBoxd.Hosting/SandboxHost.Results.cs` emits the revoked id, reason, and timestamp into audit fields when a run is blocked, but consumers cannot inspect that state directly before attempting execution.
 - There is no public `IsCapabilityRevoked`, `TryGetRevokedCapability`, `RevokedCapabilities` snapshot, `ClearCapabilityRevocation`, or public revocation model in the hosting surface.
 
 ## Impact

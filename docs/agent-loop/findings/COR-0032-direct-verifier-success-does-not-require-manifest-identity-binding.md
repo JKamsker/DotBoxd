@@ -29,9 +29,9 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Verifier/Generated/GeneratedAssemblyVerifier.cs` always checks `manifest.AssemblyHash` against the input bytes, then calls `ManifestIdentityVerifier.Verify(manifest, policy, diagnostics)`.
-- `src/SafeIR.Verifier/Generated/ManifestIdentityVerifier.cs` immediately returns when `policy.ExpectedManifestIdentity` is null, so every manifest identity field other than the assembly hash is treated as informational.
-- `src/SafeIR.Verifier/VerificationPolicy.cs` defaults `ExpectedManifestIdentity` to null, and `VerificationPolicy.BoxedValueDefaults()` does not set one.
+- `src/DotBoxd.Kernels.Verifier/Generated/GeneratedAssemblyVerifier.cs` always checks `manifest.AssemblyHash` against the input bytes, then calls `ManifestIdentityVerifier.Verify(manifest, policy, diagnostics)`.
+- `src/DotBoxd.Kernels.Verifier/Generated/ManifestIdentityVerifier.cs` immediately returns when `policy.ExpectedManifestIdentity` is null, so every manifest identity field other than the assembly hash is treated as informational.
+- `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs` defaults `ExpectedManifestIdentity` to null, and `VerificationPolicy.BoxedValueDefaults()` does not set one.
 - Hosted/compiler paths do set expected identity before materializing or reading cache entries, but `IGeneratedAssemblyVerifier` is a public verifier surface and the direct-verifier tests only prove rejection when callers opt in with `policy.WithExpectedManifest(...)`.
 
 ## Risk

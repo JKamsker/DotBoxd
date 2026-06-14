@@ -29,8 +29,8 @@ Plugin kernel execution creates a linked `CancellationTokenSource` for every san
 
 ## Evidence
 
-- `src/SafeIR.Plugins/InstalledKernel.cs:261` calls `CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _revocation.Token)` inside `ExecutePreparedAsync`.
-- `src/SafeIR.Plugins/InstalledKernel.cs:271` records telemetry after `_host.ExecuteAsync`, confirming the linked token source is on every prepared kernel execution path rather than only setup or error handling.
+- `src/DotBoxd.Plugins/InstalledKernel.cs:261` calls `CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _revocation.Token)` inside `ExecutePreparedAsync`.
+- `src/DotBoxd.Plugins/InstalledKernel.cs:271` records telemetry after `_host.ExecuteAsync`, confirming the linked token source is on every prepared kernel execution path rather than only setup or error handling.
 - `ShouldHandleAsync`, `HandleAsync`, and hook-driven `InvokeAsync` all route through `ExecutePreparedAsync`. A hook publish commonly runs `ShouldHandle` for each installed kernel and then `Handle` for accepted events, so the current path allocates one linked source and cancellation registrations per entrypoint execution.
 - The revocation token is stable for the installed kernel lifetime. When the caller token cannot be canceled, passing `_revocation.Token` directly would preserve revocation behavior without allocating a linked source.
 - Existing plugin performance findings cover execution observation retention (`PAL-0033`) and hook dispatch handler snapshots (`PAL-0035`). This finding is separate: it is cancellation infrastructure allocated before each sandbox execution.

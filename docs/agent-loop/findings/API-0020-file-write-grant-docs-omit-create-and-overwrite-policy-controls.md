@@ -33,10 +33,10 @@ A host following the package-facing API page can grant `file.write` and still ge
 
 ## Evidence
 
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md` documents only `public SandboxPolicyBuilder GrantFileWrite(string root, long maxBytesPerRun);`.
-- `src/SafeIR.Core/Policy.cs` implements `GrantFileWrite(string root, long maxBytesPerRun, bool allowCreate = false, bool allowOverwrite = false)` and serializes both flags into the `file.write` grant.
-- `src/SafeIR.Runtime/Bindings/SafeFileWritePublisher.cs` reads `allowCreate` and `allowOverwrite` with `false` fallbacks and denies missing-target creation or existing-target overwrite unless the matching flag is enabled.
-- `tests/SafeIR.Tests/Misc07/SafeFileSystemTests.cs` has coverage for successful create with `allowCreate: true`, overwrite denial, and the default builder grant denying both create and overwrite.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md` documents only `public SandboxPolicyBuilder GrantFileWrite(string root, long maxBytesPerRun);`.
+- `src/DotBoxd.Kernels/Policy.cs` implements `GrantFileWrite(string root, long maxBytesPerRun, bool allowCreate = false, bool allowOverwrite = false)` and serializes both flags into the `file.write` grant.
+- `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileWritePublisher.cs` reads `allowCreate` and `allowOverwrite` with `false` fallbacks and denies missing-target creation or existing-target overwrite unless the matching flag is enabled.
+- `tests/DotBoxd.Kernels.Tests/Misc07/SafeFileSystemTests.cs` has coverage for successful create with `allowCreate: true`, overwrite denial, and the default builder grant denying both create and overwrite.
 
 ## Suggested test or benchmark
 
@@ -44,7 +44,7 @@ Add a docs/API smoke check that fails if the public API page omits policy-shapin
 
 ## Suggested fix direction
 
-Update `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md` to show the full `GrantFileWrite` signature and explain the safe defaults. Add a short README or public API snippet showing a create-only grant and an overwrite-enabled grant so package consumers do not need to infer the behavior from tests.
+Update `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md` to show the full `GrantFileWrite` signature and explain the safe defaults. Add a short README or public API snippet showing a create-only grant and an overwrite-enabled grant so package consumers do not need to infer the behavior from tests.
 
 ## Scope boundaries
 

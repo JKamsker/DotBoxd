@@ -27,13 +27,13 @@ duplicate_of:
 
 ## Summary
 
-The ShaRPC named-pipe plugin IPC helper and runnable sample expose a plugin control-plane service to any local client that knows the pipe name. The boundary is documented as trusted, but the helper and example do not enforce authentication, peer authorization, a one-time handshake, or safe pipe-name entropy.
+The DotBoxd named-pipe plugin IPC helper and runnable sample expose a plugin control-plane service to any local client that knows the pipe name. The boundary is documented as trusted, but the helper and example do not enforce authentication, peer authorization, a one-time handshake, or safe pipe-name entropy.
 
 ## Evidence
 
-- `src/SafeIR.Transport.Ipc.ShaRpc/SafeIrShaRpcMessagePackIpc.cs` exposes `ListenNamedPipe(string pipeName, ...)` as `Listen(new NamedPipeServerTransport(pipeName), configurePeer, options)` and `ConnectNamedPipeAsync(...)` as `ConnectAsync(new NamedPipeClientTransport(...), ...)`. The SafeIR wrapper adds client `RejectInboundCalls = true`, but it does not add server-side authentication, caller authorization, pipe-name validation, or a shared-secret/session handshake.
-- `examples/PluginIpc/SafeIR.PluginIpc.Server/Program.cs` accepts a single command-line pipe name and immediately publishes `PluginControlService` to every peer via `peer.ProvidePluginControlService(service)`.
-- `examples/PluginIpc/SafeIR.PluginIpc.Shared/PluginControlContracts.cs` exposes state-changing methods over that pipe: `SetSettingAsync`, `ModifySettingsAsync`, and `PublishDamageAsync`.
+- `src/DotBoxd.Pushdown.Services/DotBoxdDotBoxdRpcMessagePackIpc.cs` exposes `ListenNamedPipe(string pipeName, ...)` as `Listen(new NamedPipeServerTransport(pipeName), configurePeer, options)` and `ConnectNamedPipeAsync(...)` as `ConnectAsync(new NamedPipeClientTransport(...), ...)`. The DotBoxd.Kernels wrapper adds client `RejectInboundCalls = true`, but it does not add server-side authentication, caller authorization, pipe-name validation, or a shared-secret/session handshake.
+- `examples/PluginIpc/DotBoxd.Kernels.PluginIpc.Server/Program.cs` accepts a single command-line pipe name and immediately publishes `PluginControlService` to every peer via `peer.ProvidePluginControlService(service)`.
+- `examples/PluginIpc/DotBoxd.Kernels.PluginIpc.Shared/PluginControlContracts.cs` exposes state-changing methods over that pipe: `SetSettingAsync`, `ModifySettingsAsync`, and `PublishDamageAsync`.
 - `docs/Specs/Addendum/Examples.md` explicitly says the pipe name is a trusted local control-plane endpoint and asks operators to pass a high-entropy or deployment-scoped name, but the code path does not enforce that posture.
 
 ## Impact
@@ -42,8 +42,8 @@ A same-user or same-machine process that discovers or guesses the pipe name can 
 
 ## Test idea
 
-Add a named-pipe integration test that starts the sample-style service with a predictable pipe name and attempts to call `ModifySettingsAsync` from a second unauthenticated client. The desired fixed behavior should reject the call unless the client completes an explicit SafeIR authentication/authorization handshake, or `ListenNamedPipe` should reject low-entropy/non-scoped names unless an unsafe development option is explicitly selected.
+Add a named-pipe integration test that starts the sample-style service with a predictable pipe name and attempts to call `ModifySettingsAsync` from a second unauthenticated client. The desired fixed behavior should reject the call unless the client completes an explicit DotBoxd.Kernels authentication/authorization handshake, or `ListenNamedPipe` should reject low-entropy/non-scoped names unless an unsafe development option is explicitly selected.
 
 ## Suggested fix
 
-Add SafeIR-owned IPC options that require either a shared secret, one-time bearer token, nonce challenge, or host-provided peer authorization callback before services are exposed. At minimum, make the named-pipe convenience helper fail closed for low-entropy names unless a clearly named development-only option is passed, and update the sample to generate and pass an authenticated endpoint token.
+Add DotBoxd.Kernels-owned IPC options that require either a shared secret, one-time bearer token, nonce challenge, or host-provided peer authorization callback before services are exposed. At minimum, make the named-pipe convenience helper fail closed for low-entropy names unless a clearly named development-only option is passed, and update the sample to generate and pass an authenticated endpoint token.

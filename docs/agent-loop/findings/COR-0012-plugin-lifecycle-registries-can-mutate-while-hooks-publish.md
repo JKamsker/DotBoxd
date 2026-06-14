@@ -29,14 +29,14 @@ Plugin hook and kernel registries mutate ordinary `Dictionary` and `List` instan
 
 ## Evidence
 
-`src/SafeIR.Plugins/Runtime/HookRegistry.cs` stores pipelines in `Dictionary<Type, object> _pipelines` and each `HookPipeline<TEvent>` stores `_filters` and `_handlers` as `List<...>`. `On`/`UseKernel` mutate those collections, while `PublishAsync` reads `_pipelines` and iterates `_filters` / `_handlers` without a snapshot or lock:
+`src/DotBoxd.Plugins/Runtime/HookRegistry.cs` stores pipelines in `Dictionary<Type, object> _pipelines` and each `HookPipeline<TEvent>` stores `_filters` and `_handlers` as `List<...>`. `On`/`UseKernel` mutate those collections, while `PublishAsync` reads `_pipelines` and iterates `_filters` / `_handlers` without a snapshot or lock:
 
 ```csharp
 foreach (var filter in _filters) { ... }
 foreach (var handler in _handlers) { ... }
 ```
 
-`src/SafeIR.Plugins/PluginServer.cs` also exposes `InstallAsync`, `Uninstall`, and `Kernels.Get<T>` over a plain `Dictionary<string, InstalledKernel> _kernels`. `KernelRegistry.Add` can revoke and replace entries while `GetByKernelType` or `Remove` read/write the same dictionary. None of these public lifecycle/publish paths document single-thread affinity, and plugin execution itself is asynchronous, so concurrent publish and lifecycle changes are realistic.
+`src/DotBoxd.Plugins/PluginServer.cs` also exposes `InstallAsync`, `Uninstall`, and `Kernels.Get<T>` over a plain `Dictionary<string, InstalledKernel> _kernels`. `KernelRegistry.Add` can revoke and replace entries while `GetByKernelType` or `Remove` read/write the same dictionary. None of these public lifecycle/publish paths document single-thread affinity, and plugin execution itself is asynchronous, so concurrent publish and lifecycle changes are realistic.
 
 Existing plugin lifecycle tests cover sequential uninstall/reinstall and uninstall while a handler is blocked, but they do not exercise concurrent `UseKernel`/`PublishAsync` or concurrent install/uninstall/get operations.
 

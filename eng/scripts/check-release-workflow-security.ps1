@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$root = Split-Path -Parent $PSScriptRoot
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $workflowPath = Join-Path $root ".github/workflows/ci.yml"
 $lineGuardPath = Join-Path $root "scripts/check-csharp-file-lines.ps1"
 if (-not (Test-Path -LiteralPath $workflowPath)) {

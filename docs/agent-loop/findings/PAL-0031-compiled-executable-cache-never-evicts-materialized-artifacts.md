@@ -29,7 +29,7 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Hosting/Execution/CompiledExecutableCache.cs` stores materialized entries in a `ConcurrentDictionary<string, Lazy<Task<MaterializedCompiledArtifact>>>`.
+- `src/DotBoxd.Hosting/Execution/CompiledExecutableCache.cs` stores materialized entries in a `ConcurrentDictionary<string, Lazy<Task<MaterializedCompiledArtifact>>>`.
 - `GetAsync` keys entries by `artifact.Manifest.CacheKey + "|" + artifact.AssemblyHash`, so every unique compiled artifact identity creates a distinct cache slot.
 - Successful materializations are reused from `_entries.GetOrAdd(...)`, but entries are removed only on cancellation/failure or when `Dispose()` clears the entire dictionary.
 - `SandboxHost` owns one `CompiledExecutableCache` for its lifetime and only disposes it when the host itself is disposed.

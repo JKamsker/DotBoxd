@@ -29,11 +29,11 @@ Plugin package JSON import parses the full package, extracts the `module` subtre
 
 ## Evidence
 
-- `src/SafeIR.Serialization.Json/PluginPackageJsonSerializer.cs` parses the complete package with `JsonDocument.Parse` in `Import`.
+- `src/DotBoxd.Kernels.Serialization.Json/PluginPackageJsonSerializer.cs` parses the complete package with `JsonDocument.Parse` in `Import`.
 - `ReadPackage` then calls `Required(element, "module").GetRawText()` to materialize the module subtree as a new JSON string.
-- That string is passed to `SafeIrJsonImporter.Import`, which runs `JsonImportBudgetGuard.Validate`, parses another `JsonDocument`, and builds the module source map again in `src/SafeIR.Serialization.Json/SafeIrJsonImporter.cs`.
+- That string is passed to `DotBoxdJsonImporter.Import`, which runs `JsonImportBudgetGuard.Validate`, parses another `JsonDocument`, and builds the module source map again in `src/DotBoxd.Kernels.Serialization.Json/DotBoxdJsonImporter.cs`.
 - Existing `ALG-0001` covers inefficient source-map construction inside the module importer. This finding is the package-level wrapper doing an avoidable second module parse/copy before that importer work even begins.
-- Current `benchmarks/SafeIR.Benchmarks/Json/JsonImportBenchmarks.cs` covers raw module import, but there is no package import/export benchmark that includes manifest/live settings plus a large embedded module.
+- Current `benchmarks/DotBoxd.Kernels.Benchmarks/Json/JsonImportBenchmarks.cs` covers raw module import, but there is no package import/export benchmark that includes manifest/live settings plus a large embedded module.
 
 ## Impact
 
@@ -41,8 +41,8 @@ Large plugin packages pay full-package parse cost plus an extra raw-text allocat
 
 ## Better target
 
-Import the module directly from the existing `JsonElement` tree, or split `SafeIrJsonImporter` so package import can reuse module-reading logic without `GetRawText()` and without reparsing. If source spans are required, preserve package-level offsets or build a source map once for the full package.
+Import the module directly from the existing `JsonElement` tree, or split `DotBoxdJsonImporter` so package import can reuse module-reading logic without `GetRawText()` and without reparsing. If source spans are required, preserve package-level offsets or build a source map once for the full package.
 
 ## Benchmark/allocation test idea
 
-Add a BenchmarkDotNet package serialization benchmark that generates plugin packages with 100, 1,000, and 10,000 module statements plus live settings/subscriptions. Measure `PluginPackageJsonSerializer.Import` allocated bytes and elapsed time, and compare package import against direct `SafeIrJsonImporter.Import` of the same module payload to expose the wrapper overhead.
+Add a BenchmarkDotNet package serialization benchmark that generates plugin packages with 100, 1,000, and 10,000 module statements plus live settings/subscriptions. Measure `PluginPackageJsonSerializer.Import` allocated bytes and elapsed time, and compare package import against direct `DotBoxdJsonImporter.Import` of the same module payload to expose the wrapper overhead.

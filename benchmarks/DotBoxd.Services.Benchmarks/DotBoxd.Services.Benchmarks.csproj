@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Services\DotBoxd.Services\DotBoxd.Services.csproj" />
+    <ProjectReference Include="..\..\src\Channels\DotBoxd.Codecs.MessagePack\DotBoxd.Codecs.MessagePack.csproj" />
+    <ProjectReference Include="..\..\samples\Services\GameService\Shared\Shared.csproj" />
+  </ItemGroup>
+
+</Project>

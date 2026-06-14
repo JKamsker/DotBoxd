@@ -29,11 +29,11 @@ Audit/log text sanitization allocates and runs every redaction regex even when t
 
 ## Evidence
 
-- `src/SafeIR.Runtime/Bindings/SafeLogBindings.cs:30` calls `AuditTextSanitizer.SanitizeAndRedact(message)` for every `log.info`/`log.warn` call.
-- `src/SafeIR.Runtime/AuditTextSanitizer.cs:11` starts by calling `message.ToCharArray()`, allocating a full character array for every message.
-- `src/SafeIR.Runtime/AuditTextSanitizer.cs:19` then constructs a new `string` from that array even if no control characters were present.
-- `src/SafeIR.Runtime/AuditTextSanitizer.cs:20` through `src/SafeIR.Runtime/AuditTextSanitizer.cs:30` run four regex replacement passes (`UriCredentialPattern`, `AuthorizationHeaderPattern`, `SecretPattern`, and `AuthSchemePattern`) regardless of whether the text contains likely secret markers.
-- `src/SafeIR.Runtime/Bindings/SafeLogBindings.cs:31` and `src/SafeIR.Runtime/Bindings/SafeLogBindings.cs:32` then meter the sanitized string, so this sits directly on the log binding hot path.
+- `src/DotBoxd.Kernels.Runtime/Bindings/SafeLogBindings.cs:30` calls `AuditTextSanitizer.SanitizeAndRedact(message)` for every `log.info`/`log.warn` call.
+- `src/DotBoxd.Kernels.Runtime/AuditTextSanitizer.cs:11` starts by calling `message.ToCharArray()`, allocating a full character array for every message.
+- `src/DotBoxd.Kernels.Runtime/AuditTextSanitizer.cs:19` then constructs a new `string` from that array even if no control characters were present.
+- `src/DotBoxd.Kernels.Runtime/AuditTextSanitizer.cs:20` through `src/DotBoxd.Kernels.Runtime/AuditTextSanitizer.cs:30` run four regex replacement passes (`UriCredentialPattern`, `AuthorizationHeaderPattern`, `SecretPattern`, and `AuthSchemePattern`) regardless of whether the text contains likely secret markers.
+- `src/DotBoxd.Kernels.Runtime/Bindings/SafeLogBindings.cs:31` and `src/DotBoxd.Kernels.Runtime/Bindings/SafeLogBindings.cs:32` then meter the sanitized string, so this sits directly on the log binding hot path.
 - Existing COR-0013/COR-0019 cover redaction correctness and PAL-0024 covers audit-field dictionary duplication; this finding is specifically the avoidable clean-message allocation/regex cost in sanitizer execution.
 
 ## Impact

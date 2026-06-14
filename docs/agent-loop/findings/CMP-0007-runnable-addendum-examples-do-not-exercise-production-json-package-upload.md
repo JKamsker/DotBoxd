@@ -35,8 +35,8 @@ The JSON package boundary is the security-relevant feature-completeness story fo
 
 - `docs/Specs/Addendum/Addendum.md:29` says the generated factory can create a `PluginPackage` and `PluginPackageJsonSerializer.Export` converts it to the JSON envelope used for upload.
 - `docs/Specs/Addendum/Addendum.md:754` and `docs/Specs/Addendum/Addendum.md:755` state the upload path is `PluginPackageJsonSerializer.Export(FireDamagePluginPackage.Create())` followed by server-side `InstallJsonAsync` validation.
-- `examples/Addendum/SafeIR.AddendumExamples/AddendumExampleRunner.cs` runs the documented example set, but it has no JSON upload/install example.
-- `examples/Addendum/SafeIR.AddendumExamples/SafeIR.AddendumExamples.csproj` references `SafeIR.PluginAnalyzer`, `SafeIR.Plugins`, and the server abstractions, but not `SafeIR.Serialization.Json`, so this runnable example project cannot exercise `InstallJsonAsync` without additional setup.
+- `examples/Addendum/DotBoxd.Kernels.AddendumExamples/AddendumExampleRunner.cs` runs the documented example set, but it has no JSON upload/install example.
+- `examples/Addendum/DotBoxd.Kernels.AddendumExamples/DotBoxd.Kernels.AddendumExamples.csproj` references `DotBoxd.Plugins.Analyzer`, `DotBoxd.Plugins`, and the server abstractions, but not `DotBoxd.Kernels.Serialization.Json`, so this runnable example project cannot exercise `InstallJsonAsync` without additional setup.
 - `scripts/check-docs-smoke.ps1` runs the addendum and local plugin examples, so the current smoke coverage also misses the JSON upload path.
 
 ## Suggested test or benchmark
@@ -45,7 +45,7 @@ Add a runnable example that exports `FireDamagePluginPackage.Create()` to JSON, 
 
 ## Suggested fix direction
 
-Add a focused `JsonUploadExample` to `examples/Addendum/SafeIR.AddendumExamples`, reference `SafeIR.Serialization.Json`, and update `examples/Addendum/README.md` plus `docs/Specs/Addendum/Examples.md` so the production upload path is part of the maintained example set.
+Add a focused `JsonUploadExample` to `examples/Addendum/DotBoxd.Kernels.AddendumExamples`, reference `DotBoxd.Kernels.Serialization.Json`, and update `examples/Addendum/README.md` plus `docs/Specs/Addendum/Examples.md` so the production upload path is part of the maintained example set.
 
 ## Scope boundaries
 

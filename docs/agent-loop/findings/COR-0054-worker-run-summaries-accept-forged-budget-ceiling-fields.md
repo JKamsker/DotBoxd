@@ -29,11 +29,11 @@ Worker run-summary validation accepts forged budget ceiling fields for every res
 
 ## Evidence
 
-`src/SafeIR.Core/Model/RunSummaryAuditFields.cs` emits both observed usage and budget ceiling fields into every run summary, including `maxLoopIterations`, `maxAllocatedBytes`, `maxHostCalls`, `maxFileBytesRead`, `maxFileBytesWritten`, `maxNetworkBytesRead`, `maxNetworkBytesWritten`, `maxLogEvents`, `maxCollectionElements`, and `maxStringBytes`.
+`src/DotBoxd.Kernels/Model/RunSummaryAuditFields.cs` emits both observed usage and budget ceiling fields into every run summary, including `maxLoopIterations`, `maxAllocatedBytes`, `maxHostCalls`, `maxFileBytesRead`, `maxFileBytesWritten`, `maxNetworkBytesRead`, `maxNetworkBytesWritten`, `maxLogEvents`, `maxCollectionElements`, and `maxStringBytes`.
 
-`src/SafeIR.Hosting/WorkerAuditValidator.cs` allows those field names in worker-supplied `RunSummary` events and only checks that the text is control-character-free.
+`src/DotBoxd.Hosting/WorkerAuditValidator.cs` allows those field names in worker-supplied `RunSummary` events and only checks that the text is control-character-free.
 
-`src/SafeIR.Hosting/SandboxWorkerExecutor.cs` then validates worker summaries in `WorkerRunSummaryMatches(...)`. It requires the plan hashes, usage counters, `fuelUsed`, and `maxFuel` to match, but it never compares the other `max*` fields against `plan.Budget` or the expected run-summary fields. Because `SandboxResourceUsage` carries only `MaxFuel`, the skipped max fields are accepted solely through the audit field dictionary.
+`src/DotBoxd.Hosting/SandboxWorkerExecutor.cs` then validates worker summaries in `WorkerRunSummaryMatches(...)`. It requires the plan hashes, usage counters, `fuelUsed`, and `maxFuel` to match, but it never compares the other `max*` fields against `plan.Budget` or the expected run-summary fields. Because `SandboxResourceUsage` carries only `MaxFuel`, the skipped max fields are accepted solely through the audit field dictionary.
 
 This is distinct from `COR-0027`, which covers forged non-summary audit events. Here the forged evidence is inside the single required `RunSummary` event that the worker validator otherwise treats as authoritative.
 

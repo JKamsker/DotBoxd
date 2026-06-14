@@ -29,13 +29,13 @@ Required binding audit enforcement scans the entire accumulated audit event list
 
 ## Evidence
 
-- `src/SafeIR.Core/Sandbox/SandboxContext.cs:147` records an audit checkpoint from `Audit.EventsWritten` before a binding call.
-- `src/SafeIR.Interpreter/ExpressionEvaluator.cs:170` records that checkpoint for interpreted binding calls, and `src/SafeIR.Runtime/CompiledBindingDispatcher.cs:10` does the same for compiled binding calls.
-- `src/SafeIR.Core/Sandbox/SandboxContext.cs:149` through `src/SafeIR.Core/Sandbox/SandboxContext.cs:159` validates successful required audit emission by calling `Audit.HasBindingAuditSince` with the checkpoint.
-- `src/SafeIR.Core/Sandbox/SandboxContext.cs:162` through `src/SafeIR.Core/Sandbox/SandboxContext.cs:185` validates failure audit emission the same way before optionally writing a fallback failure audit.
-- `src/SafeIR.Core/Bindings/Audit.cs:59` stores audit events in a `List<SandboxAuditEvent>` and `src/SafeIR.Core/Bindings/Audit.cs:64` exposes the current sequence.
-- `src/SafeIR.Core/Bindings/Audit.cs:72` through `src/SafeIR.Core/Bindings/Audit.cs:89` implements `HasBindingAuditSince` as `_events.Any(...)`; the first predicate check is `e.SequenceNumber > checkpoint` at `src/SafeIR.Core/Bindings/Audit.cs:80`, but enumeration still starts at the beginning of `_events` for every call.
-- The per-event predicate also checks run id, success, kind, binding id, capability/effect matching, resource id, required fields, and error code at `src/SafeIR.Core/Bindings/Audit.cs:81` through `src/SafeIR.Core/Bindings/Audit.cs:89`.
+- `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:147` records an audit checkpoint from `Audit.EventsWritten` before a binding call.
+- `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:170` records that checkpoint for interpreted binding calls, and `src/DotBoxd.Kernels.Runtime/CompiledBindingDispatcher.cs:10` does the same for compiled binding calls.
+- `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:149` through `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:159` validates successful required audit emission by calling `Audit.HasBindingAuditSince` with the checkpoint.
+- `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:162` through `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:185` validates failure audit emission the same way before optionally writing a fallback failure audit.
+- `src/DotBoxd.Kernels/Bindings/Audit.cs:59` stores audit events in a `List<SandboxAuditEvent>` and `src/DotBoxd.Kernels/Bindings/Audit.cs:64` exposes the current sequence.
+- `src/DotBoxd.Kernels/Bindings/Audit.cs:72` through `src/DotBoxd.Kernels/Bindings/Audit.cs:89` implements `HasBindingAuditSince` as `_events.Any(...)`; the first predicate check is `e.SequenceNumber > checkpoint` at `src/DotBoxd.Kernels/Bindings/Audit.cs:80`, but enumeration still starts at the beginning of `_events` for every call.
+- The per-event predicate also checks run id, success, kind, binding id, capability/effect matching, resource id, required fields, and error code at `src/DotBoxd.Kernels/Bindings/Audit.cs:81` through `src/DotBoxd.Kernels/Bindings/Audit.cs:89`.
 - This is distinct from `PAL-0021`, which covers copying audit event arrays into execution results. The issue here is repeated in-run scanning of the audit sink while enforcing required binding audits.
 
 ## Impact

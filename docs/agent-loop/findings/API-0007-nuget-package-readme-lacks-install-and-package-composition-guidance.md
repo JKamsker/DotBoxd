@@ -27,11 +27,11 @@ duplicate_of:
 
 ## Claim
 
-All packable SafeIR packages publish the repository `README.md` as their NuGet readme, but that readme does not tell package consumers which `dotnet add package` commands or package combinations are required for the advertised public surfaces. It lists package roles and shows source-tree validation/examples, but it never provides install guidance for a fresh NuGet consumer.
+All packable DotBoxd.Kernels packages publish the repository `README.md` as their NuGet readme, but that readme does not tell package consumers which `dotnet add package` commands or package combinations are required for the advertised public surfaces. It lists package roles and shows source-tree validation/examples, but it never provides install guidance for a fresh NuGet consumer.
 
 ## Why this matters
 
-SafeIR is split into many packages with optional addons: hosting, JSON import/export, HTTP transport, plugin APIs, plugin analyzer generation, and the preview ShaRPC IPC transport. Users consuming from NuGet need a small installation matrix that maps tasks to packages and namespaces. Without it, the package readme sends users back to repository-local commands and project-reference examples, while package-specific setup remains implicit.
+DotBoxd.Kernels is split into many packages with optional addons: hosting, JSON import/export, HTTP transport, plugin APIs, plugin analyzer generation, and the preview DotBoxd IPC transport. Users consuming from NuGet need a small installation matrix that maps tasks to packages and namespaces. Without it, the package readme sends users back to repository-local commands and project-reference examples, while package-specific setup remains implicit.
 
 ## Evidence
 
@@ -47,11 +47,11 @@ SafeIR is split into many packages with optional addons: hosting, JSON import/ex
 
 Extend package/readme validation to require an install guidance section in the packed readme. At minimum, the section should show package installation for:
 
-- Core host execution: `SafeIR.Hosting`, `SafeIR.Runtime`, and `SafeIR.Serialization.Json` as needed by the README host snippet.
-- HTTP transport: `SafeIR.Transport.Http` plus the public addon namespace.
-- Plugin development: `SafeIR.PluginAnalyzer` as an analyzer package plus `SafeIR.Plugins`.
-- Production plugin JSON upload: `SafeIR.Serialization.Json` with `SafeIR.Plugins`.
-- IPC preview: `SafeIR.Transport.Ipc.ShaRpc` with explicit preview/prerelease wording.
+- Core host execution: `DotBoxd.Hosting`, `DotBoxd.Kernels.Runtime`, and `DotBoxd.Kernels.Serialization.Json` as needed by the README host snippet.
+- HTTP transport: `DotBoxd.Hosting.Http` plus the public addon namespace.
+- Plugin development: `DotBoxd.Plugins.Analyzer` as an analyzer package plus `DotBoxd.Plugins`.
+- Production plugin JSON upload: `DotBoxd.Kernels.Serialization.Json` with `DotBoxd.Plugins`.
+- IPC preview: `DotBoxd.Pushdown.Services` with explicit preview/prerelease wording.
 
 ## Suggested fix direction
 

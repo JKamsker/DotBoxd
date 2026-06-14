@@ -14,7 +14,7 @@ public sealed class InventoryService : IInventoryService
     private readonly ConcurrentDictionary<string, Player> _players;
     private readonly IReadOnlyDictionary<string, int> _catalog;
     // One inventory per (connection, player) — keyed only by player here because the
-    // ShaRPC instance registry is already per-connection.
+    // DotBoxd instance registry is already per-connection.
     private readonly ConcurrentDictionary<string, PlayerInventory> _inventories = new();
 
     public InventoryService()

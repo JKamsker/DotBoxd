@@ -27,19 +27,19 @@ duplicate_of:
 
 ## Claim
 
-The release/package readiness flow packs SafeIR packages and checks their nuspec metadata, but it never proves that a fresh consumer can restore the produced `.nupkg` files and compile the documented public API surface through `PackageReference`. Current smoke coverage uses project references and source-tree examples, so package layout, analyzer packaging, transitive dependencies, public namespaces, and README snippets can drift without a release gate failing.
+The release/package readiness flow packs DotBoxd.Kernels packages and checks their nuspec metadata, but it never proves that a fresh consumer can restore the produced `.nupkg` files and compile the documented public API surface through `PackageReference`. Current smoke coverage uses project references and source-tree examples, so package layout, analyzer packaging, transitive dependencies, public namespaces, and README snippets can drift without a release gate failing.
 
 ## Why this matters
 
-SafeIR is shipped as a set of public NuGet packages. A package can pass the current metadata gate while still being unusable from a clean application, for example because an analyzer package asset is misplaced, a public extension lives in the wrong namespace, a package dependency is missing, or the README requires a package combination that only works with project references. Package readiness should prove the artifacts users install are consumable, not only that the source tree builds.
+DotBoxd.Kernels is shipped as a set of public NuGet packages. A package can pass the current metadata gate while still being unusable from a clean application, for example because an analyzer package asset is misplaced, a public extension lives in the wrong namespace, a package dependency is missing, or the README requires a package combination that only works with project references. Package readiness should prove the artifacts users install are consumable, not only that the source tree builds.
 
 ## Evidence
 
 - `.github/workflows/ci.yml:97` through `.github/workflows/ci.yml:102` packs to `artifacts/packages` and then runs only `scripts/check-package-metadata.ps1` against those `.nupkg` files.
 - `scripts/check-package-metadata.ps1` validates nuspec fields, expected package IDs, repository/license/readme metadata, prerelease policy, and expected DLL/analyzer zip entries, but it does not run `dotnet restore`, `dotnet build`, or any compile check against a temporary consumer project using the packed packages.
 - `scripts/check-docs-smoke.ps1:131` and `scripts/check-docs-smoke.ps1:132` run the addendum and local plugin examples with `--no-build`; they do not restore packages from `artifacts/packages`.
-- The runnable examples use project references to product projects, for example `examples/Addendum/SafeIR.AddendumExamples/SafeIR.AddendumExamples.csproj:4` through `examples/Addendum/SafeIR.AddendumExamples/SafeIR.AddendumExamples.csproj:6` and `examples/PluginIpc/SafeIR.PluginIpc.Server/SafeIR.PluginIpc.Server.csproj:4` through `examples/PluginIpc/SafeIR.PluginIpc.Server/SafeIR.PluginIpc.Server.csproj:8`.
-- `README.md:22` through `README.md:51` shows a minimal host snippet that depends on package/namespace composition across `SafeIR.Hosting`, `SafeIR.Runtime`, and the JSON import extension, while `README.md:120` through `README.md:143` documents plugin and IPC examples; none of those documented entry points are compiled from the produced NuGet packages in CI.
+- The runnable examples use project references to product projects, for example `examples/Addendum/DotBoxd.Kernels.AddendumExamples/DotBoxd.Kernels.AddendumExamples.csproj:4` through `examples/Addendum/DotBoxd.Kernels.AddendumExamples/DotBoxd.Kernels.AddendumExamples.csproj:6` and `examples/PluginIpc/DotBoxd.Kernels.PluginIpc.Server/DotBoxd.Kernels.PluginIpc.Server.csproj:4` through `examples/PluginIpc/DotBoxd.Kernels.PluginIpc.Server/DotBoxd.Kernels.PluginIpc.Server.csproj:8`.
+- `README.md:22` through `README.md:51` shows a minimal host snippet that depends on package/namespace composition across `DotBoxd.Hosting`, `DotBoxd.Kernels.Runtime`, and the JSON import extension, while `README.md:120` through `README.md:143` documents plugin and IPC examples; none of those documented entry points are compiled from the produced NuGet packages in CI.
 - Existing API findings cover specific missing namespaces/metadata/XML docs. This gap is separate: the release gate lacks a general clean-consumer proof for the package artifacts after those individual issues are fixed.
 
 ## Suggested acceptance test
@@ -48,9 +48,9 @@ Add a package consumer smoke script that runs after `dotnet pack` and before art
 
 - README minimal host usage with JSON import.
 - HTTP addon host/policy setup.
-- Plugin analyzer package consumption as an analyzer plus `SafeIR.Plugins` runtime package.
-- Plugin JSON upload/export path through `SafeIR.Serialization.Json`.
-- IPC preview package consumption from `SafeIR.Transport.Ipc.ShaRpc` with its allowed prerelease dependencies.
+- Plugin analyzer package consumption as an analyzer plus `DotBoxd.Plugins` runtime package.
+- Plugin JSON upload/export path through `DotBoxd.Kernels.Serialization.Json`.
+- IPC preview package consumption from `DotBoxd.Pushdown.Services` with its allowed prerelease dependencies.
 
 ## Suggested fix direction
 

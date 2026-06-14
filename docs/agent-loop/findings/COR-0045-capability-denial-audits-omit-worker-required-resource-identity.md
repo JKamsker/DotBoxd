@@ -29,10 +29,10 @@ Capability-denial audit events produced by `SandboxContext.RequireCapability(...
 
 ## Evidence
 
-- `src/SafeIR.Core/Sandbox/SandboxContext.cs:41` routes capability checks through `RequireCapability(...)`, and `src/SafeIR.Core/Sandbox/SandboxContext.cs:45` writes a `PolicyDenied` audit when the policy does not grant the requested capability.
+- `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:41` routes capability checks through `RequireCapability(...)`, and `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:45` writes a `PolicyDenied` audit when the policy does not grant the requested capability.
 - That `SandboxAuditEvent` supplies `CapabilityId`, `ErrorCode`, and `Message`, but it does not set `ResourceId`, so the event cannot identify the denied capability resource in the shape expected elsewhere.
-- `src/SafeIR.Hosting/WorkerAuditValidator.cs:43` accepts `PolicyDenied` only when `auditEvent.ResourceId` equals `capability:{auditEvent.CapabilityId}`.
-- `src/SafeIR.Core/Sandbox/SandboxContext.cs:202` calls `RequireCapability(...)` from `ChargeBindingCall(...)` for any binding with a required capability, so an expired or otherwise missing grant during execution can produce this malformed denial event.
+- `src/DotBoxd.Hosting/WorkerAuditValidator.cs:43` accepts `PolicyDenied` only when `auditEvent.ResourceId` equals `capability:{auditEvent.CapabilityId}`.
+- `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:202` calls `RequireCapability(...)` from `ChargeBindingCall(...)` for any binding with a required capability, so an expired or otherwise missing grant during execution can produce this malformed denial event.
 
 ## Impact
 

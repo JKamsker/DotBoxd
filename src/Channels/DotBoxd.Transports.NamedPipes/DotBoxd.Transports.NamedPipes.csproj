@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <PackageId>DotBoxd.Transports.NamedPipes</PackageId>
+    <Description>Named pipe transport implementation for DotBoxd process-boundary IPC.</Description>
+    <PackageReadmeFile>named-pipe-transport.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Services\DotBoxd.Services\DotBoxd.Services.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Expose the internal connect-published seam to the test assembly for a deterministic red→green
+         dispose-vs-connect race test. No external surface. -->
+    <InternalsVisibleTo Include="DotBoxd.Services.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\docs\channels\named-pipe-transport.md"
+          Pack="true"
+          PackagePath="\" />
+  </ItemGroup>
+
+</Project>

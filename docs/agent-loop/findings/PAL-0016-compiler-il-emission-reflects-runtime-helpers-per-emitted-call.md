@@ -29,11 +29,11 @@ Compiler IL emission resolves every `CompiledRuntime` helper by scanning reflect
 
 ## Evidence
 
-- `src/SafeIR.Compiler/IlEmitterPrimitives.cs:52` exposes `Runtime(string name)` for emitter call sites.
-- `src/SafeIR.Compiler/IlEmitterPrimitives.cs:53` implements that helper as `typeof(CompiledRuntime).GetMethods(...).Single(...)`, which enumerates public static runtime methods for each lookup instead of using cached `MethodInfo` values.
-- Hot emitters call this helper repeatedly: meter emission uses it for every fuel/loop/call-depth instruction at `src/SafeIR.Compiler/Emitters/CompiledMeterEmitter.cs:13`, `src/SafeIR.Compiler/Emitters/CompiledMeterEmitter.cs:20`, `src/SafeIR.Compiler/Emitters/CompiledMeterEmitter.cs:26`, and `src/SafeIR.Compiler/Emitters/CompiledMeterEmitter.cs:32`.
-- Expression and collection emission also call it throughout large generated bodies, for example `src/SafeIR.Compiler/Emitters/MethodEmitter.cs:105`, `src/SafeIR.Compiler/Emitters/MethodEmitter.cs:201`, `src/SafeIR.Compiler/Emitters/PureBindingCallEmitter.cs:20`, and `src/SafeIR.Compiler/Emitters/ValueArrayEmitter.cs:17`.
-- `src/SafeIR.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs:116` emits every reachable function during `CompileAsync`, so the repeated reflection lookup sits on the cold-compile/cache-miss preparation path.
+- `src/DotBoxd.Kernels.Compiler/IlEmitterPrimitives.cs:52` exposes `Runtime(string name)` for emitter call sites.
+- `src/DotBoxd.Kernels.Compiler/IlEmitterPrimitives.cs:53` implements that helper as `typeof(CompiledRuntime).GetMethods(...).Single(...)`, which enumerates public static runtime methods for each lookup instead of using cached `MethodInfo` values.
+- Hot emitters call this helper repeatedly: meter emission uses it for every fuel/loop/call-depth instruction at `src/DotBoxd.Kernels.Compiler/Emitters/CompiledMeterEmitter.cs:13`, `src/DotBoxd.Kernels.Compiler/Emitters/CompiledMeterEmitter.cs:20`, `src/DotBoxd.Kernels.Compiler/Emitters/CompiledMeterEmitter.cs:26`, and `src/DotBoxd.Kernels.Compiler/Emitters/CompiledMeterEmitter.cs:32`.
+- Expression and collection emission also call it throughout large generated bodies, for example `src/DotBoxd.Kernels.Compiler/Emitters/MethodEmitter.cs:105`, `src/DotBoxd.Kernels.Compiler/Emitters/MethodEmitter.cs:201`, `src/DotBoxd.Kernels.Compiler/Emitters/PureBindingCallEmitter.cs:20`, and `src/DotBoxd.Kernels.Compiler/Emitters/ValueArrayEmitter.cs:17`.
+- `src/DotBoxd.Kernels.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs:116` emits every reachable function during `CompileAsync`, so the repeated reflection lookup sits on the cold-compile/cache-miss preparation path.
 - The benchmark project has verifier, interpreter, IPC, JSON, plugin, map, HTTP, and binding-reference benchmarks, but no compiler IL emission benchmark that scales emitted statement/expression count.
 
 ## Impact

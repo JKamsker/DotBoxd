@@ -1,18 +1,18 @@
-# ShaRPC API Reference
+# DotBoxd API Reference
 
-## Core Namespace: `ShaRPC.Core`
+## Core Namespace: `DotBoxd.Services`
 
 ### Attributes
 
-#### `ShaRpcServiceAttribute`
-Marks an interface as a ShaRPC service.
+#### `DotBoxdServiceAttribute`
+Marks an interface as a DotBoxd service.
 
 ```csharp
-[ShaRpcService]
+[DotBoxdService]
 public interface IMyService { }
 
 // With custom name
-[ShaRpcService(Name = "CustomServiceName")]
+[DotBoxdService(Name = "CustomServiceName")]
 public interface IMyService { }
 ```
 
@@ -20,11 +20,11 @@ public interface IMyService { }
 |----------|------|-------------|
 | `Name` | `string?` | Custom service name (default: interface name) |
 
-#### `ShaRpcMethodAttribute`
+#### `DotBoxdMethodAttribute`
 Optionally customizes an RPC method.
 
 ```csharp
-[ShaRpcMethod(Name = "CustomMethodName")]
+[DotBoxdMethod(Name = "CustomMethodName")]
 Task<Result> MyMethodAsync(Request req, CancellationToken ct = default);
 ```
 
@@ -41,10 +41,10 @@ already-connected channel. Use the session helper when the peer should own and d
 transport.
 
 ```csharp
-using ShaRPC.Core;
-using ShaRPC.Generated;            // generated Provide.../Get... extensions
-using ShaRPC.Serializers.MessagePack;
-using ShaRPC.Transports.Tcp;
+using DotBoxd.Services;
+using DotBoxd.Services.Generated;            // generated Provide.../Get... extensions
+using DotBoxd.Codecs.MessagePack;
+using DotBoxd.Transports.Tcp;
 
 var transport = new TcpTransport("127.0.0.1", 5000);
 await using var session = await transport.ConnectPeerAsync(
@@ -96,10 +96,10 @@ connection is a full peer, the host can both provide services to and call back i
 that connect to it.
 
 ```csharp
-using ShaRPC.Core;
-using ShaRPC.Generated;
-using ShaRPC.Serializers.MessagePack;
-using ShaRPC.Transports.Tcp;
+using DotBoxd.Services;
+using DotBoxd.Services.Generated;
+using DotBoxd.Codecs.MessagePack;
+using DotBoxd.Transports.Tcp;
 
 await using var host = RpcHost
     .Listen(new TcpServerTransport(5000), new MessagePackRpcSerializer())
@@ -123,7 +123,7 @@ await host.StopAsync();   // DisposeAsync also stops the host and closes every a
 | `PeerDisconnected` | Raised when an accepted peer's read loop ends (`RpcPeerEventArgs.Peer`) |
 | `AcceptError` | Raised when the accept loop catches a non-cancellation exception (`RpcHostErrorEventArgs`) |
 
-Services provided through `ForEachPeer` are callable by any accepted peer. ShaRPC does not add
+Services provided through `ForEachPeer` are callable by any accepted peer. DotBoxd does not add
 authentication or authorization; enforce access control at the transport or application layer.
 
 #### `IServiceDispatcher`
@@ -191,7 +191,7 @@ var room = b.GetChatRoom();                 // B calls A
 On a host, the per-connection peer is configured in `RpcHost.ForEachPeer`; obtain the peer from
 `PeerConnected` (`args.Peer`) to call back into a connecting peer over the same connection.
 
-Cancelling an in-flight outbound call sends a ShaRPC cancel frame for that request. The receiving
+Cancelling an in-flight outbound call sends a DotBoxd cancel frame for that request. The receiving
 peer continues reading the connection while dispatch runs and cancels the matching dispatcher
 token when that frame arrives.
 
@@ -209,7 +209,7 @@ Options for both `RpcPeer` and `RpcHost`.
 | `MaxConcurrentInboundDispatch` | `int` | 1 | Max inbound requests dispatched concurrently when `InboundQueueCapacity` is set. Default `1` dispatches serially per connection; raise it for bounded-concurrent per-connection dispatch. Ignored when `InboundQueueCapacity` is `null` |
 | `MaxInboundBytes` | `long?` | 64 MiB | Max total bytes of in-flight inbound request frames when `InboundQueueCapacity` is set. Caps peak memory independent of frame count; `null` disables. An oversized frame is still admitted when nothing else is in flight, so one large request never deadlocks. Ignored when `InboundQueueCapacity` is `null` |
 | `MaxPendingRequests` | `int` | 4096 | Max concurrent outbound calls awaiting responses |
-| `QueueFullMode` | `ShaRpcQueueFullMode` | `Wait` | Policy when `InboundQueueCapacity` is set and the request queue is full (`Wait` applies backpressure; `DropIncoming` rejects) |
+| `QueueFullMode` | `DotBoxdRpcQueueFullMode` | `Wait` | Policy when `InboundQueueCapacity` is set and the request queue is full (`Wait` applies backpressure; `DropIncoming` rejects) |
 
 The TCP transport additionally enforces a per-frame read idle timeout (`TcpConnection`, default 30s;
 `Timeout.InfiniteTimeSpan` disables), set via `TcpServerTransport.FrameReadIdleTimeout` /
@@ -280,14 +280,14 @@ transport.
 
 | Type | Description |
 |------|-------------|
-| `StreamConnection` | `IRpcChannel` over any duplex `Stream`, including `PipeStream`; reads and writes complete ShaRPC length-prefixed frames |
+| `StreamConnection` | `IRpcChannel` over any duplex `Stream`, including `PipeStream`; reads and writes complete DotBoxd length-prefixed frames |
 | `SingleConnectionTransport` | Client `ITransport` adapter for an already-established `IRpcChannel` |
 | `SingleConnectionServerTransport` | Server `IServerTransport` adapter that accepts one already-established `IRpcChannel` |
 | `RpcPeerSession` | Transport-owned client peer session returned by `ConnectPeerAsync` |
 
 ---
 
-## Named Pipe Transport: `ShaRPC.Transports.NamedPipes`
+## Named Pipe Transport: `DotBoxd.Transports.NamedPipes`
 
 #### `NamedPipeClientTransport`
 Named-pipe client transport for process-boundary IPC.
@@ -308,7 +308,7 @@ public NamedPipeServerTransport(
 ```
 
 Both transports wrap `NamedPipeClientStream`/`NamedPipeServerStream` in the core
-`StreamConnection`, so they use the same ShaRPC frame validation, send serialization,
+`StreamConnection`, so they use the same DotBoxd frame validation, send serialization,
 and clean EOF behavior as any other stream-backed connection.
 
 ```csharp
@@ -346,15 +346,15 @@ public interface ISerializer
 
 | Exception | Description |
 |-----------|-------------|
-| `ShaRpcException` | Base exception for all ShaRPC errors |
-| `ShaRpcRemoteException` | Remote error (includes `RemoteExceptionType`); non-`ShaRpcException` server failures are sanitized |
-| `ShaRpcConnectionException` | Connection lost or failed |
-| `ShaRpcTimeoutException` | Request timed out |
-| `ShaRpcNotFoundException` | Service or method not found |
+| `DotBoxdRpcException` | Base exception for all DotBoxd errors |
+| `DotBoxdRpcRemoteException` | Remote error (includes `RemoteExceptionType`); non-`DotBoxdRpcException` server failures are sanitized |
+| `DotBoxdRpcConnectionException` | Connection lost or failed |
+| `DotBoxdRpcTimeoutException` | Request timed out |
+| `DotBoxdRpcNotFoundException` | Service or method not found |
 
 ---
 
-## TCP Transport: `ShaRPC.Transports.Tcp`
+## TCP Transport: `DotBoxd.Transports.Tcp`
 
 #### `TcpTransport`
 TCP client transport.
@@ -387,7 +387,7 @@ including the OS-assigned port when the transport is created with port `0`.
 
 ---
 
-## MessagePack Serializer: `ShaRPC.Serializers.MessagePack`
+## MessagePack Serializer: `DotBoxd.Codecs.MessagePack`
 
 #### `MessagePackRpcSerializer`
 MessagePack-based serializer.
@@ -402,7 +402,7 @@ var serializer = MessagePackRpcSerializer.CreateUnityCompatible();
 // Custom options
 var serializer = new MessagePackRpcSerializer(customOptions);
 
-// Custom resolver with ShaRPC binary payload formatters and standard fallbacks
+// Custom resolver with DotBoxd binary payload formatters and standard fallbacks
 var serializer = MessagePackRpcSerializer.CreateWithResolver(myResolver);
 ```
 
@@ -410,7 +410,7 @@ var serializer = MessagePackRpcSerializer.CreateWithResolver(myResolver);
 |--------|-------------|
 | `CreateUnityCompatible()` | Creates serializer optimized for Unity/AOT |
 | `CreateWithResolver(IFormatterResolver)` | Creates serializer with a custom resolver chain |
-| `CreateOptions(params IFormatterResolver[])` | Builds hardened MessagePack options with ShaRPC formatters |
+| `CreateOptions(params IFormatterResolver[])` | Builds hardened MessagePack options with DotBoxd formatters |
 
 The default options include a formatter for `ReadOnlyMemory<byte>` so binary DTO fields encode as MessagePack bin payloads.
 
@@ -418,13 +418,13 @@ The default options include a formatter for `ReadOnlyMemory<byte>` so binary DTO
 
 ## Generated Extensions
 
-For each `[ShaRpcService]` interface `IFooService`, the generator creates `RpcPeer` extension
+For each `[DotBoxdService]` interface `IFooService`, the generator creates `RpcPeer` extension
 methods. The method suffix drops the leading `I` of the interface name
 (`IFooService` -> `ProvideFooService` / `GetFooService`):
 
 ```csharp
-// In namespace ShaRPC.Generated
-public static class ShaRpcGeneratedExtensions
+// In namespace DotBoxd.Services.Generated
+public static class DotBoxdGeneratedExtensions
 {
     // Provide a local implementation for the other peer to call (before the peer starts).
     public static RpcPeer ProvideFooService(this RpcPeer peer, IFooService implementation);
@@ -438,12 +438,12 @@ The generator also emits a public factory class and registers factories with the
 The proxy factories take an `IRpcInvoker` (an `RpcPeer` implements it), so pass the peer directly:
 
 ```csharp
-// In namespace ShaRPC.Generated
-public static class ShaRpcGenerated
+// In namespace DotBoxd.Services.Generated
+public static class DotBoxdGenerated
 {
-    public static IReadOnlyList<ShaRpcGeneratedService> Services { get; }
-    public static void RegisterServices(IShaRpcServiceRegistrationSink sink);
-    public static void RegisterGeneratedServices(IShaRpcGeneratedServiceRegistrationSink sink);
+    public static IReadOnlyList<DotBoxdGeneratedService> Services { get; }
+    public static void RegisterServices(IDotBoxdServiceRegistrationSink sink);
+    public static void RegisterGeneratedServices(IDotBoxdGeneratedServiceRegistrationSink sink);
     public static TService CreateProxy<TService>(IRpcInvoker invoker) where TService : class;
     public static object CreateProxy(Type serviceInterface, IRpcInvoker invoker);
     public static IServiceDispatcher CreateDispatcher<TService>(TService implementation) where TService : class;
@@ -455,15 +455,15 @@ public static class ShaRpcGenerated
 `peer.Provide(dispatcher)`; `CreateProxy<TService>(invoker)` produces a proxy bound to the peer
 (equivalent to `peer.Get<TService>()` and the generated `Get...` extension).
 
-`ShaRpcGenerated.Services` is backed by a generated static array of `ShaRpcGeneratedService`
+`DotBoxdGenerated.Services` is backed by a generated static array of `DotBoxdGeneratedService`
 records. Each descriptor includes `ServiceType`, `ProxyType`, `DispatcherType`, and
 `ServiceName`, so hosts can build a service map without scanning assembly types.
 
-`RegisterServices(IShaRpcServiceRegistrationSink)` emits one direct generic call per
+`RegisterServices(IDotBoxdServiceRegistrationSink)` emits one direct generic call per
 service, using the generated proxy as `TImplementation`:
 
 ```csharp
-public interface IShaRpcServiceRegistrationSink
+public interface IDotBoxdServiceRegistrationSink
 {
     void AddService<TService, TImplementation>()
         where TService : class
@@ -471,11 +471,11 @@ public interface IShaRpcServiceRegistrationSink
 }
 ```
 
-`RegisterGeneratedServices(IShaRpcGeneratedServiceRegistrationSink)` emits one direct
+`RegisterGeneratedServices(IDotBoxdGeneratedServiceRegistrationSink)` emits one direct
 generic call per service with service, proxy, and dispatcher types:
 
 ```csharp
-public interface IShaRpcGeneratedServiceRegistrationSink
+public interface IDotBoxdGeneratedServiceRegistrationSink
 {
     void AddService<TService, TProxy, TDispatcher>()
         where TService : class
@@ -484,7 +484,7 @@ public interface IShaRpcGeneratedServiceRegistrationSink
 }
 ```
 
-The runtime registry is available as `ShaRPC.Core.Generated.ShaRpcServiceRegistry` and throws a clear diagnostic when no generated factory is registered for a service interface.
+The runtime registry is available as `DotBoxd.Services.Generated.DotBoxdServiceRegistry` and throws a clear diagnostic when no generated factory is registered for a service interface.
 It also exposes `GetService(Type)`, `GetServices(Assembly)`, `GetServices(IEnumerable<Assembly>)`,
 and multi-assembly sink registration helpers for dynamic hosts that need generated metadata.
 See [Generated Service Registry](./generated-service-registry.md) for examples and assembly-scope details.

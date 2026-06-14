@@ -1,11 +1,11 @@
-using ShaRPC.Core.Attributes;
+using DotBoxd.Services.Attributes;
 
 namespace Shared;
 
 /// <summary>
 /// Game service interface defining the RPC contract.
 /// </summary>
-[ShaRpcService]
+[DotBoxdService]
 public interface IGameService
 {
     Task<PlayerState> GetPlayerStateAsync(PlayerId playerId, CancellationToken ct = default);

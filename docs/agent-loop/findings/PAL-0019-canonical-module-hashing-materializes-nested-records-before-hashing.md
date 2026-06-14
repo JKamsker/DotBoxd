@@ -29,12 +29,12 @@ Canonical module hashing materializes a full nested canonical string graph befor
 
 ## Evidence
 
-- `src/SafeIR.Core/Model/CanonicalModuleHasher.cs:7` hashes modules through `CanonicalEncoding.HashRecord(Serialize(module))`, so hashing first builds the complete canonical module text.
-- `src/SafeIR.Core/Model/CanonicalModuleHasher.cs:10` creates a `CanonicalWriter`, and `src/SafeIR.Core/Model/CanonicalModuleHasher.cs:17` returns `writer.ToString()`, materializing the whole module serialization before SHA-256 sees any bytes.
-- Expression/value helpers build nested canonical strings bottom-up: `Type` allocates `new List<string?>` at `src/SafeIR.Core/Model/CanonicalModuleHasher.cs:182`, `Call` allocates another list at `src/SafeIR.Core/Model/CanonicalModuleHasher.cs:193`, `ListLiteral` allocates at `src/SafeIR.Core/Model/CanonicalModuleHasher.cs:208`, and `MapLiteral` allocates/sorts an entry string array plus a fields list at `src/SafeIR.Core/Model/CanonicalModuleHasher.cs:220` through `src/SafeIR.Core/Model/CanonicalModuleHasher.cs:227`.
-- `CanonicalEncoding.Record` creates a new `StringBuilder` per record at `src/SafeIR.Core/CanonicalEncoding.cs:13`, and `Escape` creates another `StringBuilder` plus escaped string per non-null field at `src/SafeIR.Core/CanonicalEncoding.cs:46` through `src/SafeIR.Core/CanonicalEncoding.cs:52`.
-- `CanonicalEncoding.HashText` then allocates a UTF-8 byte array for the already-materialized canonical text at `src/SafeIR.Core/CanonicalEncoding.cs:31`.
-- `ExecutionPlanBuilder.Build` calls `CanonicalModuleHasher.Hash(module)` during plan creation at `src/SafeIR.Hosting/Execution/ExecutionPlanBuilder.cs:17`, and `ExecutionPlanGuard.EnsurePrepared` rebuilds the expected plan on execution at `src/SafeIR.Hosting/Execution/ExecutionPlanGuard.cs:39`.
+- `src/DotBoxd.Kernels/Model/CanonicalModuleHasher.cs:7` hashes modules through `CanonicalEncoding.HashRecord(Serialize(module))`, so hashing first builds the complete canonical module text.
+- `src/DotBoxd.Kernels/Model/CanonicalModuleHasher.cs:10` creates a `CanonicalWriter`, and `src/DotBoxd.Kernels/Model/CanonicalModuleHasher.cs:17` returns `writer.ToString()`, materializing the whole module serialization before SHA-256 sees any bytes.
+- Expression/value helpers build nested canonical strings bottom-up: `Type` allocates `new List<string?>` at `src/DotBoxd.Kernels/Model/CanonicalModuleHasher.cs:182`, `Call` allocates another list at `src/DotBoxd.Kernels/Model/CanonicalModuleHasher.cs:193`, `ListLiteral` allocates at `src/DotBoxd.Kernels/Model/CanonicalModuleHasher.cs:208`, and `MapLiteral` allocates/sorts an entry string array plus a fields list at `src/DotBoxd.Kernels/Model/CanonicalModuleHasher.cs:220` through `src/DotBoxd.Kernels/Model/CanonicalModuleHasher.cs:227`.
+- `CanonicalEncoding.Record` creates a new `StringBuilder` per record at `src/DotBoxd.Kernels/CanonicalEncoding.cs:13`, and `Escape` creates another `StringBuilder` plus escaped string per non-null field at `src/DotBoxd.Kernels/CanonicalEncoding.cs:46` through `src/DotBoxd.Kernels/CanonicalEncoding.cs:52`.
+- `CanonicalEncoding.HashText` then allocates a UTF-8 byte array for the already-materialized canonical text at `src/DotBoxd.Kernels/CanonicalEncoding.cs:31`.
+- `ExecutionPlanBuilder.Build` calls `CanonicalModuleHasher.Hash(module)` during plan creation at `src/DotBoxd.Hosting/Execution/ExecutionPlanBuilder.cs:17`, and `ExecutionPlanGuard.EnsurePrepared` rebuilds the expected plan on execution at `src/DotBoxd.Hosting/Execution/ExecutionPlanGuard.cs:39`.
 
 ## Impact
 

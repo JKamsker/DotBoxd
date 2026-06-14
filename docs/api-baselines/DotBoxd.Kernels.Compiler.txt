@@ -1,0 +1,47 @@
+# DotBoxd.Kernels public API baseline
+# Package: DotBoxd.Kernels.Compiler
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+public ArtifactManifest Manifest { get; init; }
+public async ValueTask WriteAsync( string cacheKey, ExecutionPlan plan, string entrypoint, byte[] assemblyBytes, ArtifactManifest manifest, VerificationResult verification, VerificationPolicy policy, CancellationToken cancellationToken)
+public async ValueTask<CompiledArtifact> CompileAsync( ExecutionPlan plan, CompileOptions options, CancellationToken cancellationToken)
+public async ValueTask<CompiledCacheLookup> TryReadAsync( string cacheKey, ExecutionPlan plan, string entrypoint, IGeneratedAssemblyVerifier verifier, VerificationPolicy policy, CancellationToken cancellationToken)
+public bool EntryExists(string cacheKey)
+public byte[] AssemblyBytes
+public CompiledArtifact( byte[] assemblyBytes, string assemblyHash, ArtifactManifest manifest, VerificationResult verification, SandboxCompiledEntrypoint entrypoint, CompiledRuntimeFormKind runtimeForm, CompiledCacheStatus cacheStatus = CompiledCacheStatus.None, string? cacheInvalidReason = null)
+public CompiledCacheStatus CacheStatus { get; init; }
+public CompiledRuntimeFormKind RuntimeForm { get; init; }
+public const string CanonicalizerVersion = CanonicalModuleHasher.CanonicalizerVersion
+public const string CompilerVersion = "dotboxd-compiler-9"
+public const string EffectAnalysisVersion = "dotboxd-effect-analysis-3"
+public const string TargetFramework = "net10.0"
+public const string TypeSystemVersion = "dotboxd-type-system-2"
+public delegate SandboxValue SandboxCompiledEntrypoint(SandboxContext context, SandboxValue input)
+public enum CompiledCacheStatus
+public enum CompiledCacheStatus.Hit
+public enum CompiledCacheStatus.Invalid
+public enum CompiledCacheStatus.Miss
+public enum CompiledCacheStatus.None
+public enum CompiledCacheStatus.Recompiled
+public enum CompiledRuntimeFormKind
+public enum CompiledRuntimeFormKind.DynamicMethod
+public enum CompiledRuntimeFormKind.LoadedAssembly
+public interface ISandboxCompiler
+public PersistentCompiledArtifactCache(string rootDirectory)
+public ReflectionEmitSandboxCompiler( IGeneratedAssemblyVerifier verifier, VerificationPolicy? verificationPolicy = null, PersistentCompiledArtifactCache? cache = null)
+public SandboxCompiledEntrypoint Entrypoint { get; init; }
+public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
+public sealed partial class PersistentCompiledArtifactCache
+public sealed record CompiledArtifact
+public sealed record CompiledCacheLookup( CompiledCacheStatus Status, CompiledArtifact? Artifact, string? InvalidReason = null)
+public sealed record CompileOptions(string Entrypoint, bool Optimize = false)
+public static class CacheKeyBuilder
+public static string Build(ExecutionPlan plan, string entrypoint, VerificationPolicy policy, bool optimize)
+public static string LanguageVersion => SandboxLanguage.CurrentVersionText
+public static string RuntimeFacadeHash => VerificationPolicy.BoxedValueDefaults().RuntimeFacadeHash
+public static VerificationManifestIdentity BuildManifestIdentity( ExecutionPlan plan, string entrypoint, VerificationPolicy policy, bool optimize)
+public string ArtifactHash => AssemblyHash
+public string AssemblyHash { get; init; }
+public string EntryPath(string cacheKey)
+public string? CacheInvalidReason { get; init; }
+public VerificationResult Verification { get; init; }

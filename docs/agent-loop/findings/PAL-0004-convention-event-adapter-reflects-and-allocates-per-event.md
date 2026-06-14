@@ -29,11 +29,11 @@ The convention plugin event adapter reflects over event properties and allocates
 
 ## Evidence
 
-- `src/SafeIR.Plugins/Runtime/InstalledKernel.cs:109`, `src/SafeIR.Plugins/Runtime/InstalledKernel.cs:128`, and `src/SafeIR.Plugins/Runtime/InstalledKernel.cs:149` route `ShouldHandleAsync`, `HandleAsync`, and combined invocation through `BuildInput` for each event.
-- `src/SafeIR.Plugins/Runtime/InstalledKernel.cs:260` calls `adapter.ToSandboxValues(e)` during input construction.
-- `src/SafeIR.Plugins/Runtime/PluginEventAdapterRegistry.cs:232` creates `var values = new SandboxValue[_properties.Count]` for each convention-adapted event.
-- `src/SafeIR.Plugins/Runtime/PluginEventAdapterRegistry.cs:237` loops over the cached `PropertyInfo` list, and `src/SafeIR.Plugins/Runtime/PluginEventAdapterRegistry.cs:241` calls `property.GetValue(e)` for every property on every event.
-- `src/SafeIR.Plugins/Runtime/InstalledKernel.cs:294` then allocates another `SandboxValue[]` when live settings are also present, copying the event values before appending settings.
+- `src/DotBoxd.Plugins/Runtime/InstalledKernel.cs:109`, `src/DotBoxd.Plugins/Runtime/InstalledKernel.cs:128`, and `src/DotBoxd.Plugins/Runtime/InstalledKernel.cs:149` route `ShouldHandleAsync`, `HandleAsync`, and combined invocation through `BuildInput` for each event.
+- `src/DotBoxd.Plugins/Runtime/InstalledKernel.cs:260` calls `adapter.ToSandboxValues(e)` during input construction.
+- `src/DotBoxd.Plugins/Runtime/PluginEventAdapterRegistry.cs:232` creates `var values = new SandboxValue[_properties.Count]` for each convention-adapted event.
+- `src/DotBoxd.Plugins/Runtime/PluginEventAdapterRegistry.cs:237` loops over the cached `PropertyInfo` list, and `src/DotBoxd.Plugins/Runtime/PluginEventAdapterRegistry.cs:241` calls `property.GetValue(e)` for every property on every event.
+- `src/DotBoxd.Plugins/Runtime/InstalledKernel.cs:294` then allocates another `SandboxValue[]` when live settings are also present, copying the event values before appending settings.
 - Existing benchmarks focus on IPC allocation; there is no plugin event dispatch allocation benchmark for convention adapters with different event property counts and live-setting counts.
 
 ## Impact

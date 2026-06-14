@@ -8,7 +8,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$root = Split-Path -Parent $PSScriptRoot
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $fullPackageDirectory = if ([System.IO.Path]::IsPathRooted($PackageDirectory)) {
     $PackageDirectory
 } else {
@@ -45,57 +45,57 @@ $expectedLicenseExpression = "MIT"
 $expectedRepositoryUrl = "https://github.com/JKamsker/Safe-IR"
 $expectedRepositoryType = "git"
 $expectedPackageMetadata = @{
-    "SafeIR.Core" = @{
-        Description = "Core SafeIR model, policy, resource metering, diagnostics, and canonical hashing primitives."
-        Tags = @("safe-ir", "core", "policy", "resources", "hashing")
+    "DotBoxd.Kernels" = @{
+        Description = "Core DotBoxd.Kernels model, policy, resource metering, diagnostics, and canonical hashing primitives."
+        Tags = @("dotboxd", "core", "policy", "resources", "hashing")
     }
-    "SafeIR.Validation" = @{
-        Description = "SafeIR structural, type, effect, policy, and binding validation APIs."
-        Tags = @("safe-ir", "validation", "type-checking", "policy")
+    "DotBoxd.Kernels.Validation" = @{
+        Description = "DotBoxd.Kernels structural, type, effect, policy, and binding validation APIs."
+        Tags = @("dotboxd", "validation", "type-checking", "policy")
     }
-    "SafeIR.Runtime" = @{
-        Description = "SafeIR safe host runtime bindings for files, time, random, logging, strings, and math."
-        Tags = @("safe-ir", "runtime", "bindings", "files", "logging")
+    "DotBoxd.Kernels.Runtime" = @{
+        Description = "DotBoxd.Kernels safe host runtime bindings for files, time, random, logging, strings, and math."
+        Tags = @("dotboxd", "runtime", "bindings", "files", "logging")
     }
-    "SafeIR.Serialization.Json" = @{
-        Description = "SafeIR JSON IR import and export helpers for the module envelope."
-        Tags = @("safe-ir", "json", "serialization")
+    "DotBoxd.Kernels.Serialization.Json" = @{
+        Description = "DotBoxd.Kernels JSON IR import and export helpers for the module envelope."
+        Tags = @("dotboxd", "json", "serialization")
     }
-    "SafeIR.Server.Abstractions" = @{
-        Description = "SafeIR plugin-to-host contracts: plugin marker attribute, event kernel, hook context, message sink, and event adapter abstractions."
-        Tags = @("safe-ir", "plugins", "contracts", "abstractions")
+    "DotBoxd.Abstractions" = @{
+        Description = "DotBoxd.Kernels plugin-to-host contracts: plugin marker attribute, event kernel, hook context, message sink, and event adapter abstractions."
+        Tags = @("dotboxd", "plugins", "contracts", "abstractions")
     }
-    "SafeIR.Transport.Http" = @{
-        Description = "SafeIR HTTP GET transport bindings, grant helpers, and pinned HTTP policy validation."
-        Tags = @("safe-ir", "http", "transport", "network", "policy")
+    "DotBoxd.Hosting.Http" = @{
+        Description = "DotBoxd.Kernels HTTP GET transport bindings, grant helpers, and pinned HTTP policy validation."
+        Tags = @("dotboxd", "http", "transport", "network", "policy")
     }
-    "SafeIR.Transport.Ipc.ShaRpc" = @{
-        Description = "Preview SafeIR ShaRPC MessagePack IPC transport addon with named-pipe helpers."
-        Tags = @("safe-ir", "ipc", "transport", "sharpc", "preview")
+    "DotBoxd.Pushdown.Services" = @{
+        Description = "Preview DotBoxd.Kernels DotBoxd MessagePack IPC transport addon with named-pipe helpers."
+        Tags = @("dotboxd", "ipc", "transport", "dotboxd", "preview")
     }
-    "SafeIR.Interpreter" = @{
-        Description = "SafeIR interpreted execution backend for validated IR modules."
-        Tags = @("safe-ir", "interpreter", "execution")
+    "DotBoxd.Kernels.Interpreter" = @{
+        Description = "DotBoxd.Kernels interpreted execution backend for validated IR modules."
+        Tags = @("dotboxd", "interpreter", "execution")
     }
-    "SafeIR.Compiler" = @{
-        Description = "SafeIR generated-runtime compiler backend and persistent compiled artifact cache."
-        Tags = @("safe-ir", "compiler", "cache", "generated-runtime")
+    "DotBoxd.Kernels.Compiler" = @{
+        Description = "DotBoxd.Kernels generated-runtime compiler backend and persistent compiled artifact cache."
+        Tags = @("dotboxd", "compiler", "cache", "generated-runtime")
     }
-    "SafeIR.Verifier" = @{
-        Description = "SafeIR generated assembly verifier and artifact manifest models."
-        Tags = @("safe-ir", "verifier", "assemblies", "manifests")
+    "DotBoxd.Kernels.Verifier" = @{
+        Description = "DotBoxd.Kernels generated assembly verifier and artifact manifest models."
+        Tags = @("dotboxd", "verifier", "assemblies", "manifests")
     }
-    "SafeIR.Hosting" = @{
-        Description = "SafeIR host orchestration APIs for import, preparation, execution, isolation, and runtime selection."
-        Tags = @("safe-ir", "hosting", "orchestration", "isolation")
+    "DotBoxd.Hosting" = @{
+        Description = "DotBoxd.Kernels host orchestration APIs for import, preparation, execution, isolation, and runtime selection."
+        Tags = @("dotboxd", "hosting", "orchestration", "isolation")
     }
-    "SafeIR.PluginAnalyzer" = @{
-        Description = "SafeIR plugin source analyzer and generator package for package-backed plugins."
-        Tags = @("safe-ir", "plugins", "analyzer", "source-generator")
+    "DotBoxd.Plugins.Analyzer" = @{
+        Description = "DotBoxd.Kernels plugin source analyzer and generator package for package-backed plugins."
+        Tags = @("dotboxd", "plugins", "analyzer", "source-generator")
     }
-    "SafeIR.Plugins" = @{
-        Description = "SafeIR plugin manifest, installed kernel, hook, and message-binding APIs."
-        Tags = @("safe-ir", "plugins", "hooks", "kernels")
+    "DotBoxd.Plugins" = @{
+        Description = "DotBoxd.Kernels plugin manifest, installed kernel, hook, and message-binding APIs."
+        Tags = @("dotboxd", "plugins", "hooks", "kernels")
     }
 }
 
@@ -158,9 +158,9 @@ function AssertPackageEntryAllowlist($zip, [string] $id, [string] $readme, [stri
     [void] $allowedExact.Add($readme)
     [void] $allowedExact.Add(".signature.p7s")
 
-    if ($id -eq "SafeIR.PluginAnalyzer") {
-        [void] $allowedExact.Add("analyzers/dotnet/cs/SafeIR.PluginAnalyzer.dll")
-        [void] $allowedExact.Add("analyzers/dotnet/cs/SafeIR.PluginAnalyzer.xml")
+    if ($id -eq "DotBoxd.Plugins.Analyzer") {
+        [void] $allowedExact.Add("analyzers/dotnet/cs/DotBoxd.Plugins.Analyzer.dll")
+        [void] $allowedExact.Add("analyzers/dotnet/cs/DotBoxd.Plugins.Analyzer.xml")
     } else {
         [void] $allowedExact.Add("lib/net10.0/$id.dll")
         [void] $allowedExact.Add("lib/net10.0/$id.xml")
@@ -169,12 +169,12 @@ function AssertPackageEntryAllowlist($zip, [string] $id, [string] $readme, [stri
     # Embedded, machine-readable JSON ingestion schemas (CMP-0012) are also packed so consumers can
     # load the contract from the package. The module envelope ships with the purpose-agnostic
     # serialization package; the plugin-package envelope ships with the plugin package.
-    if ($id -eq "SafeIR.Serialization.Json") {
-        [void] $allowedExact.Add("schemas/v1/safe-ir-module.schema.json")
+    if ($id -eq "DotBoxd.Kernels.Serialization.Json") {
+        [void] $allowedExact.Add("schemas/v1/dotboxd-module.schema.json")
     }
 
-    if ($id -eq "SafeIR.Plugins") {
-        [void] $allowedExact.Add("schemas/v1/safe-ir-plugin-package.schema.json")
+    if ($id -eq "DotBoxd.Plugins") {
+        [void] $allowedExact.Add("schemas/v1/dotboxd-plugin-package.schema.json")
     }
 
     foreach ($entry in $zip.Entries) {
@@ -245,11 +245,11 @@ function AssertReadmeGuidance($zip, [string] $readme, [string] $packageName) {
 
     $requiredReadmePatterns = @(
         "## Installing from NuGet",
-        "dotnet add package SafeIR.Hosting",
-        "dotnet add package SafeIR.Serialization.Json",
-        "dotnet add package SafeIR.Transport.Http",
-        "dotnet add package SafeIR.PluginAnalyzer",
-        "dotnet add package SafeIR.Transport.Ipc.ShaRpc",
+        "dotnet add package DotBoxd.Hosting",
+        "dotnet add package DotBoxd.Kernels.Serialization.Json",
+        "dotnet add package DotBoxd.Hosting.Http",
+        "dotnet add package DotBoxd.Plugins.Analyzer",
+        "dotnet add package DotBoxd.Pushdown.Services",
         "PluginPackageJsonSerializer"
     )
     foreach ($pattern in $requiredReadmePatterns) {
@@ -264,7 +264,7 @@ function AssertSymbolPackage(
     [string] $id,
     [string] $version,
     [System.Collections.IDictionary] $symbolPackages) {
-    if ($id -eq "SafeIR.PluginAnalyzer") {
+    if ($id -eq "DotBoxd.Plugins.Analyzer") {
         return
     }
 
@@ -284,19 +284,19 @@ function AssertSymbolPackage(
 }
 
 $expectedIds = [string[]] @(
-    "SafeIR.Core",
-    "SafeIR.Validation",
-    "SafeIR.Runtime",
-    "SafeIR.Serialization.Json",
-    "SafeIR.Transport.Http",
-    "SafeIR.Transport.Ipc.ShaRpc",
-    "SafeIR.Interpreter",
-    "SafeIR.Compiler",
-    "SafeIR.Verifier",
-    "SafeIR.Hosting",
-    "SafeIR.PluginAnalyzer",
-    "SafeIR.Plugins",
-    "SafeIR.Server.Abstractions"
+    "DotBoxd.Kernels",
+    "DotBoxd.Kernels.Validation",
+    "DotBoxd.Kernels.Runtime",
+    "DotBoxd.Kernels.Serialization.Json",
+    "DotBoxd.Hosting.Http",
+    "DotBoxd.Pushdown.Services",
+    "DotBoxd.Kernels.Interpreter",
+    "DotBoxd.Kernels.Compiler",
+    "DotBoxd.Kernels.Verifier",
+    "DotBoxd.Hosting",
+    "DotBoxd.Plugins.Analyzer",
+    "DotBoxd.Plugins",
+    "DotBoxd.Abstractions"
 )
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -391,9 +391,9 @@ foreach ($package in $packages) {
             throw "Package $($package.Name) repository commit '$([string] $repository.commit)' does not match current commit '$normalizedExpectedRepositoryCommit'."
         }
 
-        if ($id -eq "SafeIR.PluginAnalyzer") {
-            AssertZipEntry $zip "analyzers/dotnet/cs/SafeIR.PluginAnalyzer.dll" $package.Name
-            AssertZipEntry $zip "analyzers/dotnet/cs/SafeIR.PluginAnalyzer.xml" $package.Name
+        if ($id -eq "DotBoxd.Plugins.Analyzer") {
+            AssertZipEntry $zip "analyzers/dotnet/cs/DotBoxd.Plugins.Analyzer.dll" $package.Name
+            AssertZipEntry $zip "analyzers/dotnet/cs/DotBoxd.Plugins.Analyzer.xml" $package.Name
             AssertNoZipEntryPrefix $zip "lib/" $package.Name
         } else {
             AssertZipEntry $zip "lib/net10.0/$id.dll" $package.Name

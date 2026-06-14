@@ -29,11 +29,11 @@ Binding return charging traverses returned sandbox values multiple times: once f
 
 ## Evidence
 
-- `src/SafeIR.Core/Sandbox/SandboxContext.cs:220` begins `ChargeBindingReturn` for every host binding result.
-- `src/SafeIR.Core/Sandbox/SandboxContext.cs:222` calls `SandboxValueValidator.RequireType`, whose traversal allocates a `HashSet<object>` and `Stack<Frame>` at `src/SafeIR.Core/Sandbox/SandboxValueValidator.cs:14` and `src/SafeIR.Core/Sandbox/SandboxValueValidator.cs:15`.
-- `src/SafeIR.Core/Sandbox/SandboxContext.cs:228` then calls `BindingReturnCost.MeasureBytes`; `src/SafeIR.Core/Bindings/BindingReturnCost.cs:6` delegates to `SandboxValueShapeMeter.Measure(value).StringBytes`.
-- `src/SafeIR.Core/Sandbox/Values/SandboxValueShapeMeter.cs:11` and `src/SafeIR.Core/Sandbox/Values/SandboxValueShapeMeter.cs:12` allocate a second traversal `HashSet<object>` and `Stack<Frame>` for shape measurement.
-- If the value was not already credited, `src/SafeIR.Core/Sandbox/SandboxContext.cs:231` calls `ChargeValue(value)`, which runs `ResourceMeter.ChargeValue` and another `SandboxValueShapeMeter.Measure` traversal.
+- `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:220` begins `ChargeBindingReturn` for every host binding result.
+- `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:222` calls `SandboxValueValidator.RequireType`, whose traversal allocates a `HashSet<object>` and `Stack<Frame>` at `src/DotBoxd.Kernels/Sandbox/SandboxValueValidator.cs:14` and `src/DotBoxd.Kernels/Sandbox/SandboxValueValidator.cs:15`.
+- `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:228` then calls `BindingReturnCost.MeasureBytes`; `src/DotBoxd.Kernels/Bindings/BindingReturnCost.cs:6` delegates to `SandboxValueShapeMeter.Measure(value).StringBytes`.
+- `src/DotBoxd.Kernels/Sandbox/Values/SandboxValueShapeMeter.cs:11` and `src/DotBoxd.Kernels/Sandbox/Values/SandboxValueShapeMeter.cs:12` allocate a second traversal `HashSet<object>` and `Stack<Frame>` for shape measurement.
+- If the value was not already credited, `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:231` calls `ChargeValue(value)`, which runs `ResourceMeter.ChargeValue` and another `SandboxValueShapeMeter.Measure` traversal.
 - This is distinct from ALG-0002 collection mutation copying and PAL-0003 map traversal buffering: the returned value may already exist, but quota/accounting walks it repeatedly at the binding boundary.
 
 ## Impact

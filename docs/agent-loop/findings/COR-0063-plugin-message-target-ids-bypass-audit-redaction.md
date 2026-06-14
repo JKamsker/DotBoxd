@@ -25,9 +25,9 @@ duplicate_of:
 
 ## Evidence
 
-`src/SafeIR.Plugins/Runtime/PluginMessageBindings.cs` reads the sandbox-controlled `targetId` argument and only checks `SandboxLiteralConstraints.IsOpaqueId(targetId)` before using it. That opaque ID validator allows letters, digits, `_`, `-`, `.`, and `:`, so secret-shaped values such as `token:abc123` are valid target IDs.
+`src/DotBoxd.Plugins/Runtime/PluginMessageBindings.cs` reads the sandbox-controlled `targetId` argument and only checks `SandboxLiteralConstraints.IsOpaqueId(targetId)` before using it. That opaque ID validator allows letters, digits, `_`, `-`, `.`, and `:`, so secret-shaped values such as `token:abc123` are valid target IDs.
 
-The same binding sanitizes the message body before audit with `AuditTextSanitizer.SanitizeAndRedact(message)`, but writes the resource as `ResourceId: $"player:{targetId}"` without applying the sanitizer or a resource-ID-specific redaction helper. `tests/SafeIR.Tests/Misc05/PluginMessageBindingTests.cs` covers message-body redaction but does not assert that `PluginMessage.ResourceId` redacts secret-shaped target IDs.
+The same binding sanitizes the message body before audit with `AuditTextSanitizer.SanitizeAndRedact(message)`, but writes the resource as `ResourceId: $"player:{targetId}"` without applying the sanitizer or a resource-ID-specific redaction helper. `tests/DotBoxd.Kernels.Tests/Misc05/PluginMessageBindingTests.cs` covers message-body redaction but does not assert that `PluginMessage.ResourceId` redacts secret-shaped target IDs.
 
 This is distinct from `COR-0057`: that finding is about grant policy scope for recipients and payload size. This issue is specifically that audit materialization preserves a sandbox-controlled recipient identifier verbatim even when it matches existing secret redaction patterns.
 

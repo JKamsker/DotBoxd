@@ -5,7 +5,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$root = Split-Path -Parent $PSScriptRoot
+# Scripts live under eng/scripts/ (two levels below repo root); walk up twice.
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $baselineRoot = if ([System.IO.Path]::IsPathRooted($BaselineDirectory)) {
     $BaselineDirectory
 } else {
@@ -13,19 +14,19 @@ $baselineRoot = if ([System.IO.Path]::IsPathRooted($BaselineDirectory)) {
 }
 
 $packages = @(
-    @{ Id = "SafeIR.Core"; Path = "src/SafeIR.Core" },
-    @{ Id = "SafeIR.Validation"; Path = "src/SafeIR.Validation" },
-    @{ Id = "SafeIR.Runtime"; Path = "src/SafeIR.Runtime" },
-    @{ Id = "SafeIR.Serialization.Json"; Path = "src/SafeIR.Serialization.Json" },
-    @{ Id = "SafeIR.Transport.Http"; Path = "src/SafeIR.Transport.Http" },
-    @{ Id = "SafeIR.Transport.Ipc.ShaRpc"; Path = "src/SafeIR.Transport.Ipc.ShaRpc" },
-    @{ Id = "SafeIR.Interpreter"; Path = "src/SafeIR.Interpreter" },
-    @{ Id = "SafeIR.Compiler"; Path = "src/SafeIR.Compiler" },
-    @{ Id = "SafeIR.Verifier"; Path = "src/SafeIR.Verifier" },
-    @{ Id = "SafeIR.Hosting"; Path = "src/SafeIR.Hosting" },
-    @{ Id = "SafeIR.PluginAnalyzer"; Path = "src/SafeIR.PluginAnalyzer" },
-    @{ Id = "SafeIR.Plugins"; Path = "src/SafeIR.Plugins" },
-    @{ Id = "SafeIR.Server.Abstractions"; Path = "src/SafeIR.Server.Abstractions" }
+    @{ Id = "DotBoxd.Kernels"; Path = "src/Kernels/DotBoxd.Kernels" },
+    @{ Id = "DotBoxd.Kernels.Validation"; Path = "src/Kernels/DotBoxd.Kernels.Validation" },
+    @{ Id = "DotBoxd.Kernels.Runtime"; Path = "src/Kernels/DotBoxd.Kernels.Runtime" },
+    @{ Id = "DotBoxd.Kernels.Serialization.Json"; Path = "src/Kernels/DotBoxd.Kernels.Serialization.Json" },
+    @{ Id = "DotBoxd.Hosting.Http"; Path = "src/Hosting/DotBoxd.Hosting.Http" },
+    @{ Id = "DotBoxd.Pushdown.Services"; Path = "src/Pushdown/DotBoxd.Pushdown.Services" },
+    @{ Id = "DotBoxd.Kernels.Interpreter"; Path = "src/Kernels/DotBoxd.Kernels.Interpreter" },
+    @{ Id = "DotBoxd.Kernels.Compiler"; Path = "src/Kernels/DotBoxd.Kernels.Compiler" },
+    @{ Id = "DotBoxd.Kernels.Verifier"; Path = "src/Kernels/DotBoxd.Kernels.Verifier" },
+    @{ Id = "DotBoxd.Hosting"; Path = "src/Hosting/DotBoxd.Hosting" },
+    @{ Id = "DotBoxd.Plugins.Analyzer"; Path = "src/CodeGeneration/DotBoxd.Plugins.Analyzer" },
+    @{ Id = "DotBoxd.Plugins"; Path = "src/Hosting/DotBoxd.Plugins" },
+    @{ Id = "DotBoxd.Abstractions"; Path = "src/Hosting/DotBoxd.Abstractions" }
 )
 
 function Normalize-ApiLine([string] $Line) {
@@ -361,7 +362,7 @@ function Write-Baseline([string] $Path, [string] $PackageId, [string[]] $Api) {
     $directory = Split-Path -Parent $Path
     New-Item -ItemType Directory -Force -Path $directory | Out-Null
     $content = @(
-        "# SafeIR public API baseline",
+        "# DotBoxd.Kernels public API baseline",
         "# Package: $PackageId",
         "# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.",
         ""

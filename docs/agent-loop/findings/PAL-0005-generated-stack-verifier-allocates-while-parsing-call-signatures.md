@@ -29,11 +29,11 @@ Generated stack verification reparses member signature strings and allocates sub
 
 ## Evidence
 
-- `src/SafeIR.Verifier/Generated/GeneratedStackVerifier.cs:23` walks the generated method control-flow queue and calls `OutputDepth` for each reachable instruction.
-- `src/SafeIR.Verifier/Generated/GeneratedStackVerifier.cs:89` routes every `Call`, `Callvirt`, and `Newobj` instruction through `CallDelta(instruction.CalledMember)`.
-- `src/SafeIR.Verifier/Generated/GeneratedStackVerifier.cs:111` computes stack delta from the string signature by calling `ParameterCount(signature)` and `ReturnsVoid(signature)`.
-- `src/SafeIR.Verifier/Generated/GeneratedStackVerifier.cs:121` finds delimiters with `IndexOf`/`LastIndexOf` for each call signature.
-- `src/SafeIR.Verifier/Generated/GeneratedStackVerifier.cs:128` slices the parameter substring and calls `Split(',')`, allocating a substring plus an array on every call instruction with parameters.
+- `src/DotBoxd.Kernels.Verifier/Generated/GeneratedStackVerifier.cs:23` walks the generated method control-flow queue and calls `OutputDepth` for each reachable instruction.
+- `src/DotBoxd.Kernels.Verifier/Generated/GeneratedStackVerifier.cs:89` routes every `Call`, `Callvirt`, and `Newobj` instruction through `CallDelta(instruction.CalledMember)`.
+- `src/DotBoxd.Kernels.Verifier/Generated/GeneratedStackVerifier.cs:111` computes stack delta from the string signature by calling `ParameterCount(signature)` and `ReturnsVoid(signature)`.
+- `src/DotBoxd.Kernels.Verifier/Generated/GeneratedStackVerifier.cs:121` finds delimiters with `IndexOf`/`LastIndexOf` for each call signature.
+- `src/DotBoxd.Kernels.Verifier/Generated/GeneratedStackVerifier.cs:128` slices the parameter substring and calls `Split(',')`, allocating a substring plus an array on every call instruction with parameters.
 - Existing tests exercise verifier correctness, but the benchmark project has no verifier allocation benchmark for methods with many runtime/helper calls.
 
 ## Impact

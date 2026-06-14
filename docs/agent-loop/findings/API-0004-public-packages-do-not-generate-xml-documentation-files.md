@@ -25,22 +25,22 @@ duplicate_of:
 
 ## Claim
 
-The packable public SafeIR packages do not enable XML documentation file generation. As a result, NuGet consumers do not get IntelliSense/API reference XML from the packages, and CI cannot catch missing public XML docs for the stable package surface.
+The packable public DotBoxd.Kernels packages do not enable XML documentation file generation. As a result, NuGet consumers do not get IntelliSense/API reference XML from the packages, and CI cannot catch missing public XML docs for the stable package surface.
 
 ## Why this matters
 
-SafeIR is security-sensitive and exposes host-facing policy, execution, plugin, transport, and verifier APIs. Consumers need package-local API docs for error semantics, safe defaults, and capability boundaries without reverse-engineering source or reading the full spec tree.
+DotBoxd.Kernels is security-sensitive and exposes host-facing policy, execution, plugin, transport, and verifier APIs. Consumers need package-local API docs for error semantics, safe defaults, and capability boundaries without reverse-engineering source or reading the full spec tree.
 
 ## Evidence
 
 - `Directory.Build.props:15` through `Directory.Build.props:17` centralizes package metadata and readme packaging, but does not set `GenerateDocumentationFile` or `DocumentationFile`.
-- `rg -n "<Description>|<PackageTags>|<PackageReadmeFile>|GenerateDocumentationFile|DocumentationFile|<TargetFramework>|<IncludeBuildOutput>|<VersionSuffix>" Directory.Build.props src -g "*.csproj"` returned no `GenerateDocumentationFile` or `DocumentationFile` settings for any `src/SafeIR.*` project.
-- Public package project files such as `src/SafeIR.Core/SafeIR.Core.csproj:4`, `src/SafeIR.Hosting/SafeIR.Hosting.csproj:13`, `src/SafeIR.Serialization.Json/SafeIR.Serialization.Json.csproj:10`, `src/SafeIR.Plugins/SafeIR.Plugins.csproj:10`, and `src/SafeIR.Transport.Http/SafeIR.Transport.Http.csproj:9` only declare target framework/build settings in their project-local metadata.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md` documents a broad public surface, including host creation, policy building, execution options/results, JSON import/export, plugin JSON install, verifier, worker, and error model APIs, but those docs are not emitted as package XML documentation.
+- `rg -n "<Description>|<PackageTags>|<PackageReadmeFile>|GenerateDocumentationFile|DocumentationFile|<TargetFramework>|<IncludeBuildOutput>|<VersionSuffix>" Directory.Build.props src -g "*.csproj"` returned no `GenerateDocumentationFile` or `DocumentationFile` settings for any `src/DotBoxd.Kernels.*` project.
+- Public package project files such as `src/DotBoxd.Kernels/DotBoxd.Kernels.csproj:4`, `src/DotBoxd.Hosting/DotBoxd.Hosting.csproj:13`, `src/DotBoxd.Kernels.Serialization.Json/DotBoxd.Kernels.Serialization.Json.csproj:10`, `src/DotBoxd.Plugins/DotBoxd.Plugins.csproj:10`, and `src/DotBoxd.Hosting.Http/DotBoxd.Hosting.Http.csproj:9` only declare target framework/build settings in their project-local metadata.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md` documents a broad public surface, including host creation, policy building, execution options/results, JSON import/export, plugin JSON install, verifier, worker, and error model APIs, but those docs are not emitted as package XML documentation.
 
 ## Suggested acceptance test
 
-Add a package metadata/packaging test that packs the product projects and asserts every public runtime package includes the expected XML documentation entry next to its DLL, for example `lib/net10.0/SafeIR.Core.xml`. Decide and document the analyzer package expectation separately because `SafeIR.PluginAnalyzer` packs under `analyzers/dotnet/cs`.
+Add a package metadata/packaging test that packs the product projects and asserts every public runtime package includes the expected XML documentation entry next to its DLL, for example `lib/net10.0/DotBoxd.Kernels.xml`. Decide and document the analyzer package expectation separately because `DotBoxd.Plugins.Analyzer` packs under `analyzers/dotnet/cs`.
 
 ## Suggested fix direction
 

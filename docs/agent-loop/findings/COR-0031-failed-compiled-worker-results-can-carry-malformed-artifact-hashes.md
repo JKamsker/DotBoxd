@@ -27,9 +27,9 @@ duplicate_of:
 Host-side worker result validation accepts failed compiled-mode worker results with any `ArtifactHash` value. The mode validator skips artifact hash validation when `Succeeded` is false, and the run-summary validator also skips compiled envelope checks for failed results.
 
 ## Evidence
-- `src/SafeIR.Hosting/SandboxWorkerExecutor.cs` validates interpreted worker results by requiring a blank `ArtifactHash`, but for compiled results it returns `!result.Succeeded || IsHexSha256(result.ArtifactHash)`. A failed compiled result therefore bypasses the hex SHA-256 check entirely.
+- `src/DotBoxd.Hosting/SandboxWorkerExecutor.cs` validates interpreted worker results by requiring a blank `ArtifactHash`, but for compiled results it returns `!result.Succeeded || IsHexSha256(result.ArtifactHash)`. A failed compiled result therefore bypasses the hex SHA-256 check entirely.
 - The same file's run-summary validation returns `true` for compiled results when `!result.Succeeded`, so a failed compiled worker envelope does not have to prove that any artifact/hash fields are absent or well-formed.
-- `tests/SafeIR.Tests/Misc08/WorkerResultHardeningTests.cs` covers malformed compiled runtime envelope fields for successful worker results, but it does not cover a failed compiled worker result that carries a malformed `ArtifactHash`.
+- `tests/DotBoxd.Kernels.Tests/Misc08/WorkerResultHardeningTests.cs` covers malformed compiled runtime envelope fields for successful worker results, but it does not cover a failed compiled worker result that carries a malformed `ArtifactHash`.
 
 ## Why it matters
 The worker boundary converts an out-of-process result into trusted public `SandboxExecutionResult` and audit evidence. Even on failure, accepting attacker-controlled or malformed artifact identity creates impossible public state for telemetry, cache diagnostics, hotness tracking, and downstream automation that assumes `ArtifactHash` is either absent or a valid artifact hash. This is separate from the existing worker error-code and forged audit-event findings because the malformed field is the top-level compiled artifact identity on a failed worker result.

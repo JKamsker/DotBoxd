@@ -29,11 +29,11 @@ Generated stack-type verification copies the whole symbolic operand stack for ev
 
 ## Evidence
 
-- `src/SafeIR.Verifier/Generated/GeneratedStackTypeVerifier.cs` starts each transfer with `var stack = input.ToList()`, allocating and copying the incoming stack state for every processed instruction.
+- `src/DotBoxd.Kernels.Verifier/Generated/GeneratedStackTypeVerifier.cs` starts each transfer with `var stack = input.ToList()`, allocating and copying the incoming stack state for every processed instruction.
 - The same verifier stores a first-seen successor state with `stacks[successor] = output.ToArray()`, adding another full stack copy per discovered control-flow state.
 - Merge checks compare the stored and new stack states with `SequenceEqual`, so branch-heavy methods repeatedly scan stack-state strings as well as allocate lists/arrays.
 - This is distinct from `PAL-0005`: call-signature delta parsing is now cached in `GeneratedStackVerifier`, but stack-type verification still represents state as copied `IReadOnlyList<string>` snapshots.
-- Current `benchmarks/SafeIR.Benchmarks/Verifier/GeneratedVerifierCallBenchmarks.cs` stresses repeated runtime calls, but it does not vary symbolic stack depth or branch merge count for `GeneratedStackTypeVerifier` state copying.
+- Current `benchmarks/DotBoxd.Kernels.Benchmarks/Verifier/GeneratedVerifierCallBenchmarks.cs` stresses repeated runtime calls, but it does not vary symbolic stack depth or branch merge count for `GeneratedStackTypeVerifier` state copying.
 
 ## Impact
 

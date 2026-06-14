@@ -18,7 +18,7 @@
   - Dedup: `completeness/json-ingestion/versioned-schema-artifact-missing`
 - [ ] `CMP-0014` medium - Transport-agnostic IPC addon lacks a public generic-transport example
   - File: `docs/agent-loop/findings/CMP-0014-transport-agnostic-ipc-addon-lacks-a-public-generic-transport-example.md`
-  - Dedup: `completeness/ipc-sharpc/generic-transport-example-missing`
+  - Dedup: `completeness/ipc-dotboxd/generic-transport-example-missing`
 - [ ] `CMP-0015` medium - Compiled cache lacks a runnable user-facing smoke example
   - File: `docs/agent-loop/findings/CMP-0015-compiled-cache-lacks-a-runnable-user-facing-smoke-example.md`
   - Dedup: `completeness/compiled-cache/runnable-user-facing-smoke-missing`

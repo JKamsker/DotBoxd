@@ -29,13 +29,13 @@ Binding audit field creation allocates and copies a dictionary twice for every a
 
 ## Evidence
 
-- `src/SafeIR.Core/Sandbox/SandboxContext.cs:188` through `src/SafeIR.Core/Sandbox/SandboxContext.cs:200` routes binding audit field creation through `BindingAuditFields.Create(...)` with `ModuleHash` and `PolicyHash`.
-- `src/SafeIR.Core/Bindings/BindingAuditFields.cs:5` through `src/SafeIR.Core/Bindings/BindingAuditFields.cs:18` implements that overload by first calling the simpler overload, then immediately calling `.ToDictionary(...)` to copy the returned fields before adding `moduleHash` and `policyHash`.
-- The simpler overload at `src/SafeIR.Core/Bindings/BindingAuditFields.cs:21` through `src/SafeIR.Core/Bindings/BindingAuditFields.cs:37` already creates a new `Dictionary<string, string>` and populates `resourceKind`, `durationMs`, and optional byte fields.
-- File audit events call this path through `src/SafeIR.Runtime/Bindings/SafeFileAudit.cs:36` through `src/SafeIR.Runtime/Bindings/SafeFileAudit.cs:40`.
-- HTTP audit events call it through `src/SafeIR.Transport.Http/SafeHttpClient.cs:297` through `src/SafeIR.Transport.Http/SafeHttpClient.cs:308`.
-- Log audit events call it through `src/SafeIR.Runtime/Bindings/SafeLogBindings.cs:36` through `src/SafeIR.Runtime/Bindings/SafeLogBindings.cs:46`.
-- `SandboxAuditEvent` also snapshots `Fields` on construction at `src/SafeIR.Core/Bindings/Audit.cs:34` through `src/SafeIR.Core/Bindings/Audit.cs:39`, so the extra `.ToDictionary` copy happens before the public audit-event defensive copy.
+- `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:188` through `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs:200` routes binding audit field creation through `BindingAuditFields.Create(...)` with `ModuleHash` and `PolicyHash`.
+- `src/DotBoxd.Kernels/Bindings/BindingAuditFields.cs:5` through `src/DotBoxd.Kernels/Bindings/BindingAuditFields.cs:18` implements that overload by first calling the simpler overload, then immediately calling `.ToDictionary(...)` to copy the returned fields before adding `moduleHash` and `policyHash`.
+- The simpler overload at `src/DotBoxd.Kernels/Bindings/BindingAuditFields.cs:21` through `src/DotBoxd.Kernels/Bindings/BindingAuditFields.cs:37` already creates a new `Dictionary<string, string>` and populates `resourceKind`, `durationMs`, and optional byte fields.
+- File audit events call this path through `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileAudit.cs:36` through `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileAudit.cs:40`.
+- HTTP audit events call it through `src/DotBoxd.Hosting.Http/SafeHttpClient.cs:297` through `src/DotBoxd.Hosting.Http/SafeHttpClient.cs:308`.
+- Log audit events call it through `src/DotBoxd.Kernels.Runtime/Bindings/SafeLogBindings.cs:36` through `src/DotBoxd.Kernels.Runtime/Bindings/SafeLogBindings.cs:46`.
+- `SandboxAuditEvent` also snapshots `Fields` on construction at `src/DotBoxd.Kernels/Bindings/Audit.cs:34` through `src/DotBoxd.Kernels/Bindings/Audit.cs:39`, so the extra `.ToDictionary` copy happens before the public audit-event defensive copy.
 - This is distinct from `PAL-0021`, which covers copying audit event lists into execution results. The issue here is per-event field dictionary construction doing an avoidable intermediate dictionary copy.
 
 ## Impact

@@ -29,12 +29,12 @@ Binding reference collection rebuilds the function dictionary and rewalks reacha
 
 ## Evidence
 
-- `src/SafeIR.Core/Bindings/BindingReferenceCollector.cs:11` builds a fresh function dictionary for every `Collect` call.
-- `src/SafeIR.Core/Bindings/BindingReferenceCollector.cs:16` creates a fresh visited set for an entrypoint-specific traversal.
-- `src/SafeIR.Core/Bindings/BindingReferenceCollector.cs:21` also creates a new visited set for every function when collecting all references without an entrypoint.
-- `src/SafeIR.Validation/ModuleValidator.cs:36` loops over every entrypoint and calls `BindingReferenceCollector.Collect(module, bindings, function.Id)` for each one while computing required capabilities.
-- `src/SafeIR.Hosting/Execution/SandboxHost.Capabilities.cs:43` repeats binding reference collection when checking revoked capabilities for an entrypoint.
-- `src/SafeIR.Hosting/Execution/CompiledExecutionRunner.cs:20` repeats binding reference collection at compiled execution dispatch to create allowed bindings.
+- `src/DotBoxd.Kernels/Bindings/BindingReferenceCollector.cs:11` builds a fresh function dictionary for every `Collect` call.
+- `src/DotBoxd.Kernels/Bindings/BindingReferenceCollector.cs:16` creates a fresh visited set for an entrypoint-specific traversal.
+- `src/DotBoxd.Kernels/Bindings/BindingReferenceCollector.cs:21` also creates a new visited set for every function when collecting all references without an entrypoint.
+- `src/DotBoxd.Kernels.Validation/ModuleValidator.cs:36` loops over every entrypoint and calls `BindingReferenceCollector.Collect(module, bindings, function.Id)` for each one while computing required capabilities.
+- `src/DotBoxd.Hosting/Execution/SandboxHost.Capabilities.cs:43` repeats binding reference collection when checking revoked capabilities for an entrypoint.
+- `src/DotBoxd.Hosting/Execution/CompiledExecutionRunner.cs:20` repeats binding reference collection at compiled execution dispatch to create allowed bindings.
 - The benchmark project has no module-validation or execution-dispatch benchmark that scales entrypoint count, helper-function sharing, or binding-call density.
 
 ## Impact

@@ -29,13 +29,13 @@ File capability grants are reparsed from string parameters on every `file.readTe
 
 ## Evidence
 
-- `src/SafeIR.Runtime/Bindings/SafeFileSystem.cs:17` calls `ResolvePath` for every read, and `src/SafeIR.Runtime/Bindings/SafeFileSystem.cs:75` calls the same resolver for every write.
-- `src/SafeIR.Runtime/Bindings/SafeFileSystem.cs:139` fetches the `CapabilityGrant` from the context for each file operation, then the resolver validates root/path/extension from raw grant parameters.
-- `src/SafeIR.Runtime/Bindings/SafeFileSystem.cs:267` reads the `allowedExtensions` parameter on every operation.
-- `src/SafeIR.Runtime/Bindings/SafeFileSystem.cs:273` splits the comma-delimited extension string into a fresh array, and `src/SafeIR.Runtime/Bindings/SafeFileSystem.cs:274` scans that array with `Any` for every file read/write.
-- `src/SafeIR.Runtime/Bindings/SafeFileSystem.cs:27` reparses `maxBytesPerRun` for reads through `ReadLong`, whose implementation at `src/SafeIR.Runtime/Bindings/SafeFileSystem.cs:294` through `src/SafeIR.Runtime/Bindings/SafeFileSystem.cs:306` reads the raw string and calls `long.TryParse` per call.
-- `src/SafeIR.Runtime/Bindings/SafeFileWritePublisher.cs:13` and `src/SafeIR.Runtime/Bindings/SafeFileWritePublisher.cs:14` reparse `allowCreate` and `allowOverwrite` with `bool.TryParse` for every write.
-- `src/SafeIR.Runtime/Bindings/SafeFileWritePublisher.cs:24` reparses write `maxBytesPerRun`, with the parser at `src/SafeIR.Runtime/Bindings/SafeFileWritePublisher.cs:84` through `src/SafeIR.Runtime/Bindings/SafeFileWritePublisher.cs:107` reading raw strings on the write hot path.
+- `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileSystem.cs:17` calls `ResolvePath` for every read, and `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileSystem.cs:75` calls the same resolver for every write.
+- `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileSystem.cs:139` fetches the `CapabilityGrant` from the context for each file operation, then the resolver validates root/path/extension from raw grant parameters.
+- `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileSystem.cs:267` reads the `allowedExtensions` parameter on every operation.
+- `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileSystem.cs:273` splits the comma-delimited extension string into a fresh array, and `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileSystem.cs:274` scans that array with `Any` for every file read/write.
+- `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileSystem.cs:27` reparses `maxBytesPerRun` for reads through `ReadLong`, whose implementation at `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileSystem.cs:294` through `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileSystem.cs:306` reads the raw string and calls `long.TryParse` per call.
+- `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileWritePublisher.cs:13` and `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileWritePublisher.cs:14` reparse `allowCreate` and `allowOverwrite` with `bool.TryParse` for every write.
+- `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileWritePublisher.cs:24` reparses write `maxBytesPerRun`, with the parser at `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileWritePublisher.cs:84` through `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileWritePublisher.cs:107` reading raw strings on the write hot path.
 - This is distinct from `PAL-0008`, which covers HTTP grants being reparsed into request-time sets. The same stable-policy problem exists for file grants but in a different binding stack and with a separate per-call extension split.
 
 ## Impact

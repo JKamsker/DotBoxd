@@ -30,11 +30,11 @@ The package metadata gate scans every `.nupkg` already present in `artifacts/pac
 Release validation should be reproducible in a reused local workspace and in release automation that reuses artifacts between attempts. Without cleaning or isolating the output directory, the metadata gate can fail on packages that were not produced by the current pack operation.
 
 ## Evidence
-After `dotnet pack SafeIR.slnx --configuration Release --no-build --output artifacts/packages`, the directory contained both current and stale IPC packages:
+After `dotnet pack DotBoxd.Kernels.slnx --configuration Release --no-build --output artifacts/packages`, the directory contained both current and stale IPC packages:
 
 ```text
-SafeIR.Transport.Ipc.ShaRpc.0.1.0-sharpc-ci.20.nupkg
-SafeIR.Transport.Ipc.ShaRpc.0.1.0-sharpc-ci.30.nupkg
+DotBoxd.Pushdown.Services.0.1.0-dotboxd-ci.20.nupkg
+DotBoxd.Pushdown.Services.0.1.0-dotboxd-ci.30.nupkg
 ```
 
 Running the metadata gate failed on the stale package:
@@ -46,7 +46,7 @@ Running the metadata gate failed on the stale package:
 Failure:
 
 ```text
-Package SafeIR.Transport.Ipc.ShaRpc.0.1.0-sharpc-ci.20.nupkg repository commit '342f6998670faf1f28ccf5d169386246de4ec173' does not match current commit '37d0549f7b24c6a863b9851b6722ff324edc6b58'.
+Package DotBoxd.Pushdown.Services.0.1.0-dotboxd-ci.20.nupkg repository commit '342f6998670faf1f28ccf5d169386246de4ec173' does not match current commit '37d0549f7b24c6a863b9851b6722ff324edc6b58'.
 ```
 
 ## Suggested test or benchmark
@@ -56,9 +56,9 @@ Suggested validation:
 
 ```powershell
 Remove-Item artifacts\packages\*.nupkg -Force
- dotnet pack SafeIR.slnx --configuration Release --no-build --output artifacts/packages
+ dotnet pack DotBoxd.Kernels.slnx --configuration Release --no-build --output artifacts/packages
 .\scripts\check-package-metadata.ps1 -PackageDirectory artifacts/packages -AllowPrereleaseVersions
-.\scripts\check-package-metadata.ps1 -PackageDirectory artifacts/packages -AllowedPrereleasePackageIds SafeIR.Transport.Ipc.ShaRpc -ExpectedVersion 0.1.0
+.\scripts\check-package-metadata.ps1 -PackageDirectory artifacts/packages -AllowedPrereleasePackageIds DotBoxd.Pushdown.Services -ExpectedVersion 0.1.0
 ```
 
 ## Suggested fix direction

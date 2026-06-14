@@ -10,13 +10,13 @@ ids (`game.world.monsters.list`, `game.world.monster.health.get`, `game.world.mo
 **disconnected and its kernels unloaded**.
 
 > **Grounding: most of this already exists.** Every host call a kernel makes is a `BindingDescriptor`
-> with a `RequiredCapability` ([BindingContracts.cs:58-70](../../../src/SafeIR.Core/Bindings/BindingContracts.cs)).
+> with a `RequiredCapability` ([BindingContracts.cs:58-70](../../../src/DotBoxd.Kernels/Bindings/BindingContracts.cs)).
 > `ctx.Messages.Send` lowers to the binding `host.message.send`, which requires capability
-> `host.message.write` ([PluginMessageBindings.cs:11-12, 33-34](../../../src/SafeIR.Plugins/Runtime/PluginMessageBindings.cs)).
+> `host.message.write` ([PluginMessageBindings.cs:11-12, 33-34](../../../src/DotBoxd.Plugins/Runtime/PluginMessageBindings.cs)).
 > The capability is enforced **twice**: statically (a package that calls a binding whose capability the
 > policy does not grant **fails preparation closed** — see the `ServerPolicy` note "Without the
 > message-write grant, package preparation fails closed") and at runtime in the binding invoker
-> ([PluginMessageBindings.cs:48-54](../../../src/SafeIR.Plugins/Runtime/PluginMessageBindings.cs)).
+> ([PluginMessageBindings.cs:48-54](../../../src/DotBoxd.Plugins/Runtime/PluginMessageBindings.cs)).
 > So "gate ctx with capabilities" is the **existing mechanism**; this round adds four things to it.
 
 ---
@@ -75,7 +75,7 @@ Capability ids are dotted paths. A **grant** may be a wildcard; a **requirement*
 - `*` (bare) matches everything; useful for the default-trusted local dev identity.
 
 Today `SandboxPolicy.TryGetActiveGrant` is an **exact** dictionary probe
-([Policy.cs:119-137](../../../src/SafeIR.Core/Policy.cs)). Extension: when the exact probe misses, test
+([Policy.cs:119-137](../../../src/DotBoxd.Kernels/Policy.cs)). Extension: when the exact probe misses, test
 the requirement against wildcard grants via a small matcher:
 
 ```csharp
@@ -99,7 +99,7 @@ internal static class CapabilityPattern
 
 `GrantsCapability(id)` first tries the existing O(1) exact index, then scans wildcard grants (kept in a
 small separate list so the common exact path is unchanged). The grant index
-([Policy.cs:139-164](../../../src/SafeIR.Core/Policy.cs)) gains a wildcard bucket built once per policy.
+([Policy.cs:139-164](../../../src/DotBoxd.Kernels/Policy.cs)) gains a wildcard bucket built once per policy.
 
 > **Security note (flag for critique).** Wildcards widen authority. A grant must still be issued by the
 > per-plugin policy resolver ([ownership-auth-and-policy.md](ownership-auth-and-policy.md) §4) — a
@@ -147,14 +147,14 @@ the grant is missing, validation fails before the kernel ever runs (Delta D).
 Two layers, fail-closed:
 
 **Layer 1 — static deny at install (primary).** When a kernel is installed
-([PluginServer.InstallAsync](../../../src/SafeIR.Plugins/PluginServer.cs) →
+([PluginServer.InstallAsync](../../../src/DotBoxd.Plugins/PluginServer.cs) →
 `PluginPackageValidator.ValidatePrepared`), validate `manifest.RequiredCapabilities ⊆ grantedPolicy`
 using the wildcard matcher (§3). Any unmatched requirement → reject the install with a clear
-diagnostic (`E-POLICY-CAPABILITY` / `SGP06x`). The kernel never prepares; nothing runs. This is the
+diagnostic (`E-POLICY-CAPABILITY` / `DBXK06x`). The kernel never prepares; nothing runs. This is the
 same fail-closed path that already rejects an ungranted `host.message.write`.
 
 **Layer 2 — runtime backstop → disconnect + unload.** The binding invoker still denies at runtime
-([PluginMessageBindings.cs:48-54](../../../src/SafeIR.Plugins/Runtime/PluginMessageBindings.cs)
+([PluginMessageBindings.cs:48-54](../../../src/DotBoxd.Plugins/Runtime/PluginMessageBindings.cs)
 pattern → `SandboxErrorCode.PermissionDenied`). If a kernel ever hits a capability denial at runtime
 (it shouldn't, given Layer 1, so it signals a tampered/desynced package), the server treats it as a
 **trust violation**: revoke the kernel and **dispose the owning session**, which unloads *all* that

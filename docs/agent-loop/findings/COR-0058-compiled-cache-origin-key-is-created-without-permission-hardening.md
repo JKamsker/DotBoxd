@@ -25,10 +25,10 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Compiler/Internal/CacheIntegrity/PersistentCompiledArtifactCacheOrigin.cs` signs cached assembly and manifest data with an HMAC key loaded by `ReadOrCreateOriginKeyAsync`.
-- `ReadOrCreateOriginKeyAsync` stores the key at the user-local `SafeIR/compiled-cache-origin.key` path, calls `Directory.CreateDirectory`, reads any existing 32-byte file, and uses `DurableCreate` to write new random bytes. It never validates ACLs or Unix modes for either the directory or the key file, and it does not create the key with explicit owner-only permissions.
-- By contrast, `src/SafeIR.Compiler/Internal/PersistentCompiledArtifactCacheRootGuard.cs` rejects group/world-writable Unix cache roots and broad Windows write ACLs; the same hardening is absent for the HMAC trust root.
-- `tests/SafeIR.Tests/Compiled/Core/CacheIntegrity/CompiledCacheOriginTests.cs` covers stale proof quarantine after bytes are forged, but there is no test for permissive origin-key ACLs/modes or an attacker-provided 32-byte key file.
+- `src/DotBoxd.Kernels.Compiler/Internal/CacheIntegrity/PersistentCompiledArtifactCacheOrigin.cs` signs cached assembly and manifest data with an HMAC key loaded by `ReadOrCreateOriginKeyAsync`.
+- `ReadOrCreateOriginKeyAsync` stores the key at the user-local `DotBoxd.Kernels/compiled-cache-origin.key` path, calls `Directory.CreateDirectory`, reads any existing 32-byte file, and uses `DurableCreate` to write new random bytes. It never validates ACLs or Unix modes for either the directory or the key file, and it does not create the key with explicit owner-only permissions.
+- By contrast, `src/DotBoxd.Kernels.Compiler/Internal/PersistentCompiledArtifactCacheRootGuard.cs` rejects group/world-writable Unix cache roots and broad Windows write ACLs; the same hardening is absent for the HMAC trust root.
+- `tests/DotBoxd.Kernels.Tests/Compiled/Core/CacheIntegrity/CompiledCacheOriginTests.cs` covers stale proof quarantine after bytes are forged, but there is no test for permissive origin-key ACLs/modes or an attacker-provided 32-byte key file.
 - This is distinct from `COR-0048`, which required an origin proof. This finding is about the protection of the proof signing key.
 
 ## Impact

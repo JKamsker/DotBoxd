@@ -29,9 +29,9 @@ Plugin execution telemetry rescans every result's audit-event list to rediscover
 
 ## Evidence
 
-- `src/SafeIR.Plugins/InstalledKernel.cs:271` calls `_executionObserver.Record(entrypoint, _executionMode, result)` after every prepared kernel execution.
-- `src/SafeIR.Plugins/Runtime/PluginExecutionObservation.cs:45` calls `result.AuditEvents.LastOrDefault(e => e.Kind == "RunSummary")` to find summary fields.
-- `src/SafeIR.Plugins/Runtime/PluginExecutionObservation.cs:46` then calls `result.AuditEvents.FirstOrDefault(e => e.Kind == "ExecutionFallback")`, performing a second pass over the same audit-event list for fallback telemetry.
+- `src/DotBoxd.Plugins/InstalledKernel.cs:271` calls `_executionObserver.Record(entrypoint, _executionMode, result)` after every prepared kernel execution.
+- `src/DotBoxd.Plugins/Runtime/PluginExecutionObservation.cs:45` calls `result.AuditEvents.LastOrDefault(e => e.Kind == "RunSummary")` to find summary fields.
+- `src/DotBoxd.Plugins/Runtime/PluginExecutionObservation.cs:46` then calls `result.AuditEvents.FirstOrDefault(e => e.Kind == "ExecutionFallback")`, performing a second pass over the same audit-event list for fallback telemetry.
 - Hook-driven `InstalledKernel.InvokeAsync` can run both `ShouldHandle` and `Handle` for one accepted event, so the telemetry rescans can happen twice per plugin per event.
 - Existing `PAL-0021` covers redundant copying while building `SandboxExecutionResult.AuditEvents`, and `PAL-0033` covers unbounded retention/copying of plugin execution observations. This finding remains after those are fixed: telemetry extraction still performs full-list marker searches for each recorded execution.
 

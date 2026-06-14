@@ -29,10 +29,10 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Hosting/Execution/SandboxHost.cs` routes compiled execution through `TryExecuteCompiledAsync`, which compiles an artifact and then calls `_compiledExecutables.GetAsync(...)` before `CompiledExecutionRunner.ExecuteAsync` can invoke the entrypoint.
-- `src/SafeIR.Hosting/Execution/CompiledExecutableCache.cs` calls `CompiledArtifactGuard.ValidateExecutableEnvelope(artifact, plan, entrypoint)` before deriving the cache key and before `_entries.GetOrAdd(...)`, so the same validation runs for materialized-cache hits as well as misses.
-- `src/SafeIR.Hosting/Execution/CompiledArtifactGuard.cs` implements `ValidateExecutableEnvelope` by calling `EnsureMatchesPlan` and `EnsureAssemblyBytesMatchHash`. `EnsureAssemblyBytesMatchHash` computes `SHA256.HashData(artifact.AssemblyBytesMemory.Span)` over the full DLL before comparing it with `artifact.AssemblyHash`.
-- `EnsureMatchesPlan` calls `ExpectedOptimizationFlags`, which calls `CacheKeyBuilder.Build(...)` for both boxed and optimized variants before accepting the manifest cache key. `src/SafeIR.Compiler/CacheKeyBuilder.cs` builds a parts array, joins it into a string, encodes UTF-8, and hashes it on each call.
+- `src/DotBoxd.Hosting/Execution/SandboxHost.cs` routes compiled execution through `TryExecuteCompiledAsync`, which compiles an artifact and then calls `_compiledExecutables.GetAsync(...)` before `CompiledExecutionRunner.ExecuteAsync` can invoke the entrypoint.
+- `src/DotBoxd.Hosting/Execution/CompiledExecutableCache.cs` calls `CompiledArtifactGuard.ValidateExecutableEnvelope(artifact, plan, entrypoint)` before deriving the cache key and before `_entries.GetOrAdd(...)`, so the same validation runs for materialized-cache hits as well as misses.
+- `src/DotBoxd.Hosting/Execution/CompiledArtifactGuard.cs` implements `ValidateExecutableEnvelope` by calling `EnsureMatchesPlan` and `EnsureAssemblyBytesMatchHash`. `EnsureAssemblyBytesMatchHash` computes `SHA256.HashData(artifact.AssemblyBytesMemory.Span)` over the full DLL before comparing it with `artifact.AssemblyHash`.
+- `EnsureMatchesPlan` calls `ExpectedOptimizationFlags`, which calls `CacheKeyBuilder.Build(...)` for both boxed and optimized variants before accepting the manifest cache key. `src/DotBoxd.Kernels.Compiler/CacheKeyBuilder.cs` builds a parts array, joins it into a string, encodes UTF-8, and hashes it on each call.
 - Existing `PAL-0007` covered defensive assembly-byte copies inside this guard and is verified. Existing `PAL-0031` covers unbounded retention of materialized executables, and `ALG-0013` covers prepared-plan revalidation. This finding is separate: steady-state compiled executable cache hits still pay full artifact byte hashing and cache-key reconstruction before the cached delegate can be reused.
 
 ## Impact

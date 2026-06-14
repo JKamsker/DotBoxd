@@ -1,10 +1,10 @@
-# ShaRPC WebSocket Transport Setup Guide
+# DotBoxd WebSocket Transport Setup Guide
 
-This guide covers implementing and using WebSocket transport with ShaRPC. WebSocket transport is ideal for browser clients, Unity WebGL builds, and scenarios requiring HTTP-based connectivity.
+This guide covers implementing and using WebSocket transport with DotBoxd. WebSocket transport is ideal for browser clients, Unity WebGL builds, and scenarios requiring HTTP-based connectivity.
 
 ## Overview
 
-ShaRPC is transport-agnostic. This guide shows how to create a WebSocket transport by implementing the core transport interfaces:
+DotBoxd is transport-agnostic. This guide shows how to create a WebSocket transport by implementing the core transport interfaces:
 
 - `ITransport` - Client-side transport
 - `IServerTransport` - Server-side transport
@@ -15,14 +15,14 @@ ShaRPC is transport-agnostic. This guide shows how to create a WebSocket transpo
 Create a new class library project:
 
 ```bash
-dotnet new classlib -n ShaRPC.Transports.WebSocket -f netstandard2.1
+dotnet new classlib -n DotBoxd.Transports.WebSocket -f netstandard2.1
 ```
 
-Add the required references to `ShaRPC.Transports.WebSocket.csproj`:
+Add the required references to `DotBoxd.Transports.WebSocket.csproj`:
 
 ```xml
 <ItemGroup>
-  <ProjectReference Include="../ShaRPC.Core/ShaRPC.Core.csproj" />
+  <ProjectReference Include="../DotBoxd.Services/DotBoxd.Services.csproj" />
 </ItemGroup>
 ```
 
@@ -38,9 +38,9 @@ using System.Buffers.Binary;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
-using ShaRPC.Core.Transport;
+using DotBoxd.Services.Transport;
 
-namespace ShaRPC.Transports.WebSocket;
+namespace DotBoxd.Transports.WebSocket;
 
 /// <summary>
 /// WebSocket-based connection implementation.
@@ -190,9 +190,9 @@ using System;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
-using ShaRPC.Core.Transport;
+using DotBoxd.Services.Transport;
 
-namespace ShaRPC.Transports.WebSocket;
+namespace DotBoxd.Transports.WebSocket;
 
 /// <summary>
 /// WebSocket client transport implementation.
@@ -277,9 +277,9 @@ using System.Net;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using ShaRPC.Core.Transport;
+using DotBoxd.Services.Transport;
 
-namespace ShaRPC.Transports.WebSocket;
+namespace DotBoxd.Transports.WebSocket;
 
 /// <summary>
 /// WebSocket server transport implementation using HttpListener.
@@ -424,10 +424,10 @@ public sealed class WebSocketServerTransport : IServerTransport
 ### Server Setup
 
 ```csharp
-using ShaRPC.Core;
-using ShaRPC.Generated;
-using ShaRPC.Serializers.MessagePack;
-using ShaRPC.Transports.WebSocket;
+using DotBoxd.Services;
+using DotBoxd.Services.Generated;
+using DotBoxd.Codecs.MessagePack;
+using DotBoxd.Transports.WebSocket;
 
 // A host turns every accepted WebSocket connection into a full peer.
 await using var host = RpcHost
@@ -448,10 +448,10 @@ Console.WriteLine("WebSocket server running on ws://localhost:5050/rpc");
 ### Client Setup
 
 ```csharp
-using ShaRPC.Core;
-using ShaRPC.Generated;
-using ShaRPC.Serializers.MessagePack;
-using ShaRPC.Transports.WebSocket;
+using DotBoxd.Services;
+using DotBoxd.Services.Generated;
+using DotBoxd.Codecs.MessagePack;
+using DotBoxd.Transports.WebSocket;
 
 var transport = new WebSocketTransport("ws://localhost:5050/rpc");
 await transport.ConnectAsync();
@@ -485,9 +485,9 @@ For production servers, use ASP.NET Core's built-in WebSocket support:
 
 ```csharp
 // Program.cs
-using ShaRPC.Core;
-using ShaRPC.Generated;
-using ShaRPC.Serializers.MessagePack;
+using DotBoxd.Services;
+using DotBoxd.Services.Generated;
+using DotBoxd.Codecs.MessagePack;
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
@@ -629,6 +629,6 @@ netsh http add urlacl url=http://+:5050/rpc/ user=Everyone
 
 ## Next Steps
 
-- [Quick Start Guide](./quick-start.md) - Basic ShaRPC setup
+- [Quick Start Guide](./quick-start.md) - Basic DotBoxd setup
 - [Unity Integration](./unity-integration.md) - Full Unity setup including WebGL
 - [API Reference](./api-reference.md) - Detailed API documentation

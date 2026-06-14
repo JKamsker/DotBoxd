@@ -29,15 +29,15 @@ Capability revocation audit records write the host-provided revocation reason ve
 
 ## Evidence
 
-`src/SafeIR.Hosting/Execution/SandboxHost.Capabilities.cs` accepts `RevokeCapability(string capabilityId, string reason = "")` and `SanitizeReason` only trims, replaces control characters with spaces, and truncates to 256 characters. It does not call `AuditTextSanitizer.SanitizeAndRedact` or equivalent secret-pattern redaction.
+`src/DotBoxd.Hosting/Execution/SandboxHost.Capabilities.cs` accepts `RevokeCapability(string capabilityId, string reason = "")` and `SanitizeReason` only trims, replaces control characters with spaces, and truncates to 256 characters. It does not call `AuditTextSanitizer.SanitizeAndRedact` or equivalent secret-pattern redaction.
 
-`src/SafeIR.Hosting/SandboxHost.Results.cs` then writes the sanitized reason into the public audit event as both `Message: revoked.Reason` and `Fields["reason"] = revoked.Reason` in `CapabilityRevokedResult`. Existing `tests/SafeIR.Tests/Misc01/CapabilityRevocationTests.cs` assert the exact reason is preserved in both locations.
+`src/DotBoxd.Hosting/SandboxHost.Results.cs` then writes the sanitized reason into the public audit event as both `Message: revoked.Reason` and `Fields["reason"] = revoked.Reason` in `CapabilityRevokedResult`. Existing `tests/DotBoxd.Kernels.Tests/Misc01/CapabilityRevocationTests.cs` assert the exact reason is preserved in both locations.
 
-By contrast, `src/SafeIR.Runtime/Bindings/SafeLogBindings.cs` and `src/SafeIR.Plugins/Runtime/PluginMessageBindings.cs` call `AuditTextSanitizer.SanitizeAndRedact` before placing attacker-controlled text into audit `Message`. `src/SafeIR.Runtime/AuditTextSanitizer.cs` covers common `token=`, `password:`, authorization header, bearer/basic scheme, and URI credential patterns, but revocation reasons do not use that path.
+By contrast, `src/DotBoxd.Kernels.Runtime/Bindings/SafeLogBindings.cs` and `src/DotBoxd.Plugins/Runtime/PluginMessageBindings.cs` call `AuditTextSanitizer.SanitizeAndRedact` before placing attacker-controlled text into audit `Message`. `src/DotBoxd.Kernels.Runtime/AuditTextSanitizer.cs` covers common `token=`, `password:`, authorization header, bearer/basic scheme, and URI credential patterns, but revocation reasons do not use that path.
 
 ## Impact
 
-Revocation reasons often come from operator consoles, webhooks, incident tooling, or tenant-control APIs. If a caller includes `token=...`, `Authorization: Bearer ...`, a signed URL, or a copied secret in the reason, SafeIR persists and forwards it in audit streams even though similar strings are redacted in sandbox log/plugin-message audit. This leaves an audit-export leak outside the sandbox boundary and makes redaction behavior inconsistent across audit event kinds.
+Revocation reasons often come from operator consoles, webhooks, incident tooling, or tenant-control APIs. If a caller includes `token=...`, `Authorization: Bearer ...`, a signed URL, or a copied secret in the reason, DotBoxd.Kernels persists and forwards it in audit streams even though similar strings are redacted in sandbox log/plugin-message audit. This leaves an audit-export leak outside the sandbox boundary and makes redaction behavior inconsistent across audit event kinds.
 
 ## Security test idea
 

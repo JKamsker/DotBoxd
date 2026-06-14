@@ -1,7 +1,7 @@
-# Nested Services in ShaRPC — Design
+# Nested Services in DotBoxd — Design
 
 > **Historical design note.** This document predates the peer-model refactor. The
-> `IShaRpcClient` / `ShaRpcServer` / `ShaRpcClientBuilder` types named below were superseded by
+> `IDotBoxdRpcClient` / `DotBoxdRpcServer` / `DotBoxdRpcClientBuilder` types named below were superseded by
 > the symmetric `RpcPeer` / `RpcHost` surface: the invoke contract is now `IRpcInvoker`
 > (implemented by `RpcPeer`), inbound dispatch lives in `RpcPeerInboundDispatcher`, and generated
 > proxies take an `IRpcInvoker`. The reasoning here still holds; only the type names changed.
@@ -28,13 +28,13 @@ public sealed class RpcRequest
 
 `InstanceId` is `null` for all existing top-level service calls — the field is additive and wire-compatible because MessagePack/JSON tolerate unknown-but-absent properties.
 
-**New return payload type** added to `ShaRPC.Core.Protocol`:
+**New return payload type** added to `DotBoxd.Services.Protocol`:
 
 ```csharp
 public sealed record ServiceHandle(string ServiceName, string InstanceId);
 ```
 
-When a dispatcher method's *return value* is itself a `[ShaRpcService]`, the generated dispatcher serializes a `ServiceHandle` instead of attempting to serialize the live object. When the client proxy sees a method whose declared return is a `[ShaRpcService]` interface, it deserializes the response payload as `ServiceHandle` and constructs a `SubServiceProxy(client, ServiceName, InstanceId)`.
+When a dispatcher method's *return value* is itself a `[DotBoxdService]`, the generated dispatcher serializes a `ServiceHandle` instead of attempting to serialize the live object. When the client proxy sees a method whose declared return is a `[DotBoxdService]` interface, it deserializes the response payload as `ServiceHandle` and constructs a `SubServiceProxy(client, ServiceName, InstanceId)`.
 
 **New invoke overload** on `IRpcInvoker` (the call surface implemented by `RpcPeer`):
 
@@ -53,7 +53,7 @@ Task InvokeOnInstanceAsync<TRequest>(
 
 **Decision: per-connection, session-scoped, with explicit `Release` wire op.** Server-wide instance lookup would leak instances across tenants and require global GUID uniqueness; per-connection scoping matches the natural lifetime of a `SubService` (which conceptually represents "this client's view of subscope X") and lets the per-peer teardown (`RpcPeerInboundDispatcher.StopAsync`) drain everything on disconnect.
 
-New abstraction in `ShaRPC.Core.Server`:
+New abstraction in `DotBoxd.Services.Server`:
 
 ```csharp
 public interface IInstanceRegistry
@@ -85,7 +85,7 @@ public interface IServiceDispatcher
     Task<byte[]> DispatchOnInstanceAsync(
         string instanceId, string method, byte[] payload, ISerializer serializer,
         IInstanceRegistry registry, CancellationToken ct = default)
-        => throw new ShaRpcNotFoundException(
+        => throw new DotBoxdRpcNotFoundException(
             $"Service '{ServiceName}' does not support instance-scoped dispatch.");
 }
 ```
@@ -97,7 +97,7 @@ In the per-peer inbound dispatch path (`RpcPeerInboundDispatcher` / its response
 
 A SubService dispatcher's generated `DispatchOnInstanceAsync` resolves `registry.TryGet(ServiceName, instanceId, out var inst)`, casts `inst` to the interface, and runs the same switch as `DispatchAsync` but against `inst` instead of `_service`. A *root* service dispatcher only emits `DispatchAsync` (and inherits the throwing default).
 
-When a root-service method's return type is itself a `[ShaRpcService]`, the generated case in `DispatchAsync` registers the returned object and serializes a `ServiceHandle`:
+When a root-service method's return type is itself a `[DotBoxdService]`, the generated case in `DispatchAsync` registers the returned object and serializes a `ServiceHandle`:
 
 ```csharp
 var result = await _service.GetSubServiceAsync(arg, ct);
@@ -109,19 +109,19 @@ This means `DispatchAsync` also needs `IInstanceRegistry` — extend the existin
 
 ## 4. Generator changes
 
-**Detecting sub-service returns at semantic-analysis time.** In `ClassifyReturnType`, after unwrapping `Task<T>` / `ValueTask<T>`, check the unwrapped symbol for the presence of an attribute whose `AttributeClass.ToDisplayString() == "ShaRPC.Core.Attributes.ShaRpcServiceAttribute"`. If matched, return a new variant:
+**Detecting sub-service returns at semantic-analysis time.** In `ClassifyReturnType`, after unwrapping `Task<T>` / `ValueTask<T>`, check the unwrapped symbol for the presence of an attribute whose `AttributeClass.ToDisplayString() == "DotBoxd.Services.Attributes.DotBoxdServiceAttribute"`. If matched, return a new variant:
 
 ```csharp
 internal enum MethodReturnKind { Void, Sync, Task, TaskOf, ValueTask, ValueTaskOf,
     TaskOfSubService, ValueTaskOfSubService }   // NEW
 ```
 
-This stays incremental — it operates only on `IMethodSymbol.ReturnType` and an attribute name string, never on the full `Compilation`. `MethodModel` gets one additional value-equatable field carrying the sub-service interface's qualified name and its RPC service name (extracted from the same `[ShaRpcService(Name=...)]` attribute), both as strings, preserving record equality.
+This stays incremental — it operates only on `IMethodSymbol.ReturnType` and an attribute name string, never on the full `Compilation`. `MethodModel` gets one additional value-equatable field carrying the sub-service interface's qualified name and its RPC service name (extracted from the same `[DotBoxdService(Name=...)]` attribute), both as strings, preserving record equality.
 
 **Proxy for a sub-service-returning method.** Instead of `_invoker.InvokeAsync<ISubService>(...)` (which would fail to deserialize), emit:
 
 ```csharp
-var handle = await _invoker.InvokeAsync<global::ShaRPC.Core.Protocol.ServiceHandle>(
+var handle = await _invoker.InvokeAsync<global::DotBoxd.Services.Protocol.ServiceHandle>(
     "IRootService", "GetSubServiceAsync", id, ct);
 return new global::App.SubServiceProxy(_invoker, handle.InstanceId);
 ```
@@ -130,20 +130,20 @@ return new global::App.SubServiceProxy(_invoker, handle.InstanceId);
 - Constructor signature is `(IRpcInvoker invoker, string instanceId)`; stores both.
 - Every `InvokeAsync(...)` call site is rewritten to `InvokeOnInstanceAsync("ISubService", _instanceId, "MethodName", ...)`.
 
-A `[ShaRpcService]` interface is *always* emitted as a top-level proxy (callable from the root) PLUS the same class doubles as a SubServiceProxy via a second public constructor `(IRpcInvoker, string instanceId)`. The proxy carries a `_instanceId` field (nullable). When null, it emits singleton calls; when non-null, instance calls. This avoids generating two near-duplicate classes per interface.
+A `[DotBoxdService]` interface is *always* emitted as a top-level proxy (callable from the root) PLUS the same class doubles as a SubServiceProxy via a second public constructor `(IRpcInvoker, string instanceId)`. The proxy carries a `_instanceId` field (nullable). When null, it emits singleton calls; when non-null, instance calls. This avoids generating two near-duplicate classes per interface.
 
-**Out of scope (flag with SHARPC004 / SHARPC005 diagnostics, do not emit):**
+**Out of scope (flag with DBXS004 / DBXS005 diagnostics, do not emit):**
 - `Task<ICollection<ISubService>>`, arrays, dictionaries containing sub-services.
-- `[ShaRpcService]` interfaces used as **parameter** types (server-to-client callbacks, bidirectional handles).
-- `ref`/`out`/`in` sub-service parameters (already covered by SHARPC002).
+- `[DotBoxdService]` interfaces used as **parameter** types (server-to-client callbacks, bidirectional handles).
+- `ref`/`out`/`in` sub-service parameters (already covered by DBXS002).
 
 ## 5. Sample
 
 User code (no change required beyond the new return type):
 
 ```csharp
-[ShaRpcService] public interface IRootService { Task<ISubService> GetSubServiceAsync(string id); }
-[ShaRpcService] public interface ISubService  { Task<int> CountAsync(); }
+[DotBoxdService] public interface IRootService { Task<ISubService> GetSubServiceAsync(string id); }
+[DotBoxdService] public interface ISubService  { Task<int> CountAsync(); }
 ```
 
 Generated `RootServiceProxy.GetSubServiceAsync`:
@@ -151,7 +151,7 @@ Generated `RootServiceProxy.GetSubServiceAsync`:
 ```csharp
 public async global::System.Threading.Tasks.Task<global::App.ISubService> GetSubServiceAsync(string id, global::System.Threading.CancellationToken ct = default)
 {
-    var handle = await _invoker.InvokeAsync<string, global::ShaRPC.Core.Protocol.ServiceHandle>(
+    var handle = await _invoker.InvokeAsync<string, global::DotBoxd.Services.Protocol.ServiceHandle>(
         "IRootService", "GetSubServiceAsync", id, ct);
     return new global::App.SubServiceProxy(_invoker, handle.InstanceId);
 }
@@ -176,7 +176,7 @@ case "GetSubServiceAsync":
     var arg = serializer.Deserialize<string>(payload);
     var result = await _service.GetSubServiceAsync(arg, ct);
     var __id = registry.Register("ISubService", result);
-    return serializer.Serialize(new global::ShaRPC.Core.Protocol.ServiceHandle("ISubService", __id));
+    return serializer.Serialize(new global::DotBoxd.Services.Protocol.ServiceHandle("ISubService", __id));
 }
 ```
 
@@ -186,7 +186,7 @@ Generated `SubServiceDispatcher.DispatchOnInstanceAsync`:
 public async Task<byte[]> DispatchOnInstanceAsync(string instanceId, string method, byte[] payload, ISerializer serializer, IInstanceRegistry registry, CancellationToken ct)
 {
     if (!registry.TryGet("ISubService", instanceId, out var obj) || obj is not global::App.ISubService inst)
-        throw new ShaRpcNotFoundException($"Instance '{instanceId}' not found for service 'ISubService'.");
+        throw new DotBoxdRpcNotFoundException($"Instance '{instanceId}' not found for service 'ISubService'.");
     switch (method) { case "CountAsync": return serializer.Serialize(await inst.CountAsync(ct)); /* ... */ }
 }
 ```
@@ -194,7 +194,7 @@ public async Task<byte[]> DispatchOnInstanceAsync(string instanceId, string meth
 New protocol type:
 
 ```csharp
-namespace ShaRPC.Core.Protocol;
+namespace DotBoxd.Services.Protocol;
 public sealed record ServiceHandle(string ServiceName, string InstanceId);
 ```
 
@@ -202,39 +202,39 @@ public sealed record ServiceHandle(string ServiceName, string InstanceId);
 
 The detection works entirely from `IMethodSymbol.ReturnType` and a fixed attribute metadata-name string lookup — the existing `ForAttributeWithMetadataName` pipeline is unchanged. We never call `Compilation.GetSymbolsWithName` or enumerate the assembly. The new `MethodModel` fields are all `string` / enum (value-equatable). The new `SubServiceInfo` record (qualified interface name + RPC service name) is also `string`/`string` and equatable. No `Compilation`-typed value is captured in the model pipeline, so cache hit-rate stays identical to today.
 
-The one subtlety: detecting `[ShaRpcService]` on a return type symbol requires walking `INamedTypeSymbol.GetAttributes()` for that symbol. This is a symbol query, not a compilation query, and is safe inside the existing `transform` lambda.
+The one subtlety: detecting `[DotBoxdService]` on a return type symbol requires walking `INamedTypeSymbol.GetAttributes()` for that symbol. This is a symbol query, not a compilation query, and is safe inside the existing `transform` lambda.
 
 ## 7. Explicitly NOT covered
 
-- Collections of sub-services (`Task<IList<ISubService>>`, dictionaries, arrays). Emit SHARPC004 and refuse.
-- Sub-service interfaces as **parameter** types (bidirectional / callback). Emit SHARPC005 and refuse — requires a server-initiated dispatch path that does not exist.
+- Collections of sub-services (`Task<IList<ISubService>>`, dictionaries, arrays). Emit DBXS004 and refuse.
+- Sub-service interfaces as **parameter** types (bidirectional / callback). Emit DBXS005 and refuse — requires a server-initiated dispatch path that does not exist.
 - Reference counting or distributed GC of instances. Lifetime is "until connection closes" plus the optional explicit-release message.
 - Cross-connection instance sharing. An `InstanceId` from connection A is invisible to connection B by design.
 - Authentication / authorization scoping on sub-service handles. Out of scope; carrier-level auth still applies to the connection.
 - Sub-services returning sub-services arbitrarily deep — supported in principle by recursion of the rules above; no special test plan, just recursion.
-- Nested generic sub-services (`ISubService<T>`). Already rejected by existing SHARPC003 (generic service interfaces).
+- Nested generic sub-services (`ISubService<T>`). Already rejected by existing DBXS003 (generic service interfaces).
 - Serialization of a `ServiceHandle` returned in a *user DTO field* (e.g. `record Result(int Count, ISubService Inner)`). Not supported — handles must be the direct return value.
 
 ---
 
 ## Implementation checklist (in order)
 
-1. Add `ServiceHandle` record to `src/ShaRPC.Core/Protocol/ServiceHandle.cs`.
+1. Add `ServiceHandle` record to `src/DotBoxd.Services/Protocol/ServiceHandle.cs`.
 2. Add nullable `InstanceId` property to `RpcRequest`.
-3. Add new `IInstanceRegistry` interface and a default `InstanceRegistry` (per-connection, `ConcurrentDictionary<(string,string),object>`) under `src/ShaRPC.Core/Server/`.
+3. Add new `IInstanceRegistry` interface and a default `InstanceRegistry` (per-connection, `ConcurrentDictionary<(string,string),object>`) under `src/DotBoxd.Services/Server/`.
 4. Extend `IServiceDispatcher.DispatchAsync` signature with `IInstanceRegistry registry` parameter and add default `DispatchOnInstanceAsync` that throws.
 5. Have `RpcPeerInboundDispatcher` own one `IInstanceRegistry` per peer and call `ReleaseAll()` during `StopAsync` on teardown.
 6. Update the per-peer inbound dispatch path to branch on `request.InstanceId` and call the right dispatcher entrypoint.
 7. Add `InvokeOnInstanceAsync` overloads to `IRpcInvoker` and implement in `RpcPeer` (forward to the outbound request path with `InstanceId` set).
 8. Add new `MethodReturnKind` variants `TaskOfSubService` / `ValueTaskOfSubService` and a `SubServiceInfo(string InterfaceQualifiedName, string ServiceName)` value-equatable record.
 9. Extend `MethodModel` with an optional `SubServiceInfo? SubService` field.
-10. Update `ShaRpcGenerator.ClassifyReturnType` to detect `[ShaRpcService]` on the unwrapped return symbol and emit the new return kinds plus `SubServiceInfo`.
+10. Update `DotBoxdRpcGenerator.ClassifyReturnType` to detect `[DotBoxdService]` on the unwrapped return symbol and emit the new return kinds plus `SubServiceInfo`.
 11. Update `ProxyGenerator` to add the second constructor `(IRpcInvoker, string instanceId)`, `_instanceId` field, and per-call branching between `InvokeAsync` and `InvokeOnInstanceAsync`.
 12. Update `ProxyGenerator` to emit `ServiceHandle`-aware code for sub-service-returning methods (deserialize handle, construct sub-proxy).
 13. Update `DispatcherGenerator` to emit `registry.Register(...)` + `ServiceHandle` serialization for sub-service-returning method cases.
 14. Update `DispatcherGenerator` to emit a `DispatchOnInstanceAsync` override that pulls the instance from the registry and runs the same switch.
-15. Add SHARPC005 diagnostic for collections-of-sub-services and SHARPC006 for sub-service-typed parameters; wire into the existing diagnostics pipeline.
+15. Add DBXS005 diagnostic for collections-of-sub-services and DBXS006 for sub-service-typed parameters; wire into the existing diagnostics pipeline.
 16. Add Verify snapshot tests for: root + sub round-trip proxy, sub-only proxy, root dispatcher with instance registration, sub dispatcher with `DispatchOnInstanceAsync`.
-17. Add an integration test in `tests/ShaRPC.Tests` exercising end-to-end root→sub→method-call with the in-process TCP transport.
+17. Add an integration test in `tests/DotBoxd.Services.Tests` exercising end-to-end root→sub→method-call with the in-process TCP transport.
 18. Update `samples/Shared`, `samples/Server`, `samples/Client` with a small sub-service example demonstrating the new pattern.
 19. Update `docs/api-reference.md` and `docs/quick-start.md` with a "Nested Services" section.

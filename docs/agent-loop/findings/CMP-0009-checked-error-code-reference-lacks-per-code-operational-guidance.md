@@ -33,11 +33,11 @@ Hosts need stable error-code guidance to decide whether to retry, show a tenant-
 
 ## Evidence
 
-- `docs/Specs/Initial/safe-ir-sandbox-spec/checklists/release-readiness.md:65` marks `Error code reference` as complete.
-- `src/SafeIR.Core/Sandbox/SandboxError.cs:8` through `src/SafeIR.Core/Sandbox/SandboxError.cs:21` define the current error taxonomy: `ValidationError`, `PolicyDenied`, `PermissionDenied`, `NotFound`, `InvalidInput`, `QuotaExceeded`, `Timeout`, `Cancelled`, `BindingFailure`, `VerifierFailure`, `CacheInvalid`, and `HostFailure`.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:557` through `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:570` repeat the enum, but do not describe caller behavior or audit expectations per code.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/07-bindings.md:330` through `docs/Specs/Initial/safe-ir-sandbox-spec/spec/07-bindings.md:336` map only binding-specific host conditions to a subset of codes.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/08-runtime-safe-apis.md:310` through `docs/Specs/Initial/safe-ir-sandbox-spec/spec/08-runtime-safe-apis.md:321` list a smaller safe-error set and omit several current public codes, including `ValidationError`, `PolicyDenied`, `BindingFailure`, `VerifierFailure`, and `CacheInvalid`.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/checklists/release-readiness.md:65` marks `Error code reference` as complete.
+- `src/DotBoxd.Kernels/Sandbox/SandboxError.cs:8` through `src/DotBoxd.Kernels/Sandbox/SandboxError.cs:21` define the current error taxonomy: `ValidationError`, `PolicyDenied`, `PermissionDenied`, `NotFound`, `InvalidInput`, `QuotaExceeded`, `Timeout`, `Cancelled`, `BindingFailure`, `VerifierFailure`, `CacheInvalid`, and `HostFailure`.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:557` through `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:570` repeat the enum, but do not describe caller behavior or audit expectations per code.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/07-bindings.md:330` through `docs/Specs/Initial/dotboxd-sandbox-spec/spec/07-bindings.md:336` map only binding-specific host conditions to a subset of codes.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/08-runtime-safe-apis.md:310` through `docs/Specs/Initial/dotboxd-sandbox-spec/spec/08-runtime-safe-apis.md:321` list a smaller safe-error set and omit several current public codes, including `ValidationError`, `PolicyDenied`, `BindingFailure`, `VerifierFailure`, and `CacheInvalid`.
 
 ## Suggested acceptance test
 

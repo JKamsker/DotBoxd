@@ -17,14 +17,14 @@
 
     <!-- Roslyn. Central = 4.8.0 so the shipped generators load in the widest range of
          consumer SDKs. Test/host projects that need newer APIs use VersionOverride
-         (SafeIR.PluginAnalyzer + SafeIR.Tests -> 4.14.0, ShaRPC.SourceGenerator.Tests -> 4.11.0). -->
+         (DotBoxd.Plugins.Analyzer + DotBoxd.Kernels.Tests -> 4.14.0, DotBoxd.Services.SourceGenerator.Tests -> 4.11.0). -->
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" />
 
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
 
-    <!-- Test stack (winner = newest, matches SafeIR.Tests config) -->
+    <!-- Test stack (winner = newest, matches DotBoxd.Kernels.Tests config) -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />

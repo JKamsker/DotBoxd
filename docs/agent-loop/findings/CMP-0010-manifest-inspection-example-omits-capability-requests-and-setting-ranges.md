@@ -37,9 +37,9 @@ The manifest review surface is the operator's pre-install safety gate for plugin
 - `docs/Specs/Addendum/Examples.md:205` introduces `Inspect Plugin Permissions` as the admin review walkthrough.
 - `docs/Specs/Addendum/Examples.md:230` through `docs/Specs/Addendum/Examples.md:234` list the sample capability request `game.message.write` and subscription data as part of the package review output.
 - `docs/Specs/Addendum/Examples.md:237` says server owners need to show settings, defaults, ranges, requested effects, and hook subscriptions before install.
-- `examples/Addendum/SafeIR.AddendumExamples/Examples/ManifestInspectionExample.cs:10` prints live setting name/type/default only.
-- `examples/Addendum/SafeIR.AddendumExamples/Examples/ManifestInspectionExample.cs:14` prints effects.
-- `examples/Addendum/SafeIR.AddendumExamples/Examples/ManifestInspectionExample.cs:18` prints subscriptions.
+- `examples/Addendum/DotBoxd.Kernels.AddendumExamples/Examples/ManifestInspectionExample.cs:10` prints live setting name/type/default only.
+- `examples/Addendum/DotBoxd.Kernels.AddendumExamples/Examples/ManifestInspectionExample.cs:14` prints effects.
+- `examples/Addendum/DotBoxd.Kernels.AddendumExamples/Examples/ManifestInspectionExample.cs:18` prints subscriptions.
 - The example contains no loop/output for manifest capability requests and no min/max or range output for live settings.
 
 ## Suggested acceptance test

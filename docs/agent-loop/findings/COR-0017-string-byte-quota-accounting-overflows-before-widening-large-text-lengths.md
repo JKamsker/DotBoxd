@@ -29,7 +29,7 @@ String byte quota accounting multiplies `string.Length` by `sizeof(char)` as an 
 
 ## Evidence
 
-`src/SafeIR.Core/Model/Resources.cs:104` to `src/SafeIR.Core/Model/Resources.cs:108` implements `ResourceMeter.ChargeString` as:
+`src/DotBoxd.Kernels/Model/Resources.cs:104` to `src/DotBoxd.Kernels/Model/Resources.cs:108` implements `ResourceMeter.ChargeString` as:
 
 ```csharp
 var bytes = value.Length * sizeof(char);
@@ -38,7 +38,7 @@ ChargeStringShape(new ValueShape(0, 0, 0, 0, value.Length, bytes));
 
 Because both operands are `int`, the multiplication overflows before the value is widened into `ValueShape.StringBytes` (`long`). `ChargeStringAllocation` in the same file correctly does `checked((long)charLength * sizeof(char))`, so the allocation path already shows the intended fail-closed behavior.
 
-`src/SafeIR.Core/Sandbox/SandboxLiteralConstraints.cs:115` to `src/SafeIR.Core/Sandbox/SandboxLiteralConstraints.cs:116` has the same issue in `TextShape`:
+`src/DotBoxd.Kernels/Sandbox/SandboxLiteralConstraints.cs:115` to `src/DotBoxd.Kernels/Sandbox/SandboxLiteralConstraints.cs:116` has the same issue in `TextShape`:
 
 ```csharp
 internal static ValueShape TextShape(string value)
@@ -47,7 +47,7 @@ internal static ValueShape TextShape(string value)
 
 That shape is consumed by `SandboxValueShapeMeter.Measure` for `StringValue`, opaque IDs, paths, and URIs before `ResourceMeter.ChargeValue`/`ChargeBindingReturn` apply string-byte, allocation, and per-byte fuel accounting. Public hosts can pass `SandboxValue.FromString(...)` as entrypoint input or return it from a custom binding; those values are not limited by the JSON importer literal size cap.
 
-The existing tests cover normal-sized string limits in `tests/SafeIR.Tests/Misc07/StringQuotaTests.cs` and binding return string charging in `tests/SafeIR.Tests/Misc01/BindingReturnCostTests.cs`, but they only use short strings and do not exercise byte-count overflow near `int.MaxValue / sizeof(char)`.
+The existing tests cover normal-sized string limits in `tests/DotBoxd.Kernels.Tests/Misc07/StringQuotaTests.cs` and binding return string charging in `tests/DotBoxd.Kernels.Tests/Misc01/BindingReturnCostTests.cs`, but they only use short strings and do not exercise byte-count overflow near `int.MaxValue / sizeof(char)`.
 
 ## Risk
 

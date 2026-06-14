@@ -29,8 +29,8 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Core/Sandbox/SandboxContext.cs` routes every host binding result through `ChargeBindingReturn(...)`, which now calls `SandboxValidatedValueShapeMeter.Measure(...)` before deciding whether a return credit can skip quota charging.
-- `src/SafeIR.Core/Sandbox/Values/SandboxValidatedValueShapeMeter.cs` creates a reference-tracking `HashSet<object>` and traversal `Stack<Frame>` at the start of `Measure(...)`, before switching on the value kind.
+- `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs` routes every host binding result through `ChargeBindingReturn(...)`, which now calls `SandboxValidatedValueShapeMeter.Measure(...)` before deciding whether a return credit can skip quota charging.
+- `src/DotBoxd.Kernels/Sandbox/Values/SandboxValidatedValueShapeMeter.cs` creates a reference-tracking `HashSet<object>` and traversal `Stack<Frame>` at the start of `Measure(...)`, before switching on the value kind.
 - The same method handles `UnitValue`, `BoolValue`, `I32Value`, `I64Value`, and `F64Value` with no recursive work after those allocations, and handles string/path/URI-like values by computing text shape without needing cycle detection.
 - Existing `PAL-0018` covered repeated large-value binding-return traversals and is now verified after the combined meter change. Existing `PAL-0045` covers the unvalidated `ResourceMeter.ChargeValue` path for literals and entrypoint inputs. This finding is the remaining scalar allocation in the validated binding-return boundary.
 

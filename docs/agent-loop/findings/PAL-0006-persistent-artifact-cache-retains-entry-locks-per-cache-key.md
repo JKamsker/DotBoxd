@@ -29,9 +29,9 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Compiler/PersistentCompiledArtifactCache.cs:18` stores entry locks in a `ConcurrentDictionary<string, SemaphoreSlim>` keyed by cache key.
-- `src/SafeIR.Compiler/PersistentCompiledArtifactCache.cs:170` uses `_entryLocks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1))` for every read.
-- `src/SafeIR.Compiler/PersistentCompiledArtifactCache.cs:191` repeats the same `GetOrAdd` path for every write.
+- `src/DotBoxd.Kernels.Compiler/PersistentCompiledArtifactCache.cs:18` stores entry locks in a `ConcurrentDictionary<string, SemaphoreSlim>` keyed by cache key.
+- `src/DotBoxd.Kernels.Compiler/PersistentCompiledArtifactCache.cs:170` uses `_entryLocks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1))` for every read.
+- `src/DotBoxd.Kernels.Compiler/PersistentCompiledArtifactCache.cs:191` repeats the same `GetOrAdd` path for every write.
 - Neither `WithEntryLockAsync` overload removes the lock from `_entryLocks` after the protected operation completes, and the cache type does not expose disposal/cleanup for accumulated semaphores.
 - Cache keys are content-derived, so a service compiling many module/policy/entrypoint combinations can create unbounded distinct keys over time.
 - Existing compiled cache tests cover behavior and concurrency, but there is no memory-retention test that compiles many unique cache keys and asserts entry-lock cleanup.

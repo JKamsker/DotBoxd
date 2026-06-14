@@ -29,11 +29,11 @@ Worker-process result validation accepts arbitrary non-summary audit event ident
 
 ## Evidence
 
-`src/SafeIR.Hosting/SandboxWorkerExecutor.cs` validates worker results in `ValidateWorkerResult`. The audit path in `WorkerAuditMatches` requires at least one audit event, checks that all events share the same run id, requires exactly one `RunSummary`, and validates that summary against the result and resource usage.
+`src/DotBoxd.Hosting/SandboxWorkerExecutor.cs` validates worker results in `ValidateWorkerResult`. The audit path in `WorkerAuditMatches` requires at least one audit event, checks that all events share the same run id, requires exactly one `RunSummary`, and validates that summary against the result and resource usage.
 
 The same method does not validate the rest of `result.AuditEvents`: it does not reject unknown `Kind` values, forged `BindingId` values, capabilities or effects not reachable from `plan.BindingReferences`, missing binding audit fields, malformed `resourceKind` or timing fields, arbitrary `Message`/`ResourceId` text, or success `BindingCall` records for bindings the verified entrypoint never executed.
 
-After that shallow envelope check, `ExecuteAsync` returns the worker result with `AuditEvents = result.AuditEvents.ToSequencedArray()`. `SandboxHost.ExecuteAsync` then publishes every accepted event to audit observers. Existing `tests/SafeIR.Tests/Misc08/WorkerResultHardeningTests.cs` cover malformed run summaries and top-level worker result mismatches, and COR-0022 covers undefined non-summary error codes, but I did not find coverage that rejects forged non-summary event kinds, binding identities, capabilities, effects, or field dictionaries.
+After that shallow envelope check, `ExecuteAsync` returns the worker result with `AuditEvents = result.AuditEvents.ToSequencedArray()`. `SandboxHost.ExecuteAsync` then publishes every accepted event to audit observers. Existing `tests/DotBoxd.Kernels.Tests/Misc08/WorkerResultHardeningTests.cs` cover malformed run summaries and top-level worker result mismatches, and COR-0022 covers undefined non-summary error codes, but I did not find coverage that rejects forged non-summary event kinds, binding identities, capabilities, effects, or field dictionaries.
 
 A compromised or buggy worker can therefore return a valid successful pure result plus a synthetic event such as a successful `BindingCall` for `file.writeText` or `net.http.get`, with arbitrary fields and resource text. As long as the single run summary matches, the host accepts and republishes the forged event.
 

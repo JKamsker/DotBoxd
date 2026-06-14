@@ -27,10 +27,10 @@ Class-shaped plugin live-state synchronization allocates a deferred-update list 
 
 ## Evidence
 
-- `src/SafeIR.Plugins/InstalledKernel.cs:289` passes `_liveStateSync.SynchronizeForInput()` into `PluginKernelInputBuilder.Build(...)` for every plugin event input.
-- `src/SafeIR.Plugins/Runtime/Lifecycle/LiveStateSyncRegistry.cs:10` implements the per-input synchronization method, and `src/SafeIR.Plugins/Runtime/Lifecycle/LiveStateSyncRegistry.cs:12` unconditionally allocates `new List<Action>()` before inspecting synchronizer modes.
-- `src/SafeIR.Plugins/Runtime/Lifecycle/LiveStateSyncRegistry.cs:18` only adds to that list for `LiveUpdateMode.AsyncSet`; the default mode returned by `InstalledKernel.GetUpdateMode(...)` is synchronous, so the hot path commonly returns an empty heap-allocated list.
-- `src/SafeIR.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:19` then enumerates the returned list only to enqueue deferred updates, so an empty result has no semantic work.
+- `src/DotBoxd.Plugins/InstalledKernel.cs:289` passes `_liveStateSync.SynchronizeForInput()` into `PluginKernelInputBuilder.Build(...)` for every plugin event input.
+- `src/DotBoxd.Plugins/Runtime/Lifecycle/LiveStateSyncRegistry.cs:10` implements the per-input synchronization method, and `src/DotBoxd.Plugins/Runtime/Lifecycle/LiveStateSyncRegistry.cs:12` unconditionally allocates `new List<Action>()` before inspecting synchronizer modes.
+- `src/DotBoxd.Plugins/Runtime/Lifecycle/LiveStateSyncRegistry.cs:18` only adds to that list for `LiveUpdateMode.AsyncSet`; the default mode returned by `InstalledKernel.GetUpdateMode(...)` is synchronous, so the hot path commonly returns an empty heap-allocated list.
+- `src/DotBoxd.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:19` then enumerates the returned list only to enqueue deferred updates, so an empty result has no semantic work.
 - Existing `PAL-0032` covers reflection/property synchronization cost, `PAL-0040` covers double-copying multi-value plugin inputs, and `PAL-0036` covers linked cancellation tokens. This finding is separate: per-input live-state sync allocates an empty deferred-update container before input construction even when no async update exists.
 
 ## Impact

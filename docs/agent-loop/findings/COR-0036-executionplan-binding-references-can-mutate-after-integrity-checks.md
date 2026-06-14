@@ -29,9 +29,9 @@ duplicate_of:
 
 ## Evidence
 
-`src/SafeIR.Core/ExecutionPlan.cs` builds `BindingReferences` with `CopyBindingReferences`, but each copied value is `new HashSet<string>(...)` stored directly as `IReadOnlySet<string>` inside the public `ReadOnlyDictionary`. A caller can cast `plan.BindingReferences[entrypoint]` back to `HashSet<string>` and add or remove binding IDs.
+`src/DotBoxd.Kernels/ExecutionPlan.cs` builds `BindingReferences` with `CopyBindingReferences`, but each copied value is `new HashSet<string>(...)` stored directly as `IReadOnlySet<string>` inside the public `ReadOnlyDictionary`. A caller can cast `plan.BindingReferences[entrypoint]` back to `HashSet<string>` and add or remove binding IDs.
 
-`src/SafeIR.Hosting/Execution/ExecutionPlanGuard.cs` compares `plan.BindingReferences` against a freshly built expected plan during `EnsurePrepared`, but the runner then passes the same mutable set into execution. `src/SafeIR.Interpreter/SandboxInterpreter.cs` and `src/SafeIR.Hosting/Execution/CompiledExecutionRunner.cs` both read `plan.BindingReferences` to seed the allowed binding IDs used by `SandboxContext.ChargeBindingCall`.
+`src/DotBoxd.Hosting/Execution/ExecutionPlanGuard.cs` compares `plan.BindingReferences` against a freshly built expected plan during `EnsurePrepared`, but the runner then passes the same mutable set into execution. `src/DotBoxd.Kernels.Interpreter/SandboxInterpreter.cs` and `src/DotBoxd.Hosting/Execution/CompiledExecutionRunner.cs` both read `plan.BindingReferences` to seed the allowed binding IDs used by `SandboxContext.ChargeBindingCall`.
 
 ## Impact
 

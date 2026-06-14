@@ -25,7 +25,7 @@ duplicate_of:
 
 ## Claim
 
-`SafeIrJsonExporter` is shipped as a public module serialization API, but the public package guidance and package consumer smoke only prove JSON import and plugin package upload. A user can discover `SafeIrJsonImporter` and `PluginPackageJsonSerializer` from README/package smoke, while the module export surface is only present in the public API spec and source.
+`DotBoxdJsonExporter` is shipped as a public module serialization API, but the public package guidance and package consumer smoke only prove JSON import and plugin package upload. A user can discover `DotBoxdJsonImporter` and `PluginPackageJsonSerializer` from README/package smoke, while the module export surface is only present in the public API spec and source.
 
 ## Why this matters
 
@@ -33,19 +33,19 @@ Programmatic tooling that builds or transforms `SandboxModule` instances needs a
 
 ## Evidence
 
-- `src/SafeIR.Serialization.Json/SafeIrJsonExporter.cs:6` declares public `SafeIrJsonExporter`.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:432` lists `SafeIrJsonExporter` in the JSON serialization public API.
-- `README.md:14` describes `SafeIR.Serialization.Json` as JSON IR importer, host import extensions, and plugin package JSON upload helpers, but does not mention module export.
-- `README.md:51` says `SafeIR.Serialization.Json` is for `ImportJsonAsync` and `SafeIrJsonImporter`, again omitting `SafeIrJsonExporter`.
-- `scripts/check-package-consumer-smoke.ps1:144` through `scripts/check-package-consumer-smoke.ps1:147` compile-check `SafeIrJsonImporter`, `PluginPackageJsonSerializer`, and IPC types, but do not reference or call `SafeIrJsonExporter.Export(...)`.
+- `src/DotBoxd.Kernels.Serialization.Json/DotBoxdJsonExporter.cs:6` declares public `DotBoxdJsonExporter`.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:432` lists `DotBoxdJsonExporter` in the JSON serialization public API.
+- `README.md:14` describes `DotBoxd.Kernels.Serialization.Json` as JSON IR importer, host import extensions, and plugin package JSON upload helpers, but does not mention module export.
+- `README.md:51` says `DotBoxd.Kernels.Serialization.Json` is for `ImportJsonAsync` and `DotBoxdJsonImporter`, again omitting `DotBoxdJsonExporter`.
+- `scripts/check-package-consumer-smoke.ps1:144` through `scripts/check-package-consumer-smoke.ps1:147` compile-check `DotBoxdJsonImporter`, `PluginPackageJsonSerializer`, and IPC types, but do not reference or call `DotBoxdJsonExporter.Export(...)`.
 
 ## Suggested test or smoke
 
-Extend the package consumer smoke or add a docs-smoke fixture that constructs a small `SandboxModule`, calls `SafeIrJsonExporter.Export(module)`, imports the exported JSON with `SafeIrJsonImporter` or `ImportJsonAsync`, and validates that the round-tripped module can be prepared. The fixture should use the public package references and namespaces documented for consumers.
+Extend the package consumer smoke or add a docs-smoke fixture that constructs a small `SandboxModule`, calls `DotBoxdJsonExporter.Export(module)`, imports the exported JSON with `DotBoxdJsonImporter` or `ImportJsonAsync`, and validates that the round-tripped module can be prepared. The fixture should use the public package references and namespaces documented for consumers.
 
 ## Suggested fix direction
 
-Update README package guidance and common namespaces to name `SafeIrJsonExporter` as part of `SafeIR.Serialization.Json`. Add a short round-trip snippet near the JSON IR example or public API docs, then wire that snippet into release smoke so exporter package placement remains covered.
+Update README package guidance and common namespaces to name `DotBoxdJsonExporter` as part of `DotBoxd.Kernels.Serialization.Json`. Add a short round-trip snippet near the JSON IR example or public API docs, then wire that snippet into release smoke so exporter package placement remains covered.
 
 ## Scope boundaries
 

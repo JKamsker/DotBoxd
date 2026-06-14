@@ -29,11 +29,11 @@ Generic policy grant setup reflects over parameter object metadata for every `Sa
 
 ## Evidence
 
-- `src/SafeIR.Core/Policy.cs:77` exposes the generic `Grant(string capabilityId, object parameters)` overload, and `src/SafeIR.Core/Policy.cs:87` calls `ParameterReader.Read(parameters)` for every generic grant.
-- `src/SafeIR.Core/Policy.cs:294` calls `parameters.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public)` on each read, so property metadata is rediscovered per grant even when the parameter type is reused.
-- `src/SafeIR.Core/Policy.cs:295` through `src/SafeIR.Core/Policy.cs:302` filters public getters and indexers on every call.
-- `src/SafeIR.Core/Policy.cs:306` invokes `property.GetValue(parameters)` for every parameter property through reflection, then converts each value to an invariant string.
-- `src/SafeIR.Core/Policy.cs:293` through `src/SafeIR.Core/Policy.cs:309` also creates a new `Dictionary<string,string>` and `ReadOnlyDictionary<string,string>` wrapper per grant. The dictionary copy is required for immutability, but the reflected metadata discovery and reflection invoke path are not cached.
+- `src/DotBoxd.Kernels/Policy.cs:77` exposes the generic `Grant(string capabilityId, object parameters)` overload, and `src/DotBoxd.Kernels/Policy.cs:87` calls `ParameterReader.Read(parameters)` for every generic grant.
+- `src/DotBoxd.Kernels/Policy.cs:294` calls `parameters.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public)` on each read, so property metadata is rediscovered per grant even when the parameter type is reused.
+- `src/DotBoxd.Kernels/Policy.cs:295` through `src/DotBoxd.Kernels/Policy.cs:302` filters public getters and indexers on every call.
+- `src/DotBoxd.Kernels/Policy.cs:306` invokes `property.GetValue(parameters)` for every parameter property through reflection, then converts each value to an invariant string.
+- `src/DotBoxd.Kernels/Policy.cs:293` through `src/DotBoxd.Kernels/Policy.cs:309` also creates a new `Dictionary<string,string>` and `ReadOnlyDictionary<string,string>` wrapper per grant. The dictionary copy is required for immutability, but the reflected metadata discovery and reflection invoke path are not cached.
 - Dedicated grant helpers such as `GrantFileRead`, `GrantFileWrite`, `GrantTimeNow`, `GrantRandom`, and `GrantLogging` avoid this generic reflection path, so the issue is specifically custom/addon capability policy setup through the extensibility overload.
 - This is distinct from `PAL-0020`, which covers policy hash recomputation after a policy exists, and from `PAL-0008`/`PAL-0022`, which cover runtime grant reparsing in HTTP/file bindings. This finding is setup-time reflection and allocation while constructing policies.
 

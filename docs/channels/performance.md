@@ -1,6 +1,6 @@
 # Performance Hot Paths
 
-ShaRPC defaults favor safe behavior: per-call timeouts, inbound cancellation tokens, bounded
+DotBoxd defaults favor safe behavior: per-call timeouts, inbound cancellation tokens, bounded
 inbound queues, and `Task`-backed proxy invocation. That costs some allocation, but it is the
 right default for most applications.
 
@@ -54,8 +54,8 @@ can run continuations inline on the peer read loop, so continuations must stay s
 not block. It also means normal `ValueTask<T>` rules matter: await it once, and do not call
 `AsTask()` repeatedly.
 
-`RequestTimeout = Timeout.InfiniteTimeSpan` removes ShaRPC's per-call timeout on outbound calls.
-Use this only when the transport, protocol above ShaRPC, or application workflow already has a
+`RequestTimeout = Timeout.InfiniteTimeSpan` removes DotBoxd's per-call timeout on outbound calls.
+Use this only when the transport, protocol above DotBoxd, or application workflow already has a
 deadline. Passing a cancellable caller token keeps safety but intentionally falls back to the
 allocating `Task<T>` path.
 

@@ -29,11 +29,11 @@ Plugin kernel revocation is only checked before selected entrypoint calls, so a 
 
 ## Evidence
 
-`src/SafeIR.Plugins/InstalledKernel.cs` implements `Revoke()` as a flag write and exposes `IsRevoked`, but it does not create or cancel a per-kernel cancellation token. `HandleAsync` and `ShouldHandleAsync` acquire `_executionGate`, call `PluginKernelRevocation.ThrowIfRevoked(IsRevoked)`, and then run `ExecutePreparedAsync`. Once execution has entered `ExecutePreparedAsync`, there is no second revocation check and no cancellation token tied to `Revoke()`.
+`src/DotBoxd.Plugins/InstalledKernel.cs` implements `Revoke()` as a flag write and exposes `IsRevoked`, but it does not create or cancel a per-kernel cancellation token. `HandleAsync` and `ShouldHandleAsync` acquire `_executionGate`, call `PluginKernelRevocation.ThrowIfRevoked(IsRevoked)`, and then run `ExecutePreparedAsync`. Once execution has entered `ExecutePreparedAsync`, there is no second revocation check and no cancellation token tied to `Revoke()`.
 
 `InvokeAsync` has a special hook-pipeline check after `ShouldHandle` and before `Handle`, which covers uninstall between filter and handler, but it still does not fence a handler that is already executing. `PluginServer.Uninstall` and `KernelRegistry.Add` call `kernel.Revoke()` on stale kernels, but the active sandbox run keeps the original caller cancellation token and plan.
 
-Existing coverage in `tests/SafeIR.Tests/Misc06/PluginRevocationTests.cs` covers uninstall before a later hook publish, reinstall revoking a pipeline-captured kernel, direct execution after prior revocation, and uninstall between `ShouldHandle` and `Handle`. It does not cover revocation while `Handle` is already blocked inside a host binding before reaching `game.message.send`.
+Existing coverage in `tests/DotBoxd.Kernels.Tests/Misc06/PluginRevocationTests.cs` covers uninstall before a later hook publish, reinstall revoking a pipeline-captured kernel, direct execution after prior revocation, and uninstall between `ShouldHandle` and `Handle`. It does not cover revocation while `Handle` is already blocked inside a host binding before reaching `game.message.send`.
 
 A concrete repro shape is a plugin `Handle` entrypoint that calls a blocking host binding and then calls `game.message.send`. Start `kernel.HandleAsync`, wait until the blocking binding is entered, call `server.Uninstall(pluginId)`, release the binding, and the stale handler can still emit the game message because the revocation flag is not consulted again.
 

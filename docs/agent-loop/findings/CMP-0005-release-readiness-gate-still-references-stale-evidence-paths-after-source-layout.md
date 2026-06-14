@@ -25,7 +25,7 @@ duplicate_of:
 
 ## Claim
 
-`check-release-readiness.ps1` still maps many completed release-readiness and security-review checklist items to stale source/test paths after the source and test layout changed. CMP-0001 fixed the `CanonicalModuleHasher` entry, but the next completed item already fails on `src/SafeIR.Core/BindingRegistryValidator.cs`, and a mechanical path check shows many other completed evidence entries also point at files that no longer exist.
+`check-release-readiness.ps1` still maps many completed release-readiness and security-review checklist items to stale source/test paths after the source and test layout changed. CMP-0001 fixed the `CanonicalModuleHasher` entry, but the next completed item already fails on `src/DotBoxd.Kernels/BindingRegistryValidator.cs`, and a mechanical path check shows many other completed evidence entries also point at files that no longer exist.
 
 ## Why this matters
 
@@ -33,44 +33,44 @@ The README local verification flow and the release/tag gate both run `scripts/ch
 
 ## Evidence
 
-`docs/Specs/Initial/safe-ir-sandbox-spec/checklists/release-readiness.md` marks the MVP and compiled-mode checklist items complete, including `Binding registry validation implemented.`, file/security tests, verifier tests, cache tests, and fallback documentation.
+`docs/Specs/Initial/dotboxd-sandbox-spec/checklists/release-readiness.md` marks the MVP and compiled-mode checklist items complete, including `Binding registry validation implemented.`, file/security tests, verifier tests, cache tests, and fallback documentation.
 
 `scripts/check-release-readiness.ps1` maps those completed items to paths that do not exist in this worktree, for example:
 
 ```text
-src/SafeIR.Core/BindingRegistryValidator.cs
-src/SafeIR.Core/Resources.cs
-src/SafeIR.Core/Audit.cs
-src/SafeIR.Core/SandboxError.cs
-src/SafeIR.Compiler/ReflectionEmitSandboxCompiler.cs
-src/SafeIR.Compiler/MethodEmitter.cs
-src/SafeIR.Verifier/GeneratedAssemblyVerifier.cs
-src/SafeIR.Verifier/VerificationModels.cs
-tests/SafeIR.Tests/SafeFileSystemTests.cs
-tests/SafeIR.Tests/BindingRegistryHardeningTests.cs
-tests/SafeIR.Tests/VerifierAttackMatrixTests.cs
-tests/SafeIR.Tests/DifferentialFuzzTests.cs
-tests/SafeIR.Tests/CompiledCacheMetadataTests.cs
-tests/SafeIR.Tests/CompiledMaterializationCacheTests.cs
+src/DotBoxd.Kernels/BindingRegistryValidator.cs
+src/DotBoxd.Kernels/Resources.cs
+src/DotBoxd.Kernels/Audit.cs
+src/DotBoxd.Kernels/SandboxError.cs
+src/DotBoxd.Kernels.Compiler/ReflectionEmitSandboxCompiler.cs
+src/DotBoxd.Kernels.Compiler/MethodEmitter.cs
+src/DotBoxd.Kernels.Verifier/GeneratedAssemblyVerifier.cs
+src/DotBoxd.Kernels.Verifier/VerificationModels.cs
+tests/DotBoxd.Kernels.Tests/SafeFileSystemTests.cs
+tests/DotBoxd.Kernels.Tests/BindingRegistryHardeningTests.cs
+tests/DotBoxd.Kernels.Tests/VerifierAttackMatrixTests.cs
+tests/DotBoxd.Kernels.Tests/DifferentialFuzzTests.cs
+tests/DotBoxd.Kernels.Tests/CompiledCacheMetadataTests.cs
+tests/DotBoxd.Kernels.Tests/CompiledMaterializationCacheTests.cs
 ```
 
 A focused search shows the evidence was mostly moved rather than removed, for example:
 
 ```text
-src/SafeIR.Core/Bindings/BindingRegistryValidator.cs
-src/SafeIR.Core/Model/Resources.cs
-src/SafeIR.Core/Bindings/Audit.cs
-src/SafeIR.Core/Model/Diagnostics.cs
-tests/SafeIR.Tests/Misc01/BindingRegistryHardeningTests.cs
-tests/SafeIR.Tests/Misc02/DifferentialFuzzTests.cs
-tests/SafeIR.Tests/Compiled/Core/CompiledCacheMetadataTests.cs
-tests/SafeIR.Tests/Compiled/Generated/CompiledRuntimeQuotaTests.cs
+src/DotBoxd.Kernels/Bindings/BindingRegistryValidator.cs
+src/DotBoxd.Kernels/Model/Resources.cs
+src/DotBoxd.Kernels/Bindings/Audit.cs
+src/DotBoxd.Kernels/Model/Diagnostics.cs
+tests/DotBoxd.Kernels.Tests/Misc01/BindingRegistryHardeningTests.cs
+tests/DotBoxd.Kernels.Tests/Misc02/DifferentialFuzzTests.cs
+tests/DotBoxd.Kernels.Tests/Compiled/Core/CompiledCacheMetadataTests.cs
+tests/DotBoxd.Kernels.Tests/Compiled/Generated/CompiledRuntimeQuotaTests.cs
 ```
 
 CMP-0001 verification also recorded the first remaining failure after the canonical-hasher fix:
 
 ```text
-Release checklist item 'Binding registry validation implemented.' is marked complete but evidence is missing: src/SafeIR.Core/BindingRegistryValidator.cs
+Release checklist item 'Binding registry validation implemented.' is marked complete but evidence is missing: src/DotBoxd.Kernels/BindingRegistryValidator.cs
 ```
 
 ## Suggested test or benchmark

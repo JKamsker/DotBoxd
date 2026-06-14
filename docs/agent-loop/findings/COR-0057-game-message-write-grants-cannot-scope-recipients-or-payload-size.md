@@ -25,10 +25,10 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Core/Policy.cs` implements `GrantGameMessageWrite()` by adding `CapabilityGrant("game.message.write", new Dictionary<string, string>())`; no allowed target, target prefix, channel, or message byte limit can be configured.
-- `src/SafeIR.Plugins/Runtime/PluginMessageBindings.cs` reads `targetId` and `message` from sandbox arguments, only validates the target as an opaque ID, sanitizes control characters, and calls `sink.SendAsync(targetId, message, ...)`.
+- `src/DotBoxd.Kernels/Policy.cs` implements `GrantGameMessageWrite()` by adding `CapabilityGrant("game.message.write", new Dictionary<string, string>())`; no allowed target, target prefix, channel, or message byte limit can be configured.
+- `src/DotBoxd.Plugins/Runtime/PluginMessageBindings.cs` reads `targetId` and `message` from sandbox arguments, only validates the target as an opaque ID, sanitizes control characters, and calls `sink.SendAsync(targetId, message, ...)`.
 - The same binding's `ValidateGrant` rejects every grant parameter, so a host that tries to pass `allowedTargets`, `targetPrefix`, `maxMessageLength`, or similar policy state gets a policy diagnostic rather than enforcement.
-- `tests/SafeIR.Tests/Misc05/PluginMessageBindingTests.cs` covers missing capability, invalid target syntax, and audit redaction; it does not cover recipient allowlists or payload-size policy because the production grant surface cannot express them.
+- `tests/DotBoxd.Kernels.Tests/Misc05/PluginMessageBindingTests.cs` covers missing capability, invalid target syntax, and audit redaction; it does not cover recipient allowlists or payload-size policy because the production grant surface cannot express them.
 - This is distinct from `COR-0016`, which removed the unsafe default grant. The remaining issue affects intentionally granted packages: the grant is still all-or-nothing.
 
 ## Impact

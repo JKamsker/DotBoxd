@@ -29,9 +29,9 @@ Host-provided sandbox policy IDs are copied into public run-summary audit fields
 
 ## Evidence
 
-`src/SafeIR.Core/Policy.cs` exposes `SandboxPolicyBuilder.WithPolicyId(string policyId)` and assigns the value directly to `_policyId`. `Build()` then stores it in `SandboxPolicy.PolicyId` without checking for control characters, path/secret-shaped values, or maximum length. Callers can also construct a `SandboxPolicy` record directly with any `PolicyId` string.
+`src/DotBoxd.Kernels/Policy.cs` exposes `SandboxPolicyBuilder.WithPolicyId(string policyId)` and assigns the value directly to `_policyId`. `Build()` then stores it in `SandboxPolicy.PolicyId` without checking for control characters, path/secret-shaped values, or maximum length. Callers can also construct a `SandboxPolicy` record directly with any `PolicyId` string.
 
-`src/SafeIR.Core/Model/RunSummaryAuditFields.cs` writes that value into the public run-summary field dictionary as `fields["policyId"] = plan.Policy.PolicyId`. `src/SafeIR.Hosting/Execution/CompiledExecutionRunner.cs` also embeds the same value in the compiled run-summary message with `policyId={plan.Policy.PolicyId}`, and `src/SafeIR.Hosting/SandboxHost.Results.cs` embeds it in failed run-summary messages. None of those paths call `AuditTextSanitizer`, reject control characters, or redact secret-like tokens.
+`src/DotBoxd.Kernels/Model/RunSummaryAuditFields.cs` writes that value into the public run-summary field dictionary as `fields["policyId"] = plan.Policy.PolicyId`. `src/DotBoxd.Hosting/Execution/CompiledExecutionRunner.cs` also embeds the same value in the compiled run-summary message with `policyId={plan.Policy.PolicyId}`, and `src/DotBoxd.Hosting/SandboxHost.Results.cs` embeds it in failed run-summary messages. None of those paths call `AuditTextSanitizer`, reject control characters, or redact secret-like tokens.
 
 This is distinct from the existing path-resource and revocation-reason audit findings: the leaked value is host-owned policy metadata that appears on every run summary, not a sandbox path resource or revocation reason.
 

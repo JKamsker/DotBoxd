@@ -29,9 +29,9 @@ The interpreter allocates a new `ExpressionEvaluator` object for every expressio
 
 ## Evidence
 
-- `InterpreterEvaluator.EvaluateAsync` is a private helper that constructs a fresh evaluator for each call: `new ExpressionEvaluator(...)` at `src/SafeIR.Interpreter/InterpreterEvaluator.cs:146`.
-- `ExpressionEvaluator.EvaluateAsync` recursively evaluates unary, binary, call, and short-circuit expressions, for example at `src/SafeIR.Interpreter/ExpressionEvaluator.cs:52`, `src/SafeIR.Interpreter/ExpressionEvaluator.cs:66`, `src/SafeIR.Interpreter/ExpressionEvaluator.cs:72`, `src/SafeIR.Interpreter/ExpressionEvaluator.cs:89`, and `src/SafeIR.Interpreter/ExpressionEvaluator.cs:90`.
-- Statement execution invokes the allocating helper for assignments, returns, expression statements, if/while conditions, and for-range bounds at `src/SafeIR.Interpreter/InterpreterEvaluator.cs:74`, `src/SafeIR.Interpreter/InterpreterEvaluator.cs:77`, `src/SafeIR.Interpreter/InterpreterEvaluator.cs:79`, `src/SafeIR.Interpreter/InterpreterEvaluator.cs:94`, `src/SafeIR.Interpreter/InterpreterEvaluator.cs:100`, `src/SafeIR.Interpreter/InterpreterEvaluator.cs:115`, and `src/SafeIR.Interpreter/InterpreterEvaluator.cs:116`.
+- `InterpreterEvaluator.EvaluateAsync` is a private helper that constructs a fresh evaluator for each call: `new ExpressionEvaluator(...)` at `src/DotBoxd.Kernels.Interpreter/InterpreterEvaluator.cs:146`.
+- `ExpressionEvaluator.EvaluateAsync` recursively evaluates unary, binary, call, and short-circuit expressions, for example at `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:52`, `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:66`, `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:72`, `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:89`, and `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:90`.
+- Statement execution invokes the allocating helper for assignments, returns, expression statements, if/while conditions, and for-range bounds at `src/DotBoxd.Kernels.Interpreter/InterpreterEvaluator.cs:74`, `src/DotBoxd.Kernels.Interpreter/InterpreterEvaluator.cs:77`, `src/DotBoxd.Kernels.Interpreter/InterpreterEvaluator.cs:79`, `src/DotBoxd.Kernels.Interpreter/InterpreterEvaluator.cs:94`, `src/DotBoxd.Kernels.Interpreter/InterpreterEvaluator.cs:100`, `src/DotBoxd.Kernels.Interpreter/InterpreterEvaluator.cs:115`, and `src/DotBoxd.Kernels.Interpreter/InterpreterEvaluator.cs:116`.
 - The benchmark project has IPC allocation benchmarks, but no interpreter expression allocation benchmark.
 
 ## Impact

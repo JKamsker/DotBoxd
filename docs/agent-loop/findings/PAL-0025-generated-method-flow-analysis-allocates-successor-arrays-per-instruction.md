@@ -29,10 +29,10 @@ Generated method flow analysis allocates per-instruction successor arrays and pr
 
 ## Evidence
 
-- `src/SafeIR.Verifier/Generated/Methods/GeneratedMethodFlowAnalyzer.cs:11` builds `byOffset` with `instructions.ToDictionary(...)` for every method analysis.
-- `src/SafeIR.Verifier/Generated/Methods/GeneratedMethodFlowAnalyzer.cs:45` creates a `Dictionary<int, IReadOnlyList<int>>` sized to every instruction.
-- `src/SafeIR.Verifier/Generated/Methods/GeneratedMethodFlowAnalyzer.cs:48` calls `Successors(...).ToArray()` once per instruction, allocating an array even for the common fallthrough-only case.
-- `src/SafeIR.Verifier/Generated/Methods/GeneratedMethodFlowAnalyzer.cs:73` through `src/SafeIR.Verifier/Generated/Methods/GeneratedMethodFlowAnalyzer.cs:75` converts predecessor lists with another `ToDictionary` and `ToArray` pass.
+- `src/DotBoxd.Kernels.Verifier/Generated/Methods/GeneratedMethodFlowAnalyzer.cs:11` builds `byOffset` with `instructions.ToDictionary(...)` for every method analysis.
+- `src/DotBoxd.Kernels.Verifier/Generated/Methods/GeneratedMethodFlowAnalyzer.cs:45` creates a `Dictionary<int, IReadOnlyList<int>>` sized to every instruction.
+- `src/DotBoxd.Kernels.Verifier/Generated/Methods/GeneratedMethodFlowAnalyzer.cs:48` calls `Successors(...).ToArray()` once per instruction, allocating an array even for the common fallthrough-only case.
+- `src/DotBoxd.Kernels.Verifier/Generated/Methods/GeneratedMethodFlowAnalyzer.cs:73` through `src/DotBoxd.Kernels.Verifier/Generated/Methods/GeneratedMethodFlowAnalyzer.cs:75` converts predecessor lists with another `ToDictionary` and `ToArray` pass.
 - `ReachableStates` still calls `Successors(instructions, byOffset, instruction)` directly while walking the queue, so it repeats successor discovery instead of using the already materialized `successorsByOffset`.
 - `HasUnmeteredCycle` materializes `reachableOffsets.ToHashSet()` and `Visit` again calls `Successors(...)`, adding another traversal/allocation layer over the same control-flow data.
 - Existing ALG-0003 covers meter-analysis predecessor rescans; this is distinct because the shared flow analyzer eagerly allocates successor/predecessor graph containers and then recomputes successors in later generic flow traversals.

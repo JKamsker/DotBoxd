@@ -33,9 +33,9 @@ The same deterministic plan and input can produce different audit evidence acros
 
 ## Evidence
 
-- `src/SafeIR.Core/Sandbox/SandboxContext.cs` exposes `AuditTimestamp()` for deterministic audit time, but `EnsureRequiredBindingFailureAudit(...)` uses `DateTimeOffset.UtcNow` when writing fallback failure audits.
-- `src/SafeIR.Runtime/Bindings/SafeRandomBindings.cs` validates the random range by calling `context.NextRandomInt32(...)` before writing its own audited success event, so invalid ranges rely on the synthesized failure audit.
-- `src/SafeIR.Interpreter/ExpressionEvaluator.cs` and `src/SafeIR.Runtime/CompiledBindingDispatcher.cs` both call `EnsureRequiredBindingFailureAudit(...)` when a binding throws before producing required audit evidence.
+- `src/DotBoxd.Kernels/Sandbox/SandboxContext.cs` exposes `AuditTimestamp()` for deterministic audit time, but `EnsureRequiredBindingFailureAudit(...)` uses `DateTimeOffset.UtcNow` when writing fallback failure audits.
+- `src/DotBoxd.Kernels.Runtime/Bindings/SafeRandomBindings.cs` validates the random range by calling `context.NextRandomInt32(...)` before writing its own audited success event, so invalid ranges rely on the synthesized failure audit.
+- `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs` and `src/DotBoxd.Kernels.Runtime/CompiledBindingDispatcher.cs` both call `EnsureRequiredBindingFailureAudit(...)` when a binding throws before producing required audit evidence.
 
 ## Fix direction
 

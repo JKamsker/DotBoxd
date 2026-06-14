@@ -29,14 +29,14 @@ The README and public API docs lead with host samples that immediately register 
 
 ## Why this matters
 
-SafeIR's security model is capability-based. New hosts need an obvious minimal configuration that has no file/network/time/random bindings, explicit resource limits, and no optional compiled/runtime cache setup until they intentionally opt in. Without that sample, onboarding starts from a broader host surface than necessary.
+DotBoxd.Kernels's security model is capability-based. New hosts need an obvious minimal configuration that has no file/network/time/random bindings, explicit resource limits, and no optional compiled/runtime cache setup until they intentionally opt in. Without that sample, onboarding starts from a broader host surface than necessary.
 
 ## Evidence
 
 - `README.md:22` introduces `Minimal Host Usage`.
 - `README.md:30` through `README.md:33` configure `AddDefaultPureBindings`, `AddFileBindings`, `UseInterpreter`, and `UseCompilerIfAvailable` in that minimal sample.
 - `README.md:38` grants file read access and `README.md:39` sets fuel, so the README's first host policy example includes IO rather than showing a pure deny-by-default baseline first.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:8` through `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:13` also lead with file bindings, compiler support, compiler cache, and audit forwarding in the high-level usage sample.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:8` through `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:13` also lead with file bindings, compiler support, compiler cache, and audit forwarding in the high-level usage sample.
 - Searches for `safe default` in README/examples did not find a dedicated safe-default host sample.
 
 ## Suggested acceptance test

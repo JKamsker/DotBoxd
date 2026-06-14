@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  
+  <PropertyGroup>
+    <Description>DotBoxd.Kernels HTTP GET transport bindings, grant helpers, and pinned HTTP policy validation.</Description>
+    <PackageTags>dotboxd;sandbox;http;transport;network;policy</PackageTags>
+  </PropertyGroup>
+<ItemGroup>
+    <ProjectReference Include="..\DotBoxd.Hosting\DotBoxd.Hosting.csproj" />
+    <ProjectReference Include="..\..\Kernels\DotBoxd.Kernels.Runtime\DotBoxd.Kernels.Runtime.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

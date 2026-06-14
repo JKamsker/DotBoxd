@@ -1,13 +1,13 @@
 using Shared;
-using ShaRPC.Core;
-using ShaRPC.Generated;
-using ShaRPC.Serializers.MessagePack;
-using ShaRPC.Transports.Tcp;
+using DotBoxd.Services;
+using DotBoxd.Services.Generated;
+using DotBoxd.Codecs.MessagePack;
+using DotBoxd.Transports.Tcp;
 
 const string Host = "localhost";
 const int Port = 5050;
 
-Console.WriteLine("ShaRPC Peer (caller side) Example");
+Console.WriteLine("DotBoxd Peer (caller side) Example");
 Console.WriteLine("=================================");
 Console.WriteLine();
 

@@ -1,18 +1,18 @@
 # Named Pipe Transport
 
-`ShaRPC.Transports.NamedPipes` provides first-class named-pipe client and server
+`DotBoxd.Transports.NamedPipes` provides first-class named-pipe client and server
 transports for local process-boundary IPC. It is a separate package so hosts that only
 need TCP or custom transports do not take a named-pipe dependency.
 
 ## Install
 
 ```sh
-dotnet add package ShaRPC.Transports.NamedPipes
+dotnet add package DotBoxd.Transports.NamedPipes
 ```
 
-The package depends on `ShaRPC` and reuses `StreamConnection` for framing. That means
+The package depends on `DotBoxd` and reuses `StreamConnection` for framing. That means
 named-pipe traffic uses the same length validation, serialized sends, pooled receive
-buffers, and clean EOF behavior as every other stream-backed ShaRPC connection.
+buffers, and clean EOF behavior as every other stream-backed DotBoxd connection.
 
 ## Host And Caller
 
@@ -21,10 +21,10 @@ connected pipe in its own `RpcPeer`. The generated `Provide.../Get...` extension
 the old builder `AddX`/`CreateXProxy` calls.
 
 ```csharp
-using ShaRPC.Core;
-using ShaRPC.Generated;
-using ShaRPC.Serializers.MessagePack;
-using ShaRPC.Transports.NamedPipes;
+using DotBoxd.Services;
+using DotBoxd.Services.Generated;
+using DotBoxd.Codecs.MessagePack;
+using DotBoxd.Transports.NamedPipes;
 
 var pipeName = "my-plugin-host";
 
@@ -66,10 +66,10 @@ you manage the stream yourself. Each side calls `Provide...` for what it serves 
 what it calls:
 
 ```csharp
-using ShaRPC.Core;
-using ShaRPC.Core.Transport;
-using ShaRPC.Generated;
-using ShaRPC.Serializers.MessagePack;
+using DotBoxd.Services;
+using DotBoxd.Services.Transport;
+using DotBoxd.Services.Generated;
+using DotBoxd.Codecs.MessagePack;
 
 Stream pipeStream = /* connected PipeStream */;
 await using IRpcChannel connection = new StreamConnection(pipeStream, "pipe://plugin-host");
@@ -80,7 +80,7 @@ await using var peer = RpcPeer
           {
               RequestTimeout = TimeSpan.FromSeconds(5),
               InboundQueueCapacity = 256,
-              QueueFullMode = ShaRpcQueueFullMode.Wait,
+              QueueFullMode = DotBoxdRpcQueueFullMode.Wait,
           })
     .ProvidePluginHost(new PluginHost())
     .Start();

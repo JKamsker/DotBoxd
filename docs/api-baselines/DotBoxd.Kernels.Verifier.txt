@@ -1,0 +1,77 @@
+# DotBoxd.Kernels public API baseline
+# Package: DotBoxd.Kernels.Verifier
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+public bool IsMemberAllowed(string memberSignature) => AllowedMembers.Contains(memberSignature)
+public const string Array = "V-ARRAY"
+public const string AssemblyReference = "V-ASM-REF"
+public const string CompiledShape = "V-COMPILED-SHAPE"
+public const string ControlFlow = "V-CONTROL-FLOW"
+public const string CustomAttribute = "V-CUSTOM-ATTR"
+public const string Exception = "V-EXCEPTION"
+public const string ExecuteSignature = "V-EXECUTE-SIGNATURE"
+public const string Field = "V-FIELD"
+public const string FieldStatic = "V-FIELD-STATIC"
+public const string FunctionSignature = "V-FUNCTION-SIGNATURE"
+public const string Generic = "V-GENERIC"
+public const string IlFormat = "V-IL-FORMAT"
+public const string ManifestHash = "V-MANIFEST-HASH"
+public const string ManifestIdentity = "V-MANIFEST-IDENTITY"
+public const string Member = "V-MEMBER"
+public const string MetadataShape = "V-METADATA-SHAPE"
+public const string MethodAttribute = "V-METHOD-ATTR"
+public const string MethodBody = "V-METHOD-BODY"
+public const string MethodName = "V-METHOD-NAME"
+public const string MethodPInvoke = "V-METHOD-PINVOKE"
+public const string MethodSpecial = "V-METHOD-SPECIAL"
+public const string ModuleSurface = "V-MODULE-SURFACE"
+public const string OpCode = "V-OPCODE"
+public const string Operand = "V-OPERAND"
+public const string PeEntrypoint = "V-PE-ENTRYPOINT"
+public const string PeFormat = "V-PE-FORMAT"
+public const string PeMetadata = "V-PE-METADATA"
+public const string PeMixed = "V-PE-MIXED"
+public const string PeNative = "V-PE-NATIVE"
+public const string PeSection = "V-PE-SECTION"
+public const string PInvoke = "V-PINVOKE"
+public const string PublicSurface = "V-PUBLIC-SURFACE"
+public const string Resource = "V-RESOURCE"
+public const string Security = "V-SECURITY"
+public const string Stack = "V-STACK"
+public const string StackType = "V-STACK-TYPE"
+public const string TypeForbidden = "V-TYPE-FORBIDDEN"
+public const string TypeReference = "V-TYPE-REF"
+public const string TypeShape = "V-TYPE-SHAPE"
+public enum VerifierDiagnosticCategory
+public enum VerifierDiagnosticCategory.ArtifactIntegrity
+public enum VerifierDiagnosticCategory.ForbiddenCapability
+public enum VerifierDiagnosticCategory.HostVersionMismatch
+public enum VerifierDiagnosticCategory.MalformedArtifact
+public enum VerifierDiagnosticCategory.UnsupportedGeneratedShape
+public interface IGeneratedAssemblyVerifier
+public IReadOnlyList<string> OptimizationFlags
+public IReadOnlyList<string>? OptimizationFlags
+public IReadOnlyList<VerificationDiagnostic> Diagnostics
+public IReadOnlySet<string> AllowedAssemblies { get => _allowedAssemblies; init => _allowedAssemblies = Freeze(value); }
+public IReadOnlySet<string> AllowedAssemblyIdentities { get => _allowedAssemblyIdentities; init => _allowedAssemblyIdentities = Freeze(value); }
+public IReadOnlySet<string> AllowedMembers { get => _allowedMembers; init => _allowedMembers = Freeze(value); }
+public IReadOnlySet<string> AllowedTypes { get => _allowedTypes; init => _allowedTypes = Freeze(value); }
+public IReadOnlySet<string> ForbiddenTypePrefixes { get => _forbiddenTypePrefixes; init => _forbiddenTypePrefixes = Freeze(value); }
+public IReadOnlySet<string> RuntimeFacadeIdentities { get => _runtimeFacadeIdentities; init => _runtimeFacadeIdentities = Freeze(value); }
+public sealed partial class GeneratedAssemblyVerifier
+public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifier
+public sealed record ArtifactManifest( int ArtifactVersion, string CacheKey, string ModuleHash, string PlanHash, string PolicyHash, string BindingManifestHash, string RuntimeFacadeHash, string CompilerVersion, string TypeSystemVersion, string EffectAnalysisVersion, string VerifierVersion, string LanguageVersion, string TargetFramework, IReadOnlyList<string> OptimizationFlags, string AssemblyHash, DateTimeOffset CreatedAt)
+public sealed record VerificationDiagnostic(string Code, string Message)
+public sealed record VerificationManifestIdentity( int? ArtifactVersion = null, string? CacheKey = null, string? ModuleHash = null, string? PlanHash = null, string? PolicyHash = null, string? BindingManifestHash = null, string? RuntimeFacadeHash = null, string? CompilerVersion = null, string? TypeSystemVersion = null, string? EffectAnalysisVersion = null, string? VerifierVersion = null, string? LanguageVersion = null, string? TargetFramework = null, IReadOnlyList<string>? OptimizationFlags = null)
+public sealed record VerificationPolicy( IReadOnlySet<string> AllowedAssemblies, IReadOnlySet<string> AllowedAssemblyIdentities, IReadOnlySet<string> AllowedTypes, IReadOnlySet<string> AllowedMembers, IReadOnlySet<string> ForbiddenTypePrefixes, IReadOnlySet<string> RuntimeFacadeIdentities, string VerifierVersion, VerificationManifestIdentity? ExpectedManifestIdentity = null)
+public sealed record VerificationResult( bool Succeeded, IReadOnlyList<VerificationDiagnostic> Diagnostics, string AssemblyHash, string VerifierVersion, DateTimeOffset VerifiedAt)
+public sealed record VerifierDiagnosticReference( string Code, VerifierDiagnosticCategory Category, string Meaning, string LikelyCause, string Remediation, bool ExpectedFromCompilerOutput)
+public static bool TryGetReference(string code, out VerifierDiagnosticReference reference)
+public static class VerifierDiagnosticCodes
+public static IReadOnlyList<VerifierDiagnosticReference> All => References
+public static VerificationManifestIdentity FromManifest(ArtifactManifest manifest)
+public static VerificationPolicy BoxedValueDefaults()
+public string AllowlistHash
+public string RuntimeFacadeHash
+public ValueTask<VerificationResult> VerifyAsync( ReadOnlyMemory<byte> assemblyBytes, ArtifactManifest manifest, VerificationPolicy policy, CancellationToken cancellationToken)
+public VerificationPolicy WithExpectedManifest(VerificationManifestIdentity identity)

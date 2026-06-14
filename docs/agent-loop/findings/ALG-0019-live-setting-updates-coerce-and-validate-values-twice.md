@@ -29,11 +29,11 @@ Plugin live-setting updates coerce and range-validate values in the store, then 
 
 ## Evidence
 
-- `src/SafeIR.Plugins/Runtime/LiveSettings.cs:112` through `src/SafeIR.Plugins/Runtime/LiveSettings.cs:117` handles single-setting updates by calling `CoerceAndValidate(name, value)` and then `coerced.Setting.SetObject(coerced.Value)`.
-- `src/SafeIR.Plugins/Runtime/LiveSettings.cs:207` through `src/SafeIR.Plugins/Runtime/LiveSettings.cs:215` resolves the setting, coerces through `LiveSettingTypeConverter.CoerceClr(...)`, and validates ranges through `ValidateRangeValue(...)`.
-- For manifest-backed slots, `src/SafeIR.Plugins/Runtime/LiveSettings.cs:238` through `src/SafeIR.Plugins/Runtime/LiveSettings.cs:249` repeats type-specific coercion and `ValidateRangeValue(...)` inside `LiveSettingSlot.SetObject` before taking the slot lock.
-- Batch updates do the same double work: `src/SafeIR.Plugins/Runtime/LiveSettings.cs:120` through `src/SafeIR.Plugins/Runtime/LiveSettings.cs:127` calls `CoerceAndValidate(values)`, whose loop at `src/SafeIR.Plugins/Runtime/LiveSettings.cs:197` through `src/SafeIR.Plugins/Runtime/LiveSettings.cs:204` pre-validates every value, then calls each slot's `SetObject` again.
-- Plugin runtime update entrypoints route through this path at `src/SafeIR.Plugins/InstalledKernel.cs:178` through `src/SafeIR.Plugins/InstalledKernel.cs:192` and `src/SafeIR.Plugins/InstalledKernel.cs:203` through `src/SafeIR.Plugins/InstalledKernel.cs:231`.
+- `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:112` through `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:117` handles single-setting updates by calling `CoerceAndValidate(name, value)` and then `coerced.Setting.SetObject(coerced.Value)`.
+- `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:207` through `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:215` resolves the setting, coerces through `LiveSettingTypeConverter.CoerceClr(...)`, and validates ranges through `ValidateRangeValue(...)`.
+- For manifest-backed slots, `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:238` through `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:249` repeats type-specific coercion and `ValidateRangeValue(...)` inside `LiveSettingSlot.SetObject` before taking the slot lock.
+- Batch updates do the same double work: `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:120` through `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:127` calls `CoerceAndValidate(values)`, whose loop at `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:197` through `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:204` pre-validates every value, then calls each slot's `SetObject` again.
+- Plugin runtime update entrypoints route through this path at `src/DotBoxd.Plugins/InstalledKernel.cs:178` through `src/DotBoxd.Plugins/InstalledKernel.cs:192` and `src/DotBoxd.Plugins/InstalledKernel.cs:203` through `src/DotBoxd.Plugins/InstalledKernel.cs:231`.
 - Existing live-setting performance findings cover proxy reflection (`PAL-0002`) and class-shaped state reflection sync (`PAL-0032`). This finding is separate: even with cached accessors, the store still performs duplicate conversion and range validation per update.
 
 ## Impact

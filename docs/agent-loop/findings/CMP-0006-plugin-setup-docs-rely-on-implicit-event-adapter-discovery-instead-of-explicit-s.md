@@ -35,9 +35,9 @@ The adapter is the host-owned boundary that decides which event fields become sa
 
 - `docs/Specs/Addendum/Addendum.md:36` introduces the server-provided shared contract assembly, and `docs/Specs/Addendum/Addendum.md:127` says the contract assembly is the plugin developer's visible universe.
 - `docs/Specs/Addendum/Examples.md:115` creates `PluginServer.Create(messages)` and proceeds to install/register hooks without showing `RegisterEventAdapter`.
-- `src/SafeIR.Plugins/PluginServer.cs:66` exposes `RegisterEventAdapter<TEvent>(IPluginEventAdapter<TEvent> adapter)` as the explicit host API.
-- `src/SafeIR.Plugins/Runtime/PluginEventAdapterRegistry.cs:15` resolves unregistered adapters, and `src/SafeIR.Plugins/Runtime/PluginEventAdapterRegistry.cs:20` falls back to discovery or `ConventionEventAdapter<TEvent>.Create()`.
-- `examples/PluginIpc/SafeIR.PluginIpc.Server.Abstractions/DamageEvent.cs:14` provides an explicit `DamageEventAdapter`, but `examples/LocalPlugin/SafeIR.PluginLocal/Program.cs:6` and `examples/PluginIpc/SafeIR.PluginIpc.Server/PluginControlService.cs:28` create a server without registering it.
+- `src/DotBoxd.Plugins/PluginServer.cs:66` exposes `RegisterEventAdapter<TEvent>(IPluginEventAdapter<TEvent> adapter)` as the explicit host API.
+- `src/DotBoxd.Plugins/Runtime/PluginEventAdapterRegistry.cs:15` resolves unregistered adapters, and `src/DotBoxd.Plugins/Runtime/PluginEventAdapterRegistry.cs:20` falls back to discovery or `ConventionEventAdapter<TEvent>.Create()`.
+- `examples/PluginIpc/DotBoxd.Kernels.PluginIpc.Server.Abstractions/DamageEvent.cs:14` provides an explicit `DamageEventAdapter`, but `examples/LocalPlugin/DotBoxd.Kernels.PluginLocal/Program.cs:6` and `examples/PluginIpc/DotBoxd.Kernels.PluginIpc.Server/PluginControlService.cs:28` create a server without registering it.
 
 ## Suggested test or benchmark
 

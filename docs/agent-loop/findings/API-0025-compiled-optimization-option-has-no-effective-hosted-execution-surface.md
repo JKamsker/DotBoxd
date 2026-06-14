@@ -31,18 +31,18 @@ As a result, `Optimize = true` is a package-facing option with identity/audit co
 
 ## Affected public API
 
-- `src/SafeIR.Compiler/CompilerContracts.cs`
-- `src/SafeIR.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs`
-- `src/SafeIR.Hosting/Execution/SandboxHost.cs`
-- `src/SafeIR.Core/ExecutionPlan.cs`
+- `src/DotBoxd.Kernels.Compiler/CompilerContracts.cs`
+- `src/DotBoxd.Kernels.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs`
+- `src/DotBoxd.Hosting/Execution/SandboxHost.cs`
+- `src/DotBoxd.Kernels/ExecutionPlan.cs`
 
 ## Evidence
 
-- `src/SafeIR.Compiler/CompilerContracts.cs:8` declares `public sealed record CompileOptions(string Entrypoint, bool Optimize = false)`.
-- `src/SafeIR.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs:32`, `:60`, `:194`, and `:206` use `options.Optimize` only for cache-key/manifest identity and the string flag `"opt"` versus `"boxed-values"`.
+- `src/DotBoxd.Kernels.Compiler/CompilerContracts.cs:8` declares `public sealed record CompileOptions(string Entrypoint, bool Optimize = false)`.
+- `src/DotBoxd.Kernels.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs:32`, `:60`, `:194`, and `:206` use `options.Optimize` only for cache-key/manifest identity and the string flag `"opt"` versus `"boxed-values"`.
 - The actual emission path, `EmitAssembly(plan, function)`, receives no optimize argument and the method body has no optimization branch.
-- `src/SafeIR.Hosting/Execution/SandboxHost.cs:234` always calls `_compiler.CompileAsync(plan, new CompileOptions(entrypoint), ...)`, so the primary public host execution API cannot request optimized compilation.
-- `src/SafeIR.Core/ExecutionPlan.cs:89` defines `SandboxExecutionOptions` without any compile optimization option.
+- `src/DotBoxd.Hosting/Execution/SandboxHost.cs:234` always calls `_compiler.CompileAsync(plan, new CompileOptions(entrypoint), ...)`, so the primary public host execution API cannot request optimized compilation.
+- `src/DotBoxd.Kernels/ExecutionPlan.cs:89` defines `SandboxExecutionOptions` without any compile optimization option.
 
 ## Impact
 

@@ -30,12 +30,12 @@ The package-producing CI path executes a restored .NET local tool from NuGet wit
 ## Evidence
 
 - `.github/workflows/ci.yml:69` through `.github/workflows/ci.yml:71` runs `./scripts/check-csharp-file-lines.ps1` in the same `build-test-pack` job that later packs and uploads release artifacts.
-- `.github/workflows/ci.yml:94` through `.github/workflows/ci.yml:97` runs `dotnet pack SafeIR.slnx --configuration Release --no-build --output artifacts/packages` after that tool gate.
+- `.github/workflows/ci.yml:94` through `.github/workflows/ci.yml:97` runs `dotnet pack DotBoxd.Kernels.slnx --configuration Release --no-build --output artifacts/packages` after that tool gate.
 - `.github/workflows/ci.yml:117` through `.github/workflows/ci.yml:124` uploads the resulting `.nupkg` files as package artifacts.
 - `scripts/check-csharp-file-lines.ps1:11` through `scripts/check-csharp-file-lines.ps1:13` names the external `CodeEnforcer` tool and version.
 - `scripts/check-csharp-file-lines.ps1:43` through `scripts/check-csharp-file-lines.ps1:56` inspects local tools and may install the tool during CI.
 - `scripts/check-csharp-file-lines.ps1:56` through `scripts/check-csharp-file-lines.ps1:61` runs `dotnet tool restore` and then executes `dotnet tool run code-enforcer`.
-- `.config/dotnet-tools.json:5` through `.config/dotnet-tools.json:10` pins only the tool ID/version/roll-forward setting. There is no committed tool lock file or content hash check analogous to `.github/workflows/ci.yml:28` using `dotnet restore SafeIR.slnx --locked-mode` for project dependencies.
+- `.config/dotnet-tools.json:5` through `.config/dotnet-tools.json:10` pins only the tool ID/version/roll-forward setting. There is no committed tool lock file or content hash check analogous to `.github/workflows/ci.yml:28` using `dotnet restore DotBoxd.Kernels.slnx --locked-mode` for project dependencies.
 
 ## Risk
 

@@ -29,9 +29,9 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Plugins/InstalledKernel.cs` builds every plugin event input through `PluginKernelInputBuilder.Build(...)`, passing `_liveStateSync.SynchronizeForInput()` and `_pendingLiveUpdates.Enqueue`.
-- `src/SafeIR.Plugins/Runtime/Input/PluginKernelInputBuilder.cs` iterates all deferred updates after input construction and calls the enqueue delegate for each one.
-- `src/SafeIR.Plugins/Runtime/Lifecycle/PendingLiveUpdateQueue.cs` implements `Enqueue(...)` by starting a `Task.Run(...)` for each update and registering a separate `ContinueWith(...)` callback to remove the completed task from `_pending`.
+- `src/DotBoxd.Plugins/InstalledKernel.cs` builds every plugin event input through `PluginKernelInputBuilder.Build(...)`, passing `_liveStateSync.SynchronizeForInput()` and `_pendingLiveUpdates.Enqueue`.
+- `src/DotBoxd.Plugins/Runtime/Input/PluginKernelInputBuilder.cs` iterates all deferred updates after input construction and calls the enqueue delegate for each one.
+- `src/DotBoxd.Plugins/Runtime/Lifecycle/PendingLiveUpdateQueue.cs` implements `Enqueue(...)` by starting a `Task.Run(...)` for each update and registering a separate `ContinueWith(...)` callback to remove the completed task from `_pending`.
 - The same queue stores pending work in a `List<Task>`; each completion removes its task from that list, so bursts of async updates also pay linear list search/removal under the queue lock.
 - Existing `PAL-0047` covers the synchronous hot path that allocates an empty deferred-update list even when no async updates exist. This finding is distinct: when `AsyncSet` is actually enabled, the enqueue path allocates/schedules task machinery per input update and performs linear pending-list maintenance.
 

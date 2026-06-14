@@ -29,9 +29,9 @@ duplicate_of:
 
 ## Evidence
 
-`src/SafeIR.Runtime/Bindings/SafeFileSystem.cs` resolves the requested path, verifies it is under the granted root, and calls `EnsureNoReparsePoint(resolved.RootFull, resolved.FullPath)` before write setup. That check only inspects path components that exist at the time of the check.
+`src/DotBoxd.Kernels.Runtime/Bindings/SafeFileSystem.cs` resolves the requested path, verifies it is under the granted root, and calls `EnsureNoReparsePoint(resolved.RootFull, resolved.FullPath)` before write setup. That check only inspects path components that exist at the time of the check.
 
-For creates, `SafeFileSystem.WriteTextAsync` then calls `SafeFileWritePublisher.EnsureParentDirectory(resolved.RootFull, resolved.FullPath, permission)`. `src/SafeIR.Runtime/Bindings/SafeFileWritePublisher.cs` computes the parent directory and, when it does not exist and `allowCreate` is true, calls `Directory.CreateDirectory(directory)` before it calls `SafeFileSystem.EnsureNoReparsePoint(rootFull, fullPath)` again.
+For creates, `SafeFileSystem.WriteTextAsync` then calls `SafeFileWritePublisher.EnsureParentDirectory(resolved.RootFull, resolved.FullPath, permission)`. `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileWritePublisher.cs` computes the parent directory and, when it does not exist and `allowCreate` is true, calls `Directory.CreateDirectory(directory)` before it calls `SafeFileSystem.EnsureNoReparsePoint(rootFull, fullPath)` again.
 
 A local actor with write access to the granted root can race a missing intermediate component, for example `root/a`, into a symlink or junction after the first `EnsureNoReparsePoint` returns. `Directory.CreateDirectory(root/a/b)` can then follow that reparse point and create `b` outside the sandbox root. The later reparse check detects the bad path and prevents the file write, but the outside-root directory creation has already happened.
 
@@ -39,7 +39,7 @@ This is distinct from COR-0021, which covers the temporary file publication/writ
 
 ## Risk
 
-The file capability boundary promises that whitelisted roots contain all filesystem effects from sandboxed file writes. If `allowCreate` is enabled for a shared or attacker-writable root, a racing local actor can cause SafeIR to create directories outside that root even though the requested sandbox path is relative and initially validated. That weakens the path/resource whitelist and leaves externally visible filesystem mutations outside the approved tree.
+The file capability boundary promises that whitelisted roots contain all filesystem effects from sandboxed file writes. If `allowCreate` is enabled for a shared or attacker-writable root, a racing local actor can cause DotBoxd.Kernels to create directories outside that root even though the requested sandbox path is relative and initially validated. That weakens the path/resource whitelist and leaves externally visible filesystem mutations outside the approved tree.
 
 ## Suggested test
 

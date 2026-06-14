@@ -31,10 +31,10 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Plugins/PluginServer.cs` builds the host with `builder.AddPluginMessageBindings(messages)` on every `PluginServer.Create()` call.
+- `src/DotBoxd.Plugins/PluginServer.cs` builds the host with `builder.AddPluginMessageBindings(messages)` on every `PluginServer.Create()` call.
 - The same method creates a default policy with `.GrantLogging().GrantGameMessageWrite().WithFuel(...).WithMaxHostCalls(...).Build()` when `defaultPolicy` is null.
-- `src/SafeIR.Serialization.Json/PluginPackageJsonSerializer.cs` exposes `InstallJsonAsync(this PluginServer server, string json, SandboxPolicy? policy = null, ...)`; when callers use the default `policy: null`, the uploaded package is prepared under the server default policy.
-- `tests/SafeIR.Tests/Misc06/PluginPackageJsonTests.cs` demonstrates `PluginServer.Create(messages)` followed by `server.InstallJsonAsync(JsonDamagePackage())`, where the JSON manifest declares `GameStateWrite` and calls `game.message.send`, and the install/run succeeds without an explicit per-package grant.
+- `src/DotBoxd.Kernels.Serialization.Json/PluginPackageJsonSerializer.cs` exposes `InstallJsonAsync(this PluginServer server, string json, SandboxPolicy? policy = null, ...)`; when callers use the default `policy: null`, the uploaded package is prepared under the server default policy.
+- `tests/DotBoxd.Kernels.Tests/Misc06/PluginPackageJsonTests.cs` demonstrates `PluginServer.Create(messages)` followed by `server.InstallJsonAsync(JsonDamagePackage())`, where the JSON manifest declares `GameStateWrite` and calls `game.message.send`, and the install/run succeeds without an explicit per-package grant.
 
 ## Impact
 

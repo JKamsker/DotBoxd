@@ -29,11 +29,11 @@ Compiled artifact validation and materialization make multiple full copies of th
 
 ## Evidence
 
-- `src/SafeIR.Compiler/CompilerContracts.cs:87` implements `CompiledArtifact.AssemblyBytes` as `get => _assemblyBytes.ToArray()`, so every property read copies the full assembly image.
-- `src/SafeIR.Hosting/Execution/CompiledArtifactGuard.cs:28` then calls `artifact.AssemblyBytes.ToArray()`, copying once in the getter and again in the explicit `ToArray()`.
-- `src/SafeIR.Hosting/Execution/CompiledArtifactGuard.cs:67` and `src/SafeIR.Hosting/Execution/CompiledArtifactGuard.cs:72` read `artifact.AssemblyBytes.Length` during envelope validation, which still copies the entire byte array just to check length.
-- `src/SafeIR.Hosting/Execution/CompiledArtifactGuard.cs:113` hashes `artifact.AssemblyBytes`, causing another full defensive copy before hashing.
-- `src/SafeIR.Hosting/Execution/CompiledArtifactGuard.cs:39` constructs a new `CompiledArtifact` with `assemblyBytes`, and `src/SafeIR.Compiler/CompilerContracts.cs:88` copies again in the init setter.
+- `src/DotBoxd.Kernels.Compiler/CompilerContracts.cs:87` implements `CompiledArtifact.AssemblyBytes` as `get => _assemblyBytes.ToArray()`, so every property read copies the full assembly image.
+- `src/DotBoxd.Hosting/Execution/CompiledArtifactGuard.cs:28` then calls `artifact.AssemblyBytes.ToArray()`, copying once in the getter and again in the explicit `ToArray()`.
+- `src/DotBoxd.Hosting/Execution/CompiledArtifactGuard.cs:67` and `src/DotBoxd.Hosting/Execution/CompiledArtifactGuard.cs:72` read `artifact.AssemblyBytes.Length` during envelope validation, which still copies the entire byte array just to check length.
+- `src/DotBoxd.Hosting/Execution/CompiledArtifactGuard.cs:113` hashes `artifact.AssemblyBytes`, causing another full defensive copy before hashing.
+- `src/DotBoxd.Hosting/Execution/CompiledArtifactGuard.cs:39` constructs a new `CompiledArtifact` with `assemblyBytes`, and `src/DotBoxd.Kernels.Compiler/CompilerContracts.cs:88` copies again in the init setter.
 - Existing compiled cache tests cover materialization behavior, but there is no allocation benchmark for materializing large compiled artifacts.
 
 ## Impact

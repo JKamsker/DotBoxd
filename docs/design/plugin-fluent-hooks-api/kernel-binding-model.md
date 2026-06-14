@@ -17,7 +17,7 @@ the hook chain stays for inline lambda logic.
 > `[Obsolete(error:true)]`). The binding *concept* stands; these mechanism details follow the plan.
 
 > **Grounding result that makes this cheap.** `PluginSymbolReader.EventTypes` walks
-> `kernelType.AllInterfaces` ([PluginSymbolReader.cs:26-39](../../../src/SafeIR.PluginAnalyzer/Analysis/PluginSymbolReader.cs)),
+> `kernelType.AllInterfaces` ([PluginSymbolReader.cs:26-39](../../../src/DotBoxd.Plugins.Analyzer/Analysis/PluginSymbolReader.cs)),
 > so it detects `IEventKernel<TEvent>` **transitively**. A server interface
 > `IMonsterAggroService : IEventKernel<MonsterAggroEvent>` that a kernel implements is therefore lowered
 > **exactly as today — no analyzer change, same two-entrypoint (`ShouldHandle`/`Handle`) IR contract.**
@@ -45,10 +45,10 @@ primitive** that `Register` uses. The hook chain keeps exactly what the request 
 ## 2. Server-published service contracts
 
 The server (here, the game's shared abstractions) publishes a domain interface that **extends the
-framework's `IEventKernel<TEvent>`** ([Contracts.cs:14-19](../../../src/SafeIR.Server.Abstractions/Contracts.cs)):
+framework's `IEventKernel<TEvent>`** ([Contracts.cs:14-19](../../../src/DotBoxd.Abstractions/Contracts.cs)):
 
 ```csharp
-// SafeIR.Game.Server.Abstractions — the server owns the contract; both processes reference it.
+// DotBoxd.Kernels.Game.Server.Abstractions — the server owns the contract; both processes reference it.
 public interface IMonsterAggroService : IEventKernel<MonsterAggroEvent> { }
 public interface IAttackService        : IEventKernel<AttackEvent> { }
 ```
@@ -56,7 +56,7 @@ public interface IAttackService        : IEventKernel<AttackEvent> { }
 A plugin kernel implements the **contract**, not the bare framework interface:
 
 ```csharp
-// SafeIR.Game.Plugin — note: implements IMonsterAggroService, not IEventKernel<MonsterAggroEvent>.
+// DotBoxd.Kernels.Game.Plugin — note: implements IMonsterAggroService, not IEventKernel<MonsterAggroEvent>.
 [Plugin("guardian")]
 public sealed partial class GuardianKernel : IMonsterAggroService
 {
@@ -71,7 +71,7 @@ Why this is better than binding a bare kernel into a hook:
 - **Domain naming.** "implements `IMonsterAggroService`" says what the kernel *is*, not just which
   event it reads.
 - **Typed wiring, no string switch.** Today the server hand-maps a manifest subscription string to an
-  adapter in a `switch` ([GamePluginControlService.cs:59-77](../../../examples/GameServer/SafeIR.Game.Server/Ipc/GamePluginControlService.cs)).
+  adapter in a `switch` ([GamePluginControlService.cs:59-77](../../../examples/GameServer/DotBoxd.Kernels.Game.Server/Ipc/GamePluginControlService.cs)).
   The contract carries `TEvent` in its type, so wiring is generic (§4) and that switch is **deleted**.
 - **Server-side typed access.** The server references the contract (it published it), so
   `server.Kernels.Get<IMonsterAggroService>()` is meaningful even though it never sees the kernel type
@@ -172,8 +172,8 @@ side has which type**:
 
 Recommendations:
 - **Plugin/author code:** prefer `Get<TKernel>()` — unambiguous, strongly typed, resolves to the
-  `[Plugin]` id via `KernelTypeMetadata.PluginId` ([already exists, internal](../../../src/SafeIR.Plugins/Runtime/KernelTypeMetadata.cs)).
-  Promote the existing internal `GetByKernelType<TKernel>()` ([PluginServer.cs:168-172](../../../src/SafeIR.Plugins/PluginServer.cs)) to public.
+  `[Plugin]` id via `KernelTypeMetadata.PluginId` ([already exists, internal](../../../src/DotBoxd.Plugins/Runtime/KernelTypeMetadata.cs)).
+  Promote the existing internal `GetByKernelType<TKernel>()` ([PluginServer.cs:168-172](../../../src/DotBoxd.Plugins/PluginServer.cs)) to public.
 - **Server code:** use `Get<TService>()`; throw on ambiguity and add `GetAll<TService>()` for the
   many-kernels case (per-user registrations).
 - **Either side, dynamic:** `Get(string)` stays.
@@ -187,7 +187,7 @@ await server.Kernels.Get<GuardianKernel>()
 ```
 
 This is `TypedInstalledKernel<T>.ModifyAsync(Action<T>, atomic, ct)` **[already exists]**
-([TypedInstalledKernel.cs:25-29](../../../src/SafeIR.Plugins/Runtime/TypedInstalledKernel.cs)),
+([TypedInstalledKernel.cs:25-29](../../../src/DotBoxd.Plugins/Runtime/TypedInstalledKernel.cs)),
 renamed to the clearer `SetValuesAsync`. The lambda mutates a typed **draft** of the kernel's
 `[LiveSetting]` properties; the framework extracts the changed values
 (`LiveKernelValueFactory.ExtractSettings`) and applies them.

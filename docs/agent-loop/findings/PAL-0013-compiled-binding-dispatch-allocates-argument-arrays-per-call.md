@@ -29,11 +29,11 @@ Compiled binding dispatch allocates a fresh `SandboxValue[]` for every compiled 
 
 ## Evidence
 
-- `src/SafeIR.Compiler/Emitters/BindingCallEmitter.cs:22` emits `ValueArrayEmitter.Emit(...)` for compiled pure binding calls before calling `CompiledRuntime.CallBinding`.
-- `src/SafeIR.Compiler/Emitters/ValueArrayEmitter.cs:16` emits a call to `CompiledRuntime.CreateValueArray` for every call site execution, then fills it element-by-element.
-- `src/SafeIR.Runtime/CompiledRuntime.cs:244` exposes `CallBinding(SandboxContext, string, SandboxValue[] args)`, and `src/SafeIR.Runtime/CompiledBindingDispatcher.cs:7` requires that array-shaped argument payload.
-- `src/SafeIR.Runtime/CompiledRuntime.cs:252` charges and allocates the argument array in `CreateValueArray`, then returns `new SandboxValue[count]`.
-- Existing benchmarks cover verifier runtime-call validation (`benchmarks/SafeIR.Benchmarks/Verifier/GeneratedVerifierCallBenchmarks.cs`) and interpreter expression execution, but there is no compiled binding dispatch benchmark that loops over pure host-facade/intrinsic bindings and measures per-call allocations.
+- `src/DotBoxd.Kernels.Compiler/Emitters/BindingCallEmitter.cs:22` emits `ValueArrayEmitter.Emit(...)` for compiled pure binding calls before calling `CompiledRuntime.CallBinding`.
+- `src/DotBoxd.Kernels.Compiler/Emitters/ValueArrayEmitter.cs:16` emits a call to `CompiledRuntime.CreateValueArray` for every call site execution, then fills it element-by-element.
+- `src/DotBoxd.Kernels.Runtime/CompiledRuntime.cs:244` exposes `CallBinding(SandboxContext, string, SandboxValue[] args)`, and `src/DotBoxd.Kernels.Runtime/CompiledBindingDispatcher.cs:7` requires that array-shaped argument payload.
+- `src/DotBoxd.Kernels.Runtime/CompiledRuntime.cs:252` charges and allocates the argument array in `CreateValueArray`, then returns `new SandboxValue[count]`.
+- Existing benchmarks cover verifier runtime-call validation (`benchmarks/DotBoxd.Kernels.Benchmarks/Verifier/GeneratedVerifierCallBenchmarks.cs`) and interpreter expression execution, but there is no compiled binding dispatch benchmark that loops over pure host-facade/intrinsic bindings and measures per-call allocations.
 
 ## Impact
 

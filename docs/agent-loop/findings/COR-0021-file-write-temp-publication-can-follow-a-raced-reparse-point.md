@@ -31,12 +31,12 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Runtime/Bindings/SafeFileSystem.cs` resolves the final path under the granted root and calls `EnsureNoReparsePoint(resolved.RootFull, resolved.FullPath)` before writing.
+- `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileSystem.cs` resolves the final path under the granted root and calls `EnsureNoReparsePoint(resolved.RootFull, resolved.FullPath)` before writing.
 - The same method then computes `var tempPath = resolved.FullPath + ".tmp-" + Guid.NewGuid().ToString("N")` and writes with `await File.WriteAllBytesAsync(tempPath, bytes, timeout.Token)`.
 - `File.WriteAllBytesAsync` follows normal filesystem semantics; it does not use the existing `SafeFileNoFollow` helper and does not open with `O_NOFOLLOW`/`FILE_FLAG_OPEN_REPARSE_POINT` style protection.
 - `SafeFileSystem` rechecks only `resolved.FullPath` before `SafeFileWritePublisher.PublishTempFile`; it never checks that the temp file itself was not a reparse point and was created as a regular file under the root.
-- `src/SafeIR.Runtime/SafeFileNoFollow.cs` provides no-follow protection for reads only (`OpenRead`), while there is no equivalent no-follow create/write helper for the staging file.
-- Existing reparse tests in `tests/SafeIR.Tests/Misc07/SafeFileSystemReparsePointTests.cs` cover nested and terminal reparse points on the requested final path, but they do not cover a reparse point introduced at the temporary staging path between the final-path check and the write.
+- `src/DotBoxd.Kernels.Runtime/SafeFileNoFollow.cs` provides no-follow protection for reads only (`OpenRead`), while there is no equivalent no-follow create/write helper for the staging file.
+- Existing reparse tests in `tests/DotBoxd.Kernels.Tests/Misc07/SafeFileSystemReparsePointTests.cs` cover nested and terminal reparse points on the requested final path, but they do not cover a reparse point introduced at the temporary staging path between the final-path check and the write.
 
 ## Impact
 

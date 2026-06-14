@@ -24,7 +24,7 @@ duplicate_of:
 # CMP-0001: Release readiness gate references stale CanonicalModuleHasher path
 
 ## Claim
-`check-release-readiness.ps1` fails before release enforcement because a completed release checklist item points at a stale source path. The script expects canonical hash evidence at `src/SafeIR.Core/CanonicalModuleHasher.cs`, but the implementation currently lives at `src/SafeIR.Core/Model/CanonicalModuleHasher.cs`.
+`check-release-readiness.ps1` fails before release enforcement because a completed release checklist item points at a stale source path. The script expects canonical hash evidence at `src/DotBoxd.Kernels/CanonicalModuleHasher.cs`, but the implementation currently lives at `src/DotBoxd.Kernels/Model/CanonicalModuleHasher.cs`.
 
 ## Why this matters
 The normal CI step `Report release readiness checklist` and the release/tag-only `-RequireComplete` gate both execute this script. As written, release readiness cannot be reported or enforced even though the evidence appears to exist at the moved path.
@@ -39,15 +39,15 @@ Local reproduction after successful locked restore, Release build, tests, requir
 Failure:
 
 ```text
-Release checklist item 'Canonical hashing implemented.' is marked complete but evidence is missing: src/SafeIR.Core/CanonicalModuleHasher.cs
+Release checklist item 'Canonical hashing implemented.' is marked complete but evidence is missing: src/DotBoxd.Kernels/CanonicalModuleHasher.cs
 ```
 
 Static evidence:
 
 ```text
-scripts/check-release-readiness.ps1:82 Path = "src/SafeIR.Core/CanonicalModuleHasher.cs"
-src/SafeIR.Core/Model/CanonicalModuleHasher.cs:3 public static class CanonicalModuleHasher
-src/SafeIR.Core/Model/CanonicalModuleHasher.cs:7 public static string Hash(SandboxModule module)
+scripts/check-release-readiness.ps1:82 Path = "src/DotBoxd.Kernels/CanonicalModuleHasher.cs"
+src/DotBoxd.Kernels/Model/CanonicalModuleHasher.cs:3 public static class CanonicalModuleHasher
+src/DotBoxd.Kernels/Model/CanonicalModuleHasher.cs:7 public static string Hash(SandboxModule module)
 ```
 
 ## Suggested test or benchmark
@@ -61,7 +61,7 @@ Run both release readiness modes after the fix:
 A regression test for the release-readiness script is also appropriate if the script has or gains Pester/CLI coverage.
 
 ## Suggested fix direction
-Update the release evidence path in `scripts/check-release-readiness.ps1` from `src/SafeIR.Core/CanonicalModuleHasher.cs` to `src/SafeIR.Core/Model/CanonicalModuleHasher.cs`, or make the evidence mapping resilient to the current source layout.
+Update the release evidence path in `scripts/check-release-readiness.ps1` from `src/DotBoxd.Kernels/CanonicalModuleHasher.cs` to `src/DotBoxd.Kernels/Model/CanonicalModuleHasher.cs`, or make the evidence mapping resilient to the current source layout.
 
 ## Scope boundaries
 Do not change canonical hashing behavior as part of this fix. This finding is only about the release checklist evidence gate using a stale path.

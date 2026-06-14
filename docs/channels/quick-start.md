@@ -1,6 +1,6 @@
-# ShaRPC Quick Start Guide
+# DotBoxd Quick Start Guide
 
-Get up and running with ShaRPC in 5 minutes.
+Get up and running with DotBoxd in 5 minutes.
 
 ## 1. Define Your Service Contract
 
@@ -8,10 +8,10 @@ Create a shared library with your service interface:
 
 ```csharp
 // Shared/IMyService.cs
-using ShaRPC.Core.Attributes;
+using DotBoxd.Services.Attributes;
 using MessagePack;
 
-[ShaRpcService]
+[DotBoxdService]
 public interface IMyService
 {
     Task<GreetingResponse> GreetAsync(GreetingRequest request, CancellationToken ct = default);
@@ -48,10 +48,10 @@ public class MyService : IMyService
 }
 
 // Server/Program.cs
-using ShaRPC.Core;
-using ShaRPC.Generated;
-using ShaRPC.Serializers.MessagePack;
-using ShaRPC.Transports.Tcp;
+using DotBoxd.Services;
+using DotBoxd.Services.Generated;
+using DotBoxd.Codecs.MessagePack;
+using DotBoxd.Transports.Tcp;
 
 // A host turns every accepted connection into a peer.
 // Each peer provides your service; the generated ProvideMyService extension wires it up.
@@ -70,10 +70,10 @@ await host.StopAsync(); // DisposeAsync also stops the host
 
 ```csharp
 // Client/Program.cs
-using ShaRPC.Core;
-using ShaRPC.Generated;
-using ShaRPC.Serializers.MessagePack;
-using ShaRPC.Transports.Tcp;
+using DotBoxd.Services;
+using DotBoxd.Services.Generated;
+using DotBoxd.Codecs.MessagePack;
+using DotBoxd.Transports.Tcp;
 
 var transport = new TcpTransport("localhost", 5050);
 await transport.ConnectAsync();
@@ -109,8 +109,8 @@ Your shared project needs these references:
 ```xml
 <ItemGroup>
   <PackageReference Include="MessagePack" Version="2.5.187" />
-  <ProjectReference Include="../ShaRPC.Core/ShaRPC.Core.csproj" />
-  <ProjectReference Include="../ShaRPC.SourceGenerator/ShaRPC.SourceGenerator.csproj"
+  <ProjectReference Include="../DotBoxd.Services/DotBoxd.Services.csproj" />
+  <ProjectReference Include="../DotBoxd.Services.SourceGenerator/DotBoxd.Services.SourceGenerator.csproj"
                     OutputItemType="Analyzer"
                     ReferenceOutputAssembly="false" />
 </ItemGroup>
@@ -118,17 +118,17 @@ Your shared project needs these references:
 
 Server and client projects reference:
 - Your shared project
-- `ShaRPC.Transports.Tcp`
-- `ShaRPC.Serializers.MessagePack`
+- `DotBoxd.Transports.Tcp`
+- `DotBoxd.Codecs.MessagePack`
 
 For process-local IPC, use the dedicated named-pipe package instead of TCP:
 
 ```sh
-dotnet add package ShaRPC.Transports.NamedPipes
+dotnet add package DotBoxd.Transports.NamedPipes
 ```
 
 ```csharp
-using ShaRPC.Transports.NamedPipes;
+using DotBoxd.Transports.NamedPipes;
 
 var serverTransport = new NamedPipeServerTransport("my-app-rpc");
 var clientTransport = new NamedPipeClientTransport("my-app-rpc");
@@ -141,34 +141,34 @@ The source generator creates:
 1. **Proxy** (`MyServiceProxy`) - Caller-side stub that serializes calls
 2. **Dispatcher** (`MyServiceDispatcher`) - Provider-side router that deserializes and invokes
 3. **Extensions** (`peer.GetMyService()`, `peer.ProvideMyService(impl)`) - Convenience methods on `RpcPeer`
-4. **Registry factory** (`ShaRpcGenerated`) - Typed proxy/dispatcher factory backed by generated delegates
-5. **Service catalog** (`ShaRpcGenerated.Services`) - Array-backed `ShaRpcGeneratedService` descriptors
-6. **Registration sink** (`ShaRpcGenerated.RegisterServices(...)`) - Direct generic calls for service/proxy registrations
-7. **Generated implementation sink** (`ShaRpcGenerated.RegisterGeneratedServices(...)`) - Direct generic calls for service/proxy/dispatcher registrations
+4. **Registry factory** (`DotBoxdGenerated`) - Typed proxy/dispatcher factory backed by generated delegates
+5. **Service catalog** (`DotBoxdGenerated.Services`) - Array-backed `DotBoxdGeneratedService` descriptors
+6. **Registration sink** (`DotBoxdGenerated.RegisterServices(...)`) - Direct generic calls for service/proxy registrations
+7. **Generated implementation sink** (`DotBoxdGenerated.RegisterGeneratedServices(...)`) - Direct generic calls for service/proxy/dispatcher registrations
 
 You can use the generated factory directly when building framework-style APIs:
 
 ```csharp
-using ShaRPC.Generated;
+using DotBoxd.Services.Generated;
 
 // CreateProxy takes an IRpcInvoker — pass an RpcPeer.
-var proxy = ShaRpcGenerated.CreateProxy<IMyService>(peer);
-var dispatcher = ShaRpcGenerated.CreateDispatcher<IMyService>(new MyService());
+var proxy = DotBoxdGenerated.CreateProxy<IMyService>(peer);
+var dispatcher = DotBoxdGenerated.CreateDispatcher<IMyService>(new MyService());
 
-foreach (var service in ShaRpcGenerated.Services)
+foreach (var service in DotBoxdGenerated.Services)
 {
     Console.WriteLine($"{service.ServiceType.Name}: {service.ProxyType.Name}");
 }
 ```
 
 For DI containers or host registries that need generic service/implementation pairs,
-implement `IShaRpcServiceRegistrationSink` and pass it to the generated callback:
+implement `IDotBoxdServiceRegistrationSink` and pass it to the generated callback:
 
 ```csharp
-using ShaRPC.Core.Generated;
-using ShaRPC.Generated;
+using DotBoxd.Services.Generated;
+using DotBoxd.Services.Generated;
 
-public sealed class MySink : IShaRpcServiceRegistrationSink
+public sealed class MySink : IDotBoxdServiceRegistrationSink
 {
     public void AddService<TService, TImplementation>()
         where TService : class
@@ -178,18 +178,18 @@ public sealed class MySink : IShaRpcServiceRegistrationSink
     }
 }
 
-ShaRpcGenerated.RegisterServices(new MySink());
+DotBoxdGenerated.RegisterServices(new MySink());
 ```
 
 If the host needs both generated implementation types, use
-`IShaRpcGeneratedServiceRegistrationSink`:
+`IDotBoxdGeneratedServiceRegistrationSink`:
 
 ```csharp
-using ShaRPC.Core.Generated;
-using ShaRPC.Core.Server;
-using ShaRPC.Generated;
+using DotBoxd.Services.Generated;
+using DotBoxd.Services.Server;
+using DotBoxd.Services.Generated;
 
-public sealed class GeneratedSink : IShaRpcGeneratedServiceRegistrationSink
+public sealed class GeneratedSink : IDotBoxdGeneratedServiceRegistrationSink
 {
     public void AddService<TService, TProxy, TDispatcher>()
         where TService : class
@@ -200,7 +200,7 @@ public sealed class GeneratedSink : IShaRpcGeneratedServiceRegistrationSink
     }
 }
 
-ShaRpcGenerated.RegisterGeneratedServices(new GeneratedSink());
+DotBoxdGenerated.RegisterGeneratedServices(new GeneratedSink());
 ```
 
 ## Next Steps

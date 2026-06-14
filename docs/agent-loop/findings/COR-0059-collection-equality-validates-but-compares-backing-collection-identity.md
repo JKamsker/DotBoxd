@@ -25,11 +25,11 @@ duplicate_of:
 
 ## Evidence
 
-`FunctionAnalyzer.AnalyzeBinary` accepts `==` and `!=` whenever the left and right operands have the same `SandboxType`, including `List<T>` and `Map<K,V>` values (`src/SafeIR.Validation/FunctionAnalyzer.cs`). The interpreter and compiled runtime then evaluate equality with `Equals(left, right)` (`src/SafeIR.Interpreter/ExpressionEvaluator.cs`, `src/SafeIR.Runtime/CompiledRuntime.cs`).
+`FunctionAnalyzer.AnalyzeBinary` accepts `==` and `!=` whenever the left and right operands have the same `SandboxType`, including `List<T>` and `Map<K,V>` values (`src/DotBoxd.Kernels.Validation/FunctionAnalyzer.cs`). The interpreter and compiled runtime then evaluate equality with `Equals(left, right)` (`src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs`, `src/DotBoxd.Kernels.Runtime/CompiledRuntime.cs`).
 
-Collection sandbox values are records whose `Values` fields are `IReadOnlyList<SandboxValue>` or `IReadOnlyDictionary<SandboxValue, SandboxValue>` (`src/SafeIR.Core/Sandbox/SandboxValue.cs`). Those backing collection interfaces use reference equality, so two independently materialized collections with the same elements do not compare structurally.
+Collection sandbox values are records whose `Values` fields are `IReadOnlyList<SandboxValue>` or `IReadOnlyDictionary<SandboxValue, SandboxValue>` (`src/DotBoxd.Kernels/Sandbox/SandboxValue.cs`). Those backing collection interfaces use reference equality, so two independently materialized collections with the same elements do not compare structurally.
 
-A validated expression such as `list.of(1) == list.of(1)` therefore type-checks but can evaluate to `false` because each `list.of` call constructs a distinct backing list (`src/SafeIR.Interpreter/Internal/CollectionOperations.cs`). Maps have the same issue for independently constructed equal maps.
+A validated expression such as `list.of(1) == list.of(1)` therefore type-checks but can evaluate to `false` because each `list.of` call constructs a distinct backing list (`src/DotBoxd.Kernels.Interpreter/Internal/CollectionOperations.cs`). Maps have the same issue for independently constructed equal maps.
 
 ## Impact
 

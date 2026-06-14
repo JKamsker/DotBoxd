@@ -29,9 +29,9 @@ Compiled artifact envelopes accept undefined `CompiledCacheStatus` values and la
 
 ## Evidence
 
-- `src/SafeIR.Compiler/CompilerContracts.cs` defines the finite `CompiledCacheStatus` enum (`None`, `Hit`, `Miss`, `Invalid`, `Recompiled`) and validates `runtimeForm` in the `CompiledArtifact` constructor, but the same constructor assigns `CacheStatus = cacheStatus` without an `Enum.IsDefined` check. The public `CacheStatus` init property also allows `artifact with { CacheStatus = (CompiledCacheStatus)123 }`.
-- `src/SafeIR.Hosting/Execution/CompiledArtifactGuard.cs` revalidates `artifact.RuntimeForm` before execution, but it never validates `artifact.CacheStatus`. The materialization path preserves the supplied status, and `CompiledExecutableCache.WithCurrentMetadata(...)` copies `current.CacheStatus` back onto cached materializations.
-- `src/SafeIR.Hosting/Execution/CompiledExecutionRunner.cs` converts `artifact.CacheStatus.ToString()` into the public `RunSummary` message and field dictionary. An undefined enum value therefore becomes audit evidence such as `cacheStatus=123` even though no such cache state exists.
+- `src/DotBoxd.Kernels.Compiler/CompilerContracts.cs` defines the finite `CompiledCacheStatus` enum (`None`, `Hit`, `Miss`, `Invalid`, `Recompiled`) and validates `runtimeForm` in the `CompiledArtifact` constructor, but the same constructor assigns `CacheStatus = cacheStatus` without an `Enum.IsDefined` check. The public `CacheStatus` init property also allows `artifact with { CacheStatus = (CompiledCacheStatus)123 }`.
+- `src/DotBoxd.Hosting/Execution/CompiledArtifactGuard.cs` revalidates `artifact.RuntimeForm` before execution, but it never validates `artifact.CacheStatus`. The materialization path preserves the supplied status, and `CompiledExecutableCache.WithCurrentMetadata(...)` copies `current.CacheStatus` back onto cached materializations.
+- `src/DotBoxd.Hosting/Execution/CompiledExecutionRunner.cs` converts `artifact.CacheStatus.ToString()` into the public `RunSummary` message and field dictionary. An undefined enum value therefore becomes audit evidence such as `cacheStatus=123` even though no such cache state exists.
 
 ## Impact
 

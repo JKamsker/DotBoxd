@@ -1,0 +1,99 @@
+using DotBoxd.Kernels;
+
+namespace DotBoxd.Kernels.Tests;
+
+public sealed class ResourceMeterTests
+{
+    [Theory]
+    [MemberData(nameof(NegativeByteCharges))]
+    public void Resource_meter_rejects_negative_byte_charges(Action<ResourceMeter> charge)
+    {
+        var meter = new ResourceMeter(new ResourceLimits());
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => charge(meter));
+
+        Assert.Equal(0, meter.AllocatedBytes);
+        Assert.Equal(0, meter.FileBytesRead);
+        Assert.Equal(0, meter.FileBytesWritten);
+        Assert.Equal(0, meter.NetworkBytesRead);
+        Assert.Equal(0, meter.NetworkBytesWritten);
+    }
+
+    public static TheoryData<Action<ResourceMeter>> NegativeByteCharges()
+        => new() {
+            meter => meter.ChargeAllocation(-1),
+            meter => meter.ChargeFileRead(-1),
+            meter => meter.ChargeFileWrite(-1),
+            meter => meter.ChargeNetworkRead(-1),
+            meter => meter.ChargeNetworkWrite(-1)
+        };
+
+    [Fact]
+    public void Resource_meter_enforces_network_write_budget()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxNetworkBytesWritten: 3));
+
+        meter.ChargeNetworkWrite(3);
+
+        Assert.Equal(3, meter.NetworkBytesWritten);
+        Assert.Throws<SandboxRuntimeException>(() => meter.ChargeNetworkWrite(1));
+    }
+
+    [Fact]
+    public void Resource_meter_enforces_loop_iteration_budget()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxLoopIterations: 2, MaxFuel: 100));
+
+        meter.ChargeLoopIteration(5);
+        meter.ChargeLoopIteration(5);
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() => meter.ChargeLoopIteration(5));
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
+        Assert.Equal(3, meter.LoopIterations);
+        Assert.Equal(10, meter.FuelUsed);
+    }
+
+    [Fact]
+    public void Resource_meter_rejects_non_positive_loop_fuel_before_charging_iteration()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxLoopIterations: 2, MaxFuel: 100));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => meter.ChargeLoopIteration(0));
+
+        Assert.Equal(0, meter.LoopIterations);
+        Assert.Equal(0, meter.FuelUsed);
+    }
+
+    [Fact]
+    public void Remaining_wall_time_handles_large_valid_budgets()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxWallTime: TimeSpan.FromDays(2)));
+
+        var remaining = meter.RemainingWallTime();
+
+        Assert.True(remaining > TimeSpan.FromDays(1));
+    }
+
+    [Fact]
+    public void Resource_limits_reject_wall_time_above_supported_cancel_after_range()
+    {
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            ResourceLimitValidation.Validate(new ResourceLimits(MaxWallTime: TimeSpan.MaxValue)));
+
+        Assert.Equal(nameof(ResourceLimits.MaxWallTime), ex.ParamName);
+    }
+
+    [Fact]
+    public void Shape_scan_charges_fuel_for_large_collections()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxFuel: 0));
+        var values = Enumerable.Range(0, 128)
+            .Select(SandboxValue.FromInt32)
+            .ToArray();
+        var value = SandboxValue.FromList(values);
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() => meter.ChargeValue(value));
+
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
+    }
+}

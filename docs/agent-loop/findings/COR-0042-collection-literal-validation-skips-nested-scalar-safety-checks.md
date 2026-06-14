@@ -29,14 +29,14 @@ Programmatic collection literals validate only their container shape, not the sc
 
 ## Impact
 
-A host or generator that constructs SafeIR through the public object model can create a validated collection literal containing values that scalar literal validation would reject at the top level, such as a nested `F64Value(double.NaN)`, forbidden descriptor text like `System.IO.File.ReadAllText`, or record-constructed invalid path/URI values. That weakens the programmatic IR validation boundary and makes literal safety depend on whether a value is wrapped in a list/map.
+A host or generator that constructs DotBoxd.Kernels through the public object model can create a validated collection literal containing values that scalar literal validation would reject at the top level, such as a nested `F64Value(double.NaN)`, forbidden descriptor text like `System.IO.File.ReadAllText`, or record-constructed invalid path/URI values. That weakens the programmatic IR validation boundary and makes literal safety depend on whether a value is wrapped in a list/map.
 
 ## Evidence
 
-- `src/SafeIR.Validation/Internal/DangerousReferenceDetector.cs` handles scalar `LiteralExpression` values but assigns no text to inspect for `ListValue` or `MapValue` literals.
-- `src/SafeIR.Validation/Internal/LiteralExpressionAnalyzer.cs` applies scalar-specific checks only to top-level `StringValue`, `OpaqueIdValue`, `F64Value`, `SandboxPathValue`, and `SandboxUriValue`, then treats `ListValue`/`MapValue` as allocation only.
-- `src/SafeIR.Core/Sandbox/SandboxValueValidator.cs` recursively checks declared sandbox types, but it does not check finite F64 values, path/URI textual validity, max text literal length, or forbidden descriptor text for nested scalar values.
-- `tests/SafeIR.Tests/Misc06/ProgrammaticIrValidationTests.cs` already exercises programmatic collection literals, so this is on a supported construction path even though JSON import does not expose collection literal syntax.
+- `src/DotBoxd.Kernels.Validation/Internal/DangerousReferenceDetector.cs` handles scalar `LiteralExpression` values but assigns no text to inspect for `ListValue` or `MapValue` literals.
+- `src/DotBoxd.Kernels.Validation/Internal/LiteralExpressionAnalyzer.cs` applies scalar-specific checks only to top-level `StringValue`, `OpaqueIdValue`, `F64Value`, `SandboxPathValue`, and `SandboxUriValue`, then treats `ListValue`/`MapValue` as allocation only.
+- `src/DotBoxd.Kernels/Sandbox/SandboxValueValidator.cs` recursively checks declared sandbox types, but it does not check finite F64 values, path/URI textual validity, max text literal length, or forbidden descriptor text for nested scalar values.
+- `tests/DotBoxd.Kernels.Tests/Misc06/ProgrammaticIrValidationTests.cs` already exercises programmatic collection literals, so this is on a supported construction path even though JSON import does not expose collection literal syntax.
 
 ## Fix direction
 

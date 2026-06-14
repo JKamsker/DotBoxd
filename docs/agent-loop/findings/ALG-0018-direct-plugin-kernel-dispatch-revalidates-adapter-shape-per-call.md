@@ -29,11 +29,11 @@ Public direct plugin kernel dispatch reruns adapter and entrypoint-shape validat
 
 ## Evidence
 
-- `src/SafeIR.Plugins/InstalledKernel.cs:113` and `src/SafeIR.Plugins/InstalledKernel.cs:134` call `ValidateFor(adapter)` on the direct public `ShouldHandleAsync` and `HandleAsync` paths before building input.
-- `src/SafeIR.Plugins/Runtime/KernelEntrypointValidator.cs:13` scans manifest subscriptions with `Any(...)` for each validation, then `src/SafeIR.Plugins/Runtime/KernelEntrypointValidator.cs:20` calls `PluginParameterShape.BuildExpected(...)`.
-- `src/SafeIR.Plugins/Runtime/PluginParameterShape.cs:8` allocates a fresh `Parameter[]` sized to event parameters plus live settings, and `src/SafeIR.Plugins/Runtime/PluginParameterShape.cs:16` creates live-setting `Parameter` entries on each call.
-- `src/SafeIR.Plugins/Runtime/KernelEntrypointValidator.cs:21` and `src/SafeIR.Plugins/Runtime/KernelEntrypointValidator.cs:22` validate both `ShouldHandle` and `Handle`; each `ValidateFunction` uses `plan.Module.Functions.FirstOrDefault(...)`, so direct dispatch performs two linear module-function scans per call before comparing every parameter.
-- `src/SafeIR.Plugins/Runtime/HookRegistry.cs:107` validates the same kernel/adapter shape once when adding a kernel to a hook pipeline, and `src/SafeIR.Plugins/Runtime/PluginPreparedPackageValidator.cs:74` validates prepared entrypoints during install. The repeated direct-call validation is therefore not needed for the common stable adapter case.
+- `src/DotBoxd.Plugins/InstalledKernel.cs:113` and `src/DotBoxd.Plugins/InstalledKernel.cs:134` call `ValidateFor(adapter)` on the direct public `ShouldHandleAsync` and `HandleAsync` paths before building input.
+- `src/DotBoxd.Plugins/Runtime/KernelEntrypointValidator.cs:13` scans manifest subscriptions with `Any(...)` for each validation, then `src/DotBoxd.Plugins/Runtime/KernelEntrypointValidator.cs:20` calls `PluginParameterShape.BuildExpected(...)`.
+- `src/DotBoxd.Plugins/Runtime/PluginParameterShape.cs:8` allocates a fresh `Parameter[]` sized to event parameters plus live settings, and `src/DotBoxd.Plugins/Runtime/PluginParameterShape.cs:16` creates live-setting `Parameter` entries on each call.
+- `src/DotBoxd.Plugins/Runtime/KernelEntrypointValidator.cs:21` and `src/DotBoxd.Plugins/Runtime/KernelEntrypointValidator.cs:22` validate both `ShouldHandle` and `Handle`; each `ValidateFunction` uses `plan.Module.Functions.FirstOrDefault(...)`, so direct dispatch performs two linear module-function scans per call before comparing every parameter.
+- `src/DotBoxd.Plugins/Runtime/HookRegistry.cs:107` validates the same kernel/adapter shape once when adding a kernel to a hook pipeline, and `src/DotBoxd.Plugins/Runtime/PluginPreparedPackageValidator.cs:74` validates prepared entrypoints during install. The repeated direct-call validation is therefore not needed for the common stable adapter case.
 - This is distinct from `ALG-0007`, which covers install-time package validation rescanning module functions; from `PAL-0004`, which covers convention adapter reflection/input conversion; and from `COR-0002`, which was the correctness issue requiring direct calls to fail closed for invalid adapters.
 
 ## Impact

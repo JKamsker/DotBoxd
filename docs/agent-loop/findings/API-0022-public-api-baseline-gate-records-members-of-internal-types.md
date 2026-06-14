@@ -36,11 +36,11 @@ False public API entries make the release gate noisy and misleading. Internal re
 ## Evidence
 
 - `scripts/check-api-compat-baseline.ps1` implements API extraction by scanning raw `.cs` text. `Normalize-ApiLine(...)` and `Normalize-ApiDeclaration(...)` accept declarations whose own text starts with `public`, `protected internal`, or `protected`, and `Get-PackageApi(...)` feeds them lines from every source file without tracking the accessibility of containing types.
-- `src/SafeIR.Compiler/Emitters/MethodEmitter.cs:9` declares `internal sealed class MethodEmitter`, but `docs/api-baselines/SafeIR.Compiler.txt:34` records its public constructor as baseline API.
-- `src/SafeIR.Compiler/IlEmitterPrimitives.cs:8` declares `internal static class IlEmitterPrimitives`, but `docs/api-baselines/SafeIR.Compiler.txt:52` records `public static MethodInfo Runtime(string name)`.
-- `src/SafeIR.Compiler/Internal/PersistentCompiledArtifactCacheValidator.cs:6` declares an internal validator type, but `docs/api-baselines/SafeIR.Compiler.txt:73` records `public static void ValidateManifest(...)`.
-- `src/SafeIR.PluginAnalyzer/Analysis/EquatableArray.cs:5` declares `internal readonly struct EquatableArray<T>`, but `docs/api-baselines/SafeIR.PluginAnalyzer.txt:121` records its public constructor and nearby lines record its public members.
-- `src/SafeIR.PluginAnalyzer/Analysis/Lowering/Expressions/SafeIrExpressionLoweringContext.cs:5` declares an internal lowering context, but `docs/api-baselines/SafeIR.PluginAnalyzer.txt:133` records its constructor and later baseline entries expose lowering methods that take it.
+- `src/DotBoxd.Kernels.Compiler/Emitters/MethodEmitter.cs:9` declares `internal sealed class MethodEmitter`, but `docs/api-baselines/DotBoxd.Kernels.Compiler.txt:34` records its public constructor as baseline API.
+- `src/DotBoxd.Kernels.Compiler/IlEmitterPrimitives.cs:8` declares `internal static class IlEmitterPrimitives`, but `docs/api-baselines/DotBoxd.Kernels.Compiler.txt:52` records `public static MethodInfo Runtime(string name)`.
+- `src/DotBoxd.Kernels.Compiler/Internal/PersistentCompiledArtifactCacheValidator.cs:6` declares an internal validator type, but `docs/api-baselines/DotBoxd.Kernels.Compiler.txt:73` records `public static void ValidateManifest(...)`.
+- `src/DotBoxd.Plugins.Analyzer/Analysis/EquatableArray.cs:5` declares `internal readonly struct EquatableArray<T>`, but `docs/api-baselines/DotBoxd.Plugins.Analyzer.txt:121` records its public constructor and nearby lines record its public members.
+- `src/DotBoxd.Plugins.Analyzer/Analysis/Lowering/Expressions/DotBoxdExpressionLoweringContext.cs:5` declares an internal lowering context, but `docs/api-baselines/DotBoxd.Plugins.Analyzer.txt:133` records its constructor and later baseline entries expose lowering methods that take it.
 
 ## Suggested test or gate
 

@@ -31,15 +31,15 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Core/Policy.cs` defines `SandboxPolicyBuilder.GrantFileWrite(string root, long maxBytesPerRun, bool allowCreate = true, bool allowOverwrite = true)`, so `.GrantFileWrite(root, limit)` permits both creating new files and overwriting existing files.
+- `src/DotBoxd.Kernels/Policy.cs` defines `SandboxPolicyBuilder.GrantFileWrite(string root, long maxBytesPerRun, bool allowCreate = true, bool allowOverwrite = true)`, so `.GrantFileWrite(root, limit)` permits both creating new files and overwriting existing files.
 - The same builder serializes both flags only because the defaults are true; callers using direct policy construction can omit them entirely.
-- `src/SafeIR.Runtime/Bindings/SafeFileWritePublisher.cs` reads those parameters with `ReadBool(grant, "allowCreate", fallback: true)` and `ReadBool(grant, "allowOverwrite", fallback: true)`, so missing policy flags also expand to create-and-overwrite at runtime.
-- `src/SafeIR.Validation/PolicyGrantValidator.cs` validates `allowCreate` and `allowOverwrite` only when present; it does not require hosts to state those write modes explicitly for `file.write` grants.
-- Existing tests exercise the permissive default: `tests/SafeIR.Tests/Misc07/SafeFileSystemTests.cs` calls `.GrantFileWrite(temp.Path, 1024)` and successfully creates `out/result.txt`.
+- `src/DotBoxd.Kernels.Runtime/Bindings/SafeFileWritePublisher.cs` reads those parameters with `ReadBool(grant, "allowCreate", fallback: true)` and `ReadBool(grant, "allowOverwrite", fallback: true)`, so missing policy flags also expand to create-and-overwrite at runtime.
+- `src/DotBoxd.Kernels.Validation/PolicyGrantValidator.cs` validates `allowCreate` and `allowOverwrite` only when present; it does not require hosts to state those write modes explicitly for `file.write` grants.
+- Existing tests exercise the permissive default: `tests/DotBoxd.Kernels.Tests/Misc07/SafeFileSystemTests.cs` calls `.GrantFileWrite(temp.Path, 1024)` and successfully creates `out/result.txt`.
 
 ## Impact
 
-SafeIR's file capability model relies on explicit host whitelisting. With the current defaults, a host that intends to allow a plugin to update a known existing output file can accidentally allow creation of arbitrary new files under the root. Conversely, a host that intends append-or-create style output can accidentally allow overwriting existing configuration, cache, or checkpoint files under the same root. This is especially risky when the grant root is a broad tenant workspace or application data directory.
+DotBoxd.Kernels's file capability model relies on explicit host whitelisting. With the current defaults, a host that intends to allow a plugin to update a known existing output file can accidentally allow creation of arbitrary new files under the root. Conversely, a host that intends append-or-create style output can accidentally allow overwriting existing configuration, cache, or checkpoint files under the same root. This is especially risky when the grant root is a broad tenant workspace or application data directory.
 
 ## Security test idea
 

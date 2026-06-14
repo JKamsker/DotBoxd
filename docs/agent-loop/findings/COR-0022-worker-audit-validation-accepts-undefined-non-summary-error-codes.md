@@ -29,7 +29,7 @@ Worker-process result validation accepts worker-supplied audit events whose `Err
 
 ## Evidence
 
-`src/SafeIR.Hosting/SandboxWorkerExecutor.cs` validates worker results before returning them from `ExecuteAsync`. The hardened payload path now rejects undefined `result.Error.Code`, and `WorkerAuditMatches` validates the single `RunSummary` against the result error. However, `WorkerAuditMatches` only checks that all audit events share the same run id, that there is exactly one `RunSummary`, and that the summary fields match the result. It does not validate `ErrorCode` on the rest of `result.AuditEvents` before returning the accepted worker result with resequenced audit events.
+`src/DotBoxd.Hosting/SandboxWorkerExecutor.cs` validates worker results before returning them from `ExecuteAsync`. The hardened payload path now rejects undefined `result.Error.Code`, and `WorkerAuditMatches` validates the single `RunSummary` against the result error. However, `WorkerAuditMatches` only checks that all audit events share the same run id, that there is exactly one `RunSummary`, and that the summary fields match the result. It does not validate `ErrorCode` on the rest of `result.AuditEvents` before returning the accepted worker result with resequenced audit events.
 
 A worker can therefore return a successful result with a normal successful `RunSummary` plus an extra event such as:
 
@@ -38,7 +38,7 @@ new SandboxAuditEvent(runId, "BindingCall", DateTimeOffset.UtcNow, false,
     BindingId: "x", ErrorCode: (SandboxErrorCode)123456)
 ```
 
-If the summary fields match the result and resource usage, `ValidateWorkerResult` accepts the envelope and `ExecuteAsync` publishes the malformed audit event to callers and audit observers. `src/SafeIR.Core/Sandbox/SandboxError.cs` defines `SandboxErrorCode` as a plain enum, so constructing such an event is possible. Existing `tests/SafeIR.Tests/Misc08/WorkerResultHardeningTests.cs` covers undefined failure result codes and malformed summaries, but it does not cover undefined non-summary audit event codes.
+If the summary fields match the result and resource usage, `ValidateWorkerResult` accepts the envelope and `ExecuteAsync` publishes the malformed audit event to callers and audit observers. `src/DotBoxd.Kernels/Sandbox/SandboxError.cs` defines `SandboxErrorCode` as a plain enum, so constructing such an event is possible. Existing `tests/DotBoxd.Kernels.Tests/Misc08/WorkerResultHardeningTests.cs` covers undefined failure result codes and malformed summaries, but it does not cover undefined non-summary audit event codes.
 
 ## Risk
 

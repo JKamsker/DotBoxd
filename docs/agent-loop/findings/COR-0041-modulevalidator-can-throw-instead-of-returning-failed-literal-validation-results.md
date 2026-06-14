@@ -33,10 +33,10 @@ Direct callers of the public validator cannot reliably use `Succeeded` and `Diag
 
 ## Evidence
 
-- `src/SafeIR.Validation/ModuleValidator.cs` returns early with `ModuleValidationResult.Failure(...)` for structural diagnostics, but does not catch validation exceptions raised during function analysis.
-- `src/SafeIR.Validation/FunctionAnalyzer.cs` routes `LiteralExpression` to `LiteralExpressionAnalyzer.Analyze(...)`.
-- `src/SafeIR.Validation/Internal/LiteralExpressionAnalyzer.cs` converts invalid literal values into a thrown `SandboxValidationException` instead of appending diagnostics to the result under construction.
-- `tests/SafeIR.Tests/Misc06/ProgrammaticIrValidationTests.cs` shows programmatic collection literals are a supported validation surface.
+- `src/DotBoxd.Kernels.Validation/ModuleValidator.cs` returns early with `ModuleValidationResult.Failure(...)` for structural diagnostics, but does not catch validation exceptions raised during function analysis.
+- `src/DotBoxd.Kernels.Validation/FunctionAnalyzer.cs` routes `LiteralExpression` to `LiteralExpressionAnalyzer.Analyze(...)`.
+- `src/DotBoxd.Kernels.Validation/Internal/LiteralExpressionAnalyzer.cs` converts invalid literal values into a thrown `SandboxValidationException` instead of appending diagnostics to the result under construction.
+- `tests/DotBoxd.Kernels.Tests/Misc06/ProgrammaticIrValidationTests.cs` shows programmatic collection literals are a supported validation surface.
 
 ## Fix direction
 

@@ -29,16 +29,16 @@ Function analysis clones the entire local-variable scope for every branch and lo
 
 ## Evidence
 
-- `src/SafeIR.Validation/FunctionAnalyzer.cs:108` analyzes `if` statements by passing `scope.Clone()` for the `then` block.
-- `src/SafeIR.Validation/FunctionAnalyzer.cs:113` does the same for the `else` block, so one conditional clones the full scope twice.
-- `src/SafeIR.Validation/FunctionAnalyzer.cs:121` clones the full scope for every `while` body.
-- `src/SafeIR.Validation/FunctionAnalyzer.cs:132` clones the full scope for every `for` body before adding the loop local.
-- `src/SafeIR.Validation/FunctionScope.cs:23` implements `Clone()` as `new Dictionary<string, SandboxType>(_locals, StringComparer.Ordinal)`, copying every visible local into a fresh dictionary.
+- `src/DotBoxd.Kernels.Validation/FunctionAnalyzer.cs:108` analyzes `if` statements by passing `scope.Clone()` for the `then` block.
+- `src/DotBoxd.Kernels.Validation/FunctionAnalyzer.cs:113` does the same for the `else` block, so one conditional clones the full scope twice.
+- `src/DotBoxd.Kernels.Validation/FunctionAnalyzer.cs:121` clones the full scope for every `while` body.
+- `src/DotBoxd.Kernels.Validation/FunctionAnalyzer.cs:132` clones the full scope for every `for` body before adding the loop local.
+- `src/DotBoxd.Kernels.Validation/FunctionScope.cs:23` implements `Clone()` as `new Dictionary<string, SandboxType>(_locals, StringComparer.Ordinal)`, copying every visible local into a fresh dictionary.
 - This is separate from ALG-0005 binding-reference graph walks and ALG-0007 plugin package validation entrypoint scans; it is the core module validator's lexical scope representation doing full dictionary copies per control-flow construct.
 
 ## Impact
 
-Large generated or plugin-produced SafeIR functions often accumulate locals before branching. Nested conditionals/loops then allocate and copy the same local map repeatedly during `ModuleValidator.Validate`, increasing validation latency and allocation pressure before execution can start.
+Large generated or plugin-produced DotBoxd.Kernels functions often accumulate locals before branching. Nested conditionals/loops then allocate and copy the same local map repeatedly during `ModuleValidator.Validate`, increasing validation latency and allocation pressure before execution can start.
 
 ## Better target
 

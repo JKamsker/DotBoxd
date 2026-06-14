@@ -29,10 +29,10 @@ JSON module and plugin package import perform a full UTF-8 encoding/token scan i
 
 ## Evidence
 
-- `src/SafeIR.Serialization.Json/SafeIrJsonImporter.cs:12` calls `JsonImportBudgetGuard.Validate(json)` before `JsonDocument.Parse` at `src/SafeIR.Serialization.Json/SafeIrJsonImporter.cs:13`, then always calls `JsonSourceMap.Create(json, document.RootElement)` at `src/SafeIR.Serialization.Json/SafeIrJsonImporter.cs:20`.
-- `src/SafeIR.Serialization.Json/PluginPackageJsonSerializer.cs:25` and `src/SafeIR.Serialization.Json/PluginPackageJsonSerializer.cs:26` repeat the same preflight-then-parse pattern for package JSON before the package importer reaches the embedded module path.
-- `src/SafeIR.Serialization.Json/Internal/JsonImportBudgetGuard.cs:19` encodes the entire input string with `Encoding.UTF8.GetBytes(json)`, and `src/SafeIR.Serialization.Json/Internal/JsonImportBudgetGuard.cs:30` scans that byte array with `Utf8JsonReader` only to enforce import limits.
-- `src/SafeIR.Serialization.Json/Internal/JsonSourceMap.cs:56` encodes the module JSON to UTF-8 again, and `src/SafeIR.Serialization.Json/Internal/JsonSourceMap.cs:57` creates another `Utf8JsonReader` to collect token positions for spans.
+- `src/DotBoxd.Kernels.Serialization.Json/DotBoxdJsonImporter.cs:12` calls `JsonImportBudgetGuard.Validate(json)` before `JsonDocument.Parse` at `src/DotBoxd.Kernels.Serialization.Json/DotBoxdJsonImporter.cs:13`, then always calls `JsonSourceMap.Create(json, document.RootElement)` at `src/DotBoxd.Kernels.Serialization.Json/DotBoxdJsonImporter.cs:20`.
+- `src/DotBoxd.Kernels.Serialization.Json/PluginPackageJsonSerializer.cs:25` and `src/DotBoxd.Kernels.Serialization.Json/PluginPackageJsonSerializer.cs:26` repeat the same preflight-then-parse pattern for package JSON before the package importer reaches the embedded module path.
+- `src/DotBoxd.Kernels.Serialization.Json/Internal/JsonImportBudgetGuard.cs:19` encodes the entire input string with `Encoding.UTF8.GetBytes(json)`, and `src/DotBoxd.Kernels.Serialization.Json/Internal/JsonImportBudgetGuard.cs:30` scans that byte array with `Utf8JsonReader` only to enforce import limits.
+- `src/DotBoxd.Kernels.Serialization.Json/Internal/JsonSourceMap.cs:56` encodes the module JSON to UTF-8 again, and `src/DotBoxd.Kernels.Serialization.Json/Internal/JsonSourceMap.cs:57` creates another `Utf8JsonReader` to collect token positions for spans.
 - Existing `ALG-0001` covered the former raw-text source-map search algorithm, `ALG-0006` covers package-level module subtree reparsing, and `PAL-0028` covers per-object schema allocation. This finding is the remaining current full-payload preflight and source-map tokenization work.
 
 ## Impact
@@ -45,4 +45,4 @@ Keep the fail-closed import limits, but avoid independent full-payload passes. P
 
 ## Benchmark/allocation test idea
 
-Extend `benchmarks/SafeIR.Benchmarks/Json/JsonImportBenchmarks.cs` with generated modules and plugin packages at 100, 1,000, and 10,000 statements plus metadata/live settings. Measure elapsed time and allocated bytes in `SafeIrJsonImporter.Import` and `PluginPackageJsonSerializer.Import`, and assert steady-state import does not allocate multiple full UTF-8 buffers or run multiple full token scans for the same JSON payload.
+Extend `benchmarks/DotBoxd.Kernels.Benchmarks/Json/JsonImportBenchmarks.cs` with generated modules and plugin packages at 100, 1,000, and 10,000 statements plus metadata/live settings. Measure elapsed time and allocated bytes in `DotBoxdJsonImporter.Import` and `PluginPackageJsonSerializer.Import`, and assert steady-state import does not allocate multiple full UTF-8 buffers or run multiple full token scans for the same JSON payload.

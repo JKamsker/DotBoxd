@@ -25,7 +25,7 @@ duplicate_of:
 
 ## Claim
 
-`SafeIR.Runtime` ships `CompiledRuntime` as an ordinary public static class even though the surrounding docs describe it as a compiler/verifier-owned runtime facade for generated assemblies. Because it is public, NuGet consumers can compile directly against dozens of low-level helpers such as metering, value construction, argument binding, collection mutation, and binding dispatch without any documented support boundary.
+`DotBoxd.Kernels.Runtime` ships `CompiledRuntime` as an ordinary public static class even though the surrounding docs describe it as a compiler/verifier-owned runtime facade for generated assemblies. Because it is public, NuGet consumers can compile directly against dozens of low-level helpers such as metering, value construction, argument binding, collection mutation, and binding dispatch without any documented support boundary.
 
 This is a specific package API readiness gap, not the general API compatibility gate from API-0009: the package currently exposes an implementation facade that must remain callable by generated assemblies, but there is no explicit decision or test that separates generated-code ABI from host-authored public API.
 
@@ -35,10 +35,10 @@ Once shipped, consumers may treat `CompiledRuntime.*` as supported host API. Tha
 
 ## Evidence
 
-- `src/SafeIR.Runtime/CompiledRuntime.cs:5` declares `public static class CompiledRuntime` in the packable `SafeIR.Runtime` package.
+- `src/DotBoxd.Kernels.Runtime/CompiledRuntime.cs:5` declares `public static class CompiledRuntime` in the packable `DotBoxd.Kernels.Runtime` package.
 - The same file exposes many public helpers, including `ChargeFuel`, `ValidateEntrypointInput`, `GetInputArgument`, `TypeScalar`, `StringConst`, numeric operations, list/map operations, `CallBinding`, and `CreateValueArray`.
-- `src/SafeIR.Verifier/VerifierTypeNames.cs:16` and `src/SafeIR.Verifier/VerificationPolicy.cs:32` identify `SafeIR.Runtime.CompiledRuntime` as the verifier-approved runtime facade for generated assemblies.
-- `src/SafeIR.Core/Bindings/BindingRegistryValidator.cs:6` and `:294` through `:295` hard-code `SafeIR.Runtime.CompiledRuntime` as the approved compiled binding target type.
+- `src/DotBoxd.Kernels.Verifier/VerifierTypeNames.cs:16` and `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs:32` identify `DotBoxd.Kernels.Runtime.CompiledRuntime` as the verifier-approved runtime facade for generated assemblies.
+- `src/DotBoxd.Kernels/Bindings/BindingRegistryValidator.cs:6` and `:294` through `:295` hard-code `DotBoxd.Kernels.Runtime.CompiledRuntime` as the approved compiled binding target type.
 - `README.md:5` frames compiled mode as compiler-owned generated runtime forms, but the package-facing README and package metadata do not mark `CompiledRuntime` as generated-code ABI, unsupported host API, or hidden from normal IntelliSense/API docs.
 
 ## Suggested test or benchmark
@@ -47,7 +47,7 @@ Add an API surface test or package consumer compile test that classifies public 
 
 ## Suggested fix direction
 
-Pick one support model and enforce it. Options include moving generated-code ABI helpers behind a clearly named namespace such as `SafeIR.Runtime.Generated`, adding `EditorBrowsable(EditorBrowsableState.Never)` plus explicit docs that only generated assemblies should call it, or splitting a tiny documented ABI package from host-facing runtime APIs. Keep verifier allowlists, cache hashing, and generated assemblies aligned with whatever ABI name/version is chosen.
+Pick one support model and enforce it. Options include moving generated-code ABI helpers behind a clearly named namespace such as `DotBoxd.Kernels.Runtime.Generated`, adding `EditorBrowsable(EditorBrowsableState.Never)` plus explicit docs that only generated assemblies should call it, or splitting a tiny documented ABI package from host-facing runtime APIs. Keep verifier allowlists, cache hashing, and generated assemblies aligned with whatever ABI name/version is chosen.
 
 ## Scope boundaries
 

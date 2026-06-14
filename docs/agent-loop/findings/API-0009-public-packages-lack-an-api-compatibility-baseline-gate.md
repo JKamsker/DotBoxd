@@ -25,20 +25,20 @@ duplicate_of:
 
 ## Claim
 
-The public SafeIR package set has no public API compatibility baseline or release gate, so accidental breaking changes to shipped types can pass CI as long as the source tree still builds and package metadata is valid.
+The public DotBoxd.Kernels package set has no public API compatibility baseline or release gate, so accidental breaking changes to shipped types can pass CI as long as the source tree still builds and package metadata is valid.
 
 ## Evidence
 
 - `Directory.Build.props` sets shared package metadata and versioning, but it does not enable .NET package validation or API compatibility checks such as `EnablePackageValidation`, `ApiCompatValidateAssemblies`, or a baseline package version.
 - The product `.csproj` files under `src/` define target frameworks and references, but they do not opt into API compatibility validation or reference public API analyzer baselines.
 - A repository search found no `PublicAPI.Shipped.txt` or `PublicAPI.Unshipped.txt` files outside build output, so public surface changes are not tracked through a source-controlled API baseline.
-- A repository search for `PublicApiAnalyzers`, `Microsoft.DotNet.ApiCompat`, `EnablePackageValidation`, and `ApiCompatValidateAssemblies` found no SafeIR package validation configuration.
+- A repository search for `PublicApiAnalyzers`, `Microsoft.DotNet.ApiCompat`, `EnablePackageValidation`, and `ApiCompatValidateAssemblies` found no DotBoxd.Kernels package validation configuration.
 - `.github/workflows/ci.yml:98` packs the solution and `.github/workflows/ci.yml:102`/`:119` run `scripts/check-package-metadata.ps1`, but those checks validate metadata/prerelease policy rather than comparing the package API surface against a prior baseline.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:576` describes a stabilized minimum surface, but there is no automated gate that prevents removing or changing that surface accidentally.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:576` describes a stabilized minimum surface, but there is no automated gate that prevents removing or changing that surface accidentally.
 
 ## Impact
 
-SafeIR exposes many public NuGet packages (`SafeIR.Core`, `SafeIR.Hosting`, `SafeIR.Plugins`, transport addons, JSON serialization, compiler/verifier APIs). Without an API compatibility gate, a public constructor, method, enum member, record property, analyzer package asset, or namespace can be removed or changed unintentionally and still pass the current release pipeline. Consumers discover the break only after upgrading packages.
+DotBoxd.Kernels exposes many public NuGet packages (`DotBoxd.Kernels`, `DotBoxd.Hosting`, `DotBoxd.Plugins`, transport addons, JSON serialization, compiler/verifier APIs). Without an API compatibility gate, a public constructor, method, enum member, record property, analyzer package asset, or namespace can be removed or changed unintentionally and still pass the current release pipeline. Consumers discover the break only after upgrading packages.
 
 ## Better target
 

@@ -126,7 +126,7 @@
   - Dedup: `alloc/compiler-cache/file-locks/persistent-key-files`
 - [ ] `PAL-0014` low - IPC convenience defaults bypass the low-allocation profile
   - File: `docs/agent-loop/findings/PAL-0014-ipc-convenience-defaults-bypass-the-low-allocation-profile.md`
-  - Dedup: `alloc/ipc-sharpc/default-options/low-allocation-profile-disabled`
+  - Dedup: `alloc/ipc-dotboxd/default-options/low-allocation-profile-disabled`
 - [ ] `PAL-0015` low - Compiled cache quarantine has no bounded cleanup policy
   - File: `docs/agent-loop/findings/PAL-0015-compiled-cache-quarantine-has-no-bounded-cleanup-policy.md`
   - Dedup: `alloc/compiler-cache/quarantine/unbounded-invalid-entry-retention`

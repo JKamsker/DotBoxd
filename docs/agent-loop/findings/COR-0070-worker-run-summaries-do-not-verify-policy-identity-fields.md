@@ -29,10 +29,10 @@ Host-side worker result validation accepts missing or forged `policyId` values i
 
 ## Evidence
 
-- `src/SafeIR.Core/Model/RunSummaryAuditFields.cs:24` emits `policyId` from `SafePolicyId(plan.Policy.PolicyId)` for host-created run summaries.
-- `src/SafeIR.Hosting/WorkerAuditValidator.cs:15` includes `policyId` in the allowed common worker run-summary field set, so a worker-supplied value is schema-accepted as long as the text is control-character-free.
-- `src/SafeIR.Hosting/SandboxWorkerExecutor.cs:233` starts `WorkerRunSummaryMatches(...)`, and the required field checks at `src/SafeIR.Hosting/SandboxWorkerExecutor.cs:243` to `src/SafeIR.Hosting/SandboxWorkerExecutor.cs:246` compare `moduleHash`, `planHash`, `policyHash`, and `bindingManifestHash`, but never compare `policyId` against `RunSummaryAuditFields.Create(...)` or require the field to be present.
-- `tests/SafeIR.Tests/Misc08/WorkerResultHardeningTests.cs:253` builds worker test summaries from `RunSummaryAuditFields.Create(...)`, and the hardening tests mutate resource aliases, dispatch state, error codes, and compiled envelope fields, but they do not cover a worker that changes or removes `policyId` while keeping `policyHash` correct.
+- `src/DotBoxd.Kernels/Model/RunSummaryAuditFields.cs:24` emits `policyId` from `SafePolicyId(plan.Policy.PolicyId)` for host-created run summaries.
+- `src/DotBoxd.Hosting/WorkerAuditValidator.cs:15` includes `policyId` in the allowed common worker run-summary field set, so a worker-supplied value is schema-accepted as long as the text is control-character-free.
+- `src/DotBoxd.Hosting/SandboxWorkerExecutor.cs:233` starts `WorkerRunSummaryMatches(...)`, and the required field checks at `src/DotBoxd.Hosting/SandboxWorkerExecutor.cs:243` to `src/DotBoxd.Hosting/SandboxWorkerExecutor.cs:246` compare `moduleHash`, `planHash`, `policyHash`, and `bindingManifestHash`, but never compare `policyId` against `RunSummaryAuditFields.Create(...)` or require the field to be present.
+- `tests/DotBoxd.Kernels.Tests/Misc08/WorkerResultHardeningTests.cs:253` builds worker test summaries from `RunSummaryAuditFields.Create(...)`, and the hardening tests mutate resource aliases, dispatch state, error codes, and compiled envelope fields, but they do not cover a worker that changes or removes `policyId` while keeping `policyHash` correct.
 
 ## Impact
 

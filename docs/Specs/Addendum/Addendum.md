@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for the current SafeIR plugin model. The local SDK/analyzer/generator and server-side
+Accepted for the current DotBoxd.Kernels plugin model. The local SDK/analyzer/generator and server-side
 package installation paths implement the JSON Safe IR package boundary described here; future
 extensions should update this addendum rather than treating it as merely proposed.
 
@@ -89,8 +89,8 @@ public interface IDamageFormula
     int Calculate(DamageInput input);
 }
 
-// Defined in the purpose-agnostic SafeIR.Server.Abstractions package
-// (namespace SafeIR.Server.Abstractions), alongside [Plugin], HookContext,
+// Defined in the purpose-agnostic DotBoxd.Abstractions package
+// (namespace DotBoxd.Abstractions), alongside [Plugin], HookContext,
 // IPluginMessageSink, IPluginEventAdapter<TEvent>, and LiveSettingAttribute.
 public interface IEventKernel<TEvent>
 {
@@ -919,7 +919,7 @@ public bool ShouldHandle(DamageEvent e, HookContext ctx)
 Expected diagnostic:
 
 ```text
-SGP001: Forbidden host API 'System.IO.File' is not allowed in this plugin contract.
+DBXK001: Forbidden host API 'System.IO.File' is not allowed in this plugin contract.
 
 Contract:
   IEventKernel<DamageEvent>.ShouldHandle
@@ -947,7 +947,7 @@ public object Anything { get; set; }
 Expected diagnostic:
 
 ```text
-SGP020: Live setting type 'object' is not supported.
+DBXK020: Live setting type 'object' is not supported.
 
 Use one of:
   bool
@@ -961,11 +961,11 @@ The server must still re-validate the uploaded package.
 
 Local tooling is a developer-experience feature, not the final trust boundary.
 
-When the server re-validates an uploaded or generated package, the `SafeIR.Plugins` runtime emits
+When the server re-validates an uploaded or generated package, the `DotBoxd.Plugins` runtime emits
 stable `SGP*` diagnostics from package install, prepared-package validation, kernel-entrypoint
 checks, and live-setting validation. These runtime diagnostics are distinct from the analyzer-local
-`SGP001`/`SGP020` SDK diagnostics shown above. The public `PluginDiagnosticCodes` reference in the
-`SafeIR.Plugins` namespace documents every runtime `SGP*` code with its emitting phase, the
+`DBXK001`/`DBXK020` SDK diagnostics shown above. The public `PluginDiagnosticCodes` reference in the
+`DotBoxd.Plugins` namespace documents every runtime `SGP*` code with its emitting phase, the
 audience that must fix it (plugin author vs. host operator), the likely cause, and a remediation
 note. See the "Plugin Runtime Diagnostics" section of the repository `README.md` for the full code
 table and a triage example.

@@ -1,0 +1,69 @@
+using System.IO;
+using System.Linq;
+using FluentAssertions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+
+namespace DotBoxd.Services.SourceGenerator.Tests;
+
+public class NullableSignatureTests
+{
+    [Fact]
+    public void NullableReferenceAnnotations_ArePreservedInProxyAndAsyncSiblingSignatures()
+    {
+        const string source = """
+            #nullable enable
+            using DotBoxd.Services.Attributes;
+            using System.Threading.Tasks;
+
+            namespace Regress.NullableSignatures
+            {
+                [DotBoxdService]
+                public interface INulls
+                {
+                    Task<string?> EchoAsync(string? value);
+                    string? Read(string? key);
+                }
+            }
+            """;
+
+        var (final, runResult) = Run(source);
+        AssertCompiles(final);
+
+        var generated = runResult.Results.Single().GeneratedSources;
+        var proxy = generated
+            .Single(g => g.HintName.EndsWith("INulls.DotBoxdRpcProxy.g.cs"))
+            .SourceText.ToString();
+        proxy.Should().Contain("global::System.Threading.Tasks.Task<string?> EchoAsync(string? value)");
+        proxy.Should().Contain("string? Read(string? key)");
+        proxy.Should().Contain("global::System.Threading.Tasks.Task<string?> ReadAsync(");
+        proxy.Should().Contain("string? key, global::System.Threading.CancellationToken ct = default");
+
+        var asyncInterface = generated
+            .Single(g => g.HintName.EndsWith("INulls.DotBoxdRpcAsync.g.cs"))
+            .SourceText.ToString();
+        asyncInterface.Should().Contain("global::System.Threading.Tasks.Task<string?> EchoAsync(");
+        asyncInterface.Should().Contain("string? value, global::System.Threading.CancellationToken ct = default");
+        asyncInterface.Should().Contain("global::System.Threading.Tasks.Task<string?> ReadAsync(");
+        asyncInterface.Should().Contain("string? key, global::System.Threading.CancellationToken ct = default");
+    }
+
+    private static (CSharpCompilation Final, GeneratorDriverRunResult RunResult) Run(string source)
+    {
+        var compilation = GeneratorTestHelper.CreateCompilation(source);
+        var driver = GeneratorTestHelper.CreateDriver().RunGenerators(compilation);
+        var runResult = driver.GetRunResult();
+        return (compilation.AddSyntaxTrees(runResult.GeneratedTrees), runResult);
+    }
+
+    private static void AssertCompiles(CSharpCompilation compilation)
+    {
+        using var ms = new MemoryStream();
+        var emit = compilation.Emit(ms);
+        emit.Success.Should().BeTrue(string.Join(
+            "\n",
+            emit.Diagnostics
+                .Where(d => d.Severity == DiagnosticSeverity.Error)
+                .Select(d => d.ToString())));
+    }
+}

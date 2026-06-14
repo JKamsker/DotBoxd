@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  
+  <PropertyGroup>
+    <Description>DotBoxd.Kernels safe host runtime bindings for files, time, random, logging, strings, and math.</Description>
+    <PackageTags>dotboxd;sandbox;runtime;bindings;files;logging</PackageTags>
+  </PropertyGroup>
+<ItemGroup>
+    <ProjectReference Include="..\DotBoxd.Kernels\DotBoxd.Kernels.csproj" />
+    <ProjectReference Include="..\DotBoxd.Kernels.Validation\DotBoxd.Kernels.Validation.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

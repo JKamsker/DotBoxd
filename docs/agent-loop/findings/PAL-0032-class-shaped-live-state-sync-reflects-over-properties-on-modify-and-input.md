@@ -29,11 +29,11 @@ Class-shaped live kernel settings repeatedly rediscover live properties and use 
 
 ## Evidence
 
-- `src/SafeIR.Plugins/Runtime/LiveKernelValueFactory.cs` handles non-interface settings by creating a class instance, discovering live properties with `type.GetProperties(...)`, then registering a state synchronizer that pushes the state back to the live setting store.
+- `src/DotBoxd.Plugins/Runtime/LiveKernelValueFactory.cs` handles non-interface settings by creating a class instance, discovering live properties with `type.GetProperties(...)`, then registering a state synchronizer that pushes the state back to the live setting store.
 - The initial `Create<T>` path reuses the discovered property list for that one synchronizer, but the other class-shaped state paths call `LiveProperties(typeof(T))` or `LiveProperties(state.GetType())` again: `CreateDraft<T>`, `ExtractSettings<T>`, `CopyLiveProperties<T>`, and public `PullFromStore` all rediscover the same `PropertyInfo[]` shape.
 - Those paths then call `PropertyInfo.GetValue` and `PropertyInfo.SetValue` for every live property during host modifications and refreshes.
-- `src/SafeIR.Plugins/InstalledKernel.cs` calls the class-shaped paths from `ModifyAsync<TState>` and `RefreshTypedValuesFromStore`, so a host that modifies class live state pays repeated property discovery plus reflection accessors.
-- `src/SafeIR.Plugins/Runtime/Lifecycle/LiveStateSyncRegistry.cs` invokes registered synchronizers from `SynchronizeForInput` on every plugin input build for synchronous update modes, so class live state also reflects over properties before event dispatch.
+- `src/DotBoxd.Plugins/InstalledKernel.cs` calls the class-shaped paths from `ModifyAsync<TState>` and `RefreshTypedValuesFromStore`, so a host that modifies class live state pays repeated property discovery plus reflection accessors.
+- `src/DotBoxd.Plugins/Runtime/Lifecycle/LiveStateSyncRegistry.cs` invokes registered synchronizers from `SynchronizeForInput` on every plugin input build for synchronous update modes, so class live state also reflects over properties before event dispatch.
 - Existing `PAL-0002` covered interface-shaped `DispatchProxy` property access, and `PAL-0004` covered convention event adapter reflection. This finding is separate: it is the non-interface/class live-state synchronization path.
 
 ## Impact

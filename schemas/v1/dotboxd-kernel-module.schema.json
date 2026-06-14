@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/JKamsker/Safe-IR/schemas/v1/dotboxd-kernel-module.schema.json",
+  "title": "DotBoxd Kernel Module Envelope",
+  "description": "Versioned JSON Schema for the Safe IR module envelope accepted by DotBoxdJsonImporter.Import(string json). The schema mirrors the importer's strict shape: every object only allows the listed properties, statement operators and binary/unary operator names are restricted to the documented vocabulary, and literal/type shapes are enumerated. Schema version is tracked by the directory segment (v1) and the schemaVersion constant; bump both when the JSON contract changes.",
+  "x-dotboxd-schema-version": "1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "version", "functions"],
+  "properties": {
+    "id": { "type": "string" },
+    "version": { "$ref": "#/$defs/semver" },
+    "targetSandboxVersion": { "$ref": "#/$defs/semver" },
+    "capabilityRequests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "functions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/function" }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "description": "Semantic version string parsed by SemVersion.Parse."
+    },
+    "function": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "returnType", "body"],
+      "properties": {
+        "id": { "type": "string" },
+        "visibility": { "type": "string", "enum": ["entrypoint", "private"] },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "type"],
+            "properties": {
+              "name": { "type": "string" },
+              "type": { "$ref": "#/$defs/type" }
+            }
+          }
+        },
+        "returnType": { "$ref": "#/$defs/type" },
+        "body": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/statement" }
+        }
+      }
+    },
+    "type": {
+      "description": "A scalar type name, or an object naming a generic type and its arguments.",
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name"],
+          "properties": {
+            "name": { "type": "string" },
+            "arguments": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/type" }
+            }
+          }
+        }
+      ]
+    },
+    "statement": {
+      "type": "object",
+      "required": ["op"],
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": ["set", "return", "expr", "if", "while", "forRange"]
+        }
+      },
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "required": ["op", "name", "value"],
+          "properties": {
+            "op": { "const": "set" },
+            "name": { "type": "string" },
+            "value": { "$ref": "#/$defs/expression" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "value"],
+          "properties": {
+            "op": { "const": "return" },
+            "value": { "$ref": "#/$defs/expression" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "value"],
+          "properties": {
+            "op": { "const": "expr" },
+            "value": { "$ref": "#/$defs/expression" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "condition", "then"],
+          "properties": {
+            "op": { "const": "if" },
+            "condition": { "$ref": "#/$defs/expression" },
+            "then": { "type": "array", "items": { "$ref": "#/$defs/statement" } },
+            "else": { "type": "array", "items": { "$ref": "#/$defs/statement" } }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "condition", "body"],
+          "properties": {
+            "op": { "const": "while" },
+            "condition": { "$ref": "#/$defs/expression" },
+            "body": { "type": "array", "items": { "$ref": "#/$defs/statement" } }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "local", "start", "end", "body"],
+          "properties": {
+            "op": { "const": "forRange" },
+            "local": { "type": "string" },
+            "start": { "$ref": "#/$defs/expression" },
+            "end": { "$ref": "#/$defs/expression" },
+            "body": { "type": "array", "items": { "$ref": "#/$defs/statement" } }
+          }
+        }
+      ]
+    },
+    "expression": {
+      "type": "object",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "required": ["var"],
+          "properties": { "var": { "type": "string" } }
+        },
+        { "$ref": "#/$defs/literal" },
+        {
+          "additionalProperties": false,
+          "required": ["call"],
+          "properties": {
+            "call": { "type": "string" },
+            "args": { "type": "array", "items": { "$ref": "#/$defs/expression" } },
+            "genericType": { "$ref": "#/$defs/type" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["unary", "operand"],
+          "properties": {
+            "unary": { "type": "string", "enum": ["not", "-"] },
+            "operand": { "$ref": "#/$defs/expression" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "left", "right"],
+          "properties": {
+            "op": {
+              "type": "string",
+              "enum": ["add", "sub", "mul", "div", "rem", "eq", "ne", "lt", "lte", "gt", "gte", "and", "or"]
+            },
+            "left": { "$ref": "#/$defs/expression" },
+            "right": { "$ref": "#/$defs/expression" }
+          }
+        }
+      ]
+    },
+    "literal": {
+      "description": "Exactly one literal key. Mirrors JsonLiteralReader's accepted literal vocabulary.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 1,
+      "properties": {
+        "unit": { "const": true },
+        "bool": { "type": "boolean" },
+        "i32": { "type": "integer" },
+        "i64": { "type": "integer" },
+        "f64": { "type": "number" },
+        "string": { "type": "string" },
+        "opaqueId": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "type": "string" },
+            "value": { "type": "string" }
+          }
+        },
+        "path": { "type": "string" },
+        "uri": { "type": "string" }
+      }
+    }
+  }
+}

@@ -5,7 +5,7 @@ Demonstrates two source-generator features in one round-tripping client/server p
 | Feature | What you see in this sample |
 | --- | --- |
 | **Async sibling interface** | `IInventoryService` declares `GetPlayer` / `ListPlayerIds` as **sync** methods. The generator emits a sibling `IInventoryServiceAsync` exposing `GetPlayerAsync` / `ListPlayerIdsAsync`. The generated proxy implements **both** interfaces — the client casts to the sibling whenever it needs a non-blocking call. |
-| **Nested services** | `IInventoryService.OpenInventoryAsync` returns `Task<IPlayerInventory>`, where `IPlayerInventory` is itself a `[ShaRpcService]`. The generator wires this so the wire response is a `ServiceHandle`, and the value returned to the client is a `PlayerInventoryProxy` bound to the exact server-side instance the root method created. Every subsequent call on the sub-proxy lands back on that same object. |
+| **Nested services** | `IInventoryService.OpenInventoryAsync` returns `Task<IPlayerInventory>`, where `IPlayerInventory` is itself a `[DotBoxdService]`. The generator wires this so the wire response is a `ServiceHandle`, and the value returned to the client is a `PlayerInventoryProxy` bound to the exact server-side instance the root method created. Every subsequent call on the sub-proxy lands back on that same object. |
 
 ## Run
 

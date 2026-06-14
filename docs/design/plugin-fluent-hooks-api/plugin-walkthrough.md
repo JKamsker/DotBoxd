@@ -2,14 +2,14 @@
 
 Companion to [plan.md](plan.md). Server side: [server-walkthrough.md](server-walkthrough.md).
 
-This shows the **end-state code** for the untrusted plugin process (`SafeIR.Game.Plugin`) once
+This shows the **end-state code** for the untrusted plugin process (`DotBoxd.Kernels.Game.Plugin`) once
 Phases A–C land. It is illustrative, not a diff — focus on *how the project reads*, not exact lines.
 
 ## The mental model in one picture
 
 ```
 ┌─────────────────────────────┐         IPC (named pipe)        ┌──────────────────────────────┐
-│  SafeIR.Game.Plugin          │  ─────────────────────────────▶ │  SafeIR.Game.Server          │
+│  DotBoxd.Kernels.Game.Plugin          │  ─────────────────────────────▶ │  DotBoxd.Kernels.Game.Server          │
 │  (untrusted author code)     │   ships verified IR + settings  │  (trusted host)              │
 │                              │                                  │                              │
 │  • Kernels (plain C#)        │                                  │  • Owns the SandboxPolicy    │
@@ -17,7 +17,7 @@ Phases A–C land. It is illustrative, not a diff — focus on *how the project 
 │  • server.Events.On<>()...   │                                  │  • Drives the simulation     │
 └─────────────────────────────┘                                  └──────────────────────────────┘
         │                                                                    ▲
-        │ source generator (SafeIR.PluginAnalyzer)                          │
+        │ source generator (DotBoxd.Plugins.Analyzer)                          │
         ▼                                                                    │
    lowers kernels + Where/Select/InvokeKernel lambdas  ────────────────────▶ opaque verified IR
 ```
@@ -33,14 +33,14 @@ Two key ideas this process is built around:
 
 ## The events it authors against (shared)
 
-These records live in `SafeIR.Game.Server.Abstractions`, referenced by both processes. The plugin
+These records live in `DotBoxd.Kernels.Game.Server.Abstractions`, referenced by both processes. The plugin
 writes kernels against them. **No event adapter is needed** — the framework infers the sandbox shape
 from the record's properties via a convention adapter (`e_<PropertyName>`, CLR→sandbox type mapping).
 Optional property attributes (`[OpaqueId]`, `[SandboxParam]`, `[SandboxIgnore]`) cover the cases
 convention can't see. See ownership-auth-and-policy.md §3.
 
 ```csharp
-namespace SafeIR.Game.Server.Abstractions;
+namespace DotBoxd.Kernels.Game.Server.Abstractions;
 
 public sealed record MonsterAggroEvent(
     string MonsterId,
@@ -68,7 +68,7 @@ writes no IR**, and the analyzer detects the event transitively through the cont
 contract is unchanged.
 
 ```csharp
-namespace SafeIR.Game.Plugin;
+namespace DotBoxd.Kernels.Game.Plugin;
 
 using System.ComponentModel.DataAnnotations;
 
@@ -93,7 +93,7 @@ public sealed partial class GuardianKernel : IMonsterAggroService   // : IEventK
 ```
 
 ```csharp
-namespace SafeIR.Game.Plugin;
+namespace DotBoxd.Kernels.Game.Plugin;
 
 using System.ComponentModel.DataAnnotations;
 
@@ -119,10 +119,10 @@ implementation of a server service contract — the framework ships and installs
 automatically. See [kernel-binding-model.md](kernel-binding-model.md).
 
 ```csharp
-namespace SafeIR.Game.Plugin;
+namespace DotBoxd.Kernels.Game.Plugin;
 
-using SafeIR.Game.Plugin.Client;
-using SafeIR.Transport.Ipc;
+using DotBoxd.Kernels.Game.Plugin.Client;
+using DotBoxd.Kernels.Transport.Ipc;
 
 internal static class Program
 {
@@ -130,13 +130,13 @@ internal static class Program
     {
         if (args.Length != 1)
         {
-            await Console.Error.WriteLineAsync("Usage: SafeIR.Game.Plugin <named-pipe-name>");
+            await Console.Error.WriteLineAsync("Usage: DotBoxd.Kernels.Game.Plugin <named-pipe-name>");
             return 1;
         }
 
         // (1) Connect to the server's control plane and wrap it in a server-shaped shim.
         await using var connection =
-            await SafeIrShaRpcMessagePackIpc.ConnectNamedPipeAsync(args[0]);
+            await DotBoxdDotBoxdRpcMessagePackIpc.ConnectNamedPipeAsync(args[0]);
         var server = new RemotePluginServer(connection.Get<IGamePluginControlService>());
 
         // (2) Register each kernel as the implementation of a server service contract. Register
@@ -216,9 +216,9 @@ over the unchanged IPC contract (`IGamePluginControlService`, defined in
 resolve the generated package → `InstallPluginAsync`.
 
 ```csharp
-namespace SafeIR.Game.Plugin.Client;
+namespace DotBoxd.Kernels.Game.Plugin.Client;
 
-using SafeIR.Game.Server.Abstractions;
+using DotBoxd.Kernels.Game.Server.Abstractions;
 
 /// <summary>
 /// Server-shaped facade over the IPC control service. Lets plugin code read
@@ -305,7 +305,7 @@ The author never sees this — but it's *why* the code above is safe. For each k
 // GENERATED — illustrative. The author wrote GuardianKernel in plain C#.
 internal static class GuardianPluginPackage
 {
-    public static PluginPackage Create() => /* verified SafeIR module: ShouldHandle + Handle */;
+    public static PluginPackage Create() => /* verified DotBoxd.Kernels module: ShouldHandle + Handle */;
 
     [ModuleInitializer]
     internal static void Register() =>
@@ -317,7 +317,7 @@ internal static class GuardianPluginPackage
 - `Select` → compile-time substitution into downstream lambdas (no new runtime protocol).
 - `InvokeKernel` terminal → the module's `Handle` (must be a single `ctx.Messages.Send`).
 - `InvokeLocal` → left as native host code, lowered to nothing.
-- Anything outside the lowerable subset → a diagnostic (`SGP110`–`SGP114`), so unsafe code fails the
+- Anything outside the lowerable subset → a diagnostic (`DBXK110`–`DBXK114`), so unsafe code fails the
   build instead of silently running native.
 
 ## 6. Side-by-side: the request in one diff

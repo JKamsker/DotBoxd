@@ -29,8 +29,8 @@ Installed plugin kernels retain every execution observation in memory and copy t
 
 ## Evidence
 
-- `src/SafeIR.Plugins/InstalledKernel.cs` exposes `LastExecution` and `ExecutionObservations`, and records one observation after every prepared sandbox execution in `ExecutePreparedAsync`.
-- `src/SafeIR.Plugins/Runtime/PluginExecutionObservation.cs` stores observations in a private `List<PluginExecutionObservation>`.
+- `src/DotBoxd.Plugins/InstalledKernel.cs` exposes `LastExecution` and `ExecutionObservations`, and records one observation after every prepared sandbox execution in `ExecutePreparedAsync`.
+- `src/DotBoxd.Plugins/Runtime/PluginExecutionObservation.cs` stores observations in a private `List<PluginExecutionObservation>`.
 - `PluginExecutionObserver.Record` appends a new `PluginExecutionObservation` for each `ShouldHandle` and `Handle` execution and never removes old entries.
 - `PluginExecutionObserver.Snapshot` returns `_observations.ToArray()`, so reading `InstalledKernel.ExecutionObservations` allocates and copies the entire retained history.
 - Existing retention findings cover auto execution hotness (`PAL-0030`) and compiled executable cache materialization (`PAL-0031`). This finding is separate: it is per-installed-plugin execution telemetry retained by `PluginExecutionObserver`.

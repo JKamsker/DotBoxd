@@ -33,16 +33,16 @@ Time and random are capability-gated runtime features. If the public policy-buil
 
 ## Evidence
 
-- `README.md:11` says `SafeIR.Runtime` includes safe host bindings for time and random.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:83` and `:84` list `SandboxHostBuilder.AddTimeBindings()` and `AddRandomBindings()` as public setup APIs.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:175` through `:201` list `SandboxPolicyBuilder` methods, but include only file grants, `GrantLogging()`, generic `Grant(...)`, and `Deterministic(...)`; they omit `GrantTimeNow()` and `GrantRandom()`.
-- `src/SafeIR.Core/Policy.cs:130` defines the public `GrantTimeNow()` helper, and `src/SafeIR.Core/Policy.cs:137` defines the public `GrantRandom()` helper.
-- `tests/SafeIR.Tests/Misc07/TimeAndRandomTests.cs:26` and `:45` use those helpers to make documented time/random modules prepare and run, proving they are intended public behavior rather than test-only internals.
+- `README.md:11` says `DotBoxd.Kernels.Runtime` includes safe host bindings for time and random.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:83` and `:84` list `SandboxHostBuilder.AddTimeBindings()` and `AddRandomBindings()` as public setup APIs.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:175` through `:201` list `SandboxPolicyBuilder` methods, but include only file grants, `GrantLogging()`, generic `Grant(...)`, and `Deterministic(...)`; they omit `GrantTimeNow()` and `GrantRandom()`.
+- `src/DotBoxd.Kernels/Policy.cs:130` defines the public `GrantTimeNow()` helper, and `src/DotBoxd.Kernels/Policy.cs:137` defines the public `GrantRandom()` helper.
+- `tests/DotBoxd.Kernels.Tests/Misc07/TimeAndRandomTests.cs:26` and `:45` use those helpers to make documented time/random modules prepare and run, proving they are intended public behavior rather than test-only internals.
 - Existing findings API-0001 through API-0012 and CMP-0001 through CMP-0012 cover internal namespaces, package metadata/readme, consumer smoke, diagnostics, API compatibility, symbols/source-link, prerelease IPC, worker host surface, operational docs, error-code reference, safe-default samples, and JSON schema artifacts; none track the missing time/random grant-helper surface.
 
 ## Suggested acceptance test
 
-Add a consumer-facing docs/API compile fixture that imports `SafeIR`, `SafeIR.Hosting`, and `SafeIR.Runtime`, then verifies this setup compiles and prepares modules requesting time and random without using generic `Grant(...)`:
+Add a consumer-facing docs/API compile fixture that imports `DotBoxd.Kernels`, `DotBoxd.Hosting`, and `DotBoxd.Kernels.Runtime`, then verifies this setup compiles and prepares modules requesting time and random without using generic `Grant(...)`:
 
 ```csharp
 using var host = SandboxHost.Create(builder => {

@@ -29,17 +29,17 @@ HTTP host and scheme allowlist entries are serialized as comma-separated strings
 
 ## Evidence
 
-- `src/SafeIR.Transport.Http/Internal/SafeHttpPolicyBuilderExtensions.cs:7` exposes `GrantHttpGet(IEnumerable<string> allowedHosts, ...)`, which is the host-facing helper for explicit HTTP whitelisting.
-- `src/SafeIR.Transport.Http/Internal/SafeHttpPolicyBuilderExtensions.cs:35` stores the host list as `string.Join(',', allowedHosts)` and `src/SafeIR.Transport.Http/Internal/SafeHttpPolicyBuilderExtensions.cs:36` does the same for schemes.
-- `src/SafeIR.Transport.Http/Internal/SafeHttpGrantReader.cs:8` to `src/SafeIR.Transport.Http/Internal/SafeHttpGrantReader.cs:11` reads those parameters by splitting on commas and trimming entries.
-- `src/SafeIR.Transport.Http/Internal/SafeHttpGrantValidator.cs:46` to `src/SafeIR.Transport.Http/Internal/SafeHttpGrantValidator.cs:52` only requires the CSV to contain at least one value; it does not reject comma-containing builder inputs or validate each authority/scheme token as an atomic whitelist entry.
-- `src/SafeIR.Transport.Http/SafeHttpClient.cs:188` to `src/SafeIR.Transport.Http/SafeHttpClient.cs:193` authorizes a request when any parsed host token matches the URI authority.
+- `src/DotBoxd.Hosting.Http/Internal/SafeHttpPolicyBuilderExtensions.cs:7` exposes `GrantHttpGet(IEnumerable<string> allowedHosts, ...)`, which is the host-facing helper for explicit HTTP whitelisting.
+- `src/DotBoxd.Hosting.Http/Internal/SafeHttpPolicyBuilderExtensions.cs:35` stores the host list as `string.Join(',', allowedHosts)` and `src/DotBoxd.Hosting.Http/Internal/SafeHttpPolicyBuilderExtensions.cs:36` does the same for schemes.
+- `src/DotBoxd.Hosting.Http/Internal/SafeHttpGrantReader.cs:8` to `src/DotBoxd.Hosting.Http/Internal/SafeHttpGrantReader.cs:11` reads those parameters by splitting on commas and trimming entries.
+- `src/DotBoxd.Hosting.Http/Internal/SafeHttpGrantValidator.cs:46` to `src/DotBoxd.Hosting.Http/Internal/SafeHttpGrantValidator.cs:52` only requires the CSV to contain at least one value; it does not reject comma-containing builder inputs or validate each authority/scheme token as an atomic whitelist entry.
+- `src/DotBoxd.Hosting.Http/SafeHttpClient.cs:188` to `src/DotBoxd.Hosting.Http/SafeHttpClient.cs:193` authorizes a request when any parsed host token matches the URI authority.
 
 A host that calls `GrantHttpGet(["api.example.com,evil.example"], maxResponseBytes: 1024)` has supplied one string entry, but the runtime parses it as two allowed hosts. The same delimiter expansion applies to `allowedSchemes`.
 
 ## Risk
 
-SafeIR's network model relies on explicit server whitelisting. If HTTP allowlists are populated from configuration, UI fields, or tenant policy data where each item is expected to be one authority, a comma in a single item silently broadens the whitelist instead of failing closed. That can permit sandboxed IR with `net.http.get` to reach an unintended host or scheme under a policy that reviewers may believe contains only one entry.
+DotBoxd.Kernels's network model relies on explicit server whitelisting. If HTTP allowlists are populated from configuration, UI fields, or tenant policy data where each item is expected to be one authority, a comma in a single item silently broadens the whitelist instead of failing closed. That can permit sandboxed IR with `net.http.get` to reach an unintended host or scheme under a policy that reviewers may believe contains only one entry.
 
 ## Suggested acceptance tests
 

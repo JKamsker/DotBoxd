@@ -1,11 +1,11 @@
-using ShaRPC.Core.Attributes;
+using DotBoxd.Services.Attributes;
 
 namespace Shared;
 
 /// <summary>
 /// ValueTask-returning variant of <see cref="IGameService"/> used by allocation benchmarks.
 /// </summary>
-[ShaRpcService]
+[DotBoxdService]
 public interface IValueTaskGameService
 {
     ValueTask<PlayerState> GetPlayerStateAsync(PlayerId playerId, CancellationToken ct = default);

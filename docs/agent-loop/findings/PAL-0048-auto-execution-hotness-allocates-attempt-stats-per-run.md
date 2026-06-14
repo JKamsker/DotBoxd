@@ -27,10 +27,10 @@ Auto execution mode allocates a hotness attempt object and a full hotness stats 
 
 ## Evidence
 
-- `src/SafeIR.Hosting/Execution/SandboxHost.Auto.cs:21` calls `_autoHotness.BeginAttempt(plan, entrypoint)` for every `ExecutionMode.Auto` run after compiler/debug checks.
-- `src/SafeIR.Hosting/Internal/AutoExecutionHotness.cs:44` enters the per-plan hotness state and increments the run count on every attempt.
-- `src/SafeIR.Hosting/Internal/AutoExecutionHotness.cs:53` returns `new AutoHotnessAttempt(this, Snapshot())`, allocating the attempt wrapper and a `ModuleHotnessStats` record for every auto-mode invocation.
-- `src/SafeIR.Hosting/Internal/AutoExecutionHotness.cs:91` through `src/SafeIR.Hosting/Internal/AutoExecutionHotness.cs:104` constructs the snapshot record from state fields even for the first-run interpreted path, where `SandboxHost.Auto.cs:22` only checks `hotness.Stats.RunCount == 1`.
+- `src/DotBoxd.Hosting/Execution/SandboxHost.Auto.cs:21` calls `_autoHotness.BeginAttempt(plan, entrypoint)` for every `ExecutionMode.Auto` run after compiler/debug checks.
+- `src/DotBoxd.Hosting/Internal/AutoExecutionHotness.cs:44` enters the per-plan hotness state and increments the run count on every attempt.
+- `src/DotBoxd.Hosting/Internal/AutoExecutionHotness.cs:53` returns `new AutoHotnessAttempt(this, Snapshot())`, allocating the attempt wrapper and a `ModuleHotnessStats` record for every auto-mode invocation.
+- `src/DotBoxd.Hosting/Internal/AutoExecutionHotness.cs:91` through `src/DotBoxd.Hosting/Internal/AutoExecutionHotness.cs:104` constructs the snapshot record from state fields even for the first-run interpreted path, where `SandboxHost.Auto.cs:22` only checks `hotness.Stats.RunCount == 1`.
 - Existing `PAL-0030` covers unbounded retained `AutoHotnessState` entries by `planHash|entrypoint`. This finding is separate: even for one stable plan and bounded state, each auto-mode run creates per-attempt heap objects on the dispatch path.
 
 ## Impact

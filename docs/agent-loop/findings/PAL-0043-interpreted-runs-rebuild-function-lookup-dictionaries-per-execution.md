@@ -29,8 +29,8 @@ Every interpreted execution rebuilds a module-wide function lookup dictionary fr
 
 ## Evidence
 
-- `src/SafeIR.Interpreter/SandboxInterpreter.cs` constructs a new `InterpreterEvaluator(plan, context, options)` for each `ExecuteAsync` call.
-- `src/SafeIR.Interpreter/InterpreterEvaluator.cs` builds `_functions = plan.Module.Functions.ToDictionary(f => f.Id, StringComparer.Ordinal)` in the evaluator constructor.
+- `src/DotBoxd.Kernels.Interpreter/SandboxInterpreter.cs` constructs a new `InterpreterEvaluator(plan, context, options)` for each `ExecuteAsync` call.
+- `src/DotBoxd.Kernels.Interpreter/InterpreterEvaluator.cs` builds `_functions = plan.Module.Functions.ToDictionary(f => f.Id, StringComparer.Ordinal)` in the evaluator constructor.
 - Helper-call dispatch then uses that per-run dictionary through `TryGetFunction`, but the mapping is stable for the lifetime of the prepared plan.
 - Existing `ALG-0005` covered binding-reference collection dictionaries during validation/dispatch and is not the interpreted execution function lookup table.
 

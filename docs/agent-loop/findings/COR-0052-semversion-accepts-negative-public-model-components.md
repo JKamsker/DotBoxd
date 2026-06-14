@@ -29,15 +29,15 @@ The public `SemVersion` record can be constructed with negative version componen
 
 ## Evidence
 
-`src/SafeIR.Core/Model/SemVersion.cs` declares `public sealed record SemVersion(int Major, int Minor, int Patch)` without a constructor body or range checks. The parser uses `NumberStyles.None`, so negative text is rejected, but the public constructor and record `with` path still allow negative `Major`, `Minor`, or `Patch` values.
+`src/DotBoxd.Kernels/Model/SemVersion.cs` declares `public sealed record SemVersion(int Major, int Minor, int Patch)` without a constructor body or range checks. The parser uses `NumberStyles.None`, so negative text is rejected, but the public constructor and record `with` path still allow negative `Major`, `Minor`, or `Patch` values.
 
-`src/SafeIR.Core/Sandbox/SandboxLanguage.cs` implements support as `target.Major == CurrentVersion.Major && target.CompareTo(CurrentVersion) <= 0`. For a programmatic value such as `new SemVersion(1, -1, 0)`, the major matches current version `1.0.0` and comparison returns less than current, so `Supports(...)` returns true.
+`src/DotBoxd.Kernels/Sandbox/SandboxLanguage.cs` implements support as `target.Major == CurrentVersion.Major && target.CompareTo(CurrentVersion) <= 0`. For a programmatic value such as `new SemVersion(1, -1, 0)`, the major matches current version `1.0.0` and comparison returns less than current, so `Supports(...)` returns true.
 
-`src/SafeIR.Validation/StructuralValidator.cs` uses `SandboxLanguage.Supports(module.TargetSandboxVersion)` as the target sandbox version gate and does not separately validate non-negative components. It also does not validate `module.Version` at all. `src/SafeIR.Core/Bindings/BindingRegistryValidator.cs` validates binding ids, effects, cost model, compiled targets, and types, but it never validates `BindingDescriptor.Version`, so negative binding versions can enter the binding manifest hash.
+`src/DotBoxd.Kernels.Validation/StructuralValidator.cs` uses `SandboxLanguage.Supports(module.TargetSandboxVersion)` as the target sandbox version gate and does not separately validate non-negative components. It also does not validate `module.Version` at all. `src/DotBoxd.Kernels/Bindings/BindingRegistryValidator.cs` validates binding ids, effects, cost model, compiled targets, and types, but it never validates `BindingDescriptor.Version`, so negative binding versions can enter the binding manifest hash.
 
 ## Impact
 
-SafeIR can accept and hash modules or bindings with semantic versions that cannot be produced by the JSON parser and are not valid SemVer values. That creates inconsistent behavior between JSON-imported IR and programmatically constructed IR, allows unsupported target versions such as `1.-1.0` through the runtime support gate, and can publish impossible binding or module version metadata into canonical hashes and manifests.
+DotBoxd.Kernels can accept and hash modules or bindings with semantic versions that cannot be produced by the JSON parser and are not valid SemVer values. That creates inconsistent behavior between JSON-imported IR and programmatically constructed IR, allows unsupported target versions such as `1.-1.0` through the runtime support gate, and can publish impossible binding or module version metadata into canonical hashes and manifests.
 
 ## Suggested tests
 

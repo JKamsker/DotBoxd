@@ -29,12 +29,12 @@ Plugin kernel input construction allocates a working `SandboxValue[]` for multi-
 
 ## Evidence
 
-- `src/SafeIR.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:67` allocates a `SandboxValue[]` when adapter-provided event values must be combined with live settings.
-- `src/SafeIR.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:68` through `src/SafeIR.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:73` copies event values and live-setting values into that working array, then `src/SafeIR.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:74` passes it to `SandboxValue.FromList(values, values[0].Type)`.
-- The writer fast path has the same shape: `src/SafeIR.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:83` through `src/SafeIR.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:91` allocates/fills a working array before calling `SandboxValue.FromList(...)`.
-- `src/SafeIR.Core/Sandbox/SandboxValue.cs:51` through `src/SafeIR.Core/Sandbox/SandboxValue.cs:52` constructs a `ListValue`, and `src/SafeIR.Core/Sandbox/SandboxValue.cs:116` through `src/SafeIR.Core/Sandbox/SandboxValue.cs:120` defensively snapshots the constructor input with `ModelCopy.List(...)`.
-- `src/SafeIR.Core/Model/ModelCopy.cs:7` through `src/SafeIR.Core/Model/ModelCopy.cs:10` implements that snapshot as `values.ToArray()` plus `ReadOnlyCollection<T>`.
-- `tests/SafeIR.Tests/Misc05/PluginInputAllocationTests.cs:7` through `tests/SafeIR.Tests/Misc05/PluginInputAllocationTests.cs:19` only guards against enumerating an index-only event value list when live settings exist; it does not assert allocation count or prevent the working-array plus snapshot-array pattern.
+- `src/DotBoxd.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:67` allocates a `SandboxValue[]` when adapter-provided event values must be combined with live settings.
+- `src/DotBoxd.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:68` through `src/DotBoxd.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:73` copies event values and live-setting values into that working array, then `src/DotBoxd.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:74` passes it to `SandboxValue.FromList(values, values[0].Type)`.
+- The writer fast path has the same shape: `src/DotBoxd.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:83` through `src/DotBoxd.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:91` allocates/fills a working array before calling `SandboxValue.FromList(...)`.
+- `src/DotBoxd.Kernels/Sandbox/SandboxValue.cs:51` through `src/DotBoxd.Kernels/Sandbox/SandboxValue.cs:52` constructs a `ListValue`, and `src/DotBoxd.Kernels/Sandbox/SandboxValue.cs:116` through `src/DotBoxd.Kernels/Sandbox/SandboxValue.cs:120` defensively snapshots the constructor input with `ModelCopy.List(...)`.
+- `src/DotBoxd.Kernels/Model/ModelCopy.cs:7` through `src/DotBoxd.Kernels/Model/ModelCopy.cs:10` implements that snapshot as `values.ToArray()` plus `ReadOnlyCollection<T>`.
+- `tests/DotBoxd.Kernels.Tests/Misc05/PluginInputAllocationTests.cs:7` through `tests/DotBoxd.Kernels.Tests/Misc05/PluginInputAllocationTests.cs:19` only guards against enumerating an index-only event value list when live settings exist; it does not assert allocation count or prevent the working-array plus snapshot-array pattern.
 - Existing `COR-0008` covers the correctness problem of modeling heterogeneous plugin inputs as homogeneous lists. This finding is the allocation cost that remains for multi-value input construction independent of that type-modeling issue.
 
 ## Impact

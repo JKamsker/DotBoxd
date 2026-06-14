@@ -29,11 +29,11 @@ The generated-assembly verifier decodes `switch` operands and allocates an `int[
 
 ## Evidence
 
-- `src/SafeIR.Verifier/Generated/GeneratedAssemblyVerifier.Methods.cs:87` through `src/SafeIR.Verifier/Generated/GeneratedAssemblyVerifier.Methods.cs:90` reads method IL into `GeneratedInstruction` records before opcode verification and shape checks run.
-- `src/SafeIR.Verifier/Generated/GeneratedIlReader.cs:87` through `src/SafeIR.Verifier/Generated/GeneratedIlReader.cs:102` handles `ILOpCode.Switch` by reading the table count, allocating `new int[count]`, and then reading each target delta. There is no bound based on remaining IL bytes or a verifier maximum before the allocation.
-- `src/SafeIR.Verifier/OpCodeVerifier.cs:8` through `src/SafeIR.Verifier/OpCodeVerifier.cs:24` does not include `ILOpCode.Switch` in the allowed opcode set.
-- `src/SafeIR.Verifier/OpCodeVerifier.cs:48` through `src/SafeIR.Verifier/OpCodeVerifier.cs:54` only emits the forbidden-opcode diagnostic after instruction decoding has already completed.
-- `src/SafeIR.Compiler/PersistentCompiledArtifactCache.cs:105` through `src/SafeIR.Compiler/PersistentCompiledArtifactCache.cs:113` runs the verifier on cached `module.dll` bytes during cache reads, so a hostile cache entry can reach this path before being quarantined.
+- `src/DotBoxd.Kernels.Verifier/Generated/GeneratedAssemblyVerifier.Methods.cs:87` through `src/DotBoxd.Kernels.Verifier/Generated/GeneratedAssemblyVerifier.Methods.cs:90` reads method IL into `GeneratedInstruction` records before opcode verification and shape checks run.
+- `src/DotBoxd.Kernels.Verifier/Generated/GeneratedIlReader.cs:87` through `src/DotBoxd.Kernels.Verifier/Generated/GeneratedIlReader.cs:102` handles `ILOpCode.Switch` by reading the table count, allocating `new int[count]`, and then reading each target delta. There is no bound based on remaining IL bytes or a verifier maximum before the allocation.
+- `src/DotBoxd.Kernels.Verifier/OpCodeVerifier.cs:8` through `src/DotBoxd.Kernels.Verifier/OpCodeVerifier.cs:24` does not include `ILOpCode.Switch` in the allowed opcode set.
+- `src/DotBoxd.Kernels.Verifier/OpCodeVerifier.cs:48` through `src/DotBoxd.Kernels.Verifier/OpCodeVerifier.cs:54` only emits the forbidden-opcode diagnostic after instruction decoding has already completed.
+- `src/DotBoxd.Kernels.Compiler/PersistentCompiledArtifactCache.cs:105` through `src/DotBoxd.Kernels.Compiler/PersistentCompiledArtifactCache.cs:113` runs the verifier on cached `module.dll` bytes during cache reads, so a hostile cache entry can reach this path before being quarantined.
 
 ## Risk
 

@@ -29,12 +29,12 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Core/Bindings/BindingContracts.cs:53` defines public `BindingDescriptor` with an `IReadOnlyList<SandboxType> Parameters` property but the record itself does not snapshot or wrap that list.
-- `src/SafeIR.Core/Bindings/BindingContracts.cs:111` computes `ManifestHash` once in the `BindingRegistry` constructor from the current `Signatures`.
-- `src/SafeIR.Core/Bindings/BindingContracts.cs:132` exposes the persistent registry descriptor via `GetDescriptor(string id)`.
-- `src/SafeIR.Core/Bindings/BindingContracts.cs:214` through `src/SafeIR.Core/Bindings/BindingContracts.cs:257` freeze descriptors by copying parameters into a `SandboxType[]`, but that array is stored as `IReadOnlyList<SandboxType>` and remains cast-mutable.
-- `src/SafeIR.Core/Bindings/BindingContracts.cs:67` through `src/SafeIR.Core/Bindings/BindingContracts.cs:84` builds public signatures from the descriptor's current `Parameters`, so a mutation through `(SandboxType[])registry.GetDescriptor(id).Parameters` changes future `TryGet`/validation metadata while `ManifestHash` stays unchanged.
-- `src/SafeIR.Core/Bindings/BindingContracts.cs:44` also exposes `BindingSignature.Parameters` without its own defensive-copy property, so signature snapshots returned from `TryGet` are backed by mutable arrays too, even though those arrays are transient copies.
+- `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:53` defines public `BindingDescriptor` with an `IReadOnlyList<SandboxType> Parameters` property but the record itself does not snapshot or wrap that list.
+- `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:111` computes `ManifestHash` once in the `BindingRegistry` constructor from the current `Signatures`.
+- `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:132` exposes the persistent registry descriptor via `GetDescriptor(string id)`.
+- `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:214` through `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:257` freeze descriptors by copying parameters into a `SandboxType[]`, but that array is stored as `IReadOnlyList<SandboxType>` and remains cast-mutable.
+- `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:67` through `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:84` builds public signatures from the descriptor's current `Parameters`, so a mutation through `(SandboxType[])registry.GetDescriptor(id).Parameters` changes future `TryGet`/validation metadata while `ManifestHash` stays unchanged.
+- `src/DotBoxd.Kernels/Bindings/BindingContracts.cs:44` also exposes `BindingSignature.Parameters` without its own defensive-copy property, so signature snapshots returned from `TryGet` are backed by mutable arrays too, even though those arrays are transient copies.
 - This is distinct from `COR-0028`: that finding covers mutating `SandboxType.Arguments`; this issue exists even when each `SandboxType` element is immutable because the binding parameter list itself remains mutable after registry construction.
 
 ## Impact

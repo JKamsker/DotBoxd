@@ -33,7 +33,7 @@ Completed checklist entries are release evidence. Even if documentation is inven
 
 ## Evidence
 
-- `docs/Specs/Initial/safe-ir-sandbox-spec/checklists/release-readiness.md` has the `Documentation` section marked `release-gate: inventory`, and all entries in that section are checked complete.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/checklists/release-readiness.md` has the `Documentation` section marked `release-gate: inventory`, and all entries in that section are checked complete.
 - `scripts/check-release-readiness.ps1` builds `$releaseEvidence` only for required MVP and compiled-mode release checklist entries, then reports missing release evidence only for `$_ .Required -and $_.Complete` items in `release-readiness.md`.
 - The same script validates security review sections through `$securitySectionEvidence`, but there is no equivalent evidence map for completed documentation inventory items such as user-facing language docs, capability catalog, error code reference, debugging guide, or operational runbook.
 - The existing release-readiness findings cover stale required evidence paths and package metadata gates; this gap is specifically about completed inventory documentation items having no evidence coverage.

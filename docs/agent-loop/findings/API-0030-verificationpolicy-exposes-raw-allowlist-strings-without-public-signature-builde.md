@@ -25,21 +25,21 @@ duplicate_of:
 
 ## Claim
 
-`SafeIR.Verifier` exposes `VerificationPolicy` as a public customization point, but its allowlists are raw string sets and the helpers needed to construct correct type/member signatures are internal or private. Consumers can technically replace `AllowedTypes`, `AllowedMembers`, `AllowedAssemblyIdentities`, and `RuntimeFacadeIdentities`, but they must reverse-engineer the exact signature grammar and type-name vocabulary used by the verifier.
+`DotBoxd.Kernels.Verifier` exposes `VerificationPolicy` as a public customization point, but its allowlists are raw string sets and the helpers needed to construct correct type/member signatures are internal or private. Consumers can technically replace `AllowedTypes`, `AllowedMembers`, `AllowedAssemblyIdentities`, and `RuntimeFacadeIdentities`, but they must reverse-engineer the exact signature grammar and type-name vocabulary used by the verifier.
 
 The public verifier policy contract is therefore incomplete for direct verifier/compiler integrations that need to extend or audit the allowlist safely.
 
 ## Evidence
 
-- `src/SafeIR.Verifier/VerificationPolicy.cs` declares public `VerificationPolicy(...)` with public raw string allowlist properties such as `AllowedTypes`, `AllowedMembers`, `ForbiddenTypePrefixes`, and `RuntimeFacadeIdentities`.
+- `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs` declares public `VerificationPolicy(...)` with public raw string allowlist properties such as `AllowedTypes`, `AllowedMembers`, `ForbiddenTypePrefixes`, and `RuntimeFacadeIdentities`.
 - `VerificationPolicy.BoxedValueDefaults()` builds member allowlist entries with a private `RuntimeMember(string name, string parameters, string returnType)` helper.
-- The canonical type names used by that helper live in `src/SafeIR.Verifier/VerifierTypeNames.cs`, whose containing type is `internal static class VerifierTypeNames`.
+- The canonical type names used by that helper live in `src/DotBoxd.Kernels.Verifier/VerifierTypeNames.cs`, whose containing type is `internal static class VerifierTypeNames`.
 - Assembly identity formatting is also private to `VerificationPolicy` through `AssemblyIdentity(...)`, while `RuntimeFacadeIdentityDefaults()` is private.
 - The verifier consumes these raw strings through `VerificationPolicy.IsMemberAllowed(...)`, `AllowlistHash`, and `RuntimeFacadeHash`, so an incorrectly formatted public allowlist silently changes verification/cache identity and blocks or admits members based on duplicated string conventions.
 
 ## Impact
 
-A consumer implementing a custom compiler, verifier wrapper, or controlled runtime facade extension cannot build a policy using typed APIs. They must copy internal string formats like `SafeIR.Runtime.CompiledRuntime.Method(params):ReturnType`, CLR type names, assembly identity formats, and runtime facade identity rules. That makes the public `VerificationPolicy` extensibility brittle and hard to review, especially because policy hashes and artifact cache keys depend on these exact strings.
+A consumer implementing a custom compiler, verifier wrapper, or controlled runtime facade extension cannot build a policy using typed APIs. They must copy internal string formats like `DotBoxd.Kernels.Runtime.CompiledRuntime.Method(params):ReturnType`, CLR type names, assembly identity formats, and runtime facade identity rules. That makes the public `VerificationPolicy` extensibility brittle and hard to review, especially because policy hashes and artifact cache keys depend on these exact strings.
 
 ## Suggested fix direction
 

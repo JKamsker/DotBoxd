@@ -29,12 +29,12 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Verifier/VerificationPolicy.cs:20` through `src/SafeIR.Verifier/VerificationPolicy.cs:32` freeze all policy allowlist/runtime-facade sets on construction and init, making the hash inputs stable for the policy instance.
-- `src/SafeIR.Verifier/VerificationPolicy.cs:145` through `src/SafeIR.Verifier/VerificationPolicy.cs:152` recomputes `AllowlistHash` by concatenating the frozen sets on every property access.
-- `src/SafeIR.Verifier/VerificationPolicy.cs:154` through `src/SafeIR.Verifier/VerificationPolicy.cs:159` recomputes `RuntimeFacadeHash` by filtering allowed members and concatenating runtime facade identities on every property access.
-- `src/SafeIR.Verifier/VerificationPolicy.cs:161` through `src/SafeIR.Verifier/VerificationPolicy.cs:164` sorts the values, joins them into one string, UTF-8 encodes that string, computes SHA-256, and lowercases the hex result for each hash access.
-- `src/SafeIR.Compiler/CacheKeyBuilder.cs:20` through `src/SafeIR.Compiler/CacheKeyBuilder.cs:41` reads `policy.AllowlistHash` and `policy.RuntimeFacadeHash` for every cache-key build.
-- `src/SafeIR.Compiler/CacheKeyBuilder.cs:49` through `src/SafeIR.Compiler/CacheKeyBuilder.cs:63` calls `Build(...)` and then reads `policy.RuntimeFacadeHash` again while constructing the manifest identity.
+- `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs:20` through `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs:32` freeze all policy allowlist/runtime-facade sets on construction and init, making the hash inputs stable for the policy instance.
+- `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs:145` through `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs:152` recomputes `AllowlistHash` by concatenating the frozen sets on every property access.
+- `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs:154` through `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs:159` recomputes `RuntimeFacadeHash` by filtering allowed members and concatenating runtime facade identities on every property access.
+- `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs:161` through `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs:164` sorts the values, joins them into one string, UTF-8 encodes that string, computes SHA-256, and lowercases the hex result for each hash access.
+- `src/DotBoxd.Kernels.Compiler/CacheKeyBuilder.cs:20` through `src/DotBoxd.Kernels.Compiler/CacheKeyBuilder.cs:41` reads `policy.AllowlistHash` and `policy.RuntimeFacadeHash` for every cache-key build.
+- `src/DotBoxd.Kernels.Compiler/CacheKeyBuilder.cs:49` through `src/DotBoxd.Kernels.Compiler/CacheKeyBuilder.cs:63` calls `Build(...)` and then reads `policy.RuntimeFacadeHash` again while constructing the manifest identity.
 - Existing `COR-0029` covered mutable policy allowlists as a correctness/cache-integrity issue, `PAL-0020` covers `SandboxPolicy.Hash`, and `ALG-0017` covers cache-key rebuilding before materialized compiled-cache hits. This finding is the remaining allocation in stable verifier-policy hash access itself.
 
 ## Impact

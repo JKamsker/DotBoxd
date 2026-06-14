@@ -25,11 +25,11 @@ duplicate_of:
 
 ## Evidence
 
-`LiveSettingTypeConverter.CoerceClrCore` coerces non-string int and long values with `Convert.ToInt32` and `Convert.ToInt64` (`src/SafeIR.Plugins/Runtime/Lifecycle/LiveSettingTypeConverter.cs`). Those conversions round fractional `double`/`decimal` inputs instead of rejecting them, so programmatic defaults or `LiveSettingStore.SetObject` updates can turn values such as `1.5` into an accepted integer setting.
+`LiveSettingTypeConverter.CoerceClrCore` coerces non-string int and long values with `Convert.ToInt32` and `Convert.ToInt64` (`src/DotBoxd.Plugins/Runtime/Lifecycle/LiveSettingTypeConverter.cs`). Those conversions round fractional `double`/`decimal` inputs instead of rejecting them, so programmatic defaults or `LiveSettingStore.SetObject` updates can turn values such as `1.5` into an accepted integer setting.
 
-The same converter validates numeric ranges through `Number(value)`, which uses `Convert.ToDouble` for all numeric types. That loses exactness for `long` values above 2^53. `PluginPackageJsonSerializer` reads `long` live-setting defaults and bounds as `Int64` first (`src/SafeIR.Serialization.Json/PluginPackageJsonSerializer.cs`), but range validation then compares them as doubles.
+The same converter validates numeric ranges through `Number(value)`, which uses `Convert.ToDouble` for all numeric types. That loses exactness for `long` values above 2^53. `PluginPackageJsonSerializer` reads `long` live-setting defaults and bounds as `Int64` first (`src/DotBoxd.Kernels.Serialization.Json/PluginPackageJsonSerializer.cs`), but range validation then compares them as doubles.
 
-`LiveSettingStore.FromDefinitions` and `LiveSettingStore.SetObject` rely on this converter for default validation and runtime updates (`src/SafeIR.Plugins/Runtime/LiveSettings.cs`).
+`LiveSettingStore.FromDefinitions` and `LiveSettingStore.SetObject` rely on this converter for default validation and runtime updates (`src/DotBoxd.Plugins/Runtime/LiveSettings.cs`).
 
 ## Impact
 

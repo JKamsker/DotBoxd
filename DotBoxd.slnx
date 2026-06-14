@@ -8,51 +8,51 @@
   </Folder>
 
   <Folder Name="/src/Services/">
-    <Project Path="src/Services/ShaRPC.Core/ShaRPC.Core.csproj" />
+    <Project Path="src/Services/DotBoxd.Services/DotBoxd.Services.csproj" />
   </Folder>
 
   <Folder Name="/src/Channels/">
-    <Project Path="src/Channels/ShaRPC.Transports.Tcp/ShaRPC.Transports.Tcp.csproj" />
-    <Project Path="src/Channels/ShaRPC.Transports.NamedPipes/ShaRPC.Transports.NamedPipes.csproj" />
-    <Project Path="src/Channels/ShaRPC.Serializers.MessagePack/ShaRPC.Serializers.MessagePack.csproj" />
+    <Project Path="src/Channels/DotBoxd.Transports.Tcp/DotBoxd.Transports.Tcp.csproj" />
+    <Project Path="src/Channels/DotBoxd.Transports.NamedPipes/DotBoxd.Transports.NamedPipes.csproj" />
+    <Project Path="src/Channels/DotBoxd.Codecs.MessagePack/DotBoxd.Codecs.MessagePack.csproj" />
   </Folder>
 
   <Folder Name="/src/Kernels/">
-    <Project Path="src/Kernels/SafeIR.Core/SafeIR.Core.csproj" />
-    <Project Path="src/Kernels/SafeIR.Validation/SafeIR.Validation.csproj" />
-    <Project Path="src/Kernels/SafeIR.Runtime/SafeIR.Runtime.csproj" />
-    <Project Path="src/Kernels/SafeIR.Interpreter/SafeIR.Interpreter.csproj" />
-    <Project Path="src/Kernels/SafeIR.Compiler/SafeIR.Compiler.csproj" />
-    <Project Path="src/Kernels/SafeIR.Verifier/SafeIR.Verifier.csproj" />
-    <Project Path="src/Kernels/SafeIR.Serialization.Json/SafeIR.Serialization.Json.csproj" />
+    <Project Path="src/Kernels/DotBoxd.Kernels/DotBoxd.Kernels.csproj" />
+    <Project Path="src/Kernels/DotBoxd.Kernels.Validation/DotBoxd.Kernels.Validation.csproj" />
+    <Project Path="src/Kernels/DotBoxd.Kernels.Runtime/DotBoxd.Kernels.Runtime.csproj" />
+    <Project Path="src/Kernels/DotBoxd.Kernels.Interpreter/DotBoxd.Kernels.Interpreter.csproj" />
+    <Project Path="src/Kernels/DotBoxd.Kernels.Compiler/DotBoxd.Kernels.Compiler.csproj" />
+    <Project Path="src/Kernels/DotBoxd.Kernels.Verifier/DotBoxd.Kernels.Verifier.csproj" />
+    <Project Path="src/Kernels/DotBoxd.Kernels.Serialization.Json/DotBoxd.Kernels.Serialization.Json.csproj" />
   </Folder>
 
   <Folder Name="/src/Hosting/">
-    <Project Path="src/Hosting/SafeIR.Hosting/SafeIR.Hosting.csproj" />
-    <Project Path="src/Hosting/SafeIR.Server.Abstractions/SafeIR.Server.Abstractions.csproj" />
-    <Project Path="src/Hosting/SafeIR.Plugins/SafeIR.Plugins.csproj" />
-    <Project Path="src/Hosting/SafeIR.Transport.Http/SafeIR.Transport.Http.csproj" />
+    <Project Path="src/Hosting/DotBoxd.Hosting/DotBoxd.Hosting.csproj" />
+    <Project Path="src/Hosting/DotBoxd.Abstractions/DotBoxd.Abstractions.csproj" />
+    <Project Path="src/Hosting/DotBoxd.Plugins/DotBoxd.Plugins.csproj" />
+    <Project Path="src/Hosting/DotBoxd.Hosting.Http/DotBoxd.Hosting.Http.csproj" />
   </Folder>
 
   <Folder Name="/src/Pushdown/">
-    <Project Path="src/Pushdown/SafeIR.Transport.Ipc.ShaRpc/SafeIR.Transport.Ipc.ShaRpc.csproj" />
+    <Project Path="src/Pushdown/DotBoxd.Pushdown.Services/DotBoxd.Pushdown.Services.csproj" />
   </Folder>
 
   <Folder Name="/src/CodeGeneration/">
-    <Project Path="src/CodeGeneration/ShaRPC.SourceGenerator/ShaRPC.SourceGenerator.csproj" />
-    <Project Path="src/CodeGeneration/SafeIR.PluginAnalyzer/SafeIR.PluginAnalyzer.csproj" />
+    <Project Path="src/CodeGeneration/DotBoxd.Services.SourceGenerator/DotBoxd.Services.SourceGenerator.csproj" />
+    <Project Path="src/CodeGeneration/DotBoxd.Plugins.Analyzer/DotBoxd.Plugins.Analyzer.csproj" />
   </Folder>
 
   <Folder Name="/tests/">
-    <Project Path="tests/SafeIR.Tests/SafeIR.Tests.csproj" />
-    <Project Path="tests/ShaRPC.Tests/ShaRPC.Tests.csproj" />
-    <Project Path="tests/ShaRPC.SourceGenerator.Tests/ShaRPC.SourceGenerator.Tests.csproj" />
-    <Project Path="tests/ShaRPC.Tests.GeneratedFixtures/ShaRPC.Tests.GeneratedFixtures.csproj" />
+    <Project Path="tests/DotBoxd.Kernels.Tests/DotBoxd.Kernels.Tests.csproj" />
+    <Project Path="tests/DotBoxd.Services.Tests/DotBoxd.Services.Tests.csproj" />
+    <Project Path="tests/DotBoxd.Services.SourceGenerator.Tests/DotBoxd.Services.SourceGenerator.Tests.csproj" />
+    <Project Path="tests/DotBoxd.Services.Tests.GeneratedFixtures/DotBoxd.Services.Tests.GeneratedFixtures.csproj" />
   </Folder>
 
   <Folder Name="/benchmarks/">
-    <Project Path="benchmarks/SafeIR.Benchmarks/SafeIR.Benchmarks.csproj" />
-    <Project Path="benchmarks/ShaRPC.Benchmarks/ShaRPC.Benchmarks.csproj" />
+    <Project Path="benchmarks/DotBoxd.Kernels.Benchmarks/DotBoxd.Kernels.Benchmarks.csproj" />
+    <Project Path="benchmarks/DotBoxd.Services.Benchmarks/DotBoxd.Services.Benchmarks.csproj" />
   </Folder>
 
   <Folder Name="/samples/Services/">
@@ -65,21 +65,21 @@
   </Folder>
 
   <Folder Name="/samples/Kernels/">
-    <Project Path="samples/Kernels/Capabilities/SafeIR.Example.Capabilities/SafeIR.Example.Capabilities.csproj" />
-    <Project Path="samples/Kernels/GameServer/SafeIR.Game.Plugin/SafeIR.Game.Plugin.csproj" />
-    <Project Path="samples/Kernels/GameServer/SafeIR.Game.Server/SafeIR.Game.Server.csproj" />
-    <Project Path="samples/Kernels/GameServer/SafeIR.Game.Server.Abstractions/SafeIR.Game.Server.Abstractions.csproj" />
-    <Project Path="samples/Kernels/Hosting/SafeIR.Example.Hosting/SafeIR.Example.Hosting.csproj" />
-    <Project Path="samples/Kernels/HttpTransport/SafeIR.HttpTransportExample/SafeIR.HttpTransportExample.csproj" />
-    <Project Path="samples/Kernels/LocalPlugin/SafeIR.PluginLocal/SafeIR.PluginLocal.csproj" />
-    <Project Path="samples/Kernels/PluginAuthoring/SafeIR.Example.PluginAuthoring/SafeIR.Example.PluginAuthoring.csproj" />
+    <Project Path="samples/Kernels/Capabilities/DotBoxd.Kernels.Example.Capabilities/DotBoxd.Kernels.Example.Capabilities.csproj" />
+    <Project Path="samples/Kernels/GameServer/DotBoxd.Kernels.Game.Plugin/DotBoxd.Kernels.Game.Plugin.csproj" />
+    <Project Path="samples/Kernels/GameServer/DotBoxd.Kernels.Game.Server/DotBoxd.Kernels.Game.Server.csproj" />
+    <Project Path="samples/Kernels/GameServer/DotBoxd.Kernels.Game.Server.Abstractions/DotBoxd.Kernels.Game.Server.Abstractions.csproj" />
+    <Project Path="samples/Kernels/Hosting/DotBoxd.Kernels.Example.Hosting/DotBoxd.Kernels.Example.Hosting.csproj" />
+    <Project Path="samples/Kernels/HttpTransport/DotBoxd.Kernels.HttpTransportExample/DotBoxd.Kernels.HttpTransportExample.csproj" />
+    <Project Path="samples/Kernels/LocalPlugin/DotBoxd.Kernels.PluginLocal/DotBoxd.Kernels.PluginLocal.csproj" />
+    <Project Path="samples/Kernels/PluginAuthoring/DotBoxd.Kernels.Example.PluginAuthoring/DotBoxd.Kernels.Example.PluginAuthoring.csproj" />
   </Folder>
 
   <Folder Name="/samples/Pushdown/">
-    <Project Path="samples/Pushdown/PluginIpc/SafeIR.PluginIpc.Shared/SafeIR.PluginIpc.Shared.csproj" />
-    <Project Path="samples/Pushdown/PluginIpc/SafeIR.PluginIpc.Server.Abstractions/SafeIR.PluginIpc.Server.Abstractions.csproj" />
-    <Project Path="samples/Pushdown/PluginIpc/SafeIR.PluginIpc.Server/SafeIR.PluginIpc.Server.csproj" />
-    <Project Path="samples/Pushdown/PluginIpc/SafeIR.PluginIpc.Client/SafeIR.PluginIpc.Client.csproj" />
+    <Project Path="samples/Pushdown/PluginIpc/DotBoxd.Kernels.PluginIpc.Shared/DotBoxd.Kernels.PluginIpc.Shared.csproj" />
+    <Project Path="samples/Pushdown/PluginIpc/DotBoxd.Kernels.PluginIpc.Server.Abstractions/DotBoxd.Kernels.PluginIpc.Server.Abstractions.csproj" />
+    <Project Path="samples/Pushdown/PluginIpc/DotBoxd.Kernels.PluginIpc.Server/DotBoxd.Kernels.PluginIpc.Server.csproj" />
+    <Project Path="samples/Pushdown/PluginIpc/DotBoxd.Kernels.PluginIpc.Client/DotBoxd.Kernels.PluginIpc.Client.csproj" />
   </Folder>
 
   <Folder Name="/tools/">

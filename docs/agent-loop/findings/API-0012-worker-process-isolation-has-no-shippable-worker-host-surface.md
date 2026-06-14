@@ -25,7 +25,7 @@ duplicate_of:
 
 ## Claim
 
-SafeIR exposes `SandboxIsolation.WorkerProcess`, `ISandboxWorkerClient`, `SandboxWorkerProfile.HardenedOutOfProcess`, and `SandboxHostBuilder.UseWorkerClient(...)` as public host APIs, but the repository does not ship a runnable worker-host implementation, package, or example that proves a real out-of-process boundary. Current coverage uses private in-process fake workers inside tests, so the advertised worker-process mode is effectively a bring-your-own protocol without a consumer-ready surface or release smoke.
+DotBoxd.Kernels exposes `SandboxIsolation.WorkerProcess`, `ISandboxWorkerClient`, `SandboxWorkerProfile.HardenedOutOfProcess`, and `SandboxHostBuilder.UseWorkerClient(...)` as public host APIs, but the repository does not ship a runnable worker-host implementation, package, or example that proves a real out-of-process boundary. Current coverage uses private in-process fake workers inside tests, so the advertised worker-process mode is effectively a bring-your-own protocol without a consumer-ready surface or release smoke.
 
 ## Why this matters
 
@@ -33,11 +33,11 @@ The public API and specs tell hosts to use a separate process/container/restrict
 
 ## Evidence
 
-- `src/SafeIR.Hosting/SandboxWorker.cs:5` exposes `ISandboxWorkerClient`, and `src/SafeIR.Hosting/SandboxWorker.cs:15` exposes `SandboxWorkerProfile` with `HardenedOutOfProcess` at `src/SafeIR.Hosting/SandboxWorker.cs:20`.
-- `src/SafeIR.Hosting/Execution/SandboxHostBuilder.cs:88` exposes `UseWorkerClient(...)` as the host configuration hook, and `src/SafeIR.Core/ExecutionPlan.cs:108` exposes `SandboxIsolation.WorkerProcess`.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:520` through `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:542` documents the worker API and says `SandboxIsolation.WorkerProcess` is an explicit deny-only mode until a host wires a hardened client.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/operations/runbook.md:27` says the boundary requires a worker client and `docs/Specs/Initial/safe-ir-sandbox-spec/README.md:29` recommends a separate process/container/restricted OS account for hard isolation.
-- A targeted repo search found worker implementations only as private test doubles: `tests/SafeIR.Tests/Misc08/WorkerResultHardeningTests.cs:213` declares a private `TestWorker : ISandboxWorkerClient`, and `tests/SafeIR.Tests/Misc08/WorkerIsolationTests.cs:282` declares a private `CapturingWorker : ISandboxWorkerClient`.
+- `src/DotBoxd.Hosting/SandboxWorker.cs:5` exposes `ISandboxWorkerClient`, and `src/DotBoxd.Hosting/SandboxWorker.cs:15` exposes `SandboxWorkerProfile` with `HardenedOutOfProcess` at `src/DotBoxd.Hosting/SandboxWorker.cs:20`.
+- `src/DotBoxd.Hosting/Execution/SandboxHostBuilder.cs:88` exposes `UseWorkerClient(...)` as the host configuration hook, and `src/DotBoxd.Kernels/ExecutionPlan.cs:108` exposes `SandboxIsolation.WorkerProcess`.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:520` through `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:542` documents the worker API and says `SandboxIsolation.WorkerProcess` is an explicit deny-only mode until a host wires a hardened client.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/operations/runbook.md:27` says the boundary requires a worker client and `docs/Specs/Initial/dotboxd-sandbox-spec/README.md:29` recommends a separate process/container/restricted OS account for hard isolation.
+- A targeted repo search found worker implementations only as private test doubles: `tests/DotBoxd.Kernels.Tests/Misc08/WorkerResultHardeningTests.cs:213` declares a private `TestWorker : ISandboxWorkerClient`, and `tests/DotBoxd.Kernels.Tests/Misc08/WorkerIsolationTests.cs:282` declares a private `CapturingWorker : ISandboxWorkerClient`.
 - The shipped examples listed under `examples/` are Addendum, LocalPlugin, and PluginIpc; none contains a worker-process host/client sample or release-smoked worker executable.
 - Existing worker findings cover envelope validation/correctness for worker results. This finding is separate: the public worker-process feature lacks a shippable user-facing integration surface and smoke proof.
 

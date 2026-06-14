@@ -29,11 +29,11 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Core/Bindings/BindingAuditFields.cs:5` exposes the module/policy overload as `public static IReadOnlyDictionary<string, string> Create(...)`.
-- `src/SafeIR.Core/Bindings/BindingAuditFields.cs:14` to `src/SafeIR.Core/Bindings/BindingAuditFields.cs:18` builds a mutable dictionary with `.ToDictionary(...)`, adds `moduleHash` and `policyHash`, and returns that dictionary directly.
-- `src/SafeIR.Core/Bindings/BindingAuditFields.cs:21` exposes the simpler overload as `public static IReadOnlyDictionary<string, string> Create(...)`.
-- `src/SafeIR.Core/Bindings/BindingAuditFields.cs:26` to `src/SafeIR.Core/Bindings/BindingAuditFields.cs:32` builds a mutable `Dictionary<string, string>`, adds optional byte fields, and returns it directly.
-- `tests/SafeIR.Tests/Misc06/PublicModelImmutabilityTests.cs` covers model collection copies and `SandboxAuditEvent` field input copying, but it does not assert that `BindingAuditFields.Create(...)` results are not mutable through dictionary casts.
+- `src/DotBoxd.Kernels/Bindings/BindingAuditFields.cs:5` exposes the module/policy overload as `public static IReadOnlyDictionary<string, string> Create(...)`.
+- `src/DotBoxd.Kernels/Bindings/BindingAuditFields.cs:14` to `src/DotBoxd.Kernels/Bindings/BindingAuditFields.cs:18` builds a mutable dictionary with `.ToDictionary(...)`, adds `moduleHash` and `policyHash`, and returns that dictionary directly.
+- `src/DotBoxd.Kernels/Bindings/BindingAuditFields.cs:21` exposes the simpler overload as `public static IReadOnlyDictionary<string, string> Create(...)`.
+- `src/DotBoxd.Kernels/Bindings/BindingAuditFields.cs:26` to `src/DotBoxd.Kernels/Bindings/BindingAuditFields.cs:32` builds a mutable `Dictionary<string, string>`, adds optional byte fields, and returns it directly.
+- `tests/DotBoxd.Kernels.Tests/Misc06/PublicModelImmutabilityTests.cs` covers model collection copies and `SandboxAuditEvent` field input copying, but it does not assert that `BindingAuditFields.Create(...)` results are not mutable through dictionary casts.
 - Existing `PAL-0024` covers duplicate dictionary allocation in this helper. That is a performance finding, not the public immutability contract issue.
 
 ## Impact

@@ -29,11 +29,11 @@ Short-circuit boolean evaluation reorders operands based on a pure/cost heuristi
 
 ## Evidence
 
-`src/SafeIR.Core/Model/ShortCircuitExpressionOrder.cs` chooses the right operand first when both sides are reorderable and the right side is cheaper. `FunctionAnalyzer` marks expressions reorderable when their effects are pure: numeric binary expressions remain reorderable, and function analyses collapse `CanReorder` to `canReorder && IsPure(finalEffects)`.
+`src/DotBoxd.Kernels/Model/ShortCircuitExpressionOrder.cs` chooses the right operand first when both sides are reorderable and the right side is cheaper. `FunctionAnalyzer` marks expressions reorderable when their effects are pure: numeric binary expressions remain reorderable, and function analyses collapse `CanReorder` to `canReorder && IsPure(finalEffects)`.
 
-Both runtimes consume this reordered plan. `src/SafeIR.Interpreter/ExpressionEvaluator.cs` calls `ShortCircuitExpressionOrder.Choose` for `&&` and `||`, evaluates `order.First`, and may return without evaluating `order.Second`. `src/SafeIR.Compiler/Emitters/ShortCircuitBooleanEmitter.cs` does the same for compiled IL.
+Both runtimes consume this reordered plan. `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs` calls `ShortCircuitExpressionOrder.Choose` for `&&` and `||`, evaluates `order.First`, and may return without evaluating `order.Second`. `src/DotBoxd.Kernels.Compiler/Emitters/ShortCircuitBooleanEmitter.cs` does the same for compiled IL.
 
-Pure numeric expressions can still throw sandbox errors. `src/SafeIR.Core/Sandbox/SandboxInt32Math.cs` throws `InvalidInput` for division or remainder by zero, and `SandboxNumericOperations.Divide` / `Remainder` route `I32` operands through those helpers.
+Pure numeric expressions can still throw sandbox errors. `src/DotBoxd.Kernels/Sandbox/SandboxInt32Math.cs` throws `InvalidInput` for division or remainder by zero, and `SandboxNumericOperations.Divide` / `Remainder` route `I32` operands through those helpers.
 
 A minimal shape is `ExpensiveFalse() && ((1 / 0) == 0)` where `ExpensiveFalse` is a pure helper with a higher estimated cost than the literal division side. Source-order short-circuit semantics should return `false` without evaluating the division. The current chooser can evaluate the cheaper right side first and fail with `integer division by zero`. The dual `ExpensiveTrue() || ((1 / 0) == 0)` has the same problem.
 

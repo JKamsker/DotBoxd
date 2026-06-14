@@ -29,12 +29,12 @@ Compiled binding dispatch recursively validates every binding argument on every 
 
 ## Evidence
 
-- `src/SafeIR.Runtime/CompiledRuntime.cs:244` and `src/SafeIR.Runtime/CompiledRuntime.cs:245` route compiled binding calls through `CompiledBindingDispatcher.CallBinding`.
-- `src/SafeIR.Runtime/CompiledBindingDispatcher.cs:7` through `src/SafeIR.Runtime/CompiledBindingDispatcher.cs:15` resolves the descriptor and calls `ValidateArguments` before charging or invoking the binding.
-- `src/SafeIR.Runtime/CompiledBindingDispatcher.cs:66` through `src/SafeIR.Runtime/CompiledBindingDispatcher.cs:83` checks arity and then calls `SandboxValueValidator.RequireType` for every argument.
-- `SandboxValueValidator.RequireType` allocates traversal state and walks nested values from `src/SafeIR.Core/Sandbox/SandboxValueValidator.cs:14` through `src/SafeIR.Core/Sandbox/SandboxValueValidator.cs:46`, pushing list children at `src/SafeIR.Core/Sandbox/SandboxValueValidator.cs:63` through `src/SafeIR.Core/Sandbox/SandboxValueValidator.cs:68` and map keys/values at `src/SafeIR.Core/Sandbox/SandboxValueValidator.cs:86` through `src/SafeIR.Core/Sandbox/SandboxValueValidator.cs:92`.
-- The diagnostic text at `src/SafeIR.Runtime/CompiledBindingDispatcher.cs:81` says the argument type must match the verified plan, which indicates this is a runtime recheck after compile/verification rather than the primary type proof.
-- Interpreted binding calls do not have the same dispatcher-level `ValidateArguments` step; `src/SafeIR.Interpreter/ExpressionEvaluator.cs:186` invokes the descriptor with the evaluated argument list after `ChargeBindingCall`.
+- `src/DotBoxd.Kernels.Runtime/CompiledRuntime.cs:244` and `src/DotBoxd.Kernels.Runtime/CompiledRuntime.cs:245` route compiled binding calls through `CompiledBindingDispatcher.CallBinding`.
+- `src/DotBoxd.Kernels.Runtime/CompiledBindingDispatcher.cs:7` through `src/DotBoxd.Kernels.Runtime/CompiledBindingDispatcher.cs:15` resolves the descriptor and calls `ValidateArguments` before charging or invoking the binding.
+- `src/DotBoxd.Kernels.Runtime/CompiledBindingDispatcher.cs:66` through `src/DotBoxd.Kernels.Runtime/CompiledBindingDispatcher.cs:83` checks arity and then calls `SandboxValueValidator.RequireType` for every argument.
+- `SandboxValueValidator.RequireType` allocates traversal state and walks nested values from `src/DotBoxd.Kernels/Sandbox/SandboxValueValidator.cs:14` through `src/DotBoxd.Kernels/Sandbox/SandboxValueValidator.cs:46`, pushing list children at `src/DotBoxd.Kernels/Sandbox/SandboxValueValidator.cs:63` through `src/DotBoxd.Kernels/Sandbox/SandboxValueValidator.cs:68` and map keys/values at `src/DotBoxd.Kernels/Sandbox/SandboxValueValidator.cs:86` through `src/DotBoxd.Kernels/Sandbox/SandboxValueValidator.cs:92`.
+- The diagnostic text at `src/DotBoxd.Kernels.Runtime/CompiledBindingDispatcher.cs:81` says the argument type must match the verified plan, which indicates this is a runtime recheck after compile/verification rather than the primary type proof.
+- Interpreted binding calls do not have the same dispatcher-level `ValidateArguments` step; `src/DotBoxd.Kernels.Interpreter/ExpressionEvaluator.cs:186` invokes the descriptor with the evaluated argument list after `ChargeBindingCall`.
 - This is distinct from `PAL-0013`, which covers heap allocation of compiled binding argument arrays. Even if the array allocation is fixed, the dispatcher will still recursively revalidate each argument value on every compiled binding call.
 
 ## Impact

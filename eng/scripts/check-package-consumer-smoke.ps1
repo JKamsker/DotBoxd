@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$root = Split-Path -Parent $PSScriptRoot
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $fullPackageDirectory = if ([System.IO.Path]::IsPathRooted($PackageDirectory)) {
     $PackageDirectory
 } else {
@@ -53,14 +53,14 @@ function ReadPackageVersions {
 
 $versions = ReadPackageVersions
 $requiredIds = @(
-    "SafeIR.Hosting",
-    "SafeIR.Runtime",
-    "SafeIR.Serialization.Json",
-    "SafeIR.Transport.Http",
-    "SafeIR.Plugins",
-    "SafeIR.Server.Abstractions",
-    "SafeIR.PluginAnalyzer",
-    "SafeIR.Transport.Ipc.ShaRpc"
+    "DotBoxd.Hosting",
+    "DotBoxd.Kernels.Runtime",
+    "DotBoxd.Kernels.Serialization.Json",
+    "DotBoxd.Hosting.Http",
+    "DotBoxd.Plugins",
+    "DotBoxd.Abstractions",
+    "DotBoxd.Plugins.Analyzer",
+    "DotBoxd.Pushdown.Services"
 )
 foreach ($id in $requiredIds) {
     if (-not $versions.Contains($id)) {
@@ -105,13 +105,13 @@ $nugetConfig = @"
     <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
   </packageSources>
   <!--
-    Resolve the SafeIR.* packages from the freshly-built local feed only. Pinning version 0.1.0
+    Resolve the DotBoxd.Kernels.* packages from the freshly-built local feed only. Pinning version 0.1.0
     can otherwise collide with a previously published 0.1.0 on nuget.org, so the smoke would test
     stale package contents instead of the local build.
   -->
   <packageSourceMapping>
     <packageSource key="local">
-      <package pattern="SafeIR.*" />
+      <package pattern="DotBoxd.Kernels.*" />
     </packageSource>
     <packageSource key="nuget.org">
       <package pattern="*" />
@@ -131,27 +131,27 @@ $project = @"
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="SafeIR.Hosting" Version="$($versions["SafeIR.Hosting"])" />
-    <PackageReference Include="SafeIR.Runtime" Version="$($versions["SafeIR.Runtime"])" />
-    <PackageReference Include="SafeIR.Serialization.Json" Version="$($versions["SafeIR.Serialization.Json"])" />
-    <PackageReference Include="SafeIR.Transport.Http" Version="$($versions["SafeIR.Transport.Http"])" />
-    <PackageReference Include="SafeIR.Plugins" Version="$($versions["SafeIR.Plugins"])" />
-    <PackageReference Include="SafeIR.Server.Abstractions" Version="$($versions["SafeIR.Server.Abstractions"])" />
-    <PackageReference Include="SafeIR.Transport.Ipc.ShaRpc" Version="$($versions["SafeIR.Transport.Ipc.ShaRpc"])" />
-    <PackageReference Include="SafeIR.PluginAnalyzer" Version="$($versions["SafeIR.PluginAnalyzer"])" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <PackageReference Include="DotBoxd.Hosting" Version="$($versions["DotBoxd.Hosting"])" />
+    <PackageReference Include="DotBoxd.Kernels.Runtime" Version="$($versions["DotBoxd.Kernels.Runtime"])" />
+    <PackageReference Include="DotBoxd.Kernels.Serialization.Json" Version="$($versions["DotBoxd.Kernels.Serialization.Json"])" />
+    <PackageReference Include="DotBoxd.Hosting.Http" Version="$($versions["DotBoxd.Hosting.Http"])" />
+    <PackageReference Include="DotBoxd.Plugins" Version="$($versions["DotBoxd.Plugins"])" />
+    <PackageReference Include="DotBoxd.Abstractions" Version="$($versions["DotBoxd.Abstractions"])" />
+    <PackageReference Include="DotBoxd.Pushdown.Services" Version="$($versions["DotBoxd.Pushdown.Services"])" />
+    <PackageReference Include="DotBoxd.Plugins.Analyzer" Version="$($versions["DotBoxd.Plugins.Analyzer"])" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>
 "@
-Set-Content -LiteralPath (Join-Path $resolvedWorkRoot "SafeIR.PackageConsumerSmoke.csproj") -Value $project
+Set-Content -LiteralPath (Join-Path $resolvedWorkRoot "DotBoxd.Kernels.PackageConsumerSmoke.csproj") -Value $project
 
 $program = @"
-using SafeIR;
-using SafeIR.Hosting;
-using SafeIR.Plugins;
-using SafeIR.Serialization.Json;
-using SafeIR.Transport.Http;
-using SafeIR.Transport.Ipc;
-using SafeIR.PackageConsumerSmoke;
+using DotBoxd.Kernels;
+using DotBoxd.Hosting;
+using DotBoxd.Plugins;
+using DotBoxd.Kernels.Serialization.Json;
+using DotBoxd.Hosting.Http;
+using DotBoxd.Kernels.Transport.Ipc;
+using DotBoxd.Kernels.PackageConsumerSmoke;
 using System.IO;
 
 var host = SandboxHost.Create(builder =>
@@ -169,11 +169,11 @@ var policy = SandboxPolicyBuilder.Create()
     .GrantHttpGet(new[] { "example.com" }, 4096)
     .Build();
 
-var moduleImporter = typeof(SafeIrJsonImporter);
+var moduleImporter = typeof(DotBoxdJsonImporter);
 var pluginUpload = typeof(PluginPackageJsonSerializer);
-var ipc = typeof(SafeIrShaRpcMessagePackIpc);
+var ipc = typeof(DotBoxdDotBoxdRpcMessagePackIpc);
 
-// Prove the packaged SafeIrJsonExporter module-export surface is reachable and that the
+// Prove the packaged DotBoxdJsonExporter module-export surface is reachable and that the
 // documented JSON IR round trip (export -> import -> prepare) works through the public
 // package references and namespaces. If the exporter is dropped from the package, lands in
 // the wrong namespace, or loses a transitive dependency, this consumer fails to compile or
@@ -199,8 +199,8 @@ var roundTripModule = new SandboxModule(
     },
     new Dictionary<string, string>());
 
-var exportedJson = SafeIrJsonExporter.Export(roundTripModule, indented: true);
-var reimported = SafeIrJsonImporter.Import(exportedJson);
+var exportedJson = DotBoxdJsonExporter.Export(roundTripModule, indented: true);
+var reimported = DotBoxdJsonImporter.Import(exportedJson);
 if (reimported.Id != "package-consumer-roundtrip")
 {
     throw new InvalidOperationException(`$"Unexpected round-tripped module id: {reimported.Id}");
@@ -212,7 +212,7 @@ if (!roundTripPlan.Module.Functions.Any(f => f.Id == "main"))
     throw new InvalidOperationException("Round-tripped module is missing its entrypoint after prepare.");
 }
 
-// Prove the packaged SafeIR.PluginAnalyzer source generator produced a callable
+// Prove the packaged DotBoxd.Plugins.Analyzer source generator produced a callable
 // *PluginPackage.Create() factory for the [Plugin] kernel defined below. If the
 // analyzer asset is missing from the package, the generator fails to initialize, or the
 // generated factory cannot build a valid PluginPackage, this consumer will not compile or
@@ -241,9 +241,9 @@ Console.WriteLine($"{host.GetType().Name}:{policy.Hash}:{moduleImporter.Name}:{p
 Set-Content -LiteralPath (Join-Path $resolvedWorkRoot "Program.cs") -Value $program
 
 $kernel = @"
-namespace SafeIR.PackageConsumerSmoke;
+namespace DotBoxd.Kernels.PackageConsumerSmoke;
 
-using SafeIR.Server.Abstractions;
+using DotBoxd.Abstractions;
 
 public sealed record SmokeEvent(string TargetId, string Message, int Amount);
 

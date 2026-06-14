@@ -4,8 +4,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$root = Split-Path -Parent $PSScriptRoot
-$specRoot = Join-Path $root "docs/Specs/Initial/safe-ir-sandbox-spec"
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$specRoot = Join-Path $root "docs/Specs/Initial/dotboxd-sandbox-spec"
 $addendumRoot = Join-Path $root "docs/Specs/Addendum"
 $manifestPath = Join-Path $specRoot "manifest.json"
 
@@ -165,7 +165,7 @@ foreach ($documentSet in $documentSets) {
 $entries = @($entries | Sort-Object { $_["path"] })
 
 $manifest = [ordered] @{
-    name = "safe-ir-sandbox-spec"
+    name = "dotboxd-sandbox-spec"
     created = $created
     files = $entries
 }

@@ -29,9 +29,9 @@ Forwarding audit events to host observers allocates a multicast invocation-list 
 
 ## Evidence
 
-- `src/SafeIR.Hosting/Execution/SandboxHostBuilder.cs:82` through `src/SafeIR.Hosting/Execution/SandboxHostBuilder.cs:85` registers audit observers by appending to the `_auditObserver` multicast delegate.
-- `src/SafeIR.Hosting/Execution/SandboxHost.cs:129` through `src/SafeIR.Hosting/Execution/SandboxHost.cs:139` publishes every event in `result.AuditEvents` after each execution result is produced.
-- `src/SafeIR.Hosting/Execution/SandboxHost.cs:144` through `src/SafeIR.Hosting/Execution/SandboxHost.cs:150` calls `_auditObserver!.GetInvocationList()` inside `PublishToAuditObservers`, so the invocation-list array is allocated once per audit event, then each delegate is cast and invoked.
+- `src/DotBoxd.Hosting/Execution/SandboxHostBuilder.cs:82` through `src/DotBoxd.Hosting/Execution/SandboxHostBuilder.cs:85` registers audit observers by appending to the `_auditObserver` multicast delegate.
+- `src/DotBoxd.Hosting/Execution/SandboxHost.cs:129` through `src/DotBoxd.Hosting/Execution/SandboxHost.cs:139` publishes every event in `result.AuditEvents` after each execution result is produced.
+- `src/DotBoxd.Hosting/Execution/SandboxHost.cs:144` through `src/DotBoxd.Hosting/Execution/SandboxHost.cs:150` calls `_auditObserver!.GetInvocationList()` inside `PublishToAuditObservers`, so the invocation-list array is allocated once per audit event, then each delegate is cast and invoked.
 - Audit event counts grow with per-call/per-resource auditing and with fallback or worker failure paths; the observer set usually changes only during host construction.
 - Existing `PAL-0021` covers copies while constructing `SandboxExecutionResult.AuditEvents`. This finding is the separate post-result observer forwarding allocation. Existing `PAL-0027` covers sanitizer cost and `PAL-0033` covers plugin execution observation retention, not host audit observer dispatch.
 

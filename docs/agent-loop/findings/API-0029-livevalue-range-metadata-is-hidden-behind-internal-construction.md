@@ -25,18 +25,18 @@ duplicate_of:
 
 ## Claim
 
-`SafeIR.Plugins` exposes live-setting range metadata in the public manifest model and enforces it at runtime, but the public host-authored live-value API cannot create a built-in ranged live setting. The only `LiveValue<T>` constructor available to consumers accepts a name and initial value; the constructor that accepts a full `LiveSettingDefinition` is internal.
+`DotBoxd.Plugins` exposes live-setting range metadata in the public manifest model and enforces it at runtime, but the public host-authored live-value API cannot create a built-in ranged live setting. The only `LiveValue<T>` constructor available to consumers accepts a name and initial value; the constructor that accepts a full `LiveSettingDefinition` is internal.
 
 This leaves the package-facing live setting surface inconsistent: generated/imported package settings can carry `Min` and `Max`, while host-authored live values created through `PluginServer.BindValue<T>(...)` or `new LiveValue<T>(...)` cannot express the same contract without custom `ILiveSetting` code.
 
 ## Evidence
 
-- `src/SafeIR.Plugins/PluginManifest.cs` declares public `LiveSettingDefinition(string Name, string Type, object? DefaultValue, object? Min = null, object? Max = null)`.
-- `src/SafeIR.Serialization.Json/PluginPackageJsonSerializer.cs` imports and exports `min` and `max` for live settings.
-- `src/SafeIR.Plugins/Runtime/Lifecycle/LiveSettingTypeConverter.cs` validates numeric range definitions and range values.
-- `src/SafeIR.Plugins/Runtime/LiveSettings.cs` exposes public `LiveValue<T>(string name, T value)` and public `LiveSettingStore(IEnumerable<ILiveSetting> settings)`.
+- `src/DotBoxd.Plugins/PluginManifest.cs` declares public `LiveSettingDefinition(string Name, string Type, object? DefaultValue, object? Min = null, object? Max = null)`.
+- `src/DotBoxd.Kernels.Serialization.Json/PluginPackageJsonSerializer.cs` imports and exports `min` and `max` for live settings.
+- `src/DotBoxd.Plugins/Runtime/Lifecycle/LiveSettingTypeConverter.cs` validates numeric range definitions and range values.
+- `src/DotBoxd.Plugins/Runtime/LiveSettings.cs` exposes public `LiveValue<T>(string name, T value)` and public `LiveSettingStore(IEnumerable<ILiveSetting> settings)`.
 - The only `LiveValue<T>` constructor that can carry a caller-supplied `LiveSettingDefinition` is `internal LiveValue(LiveSettingDefinition definition, T value)`.
-- `src/SafeIR.Plugins/PluginServer.cs` exposes `BindValue<T>(string name, T initialValue)` and always creates an unranged `LiveValue<T>`.
+- `src/DotBoxd.Plugins/PluginServer.cs` exposes `BindValue<T>(string name, T initialValue)` and always creates an unranged `LiveValue<T>`.
 
 ## Impact
 

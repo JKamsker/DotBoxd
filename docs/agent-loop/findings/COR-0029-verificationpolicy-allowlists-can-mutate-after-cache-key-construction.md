@@ -29,13 +29,13 @@ duplicate_of:
 
 ## Evidence
 
-- `src/SafeIR.Verifier/VerificationPolicy.cs:9` through `src/SafeIR.Verifier/VerificationPolicy.cs:15` declares the public policy as a record over six `IReadOnlySet<string>` allowlist/denylist collections with no snapshotting constructor or init accessors.
-- `src/SafeIR.Verifier/VerificationPolicy.cs:116` checks allowed members directly against the live `AllowedMembers` set.
-- `src/SafeIR.Verifier/VerificationPolicy.cs:121` through `src/SafeIR.Verifier/VerificationPolicy.cs:135` recomputes `AllowlistHash` and `RuntimeFacadeHash` from the live sets every time the properties are read.
-- `src/SafeIR.Compiler/CacheKeyBuilder.cs:20` through `src/SafeIR.Compiler/CacheKeyBuilder.cs:37` includes those live hashes in compiled cache keys, and `src/SafeIR.Compiler/CacheKeyBuilder.cs:47` through `src/SafeIR.Compiler/CacheKeyBuilder.cs:59` embeds the runtime facade hash in artifact manifest identity.
-- `src/SafeIR.Verifier/Generated/GeneratedAssemblyVerifier.cs:91` through `src/SafeIR.Verifier/Generated/GeneratedAssemblyVerifier.cs:114` validates assembly/type references against `AllowedAssemblies`, `AllowedAssemblyIdentities`, `AllowedTypes`, and `ForbiddenTypePrefixes`; `src/SafeIR.Verifier/Generated/GeneratedAssemblyVerifier.cs:123` through `src/SafeIR.Verifier/Generated/GeneratedAssemblyVerifier.cs:129` validates member references through `IsMemberAllowed`.
-- `src/SafeIR.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs:13` through `src/SafeIR.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs:22` stores a caller-supplied `VerificationPolicy` instance for later compile/cache use.
-- Existing cache identity tests mutate policy by creating replacement sets with `with`, for example `tests/SafeIR.Tests/Misc01/CacheKeyIdentityTests.cs:16` through `tests/SafeIR.Tests/Misc01/CacheKeyIdentityTests.cs:24`; they do not cover aliasing a mutable set after policy construction.
+- `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs:9` through `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs:15` declares the public policy as a record over six `IReadOnlySet<string>` allowlist/denylist collections with no snapshotting constructor or init accessors.
+- `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs:116` checks allowed members directly against the live `AllowedMembers` set.
+- `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs:121` through `src/DotBoxd.Kernels.Verifier/VerificationPolicy.cs:135` recomputes `AllowlistHash` and `RuntimeFacadeHash` from the live sets every time the properties are read.
+- `src/DotBoxd.Kernels.Compiler/CacheKeyBuilder.cs:20` through `src/DotBoxd.Kernels.Compiler/CacheKeyBuilder.cs:37` includes those live hashes in compiled cache keys, and `src/DotBoxd.Kernels.Compiler/CacheKeyBuilder.cs:47` through `src/DotBoxd.Kernels.Compiler/CacheKeyBuilder.cs:59` embeds the runtime facade hash in artifact manifest identity.
+- `src/DotBoxd.Kernels.Verifier/Generated/GeneratedAssemblyVerifier.cs:91` through `src/DotBoxd.Kernels.Verifier/Generated/GeneratedAssemblyVerifier.cs:114` validates assembly/type references against `AllowedAssemblies`, `AllowedAssemblyIdentities`, `AllowedTypes`, and `ForbiddenTypePrefixes`; `src/DotBoxd.Kernels.Verifier/Generated/GeneratedAssemblyVerifier.cs:123` through `src/DotBoxd.Kernels.Verifier/Generated/GeneratedAssemblyVerifier.cs:129` validates member references through `IsMemberAllowed`.
+- `src/DotBoxd.Kernels.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs:13` through `src/DotBoxd.Kernels.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs:22` stores a caller-supplied `VerificationPolicy` instance for later compile/cache use.
+- Existing cache identity tests mutate policy by creating replacement sets with `with`, for example `tests/DotBoxd.Kernels.Tests/Misc01/CacheKeyIdentityTests.cs:16` through `tests/DotBoxd.Kernels.Tests/Misc01/CacheKeyIdentityTests.cs:24`; they do not cover aliasing a mutable set after policy construction.
 
 A minimal repro shape is:
 
@@ -43,9 +43,9 @@ A minimal repro shape is:
 var members = VerificationPolicy.BoxedValueDefaults().AllowedMembers.ToHashSet(StringComparer.Ordinal);
 var policy = VerificationPolicy.BoxedValueDefaults() with { AllowedMembers = members };
 var before = policy.AllowlistHash;
-members.Add("SafeIR.Runtime.CompiledRuntime.TestOnly(SafeIR.SandboxContext):System.Void");
+members.Add("DotBoxd.Kernels.Runtime.CompiledRuntime.TestOnly(DotBoxd.Kernels.SandboxContext):System.Void");
 Assert.NotEqual(before, policy.AllowlistHash);
-Assert.True(policy.IsMemberAllowed("SafeIR.Runtime.CompiledRuntime.TestOnly(SafeIR.SandboxContext):System.Void"));
+Assert.True(policy.IsMemberAllowed("DotBoxd.Kernels.Runtime.CompiledRuntime.TestOnly(DotBoxd.Kernels.SandboxContext):System.Void"));
 ```
 
 ## Impact

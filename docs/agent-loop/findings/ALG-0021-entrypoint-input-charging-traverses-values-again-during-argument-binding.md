@@ -29,11 +29,11 @@ Entrypoint input handling traverses large values once for quota charging and the
 
 ## Evidence
 
-- `src/SafeIR.Interpreter/InterpreterEvaluator.cs` calls `_context.ChargeValue(input)` in `ExecuteEntrypointAsync`, then immediately calls `EntrypointBinder.BindArguments(function, input)`.
-- `src/SafeIR.Hosting/Execution/CompiledExecutionRunner.cs` calls `context.ChargeValue(input)` before invoking the compiled entrypoint delegate.
-- `src/SafeIR.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs` emits `CompiledRuntime.ValidateEntrypointInput` and one `CompiledRuntime.GetInputArgument` call per parameter in the generated `Execute` method.
-- `src/SafeIR.Runtime/CompiledRuntime.cs` forwards those helpers to `EntrypointBinder.ValidateInputShape` and `EntrypointBinder.GetArgument`.
-- `src/SafeIR.Core/Model/EntrypointBinder.cs` validates each argument through `SandboxValueValidator.RequireType`, which recursively walks list/map values.
+- `src/DotBoxd.Kernels.Interpreter/InterpreterEvaluator.cs` calls `_context.ChargeValue(input)` in `ExecuteEntrypointAsync`, then immediately calls `EntrypointBinder.BindArguments(function, input)`.
+- `src/DotBoxd.Hosting/Execution/CompiledExecutionRunner.cs` calls `context.ChargeValue(input)` before invoking the compiled entrypoint delegate.
+- `src/DotBoxd.Kernels.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs` emits `CompiledRuntime.ValidateEntrypointInput` and one `CompiledRuntime.GetInputArgument` call per parameter in the generated `Execute` method.
+- `src/DotBoxd.Kernels.Runtime/CompiledRuntime.cs` forwards those helpers to `EntrypointBinder.ValidateInputShape` and `EntrypointBinder.GetArgument`.
+- `src/DotBoxd.Kernels/Model/EntrypointBinder.cs` validates each argument through `SandboxValueValidator.RequireType`, which recursively walks list/map values.
 - Existing `PAL-0018` covered repeated traversal for binding returns, and `ALG-0010` covered compiled binding argument revalidation. This finding is the entrypoint input boundary that runs for every sandbox execution.
 
 ## Impact

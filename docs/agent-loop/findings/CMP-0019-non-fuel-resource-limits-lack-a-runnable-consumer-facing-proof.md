@@ -25,22 +25,22 @@ duplicate_of:
 
 ## Claim
 
-SafeIR exposes a broad public resource-limit surface beyond fuel, but the consumer-facing docs and runnable examples do not prove that surface end to end. Hosts can configure loop, host-call, call-depth, wall-time, allocation, collection, string, and log quotas, and `SandboxExecutionResult.ResourceUsage` reports those counters, but the visible examples only show fuel and one host-call default.
+DotBoxd.Kernels exposes a broad public resource-limit surface beyond fuel, but the consumer-facing docs and runnable examples do not prove that surface end to end. Hosts can configure loop, host-call, call-depth, wall-time, allocation, collection, string, and log quotas, and `SandboxExecutionResult.ResourceUsage` reports those counters, but the visible examples only show fuel and one host-call default.
 
 This leaves non-fuel quota behavior as spec/API text instead of a package-backed sample or release proof that users can run while integrating the public packages.
 
 ## Why this matters
 
-Resource limits are part of SafeIR's core sandbox contract. If consumers only see `WithFuel(...)`, they do not get a clear pattern for configuring the other limits, recognizing the public `QuotaExceeded` or `Timeout` results, or reading the corresponding usage counters. A release can also regress non-fuel limit wiring while docs smoke still passes because no user-facing sample exercises those knobs.
+Resource limits are part of DotBoxd.Kernels's core sandbox contract. If consumers only see `WithFuel(...)`, they do not get a clear pattern for configuring the other limits, recognizing the public `QuotaExceeded` or `Timeout` results, or reading the corresponding usage counters. A release can also regress non-fuel limit wiring while docs smoke still passes because no user-facing sample exercises those knobs.
 
 ## Evidence
 
-- `src/SafeIR.Core/Policy.cs:163` through `src/SafeIR.Core/Policy.cs:233` expose non-fuel builder methods for loop iterations, host calls, call depth, wall time, allocations, collection shape, log quotas, and string quotas.
-- `src/SafeIR.Core/Model/ResourceLimits.cs:3` defines the public default limit record used by policies and plans.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:187` through `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:200` list the non-fuel limit methods, and `docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md:206` describes the resource usage counters.
+- `src/DotBoxd.Kernels/Policy.cs:163` through `src/DotBoxd.Kernels/Policy.cs:233` expose non-fuel builder methods for loop iterations, host calls, call depth, wall time, allocations, collection shape, log quotas, and string quotas.
+- `src/DotBoxd.Kernels/Model/ResourceLimits.cs:3` defines the public default limit record used by policies and plans.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:187` through `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:200` list the non-fuel limit methods, and `docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md:206` describes the resource usage counters.
 - `README.md:39` only demonstrates `.WithFuel(10_000)` in the minimal host path.
 - `docs/Specs/Addendum/Examples.md:265` and `docs/Specs/Addendum/Examples.md:266` show only fuel plus `WithMaxHostCalls` in the plugin policy example, not a general quota walkthrough.
-- `docs/Specs/Initial/safe-ir-sandbox-spec/checklists/release-readiness.md:19` marks fuel limits as implemented in the required gate, while worker resource limits remain inventory-only at `docs/Specs/Initial/safe-ir-sandbox-spec/checklists/release-readiness.md:48`.
+- `docs/Specs/Initial/dotboxd-sandbox-spec/checklists/release-readiness.md:19` marks fuel limits as implemented in the required gate, while worker resource limits remain inventory-only at `docs/Specs/Initial/dotboxd-sandbox-spec/checklists/release-readiness.md:48`.
 
 ## Suggested test or benchmark
 

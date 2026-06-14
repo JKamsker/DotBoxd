@@ -1,6 +1,6 @@
-# ShaRPC Unity Integration Guide
+# DotBoxd Unity Integration Guide
 
-A comprehensive guide to integrating ShaRPC into your Unity project for type-safe, high-performance client-server communication.
+A comprehensive guide to integrating DotBoxd into your Unity project for type-safe, high-performance client-server communication.
 
 ## Table of Contents
 
@@ -21,7 +21,7 @@ A comprehensive guide to integrating ShaRPC into your Unity project for type-saf
 
 ## Overview
 
-ShaRPC is a transport-agnostic RPC framework designed with Unity compatibility as a primary goal. It uses compile-time source generation to create type-safe proxies and dispatchers, avoiding runtime reflection that causes issues with IL2CPP builds.
+DotBoxd is a transport-agnostic RPC framework designed with Unity compatibility as a primary goal. It uses compile-time source generation to create type-safe proxies and dispatchers, avoiding runtime reflection that causes issues with IL2CPP builds.
 
 ### Key Features for Unity
 
@@ -36,7 +36,7 @@ ShaRPC is a transport-agnostic RPC framework designed with Unity compatibility a
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Shared Library                          │
-│  [ShaRpcService] IGameService + Models (PlayerId, PlayerState)  │
+│  [DotBoxdService] IGameService + Models (PlayerId, PlayerState)  │
 └─────────────────────────────────────────────────────────────────┘
                     │                           │
                     ▼                           ▼
@@ -90,9 +90,9 @@ YourGame/
 │   └── YourGameClient/            # Unity project
 │       └── Assets/
 │           ├── Plugins/
-│           │   ├── ShaRPC.Core.dll
-│           │   ├── ShaRPC.Transports.Tcp.dll
-│           │   ├── ShaRPC.Serializers.MessagePack.dll
+│           │   ├── DotBoxd.Services.dll
+│           │   ├── DotBoxd.Transports.Tcp.dll
+│           │   ├── DotBoxd.Codecs.MessagePack.dll
 │           │   ├── YourGame.Shared.dll
 │           │   └── MessagePack.dll
 │           └── Scripts/
@@ -118,8 +118,8 @@ Create `YourGame.Shared.csproj`:
 
   <!-- Reference source generator for proxy/dispatcher generation -->
   <ItemGroup>
-    <ProjectReference Include="..\ShaRPC.Core\ShaRPC.Core.csproj" />
-    <ProjectReference Include="..\ShaRPC.SourceGenerator\ShaRPC.SourceGenerator.csproj"
+    <ProjectReference Include="..\DotBoxd.Services\DotBoxd.Services.csproj" />
+    <ProjectReference Include="..\DotBoxd.Services.SourceGenerator\DotBoxd.Services.SourceGenerator.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
   </ItemGroup>
@@ -138,10 +138,10 @@ UNITY_PLUGINS="unity/YourGameClient/Assets/Plugins"
 
 dotnet build src/YourGame.Shared/YourGame.Shared.csproj -c Release
 
-# Copy ShaRPC libraries
-cp src/ShaRPC.Core/bin/Release/netstandard2.1/ShaRPC.Core.dll "$UNITY_PLUGINS/"
-cp src/ShaRPC.Transports.Tcp/bin/Release/netstandard2.1/ShaRPC.Transports.Tcp.dll "$UNITY_PLUGINS/"
-cp src/ShaRPC.Serializers.MessagePack/bin/Release/netstandard2.1/ShaRPC.Serializers.MessagePack.dll "$UNITY_PLUGINS/"
+# Copy DotBoxd libraries
+cp src/DotBoxd.Services/bin/Release/netstandard2.1/DotBoxd.Services.dll "$UNITY_PLUGINS/"
+cp src/DotBoxd.Transports.Tcp/bin/Release/netstandard2.1/DotBoxd.Transports.Tcp.dll "$UNITY_PLUGINS/"
+cp src/DotBoxd.Codecs.MessagePack/bin/Release/netstandard2.1/DotBoxd.Codecs.MessagePack.dll "$UNITY_PLUGINS/"
 
 # Copy shared library
 cp src/YourGame.Shared/bin/Release/netstandard2.1/YourGame.Shared.dll "$UNITY_PLUGINS/"
@@ -160,11 +160,11 @@ echo "DLLs copied to Unity"
 
 ```csharp
 // YourGame.Shared/IGameService.cs
-using ShaRPC.Core.Attributes;
+using DotBoxd.Services.Attributes;
 
 namespace YourGame.Shared;
 
-[ShaRpcService]
+[DotBoxdService]
 public interface IGameService
 {
     // Simple request/response
@@ -245,10 +245,10 @@ public class PlayerInput
 ### Custom Method Names (Optional)
 
 ```csharp
-[ShaRpcService(Name = "Game")]
+[DotBoxdService(Name = "Game")]
 public interface IGameService
 {
-    [ShaRpcMethod(Name = "Info")]
+    [DotBoxdMethod(Name = "Info")]
     Task<ServerInfo> GetServerInfoAsync(CancellationToken ct = default);
 }
 ```
@@ -333,10 +333,10 @@ public class GameService : IGameService
 // YourGame.Server/Program.cs
 using YourGame.Server;
 using YourGame.Shared;
-using ShaRPC.Core;
-using ShaRPC.Generated;
-using ShaRPC.Serializers.MessagePack;
-using ShaRPC.Transports.Tcp;
+using DotBoxd.Services;
+using DotBoxd.Services.Generated;
+using DotBoxd.Codecs.MessagePack;
+using DotBoxd.Transports.Tcp;
 
 const int Port = 7777;
 
@@ -379,10 +379,10 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
-using ShaRPC.Core;
-using ShaRPC.Generated;
-using ShaRPC.Serializers.MessagePack;
-using ShaRPC.Transports.Tcp;
+using DotBoxd.Services;
+using DotBoxd.Services.Generated;
+using DotBoxd.Codecs.MessagePack;
+using DotBoxd.Transports.Tcp;
 using YourGame.Shared;
 
 public class NetworkManager : MonoBehaviour
@@ -836,29 +836,29 @@ public class ConnectionHealth : MonoBehaviour
 ### Exception Types
 
 ```csharp
-using ShaRPC.Core.Exceptions;
+using DotBoxd.Services.Exceptions;
 
 try
 {
     var result = await NetworkManager.Instance.GameService.GetPlayerAsync(playerId);
 }
-catch (ShaRpcTimeoutException)
+catch (DotBoxdRpcTimeoutException)
 {
     // Request timed out
     Debug.LogWarning("Request timed out - server may be overloaded");
 }
-catch (ShaRpcRemoteException ex)
+catch (DotBoxdRpcRemoteException ex)
 {
     // Server threw an exception
     Debug.LogError($"Server error ({ex.RemoteExceptionType}): {ex.Message}");
 }
-catch (ShaRpcConnectionException)
+catch (DotBoxdRpcConnectionException)
 {
     // Connection lost
     Debug.LogError("Connection lost");
     // Trigger reconnection logic
 }
-catch (ShaRpcException ex)
+catch (DotBoxdRpcException ex)
 {
     // Other RPC errors
     Debug.LogError($"RPC error: {ex.Message}");
@@ -872,7 +872,7 @@ catch (ShaRpcException ex)
 using System;
 using System.Threading.Tasks;
 using UnityEngine;
-using ShaRPC.Core.Exceptions;
+using DotBoxd.Services.Exceptions;
 
 public static class RpcHelper
 {
@@ -885,19 +885,19 @@ public static class RpcHelper
         {
             return await call();
         }
-        catch (ShaRpcTimeoutException ex)
+        catch (DotBoxdRpcTimeoutException ex)
         {
             Debug.LogWarning($"RPC timeout: {ex.Message}");
             onError?.Invoke(ex);
             return defaultValue;
         }
-        catch (ShaRpcRemoteException ex)
+        catch (DotBoxdRpcRemoteException ex)
         {
             Debug.LogError($"Server error: {ex.Message}");
             onError?.Invoke(ex);
             return defaultValue;
         }
-        catch (ShaRpcConnectionException ex)
+        catch (DotBoxdRpcConnectionException ex)
         {
             Debug.LogError($"Connection error: {ex.Message}");
             onError?.Invoke(ex);
@@ -1014,10 +1014,10 @@ Create `Assets/link.xml` to prevent code stripping:
 
 ```xml
 <linker>
-    <!-- Preserve ShaRPC -->
-    <assembly fullname="ShaRPC.Core" preserve="all"/>
-    <assembly fullname="ShaRPC.Transports.Tcp" preserve="all"/>
-    <assembly fullname="ShaRPC.Serializers.MessagePack" preserve="all"/>
+    <!-- Preserve DotBoxd -->
+    <assembly fullname="DotBoxd.Services" preserve="all"/>
+    <assembly fullname="DotBoxd.Transports.Tcp" preserve="all"/>
+    <assembly fullname="DotBoxd.Codecs.MessagePack" preserve="all"/>
 
     <!-- Preserve your shared library -->
     <assembly fullname="YourGame.Shared" preserve="all"/>
@@ -1286,9 +1286,9 @@ Register multiple services on the same server:
 
 ```csharp
 // Shared
-[ShaRpcService] public interface IGameService { ... }
-[ShaRpcService] public interface IChatService { ... }
-[ShaRpcService] public interface IInventoryService { ... }
+[DotBoxdService] public interface IGameService { ... }
+[DotBoxdService] public interface IChatService { ... }
+[DotBoxdService] public interface IInventoryService { ... }
 
 // Server: provide every service on each accepted peer
 await using var host = RpcHost
@@ -1308,7 +1308,7 @@ var inventory = peer.GetInventoryService();
 
 ### Server-to-Client Notifications (Future)
 
-While ShaRPC currently supports request/response patterns, you can implement push notifications using a polling pattern or extend the protocol:
+While DotBoxd currently supports request/response patterns, you can implement push notifications using a polling pattern or extend the protocol:
 
 ```csharp
 // Polling approach
@@ -1337,7 +1337,7 @@ public class NotificationPoller : MonoBehaviour
 
 ## Version Compatibility
 
-| ShaRPC Version | Unity Version | .NET Server | MessagePack |
+| DotBoxd Version | Unity Version | .NET Server | MessagePack |
 |----------------|---------------|-------------|-------------|
 | 1.0.x          | 2021.3+       | 6.0+        | 2.5.x       |
 

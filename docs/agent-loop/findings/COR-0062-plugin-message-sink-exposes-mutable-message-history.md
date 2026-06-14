@@ -25,7 +25,7 @@ duplicate_of:
 
 ## Evidence
 
-`InMemoryPluginMessageSink.Messages` is typed as `IReadOnlyList<PluginMessage>` but returns the private mutable `List<PluginMessage>` instance directly (`src/SafeIR.Plugins/Contracts.cs`). Any consumer can cast the property value back to `List<PluginMessage>` and add, remove, or clear messages outside the sink APIs.
+`InMemoryPluginMessageSink.Messages` is typed as `IReadOnlyList<PluginMessage>` but returns the private mutable `List<PluginMessage>` instance directly (`src/DotBoxd.Plugins/Contracts.cs`). Any consumer can cast the property value back to `List<PluginMessage>` and add, remove, or clear messages outside the sink APIs.
 
 ## Impact
 

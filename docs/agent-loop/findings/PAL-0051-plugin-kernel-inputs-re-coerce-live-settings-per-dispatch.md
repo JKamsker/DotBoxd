@@ -29,12 +29,12 @@ Plugin kernel input construction converts every manifest live setting into a fre
 
 ## Evidence
 
-- `src/SafeIR.Plugins/InstalledKernel.cs:285` builds input for every `ShouldHandleAsync`, `HandleAsync`, and hook `InvokeAsync` call and passes `Manifest.LiveSettings` plus the shared `LiveSettingStore` into `PluginKernelInputBuilder.Build`.
-- `src/SafeIR.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:36` and `src/SafeIR.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:52` call `value.ToSandboxValue(...)` for the single-live-setting input case.
-- `src/SafeIR.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:73` and `src/SafeIR.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:88` call `value.CopySandboxValues(...)` for multi-value inputs.
-- `src/SafeIR.Plugins/Runtime/LiveSettings.cs:132` through `src/SafeIR.Plugins/Runtime/LiveSettings.cs:147` take the store lock and call each setting slot's `ToSandboxValue()` while building the input array.
-- `src/SafeIR.Plugins/Runtime/LiveSettings.cs:49` through `src/SafeIR.Plugins/Runtime/LiveSettings.cs:50` and `src/SafeIR.Plugins/Runtime/LiveSettings.cs:235` through `src/SafeIR.Plugins/Runtime/LiveSettings.cs:236` route each setting through `LiveSettingTypeConverter.ToSandboxValue(...)`.
-- `src/SafeIR.Plugins/Runtime/Lifecycle/LiveSettingTypeConverter.cs:108` through `src/SafeIR.Plugins/Runtime/Lifecycle/LiveSettingTypeConverter.cs:115` re-coerces the current CLR value and creates a new scalar `SandboxValue` wrapper for every conversion.
+- `src/DotBoxd.Plugins/InstalledKernel.cs:285` builds input for every `ShouldHandleAsync`, `HandleAsync`, and hook `InvokeAsync` call and passes `Manifest.LiveSettings` plus the shared `LiveSettingStore` into `PluginKernelInputBuilder.Build`.
+- `src/DotBoxd.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:36` and `src/DotBoxd.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:52` call `value.ToSandboxValue(...)` for the single-live-setting input case.
+- `src/DotBoxd.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:73` and `src/DotBoxd.Plugins/Runtime/Input/PluginKernelInputBuilder.cs:88` call `value.CopySandboxValues(...)` for multi-value inputs.
+- `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:132` through `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:147` take the store lock and call each setting slot's `ToSandboxValue()` while building the input array.
+- `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:49` through `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:50` and `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:235` through `src/DotBoxd.Plugins/Runtime/LiveSettings.cs:236` route each setting through `LiveSettingTypeConverter.ToSandboxValue(...)`.
+- `src/DotBoxd.Plugins/Runtime/Lifecycle/LiveSettingTypeConverter.cs:108` through `src/DotBoxd.Plugins/Runtime/Lifecycle/LiveSettingTypeConverter.cs:115` re-coerces the current CLR value and creates a new scalar `SandboxValue` wrapper for every conversion.
 - Existing `PAL-0040` covers the working-array plus defensive-snapshot copy for multi-value inputs. Existing `ALG-0019` covers double coercion during live-setting updates. This finding is the steady-state dispatch cost of re-coercing and re-boxing unchanged settings before sandbox execution.
 
 ## Impact

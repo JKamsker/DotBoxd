@@ -1,0 +1,161 @@
+{
+  "name": "dotboxd-sandbox-spec",
+  "created": "2026-06-11",
+  "files": [
+    {
+      "path": "../Addendum/Addendum.md",
+      "sha256": "4c39f8903e13f68b962b9c5d10736a0825ffdfc3e8e64315a8d7898401ee3764",
+      "bytes": 27773
+    },
+    {
+      "path": "../Addendum/Examples.md",
+      "sha256": "e3599029c73309554cc8ae2f709c748e3b8f08ea2d30b4b0a30fb9d834a3036f",
+      "bytes": 22824
+    },
+    {
+      "path": "adr/0001-restricted-ir-not-csharp.md",
+      "sha256": "553d22b98990bae71d181a25054112a1cf089110120dec3c8443b6fd580aa530",
+      "bytes": 1437
+    },
+    {
+      "path": "adr/0002-two-execution-backends.md",
+      "sha256": "05183123de61d62c6ab086904c65743c87b3912b012d947b70bf9b05bf2ca772",
+      "bytes": 1460
+    },
+    {
+      "path": "adr/0003-host-granted-bindings.md",
+      "sha256": "d86a267c6fde3dc00b6579a48d41e0f6e93ed95743df0e3218deeb6f3553aaf1",
+      "bytes": 1047
+    },
+    {
+      "path": "checklists/release-readiness.md",
+      "sha256": "7a15bfec9639829014d5b777995722bcf39f7f37be7aa4d4e1187f907fc22e9f",
+      "bytes": 2160
+    },
+    {
+      "path": "checklists/security-review.md",
+      "sha256": "ae967f403f86423329b4a43548734dc907f734f990ac6d5c0d281d3b0501ed36",
+      "bytes": 3684
+    },
+    {
+      "path": "examples/example-binding-manifest.md",
+      "sha256": "25a182743e6fb8cf08e2a523177626d74c7a79ea89f3467ddf382987798826d5",
+      "bytes": 1928
+    },
+    {
+      "path": "examples/example-ir.md",
+      "sha256": "0ff4247cfbc5e45ba85390f5fcaa49b32ed031a3a36e6203d96f132e9e97b585",
+      "bytes": 2405
+    },
+    {
+      "path": "operations/error-codes.md",
+      "sha256": "7ccdfe74b1369acb84c4fe31038fe8b0ed67a89e1955b7931b0b9e0b4d1eef8e",
+      "bytes": 11153
+    },
+    {
+      "path": "operations/runbook.md",
+      "sha256": "e85b7bd22ca8cd914d3c2b6118f1d97b9376dabdfd85e6dbe1723c2258b90408",
+      "bytes": 4469
+    },
+    {
+      "path": "README.md",
+      "sha256": "e55a2a6212296f30d7c2c33433c37c1eb0210c262a96969ed3338432992e7c1a",
+      "bytes": 4695
+    },
+    {
+      "path": "references.md",
+      "sha256": "5bc3cdd11cddbd71ef53b4f11bf9789e28beba58085fb14dbd030e90a970b8a8",
+      "bytes": 1831
+    },
+    {
+      "path": "spec/00-overview.md",
+      "sha256": "e233a766d48445422f12489bb2a2648062b2a89225f3ab6b4b45bdc01f2a2198",
+      "bytes": 5173
+    },
+    {
+      "path": "spec/01-goals-non-goals.md",
+      "sha256": "3ae006ccb7767a6487df896b782986ad8aef9543e60a0e8f89fb8d9cf6f7ff89",
+      "bytes": 4333
+    },
+    {
+      "path": "spec/02-threat-model.md",
+      "sha256": "c8c7f66a161539060f5d1bab9afc4983dc42a304ae4986d41f19ec5ce86f69f1",
+      "bytes": 6709
+    },
+    {
+      "path": "spec/03-architecture.md",
+      "sha256": "a2bbb02e4949996865fb00a84eaba0cc0ec787adb60822d353b12aa5a2ef123d",
+      "bytes": 9560
+    },
+    {
+      "path": "spec/04-ir-language.md",
+      "sha256": "a93b97c6a6b6794fab6467554e7899e75244d70f542b540848bf2e1c218995c1",
+      "bytes": 6112
+    },
+    {
+      "path": "spec/05-type-system.md",
+      "sha256": "84eb8995f28dd5b21df6c4690a86ff38eb3f2b72dd367c759d29c75dc8718d0e",
+      "bytes": 6680
+    },
+    {
+      "path": "spec/06-effects-capabilities.md",
+      "sha256": "040b7645635775e659ecd3a0427bd8bd53da63c0f2e13cfeecfd213be14d6724",
+      "bytes": 6278
+    },
+    {
+      "path": "spec/07-bindings.md",
+      "sha256": "b531cf4a26ce0a111b173c9a7fe6bcbccbdef0df473440f114f694404eb7bb70",
+      "bytes": 8403
+    },
+    {
+      "path": "spec/08-runtime-safe-apis.md",
+      "sha256": "03cc4abe0212a9672aed269019eb01ba98c1907e341ae39ddc3553a4e2220164",
+      "bytes": 8031
+    },
+    {
+      "path": "spec/09-interpreted-mode.md",
+      "sha256": "85e1dee2e4bd006c5e5985ced91c126b7365e76ffe7c4547e9bd2c916fc86b91",
+      "bytes": 6347
+    },
+    {
+      "path": "spec/10-compiled-mode.md",
+      "sha256": "57475600995660f8d5e51c14630233d6551274aa8a7c3e649146b7418d3556f7",
+      "bytes": 9414
+    },
+    {
+      "path": "spec/11-generated-code-verifier.md",
+      "sha256": "17a1373793d0d1beb5bf9e0f3bcb5529a2886ad41bd2f5fb11ee28fcd66b229e",
+      "bytes": 8134
+    },
+    {
+      "path": "spec/12-resource-limits.md",
+      "sha256": "4db93f3143d2928ad70604c0d85ee04894e80e696526c6e852624f5f17156dbd",
+      "bytes": 7877
+    },
+    {
+      "path": "spec/13-cache-versioning.md",
+      "sha256": "8b1aab85fb7514c6227ad766ed639b957fc747ca699f204ab9abec97ae8e1fe3",
+      "bytes": 5696
+    },
+    {
+      "path": "spec/14-observability-audit.md",
+      "sha256": "77d9f4a2398e4490ad41dfc1ce9c4fd2e5389813a2be92888a307ba8d67d23c1",
+      "bytes": 5735
+    },
+    {
+      "path": "spec/15-testing-red-team.md",
+      "sha256": "ea4df41c9fbff293128a5bee9c0fec211405aa68e365241b168e22f819528f0f",
+      "bytes": 7765
+    },
+    {
+      "path": "spec/16-public-api.md",
+      "sha256": "c98ff76b61a8df3dca13fe4b36038a2f0ed134dd68131d62002446579ca40647",
+      "bytes": 24411
+    },
+    {
+      "path": "spec/17-implementation-plan.md",
+      "sha256": "40b7a4a35ef883218a6743ac11b5008e4b288f3063ebc1a5bb013874ecaf765c",
+      "bytes": 4481
+    }
+  ]
+}

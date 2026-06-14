@@ -25,7 +25,7 @@ duplicate_of:
 
 ## Evidence
 
-`SandboxContext.RequireCapability` emits a `PolicyDenied` audit event with `DateTimeOffset.UtcNow` when policy denies a capability (`src/SafeIR.Core/Sandbox/SandboxContext.cs`). The same context already has `AuditTimestamp()`, which uses the policy logical clock for deterministic policies, and other runtime bindings use that deterministic audit clock for their emitted events.
+`SandboxContext.RequireCapability` emits a `PolicyDenied` audit event with `DateTimeOffset.UtcNow` when policy denies a capability (`src/DotBoxd.Kernels/Sandbox/SandboxContext.cs`). The same context already has `AuditTimestamp()`, which uses the policy logical clock for deterministic policies, and other runtime bindings use that deterministic audit clock for their emitted events.
 
 This is separate from synthesized `BindingCall` failure audits: the denial is emitted directly inside `RequireCapability` before the caller can normalize the timestamp.
 

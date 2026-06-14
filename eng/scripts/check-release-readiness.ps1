@@ -4,10 +4,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$root = Split-Path -Parent $PSScriptRoot
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $checklists = @(
-    Join-Path $root "docs/Specs/Initial/safe-ir-sandbox-spec/checklists/release-readiness.md"
-    Join-Path $root "docs/Specs/Initial/safe-ir-sandbox-spec/checklists/security-review.md"
+    Join-Path $root "docs/Specs/Initial/dotboxd-sandbox-spec/checklists/release-readiness.md"
+    Join-Path $root "docs/Specs/Initial/dotboxd-sandbox-spec/checklists/security-review.md"
 )
 
 $items = @()
@@ -69,127 +69,127 @@ function Assert-Evidence([string] $ChecklistText, [string] $Path, [string[]] $Pa
 }
 
 function Assert-CompletedItemEvidence {
-    $releaseReadiness = Join-Path $root "docs/Specs/Initial/safe-ir-sandbox-spec/checklists/release-readiness.md"
-    $securityReview = Join-Path $root "docs/Specs/Initial/safe-ir-sandbox-spec/checklists/security-review.md"
+    $releaseReadiness = Join-Path $root "docs/Specs/Initial/dotboxd-sandbox-spec/checklists/release-readiness.md"
+    $securityReview = Join-Path $root "docs/Specs/Initial/dotboxd-sandbox-spec/checklists/security-review.md"
     $releaseEvidence = @(
         @{
             Text = "Restricted IR implemented."
-            Path = "src/SafeIR.Core/ModuleModel.cs"
+            Path = "src/DotBoxd.Kernels/ModuleModel.cs"
             Patterns = @("SandboxModule", "Expression")
         },
         @{
             Text = "Canonical hashing implemented."
-            Path = "src/SafeIR.Core/Model/CanonicalModuleHasher.cs"
+            Path = "src/DotBoxd.Kernels/Model/CanonicalModuleHasher.cs"
             Patterns = @("Hash", "Serialize")
         },
         @{
             Text = "Type checker implemented."
-            Path = "src/SafeIR.Validation/FunctionAnalyzer.cs"
+            Path = "src/DotBoxd.Kernels.Validation/FunctionAnalyzer.cs"
             Patterns = @("Analyze", "SandboxType")
         },
         @{
             Text = "Effect analyzer implemented."
-            Path = "src/SafeIR.Validation/FunctionAnalyzer.cs"
+            Path = "src/DotBoxd.Kernels.Validation/FunctionAnalyzer.cs"
             Patterns = @("Effects", "Binding")
         },
         @{
             Text = "Capability policy implemented."
-            Path = "src/SafeIR.Core/Policy.cs"
+            Path = "src/DotBoxd.Kernels/Policy.cs"
             Patterns = @("CapabilityGrant", "SandboxPolicy")
         },
         @{
             Text = "Binding registry validation implemented."
-            Path = "src/SafeIR.Core/Bindings/BindingRegistryValidator.cs"
+            Path = "src/DotBoxd.Kernels/Bindings/BindingRegistryValidator.cs"
             Patterns = @("Validate", "BindingDescriptor")
         },
         @{
             Text = "Interpreted mode implemented."
-            Path = "src/SafeIR.Interpreter/SandboxInterpreter.cs"
+            Path = "src/DotBoxd.Kernels.Interpreter/SandboxInterpreter.cs"
             Patterns = @("ExecuteAsync", "ExecuteEntrypointAsync")
         },
         @{
             Text = "Fuel limits implemented."
-            Path = "src/SafeIR.Core/Model/Resources.cs"
+            Path = "src/DotBoxd.Kernels/Model/Resources.cs"
             Patterns = @("ChargeFuel", "MaxFuel")
         },
         @{
             Text = "Safe error model implemented."
-            Path = "src/SafeIR.Core/Model/Diagnostics.cs"
+            Path = "src/DotBoxd.Kernels/Model/Diagnostics.cs"
             Patterns = @("SandboxError", "SafeMessage")
         },
         @{
             Text = "Basic audit implemented."
-            Path = "src/SafeIR.Core/Bindings/Audit.cs"
+            Path = "src/DotBoxd.Kernels/Bindings/Audit.cs"
             Patterns = @("SandboxAuditEvent", "IAuditSink")
         },
         @{
             Text = "At least one safe file binding implemented and tested."
-            Path = "tests/SafeIR.Tests/Runtime/File/SafeFileSystemTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Runtime/File/SafeFileSystemTests.cs"
             Patterns = @("Granted_file_read", "file.readText")
         },
         @{
             Text = "Path traversal tests pass."
-            Path = "tests/SafeIR.Tests/Runtime/File/SafeFileSystemTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Runtime/File/SafeFileSystemTests.cs"
             Patterns = @("\.\./secret\.txt", "config/\.\./\.\./secret\.txt")
         },
         @{
             Text = "Binding security checklist passes."
-            Path = "tests/SafeIR.Tests/Bindings/BindingRegistryHardeningTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Bindings/BindingRegistryHardeningTests.cs"
             Patterns = @("E-BINDING-AUDIT", "E-BINDING-GRANT", "E-BINDING-TYPE")
         },
         @{
             Text = "Compiler emits valid managed assemblies."
-            Path = "src/SafeIR.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs"
+            Path = "src/DotBoxd.Kernels.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs"
             Patterns = @("AssemblyBuilder", "CompileAsync")
         },
         @{
             Text = "Generated assemblies use runtime stubs only."
-            Path = "src/SafeIR.Compiler/Emitters/MethodEmitter.cs"
+            Path = "src/DotBoxd.Kernels.Compiler/Emitters/MethodEmitter.cs"
             Patterns = @("CompiledRuntime", "EmitCall")
         },
         @{
             Text = "Verifier implemented."
-            Path = "src/SafeIR.Verifier/Generated/GeneratedAssemblyVerifier.cs"
+            Path = "src/DotBoxd.Kernels.Verifier/Generated/GeneratedAssemblyVerifier.cs"
             Patterns = @("VerifyAsync", "VerificationResult")
         },
         @{
             Text = "Verifier malicious fixtures pass."
-            Path = "tests/SafeIR.Tests/Verifier/Core/VerifierAttackMatrixTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Verifier/Core/VerifierAttackMatrixTests.cs"
             Patterns = @("HttpClient", "ProcessStart", "Calli")
         },
         @{
             Text = "Compiled/interpreted differential tests pass."
-            Path = "tests/SafeIR.Tests/Fuzz/DifferentialFuzzTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Fuzz/DifferentialFuzzTests.cs"
             Patterns = @("ExecutionMode\.Interpreted", "ExecutionMode\.Compiled")
         },
         @{
             Text = "Path traversal tests pass."
-            Path = "tests/SafeIR.Tests/Runtime/File/SafeFileSystemTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Runtime/File/SafeFileSystemTests.cs"
             Patterns = @("\.\./secret\.txt", "config/\.\./\.\./secret\.txt")
         },
         @{
             Text = "DLL cache manifest implemented."
-            Path = "src/SafeIR.Verifier/Generated/VerificationModels.cs"
+            Path = "src/DotBoxd.Kernels.Verifier/Generated/VerificationModels.cs"
             Patterns = @("ArtifactManifest", "CacheKey")
         },
         @{
             Text = "Cache invalidation tests pass."
-            Path = "tests/SafeIR.Tests/Compiled/Core/CompiledCacheMetadataTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Compiled/Core/CompiledCacheMetadataTests.cs"
             Patterns = @("CacheKey", "quarantined_and_recompiled")
         },
         @{
             Text = "Cache corruption tests pass."
-            Path = "tests/SafeIR.Tests/Compiled/Core/CompiledMaterializationCacheTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Compiled/Core/CompiledMaterializationCacheTests.cs"
             Patterns = @("MutatesSecondArtifactCompiler", "AssemblyBytes")
         },
         @{
             Text = '`AssemblyLoadContext` lifecycle tested.'
-            Path = "tests/SafeIR.Tests/Compiled/Core/CompiledMaterializationCacheTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Compiled/Core/CompiledMaterializationCacheTests.cs"
             Patterns = @("WeakReference", "AssemblyLoadContext")
         },
         @{
             Text = "Fallback behavior documented."
-            Path = "docs/Specs/Initial/safe-ir-sandbox-spec/spec/16-public-api.md"
+            Path = "docs/Specs/Initial/dotboxd-sandbox-spec/spec/16-public-api.md"
             Patterns = @("Fallback behavior", "AllowFallbackToInterpreter")
         }
     )
@@ -224,47 +224,47 @@ function Assert-CompletedItemEvidence {
 
     $securitySectionEvidence = @{
         "User input" = @{
-            Path = "tests/SafeIR.Tests/Serialization/JsonImporterTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Serialization/JsonImporterTests.cs"
             Patterns = @("unsupported_properties", "assemblyName")
         }
         "IR" = @{
-            Path = "tests/SafeIR.Tests/Serialization/JsonImporterTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Serialization/JsonImporterTests.cs"
             Patterns = @("targetSandboxVersion", "reject")
         }
         "Type system" = @{
-            Path = "src/SafeIR.Core/Sandbox/SandboxType.cs"
+            Path = "src/DotBoxd.Kernels/Sandbox/SandboxType.cs"
             Patterns = @("SandboxType", "OpaqueId")
         }
         "Bindings" = @{
-            Path = "tests/SafeIR.Tests/Bindings/BindingRegistryHardeningTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Bindings/BindingRegistryHardeningTests.cs"
             Patterns = @("E-BINDING", "AuditLevel.PerCall")
         }
         "Capabilities/policy" = @{
-            Path = "tests/SafeIR.Tests/Policy/CapabilityRevocationTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Policy/CapabilityRevocationTests.cs"
             Patterns = @("RevokeCapability", "CapabilityRevoked")
         }
         "Interpreter" = @{
-            Path = "src/SafeIR.Interpreter/Internal/StatementExecutor.cs"
+            Path = "src/DotBoxd.Kernels.Interpreter/Internal/StatementExecutor.cs"
             Patterns = @("ChargeFuel", "ChargeLoopIteration")
         }
         "Compiler" = @{
-            Path = "src/SafeIR.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs"
+            Path = "src/DotBoxd.Kernels.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs"
             Patterns = @("CompileAsync", "Verification")
         }
         "Verifier" = @{
-            Path = "tests/SafeIR.Tests/Verifier/Generated/VerifierTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Verifier/Generated/VerifierTests.cs"
             Patterns = @("PInvoke", "MutableStatic")
         }
         "Cache" = @{
-            Path = "tests/SafeIR.Tests/Compiled/Core/CompiledCacheTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Compiled/Core/CompiledCacheTests.cs"
             Patterns = @("Policy_hash_change", "Binding_manifest_change")
         }
         "Resource limits" = @{
-            Path = "tests/SafeIR.Tests/Compiled/Generated/CompiledRuntimeQuotaTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Compiled/Generated/CompiledRuntimeQuotaTests.cs"
             Patterns = @("QuotaExceeded", "Fuel")
         }
         "Audit" = @{
-            Path = "tests/SafeIR.Tests/Audit/SafeLoggingTests.cs"
+            Path = "tests/DotBoxd.Kernels.Tests/Audit/SafeLoggingTests.cs"
             Patterns = @("RunSummary", "redacted")
         }
     }
@@ -287,7 +287,7 @@ function Assert-CompletedItemEvidence {
 
     # Completed "Documentation" inventory items are release evidence: verify each checked entry
     # still points at an existing doc with expected patterns (non-blocking for -RequireComplete).
-    $docSpec = "docs/Specs/Initial/safe-ir-sandbox-spec"
+    $docSpec = "docs/Specs/Initial/dotboxd-sandbox-spec"
     $documentationEvidence = @{
         "User-facing language docs." = @{ Path = "$docSpec/spec/04-ir-language.md"; Patterns = @("JSON IR", "IR design goals") }
         "Host binding author guide." = @{ Path = "$docSpec/spec/07-bindings.md"; Patterns = @("# 07 — Bindings", "host-provided") }

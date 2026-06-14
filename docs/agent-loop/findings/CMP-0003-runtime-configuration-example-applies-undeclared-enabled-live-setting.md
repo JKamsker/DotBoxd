@@ -29,9 +29,9 @@ The addendum runtime-configuration example applies an `Enabled` live setting to 
 
 ## Evidence
 
-- `examples/Addendum/SafeIR.AddendumExamples/Examples/RuntimeConfigurationExample.cs` builds `config.Settings` with `Enabled`, `DamageType`, and `MinDamage`, then calls `await installed.ModifySettingsAsync(config.Settings);`.
-- `examples/LocalPlugin/SafeIR.PluginLocal/FireDamageKernel.cs` declares `[LiveSetting]` only on `DamageType` and `MinDamage`; it has no `Enabled` live setting and does not gate `ShouldHandle` on `Enabled`.
-- The generator tests for the local-style fire-damage kernel assert generated live settings for `DamageType` and `MinDamage`, not `Enabled`, in `tests/SafeIR.Tests/PluginAnalyzer/Generated/PluginAnalyzerTests.Generator.cs`.
+- `examples/Addendum/DotBoxd.Kernels.AddendumExamples/Examples/RuntimeConfigurationExample.cs` builds `config.Settings` with `Enabled`, `DamageType`, and `MinDamage`, then calls `await installed.ModifySettingsAsync(config.Settings);`.
+- `examples/LocalPlugin/DotBoxd.Kernels.PluginLocal/FireDamageKernel.cs` declares `[LiveSetting]` only on `DamageType` and `MinDamage`; it has no `Enabled` live setting and does not gate `ShouldHandle` on `Enabled`.
+- The generator tests for the local-style fire-damage kernel assert generated live settings for `DamageType` and `MinDamage`, not `Enabled`, in `tests/DotBoxd.Kernels.Tests/PluginAnalyzer/Generated/PluginAnalyzerTests.Generator.cs`.
 - `LiveSettingStore.SetMany` rejects unknown setting names while applying a batch, so `Enabled` is not a harmless ignored configuration key.
 
 ## User impact
