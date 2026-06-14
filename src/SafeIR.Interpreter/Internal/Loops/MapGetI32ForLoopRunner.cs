@@ -34,13 +34,13 @@ internal static class MapGetI32ForLoopRunner
         context.ChargeLoopIterations(iterations, plan.LoopFuelPerIteration);
         context.ChargeBulkFuel(readFuel, iterations);
 
+        var item = frame.ReadMapInt32ValueSlot(plan.SourceSlot, plan.Key);
         var loopSlot = frame.GetSlot(statement.LocalName);
         var checkpoint = 4096;
         for (var i = start; i < end; i++)
         {
             frame.WriteRawInt32Slot(loopSlot, i);
             context.ChargeValue(plan.Key);
-            var item = frame.ReadMapInt32ValueSlot(plan.SourceSlot, plan.Key);
             var value = plan.AddToTarget
                 ? SandboxInt32Math.Add(frame.ReadRawInt32Slot(plan.TargetSlot), item)
                 : item;

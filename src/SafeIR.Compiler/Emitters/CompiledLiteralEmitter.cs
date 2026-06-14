@@ -10,6 +10,9 @@ internal static class CompiledLiteralEmitter
     public static void Emit(ILGenerator il, SandboxValue value)
         => Emit(il, value, chargeLiteral: true);
 
+    public static void EmitUncharged(ILGenerator il, SandboxValue value)
+        => Emit(il, value, chargeLiteral: false);
+
     private static void Emit(ILGenerator il, SandboxValue value, bool chargeLiteral)
     {
         switch (value)

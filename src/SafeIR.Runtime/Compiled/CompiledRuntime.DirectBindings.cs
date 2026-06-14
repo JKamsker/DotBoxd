@@ -17,6 +17,9 @@ public static partial class CompiledRuntime
     public static void ChargeFuel64(SandboxContext context, long amount) => context.ChargeFuel(amount);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ChargeSandboxValue(SandboxContext context, SandboxValue value) => context.ChargeValue(value);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool CanBulkChargeBindingCalls(SandboxContext context, string id, int count)
         => context.CanBulkChargeBindingCalls(context.Bindings.GetDescriptor(id), count);
 
