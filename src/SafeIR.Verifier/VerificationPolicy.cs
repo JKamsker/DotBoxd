@@ -59,6 +59,8 @@ public sealed record VerificationPolicy(
                 RuntimeMember("ChargeBindingCall", $"{SandboxContextName},{StringName}", VoidName),
                 RuntimeMember("CanBulkChargeBindingCalls", $"{SandboxContextName},{StringName},{Int32Name}", BooleanName),
                 RuntimeMember("ChargeBindingCalls", $"{SandboxContextName},{StringName},{Int32Name}", VoidName),
+                RuntimeMember("CanBulkChargeBindingCallsScaled", $"{SandboxContextName},{StringName},{Int32Name},{Int32Name}", BooleanName),
+                RuntimeMember("ChargeBindingCallsScaled", $"{SandboxContextName},{StringName},{Int32Name},{Int32Name}", VoidName),
                 RuntimeMember("EnterCall", SandboxContextName, VoidName),
                 RuntimeMember("ExitCall", SandboxContextName, VoidName),
                 RuntimeMember("EnterInlineCall", SandboxContextName, VoidName),

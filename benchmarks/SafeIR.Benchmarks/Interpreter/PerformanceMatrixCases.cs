@@ -13,6 +13,7 @@ internal static class PerformanceMatrixCases
         => [
             new("i32 add/rem loop", 10_000_000, 250_000, HandwrittenI32Modulo, I32ModuloJson()),
             new("math.sqrt binding", 2_000_000, 100_000, HandwrittenSqrt, SqrtJson()),
+            new("math.sqrt x3 binding", 1_000_000, 50_000, PerformanceMatrixMathCases.HandwrittenSqrt3, PerformanceMatrixMathCases.Sqrt3Json()),
             new("string.length binding", 1_000_000, 50_000, HandwrittenStringLength, StringLengthJson()),
             new("list.count intrinsic", 1_000_000, 50_000, HandwrittenListCount, ListCountJson()),
             new("list.get intrinsic", 1_000_000, 50_000, HandwrittenListGet, ListGetJson()),

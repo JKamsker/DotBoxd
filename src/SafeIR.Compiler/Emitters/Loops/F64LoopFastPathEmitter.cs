@@ -64,12 +64,14 @@ internal static class F64LoopFastPathEmitter
         il.Emit(OpCodes.Ldarg_0);
         il.Emit(OpCodes.Ldstr, expression.BindingId);
         il.Emit(OpCodes.Ldloc, iterations);
-        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CanBulkChargeBindingCalls)));
+        EmitInt32(il, expression.BindingCallCount);
+        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CanBulkChargeBindingCallsScaled)));
         il.Emit(OpCodes.Brfalse, fallback);
         il.Emit(OpCodes.Ldarg_0);
         il.Emit(OpCodes.Ldstr, expression.BindingId);
         il.Emit(OpCodes.Ldloc, iterations);
-        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ChargeBindingCalls)));
+        EmitInt32(il, expression.BindingCallCount);
+        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ChargeBindingCallsScaled)));
         EmitLoopBody(fastLoop, finish, index, end, range.LocalName, target, expression, il, declare, chargeBinding: false);
 
         il.MarkLabel(fallback);
@@ -96,9 +98,12 @@ internal static class F64LoopFastPathEmitter
         CompiledMeterEmitter.LoopIteration(il, LoopFuel + 1 + expression.FuelCost);
         if (chargeBinding)
         {
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldstr, expression.BindingId);
-            il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ChargeBindingCall)));
+            for (var i = 0; i < expression.BindingCallCount; i++)
+            {
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldstr, expression.BindingId);
+                il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ChargeBindingCall)));
+            }
         }
 
         il.Emit(OpCodes.Ldloc, index);
@@ -147,9 +152,13 @@ internal static class F64LoopFastPathEmitter
             BindingId = bindingId;
             PreservesNonNegative = preservesNonNegative;
             FuelCost = 1 + (operand?.FuelCost ?? 0);
+            BindingCallCount = kind is ExpressionKind.Literal or ExpressionKind.Variable
+                ? 0
+                : 1 + (operand?.BindingCallCount ?? 0);
         }
 
         public string BindingId { get; }
+        public int BindingCallCount { get; }
         public bool PreservesNonNegative { get; }
         public int FuelCost { get; }
 
@@ -194,7 +203,9 @@ internal static class F64LoopFastPathEmitter
             if (call.Arguments.Count != 1 ||
                 !TryGetKind(call.Name, out var kind) ||
                 !CanUseDirectIntrinsic(bindings, call.Name, kind) ||
-                !TryCreate(call.Arguments[0], target, stackPlan, bindings, nonNegativeF64Locals, out var operand))
+                !TryCreate(call.Arguments[0], target, stackPlan, bindings, nonNegativeF64Locals, out var operand) ||
+                operand.BindingCallCount > 0 &&
+                !string.Equals(operand.BindingId, call.Name, StringComparison.Ordinal))
             {
                 return false;
             }

@@ -40,6 +40,33 @@ public static partial class CompiledRuntime
         => context.ChargeBindingCalls(context.Bindings.GetDescriptor(id), count);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool CanBulkChargeBindingCallsScaled(
+        SandboxContext context,
+        string id,
+        int iterations,
+        int callsPerIteration)
+        => callsPerIteration > 0 &&
+           CanScale(iterations, callsPerIteration, out var calls) &&
+           context.CanBulkChargeBindingCalls(context.Bindings.GetDescriptor(id), calls);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ChargeBindingCallsScaled(
+        SandboxContext context,
+        string id,
+        int iterations,
+        int callsPerIteration)
+    {
+        if (!CanScale(iterations, callsPerIteration, out var calls))
+        {
+            throw new SandboxRuntimeException(new SandboxError(
+                SandboxErrorCode.QuotaExceeded,
+                $"binding call budget exhausted at {id}"));
+        }
+
+        context.ChargeBindingCalls(context.Bindings.GetDescriptor(id), calls);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int StringLengthRaw(SandboxValue value) => ((StringValue)value).Value.Length;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -152,6 +179,18 @@ public static partial class CompiledRuntime
         }
 
         return (int)product;
+    }
+
+    private static bool CanScale(int iterations, int callsPerIteration, out long calls)
+    {
+        calls = 0;
+        if (iterations < 0 || callsPerIteration < 0)
+        {
+            return false;
+        }
+
+        calls = (long)iterations * callsPerIteration;
+        return true;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

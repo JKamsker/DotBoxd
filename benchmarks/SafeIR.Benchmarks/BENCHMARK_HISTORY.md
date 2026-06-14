@@ -34,7 +34,8 @@ dotnet run -c Release --project benchmarks/SafeIR.Benchmarks -p:UseSharedCompila
 | Bulk `map.get` key literal charging | `87765f0` | `--probe-matrix` | `map.get` improved from compiled 98.3 ms / 20.3x and interpreted 53.7 ms / 11.1x to compiled 19.7 ms / 4.1x and interpreted 0.5 ms / 0.1x by bulk-charging the literal key value and reusing the hoisted key/result in the loop. |
 | Direct `list.get` I32 reader | `aa15dd2` | `--probe-matrix` | `list.get` improved from compiled 25.0 ms / 47.7x and interpreted 18.2 ms / 34.8x to compiled 19.3 ms / 36.6x and interpreted 11.0 ms / 20.9x by building an I32 reader once and reusing raw items in the loop. |
 | Direct `list.get` modulo index shortcut | `a514d91` | `--probe-matrix` | `list.get` interpreted improved from 11.0 ms / 20.9x to 1.7 ms / 3.3x by recognizing raw variable remainder indexes such as `i % 3`; compiled stayed about flat at 19.7 ms / 37.4x. |
-| Compiled `list.get` cyclic accumulator | this commit | `--probe-matrix` | Same-machine baseline from `a514d91` measured compiled `list.get` at 19.4 ms / 36.5x. This step measured 18.2 ms / 34.0x by replacing the zero-based `total += items[i % constant]` emitted loop with a verifier-allowlisted bulk helper. |
+| Compiled `list.get` cyclic accumulator | `d134853` | `--probe-matrix` | Same-machine baseline from `a514d91` measured compiled `list.get` at 19.4 ms / 36.5x. This step measured 18.2 ms / 34.0x by replacing the zero-based `total += items[i % constant]` emitted loop with a verifier-allowlisted bulk helper. |
+| Nested F64 binding crossings | this commit | `--probe-matrix` | Added `math.sqrt x3 binding`, which calls `math.sqrt` three times per loop iteration. Same-machine baseline from `d134853` measured interpreted at 472.1 ms / 40.5x and compiled at 28.8 ms / 2.5x. This step measured interpreted at 20.3 ms / 1.8x and compiled at 27.5 ms / 2.4x while charging all 3 binding calls per iteration. |
 
 ## Matrix After `31fa6fe`
 
@@ -192,6 +193,37 @@ list.count intrinsic              0.2 ms     17.5 ms  82.0        1.0 ms    4.5
 list.get intrinsic                0.5 ms     18.2 ms  34.0        1.7 ms    3.2
 map.get intrinsic                 5.0 ms     19.2 ms   3.9        0.5 ms    0.1
 local function call               0.2 ms     20.8 ms 101.3       24.3 ms  118.5
+```
+
+## Matrix After Nested F64 Binding Crossings
+
+Baseline from a temporary worktree at `d134853` with the new benchmark row
+applied to benchmark code only:
+
+```text
+case                         handwritten   compiled      x   interpreted      x
+i32 add/rem loop                 23.2 ms     38.9 ms   1.7      103.8 ms    4.5
+math.sqrt binding                 7.7 ms     23.4 ms   3.1       18.3 ms    2.4
+math.sqrt x3 binding             11.7 ms     28.8 ms   2.5      472.1 ms   40.5
+string.length binding             0.2 ms     18.4 ms  91.5        1.0 ms    4.9
+list.count intrinsic              0.2 ms     17.3 ms  81.5        1.1 ms    5.2
+list.get intrinsic                0.5 ms     17.9 ms  33.7        1.7 ms    3.3
+map.get intrinsic                 2.2 ms     19.0 ms   8.5        0.5 ms    0.2
+local function call               0.2 ms     21.6 ms 107.7       23.7 ms  118.2
+```
+
+After this change:
+
+```text
+case                         handwritten   compiled      x   interpreted      x
+i32 add/rem loop                 23.1 ms     39.2 ms   1.7      103.6 ms    4.5
+math.sqrt binding                 7.7 ms     22.9 ms   3.0       18.2 ms    2.4
+math.sqrt x3 binding             11.6 ms     27.5 ms   2.4       20.3 ms    1.8
+string.length binding             0.2 ms     16.7 ms  83.5        1.0 ms    5.0
+list.count intrinsic              0.2 ms     17.6 ms  79.0        1.0 ms    4.3
+list.get intrinsic                0.5 ms     16.3 ms  29.7        1.7 ms    3.2
+map.get intrinsic                 4.8 ms     18.9 ms   3.9        0.6 ms    0.1
+local function call               0.2 ms     20.1 ms 100.0       23.0 ms  114.5
 ```
 
 ## Current Gaps

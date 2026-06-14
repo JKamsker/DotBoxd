@@ -22,14 +22,16 @@ internal static class F64ForLoopRunner
         }
 
         var iterations = (long)end - start;
-        if (!context.CanBulkChargeLoopIterations(iterations, fuelPerIteration) ||
-            !context.CanBulkChargeBindingCalls(binding, iterations))
+        var bindingCalls = BindingCalls(iterations, body.Expression.BindingCallCount);
+        if (bindingCalls < 0 ||
+            !context.CanBulkChargeLoopIterations(iterations, fuelPerIteration) ||
+            !context.CanBulkChargeBindingCalls(binding, bindingCalls))
         {
             return false;
         }
 
         context.ChargeLoopIterations(iterations, fuelPerIteration);
-        context.ChargeBindingCalls(binding, iterations);
+        context.ChargeBindingCalls(binding, bindingCalls);
         var loopSlot = frame.GetSlot(statement.LocalName);
         var checkpoint = 4096;
         for (var i = start; i < end; i++)
@@ -73,6 +75,18 @@ internal static class F64ForLoopRunner
         body = new AssignmentPlan(targetSlot, expression);
         fuelPerIteration += 1 + expression.FuelCost;
         return true;
+    }
+
+    private static long BindingCalls(long iterations, int callsPerIteration)
+    {
+        try
+        {
+            return checked(iterations * callsPerIteration);
+        }
+        catch (OverflowException)
+        {
+            return -1;
+        }
     }
 
     private readonly record struct AssignmentPlan(int TargetSlot, F64ExpressionPlan Expression);
