@@ -81,6 +81,7 @@ public sealed class HookPipeline<TEvent>
     private volatile Func<TEvent, HookContext, ValueTask>[] _handlers = [];
     private readonly IPluginEventAdapter<TEvent> _adapter;
     private readonly IPluginMessageSink _messages;
+    private readonly HookContext _defaultContext;
     private readonly KernelRegistry _kernels;
     private readonly Func<PluginPackage, InstalledKernel>? _installer;
 
@@ -92,6 +93,7 @@ public sealed class HookPipeline<TEvent>
     {
         _adapter = adapter;
         _messages = messages;
+        _defaultContext = new HookContext(messages, CancellationToken.None);
         _kernels = kernels;
         _installer = installer;
     }
@@ -235,7 +237,9 @@ public sealed class HookPipeline<TEvent>
         var filters = _filters;
         var handlers = _handlers;
 
-        var context = new HookContext(_messages, cancellationToken);
+        var context = cancellationToken.CanBeCanceled
+            ? new HookContext(_messages, cancellationToken)
+            : _defaultContext;
         foreach (var filter in filters)
         {
             if (!await filter(e, context).ConfigureAwait(false))

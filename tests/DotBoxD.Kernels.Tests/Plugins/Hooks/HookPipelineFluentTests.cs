@@ -42,6 +42,20 @@ public sealed class HookPipelineFluentTests
     }
 
     [Fact]
+    public async Task Publish_with_cancellable_token_exposes_that_token_to_handlers()
+    {
+        using var server = PluginServer.Create();
+        using var cts = new CancellationTokenSource();
+        CancellationToken observed = default;
+        server.Hooks.On<Ping>()
+            .InvokeLocal((_, ctx) => observed = ctx.CancellationToken);
+
+        await server.Hooks.PublishAsync(new Ping("monster-1", 21), cts.Token);
+
+        Assert.Equal(cts.Token, observed);
+    }
+
+    [Fact]
     public void InvokeKernel_lambda_throws_until_lowered()
     {
         using var server = PluginServer.Create();
