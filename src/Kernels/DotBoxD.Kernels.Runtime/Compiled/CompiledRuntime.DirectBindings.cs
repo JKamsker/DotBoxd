@@ -18,6 +18,22 @@ public static partial class CompiledRuntime
         => context.CanBulkChargeLoopIterations(count, fuelPerIteration);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void RequireAdditionalCallDepth(SandboxContext context, int additionalDepth)
+        => context.RequireAdditionalCallDepth(additionalDepth);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int AddRepeatedI32LoopRaw(
+        SandboxContext context,
+        int current,
+        int iterations,
+        int delta,
+        int loopFuelPerIteration)
+    {
+        context.ChargeLoopIterations(iterations, loopFuelPerIteration);
+        return SandboxInt32Math.AddRepeated(current, delta, iterations);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ChargeFuel64(SandboxContext context, long amount) => context.ChargeFuel(amount);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

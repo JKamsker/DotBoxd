@@ -238,6 +238,7 @@ internal sealed class StatementExecutor
             ListGetI32ForLoopRunner.TryRun(statement, start, end, frame, _context, _options) ||
             ListCountForLoopRunner.TryRun(statement, start, end, frame, _context, _options) ||
             StringLengthForLoopRunner.TryRun(statement, start, end, frame, _context, _options) ||
+            I32RepeatedAddCallForLoopRunner.TryRun(statement, start, end, frame, _context, _options, _calls) ||
             I32ForLoopRunner.TryRun(statement, start, end, frame, _context, _options, _calls) ||
             BranchedI32ForLoopRunner.TryRun(statement, start, end, frame, _context, _options, _calls) ||
             BranchedF64ForLoopRunner.TryRun(statement, start, end, frame, _context, _options, _calls) ||

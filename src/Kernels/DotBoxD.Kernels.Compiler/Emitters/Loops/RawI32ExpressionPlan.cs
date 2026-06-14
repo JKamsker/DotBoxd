@@ -31,11 +31,16 @@ internal sealed class RawI32ExpressionPlan
         InstructionCost = kind is ExpressionKind.Literal or ExpressionKind.Variable
             ? 1
             : 1 + (left?.InstructionCost ?? 0) + (right?.InstructionCost ?? 0) + (third?.InstructionCost ?? 0);
+        MaxInlineCallDepth = kind == ExpressionKind.InlineCall
+            ? 1 + (left?.MaxInlineCallDepth ?? 0)
+            : Math.Max(left?.MaxInlineCallDepth ?? 0, Math.Max(right?.MaxInlineCallDepth ?? 0, third?.MaxInlineCallDepth ?? 0));
     }
 
     public int FuelCost { get; }
 
     public int InstructionCost { get; }
+
+    public int MaxInlineCallDepth { get; }
 
     public static bool TryCreate(Expression expression, LocalStackKindPlanner stackPlan, IReadOnlyDictionary<string, SandboxFunction> functions, out RawI32ExpressionPlan plan)
         => TryCreate(expression, stackPlan, functions, substitutions: null, out plan);

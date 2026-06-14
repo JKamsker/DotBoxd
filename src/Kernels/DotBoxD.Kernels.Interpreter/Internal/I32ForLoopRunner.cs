@@ -15,11 +15,12 @@ internal static class I32ForLoopRunner
     {
         if (options.EnableDebugTrace ||
             start >= end ||
-            !TryCreateBodyPlan(statement, frame, calls, out var body, out var fuelPerIteration))
+            !TryCreateBodyPlan(statement, frame, calls, out var body, out var fuelPerIteration, out var maxInlineCallDepth))
         {
             return false;
         }
 
+        context.RequireAdditionalCallDepth(maxInlineCallDepth);
         context.ChargeLoopIterations((long)end - start, fuelPerIteration);
         var loopSlot = frame.GetSlot(statement.LocalName);
         var checkpoint = 4096;
@@ -47,10 +48,12 @@ internal static class I32ForLoopRunner
         InterpreterFrame frame,
         I32CallEvaluator calls,
         out AssignmentPlan[] body,
-        out long fuelPerIteration)
+        out long fuelPerIteration,
+        out int maxInlineCallDepth)
     {
         body = new AssignmentPlan[statement.Body.Count];
         fuelPerIteration = 5;
+        maxInlineCallDepth = 0;
         for (var i = 0; i < statement.Body.Count; i++)
         {
             if (statement.Body[i] is not AssignmentStatement assignment ||
@@ -69,6 +72,7 @@ internal static class I32ForLoopRunner
 
             body[i] = new AssignmentPlan(targetSlot, expression);
             fuelPerIteration += 1 + expression.FuelCost;
+            maxInlineCallDepth = Math.Max(maxInlineCallDepth, expression.MaxInlineCallDepth);
         }
 
         return true;
