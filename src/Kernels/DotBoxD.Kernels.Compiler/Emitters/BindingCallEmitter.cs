@@ -40,11 +40,40 @@ internal static class BindingCallEmitter
             return true;
         }
 
+        if (call.Arguments.Count == 2)
+        {
+            EmitTwoArgumentGenericCall(call, il, emitExpression);
+            return true;
+        }
+
+        EmitArrayBackedGenericCall(call, il, emitExpression);
+        return true;
+    }
+
+    private static void EmitTwoArgumentGenericCall(
+        CallExpression call,
+        ILGenerator il,
+        Action<Expression> emitExpression)
+    {
+        il.Emit(OpCodes.Ldarg_0);
+        EmitInt32(il, call.Arguments.Count);
+        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ChargeValueArray)));
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Ldstr, call.Name);
+        emitExpression(call.Arguments[0]);
+        emitExpression(call.Arguments[1]);
+        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CallBinding2)));
+    }
+
+    private static void EmitArrayBackedGenericCall(
+        CallExpression call,
+        ILGenerator il,
+        Action<Expression> emitExpression)
+    {
         il.Emit(OpCodes.Ldarg_0);
         il.Emit(OpCodes.Ldstr, call.Name);
         ValueArrayEmitter.Emit(il, call.Arguments, emitExpression);
         il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CallBinding)));
-        return true;
     }
 
     private static bool IsCompiledPureBinding(BindingSignature binding)

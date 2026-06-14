@@ -74,6 +74,9 @@ internal static class GeneratedMethodShapeSignatures
                !calledMember.StartsWith(
                    CompiledRuntimeName + ".CreateValueArray(" + SandboxContextName,
                    StringComparison.Ordinal) &&
+               !calledMember.StartsWith(
+                   CompiledRuntimeName + ".ChargeValueArray(" + SandboxContextName,
+                   StringComparison.Ordinal) &&
                !IsLiteralConstructionCall(calledMember) &&
                !IsScalarConversionCall(calledMember) &&
                !calledMember.Contains("(" + SandboxContextName + ",", StringComparison.Ordinal);

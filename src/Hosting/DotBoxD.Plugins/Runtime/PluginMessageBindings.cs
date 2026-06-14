@@ -225,14 +225,21 @@ public static class PluginMessageBindings
         }
     }
 
-    private sealed class PluginMessageSendInvoker(IPluginMessageSink sink)
+    private sealed class PluginMessageSendInvoker(IPluginMessageSink sink) : ITwoArgumentBindingInvoker
     {
         public ValueTask<SandboxValue> Invoke(
             SandboxContext context,
             IReadOnlyList<SandboxValue> args,
             CancellationToken cancellationToken)
+            => Invoke(context, args[0], args[1], cancellationToken);
+
+        public ValueTask<SandboxValue> Invoke(
+            SandboxContext context,
+            SandboxValue arg0,
+            SandboxValue arg1,
+            CancellationToken cancellationToken)
         {
-            var targetId = ((StringValue)args[0]).Value;
+            var targetId = ((StringValue)arg0).Value;
             if (!SandboxLiteralConstraints.IsOpaqueId(targetId))
             {
                 throw new SandboxRuntimeException(new SandboxError(
@@ -248,7 +255,7 @@ public static class PluginMessageBindings
                     "host.message.send denied: target is not in the granted recipient set"));
             }
 
-            var message = Sanitize(((StringValue)args[1]).Value);
+            var message = Sanitize(((StringValue)arg1).Value);
             if (options.MaxMessageLength is { } maxMessageLength && message.Length > maxMessageLength)
             {
                 throw new SandboxRuntimeException(new SandboxError(

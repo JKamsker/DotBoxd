@@ -249,7 +249,10 @@ public static partial class CompiledRuntime
     public static SandboxValue CallBinding(SandboxContext context, string id, SandboxValue[] args)
         => CompiledBindingDispatcher.CallBinding(context, id, args);
 
-    public static SandboxValue[] CreateValueArray(SandboxContext context, int count)
+    public static SandboxValue CallBinding2(SandboxContext context, string id, SandboxValue arg0, SandboxValue arg1)
+        => CompiledBindingDispatcher.CallBinding2(context, id, arg0, arg1);
+
+    public static void ChargeValueArray(SandboxContext context, int count)
     {
         if (count < 0)
         {
@@ -259,6 +262,11 @@ public static partial class CompiledRuntime
         var elementCount = Math.Max(1L, count);
         context.ChargeFuel(elementCount);
         context.ChargeAllocation(checked(elementCount * 8));
+    }
+
+    public static SandboxValue[] CreateValueArray(SandboxContext context, int count)
+    {
+        ChargeValueArray(context, count);
 
         // Zero-argument compiled binding calls do not need a fresh heap array:
         // the emitter never stores into it (no Stelem_Ref is emitted for an empty

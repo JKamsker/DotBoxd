@@ -178,6 +178,7 @@ public sealed record VerificationPolicy(
                 RuntimeMember("RoundF64", SandboxValueName, SandboxValueName),
                 RuntimeMember("RoundF64Raw", DoubleName, DoubleName),
                 RuntimeMember("CreateValueArray", $"{SandboxContextName},{Int32Name}", SandboxValueArrayName),
+                RuntimeMember("ChargeValueArray", $"{SandboxContextName},{Int32Name}", VoidName),
                 RuntimeMember("CreateLiteralValueArray", Int32Name, SandboxValueArrayName),
                 RuntimeMember("ListEmpty", $"{SandboxContextName},{SandboxTypeName}", SandboxValueName),
                 RuntimeMember("ListOf", $"{SandboxContextName},{SandboxValueArrayName}", SandboxValueName),
@@ -195,7 +196,8 @@ public sealed record VerificationPolicy(
                 RuntimeMember("MapRemove", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("RecordNew", $"{SandboxContextName},{SandboxValueArrayName}", SandboxValueName),
                 RuntimeMember("RecordGet", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
-                RuntimeMember("CallBinding", $"{SandboxContextName},{StringName},{SandboxValueArrayName}", SandboxValueName)
+                RuntimeMember("CallBinding", $"{SandboxContextName},{StringName},{SandboxValueArrayName}", SandboxValueName),
+                RuntimeMember("CallBinding2", $"{SandboxContextName},{StringName},{SandboxValueName},{SandboxValueName}", SandboxValueName)
             },
             new HashSet<string>(StringComparer.Ordinal) {
                 "System.IO.", "System.Net.", "System.Reflection.", "System.Runtime.Loader.",

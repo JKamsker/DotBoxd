@@ -26,6 +26,8 @@ public sealed class Fix_PAL_0016_Tests
     [InlineData(nameof(CompiledRuntime.ExitCall))]
     [InlineData(nameof(CompiledRuntime.TypeScalar))]
     [InlineData(nameof(CompiledRuntime.AddI32))]
+    [InlineData(nameof(CompiledRuntime.CallBinding2))]
+    [InlineData(nameof(CompiledRuntime.ChargeValueArray))]
     [InlineData(nameof(CompiledRuntime.CreateValueArray))]
     [InlineData(nameof(CompiledRuntime.ListOf))]
     public void Runtime_resolves_the_expected_runtime_helper(string name)

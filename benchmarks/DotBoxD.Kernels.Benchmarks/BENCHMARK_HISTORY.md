@@ -19,6 +19,7 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-prepared-values
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-runtime-types
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-resource-meter
+dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-compiled-binding-fast-path
 ```
 
 ## History
@@ -63,6 +64,12 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 | Installed no-audit executable shortcut | this commit | `--probe-prepared-values` | Cached the compiled executable in the installed-kernel no-audit run state after the first verified no-audit dispatch, with a single-entry fast path for the common one-entrypoint case and the existing host compiled caches still used for first lookup and non-installed execution. Same-session compiled no-audit miss probe for 200k calls measured the provider-cache path at 487.1 ms and 78,646,064 B with the shortcut temporarily disabled; restored shortcut samples measured 389.6-451.5 ms and 37,084,800-38,764,032 B. |
 | Installed no-audit input buffer reuse | this commit | `--probe-prepared-values`, `--probe-examples` | Reused the synthetic multi-parameter input array for installed-kernel compiled `ShouldHandle` entrypoints with no binding references, while snapshotting the input before any non-no-audit `Handle` dispatch so audited/binding paths keep immutable inputs. Same-session compiled no-audit miss probe for 200k calls measured the fresh-input path at 434.7 ms and 41,600,064 B with buffer reuse disabled; restored reuse samples measured 418.7-447.9 ms and 19,595,136-24,159,296 B. One workflow sample measured compiled `predicate miss` at 56.6 ms, down from the prior 74.3-80.6 ms band, while hit/mixed cases remained noisy. |
 | Installed no-audit input list reuse | this commit | `--probe-prepared-values` | Reused the synthetic `ListValue` wrapper together with the no-audit input buffer for installed-kernel compiled `ShouldHandle` entrypoints, keeping the public defensive-copy list path unchanged and still snapshotting before non-no-audit `Handle` dispatch. Same-session compiled no-audit miss probe for 200k calls measured the buffer-only path at 433.6 ms and 26,353,408 B with list reuse disabled; restored list-reuse samples measured 431.3-455.3 ms and 16,595,840-17,082,992 B. This step claims allocation reduction only because elapsed time was noisy. |
+| Compiled two-argument binding fast path | this commit | `--probe-compiled-binding-fast-path`, `--probe-examples` | Emitted `CompiledRuntime.CallBinding2` for two-argument runtime-stub bindings and let descriptor targets that implement the internal fast invoker receive the two values without materializing a `SandboxValue[]`, while `ChargeValueArray` preserves generated-code fuel/allocation accounting. The focused real `host.message.send` probe for 200k calls measured the old array-backed shape at 373.6-424.8 ms and 334,401,112 B; the new fast path measured 135.4-140.2 ms and 322,238,456-322,842,136 B, saving 57.8-60.8 B/call after warmup. Broad workflow samples stayed noisy but sanity-ran with compiled `mixed fire/ice` at 315.0-342.1 ms and `predicate hit` at 222.9-265.3 ms. |
+
+Versioning note for the two-argument binding fast path: `CallBinding2` and `ChargeValueArray`
+are public generated-code ABI on `CompiledRuntime` for the same reason as the existing facade
+members: compiled assemblies must call them across assembly boundaries and the verifier allowlist
+hashes their exact signatures. They are not supported host API.
 
 ## Matrix After `31fa6fe`
 
