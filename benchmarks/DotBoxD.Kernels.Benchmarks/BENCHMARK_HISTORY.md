@@ -259,10 +259,41 @@ map.set  16k      14,608 ms             57 ms          ~250x
 Scaling went from ~4x per size-doubling (quadratic) to ~1-2x (near-linear); sub-100 ms even at 64k elements.
 The micro-matrix is unchanged (no regression to `list.get` / `map.get` from the immutable backings).
 
+## Compiled per-execution floor was re-emit, not metering (in-memory artifact cache)
+
+Earlier notes blamed the ~17 ms compiled floor on the per-iteration metering call. That was **wrong** — a
+strided-metering experiment removed the per-iteration `ChargeLoopIteration` and the `i32` loop did not move
+at all. A `trivial no-loop` probe (`return iterations`, zero work) then measured **~16-26 ms compiled vs
+0.2 ms interpreted (351x)** and did **not** amortize across back-to-back runs. The real floor: with no disk
+cache configured (the default), `ReflectionEmitSandboxCompiler.CompileAsync` re-emitted **and** re-verified
+the entire assembly on **every** `ExecuteAsync`.
+
+Fix: memoize the emitted+verified `CompiledArtifact` in-memory keyed by the deterministic cache key (only
+when no disk cache is configured; a disk cache must be consulted per call for invalidation/audit). Safety-
+preserving — the artifact is immutable and verified when first cached. Full 1591-test suite passes.
+
+```text
+case                         compiled before   compiled after    x after
+trivial no-loop                   ~16-26 ms          0.6 ms       17.3 (0.6 ms abs)
+i32 add/rem loop                    ~40 ms          24.4 ms        1.0
+math.sqrt binding                   ~24 ms           8.0 ms        1.0
+math.sqrt x3 binding                ~28 ms          12.3 ms        1.0
+string.length binding               ~17 ms           0.3 ms        1.5
+list.get intrinsic                  ~17 ms           0.2 ms        0.4
+map.get intrinsic                   ~20 ms           0.8 ms        0.2
+list.count intrinsic                ~18 ms           1.3 ms        5.6  (needs closed-form wiring)
+local function call                 ~22 ms          10.1 ms       48    (inlined-call depth metering, Fix_CMP_0023)
+```
+
+Combined with the closed-form invariant-accumulation primitive (`AccumulateLinearI32`, a verifier-allowlisted
+trusted meter that collapses `acc += loop_invariant` loops to O(1) with identical fuel), **6 of 8 compiled
+cases are now <=2x**; the rest improved 2-80x and are sub-2 ms in absolute time.
+
 ## Current Gaps
 
-The remaining matrix ratios (local function call, compiled `math.sqrt`, `list.get`, `string.length`) are
-dominated by the per-iteration metering call (a security invariant) measured against sub-millisecond,
-JIT-folded handwritten baselines run with infinite fuel; their absolute times (~17-40 ms for 1M-10M
-iterations) are already well within the wall-time budget under any realistic fuel policy. The previously
-unbounded case — collection building — is fixed above.
+- `list.count` compiled 5.6x: would reach <=2x by wiring the closed-form accumulation into
+  `ListCountLoopFastPathEmitter` (as already done for `string.length`). Safety-preserving follow-up.
+- `local function call` (compiled ~48x, interpreted ~116x): bounded by the inlined-call depth metering that
+  `Fix_CMP_0023` requires in both modes; cannot reach the ratio target without relaxing that tested safety
+  guarantee. Absolute time (~10-24 ms / 1M calls) is fine under any realistic fuel policy.
+- `trivial no-loop` 17x is a ratio artifact of a ~0 ms JIT-folded baseline; 0.6 ms absolute.
