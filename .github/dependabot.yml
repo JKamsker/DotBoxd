@@ -38,3 +38,8 @@ updates:
       actions:
         patterns:
           - "*"
+    ignore:
+      # The Bitwarden secrets action fetches the NuGet API key; pin it to v2 (matches the ShaRPC
+      # setup). A major bump of a credential-handling action must be reviewed by hand.
+      - dependency-name: "bitwarden/sm-action"
+        update-types: ["version-update:semver-major"]
