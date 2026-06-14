@@ -32,6 +32,11 @@ if (args.Contains("--probe-examples", StringComparer.OrdinalIgnoreCase)) {
     return;
 }
 
+if (args.Contains("--probe-prepared-values", StringComparer.OrdinalIgnoreCase)) {
+    await DotBoxD.Kernels.Benchmarks.Examples.PreparedValueProbe.RunAsync();
+    return;
+}
+
 if (args.Contains("--probe-runtime-types", StringComparer.OrdinalIgnoreCase)) {
     DotBoxD.Kernels.Benchmarks.Runtime.RuntimeTypeProbe.Run();
     return;

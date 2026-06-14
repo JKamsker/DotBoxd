@@ -157,7 +157,7 @@ internal static class ExampleWorkflowProbe
         return sw.Elapsed.TotalMilliseconds;
     }
 
-    private static string FireDamagePackageJson()
+    internal static string FireDamagePackageJson()
         => """
         {
           "manifest": {
@@ -227,7 +227,7 @@ internal static class ExampleWorkflowProbe
         }
         """;
 
-    private sealed record DamageEvent(string DamageType, int Amount, string TargetId);
+    internal sealed record DamageEvent(string DamageType, int Amount, string TargetId);
 
     private readonly record struct KernelRunSummary(int Messages, double Milliseconds, string ObservationSummary)
     {
@@ -241,7 +241,7 @@ internal static class ExampleWorkflowProbe
         KernelRunSummary Compiled,
         KernelRunSummary Interpreted);
 
-    private sealed class DamageEventAdapter : IPluginEventValueWriter<DamageEvent>
+    internal sealed class DamageEventAdapter : IPluginEventValueWriter<DamageEvent>
     {
         public static DamageEventAdapter Instance { get; } = new();
 

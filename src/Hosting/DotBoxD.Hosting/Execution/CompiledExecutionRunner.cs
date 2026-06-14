@@ -163,7 +163,7 @@ internal static class CompiledExecutionRunner
             ArtifactHash = artifact.ArtifactHash
         };
 
-    private static SandboxExecutionResult FailureResult(
+    internal static SandboxExecutionResult FailureResult(
         ExecutionPlan plan,
         CompiledExecutable executable,
         SandboxExecutionOptions options,
@@ -212,7 +212,7 @@ internal static class CompiledExecutionRunner
             Fields: fields));
     }
 
-    private static bool CanUseNoAuditSuccessPath(
+    internal static bool CanUseNoAuditSuccessPath(
         ExecutionPlan plan,
         string entrypoint,
         CompiledArtifact artifact,
@@ -260,7 +260,7 @@ internal static class CompiledExecutionRunner
             }));
     }
 
-    private static void EnsureReturnType(ExecutionPlan plan, string entrypoint, SandboxValue? value)
+    internal static void EnsureReturnType(ExecutionPlan plan, string entrypoint, SandboxValue? value)
     {
         if (value is null || !plan.FunctionAnalysis.TryGetValue(entrypoint, out var analysis))
         {

@@ -1,5 +1,6 @@
 namespace DotBoxD.Plugins;
 
+using DotBoxD.Hosting;
 using DotBoxD.Kernels;
 
 public sealed record PluginExecutionObservation(
@@ -58,6 +59,12 @@ internal sealed class PluginExecutionObserver
 
     public void Record(string entrypoint, ExecutionMode requestedMode, SandboxExecutionResult result)
     {
+        if (result is { Succeeded: true, Error: null, AuditEvents.Count: 0 })
+        {
+            RecordNoAuditSuccess(entrypoint, requestedMode, result.ActualMode, result.ArtifactHash);
+            return;
+        }
+
         ExtractMarkers(requestedMode, result, out var summary, out var fallbackReason);
         var observation = new ObservationEntry(
             entrypoint,
@@ -71,7 +78,40 @@ internal sealed class PluginExecutionObserver
             Field(summary, "cacheKey"),
             result.ArtifactHash ?? Field(summary, "artifactHash"),
             Field(summary, "materializationStatus"));
+        Append(observation);
+    }
 
+    public void Record(string entrypoint, ExecutionMode requestedMode, PreparedExecutionResult result)
+    {
+        if (result.FullResult is { } fullResult)
+        {
+            Record(entrypoint, requestedMode, fullResult);
+            return;
+        }
+
+        RecordNoAuditSuccess(entrypoint, requestedMode, result.ActualMode, result.ArtifactHash);
+    }
+
+    private void RecordNoAuditSuccess(
+        string entrypoint,
+        ExecutionMode requestedMode,
+        ExecutionMode actualMode,
+        string? artifactHash)
+        => Append(new ObservationEntry(
+            entrypoint,
+            requestedMode,
+            actualMode,
+            Succeeded: true,
+            ErrorCode: null,
+            FallbackReason: null,
+            CacheStatus: "None",
+            RuntimeForm: null,
+            CacheKey: null,
+            artifactHash,
+            MaterializationStatus: null));
+
+    private void Append(ObservationEntry observation)
+    {
         lock (_gate)
         {
             var slot = (_start + _count) % HistoryCapacity;

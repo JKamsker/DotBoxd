@@ -239,35 +239,6 @@ public sealed partial class InstalledKernel
     internal void ValidateFor<TEvent>(IPluginEventAdapter<TEvent> adapter)
         => _adapterValidation.Validate(Manifest, _plan, _entrypoints, adapter);
 
-    private async ValueTask<SandboxValue> ExecutePreparedAsync(
-        string entrypoint,
-        SandboxValue input,
-        CancellationToken cancellationToken)
-    {
-        using var executionCancellation = PluginExecutionCancellation.Create(
-            cancellationToken,
-            _revocation.Token);
-        var result = await _host.ExecutePreparedInProcessAsync(
-                _plan,
-                entrypoint,
-                input,
-                _executionOptions,
-                executionCancellation.Token)
-            .ConfigureAwait(false);
-        _executionObserver.Record(entrypoint, _executionMode, result);
-        if (IsRevoked)
-        {
-            PluginKernelRevocation.ThrowIfRevoked(true);
-        }
-
-        if (!result.Succeeded)
-        {
-            throw new SandboxRuntimeException(result.Error ?? new SandboxError(SandboxErrorCode.HostFailure, "kernel execution failed"));
-        }
-
-        return result.Value ?? SandboxValue.Unit;
-    }
-
     private SandboxValue BuildInput<TEvent>(IPluginEventAdapter<TEvent> adapter, TEvent e)
         => PluginKernelInputBuilder.Build(
             adapter,
