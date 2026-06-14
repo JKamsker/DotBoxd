@@ -67,6 +67,25 @@ public static partial class CompiledRuntime
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool CanUseModuloIndexAccumulatorRaw(int current, int start, int end, int divisor)
+        => SandboxInt32Math.CanAddModuloIndexAccumulator(current, start, end, divisor);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int AddModuloIndexAccumulatorI32LoopRaw(
+        SandboxContext context,
+        int current,
+        int start,
+        int end,
+        int divisor,
+        int loopFuelPerIteration,
+        int finalConditionFuel)
+    {
+        context.ChargeLoopIterations(end - start, loopFuelPerIteration);
+        context.ChargeFuel(finalConditionFuel);
+        return SandboxInt32Math.AddModuloIndexAccumulator(current, start, end, divisor);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ChargeFuel64(SandboxContext context, long amount) => context.ChargeFuel(amount);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

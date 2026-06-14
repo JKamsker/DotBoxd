@@ -245,6 +245,12 @@ internal sealed class MethodEmitter
     private void EmitWhile(WhileStatement loop)
     {
         _nonNegativeF64Locals.Clear();
+        if (I32ModuloIndexWhileLoopFastPathEmitter.TryEmit(loop, _il, _stackPlan, Declare))
+        {
+            _nonNegativeF64Locals.Clear();
+            return;
+        }
+
         if (WhileI32LoopFastPathEmitter.TryEmit(loop, _il, _stackPlan, _expressions, _functionModels, Declare))
         {
             _nonNegativeF64Locals.Clear();

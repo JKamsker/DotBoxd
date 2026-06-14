@@ -165,6 +165,11 @@ internal sealed class StatementExecutor
 
     private async ValueTask<SandboxValue?> ExecuteWhileBoxedAsync(WhileStatement statement, InterpreterFrame frame)
     {
+        if (I32ModuloIndexWhileLoopRunner.TryRun(statement, frame, _context, _options))
+        {
+            return null;
+        }
+
         while (((BoolValue)await EvaluateAsync(statement.Condition, frame).ConfigureAwait(false)).Value)
         {
             _context.ChargeLoopIteration(5);

@@ -55,6 +55,8 @@ public sealed record VerificationPolicy(
                 RuntimeMember("AddRepeatedI32LoopRaw", $"{SandboxContextName},{Int32Name},{Int32Name},{Int32Name},{Int32Name}", Int32Name),
                 RuntimeMember("AddRemainderCycleI32LoopRaw", $"{SandboxContextName},{Int32Name},{Int32Name},{Int32Name},{Int32Name}", Int32Name),
                 RuntimeMember("AddModuloBranchDeltasI32LoopRaw", $"{SandboxContextName},{Int32Name},{Int32Name},{Int32Name},{Int32Name},{Int32Name},{Int32Name},{Int32Name}", Int32Name),
+                RuntimeMember("CanUseModuloIndexAccumulatorRaw", $"{Int32Name},{Int32Name},{Int32Name},{Int32Name}", BooleanName),
+                RuntimeMember("AddModuloIndexAccumulatorI32LoopRaw", $"{SandboxContextName},{Int32Name},{Int32Name},{Int32Name},{Int32Name},{Int32Name},{Int32Name}", Int32Name),
                 RuntimeMember("CanBulkChargeFuel", $"{SandboxContextName},{Int64Name},{Int32Name}", BooleanName),
                 RuntimeMember("ChargeBulkFuel", $"{SandboxContextName},{Int64Name},{Int32Name}", VoidName),
                 RuntimeMember("ChargeFuel64", $"{SandboxContextName},{Int64Name}", VoidName),
