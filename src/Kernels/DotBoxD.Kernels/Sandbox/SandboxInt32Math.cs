@@ -87,6 +87,30 @@ public static class SandboxInt32Math
         return -value;
     }
 
+    internal static int AddRepeated(int value, int delta, long count)
+    {
+        if (count < 0)
+        {
+            throw InvalidInput("repeat count must be non-negative");
+        }
+
+        try
+        {
+            var scaledDelta = checked((long)delta * count);
+            var result = checked(value + scaledDelta);
+            if (result < int.MinValue || result > int.MaxValue)
+            {
+                throw InvalidInput("integer overflow");
+            }
+
+            return (int)result;
+        }
+        catch (OverflowException)
+        {
+            throw InvalidInput("integer overflow");
+        }
+    }
+
     private static SandboxRuntimeException InvalidInput(string message)
         => new(new SandboxError(SandboxErrorCode.InvalidInput, message));
 }
