@@ -81,6 +81,16 @@ internal sealed partial class I32ExpressionPlan
             return true;
         }
 
+        // `rawVar % const` now plans as RemainderByConst (left = raw variable, divisor in _value3); recognize it
+        // too so the list-get cyclic-index fast path still matches.
+        if (_kind == ExpressionKind.RemainderByConst &&
+            _left is { _kind: ExpressionKind.RawVariable } byConstVariable)
+        {
+            slot = byConstVariable._value;
+            divisor = _value3;
+            return true;
+        }
+
         slot = 0;
         divisor = 0;
         return false;
