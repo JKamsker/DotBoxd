@@ -98,6 +98,7 @@ internal sealed class LocalStackKindPlanner
     private static StackKind KindOf(SandboxType? type)
         => type switch {
             { Name: "I32" } => StackKind.I32,
+            { Name: "I64" } => StackKind.I64,
             { Name: "F64" } => StackKind.F64,
             _ => StackKind.Boxed
         };
@@ -105,6 +106,7 @@ internal sealed class LocalStackKindPlanner
     private static SandboxType? TypeOf(StackKind kind)
         => kind switch {
             StackKind.I32 => SandboxType.I32,
+            StackKind.I64 => SandboxType.I64,
             StackKind.F64 => SandboxType.F64,
             _ => null
         };

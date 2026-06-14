@@ -53,6 +53,9 @@ internal sealed class ExpressionEmitter
             case (StackKind.I32, StackKind.Boxed):
                 _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.I32)));
                 break;
+            case (StackKind.I64, StackKind.Boxed):
+                _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.I64)));
+                break;
             case (StackKind.F64, StackKind.Boxed):
                 _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.F64)));
                 break;
@@ -61,6 +64,9 @@ internal sealed class ExpressionEmitter
                 break;
             case (StackKind.Boxed, StackKind.I32):
                 _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AsI32)));
+                break;
+            case (StackKind.Boxed, StackKind.I64):
+                _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AsI64)));
                 break;
             case (StackKind.Boxed, StackKind.F64):
                 _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AsF64)));
@@ -102,6 +108,12 @@ internal sealed class ExpressionEmitter
         {
             EmitInt32(_il, i32.Value);
             return StackKind.I32;
+        }
+
+        if (value is I64Value i64)
+        {
+            _il.Emit(OpCodes.Ldc_I8, i64.Value);
+            return StackKind.I64;
         }
 
         if (value is F64Value f64)
@@ -157,6 +169,25 @@ internal sealed class ExpressionEmitter
             };
             _il.Emit(OpCodes.Call, Runtime(raw));
             return StackKind.I32;
+        }
+
+        if (binary.Operator is "+" or "-" or "*" or "/" or "%" &&
+            _stackPlan.Infer(binary.Left) is { Name: "I64" } &&
+            _stackPlan.Infer(binary.Right) is { Name: "I64" })
+        {
+            EmitAs(binary.Left, StackKind.I64);
+            EmitAs(binary.Right, StackKind.I64);
+            var raw = binary.Operator switch
+            {
+                "+" => nameof(CompiledRuntime.AddI64Raw),
+                "-" => nameof(CompiledRuntime.SubI64Raw),
+                "*" => nameof(CompiledRuntime.MulI64Raw),
+                "/" => nameof(CompiledRuntime.DivI64Raw),
+                "%" => nameof(CompiledRuntime.RemI64Raw),
+                _ => throw Unsupported("operator not supported by compiler")
+            };
+            _il.Emit(OpCodes.Call, Runtime(raw));
+            return StackKind.I64;
         }
 
         if (binary.Operator is "+" or "-" or "*" or "/" &&

@@ -172,6 +172,14 @@ public static partial class CompiledRuntime
     [MethodImpl(AggressiveInlining)] public static bool EqI32Raw(int left, int right) => left == right;
     [MethodImpl(AggressiveInlining)] public static bool NeI32Raw(int left, int right) => left != right;
 
+    // Unboxed i64 arithmetic (checked overflow, identical to the boxed Add/Sub/Mul/Div/Rem for I64 operands).
+    [MethodImpl(AggressiveInlining)] public static long AddI64Raw(long left, long right) => SandboxInt64Math.Add(left, right);
+    [MethodImpl(AggressiveInlining)] public static long SubI64Raw(long left, long right) => SandboxInt64Math.Subtract(left, right);
+    [MethodImpl(AggressiveInlining)] public static long MulI64Raw(long left, long right) => SandboxInt64Math.Multiply(left, right);
+    [MethodImpl(AggressiveInlining)] public static long DivI64Raw(long left, long right) => SandboxInt64Math.Divide(left, right);
+    [MethodImpl(AggressiveInlining)] public static long RemI64Raw(long left, long right) => SandboxInt64Math.Remainder(left, right);
+    [MethodImpl(AggressiveInlining)] public static long NegI64Raw(long value) => SandboxInt64Math.Negate(value);
+
     public static SandboxValue AddI32(SandboxValue left, SandboxValue right) => I32(SandboxInt32Math.Add(AsI32(left), AsI32(right)));
     public static SandboxValue SubI32(SandboxValue left, SandboxValue right) => I32(SandboxInt32Math.Subtract(AsI32(left), AsI32(right)));
     public static SandboxValue MulI32(SandboxValue left, SandboxValue right) => I32(SandboxInt32Math.Multiply(AsI32(left), AsI32(right)));

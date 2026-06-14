@@ -48,6 +48,42 @@ internal static class PerformanceMatrixControlFlowCases
         return acc;
     }
 
+    public static object HandwrittenI64Arithmetic(int iterations)
+    {
+        long total = 1;
+        for (var i = 0; i < iterations; i++)
+        {
+            total = ((total * 5) + 7) % 1_000_003;
+        }
+
+        return total;
+    }
+
+    public static string I64ArithmeticJson()
+        => """
+        {
+          "id": "matrix-i64-arith",
+          "version": "1.0.0",
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [{ "name": "iterations", "type": "I32" }],
+              "returnType": "I64",
+              "body": [
+                { "op": "set", "name": "total", "value": { "i64": 1 } },
+                { "op": "forRange", "local": "i", "start": { "i32": 0 }, "end": { "var": "iterations" },
+                  "body": [{ "op": "set", "name": "total", "value": {
+                    "op": "rem",
+                    "left": { "op": "add", "left": { "op": "mul", "left": { "var": "total" }, "right": { "i64": 5 } }, "right": { "i64": 7 } },
+                    "right": { "i64": 1000003 } } }] },
+                { "op": "return", "value": { "var": "total" } }
+              ]
+            }
+          ]
+        }
+        """;
+
     public static object HandwrittenWhileLoop(int iterations)
     {
         var acc = 0;

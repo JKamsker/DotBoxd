@@ -251,6 +251,7 @@ internal sealed class MethodEmitter
     private static Type LocalType(StackKind kind)
         => kind switch {
             StackKind.I32 => typeof(int),
+            StackKind.I64 => typeof(long),
             StackKind.F64 => typeof(double),
             _ => typeof(SandboxValue)
         };
