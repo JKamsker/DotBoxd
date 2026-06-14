@@ -74,6 +74,7 @@ public sealed class StringBindingTests
 
         AssertSucceeded(length, mode);
         Assert.Equal(6, ((I32Value)length.Value!).Value);
+        Assert.Equal(1, length.ResourceUsage.HostCalls);
         AssertSucceeded(substring, mode);
         Assert.Equal("bcd", ((StringValue)substring.Value!).Value);
         AssertSucceeded(isEmpty, mode);
@@ -166,6 +167,22 @@ public sealed class StringBindingTests
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.InvalidInput, result.Error!.Code);
         Assert.Equal(mode, result.ActualMode);
+    }
+
+    [Fact]
+    public async Task Compiled_string_length_enforces_host_call_limit()
+    {
+        var result = await ExecuteReturnAsync(
+            """{ "call": "string.length", "args": [{ "string": "abcdef" }] }""",
+            "I32",
+            SandboxPolicyBuilder.Create().WithMaxHostCalls(0).Build(),
+            Options(ExecutionMode.Compiled),
+            compiler: true);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, result.Error!.Code);
+        Assert.Equal(1, result.ResourceUsage.HostCalls);
+        Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
     }
 
     private static SandboxExecutionOptions Options(ExecutionMode mode)

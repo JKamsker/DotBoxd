@@ -160,8 +160,8 @@ internal sealed class ExpressionEvaluator
 
     private ValueTask<SandboxValue> EvaluateCall(CallExpression call, InterpreterFrame frame)
     {
-        if (UnaryMathIntrinsicDispatcher.IsCandidate(call.Name) &&
-            UnaryMathIntrinsicDispatcher.TryEvaluate(
+        if (UnaryPureIntrinsicDispatcher.IsCandidate(call.Name) &&
+            UnaryPureIntrinsicDispatcher.TryEvaluate(
                 call, this, frame, _context, _options, _moduleHash, frame.FunctionId, out var mathValue))
         {
             return mathValue;

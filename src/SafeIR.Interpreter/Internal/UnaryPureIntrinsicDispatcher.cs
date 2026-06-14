@@ -3,7 +3,7 @@ namespace SafeIR.Interpreter.Internal;
 using SafeIR;
 using SafeIR.Runtime;
 
-internal static class UnaryMathIntrinsicDispatcher
+internal static class UnaryPureIntrinsicDispatcher
 {
     public static bool TryEvaluate(
         CallExpression call,
@@ -33,7 +33,7 @@ internal static class UnaryMathIntrinsicDispatcher
     }
 
     public static bool IsCandidate(string id)
-        => id is "math.abs" or "math.sqrt" or "math.floor" or "math.ceil" or "math.round";
+        => id is "math.abs" or "math.sqrt" or "math.floor" or "math.ceil" or "math.round" or "string.length";
 
     private static async ValueTask<SandboxValue> AwaitOperand(
         string id,
@@ -66,6 +66,7 @@ internal static class UnaryMathIntrinsicDispatcher
         context.ChargeBindingCall(descriptor);
         return method switch {
             nameof(CompiledRuntime.AbsI32) => CompiledRuntime.AbsI32(operand),
+            nameof(CompiledRuntime.StringLength) => CompiledRuntime.StringLength(operand),
             nameof(CompiledRuntime.SqrtF64) => CompiledRuntime.SqrtF64(operand),
             nameof(CompiledRuntime.FloorF64) => CompiledRuntime.FloorF64(operand),
             nameof(CompiledRuntime.CeilF64) => CompiledRuntime.CeilF64(operand),
@@ -76,13 +77,13 @@ internal static class UnaryMathIntrinsicDispatcher
 
     private static bool CanUseDirectIntrinsic(BindingSignature binding, string method)
     {
-        var type = method == nameof(CompiledRuntime.AbsI32) ? SandboxType.I32 : SandboxType.F64;
+        var (parameterType, returnType) = Shape(method);
         return binding.Compiled is { Kind: "RuntimeStub" } &&
                binding.Compiled.Type == typeof(CompiledRuntime).FullName &&
                binding.Compiled.Method == method &&
                binding.Parameters.Count == 1 &&
-               binding.Parameters[0].Equals(type) &&
-               binding.ReturnType.Equals(type) &&
+               binding.Parameters[0].Equals(parameterType) &&
+               binding.ReturnType.Equals(returnType) &&
                binding.RequiredCapability is null &&
                binding.Safety == BindingSafety.PureIntrinsic &&
                binding.AuditLevel == AuditLevel.None &&
@@ -93,6 +94,7 @@ internal static class UnaryMathIntrinsicDispatcher
     {
         method = id switch {
             "math.abs" => nameof(CompiledRuntime.AbsI32),
+            "string.length" => nameof(CompiledRuntime.StringLength),
             "math.sqrt" => nameof(CompiledRuntime.SqrtF64),
             "math.floor" => nameof(CompiledRuntime.FloorF64),
             "math.ceil" => nameof(CompiledRuntime.CeilF64),
@@ -101,4 +103,11 @@ internal static class UnaryMathIntrinsicDispatcher
         };
         return method.Length > 0;
     }
+
+    private static (SandboxType Parameter, SandboxType Return) Shape(string method)
+        => method switch {
+            nameof(CompiledRuntime.AbsI32) => (SandboxType.I32, SandboxType.I32),
+            nameof(CompiledRuntime.StringLength) => (SandboxType.String, SandboxType.I32),
+            _ => (SandboxType.F64, SandboxType.F64)
+        };
 }

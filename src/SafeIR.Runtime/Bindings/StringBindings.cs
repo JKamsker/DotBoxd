@@ -11,7 +11,8 @@ public static class StringBindings
             SandboxType.I32,
             SandboxEffect.Cpu,
             BindingCostModel.Fixed(1),
-            (_, args, _) => ValueTask.FromResult(SandboxValue.FromInt32(String(args[0]).Length))),
+            (_, args, _) => ValueTask.FromResult(SandboxValue.FromInt32(String(args[0]).Length)),
+            nameof(CompiledRuntime.StringLength)),
         Pure(
             "string.isEmpty",
             [SandboxType.String],
@@ -73,7 +74,8 @@ public static class StringBindings
         SandboxType returnType,
         SandboxEffect effects,
         BindingCostModel cost,
-        BindingInvoker invoke)
+        BindingInvoker invoke,
+        string compiledMethod = nameof(CompiledRuntime.CallBinding))
         => new(
             id,
             SemVersion.One,
@@ -85,7 +87,7 @@ public static class StringBindings
             AuditLevel.None,
             BindingSafety.PureIntrinsic,
             invoke,
-            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)));
+            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, compiledMethod));
 
     private static string String(SandboxValue value) => ((StringValue)value).Value;
 
