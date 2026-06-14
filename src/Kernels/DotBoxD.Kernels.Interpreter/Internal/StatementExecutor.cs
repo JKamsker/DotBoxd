@@ -268,6 +268,11 @@ internal sealed class StatementExecutor
             return default;
         }
 
+        if (I64ForLoopRunner.TryRun(statement, start, end, frame, _context, _options))
+        {
+            return default;
+        }
+
         for (var i = start; i < end; i++)
         {
             _context.ChargeLoopIteration(5);

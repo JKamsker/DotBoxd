@@ -2,11 +2,12 @@ namespace DotBoxD.Kernels.Interpreter;
 
 using DotBoxD.Kernels;
 
-internal sealed class InterpreterFrame
+internal sealed partial class InterpreterFrame
 {
     private readonly FunctionFrameLayout _layout;
     private readonly SandboxValue?[] _slots;
     private readonly int[] _i32Slots;
+    private readonly long[] _i64Slots;
     private readonly double[] _f64Slots;
     private readonly bool[] _assigned;
 
@@ -14,12 +15,14 @@ internal sealed class InterpreterFrame
         FunctionFrameLayout layout,
         SandboxValue?[] slots,
         int[] i32Slots,
+        long[] i64Slots,
         double[] f64Slots,
         bool[] assigned)
     {
         _layout = layout;
         _slots = slots;
         _i32Slots = i32Slots;
+        _i64Slots = i64Slots;
         _f64Slots = f64Slots;
         _assigned = assigned;
     }
@@ -45,6 +48,13 @@ internal sealed class InterpreterFrame
                 : throw Unassigned(name);
         }
 
+        if (_layout.IsI64Slot(slot))
+        {
+            return _assigned[slot]
+                ? SandboxValue.FromInt64(_i64Slots[slot])
+                : throw Unassigned(name);
+        }
+
         return _slots[slot]
             ?? throw Unassigned(name);
     }
@@ -59,6 +69,10 @@ internal sealed class InterpreterFrame
         else if (_layout.IsF64Slot(slot))
         {
             _f64Slots[slot] = ((F64Value)value).Value;
+        }
+        else if (_layout.IsI64Slot(slot))
+        {
+            _i64Slots[slot] = ((I64Value)value).Value;
         }
         else
         {
@@ -284,6 +298,7 @@ internal sealed class InterpreterFrame
             ? System.Array.Empty<SandboxValue?>()
             : new SandboxValue?[layout.SlotCount];
         var i32Slots = layout.HasI32Slots ? new int[layout.SlotCount] : System.Array.Empty<int>();
+        var i64Slots = layout.HasI64Slots ? new long[layout.SlotCount] : System.Array.Empty<long>();
         var f64Slots = layout.HasF64Slots ? new double[layout.SlotCount] : System.Array.Empty<double>();
         var assigned = layout.HasRawSlots ? new bool[layout.SlotCount] : System.Array.Empty<bool>();
 
@@ -298,6 +313,10 @@ internal sealed class InterpreterFrame
             {
                 f64Slots[i] = ((F64Value)args[i]).Value;
             }
+            else if (layout.IsI64Slot(i))
+            {
+                i64Slots[i] = ((I64Value)args[i]).Value;
+            }
             else
             {
                 slots[i] = args[i];
@@ -309,7 +328,7 @@ internal sealed class InterpreterFrame
             }
         }
 
-        return new InterpreterFrame(layout, slots, i32Slots, f64Slots, assigned);
+        return new InterpreterFrame(layout, slots, i32Slots, i64Slots, f64Slots, assigned);
     }
 
     private static SandboxRuntimeException Unassigned(string name)
