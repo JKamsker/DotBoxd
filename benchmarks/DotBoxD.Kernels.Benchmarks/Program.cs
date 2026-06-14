@@ -23,7 +23,7 @@ if (args.Contains("--probe-matrix", StringComparer.OrdinalIgnoreCase)) {
 }
 
 if (args.Contains("--probe-rogue", StringComparer.OrdinalIgnoreCase)) {
-    await SafeIR.Benchmarks.Interpreter.RogueScalingProbe.RunAsync();
+    await DotBoxD.Kernels.Benchmarks.Interpreter.RogueScalingProbe.RunAsync();
     return;
 }
 
