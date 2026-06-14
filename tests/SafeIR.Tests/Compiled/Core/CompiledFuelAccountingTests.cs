@@ -17,6 +17,10 @@ public sealed class CompiledFuelAccountingTests
         Assert.True(interpreted.Succeeded, interpreted.Error?.SafeMessage);
         Assert.True(compiled.Succeeded, compiled.Error?.SafeMessage);
         Assert.Equal(((I32Value)interpreted.Value!).Value, ((I32Value)compiled.Value!).Value);
+
+        // Compiled mode charges exactly one fuel unit the interpreter does not: the return-value runtime
+        // type check. The unboxed fast path's scalar box/unbox coercions are fuel-transparent, so this delta
+        // is unchanged by the unboxing optimization.
         Assert.Equal(1, compiled.ResourceUsage.FuelUsed - interpreted.ResourceUsage.FuelUsed);
     }
 

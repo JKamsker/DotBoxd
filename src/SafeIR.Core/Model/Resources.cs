@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace SafeIR;
 
@@ -48,6 +49,7 @@ public sealed class ResourceMeter
             CollectionElements,
             StringBytes);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ChargeFuel(long amount)
     {
         if (amount < 0)
@@ -68,6 +70,7 @@ public sealed class ResourceMeter
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ChargeLoopIteration(long fuelAmount)
     {
         if (fuelAmount <= 0) { throw new ArgumentOutOfRangeException(nameof(fuelAmount)); }

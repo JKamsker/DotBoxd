@@ -1,7 +1,10 @@
 namespace SafeIR.Runtime;
 
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using SafeIR;
+
+using static System.Runtime.CompilerServices.MethodImplOptions;
 
 /// <summary>
 /// Generated-code ABI surface for SafeIR-compiled assemblies. This facade is owned by the
@@ -22,9 +25,8 @@ using SafeIR;
 [EditorBrowsable(EditorBrowsableState.Never)]
 public static class CompiledRuntime
 {
-    public static void ChargeFuel(SandboxContext context, int amount) => context.ChargeFuel(amount);
-    public static void ChargeLoopIteration(SandboxContext context, int fuelAmount)
-        => context.ChargeLoopIteration(fuelAmount);
+    [MethodImpl(AggressiveInlining)] public static void ChargeFuel(SandboxContext context, int amount) => context.ChargeFuel(amount);
+    [MethodImpl(AggressiveInlining)] public static void ChargeLoopIteration(SandboxContext context, int fuelAmount) => context.ChargeLoopIteration(fuelAmount);
     public static void EnterCall(SandboxContext context) => context.EnterCall();
     public static void ExitCall(SandboxContext context) => context.ExitCall();
 
@@ -41,11 +43,11 @@ public static class CompiledRuntime
     }
 
     public static SandboxValue Unit() => SandboxValue.Unit;
-    public static SandboxValue I32(int value) => SandboxValue.FromInt32(value);
+    [MethodImpl(AggressiveInlining)] public static SandboxValue I32(int value) => SandboxValue.FromInt32(value);
     public static SandboxValue I64(long value) => SandboxValue.FromInt64(value);
     public static SandboxValue F64(double value)
         => double.IsFinite(value) ? SandboxValue.FromDouble(value) : throw InvalidInput("f64 value must be finite");
-    public static SandboxValue Bool(bool value) => SandboxValue.FromBool(value);
+    [MethodImpl(AggressiveInlining)] public static SandboxValue Bool(bool value) => SandboxValue.FromBool(value);
 
     public static SandboxType TypeScalar(string name) => SandboxType.Scalar(name);
     public static SandboxType TypeList(SandboxType itemType) => SandboxType.List(itemType);
@@ -89,10 +91,17 @@ public static class CompiledRuntime
 
     public static SandboxValue UriLiteralValue(string value) => SandboxValue.FromUri(value);
 
-    public static int AsI32(SandboxValue value) => ((I32Value)value).Value;
+    [MethodImpl(AggressiveInlining)] public static int AsI32(SandboxValue value) => ((I32Value)value).Value;
     public static long AsI64(SandboxValue value) => ((I64Value)value).Value;
-    public static bool AsBool(SandboxValue value) => ((BoolValue)value).Value;
+    [MethodImpl(AggressiveInlining)] public static bool AsBool(SandboxValue value) => ((BoolValue)value).Value;
     public static double AsF64(SandboxValue value) => ((F64Value)value).Value;
+
+    [MethodImpl(AggressiveInlining)] public static int AddI32Raw(int left, int right) => SandboxInt32Math.Add(left, right);
+    [MethodImpl(AggressiveInlining)] public static int SubI32Raw(int left, int right) => SandboxInt32Math.Subtract(left, right);
+    [MethodImpl(AggressiveInlining)] public static int MulI32Raw(int left, int right) => SandboxInt32Math.Multiply(left, right);
+    [MethodImpl(AggressiveInlining)] public static int DivI32Raw(int left, int right) => SandboxInt32Math.Divide(left, right);
+    [MethodImpl(AggressiveInlining)] public static int RemI32Raw(int left, int right) => SandboxInt32Math.Remainder(left, right);
+    [MethodImpl(AggressiveInlining)] public static int NegI32Raw(int value) => SandboxInt32Math.Negate(value);
 
     public static SandboxValue AddI32(SandboxValue left, SandboxValue right) => I32(SandboxInt32Math.Add(AsI32(left), AsI32(right)));
     public static SandboxValue SubI32(SandboxValue left, SandboxValue right) => I32(SandboxInt32Math.Subtract(AsI32(left), AsI32(right)));

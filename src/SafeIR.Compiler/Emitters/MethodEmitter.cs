@@ -10,10 +10,9 @@ internal sealed class MethodEmitter
 {
     private readonly ILGenerator _il;
     private readonly SandboxFunction _function;
-    private readonly IReadOnlyDictionary<string, MethodInfo> _functions;
-    private readonly IBindingCatalog _bindings;
-    private readonly IReadOnlyDictionary<string, FunctionAnalysis> _functionAnalysis;
-    private readonly Dictionary<string, LocalBuilder> _locals = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (LocalBuilder Local, StackKind Kind)> _locals = new(StringComparer.Ordinal);
+    private readonly LocalStackKindPlanner _stackPlan;
+    private readonly ExpressionEmitter _expressions;
 
     public MethodEmitter(
         ILGenerator il,
@@ -24,9 +23,8 @@ internal sealed class MethodEmitter
     {
         _il = il;
         _function = function;
-        _functions = functions;
-        _bindings = bindings;
-        _functionAnalysis = functionAnalysis;
+        _stackPlan = new LocalStackKindPlanner(function, bindings);
+        _expressions = new ExpressionEmitter(il, functions, bindings, functionAnalysis, _locals, _stackPlan);
     }
 
     public void Emit()
@@ -48,8 +46,9 @@ internal sealed class MethodEmitter
     {
         for (var i = 0; i < _function.Parameters.Count; i++)
         {
-            var local = Declare(_function.Parameters[i].Name);
+            var (local, kind) = Declare(_function.Parameters[i].Name);
             _il.Emit(OpCodes.Ldarg, i + 1);
+            _expressions.Coerce(StackKind.Boxed, kind);
             _il.Emit(OpCodes.Stloc, local);
         }
     }
@@ -73,15 +72,16 @@ internal sealed class MethodEmitter
         switch (statement)
         {
             case AssignmentStatement assignment:
-                EmitExpression(assignment.Value);
-                _il.Emit(OpCodes.Stloc, Declare(assignment.Name));
+                var (local, kind) = Declare(assignment.Name);
+                _expressions.EmitAs(assignment.Value, kind);
+                _il.Emit(OpCodes.Stloc, local);
                 return false;
             case ReturnStatement ret:
-                EmitExpression(ret.Value);
+                _expressions.EmitAs(ret.Value, StackKind.Boxed);
                 EmitReturnValue();
                 return true;
             case ExpressionStatement expression:
-                EmitExpression(expression.Value);
+                _expressions.EmitValue(expression.Value);
                 _il.Emit(OpCodes.Pop);
                 return false;
             case IfStatement branch:
@@ -101,8 +101,7 @@ internal sealed class MethodEmitter
     {
         var elseLabel = _il.DefineLabel();
         var endLabel = _il.DefineLabel();
-        EmitExpression(branch.Condition);
-        _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AsBool)));
+        _expressions.EmitAs(branch.Condition, StackKind.Bool);
         _il.Emit(OpCodes.Brfalse, elseLabel);
         var thenReturns = EmitBlock(branch.Then);
         if (!thenReturns)
@@ -124,11 +123,9 @@ internal sealed class MethodEmitter
     {
         var index = _il.DeclareLocal(typeof(int));
         var end = _il.DeclareLocal(typeof(int));
-        EmitExpression(range.Start);
-        _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AsI32)));
+        _expressions.EmitAs(range.Start, StackKind.I32);
         _il.Emit(OpCodes.Stloc, index);
-        EmitExpression(range.End);
-        _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AsI32)));
+        _expressions.EmitAs(range.End, StackKind.I32);
         _il.Emit(OpCodes.Stloc, end);
 
         var startLabel = _il.DefineLabel();
@@ -138,9 +135,10 @@ internal sealed class MethodEmitter
         _il.Emit(OpCodes.Ldloc, end);
         _il.Emit(OpCodes.Bge, finishLabel);
         CompiledMeterEmitter.LoopIteration(_il, 5);
+        var (loopVar, loopKind) = Declare(range.LocalName);
         _il.Emit(OpCodes.Ldloc, index);
-        _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.I32)));
-        _il.Emit(OpCodes.Stloc, Declare(range.LocalName));
+        _expressions.Coerce(StackKind.I32, loopKind);
+        _il.Emit(OpCodes.Stloc, loopVar);
         EmitBlock(range.Body);
         _il.Emit(OpCodes.Ldloc, index);
         EmitInt32(_il, 1);
@@ -155,8 +153,7 @@ internal sealed class MethodEmitter
         var startLabel = _il.DefineLabel();
         var finishLabel = _il.DefineLabel();
         _il.MarkLabel(startLabel);
-        EmitExpression(loop.Condition);
-        _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AsBool)));
+        _expressions.EmitAs(loop.Condition, StackKind.Bool);
         _il.Emit(OpCodes.Brfalse, finishLabel);
         CompiledMeterEmitter.LoopIteration(_il, 5);
         EmitBlock(loop.Body);
@@ -164,111 +161,18 @@ internal sealed class MethodEmitter
         _il.MarkLabel(finishLabel);
     }
 
-    private void EmitExpression(Expression expression)
-    {
-        CompiledMeterEmitter.Fuel(_il, 1);
-        switch (expression)
-        {
-            case LiteralExpression literal:
-                CompiledLiteralEmitter.Emit(_il, literal.Value);
-                break;
-            case VariableExpression variable:
-                _il.Emit(OpCodes.Ldloc, _locals[variable.Name]);
-                break;
-            case UnaryExpression unary:
-                EmitUnary(unary);
-                break;
-            case BinaryExpression binary:
-                EmitBinary(binary);
-                break;
-            case CallExpression call:
-                EmitCall(call);
-                break;
-            default:
-                throw Unsupported("expression not supported");
-        }
-    }
-
-    private void EmitUnary(UnaryExpression unary)
-    {
-        EmitExpression(unary.Operand);
-        var method = unary.Operator switch
-        {
-            "!" => nameof(CompiledRuntime.NotBool),
-            "-" => nameof(CompiledRuntime.Neg),
-            _ => throw Unsupported("unary operator not supported by compiler")
-        };
-        _il.Emit(OpCodes.Call, Runtime(method));
-    }
-
-    private void EmitBinary(BinaryExpression binary)
-    {
-        if (binary.Operator is "&&" or "||")
-        {
-            ShortCircuitBooleanEmitter.Emit(binary, _il, _bindings, _functionAnalysis, EmitExpression);
-            return;
-        }
-
-        EmitExpression(binary.Left);
-        EmitExpression(binary.Right);
-        var method = binary.Operator switch
-        {
-            "+" => nameof(CompiledRuntime.Add),
-            "-" => nameof(CompiledRuntime.Sub),
-            "*" => nameof(CompiledRuntime.Mul),
-            "/" => nameof(CompiledRuntime.Div),
-            "%" => nameof(CompiledRuntime.Rem),
-            "==" => nameof(CompiledRuntime.Eq),
-            "!=" => nameof(CompiledRuntime.Ne),
-            "<" => nameof(CompiledRuntime.Lt),
-            "<=" => nameof(CompiledRuntime.Lte),
-            ">" => nameof(CompiledRuntime.Gt),
-            ">=" => nameof(CompiledRuntime.Gte),
-            _ => throw Unsupported("operator not supported by compiler")
-        };
-        _il.Emit(OpCodes.Call, Runtime(method));
-    }
-
-    private void EmitCall(CallExpression call)
-    {
-        if (PureBindingCallEmitter.TryEmit(call, _il, EmitExpression))
-        {
-            return;
-        }
-
-        if (_functions.TryGetValue(call.Name, out var method))
-        {
-            EmitFunctionCall(call, method);
-            return;
-        }
-
-        if (!BindingCallEmitter.TryEmit(call, _bindings, _il, EmitExpression))
-        {
-            throw Unsupported($"call '{call.Name}' is not supported by compiler");
-        }
-    }
-
-    private void EmitFunctionCall(CallExpression call, MethodInfo method)
-    {
-        _il.Emit(OpCodes.Ldarg_0);
-        foreach (var argument in call.Arguments)
-        {
-            EmitExpression(argument);
-        }
-
-        _il.Emit(OpCodes.Call, method);
-    }
-
-    private LocalBuilder Declare(string name)
+    private (LocalBuilder Local, StackKind Kind) Declare(string name)
     {
         if (_locals.TryGetValue(name, out var existing))
         {
             return existing;
         }
 
-        var local = _il.DeclareLocal(typeof(SandboxValue));
-        _locals[name] = local;
-        return local;
+        var kind = _stackPlan.LocalKind(name);
+        var local = _il.DeclareLocal(kind == StackKind.I32 ? typeof(int) : typeof(SandboxValue));
+        var entry = (local, kind);
+        _locals[name] = entry;
+        return entry;
     }
 
     private void EmitReturnValue()

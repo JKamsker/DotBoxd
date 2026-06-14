@@ -68,8 +68,24 @@ internal static class GeneratedMethodShapeSignatures
                    CompiledRuntimeName + ".CreateValueArray(" + SandboxContextName,
                    StringComparison.Ordinal) &&
                !IsLiteralConstructionCall(calledMember) &&
+               !IsScalarConversionCall(calledMember) &&
                !calledMember.Contains("(" + SandboxContextName + ",", StringComparison.Ordinal);
     }
+
+    // O(1) scalar box/unbox conversions the compiler inserts at the boundaries of its unboxed fast path
+    // (raw int/bool <-> SandboxValue). They are bounded, allocation-light, and cannot do unbounded work,
+    // so — like literal construction — they do not require per-call meter density. The instruction-density
+    // (sparsity) rule still bounds any run of them, and they remain ordinary runtime calls that must follow
+    // the entered-call/charged-fuel prologue.
+    private static bool IsScalarConversionCall(string calledMember)
+        => calledMember.StartsWith(CompiledRuntimeName + ".I32(", StringComparison.Ordinal) ||
+           calledMember.StartsWith(CompiledRuntimeName + ".I64(", StringComparison.Ordinal) ||
+           calledMember.StartsWith(CompiledRuntimeName + ".F64(", StringComparison.Ordinal) ||
+           calledMember.StartsWith(CompiledRuntimeName + ".Bool(", StringComparison.Ordinal) ||
+           calledMember.StartsWith(CompiledRuntimeName + ".AsI32(", StringComparison.Ordinal) ||
+           calledMember.StartsWith(CompiledRuntimeName + ".AsI64(", StringComparison.Ordinal) ||
+           calledMember.StartsWith(CompiledRuntimeName + ".AsF64(", StringComparison.Ordinal) ||
+           calledMember.StartsWith(CompiledRuntimeName + ".AsBool(", StringComparison.Ordinal);
 
     private static bool IsLiteralConstructionCall(string calledMember)
         => calledMember.StartsWith(CompiledRuntimeName + ".CreateLiteralValueArray(", StringComparison.Ordinal) ||

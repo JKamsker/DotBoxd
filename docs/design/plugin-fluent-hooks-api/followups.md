@@ -172,3 +172,51 @@ arg-count guard), [`RpcKernelGenerationTests`](../../../tests/SafeIR.Tests/Plugi
 [`KernelRpcServiceProxyTests`](../../../tests/SafeIR.Tests/Plugins/Rpc/KernelRpcServiceProxyTests.cs)
 (the typed proxy + `RegisterRpcServiceAsync`/`RpcService` + DTO/list marshaller round-trips), plus the
 record-type foundation in [`SafeRecordCollectionTests`](../../../tests/SafeIR.Tests/Collections/SafeRecordCollectionTests.cs).
+
+---
+
+## 3. Compiling SafeIR to fast, verified IL
+
+The record/RPC work above made every IR shape (records included) compile to verified IL. A follow-up pass
+made that compiled IL **fast** without weakening any safety invariant.
+
+### What was slow
+
+- **Per-op boxing.** Every scalar operation allocated a `SandboxValue` (a heap `record`). A tight integer
+  loop allocated several objects per iteration.
+- **A hidden closure per arithmetic op.** `SandboxInt32Math.Add/Subtract/Multiply/Negate` were written as
+  `Checked(() => checked(...))` — each call allocated a `Func<int>` *and* the `try/catch` blocked JIT
+  inlining. This penalized the interpreter too.
+- **A non-inlined metering call chain.** Each fuel charge went `CompiledRuntime.ChargeFuel` →
+  `SandboxContext.ChargeFuel` → `ResourceMeter.ChargeFuel`, none inlined across assemblies.
+
+### What changed
+
+- **Unboxed I32 fast path** (`MethodEmitter`). Raw `int` flows on the IL stack for I32 literals, locals,
+  and `+ - * / %`; values are boxed/unboxed only at boundaries (binding/function args, comparisons,
+  return). Overflow/divide semantics are preserved by `*I32Raw` facades over the same `SandboxInt32Math`.
+  Comparisons and all non-I32 types stay boxed so the stack-type verifier sees well-typed values.
+- **Branchless `SandboxInt32Math`.** Overflow is detected with bit tests — no closures, no `try/catch`,
+  allocation-free and inlineable. Identical `InvalidInput` errors.
+- **`AggressiveInlining`** on the metering chain, the scalar box/unbox conversions, and the raw arithmetic
+  so the JIT collapses them into the generated code.
+
+### Fuel transparency (why it is safe)
+
+Unboxing is **fuel-transparent**: compiled fuel is identical to the all-boxed path. Scalar box/unbox
+coercions are O(1) and verifier-classified as **non-metered work**
+(`GeneratedMethodShapeSignatures.IsScalarConversionCall`) — the same treatment literal construction already
+gets. The per-op fuel/loop metering, the instruction-sparsity bound (<=32 instructions between meters), the
+stack-type checks, and the per-work-call meter-density rule all still hold; `Verifier*` and golden tests
+prove the shape and fuel are unchanged.
+
+### Result and the floor
+
+Worst-case probe (`dotnet run -c Release -- --probe-compiled`, a 20M-iteration `total = (total + i) % N`
+loop): handwritten **1.0x**, compiled IL **~8x**, interpreted **~55x** — down from ~22x compiled before this
+pass. The residual gap is **mandatory per-operation safety metering** (fuel + loop-iteration + amortized
+deadline checks): a two-op loop body still carries ~6 fuel charges per iteration. That count is fixed by
+the interpreter/compiled fuel-parity contract and the sandbox safety model, so it cannot be reduced without
+weakening those guarantees. For realistic plugin bodies (conditionals, bindings, real work) the fixed
+metering is amortized and compiled runs much closer to handwritten; the trivial loop is the deliberate
+worst case where metering dominates.

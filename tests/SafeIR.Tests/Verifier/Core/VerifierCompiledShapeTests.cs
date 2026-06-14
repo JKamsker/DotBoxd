@@ -204,11 +204,12 @@ public sealed class VerifierCompiledShapeTests
             var value = fnIl.DeclareLocal(typeof(SandboxValue));
             EmitEnterCall(fnIl);
             EmitChargeFuel(fnIl);
+            // Two metered runtime work calls (Neg) against a single fuel charge -> rejected. I32 boxing is a
+            // non-metered O(1) conversion, so it only materializes the operand and does not count as work.
             fnIl.Emit(OpCodes.Ldc_I4_1);
             fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.I32))!);
-            fnIl.Emit(OpCodes.Pop);
-            fnIl.Emit(OpCodes.Ldc_I4_2);
-            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.I32))!);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.Neg))!);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.Neg))!);
             fnIl.Emit(OpCodes.Stloc, value);
             EmitExitCall(fnIl);
             fnIl.Emit(OpCodes.Ldloc, value);

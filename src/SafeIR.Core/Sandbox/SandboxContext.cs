@@ -1,5 +1,7 @@
 namespace SafeIR;
 
+using System.Runtime.CompilerServices;
+
 public sealed partial class SandboxContext
 {
     private DeterministicRandom? _deterministicRandom;
@@ -72,12 +74,14 @@ public sealed partial class SandboxContext
             $"capability {capabilityId} is not granted"));
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ChargeFuel(long amount)
     {
         CancellationToken.ThrowIfCancellationRequested();
         Budget.ChargeFuel(amount);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ChargeLoopIteration(long fuelAmount)
     {
         CancellationToken.ThrowIfCancellationRequested();

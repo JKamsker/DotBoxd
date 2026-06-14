@@ -7,6 +7,11 @@ if (args.Contains("--smoke", StringComparer.OrdinalIgnoreCase)) {
     return;
 }
 
+if (args.Contains("--probe-compiled", StringComparer.OrdinalIgnoreCase)) {
+    await SafeIR.Benchmarks.Interpreter.CompiledSpeedProbe.RunAsync();
+    return;
+}
+
 var profileIndex = Array.FindIndex(args, arg => arg.Equals("--profile-ipc", StringComparison.OrdinalIgnoreCase));
 if (profileIndex >= 0) {
     var transport = args.ElementAtOrDefault(profileIndex + 1) ?? IpcAllocationProfile.NamedPipeTransport;

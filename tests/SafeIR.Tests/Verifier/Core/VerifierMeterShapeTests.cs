@@ -58,11 +58,12 @@ public sealed class VerifierMeterShapeTests
             fnIl.Emit(OpCodes.Stloc, value);
             fnIl.Emit(OpCodes.Br_S, end);
             fnIl.MarkLabel(workPath);
+            // Two metered work calls (Neg) on this branch, whose fuel was charged only on the other branch
+            // -> rejected. I32 boxing is non-metered O(1), used only to produce the operand.
             fnIl.Emit(OpCodes.Ldc_I4_1);
             fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.I32))!);
-            fnIl.Emit(OpCodes.Pop);
-            fnIl.Emit(OpCodes.Ldc_I4_2);
-            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.I32))!);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.Neg))!);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.Neg))!);
             fnIl.Emit(OpCodes.Stloc, value);
             fnIl.MarkLabel(end);
             EmitExitCall(fnIl);
