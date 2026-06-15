@@ -1,8 +1,9 @@
+extern alias GameServerAbstractions;
+extern alias GameServerPlugin;
+
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using DotBoxD.Abstractions;
-using DotBoxD.Kernels.Game.Plugin.Kernels;
-using DotBoxD.Kernels.Game.Server.Abstractions;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Plugins;
@@ -10,6 +11,8 @@ using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using DotBoxD.Plugins.Json;
 using DotBoxD.Plugins.Runtime;
 using DotBoxD.Plugins.Runtime.Hooks;
+using GameServerAbstractions::DotBoxD.Kernels.Game.Server.Abstractions;
+using GuardianKernel = GameServerPlugin::DotBoxD.Kernels.Game.Plugin.Kernels.GuardianKernel;
 using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.TypeNames;
 
 namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Contracts;
