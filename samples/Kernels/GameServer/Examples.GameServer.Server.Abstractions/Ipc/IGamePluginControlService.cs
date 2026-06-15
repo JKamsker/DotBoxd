@@ -1,4 +1,5 @@
 using DotBoxD.Services.Attributes;
+using DotBoxD.Plugins;
 
 namespace DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
 
@@ -9,7 +10,7 @@ namespace DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
 /// <see cref="KillMonsterAsync"/>.
 /// </summary>
 [DotBoxDService]
-public interface IGamePluginControlService
+public interface IGamePluginControlService : IKernelRpcWireClient
 {
     ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default);
 

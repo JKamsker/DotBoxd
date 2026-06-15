@@ -3,6 +3,7 @@ using DotBoxD.Kernels.Game.Plugin.Client;
 using DotBoxD.Kernels.Game.Plugin.Kernels;
 using DotBoxD.Kernels.Game.Server.Abstractions;
 using DotBoxD.Plugins;
+using DotBoxD.Plugins.Kernel;
 
 namespace DotBoxD.Kernels.Game.Plugin.Tests;
 
@@ -156,6 +157,40 @@ public sealed class RemotePluginServerBuilderTests
             .SetupKernelRpc(rpc => rpc.Register<IMonsterKillerService, MonsterKillerKernel>());
 
         Assert.NotNull(builder.Build());
+    }
+
+    [Fact]
+    public void InvokeAsync_stub_throws_when_call_site_is_not_intercepted()
+    {
+        var control = new RecordingGamePluginControlService();
+        var server = new RemotePluginServer(control);
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => server.Kernels.InvokeAsync(static world => world.GetHealth("monster-1")));
+
+        Assert.Contains("must be intercepted", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Concurrent_anonymous_kernel_installs_share_one_registration()
+    {
+        var control = new RecordingGamePluginControlService();
+        var server = new RemotePluginServer(control);
+        var factoryCalls = 0;
+
+        var installs = Enumerable.Range(0, 16)
+            .Select(_ => server.Kernels.EnsureAnonymousKernelAsync("monster-killer", () =>
+            {
+                Interlocked.Increment(ref factoryCalls);
+                return KernelPackageRegistry.Resolve<MonsterKillerKernel>();
+            }))
+            .ToArray();
+
+        var installedIds = await Task.WhenAll(installs);
+
+        Assert.All(installedIds, id => Assert.Equal("monster-killer", id));
+        Assert.Equal(1, factoryCalls);
+        Assert.Equal(["rpc:monster-killer"], control.Calls);
     }
 
     private static RemotePluginServer BuildServer(RecordingGamePluginControlService control)

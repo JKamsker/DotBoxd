@@ -144,33 +144,6 @@ internal sealed class RemotePluginServer : IAsyncDisposable
 }
 
 
-internal sealed class RemoteKernelControl
-{
-    private readonly IGamePluginControlService _control;
-
-    public RemoteKernelControl(IGamePluginControlService control) => _control = control;
-
-    /// <summary>
-    /// Registers a kernel as the implementation of a server service contract: resolves its generated
-    /// verified-IR package and ships it. Returns the installed plugin id.
-    /// </summary>
-    public async ValueTask<string> Register<TService, TKernel>()
-        where TService : class
-        where TKernel : class, TService
-    {
-        var json = PluginPackageJsonSerializer.Export(KernelPackageRegistry.Resolve<TKernel>());
-        return await _control.InstallPluginAsync(json).ConfigureAwait(false);
-    }
-
-    /// <summary>Strongly-typed settings handle for a kernel this plugin authored.</summary>
-    public RemoteKernelHandle<TKernel> Get<TKernel>() where TKernel : class, new()
-        => new(_control, PluginId(typeof(TKernel)));
-
-    internal static string PluginId(Type kernelType)
-        => kernelType.GetCustomAttribute<PluginAttribute>()?.Id
-           ?? throw new InvalidOperationException($"Kernel '{kernelType.FullName}' has no [Plugin] id.");
-}
-
 internal sealed class RemoteKernelRpcControl : IKernelRpcClientRegistry
 {
     private readonly IGamePluginControlService _control;
