@@ -31,6 +31,8 @@ internal static class DotBoxDGenerationNames
         public const string KernelRpcClientPropertyAttribute = "DotBoxD.Abstractions.KernelRpcClientPropertyAttribute";
         public const string KernelRpcClientMethodAttribute = "DotBoxD.Abstractions.KernelRpcClientMethodAttribute";
         public const string HookContext = "DotBoxD.Abstractions.HookContext";
+        public const string KernelInvocationDelegateType = "DotBoxD.Kernels.Game.Plugin.Client.RemoteKernelInvocation";
+        public const string KernelInvocationDelegateOriginal = KernelInvocationDelegateType + "<TCaptures, TReturn>";
         public const string KernelInvocationSurfaceType = "DotBoxD.Kernels.Game.Plugin.Client.RemoteKernelControl";
         public const string GameWorldAccessType = "DotBoxD.Kernels.Game.Server.Abstractions.IGameWorldAccess";
         public const string GameWorldMonsterSnapshotType = "DotBoxD.Kernels.Game.Server.Abstractions.MonsterSnapshot";
@@ -105,6 +107,8 @@ internal static class DotBoxDGenerationNames
         public const string KernelRpcClientPropertyAttribute = TypeNames.KernelRpcClientPropertyAttribute;
         public const string KernelRpcClientMethodAttribute = TypeNames.KernelRpcClientMethodAttribute;
         public const string HookContextType = TypeNames.HookContext;
+        public const string KernelInvocationDelegateType = TypeNames.KernelInvocationDelegateType;
+        public const string KernelInvocationDelegateOriginal = TypeNames.KernelInvocationDelegateOriginal;
         public const string KernelInvocationSurfaceType = TypeNames.KernelInvocationSurfaceType;
         public const string GameWorldAccessType = TypeNames.GameWorldAccessType;
         public const string GameWorldMonsterSnapshotType = TypeNames.GameWorldMonsterSnapshotType;

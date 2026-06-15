@@ -66,6 +66,18 @@ public sealed class InvokeAsyncGenerationTests
             tree => tree.ToString().Contains("InvokeAsync_", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Explicit_capture_bag_generates_sync_in_and_sync_out_package()
+    {
+        var result = RunGenerator(CaptureBagSource);
+        var source = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.Contains("InvokeAsync_", source, StringComparison.Ordinal);
+        Assert.Contains("\"parameters\\\":[{\\\"name\\\":\\\"bag\\\"", source, StringComparison.Ordinal);
+        Assert.Contains("__syncOut_LastHealth", source, StringComparison.Ordinal);
+        Assert.Contains("captures.LastHealth =", source, StringComparison.Ordinal);
+    }
+
     private const string NoCaptureSource = """
         using System;
         using System.Threading.Tasks;
@@ -101,6 +113,63 @@ public sealed class InvokeAsyncGenerationTests
                     {
                         var hp = world.GetHealth("monster-1");
                         return hp;
+                    });
+            }
+        }
+        """;
+
+    private const string CaptureBagSource = """
+        using System;
+        using System.Threading.Tasks;
+        using DotBoxD.Abstractions;
+        using DotBoxD.Kernels.Sandbox;
+        using DotBoxD.Plugins;
+        using DotBoxD.Kernels.Game.Plugin.Client;
+        using DotBoxD.Kernels.Game.Server.Abstractions;
+
+        namespace DotBoxD.Kernels.Game.Server.Abstractions
+        {
+            public sealed record MonsterSnapshot(string Id, string Name, int Health, int Level, int Position);
+
+            public interface IGameWorldAccess
+            {
+                [HostBinding("host.world.getMonster", "game.world.monster.read.snapshot", SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateRead)]
+                MonsterSnapshot GetMonster(string entityId);
+            }
+        }
+
+        namespace DotBoxD.Kernels.Game.Plugin.Client
+        {
+            public delegate TReturn RemoteKernelInvocation<TCaptures, TReturn>(
+                IGameWorldAccess world,
+                TCaptures captures);
+
+            public sealed class RemoteKernelControl
+            {
+                public ValueTask<T> InvokeAsync<TCaptures, T>(
+                    TCaptures captures,
+                    RemoteKernelInvocation<TCaptures, T> lambda)
+                    where TCaptures : class
+                    => throw new InvalidOperationException();
+            }
+        }
+
+        namespace Sample
+        {
+            public sealed class MonsterCapture
+            {
+                public string MonsterId { get; set; } = "";
+                public int LastHealth { get; set; }
+            }
+
+            public static class Usage
+            {
+                public static ValueTask<string> Run(RemoteKernelControl kernels, MonsterCapture captures)
+                    => kernels.InvokeAsync(captures, (IGameWorldAccess world, MonsterCapture bag) =>
+                    {
+                        var monster = world.GetMonster(bag.MonsterId);
+                        bag.LastHealth = monster.Health;
+                        return monster.Name;
                     });
             }
         }

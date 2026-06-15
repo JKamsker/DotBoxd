@@ -50,21 +50,58 @@ internal static class InvokeAsyncInterceptorEmitter
             .Append(index.ToString(CultureInfo.InvariantCulture))
             .AppendLine("(");
         builder.Append("            this ").Append(interception.ReceiverType).AppendLine(" kernels,");
-        builder.Append("            global::System.Func<")
-            .Append(interception.HostAccessType)
-            .Append(", ")
-            .Append(interception.ReturnType)
-            .AppendLine("> lambda)");
+        if (interception.CaptureType is { } captureType &&
+            interception.CaptureDelegateType is { } captureDelegateType)
+        {
+            builder.Append("            ").Append(captureType).AppendLine(" captures,");
+            builder.Append("            ").Append(captureDelegateType).Append('<')
+                .Append(captureType)
+                .Append(", ")
+                .Append(interception.ReturnType)
+                .AppendLine("> lambda)");
+        }
+        else
+        {
+            builder.Append("            global::System.Func<")
+                .Append(interception.HostAccessType)
+                .Append(", ")
+                .Append(interception.ReturnType)
+                .AppendLine("> lambda)");
+        }
+
         builder.AppendLine("        {");
+        if (interception.CaptureType is not null)
+        {
+            builder.AppendLine("            global::System.ArgumentNullException.ThrowIfNull(captures);");
+        }
+
         builder.AppendLine("            global::System.ArgumentNullException.ThrowIfNull(lambda);");
         builder.Append("            var __pluginId = await kernels.EnsureAnonymousKernelAsync(")
             .Append(Literal(interception.PluginId))
             .Append(", ")
             .Append(interception.PackageFullName)
             .AppendLine(".Create).ConfigureAwait(false);");
-        builder.AppendLine("            var __request = global::DotBoxD.Plugins.KernelRpcBinaryCodec.EncodeArguments(global::System.Array.Empty<global::DotBoxD.Plugins.KernelRpcValue>());");
+        builder.Append("            var __request = global::DotBoxD.Plugins.KernelRpcBinaryCodec.EncodeArguments(")
+            .Append(interception.ArgumentsExpression)
+            .AppendLine(");");
         builder.AppendLine("            var __response = await kernels.WireClient.InvokeKernelRpcAsync(__pluginId, __request).ConfigureAwait(false);");
         builder.AppendLine("            var __result = global::DotBoxD.Plugins.KernelRpcBinaryCodec.DecodeValue(__response);");
+        if (interception.SyncOutAssignments.Count > 0)
+        {
+            builder.AppendLine("            __result.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Record);");
+            builder.AppendLine("            var __fields = __result.Items;");
+            builder.Append("            if (__fields.Length != ")
+                .Append((interception.SyncOutAssignments.Count + 1).ToString(CultureInfo.InvariantCulture))
+                .AppendLine(")");
+            builder.AppendLine("            {");
+            builder.AppendLine("                throw new global::System.NotSupportedException(\"InvokeAsync response field count did not match the generated capture shape.\");");
+            builder.AppendLine("            }");
+            for (var i = 0; i < interception.SyncOutAssignments.Count; i++)
+            {
+                builder.Append("            ").Append(interception.SyncOutAssignments[i]).AppendLine(";");
+            }
+        }
+
         builder.Append("            return ").Append(interception.ResultExpression).AppendLine(";");
         builder.AppendLine("        }");
         builder.AppendLine();

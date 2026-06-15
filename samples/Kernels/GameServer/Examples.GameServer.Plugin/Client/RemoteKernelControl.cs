@@ -9,6 +9,10 @@ using DotBoxD.Plugins.Kernel;
 
 namespace DotBoxD.Kernels.Game.Plugin.Client;
 
+internal delegate TReturn RemoteKernelInvocation<TCaptures, TReturn>(
+    IGameWorldAccess world,
+    TCaptures captures);
+
 internal sealed class RemoteKernelControl
 {
     private readonly IGamePluginControlService _control;
@@ -36,6 +40,17 @@ internal sealed class RemoteKernelControl
 
     public ValueTask<TReturn> InvokeAsync<TReturn>(Func<IGameWorldAccess, TReturn> lambda)
     {
+        ArgumentNullException.ThrowIfNull(lambda);
+        throw new InvalidOperationException(
+            "Remote kernel InvokeAsync calls must be intercepted by the DotBoxD plugin generator.");
+    }
+
+    public ValueTask<TReturn> InvokeAsync<TCaptures, TReturn>(
+        TCaptures captures,
+        RemoteKernelInvocation<TCaptures, TReturn> lambda)
+        where TCaptures : class
+    {
+        ArgumentNullException.ThrowIfNull(captures);
         ArgumentNullException.ThrowIfNull(lambda);
         throw new InvalidOperationException(
             "Remote kernel InvokeAsync calls must be intercepted by the DotBoxD plugin generator.");

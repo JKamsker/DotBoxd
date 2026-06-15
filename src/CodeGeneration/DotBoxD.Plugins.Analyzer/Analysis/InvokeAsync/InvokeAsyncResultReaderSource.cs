@@ -16,7 +16,9 @@ internal sealed class InvokeAsyncResultReaderSource
         return (source.ReadExpression(type, expression), source._helpers.ToString());
     }
 
-    private string ReadExpression(ITypeSymbol type, string expression)
+    public string Helpers => _helpers.ToString();
+
+    internal string ReadExpression(ITypeSymbol type, string expression)
         => type.SpecialType switch
         {
             SpecialType.System_Boolean => $"{expression}.BoolValue",

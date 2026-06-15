@@ -20,6 +20,9 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     private readonly ICollection<string> _capabilities;
     private readonly ICollection<string> _effects;
     private readonly CancellationToken _cancellationToken;
+    private Func<AssignmentExpressionSyntax, Func<ExpressionSyntax, string>, string?>? _assignmentOverride;
+    private IReadOnlyList<string> _returnRecordFields = [];
+    private string? _returnRecordType;
     private int _tempCounter;
 
     /// <summary>True once the body builds a list or record, so the manifest declares the Alloc effect.</summary>
@@ -37,17 +40,45 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         _cancellationToken = cancellationToken;
     }
 
-    public string LowerBody(BlockSyntax block) => LowerStatements(block.Statements);
+    public string LowerBody(BlockSyntax block) => LowerBody(block, [], [], returnRecordType: null, assignmentOverride: null);
 
-    private string LowerStatements(IEnumerable<StatementSyntax> statements)
+    internal string LowerBody(
+        BlockSyntax block,
+        IReadOnlyList<(string Name, ExpressionSyntax Value)> leadingLocals,
+        IReadOnlyList<string> returnRecordFields,
+        string? returnRecordType,
+        Func<AssignmentExpressionSyntax, Func<ExpressionSyntax, string>, string?>? assignmentOverride)
     {
-        var parts = new List<string>();
+        _assignmentOverride = assignmentOverride;
+        _returnRecordFields = returnRecordFields;
+        _returnRecordType = returnRecordType;
+        try
+        {
+            var parts = new List<string>();
+            for (var i = 0; i < leadingLocals.Count; i++)
+            {
+                parts.Add(SetStatement(leadingLocals[i].Name, LowerExpression(leadingLocals[i].Value)));
+            }
+
+            LowerStatements(block.Statements, parts);
+            return "[" + string.Join(",", parts) + "]";
+        }
+        finally
+        {
+            _assignmentOverride = null;
+            _returnRecordFields = [];
+            _returnRecordType = null;
+        }
+    }
+
+    internal static string SetGeneratedLocal(string name, string value) => SetStatement(name, value);
+
+    private void LowerStatements(IEnumerable<StatementSyntax> statements, List<string> parts)
+    {
         foreach (var statement in statements)
         {
             LowerStatement(statement, parts);
         }
-
-        return "[" + string.Join(",", parts) + "]";
     }
 
     private void LowerStatement(StatementSyntax statement, List<string> output)
@@ -68,7 +99,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 output.Add(LowerIf(branch));
                 break;
             case ReturnStatementSyntax { Expression: { } returned }:
-                output.Add(Obj(("op", Str("return")), ("value", LowerExpression(returned))));
+                output.Add(Obj(("op", Str("return")), ("value", ReturnValue(LowerExpression(returned)))));
                 break;
             case BlockSyntax block:
                 foreach (var inner in block.Statements)
@@ -104,6 +135,9 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                     ? LowerExpression(assignment.Right)
                     : LowerCompound(assignment, target);
                 return SetStatement(target.Identifier.ValueText, value);
+            case AssignmentExpressionSyntax assignment
+                when _assignmentOverride?.Invoke(assignment, LowerExpression) is { } lowered:
+                return lowered;
             case PostfixUnaryExpressionSyntax { Operand: IdentifierNameSyntax inc } postfix
                 when postfix.Kind() is SyntaxKind.PostIncrementExpression or SyntaxKind.PostDecrementExpression:
                 var op = postfix.Kind() == SyntaxKind.PostIncrementExpression ? "add" : "sub";
@@ -181,5 +215,22 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             ("condition", LowerExpression(branch.Condition)),
             ("then", "[" + string.Join(",", then) + "]"),
             ("else", "[" + string.Join(",", @else) + "]"));
+    }
+
+    private string ReturnValue(string userReturn)
+    {
+        if (_returnRecordFields.Count == 0)
+        {
+            return userReturn;
+        }
+
+        var fields = new string[1 + _returnRecordFields.Count];
+        fields[0] = userReturn;
+        for (var i = 0; i < _returnRecordFields.Count; i++)
+        {
+            fields[i + 1] = Var(_returnRecordFields[i]);
+        }
+
+        return Call("record.new", _returnRecordType, fields);
     }
 }

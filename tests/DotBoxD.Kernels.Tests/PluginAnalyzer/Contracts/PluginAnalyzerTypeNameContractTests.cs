@@ -16,6 +16,7 @@ namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Contracts;
 
 public sealed class PluginAnalyzerTypeNameContractTests
 {
+    private const string RemoteKernelInvocationMetadataName = "RemoteKernelInvocation`2";
     private const string RemoteKernelControlTypeName = "RemoteKernelControl";
 
     [Fact]
@@ -51,6 +52,8 @@ public sealed class PluginAnalyzerTypeNameContractTests
             [nameof(TypeNames.KernelRpcClientPropertyAttribute)] = TypeName(typeof(KernelRpcClientPropertyAttribute)),
             [nameof(TypeNames.KernelRpcClientMethodAttribute)] = TypeName(typeof(KernelRpcClientMethodAttribute)),
             [nameof(TypeNames.HookContext)] = TypeName(typeof(HookContext)),
+            [nameof(TypeNames.KernelInvocationDelegateType)] = RemoteKernelInvocationTypeName(),
+            [nameof(TypeNames.KernelInvocationDelegateOriginal)] = RemoteKernelInvocationOriginalName(),
             [nameof(TypeNames.KernelInvocationSurfaceType)] = RemoteKernelControlFullName(),
             [nameof(TypeNames.GameWorldAccessType)] = TypeName(typeof(IGameWorldAccess)),
             [nameof(TypeNames.GameWorldMonsterSnapshotType)] = TypeName(typeof(MonsterSnapshot)),
@@ -113,8 +116,17 @@ public sealed class PluginAnalyzerTypeNameContractTests
         };
 
     private static string RemoteKernelControlFullName()
-        => TypeName(typeof(GuardianKernel).Assembly.GetTypes().Single(
-            static type => string.Equals(type.Name, RemoteKernelControlTypeName, StringComparison.Ordinal)));
+        => TypeName(SamplePluginType(RemoteKernelControlTypeName));
+
+    private static string RemoteKernelInvocationTypeName()
+        => TypeName(SamplePluginType(RemoteKernelInvocationMetadataName));
+
+    private static string RemoteKernelInvocationOriginalName()
+        => RemoteKernelInvocationTypeName() + "<TCaptures, TReturn>";
+
+    private static Type SamplePluginType(string name)
+        => typeof(GuardianKernel).Assembly.GetTypes().Single(
+            type => string.Equals(type.Name, name, StringComparison.Ordinal));
 
     private static string GlobalTypeName(Type type) => TypeNames.GlobalPrefix + TypeName(type);
 

@@ -11,7 +11,11 @@ internal sealed record InvokeAsyncInterception(
     string ReceiverType,
     string HostAccessType,
     string ReturnType,
+    string? CaptureType,
+    string? CaptureDelegateType,
     string PluginId,
     string PackageFullName,
+    string ArgumentsExpression,
     string ResultExpression,
+    EquatableArray<string> SyncOutAssignments,
     string Helpers);

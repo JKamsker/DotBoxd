@@ -38,28 +38,21 @@ internal static class InvokeAsyncModelFactory
     {
         if (invocation.Expression is not MemberAccessExpressionSyntax access ||
             !string.Equals(access.Name.Identifier.ValueText, InvokeAsyncMethod, StringComparison.Ordinal) ||
-            !IsKernelInvocationSurface(model, access.Expression, cancellationToken) ||
-            !TryLambda(invocation, out var lambda) ||
-            lambda.Body is not BlockSyntax block ||
-            !HasSupportedParameter(lambda, model, cancellationToken) ||
-            HasCaptures(lambda, model))
+            !IsKernelInvocationSurface(model, access.Expression, cancellationToken))
         {
             return null;
         }
 
-        if (model.GetSymbolInfo(invocation, cancellationToken).Symbol is not IMethodSymbol
-            {
-                TypeArguments.Length: 1
-            } method)
+        if (model.GetSymbolInfo(invocation, cancellationToken).Symbol is not IMethodSymbol method ||
+            InvokeAsyncCallShape.Create(invocation, method, model, cancellationToken) is not { } shape)
         {
             return null;
         }
 
-        var returnType = method.TypeArguments[0];
         var capabilities = new SortedSet<string>(StringComparer.Ordinal);
         var effects = new SortedSet<string>(StringComparer.Ordinal);
         var lowerer = new DotBoxDRpcJsonLowerer(model, capabilities, effects, cancellationToken);
-        var bodyJson = lowerer.LowerBody(block);
+        var bodyJson = shape.LowerBody(lowerer, shape.Block);
         effects.Add(DotBoxDGenerationNames.Effects.Cpu);
         if (lowerer.Allocates)
         {
@@ -70,8 +63,8 @@ internal static class InvokeAsyncModelFactory
         var pluginId = "$anon:" + id;
         var packageName = "InvokeAsync_" + id + DotBoxDGenerationNames.PluginPackageSuffix;
         var ns = HookChainIdentity.Namespace(invocation);
-        var package = EmitPackage(ns, packageName, pluginId, returnType, bodyJson, effects, capabilities);
-        var interception = Interception(invocation, model, ns, packageName, pluginId, returnType, cancellationToken);
+        var package = EmitPackage(ns, packageName, pluginId, shape, bodyJson, effects, capabilities);
+        var interception = Interception(invocation, model, ns, packageName, pluginId, shape, cancellationToken);
         return new InvokeAsyncResult(package, interception);
     }
 
@@ -84,69 +77,11 @@ internal static class InvokeAsyncModelFactory
             DotBoxDGenerationNames.Metadata.KernelInvocationSurfaceType,
             StringComparison.Ordinal);
 
-    private static bool TryLambda(InvocationExpressionSyntax invocation, out LambdaExpressionSyntax lambda)
-    {
-        lambda = null!;
-        var arguments = invocation.ArgumentList.Arguments;
-        if (arguments.Count != 1 ||
-            arguments[0].Expression is not LambdaExpressionSyntax lambdaExpression)
-        {
-            return false;
-        }
-
-        lambda = lambdaExpression;
-        return true;
-    }
-
-    private static bool HasSupportedParameter(
-        LambdaExpressionSyntax lambda,
-        SemanticModel model,
-        CancellationToken cancellationToken)
-    {
-        if (lambda is not ParenthesizedLambdaExpressionSyntax { ParameterList.Parameters.Count: 1 } parenthesized)
-        {
-            return false;
-        }
-
-        var parameter = parenthesized.ParameterList.Parameters[0];
-        return parameter.Type is not null &&
-               string.Equals(
-                   model.GetTypeInfo(parameter.Type, cancellationToken).Type?.ToDisplayString(),
-                   DotBoxDGenerationNames.Metadata.GameWorldAccessType,
-                   StringComparison.Ordinal);
-    }
-
-    private static bool HasCaptures(LambdaExpressionSyntax lambda, SemanticModel model)
-    {
-        if (lambda.Body is not BlockSyntax block ||
-            lambda is not ParenthesizedLambdaExpressionSyntax { ParameterList.Parameters.Count: 1 } parenthesized)
-        {
-            return true;
-        }
-
-        var lambdaParameter = model.GetDeclaredSymbol(parenthesized.ParameterList.Parameters[0]);
-        var flow = model.AnalyzeDataFlow(block);
-        if (!flow.Succeeded)
-        {
-            return true;
-        }
-
-        foreach (var symbol in flow.DataFlowsIn)
-        {
-            if (!SymbolEqualityComparer.Default.Equals(symbol, lambdaParameter))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private static GeneratedPluginPackage EmitPackage(
         string ns,
         string packageName,
         string pluginId,
-        ITypeSymbol returnType,
+        InvokeAsyncCallShape shape,
         string bodyJson,
         IEnumerable<string> effects,
         IEnumerable<string> capabilities)
@@ -169,8 +104,8 @@ internal static class InvokeAsyncModelFactory
             $"\"metadata\":{{\"kernel\":\"AnonymousInvokeAsync\",\"pluginId\":{Str(pluginId)}}}," +
             "\"functions\":[{" +
             "\"id\":\"Invoke\",\"visibility\":\"entrypoint\"," +
-            "\"parameters\":[]," +
-            $"\"returnType\":{DotBoxDRpcTypeMapper.JsonType(returnType)}," +
+            $"\"parameters\":{shape.ParametersJson}," +
+            $"\"returnType\":{shape.ReturnTypeJson}," +
             $"\"body\":{bodyJson}}}]}}}}";
 
         return new GeneratedPluginPackage(HintName(ns, packageName), BuildSource(ns, packageName, json));
@@ -182,7 +117,7 @@ internal static class InvokeAsyncModelFactory
         string ns,
         string packageName,
         string pluginId,
-        ITypeSymbol returnType,
+        InvokeAsyncCallShape shape,
         CancellationToken cancellationToken)
     {
         var location = model.GetInterceptableLocation(invocation, cancellationToken);
@@ -191,20 +126,39 @@ internal static class InvokeAsyncModelFactory
             return null;
         }
 
-        var (resultExpression, helpers) = InvokeAsyncResultReaderSource.Create(returnType, "__result");
+        var reader = new InvokeAsyncResultReaderSource();
+        var resultExpression = reader.ReadExpression(
+            shape.ReturnType,
+            shape.SyncOuts.Count == 0 ? "__result" : "__fields[0]");
+        var syncOutAssignments = new string[shape.SyncOuts.Count];
+        for (var i = 0; i < shape.SyncOuts.Count; i++)
+        {
+            var syncOut = shape.SyncOuts[i];
+            syncOutAssignments[i] = "captures." + syncOut.PropertyName + " = " +
+                                    reader.ReadExpression(syncOut.Type, "__fields[" + (i + 1) + "]");
+        }
+
         var packageFullName = string.IsNullOrEmpty(ns)
             ? DotBoxDGenerationNames.TypeNames.GlobalPrefix + packageName
             : DotBoxDGenerationNames.TypeNames.GlobalPrefix + ns + "." + packageName;
+        var captureType = shape.CaptureType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var captureDelegateType = shape.CaptureType is null
+            ? null
+            : DotBoxDGenerationNames.TypeNames.GlobalPrefix + DotBoxDGenerationNames.Metadata.KernelInvocationDelegateType;
 
         return new InvokeAsyncInterception(
             location.GetInterceptsLocationAttributeSyntax(),
             DotBoxDGenerationNames.TypeNames.GlobalPrefix + DotBoxDGenerationNames.Metadata.KernelInvocationSurfaceType,
             DotBoxDGenerationNames.TypeNames.GlobalPrefix + DotBoxDGenerationNames.Metadata.GameWorldAccessType,
-            returnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+            shape.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+            captureType,
+            captureDelegateType,
             pluginId,
             packageFullName,
+            shape.ArgumentsExpression,
             resultExpression,
-            helpers);
+            new EquatableArray<string>(syncOutAssignments),
+            reader.Helpers);
     }
 
     private static string BuildSource(string ns, string packageName, string json)

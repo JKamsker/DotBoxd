@@ -170,19 +170,32 @@ identical handler). Therefore captures cannot be threaded as extra interceptor p
 **closure-`Target` reflection is rejected** (`GetField("name")` depends on Roslyn name-mangling, which is
 not spec-guaranteed; the reviewed design even mis-guessed `"<lastMonsterName>i__Field"`).
 
-The mechanism: `[InterceptsLocation]` replaces the **call expression** at the caller's site. The generated
-interceptor is a `static` method whose body runs in place of the call; the surrounding method's locals are
-in scope at the rewritten site, so the generated code reads the captured locals for sync-in and assigns the
-decoded sync-out values back to those same locals after the await. The generator knows the exact local
-identifiers from the data-flow analysis, so it emits direct reads/writes by name — no reflection.
+Implementation finding: the call-site-local mechanism above is not valid C#. A generated interceptor method
+body is compiled as a normal generated method body; it cannot reference locals from the intercepted caller's
+lexical scope by name. The generator therefore rejects lambda-only calls that capture caller locals. That
+keeps the lambda-only overload correct for no-capture inline kernels and avoids closure-field reflection.
 
-> Open implementation question (prototype in Phase 2 before committing to Phase 3): if the precise
-> interceptor emission cannot reach the caller's locals for **write-back** (sync-out), the fallback is an
-> explicit typed capture-bag parameter on `InvokeAsync`
-> (`(IGameWorldAccess world, ref TCaptures caps) => …`) — more verbose, spec-deviating, but reflection-free
-> and correct. Sync-in (read-only) is strictly easier than sync-out and is validated first.
+The implemented capture path is an explicit mutable capture bag:
 
-### Generated interceptor (Phase 2, sync-in only)
+```csharp
+var bag = new MonsterProbeCapture { MonsterId = "monster-2" };
+var name = await server.Kernels.InvokeAsync(
+    bag,
+    (IGameWorldAccess world, MonsterProbeCapture captures) =>
+    {
+        var monster = world.GetMonster(captures.MonsterId);
+        captures.LastHealth = monster.Health;
+        return monster.Name;
+    });
+```
+
+The bag is encoded as one `KernelRpcValue.Record` argument (sync-in). Assignments to bag properties lower to
+generated IR locals. If any bag property is assigned, the anonymous kernel returns
+`Record([returnValue, syncOut0, …])`; the interceptor decodes the response and writes each sync-out value
+back onto the same bag object after the await. This is more explicit than closure-local capture, but it is
+reflection-free, compiler-stable, and works with the interceptor parameter-shape rules.
+
+### Generated interceptor (no-capture)
 
 ```csharp
 [InterceptsLocation(version, "<data>")]
@@ -190,14 +203,11 @@ internal static async ValueTask<MonsterDto[]> InvokeAsync_0(
     this RemoteKernelControl kernels,
     Func<IGameWorldAccess, MonsterDto[]> __lambda)   // matches the original signature exactly
 {
-    // sync-in: read captured locals (in scope at the rewritten call site)
-    var __args = new KernelRpcValue[] { /* KernelRpcValue.String(firstMonsterName), ... */ };
-
     var __pluginId = await kernels
         .EnsureAnonymousKernelAsync("$anon:<hex>", global::…$anon_<hex>PluginPackage.Create)
         .ConfigureAwait(false);
 
-    var __request  = KernelRpcBinaryCodec.EncodeArguments(__args);
+    var __request  = KernelRpcBinaryCodec.EncodeArguments(Array.Empty<KernelRpcValue>());
     var __response = await kernels.WireClient
         .InvokeKernelRpcAsync(__pluginId, __request).ConfigureAwait(false);
     var __result   = KernelRpcBinaryCodec.DecodeValue(__response);
@@ -207,10 +217,10 @@ internal static async ValueTask<MonsterDto[]> InvokeAsync_0(
 }
 ```
 
-### Phase 3 sync-out addition
+### Capture-bag sync-out addition
 
-The response is a `Record([syncOut0, …, returnValue])`. The interceptor splits it and assigns each sync-out
-field back to the caller's local before returning the decoded return value.
+The response is a `Record([returnValue, syncOut0, …])`. The interceptor splits it, assigns each sync-out
+field back to the caller-provided bag object, then returns the decoded return value.
 
 ---
 

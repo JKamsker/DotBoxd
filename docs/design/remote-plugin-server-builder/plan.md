@@ -19,9 +19,9 @@ The user wants two additions, **without removing the imperative APIs**:
    `RemoteKernelControl.Register` / `RemoteKernelRpcControl.Register`.
 2. **A new `server.Kernels.InvokeAsync(lambda)`** that lowers an anonymous block-body lambda to verified
    sandboxed IR at compile time (like the existing `InvokeKernel(lambda)` interceptor path), ships it over
-   async IPC, runs it server-side, and supports **closure-capture sync-in** (locals read inside the lambda
-   become kernel inputs) and **closure-capture sync-out** (locals assigned inside the lambda are written
-   back into the caller's closure).
+   async IPC, and runs it server-side. No-capture lambdas use the lambda-only overload. Capture sync-in/out
+   uses the implemented explicit mutable capture-bag overload because generated C# interceptor bodies cannot
+   directly read or write caller locals by name.
 
 ### The DotBoxD invariant (preserved throughout)
 
@@ -280,15 +280,10 @@ exactly as `MonsterKillerKernel` already uses it.
 - **Capture marshalling is explicit, NOT closure reflection.** Reading captured fields from
   `delegate.Target` via `GetField("name")` relies on Roslyn closure name-mangling, which is **not
   spec-guaranteed** (the design even mis-guessed `"<lastMonsterName>i__Field"`). Reflection-on-closure
-  **must not ship.** The interceptor's non-receiver parameters must match the original `InvokeAsync`
-  argument list — so the interceptor **cannot** add `ref`/extra parameters. Resolution: the lambda is
-  lowered, and the interceptor reads captures from the **caller's locals directly** because the generated
-  interceptor body is emitted into the same compilation and the `[InterceptsLocation]` rewrite replaces
-  the **call expression** in the caller's method — the caller's locals are in scope at that point. (This is
-  the same mechanism the `InvokeKernel` interceptor relies on: the generated static method's body runs in
-  place of the call, with the surrounding method's locals reachable through the generated code the rewrite
-  splices in. See `docs/.../invoke-async.md` §"Capture marshalling" for the exact emission strategy and the
-  fallback if interceptor parameter shapes prove too restrictive.)
+  **must not ship.** A compiler probe showed generated interceptor method bodies cannot directly reference
+  caller locals by name either. Resolution: lambda-only `InvokeAsync` accepts no ambient captures; sync-in/out
+  is provided by an explicit mutable capture-bag overload. The bag is encoded as a record argument, and
+  assigned bag properties are decoded from a response record and written back after the await.
 - **Lowerer reuse is partial, stated honestly.** `DotBoxDRpcJsonLowerer.LowerBody` lowers the body
   **statements** unchanged. Net-new generator code: (a) building the IR parameter list from the sync-in
   captures, and (b) ensuring captured-local **reads** resolve to the IR parameters. The lowerer resolves
@@ -563,13 +558,10 @@ literal object spelling.
 
 ## Risks and limits
 
-- **[HIGH] Interceptor capture marshalling is the central unproven mechanism.** Sync-in/out depend on the
-  generated interceptor body being able to read and write the caller's locals at the rewritten call site.
-  If C# interceptor parameter-shape rules make this infeasible, the fallback is an explicit typed
-  capture-bag parameter on `InvokeAsync` (`(IGameWorldAccess world, ref TCaptures caps) => …`) — a more
-  verbose but spec-deviating API. **Closure-`Target` reflection is rejected outright** (name-mangling is
-  not spec-guaranteed). Mitigation: prototype the interceptor capture-read in Phase 2 before committing to
-  sync-out in Phase 3; the deep-dive doc records both paths.
+- **[HIGH→resolved with fallback] Interceptor closure-local capture marshalling is infeasible.** Generated
+  interceptor methods cannot read or write caller locals by name, and closure-`Target` reflection remains
+  rejected because compiler name-mangling is not a contract. The implemented fallback is an explicit mutable
+  capture-bag overload on `InvokeAsync`, which is more verbose but reflection-free and compiler-stable.
 - **[HIGH→resolved] `InterceptsLocationAttribute` hint-name collision.** A compilation with both a hook
   chain and an `InvokeAsync` would crash the generator on a duplicate `AddSource`. Resolved by the shared
   one-shot emitter (Phase 2 prerequisite).
