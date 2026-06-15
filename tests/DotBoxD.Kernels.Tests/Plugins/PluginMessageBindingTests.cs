@@ -382,6 +382,65 @@ public sealed class PluginMessageBindingTests
         Assert.Equal(interpretedAudit.Fields!["messageLength"], compiledAudit.Fields!["messageLength"]);
     }
 
+    [Theory]
+    [InlineData(ExecutionMode.Interpreted)]
+    [InlineData(ExecutionMode.Compiled)]
+    public async Task Host_message_send_denied_identically_in_both_modes_after_capability_revocation(ExecutionMode mode)
+    {
+        // Capability-bypass guard: a revoked capability must block the side effect in BOTH modes.
+        // If the compiled path ever let a revoked host.message.send through (or delivered to the sink),
+        // the Compiled case fails here — that is exactly the "capability bypass under load" scenario.
+        const string moduleJson = """
+        {
+          "id": "plugin-message-revoked",
+          "version": "1.0.0",
+          "capabilityRequests": [{ "id": "host.message.write" }],
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [],
+              "returnType": "Unit",
+              "body": [
+                {
+                  "op": "return",
+                  "value": {
+                    "call": "host.message.send",
+                    "args": [ { "string": "player-1" }, { "string": "should not arrive" } ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+        """;
+        var messages = new InMemoryPluginMessageSink();
+        var host = Hosting.SandboxHost.Create(builder =>
+        {
+            builder.AddDefaultPureBindings();
+            builder.AddPluginMessageBindings(messages);
+            builder.UseInterpreter();
+            builder.UseCompilerIfAvailable();
+        });
+        var module = await host.ImportJsonAsync(moduleJson);
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create()
+            .GrantHostMessageWrite()
+            .WithFuel(10_000)
+            .Build());
+
+        host.RevokeCapability(PluginMessageBindings.CapabilityId, "disabled for test");
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.Unit,
+            new SandboxExecutionOptions { Mode = mode, AllowFallbackToInterpreter = false });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.PolicyDenied, result.Error!.Code);
+        Assert.Empty(messages.Messages);
+    }
+
     private static async Task<(SandboxExecutionResult Result, InMemoryPluginMessageSink Sink)> RunSendAsync(
         string moduleJson,
         ExecutionMode mode)
