@@ -375,6 +375,10 @@ Safe defaults a binding author should follow:
   through `result.ResourceUsage.HostCalls`.
 - **Compiled runtime stub**: custom bindings dispatch through
   `CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding))`.
+  The compiled path enforces exactly the descriptor metadata at runtime, so a binding using this stub
+  must not under-declare its capability, effects, audit level, cost model, or async behavior.
+- **Async behavior**: if the implementation may return a genuinely pending `ValueTask`, set
+  `IsAsync = true`; kernels that reference it then require the `dotboxd.runtime.async` capability.
 
 ## Audit Observer Example
 

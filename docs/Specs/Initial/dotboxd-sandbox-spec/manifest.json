@@ -9,8 +9,8 @@
     },
     {
       "path": "../Addendum/Examples.md",
-      "sha256": "06ce1222956d04285d26ffb397c1b05d3bcb1b2bf26e8f794e66c2e4f176227c",
-      "bytes": 23191
+      "sha256": "6e278f63d87eaa4089353598692141bccde8d705f68d55fd4f4e376a01113207",
+      "bytes": 23578
     },
     {
       "path": "adr/0001-restricted-ir-not-csharp.md",
@@ -104,8 +104,8 @@
     },
     {
       "path": "spec/07-bindings.md",
-      "sha256": "6b5675ba2a174d5ae3bccb0c31aafd7fcb44feb4e433bbb8d32bcaeccf2c3c35",
-      "bytes": 8464
+      "sha256": "b133ead0ce8a90decb63f0066f037b42cacba007f1c22fd74b2d8bac0b345b9c",
+      "bytes": 9165
     },
     {
       "path": "spec/08-runtime-safe-apis.md",

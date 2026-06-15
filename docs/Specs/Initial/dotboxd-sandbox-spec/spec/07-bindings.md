@@ -53,7 +53,11 @@ public sealed record BindingDescriptor(
     AuditLevel AuditLevel,
     BindingSafety Safety,
     BindingInvoker Invoke,
-    CompiledBinding Compiled);
+    CompiledBinding Compiled,
+    CapabilityGrantValidator? GrantValidator = null)
+{
+    public bool IsAsync { get; init; }
+}
 ```
 
 ## Binding safety levels
@@ -147,6 +151,14 @@ binding-call stub. The registry must validate the exact compiled target type and
 namespace prefix such as `DotBoxD.Kernels.Runtime.*` is not enough.
 
 Avoid generating code that directly calls arbitrary app methods.
+
+The generic `CompiledRuntime.CallBinding` / `CallBinding2` path intentionally has no compile-time
+capability, effect, or audit fence. It dispatches through the registered `BindingDescriptor`, and the
+runtime enforces exactly that descriptor's `RequiredCapability`, `Effects`, `AuditLevel`, cost model,
+and `IsAsync` metadata. Treat descriptor changes for a `CallBinding` stub as security-sensitive:
+under-declared metadata is what the compiled path will enforce. Async-capable implementations must set
+`IsAsync = true`; referencing them adds the `Concurrency` effect and requires
+`dotboxd.runtime.async`.
 
 ## Why stubs are safer than arbitrary method refs
 
