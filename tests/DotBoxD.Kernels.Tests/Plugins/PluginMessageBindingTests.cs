@@ -310,12 +310,11 @@ public sealed class PluginMessageBindingTests
 
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
 
-        // host.message.send is SideEffectingExternal, so the compiler effects gate keeps the
-        // entrypoint on the interpreter via fallback on this branch. This pins that the refactored
-        // PluginMessageSendInvoker still audits and delivers correctly when compiled mode is
-        // requested; the ActualMode assertion will flip if #27 enables compiling descriptor-governed
-        // side-effecting bindings, forcing this test to be revisited together with that change.
-        Assert.Equal(ExecutionMode.Interpreted, result.ActualMode);
+        // #27 removes the effects gate, so host.message.send (SideEffectingExternal) now compiles
+        // instead of falling back to the interpreter. Capability, quota, return-charging, and audit
+        // emission ride entirely on CompiledBindingDispatcher.CallBinding2, so the compiled path must
+        // still redact and deliver exactly as the interpreter does.
+        Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
         Assert.Equal("token=abc123 Bearer secret-value", Assert.Single(messages.Messages).Message);
         var audit = Assert.Single(result.AuditEvents, e => e.Kind == "PluginMessage");
         Assert.Equal("token=[redacted] Bearer [redacted]", audit.Message);
@@ -324,19 +323,15 @@ public sealed class PluginMessageBindingTests
     }
 
     [Fact]
-    public async Task Compiled_only_plugin_message_send_cannot_compile_side_effecting_binding_without_fallback()
+    public async Task Compiled_host_message_send_audit_matches_interpreted()
     {
-        var messages = new InMemoryPluginMessageSink();
-        var host = Hosting.SandboxHost.Create(builder =>
+        // The audit-parity gate for #27: now that host.message.send compiles, its capability check,
+        // quota, redaction, and audit emission all run through the compiled dispatcher. Running the
+        // same module interpreted and compiled must produce an identical PluginMessage audit event and
+        // identical sink delivery — otherwise the compiled path would be a weaker oversight surface.
+        const string moduleJson = """
         {
-            builder.AddDefaultPureBindings();
-            builder.AddPluginMessageBindings(messages);
-            builder.UseInterpreter();
-            builder.UseCompilerIfAvailable();
-        });
-        var module = await host.ImportJsonAsync("""
-        {
-          "id": "plugin-message-compiled-only",
+          "id": "plugin-message-parity",
           "version": "1.0.0",
           "capabilityRequests": [{ "id": "host.message.write" }],
           "functions": [
@@ -352,7 +347,7 @@ public sealed class PluginMessageBindingTests
                     "call": "host.message.send",
                     "args": [
                       { "string": "player-1" },
-                      { "string": "message" }
+                      { "string": "token=abc123\nBearer secret-value" }
                     ]
                   }
                 }
@@ -360,23 +355,56 @@ public sealed class PluginMessageBindingTests
             }
           ]
         }
-        """);
+        """;
+
+        var (interpreted, interpretedSink) = await RunSendAsync(moduleJson, ExecutionMode.Interpreted);
+        var (compiled, compiledSink) = await RunSendAsync(moduleJson, ExecutionMode.Compiled);
+
+        Assert.True(interpreted.Succeeded, interpreted.Error?.SafeMessage);
+        Assert.True(compiled.Succeeded, compiled.Error?.SafeMessage);
+        Assert.Equal(ExecutionMode.Interpreted, interpreted.ActualMode);
+        Assert.Equal(ExecutionMode.Compiled, compiled.ActualMode);
+
+        // Sink delivery is identical (clean payload, never redacted).
+        var interpretedMessage = Assert.Single(interpretedSink.Messages);
+        var compiledMessage = Assert.Single(compiledSink.Messages);
+        Assert.Equal(interpretedMessage.TargetId, compiledMessage.TargetId);
+        Assert.Equal(interpretedMessage.Message, compiledMessage.Message);
+
+        // Audit event is field-for-field identical (redaction, length, resource, capability, effect).
+        var interpretedAudit = Assert.Single(interpreted.AuditEvents, e => e.Kind == "PluginMessage");
+        var compiledAudit = Assert.Single(compiled.AuditEvents, e => e.Kind == "PluginMessage");
+        Assert.Equal(interpretedAudit.BindingId, compiledAudit.BindingId);
+        Assert.Equal(interpretedAudit.CapabilityId, compiledAudit.CapabilityId);
+        Assert.Equal(interpretedAudit.Effect, compiledAudit.Effect);
+        Assert.Equal(interpretedAudit.ResourceId, compiledAudit.ResourceId);
+        Assert.Equal(interpretedAudit.Message, compiledAudit.Message);
+        Assert.Equal(interpretedAudit.Fields!["messageLength"], compiledAudit.Fields!["messageLength"]);
+    }
+
+    private static async Task<(SandboxExecutionResult Result, InMemoryPluginMessageSink Sink)> RunSendAsync(
+        string moduleJson,
+        ExecutionMode mode)
+    {
+        var messages = new InMemoryPluginMessageSink();
+        var host = Hosting.SandboxHost.Create(builder =>
+        {
+            builder.AddDefaultPureBindings();
+            builder.AddPluginMessageBindings(messages);
+            builder.UseInterpreter();
+            builder.UseCompilerIfAvailable();
+        });
+        var module = await host.ImportJsonAsync(moduleJson);
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create()
             .GrantHostMessageWrite()
             .WithFuel(10_000)
             .Build());
-
         var result = await host.ExecuteAsync(
             plan,
             "main",
             SandboxValue.Unit,
-            new SandboxExecutionOptions { Mode = ExecutionMode.Compiled, AllowFallbackToInterpreter = false });
-
-        // The effects gate refuses to compile a side-effecting binding and fallback is disabled, so the
-        // run fails closed and never reaches the sink. Guards that #28's fast invoker did not silently
-        // make host.message.send compilable on its own (that is #27's policy change).
-        Assert.False(result.Succeeded);
-        Assert.Empty(messages.Messages);
+            new SandboxExecutionOptions { Mode = mode, AllowFallbackToInterpreter = false });
+        return (result, messages);
     }
 
     private static SandboxContext MessageContext(BindingDescriptor binding)
