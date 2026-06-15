@@ -13,12 +13,12 @@ internal static class BindingCallEmitter
         ILGenerator il,
         Action<Expression> emitExpression)
     {
-        if (!bindings.TryGet(call.Name, out var binding) || !IsCompiledPureBinding(binding))
+        if (!bindings.TryGet(call.Name, out var binding) || !CanEmitCompiledBinding(binding))
         {
             return false;
         }
 
-        if (CanEmitDirectIntrinsic(binding))
+        if (CanEmitDirectRuntimeMethod(binding))
         {
             var locals = new LocalBuilder[call.Arguments.Count];
             for (var i = 0; i < call.Arguments.Count; i++)
@@ -55,13 +55,27 @@ internal static class BindingCallEmitter
         ILGenerator il,
         Action<Expression> emitExpression)
     {
+        // Evaluate the arguments before the synthetic ChargeValueArray charge. An argument may itself
+        // be a side-effecting binding call (now compilable for descriptor-governed stubs), and the
+        // interpreter evaluates every argument expression before charging the binding call. Charging
+        // the array first would let a tight fuel/allocation budget throw QuotaExceeded before a
+        // side-effecting argument runs, so the compiled run would skip an effect the interpreter
+        // performs. Materializing the arguments into locals first preserves that ordering.
+        var arg0 = il.DeclareLocal(typeof(SandboxValue));
+        emitExpression(call.Arguments[0]);
+        il.Emit(OpCodes.Stloc, arg0);
+        var arg1 = il.DeclareLocal(typeof(SandboxValue));
+        emitExpression(call.Arguments[1]);
+        il.Emit(OpCodes.Stloc, arg1);
+
         il.Emit(OpCodes.Ldarg_0);
         EmitInt32(il, call.Arguments.Count);
         il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ChargeValueArray)));
+
         il.Emit(OpCodes.Ldarg_0);
         il.Emit(OpCodes.Ldstr, call.Name);
-        emitExpression(call.Arguments[0]);
-        emitExpression(call.Arguments[1]);
+        il.Emit(OpCodes.Ldloc, arg0);
+        il.Emit(OpCodes.Ldloc, arg1);
         il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CallBinding2)));
     }
 
@@ -76,15 +90,32 @@ internal static class BindingCallEmitter
         il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CallBinding)));
     }
 
-    private static bool IsCompiledPureBinding(BindingSignature binding)
+    private static bool CanEmitCompiledBinding(BindingSignature binding)
+        => CanEmitGenericRuntimeStub(binding) || CanEmitDirectRuntimeMethod(binding);
+
+    // SECURITY-SENSITIVE GATE. This admits ANY binding whose compiled descriptor is a CompiledRuntime
+    // "RuntimeStub" pointing at CallBinding — regardless of its RequiredCapability, Safety, Effects, or
+    // AuditLevel. There is deliberately NO compile-time capability/effects/audit check here: a binding
+    // routed through CallBinding is dispatched at runtime by CompiledBindingDispatcher.CallBinding /
+    // CallBinding2, which perform the SAME capability check (ChargeBindingCall), quota and return
+    // charging, and success/failure audit as the interpreter. That runtime dispatch is therefore the
+    // SOLE gate for compiled side-effecting bindings (verified by the differential parity suite under
+    // tests/.../Compiled/SideEffectParity). Consequence: binding REGISTRATION is security-sensitive —
+    // giving a descriptor a CallBinding stub makes it compilable with no compile-time fence, so the
+    // descriptor's capability/effects/audit metadata must be correct and is what gets enforced. The
+    // pure direct-runtime path below stays restricted to capability-free PureIntrinsic Cpu/Alloc
+    // methods. See PR #27 and #32 (binding-registration safety note).
+    private static bool CanEmitGenericRuntimeStub(BindingSignature binding)
         => binding.Compiled.Kind == "RuntimeStub" &&
            binding.Compiled.Type == typeof(CompiledRuntime).FullName &&
-           binding.RequiredCapability is null &&
-           binding.Safety is BindingSafety.PureHostFacade or BindingSafety.PureIntrinsic &&
-           (binding.Effects & ~(SandboxEffect.Cpu | SandboxEffect.Alloc)) == SandboxEffect.None;
+           binding.Compiled.Method == nameof(CompiledRuntime.CallBinding);
 
-    private static bool CanEmitDirectIntrinsic(BindingSignature binding)
-        => binding.Compiled.Method != nameof(CompiledRuntime.CallBinding) &&
+    private static bool CanEmitDirectRuntimeMethod(BindingSignature binding)
+        => binding.Compiled.Kind == "RuntimeStub" &&
+           binding.Compiled.Type == typeof(CompiledRuntime).FullName &&
+           binding.Compiled.Method != nameof(CompiledRuntime.CallBinding) &&
+           binding.RequiredCapability is null &&
            binding.Safety == BindingSafety.PureIntrinsic &&
+           (binding.Effects & ~(SandboxEffect.Cpu | SandboxEffect.Alloc)) == SandboxEffect.None &&
            binding.AuditLevel == AuditLevel.None;
 }

@@ -36,9 +36,10 @@ public sealed class CustomEffectBindingTests
     }
 
     [Fact]
-    public async Task Custom_effect_binding_compiled_mode_fails_without_interpreter_fallback()
+    public async Task Custom_effect_binding_compiled_mode_executes_without_interpreter_fallback()
     {
-        var host = HostWithCounterBinding(_ => { });
+        var observed = 0;
+        var host = HostWithCounterBinding(value => observed += value);
         var module = await host.ImportJsonAsync(CounterModule());
         var plan = await host.PrepareAsync(
             module,
@@ -50,8 +51,10 @@ public sealed class CustomEffectBindingTests
             SandboxValue.Unit,
             new SandboxExecutionOptions { Mode = ExecutionMode.Compiled, AllowFallbackToInterpreter = false });
 
-        Assert.False(result.Succeeded);
-        Assert.Equal(SandboxErrorCode.ValidationError, result.Error!.Code);
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        Assert.Equal(7, ((I32Value)result.Value!).Value);
+        Assert.Equal(7, observed);
+        Assert.Equal(1, result.ResourceUsage.HostCalls);
         Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
     }
 

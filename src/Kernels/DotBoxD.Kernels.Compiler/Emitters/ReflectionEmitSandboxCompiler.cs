@@ -110,12 +110,6 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
             throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, $"entrypoint '{entrypoint}' is not available"));
         }
 
-        var effects = plan.FunctionAnalysis[function.Id].Effects;
-        if ((effects & ~(SandboxEffect.Cpu | SandboxEffect.Alloc)) != SandboxEffect.None)
-        {
-            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "compiled mode supports pure modules only"));
-        }
-
         return function;
     }
 

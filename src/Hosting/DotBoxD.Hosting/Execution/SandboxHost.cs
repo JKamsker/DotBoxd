@@ -200,20 +200,6 @@ public sealed partial class SandboxHost : IDisposable
                 : CompilerUnavailableResult(plan, options, reason);
         }
 
-        if (CompiledEntrypointSupport.TryGetFallbackReason(plan, entrypoint, out var unsupportedReason))
-        {
-            return options.AllowFallbackToInterpreter
-                ? await ExecuteFallbackToInterpreterAsync(
-                        plan,
-                        entrypoint,
-                        input,
-                        options,
-                        unsupportedReason,
-                        cancellationToken)
-                    .ConfigureAwait(false)
-                : CompiledFailureResult(plan, options, unsupportedReason);
-        }
-
         var compiled = await TryExecuteCompiledAsync(plan, entrypoint, input, options, cancellationToken)
             .ConfigureAwait(false);
         if (compiled.Result is not null)

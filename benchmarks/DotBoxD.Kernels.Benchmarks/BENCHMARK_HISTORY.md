@@ -70,6 +70,7 @@ Versioning note for the two-argument binding fast path: `CallBinding2` and `Char
 are public generated-code ABI on `CompiledRuntime` for the same reason as the existing facade
 members: compiled assemblies must call them across assembly boundaries and the verifier allowlist
 hashes their exact signatures. They are not supported host API.
+| Compiled side-effecting runtime-stub bindings | this commit | `--probe-examples` | Allowed verified compiled entrypoints to call descriptor-governed runtime-stub bindings such as `host.message.send` through `CompiledRuntime.CallBinding`, while keeping direct runtime methods limited to pure intrinsics. This removes the compiled `Handle` fallback in the example workflow (`Handle:Compiled/fallback=none` instead of interpreted fallback). Current probe measured `mixed fire/ice` native hook 11.8 ms, compiled 638.2 ms, interpreted 607.6 ms; `predicate miss` native hook 9.6 ms, compiled 162.1 ms, interpreted 235.8 ms; `predicate hit` native hook 3.8 ms, compiled 225.5 ms, interpreted 541.7 ms. Stopwatch movement remains noisy, but the mode summary proves the compiled fallback is removed; the workflow path is still far from near-native dispatch. |
 
 ## Matrix After `31fa6fe`
 
