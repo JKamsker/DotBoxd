@@ -12,29 +12,27 @@ internal static class ValueArrayEmitter
         IReadOnlyList<Expression> arguments,
         Action<Expression> emitExpression)
     {
-        // Evaluate every argument before allocating/charging the array. An argument may be a
-        // side-effecting binding call, and the interpreter evaluates all argument expressions before
-        // charging. Allocating first would let a tight fuel/allocation budget throw QuotaExceeded
-        // before a side-effecting argument runs, diverging from the interpreter. Materialize the
-        // arguments into locals first, then create the array and store them — preserving evaluation
-        // order while keeping the allocation charge after the arguments are computed.
-        var locals = new LocalBuilder[arguments.Count];
-        for (var i = 0; i < arguments.Count; i++)
-        {
-            locals[i] = il.DeclareLocal(typeof(SandboxValue));
-            emitExpression(arguments[i]);
-            il.Emit(OpCodes.Stloc, locals[i]);
-        }
-
-        il.Emit(OpCodes.Ldarg_0);
+        // Allocate the backing array WITHOUT charging (CreateLiteralValueArray takes no context, so it
+        // cannot charge fuel/allocation or throw), populate it with the arguments evaluated in order,
+        // then charge fuel/allocation at the end. This matches the interpreter, which evaluates every
+        // argument expression — running its side effects and charging its own fuel — before the call is
+        // charged: a tight budget therefore can't throw QuotaExceeded before a side-effecting argument
+        // runs. Interleaving each argument's evaluation (which carries its own fuel meters) with the
+        // stores also keeps the instruction run metered, so this does not lengthen the meter-free span
+        // the way a grouped store loop after a single charge would (which the verifier rejects for
+        // calls with more than a handful of arguments).
         EmitInt32(il, arguments.Count);
-        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CreateValueArray)));
+        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CreateLiteralValueArray)));
         for (var i = 0; i < arguments.Count; i++)
         {
             il.Emit(OpCodes.Dup);
             EmitInt32(il, i);
-            il.Emit(OpCodes.Ldloc, locals[i]);
+            emitExpression(arguments[i]);
             il.Emit(OpCodes.Stelem_Ref);
         }
+
+        il.Emit(OpCodes.Ldarg_0);
+        EmitInt32(il, arguments.Count);
+        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ChargeValueArray)));
     }
 }

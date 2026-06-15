@@ -110,6 +110,111 @@ public sealed class CompiledSideEffectArgumentOrderParityTests
         return touches;
     }
 
+    // The same guarantee for the >2-argument array path (ValueArrayEmitter / CreateLiteralValueArray +
+    // CallBinding), using a 6-argument call. Six arguments previously failed compiled verification
+    // under a grouped-store ordering, so a passing run proves both (a) no meter-density regression —
+    // the call still compiles — and (b) the side-effecting first argument is not skipped by the array
+    // charge.
+    private const string ArrayPathModuleJson = """
+    {
+      "id": "side-effecting-argument-order-array",
+      "version": "1.0.0",
+      "capabilityRequests": [ { "id": "game.write" } ],
+      "functions": [
+        {
+          "id": "main",
+          "visibility": "entrypoint",
+          "parameters": [],
+          "returnType": "Unit",
+          "body": [
+            {
+              "op": "return",
+              "value": {
+                "call": "app.consumeMany",
+                "args": [
+                  { "call": "app.touch", "args": [] },
+                  { "string": "b" }, { "string": "c" }, { "string": "d" }, { "string": "e" }, { "string": "f" }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+    """;
+
+    [Fact]
+    public async Task Side_effecting_argument_in_array_path_call_is_not_skipped()
+    {
+        const int tolerance = 12;
+        var skippedByCompiled = 0;
+        var divergent = 0;
+
+        for (var maxAllocatedBytes = 1; maxAllocatedBytes <= 256; maxAllocatedBytes++)
+        {
+            var interpretedTouches = await RunArrayPathAsync(ExecutionMode.Interpreted, maxAllocatedBytes);
+            var compiledTouches = await RunArrayPathAsync(ExecutionMode.Compiled, maxAllocatedBytes);
+            if (interpretedTouches != compiledTouches)
+            {
+                divergent++;
+                if (interpretedTouches > compiledTouches)
+                {
+                    skippedByCompiled++;
+                }
+            }
+        }
+
+        Assert.True(
+            divergent <= tolerance,
+            $"Array-path side-effecting argument ran in only one mode at {divergent} budgets " +
+            $"({skippedByCompiled} where compiled skipped it) — exceeds tolerance {tolerance}.");
+    }
+
+    private static async Task<int> RunArrayPathAsync(ExecutionMode mode, int maxAllocatedBytes)
+    {
+        var touches = 0;
+        var host = SandboxHost.Create(builder =>
+        {
+            builder.AddDefaultPureBindings();
+            builder.AddBinding(TouchBinding(() => touches++));
+            builder.AddBinding(ConsumeManyBinding());
+            builder.UseInterpreter();
+            builder.UseCompilerIfAvailable();
+        });
+
+        var module = await host.ImportJsonAsync(ArrayPathModuleJson);
+        var policy = new SandboxPolicy(
+            "touch-and-consume",
+            SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateWrite | SandboxEffect.Audit,
+            [new CapabilityGrant("game.write", new Dictionary<string, string>())],
+            new ResourceLimits(MaxFuel: 1_000_000, MaxAllocatedBytes: maxAllocatedBytes));
+        var plan = await host.PrepareAsync(module, policy);
+
+        await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.Unit,
+            new SandboxExecutionOptions { Mode = mode, AllowFallbackToInterpreter = false });
+        return touches;
+    }
+
+    // A pure six-argument sink that forces the array-backed emit path. Compiled via the generic
+    // CallBinding stub (Method == CallBinding).
+    private static BindingDescriptor ConsumeManyBinding()
+        => new(
+            "app.consumeMany",
+            SemVersion.One,
+            [.. Enumerable.Repeat(SandboxType.String, 6)],
+            SandboxType.Unit,
+            SandboxEffect.Cpu | SandboxEffect.Alloc,
+            null,
+            BindingCostModel.Fixed(1),
+            AuditLevel.None,
+            BindingSafety.PureHostFacade,
+            (_, _, _) => ValueTask.FromResult(SandboxValue.Unit),
+            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)),
+            static (_, _) => { });
+
     // A side-effecting, capability-gated binding that takes no arguments, records each invocation, and
     // returns a valid message target so it can stand in as the first argument to host.message.send.
     private static BindingDescriptor TouchBinding(Action record)
