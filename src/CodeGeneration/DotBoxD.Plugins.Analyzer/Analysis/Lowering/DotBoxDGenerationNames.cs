@@ -18,6 +18,7 @@ internal static class DotBoxDGenerationNames
     public static class TypeNames
     {
         public const string GlobalPrefix = "global::";
+        public const string GeneratedInterceptorsNamespace = "DotBoxD.Plugins.Generated";
 
         public const string PluginAttribute = "DotBoxD.Abstractions.PluginAttribute";
         public const string LiveSettingAttribute = "DotBoxD.Abstractions.LiveSettingAttribute";
@@ -32,6 +33,7 @@ internal static class DotBoxDGenerationNames
         public const string HookContext = "DotBoxD.Abstractions.HookContext";
         public const string KernelInvocationSurfaceType = "DotBoxD.Kernels.Game.Plugin.Client.RemoteKernelControl";
         public const string GameWorldAccessType = "DotBoxD.Kernels.Game.Server.Abstractions.IGameWorldAccess";
+        public const string GameWorldMonsterSnapshotType = "DotBoxD.Kernels.Game.Server.Abstractions.MonsterSnapshot";
         public const string HookPipelineOriginal = "DotBoxD.Plugins.Runtime.HookPipeline<TEvent>";
         public const string HookStageOriginal = "DotBoxD.Plugins.Runtime.Hooks.HookStage<TEvent, TCurrent>";
 
@@ -105,6 +107,7 @@ internal static class DotBoxDGenerationNames
         public const string HookContextType = TypeNames.HookContext;
         public const string KernelInvocationSurfaceType = TypeNames.KernelInvocationSurfaceType;
         public const string GameWorldAccessType = TypeNames.GameWorldAccessType;
+        public const string GameWorldMonsterSnapshotType = TypeNames.GameWorldMonsterSnapshotType;
     }
 
     public static class Contracts

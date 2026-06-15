@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using DotBoxD.Abstractions;
+using DotBoxD.Kernels.Game.Plugin.Kernels;
+using DotBoxD.Kernels.Game.Server.Abstractions;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Plugins;
@@ -14,6 +16,8 @@ namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Contracts;
 
 public sealed class PluginAnalyzerTypeNameContractTests
 {
+    private const string RemoteKernelControlTypeName = "RemoteKernelControl";
+
     [Fact]
     public void Type_name_constants_match_referenced_contracts()
     {
@@ -34,6 +38,7 @@ public sealed class PluginAnalyzerTypeNameContractTests
         => new(StringComparer.Ordinal)
         {
             [nameof(TypeNames.GlobalPrefix)] = "global::",
+            [nameof(TypeNames.GeneratedInterceptorsNamespace)] = "DotBoxD.Plugins.Generated",
 
             [nameof(TypeNames.PluginAttribute)] = TypeName(typeof(PluginAttribute)),
             [nameof(TypeNames.LiveSettingAttribute)] = TypeName(typeof(LiveSettingAttribute)),
@@ -46,8 +51,9 @@ public sealed class PluginAnalyzerTypeNameContractTests
             [nameof(TypeNames.KernelRpcClientPropertyAttribute)] = TypeName(typeof(KernelRpcClientPropertyAttribute)),
             [nameof(TypeNames.KernelRpcClientMethodAttribute)] = TypeName(typeof(KernelRpcClientMethodAttribute)),
             [nameof(TypeNames.HookContext)] = TypeName(typeof(HookContext)),
-            [nameof(TypeNames.KernelInvocationSurfaceType)] = "DotBoxD.Kernels.Game.Plugin.Client.RemoteKernelControl",
-            [nameof(TypeNames.GameWorldAccessType)] = "DotBoxD.Kernels.Game.Server.Abstractions.IGameWorldAccess",
+            [nameof(TypeNames.KernelInvocationSurfaceType)] = RemoteKernelControlFullName(),
+            [nameof(TypeNames.GameWorldAccessType)] = TypeName(typeof(IGameWorldAccess)),
+            [nameof(TypeNames.GameWorldMonsterSnapshotType)] = TypeName(typeof(MonsterSnapshot)),
             [nameof(TypeNames.HookPipelineOriginal)] = OriginalTypeName(typeof(HookPipeline<>), "TEvent"),
             [nameof(TypeNames.HookStageOriginal)] = OriginalTypeName(typeof(HookStage<,>), "TEvent", "TCurrent"),
 
@@ -105,6 +111,10 @@ public sealed class PluginAnalyzerTypeNameContractTests
             [nameof(TypeNames.GlobalSandboxType)] = GlobalTypeName(typeof(SandboxType)),
             [nameof(TypeNames.GlobalSandboxValue)] = GlobalTypeName(typeof(SandboxValue)),
         };
+
+    private static string RemoteKernelControlFullName()
+        => TypeName(typeof(GuardianKernel).Assembly.GetTypes().Single(
+            static type => string.Equals(type.Name, RemoteKernelControlTypeName, StringComparison.Ordinal)));
 
     private static string GlobalTypeName(Type type) => TypeNames.GlobalPrefix + TypeName(type);
 

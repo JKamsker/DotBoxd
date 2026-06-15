@@ -1,3 +1,4 @@
+using DotBoxD.Kernels.Game.Server.Abstractions;
 using DotBoxD.Kernels.Game.Server.Abstractions.Events;
 using DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
 using DotBoxD.Plugins.Runtime;
@@ -86,6 +87,16 @@ internal sealed class GameWorld
 
     internal int GetHealth(string entityId)
         => FindEntity(entityId)?.Hp ?? 0;
+
+    internal MonsterSnapshot GetMonsterSnapshot(string entityId)
+    {
+        if (FindEntity(entityId) is not { Kind: EntityKind.Monster } monster)
+        {
+            return new MonsterSnapshot(entityId, string.Empty, 0, 0, 0);
+        }
+
+        return new MonsterSnapshot(monster.Id, monster.Id, monster.Hp, monster.Level, monster.Position);
+    }
 
     internal bool IsMonster(string entityId)
         => FindEntity(entityId)?.Kind == EntityKind.Monster;

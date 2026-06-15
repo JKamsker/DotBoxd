@@ -1,4 +1,5 @@
 using DotBoxD.Kernels.Game.Plugin.Kernels;
+using DotBoxD.Kernels.Game.Server.Abstractions;
 using DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
 using DotBoxD.Pushdown.Services;
 
@@ -92,6 +93,13 @@ internal static class Program
             .KillMonstersAsync(["monster-3", "monster-4", "player-1", "monster-missing"])
             .ConfigureAwait(false);
         Console.WriteLine("[plugin] kernel RPC KillMonsters(...) => " + FormatKillResults(killResults));
+
+        var monsterHealth = await server.Kernels.InvokeAsync((IGameWorldAccess world) =>
+        {
+            var monster = world.GetMonster("monster-2");
+            return monster.Health;
+        }).ConfigureAwait(false);
+        Console.WriteLine($"[plugin] invoke async GetMonster(monster-2).Health => {monsterHealth}.");
 
         // Hold the connection open so the kernels stay owned and live while the server runs its
         // with-plugin phase. When the server signals shutdown this returns and we disconnect, at which

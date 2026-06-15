@@ -1,4 +1,5 @@
 using DotBoxD.Hosting.Execution;
+using DotBoxD.Kernels.Game.Server.Abstractions;
 using DotBoxD.Kernels.Bindings;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
@@ -22,6 +23,7 @@ internal sealed class GameWorldHost
 
     public void AddBindings(SandboxHostBuilder builder)
     {
+        builder.AddBinding(SnapshotBinding("host.world.getMonster", "game.world.monster.read.snapshot", Snapshot));
         builder.AddBinding(IntReadBinding("host.world.getHealth", "game.world.monster.read.health", Health));
         builder.AddBinding(BoolBinding(
             "host.world.isMonster",
@@ -42,6 +44,9 @@ internal sealed class GameWorldHost
 
     private int Health(string entityId) => _world?.GetHealth(entityId) ?? 0;
 
+    private MonsterSnapshot Snapshot(string entityId)
+        => _world?.GetMonsterSnapshot(entityId) ?? new MonsterSnapshot(entityId, string.Empty, 0, 0, 0);
+
     private bool IsMonster(string entityId) => _world?.IsMonster(entityId) ?? false;
 
     private int Level(string entityId) => _world?.GetLevel(entityId) ?? 0;
@@ -55,6 +60,54 @@ internal sealed class GameWorldHost
 
     private static BindingDescriptor IntReadBinding(string id, string capability, Func<string, int> read)
         => IntBinding(id, capability, SandboxEffect.Cpu | SandboxEffect.HostStateRead, BindingSafety.ReadOnlyExternal, read);
+
+    private static BindingDescriptor SnapshotBinding(string id, string capability, Func<string, MonsterSnapshot> read)
+        => new(
+            id,
+            SemVersion.One,
+            [SandboxType.String],
+            SnapshotType(),
+            SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateRead,
+            capability,
+            BindingCostModel.Fixed(3),
+            AuditLevel.PerResource,
+            BindingSafety.ReadOnlyExternal,
+            (context, args, _) =>
+            {
+                var startedAt = DateTimeOffset.UtcNow;
+                var entityId = ((StringValue)args[0]).Value;
+                var value = read(entityId);
+                context.Audit.Write(new SandboxAuditEvent(
+                    context.RunId,
+                    "BindingCall",
+                    startedAt,
+                    true,
+                    BindingId: id,
+                    CapabilityId: capability,
+                    Effect: AuditEffect(SandboxEffect.HostStateRead),
+                    ResourceId: $"entity:{entityId}",
+                    Fields: context.BindingAuditFields("game-world", startedAt)));
+                return ValueTask.FromResult(SandboxValue.FromRecord(
+                [
+                    SandboxValue.FromString(value.Id),
+                    SandboxValue.FromString(value.Name),
+                    SandboxValue.FromInt32(value.Health),
+                    SandboxValue.FromInt32(value.Level),
+                    SandboxValue.FromInt32(value.Position)
+                ]));
+            },
+            CompiledBinding.RuntimeStub("DotBoxD.Kernels.Runtime.CompiledRuntime", "CallBinding"),
+            GrantValidator: static (_, _) => { });
+
+    private static SandboxType SnapshotType()
+        => SandboxType.Record(
+        [
+            SandboxType.String,
+            SandboxType.String,
+            SandboxType.I32,
+            SandboxType.I32,
+            SandboxType.I32
+        ]);
 
     private static BindingDescriptor ReadBinding(string id, string capability, Func<string, int> read)
         => IntReadBinding(id, capability, read);

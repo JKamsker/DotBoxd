@@ -14,6 +14,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <DotBoxDGeneratedInterceptorsNamespace>DotBoxD.Plugins.Generated</DotBoxDGeneratedInterceptorsNamespace>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);$(DotBoxDGeneratedInterceptorsNamespace)</InterceptorsNamespaces>
   </PropertyGroup>
 
   <ItemGroup>

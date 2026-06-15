@@ -41,6 +41,8 @@
     <ProjectReference Include="..\..\src\Kernels\DotBoxD.Kernels.Compiler\DotBoxD.Kernels.Compiler.csproj" />
     <ProjectReference Include="..\..\src\Hosting\DotBoxD.Hosting\DotBoxD.Hosting.csproj" />
     <ProjectReference Include="..\..\src\Hosting\DotBoxD.Plugins\DotBoxD.Plugins.csproj" />
+    <ProjectReference Include="..\..\samples\Kernels\GameServer\Examples.GameServer.Server.Abstractions\Examples.GameServer.Server.Abstractions.csproj" />
+    <ProjectReference Include="..\..\samples\Kernels\GameServer\Examples.GameServer.Plugin\Examples.GameServer.Plugin.csproj" />
     <ProjectReference Include="..\..\src\Kernels\DotBoxD.Kernels.Verifier\DotBoxD.Kernels.Verifier.csproj" />
   </ItemGroup>
 
