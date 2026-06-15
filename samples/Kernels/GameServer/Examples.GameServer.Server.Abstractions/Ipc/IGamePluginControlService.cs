@@ -16,11 +16,6 @@ public interface IGamePluginControlService : IKernelRpcWireClient
 
     ValueTask<string> InstallKernelRpcAsync(string packageJson, CancellationToken ct = default);
 
-    ValueTask<byte[]> InvokeKernelRpcAsync(
-        string pluginId,
-        byte[] arguments,
-        CancellationToken ct = default);
-
     ValueTask UpdateSettingsAsync(
         string pluginId,
         LiveSettingUpdate[] updates,

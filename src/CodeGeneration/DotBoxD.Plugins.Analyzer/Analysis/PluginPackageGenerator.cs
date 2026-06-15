@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using DotBoxD.Plugins.Analyzer.Analysis.HookChains;
+using DotBoxD.Plugins.Analyzer.Analysis.InvokeAsync;
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
@@ -61,6 +62,19 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
             rpcResults.Where(static result => result.Package is not null).Select(static (result, _) => result.Package!),
             static (sourceContext, package) => sourceContext.AddSource(package.HintName, package.Source));
 
+        var invokeAsyncResults = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => node is InvocationExpressionSyntax
+                {
+                    Expression: MemberAccessExpressionSyntax { Name.Identifier.ValueText: "InvokeAsync" }
+                },
+                static (syntaxContext, ct) => InvokeAsyncModelFactory.Create(syntaxContext, ct))
+            .Where(static result => result is not null)
+            .Select(static (result, _) => result!);
+        context.RegisterSourceOutput(
+            invokeAsyncResults.Select(static (result, _) => result.Package),
+            static (sourceContext, package) => sourceContext.AddSource(package.HintName, package.Source));
+
         var packages = models
             .Collect()
             .Combine(chainResults.Select(static (result, _) => result.Model).Collect())
@@ -73,9 +87,29 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
             .Where(static result => result.Interception is not null)
             .Select(static (result, _) => result.Interception!)
             .Collect();
+        var invokeAsyncInterceptions = invokeAsyncResults
+            .Where(static result => result.Interception is not null)
+            .Select(static (result, _) => result.Interception!)
+            .Collect();
+        var needsInterceptsLocationAttribute = interceptions
+            .Select(static (items, _) => !items.IsDefaultOrEmpty)
+            .Combine(invokeAsyncInterceptions.Select(static (items, _) => !items.IsDefaultOrEmpty))
+            .Select(static (pair, _) => pair.Left || pair.Right);
+        context.RegisterSourceOutput(
+            needsInterceptsLocationAttribute,
+            static (sourceContext, needsAttribute) =>
+            {
+                if (needsAttribute)
+                {
+                    InterceptsLocationAttributeEmitter.Emit(sourceContext);
+                }
+            });
         context.RegisterSourceOutput(
             interceptions,
             static (sourceContext, items) => DotBoxDHookChainInterceptorEmitter.Emit(sourceContext, items));
+        context.RegisterSourceOutput(
+            invokeAsyncInterceptions,
+            static (sourceContext, items) => InvokeAsyncInterceptorEmitter.Emit(sourceContext, items));
 
         context.RegisterSourceOutput(packages, static (context, batch) => {
             foreach (var diagnostic in batch.Diagnostics)

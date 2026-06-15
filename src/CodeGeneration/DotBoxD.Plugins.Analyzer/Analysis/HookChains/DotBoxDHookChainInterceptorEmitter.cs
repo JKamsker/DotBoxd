@@ -22,7 +22,6 @@ internal static class DotBoxDHookChainInterceptorEmitter
             return;
         }
 
-        InterceptsLocationAttributeEmitter.Emit(context);
         context.AddSource("DotBoxDHookChainInterceptors.g.cs", BuildInterceptors(interceptions));
     }
 

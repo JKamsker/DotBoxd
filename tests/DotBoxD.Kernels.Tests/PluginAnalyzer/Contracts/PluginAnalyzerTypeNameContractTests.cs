@@ -46,6 +46,8 @@ public sealed class PluginAnalyzerTypeNameContractTests
             [nameof(TypeNames.KernelRpcClientPropertyAttribute)] = TypeName(typeof(KernelRpcClientPropertyAttribute)),
             [nameof(TypeNames.KernelRpcClientMethodAttribute)] = TypeName(typeof(KernelRpcClientMethodAttribute)),
             [nameof(TypeNames.HookContext)] = TypeName(typeof(HookContext)),
+            [nameof(TypeNames.KernelInvocationSurfaceType)] = "DotBoxD.Kernels.Game.Plugin.Client.RemoteKernelControl",
+            [nameof(TypeNames.GameWorldAccessType)] = "DotBoxD.Kernels.Game.Server.Abstractions.IGameWorldAccess",
             [nameof(TypeNames.HookPipelineOriginal)] = OriginalTypeName(typeof(HookPipeline<>), "TEvent"),
             [nameof(TypeNames.HookStageOriginal)] = OriginalTypeName(typeof(HookStage<,>), "TEvent", "TCurrent"),
 
