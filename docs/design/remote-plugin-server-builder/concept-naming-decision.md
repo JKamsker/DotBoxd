@@ -3,7 +3,7 @@
 Companion to [plan.md](plan.md), [invoke-async.md](invoke-async.md), and
 [../plugin-fluent-hooks-api/kernel-binding-model.md](../plugin-fluent-hooks-api/kernel-binding-model.md).
 
-**Status:** Decided (locked) — 3 micro-decisions left open at the bottom. **Date:** 2026-06-15.
+**Status:** Decided (locked) — all micro-decisions resolved (§9). **Date:** 2026-06-15 (§9 resolved 2026-06-16).
 
 This record renames the plugin-facing facade surfaces (`server.X`). It is a **naming + concept**
 decision: the underlying mechanisms (verified-IR install, capability gating, session ownership, the
@@ -57,7 +57,10 @@ Two consequences drive the whole scheme:
 Notes on the picks:
 
 - **`Services.Replace`** — reads as DI substitution; the server already ships a default, so the plugin
-  *replaces* it. (Open: `Replace` vs `Provide` if multiple impls per contract become real — see §9.)
+  *replaces* it. **Decided** (over `Provide`/`Register`): a registration **overrides** the default with
+  last-registration-wins semantics — one effective impl per contract. Per-contract fan-out (e.g. per-user,
+  the `GetAll<TService>` case in [kernel-binding-model.md §5](../plugin-fluent-hooks-api/kernel-binding-model.md))
+  would be a separate **additive** surface, never `Replace`.
 - **#2 is not a standalone registry.** Its invocation already lives on the IPC/World surface
   (`server.World.Monsters.KillMonstersAsync(...)`, grafted by `[KernelRpcClientProperty(typeof(RemoteMonsterControl))]`).
   We **co-locate registration there** via `.Extend<…>()` and **delete** the floating `KernelRpc`/`ServerCalls`
@@ -273,19 +276,16 @@ Surface count drops from five (`Kernels` / `KernelRpc` / `Hooks` / `Events` / *n
 `FireWardDecision`). The role now lives in the attribute (`[Plugin]` / `[ServerExtension]` / `[Decision]`),
 not the class name; renaming existing classes to role suffixes is churn for marginal gain — deferred.
 
-## 9. Open micro-decisions (with recommendations)
+## 9. Micro-decisions (resolved)
 
-1. **Event-reaction entrypoint placement** — keep `server.Hooks.On<TEvent>()` (signaled preference) vs
-   promote to top-level `server.On<TEvent>()` so it pairs with top-level `server.InvokeAsync` (server
-   reactions vs plugin calls, both one token deep). *Recommendation: keep `Hooks.On<>` unless the symmetry
-   wins out.*
-2. **Decision terminal name** — `.Use<TKernel>()` (general "promote to named class"; reads "use
-   FireWardDecision") vs `.Decide<TKernel>()` (value-return explicit at the call site). *Recommendation:
-   `.Use<T>()` as the general terminal; it also covers effect classes.*
-3. **`Services.Replace` vs `Services.Provide`/`Register`** — `Replace` implies a singular override, but
-   [kernel-binding-model.md §5](../plugin-fluent-hooks-api/kernel-binding-model.md) contemplates several
-   kernels implementing one contract (per-user). *Recommendation: confirm whether multi-impl-per-contract is
-   real; if yes, `Provide`/`Register` is more honest than `Replace`.*
+1. **Event-reaction entrypoint placement** — **Decided: keep `server.Hooks.On<TEvent>()`.** The single
+   event-reaction entrypoint (inline *and* `.Use<>` class) stays under `Hooks`; not promoted to top-level
+   `server.On<>`. (`server.InvokeAsync` stays top-level regardless — the two need not be symmetric.)
+2. **Decision terminal name** — **Decided: `.Use<TKernel>()`.** The general "promote this chain to a named
+   class" terminal; it covers both effect classes and value-returning decisions. `.Decide<T>()` rejected as
+   redundant.
+3. **`Services` verb** — **Decided: `.Replace<TContract, TKernel>()`** (over `Provide`/`Register`). Override
+   semantics, last-registration-wins; see §3 for the per-contract-fan-out caveat.
 
 `CanHandle` / `Handle` method names are **locked** (the owner's MediatR framing from the outset); the
 analyzer treats `CanHandle` as a second recognized gate name alongside `ShouldHandle`.
