@@ -15,6 +15,7 @@
     <Project Path="src/Meta/DotBoxD/DotBoxD.csproj" />
     <Project Path="src/Meta/DotBoxD.Services.All/DotBoxD.Services.All.csproj" />
   </Folder>
+  <Folder Name="/src/" />
 
   <Folder Name="/src/Channels/">
     <Project Path="src/Channels/DotBoxD.Transports.Tcp/DotBoxD.Transports.Tcp.csproj" />
@@ -68,16 +69,19 @@
     <Project Path="samples/Services/Inventory/Server/Inventory.Server.csproj" />
     <Project Path="samples/Services/Inventory/Client/Inventory.Client.csproj" />
   </Folder>
+  <Folder Name="/samples/" />
 
   <Folder Name="/samples/Kernels/">
     <Project Path="samples/Kernels/Capabilities/DotBoxD.Kernels.Example.Capabilities/DotBoxD.Kernels.Example.Capabilities.csproj" />
-    <Project Path="samples/Kernels/GameServer/DotBoxD.Kernels.Game.Plugin/DotBoxD.Kernels.Game.Plugin.csproj" />
-    <Project Path="samples/Kernels/GameServer/DotBoxD.Kernels.Game.Server/DotBoxD.Kernels.Game.Server.csproj" />
-    <Project Path="samples/Kernels/GameServer/DotBoxD.Kernels.Game.Server.Abstractions/DotBoxD.Kernels.Game.Server.Abstractions.csproj" />
     <Project Path="samples/Kernels/Hosting/DotBoxD.Kernels.Example.Hosting/DotBoxD.Kernels.Example.Hosting.csproj" />
     <Project Path="samples/Kernels/HttpTransport/DotBoxD.Kernels.HttpTransportExample/DotBoxD.Kernels.HttpTransportExample.csproj" />
     <Project Path="samples/Kernels/LocalPlugin/DotBoxD.Kernels.PluginLocal/DotBoxD.Kernels.PluginLocal.csproj" />
     <Project Path="samples/Kernels/PluginAuthoring/DotBoxD.Kernels.Example.PluginAuthoring/DotBoxD.Kernels.Example.PluginAuthoring.csproj" />
+  </Folder>
+  <Folder Name="/samples/Kernels/GameServer/">
+    <Project Path="samples/Kernels/GameServer/DotBoxD.Kernels.Game.Plugin/DotBoxD.Kernels.Game.Plugin.csproj" />
+    <Project Path="samples/Kernels/GameServer/DotBoxD.Kernels.Game.Server.Abstractions/DotBoxD.Kernels.Game.Server.Abstractions.csproj" />
+    <Project Path="samples/Kernels/GameServer/DotBoxD.Kernels.Game.Server/DotBoxD.Kernels.Game.Server.csproj" />
   </Folder>
 
   <Folder Name="/samples/Pushdown/">
