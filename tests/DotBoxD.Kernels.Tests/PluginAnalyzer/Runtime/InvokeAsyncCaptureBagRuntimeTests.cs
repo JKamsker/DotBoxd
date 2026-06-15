@@ -15,7 +15,7 @@ public sealed class InvokeAsyncCaptureBagRuntimeTests
     {
         var assembly = Compile(Source);
         var wire = Activator.CreateInstance(assembly.GetType("Sample.RecordingWireClient", throwOnError: true)!)!;
-        var controlType = assembly.GetType("DotBoxD.Kernels.Game.Plugin.Client.RemoteKernelControl", throwOnError: true)!;
+        var controlType = assembly.GetType("DotBoxD.Kernels.Game.Plugin.Client.RemotePluginServer", throwOnError: true)!;
         var control = Activator.CreateInstance(controlType, [wire])!;
         var captureType = assembly.GetType("Sample.MonsterCapture", throwOnError: true)!;
         var captures = Activator.CreateInstance(captureType)!;
@@ -61,15 +61,31 @@ public sealed class InvokeAsyncCaptureBagRuntimeTests
 
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
-            public delegate TReturn RemoteKernelInvocation<TCaptures, TReturn>(
+            public delegate TReturn RemoteServerInvocation<TCaptures, TReturn>(
                 IGameWorldAccess world,
                 TCaptures captures);
 
-            public sealed class RemoteKernelControl
+            public sealed class RemotePluginServer
             {
-                public RemoteKernelControl(IKernelRpcWireClient wireClient) => WireClient = wireClient;
+                public RemotePluginServer(IServerExtensionWireClient wireClient)
+                    => Services = new RemoteServiceControl(wireClient);
 
-                public IKernelRpcWireClient WireClient { get; }
+                public RemoteServiceControl Services { get; }
+
+                public PluginPackage? LastPackage => Services.LastPackage;
+
+                public ValueTask<T> InvokeAsync<TCaptures, T>(
+                    TCaptures captures,
+                    RemoteServerInvocation<TCaptures, T> lambda)
+                    where TCaptures : class
+                    => throw new InvalidOperationException("not intercepted");
+            }
+
+            public sealed class RemoteServiceControl
+            {
+                public RemoteServiceControl(IServerExtensionWireClient wireClient) => WireClient = wireClient;
+
+                public IServerExtensionWireClient WireClient { get; }
 
                 public PluginPackage? LastPackage { get; private set; }
 
@@ -78,12 +94,6 @@ public sealed class InvokeAsyncCaptureBagRuntimeTests
                     LastPackage = packageFactory();
                     return Task.FromResult(pluginId);
                 }
-
-                public ValueTask<T> InvokeAsync<TCaptures, T>(
-                    TCaptures captures,
-                    RemoteKernelInvocation<TCaptures, T> lambda)
-                    where TCaptures : class
-                    => throw new InvalidOperationException("not intercepted");
             }
         }
 
@@ -98,7 +108,7 @@ public sealed class InvokeAsyncCaptureBagRuntimeTests
             public static class Usage
             {
                 public static async ValueTask<string> Run(
-                    RemoteKernelControl kernels,
+                    RemotePluginServer kernels,
                     MonsterCapture captures)
                     => await kernels.InvokeAsync(captures, (IGameWorldAccess world, MonsterCapture bag) =>
                     {
@@ -108,12 +118,12 @@ public sealed class InvokeAsyncCaptureBagRuntimeTests
                     });
             }
 
-            public sealed class RecordingWireClient : IKernelRpcWireClient
+            public sealed class RecordingWireClient : IServerExtensionWireClient
             {
                 public string CapturedMonsterId { get; private set; } = "";
                 public int CapturedLastHealth { get; private set; }
 
-                public ValueTask<byte[]> InvokeKernelRpcAsync(
+                public ValueTask<byte[]> InvokeServerExtensionAsync(
                     string pluginId,
                     byte[] arguments,
                     CancellationToken cancellationToken = default)

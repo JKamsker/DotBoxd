@@ -36,7 +36,7 @@ internal static class DotBoxDHandleModelFactory
 
     /// <summary>
     /// Lowers a single <c>ctx.Messages.Send(targetId, message)</c> invocation to a handle model. Shared
-    /// by kernel <c>Handle</c> methods and lowered hook-chain <c>InvokeKernel</c> terminals.
+    /// by kernel <c>Handle</c> methods and lowered hook-chain <c>Run</c> terminals.
     /// </summary>
     public static DotBoxDHandleModel CreateFromSend(
         InvocationExpressionSyntax sendInvocation,

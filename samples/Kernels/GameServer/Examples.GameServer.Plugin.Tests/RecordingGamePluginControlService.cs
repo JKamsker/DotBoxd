@@ -29,15 +29,15 @@ internal sealed class RecordingGamePluginControlService : IGamePluginControlServ
         return ValueTask.FromResult(pluginId);
     }
 
-    public ValueTask<string> InstallKernelRpcAsync(string packageJson, CancellationToken ct = default)
+    public ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
         var pluginId = PluginId(packageJson);
-        Calls.Add("rpc:" + pluginId);
+        Calls.Add("extension:" + pluginId);
         return ValueTask.FromResult(pluginId);
     }
 
-    public ValueTask<byte[]> InvokeKernelRpcAsync(
+    public ValueTask<byte[]> InvokeServerExtensionAsync(
         string pluginId,
         byte[] arguments,
         CancellationToken ct = default)

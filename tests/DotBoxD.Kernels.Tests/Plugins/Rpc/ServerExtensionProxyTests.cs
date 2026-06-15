@@ -26,13 +26,13 @@ public static class BatchKillerPluginPackage
 }
 
 /// <summary>
-/// Proves the typed kernel RPC service surface (Followup #2.4): a service interface is implemented by a
+/// Proves the typed server extension surface (Followup #2.4): a service interface is implemented by a
 /// runtime proxy that marshals C# arguments into the sandbox, runs the batch kernel request/response in
 /// one roundtrip, and marshals the result — including a <c>List&lt;KillResult&gt;</c> of DTOs — back to
 /// real C# objects. Covers both the proxy over a generated kernel and the
-/// <c>RegisterRpcServiceAsync</c>/<c>RpcService</c> registration sugar, plus the marshaller round-trips.
+/// <c>RegisterServerExtensionAsync</c>/<c>ServerExtension</c> registration sugar, plus the marshaller round-trips.
 /// </summary>
-public sealed class KernelRpcServiceProxyTests
+public sealed class ServerExtensionProxyTests
 {
     private const string MonsterKillerSource = """
         using System.Collections.Generic;
@@ -52,7 +52,7 @@ public sealed class KernelRpcServiceProxyTests
 
         public readonly record struct KillResult(int MonsterId, bool Success);
 
-        [KernelRpcService("monster-killer")]
+        [ServerExtension("monster-killer")]
         public sealed partial class MonsterKillerKernel
         {
             public List<KillResult> KillMonsters(List<int> monsterIds, HookContext ctx)
@@ -89,7 +89,7 @@ public sealed class KernelRpcServiceProxyTests
 
         public readonly record struct KillResult(int MonsterId, bool Success);
 
-        [KernelRpcService("monster-killer", typeof(IMonsterKillerService))]
+        [ServerExtension("monster-killer", typeof(IMonsterKillerService))]
         public sealed partial class MonsterKillerKernel
         {
             public List<KillResult> KillMonsters(List<int> monsterIds, HookContext ctx)
@@ -107,9 +107,9 @@ public sealed class KernelRpcServiceProxyTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create(MonsterKillerSource, "Sample.MonsterKillerPluginPackage");
         using var server = DotBoxD.Plugins.PluginServer.Create(configureHost: RpcKernelTestPackages.AddKillBinding, defaultPolicy: RpcKernelTestPackages.KillPolicy());
-        var kernel = await server.InstallRpcAsync(package);
+        var kernel = await server.InstallServerExtensionAsync(package);
 
-        var service = KernelRpcServiceProxy.Create<IMonsterKillerService>(kernel);
+        var service = ServerExtensionProxy.Create<IMonsterKillerService>(kernel);
         var results = service.KillMonsters([4, 5, 6]);
 
         Assert.Equal(3, results.Count);
@@ -119,12 +119,12 @@ public sealed class KernelRpcServiceProxyTests
     }
 
     [Fact]
-    public async Task RegisterRpcService_then_RpcService_invokes_the_batch_kernel_by_contract()
+    public async Task RegisterServerExtension_then_ServerExtension_invokes_the_batch_kernel_by_contract()
     {
         using var server = DotBoxD.Plugins.PluginServer.Create(configureHost: RpcKernelTestPackages.AddKillBinding, defaultPolicy: RpcKernelTestPackages.KillPolicy());
-        await server.RegisterRpcServiceAsync<IMonsterKillerService, BatchKillerKernel>();
+        await server.RegisterServerExtensionAsync<IMonsterKillerService, BatchKillerKernel>();
 
-        var results = server.RpcService<IMonsterKillerService>().KillMonsters([1, 2]);
+        var results = server.ServerExtension<IMonsterKillerService>().KillMonsters([1, 2]);
 
         Assert.Equal([new KillResult(1, false), new KillResult(2, true)], results);
     }
@@ -148,10 +148,10 @@ public sealed class KernelRpcServiceProxyTests
     public async Task A_generated_ipc_client_uses_compact_ir_without_dispatch_proxy()
     {
         var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly(MonsterKillerWithGeneratedClientSource);
-        var clientType = assembly.GetType("Sample.MonsterKillerKernelRpcClient", throwOnError: true)!;
+        var clientType = assembly.GetType("Sample.MonsterKillerKernelServerExtensionClient", throwOnError: true)!;
         Assert.False(typeof(DispatchProxy).IsAssignableFrom(clientType));
 
-        var wireClient = new RecordingKernelRpcWireClient(KillResultsResponse());
+        var wireClient = new RecordingServerExtensionWireClient(KillResultsResponse());
         var create = clientType.GetMethod("Create", BindingFlags.Public | BindingFlags.Static)!;
         var service = create.Invoke(null, [wireClient, "monster-killer"])!;
         var method = service.GetType().GetMethod("KillMonstersAsync", BindingFlags.Public | BindingFlags.Instance)!;
@@ -196,17 +196,17 @@ public sealed class KernelRpcServiceProxyTests
         Assert.Equal(success, type.GetProperty("Success")!.GetValue(result));
     }
 
-    private sealed class RecordingKernelRpcWireClient : IKernelRpcWireClient
+    private sealed class RecordingServerExtensionWireClient : IServerExtensionWireClient
     {
         private readonly byte[] _response;
 
-        public RecordingKernelRpcWireClient(byte[] response) => _response = response;
+        public RecordingServerExtensionWireClient(byte[] response) => _response = response;
 
         public string? LastPluginId { get; private set; }
 
         public byte[] LastArguments { get; private set; } = [];
 
-        public ValueTask<byte[]> InvokeKernelRpcAsync(
+        public ValueTask<byte[]> InvokeServerExtensionAsync(
             string pluginId,
             byte[] arguments,
             CancellationToken cancellationToken = default)

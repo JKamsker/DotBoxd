@@ -100,7 +100,7 @@ public sealed class Fix_ALG_0018_Tests
         var server = PluginAddendumTestPolicies.CreateServer();
         var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
         var adapter = new MutableDamageEventAdapter();
-        server.Hooks.On(adapter).UseKernel(kernel);
+        server.Hooks.On(adapter).Use(kernel);
         adapter.DropTargetParameter = true;
 
         var ex = await Assert.ThrowsAsync<SandboxValidationException>(

@@ -45,7 +45,7 @@ internal static partial class RpcKernelClientProxyEmitter
                 return $"{EnsureDtoWriter(named)}({expression})";
             }
 
-            throw new NotSupportedException($"Kernel RPC service type '{type.ToDisplayString()}' is not supported.");
+            throw new NotSupportedException($"Server extension type '{type.ToDisplayString()}' is not supported.");
         }
 
         private string ReadComplexExpression(ITypeSymbol type, string expression)
@@ -60,7 +60,7 @@ internal static partial class RpcKernelClientProxyEmitter
                 return $"{EnsureDtoReader(named)}({expression})";
             }
 
-            throw new NotSupportedException($"Kernel RPC service type '{type.ToDisplayString()}' is not supported.");
+            throw new NotSupportedException($"Server extension type '{type.ToDisplayString()}' is not supported.");
         }
 
         private string EnsureListWriter(ITypeSymbol type)
@@ -186,7 +186,7 @@ internal static partial class RpcKernelClientProxyEmitter
             _helpers.AppendLine("        var __fields = value.Items;");
             _helpers.Append("        if (__fields.Length != ").Append(fields.Count).AppendLine(")");
             _helpers.AppendLine("        {");
-            _helpers.AppendLine("            throw new global::System.NotSupportedException(\"Kernel RPC record field count did not match the generated DTO shape.\");");
+            _helpers.AppendLine("            throw new global::System.NotSupportedException(\"Server extension record field count did not match the generated DTO shape.\");");
             _helpers.AppendLine("        }");
             _helpers.AppendLine();
             _helpers.Append("        return new ").Append(TypeName(type)).Append('(');
@@ -249,7 +249,7 @@ internal static partial class RpcKernelClientProxyEmitter
             }
 
             throw new NotSupportedException(
-                $"Kernel RPC DTO '{type.ToDisplayString()}' must expose a constructor matching its public fields.");
+                $"Server extension DTO '{type.ToDisplayString()}' must expose a constructor matching its public fields.");
         }
 
         private static int FieldIndex(IReadOnlyList<IPropertySymbol> fields, string? name)

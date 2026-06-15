@@ -101,7 +101,7 @@ internal static class ExampleWorkflowProbe
             defaultPolicy: MessageWritePolicy(),
             executionMode: mode);
         var kernel = await server.InstallJsonAsync(FireDamagePackageJson());
-        server.Hooks.On(DamageEventAdapter.Instance).UseKernel(kernel);
+        server.Hooks.On(DamageEventAdapter.Instance).Use(kernel);
 
         await PublishLoopAsync(server, primary, secondary, warmup);
         var milliseconds = await TimeAsync(() => PublishLoopAsync(server, primary, secondary, iterations));

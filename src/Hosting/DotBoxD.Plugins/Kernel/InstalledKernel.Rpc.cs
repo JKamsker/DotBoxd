@@ -5,20 +5,20 @@ using DotBoxD.Plugins.Runtime;
 namespace DotBoxD.Plugins.Kernel;
 
 /// <summary>
-/// Request/response invocation for a <b>kernel RPC service</b> kernel — the path that runs a verified
-/// batch entrypoint server-side in one roundtrip and returns its result. Kept in a partial alongside the
+/// Request/response invocation for a <b>server extension</b> kernel: the path that runs a verified
+/// batch entrypoint server-side in one call and returns its result. Kept in a partial alongside the
 /// event <c>ShouldHandle</c>/<c>Handle</c> path in <see cref="InstalledKernel"/>.
 /// </summary>
 public sealed partial class InstalledKernel
 {
     /// <summary>
-    /// Invokes the kernel's RPC entrypoint request/response: the caller arguments are bound to the
+    /// Invokes the kernel's server-extension entrypoint request/response: the caller arguments are bound to the
     /// entrypoint's leading parameters (live settings fill the trailing ones), the verified IR runs once
     /// under the execution gate, and its result value is returned. Unlike <see cref="HandleAsync"/> the
     /// result is not discarded. The kernel must have been installed via
-    /// <see cref="PluginServer.InstallRpcAsync"/> (its manifest declares the RPC entrypoint).
+    /// <see cref="PluginServer.InstallServerExtensionAsync"/> (its manifest declares the rpcEntrypoint).
     /// </summary>
-    public async ValueTask<SandboxValue> InvokeRpcAsync(
+    public async ValueTask<SandboxValue> InvokeServerExtensionAsync(
         IReadOnlyList<SandboxValue> arguments,
         CancellationToken cancellationToken = default)
     {
@@ -26,7 +26,7 @@ public sealed partial class InstalledKernel
         if (Manifest.RpcEntrypoint is not { } entrypoint)
         {
             throw new InvalidOperationException(
-                $"Kernel '{Manifest.PluginId}' is not a kernel RPC service (no RPC entrypoint).");
+                $"Kernel '{Manifest.PluginId}' is not a server extension (no rpcEntrypoint).");
         }
 
         await AcquireExecutionGateAsync(cancellationToken).ConfigureAwait(false);
@@ -52,14 +52,14 @@ public sealed partial class InstalledKernel
         if (callerCount < 0)
         {
             throw new SandboxRuntimeException(new SandboxError(
-                SandboxErrorCode.ValidationError, "kernel RPC entrypoint declares fewer parameters than live settings"));
+                SandboxErrorCode.ValidationError, "server extension entrypoint declares fewer parameters than live settings"));
         }
 
         if (arguments.Count != callerCount)
         {
             throw new SandboxRuntimeException(new SandboxError(
                 SandboxErrorCode.InvalidInput,
-                $"kernel RPC entrypoint '{entrypoint}' expects {callerCount} argument(s) but received {arguments.Count}"));
+                $"server extension entrypoint '{entrypoint}' expects {callerCount} argument(s) but received {arguments.Count}"));
         }
 
         if (function.Parameters.Count == 0)
@@ -97,6 +97,6 @@ public sealed partial class InstalledKernel
         }
 
         throw new SandboxRuntimeException(new SandboxError(
-            SandboxErrorCode.ValidationError, $"kernel RPC entrypoint '{entrypoint}' was not found"));
+            SandboxErrorCode.ValidationError, $"server extension entrypoint '{entrypoint}' was not found"));
     }
 }

@@ -16,7 +16,7 @@ public sealed class InvokeAsyncRuntimeTests
     {
         var assembly = Compile(Source, enableInterceptors: true);
         var wire = Activator.CreateInstance(assembly.GetType("Sample.RecordingWireClient", throwOnError: true)!)!;
-        var controlType = assembly.GetType("DotBoxD.Kernels.Game.Plugin.Client.RemoteKernelControl", throwOnError: true)!;
+        var controlType = assembly.GetType("DotBoxD.Kernels.Game.Plugin.Client.RemotePluginServer", throwOnError: true)!;
         var control = Activator.CreateInstance(controlType, [wire])!;
         var run = assembly.GetType("Sample.Usage", throwOnError: true)!
             .GetMethod("Run", BindingFlags.Public | BindingFlags.Static)!;
@@ -37,7 +37,7 @@ public sealed class InvokeAsyncRuntimeTests
     {
         var assembly = Compile(ObjectSurfaceSource, enableInterceptors: true);
         var wire = Activator.CreateInstance(assembly.GetType("Sample.RecordingWireClient", throwOnError: true)!)!;
-        var controlType = assembly.GetType("DotBoxD.Kernels.Game.Plugin.Client.RemoteKernelControl", throwOnError: true)!;
+        var controlType = assembly.GetType("DotBoxD.Kernels.Game.Plugin.Client.RemotePluginServer", throwOnError: true)!;
         var control = Activator.CreateInstance(controlType, [wire])!;
         var run = assembly.GetType("Sample.Usage", throwOnError: true)!
             .GetMethod("Run", BindingFlags.Public | BindingFlags.Static)!;
@@ -82,11 +82,26 @@ public sealed class InvokeAsyncRuntimeTests
 
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
-            public sealed class RemoteKernelControl
+            public sealed class RemotePluginServer
             {
-                public RemoteKernelControl(IKernelRpcWireClient wireClient) => WireClient = wireClient;
+                public RemotePluginServer(IServerExtensionWireClient wireClient)
+                    => Services = new RemoteServiceControl(wireClient);
 
-                public IKernelRpcWireClient WireClient { get; }
+                public RemoteServiceControl Services { get; }
+
+                public int InstallCount => Services.InstallCount;
+
+                public PluginPackage? LastPackage => Services.LastPackage;
+
+                public ValueTask<T> InvokeAsync<T>(Func<IGameWorldAccess, T> lambda)
+                    => throw new InvalidOperationException("not intercepted");
+            }
+
+            public sealed class RemoteServiceControl
+            {
+                public RemoteServiceControl(IServerExtensionWireClient wireClient) => WireClient = wireClient;
+
+                public IServerExtensionWireClient WireClient { get; }
 
                 public int InstallCount { get; private set; }
 
@@ -98,9 +113,6 @@ public sealed class InvokeAsyncRuntimeTests
                     LastPackage = packageFactory();
                     return Task.FromResult(pluginId);
                 }
-
-                public ValueTask<T> InvokeAsync<T>(Func<IGameWorldAccess, T> lambda)
-                    => throw new InvalidOperationException("not intercepted");
             }
         }
 
@@ -108,7 +120,7 @@ public sealed class InvokeAsyncRuntimeTests
         {
             public static class Usage
             {
-                public static async ValueTask<int> Run(RemoteKernelControl kernels)
+                public static async ValueTask<int> Run(RemotePluginServer kernels)
                     => await kernels.InvokeAsync((IGameWorldAccess world) =>
                     {
                         var hp = world.GetHealth("monster-1");
@@ -116,11 +128,11 @@ public sealed class InvokeAsyncRuntimeTests
                     });
             }
 
-            public sealed class RecordingWireClient : IKernelRpcWireClient
+            public sealed class RecordingWireClient : IServerExtensionWireClient
             {
                 public int ArgumentCount { get; private set; }
 
-                public ValueTask<byte[]> InvokeKernelRpcAsync(
+                public ValueTask<byte[]> InvokeServerExtensionAsync(
                     string pluginId,
                     byte[] arguments,
                     CancellationToken cancellationToken = default)
@@ -155,11 +167,24 @@ public sealed class InvokeAsyncRuntimeTests
 
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
-            public sealed class RemoteKernelControl
+            public sealed class RemotePluginServer
             {
-                public RemoteKernelControl(IKernelRpcWireClient wireClient) => WireClient = wireClient;
+                public RemotePluginServer(IServerExtensionWireClient wireClient)
+                    => Services = new RemoteServiceControl(wireClient);
 
-                public IKernelRpcWireClient WireClient { get; }
+                public RemoteServiceControl Services { get; }
+
+                public PluginPackage? LastPackage => Services.LastPackage;
+
+                public ValueTask<T> InvokeAsync<T>(Func<IGameWorldAccess, T> lambda)
+                    => throw new InvalidOperationException("not intercepted");
+            }
+
+            public sealed class RemoteServiceControl
+            {
+                public RemoteServiceControl(IServerExtensionWireClient wireClient) => WireClient = wireClient;
+
+                public IServerExtensionWireClient WireClient { get; }
 
                 public PluginPackage? LastPackage { get; private set; }
 
@@ -168,9 +193,6 @@ public sealed class InvokeAsyncRuntimeTests
                     LastPackage = packageFactory();
                     return Task.FromResult(pluginId);
                 }
-
-                public ValueTask<T> InvokeAsync<T>(Func<IGameWorldAccess, T> lambda)
-                    => throw new InvalidOperationException("not intercepted");
             }
         }
 
@@ -178,7 +200,7 @@ public sealed class InvokeAsyncRuntimeTests
         {
             public static class Usage
             {
-                public static async ValueTask<int> Run(RemoteKernelControl kernels)
+                public static async ValueTask<int> Run(RemotePluginServer kernels)
                     => await kernels.InvokeAsync((IGameWorldAccess world) =>
                     {
                         var monster = world.GetMonster("monster-2");
@@ -186,9 +208,9 @@ public sealed class InvokeAsyncRuntimeTests
                     });
             }
 
-            public sealed class RecordingWireClient : IKernelRpcWireClient
+            public sealed class RecordingWireClient : IServerExtensionWireClient
             {
-                public ValueTask<byte[]> InvokeKernelRpcAsync(
+                public ValueTask<byte[]> InvokeServerExtensionAsync(
                     string pluginId,
                     byte[] arguments,
                     CancellationToken cancellationToken = default)

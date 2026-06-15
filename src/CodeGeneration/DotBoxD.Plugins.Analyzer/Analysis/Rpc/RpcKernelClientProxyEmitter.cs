@@ -22,7 +22,7 @@ internal static partial class RpcKernelClientProxyEmitter
     {
         if (serviceType.TypeKind != TypeKind.Interface)
         {
-            throw new NotSupportedException("Kernel RPC service client generation requires an interface contract type.");
+            throw new NotSupportedException("Server extension client generation requires an interface contract type.");
         }
 
         return new ProxySourceWriter(kernelType, serviceType, serviceMethod).Emit();
@@ -32,7 +32,7 @@ internal static partial class RpcKernelClientProxyEmitter
     {
         if (serviceType.TypeKind != TypeKind.Interface)
         {
-            throw new NotSupportedException("Kernel RPC service client generation requires an interface contract type.");
+            throw new NotSupportedException("Server extension client generation requires an interface contract type.");
         }
 
         var methods = new List<IMethodSymbol>();
@@ -47,7 +47,7 @@ internal static partial class RpcKernelClientProxyEmitter
         if (methods.Count != 1)
         {
             throw new NotSupportedException(
-                $"Kernel RPC service interface '{serviceType.ToDisplayString()}' must declare exactly one method.");
+                $"Server extension interface '{serviceType.ToDisplayString()}' must declare exactly one method.");
         }
 
         var serviceMethod = methods[0];
@@ -56,14 +56,14 @@ internal static partial class RpcKernelClientProxyEmitter
             !string.Equals(serviceMethod.Name, expectedName + "Async", StringComparison.Ordinal))
         {
             throw new NotSupportedException(
-                $"Kernel RPC service method '{serviceMethod.Name}' must match kernel method '{expectedName}' or '{expectedName}Async'.");
+                $"Server extension method '{serviceMethod.Name}' must match kernel method '{expectedName}' or '{expectedName}Async'.");
         }
 
         var kernelParameterCount = kernelMethod.Parameters.Length - 1;
         if (serviceMethod.Parameters.Length != kernelParameterCount)
         {
             throw new NotSupportedException(
-                $"Kernel RPC service method '{serviceMethod.Name}' must declare {kernelParameterCount} parameter(s).");
+                $"Server extension method '{serviceMethod.Name}' must declare {kernelParameterCount} parameter(s).");
         }
 
         for (var i = 0; i < kernelParameterCount; i++)
@@ -71,14 +71,14 @@ internal static partial class RpcKernelClientProxyEmitter
             if (!SymbolEqualityComparer.Default.Equals(serviceMethod.Parameters[i].Type, kernelMethod.Parameters[i].Type))
             {
                 throw new NotSupportedException(
-                    $"Kernel RPC service parameter '{serviceMethod.Parameters[i].Name}' must match kernel parameter '{kernelMethod.Parameters[i].Name}'.");
+                    $"Server extension parameter '{serviceMethod.Parameters[i].Name}' must match kernel parameter '{kernelMethod.Parameters[i].Name}'.");
             }
         }
 
         if (!SymbolEqualityComparer.Default.Equals(UnwrapReturn(serviceMethod.ReturnType), kernelMethod.ReturnType))
         {
             throw new NotSupportedException(
-                $"Kernel RPC service method '{serviceMethod.Name}' return type must match kernel method '{kernelMethod.Name}'.");
+                $"Server extension method '{serviceMethod.Name}' return type must match kernel method '{kernelMethod.Name}'.");
         }
 
         return serviceMethod;
@@ -146,21 +146,21 @@ internal static partial class RpcKernelClientProxyEmitter
         public string Emit()
         {
             var builder = new StringBuilder();
-            var clientName = _kernelType.Name + "RpcClient";
+            var clientName = _kernelType.Name + "ServerExtensionClient";
             builder.Append("public sealed class ").Append(clientName).Append(" : ").AppendLine(TypeName(_serviceType));
             builder.AppendLine("{");
-            builder.AppendLine("    private readonly global::DotBoxD.Plugins.IKernelRpcWireClient _client;");
+            builder.AppendLine("    private readonly global::DotBoxD.Plugins.IServerExtensionWireClient _client;");
             builder.AppendLine("    private readonly string _pluginId;");
             builder.AppendLine();
             builder.Append("    public ").Append(clientName)
-                .AppendLine("(global::DotBoxD.Plugins.IKernelRpcWireClient client, string pluginId)");
+                .AppendLine("(global::DotBoxD.Plugins.IServerExtensionWireClient client, string pluginId)");
             builder.AppendLine("    {");
             builder.AppendLine("        _client = client ?? throw new global::System.ArgumentNullException(nameof(client));");
             builder.AppendLine("        _pluginId = pluginId ?? throw new global::System.ArgumentNullException(nameof(pluginId));");
             builder.AppendLine("    }");
             builder.AppendLine();
             builder.Append("    public static ").Append(TypeName(_serviceType))
-                .AppendLine(" Create(global::DotBoxD.Plugins.IKernelRpcWireClient client, string pluginId)");
+                .AppendLine(" Create(global::DotBoxD.Plugins.IServerExtensionWireClient client, string pluginId)");
             builder.Append("        => new ").Append(clientName).AppendLine("(client, pluginId);");
             builder.AppendLine();
             AppendServiceMethod(builder);
@@ -193,11 +193,11 @@ internal static partial class RpcKernelClientProxyEmitter
             builder.AppendLine("        var __request = global::DotBoxD.Plugins.KernelRpcBinaryCodec.EncodeArguments(__arguments);");
             if (_returnShape == ReturnShape.Direct)
             {
-                builder.AppendLine("        var __response = _client.InvokeKernelRpcAsync(_pluginId, __request).AsTask().GetAwaiter().GetResult();");
+                builder.AppendLine("        var __response = _client.InvokeServerExtensionAsync(_pluginId, __request).AsTask().GetAwaiter().GetResult();");
             }
             else
             {
-                builder.AppendLine("        var __response = await _client.InvokeKernelRpcAsync(_pluginId, __request).ConfigureAwait(false);");
+                builder.AppendLine("        var __response = await _client.InvokeServerExtensionAsync(_pluginId, __request).ConfigureAwait(false);");
             }
 
             builder.AppendLine("        var __result = global::DotBoxD.Plugins.KernelRpcBinaryCodec.DecodeValue(__response);");

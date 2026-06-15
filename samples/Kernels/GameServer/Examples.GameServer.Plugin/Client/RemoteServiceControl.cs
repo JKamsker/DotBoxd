@@ -9,24 +9,20 @@ using DotBoxD.Plugins.Kernel;
 
 namespace DotBoxD.Kernels.Game.Plugin.Client;
 
-internal delegate TReturn RemoteKernelInvocation<TCaptures, TReturn>(
+internal delegate TReturn RemoteServerInvocation<TCaptures, TReturn>(
     IGameWorldAccess world,
     TCaptures captures);
 
-internal sealed class RemoteKernelControl
+internal sealed class RemoteServiceControl
 {
     private readonly IGamePluginControlService _control;
-    private readonly ConcurrentDictionary<string, Lazy<Task<string>>> _anonymousKernels = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, Lazy<Task<string>>> _anonymousCalls = new(StringComparer.Ordinal);
 
-    public RemoteKernelControl(IGamePluginControlService control) => _control = control;
+    public RemoteServiceControl(IGamePluginControlService control) => _control = control;
 
-    internal IKernelRpcWireClient WireClient => _control;
+    internal IServerExtensionWireClient WireClient => _control;
 
-    /// <summary>
-    /// Registers a kernel as the implementation of a server service contract: resolves its generated
-    /// verified-IR package and ships it. Returns the installed plugin id.
-    /// </summary>
-    public async ValueTask<string> Register<TService, TKernel>()
+    public async ValueTask<string> Replace<TService, TKernel>()
         where TService : class
         where TKernel : class, TService
     {
@@ -34,33 +30,14 @@ internal sealed class RemoteKernelControl
         return await _control.InstallPluginAsync(json).ConfigureAwait(false);
     }
 
-    /// <summary>Strongly-typed settings handle for a kernel this plugin authored.</summary>
     public RemoteKernelHandle<TKernel> Get<TKernel>() where TKernel : class, new()
         => new(_control, PluginId(typeof(TKernel)));
-
-    public ValueTask<TReturn> InvokeAsync<TReturn>(Func<IGameWorldAccess, TReturn> lambda)
-    {
-        ArgumentNullException.ThrowIfNull(lambda);
-        throw new InvalidOperationException(
-            "Remote kernel InvokeAsync calls must be intercepted by the DotBoxD plugin generator.");
-    }
-
-    public ValueTask<TReturn> InvokeAsync<TCaptures, TReturn>(
-        TCaptures captures,
-        RemoteKernelInvocation<TCaptures, TReturn> lambda)
-        where TCaptures : class
-    {
-        ArgumentNullException.ThrowIfNull(captures);
-        ArgumentNullException.ThrowIfNull(lambda);
-        throw new InvalidOperationException(
-            "Remote kernel InvokeAsync calls must be intercepted by the DotBoxD plugin generator.");
-    }
 
     internal Task<string> EnsureAnonymousKernelAsync(string pluginId, Func<PluginPackage> packageFactory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pluginId);
         ArgumentNullException.ThrowIfNull(packageFactory);
-        return _anonymousKernels.GetOrAdd(
+        return _anonymousCalls.GetOrAdd(
             pluginId,
             static (id, args) => new Lazy<Task<string>>(
                 () => InstallAnonymousKernelAsync(id, args.PackageFactory, args.Control),
@@ -78,11 +55,11 @@ internal sealed class RemoteKernelControl
         IGamePluginControlService control)
     {
         var json = PluginPackageJsonSerializer.Export(packageFactory());
-        var installedPluginId = await control.InstallKernelRpcAsync(json).ConfigureAwait(false);
+        var installedPluginId = await control.InstallServerExtensionAsync(json).ConfigureAwait(false);
         if (!string.Equals(installedPluginId, pluginId, StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
-                $"Anonymous kernel '{pluginId}' installed as unexpected plugin '{installedPluginId}'.");
+                $"Anonymous server call '{pluginId}' installed as unexpected plugin '{installedPluginId}'.");
         }
 
         return installedPluginId;

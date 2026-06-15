@@ -7,7 +7,7 @@ using PluginServer = DotBoxD.Plugins.PluginServer;
 namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Detection;
 
 /// <summary>
-/// Phase C-0 (detection only): the analyzer flags an inline InvokeKernel(lambda) hook-chain terminal
+/// Phase C-0 (detection only): the analyzer flags an inline Run(lambda) hook-chain terminal
 /// with informational DBXK110, since lowering those lambdas to verified IR is a later phase and the
 /// runtime terminal throws until then.
 /// </summary>
@@ -17,7 +17,7 @@ public sealed class HookChainDetectionTests
         CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview);
 
     [Fact]
-    public async Task Reports_DBXK110_on_an_inline_InvokeKernel_lambda_chain()
+    public async Task Reports_DBXK110_on_an_inline_Run_lambda_chain()
     {
         var diagnostics = await AnalyzeAsync("""
             using DotBoxD.Plugins;
@@ -31,7 +31,7 @@ public sealed class HookChainDetectionTests
                 public static class Usage
                 {
                     public static void Configure(HookRegistry hooks)
-                        => hooks.On<DamageEvent>().InvokeKernel((e, ctx) => default);
+                        => hooks.On<DamageEvent>().Run((e, ctx) => default);
                 }
             }
             """);
@@ -40,7 +40,7 @@ public sealed class HookChainDetectionTests
     }
 
     [Fact]
-    public async Task Does_not_report_DBXK110_for_InvokeLocal()
+    public async Task Does_not_report_DBXK110_for_RunLocal()
     {
         var diagnostics = await AnalyzeAsync("""
             using DotBoxD.Plugins;
@@ -54,7 +54,7 @@ public sealed class HookChainDetectionTests
                 public static class Usage
                 {
                     public static void Configure(HookRegistry hooks)
-                        => hooks.On<DamageEvent>().InvokeLocal((e, ctx) => default);
+                        => hooks.On<DamageEvent>().RunLocal((e, ctx) => default);
                 }
             }
             """);

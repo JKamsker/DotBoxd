@@ -38,7 +38,7 @@ public sealed class InvokeAsyncGenerationTests
     public void Expression_body_lambda_is_ignored()
     {
         var result = RunGenerator(UsageSource("""
-            public static ValueTask<int> Run(RemoteKernelControl kernels)
+            public static ValueTask<int> Run(RemotePluginServer kernels)
                 => kernels.InvokeAsync((IGameWorldAccess world) => world.GetHealth("monster-1"));
             """));
 
@@ -51,7 +51,7 @@ public sealed class InvokeAsyncGenerationTests
     public void Implicit_capture_generates_reflection_arguments_and_sync_out()
     {
         var result = RunGenerator(UsageSource("""
-            public static ValueTask<int> Run(RemoteKernelControl kernels)
+            public static ValueTask<int> Run(RemotePluginServer kernels)
             {
                 var monsterId = "monster-1";
                 var lastHealth = 0;
@@ -103,7 +103,7 @@ public sealed class InvokeAsyncGenerationTests
 
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
-            public sealed class RemoteKernelControl
+            public sealed class RemotePluginServer
             {
                 public ValueTask<T> InvokeAsync<T>(Func<IGameWorldAccess, T> lambda) => throw new InvalidOperationException();
             }
@@ -113,7 +113,7 @@ public sealed class InvokeAsyncGenerationTests
         {
             public static class Usage
             {
-                public static ValueTask<int> Run(RemoteKernelControl kernels)
+                public static ValueTask<int> Run(RemotePluginServer kernels)
                     => kernels.InvokeAsync((IGameWorldAccess world) =>
                     {
                         var hp = world.GetHealth("monster-1");
@@ -145,15 +145,15 @@ public sealed class InvokeAsyncGenerationTests
 
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
-            public delegate TReturn RemoteKernelInvocation<TCaptures, TReturn>(
+            public delegate TReturn RemoteServerInvocation<TCaptures, TReturn>(
                 IGameWorldAccess world,
                 TCaptures captures);
 
-            public sealed class RemoteKernelControl
+            public sealed class RemotePluginServer
             {
                 public ValueTask<T> InvokeAsync<TCaptures, T>(
                     TCaptures captures,
-                    RemoteKernelInvocation<TCaptures, T> lambda)
+                    RemoteServerInvocation<TCaptures, T> lambda)
                     where TCaptures : class
                     => throw new InvalidOperationException();
             }
@@ -169,7 +169,7 @@ public sealed class InvokeAsyncGenerationTests
 
             public static class Usage
             {
-                public static ValueTask<string> Run(RemoteKernelControl kernels, MonsterCapture captures)
+                public static ValueTask<string> Run(RemotePluginServer kernels, MonsterCapture captures)
                     => kernels.InvokeAsync(captures, (IGameWorldAccess world, MonsterCapture bag) =>
                     {
                         var monster = world.GetMonster(bag.MonsterId);
@@ -202,7 +202,7 @@ public sealed class InvokeAsyncGenerationTests
 
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
-            public sealed class RemoteKernelControl
+            public sealed class RemotePluginServer
             {
                 public ValueTask<T> InvokeAsync<T>(Func<IGameWorldAccess, T> lambda) => throw new InvalidOperationException();
             }
@@ -212,7 +212,7 @@ public sealed class InvokeAsyncGenerationTests
         {
             public static class Usage
             {
-                public static ValueTask<int> Run(RemoteKernelControl kernels)
+                public static ValueTask<int> Run(RemotePluginServer kernels)
                     => kernels.InvokeAsync((IGameWorldAccess world) =>
                     {
                         var monster = world.GetMonster("monster-2");
@@ -243,7 +243,7 @@ public sealed class InvokeAsyncGenerationTests
 
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
-            public sealed class RemoteKernelControl
+            public sealed class RemotePluginServer
             {
                 public ValueTask<T> InvokeAsync<T>(Func<IGameWorldAccess, T> lambda) => throw new InvalidOperationException();
             }

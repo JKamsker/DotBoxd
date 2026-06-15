@@ -14,7 +14,7 @@ public sealed class PluginPackageJsonTests
         var server = DotBoxD.Plugins.PluginServer.Create(messages, defaultPolicy: PluginAddendumTestPolicies.LongWall());
 
         var kernel = await server.InstallJsonAsync(JsonDamagePackage());
-        server.Hooks.On(DamageEventAdapter.Instance).UseKernel(kernel);
+        server.Hooks.On(DamageEventAdapter.Instance).Use(kernel);
 
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
 

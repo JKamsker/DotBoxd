@@ -8,7 +8,7 @@ using static JsonImport;
 /// <summary>
 /// The write (export) half of <see cref="PluginPackageJsonSerializer"/>. The read half (with the strict
 /// <c>RequireAllowedProperties</c> shape that the schema-sync regression pins) stays in the main file.
-/// The optional <see cref="PluginManifest.RpcEntrypoint"/> is emitted only for kernel RPC service kernels.
+/// The optional <see cref="PluginManifest.RpcEntrypoint"/> is emitted only for server extension kernels.
 /// </summary>
 public static partial class PluginPackageJsonSerializer
 {

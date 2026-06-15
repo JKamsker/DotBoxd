@@ -13,7 +13,7 @@ public sealed class PluginExecutionObservationTests
         var messages = new InMemoryPluginMessageSink();
         var server = DotBoxD.Plugins.PluginServer.Create(messages, defaultPolicy: PluginAddendumTestPolicies.LongWall(), executionMode: ExecutionMode.Interpreted);
         var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
 
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
 
@@ -42,7 +42,7 @@ public sealed class PluginExecutionObservationTests
         var messages = new InMemoryPluginMessageSink();
         var server = DotBoxD.Plugins.PluginServer.Create(messages, defaultPolicy: PluginAddendumTestPolicies.LongWall(), executionMode: mode);
         var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
 
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, $"player-{mode}"));
 

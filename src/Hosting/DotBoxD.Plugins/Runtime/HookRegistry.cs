@@ -102,7 +102,7 @@ public sealed class HookPipeline<TEvent>
 
     /// <summary>
     /// Installs an analyzer-generated hook-chain package and wires it into this pipeline. Called by
-    /// the generated interceptor that replaces an <c>InvokeKernel(lambda)</c> call site, so the lowered
+    /// the generated interceptor that replaces a <c>Run(lambda)</c> call site, so the lowered
     /// chain runs as verified IR instead of throwing. Blocks on install at setup time.
     /// </summary>
     public HookPipeline<TEvent> UseGeneratedChain(PluginPackage package)
@@ -117,7 +117,7 @@ public sealed class HookPipeline<TEvent>
             ]);
         }
 
-        return UseKernel(_installer(package));
+        return Use(_installer(package));
     }
 
     public HookPipeline<TEvent> Where(Func<TEvent, HookContext, bool> filter)
@@ -177,16 +177,16 @@ public sealed class HookPipeline<TEvent>
     }
 
     /// <summary>Native host terminal — runs in-process (NOT sandboxed). Use sparingly.</summary>
-    public HookPipeline<TEvent> InvokeLocal(Func<TEvent, HookContext, ValueTask> handler)
+    public HookPipeline<TEvent> RunLocal(Func<TEvent, HookContext, ValueTask> handler)
         => InvokeHostHandler(handler);
 
-    public HookPipeline<TEvent> InvokeLocal(Action<TEvent, HookContext> handler)
+    public HookPipeline<TEvent> RunLocal(Action<TEvent, HookContext> handler)
         => InvokeHostHandler(handler);
 
-    public HookPipeline<TEvent> InvokeLocal(Func<TEvent, ValueTask> handler)
+    public HookPipeline<TEvent> RunLocal(Func<TEvent, ValueTask> handler)
         => InvokeHostHandler(handler);
 
-    public HookPipeline<TEvent> InvokeLocal(Action<TEvent> handler)
+    public HookPipeline<TEvent> RunLocal(Action<TEvent> handler)
         => InvokeHostHandler(handler);
 
     /// <summary>Projects the flowing element to a new type for downstream Where/terminal stages.</summary>
@@ -208,26 +208,26 @@ public sealed class HookPipeline<TEvent>
     /// The terminal the analyzer lowers to verified IR. It never runs as host code: un-lowered it
     /// throws, so plugin logic cannot accidentally execute unsandboxed.
     /// </summary>
-    public HookPipeline<TEvent> InvokeKernel(Func<TEvent, HookContext, ValueTask> handler)
+    public HookPipeline<TEvent> Run(Func<TEvent, HookContext, ValueTask> handler)
         => throw HookLowering.NotLowered();
 
-    public HookPipeline<TEvent> InvokeKernel(Action<TEvent, HookContext> handler)
+    public HookPipeline<TEvent> Run(Action<TEvent, HookContext> handler)
         => throw HookLowering.NotLowered();
 
-    public HookPipeline<TEvent> InvokeKernel(Func<TEvent, ValueTask> handler)
+    public HookPipeline<TEvent> Run(Func<TEvent, ValueTask> handler)
         => throw HookLowering.NotLowered();
 
-    public HookPipeline<TEvent> InvokeKernel(Action<TEvent> handler)
+    public HookPipeline<TEvent> Run(Action<TEvent> handler)
         => throw HookLowering.NotLowered();
 
-    public HookPipeline<TEvent> UseKernel(InstalledKernel kernel)
+    public HookPipeline<TEvent> Use(InstalledKernel kernel)
     {
         kernel.ValidateFor(_adapter);
         return InvokeHostHandler((e, context) => kernel.InvokeAsync(_adapter, e, context.CancellationToken));
     }
 
-    public HookPipeline<TEvent> UseKernel<TKernel>() where TKernel : class
-        => UseKernel(_kernels.GetByKernelType<TKernel>());
+    public HookPipeline<TEvent> Use<TKernel>() where TKernel : class
+        => Use(_kernels.GetByKernelType<TKernel>());
 
     internal bool UsesAdapter(IPluginEventAdapter<TEvent> adapter)
         => ReferenceEquals(_adapter, adapter);

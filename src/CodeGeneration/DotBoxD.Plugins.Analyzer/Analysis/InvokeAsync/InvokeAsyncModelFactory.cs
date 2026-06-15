@@ -38,7 +38,7 @@ internal static class InvokeAsyncModelFactory
     {
         if (invocation.Expression is not MemberAccessExpressionSyntax access ||
             !string.Equals(access.Name.Identifier.ValueText, InvokeAsyncMethod, StringComparison.Ordinal) ||
-            !IsKernelInvocationSurface(model, access.Expression, cancellationToken))
+            !IsServerInvocationSurface(model, access.Expression, cancellationToken))
         {
             return null;
         }
@@ -68,13 +68,13 @@ internal static class InvokeAsyncModelFactory
         return new InvokeAsyncResult(package, interception);
     }
 
-    private static bool IsKernelInvocationSurface(
+    private static bool IsServerInvocationSurface(
         SemanticModel model,
         ExpressionSyntax receiver,
         CancellationToken cancellationToken)
         => string.Equals(
             model.GetTypeInfo(receiver, cancellationToken).Type?.ToDisplayString(),
-            DotBoxDGenerationNames.Metadata.KernelInvocationSurfaceType,
+            DotBoxDGenerationNames.Metadata.ServerInvocationSurfaceType,
             StringComparison.Ordinal);
 
     private static GeneratedPluginPackage EmitPackage(
@@ -146,11 +146,11 @@ internal static class InvokeAsyncModelFactory
         var captureType = shape.CaptureType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var captureDelegateType = shape.CaptureType is null
             ? null
-            : DotBoxDGenerationNames.TypeNames.GlobalPrefix + DotBoxDGenerationNames.Metadata.KernelInvocationDelegateType;
+            : DotBoxDGenerationNames.TypeNames.GlobalPrefix + DotBoxDGenerationNames.Metadata.ServerInvocationDelegateType;
 
         return new InvokeAsyncInterception(
             location.GetInterceptsLocationAttributeSyntax(),
-            DotBoxDGenerationNames.TypeNames.GlobalPrefix + DotBoxDGenerationNames.Metadata.KernelInvocationSurfaceType,
+            DotBoxDGenerationNames.TypeNames.GlobalPrefix + DotBoxDGenerationNames.Metadata.ServerInvocationSurfaceType,
             DotBoxDGenerationNames.TypeNames.GlobalPrefix + DotBoxDGenerationNames.Metadata.GameWorldAccessType,
             shape.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             captureType,

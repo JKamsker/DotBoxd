@@ -13,7 +13,7 @@ namespace DotBoxD.Kernels.Game.Server;
 /// <c>game.world.monster.read.health</c> but not <c>game.world.combat.threat</c> (<c>GetThreat</c>), so
 /// a kernel that reads threat is denied at install. Without the message-write grant, package
 /// preparation fails closed too.
-/// Kernel RPC services get the same least-privilege treatment; the monster-killer batch kernel receives
+/// Server extensions get the same least-privilege treatment; the monster-killer batch kernel receives
 /// <c>game.world.monster.write.*</c> only because its verified IR declares the kill binding.
 /// </summary>
 internal static class ServerPolicy

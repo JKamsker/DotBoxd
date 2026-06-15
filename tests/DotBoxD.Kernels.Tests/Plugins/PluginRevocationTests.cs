@@ -19,7 +19,7 @@ public sealed class PluginRevocationTests
         var messages = new InMemoryPluginMessageSink();
         var server = DotBoxD.Plugins.PluginServer.Create(messages, defaultPolicy: LongWallPluginPolicy());
         var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
 
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
         var removed = server.Uninstall("fire-damage");
@@ -37,12 +37,12 @@ public sealed class PluginRevocationTests
         var messages = new InMemoryPluginMessageSink();
         var server = DotBoxD.Plugins.PluginServer.Create(messages, defaultPolicy: LongWallPluginPolicy());
         var first = await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
 
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
         var replacement = await server.InstallAsync(FireDamagePluginPackage.Create());
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-2"));
-        server.Hooks.On<DamageEvent>().UseKernel(replacement);
+        server.Hooks.On<DamageEvent>().Use(replacement);
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-3"));
         var removed = server.Uninstall("fire-damage");
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-4"));
@@ -78,7 +78,7 @@ public sealed class PluginRevocationTests
             builder => builder.AddBinding(blocking.Descriptor()),
             LongWallPluginPolicy());
         var kernel = await server.InstallAsync(BlockingPackage());
-        server.Hooks.On(BlockingEventAdapter.Instance).UseKernel(kernel);
+        server.Hooks.On(BlockingEventAdapter.Instance).Use(kernel);
 
         var publish = server.Hooks.PublishAsync(new BlockingEvent("player-1")).AsTask();
         await blocking.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));

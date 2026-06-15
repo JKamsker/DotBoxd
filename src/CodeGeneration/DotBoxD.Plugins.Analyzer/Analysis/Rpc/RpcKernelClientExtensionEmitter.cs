@@ -29,7 +29,7 @@ internal static class RpcKernelClientExtensionEmitter
         }
 
         var builder = new StringBuilder();
-        builder.Append("internal static class ").Append(kernelType.Name).AppendLine("RpcClientExtensions");
+        builder.Append("internal static class ").Append(kernelType.Name).AppendLine("ServerExtensionClientExtensions");
         builder.AppendLine("{");
 
         if (extensions.Property is { } property)
@@ -112,8 +112,8 @@ internal static class RpcKernelClientExtensionEmitter
         IMethodSymbol? serviceMethod = null)
     {
         builder.Append("            => ").Append(ClientTypeName(kernelType)).AppendLine(".Create(");
-        builder.Append("                ").Append(receiver).AppendLine(".KernelRpc,");
-        builder.Append("                ").Append(receiver).Append(".KernelRpc.PluginId<")
+        builder.Append("                ").Append(receiver).AppendLine(".ServerExtensions,");
+        builder.Append("                ").Append(receiver).Append(".ServerExtensions.PluginId<")
             .Append(TypeName(serviceType)).Append(">())");
         if (serviceMethod is null)
         {
@@ -160,7 +160,7 @@ internal static class RpcKernelClientExtensionEmitter
         var ns = kernelType.ContainingNamespace.IsGlobalNamespace
             ? string.Empty
             : kernelType.ContainingNamespace.ToDisplayString() + ".";
-        return "global::" + ns + kernelType.Name + "RpcClient";
+        return "global::" + ns + kernelType.Name + "ServerExtensionClient";
     }
 
     private static string TypeName(ITypeSymbol type)

@@ -17,7 +17,7 @@ public sealed record ChainAggroEvent(string MonsterId, int Distance);
 /// lowered by the generator, compiled, loaded, and the lowered verified IR executes correctly — its
 /// <c>Where</c> gates and its <c>Send</c> runs. One test installs the package directly via
 /// <see cref="HookPipeline{TEvent}.UseGeneratedChain"/>; the other proves the generated C# interceptor
-/// does it automatically at the <c>InvokeKernel</c> call site (no manual wiring).
+/// does it automatically at the <c>Run</c> call site (no manual wiring).
 /// </summary>
 public sealed class HookChainRuntimeTests
 {
@@ -32,7 +32,7 @@ public sealed class HookChainRuntimeTests
             public static void Configure(HookRegistry hooks)
                 => hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
                     .Where((e, ctx) => e.Distance <= 5)
-                    .InvokeKernel((e, ctx) => ctx.Messages.Send(e.MonsterId, "calm"));
+                    .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "calm"));
         }
         """;
 
@@ -48,7 +48,7 @@ public sealed class HookChainRuntimeTests
             public static void Configure(HookRegistry hooks)
                 => hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
                     .Where(e => e.Distance <= 5)
-                    .InvokeKernel((e, ctx) => ctx.Messages.Send(e.MonsterId, "calm"));
+                    .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "calm"));
         }
         """;
 
@@ -87,7 +87,7 @@ public sealed class HookChainRuntimeTests
             public static void Configure(HookRegistry hooks)
                 => hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
                     .Select(e => e.MonsterId)
-                    .InvokeKernel((id, ctx) => ctx.Messages.Send(id, "calm"));
+                    .Run((id, ctx) => ctx.Messages.Send(id, "calm"));
         }
         """;
 
@@ -117,13 +117,13 @@ public sealed class HookChainRuntimeTests
     [Fact]
     public async Task Element_only_runtime_overloads_filter_and_run_without_a_context_parameter()
     {
-        // The native (non-lowered) path: the new element-only Where / InvokeLocal overloads forward to
+        // The native (non-lowered) path: the new element-only Where / RunLocal overloads forward to
         // the (element, context) forms, so a stage need not take the context it doesn't use.
         var collected = new List<string>();
         using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: ChainPolicy());
         server.Hooks.On<ChainAggroEvent>()
             .Where(e => e.Distance <= 5)
-            .InvokeLocal(e => collected.Add(e.MonsterId));
+            .RunLocal(e => collected.Add(e.MonsterId));
 
         await server.Hooks.PublishAsync(new ChainAggroEvent("monster-1", 3));
         await server.Hooks.PublishAsync(new ChainAggroEvent("monster-2", 10));
@@ -134,13 +134,13 @@ public sealed class HookChainRuntimeTests
     [Fact]
     public async Task Element_only_Select_and_stage_overloads_project_without_a_context_parameter()
     {
-        // HookStage element-only Select / Where / InvokeLocal: each stage independently omits the context.
+        // HookStage element-only Select / Where / RunLocal: each stage independently omits the context.
         var collected = new List<int>();
         using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: ChainPolicy());
         server.Hooks.On<ChainAggroEvent>()
             .Select(e => e.Distance)
             .Where(distance => distance <= 5)
-            .InvokeLocal(distance => collected.Add(distance));
+            .RunLocal(distance => collected.Add(distance));
 
         await server.Hooks.PublishAsync(new ChainAggroEvent("monster-1", 3));
         await server.Hooks.PublishAsync(new ChainAggroEvent("monster-2", 10));
@@ -174,10 +174,10 @@ public sealed class HookChainRuntimeTests
     }
 
     [Fact]
-    public async Task The_generated_interceptor_installs_the_chain_at_the_InvokeKernel_call_site()
+    public async Task The_generated_interceptor_installs_the_chain_at_the_Run_call_site()
     {
         // With interceptors enabled, the generated [InterceptsLocation] method replaces the
-        // InvokeKernel(lambda) call inside Configure with UseGeneratedChain — so running Configure
+        // Run(lambda) call inside Configure with UseGeneratedChain — so running Configure
         // installs the lowered chain instead of throwing DBXK062.
         var assembly = Compile(ChainSource, enableInterceptors: true);
 

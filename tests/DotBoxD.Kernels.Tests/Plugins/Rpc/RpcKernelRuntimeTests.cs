@@ -7,9 +7,9 @@ using DotBoxD.Plugins.Kernel;
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
 
 /// <summary>
-/// Runtime proof of the kernel RPC service path (Followup #2): a hand-built batch kernel loops over a
+/// Runtime proof of the server extension path (Followup #2): a hand-built batch kernel loops over a
 /// <c>List&lt;I32&gt;</c> input server-side, calls a host binding per element, accumulates a
-/// <c>List&lt;Record&gt;</c> (a list of objects), and returns it in one <see cref="InstalledKernel.InvokeRpcAsync"/>
+/// <c>List&lt;Record&gt;</c> (a list of objects), and returns it in one <see cref="InstalledKernel.InvokeServerExtensionAsync"/>
 /// roundtrip — the result is returned, not discarded. Also proves the package (including the manifest's
 /// rpcEntrypoint) survives a JSON export/import round-trip and that capability gating still applies.
 /// </summary>
@@ -19,13 +19,13 @@ public sealed class RpcKernelRuntimeTests
     public async Task A_batch_kernel_loops_server_side_and_returns_a_list_of_records()
     {
         using var server = DotBoxD.Plugins.PluginServer.Create(configureHost: RpcKernelTestPackages.AddKillBinding, defaultPolicy: RpcKernelTestPackages.KillPolicy());
-        var kernel = await server.InstallRpcAsync(RpcKernelTestPackages.MonsterKiller());
+        var kernel = await server.InstallServerExtensionAsync(RpcKernelTestPackages.MonsterKiller());
 
         var ids = SandboxValue.FromList(
             [SandboxValue.FromInt32(1), SandboxValue.FromInt32(2), SandboxValue.FromInt32(3), SandboxValue.FromInt32(4)],
             SandboxType.I32);
 
-        var result = await kernel.InvokeRpcAsync([ids]);
+        var result = await kernel.InvokeServerExtensionAsync([ids]);
 
         var list = Assert.IsType<ListValue>(result);
         Assert.Equal(4, list.Values.Count);   // one record per monster id, built in one roundtrip
@@ -46,12 +46,12 @@ public sealed class RpcKernelRuntimeTests
             configureHost: RpcKernelTestPackages.AddKillBinding,
             defaultPolicy: RpcKernelTestPackages.KillPolicy(),
             executionMode: ExecutionMode.Compiled);
-        var kernel = await server.InstallRpcAsync(RpcKernelTestPackages.MonsterKiller());
+        var kernel = await server.InstallServerExtensionAsync(RpcKernelTestPackages.MonsterKiller());
 
         var ids = SandboxValue.FromList(
             [SandboxValue.FromInt32(1), SandboxValue.FromInt32(2), SandboxValue.FromInt32(3)],
             SandboxType.I32);
-        var result = await kernel.InvokeRpcAsync([ids]);
+        var result = await kernel.InvokeServerExtensionAsync([ids]);
 
         var list = Assert.IsType<ListValue>(result);
         Assert.Equal(3, list.Values.Count);
@@ -68,9 +68,9 @@ public sealed class RpcKernelRuntimeTests
         Assert.Equal("KillMonsters", imported.Manifest.RpcEntrypoint);
 
         using var server = DotBoxD.Plugins.PluginServer.Create(configureHost: RpcKernelTestPackages.AddKillBinding, defaultPolicy: RpcKernelTestPackages.KillPolicy());
-        var kernel = await server.InstallRpcAsync(imported);
+        var kernel = await server.InstallServerExtensionAsync(imported);
 
-        var result = await kernel.InvokeRpcAsync([SandboxValue.FromList([SandboxValue.FromInt32(2)], SandboxType.I32)]);
+        var result = await kernel.InvokeServerExtensionAsync([SandboxValue.FromList([SandboxValue.FromInt32(2)], SandboxType.I32)]);
 
         var list = Assert.IsType<ListValue>(result);
         AssertKill(Assert.Single(list.Values), 2, true);
@@ -81,16 +81,16 @@ public sealed class RpcKernelRuntimeTests
     {
         using var server = DotBoxD.Plugins.PluginServer.Create(configureHost: RpcKernelTestPackages.AddKillBinding, defaultPolicy: RpcKernelTestPackages.NoKillPolicy());
 
-        await Assert.ThrowsAnyAsync<Exception>(async () => await server.InstallRpcAsync(RpcKernelTestPackages.MonsterKiller()).AsTask());
+        await Assert.ThrowsAnyAsync<Exception>(async () => await server.InstallServerExtensionAsync(RpcKernelTestPackages.MonsterKiller()).AsTask());
     }
 
     [Fact]
     public async Task Invoking_with_the_wrong_argument_count_throws()
     {
         using var server = DotBoxD.Plugins.PluginServer.Create(configureHost: RpcKernelTestPackages.AddKillBinding, defaultPolicy: RpcKernelTestPackages.KillPolicy());
-        var kernel = await server.InstallRpcAsync(RpcKernelTestPackages.MonsterKiller());
+        var kernel = await server.InstallServerExtensionAsync(RpcKernelTestPackages.MonsterKiller());
 
-        await Assert.ThrowsAsync<SandboxRuntimeException>(async () => await kernel.InvokeRpcAsync([]).AsTask());
+        await Assert.ThrowsAsync<SandboxRuntimeException>(async () => await kernel.InvokeServerExtensionAsync([]).AsTask());
     }
 
     private static void AssertKill(SandboxValue value, int expectedId, bool expectedSuccess)

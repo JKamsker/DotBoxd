@@ -49,7 +49,7 @@ public sealed class PluginAnalyzerInheritedEventTests
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(package);
 
-        server.Hooks.On<InheritedDamageEvent>().UseKernel(kernel);
+        server.Hooks.On<InheritedDamageEvent>().Use(kernel);
         await server.Hooks.PublishAsync(new InheritedDamageEvent("other", "ignored"));
         await server.Hooks.PublishAsync(new InheritedDamageEvent("player-1", "inherited matched"));
 

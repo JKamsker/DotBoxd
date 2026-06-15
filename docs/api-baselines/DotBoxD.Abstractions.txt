@@ -11,20 +11,20 @@ public interface IPluginEventValueWriter<in TEvent> : IPluginEventAdapter<TEvent
 public interface IPluginMessageSink
 public IPluginMessageSink Messages { get; }
 public IReadOnlyList<PluginMessage> Messages => _readOnlyMessages
-public KernelRpcServiceAttribute(string id, Type serviceType)
-public KernelRpcServiceAttribute(string id) => Id = id
 public SandboxEffect Effects { get; } = effects
 public sealed class CapabilityAttribute(string id) : Attribute
 public sealed class HookContext
 public sealed class HostBindingAttribute(string bindingId, string capability, SandboxEffect effects) : Attribute
 public sealed class InMemoryPluginMessageSink : IPluginMessageSink
 public sealed class KernelMethodAttribute : Attribute
-public sealed class KernelRpcClientMethodAttribute(Type receiverType, string? name = null) : Attribute
-public sealed class KernelRpcClientPropertyAttribute(Type receiverType, string? name = null) : Attribute
-public sealed class KernelRpcServiceAttribute : Attribute
 public sealed class LiveSettingAttribute : Attribute
 public sealed class PluginAttribute(string id) : Attribute
+public sealed class ServerExtensionAttribute : Attribute
+public sealed class ServerExtensionClientAttribute(Type receiverType, string? name = null) : Attribute
+public sealed class ServerExtensionMethodAttribute(Type receiverType, string? name = null) : Attribute
 public sealed record PluginMessage(string TargetId, string Message)
+public ServerExtensionAttribute(string id, Type serviceType)
+public ServerExtensionAttribute(string id) => Id = id
 public string BindingId { get; } = bindingId
 public string Capability { get; } = capability
 public string Id { get; }

@@ -20,7 +20,7 @@ public sealed class InvokeAsyncImplicitCaptureRuntimeTests
     {
         var assembly = Compile(Source);
         var wire = Activator.CreateInstance(assembly.GetType("Sample.RecordingWireClient", throwOnError: true)!)!;
-        var controlType = assembly.GetType("DotBoxD.Kernels.Game.Plugin.Client.RemoteKernelControl", true)!;
+        var controlType = assembly.GetType("DotBoxD.Kernels.Game.Plugin.Client.RemotePluginServer", true)!;
         var control = Activator.CreateInstance(controlType, [wire])!;
         var run = assembly.GetType("Sample.Usage", true)!
             .GetMethod("Run", BindingFlags.Public | BindingFlags.Static)!;
@@ -65,11 +65,24 @@ public sealed class InvokeAsyncImplicitCaptureRuntimeTests
 
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
-            public sealed class RemoteKernelControl
+            public sealed class RemotePluginServer
             {
-                public RemoteKernelControl(IKernelRpcWireClient wireClient) => WireClient = wireClient;
+                public RemotePluginServer(IServerExtensionWireClient wireClient)
+                    => Services = new RemoteServiceControl(wireClient);
 
-                public IKernelRpcWireClient WireClient { get; }
+                public RemoteServiceControl Services { get; }
+
+                public PluginPackage? LastPackage => Services.LastPackage;
+
+                public ValueTask<T> InvokeAsync<T>(Func<IGameWorldAccess, T> lambda)
+                    => throw new InvalidOperationException("not intercepted");
+            }
+
+            public sealed class RemoteServiceControl
+            {
+                public RemoteServiceControl(IServerExtensionWireClient wireClient) => WireClient = wireClient;
+
+                public IServerExtensionWireClient WireClient { get; }
 
                 public PluginPackage? LastPackage { get; private set; }
 
@@ -78,9 +91,6 @@ public sealed class InvokeAsyncImplicitCaptureRuntimeTests
                     LastPackage = packageFactory();
                     return Task.FromResult(pluginId);
                 }
-
-                public ValueTask<T> InvokeAsync<T>(Func<IGameWorldAccess, T> lambda)
-                    => throw new InvalidOperationException("not intercepted");
             }
         }
 
@@ -88,7 +98,7 @@ public sealed class InvokeAsyncImplicitCaptureRuntimeTests
         {
             public static class Usage
             {
-                public static async ValueTask<string> Run(RemoteKernelControl kernels)
+                public static async ValueTask<string> Run(RemotePluginServer kernels)
                 {
                     var monsterId = "monster-2";
                     var lastHealth = 0;
@@ -103,12 +113,12 @@ public sealed class InvokeAsyncImplicitCaptureRuntimeTests
                 }
             }
 
-            public sealed class RecordingWireClient : IKernelRpcWireClient
+            public sealed class RecordingWireClient : IServerExtensionWireClient
             {
                 public string CapturedMonsterId { get; private set; } = "";
                 public int CapturedLastHealth { get; private set; }
 
-                public ValueTask<byte[]> InvokeKernelRpcAsync(
+                public ValueTask<byte[]> InvokeServerExtensionAsync(
                     string pluginId,
                     byte[] arguments,
                     CancellationToken cancellationToken = default)
@@ -171,8 +181,8 @@ public sealed class InvokeAsyncImplicitCaptureRuntimeTests
             configureHost: AddMonsterBinding,
             defaultPolicy: MonsterReadPolicy(),
             executionMode: ExecutionMode.Compiled);
-        var kernel = await server.InstallRpcAsync(package);
-        var result = await kernel.InvokeRpcAsync(
+        var kernel = await server.InstallServerExtensionAsync(package);
+        var result = await kernel.InvokeServerExtensionAsync(
         [
             SandboxValue.FromString("monster-2"),
             SandboxValue.FromInt32(0)

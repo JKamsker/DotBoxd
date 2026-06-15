@@ -34,7 +34,7 @@ public sealed class Fix_PAL_0033_Tests
             defaultPolicy: PluginAddendumTestPolicies.LongWall(),
             executionMode: ExecutionMode.Interpreted);
         var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
 
         // Each matching publish drives one ShouldHandle plus one Handle execution,
         // so 300 events produce 600 recorded observations under unbounded retention.
@@ -81,7 +81,7 @@ public sealed class Fix_PAL_0033_Tests
             defaultPolicy: PluginAddendumTestPolicies.LongWall(),
             executionMode: ExecutionMode.Interpreted);
         var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
 
         for (var i = 0; i < eventCount; i++)
         {

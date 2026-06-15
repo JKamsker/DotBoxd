@@ -8,18 +8,18 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 
 /// <summary>
 /// Phase C lowering of an inline hook chain —
-/// <c>On&lt;TEvent&gt;().Where*(lambda).Select*(lambda).InvokeKernel(lambda)</c> — into the same
+/// <c>On&lt;TEvent&gt;().Where*(lambda).Select*(lambda).Run(lambda)</c> — into the same
 /// <see cref="PluginKernelModel"/> a kernel class produces, so the existing emitter + verifier path
 /// applies unchanged. The <c>Where</c>s AND-compose into <c>ShouldHandle</c>; a <c>Select</c> projects
 /// the flowing element and downstream lambdas substitute that projection at compile time (via the
-/// lowering context's projected-element binding); the <c>InvokeKernel</c> terminal's single
+/// lowering context's projected-element binding); the <c>Run</c> terminal's single
 /// <c>ctx.Messages.Send(targetId, message)</c> becomes <c>Handle</c>. Supported subset: expression-body
 /// lambdas and a single Send terminal. Any other shape fails safe (returns <c>null</c>, no package),
 /// leaving the runtime terminal to throw DBXK062 / the analyzer to flag DBXK110.
 /// </summary>
 internal static class HookChainModelFactory
 {
-    private const string InvokeKernelMethod = "InvokeKernel";
+    private const string RunMethod = "Run";
     private const string WhereMethod = "Where";
     private const string SelectMethod = "Select";
     private const string OnMethod = "On";
@@ -48,7 +48,7 @@ internal static class HookChainModelFactory
         CancellationToken cancellationToken)
     {
         if (invocation.Expression is not MemberAccessExpressionSyntax terminalAccess ||
-            !string.Equals(terminalAccess.Name.Identifier.ValueText, InvokeKernelMethod, StringComparison.Ordinal) ||
+            !string.Equals(terminalAccess.Name.Identifier.ValueText, RunMethod, StringComparison.Ordinal) ||
             !IsHookChainType(model, terminalAccess.Expression, cancellationToken, out var receiverIsPipeline))
         {
             return null;

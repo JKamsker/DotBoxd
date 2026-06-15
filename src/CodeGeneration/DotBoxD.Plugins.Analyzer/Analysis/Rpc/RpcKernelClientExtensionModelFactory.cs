@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.CSharp;
 
 internal static class RpcKernelClientExtensionModelFactory
 {
-    private const string RegistryType = "DotBoxD.Plugins.IKernelRpcClientRegistry";
+    private const string RegistryType = "DotBoxD.Plugins.IServerExtensionClientRegistry";
 
     public static RpcKernelClientExtensions Resolve(INamedTypeSymbol kernelType, IMethodSymbol kernelMethod)
     {
@@ -33,21 +33,21 @@ internal static class RpcKernelClientExtensionModelFactory
             string.Equals(property.Name, method.Name, StringComparison.Ordinal))
         {
             throw new NotSupportedException(
-                $"Kernel RPC client property and method cannot both generate '{property.Name}' on '{property.ReceiverType.ToDisplayString()}'.");
+                $"Server extension client property and method cannot both generate '{property.Name}' on '{property.ReceiverType.ToDisplayString()}'.");
         }
 
         return new RpcKernelClientExtensions(property, method);
     }
 
     public static bool HasExtensionAttribute(ISymbol symbol)
-        => HasAttribute(symbol, DotBoxDGenerationNames.Metadata.KernelRpcClientPropertyAttribute) ||
-           HasAttribute(symbol, DotBoxDGenerationNames.Metadata.KernelRpcClientMethodAttribute);
+        => HasAttribute(symbol, DotBoxDGenerationNames.Metadata.ServerExtensionClientAttribute) ||
+           HasAttribute(symbol, DotBoxDGenerationNames.Metadata.ServerExtensionMethodAttribute);
 
     private static RpcKernelClientPropertyExtension? ResolveClientProperty(INamedTypeSymbol kernelType)
     {
         foreach (var attribute in kernelType.GetAttributes())
         {
-            if (!AttributeMatches(attribute, DotBoxDGenerationNames.Metadata.KernelRpcClientPropertyAttribute))
+            if (!AttributeMatches(attribute, DotBoxDGenerationNames.Metadata.ServerExtensionClientAttribute))
             {
                 continue;
             }
@@ -65,7 +65,7 @@ internal static class RpcKernelClientExtensionModelFactory
     {
         foreach (var attribute in kernelMethod.GetAttributes())
         {
-            if (!AttributeMatches(attribute, DotBoxDGenerationNames.Metadata.KernelRpcClientMethodAttribute))
+            if (!AttributeMatches(attribute, DotBoxDGenerationNames.Metadata.ServerExtensionMethodAttribute))
             {
                 continue;
             }
@@ -84,7 +84,7 @@ internal static class RpcKernelClientExtensionModelFactory
         if (attribute.ConstructorArguments.Length == 0 ||
             attribute.ConstructorArguments[0].Value is not INamedTypeSymbol receiverType)
         {
-            throw new NotSupportedException($"Kernel RPC client {memberKind} requires a receiver type.");
+            throw new NotSupportedException($"Server extension client {memberKind} requires a receiver type.");
         }
 
         return receiverType;
@@ -106,7 +106,7 @@ internal static class RpcKernelClientExtensionModelFactory
     {
         if (!SyntaxFacts.IsValidIdentifier(name))
         {
-            throw new NotSupportedException($"Kernel RPC client {memberKind} name '{name}' is not a valid C# identifier.");
+            throw new NotSupportedException($"Server extension client {memberKind} name '{name}' is not a valid C# identifier.");
         }
     }
 
@@ -115,13 +115,13 @@ internal static class RpcKernelClientExtensionModelFactory
         if (ReceiverHasMember(receiverType, memberName))
         {
             throw new NotSupportedException(
-                $"Kernel RPC client {memberKind} '{memberName}' cannot be generated on '{receiverType.ToDisplayString()}' because that type already declares a member named '{memberName}'.");
+                $"Server extension client {memberKind} '{memberName}' cannot be generated on '{receiverType.ToDisplayString()}' because that type already declares a member named '{memberName}'.");
         }
 
-        if (!ReceiverHasKernelRpcRegistry(receiverType))
+        if (!ReceiverHasServerExtensionRegistry(receiverType))
         {
             throw new NotSupportedException(
-                $"Kernel RPC client {memberKind} '{memberName}' requires '{receiverType.ToDisplayString()}' to expose an instance KernelRpc property assignable to {RegistryType}.");
+                $"Server extension client {memberKind} '{memberName}' requires '{receiverType.ToDisplayString()}' to expose an instance ServerExtensions property assignable to {RegistryType}.");
         }
     }
 
@@ -146,11 +146,11 @@ internal static class RpcKernelClientExtensionModelFactory
         return false;
     }
 
-    private static bool ReceiverHasKernelRpcRegistry(INamedTypeSymbol receiverType)
+    private static bool ReceiverHasServerExtensionRegistry(INamedTypeSymbol receiverType)
     {
         for (INamedTypeSymbol? current = receiverType; current is not null; current = current.BaseType)
         {
-            if (TypeHasKernelRpcRegistry(current))
+            if (TypeHasServerExtensionRegistry(current))
             {
                 return true;
             }
@@ -158,7 +158,7 @@ internal static class RpcKernelClientExtensionModelFactory
 
         foreach (var interfaceType in receiverType.AllInterfaces)
         {
-            if (TypeHasKernelRpcRegistry(interfaceType))
+            if (TypeHasServerExtensionRegistry(interfaceType))
             {
                 return true;
             }
@@ -167,12 +167,12 @@ internal static class RpcKernelClientExtensionModelFactory
         return false;
     }
 
-    private static bool TypeHasKernelRpcRegistry(INamedTypeSymbol receiverType)
+    private static bool TypeHasServerExtensionRegistry(INamedTypeSymbol receiverType)
     {
-        foreach (var member in receiverType.GetMembers("KernelRpc"))
+        foreach (var member in receiverType.GetMembers("ServerExtensions"))
         {
             if (member is IPropertySymbol { IsStatic: false } property &&
-                IsKernelRpcClientRegistry(property.Type))
+                IsServerExtensionClientRegistry(property.Type))
             {
                 return true;
             }
@@ -181,7 +181,7 @@ internal static class RpcKernelClientExtensionModelFactory
         return false;
     }
 
-    private static bool IsKernelRpcClientRegistry(ITypeSymbol type)
+    private static bool IsServerExtensionClientRegistry(ITypeSymbol type)
     {
         if (string.Equals(type.ToDisplayString(), RegistryType, StringComparison.Ordinal))
         {

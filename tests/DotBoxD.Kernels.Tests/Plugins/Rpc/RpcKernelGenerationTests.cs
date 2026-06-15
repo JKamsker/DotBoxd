@@ -10,10 +10,10 @@ using DotBoxD.Plugins;
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
 
 /// <summary>
-/// End-to-end proof of the kernel RPC service authoring path (Followup #2.3): a plain-C# batch class
-/// with <c>[KernelRpcService]</c> — locals, a <c>foreach</c> over a list, a host binding per element, and
+/// End-to-end proof of the server extension authoring path (Followup #2.3): a plain-C# batch class
+/// with <c>[ServerExtension]</c> — locals, a <c>foreach</c> over a list, a host binding per element, and
 /// a <c>List&lt;KillResult&gt;</c> of DTOs built and returned — is lowered by the generator to verified
-/// IR, installed via <see cref="DotBoxD.Plugins.PluginServer.InstallRpcAsync"/>, and invoked request/response returning
+/// IR, installed via <see cref="DotBoxD.Plugins.PluginServer.InstallServerExtensionAsync"/>, and invoked request/response returning
 /// the list of objects in one roundtrip.
 /// </summary>
 public sealed class RpcKernelGenerationTests
@@ -36,7 +36,7 @@ public sealed class RpcKernelGenerationTests
 
         public readonly record struct KillResult(int MonsterId, bool Success);
 
-        [KernelRpcService("monster-killer")]
+        [ServerExtension("monster-killer")]
         public sealed partial class MonsterKillerKernel
         {
             public List<KillResult> KillMonsters(List<int> monsterIds, HookContext ctx)
@@ -70,7 +70,7 @@ public sealed class RpcKernelGenerationTests
 
         public readonly record struct KillResult(int MonsterId, bool Success);
 
-        [KernelRpcService("monster-killer")]
+        [ServerExtension("monster-killer")]
         public sealed partial class MonsterKillerKernel
         {
             private readonly IGameWorld _world;
@@ -99,13 +99,13 @@ public sealed class RpcKernelGenerationTests
         Assert.Contains("game.world.monster.write.kill", package.Manifest.RequiredCapabilities);
 
         using var server = DotBoxD.Plugins.PluginServer.Create(configureHost: AddKillBinding, defaultPolicy: KillPolicy());
-        var kernel = await server.InstallRpcAsync(package);
+        var kernel = await server.InstallServerExtensionAsync(package);
 
         var ids = SandboxValue.FromList(
             [SandboxValue.FromInt32(10), SandboxValue.FromInt32(11), SandboxValue.FromInt32(12)],
             SandboxType.I32);
 
-        var result = await kernel.InvokeRpcAsync([ids]);
+        var result = await kernel.InvokeServerExtensionAsync([ids]);
 
         var list = Assert.IsType<ListValue>(result);
         Assert.Equal(3, list.Values.Count);
@@ -123,13 +123,13 @@ public sealed class RpcKernelGenerationTests
         Assert.Contains("game.world.monster.write.kill", package.Manifest.RequiredCapabilities);
 
         using var server = PluginServer.Create(configureHost: AddKillBinding, defaultPolicy: KillPolicy());
-        var kernel = await server.InstallRpcAsync(package);
+        var kernel = await server.InstallServerExtensionAsync(package);
 
         var ids = SandboxValue.FromList(
             [SandboxValue.FromInt32(20), SandboxValue.FromInt32(21)],
             SandboxType.I32);
 
-        var result = await kernel.InvokeRpcAsync([ids]);
+        var result = await kernel.InvokeServerExtensionAsync([ids]);
 
         var list = Assert.IsType<ListValue>(result);
         Assert.Equal(2, list.Values.Count);

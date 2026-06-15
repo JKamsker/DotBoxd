@@ -51,17 +51,17 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         return kernel.Manifest.PluginId;
     }
 
-    public async ValueTask<string> InstallKernelRpcAsync(string packageJson, CancellationToken ct = default)
+    public async ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(packageJson);
 
         var package = PluginPackageJsonSerializer.Import(packageJson);
         var policy = ServerPolicy.ForKernel(package.Manifest.RequiredCapabilities);
-        var kernel = await _session.InstallRpcAsync(package, policy, ct).ConfigureAwait(false);
+        var kernel = await _session.InstallServerExtensionAsync(package, policy, ct).ConfigureAwait(false);
         return kernel.Manifest.PluginId;
     }
 
-    public async ValueTask<byte[]> InvokeKernelRpcAsync(
+    public async ValueTask<byte[]> InvokeServerExtensionAsync(
         string pluginId,
         byte[] arguments,
         CancellationToken ct = default)
@@ -70,7 +70,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         ArgumentNullException.ThrowIfNull(arguments);
         if (!_session.Owns(pluginId))
         {
-            throw new InvalidOperationException($"Kernel RPC service '{pluginId}' is not owned by this plugin session.");
+            throw new InvalidOperationException($"Server extension '{pluginId}' is not owned by this plugin session.");
         }
 
         var kernel = _server.Kernels.Get(pluginId);
@@ -81,7 +81,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         if (callerCount < 0 || rpcArguments.Length != callerCount)
         {
             throw new InvalidOperationException(
-                $"Kernel RPC service '{pluginId}' expects {callerCount} argument(s) but received {rpcArguments.Length}.");
+                $"Server extension '{pluginId}' expects {callerCount} argument(s) but received {rpcArguments.Length}.");
         }
 
         var sandboxArguments = new SandboxValue[rpcArguments.Length];
@@ -90,7 +90,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
             sandboxArguments[i] = KernelRpcValueConverter.ToSandboxValue(rpcArguments[i], function.Parameters[i].Type);
         }
 
-        var result = await kernel.InvokeRpcAsync(sandboxArguments, ct).ConfigureAwait(false);
+        var result = await kernel.InvokeServerExtensionAsync(sandboxArguments, ct).ConfigureAwait(false);
         return KernelRpcBinaryCodec.EncodeValue(KernelRpcValueConverter.FromSandboxValue(result));
     }
 
@@ -174,10 +174,10 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         switch (subscription)
         {
             case "MonsterAggroEvent":
-                _server.Hooks.On<MonsterAggroEvent>().UseKernel(kernel);
+                _server.Hooks.On<MonsterAggroEvent>().Use(kernel);
                 break;
             case "AttackEvent":
-                _server.Hooks.On<AttackEvent>().UseKernel(kernel);
+                _server.Hooks.On<AttackEvent>().Use(kernel);
                 break;
             default:
                 throw new InvalidOperationException(
@@ -189,7 +189,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
     {
         if (kernel.Manifest.RpcEntrypoint is not { } entrypoint)
         {
-            throw new InvalidOperationException($"Kernel '{kernel.Manifest.PluginId}' is not a kernel RPC service.");
+            throw new InvalidOperationException($"Kernel '{kernel.Manifest.PluginId}' is not a server extension.");
         }
 
         foreach (var function in kernel.Package.Module.Functions)
@@ -201,6 +201,6 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         }
 
         throw new InvalidOperationException(
-            $"Kernel RPC service '{kernel.Manifest.PluginId}' is missing entrypoint '{entrypoint}'.");
+            $"Server extension '{kernel.Manifest.PluginId}' is missing entrypoint '{entrypoint}'.");
     }
 }

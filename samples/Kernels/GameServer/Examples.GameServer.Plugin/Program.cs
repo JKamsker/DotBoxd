@@ -37,16 +37,16 @@ internal static class Program
         await using var connection = await RpcMessagePackIpc.ConnectNamedPipeAsync(pipeName).ConfigureAwait(false);
         var server = new RemotePluginServer(connection.Get<IGamePluginControlService>());
 
-        // Register each kernel as the implementation of a server service contract. Register resolves
+        // Replace each server service contract with a plugin kernel. Replace resolves
         // the kernel's generated verified IR and ships it — no Export/InstallPluginAsync plumbing.
-        var guardianId = await server.Kernels.Register<IMonsterAggroService, GuardianKernel>().ConfigureAwait(false);
+        var guardianId = await server.Services.Replace<IMonsterAggroService, GuardianKernel>().ConfigureAwait(false);
         Console.WriteLine($"[plugin] registered kernel '{guardianId}'.");
 
-        var retaliationId = await server.Kernels.Register<IAttackService, RetaliationKernel>().ConfigureAwait(false);
+        var retaliationId = await server.Services.Replace<IAttackService, RetaliationKernel>().ConfigureAwait(false);
         Console.WriteLine($"[plugin] registered kernel '{retaliationId}'.");
 
-        var killerId = await server.KernelRpc.Register<IMonsterKillerService, MonsterKillerKernel>().ConfigureAwait(false);
-        Console.WriteLine($"[plugin] registered kernel RPC service '{killerId}'.");
+        var killerId = await server.World.Monsters.Extend<IMonsterKillerService, MonsterKillerKernel>().ConfigureAwait(false);
+        Console.WriteLine($"[plugin] registered server extension '{killerId}'.");
 
         await RunPluginWorkAsync(server).ConfigureAwait(false);
         return 0;
@@ -55,19 +55,19 @@ internal static class Program
     private static async Task<int> RunWithBuilderAsync(string pipeName)
     {
         Console.WriteLine($"[plugin] connecting to server pipe '{pipeName}'...");
-        await using var server = RemotePluginServerBuilder
+        using var server = RemotePluginServerBuilder
             .FromPipeName(pipeName)
-            .SetupKernels(kernels => kernels
-                .Register<IMonsterAggroService, GuardianKernel>()
-                .Register<IAttackService, RetaliationKernel>())
-            .SetupKernelRpc(kernelRpc => kernelRpc
-                .Register<IMonsterKillerService, MonsterKillerKernel>())
+            .SetupServices(services => services
+                .Replace<IMonsterAggroService, GuardianKernel>()
+                .Replace<IAttackService, RetaliationKernel>())
+            .SetupWorld(world => world.Monsters
+                .Extend<IMonsterKillerService, MonsterKillerKernel>())
             .Build();
 
         await server.StartAsync().ConfigureAwait(false);
-        Console.WriteLine($"[plugin] registered kernel '{RemoteKernelControl.PluginId(typeof(GuardianKernel))}'.");
-        Console.WriteLine($"[plugin] registered kernel '{RemoteKernelControl.PluginId(typeof(RetaliationKernel))}'.");
-        Console.WriteLine($"[plugin] registered kernel RPC service '{server.KernelRpc.PluginId<IMonsterKillerService>()}'.");
+        Console.WriteLine($"[plugin] registered kernel '{RemoteServiceControl.PluginId(typeof(GuardianKernel))}'.");
+        Console.WriteLine($"[plugin] registered kernel '{RemoteServiceControl.PluginId(typeof(RetaliationKernel))}'.");
+        Console.WriteLine($"[plugin] registered server extension '{server.World.Monsters.ServerExtensions.PluginId<IMonsterKillerService>()}'.");
 
         await RunPluginWorkAsync(server).ConfigureAwait(false);
         return 0;
@@ -76,7 +76,7 @@ internal static class Program
     private static async Task RunPluginWorkAsync(RemotePluginServer server)
     {
         // Tune live settings — strongly typed, one atomic IPC batch under the hood.
-        await server.Kernels.Get<GuardianKernel>()
+        await server.Services.Get<GuardianKernel>()
             .SetValuesAsync(k => { k.CalmStrength = "35"; k.AggroRange = 6; }, atomic: true)
             .ConfigureAwait(false);
         Console.WriteLine("[plugin] tuned guardian live settings (CalmStrength=35, AggroRange=6).");
@@ -86,15 +86,15 @@ internal static class Program
         var directKilled = await server.World.Monsters.KillAsync("monster-4").ConfigureAwait(false);
         Console.WriteLine($"[plugin] ordinary IPC KillMonster(monster-4) => {directKilled}.");
 
-        // Kernel RPC keeps the plugin-owned loop on the server. The plugin sends one request, the
+        // Server extension keeps the plugin-owned loop on the server. The plugin sends one request, the
         // server executes the generated verified IR, and the result list comes back as plugin DTOs.
         // The generated property flavor is also available as server.World.Monsters.MonsterKiller.
         var killResults = await server.World.Monsters
             .KillMonstersAsync(["monster-3", "monster-4", "player-1", "monster-missing"])
             .ConfigureAwait(false);
-        Console.WriteLine("[plugin] kernel RPC KillMonsters(...) => " + FormatKillResults(killResults));
+        Console.WriteLine("[plugin] server extension KillMonsters(...) => " + FormatKillResults(killResults));
 
-        var monsterHealth = await server.Kernels.InvokeAsync((IGameWorldAccess world) =>
+        var monsterHealth = await server.InvokeAsync((IGameWorldAccess world) =>
         {
             var monster = world.GetMonster("monster-2");
             return monster.Health;
@@ -102,7 +102,7 @@ internal static class Program
         Console.WriteLine($"[plugin] invoke async GetMonster(monster-2).Health => {monsterHealth}.");
 
         var capture = new MonsterProbeCapture { MonsterId = "monster-2" };
-        var monsterName = await server.Kernels.InvokeAsync(
+        var monsterName = await server.InvokeAsync(
             capture,
             (IGameWorldAccess world, MonsterProbeCapture bag) =>
             {
@@ -114,7 +114,7 @@ internal static class Program
 
         var implicitMonsterId = "monster-2";
         var implicitLastHealth = 0;
-        var implicitMonsterName = await server.Kernels.InvokeAsync((IGameWorldAccess world) =>
+        var implicitMonsterName = await server.InvokeAsync((IGameWorldAccess world) =>
         {
             var monster = world.GetMonster(implicitMonsterId);
             implicitLastHealth = monster.Health;

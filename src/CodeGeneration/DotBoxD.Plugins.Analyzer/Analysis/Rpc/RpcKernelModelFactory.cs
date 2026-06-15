@@ -8,9 +8,9 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using static DotBoxDRpcJsonLowerer;
 
 /// <summary>
-/// Lowers a <c>[KernelRpcService]</c> class to a generated <c>&lt;Name&gt;PluginPackage</c> whose
+/// Lowers a <c>[ServerExtension]</c> class to a generated <c>&lt;Name&gt;PluginPackage</c> whose
 /// <c>Create()</c> imports the verified IR JSON (so it ships exactly like an event kernel and installs
-/// via <c>PluginServer.InstallRpcAsync</c>). The class must declare one public batch method whose last
+/// via <c>PluginServer.InstallServerExtensionAsync</c>). The class must declare one public batch method whose last
 /// parameter is <c>HookContext</c> (the host-binding lowering marker); its block body is lowered by
 /// <see cref="DotBoxDRpcJsonLowerer"/>. Unsupported shapes produce a diagnostic and no package.
 /// </summary>
@@ -30,7 +30,7 @@ internal static class RpcKernelModelFactory
             : null;
         if (string.IsNullOrWhiteSpace(pluginId))
         {
-            return Fail(declaration, "Kernel RPC service id must be a non-empty string.");
+            return Fail(declaration, "Server extension id must be a non-empty string.");
         }
 
         var serviceType = context.Attributes.Length > 0 && context.Attributes[0].ConstructorArguments.Length > 1
@@ -51,7 +51,7 @@ internal static class RpcKernelModelFactory
                      RpcKernelClientExtensionModelFactory.HasExtensionAttribute(method))
             {
                 throw new NotSupportedException(
-                    "Kernel RPC client extensions require [KernelRpcService] to specify a service interface type.");
+                    "Server extension client extensions require [ServerExtension] to specify a service interface type.");
             }
 
             var body = MethodBody(method, cancellationToken);
@@ -103,14 +103,14 @@ internal static class RpcKernelModelFactory
             {
                 if (found is not null)
                 {
-                    throw new NotSupportedException("A kernel RPC service must declare exactly one batch method (a public method whose last parameter is HookContext).");
+                    throw new NotSupportedException("A server extension must declare exactly one batch method (a public method whose last parameter is HookContext).");
                 }
 
                 found = method;
             }
         }
 
-        return found ?? throw new NotSupportedException("A kernel RPC service must declare one public batch method whose last parameter is HookContext.");
+        return found ?? throw new NotSupportedException("A server extension must declare one public batch method whose last parameter is HookContext.");
     }
 
     private static BlockSyntax MethodBody(IMethodSymbol method, CancellationToken cancellationToken)
@@ -123,7 +123,7 @@ internal static class RpcKernelModelFactory
             }
         }
 
-        throw new NotSupportedException($"Kernel RPC method '{method.Name}' must have a block body declared in source.");
+        throw new NotSupportedException($"Server extension method '{method.Name}' must have a block body declared in source.");
     }
 
     private static GeneratedPluginPackage EmitPackage(

@@ -7,7 +7,7 @@ using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNa
 namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 
 /// <summary>
-/// Emits the C# interceptors that replace each lowered chain's <c>InvokeKernel(lambda)</c> call site
+/// Emits the C# interceptors that replace each lowered chain's <c>Run(lambda)</c> call site
 /// with <c>HookPipeline.UseGeneratedChain(&lt;ChainPackage&gt;.Create())</c>, plus the
 /// <c>InterceptsLocationAttribute</c> definition. Consuming projects opt in by adding the interceptor
 /// namespace to <c>&lt;InterceptorsNamespaces&gt;</c> (<c>DotBoxD.Plugins.Generated</c>).

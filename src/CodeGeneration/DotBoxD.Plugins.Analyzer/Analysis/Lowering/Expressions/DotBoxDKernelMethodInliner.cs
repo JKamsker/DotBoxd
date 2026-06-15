@@ -8,7 +8,7 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 /// The method's expression (or single-return) body is lowered with each parameter bound to the
 /// already-lowered IR of the corresponding call-site argument, so the result is identical to writing the
 /// body inline at the call site. Lets plugin authors factor shared gate/handler logic out of a
-/// <c>Where</c>/<c>Select</c>/<c>InvokeKernel</c> lambda (or a kernel-class <c>ShouldHandle</c>/
+/// <c>Where</c>/<c>Select</c>/<c>Run</c> lambda (or a kernel-class <c>ShouldHandle</c>/
 /// <c>Handle</c>) while staying inside the sandbox.
 /// <para>
 /// A method without <c>[KernelMethod]</c> returns <see langword="null"/> so the caller can try the next

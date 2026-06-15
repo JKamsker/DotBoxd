@@ -142,7 +142,7 @@ public sealed class PluginAnalyzerKernelMethodTests
             public static void Configure(HookRegistry hooks)
                 => hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.KernelMethod.KernelMethodAggroEvent>()
                     .Where((e, ctx) => IsBullyingAndClose(e.MonsterLevel, e.PlayerLevel, e.Distance))
-                    .InvokeKernel((e, ctx) => ctx.Messages.Send(e.MonsterId, "calm"));
+                    .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "calm"));
 
             [KernelMethod]
             public static bool IsBullyingAndClose(int monsterLevel, int playerLevel, int distance)
@@ -184,7 +184,7 @@ public sealed class PluginAnalyzerKernelMethodTests
             public static void Configure(HookRegistry hooks)
                 => hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.KernelMethod.KernelMethodAggroEvent>()
                     .Where((e, ctx) => Unsupported(e.Distance))
-                    .InvokeKernel((e, ctx) => ctx.Messages.Send(e.MonsterId, "calm"));
+                    .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "calm"));
 
             // A multi-statement body is not inlineable → the whole chain fails safe (no package).
             [KernelMethod]

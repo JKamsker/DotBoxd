@@ -4,7 +4,7 @@ using DotBoxD.Plugins;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
 
-public sealed class KernelRpcClientExtensionTests
+public sealed class ServerExtensionClientExtensionTests
 {
     private const string DomainExtensionSource = """
         using System.Collections.Generic;
@@ -19,8 +19,8 @@ public sealed class KernelRpcClientExtensionTests
 
         public sealed class RemoteMonsterControl
         {
-            public RemoteMonsterControl(IKernelRpcClientRegistry kernelRpc) => KernelRpc = kernelRpc;
-            public IKernelRpcClientRegistry KernelRpc { get; }
+            public RemoteMonsterControl(IServerExtensionClientRegistry serverExtensions) => ServerExtensions = serverExtensions;
+            public IServerExtensionClientRegistry ServerExtensions { get; }
         }
 
         public interface IMonsterKillerService
@@ -36,11 +36,11 @@ public sealed class KernelRpcClientExtensionTests
 
         public readonly record struct KillResult(int MonsterId, bool Success);
 
-        [KernelRpcClientProperty(typeof(RemoteMonsterControl))]
-        [KernelRpcService("monster-killer", typeof(IMonsterKillerService))]
+        [ServerExtensionClient(typeof(RemoteMonsterControl))]
+        [ServerExtension("monster-killer", typeof(IMonsterKillerService))]
         public sealed partial class MonsterKillerKernel
         {
-            [KernelRpcClientMethod(typeof(RemoteMonsterControl))]
+            [ServerExtensionMethod(typeof(RemoteMonsterControl))]
             public List<KillResult> KillMonsters(List<int> monsterIds, HookContext ctx)
             {
                 var results = new List<KillResult>();
@@ -60,12 +60,12 @@ public sealed class KernelRpcClientExtensionTests
         """;
 
     [Fact]
-    public async Task Generated_domain_extensions_resolve_registered_kernel_rpc_client()
+    public async Task Generated_domain_extensions_resolve_registered_server_extension_client()
     {
         var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly(DomainExtensionSource);
         var controlType = assembly.GetType("Sample.RemoteMonsterControl", throwOnError: true)!;
         var probeType = assembly.GetType("Sample.Probe", throwOnError: true)!;
-        var registry = new RecordingKernelRpcRegistry(KillResultsResponse());
+        var registry = new RecordingServerExtensionsRegistry(KillResultsResponse());
         var control = Activator.CreateInstance(controlType, [registry])!;
 
         var service = probeType.GetMethod("Service", BindingFlags.Public | BindingFlags.Static)!
@@ -93,7 +93,7 @@ public sealed class KernelRpcClientExtensionTests
         var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics(
             ConflictSource(
                 "public int MonsterKiller => 0;",
-                "[KernelRpcClientProperty(typeof(RemoteMonsterControl))]",
+                "[ServerExtensionClient(typeof(RemoteMonsterControl))]",
                 string.Empty));
 
         Assert.Contains(
@@ -109,7 +109,7 @@ public sealed class KernelRpcClientExtensionTests
             ConflictSource(
                 "public void KillMonsters() { }",
                 string.Empty,
-                "[KernelRpcClientMethod(typeof(RemoteMonsterControl))]"));
+                "[ServerExtensionMethod(typeof(RemoteMonsterControl))]"));
 
         Assert.Contains(
             diagnostics,
@@ -131,7 +131,7 @@ public sealed class KernelRpcClientExtensionTests
 
             public sealed class RemoteMonsterControl
             {
-                public IKernelRpcClientRegistry KernelRpc { get; } = null!;
+                public IServerExtensionClientRegistry ServerExtensions { get; } = null!;
                 {{receiverMember}}
             }
 
@@ -149,7 +149,7 @@ public sealed class KernelRpcClientExtensionTests
             public readonly record struct KillResult(int MonsterId, bool Success);
 
             {{classAttributes}}
-            [KernelRpcService("monster-killer", typeof(IMonsterKillerService))]
+            [ServerExtension("monster-killer", typeof(IMonsterKillerService))]
             public sealed partial class MonsterKillerKernel
             {
                 {{methodAttributes}}
@@ -185,7 +185,7 @@ public sealed class KernelRpcClientExtensionTests
         Assert.Equal(success, type.GetProperty("Success")!.GetValue(result));
     }
 
-    private sealed class RecordingKernelRpcRegistry(byte[] response) : IKernelRpcClientRegistry
+    private sealed class RecordingServerExtensionsRegistry(byte[] response) : IServerExtensionClientRegistry
     {
         public string? LastPluginId { get; private set; }
 
@@ -200,7 +200,7 @@ public sealed class KernelRpcClientExtensionTests
             return "monster-killer";
         }
 
-        public ValueTask<byte[]> InvokeKernelRpcAsync(
+        public ValueTask<byte[]> InvokeServerExtensionAsync(
             string pluginId,
             byte[] arguments,
             CancellationToken cancellationToken = default)

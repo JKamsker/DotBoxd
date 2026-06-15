@@ -16,8 +16,8 @@ public sealed class RemotePluginServerBuilderTests
         var server = BuildServer(control);
 
         Assert.Empty(control.Calls);
-        Assert.Throws<InvalidOperationException>(() => server.Kernels);
-        Assert.Throws<InvalidOperationException>(() => server.KernelRpc);
+        Assert.Throws<InvalidOperationException>(() => server.Services);
+        Assert.Throws<InvalidOperationException>(() => server.World.Monsters.ServerExtensions);
         Assert.Throws<InvalidOperationException>(() => server.World);
     }
 
@@ -29,22 +29,22 @@ public sealed class RemotePluginServerBuilderTests
 
         await server.StartAsync();
 
-        Assert.Equal(["kernel:guardian", "kernel:retaliation", "rpc:monster-killer"], control.Calls);
+        Assert.Equal(["kernel:guardian", "kernel:retaliation", "extension:monster-killer"], control.Calls);
     }
 
     [Fact]
-    public async Task StartAsync_populates_rpc_service_lookup()
+    public async Task StartAsync_populates_server_extension_lookup()
     {
         var control = new RecordingGamePluginControlService();
         await using var server = BuildServer(control);
 
         await server.StartAsync();
 
-        Assert.Equal("monster-killer", server.KernelRpc.PluginId<IMonsterKillerService>());
+        Assert.Equal("monster-killer", server.World.Monsters.ServerExtensions.PluginId<IMonsterKillerService>());
     }
 
     [Fact]
-    public async Task Generated_rpc_extensions_are_callable_immediately_after_StartAsync()
+    public async Task Generated_server_extensions_are_callable_immediately_after_StartAsync()
     {
         var control = new RecordingGamePluginControlService();
         await using var server = BuildServer(control);
@@ -124,7 +124,7 @@ public sealed class RemotePluginServerBuilderTests
         await control.HoldStarted.WaitAsync(TimeSpan.FromSeconds(5));
 
         Assert.Equal(
-            ["kernel:guardian", "kernel:retaliation", "rpc:monster-killer", "hold"],
+            ["kernel:guardian", "kernel:retaliation", "extension:monster-killer", "hold"],
             control.Calls);
         Assert.False(runTask.IsCompleted);
 
@@ -140,21 +140,22 @@ public sealed class RemotePluginServerBuilderTests
         var imperativeServer = new RemotePluginServer(imperativeControl);
         await using var builderServer = BuildServer(builderControl);
 
-        _ = await imperativeServer.Kernels.Register<IMonsterAggroService, GuardianKernel>();
-        _ = await imperativeServer.Kernels.Register<IAttackService, RetaliationKernel>();
-        _ = await imperativeServer.KernelRpc.Register<IMonsterKillerService, MonsterKillerKernel>();
+        _ = await imperativeServer.Services.Replace<IMonsterAggroService, GuardianKernel>();
+        _ = await imperativeServer.Services.Replace<IAttackService, RetaliationKernel>();
+        _ = await imperativeServer.World.Monsters.Extend<IMonsterKillerService, MonsterKillerKernel>();
         await builderServer.StartAsync();
 
         Assert.Equal(imperativeControl.Calls, builderControl.Calls);
     }
 
     [Fact]
-    public void KernelRpc_accumulator_accepts_kernel_not_implementing_service()
+    public void World_extension_accumulator_accepts_kernel_not_implementing_service()
     {
         var control = new RecordingGamePluginControlService();
         var builder = RemotePluginServerBuilder
             .FromConnection(control)
-            .SetupKernelRpc(rpc => rpc.Register<IMonsterKillerService, MonsterKillerKernel>());
+            .SetupWorld(world => world.Monsters
+                .Extend<IMonsterKillerService, MonsterKillerKernel>());
 
         Assert.NotNull(builder.Build());
     }
@@ -166,7 +167,7 @@ public sealed class RemotePluginServerBuilderTests
         var server = new RemotePluginServer(control);
 
         var ex = Assert.Throws<InvalidOperationException>(
-            () => server.Kernels.InvokeAsync(static world => world.GetHealth("monster-1")));
+            () => server.InvokeAsync(static world => world.GetHealth("monster-1")));
 
         Assert.Contains("must be intercepted", ex.Message, StringComparison.Ordinal);
     }
@@ -179,7 +180,7 @@ public sealed class RemotePluginServerBuilderTests
         var factoryCalls = 0;
 
         var installs = Enumerable.Range(0, 16)
-            .Select(_ => server.Kernels.EnsureAnonymousKernelAsync("monster-killer", () =>
+            .Select(_ => server.Services.EnsureAnonymousKernelAsync("monster-killer", () =>
             {
                 Interlocked.Increment(ref factoryCalls);
                 return KernelPackageRegistry.Resolve<MonsterKillerKernel>();
@@ -190,17 +191,17 @@ public sealed class RemotePluginServerBuilderTests
 
         Assert.All(installedIds, id => Assert.Equal("monster-killer", id));
         Assert.Equal(1, factoryCalls);
-        Assert.Equal(["rpc:monster-killer"], control.Calls);
+        Assert.Equal(["extension:monster-killer"], control.Calls);
     }
 
     private static RemotePluginServer BuildServer(RecordingGamePluginControlService control)
         => RemotePluginServerBuilder
             .FromConnection(control)
-            .SetupKernels(kernels => kernels
-                .Register<IMonsterAggroService, GuardianKernel>()
-                .Register<IAttackService, RetaliationKernel>())
-            .SetupKernelRpc(rpc => rpc
-                .Register<IMonsterKillerService, MonsterKillerKernel>())
+            .SetupServices(services => services
+                .Replace<IMonsterAggroService, GuardianKernel>()
+                .Replace<IAttackService, RetaliationKernel>())
+            .SetupWorld(world => world.Monsters
+                .Extend<IMonsterKillerService, MonsterKillerKernel>())
             .Build();
 
     private static string[] DecodeRequestedMonsterIds(byte[] arguments)

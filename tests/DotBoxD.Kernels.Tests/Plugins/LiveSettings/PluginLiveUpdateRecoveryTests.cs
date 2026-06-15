@@ -32,7 +32,7 @@ public sealed class PluginLiveUpdateRecoveryTests
         var messages = new InMemoryPluginMessageSink();
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
 
         kernel.UpdateMode = LiveUpdateMode.AsyncSet;

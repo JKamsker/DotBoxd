@@ -115,7 +115,7 @@ internal static class Program
             return await FailAsync(host, $"plugin exited before installing kernels (code {pluginProcess.ExitCode}).").ConfigureAwait(false);
         }
 
-        Console.WriteLine("[server] plugin connected; event kernels and kernel RPC service are installed and live.");
+        Console.WriteLine("[server] plugin connected; event kernels and server extension are installed and live.");
         Console.WriteLine("[server] Running with-plugin phase after the plugin's direct IPC/RPC setup calls.");
         Console.WriteLine();
 

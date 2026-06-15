@@ -6,7 +6,7 @@ using DotBoxD.Plugins.Runtime.Validation;
 namespace DotBoxD.Plugins.Runtime.Rpc;
 
 /// <summary>
-/// Validates a <b>kernel RPC service</b> package — a kernel invoked request/response with caller
+/// Validates a <b>server extension</b> package — a kernel invoked request/response with caller
 /// arguments whose result is returned to the host (one server-side roundtrip), rather than dispatched
 /// through the event <c>ShouldHandle</c>/<c>Handle</c> contract. It reuses the generic manifest checks
 /// (ids, metadata, effects, live settings) but replaces the event-specific rules (a non-empty
@@ -35,13 +35,13 @@ internal static class RpcKernelPackageValidator
 
         if (string.IsNullOrWhiteSpace(package.Manifest.RpcEntrypoint))
         {
-            diagnostics.Add(new SandboxDiagnostic("DBXK070", "Kernel RPC service manifest must declare an rpcEntrypoint."));
+            diagnostics.Add(new SandboxDiagnostic("DBXK070", "Server extension manifest must declare an rpcEntrypoint."));
         }
         else if (!PluginEntrypointIndex.Build(package).Contains(package.Manifest.RpcEntrypoint))
         {
             diagnostics.Add(new SandboxDiagnostic(
                 "DBXK071",
-                $"Kernel RPC entrypoint '{package.Manifest.RpcEntrypoint}' is missing or not a public entrypoint."));
+                $"Server extension entrypoint '{package.Manifest.RpcEntrypoint}' is missing or not a public entrypoint."));
         }
 
         ValidateMode(package.Manifest, diagnostics);
@@ -73,7 +73,7 @@ internal static class RpcKernelPackageValidator
 
             if (!analysis.ReturnType.IsKnown() || analysis.ReturnType.IsForbidden())
             {
-                diagnostics.Add(new SandboxDiagnostic("DBXK072", $"Kernel RPC return type '{analysis.ReturnType}' is not supported."));
+                diagnostics.Add(new SandboxDiagnostic("DBXK072", $"Server extension return type '{analysis.ReturnType}' is not supported."));
             }
         }
 
@@ -93,7 +93,7 @@ internal static class RpcKernelPackageValidator
 
         if (function.Parameters.Count < settings.Count)
         {
-            diagnostics.Add(new SandboxDiagnostic("DBXK035", $"Kernel RPC entrypoint '{function.Id}' is missing live setting parameters."));
+            diagnostics.Add(new SandboxDiagnostic("DBXK035", $"Server extension entrypoint '{function.Id}' is missing live setting parameters."));
             return;
         }
 
@@ -106,7 +106,7 @@ internal static class RpcKernelPackageValidator
             {
                 diagnostics.Add(new SandboxDiagnostic(
                     "DBXK035",
-                    $"Kernel RPC entrypoint '{function.Id}' must declare live setting '{settings[i].Name}' as a trailing parameter of type '{expected}'."));
+                    $"Server extension entrypoint '{function.Id}' must declare live setting '{settings[i].Name}' as a trailing parameter of type '{expected}'."));
             }
         }
     }

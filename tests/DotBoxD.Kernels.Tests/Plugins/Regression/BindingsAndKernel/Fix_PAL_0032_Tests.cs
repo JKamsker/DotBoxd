@@ -21,7 +21,7 @@ public sealed class Fix_PAL_0032_Tests
     {
         var server = PluginAddendumTestPolicies.CreateServer();
         await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
 
         // Drive CreateDraft/ExtractSettings/CopyLiveProperties/PullFromStore
@@ -48,7 +48,7 @@ public sealed class Fix_PAL_0032_Tests
     {
         var server = PluginAddendumTestPolicies.CreateServer();
         var installed = await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
 
         // External host modification refreshes typed values from the store via
@@ -69,7 +69,7 @@ public sealed class Fix_PAL_0032_Tests
         var messages = new InMemoryPluginMessageSink();
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
 
         // Mutating the live state object directly relies on SynchronizeForInput

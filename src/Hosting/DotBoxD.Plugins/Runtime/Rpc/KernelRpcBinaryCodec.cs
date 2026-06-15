@@ -4,7 +4,7 @@ using System.Buffers.Binary;
 using System.Text;
 
 /// <summary>
-/// Encodes kernel RPC IR values as a small binary payload: one value-kind byte followed by only the
+/// Encodes server extension IR values as a small binary payload: one value-kind byte followed by only the
 /// active scalar or child sequence. The IPC layer transports the resulting bytes as an ordinary binary
 /// argument, avoiding reflection-bound DTO maps and repeated string kind tags on the wire.
 /// </summary>
@@ -79,7 +79,7 @@ public static class KernelRpcBinaryCodec
                 WriteItems(stream, value.Items);
                 return;
             default:
-                throw new NotSupportedException($"Kernel RPC value kind '{value.Kind}' is not supported.");
+                throw new NotSupportedException($"Server extension value kind '{value.Kind}' is not supported.");
         }
     }
 
@@ -96,7 +96,7 @@ public static class KernelRpcBinaryCodec
             KernelRpcValueKind.String => KernelRpcValue.String(reader.ReadString()),
             KernelRpcValueKind.List => KernelRpcValue.List(ReadItems(ref reader)),
             KernelRpcValueKind.Record => KernelRpcValue.Record(ReadItems(ref reader)),
-            _ => throw new FormatException($"Kernel RPC payload contains unknown value kind '{kind}'.")
+            _ => throw new FormatException($"Server extension payload contains unknown value kind '{kind}'.")
         };
     }
 
@@ -146,7 +146,7 @@ public static class KernelRpcBinaryCodec
     {
         if (value < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(value), "Kernel RPC payload lengths must be non-negative.");
+            throw new ArgumentOutOfRangeException(nameof(value), "Server extension payload lengths must be non-negative.");
         }
 
         var remaining = (uint)value;
@@ -169,7 +169,7 @@ public static class KernelRpcBinaryCodec
         {
             if (_remaining.IsEmpty)
             {
-                throw new FormatException("Kernel RPC payload ended unexpectedly.");
+                throw new FormatException("Server extension payload ended unexpectedly.");
             }
 
             var value = _remaining[0];
@@ -205,7 +205,7 @@ public static class KernelRpcBinaryCodec
                 shift += 7;
             }
 
-            throw new FormatException("Kernel RPC payload contains an invalid length prefix.");
+            throw new FormatException("Server extension payload contains an invalid length prefix.");
         }
 
         public string ReadString()
@@ -218,7 +218,7 @@ public static class KernelRpcBinaryCodec
         {
             if (!_remaining.IsEmpty)
             {
-                throw new FormatException("Kernel RPC payload contains trailing bytes.");
+                throw new FormatException("Server extension payload contains trailing bytes.");
             }
         }
 
@@ -226,7 +226,7 @@ public static class KernelRpcBinaryCodec
         {
             if (length < 0 || _remaining.Length < length)
             {
-                throw new FormatException("Kernel RPC payload ended unexpectedly.");
+                throw new FormatException("Server extension payload ended unexpectedly.");
             }
 
             var bytes = _remaining[..length];

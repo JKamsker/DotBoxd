@@ -53,12 +53,12 @@ public sealed class CapabilityAttribute(string id) : Attribute
 /// <summary>
 /// Marks a reusable helper method whose body the DotBoxD.Kernels generator <b>inlines</b> into the kernel/hook IR
 /// at every call site, so plugin authors can factor shared gate/handler logic out of a
-/// <c>Where</c>/<c>Select</c>/<c>InvokeKernel</c> lambda (or a kernel-class <c>ShouldHandle</c>/<c>Handle</c>)
+/// <c>Where</c>/<c>Select</c>/<c>Run</c> lambda (or a kernel-class <c>ShouldHandle</c>/<c>Handle</c>)
 /// without leaving the sandbox. For example:
 /// <code>
 /// server.Hooks.On&lt;MonsterAggroEvent&gt;()
 ///     .Where((e, ctx) => IsBullying(e.MonsterLevel, e.PlayerLevel))
-///     .InvokeKernel((e, ctx) => ctx.Messages.Send(e.MonsterId, "calm"));
+///     .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "calm"));
 ///
 /// [KernelMethod]
 /// public static bool IsBullying(int monsterLevel, int playerLevel) =&gt; monsterLevel - playerLevel &gt;= 3;
@@ -77,14 +77,14 @@ public sealed class CapabilityAttribute(string id) : Attribute
 public sealed class KernelMethodAttribute : Attribute;
 
 /// <summary>
-/// Marks a class as a <b>kernel RPC service</b>: a batch operation the plugin ships as verified IR and
+/// Marks a class as a <b>server extension</b>: a batch operation the plugin ships as verified IR and
 /// the server runs request/response in a single roundtrip, so a loop over many entities executes
 /// server-side (calling the host's existing bindings) instead of one network call per entity. The
 /// generator lowers the class's single public batch method — its body may use locals, a <c>foreach</c>
 /// over a list parameter, host bindings via <c>ctx.Host&lt;T&gt;()</c> or constructor-injected service
 /// fields, and may build and return complex objects (records/DTOs) and lists of them. For example:
 /// <code>
-/// [KernelRpcService("monster-killer", typeof(IMonsterKillerService))]
+/// [ServerExtension("monster-killer", typeof(IMonsterKillerService))]
 /// public sealed partial class MonsterKillerKernel
 /// {
 ///     private readonly IGameWorld _world;
@@ -104,14 +104,14 @@ public sealed class KernelMethodAttribute : Attribute;
 /// kernel's <c>Handle</c>) and is not part of the wire signature. Parameters, return type, and DTO
 /// fields must use the supported scalar types, lists, or nested DTOs. Supplying the optional service
 /// interface type lets the analyzer emit a source-generated plugin-side client that marshals directly to
-/// compact kernel RPC IR bytes instead of using a reflection proxy.
+/// compact server-extension value bytes instead of using a reflection proxy.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
-public sealed class KernelRpcServiceAttribute : Attribute
+public sealed class ServerExtensionAttribute : Attribute
 {
-    public KernelRpcServiceAttribute(string id) => Id = id;
+    public ServerExtensionAttribute(string id) => Id = id;
 
-    public KernelRpcServiceAttribute(string id, Type serviceType)
+    public ServerExtensionAttribute(string id, Type serviceType)
     {
         Id = id;
         ServiceType = serviceType;
@@ -124,11 +124,12 @@ public sealed class KernelRpcServiceAttribute : Attribute
 
 /// <summary>
 /// Requests a generated C# 14 extension property on <paramref name="receiverType"/> that resolves the
-/// source-generated kernel RPC client for this service. The receiver type must expose a <c>KernelRpc</c>
-/// property whose value can invoke kernel RPC and resolve the installed service id.
+/// source-generated server extension client for this service. The receiver type must expose a
+/// <c>ServerExtensions</c> property whose value can invoke server extensions and resolve the installed
+/// service id.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
-public sealed class KernelRpcClientPropertyAttribute(Type receiverType, string? name = null) : Attribute
+public sealed class ServerExtensionClientAttribute(Type receiverType, string? name = null) : Attribute
 {
     public Type ReceiverType { get; } = receiverType;
 
@@ -137,11 +138,11 @@ public sealed class KernelRpcClientPropertyAttribute(Type receiverType, string? 
 
 /// <summary>
 /// Requests a generated C# 14 extension method on <paramref name="receiverType"/> that forwards to the
-/// source-generated kernel RPC client. When <paramref name="name"/> is omitted, the kernel method name
+/// source-generated server extension client. When <paramref name="name"/> is omitted, the kernel method name
 /// is used; supply a custom name to make the receiver's domain API read naturally or avoid conflicts.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, Inherited = false)]
-public sealed class KernelRpcClientMethodAttribute(Type receiverType, string? name = null) : Attribute
+public sealed class ServerExtensionMethodAttribute(Type receiverType, string? name = null) : Attribute
 {
     public Type ReceiverType { get; } = receiverType;
 

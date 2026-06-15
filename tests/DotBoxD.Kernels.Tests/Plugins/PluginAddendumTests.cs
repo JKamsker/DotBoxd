@@ -23,7 +23,7 @@ public sealed class PluginAddendumTests
         var messages = new InMemoryPluginMessageSink();
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
 
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
@@ -67,7 +67,7 @@ public sealed class PluginAddendumTests
         var messages = new InMemoryPluginMessageSink();
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
 
         Assert.Equal(LiveUpdateMode.Sync, kernel.UpdateMode);
@@ -84,7 +84,7 @@ public sealed class PluginAddendumTests
         var messages = new InMemoryPluginMessageSink();
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
 
         kernel.UpdateMode = LiveUpdateMode.AsyncSet;
@@ -104,7 +104,7 @@ public sealed class PluginAddendumTests
         var messages = new InMemoryPluginMessageSink();
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
 
         kernel.UpdateMode = LiveUpdateMode.AsyncSet;
@@ -122,7 +122,7 @@ public sealed class PluginAddendumTests
         var messages = new InMemoryPluginMessageSink();
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
 
         kernel.UpdateMode = LiveUpdateMode.AsyncSet;
@@ -139,7 +139,7 @@ public sealed class PluginAddendumTests
         var messages = new InMemoryPluginMessageSink();
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
 
         await kernel.ModifyAsync(state =>
@@ -204,7 +204,7 @@ public sealed class PluginAddendumTests
         var messages = new BlockingPluginMessageSink();
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
         var publish = server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1")).AsTask();
         await messages.SendStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -290,7 +290,7 @@ public sealed class PluginAddendumTests
     {
         var server = PluginAddendumTestPolicies.CreateServer();
         await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
 
         kernel.Value.MinDamage = 10_001;
@@ -306,7 +306,7 @@ public sealed class PluginAddendumTests
         var messages = new InMemoryPluginMessageSink();
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         var first = server.Kernels.Get<FireDamageKernel>("fire-damage");
         var second = server.Kernels.Get<FireDamageKernel>("fire-damage");
 

@@ -29,7 +29,7 @@ public sealed class PluginAnalyzerGenericEventTests
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(package);
 
-        server.Hooks.On<GenericDamageEvent<string>>().UseKernel(kernel);
+        server.Hooks.On<GenericDamageEvent<string>>().Use(kernel);
         await server.Hooks.PublishAsync(new GenericDamageEvent<string>("ice", "player-1", "ignored"));
         await server.Hooks.PublishAsync(new GenericDamageEvent<string>("fire", "player-1", "generic matched"));
 

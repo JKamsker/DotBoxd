@@ -54,7 +54,7 @@ internal static class InvokeAsyncInterceptorEmitter
             .Append("> InvokeAsync_")
             .Append(index.ToString(CultureInfo.InvariantCulture))
             .AppendLine("(");
-        builder.Append("            this ").Append(interception.ReceiverType).AppendLine(" kernels,");
+        builder.Append("            this ").Append(interception.ReceiverType).AppendLine(" server,");
         if (interception.CaptureType is { } captureType &&
             interception.CaptureDelegateType is { } captureDelegateType)
         {
@@ -81,7 +81,7 @@ internal static class InvokeAsyncInterceptorEmitter
         }
 
         builder.AppendLine("            global::System.ArgumentNullException.ThrowIfNull(lambda);");
-        builder.Append("            var __pluginId = await kernels.EnsureAnonymousKernelAsync(")
+        builder.Append("            var __pluginId = await server.Services.EnsureAnonymousKernelAsync(")
             .Append(Literal(interception.PluginId))
             .Append(", ")
             .Append(interception.PackageFullName)
@@ -89,7 +89,7 @@ internal static class InvokeAsyncInterceptorEmitter
         builder.Append("            var __request = global::DotBoxD.Plugins.KernelRpcBinaryCodec.EncodeArguments(")
             .Append(interception.ArgumentsExpression)
             .AppendLine(");");
-        builder.AppendLine("            var __response = await kernels.WireClient.InvokeKernelRpcAsync(__pluginId, __request).ConfigureAwait(false);");
+        builder.AppendLine("            var __response = await server.Services.WireClient.InvokeServerExtensionAsync(__pluginId, __request).ConfigureAwait(false);");
         builder.AppendLine("            var __result = global::DotBoxD.Plugins.KernelRpcBinaryCodec.DecodeValue(__response);");
         if (interception.SyncOutAssignments.Count > 0)
         {

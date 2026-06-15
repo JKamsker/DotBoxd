@@ -33,23 +33,23 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
             .Select(static (result, _) => result.Model!)
             .WithTrackingName(DotBoxDPluginPackageGeneratorTrackingNames.ModelResult);
 
-        // Phase C: lower inline On<TEvent>().Where?(lambda).Select?(lambda).InvokeKernel(lambda) chains
+        // Phase C: lower inline On<TEvent>().Where?(lambda).Select?(lambda).Run(lambda) chains
         // to the same PluginKernelModel a kernel class produces. Unsupported shapes fail safe (null).
         var chainResults = context.SyntaxProvider
             .CreateSyntaxProvider(
                 static (node, _) => node is InvocationExpressionSyntax
                 {
-                    Expression: MemberAccessExpressionSyntax { Name.Identifier.ValueText: "InvokeKernel" }
+                    Expression: MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Run" }
                 },
                 static (syntaxContext, ct) => HookChainModelFactory.Create(syntaxContext, ct))
             .Where(static result => result is not null)
             .Select(static (result, _) => result!);
 
-        // Kernel RPC services: lower a [KernelRpcService] class's batch method to a verified-IR package
+        // Server extensions: lower a [ServerExtension] class's batch method to a verified-IR package
         // whose Create() imports the JSON. Unsupported shapes emit a diagnostic and no package.
         var rpcResults = context.SyntaxProvider
             .ForAttributeWithMetadataName(
-                DotBoxDGenerationNames.Metadata.KernelRpcServiceAttribute,
+                DotBoxDGenerationNames.Metadata.ServerExtensionAttribute,
                 static (node, _) => node is ClassDeclarationSyntax,
                 static (ctx, ct) => RpcKernelModelFactory.Create(ctx, ct))
             .Where(static result => result is not null)
@@ -81,7 +81,7 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
             .Select(static (pair, _) => CreatePackageBatch(pair.Left.AddRange(pair.Right)))
             .WithTrackingName(DotBoxDPluginPackageGeneratorTrackingNames.PackageResult);
 
-        // Emit a C# interceptor per lowered chain so the InvokeKernel call site installs + wires its
+        // Emit a C# interceptor per lowered chain so the Run call site installs + wires its
         // generated package (UseGeneratedChain) instead of throwing DBXK062.
         var interceptions = chainResults
             .Where(static result => result.Interception is not null)

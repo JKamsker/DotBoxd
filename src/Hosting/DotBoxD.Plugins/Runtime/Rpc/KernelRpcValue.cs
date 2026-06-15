@@ -1,6 +1,6 @@
 namespace DotBoxD.Plugins;
 
-/// <summary>The compact, transport-neutral value kinds used for kernel RPC IPC payloads.</summary>
+/// <summary>The compact, transport-neutral value kinds used for server extension IPC payloads.</summary>
 public enum KernelRpcValueKind : byte
 {
     Unit = 0,
@@ -14,7 +14,7 @@ public enum KernelRpcValueKind : byte
 }
 
 /// <summary>
-/// A compact intermediate representation for plugin-defined kernel RPC arguments and results. Scalars
+/// A compact intermediate representation for plugin-defined server extension arguments and results. Scalars
 /// carry only their active field, and lists/records carry positional child values matching the verified
 /// kernel IR type.
 /// </summary>
@@ -118,7 +118,7 @@ public readonly struct KernelRpcValue
         if (Kind != expected)
         {
             throw new NotSupportedException(
-                $"Kernel RPC value expected '{expected}' but received '{Kind}'.");
+                $"Server extension value expected '{expected}' but received '{Kind}'.");
         }
     }
 }

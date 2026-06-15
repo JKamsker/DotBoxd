@@ -31,21 +31,21 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
         description: "Live settings must use supported scalar types.",
         helpLinkUri: PluginAnalyzerDiagnostics.ShippedRulesHelpLinkBase + "DBXK020");
 
-    // Phase C-0 (detection only): flag an inline InvokeKernel(lambda) hook chain. Lowering these
+    // Phase C-0 (detection only): flag an inline Run(lambda) hook chain. Lowering these
     // lambdas to verified DotBoxD.Kernels is a later analyzer phase; until then the runtime terminal throws,
     // so this informational diagnostic warns the author at compile time.
-    public static readonly DiagnosticDescriptor InvokeKernelNotLoweredRule = new(
+    public static readonly DiagnosticDescriptor RunNotLoweredRule = new(
         "DBXK110",
-        "InvokeKernel chain is not yet lowered to verified IR",
-        "InvokeKernel(lambda) is not yet lowered to verified IR and will throw at runtime; bind a kernel class with UseKernel/Register, or use InvokeLocal for native host code",
+        "Run chain is not yet lowered to verified IR",
+        "Run(lambda) is not yet lowered to verified IR and will throw at runtime; bind a kernel class with Use/Register, or use RunLocal for native host code",
         "DotBoxD.Kernels.Generation",
         DiagnosticSeverity.Info,
         isEnabledByDefault: true,
-        description: "Detection only: lowering inline Where/Select/InvokeKernel chains to verified DotBoxD.Kernels is a future analyzer phase.",
+        description: "Detection only: lowering inline Where/Select/Run chains to verified DotBoxD.Kernels is a future analyzer phase.",
         helpLinkUri: PluginAnalyzerDiagnostics.UnshippedRulesHelpLinkBase + "DBXK110");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
-        => ImmutableArray.Create(ForbiddenHostApiRule, LiveSettingTypeRule, InvokeKernelNotLoweredRule);
+        => ImmutableArray.Create(ForbiddenHostApiRule, LiveSettingTypeRule, RunNotLoweredRule);
 
     public override void Initialize(AnalysisContext context)
     {
@@ -68,7 +68,7 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeHookChainTerminal(OperationAnalysisContext context)
     {
         var invocation = (IInvocationOperation)context.Operation;
-        if (!string.Equals(invocation.TargetMethod.Name, "InvokeKernel", StringComparison.Ordinal))
+        if (!string.Equals(invocation.TargetMethod.Name, "Run", StringComparison.Ordinal))
         {
             return;
         }
@@ -80,7 +80,7 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        context.ReportDiagnostic(Diagnostic.Create(InvokeKernelNotLoweredRule, invocation.Syntax.GetLocation()));
+        context.ReportDiagnostic(Diagnostic.Create(RunNotLoweredRule, invocation.Syntax.GetLocation()));
     }
 
     private static bool IsHookChainType(INamedTypeSymbol type)

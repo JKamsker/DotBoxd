@@ -40,7 +40,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             case MemberAccessExpressionSyntax member:
                 return LowerMemberAccess(member);
             default:
-                throw new NotSupportedException($"Kernel RPC service expression '{expression}' is not supported.");
+                throw new NotSupportedException($"Server extension expression '{expression}' is not supported.");
         }
     }
 
@@ -49,7 +49,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             SyntaxKind.LogicalNotExpression => Obj(("op", Str("not")), ("operand", LowerExpression(unary.Operand))),
             SyntaxKind.UnaryMinusExpression => Obj(("op", Str("-")), ("operand", LowerExpression(unary.Operand))),
-            _ => throw new NotSupportedException($"Kernel RPC service unary '{unary.Kind()}' is not supported.")
+            _ => throw new NotSupportedException($"Server extension unary '{unary.Kind()}' is not supported.")
         };
 
     private string LowerInvocation(InvocationExpressionSyntax invocation)
@@ -72,7 +72,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             return Call(binding.BindingId, null, args.ToArray());
         }
 
-        throw new NotSupportedException($"Kernel RPC service call '{invocation}' is not a host binding.");
+        throw new NotSupportedException($"Server extension call '{invocation}' is not a host binding.");
     }
 
     private string LowerMemberAccess(MemberAccessExpressionSyntax member)
@@ -96,7 +96,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             }
         }
 
-        throw new NotSupportedException($"Kernel RPC service member access '{member}' is not supported.");
+        throw new NotSupportedException($"Server extension member access '{member}' is not supported.");
     }
 
     private string LowerElementAccess(ElementAccessExpressionSyntax element)
@@ -104,7 +104,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         if (element.ArgumentList.Arguments.Count != 1 ||
             DotBoxDRpcTypeMapper.ListElementType(TypeOf(element.Expression)) is null)
         {
-            throw new NotSupportedException($"Kernel RPC service indexing '{element}' is not supported.");
+            throw new NotSupportedException($"Server extension indexing '{element}' is not supported.");
         }
 
         return Call("list.get", null, LowerExpression(element.Expression), LowerExpression(element.ArgumentList.Arguments[0].Expression));
@@ -124,7 +124,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
         if (created is not INamedTypeSymbol named || !DotBoxDRpcTypeMapper.IsRecordDto(named))
         {
-            throw new NotSupportedException($"Kernel RPC service 'new {creation.Type}' must construct a supported DTO or empty list.");
+            throw new NotSupportedException($"Server extension 'new {creation.Type}' must construct a supported DTO or empty list.");
         }
 
         Allocates = true;
@@ -134,7 +134,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             if (argumentList.Arguments.Count != fields.Count)
             {
-                throw new NotSupportedException($"Kernel RPC service constructor for '{named.Name}' must pass one argument per field.");
+                throw new NotSupportedException($"Server extension constructor for '{named.Name}' must pass one argument per field.");
             }
 
             for (var i = 0; i < fields.Count; i++)
@@ -148,7 +148,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         }
         else
         {
-            throw new NotSupportedException($"Kernel RPC service 'new {named.Name}' must use constructor arguments or an object initializer.");
+            throw new NotSupportedException($"Server extension 'new {named.Name}' must use constructor arguments or an object initializer.");
         }
 
         return Call("record.new", DotBoxDRpcTypeMapper.JsonType(named), args);
@@ -165,7 +165,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             if (entry is not AssignmentExpressionSyntax { Left: IdentifierNameSyntax fieldName } assignment)
             {
-                throw new NotSupportedException($"Kernel RPC service initializer for '{named.Name}' must assign named fields.");
+                throw new NotSupportedException($"Server extension initializer for '{named.Name}' must assign named fields.");
             }
 
             var index = IndexOfField(fields, fieldName.Identifier.ValueText, named);
@@ -177,7 +177,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             if (!assigned[i])
             {
-                throw new NotSupportedException($"Kernel RPC service initializer for '{named.Name}' must set field '{fields[i].Name}'.");
+                throw new NotSupportedException($"Server extension initializer for '{named.Name}' must set field '{fields[i].Name}'.");
             }
         }
     }
@@ -192,12 +192,12 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             }
         }
 
-        throw new NotSupportedException($"Kernel RPC service '{named.Name}' has no field '{name}'.");
+        throw new NotSupportedException($"Server extension '{named.Name}' has no field '{name}'.");
     }
 
     private ITypeSymbol TypeOf(ExpressionSyntax expression)
         => _model.GetTypeInfo(expression, _cancellationToken).Type
-           ?? throw new NotSupportedException($"Kernel RPC service could not resolve the type of '{expression}'.");
+           ?? throw new NotSupportedException($"Server extension could not resolve the type of '{expression}'.");
 
     private string JsonBinaryOperator(BinaryExpressionSyntax binary)
         => binary.Kind() switch
@@ -215,7 +215,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             SyntaxKind.GreaterThanOrEqualExpression => "gte",
             SyntaxKind.LogicalAndExpression => "and",
             SyntaxKind.LogicalOrExpression => "or",
-            _ => throw new NotSupportedException($"Kernel RPC service operator '{binary.OperatorToken.ValueText}' is not supported.")
+            _ => throw new NotSupportedException($"Server extension operator '{binary.OperatorToken.ValueText}' is not supported.")
         };
 
     private static string LiteralJson(object? value)
@@ -226,7 +226,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             long l => Obj(("i64", l.ToString(CultureInfo.InvariantCulture))),
             double d => Obj(("f64", d.ToString("R", CultureInfo.InvariantCulture))),
             string s => Obj(("string", Str(s))),
-            _ => throw new NotSupportedException($"Kernel RPC service literal '{value}' is not supported.")
+            _ => throw new NotSupportedException($"Server extension literal '{value}' is not supported.")
         };
 
     private static string Var(string name) => Obj(("var", Str(name)));

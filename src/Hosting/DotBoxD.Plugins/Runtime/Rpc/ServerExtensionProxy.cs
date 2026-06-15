@@ -5,23 +5,23 @@ using DotBoxD.Plugins.Kernel;
 namespace DotBoxD.Plugins.Runtime.Rpc;
 
 /// <summary>
-/// A runtime proxy that implements a kernel RPC service interface by marshaling each call through an
-/// installed batch kernel: arguments are converted to sandbox values, the verified IR runs request/
-/// response in one roundtrip (<see cref="InstalledKernel.InvokeRpcAsync"/>), and the result is marshaled
-/// back to the method's return type — so <c>server.RpcService&lt;IMonsterKiller&gt;().KillMonsters(ids)</c>
-/// returns real C# objects. The service is expected to declare a single batch method (the kernel's one
-/// RPC entrypoint); synchronous, <c>Task&lt;T&gt;</c>, and <c>ValueTask&lt;T&gt;</c> return shapes are
-/// supported.
+/// A runtime proxy that implements a server-extension interface by marshaling each call through an
+/// installed batch kernel. Arguments are converted to sandbox values, the verified IR runs request/
+/// response via <see cref="InstalledKernel.InvokeServerExtensionAsync"/>, and the result is marshaled
+/// back to the method's return type, so
+/// <c>server.ServerExtension&lt;IMonsterKiller&gt;().KillMonsters(ids)</c> returns real C# objects.
+/// The service is expected to declare a single batch method; synchronous, <c>Task&lt;T&gt;</c>, and
+/// <c>ValueTask&lt;T&gt;</c> return shapes are supported.
 /// </summary>
-public class KernelRpcServiceProxy : DispatchProxy
+public class ServerExtensionProxy : DispatchProxy
 {
     private InstalledKernel _kernel = null!;
 
     public static TService Create<TService>(InstalledKernel kernel) where TService : class
     {
         ArgumentNullException.ThrowIfNull(kernel);
-        var proxy = Create<TService, KernelRpcServiceProxy>();
-        ((KernelRpcServiceProxy)(object)proxy!)._kernel = kernel;
+        var proxy = Create<TService, ServerExtensionProxy>();
+        ((ServerExtensionProxy)(object)proxy!)._kernel = kernel;
         return proxy!;
     }
 
@@ -29,7 +29,7 @@ public class KernelRpcServiceProxy : DispatchProxy
     {
         if (targetMethod is null)
         {
-            throw new NotSupportedException("Kernel RPC service proxy received a null method.");
+            throw new NotSupportedException("Server extension proxy received a null method.");
         }
 
         var parameters = targetMethod.GetParameters();
@@ -39,7 +39,7 @@ public class KernelRpcServiceProxy : DispatchProxy
             arguments[i] = KernelRpcMarshaller.ToSandboxValue(args?[i], parameters[i].ParameterType);
         }
 
-        var result = _kernel.InvokeRpcAsync(arguments).AsTask().GetAwaiter().GetResult();
+        var result = _kernel.InvokeServerExtensionAsync(arguments).AsTask().GetAwaiter().GetResult();
         return Materialize(targetMethod.ReturnType, result);
     }
 

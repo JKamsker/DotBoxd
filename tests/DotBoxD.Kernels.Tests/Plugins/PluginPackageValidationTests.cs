@@ -77,7 +77,7 @@ public sealed class PluginPackageValidationTests
         var compiledManifest = package.Manifest with { Mode = ExecutionMode.Compiled };
         await server.InstallAsync(package with { Manifest = compiledManifest });
 
-        server.Hooks.On<DamageEvent>().UseKernel<FireDamageKernel>();
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
 
         Assert.Single(messages.Messages);

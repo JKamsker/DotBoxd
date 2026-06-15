@@ -6,8 +6,8 @@ namespace DotBoxD.Kernels.Game.Plugin.Client;
 internal sealed class RemotePluginServerBuilder
 {
     private readonly Func<CancellationToken, ValueTask<RemotePluginConnection>> _connectionFactory;
-    private readonly List<Func<RemoteKernelControl, ValueTask>> _kernelSetup = [];
-    private readonly List<Func<RemoteKernelRpcControl, ValueTask>> _rpcSetup = [];
+    private readonly List<Func<RemoteServiceControl, ValueTask>> _serviceSetup = [];
+    private readonly List<Func<RemoteWorldControl, ValueTask>> _worldSetup = [];
 
     private RemotePluginServerBuilder(Func<CancellationToken, ValueTask<RemotePluginConnection>> connectionFactory)
         => _connectionFactory = connectionFactory;
@@ -42,12 +42,12 @@ internal sealed class RemotePluginServerBuilder
         return new RemotePluginServerBuilder(connectionFactory);
     }
 
-    public RemotePluginServerBuilder SetupKernels(Action<KernelRegistrationAccumulator> configure)
+    public RemotePluginServerBuilder SetupServices(Action<ServiceRegistrationAccumulator> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
-        _kernelSetup.Add(async kernels =>
+        _serviceSetup.Add(async services =>
         {
-            var accumulator = new KernelRegistrationAccumulator(kernels);
+            var accumulator = new ServiceRegistrationAccumulator(services);
             configure(accumulator);
             await accumulator.FlushAsync().ConfigureAwait(false);
         });
@@ -55,12 +55,12 @@ internal sealed class RemotePluginServerBuilder
         return this;
     }
 
-    public RemotePluginServerBuilder SetupKernelRpc(Action<KernelRpcRegistrationAccumulator> configure)
+    public RemotePluginServerBuilder SetupWorld(Action<WorldRegistrationAccumulator> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
-        _rpcSetup.Add(async kernelRpc =>
+        _worldSetup.Add(async world =>
         {
-            var accumulator = new KernelRpcRegistrationAccumulator(kernelRpc);
+            var accumulator = new WorldRegistrationAccumulator(world);
             configure(accumulator);
             await accumulator.FlushAsync().ConfigureAwait(false);
         });
@@ -69,23 +69,23 @@ internal sealed class RemotePluginServerBuilder
     }
 
     public RemotePluginServer Build()
-        => new(_connectionFactory, _kernelSetup, _rpcSetup);
+        => new(_connectionFactory, _serviceSetup, _worldSetup);
 }
 
-internal sealed class KernelRegistrationAccumulator
+internal sealed class ServiceRegistrationAccumulator
 {
-    private readonly RemoteKernelControl _kernels;
+    private readonly RemoteServiceControl _services;
     private readonly List<Func<ValueTask>> _registrations = [];
 
-    public KernelRegistrationAccumulator(RemoteKernelControl kernels) => _kernels = kernels;
+    public ServiceRegistrationAccumulator(RemoteServiceControl services) => _services = services;
 
-    public KernelRegistrationAccumulator Register<TService, TKernel>()
+    public ServiceRegistrationAccumulator Replace<TService, TKernel>()
         where TService : class
         where TKernel : class, TService
     {
         _registrations.Add(async () =>
         {
-            _ = await _kernels.Register<TService, TKernel>().ConfigureAwait(false);
+            _ = await _services.Replace<TService, TKernel>().ConfigureAwait(false);
         });
         return this;
     }
@@ -99,20 +99,33 @@ internal sealed class KernelRegistrationAccumulator
     }
 }
 
-internal sealed class KernelRpcRegistrationAccumulator
+internal sealed class WorldRegistrationAccumulator
 {
-    private readonly RemoteKernelRpcControl _kernelRpc;
+    private readonly RemoteMonsterExtensionAccumulator _monsters;
+
+    public WorldRegistrationAccumulator(RemoteWorldControl world)
+        => _monsters = new RemoteMonsterExtensionAccumulator(world.Monsters);
+
+    public RemoteMonsterExtensionAccumulator Monsters => _monsters;
+
+    internal ValueTask FlushAsync()
+        => _monsters.FlushAsync();
+}
+
+internal sealed class RemoteMonsterExtensionAccumulator
+{
+    private readonly RemoteMonsterControl _monsters;
     private readonly List<Func<ValueTask>> _registrations = [];
 
-    public KernelRpcRegistrationAccumulator(RemoteKernelRpcControl kernelRpc) => _kernelRpc = kernelRpc;
+    public RemoteMonsterExtensionAccumulator(RemoteMonsterControl monsters) => _monsters = monsters;
 
-    public KernelRpcRegistrationAccumulator Register<TService, TKernel>()
+    public RemoteMonsterExtensionAccumulator Extend<TService, TKernel>()
         where TService : class
         where TKernel : class
     {
         _registrations.Add(async () =>
         {
-            _ = await _kernelRpc.Register<TService, TKernel>().ConfigureAwait(false);
+            _ = await _monsters.Extend<TService, TKernel>().ConfigureAwait(false);
         });
         return this;
     }

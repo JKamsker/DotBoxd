@@ -10,15 +10,15 @@ public async ValueTask PublishAsync<TEvent>(TEvent e, CancellationToken cancella
 public async ValueTask UpdateSettingsAsync( string pluginId, IReadOnlyDictionary<string, object?> values, bool atomic = false, CancellationToken cancellationToken = default)
 public async ValueTask<bool> ShouldHandleAsync<TEvent>( IPluginEventAdapter<TEvent> adapter, TEvent e, CancellationToken cancellationToken = default)
 public async ValueTask<InstalledKernel> InstallAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
-public async ValueTask<InstalledKernel> InstallRpcAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
-public async ValueTask<SandboxValue> InvokeRpcAsync( IReadOnlyList<SandboxValue> arguments, CancellationToken cancellationToken = default)
-public async ValueTask<string> RegisterRpcServiceAsync<TService, TKernel>( SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
+public async ValueTask<InstalledKernel> InstallServerExtensionAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
+public async ValueTask<SandboxValue> InvokeServerExtensionAsync( IReadOnlyList<SandboxValue> arguments, CancellationToken cancellationToken = default)
+public async ValueTask<string> RegisterServerExtensionAsync<TService, TKernel>( SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public bool BoolValue
 public bool IsRevoked => Volatile.Read(ref _revoked) != 0
 public bool Owns(string pluginId)
 public bool TryGet(string pluginId, [MaybeNullWhen(false)] out InstalledKernel kernel)
 public bool Uninstall(string pluginId)
-public class KernelRpcServiceProxy : DispatchProxy
+public class ServerExtensionProxy : DispatchProxy
 public const string CapabilityId = "host.message.write"
 public const string SendBindingId = "host.message.send"
 public double DoubleValue
@@ -48,27 +48,27 @@ public HookPipeline<TEvent> InvokeHostHandler(Action<TEvent, HookContext> handle
 public HookPipeline<TEvent> InvokeHostHandler(Action<TEvent> handler)
 public HookPipeline<TEvent> InvokeHostHandler(Func<TEvent, HookContext, ValueTask> handler)
 public HookPipeline<TEvent> InvokeHostHandler(Func<TEvent, ValueTask> handler)
-public HookPipeline<TEvent> InvokeKernel(Action<TCurrent, HookContext> handler)
-public HookPipeline<TEvent> InvokeKernel(Action<TCurrent> handler)
-public HookPipeline<TEvent> InvokeKernel(Action<TEvent, HookContext> handler)
-public HookPipeline<TEvent> InvokeKernel(Action<TEvent> handler)
-public HookPipeline<TEvent> InvokeKernel(Func<TCurrent, HookContext, ValueTask> handler)
-public HookPipeline<TEvent> InvokeKernel(Func<TCurrent, ValueTask> handler)
-public HookPipeline<TEvent> InvokeKernel(Func<TEvent, HookContext, ValueTask> handler)
-public HookPipeline<TEvent> InvokeKernel(Func<TEvent, ValueTask> handler)
-public HookPipeline<TEvent> InvokeLocal(Action<TCurrent, HookContext> handler)
-public HookPipeline<TEvent> InvokeLocal(Action<TCurrent> handler)
-public HookPipeline<TEvent> InvokeLocal(Action<TEvent, HookContext> handler)
-public HookPipeline<TEvent> InvokeLocal(Action<TEvent> handler)
-public HookPipeline<TEvent> InvokeLocal(Func<TCurrent, HookContext, ValueTask> handler)
-public HookPipeline<TEvent> InvokeLocal(Func<TCurrent, ValueTask> handler)
-public HookPipeline<TEvent> InvokeLocal(Func<TEvent, HookContext, ValueTask> handler)
-public HookPipeline<TEvent> InvokeLocal(Func<TEvent, ValueTask> handler)
 public HookPipeline<TEvent> On<TEvent>()
 public HookPipeline<TEvent> On<TEvent>(IPluginEventAdapter<TEvent> adapter)
+public HookPipeline<TEvent> Run(Action<TCurrent, HookContext> handler)
+public HookPipeline<TEvent> Run(Action<TCurrent> handler)
+public HookPipeline<TEvent> Run(Action<TEvent, HookContext> handler)
+public HookPipeline<TEvent> Run(Action<TEvent> handler)
+public HookPipeline<TEvent> Run(Func<TCurrent, HookContext, ValueTask> handler)
+public HookPipeline<TEvent> Run(Func<TCurrent, ValueTask> handler)
+public HookPipeline<TEvent> Run(Func<TEvent, HookContext, ValueTask> handler)
+public HookPipeline<TEvent> Run(Func<TEvent, ValueTask> handler)
+public HookPipeline<TEvent> RunLocal(Action<TCurrent, HookContext> handler)
+public HookPipeline<TEvent> RunLocal(Action<TCurrent> handler)
+public HookPipeline<TEvent> RunLocal(Action<TEvent, HookContext> handler)
+public HookPipeline<TEvent> RunLocal(Action<TEvent> handler)
+public HookPipeline<TEvent> RunLocal(Func<TCurrent, HookContext, ValueTask> handler)
+public HookPipeline<TEvent> RunLocal(Func<TCurrent, ValueTask> handler)
+public HookPipeline<TEvent> RunLocal(Func<TEvent, HookContext, ValueTask> handler)
+public HookPipeline<TEvent> RunLocal(Func<TEvent, ValueTask> handler)
+public HookPipeline<TEvent> Use(InstalledKernel kernel)
+public HookPipeline<TEvent> Use<TKernel>() where TKernel : class
 public HookPipeline<TEvent> UseGeneratedChain(PluginPackage package)
-public HookPipeline<TEvent> UseKernel(InstalledKernel kernel)
-public HookPipeline<TEvent> UseKernel<TKernel>() where TKernel : class
 public HookPipeline<TEvent> Where(Func<TEvent, bool> filter)
 public HookPipeline<TEvent> Where(Func<TEvent, HookContext, bool> filter)
 public HookPipeline<TEvent> Where(Func<TEvent, HookContext, ValueTask<bool>> filter)
@@ -84,9 +84,9 @@ public IEnumerator<InstalledKernel> GetEnumerator() => Snapshot().GetEnumerator(
 public InstalledKernel Get(string pluginId)
 public InstalledKernel Kernel { get; }
 public int Int32Value
-public interface IKernelRpcClientRegistry : IKernelRpcWireClient
-public interface IKernelRpcWireClient
 public interface ILiveSetting
+public interface IServerExtensionClientRegistry : IServerExtensionWireClient
+public interface IServerExtensionWireClient
 public IPluginEventAdapter<TEvent> Resolve<TEvent>()
 public IReadOnlyList<HookSubscriptionManifest> Subscriptions { get => _subscriptions; init => _subscriptions = PluginModelCopy.List(value); }
 public IReadOnlyList<InstalledKernel> Snapshot()
@@ -191,14 +191,14 @@ public T As<T>() where T : class => LiveContextProxy<T>.Create(this)
 public T Get<T>(string name)
 public T Value
 public T Value { get; }
-public TService RpcService<TService>() where TService : class
+public TService ServerExtension<TService>() where TService : class
 public TSettings Value { get; }
 public TypedInstalledKernel<TState> Get<TState>(string pluginId) where TState : class
 public ValueTask DisposeAsync()
 public ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)
 public ValueTask ModifyAsync( Action<TSettings> modify, bool atomic = false, CancellationToken cancellationToken = default)
 public ValueTask<InstalledKernel> InstallAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
-public ValueTask<InstalledKernel> InstallRpcAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
+public ValueTask<InstalledKernel> InstallServerExtensionAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public void Dispose()
 public void Register<TEvent>(IPluginEventAdapter<TEvent> adapter)
 public void RequireKind(KernelRpcValueKind expected)

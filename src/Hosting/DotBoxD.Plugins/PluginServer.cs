@@ -93,16 +93,16 @@ public sealed partial class PluginServer : IDisposable
         => InstallCoreAsync(package, policy, owner: null, cancellationToken);
 
     /// <summary>
-    /// Installs a <b>kernel RPC service</b> package — a kernel invoked request/response (via
-    /// <see cref="InstalledKernel.InvokeRpcAsync"/>) rather than wired to an event. It is validated by
-    /// <see cref="RpcKernelPackageValidator"/> (no event subscription/contract) and always runs
-    /// interpreted, since record/object I/O is interpreter-only.
+    /// Installs a <b>server extension</b> package: a kernel invoked request/response (via
+    /// <see cref="InstalledKernel.InvokeServerExtensionAsync"/>) rather than wired to an event. It is
+    /// validated by <see cref="RpcKernelPackageValidator"/> because the manifest uses the existing
+    /// <c>rpcEntrypoint</c> field and has no event subscription/contract.
     /// </summary>
-    public ValueTask<InstalledKernel> InstallRpcAsync(
+    public ValueTask<InstalledKernel> InstallServerExtensionAsync(
         PluginPackage package,
         SandboxPolicy? policy = null,
         CancellationToken cancellationToken = default)
-        => InstallRpcCoreAsync(package, policy, owner: null, cancellationToken);
+        => InstallServerExtensionCoreAsync(package, policy, owner: null, cancellationToken);
 
     /// <summary>
     /// Creates a new ownership session. Every kernel installed through the session is tagged with it
@@ -128,12 +128,12 @@ public sealed partial class PluginServer : IDisposable
         CancellationToken cancellationToken)
         => InstallCoreAsync(package, policy, owner, cancellationToken);
 
-    internal ValueTask<InstalledKernel> InstallOwnedRpcAsync(
+    internal ValueTask<InstalledKernel> InstallOwnedServerExtensionAsync(
         PluginSession owner,
         PluginPackage package,
         SandboxPolicy? policy,
         CancellationToken cancellationToken)
-        => InstallRpcCoreAsync(package, policy, owner, cancellationToken);
+        => InstallServerExtensionCoreAsync(package, policy, owner, cancellationToken);
 
     internal void UninstallOwned(PluginSession owner, string pluginId)
     {
@@ -163,7 +163,7 @@ public sealed partial class PluginServer : IDisposable
         return kernel;
     }
 
-    private async ValueTask<InstalledKernel> InstallRpcCoreAsync(
+    private async ValueTask<InstalledKernel> InstallServerExtensionCoreAsync(
         PluginPackage package,
         SandboxPolicy? policy,
         object? owner,
@@ -174,8 +174,8 @@ public sealed partial class PluginServer : IDisposable
         var plan = await _host.PrepareAsync(package.Module, policy ?? _defaultPolicy, cancellationToken)
             .ConfigureAwait(false);
         RpcKernelPackageValidator.ValidatePrepared(package, plan);
-        // RPC kernels honor the server's execution mode like event kernels — their record/list IR
-        // compiles to verified IL (record.new/record.get) so Auto/Compiled produces fast code.
+        // Server-extension kernels honor the server's execution mode like event kernels; their
+        // record/list IR compiles to verified IL (record.new/record.get), so Auto/Compiled produces fast code.
         var kernel = new InstalledKernel(_host, plan, package, _executionMode, owner);
         Kernels.Add(kernel);
         return kernel;

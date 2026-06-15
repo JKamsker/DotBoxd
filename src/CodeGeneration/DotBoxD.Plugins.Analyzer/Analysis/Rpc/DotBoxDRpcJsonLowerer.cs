@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 
 /// <summary>
-/// Lowers a <c>[KernelRpcService]</c> batch method body to DotBoxD.Kernels JSON IR (statements + expressions),
+/// Lowers a <c>[ServerExtension]</c> batch method body to DotBoxD.Kernels JSON IR (statements + expressions),
 /// the same JSON the host imports at install. Supports the canonical batch shape: local declarations, a
 /// <c>foreach</c> over a list, <c>if</c>/<c>else</c>, host-binding calls via <c>ctx.Host&lt;T&gt;()</c> or
 /// constructor-injected service fields, building DTOs (<c>new T(...)</c>/<c>new T{...}</c> →
@@ -109,7 +109,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
                 break;
             default:
-                throw new NotSupportedException($"Kernel RPC service statement '{statement.Kind()}' is not supported.");
+                throw new NotSupportedException($"Server extension statement '{statement.Kind()}' is not supported.");
         }
     }
 
@@ -119,7 +119,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             if (declarator.Initializer is not { } initializer)
             {
-                throw new NotSupportedException("Kernel RPC service locals must be initialized.");
+                throw new NotSupportedException("Server extension locals must be initialized.");
             }
 
             output.Add(SetStatement(declarator.Identifier.ValueText, LowerExpression(initializer.Value)));
@@ -145,7 +145,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             case InvocationExpressionSyntax invocation when TryLowerListAdd(invocation) is { } listAdd:
                 return listAdd;
             default:
-                throw new NotSupportedException($"Kernel RPC service statement expression '{expression}' is not supported.");
+                throw new NotSupportedException($"Server extension statement expression '{expression}' is not supported.");
         }
     }
 
@@ -158,7 +158,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             SyntaxKind.MultiplyAssignmentExpression => "mul",
             SyntaxKind.DivideAssignmentExpression => "div",
             SyntaxKind.ModuloAssignmentExpression => "rem",
-            _ => throw new NotSupportedException($"Kernel RPC service assignment '{assignment.Kind()}' is not supported.")
+            _ => throw new NotSupportedException($"Server extension assignment '{assignment.Kind()}' is not supported.")
         };
         return BinaryJson(op, Var(target.Identifier.ValueText), LowerExpression(assignment.Right));
     }

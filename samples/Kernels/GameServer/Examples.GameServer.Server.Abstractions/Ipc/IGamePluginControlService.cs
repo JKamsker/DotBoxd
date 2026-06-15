@@ -5,16 +5,16 @@ namespace DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
 
 /// <summary>
 /// Control plane the plugin host calls over IPC. The host ships opaque verified IR
-/// (<see cref="InstallPluginAsync"/> and <see cref="InstallKernelRpcAsync"/>), tunes live settings,
-/// invokes plugin-owned kernel RPC services, and can call ordinary server APIs such as
+/// (<see cref="InstallPluginAsync"/> and <see cref="InstallServerExtensionAsync"/>), tunes live settings,
+/// invokes plugin-owned server extensions, and can call ordinary server APIs such as
 /// <see cref="KillMonsterAsync"/>.
 /// </summary>
 [DotBoxDService]
-public interface IGamePluginControlService : IKernelRpcWireClient
+public interface IGamePluginControlService : IServerExtensionWireClient
 {
     ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default);
 
-    ValueTask<string> InstallKernelRpcAsync(string packageJson, CancellationToken ct = default);
+    ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default);
 
     ValueTask UpdateSettingsAsync(
         string pluginId,

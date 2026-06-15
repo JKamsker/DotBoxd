@@ -61,11 +61,11 @@ public sealed class HookStage<TEvent, TCurrent>
     }
 
     /// <summary>Native host terminal over the projected element (NOT sandboxed).</summary>
-    public HookPipeline<TEvent> InvokeLocal(Func<TCurrent, HookContext, ValueTask> handler)
+    public HookPipeline<TEvent> RunLocal(Func<TCurrent, HookContext, ValueTask> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
         var project = _project;
-        return _root.InvokeLocal(async (e, ctx) =>
+        return _root.RunLocal(async (e, ctx) =>
         {
             var (ok, value) = await project(e, ctx).ConfigureAwait(false);
             if (ok)
@@ -75,39 +75,39 @@ public sealed class HookStage<TEvent, TCurrent>
         });
     }
 
-    public HookPipeline<TEvent> InvokeLocal(Action<TCurrent, HookContext> handler)
+    public HookPipeline<TEvent> RunLocal(Action<TCurrent, HookContext> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
-        return InvokeLocal((value, ctx) =>
+        return RunLocal((value, ctx) =>
         {
             handler(value, ctx);
             return ValueTask.CompletedTask;
         });
     }
 
-    public HookPipeline<TEvent> InvokeLocal(Func<TCurrent, ValueTask> handler)
+    public HookPipeline<TEvent> RunLocal(Func<TCurrent, ValueTask> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
-        return InvokeLocal((value, _) => handler(value));
+        return RunLocal((value, _) => handler(value));
     }
 
-    public HookPipeline<TEvent> InvokeLocal(Action<TCurrent> handler)
+    public HookPipeline<TEvent> RunLocal(Action<TCurrent> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
-        return InvokeLocal((value, _) => handler(value));
+        return RunLocal((value, _) => handler(value));
     }
 
     /// <summary>The terminal the analyzer lowers to verified IR; un-lowered it throws (never native).</summary>
-    public HookPipeline<TEvent> InvokeKernel(Func<TCurrent, HookContext, ValueTask> handler)
+    public HookPipeline<TEvent> Run(Func<TCurrent, HookContext, ValueTask> handler)
         => throw HookLowering.NotLowered();
 
-    public HookPipeline<TEvent> InvokeKernel(Action<TCurrent, HookContext> handler)
+    public HookPipeline<TEvent> Run(Action<TCurrent, HookContext> handler)
         => throw HookLowering.NotLowered();
 
-    public HookPipeline<TEvent> InvokeKernel(Func<TCurrent, ValueTask> handler)
+    public HookPipeline<TEvent> Run(Func<TCurrent, ValueTask> handler)
         => throw HookLowering.NotLowered();
 
-    public HookPipeline<TEvent> InvokeKernel(Action<TCurrent> handler)
+    public HookPipeline<TEvent> Run(Action<TCurrent> handler)
         => throw HookLowering.NotLowered();
 }
 
@@ -117,6 +117,6 @@ internal static class HookLowering
         => new([
             new SandboxDiagnostic(
                 "DBXK062",
-                "InvokeKernel(lambda) must be lowered to verified IR by DotBoxD.Plugins.Analyzer and cannot run as host code.")
+                "Run(lambda) must be lowered to verified IR by DotBoxD.Plugins.Analyzer and cannot run as host code.")
         ]);
 }

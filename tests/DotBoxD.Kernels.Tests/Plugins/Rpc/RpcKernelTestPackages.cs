@@ -8,7 +8,7 @@ using DotBoxD.Plugins;
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
 
 /// <summary>
-/// Shared fixtures for the kernel RPC service tests: a hand-built <c>KillMonsters(List&lt;int&gt;)</c>
+/// Shared fixtures for the server extension tests: a hand-built <c>KillMonsters(List&lt;int&gt;)</c>
 /// batch kernel that builds a <c>List&lt;Record&lt;I32,Bool&gt;&gt;</c>, the matching <c>host.world.kill</c>
 /// binding (kills even ids), and the policies that grant or withhold its capability.
 /// </summary>

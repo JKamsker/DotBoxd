@@ -12,13 +12,13 @@ namespace DotBoxD.Kernels.Tests.Plugins;
 public sealed class PluginHookSignatureTests
 {
     [Fact]
-    public async Task UseKernel_rejects_adapter_parameter_name_mismatch()
+    public async Task Use_rejects_adapter_parameter_name_mismatch()
     {
         var server = PluginAddendumTestPolicies.CreateServer();
         await server.InstallAsync(FireDamagePluginPackage.Create());
 
         var ex = Assert.Throws<SandboxValidationException>(
-            () => server.Hooks.On(new MismatchedDamageEventAdapter()).UseKernel<FireDamageKernel>());
+            () => server.Hooks.On(new MismatchedDamageEventAdapter()).Use<FireDamageKernel>());
 
         Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK033");
     }
@@ -30,7 +30,7 @@ public sealed class PluginHookSignatureTests
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(ConventionPackage());
 
-        server.Hooks.On<ConventionDamageEvent>().UseKernel(kernel);
+        server.Hooks.On<ConventionDamageEvent>().Use(kernel);
         await server.Hooks.PublishAsync(new ConventionDamageEvent("fire", 120, "player-1"));
 
         var message = Assert.Single(messages.Messages);
@@ -45,7 +45,7 @@ public sealed class PluginHookSignatureTests
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(ConventionRecordPackage());
 
-        server.Hooks.On<ConventionRecordEvent>().UseKernel(kernel);
+        server.Hooks.On<ConventionRecordEvent>().Use(kernel);
         await server.Hooks.PublishAsync(new ConventionRecordEvent(150, "player-1"));
 
         var message = Assert.Single(messages.Messages);

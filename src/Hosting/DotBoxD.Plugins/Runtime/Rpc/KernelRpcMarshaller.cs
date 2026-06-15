@@ -7,9 +7,9 @@ using DotBoxD.Plugins.Kernel;
 namespace DotBoxD.Plugins.Runtime.Rpc;
 
 /// <summary>
-/// Marshals between plain C# values and the sandbox <see cref="SandboxValue"/> world for kernel RPC
+/// Marshals between plain C# values and the sandbox <see cref="SandboxValue"/> world for server extension
 /// service calls: caller arguments are converted to sandbox values for
-/// <see cref="InstalledKernel.InvokeRpcAsync"/>, and the returned value is converted back to the
+/// <see cref="InstalledKernel.InvokeServerExtensionAsync"/>, and the returned value is converted back to the
 /// declared C# result type. Supports the supported scalars, <c>List&lt;T&gt;</c>/<c>IEnumerable&lt;T&gt;</c>,
 /// and DTOs (records/structs/classes) mapped to positional records by their fields' declaration order —
 /// the same order the analyzer used when it lowered the kernel, so fields line up by position.
@@ -49,7 +49,7 @@ public static class KernelRpcMarshaller
             return SandboxValue.FromRecord(values);
         }
 
-        throw new NotSupportedException($"Kernel RPC service cannot marshal type '{type}' to a sandbox value.");
+        throw new NotSupportedException($"Server extension cannot marshal type '{type}' to a sandbox value.");
     }
 
     public static object? FromSandboxValue(SandboxValue value, Type type)
@@ -75,7 +75,7 @@ public static class KernelRpcMarshaller
             var fields = RecordFields(type);
             if (record.Fields.Count != fields.Count)
             {
-                throw new NotSupportedException($"Kernel RPC service record has {record.Fields.Count} fields but '{type}' expects {fields.Count}.");
+                throw new NotSupportedException($"Server extension record has {record.Fields.Count} fields but '{type}' expects {fields.Count}.");
             }
 
             var arguments = new object?[fields.Count];
@@ -87,7 +87,7 @@ public static class KernelRpcMarshaller
             return Construct(type, fields, arguments);
         }
 
-        throw new NotSupportedException($"Kernel RPC service cannot marshal a sandbox value to type '{type}'.");
+        throw new NotSupportedException($"Server extension cannot marshal a sandbox value to type '{type}'.");
     }
 
     public static SandboxType SandboxTypeOf(Type type)
@@ -110,7 +110,7 @@ public static class KernelRpcMarshaller
             return SandboxType.Record(fieldTypes);
         }
 
-        throw new NotSupportedException($"Kernel RPC service has no sandbox type for '{type}'.");
+        throw new NotSupportedException($"Server extension has no sandbox type for '{type}'.");
     }
 
     private static SandboxValue? TryScalarToSandbox(object? value, Type type)
@@ -234,7 +234,7 @@ public static class KernelRpcMarshaller
         }
 
         var instance = Activator.CreateInstance(type)
-            ?? throw new NotSupportedException($"Kernel RPC service could not construct '{type}'.");
+            ?? throw new NotSupportedException($"Server extension could not construct '{type}'.");
         for (var i = 0; i < fields.Count; i++)
         {
             fields[i].SetValue(instance, arguments[i]);
