@@ -16,4 +16,8 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Examples.GameServer.Plugin.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -22,6 +22,16 @@ internal static class Program
 
     public static async Task<int> Main(string[] args)
     {
+        if (args.Length > 1 || (args.Length == 1 && args[0] != "--use-builder"))
+        {
+            await Console.Error
+                .WriteLineAsync("Usage: Examples.GameServer.Server [--use-builder]")
+                .ConfigureAwait(false);
+            return 1;
+        }
+
+        var useBuilder = args.Length == 1;
+
         // (a) Build the world and plugin server. The command sink is the example-defined capability
         // that turns plugin messages into game-state changes; the world host backs the gated
         // ctx.Host<IGameWorldAccess>() read bindings. Both are bound to the world once it exists.
@@ -89,7 +99,7 @@ internal static class Program
 
         // (d) Launch the plugin child process.
         Console.WriteLine("[server] launching plugin child process...");
-        var pluginProcess = PluginLauncher.Launch(pipeName);
+        var pluginProcess = PluginLauncher.Launch(pipeName, useBuilder);
         var pluginExit = pluginProcess.WaitForExitAsync();
 
         // (e) Wait until the plugin has connected and installed its kernels (it then holds the

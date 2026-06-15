@@ -68,6 +68,7 @@
 
   <Folder Name="/samples/Kernels/GameServer/">
     <Project Path="samples/Kernels/GameServer/Examples.GameServer.Plugin/Examples.GameServer.Plugin.csproj" />
+    <Project Path="samples/Kernels/GameServer/Examples.GameServer.Plugin.Tests/Examples.GameServer.Plugin.Tests.csproj" />
     <Project Path="samples/Kernels/GameServer/Examples.GameServer.Server.Abstractions/Examples.GameServer.Server.Abstractions.csproj" />
     <Project Path="samples/Kernels/GameServer/Examples.GameServer.Server/Examples.GameServer.Server.csproj" />
   </Folder>

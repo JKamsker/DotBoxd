@@ -15,27 +15,134 @@ using System.Reflection;
 /// package by type (via <see cref="KernelPackageRegistry"/>) and ships it as verified IR; generated
 /// kernel RPC clients send compact binary IR through <see cref="RemoteKernelRpcControl"/>.
 /// </summary>
-internal sealed class RemotePluginServer
+internal sealed class RemotePluginServer : IAsyncDisposable
 {
-    private readonly IGamePluginControlService _control;
+    private const string NotStartedMessage = "Call StartAsync() before using the server.";
+    private readonly Func<CancellationToken, ValueTask<RemotePluginConnection>>? _connectionFactory;
+    private readonly IReadOnlyList<Func<RemoteKernelControl, ValueTask>> _kernelSetup;
+    private readonly IReadOnlyList<Func<RemoteKernelRpcControl, ValueTask>> _rpcSetup;
+    private IGamePluginControlService? _control;
+    private IAsyncDisposable? _ownedConnection;
+    private RemoteKernelControl? _kernels;
+    private RemoteKernelRpcControl? _kernelRpc;
+    private RemoteWorldControl? _world;
+    private bool _started;
+    private bool _disposed;
 
     public RemotePluginServer(IGamePluginControlService control)
     {
-        _control = control;
-        Kernels = new RemoteKernelControl(control);
-        KernelRpc = new RemoteKernelRpcControl(control);
-        World = new RemoteWorldControl(control, KernelRpc);
+        ArgumentNullException.ThrowIfNull(control);
+        _kernelSetup = [];
+        _rpcSetup = [];
+        InitializeControls(control);
+        _started = true;
     }
 
-    public RemoteKernelControl Kernels { get; }
+    internal RemotePluginServer(
+        Func<CancellationToken, ValueTask<RemotePluginConnection>> connectionFactory,
+        IReadOnlyList<Func<RemoteKernelControl, ValueTask>> kernelSetup,
+        IReadOnlyList<Func<RemoteKernelRpcControl, ValueTask>> rpcSetup)
+    {
+        _connectionFactory = connectionFactory;
+        _kernelSetup = kernelSetup.ToArray();
+        _rpcSetup = rpcSetup.ToArray();
+    }
 
-    public RemoteKernelRpcControl KernelRpc { get; }
+    public RemoteKernelControl Kernels => _started ? _kernels! : throw new InvalidOperationException(NotStartedMessage);
 
-    public RemoteWorldControl World { get; }
+    public RemoteKernelRpcControl KernelRpc => _started ? _kernelRpc! : throw new InvalidOperationException(NotStartedMessage);
+
+    public RemoteWorldControl World => _started ? _world! : throw new InvalidOperationException(NotStartedMessage);
+
+    /// <summary>
+    /// Connects if needed, installs builder-queued kernels in declaration order, and enables the typed
+    /// server surface. The public constructor path is already started and returns immediately.
+    /// </summary>
+    public async ValueTask StartAsync(CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        if (_started)
+        {
+            return;
+        }
+
+        if (_connectionFactory is null)
+        {
+            throw new InvalidOperationException(NotStartedMessage);
+        }
+
+        var connection = await _connectionFactory(cancellationToken).ConfigureAwait(false);
+        _ownedConnection = connection.OwnedConnection;
+        InitializeControls(connection.Control);
+
+        foreach (var setup in _kernelSetup)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await setup(_kernels!).ConfigureAwait(false);
+        }
+
+        foreach (var setup in _rpcSetup)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await setup(_kernelRpc!).ConfigureAwait(false);
+        }
+
+        _started = true;
+    }
+
+    public async ValueTask RunAsync(CancellationToken cancellationToken = default)
+    {
+        if (!_started)
+        {
+            await StartAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        await HoldUntilShutdownAsync(cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>Holds the connection open until the server completes its with-plugin phase.</summary>
-    public ValueTask HoldUntilShutdownAsync() => _control.HoldUntilShutdownAsync();
+    public ValueTask HoldUntilShutdownAsync(CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        if (!_started)
+        {
+            throw new InvalidOperationException(NotStartedMessage);
+        }
+
+        return _control!.HoldUntilShutdownAsync(cancellationToken);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        if (_ownedConnection is not null)
+        {
+            await _ownedConnection.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    private void InitializeControls(IGamePluginControlService control)
+    {
+        _control = control;
+        _kernels = new RemoteKernelControl(control);
+        _kernelRpc = new RemoteKernelRpcControl(control);
+        _world = new RemoteWorldControl(control, _kernelRpc);
+    }
+
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(RemotePluginServer));
+        }
+    }
 }
+
 
 internal sealed class RemoteKernelControl
 {

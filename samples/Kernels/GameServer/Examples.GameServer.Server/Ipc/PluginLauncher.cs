@@ -14,7 +14,7 @@ internal static class PluginLauncher
     private const string ServerProjectDir = "Examples.GameServer.Server";
     private const string PluginDllName = "Examples.GameServer.Plugin.dll";
 
-    public static Process Launch(string pipeName)
+    public static Process Launch(string pipeName, bool useBuilder)
     {
         var pluginDll = ResolvePluginDll();
         var startInfo = new ProcessStartInfo("dotnet")
@@ -25,6 +25,10 @@ internal static class PluginLauncher
         };
         startInfo.ArgumentList.Add(pluginDll);
         startInfo.ArgumentList.Add(pipeName);
+        if (useBuilder)
+        {
+            startInfo.ArgumentList.Add("--use-builder");
+        }
 
         var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
         process.OutputDataReceived += (_, e) => ForwardLine(Console.Out, e.Data);

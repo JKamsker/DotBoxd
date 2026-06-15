@@ -15,14 +15,22 @@ internal static class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        if (args.Length != 1)
+        if (args.Length is < 1 or > 2 || (args.Length == 2 && args[1] != "--use-builder"))
         {
-            await Console.Error.WriteLineAsync("Usage: Examples.GameServer.Plugin <named-pipe-name>").ConfigureAwait(false);
+            await Console.Error
+                .WriteLineAsync("Usage: Examples.GameServer.Plugin <named-pipe-name> [--use-builder]")
+                .ConfigureAwait(false);
             return 1;
         }
 
         var pipeName = args[0];
+        return args.Length == 2
+            ? await RunWithBuilderAsync(pipeName).ConfigureAwait(false)
+            : await RunImperativeAsync(pipeName).ConfigureAwait(false);
+    }
 
+    private static async Task<int> RunImperativeAsync(string pipeName)
+    {
         // Connect to the game server's control plane and wrap it in a server-shaped shim.
         Console.WriteLine($"[plugin] connecting to server pipe '{pipeName}'...");
         await using var connection = await RpcMessagePackIpc.ConnectNamedPipeAsync(pipeName).ConfigureAwait(false);
@@ -39,6 +47,33 @@ internal static class Program
         var killerId = await server.KernelRpc.Register<IMonsterKillerService, MonsterKillerKernel>().ConfigureAwait(false);
         Console.WriteLine($"[plugin] registered kernel RPC service '{killerId}'.");
 
+        await RunPluginWorkAsync(server).ConfigureAwait(false);
+        return 0;
+    }
+
+    private static async Task<int> RunWithBuilderAsync(string pipeName)
+    {
+        Console.WriteLine($"[plugin] connecting to server pipe '{pipeName}'...");
+        await using var server = RemotePluginServerBuilder
+            .FromPipeName(pipeName)
+            .SetupKernels(kernels => kernels
+                .Register<IMonsterAggroService, GuardianKernel>()
+                .Register<IAttackService, RetaliationKernel>())
+            .SetupKernelRpc(kernelRpc => kernelRpc
+                .Register<IMonsterKillerService, MonsterKillerKernel>())
+            .Build();
+
+        await server.StartAsync().ConfigureAwait(false);
+        Console.WriteLine($"[plugin] registered kernel '{RemoteKernelControl.PluginId(typeof(GuardianKernel))}'.");
+        Console.WriteLine($"[plugin] registered kernel '{RemoteKernelControl.PluginId(typeof(RetaliationKernel))}'.");
+        Console.WriteLine($"[plugin] registered kernel RPC service '{server.KernelRpc.PluginId<IMonsterKillerService>()}'.");
+
+        await RunPluginWorkAsync(server).ConfigureAwait(false);
+        return 0;
+    }
+
+    private static async Task RunPluginWorkAsync(RemotePluginServer server)
+    {
         // Tune live settings — strongly typed, one atomic IPC batch under the hood.
         await server.Kernels.Get<GuardianKernel>()
             .SetValuesAsync(k => { k.CalmStrength = "35"; k.AggroRange = 6; }, atomic: true)
@@ -65,7 +100,6 @@ internal static class Program
         await server.HoldUntilShutdownAsync().ConfigureAwait(false);
 
         Console.WriteLine("[plugin] released by server. Disconnecting (kernels will be unloaded). Exiting.");
-        return 0;
     }
 
     private static string FormatKillResults(IReadOnlyList<MonsterKillResult> results)
