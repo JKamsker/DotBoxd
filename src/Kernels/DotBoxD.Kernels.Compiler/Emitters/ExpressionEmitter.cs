@@ -53,11 +53,20 @@ internal sealed class ExpressionEmitter
             case (StackKind.I32, StackKind.Boxed):
                 _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.I32)));
                 break;
+            case (StackKind.I64, StackKind.Boxed):
+                _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.I64)));
+                break;
             case (StackKind.F64, StackKind.Boxed):
                 _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.F64)));
                 break;
+            case (StackKind.Bool, StackKind.Boxed):
+                _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.Bool)));
+                break;
             case (StackKind.Boxed, StackKind.I32):
                 _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AsI32)));
+                break;
+            case (StackKind.Boxed, StackKind.I64):
+                _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AsI64)));
                 break;
             case (StackKind.Boxed, StackKind.F64):
                 _il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AsF64)));
@@ -99,6 +108,12 @@ internal sealed class ExpressionEmitter
         {
             EmitInt32(_il, i32.Value);
             return StackKind.I32;
+        }
+
+        if (value is I64Value i64)
+        {
+            _il.Emit(OpCodes.Ldc_I8, i64.Value);
+            return StackKind.I64;
         }
 
         if (value is F64Value f64)
@@ -154,6 +169,103 @@ internal sealed class ExpressionEmitter
             };
             _il.Emit(OpCodes.Call, Runtime(raw));
             return StackKind.I32;
+        }
+
+        if (binary.Operator is "+" or "-" or "*" or "/" or "%" &&
+            _stackPlan.Infer(binary.Left) is { Name: "I64" } &&
+            _stackPlan.Infer(binary.Right) is { Name: "I64" })
+        {
+            EmitAs(binary.Left, StackKind.I64);
+            EmitAs(binary.Right, StackKind.I64);
+            var raw = binary.Operator switch
+            {
+                "+" => nameof(CompiledRuntime.AddI64Raw),
+                "-" => nameof(CompiledRuntime.SubI64Raw),
+                "*" => nameof(CompiledRuntime.MulI64Raw),
+                "/" => nameof(CompiledRuntime.DivI64Raw),
+                "%" => nameof(CompiledRuntime.RemI64Raw),
+                _ => throw Unsupported("operator not supported by compiler")
+            };
+            _il.Emit(OpCodes.Call, Runtime(raw));
+            return StackKind.I64;
+        }
+
+        if (binary.Operator is "+" or "-" or "*" or "/" &&
+            _stackPlan.Infer(binary.Left) is { Name: "F64" } &&
+            _stackPlan.Infer(binary.Right) is { Name: "F64" })
+        {
+            EmitAs(binary.Left, StackKind.F64);
+            EmitAs(binary.Right, StackKind.F64);
+            var raw = binary.Operator switch
+            {
+                "+" => nameof(CompiledRuntime.AddF64Raw),
+                "-" => nameof(CompiledRuntime.SubF64Raw),
+                "*" => nameof(CompiledRuntime.MulF64Raw),
+                "/" => nameof(CompiledRuntime.DivF64Raw),
+                _ => throw Unsupported("operator not supported by compiler")
+            };
+            _il.Emit(OpCodes.Call, Runtime(raw));
+            return StackKind.F64;
+        }
+
+        if (binary.Operator is "==" or "!=" or "<" or "<=" or ">" or ">=" &&
+            _stackPlan.Infer(binary.Left) is { Name: "I32" } &&
+            _stackPlan.Infer(binary.Right) is { Name: "I32" })
+        {
+            EmitAs(binary.Left, StackKind.I32);
+            EmitAs(binary.Right, StackKind.I32);
+            var raw = binary.Operator switch
+            {
+                "<" => nameof(CompiledRuntime.LtI32Raw),
+                "<=" => nameof(CompiledRuntime.LteI32Raw),
+                ">" => nameof(CompiledRuntime.GtI32Raw),
+                ">=" => nameof(CompiledRuntime.GteI32Raw),
+                "==" => nameof(CompiledRuntime.EqI32Raw),
+                "!=" => nameof(CompiledRuntime.NeI32Raw),
+                _ => throw Unsupported("operator not supported by compiler")
+            };
+            _il.Emit(OpCodes.Call, Runtime(raw));
+            return StackKind.Bool;
+        }
+
+        if (binary.Operator is "==" or "!=" or "<" or "<=" or ">" or ">=" &&
+            _stackPlan.Infer(binary.Left) is { Name: "I64" } &&
+            _stackPlan.Infer(binary.Right) is { Name: "I64" })
+        {
+            EmitAs(binary.Left, StackKind.I64);
+            EmitAs(binary.Right, StackKind.I64);
+            var raw = binary.Operator switch
+            {
+                "<" => nameof(CompiledRuntime.LtI64Raw),
+                "<=" => nameof(CompiledRuntime.LteI64Raw),
+                ">" => nameof(CompiledRuntime.GtI64Raw),
+                ">=" => nameof(CompiledRuntime.GteI64Raw),
+                "==" => nameof(CompiledRuntime.EqI64Raw),
+                "!=" => nameof(CompiledRuntime.NeI64Raw),
+                _ => throw Unsupported("operator not supported by compiler")
+            };
+            _il.Emit(OpCodes.Call, Runtime(raw));
+            return StackKind.Bool;
+        }
+
+        if (binary.Operator is "==" or "!=" or "<" or "<=" or ">" or ">=" &&
+            _stackPlan.Infer(binary.Left) is { Name: "F64" } &&
+            _stackPlan.Infer(binary.Right) is { Name: "F64" })
+        {
+            EmitAs(binary.Left, StackKind.F64);
+            EmitAs(binary.Right, StackKind.F64);
+            var raw = binary.Operator switch
+            {
+                "<" => nameof(CompiledRuntime.LtF64Raw),
+                "<=" => nameof(CompiledRuntime.LteF64Raw),
+                ">" => nameof(CompiledRuntime.GtF64Raw),
+                ">=" => nameof(CompiledRuntime.GteF64Raw),
+                "==" => nameof(CompiledRuntime.EqF64Raw),
+                "!=" => nameof(CompiledRuntime.NeF64Raw),
+                _ => throw Unsupported("operator not supported by compiler")
+            };
+            _il.Emit(OpCodes.Call, Runtime(raw));
+            return StackKind.Bool;
         }
 
         EmitAs(binary.Left, StackKind.Boxed);

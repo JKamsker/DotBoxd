@@ -5,8 +5,8 @@ using System.Runtime.CompilerServices;
 public sealed partial class SandboxContext
 {
     private DeterministicRandom? _deterministicRandom;
+    private BindingReturnCreditTracker? _returnCredits;
     private int _callDepth;
-    private readonly BindingReturnCreditTracker _returnCredits = new();
 
     public SandboxContext(
         SandboxRunId runId,
@@ -103,6 +103,7 @@ public sealed partial class SandboxContext
         Budget.CheckDeadline();
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnterCall()
     {
         if (++_callDepth > Budget.Limits.MaxCallDepth)
@@ -111,6 +112,7 @@ public sealed partial class SandboxContext
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ExitCall()
     {
         if (_callDepth > 0)
@@ -129,11 +131,29 @@ public sealed partial class SandboxContext
 
     public void ChargeValue(SandboxValue value) => Budget.ChargeValue(value, CancellationToken);
 
+    /// <summary>
+    /// Charges a precomputed value shape and the scan-fuel its metering walk would have cost
+    /// (<c>nodes / 64</c>), instead of re-walking the value. The charged fuel and shape are identical to
+    /// <see cref="ChargeValue"/>; this is used by incremental collection operations (see
+    /// <see cref="ValueShapeCache"/>) to avoid an O(n) re-walk on every add/set.
+    /// </summary>
+    internal void ChargeComposedValue(in ShapeInfo info)
+    {
+        CancellationToken.ThrowIfCancellationRequested();
+        var scanFuel = info.Nodes / 64;
+        if (scanFuel > 0)
+        {
+            Budget.ChargeFuel(scanFuel);
+        }
+
+        Budget.ChargeValueShape(info.Shape);
+    }
+
     public void ChargeString(string value)
     {
         CancellationToken.ThrowIfCancellationRequested();
         Budget.ChargeString(value);
-        _returnCredits.RecordString(value);
+        ReturnCredits.RecordString(value);
     }
 
     public void ChargeStringAllocation(int charLength)
@@ -147,7 +167,7 @@ public sealed partial class SandboxContext
         var length = CheckedCharLength(left.Length, right.Length);
         ChargeStringAllocation(length);
         var text = string.Concat(left, right);
-        _returnCredits.RecordString(text);
+        ReturnCredits.RecordString(text);
         return text;
     }
 
@@ -162,14 +182,14 @@ public sealed partial class SandboxContext
 
         ChargeStringAllocation(length);
         var text = value.Substring(startIndex, length);
-        _returnCredits.RecordString(text);
+        ReturnCredits.RecordString(text);
         return text;
     }
 
     internal void RecordStringReturnCredit(string value)
-        => _returnCredits.RecordString(value);
+        => ReturnCredits.RecordString(value);
 
-    public IDisposable BeginBindingReturnCreditScope() => _returnCredits.BeginScope();
+    public IDisposable BeginBindingReturnCreditScope() => ReturnCredits.BeginScope();
 
     public void ChargeLogEvent(string message) => Budget.ChargeLogEvent(message);
 
@@ -257,7 +277,7 @@ public sealed partial class SandboxContext
             CancellationToken,
             Budget);
 
-        if (!_returnCredits.TryConsume(value))
+        if (_returnCredits is null || !_returnCredits.TryConsume(value))
         {
             Budget.ChargeValueShape(shape);
         }
@@ -271,6 +291,8 @@ public sealed partial class SandboxContext
     }
 
     private SharedWallTimeTokenSource? _sharedWallTimeToken;
+
+    private BindingReturnCreditTracker ReturnCredits => _returnCredits ??= new();
 
     public CancellationTokenSource CreateWallTimeToken()
     {

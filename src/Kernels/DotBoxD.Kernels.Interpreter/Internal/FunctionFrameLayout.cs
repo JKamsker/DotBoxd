@@ -20,6 +20,7 @@ internal sealed class FunctionFrameLayout
         _slotKinds = slotKinds;
         SlotCount = slots.Count;
         HasI32Slots = Array.IndexOf(slotKinds, SlotKind.I32) >= 0;
+        HasI64Slots = Array.IndexOf(slotKinds, SlotKind.I64) >= 0;
         HasF64Slots = Array.IndexOf(slotKinds, SlotKind.F64) >= 0;
     }
 
@@ -29,9 +30,11 @@ internal sealed class FunctionFrameLayout
 
     public bool HasI32Slots { get; }
 
+    public bool HasI64Slots { get; }
+
     public bool HasF64Slots { get; }
 
-    public bool HasRawSlots => HasI32Slots || HasF64Slots;
+    public bool HasRawSlots => HasI32Slots || HasI64Slots || HasF64Slots;
 
     public static FunctionFrameLayout Build(
         SandboxFunction function,
@@ -62,6 +65,8 @@ internal sealed class FunctionFrameLayout
     public bool IsF64Slot(int slot) => _slotKinds[slot] == SlotKind.F64;
 
     public bool IsF64Slot(string name) => IsF64Slot(GetSlot(name));
+
+    public bool IsI64Slot(int slot) => _slotKinds[slot] == SlotKind.I64;
 
     private static void CollectStatements(IReadOnlyList<Statement> statements, Dictionary<string, int> slots)
     {
@@ -206,6 +211,7 @@ internal sealed class FunctionFrameLayout
     private static SlotKind KindOf(SandboxType? type)
         => type switch {
             { Name: "I32" } => SlotKind.I32,
+            { Name: "I64" } => SlotKind.I64,
             { Name: "F64" } => SlotKind.F64,
             _ => SlotKind.Boxed
         };
@@ -213,6 +219,7 @@ internal sealed class FunctionFrameLayout
     private static SandboxType? TypeOf(SlotKind kind)
         => kind switch {
             SlotKind.I32 => SandboxType.I32,
+            SlotKind.I64 => SandboxType.I64,
             SlotKind.F64 => SandboxType.F64,
             _ => null
         };
@@ -224,6 +231,7 @@ internal sealed class FunctionFrameLayout
     {
         Boxed,
         I32,
+        I64,
         F64
     }
 }

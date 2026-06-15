@@ -55,10 +55,11 @@ public sealed partial class ResourceMeter
 
         var count = checked((int)calls);
         HostCalls = AddChecked(HostCalls, count, $"host call budget exhausted at {bindingId}");
-        var bindingCalls = _callsByBinding.TryGetValue(bindingId, out var existing)
+        var callsByBinding = CallsByBinding;
+        var bindingCalls = callsByBinding.TryGetValue(bindingId, out var existing)
             ? AddChecked(existing, count, $"binding call budget exhausted at {bindingId}")
             : count;
-        _callsByBinding[bindingId] = bindingCalls;
+        callsByBinding[bindingId] = bindingCalls;
     }
 
     internal bool CanChargeStringValues(string value, long count)

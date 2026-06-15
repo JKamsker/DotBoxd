@@ -66,6 +66,12 @@ public static class SandboxValueValidator
         SandboxErrorCode errorCode,
         string message)
     {
+        if (IsBuiltInScalarType(value, expectedType))
+        {
+            RequireScalarInvariants(value, errorCode, message);
+            return;
+        }
+
         if (!IsKnownValueKind(value) ||
             value.Type != expectedType ||
             !expectedType.IsKnown() ||
@@ -167,6 +173,20 @@ public static class SandboxValueValidator
     private static bool IsKnownValueKind(SandboxValue value)
         => value is UnitValue or BoolValue or I32Value or I64Value or F64Value or StringValue or OpaqueIdValue
             or SandboxPathValue or SandboxUriValue or ListValue or MapValue or RecordValue;
+
+    private static bool IsBuiltInScalarType(SandboxValue value, SandboxType expectedType)
+        => value switch
+        {
+            UnitValue => ReferenceEquals(expectedType, SandboxType.Unit),
+            BoolValue => ReferenceEquals(expectedType, SandboxType.Bool),
+            I32Value => ReferenceEquals(expectedType, SandboxType.I32),
+            I64Value => ReferenceEquals(expectedType, SandboxType.I64),
+            F64Value => ReferenceEquals(expectedType, SandboxType.F64),
+            StringValue => ReferenceEquals(expectedType, SandboxType.String),
+            SandboxPathValue => ReferenceEquals(expectedType, SandboxType.SandboxPath),
+            SandboxUriValue => ReferenceEquals(expectedType, SandboxType.SandboxUri),
+            _ => false
+        };
 
     internal static void RequireScalarInvariants(
         SandboxValue value,

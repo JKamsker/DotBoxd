@@ -84,6 +84,12 @@ internal sealed class MethodEmitter
                 UpdateF64Facts(assignment.Name, assignment.Value);
                 return false;
             case ReturnStatement ret:
+                if (BoolReturnFastPathEmitter.TryEmit(ret.Value, _il, _stackPlan, Declare))
+                {
+                    EmitReturnValue();
+                    return true;
+                }
+
                 _expressions.EmitAs(ret.Value, StackKind.Boxed);
                 EmitReturnValue();
                 return true;
@@ -178,6 +184,18 @@ internal sealed class MethodEmitter
             return;
         }
 
+        if (BranchedI32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, _functionModels, Declare))
+        {
+            _nonNegativeF64Locals.Clear();
+            return;
+        }
+
+        if (I64LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, Declare))
+        {
+            _nonNegativeF64Locals.Clear();
+            return;
+        }
+
         _nonNegativeF64Locals.Clear();
         var index = _il.DeclareLocal(typeof(int));
         var end = _il.DeclareLocal(typeof(int));
@@ -210,6 +228,12 @@ internal sealed class MethodEmitter
     private void EmitWhile(WhileStatement loop)
     {
         _nonNegativeF64Locals.Clear();
+        if (WhileI32LoopFastPathEmitter.TryEmit(loop, _il, _stackPlan, _expressions, _functionModels, Declare))
+        {
+            _nonNegativeF64Locals.Clear();
+            return;
+        }
+
         var startLabel = _il.DefineLabel();
         var finishLabel = _il.DefineLabel();
         _il.MarkLabel(startLabel);
@@ -239,6 +263,7 @@ internal sealed class MethodEmitter
     private static Type LocalType(StackKind kind)
         => kind switch {
             StackKind.I32 => typeof(int),
+            StackKind.I64 => typeof(long),
             StackKind.F64 => typeof(double),
             _ => typeof(SandboxValue)
         };

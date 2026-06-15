@@ -9,7 +9,8 @@ namespace DotBoxD.Kernels.Tests;
 /// result's audit-event list twice per recorded execution: once with
 /// <c>LastOrDefault(e =&gt; e.Kind == "RunSummary")</c> for the run-summary fields and again
 /// with <c>FirstOrDefault(e =&gt; e.Kind == "ExecutionFallback")</c> for the fallback reason.
-/// <see cref="PluginExecutionObserver.Record"/> now walks the audit list a single time and
+/// <see cref="PluginExecutionObserver.Record(string, ExecutionMode, SandboxExecutionResult)"/>
+/// now walks the audit list a single time and
 /// captures both markers in one pass. These tests pin the observable telemetry mapping that
 /// the single-pass rewrite must preserve byte-for-byte: a successful interpreted run derives
 /// its run-summary fields (cache status, runtime form, materialization) from the summary

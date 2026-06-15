@@ -42,6 +42,63 @@ public sealed class HookPipelineFluentTests
     }
 
     [Fact]
+    public async Task Publish_with_cancellable_token_exposes_that_token_to_handlers()
+    {
+        using var server = PluginServer.Create();
+        using var cts = new CancellationTokenSource();
+        CancellationToken observed = default;
+        server.Hooks.On<Ping>()
+            .InvokeLocal((_, ctx) => observed = ctx.CancellationToken);
+
+        await server.Hooks.PublishAsync(new Ping("monster-1", 21), cts.Token);
+
+        Assert.Equal(cts.Token, observed);
+    }
+
+    [Fact]
+    public async Task Async_filters_and_handlers_resume_in_order()
+    {
+        using var server = PluginServer.Create();
+        var observed = new List<string>();
+        server.Hooks.On<Ping>()
+            .Where(async (_, _) => {
+                await Task.Yield();
+                observed.Add("filter-1");
+                return true;
+            })
+            .Where((_, _) => {
+                observed.Add("filter-2");
+                return true;
+            })
+            .InvokeLocal(async (_, _) => {
+                await Task.Yield();
+                observed.Add("handler-1");
+            })
+            .InvokeLocal((_, _) => observed.Add("handler-2"));
+
+        await server.Hooks.PublishAsync(new Ping("monster-1", 21));
+
+        Assert.Equal(["filter-1", "filter-2", "handler-1", "handler-2"], observed);
+    }
+
+    [Fact]
+    public async Task Async_filter_false_still_short_circuits_handlers()
+    {
+        using var server = PluginServer.Create();
+        var handled = false;
+        server.Hooks.On<Ping>()
+            .Where(async (_, _) => {
+                await Task.Yield();
+                return false;
+            })
+            .InvokeLocal((_, _) => handled = true);
+
+        await server.Hooks.PublishAsync(new Ping("monster-1", 21));
+
+        Assert.False(handled);
+    }
+
+    [Fact]
     public void InvokeKernel_lambda_throws_until_lowered()
     {
         using var server = PluginServer.Create();

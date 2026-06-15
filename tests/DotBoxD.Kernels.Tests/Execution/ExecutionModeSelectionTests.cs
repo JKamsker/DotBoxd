@@ -86,15 +86,14 @@ public sealed class ExecutionModeSelectionTests
     }
 
     [Fact]
-    public async Task Auto_mode_keeps_effectful_entrypoint_interpreted_after_hotness_threshold()
+    public async Task Auto_mode_promotes_effectful_entrypoint_to_compiled_after_hotness_threshold()
     {
-        var compiler = new FailingCompiler();
         var host = SandboxHost.Create(builder =>
         {
             builder.AddDefaultPureBindings();
             builder.AddLogBindings();
             builder.UseInterpreter();
-            builder.UseCompilerIfAvailable(compiler);
+            builder.UseCompilerIfAvailable();
         });
         var module = await host.ImportJsonAsync("""
         {
@@ -126,8 +125,7 @@ public sealed class ExecutionModeSelectionTests
         Assert.True(first.Succeeded, first.Error?.SafeMessage);
         Assert.True(second.Succeeded, second.Error?.SafeMessage);
         Assert.Equal(ExecutionMode.Interpreted, first.ActualMode);
-        Assert.Equal(ExecutionMode.Interpreted, second.ActualMode);
-        Assert.Equal(0, compiler.Calls);
+        Assert.Equal(ExecutionMode.Compiled, second.ActualMode);
     }
 
     [Fact]

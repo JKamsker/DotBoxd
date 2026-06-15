@@ -23,6 +23,12 @@ public sealed partial class SandboxHost
         string entrypoint,
         out RevokedCapability revoked)
     {
+        if (_revokedCapabilities.IsEmpty)
+        {
+            revoked = null!;
+            return false;
+        }
+
         foreach (var capabilityId in RequiredCapabilities(plan, entrypoint))
         {
             if (_revokedCapabilities.TryGetValue(capabilityId, out revoked!))

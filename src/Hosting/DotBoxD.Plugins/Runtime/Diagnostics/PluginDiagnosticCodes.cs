@@ -3,7 +3,7 @@ namespace DotBoxD.Plugins;
 using DotBoxD.Kernels;
 
 /// <summary>
-/// The runtime phase that emits a plugin <c>SGP*</c> diagnostic, so a host can tell a
+/// The runtime phase that emits a plugin <c>DBXK*</c> diagnostic, so a host can tell a
 /// static-package-upload rejection from a prepared-plan mismatch or a live runtime check.
 /// </summary>
 public enum PluginDiagnosticPhase
@@ -51,7 +51,7 @@ public enum PluginDiagnosticAudience
 /// Public reference entry for a single runtime plugin diagnostic
 /// <see cref="SandboxDiagnostic.Code"/> emitted by the <c>DotBoxD.Plugins</c> package.
 /// </summary>
-/// <param name="Code">The stable <c>SGP*</c> diagnostic code.</param>
+/// <param name="Code">The stable <c>DBXK*</c> diagnostic code.</param>
 /// <param name="Phase">The runtime phase that emits the code.</param>
 /// <param name="Audience">Who must act on the diagnostic.</param>
 /// <param name="Meaning">A short human-readable description of the rule that was violated.</param>
@@ -66,16 +66,16 @@ public sealed record PluginDiagnosticReference(
     string Remediation);
 
 /// <summary>
-/// Public, maintained reference for the runtime <c>SGP*</c> diagnostic codes emitted by the
+/// Public, maintained reference for the runtime <c>DBXK*</c> diagnostic codes emitted by the
 /// <c>DotBoxD.Plugins</c> package during plugin-package install, prepared-package validation,
 /// runtime kernel entrypoint checks, and live-setting validation.
 /// </summary>
 /// <remarks>
 /// This is the runtime counterpart to the <c>DotBoxD.Plugins.Analyzer</c> analyzer-local
-/// <c>SGP</c> reference: the analyzer documents compile-time SDK diagnostics, while this catalog
+/// <c>DBXK</c> reference: the analyzer documents compile-time SDK diagnostics, while this catalog
 /// documents the diagnostics a host or upload UI sees when an uploaded or generated package is
 /// rejected. Consumers can use <see cref="All"/> / <see cref="TryGetReference"/> to map an
-/// <c>SGP*</c> code to its documented meaning, emitting phase, responsible audience, likely cause,
+/// <c>DBXK*</c> code to its documented meaning, emitting phase, responsible audience, likely cause,
 /// and remediation instead of surfacing an opaque code.
 /// </remarks>
 public static class PluginDiagnosticCodes
@@ -146,6 +146,10 @@ public static class PluginDiagnosticCodes
             "A kernel entrypoint does not declare the manifest live settings as trailing parameters.",
             "Live setting parameters are missing, misnamed, mistyped, or out of order at the end of the entrypoint.",
             "Append each live setting as a trailing parameter with the exact declared name and type."),
+        new("DBXK036", PluginDiagnosticPhase.RuntimeEntrypoint, PluginDiagnosticAudience.HostOperator,
+            "An event value writer reports a value count that does not match the registered adapter parameters.",
+            "The host-provided IPluginEventValueWriter<TEvent> returns a different EventValueCount than its Parameters count.",
+            "Make EventValueCount match the adapter Parameters count so reusable event-value buffers can be built safely."),
         new("DBXK040", PluginDiagnosticPhase.PackageValidation, PluginDiagnosticAudience.PluginAuthor,
             "The manifest declares an unsupported effect, or declares no verified effects at all.",
             "An effect name is not a known SandboxEffect, or the manifest effect set is empty.",
@@ -196,7 +200,7 @@ public static class PluginDiagnosticCodes
         References.ToDictionary(reference => reference.Code, StringComparer.Ordinal);
 
     /// <summary>
-    /// The complete, maintained catalog of runtime plugin diagnostic codes. Every <c>SGP*</c> code
+    /// The complete, maintained catalog of runtime plugin diagnostic codes. Every <c>DBXK*</c> code
     /// that the <c>DotBoxD.Plugins</c> runtime can emit has exactly one entry here.
     /// </summary>
     public static IReadOnlyList<PluginDiagnosticReference> All => References;
@@ -220,7 +224,7 @@ public static class PluginDiagnosticCodes
             PluginDiagnosticPhase.PackageValidation,
             PluginDiagnosticAudience.PluginAuthor,
             "Unknown runtime plugin diagnostic code with no public reference entry.",
-            "An SGP code was emitted that is not catalogued in this reference, likely a newly added code.",
+            "A DBXK code was emitted that is not catalogued in this reference, likely a newly added code.",
             "Update the public plugin diagnostics reference to document this code; until then treat it as a rejection signal.");
         return false;
     }

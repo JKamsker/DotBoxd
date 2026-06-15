@@ -160,6 +160,18 @@ public interface IPluginEventAdapter<in TEvent>
     IReadOnlyList<SandboxValue> ToSandboxValues(TEvent e);
 }
 
+/// <summary>
+/// Optional low-allocation event adapter path. Implement this when event values can be written
+/// directly into the runtime input buffer; <see cref="EventValueCount"/> must match
+/// <see cref="IPluginEventAdapter{TEvent}.Parameters"/>.
+/// </summary>
+public interface IPluginEventValueWriter<in TEvent> : IPluginEventAdapter<TEvent>
+{
+    int EventValueCount { get; }
+    SandboxValue ToSandboxValue(TEvent e, int index);
+    void CopySandboxValues(TEvent e, SandboxValue[] destination, int destinationIndex);
+}
+
 public sealed record PluginMessage(string TargetId, string Message);
 
 public interface IPluginMessageSink

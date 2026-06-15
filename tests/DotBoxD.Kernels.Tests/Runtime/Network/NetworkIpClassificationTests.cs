@@ -22,7 +22,7 @@ public sealed class NetworkIpClassificationTests
             networkInvoker: FakeInvoker("blocked"),
             dnsResolver: StaticDns(IPAddress.Parse(address)));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
             .WithFuel(5_000)
             .Build();
@@ -41,7 +41,7 @@ public sealed class NetworkIpClassificationTests
             networkInvoker: FakeInvoker("blocked"),
             dnsResolver: StaticDns(IPAddress.Parse("192.88.99.2")));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
             .WithFuel(5_000)
             .Build();

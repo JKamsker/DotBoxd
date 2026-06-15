@@ -142,19 +142,20 @@ internal static class F64LoopFastPathEmitter
         private readonly string? _name;
         private readonly double _literal;
         private readonly ExpressionPlan? _operand;
+        private readonly ExpressionPlan? _right;
 
-        private ExpressionPlan(ExpressionKind kind, string bindingId = "", string? name = null, double literal = 0, ExpressionPlan? operand = null, bool preservesNonNegative = false)
+        private ExpressionPlan(ExpressionKind kind, string bindingId = "", string? name = null, double literal = 0, ExpressionPlan? operand = null, ExpressionPlan? right = null, bool preservesNonNegative = false)
         {
             _kind = kind;
             _name = name;
             _literal = literal;
             _operand = operand;
+            _right = right;
             BindingId = bindingId;
             PreservesNonNegative = preservesNonNegative;
-            FuelCost = 1 + (operand?.FuelCost ?? 0);
-            BindingCallCount = kind is ExpressionKind.Literal or ExpressionKind.Variable
-                ? 0
-                : 1 + (operand?.BindingCallCount ?? 0);
+            FuelCost = 1 + (operand?.FuelCost ?? 0) + (right?.FuelCost ?? 0);
+            BindingCallCount = (operand?.BindingCallCount ?? 0) + (right?.BindingCallCount ?? 0)
+                + (kind is ExpressionKind.Sqrt or ExpressionKind.Floor or ExpressionKind.Ceil or ExpressionKind.Round ? 1 : 0);
         }
 
         public string BindingId { get; }
@@ -174,10 +175,35 @@ internal static class F64LoopFastPathEmitter
                     return true;
                 case CallExpression call:
                     return TryCreateCall(call, target, stackPlan, bindings, nonNegativeF64Locals, out plan);
+                case BinaryExpression { Operator: "+" or "-" or "*" or "/" } binary:
+                    return TryCreateBinary(binary, target, stackPlan, bindings, nonNegativeF64Locals, out plan);
                 default:
                     plan = null!;
                     return false;
             }
+        }
+
+        // Pure f64 arithmetic only (both operands binding-free): keeps the single bulk loop charge. An operand
+        // that itself calls a binding falls back to the general (per-subexpression metered) path.
+        private static bool TryCreateBinary(BinaryExpression binary, string target, LocalStackKindPlanner stackPlan, IBindingCatalog bindings, IReadOnlySet<string> nonNegativeF64Locals, out ExpressionPlan plan)
+        {
+            plan = null!;
+            if (!TryCreate(binary.Left, target, stackPlan, bindings, nonNegativeF64Locals, out var left) ||
+                !TryCreate(binary.Right, target, stackPlan, bindings, nonNegativeF64Locals, out var right) ||
+                left.BindingCallCount > 0 || right.BindingCallCount > 0)
+            {
+                return false;
+            }
+
+            var kind = binary.Operator switch
+            {
+                "+" => ExpressionKind.Add,
+                "-" => ExpressionKind.Sub,
+                "*" => ExpressionKind.Mul,
+                _ => ExpressionKind.Div
+            };
+            plan = new ExpressionPlan(kind, operand: left, right: right);
+            return true;
         }
 
         public void Emit(ILGenerator il, Func<string, (LocalBuilder Local, StackKind Kind)> declare)
@@ -189,6 +215,11 @@ internal static class F64LoopFastPathEmitter
                     break;
                 case ExpressionKind.Variable:
                     il.Emit(OpCodes.Ldloc, declare(_name!).Local);
+                    break;
+                case ExpressionKind.Add or ExpressionKind.Sub or ExpressionKind.Mul or ExpressionKind.Div:
+                    _operand!.Emit(il, declare);
+                    _right!.Emit(il, declare);
+                    il.Emit(OpCodes.Call, Runtime(RawMethod(_kind)));
                     break;
                 default:
                     _operand!.Emit(il, declare);
@@ -260,9 +291,13 @@ internal static class F64LoopFastPathEmitter
                 ExpressionKind.Floor => nameof(CompiledRuntime.FloorF64Raw),
                 ExpressionKind.Ceil => nameof(CompiledRuntime.CeilF64Raw),
                 ExpressionKind.Round => nameof(CompiledRuntime.RoundF64Raw),
+                ExpressionKind.Add => nameof(CompiledRuntime.AddF64Raw),
+                ExpressionKind.Sub => nameof(CompiledRuntime.SubF64Raw),
+                ExpressionKind.Mul => nameof(CompiledRuntime.MulF64Raw),
+                ExpressionKind.Div => nameof(CompiledRuntime.DivF64Raw),
                 _ => ""
             };
     }
 
-    private enum ExpressionKind { Literal, Variable, Sqrt, Floor, Ceil, Round }
+    private enum ExpressionKind { Literal, Variable, Sqrt, Floor, Ceil, Round, Add, Sub, Mul, Div }
 }

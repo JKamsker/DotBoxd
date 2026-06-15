@@ -100,7 +100,25 @@ internal static class StringLengthLoopFastPathEmitter
         il.Emit(OpCodes.Ldstr, "string.length");
         il.Emit(OpCodes.Ldloc, iterations);
         il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ChargeBindingCalls)));
-        EmitLoopBody(fastLoop, finish, index, end, length, range.LocalName, plan, il, declare, chargeBinding: false);
+        if (plan.AddToTarget)
+        {
+            // EXPERIMENT (exp/closed-form-accumulation): the hoisted length is loop-invariant, so the whole
+            // accumulation loop "target += length" collapses to "target += length * iterations" computed in
+            // O(1). AccumulateLinearI32 charges the identical per-iteration loop fuel and reproduces the
+            // checked-overflow throw point exactly, so the only observable change is wall-time.
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Ldloc, declare(plan.Target).Local);
+            il.Emit(OpCodes.Ldloc, length);
+            il.Emit(OpCodes.Ldloc, iterations);
+            EmitInt32(il, plan.FuelPerIteration);
+            il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AccumulateLinearI32)));
+            il.Emit(OpCodes.Stloc, declare(plan.Target).Local);
+            il.Emit(OpCodes.Br, finish);
+        }
+        else
+        {
+            EmitLoopBody(fastLoop, finish, index, end, length, range.LocalName, plan, il, declare, chargeBinding: false);
+        }
 
         il.MarkLabel(fallback);
         EmitLoopBody(fallbackLoop, finish, index, end, length, range.LocalName, plan, il, declare, chargeBinding: true);

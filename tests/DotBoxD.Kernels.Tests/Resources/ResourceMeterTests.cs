@@ -96,4 +96,52 @@ public sealed class ResourceMeterTests
 
         Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
     }
+
+    [Fact]
+    public void Flat_scalar_list_charge_preserves_resource_usage()
+    {
+        var meter = new ResourceMeter(new ResourceLimits());
+        var value = SandboxValue.FromList(
+            [
+                SandboxValue.FromInt32(1),
+                SandboxValue.FromString("ab"),
+                SandboxValue.FromBool(true)
+            ],
+            SandboxType.I32);
+
+        meter.ChargeValue(value);
+
+        Assert.Equal(3, meter.CollectionElements);
+        Assert.Equal(4, meter.StringBytes);
+        Assert.Equal(4, meter.AllocatedBytes);
+    }
+
+    [Fact]
+    public void Flat_scalar_list_charge_preserves_quota_failures()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxListLength: 2));
+        var value = SandboxValue.FromList(
+            [SandboxValue.FromInt32(1), SandboxValue.FromInt32(2), SandboxValue.FromInt32(3)],
+            SandboxType.I32);
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() => meter.ChargeValue(value));
+
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
+    }
+
+    [Fact]
+    public void ResetForReuse_clears_usage_and_per_binding_counts()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxHostCalls: 2));
+        meter.ChargeValue(SandboxValue.FromString("fire"));
+        meter.ChargeHostCall("test.binding", maxCallsPerRun: 1);
+
+        meter.ResetForReuse();
+
+        var usage = meter.Snapshot();
+        Assert.Equal(0, usage.HostCalls);
+        Assert.Equal(0, usage.StringBytes);
+        Assert.Equal(0, usage.AllocatedBytes);
+        meter.ChargeHostCall("test.binding", maxCallsPerRun: 1);
+    }
 }

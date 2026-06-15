@@ -156,6 +156,35 @@ public sealed class WorkerAuditValidationTests
         Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
     }
 
+    [Fact]
+    public async Task Worker_path_clears_successful_summary_suppression_so_audit_stays_valid()
+    {
+        // SuppressSuccessfulRunSummaryAudit is an in-process-only optimization. Worker-result
+        // validation requires exactly one RunSummary, so the executor must strip the flag before
+        // handing options to the worker; otherwise a suppressed successful run would emit no
+        // summary and fail validation. The worker here mirrors the real runner: it suppresses the
+        // summary only if the flag survives.
+        SandboxExecutionOptions? observed = null;
+        var worker = new RecordingWorker(options => observed = options);
+        var host = Host(worker);
+        var plan = await PrepareAsync(host);
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.FromList([SandboxValue.FromInt32(1), SandboxValue.FromInt32(1)]),
+            new SandboxExecutionOptions
+            {
+                Isolation = SandboxIsolation.WorkerProcess,
+                SuppressSuccessfulRunSummaryAudit = true
+            });
+
+        Assert.NotNull(observed);
+        Assert.False(observed!.SuppressSuccessfulRunSummaryAudit);
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        Assert.Single(result.AuditEvents, e => e.Kind == "RunSummary");
+    }
+
     private static SandboxHost Host(ISandboxWorkerClient worker)
         => SandboxHost.Create(builder =>
         {
@@ -203,6 +232,49 @@ public sealed class WorkerAuditValidationTests
                     ])
             ],
             new Dictionary<string, string>());
+
+    private sealed class RecordingWorker(Action<SandboxExecutionOptions> onOptions) : ISandboxWorkerClient
+    {
+        public ValueTask<SandboxExecutionResult> ExecuteInWorkerAsync(
+            ExecutionPlan plan,
+            string entrypoint,
+            SandboxValue input,
+            SandboxExecutionOptions options,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            onOptions(options);
+            var runId = options.RunId ?? SandboxRunId.New();
+            var budget = new ResourceMeter(plan.Budget);
+            var audit = new InMemoryAuditSink();
+
+            // Mirror the real runner: emit the successful RunSummary unless suppression survived.
+            if (!options.SuppressSuccessfulRunSummaryAudit)
+            {
+                audit.Write(new SandboxAuditEvent(
+                    runId,
+                    "RunSummary",
+                    DateTimeOffset.UtcNow,
+                    true,
+                    ResourceId: $"module:{plan.ModuleHash}",
+                    Fields: new Dictionary<string, string>(
+                        RunSummaryAuditFields.Create(plan, budget, ExecutionMode.Interpreted, "None"),
+                        StringComparer.Ordinal)));
+            }
+
+            return ValueTask.FromResult(new SandboxExecutionResult
+            {
+                Succeeded = true,
+                Value = SandboxValue.FromInt32(35),
+                ResourceUsage = budget.Snapshot(),
+                AuditEvents = audit.Events,
+                ActualMode = ExecutionMode.Interpreted,
+                ModuleHash = plan.ModuleHash,
+                PlanHash = plan.PlanHash,
+                PolicyHash = plan.PolicyHash
+            });
+        }
+    }
 
     private sealed class AuditForgingWorker(
         Func<ExecutionPlan, SandboxRunId, SandboxAuditEvent> forgeAuditEvent,

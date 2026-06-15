@@ -9,22 +9,24 @@ internal sealed class F64ExpressionPlan
     private readonly int _slot;
     private readonly double _literal;
     private readonly F64ExpressionPlan? _operand;
+    private readonly F64ExpressionPlan? _right;
 
     private F64ExpressionPlan(
         ExpressionKind kind,
         int slot = 0,
         double literal = 0,
         F64ExpressionPlan? operand = null,
+        F64ExpressionPlan? right = null,
         bool preservesNonNegative = false)
     {
         _kind = kind;
         _slot = slot;
         _literal = literal;
         _operand = operand;
-        FuelCost = 1 + (operand?.FuelCost ?? 0);
-        BindingCallCount = kind is ExpressionKind.Literal or ExpressionKind.RawVariable or ExpressionKind.BoxedVariable
-            ? 0
-            : 1 + (operand?.BindingCallCount ?? 0);
+        _right = right;
+        FuelCost = 1 + (operand?.FuelCost ?? 0) + (right?.FuelCost ?? 0);
+        BindingCallCount = (operand?.BindingCallCount ?? 0) + (right?.BindingCallCount ?? 0)
+            + (kind is ExpressionKind.Sqrt or ExpressionKind.Floor or ExpressionKind.Ceil or ExpressionKind.Round ? 1 : 0);
         PreservesNonNegative = preservesNonNegative;
     }
 
@@ -41,6 +43,12 @@ internal sealed class F64ExpressionPlan
             ExpressionKind.Floor => Math.Floor(_operand!.Evaluate(frame)),
             ExpressionKind.Ceil => Math.Ceiling(_operand!.Evaluate(frame)),
             ExpressionKind.Round => Math.Round(_operand!.Evaluate(frame), MidpointRounding.ToEven),
+            // Arithmetic goes through SandboxFloat64Math (finiteness-enforced), matching the boxed interpreter
+            // path and the compiled *F64Raw helpers exactly.
+            ExpressionKind.Add => SandboxFloat64Math.Add(_operand!.Evaluate(frame), _right!.Evaluate(frame)),
+            ExpressionKind.Sub => SandboxFloat64Math.Subtract(_operand!.Evaluate(frame), _right!.Evaluate(frame)),
+            ExpressionKind.Mul => SandboxFloat64Math.Multiply(_operand!.Evaluate(frame), _right!.Evaluate(frame)),
+            ExpressionKind.Div => SandboxFloat64Math.Divide(_operand!.Evaluate(frame), _right!.Evaluate(frame)),
             _ => throw Unsupported()
         };
 
@@ -70,10 +78,41 @@ internal sealed class F64ExpressionPlan
                 return true;
             case CallExpression call when TryCreateUnaryBinding(call, frame, targetName, bindings, out plan, out binding):
                 return true;
+            case BinaryExpression { Operator: "+" or "-" or "*" or "/" } binary
+                when TryCreateBinary(binary, frame, targetName, bindings, out plan):
+                return true;
             default:
                 plan = null!;
                 return false;
         }
+    }
+
+    // Pure f64 arithmetic only (both operands binding-free). An operand that calls a binding falls back to the
+    // boxed evaluator, keeping the single-binding bulk-charge contract of the loop runner intact.
+    private static bool TryCreateBinary(
+        BinaryExpression binary,
+        InterpreterFrame frame,
+        string targetName,
+        IBindingCatalog bindings,
+        out F64ExpressionPlan plan)
+    {
+        plan = null!;
+        if (!TryCreate(binary.Left, frame, targetName, bindings, out var left, out _) ||
+            !TryCreate(binary.Right, frame, targetName, bindings, out var right, out _) ||
+            left.BindingCallCount > 0 || right.BindingCallCount > 0)
+        {
+            return false;
+        }
+
+        var kind = binary.Operator switch
+        {
+            "+" => ExpressionKind.Add,
+            "-" => ExpressionKind.Sub,
+            "*" => ExpressionKind.Mul,
+            _ => ExpressionKind.Div
+        };
+        plan = new F64ExpressionPlan(kind, operand: left, right: right);
+        return true;
     }
 
     private static bool TryCreateUnaryBinding(
@@ -165,6 +204,10 @@ internal sealed class F64ExpressionPlan
         Sqrt,
         Floor,
         Ceil,
-        Round
+        Round,
+        Add,
+        Sub,
+        Mul,
+        Div
     }
 }

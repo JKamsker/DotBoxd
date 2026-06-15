@@ -5,6 +5,19 @@ namespace DotBoxD.Kernels.Tests;
 public sealed class ResourceScanCancellationTests
 {
     [Fact]
+    public void Incremental_shape_scan_observes_cancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var value = SandboxValue.FromList(
+            Enumerable.Range(0, 10_000).Select(SandboxValue.FromInt32).ToArray(),
+            SandboxType.I32);
+
+        Assert.Throws<OperationCanceledException>(() =>
+            SandboxValueShapeMeter.MeasureWithNodes(value, cancellation.Token));
+    }
+
+    [Fact]
     public async Task Entrypoint_input_shape_scan_observes_cancellation()
     {
         using var cancellation = new CancellationTokenSource();

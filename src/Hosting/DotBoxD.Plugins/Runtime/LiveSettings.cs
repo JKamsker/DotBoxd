@@ -248,6 +248,7 @@ public sealed class LiveSettingStore
     {
         private readonly object _gate = new();
         private object? _value = value;
+        private SandboxValue? _sandboxValue;
 
         public string Name => definition.Name;
         public LiveSettingDefinition Definition => definition;
@@ -262,7 +263,11 @@ public sealed class LiveSettingStore
         }
 
         public SandboxValue ToSandboxValue()
-            => LiveSettingTypeConverter.ToSandboxValue(definition.Type, CurrentValue);
+        {
+            lock (_gate) {
+                return _sandboxValue ??= LiveSettingTypeConverter.ToSandboxValue(definition.Type, _value);
+            }
+        }
 
         public void SetObject(object? value)
             => ApplyCoerced(Coerce(value));
@@ -285,6 +290,7 @@ public sealed class LiveSettingStore
         {
             lock (_gate) {
                 _value = coercedValue;
+                _sandboxValue = null;
             }
         }
     }

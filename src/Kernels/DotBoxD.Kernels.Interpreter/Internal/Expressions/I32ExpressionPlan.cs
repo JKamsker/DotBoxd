@@ -2,12 +2,13 @@ namespace DotBoxD.Kernels.Interpreter.Internal;
 
 using DotBoxD.Kernels;
 
-internal sealed class I32ExpressionPlan
+internal sealed partial class I32ExpressionPlan
 {
     private readonly ExpressionKind _kind;
     private readonly int _value;
     private readonly int _value2;
     private readonly int _value3;
+    private readonly uint _magic;
     private readonly I32ExpressionPlan? _left;
     private readonly I32ExpressionPlan? _right;
 
@@ -24,9 +25,44 @@ internal sealed class I32ExpressionPlan
         _value = value;
         _value2 = value2;
         _value3 = value3;
+        // For the fused `(... ) % const` kinds, precompute floor(2^32 / divisor) so the runtime modulo can use an
+        // exact reciprocal multiply (FastRemainder) instead of a hardware idiv. Only valid for a positive divisor.
+        _magic = value3 > 0 ? (uint)((1UL << 32) / (uint)value3) : 0u;
         _left = left;
         _right = right;
         FuelCost = fuelCost ?? 1 + (left?.FuelCost ?? 0) + (right?.FuelCost ?? 0);
+    }
+
+    // Exact `a % d` for a positive constant divisor d, using the precomputed reciprocal m = floor(2^32 / d).
+    // For a >= 0: q = (a*m)>>32 is floor(a/d) or one less, so r = a - q*d lands in [0, 2d) and a single
+    // compare-subtract yields the exact remainder (no idiv; a*m < 2^63 so no overflow). Negative dividends fall
+    // back to the checked modulo, keeping the result byte-identical to SandboxInt32Math.Remainder for all inputs.
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static int FastRemainder(int a, int divisor, uint magic)
+    {
+        if (magic == 0u || a < 0)
+        {
+            return SandboxInt32Math.Remainder(a, divisor);
+        }
+
+        var q = (int)(((ulong)(uint)a * magic) >> 32);
+        var r = a - (q * divisor);
+        return r >= divisor ? r - divisor : r;
+    }
+
+    // Exact `a / d` (truncated) for a positive constant divisor d, same reciprocal as FastRemainder: the
+    // quotient estimate q = (a*m)>>32 is floor(a/d) or one less, corrected up when the remainder reaches d.
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static int FastDivide(int a, int divisor, uint magic)
+    {
+        if (magic == 0u || a < 0)
+        {
+            return SandboxInt32Math.Divide(a, divisor);
+        }
+
+        var q = (int)(((ulong)(uint)a * magic) >> 32);
+        var r = a - (q * divisor);
+        return r >= divisor ? q + 1 : q;
     }
 
     public int FuelCost { get; }
@@ -42,6 +78,16 @@ internal sealed class I32ExpressionPlan
         {
             slot = variable._value;
             divisor = literal._value;
+            return true;
+        }
+
+        // `rawVar % const` now plans as RemainderByConst (left = raw variable, divisor in _value3); recognize it
+        // too so the list-get cyclic-index fast path still matches.
+        if (_kind == ExpressionKind.RemainderByConst &&
+            _left is { _kind: ExpressionKind.RawVariable } byConstVariable)
+        {
+            slot = byConstVariable._value;
+            divisor = _value3;
             return true;
         }
 
@@ -111,9 +157,16 @@ internal sealed class I32ExpressionPlan
             ExpressionKind.BoxedVariable => frame.ReadInt32Slot(_value),
             ExpressionKind.Negate => SandboxInt32Math.Negate(_left!.Evaluate(frame, context)),
             ExpressionKind.InlineCall => EvaluateInlineCall(frame, context),
-            ExpressionKind.RemainderAddRawRawConst => SandboxInt32Math.Remainder(
+            ExpressionKind.RemainderAddRawRawConst => FastRemainder(
                 SandboxInt32Math.Add(frame.ReadRawInt32Slot(_value), frame.ReadRawInt32Slot(_value2)),
-                _value3),
+                _value3,
+                _magic),
+            ExpressionKind.RemainderAddRawConstConst => FastRemainder(
+                SandboxInt32Math.Add(frame.ReadRawInt32Slot(_value), _value2),
+                _value3,
+                _magic),
+            ExpressionKind.RemainderByConst => FastRemainder(_left!.Evaluate(frame, context), _value3, _magic),
+            ExpressionKind.DivideByConst => FastDivide(_left!.Evaluate(frame, context), _value3, _magic),
             ExpressionKind.AddRawMultiplyRawConst => SandboxInt32Math.Add(
                 frame.ReadRawInt32Slot(_value),
                 SandboxInt32Math.Multiply(frame.ReadRawInt32Slot(_value2), _value3)),
@@ -127,15 +180,15 @@ internal sealed class I32ExpressionPlan
 
     private int EvaluateInlineCall(InterpreterFrame frame, SandboxContext context)
     {
+        // No try/finally: the inline body is pure i32 arithmetic whose only throws (overflow / fuel /
+        // cancellation) abort the entire run, after which the context is discarded — so a skipped ExitCall
+        // on the throw path can never be observed. EnterCall still runs its depth-limit check before the body,
+        // and over-counting depth on an (aborted) throw is strictly conservative. Dropping the finally lets
+        // the JIT keep this hot path inlined.
         context.EnterCall();
-        try
-        {
-            return _left!.Evaluate(frame, context);
-        }
-        finally
-        {
-            context.ExitCall();
-        }
+        var result = _left!.Evaluate(frame, context);
+        context.ExitCall();
+        return result;
     }
 
     private static bool TryCreateSpecialBinary(
@@ -145,6 +198,15 @@ internal sealed class I32ExpressionPlan
         IReadOnlyDictionary<string, I32ExpressionPlan>? substitutions,
         out I32ExpressionPlan plan)
     {
+        // (raw + const) % const — resolves the slot through inline-call substitutions, so inline bodies of this
+        // common modular-accumulator shape collapse to a single fused dispatch + one idiv instead of a 4-node
+        // tree. Fuel is identical to the generic Remainder(Add(Raw, Lit), Lit) plan (5), so metering is unchanged.
+        if (TryCreateRemainderAddRawConstConst(binary, frame, assumedInt32Local, substitutions, out plan))
+        {
+            return true;
+        }
+
+        // The remaining fused shapes read two frame slots directly and are not substitution-aware.
         if (substitutions is not null)
         {
             plan = null!;
@@ -211,6 +273,22 @@ internal sealed class I32ExpressionPlan
             return false;
         }
 
+        // `x % const` / `x / const` with a positive constant: carry the divisor + precomputed reciprocal so the
+        // runtime op uses the exact reciprocal multiply (FastRemainder/FastDivide) instead of an idiv. Fuel is the
+        // same as the generic Remainder/Divide plan (1 + left + right) so metering is unchanged.
+        if (binary.Operator is "%" or "/" &&
+            right._kind == ExpressionKind.Literal &&
+            right._value > 0)
+        {
+            plan = new I32ExpressionPlan(
+                binary.Operator == "%" ? ExpressionKind.RemainderByConst : ExpressionKind.DivideByConst,
+                0,
+                left: left,
+                value3: right._value,
+                fuelCost: 1 + left.FuelCost + right.FuelCost);
+            return true;
+        }
+
         plan = new I32ExpressionPlan(BinaryKind(binary.Operator), 0, left, right);
         return true;
     }
@@ -255,6 +333,9 @@ internal sealed class I32ExpressionPlan
         Negate,
         InlineCall,
         RemainderAddRawRawConst,
+        RemainderAddRawConstConst,
+        RemainderByConst,
+        DivideByConst,
         AddRawMultiplyRawConst,
         Add,
         Subtract,

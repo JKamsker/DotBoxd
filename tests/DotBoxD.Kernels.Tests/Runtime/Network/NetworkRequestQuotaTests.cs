@@ -8,7 +8,7 @@ public sealed class NetworkRequestQuotaTests
     [Fact]
     public async Task Http_get_enforces_request_byte_limit_and_tracks_written_bytes()
     {
-        var allowed = SandboxPolicyBuilder.Create()
+        var allowed = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024, maxRequestBytes: 128)
             .WithFuel(5_000)
             .Build();
@@ -16,7 +16,7 @@ public sealed class NetworkRequestQuotaTests
         Assert.True(allowedResult.Succeeded, allowedResult.Error?.SafeMessage);
         Assert.True(allowedResult.ResourceUsage.NetworkBytesWritten > 0);
 
-        var denied = SandboxPolicyBuilder.Create()
+        var denied = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024, maxRequestBytes: 4)
             .WithFuel(5_000)
             .Build();

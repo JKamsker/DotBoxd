@@ -74,52 +74,52 @@ function Assert-CompletedItemEvidence {
     $releaseEvidence = @(
         @{
             Text = "Restricted IR implemented."
-            Path = "src/DotBoxD.Kernels/ModuleModel.cs"
+            Path = "src/Kernels/DotBoxD.Kernels/ModuleModel.cs"
             Patterns = @("SandboxModule", "Expression")
         },
         @{
             Text = "Canonical hashing implemented."
-            Path = "src/DotBoxD.Kernels/Model/CanonicalModuleHasher.cs"
+            Path = "src/Kernels/DotBoxD.Kernels/Model/CanonicalModuleHasher.cs"
             Patterns = @("Hash", "Serialize")
         },
         @{
             Text = "Type checker implemented."
-            Path = "src/DotBoxD.Kernels.Validation/FunctionAnalyzer.cs"
+            Path = "src/Kernels/DotBoxD.Kernels.Validation/FunctionAnalyzer.cs"
             Patterns = @("Analyze", "SandboxType")
         },
         @{
             Text = "Effect analyzer implemented."
-            Path = "src/DotBoxD.Kernels.Validation/FunctionAnalyzer.cs"
+            Path = "src/Kernels/DotBoxD.Kernels.Validation/FunctionAnalyzer.cs"
             Patterns = @("Effects", "Binding")
         },
         @{
             Text = "Capability policy implemented."
-            Path = "src/DotBoxD.Kernels/Policy.cs"
+            Path = "src/Kernels/DotBoxD.Kernels/Policy.cs"
             Patterns = @("CapabilityGrant", "SandboxPolicy")
         },
         @{
             Text = "Binding registry validation implemented."
-            Path = "src/DotBoxD.Kernels/Bindings/BindingRegistryValidator.cs"
+            Path = "src/Kernels/DotBoxD.Kernels/Bindings/BindingRegistryValidator.cs"
             Patterns = @("Validate", "BindingDescriptor")
         },
         @{
             Text = "Interpreted mode implemented."
-            Path = "src/DotBoxD.Kernels.Interpreter/SandboxInterpreter.cs"
+            Path = "src/Kernels/DotBoxD.Kernels.Interpreter/SandboxInterpreter.cs"
             Patterns = @("ExecuteAsync", "ExecuteEntrypointAsync")
         },
         @{
             Text = "Fuel limits implemented."
-            Path = "src/DotBoxD.Kernels/Model/Resources.cs"
+            Path = "src/Kernels/DotBoxD.Kernels/Model/Resources.cs"
             Patterns = @("ChargeFuel", "MaxFuel")
         },
         @{
             Text = "Safe error model implemented."
-            Path = "src/DotBoxD.Kernels/Model/Diagnostics.cs"
+            Path = "src/Kernels/DotBoxD.Kernels/Model/Diagnostics.cs"
             Patterns = @("SandboxError", "SafeMessage")
         },
         @{
             Text = "Basic audit implemented."
-            Path = "src/DotBoxD.Kernels/Bindings/Audit.cs"
+            Path = "src/Kernels/DotBoxD.Kernels/Bindings/Audit.cs"
             Patterns = @("SandboxAuditEvent", "IAuditSink")
         },
         @{
@@ -139,17 +139,17 @@ function Assert-CompletedItemEvidence {
         },
         @{
             Text = "Compiler emits valid managed assemblies."
-            Path = "src/DotBoxD.Kernels.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs"
+            Path = "src/Kernels/DotBoxD.Kernels.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs"
             Patterns = @("AssemblyBuilder", "CompileAsync")
         },
         @{
             Text = "Generated assemblies use runtime stubs only."
-            Path = "src/DotBoxD.Kernels.Compiler/Emitters/MethodEmitter.cs"
+            Path = "src/Kernels/DotBoxD.Kernels.Compiler/Emitters/ExpressionEmitter.cs"
             Patterns = @("CompiledRuntime", "EmitCall")
         },
         @{
             Text = "Verifier implemented."
-            Path = "src/DotBoxD.Kernels.Verifier/Generated/GeneratedAssemblyVerifier.cs"
+            Path = "src/Kernels/DotBoxD.Kernels.Verifier/Generated/GeneratedAssemblyVerifier.cs"
             Patterns = @("VerifyAsync", "VerificationResult")
         },
         @{
@@ -169,7 +169,7 @@ function Assert-CompletedItemEvidence {
         },
         @{
             Text = "DLL cache manifest implemented."
-            Path = "src/DotBoxD.Kernels.Verifier/Generated/VerificationModels.cs"
+            Path = "src/Kernels/DotBoxD.Kernels.Verifier/Generated/VerificationModels.cs"
             Patterns = @("ArtifactManifest", "CacheKey")
         },
         @{
@@ -232,7 +232,7 @@ function Assert-CompletedItemEvidence {
             Patterns = @("targetSandboxVersion", "reject")
         }
         "Type system" = @{
-            Path = "src/DotBoxD.Kernels/Sandbox/SandboxType.cs"
+            Path = "src/Kernels/DotBoxD.Kernels/Sandbox/SandboxType.cs"
             Patterns = @("SandboxType", "OpaqueId")
         }
         "Bindings" = @{
@@ -244,11 +244,11 @@ function Assert-CompletedItemEvidence {
             Patterns = @("RevokeCapability", "CapabilityRevoked")
         }
         "Interpreter" = @{
-            Path = "src/DotBoxD.Kernels.Interpreter/Internal/StatementExecutor.cs"
+            Path = "src/Kernels/DotBoxD.Kernels.Interpreter/Internal/StatementExecutor.cs"
             Patterns = @("ChargeFuel", "ChargeLoopIteration")
         }
         "Compiler" = @{
-            Path = "src/DotBoxD.Kernels.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs"
+            Path = "src/Kernels/DotBoxD.Kernels.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs"
             Patterns = @("CompileAsync", "Verification")
         }
         "Verifier" = @{

@@ -14,17 +14,6 @@ public sealed partial class SandboxHost
             ErrorCode: reason.Code,
             Message: $"compiled execution fell back to interpreted mode: {reason.SafeMessage}");
 
-    private static IEnumerable<SandboxAuditEvent> FallbackSecurityAudits(
-        ExecutionPlan plan,
-        SandboxRunId runId,
-        SandboxError reason)
-    {
-        if (reason.Code == SandboxErrorCode.VerifierFailure)
-        {
-            yield return VerifierFailureAudit(plan, runId, reason);
-        }
-    }
-
     private static SandboxExecutionResult CompilerUnavailableResult(
         ExecutionPlan plan,
         SandboxExecutionOptions options,

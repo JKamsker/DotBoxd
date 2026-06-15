@@ -41,21 +41,30 @@ internal static class CompiledMapRuntime
 
     internal static SandboxValue Set(SandboxContext context, SandboxValue map, SandboxValue key, SandboxValue value)
     {
-        var typedMap = AsMap(map);
+        // Trust the already-validated, immutable source map (as the read path does); validate only the new
+        // key/value. The deep-validating AsMap re-walked the whole map on every set (O(n) per call).
+        var typedMap = AsMapReadOnly(map);
         RequireType(key, typedMap.KeyType, "map key type mismatch");
         context.ChargeFuel(SandboxCollectionFuel.Copy(typedMap.Values.Count, addedCount: 1));
         RequireType(value, typedMap.ValueType, "map value type mismatch");
-        var addedCount = typedMap.Values.ContainsKey(key) ? 0 : 1;
+        var isReplace = typedMap.Values.ContainsKey(key);
         context.ChargeAllocation(SandboxCollectionFuel.AllocationBytes(
             typedMap.Values.Count,
-            addedCount,
+            isReplace ? 0 : 1,
             bytesPerElement: 32,
             minimumOne: true));
-        var values = new Dictionary<SandboxValue, SandboxValue>(typedMap.Values)
+        var updated = typedMap.SetEntry(key, value);
+
+        // New-key insert: charge incrementally from the source's cached shape (identical fuel/shape to a
+        // full walk), turning repeated map.set from O(n^2) into O(n). Replacement changes a value subtree in
+        // place and falls back to a full walk (rare in build loops). Mirrors the interpreter path.
+        if (isReplace)
         {
-            [key] = value
-        };
-        return ChargeValue(context, SandboxValue.FromMap(values, typedMap.KeyType, typedMap.ValueType));
+            return ChargeValue(context, updated);
+        }
+
+        ValueShapeCache.ChargeMapInsert(context, typedMap, key, value, updated, typedMap.Values.Count + 1);
+        return updated;
     }
 
     internal static SandboxValue Remove(SandboxContext context, SandboxValue map, SandboxValue key)

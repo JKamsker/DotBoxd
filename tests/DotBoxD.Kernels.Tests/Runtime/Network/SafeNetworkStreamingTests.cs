@@ -10,7 +10,7 @@ public sealed class SafeNetworkStreamingTests
     {
         var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("ok"));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: long.MaxValue)
             .WithFuel(5_000)
             .Build();
@@ -28,7 +28,7 @@ public sealed class SafeNetworkStreamingTests
     {
         var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("too-large"));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 22)
             .WithFuel(5_000)
             .Build();
@@ -46,7 +46,7 @@ public sealed class SafeNetworkStreamingTests
     {
         var host = SandboxTestHost.Create(networkInvoker: FakeInvoker(""));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1)
             .WithFuel(5_000)
             .Build();

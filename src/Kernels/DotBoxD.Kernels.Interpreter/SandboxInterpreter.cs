@@ -32,7 +32,11 @@ public sealed class SandboxInterpreter : ISandboxInterpreter
             budget.CheckDeadline();
             var evaluator = new InterpreterEvaluator(plan, context, options);
             var value = await evaluator.ExecuteEntrypointAsync(entrypoint, input).ConfigureAwait(false);
-            WriteSummary(audit, runId, startedAt, plan, budget, true, null);
+            if (!options.SuppressSuccessfulRunSummaryAudit)
+            {
+                WriteSummary(audit, runId, startedAt, plan, budget, true, null);
+            }
+
             return Result(plan, budget, audit, true, value, null);
         }
         catch (OperationCanceledException)

@@ -49,4 +49,25 @@ public sealed class PluginExecutionObservationTests
         Assert.All(kernel.ExecutionObservations, observation =>
             Assert.Equal(mode, observation.RequestedMode));
     }
+
+    [Fact]
+    public async Task Compiled_no_audit_success_still_records_execution_observation()
+    {
+        var server = PluginAddendumTestPolicies.CreateServer(executionMode: ExecutionMode.Compiled);
+        var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
+
+        var handled = await kernel.ShouldHandleAsync(
+            DamageEventAdapter.Instance,
+            new DamageEvent("ice", 120, "player-1"));
+
+        Assert.False(handled);
+        var observation = Assert.Single(kernel.ExecutionObservations);
+        Assert.Equal("ShouldHandle", observation.Entrypoint);
+        Assert.Equal(ExecutionMode.Compiled, observation.RequestedMode);
+        Assert.Equal(ExecutionMode.Compiled, observation.ActualMode);
+        Assert.True(observation.Succeeded);
+        Assert.Equal("None", observation.CacheStatus);
+        Assert.Null(observation.FallbackReason);
+        Assert.False(string.IsNullOrWhiteSpace(observation.ArtifactHash));
+    }
 }

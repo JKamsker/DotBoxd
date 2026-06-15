@@ -1,6 +1,7 @@
 namespace DotBoxD.Hosting;
 
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using DotBoxD.Kernels;
 
 /// <summary>
@@ -18,14 +19,24 @@ using DotBoxD.Kernels;
 /// </remarks>
 internal sealed class PreparedPlanIntegrityCache
 {
+    private static readonly TrustedReferenceMarker Marker = new();
+
+    private readonly ConditionalWeakTable<ExecutionPlan, TrustedReferenceMarker> _trustedReferences = new();
     private readonly ConcurrentDictionary<ExecutionPlanSeal, ExecutionPlan> _trusted = new();
 
     public void Register(ExecutionPlan plan)
     {
         ArgumentNullException.ThrowIfNull(plan);
+        _trustedReferences.Remove(plan);
+        _trustedReferences.Add(plan, Marker);
         _trusted[plan.PlanSeal] = plan;
     }
 
+    public bool ContainsTrustedReference(ExecutionPlan plan)
+        => _trustedReferences.TryGetValue(plan, out _);
+
     public bool TryGetTrusted(ExecutionPlanSeal seal, out ExecutionPlan trusted)
         => _trusted.TryGetValue(seal, out trusted!);
+
+    private sealed class TrustedReferenceMarker;
 }

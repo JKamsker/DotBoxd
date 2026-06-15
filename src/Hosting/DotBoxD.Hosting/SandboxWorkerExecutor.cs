@@ -16,7 +16,16 @@ internal sealed class SandboxWorkerExecutor(ConfiguredSandboxWorker? worker)
             return SandboxHost.WorkerIsolationUnavailableResult(plan, options, worker?.Profile);
         }
 
-        var workerOptions = options with { Isolation = SandboxIsolation.InProcess };
+        // SuppressSuccessfulRunSummaryAudit is an in-process allocation optimization only.
+        // Worker-result validation (WorkerAuditMatches) structurally requires exactly one
+        // RunSummary, so the worker must always emit it; suppressing it here would make every
+        // successful worker run fail audit validation. Clearing the flag keeps the worker on
+        // the canonical full-audit envelope and lets the validator stay strict.
+        var workerOptions = options with
+        {
+            Isolation = SandboxIsolation.InProcess,
+            SuppressSuccessfulRunSummaryAudit = false
+        };
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(plan.Budget.EffectiveWallTime);
         try
