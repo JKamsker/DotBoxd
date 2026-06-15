@@ -9,20 +9,20 @@ internal sealed class LiveStateSyncRegistry(Func<Type, LiveUpdateMode> getUpdate
 
     public IReadOnlyList<Action> SynchronizeForInput()
     {
-        var deferredUpdates = new List<Action>();
+        List<Action>? deferredUpdates = null;
         foreach (var synchronizer in _synchronizers)
         {
             var mode = getUpdateMode(synchronizer.StateType);
             if ((mode & LiveUpdateMode.AsyncSet) == LiveUpdateMode.AsyncSet)
             {
-                deferredUpdates.Add(synchronizer.Synchronize);
+                (deferredUpdates ??= []).Add(synchronizer.Synchronize);
                 continue;
             }
 
             synchronizer.Synchronize();
         }
 
-        return deferredUpdates;
+        return deferredUpdates is null ? Array.Empty<Action>() : deferredUpdates;
     }
 
     public void SynchronizeForFlush()

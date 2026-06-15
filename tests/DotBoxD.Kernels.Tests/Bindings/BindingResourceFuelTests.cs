@@ -15,6 +15,7 @@ public sealed class BindingResourceFuelTests
         var policy = SandboxPolicyBuilder.Create()
             .GrantFileRead(temp.Path, 1024)
             .WithFuel(5_000)
+            .WithWallTime(TimeSpan.FromSeconds(2))
             .Build();
         var plan = await host.PrepareAsync(module, policy);
 
@@ -32,6 +33,7 @@ public sealed class BindingResourceFuelTests
         var policy = SandboxPolicyBuilder.Create()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
             .WithFuel(5_000)
+            .WithWallTime(TimeSpan.FromSeconds(2))
             .Build();
         var plan = await host.PrepareAsync(module, policy);
 

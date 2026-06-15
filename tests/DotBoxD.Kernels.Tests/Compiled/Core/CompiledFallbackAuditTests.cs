@@ -74,7 +74,7 @@ public sealed class CompiledFallbackAuditTests
     }
 
     [Fact]
-    public async Task Compiled_effectful_binding_falls_back_to_interpreter_when_allowed()
+    public async Task Compiled_effectful_binding_runs_without_interpreter_fallback()
     {
         using var host = SandboxTestHost.Create(compiler: true);
         var plan = await PrepareLogPlanAsync(host);
@@ -86,14 +86,14 @@ public sealed class CompiledFallbackAuditTests
             new SandboxExecutionOptions { Mode = ExecutionMode.Compiled });
 
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
-        Assert.Equal(ExecutionMode.Interpreted, result.ActualMode);
+        Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
         Assert.Equal(1, result.ResourceUsage.HostCalls);
-        Assert.Contains(result.AuditEvents, IsFallback(SandboxErrorCode.ValidationError));
+        Assert.DoesNotContain(result.AuditEvents, e => e.Kind == "ExecutionFallback");
         Assert.Contains(result.AuditEvents, e => e.Kind == "SandboxLog" && e.BindingId == "log.info" && e.Success);
     }
 
     [Fact]
-    public async Task Compiled_effectful_binding_fails_closed_when_fallback_disabled()
+    public async Task Compiled_effectful_binding_runs_when_fallback_disabled()
     {
         using var host = SandboxTestHost.Create(compiler: true);
         var plan = await PrepareLogPlanAsync(host);
@@ -104,13 +104,11 @@ public sealed class CompiledFallbackAuditTests
             SandboxValue.Unit,
             new SandboxExecutionOptions { Mode = ExecutionMode.Compiled, AllowFallbackToInterpreter = false });
 
-        Assert.False(result.Succeeded);
-        Assert.Equal(SandboxErrorCode.ValidationError, result.Error!.Code);
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
         Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
-        Assert.Equal(0, result.ResourceUsage.HostCalls);
-        Assert.Contains("pure modules only", result.Error.SafeMessage, StringComparison.Ordinal);
-        Assert.Contains(result.AuditEvents, e => e.Kind == "CompiledExecutionFailed");
-        Assert.DoesNotContain(result.AuditEvents, e => e.Kind == "SandboxLog");
+        Assert.Equal(1, result.ResourceUsage.HostCalls);
+        Assert.DoesNotContain(result.AuditEvents, e => e.Kind == "CompiledExecutionFailed");
+        Assert.Contains(result.AuditEvents, e => e.Kind == "SandboxLog" && e.BindingId == "log.info" && e.Success);
     }
 
     private static async Task<SandboxExecutionResult> ExecuteCompiledAsync(SandboxHost host, ExecutionPlan plan)

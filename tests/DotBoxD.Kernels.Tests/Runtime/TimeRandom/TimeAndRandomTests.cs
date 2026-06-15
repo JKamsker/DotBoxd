@@ -97,6 +97,32 @@ public sealed class TimeAndRandomTests
     }
 
     [Fact]
+    public void Compiled_no_audit_context_reset_clears_run_local_state()
+    {
+        var policy = SandboxPolicyBuilder.Create()
+            .GrantRandom()
+            .Deterministic(DateTimeOffset.UnixEpoch, randomSeed: 123)
+            .WithMaxCallDepth(1)
+            .Build();
+        var context = new SandboxContext(
+            SandboxRunId.Suppressed,
+            policy,
+            new ResourceMeter(policy.ResourceLimits),
+            new BindingRegistry([]),
+            NoopAuditSink.Instance,
+            CancellationToken.None);
+        var firstRandom = context.NextRandomInt32(0, 1000);
+        _ = context.NextRandomInt32(0, 1000);
+        context.EnterCall();
+        Assert.Throws<SandboxRuntimeException>(context.EnterCall);
+
+        context.ResetForCompiledNoAuditReuse();
+
+        Assert.Equal(firstRandom, context.NextRandomInt32(0, 1000));
+        context.EnterCall();
+    }
+
+    [Fact]
     public async Task Deterministic_random_policy_requires_seed()
     {
         var host = SandboxTestHost.Create();

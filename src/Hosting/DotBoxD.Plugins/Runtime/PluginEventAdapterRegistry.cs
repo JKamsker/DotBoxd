@@ -8,9 +8,13 @@ public sealed class PluginEventAdapterRegistry
     private readonly Dictionary<Type, RegisteredPluginEventAdapter> _adapters = [];
 
     public void Register<TEvent>(IPluginEventAdapter<TEvent> adapter)
-        => _adapters[typeof(TEvent)] = new(
+    {
+        var parameters = adapter.Parameters;
+        PluginEventValueWriterShapeValidator.Validate(adapter, parameters);
+        _adapters[typeof(TEvent)] = new(
             adapter,
-            new PluginEventShape(adapter.EventName, adapter.Parameters));
+            new PluginEventShape(adapter.EventName, parameters));
+    }
 
     public IPluginEventAdapter<TEvent> Resolve<TEvent>()
     {
@@ -62,13 +66,6 @@ public sealed class PluginEventAdapterRegistry
 }
 
 internal readonly record struct RegisteredPluginEventAdapter(object Adapter, PluginEventShape Shape);
-
-internal interface IPluginEventValueWriter<in TEvent>
-{
-    int EventValueCount { get; }
-    SandboxValue ToSandboxValue(TEvent e, int index);
-    void CopySandboxValues(TEvent e, SandboxValue[] destination, int destinationIndex);
-}
 
 internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEvent>, IPluginEventValueWriter<TEvent>
 {

@@ -40,16 +40,25 @@ internal static class CollectionOperations
 
     public static SandboxValue AddListItem(SandboxValue item, SandboxValue list, SandboxContext context)
     {
-        var source = AsList(list);
+        // The source list was already validated at its trust boundary and is immutable, so its elements are
+        // trusted without a deep re-walk (same rationale as the read operations' AsListReadOnly). Only the
+        // newly added item needs validation. Using the validating AsList here re-walked the whole list on
+        // every add, making list.add O(n) per call and list-building O(n^2).
+        var source = AsListReadOnly(list);
         RequireType(item, source.ItemType, "list item type mismatch");
-        context.ChargeFuel(SandboxCollectionFuel.Copy(source.Values.Count, addedCount: 1));
+        var count = source.Values.Count;
+        context.ChargeFuel(SandboxCollectionFuel.Copy(count, addedCount: 1));
         context.ChargeAllocation(SandboxCollectionFuel.AllocationBytes(
-            source.Values.Count,
+            count,
             addedCount: 1,
             bytesPerElement: 16));
-        var values = source.Values.ToList();
-        values.Add(item);
-        return Charge(context, SandboxValue.FromList(values, source.ItemType));
+
+        // Structural-sharing append (O(log n), no full copy) plus incremental shape charging (O(1)). Charged
+        // fuel/allocation/shape are identical to the old copy+walk path; only the runtime data structure and
+        // wall-time change, turning repeated list.add from O(n^2) into O(n log n) total.
+        var appended = source.Append(item);
+        ValueShapeCache.ChargeListAppend(context, source, item, appended, count + 1);
+        return appended;
     }
 
     public static SandboxValue BuildRecord(IReadOnlyList<SandboxValue> fields, SandboxContext context)
@@ -109,21 +118,30 @@ internal static class CollectionOperations
 
     public static SandboxValue SetMapValue(SandboxValue value, SandboxValue key, SandboxValue map, SandboxContext context)
     {
-        var typedMap = AsMap(map);
+        // Source map is already validated and immutable, so trust its entries (as the read path does) and
+        // validate only the new key/value; the validating AsMap re-walked the whole map on every set.
+        var typedMap = AsMapReadOnly(map);
         RequireType(key, typedMap.KeyType, "map key type mismatch");
         RequireType(value, typedMap.ValueType, "map value type mismatch");
         context.ChargeFuel(SandboxCollectionFuel.Copy(typedMap.Values.Count, addedCount: 1));
-        var addedCount = typedMap.Values.ContainsKey(key) ? 0 : 1;
+        var isReplace = typedMap.Values.ContainsKey(key);
         context.ChargeAllocation(SandboxCollectionFuel.AllocationBytes(
             typedMap.Values.Count,
-            addedCount,
+            isReplace ? 0 : 1,
             bytesPerElement: 32,
             minimumOne: true));
-        var values = new Dictionary<SandboxValue, SandboxValue>(typedMap.Values)
+        var updated = typedMap.SetEntry(key, value);
+
+        // Replacing an existing key changes a value subtree in place, which cannot be composed forward from
+        // the source shape; fall back to a full walk (rare in build loops). Inserting a new key adds exactly
+        // one entry, so charge it incrementally from the source's cached shape (same fuel/shape as a walk).
+        if (isReplace)
         {
-            [key] = value
-        };
-        return Charge(context, SandboxValue.FromMap(values, typedMap.KeyType, typedMap.ValueType));
+            return Charge(context, updated);
+        }
+
+        ValueShapeCache.ChargeMapInsert(context, typedMap, key, value, updated, typedMap.Values.Count + 1);
+        return updated;
     }
 
     public static SandboxValue RemoveMapValue(SandboxValue key, SandboxValue map, SandboxContext context)

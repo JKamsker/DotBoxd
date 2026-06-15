@@ -110,6 +110,15 @@ public sealed record SandboxExecutionOptions
     public bool RequireDeterministic { get; init; }
     public SandboxRunId? RunId { get; init; }
     public int AutoCompileThreshold { get; init; } = 20;
+
+    /// <summary>
+    /// Drops the successful-run <c>RunSummary</c> audit event to avoid its allocation on the hot
+    /// no-binding plugin dispatch path. Failure runs always emit their summary regardless. This is
+    /// an <b>in-process-only</b> optimization: worker-isolated execution clears it (see
+    /// <c>SandboxWorkerExecutor</c>) because worker-result audit validation requires the summary.
+    /// Internal because suppressing audit on success is never a supported external contract.
+    /// </summary>
+    internal bool SuppressSuccessfulRunSummaryAudit { get; init; }
 }
 
 public enum ExecutionMode

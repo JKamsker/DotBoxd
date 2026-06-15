@@ -13,7 +13,7 @@ public sealed class SafeNetworkTests
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
 
         var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () =>
-            await host.PrepareAsync(module, SandboxPolicyBuilder.Create().Build()));
+            await host.PrepareAsync(module, NetworkPolicyBuilder().Build()));
 
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-POLICY-CAP");
     }
@@ -23,7 +23,7 @@ public sealed class SafeNetworkTests
     {
         var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("remote-config"));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config?token=secret"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
             .WithFuel(5_000)
             .Build();
@@ -44,7 +44,7 @@ public sealed class SafeNetworkTests
     {
         var result = await ExecuteNetworkAsync(
             "https://evil.example.com/config",
-            SandboxPolicyBuilder.Create()
+            NetworkPolicyBuilder()
                 .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
                 .WithFuel(5_000)
                 .Build());
@@ -58,7 +58,7 @@ public sealed class SafeNetworkTests
     {
         var result = await ExecuteNetworkAsync(
             "https://api.example.com:8443/config",
-            SandboxPolicyBuilder.Create()
+            NetworkPolicyBuilder()
                 .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
                 .WithFuel(5_000)
                 .Build());
@@ -72,7 +72,7 @@ public sealed class SafeNetworkTests
     {
         var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("ok"));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com:8443/config?token=secret"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com:8443"], maxResponseBytes: 1024)
             .WithFuel(5_000)
             .Build();
@@ -92,7 +92,7 @@ public sealed class SafeNetworkTests
     {
         var result = await ExecuteNetworkAsync(
             "https://127.0.0.1/config",
-            SandboxPolicyBuilder.Create()
+            NetworkPolicyBuilder()
                 .GrantHttpGet(["127.0.0.1"], maxResponseBytes: 1024)
                 .WithFuel(5_000)
                 .Build());
@@ -106,7 +106,7 @@ public sealed class SafeNetworkTests
     {
         var result = await ExecuteNetworkAsync(
             "https://192.168.1.20/config",
-            SandboxPolicyBuilder.Create()
+            NetworkPolicyBuilder()
                 .GrantHttpGet(["192.168.1.20"], 1024, allowIpLiterals: true)
                 .WithFuel(5_000)
                 .Build());
@@ -124,7 +124,7 @@ public sealed class SafeNetworkTests
     {
         var result = await ExecuteNetworkAsync(
             $"https://{address}/config",
-            SandboxPolicyBuilder.Create()
+            NetworkPolicyBuilder()
                 .GrantHttpGet([address], 1024, allowIpLiterals: true)
                 .WithFuel(5_000)
                 .Build());
@@ -140,7 +140,7 @@ public sealed class SafeNetworkTests
             networkInvoker: FakeInvoker("private"),
             dnsResolver: StaticDns(IPAddress.Loopback));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
             .WithFuel(5_000)
             .Build();
@@ -159,7 +159,7 @@ public sealed class SafeNetworkTests
             networkInvoker: FakeInvoker("empty"),
             dnsResolver: StaticDns());
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
             .WithFuel(5_000)
             .Build();
@@ -178,7 +178,7 @@ public sealed class SafeNetworkTests
             networkInvoker: FakeInvoker("private"),
             dnsResolver: StaticDns(IPAddress.Loopback));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], 1024, allowPrivateNetwork: true)
             .WithFuel(5_000)
             .Build();
@@ -198,7 +198,7 @@ public sealed class SafeNetworkTests
             HttpStatusCode.Redirect,
             "https://evil.example.com/config"));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
             .WithFuel(5_000)
             .Build();
@@ -216,7 +216,7 @@ public sealed class SafeNetworkTests
     {
         var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("not-found", HttpStatusCode.NotFound));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
             .WithFuel(5_000)
             .Build();
@@ -235,7 +235,7 @@ public sealed class SafeNetworkTests
     {
         var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("not-found", HttpStatusCode.NotFound));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1)
             .WithFuel(5_000)
             .Build();
@@ -254,7 +254,7 @@ public sealed class SafeNetworkTests
     {
         var host = SandboxTestHost.Create(networkInvoker: RedirectFollowedInvoker());
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
             .WithFuel(5_000)
             .Build();
@@ -296,7 +296,7 @@ public sealed class SafeNetworkTests
     {
         var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("too-large"));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 3)
             .WithFuel(5_000)
             .Build();
@@ -313,7 +313,7 @@ public sealed class SafeNetworkTests
     {
         var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("too-large"));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
             .WithMaxAllocatedBytes(4)
             .WithFuel(5_000)
@@ -331,7 +331,7 @@ public sealed class SafeNetworkTests
     {
         var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("ok"));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = SandboxPolicyBuilder.Create()
+        var policy = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
             .Deterministic(DateTimeOffset.UnixEpoch, randomSeed: 1)
             .Build();
@@ -343,3 +343,4 @@ public sealed class SafeNetworkTests
     }
 
 }
+

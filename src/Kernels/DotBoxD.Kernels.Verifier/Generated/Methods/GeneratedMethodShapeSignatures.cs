@@ -12,6 +12,10 @@ internal static class GeneratedMethodShapeSignatures
         $"{CompiledRuntimeName}.ChargeFuel({SandboxContextName},{Int32Name}):{VoidName}";
     internal static readonly string ChargeLoopIterationSignature =
         $"{CompiledRuntimeName}.ChargeLoopIteration({SandboxContextName},{Int32Name}):{VoidName}";
+    // Closed-form linear accumulation (exp/closed-form-accumulation): charges a bulk of loop-iteration fuel
+    // internally, so it counts as a fuel meter for the instruction-density / sparsity rule.
+    internal static readonly string AccumulateLinearI32Signature =
+        $"{CompiledRuntimeName}.AccumulateLinearI32({SandboxContextName},{Int32Name},{Int32Name},{Int32Name},{Int32Name}):{Int32Name}";
     internal static readonly IReadOnlySet<string> ExecuteAllowedCalls = new HashSet<string>(StringComparer.Ordinal) {
         ValidateInput,
         $"{CompiledRuntimeName}.GetInputArgument({SandboxValueName},{Int32Name},{Int32Name},{SandboxTypeName}):{SandboxValueName}",
@@ -32,6 +36,7 @@ internal static class GeneratedMethodShapeSignatures
             var member when member == ExitCall => GeneratedMeterState.ExitCall,
             var member when member == ChargeFuelSignature => GeneratedMeterState.ChargeFuel,
             var member when member == ChargeLoopIterationSignature => GeneratedMeterState.ChargeFuel,
+            var member when member == AccumulateLinearI32Signature => GeneratedMeterState.ChargeFuel,
             _ => GeneratedMeterState.None
         };
         return instruction.IsLocalCall && IsGeneratedFunctionCall(instruction.CalledMember)
@@ -43,7 +48,9 @@ internal static class GeneratedMethodShapeSignatures
         => calledMember is not null && calledMember.StartsWith("Fn_", StringComparison.Ordinal);
 
     internal static bool IsFuelMeter(string? calledMember)
-        => calledMember == ChargeFuelSignature || calledMember == ChargeLoopIterationSignature;
+        => calledMember == ChargeFuelSignature
+           || calledMember == ChargeLoopIterationSignature
+           || calledMember == AccumulateLinearI32Signature;
 
     internal static bool IsRuntimeWorkCall(string? calledMember)
         => calledMember is not null &&
@@ -66,6 +73,9 @@ internal static class GeneratedMethodShapeSignatures
                    StringComparison.Ordinal) &&
                !calledMember.StartsWith(
                    CompiledRuntimeName + ".CreateValueArray(" + SandboxContextName,
+                   StringComparison.Ordinal) &&
+               !calledMember.StartsWith(
+                   CompiledRuntimeName + ".ChargeValueArray(" + SandboxContextName,
                    StringComparison.Ordinal) &&
                !IsLiteralConstructionCall(calledMember) &&
                !IsScalarConversionCall(calledMember) &&

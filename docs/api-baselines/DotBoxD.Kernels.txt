@@ -106,9 +106,11 @@ public ExecutionPlan( string moduleHash, string planHash, ExecutionPlanSeal plan
 public ExecutionPlanSeal PlanSeal { get; }
 public ExecutionPlanSeal(string value)
 public IAuditSink Audit { get; }
-public IDisposable BeginBindingReturnCreditScope() => _returnCredits.BeginScope()
+public IDisposable BeginBindingReturnCreditScope() => ReturnCredits.BeginScope()
+public IEnumerator<SandboxValue> GetEnumerator()
 public int AutoCompileThreshold { get; init; } = 20
 public int CompareTo(SemVersion? other)
+public int Count => _values.Count
 public int HostCalls { get; private set; }
 public int LogEvents { get; private set; }
 public int Major { get => _major; init => _major = RequireNonNegative(value, nameof(Major)); }
@@ -117,7 +119,7 @@ public int NextRandomInt32(int minInclusive, int maxExclusive)
 public int Patch { get => _patch; init => _patch = RequireNonNegative(value, nameof(Patch)); }
 public interface IAuditSink
 public interface IBindingCatalog
-public IReadOnlyDictionary<SandboxValue, SandboxValue> Values { get => _values; init => _values = ModelCopy.ValueDictionary(value); }
+public IReadOnlyDictionary<SandboxValue, SandboxValue> Values { get => _values; init => _values = Snapshot(value); }
 public IReadOnlyDictionary<string, FunctionAnalysis> FunctionAnalysis { get; }
 public IReadOnlyDictionary<string, IReadOnlySet<string>> BindingReferences { get; }
 public IReadOnlyDictionary<string, SandboxFunction> FunctionLookup
@@ -130,13 +132,13 @@ public IReadOnlyList<CapabilityGrant> Grants
 public IReadOnlyList<CapabilityRequest> CapabilityRequests { get => _capabilityRequests; init => _capabilityRequests = ModelCopy.List(value); }
 public IReadOnlyList<Expression> Arguments { get => _arguments; init => _arguments = ModelCopy.List(value); }
 public IReadOnlyList<Parameter> Parameters { get => _parameters; init => _parameters = ModelCopy.List(value); }
-public IReadOnlyList<SandboxAuditEvent> Events => _events.ToArray()
+public IReadOnlyList<SandboxAuditEvent> Events
 public IReadOnlyList<SandboxDiagnostic> Diagnostics { get; } = ModelCopy.List(diagnostics)
 public IReadOnlyList<SandboxFunction> Functions { get => _functions; init => _functions = ModelCopy.List(value); }
 public IReadOnlyList<SandboxType> Arguments { get => _arguments; init => _arguments = ModelCopy.List(value); }
 public IReadOnlyList<SandboxType> Parameters { get => _parameters; init => _parameters = ModelCopy.List(value); }
 public IReadOnlyList<SandboxValue> Fields { get => _fields; init => _fields = Snapshot(value); }
-public IReadOnlyList<SandboxValue> Values { get => _values; init => _values = Snapshot(value); }
+public IReadOnlyList<SandboxValue> Values { get => this; init => _values = Snapshot(value); }
 public IReadOnlyList<Statement> Body { get => _body; init => _body = ModelCopy.List(value); }
 public IReadOnlyList<Statement> Else { get => _else; init => _else = ModelCopy.List(value); }
 public IReadOnlyList<Statement> Then { get => _then; init => _then = ModelCopy.List(value); }
@@ -170,6 +172,7 @@ public override SandboxType Type => SandboxType.Unit
 public override string ToString()
 public override string ToString() => "[redacted]"
 public override string ToString() => $"{Major}.{Minor}.{Patch}"
+public override string ToString() => $"ListValue {{ Count = {_values.Count}, ItemType = {ItemType} }}"
 public override string ToString() => RelativePath
 public override string ToString() => Value
 public override string ToString() => Value.ToString("N")
@@ -224,6 +227,7 @@ public SandboxRunId RunId { get; }
 public SandboxRunId? RunId { get; init; }
 public SandboxRuntimeException(SandboxError error)
 public SandboxValue ChargeBindingReturn(BindingDescriptor descriptor, SandboxValue value)
+public SandboxValue this[int index] => _values[index]
 public SandboxValue? Value { get; init; }
 public sealed class BindingRegistry : IBindingCatalog
 public sealed class BindingRegistryBuilder
@@ -252,7 +256,7 @@ public sealed record FunctionAnalysis(SandboxType ReturnType, SandboxEffect Effe
 public sealed record I32Value(int Value) : SandboxValue
 public sealed record I64Value(long Value) : SandboxValue
 public sealed record IfStatement(Expression Condition, IReadOnlyList<Statement> Then, IReadOnlyList<Statement> Else, SourceSpan Span)
-public sealed record ListValue(IReadOnlyList<SandboxValue> Values, SandboxType ItemType) : SandboxValue
+public sealed record ListValue(IReadOnlyList<SandboxValue> Values, SandboxType ItemType) : SandboxValue, IReadOnlyList<SandboxValue>
 public sealed record LiteralExpression(SandboxValue Value, SourceSpan Span) : Expression(Span)
 public sealed record MapValue( IReadOnlyDictionary<SandboxValue, SandboxValue> Values, SandboxType KeyType, SandboxType ValueType) : SandboxValue
 public sealed record OpaqueIdValue(string TypeName, string Value) : SandboxValue
@@ -337,16 +341,16 @@ public static IReadOnlyDictionary<string, string> Create( string resourceKind, D
 public static IReadOnlyList<SandboxValue> BindArguments(SandboxFunction function, SandboxValue input)
 public static IReadOnlySet<string> Collect(SandboxModule module, IBindingCatalog bindings, string? entrypoint)
 public static IReadOnlySet<string> Collect(SandboxModule module, IBindingCatalog bindings)
-public static long Add(long left, long right) => Checked(() => checked(left + right))
+public static long Add(long left, long right)
 public static long Copy(int sourceCount, int addedCount = 0)
 public static long Divide(long left, long right)
 public static long Empty() => BaseCost
 public static long EstimateCall(string callName, int argumentCount)
-public static long Multiply(long left, long right) => Checked(() => checked(left * right))
-public static long Negate(long value) => Checked(() => checked(-value))
+public static long Multiply(long left, long right)
+public static long Negate(long value)
 public static long Read(int count = 0) => BaseCost + Math.Max(0, count)
 public static long Remainder(long left, long right)
-public static long Subtract(long left, long right) => Checked(() => checked(left - right))
+public static long Subtract(long left, long right)
 public static SandboxPolicyBuilder Create() => new()
 public static SandboxRunId New() => new(Guid.NewGuid())
 public static SandboxType Bool { get; } = Scalar("Bool")
@@ -363,9 +367,9 @@ public static SandboxType String { get; } = Scalar("String")
 public static SandboxType Unit { get; } = Scalar("Unit")
 public static SandboxValue Add(SandboxValue left, SandboxValue right)
 public static SandboxValue Divide(SandboxValue left, SandboxValue right)
-public static SandboxValue FromBool(bool value) => new BoolValue(value)
+public static SandboxValue FromBool(bool value) => value ? True : False
 public static SandboxValue FromDouble(double value)
-public static SandboxValue FromInt32(int value) => new I32Value(value)
+public static SandboxValue FromInt32(int value)
 public static SandboxValue FromInt64(long value) => new I64Value(value)
 public static SandboxValue FromList(IReadOnlyList<SandboxValue> values, SandboxType itemType)
 public static SandboxValue FromList(IReadOnlyList<SandboxValue> values)

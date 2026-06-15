@@ -27,6 +27,54 @@ public static partial class CompiledRuntime
 {
     [MethodImpl(AggressiveInlining)] public static void ChargeFuel(SandboxContext context, int amount) => context.ChargeFuel(amount);
     [MethodImpl(AggressiveInlining)] public static void ChargeLoopIteration(SandboxContext context, int fuelAmount) => context.ChargeLoopIteration(fuelAmount);
+
+    /// <summary>
+    /// Closed-form replacement for a loop of the form <c>for i in [0,iterations): total = total + inv</c>.
+    /// Reproduces the equivalent checked-arithmetic loop EXACTLY: it charges <paramref name="iterations"/>
+    /// loop iterations at <paramref name="fuelPerIteration"/> each (or fewer, up to and including the
+    /// iteration that would overflow), and throws the same integer-overflow error at the same iteration the
+    /// loop would. Because the result is computed in O(1) instead of O(n) and there is no loop back-edge, the
+    /// per-iteration metering call is eliminated.
+    ///
+    /// EXPERIMENT TRADEOFF (exp/closed-form-accumulation): adds one trusted runtime primitive to the verifier
+    /// allowlist. No safety guarantee is weakened — charged loop-iterations/fuel and the overflow-throw point
+    /// are identical to the loop, the bound checks still fire, and the verifier still requires per-iteration
+    /// metering on every *actual* loop (this just isn't one). The cost is a small increase in trusted-runtime
+    /// surface that must stay in lockstep with the verifier.
+    /// </summary>
+    public static int AccumulateLinearI32(SandboxContext context, int total, int inv, int iterations, int fuelPerIteration)
+    {
+        if (iterations <= 0)
+        {
+            return total;
+        }
+
+        if (inv == 0)
+        {
+            context.ChargeLoopIterations(iterations, fuelPerIteration);
+            return total;
+        }
+
+        long start = total;
+        long step = inv;
+        // First 1-based iteration k at which (total + inv*k) leaves the Int32 range. The running sum is
+        // monotonic in k (increasing for inv>0, decreasing for inv<0), so this is the exact iteration the
+        // checked add in the loop body would throw on.
+        long firstOverflow = inv > 0
+            ? (int.MaxValue - start) / step + 1
+            : (start - int.MinValue) / -step + 1;
+
+        if (firstOverflow <= iterations)
+        {
+            // The overflowing iteration charges its loop meter before the add throws, so charge exactly that
+            // many iterations, then raise the same overflow error the loop would.
+            context.ChargeLoopIterations((int)firstOverflow, fuelPerIteration);
+            throw InvalidInput("integer overflow");
+        }
+
+        context.ChargeLoopIterations(iterations, fuelPerIteration);
+        return (int)(start + step * iterations);
+    }
     [MethodImpl(AggressiveInlining)] public static void ChargeBindingCall(SandboxContext context, string id) => context.ChargeBindingCall(context.Bindings.GetDescriptor(id));
     public static void EnterCall(SandboxContext context) => context.EnterCall();
     public static void ExitCall(SandboxContext context) => context.ExitCall();
@@ -52,13 +100,6 @@ public static partial class CompiledRuntime
         => double.IsFinite(value) ? SandboxValue.FromDouble(value) : throw InvalidInput("f64 value must be finite");
     [MethodImpl(AggressiveInlining)] public static SandboxValue Bool(bool value) => SandboxValue.FromBool(value);
 
-    public static SandboxType TypeScalar(string name) => SandboxType.Scalar(name);
-    public static SandboxType TypeList(SandboxType itemType) => SandboxType.List(itemType);
-    public static SandboxType TypeMap(SandboxType keyType, SandboxType valueType) => SandboxType.Map(keyType, valueType);
-    public static SandboxType TypeRecord(SandboxType[] fieldTypes) => SandboxType.Record(fieldTypes);
-
-    public static SandboxType[] CreateTypeArray(int count)
-        => count >= 0 ? new SandboxType[count] : throw InvalidInput("type array length must be non-negative");
     private static SandboxValue String(string value) => SandboxValue.FromString(value);
 
     public static SandboxValue StringConst(SandboxContext context, string value)
@@ -98,14 +139,6 @@ public static partial class CompiledRuntime
     public static long AsI64(SandboxValue value) => ((I64Value)value).Value;
     [MethodImpl(AggressiveInlining)] public static bool AsBool(SandboxValue value) => ((BoolValue)value).Value;
     public static double AsF64(SandboxValue value) => ((F64Value)value).Value;
-
-    [MethodImpl(AggressiveInlining)] public static int AddI32Raw(int left, int right) => SandboxInt32Math.Add(left, right);
-    [MethodImpl(AggressiveInlining)] public static int SubI32Raw(int left, int right) => SandboxInt32Math.Subtract(left, right);
-    [MethodImpl(AggressiveInlining)] public static int MulI32Raw(int left, int right) => SandboxInt32Math.Multiply(left, right);
-    [MethodImpl(AggressiveInlining)] public static int DivI32Raw(int left, int right) => SandboxInt32Math.Divide(left, right);
-    [MethodImpl(AggressiveInlining)] public static int RemI32Raw(int left, int right) => SandboxInt32Math.Remainder(left, right);
-    [MethodImpl(AggressiveInlining)] public static int AddRemI32Raw(int left, int right, int divisor) => SandboxInt32Math.Remainder(SandboxInt32Math.Add(left, right), divisor);
-    [MethodImpl(AggressiveInlining)] public static int NegI32Raw(int value) => SandboxInt32Math.Negate(value);
 
     public static SandboxValue AddI32(SandboxValue left, SandboxValue right) => I32(SandboxInt32Math.Add(AsI32(left), AsI32(right)));
     public static SandboxValue SubI32(SandboxValue left, SandboxValue right) => I32(SandboxInt32Math.Subtract(AsI32(left), AsI32(right)));
@@ -181,63 +214,7 @@ public static partial class CompiledRuntime
 
     public static SandboxValue RoundF64(SandboxValue value) => F64(Math.Round(AsF64(value), MidpointRounding.ToEven));
 
-    public static SandboxValue ListOf(SandboxContext context, SandboxValue[] values)
-    {
-        context.ChargeFuel(SandboxCollectionFuel.Copy(values.Length));
-        context.ChargeAllocation(SandboxCollectionFuel.AllocationBytes(values.Length, 16));
-        return ChargeValue(context, SandboxValue.FromList(values));
-    }
-
-    public static SandboxValue ListLiteral(SandboxContext context, SandboxType itemType, SandboxValue[] values)
-        => CompiledLiteralRuntime.ListLiteral(context, itemType, values);
-
-    public static SandboxValue ListLiteralValue(SandboxType itemType, SandboxValue[] values)
-        => CompiledLiteralRuntime.ListLiteralValue(itemType, values);
-
-    public static SandboxValue ListEmpty(SandboxContext context, SandboxType itemType)
-    {
-        context.ChargeFuel(SandboxCollectionFuel.Empty());
-        context.ChargeAllocation(8);
-        return ChargeValue(context, SandboxValue.FromList([], itemType));
-    }
-
-    public static SandboxValue ListCount(SandboxContext context, SandboxValue list)
-    {
-        var values = AsListReadOnly(list).Values;
-        context.ChargeFuel(SandboxCollectionFuel.Read(values.Count));
-        return I32(values.Count);
-    }
-
-    public static SandboxValue ListGet(SandboxContext context, SandboxValue list, SandboxValue index)
-    {
-        var values = AsListReadOnly(list).Values;
-        context.ChargeFuel(SandboxCollectionFuel.Read(values.Count));
-        var i = AsI32(index);
-        if (i < 0 || i >= values.Count)
-        {
-            throw InvalidInput("list index is out of range");
-        }
-
-        return values[i];
-    }
-
-    public static SandboxValue ListAdd(SandboxContext context, SandboxValue list, SandboxValue item)
-    {
-        var source = AsList(list);
-        if (item.Type != source.ItemType)
-        {
-            throw InvalidInput("list item type mismatch");
-        }
-
-        context.ChargeFuel(SandboxCollectionFuel.Copy(source.Values.Count, addedCount: 1));
-        context.ChargeAllocation(SandboxCollectionFuel.AllocationBytes(
-            source.Values.Count,
-            addedCount: 1,
-            bytesPerElement: 16));
-        var values = source.Values.ToList();
-        values.Add(item);
-        return ChargeValue(context, SandboxValue.FromList(values, source.ItemType));
-    }
+    // List and record collection entry points live in CompiledRuntime.Collections.cs (same partial type).
 
     public static SandboxValue MapEmpty(SandboxContext context, SandboxType keyType, SandboxType valueType)
         => CompiledMapRuntime.Empty(context, keyType, valueType);
@@ -269,30 +246,13 @@ public static partial class CompiledRuntime
     public static SandboxValue MapRemove(SandboxContext context, SandboxValue map, SandboxValue key)
         => CompiledMapRuntime.Remove(context, map, key);
 
-    public static SandboxValue RecordNew(SandboxContext context, SandboxValue[] fields)
-    {
-        context.ChargeFuel(SandboxCollectionFuel.Copy(fields.Length));
-        context.ChargeAllocation(SandboxCollectionFuel.AllocationBytes(fields.Length, 16));
-        return ChargeValue(context, SandboxValue.FromRecord(fields));
-    }
-
-    public static SandboxValue RecordGet(SandboxContext context, SandboxValue record, SandboxValue index)
-    {
-        var fields = AsRecordReadOnly(record).Fields;
-        context.ChargeFuel(SandboxCollectionFuel.Read(fields.Count));
-        var i = AsI32(index);
-        if (i < 0 || i >= fields.Count)
-        {
-            throw InvalidInput("record field index is out of range");
-        }
-
-        return fields[i];
-    }
-
     public static SandboxValue CallBinding(SandboxContext context, string id, SandboxValue[] args)
         => CompiledBindingDispatcher.CallBinding(context, id, args);
 
-    public static SandboxValue[] CreateValueArray(SandboxContext context, int count)
+    public static SandboxValue CallBinding2(SandboxContext context, string id, SandboxValue arg0, SandboxValue arg1)
+        => CompiledBindingDispatcher.CallBinding2(context, id, arg0, arg1);
+
+    public static void ChargeValueArray(SandboxContext context, int count)
     {
         if (count < 0)
         {
@@ -302,6 +262,11 @@ public static partial class CompiledRuntime
         var elementCount = Math.Max(1L, count);
         context.ChargeFuel(elementCount);
         context.ChargeAllocation(checked(elementCount * 8));
+    }
+
+    public static SandboxValue[] CreateValueArray(SandboxContext context, int count)
+    {
+        ChargeValueArray(context, count);
 
         // Zero-argument compiled binding calls do not need a fresh heap array:
         // the emitter never stores into it (no Stelem_Ref is emitted for an empty

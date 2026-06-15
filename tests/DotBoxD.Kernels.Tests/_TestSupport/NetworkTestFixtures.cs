@@ -6,6 +6,9 @@ namespace DotBoxD.Kernels.Tests;
 
 internal static class NetworkTestFixtures
 {
+    public static SandboxPolicyBuilder NetworkPolicyBuilder()
+        => SandboxPolicyBuilder.Create().WithWallTime(TimeSpan.FromSeconds(2));
+
     public static async ValueTask<SandboxExecutionResult> ExecuteNetworkAsync(string uri, SandboxPolicy policy)
     {
         var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("ok"));

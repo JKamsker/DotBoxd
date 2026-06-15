@@ -20,6 +20,7 @@ public sealed partial class InstalledKernel
     private readonly PendingLiveUpdateQueue _pendingLiveUpdates = new();
     private readonly CancellationTokenSource _revocation = new();
     private readonly object? _ownerId;
+    private readonly SandboxExecutionOptions _executionOptions;
     private int _revoked;
 
     internal InstalledKernel(
@@ -38,6 +39,7 @@ public sealed partial class InstalledKernel
         Value = LiveSettingStore.FromDefinitions(Manifest.LiveSettings);
         _entrypoints = package.Entrypoints;
         _liveStateSync = new LiveStateSyncRegistry(GetUpdateMode);
+        _executionOptions = new SandboxExecutionOptions { Mode = executionMode, SuppressSuccessfulRunSummaryAudit = true };
     }
 
     public PluginPackage Package { get; }
@@ -124,7 +126,7 @@ public sealed partial class InstalledKernel
         {
             PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
             ValidateFor(adapter);
-            var input = BuildInput(adapter, e);
+            var input = BuildInput(adapter, e, _entrypoints.ShouldHandle);
             var result = await ExecutePreparedAsync(_entrypoints.ShouldHandle, input, cancellationToken).ConfigureAwait(false);
             PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
             return AsShouldHandleResult(result);
@@ -145,7 +147,7 @@ public sealed partial class InstalledKernel
         {
             PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
             ValidateFor(adapter);
-            var input = BuildInput(adapter, e);
+            var input = BuildInput(adapter, e, _entrypoints.Handle);
             _ = await ExecutePreparedAsync(_entrypoints.Handle, input, cancellationToken).ConfigureAwait(false);
             PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
         }
@@ -178,13 +180,19 @@ public sealed partial class InstalledKernel
             }
 
             ValidateFor(adapter);
-            var input = BuildInput(adapter, e);
+            var input = BuildInput(adapter, e, _entrypoints.ShouldHandle);
             var result = await ExecutePreparedAsync(_entrypoints.ShouldHandle, input, cancellationToken).ConfigureAwait(false);
             if (AsShouldHandleResult(result))
             {
                 if (IsRevoked)
                 {
                     return;
+                }
+
+                if (UsesReusableNoAuditInput(_entrypoints.ShouldHandle) &&
+                    !UsesReusableNoAuditInput(_entrypoints.Handle))
+                {
+                    input = SnapshotInput(input);
                 }
 
                 _ = await ExecutePreparedAsync(_entrypoints.Handle, input, cancellationToken).ConfigureAwait(false);
@@ -236,44 +244,6 @@ public sealed partial class InstalledKernel
 
     internal void ValidateFor<TEvent>(IPluginEventAdapter<TEvent> adapter)
         => _adapterValidation.Validate(Manifest, _plan, _entrypoints, adapter);
-
-    private async ValueTask<SandboxValue> ExecutePreparedAsync(
-        string entrypoint,
-        SandboxValue input,
-        CancellationToken cancellationToken)
-    {
-        using var executionCancellation = PluginExecutionCancellation.Create(
-            cancellationToken,
-            _revocation.Token);
-        var result = await _host.ExecuteAsync(
-                _plan,
-                entrypoint,
-                input,
-                new SandboxExecutionOptions { Mode = _executionMode },
-                executionCancellation.Token)
-            .ConfigureAwait(false);
-        _executionObserver.Record(entrypoint, _executionMode, result);
-        if (IsRevoked)
-        {
-            PluginKernelRevocation.ThrowIfRevoked(true);
-        }
-
-        if (!result.Succeeded)
-        {
-            throw new SandboxRuntimeException(result.Error ?? new SandboxError(SandboxErrorCode.HostFailure, "kernel execution failed"));
-        }
-
-        return result.Value ?? SandboxValue.Unit;
-    }
-
-    private SandboxValue BuildInput<TEvent>(IPluginEventAdapter<TEvent> adapter, TEvent e)
-        => PluginKernelInputBuilder.Build(
-            adapter,
-            e,
-            _liveStateSync.SynchronizeForInput(),
-            Manifest.LiveSettings,
-            Value,
-            _pendingLiveUpdates.Enqueue);
 
     private void RefreshTypedValuesFromStore()
     {

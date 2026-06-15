@@ -10,13 +10,12 @@ public sealed partial class SandboxHost : IDisposable
 {
     private readonly BindingRegistry _bindings;
     private readonly ISandboxInterpreter _interpreter;
-    private readonly ISandboxCompiler? _compiler;
+    private readonly CompiledExecutionProvider _compiled;
     private readonly IExecutionModeSelector _modeSelector;
     private readonly Action<SandboxAuditEvent>[] _auditObservers;
     private readonly SandboxWorkerExecutor _workerExecutor;
     private readonly byte[] _planSigningKey = RandomNumberGenerator.GetBytes(32);
     private readonly AutoExecutionHotness _autoHotness = new();
-    private readonly CompiledExecutableCache _compiledExecutables = new();
     private readonly PreparedPlanIntegrityCache _preparedPlans = new();
     private int _disposed;
 
@@ -30,7 +29,7 @@ public sealed partial class SandboxHost : IDisposable
     {
         _bindings = bindings;
         _interpreter = interpreter;
-        _compiler = compiler;
+        _compiled = new CompiledExecutionProvider(compiler);
         _modeSelector = modeSelector;
         _auditObservers = SnapshotAuditObservers(auditObserver);
         _workerExecutor = new SandboxWorkerExecutor(worker);
@@ -186,9 +185,9 @@ public sealed partial class SandboxHost : IDisposable
         SandboxExecutionOptions options,
         CancellationToken cancellationToken)
     {
-        if (_compiler is null || options.EnableDebugTrace)
+        if (!_compiled.IsAvailable || options.EnableDebugTrace)
         {
-            var reason = _compiler is null ? CompilerUnavailableError() : DebugTraceFallbackError();
+            var reason = !_compiled.IsAvailable ? CompilerUnavailableError() : DebugTraceFallbackError();
             return options.AllowFallbackToInterpreter
                 ? await ExecuteFallbackToInterpreterAsync(
                         plan,
@@ -230,11 +229,19 @@ public sealed partial class SandboxHost : IDisposable
         var fallbackOptions = options with { RunId = runId };
         var result = await ExecuteInterpretedAsync(plan, entrypoint, input, fallbackOptions, cancellationToken)
             .ConfigureAwait(false);
-        var audit = FallbackSecurityAudits(plan, runId, reason)
-            .Concat([FallbackAudit(plan, runId, reason)])
-            .Concat(result.AuditEvents)
-            .ToSequencedArray();
-        return result with { AuditEvents = audit };
+        var audit = new InMemoryAuditSink();
+        if (reason.Code == SandboxErrorCode.VerifierFailure)
+        {
+            audit.Write(VerifierFailureAudit(plan, runId, reason));
+        }
+
+        audit.Write(FallbackAudit(plan, runId, reason));
+        foreach (var auditEvent in result.AuditEvents)
+        {
+            audit.Write(auditEvent);
+        }
+
+        return result with { AuditEvents = audit.OwnedEventSnapshot() };
     }
 
     private async ValueTask<SandboxExecutionResult> ExecuteInterpretedAsync(
@@ -254,9 +261,7 @@ public sealed partial class SandboxHost : IDisposable
     {
         try
         {
-            var artifact = await _compiler!.CompileAsync(plan, new CompileOptions(entrypoint), cancellationToken).ConfigureAwait(false);
-            var executable = await _compiledExecutables.GetAsync(artifact, plan, entrypoint, cancellationToken)
-                .ConfigureAwait(false);
+            var executable = await _compiled.GetAsync(plan, entrypoint, cancellationToken).ConfigureAwait(false);
             var result = await CompiledExecutionRunner.ExecuteAsync(executable, plan, entrypoint, input, options, cancellationToken)
                 .ConfigureAwait(false);
             return new CompiledAttempt(result, null);
@@ -285,10 +290,6 @@ public sealed partial class SandboxHost : IDisposable
         => options.AllowFallbackToInterpreter &&
            ex.Error.Code is SandboxErrorCode.VerifierFailure or SandboxErrorCode.ValidationError;
 
-    private static bool CanCompileEntrypoint(ExecutionPlan plan, string entrypoint)
-        => plan.FunctionAnalysis.TryGetValue(entrypoint, out var analysis) &&
-           (analysis.Effects & ~(SandboxEffect.Cpu | SandboxEffect.Alloc)) == SandboxEffect.None;
-
     private static SandboxError CompilerUnavailableError()
         => new(SandboxErrorCode.ValidationError, "compiled execution is not available for this run");
 
@@ -299,7 +300,7 @@ public sealed partial class SandboxHost : IDisposable
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 0)
         {
-            _compiledExecutables.Dispose();
+            _compiled.Dispose();
         }
     }
 

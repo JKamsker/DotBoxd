@@ -116,6 +116,7 @@ public sealed class StringQuotaTests
         var policy = SandboxPolicyBuilder.Create()
             .GrantFileRead(temp.Path, 1024)
             .WithMaxStringLength(4)
+            .WithWallTime(TimeSpan.FromSeconds(2))
             .Build();
         var plan = await host.PrepareAsync(module, policy);
 
@@ -138,6 +139,7 @@ public sealed class StringQuotaTests
         var policy = SandboxPolicyBuilder.Create()
             .GrantFileRead(temp.Path, 1024)
             .WithMaxTotalStringBytes(30)
+            .WithWallTime(TimeSpan.FromSeconds(2))
             .Build();
         var plan = await host.PrepareAsync(module, policy);
 

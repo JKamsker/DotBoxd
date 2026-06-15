@@ -101,7 +101,24 @@ internal static class ListCountLoopFastPathEmitter
         il.Emit(OpCodes.Ldloc, readFuel);
         il.Emit(OpCodes.Ldloc, iterations);
         il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ChargeBulkFuel)));
-        EmitLoopBody(fastLoop, finish, index, end, count, readFuel, range.LocalName, plan, il, declare, chargeReadFuel: false);
+        if (plan.AddToTarget)
+        {
+            // The hoisted count is loop-invariant, so "target += count" collapses to "target += count *
+            // iterations" via AccumulateLinearI32 (identical loop-iteration fuel and overflow-throw point);
+            // the per-element read fuel was already bulk-charged above. Mirrors the string.length fast path.
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Ldloc, declare(plan.Target).Local);
+            il.Emit(OpCodes.Ldloc, count);
+            il.Emit(OpCodes.Ldloc, iterations);
+            EmitInt32(il, plan.LoopFuelPerIteration);
+            il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AccumulateLinearI32)));
+            il.Emit(OpCodes.Stloc, declare(plan.Target).Local);
+            il.Emit(OpCodes.Br, finish);
+        }
+        else
+        {
+            EmitLoopBody(fastLoop, finish, index, end, count, readFuel, range.LocalName, plan, il, declare, chargeReadFuel: false);
+        }
 
         il.MarkLabel(fallback);
         EmitLoopBody(fallbackLoop, finish, index, end, count, readFuel, range.LocalName, plan, il, declare, chargeReadFuel: true);

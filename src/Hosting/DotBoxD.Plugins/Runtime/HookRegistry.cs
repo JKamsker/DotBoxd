@@ -81,6 +81,7 @@ public sealed class HookPipeline<TEvent>
     private volatile Func<TEvent, HookContext, ValueTask>[] _handlers = [];
     private readonly IPluginEventAdapter<TEvent> _adapter;
     private readonly IPluginMessageSink _messages;
+    private readonly HookContext _defaultContext;
     private readonly KernelRegistry _kernels;
     private readonly Func<PluginPackage, InstalledKernel>? _installer;
 
@@ -92,6 +93,7 @@ public sealed class HookPipeline<TEvent>
     {
         _adapter = adapter;
         _messages = messages;
+        _defaultContext = new HookContext(messages, CancellationToken.None);
         _kernels = kernels;
         _installer = installer;
     }
@@ -228,25 +230,70 @@ public sealed class HookPipeline<TEvent>
     internal bool UsesAdapter(IPluginEventAdapter<TEvent> adapter)
         => ReferenceEquals(_adapter, adapter);
 
-    internal async ValueTask PublishAsync(TEvent e, CancellationToken cancellationToken)
+    internal ValueTask PublishAsync(TEvent e, CancellationToken cancellationToken)
     {
         // Read each copy-on-write reference once for a stable per-publish snapshot. No lock or
         // allocation: a concurrent mutation replaces the array reference rather than editing it.
         var filters = _filters;
         var handlers = _handlers;
 
-        var context = new HookContext(_messages, cancellationToken);
-        foreach (var filter in filters)
+        var context = cancellationToken.CanBeCanceled
+            ? new HookContext(_messages, cancellationToken)
+            : _defaultContext;
+        for (var i = 0; i < filters.Length; i++)
         {
-            if (!await filter(e, context).ConfigureAwait(false))
-            {
+            var filter = filters[i](e, context);
+            if (!filter.IsCompletedSuccessfully)
+                return PublishAfterFilterAwaitAsync(filter, filters, handlers, e, context, i);
+
+            if (!filter.Result)
+                return ValueTask.CompletedTask;
+        }
+
+        for (var i = 0; i < handlers.Length; i++)
+        {
+            var handler = handlers[i](e, context);
+            if (!handler.IsCompletedSuccessfully)
+                return PublishAfterHandlerAwaitAsync(handler, handlers, e, context, i);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+    private static async ValueTask PublishAfterFilterAwaitAsync(
+        ValueTask<bool> pending,
+        Func<TEvent, HookContext, ValueTask<bool>>[] filters,
+        Func<TEvent, HookContext, ValueTask>[] handlers,
+        TEvent e,
+        HookContext context,
+        int index)
+    {
+        if (!await pending.ConfigureAwait(false)) {
+            return;
+        }
+
+        for (var i = index + 1; i < filters.Length; i++)
+        {
+            if (!await filters[i](e, context).ConfigureAwait(false)) {
                 return;
             }
         }
 
-        foreach (var handler in handlers)
+        for (var i = 0; i < handlers.Length; i++)
         {
-            await handler(e, context).ConfigureAwait(false);
+            await handlers[i](e, context).ConfigureAwait(false);
+        }
+    }
+    private static async ValueTask PublishAfterHandlerAwaitAsync(
+        ValueTask pending,
+        Func<TEvent, HookContext, ValueTask>[] handlers,
+        TEvent e,
+        HookContext context,
+        int index)
+    {
+        await pending.ConfigureAwait(false);
+        for (var i = index + 1; i < handlers.Length; i++)
+        {
+            await handlers[i](e, context).ConfigureAwait(false);
         }
     }
 }

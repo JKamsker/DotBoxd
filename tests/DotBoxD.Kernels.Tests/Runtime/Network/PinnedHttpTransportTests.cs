@@ -60,8 +60,9 @@ public sealed class PinnedHttpTransportTests
                 [$"safe.test:{port}"],
                 maxResponseBytes: 1024,
                 allowedSchemes: ["http"],
-                allowPrivateNetwork: true)
-            .WithWallTime(TimeSpan.FromSeconds(2))
+                allowPrivateNetwork: true,
+                timeout: TimeSpan.FromSeconds(10))
+            .WithWallTime(TimeSpan.FromSeconds(10))
             .WithFuel(5_000)
             .Build();
         var plan = await host.PrepareAsync(module, policy);

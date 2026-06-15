@@ -7,6 +7,7 @@ public HookContext(IPluginMessageSink messages, CancellationToken cancellationTo
 public InMemoryPluginMessageSink()
 public interface IEventKernel<TEvent>
 public interface IPluginEventAdapter<in TEvent>
+public interface IPluginEventValueWriter<in TEvent> : IPluginEventAdapter<TEvent>
 public interface IPluginMessageSink
 public IPluginMessageSink Messages { get; }
 public IReadOnlyList<PluginMessage> Messages => _readOnlyMessages

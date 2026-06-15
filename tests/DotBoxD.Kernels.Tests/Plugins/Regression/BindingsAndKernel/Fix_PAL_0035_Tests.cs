@@ -97,6 +97,24 @@ public sealed class Fix_PAL_0035_Tests
             $"{snapshotGrowthFloorBytes}). Handler/filter snapshots are allocated per publish.");
     }
 
+    [Fact]
+    public async Task DefaultPublish_doesNotAllocateHookContextPerPublish()
+    {
+        var server = PluginServer.Create();
+        server.Hooks.On(new PingEventAdapter())
+            .InvokeHostHandler((PingEvent _, HookContext context) =>
+            {
+                Assert.False(context.CancellationToken.CanBeCanceled);
+            });
+
+        var perPublish = await MeasureBytesPerPublishAsync(server);
+
+        Assert.True(
+            perPublish < 16,
+            $"Default publish allocated {perPublish} bytes/publish; the immutable default HookContext " +
+            "should be reused when the caller did not provide a cancellable token.");
+    }
+
     private static async Task<long> MeasureBytesPerPublishAsync(PluginServer server)
     {
         var e = new PingEvent(7);

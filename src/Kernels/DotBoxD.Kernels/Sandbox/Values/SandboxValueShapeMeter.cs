@@ -64,6 +64,68 @@ internal static class SandboxValueShapeMeter
         return shape;
     }
 
+    /// <summary>
+    /// Measures the pure shape (no limits, no fuel) of a value and the number of frames the metering walk
+    /// would process. The frame count equals the <c>scanned</c> counter in <see cref="Measure"/>, so the
+    /// scan-fuel a normal <c>ChargeValue</c> walk charges is exactly <c>nodes / 64</c>. Used by
+    /// <see cref="ValueShapeCache"/> to charge collection add/set incrementally without re-walking the whole
+    /// collection, while keeping the charged shape and fuel identical to a full walk.
+    /// </summary>
+    public static (ValueShape Shape, long Nodes) MeasureWithNodes(
+        SandboxValue value,
+        CancellationToken cancellationToken = default)
+    {
+        var active = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        var stack = new Stack<Frame>();
+        var shape = new ValueShape(0, 0, 0, 0, 0, 0);
+        long nodes = 0;
+        stack.Push(new Frame(value, Depth: 0, Exit: false));
+        while (stack.Count > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            nodes++;
+            var frame = stack.Pop();
+            if (frame.Exit)
+            {
+                active.Remove(frame.Value);
+                continue;
+            }
+
+            switch (frame.Value)
+            {
+                case StringValue text:
+                    shape = AddText(shape, SandboxLiteralConstraints.TextShape(text.Value), null);
+                    break;
+                case OpaqueIdValue id:
+                    shape = AddText(shape, SandboxLiteralConstraints.TextShape(id.Value), null);
+                    break;
+                case SandboxPathValue path:
+                    shape = AddText(shape, SandboxLiteralConstraints.TextShape(path.Value.RelativePath), null);
+                    break;
+                case SandboxUriValue uri:
+                    shape = AddText(shape, SandboxLiteralConstraints.TextShape(uri.Value.Value), null);
+                    break;
+                case ListValue list:
+                    shape = AddList(shape, list, frame.Depth, active, stack, null);
+                    break;
+                case MapValue map:
+                    shape = AddMap(shape, map, frame.Depth, active, stack, null);
+                    break;
+                case RecordValue record:
+                    shape = AddRecord(shape, record, frame.Depth, active, stack, null);
+                    break;
+                case UnitValue or BoolValue or I32Value or I64Value or F64Value:
+                    break;
+                default:
+                    throw new SandboxRuntimeException(new SandboxError(
+                        SandboxErrorCode.InvalidInput,
+                        "unknown sandbox value kind is not supported"));
+            }
+        }
+
+        return (shape, nodes);
+    }
+
     private static ValueShape AddList(
         ValueShape shape,
         ListValue list,

@@ -2,13 +2,23 @@ namespace DotBoxD.Kernels;
 
 public abstract record SandboxValue
 {
+    private const int CachedI32Min = -1;
+    private const int CachedI32Max = 256;
+
+    private static readonly SandboxValue True = new BoolValue(true);
+    private static readonly SandboxValue False = new BoolValue(false);
+    private static readonly SandboxValue[] CachedI32Values = CreateCachedI32Values();
+
     public static SandboxValue Unit { get; } = new UnitValue();
 
     public abstract SandboxType Type { get; }
 
-    public static SandboxValue FromBool(bool value) => new BoolValue(value);
+    public static SandboxValue FromBool(bool value) => value ? True : False;
 
-    public static SandboxValue FromInt32(int value) => new I32Value(value);
+    public static SandboxValue FromInt32(int value)
+        => value >= CachedI32Min && value <= CachedI32Max
+            ? CachedI32Values[value - CachedI32Min]
+            : new I32Value(value);
 
     public static SandboxValue FromInt64(long value) => new I64Value(value);
 
@@ -65,6 +75,17 @@ public abstract record SandboxValue
     public static SandboxValue FromRecord(IReadOnlyList<SandboxValue> fields) => new RecordValue(fields);
 
     internal static SandboxValue FromOwnedRecord(SandboxValue[] fields) => RecordValue.FromOwnedFields(fields);
+
+    private static SandboxValue[] CreateCachedI32Values()
+    {
+        var values = new SandboxValue[CachedI32Max - CachedI32Min + 1];
+        for (var i = 0; i < values.Length; i++)
+        {
+            values[i] = new I32Value(CachedI32Min + i);
+        }
+
+        return values;
+    }
 }
 
 public sealed record UnitValue : SandboxValue
@@ -122,71 +143,6 @@ public sealed record SandboxUriValue(SandboxUri Value) : SandboxValue
     public override SandboxType Type => SandboxType.Scalar("SandboxUri");
 }
 
-public sealed record ListValue(IReadOnlyList<SandboxValue> Values, SandboxType ItemType) : SandboxValue
-{
-    private IReadOnlyList<SandboxValue> _values = Snapshot(Values);
-
-    public IReadOnlyList<SandboxValue> Values { get => _values; init => _values = Snapshot(value); }
-
-    /// <summary>
-    /// Constructs a list value over an array the caller has just allocated, fully
-    /// populated, and will not expose for mutation, avoiding a second defensive copy.
-    /// Internal because the owned-array contract cannot be enforced for external callers.
-    /// </summary>
-    internal static ListValue FromOwnedValues(SandboxValue[] values, SandboxType itemType)
-        => new(new OwnedSnapshot(ModelCopy.WrapOwned(values)), itemType);
-
-    private static IReadOnlyList<SandboxValue> Snapshot(IReadOnlyList<SandboxValue> values)
-        => values is OwnedSnapshot owned ? owned.Values : ModelCopy.List(values);
-
-    private sealed class OwnedSnapshot(IReadOnlyList<SandboxValue> values) : IReadOnlyList<SandboxValue>
-    {
-        public IReadOnlyList<SandboxValue> Values { get; } = values;
-
-        public SandboxValue this[int index] => Values[index];
-
-        public int Count => Values.Count;
-
-        public IEnumerator<SandboxValue> GetEnumerator() => Values.GetEnumerator();
-
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
-    }
-
-    public override SandboxType Type => SandboxType.List(ItemType);
-
-    public bool Equals(ListValue? other)
-    {
-        if (other is null ||
-            !ItemType.Equals(other.ItemType) ||
-            Values.Count != other.Values.Count)
-        {
-            return false;
-        }
-
-        for (var i = 0; i < Values.Count; i++)
-        {
-            if (!Values[i].Equals(other.Values[i]))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    public override int GetHashCode()
-    {
-        var hash = new HashCode();
-        hash.Add(ItemType);
-        foreach (var value in Values)
-        {
-            hash.Add(value);
-        }
-
-        return hash.ToHashCode();
-    }
-}
-
 public sealed record RecordValue : SandboxValue
 {
     private IReadOnlyList<SandboxValue> _fields;
@@ -202,20 +158,19 @@ public sealed record RecordValue : SandboxValue
     /// Internal because the owned-array contract cannot be enforced for external callers.
     /// </summary>
     internal static RecordValue FromOwnedFields(SandboxValue[] fields)
-        => new(new OwnedSnapshot(ModelCopy.WrapOwned(fields)));
+        => new(new OwnedSnapshot(fields));
 
     private static IReadOnlyList<SandboxValue> Snapshot(IReadOnlyList<SandboxValue> fields)
-        => fields is OwnedSnapshot owned ? owned.Fields : ModelCopy.List(fields);
+        => fields is OwnedSnapshot owned ? owned : ModelCopy.List(fields);
 
-    private sealed class OwnedSnapshot(IReadOnlyList<SandboxValue> fields) : IReadOnlyList<SandboxValue>
+    private sealed class OwnedSnapshot(SandboxValue[] fields) : IReadOnlyList<SandboxValue>
     {
-        public IReadOnlyList<SandboxValue> Fields { get; } = fields;
+        public SandboxValue this[int index] => fields[index];
 
-        public SandboxValue this[int index] => Fields[index];
+        public int Count => fields.Length;
 
-        public int Count => Fields.Count;
-
-        public IEnumerator<SandboxValue> GetEnumerator() => Fields.GetEnumerator();
+        public IEnumerator<SandboxValue> GetEnumerator()
+            => ((IEnumerable<SandboxValue>)fields).GetEnumerator();
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
@@ -265,51 +220,4 @@ public sealed record RecordValue : SandboxValue
     }
 }
 
-public sealed record MapValue(
-    IReadOnlyDictionary<SandboxValue, SandboxValue> Values,
-    SandboxType KeyType,
-    SandboxType ValueType) : SandboxValue
-{
-    private IReadOnlyDictionary<SandboxValue, SandboxValue> _values = ModelCopy.ValueDictionary(Values);
-
-    public IReadOnlyDictionary<SandboxValue, SandboxValue> Values { get => _values; init => _values = ModelCopy.ValueDictionary(value); }
-
-    public override SandboxType Type => SandboxType.Map(KeyType, ValueType);
-
-    public bool Equals(MapValue? other)
-    {
-        if (other is null ||
-            !KeyType.Equals(other.KeyType) ||
-            !ValueType.Equals(other.ValueType) ||
-            Values.Count != other.Values.Count)
-        {
-            return false;
-        }
-
-        foreach (var entry in Values)
-        {
-            if (!other.Values.TryGetValue(entry.Key, out var otherValue) ||
-                !entry.Value.Equals(otherValue))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    public override int GetHashCode()
-    {
-        // Maps have no defined enumeration order, so combine entry hashes
-        // commutatively (XOR) to keep the hash order-independent.
-        var keyTypeHash = KeyType.GetHashCode();
-        var valueTypeHash = ValueType.GetHashCode();
-        var entriesHash = 0;
-        foreach (var entry in Values)
-        {
-            entriesHash ^= HashCode.Combine(entry.Key, entry.Value);
-        }
-
-        return HashCode.Combine(keyTypeHash, valueTypeHash, entriesHash);
-    }
-}
+// MapValue lives in MapValue.cs (kept out of this file to stay under the line cap).

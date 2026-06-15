@@ -22,6 +22,36 @@ if (args.Contains("--probe-matrix", StringComparer.OrdinalIgnoreCase)) {
     return;
 }
 
+if (args.Contains("--probe-rogue", StringComparer.OrdinalIgnoreCase)) {
+    await DotBoxD.Kernels.Benchmarks.Interpreter.RogueScalingProbe.RunAsync();
+    return;
+}
+
+if (args.Contains("--probe-examples", StringComparer.OrdinalIgnoreCase)) {
+    await DotBoxD.Kernels.Benchmarks.Examples.ExampleWorkflowProbe.RunAsync();
+    return;
+}
+
+if (args.Contains("--probe-prepared-values", StringComparer.OrdinalIgnoreCase)) {
+    await DotBoxD.Kernels.Benchmarks.Examples.PreparedValueProbe.RunAsync();
+    return;
+}
+
+if (args.Contains("--probe-runtime-types", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.RuntimeTypeProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-resource-meter", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.ResourceMeterProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-compiled-binding-fast-path", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.CompiledBindingFastPathProbe.Run();
+    return;
+}
+
 var profileIndex = Array.FindIndex(args, arg => arg.Equals("--profile-ipc", StringComparison.OrdinalIgnoreCase));
 if (profileIndex >= 0) {
     var transport = args.ElementAtOrDefault(profileIndex + 1) ?? IpcAllocationProfile.NamedPipeTransport;

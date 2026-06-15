@@ -170,4 +170,69 @@ public sealed class PluginMessageBindingTests
         Assert.DoesNotContain("abc123", audit.ResourceId);
         Assert.DoesNotContain("token:", audit.ResourceId);
     }
+
+    [Fact]
+    public async Task Plugin_message_binding_does_not_copy_clean_sink_payload()
+    {
+        var sink = new CapturingMessageSink();
+        var binding = PluginMessageBindings.CreateSend(sink);
+        var message = string.Concat("clean", " payload");
+
+        await binding.Invoke(
+            MessageContext(binding),
+            [SandboxValue.FromString("player-1"), SandboxValue.FromString(message)],
+            CancellationToken.None);
+
+        Assert.Same(message, sink.Message);
+    }
+
+    [Fact]
+    public async Task Plugin_message_binding_still_sanitizes_control_characters_for_sink_payload()
+    {
+        var sink = new CapturingMessageSink();
+        var binding = PluginMessageBindings.CreateSend(sink);
+        var message = "line-one\nline-two";
+
+        await binding.Invoke(
+            MessageContext(binding),
+            [SandboxValue.FromString("player-1"), SandboxValue.FromString(message)],
+            CancellationToken.None);
+
+        Assert.Equal("line-one line-two", sink.Message);
+        Assert.NotSame(message, sink.Message);
+    }
+
+    private static SandboxContext MessageContext(BindingDescriptor binding)
+    {
+        var policy = SandboxPolicyBuilder.Create()
+            .GrantHostMessageWrite()
+            .WithFuel(10_000)
+            .Build();
+        return new SandboxContext(
+            SandboxRunId.New(),
+            policy,
+            new ResourceMeter(policy.ResourceLimits),
+            new BindingRegistry([binding]),
+            new InMemoryAuditSink(),
+            CancellationToken.None,
+            moduleHash: "module",
+            policyHash: "policy");
+    }
+
+    private sealed class CapturingMessageSink : IPluginMessageSink
+    {
+        public string? TargetId { get; private set; }
+        public string? Message { get; private set; }
+
+        public ValueTask SendAsync(
+            string targetId,
+            string message,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            TargetId = targetId;
+            Message = message;
+            return ValueTask.CompletedTask;
+        }
+    }
 }

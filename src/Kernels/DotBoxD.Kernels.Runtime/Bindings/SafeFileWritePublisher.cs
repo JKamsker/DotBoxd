@@ -4,6 +4,8 @@ using DotBoxD.Kernels;
 
 internal static class SafeFileWritePublisher
 {
+    private static readonly object[] PublishLocks = CreatePublishLocks();
+
     public static SafeFileWritePermission EnsureAllowed(
         CapabilityGrant grant,
         string fullPath,
@@ -84,19 +86,22 @@ internal static class SafeFileWritePublisher
         string finalPath,
         SafeFileWritePermission permission)
     {
-        try {
-            if (!permission.AllowCreate) {
-                File.Replace(tempPath, finalPath, destinationBackupFileName: null);
-                return;
-            }
+        lock (GetPublishLock(finalPath)) {
+            try {
+                EnsurePublishAllowed(finalPath, permission);
+                if (!permission.AllowCreate) {
+                    File.Replace(tempPath, finalPath, destinationBackupFileName: null);
+                    return;
+                }
 
-            File.Move(tempPath, finalPath, overwrite: permission.AllowOverwrite);
-        }
-        catch (IOException) when (!permission.AllowOverwrite && File.Exists(finalPath)) {
-            throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: overwrite is not allowed");
-        }
-        catch (IOException) when (!permission.AllowCreate && !File.Exists(finalPath)) {
-            throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: create is not allowed");
+                File.Move(tempPath, finalPath, overwrite: permission.AllowOverwrite);
+            }
+            catch (IOException) when (!permission.AllowOverwrite && File.Exists(finalPath)) {
+                throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: overwrite is not allowed");
+            }
+            catch (IOException) when (!permission.AllowCreate && !File.Exists(finalPath)) {
+                throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: create is not allowed");
+            }
         }
     }
 
@@ -115,6 +120,36 @@ internal static class SafeFileWritePublisher
 
     private static SandboxRuntimeException Error(SandboxErrorCode code, string message)
         => new(new SandboxError(code, message));
+
+    private static void EnsurePublishAllowed(string finalPath, SafeFileWritePermission permission)
+    {
+        var exists = File.Exists(finalPath);
+        if (exists && !permission.AllowOverwrite) {
+            throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: overwrite is not allowed");
+        }
+
+        if (!exists && !permission.AllowCreate) {
+            throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: create is not allowed");
+        }
+    }
+
+    private static object GetPublishLock(string finalPath)
+    {
+        var hash = OperatingSystem.IsWindows()
+            ? StringComparer.OrdinalIgnoreCase.GetHashCode(finalPath)
+            : StringComparer.Ordinal.GetHashCode(finalPath);
+        return PublishLocks[(hash & int.MaxValue) % PublishLocks.Length];
+    }
+
+    private static object[] CreatePublishLocks()
+    {
+        var locks = new object[64];
+        for (var i = 0; i < locks.Length; i++) {
+            locks[i] = new object();
+        }
+
+        return locks;
+    }
 }
 
 internal sealed record SafeFileWritePermission(bool AllowCreate, bool AllowOverwrite);

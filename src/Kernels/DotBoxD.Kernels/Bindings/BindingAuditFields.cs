@@ -27,6 +27,22 @@ public static class BindingAuditFields
         long? bytesWritten = null)
         => BuildBaseFields(resourceKind, startedAt, deterministic, bytesRead, bytesWritten, extraCapacity: 0);
 
+    internal static Dictionary<string, string> CreateMutable(
+        string resourceKind,
+        DateTimeOffset startedAt,
+        string moduleHash,
+        string policyHash,
+        bool deterministic,
+        int extraCapacity,
+        long? bytesRead = null,
+        long? bytesWritten = null)
+    {
+        var fields = BuildBaseFields(resourceKind, startedAt, deterministic, bytesRead, bytesWritten, extraCapacity + 2);
+        fields["moduleHash"] = moduleHash;
+        fields["policyHash"] = policyHash;
+        return fields;
+    }
+
     private static Dictionary<string, string> BuildBaseFields(
         string resourceKind,
         DateTimeOffset startedAt,

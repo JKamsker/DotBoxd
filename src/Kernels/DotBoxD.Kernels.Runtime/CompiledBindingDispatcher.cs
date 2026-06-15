@@ -63,6 +63,72 @@ internal static class CompiledBindingDispatcher
         }
     }
 
+    public static SandboxValue CallBinding2(
+        SandboxContext context,
+        string id,
+        SandboxValue arg0,
+        SandboxValue arg1)
+    {
+        var descriptor = context.Bindings.GetDescriptor(id);
+        var auditCheckpoint = context.AuditCheckpoint();
+        try
+        {
+            ValidateArguments(descriptor, arg0, arg1);
+            context.ChargeBindingCall(descriptor);
+        }
+        catch (SandboxRuntimeException ex)
+        {
+            context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, ex.Error.Code);
+            throw;
+        }
+
+        CancellationTokenSource? timeout = null;
+        try
+        {
+            timeout = context.CreateWallTimeToken();
+            using var returnCredits = context.BeginBindingReturnCreditScope();
+            var pending = descriptor.Invoke.Target is ITwoArgumentBindingInvoker fastInvoker
+                ? fastInvoker.Invoke(context, arg0, arg1, timeout.Token)
+                : descriptor.Invoke(context, [arg0, arg1], timeout.Token);
+            var value = AwaitBinding(pending);
+            value = context.ChargeBindingReturn(descriptor, value);
+            context.EnsureRequiredBindingSuccessAudit(descriptor, auditCheckpoint);
+            return value;
+        }
+        catch (SandboxRuntimeException ex)
+        {
+            context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, ex.Error.Code);
+            throw;
+        }
+        catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
+        {
+            context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, SandboxErrorCode.Cancelled);
+            throw;
+        }
+        catch (OperationCanceledException) when (timeout?.IsCancellationRequested == true)
+        {
+            var error = new SandboxError(SandboxErrorCode.Timeout, $"binding '{id}' timed out");
+            context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, error.Code);
+            throw new SandboxRuntimeException(error);
+        }
+        catch (OperationCanceledException)
+        {
+            var error = new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{id}' failed");
+            context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, error.Code);
+            throw new SandboxRuntimeException(error);
+        }
+        catch (Exception)
+        {
+            var error = new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{id}' failed");
+            context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, error.Code);
+            throw new SandboxRuntimeException(error);
+        }
+        finally
+        {
+            timeout?.Dispose();
+        }
+    }
+
     private static SandboxValue AwaitBinding(ValueTask<SandboxValue> pending)
     {
         // Synchronous bindings (the common case) complete inline, so read the
@@ -101,6 +167,23 @@ internal static class CompiledBindingDispatcher
                     SandboxErrorCode.ValidationError,
                     $"binding '{descriptor.Id}' argument type does not match verified plan"));
             }
+        }
+    }
+
+    private static void ValidateArguments(BindingDescriptor descriptor, SandboxValue arg0, SandboxValue arg1)
+    {
+        if (descriptor.Parameters.Count != 2)
+        {
+            throw new SandboxRuntimeException(new SandboxError(
+                SandboxErrorCode.ValidationError,
+                $"binding '{descriptor.Id}' argument count does not match verified plan"));
+        }
+
+        if (!arg0.Type.Equals(descriptor.Parameters[0]) || !arg1.Type.Equals(descriptor.Parameters[1]))
+        {
+            throw new SandboxRuntimeException(new SandboxError(
+                SandboxErrorCode.ValidationError,
+                $"binding '{descriptor.Id}' argument type does not match verified plan"));
         }
     }
 }

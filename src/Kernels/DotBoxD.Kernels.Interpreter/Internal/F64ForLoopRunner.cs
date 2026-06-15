@@ -25,13 +25,16 @@ internal static class F64ForLoopRunner
         var bindingCalls = BindingCalls(iterations, body.Expression.BindingCallCount);
         if (bindingCalls < 0 ||
             !context.CanBulkChargeLoopIterations(iterations, fuelPerIteration) ||
-            !context.CanBulkChargeBindingCalls(binding, bindingCalls))
+            (binding is not null && !context.CanBulkChargeBindingCalls(binding, bindingCalls)))
         {
             return false;
         }
 
         context.ChargeLoopIterations(iterations, fuelPerIteration);
-        context.ChargeBindingCalls(binding, bindingCalls);
+        if (binding is not null)
+        {
+            context.ChargeBindingCalls(binding, bindingCalls);
+        }
         var loopSlot = frame.GetSlot(statement.LocalName);
         var checkpoint = 4096;
         for (var i = start; i < end; i++)
@@ -67,7 +70,7 @@ internal static class F64ForLoopRunner
         }
 
         var targetSlot = frame.GetSlot(assignment.Name);
-        if (!frame.IsF64Slot(targetSlot) || binding is null)
+        if (!frame.IsF64Slot(targetSlot))
         {
             return false;
         }

@@ -12,6 +12,7 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
     private readonly IGeneratedAssemblyVerifier _verifier;
     private readonly VerificationPolicy _verificationPolicy;
     private readonly PersistentCompiledArtifactCache? _cache;
+    private readonly ReflectionEmitMemoryCache? _memoryCache;
 
     public ReflectionEmitSandboxCompiler(
         IGeneratedAssemblyVerifier verifier,
@@ -21,7 +22,10 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         _verifier = verifier;
         _verificationPolicy = verificationPolicy ?? VerificationPolicy.BoxedValueDefaults();
         _cache = cache;
+        _memoryCache = cache is null ? new ReflectionEmitMemoryCache() : null;
     }
+
+    internal bool UsesPersistentCache => _cache is not null;
 
     public async ValueTask<CompiledArtifact> CompileAsync(
         ExecutionPlan plan,
@@ -30,6 +34,12 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
     {
         var function = ResolveSupportedFunction(plan, options.Entrypoint);
         var cacheKey = CacheKeyBuilder.Build(plan, options.Entrypoint, _verificationPolicy, options.Optimize);
+
+        if (_memoryCache?.TryGet(cacheKey, out var cachedArtifact) == true)
+        {
+            return cachedArtifact;
+        }
+
         var lookupStatus = CompiledCacheStatus.None;
         string? cacheInvalidReason = null;
         if (_cache is not null)
@@ -79,7 +89,7 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
                     verification,
                     cancellationToken)
                 .ConfigureAwait(false);
-        return new CompiledArtifact(
+        var artifact = new CompiledArtifact(
             assemblyBytes,
             verification.AssemblyHash,
             manifest,
@@ -88,6 +98,8 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
             CompiledRuntimeFormKind.LoadedAssembly,
             status,
             lookupStatus == CompiledCacheStatus.Invalid ? cacheInvalidReason : null);
+        _memoryCache?.Add(cacheKey, artifact);
+        return artifact;
     }
 
     private static SandboxFunction ResolveSupportedFunction(ExecutionPlan plan, string entrypoint)
@@ -96,12 +108,6 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         if (function is null)
         {
             throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, $"entrypoint '{entrypoint}' is not available"));
-        }
-
-        var effects = plan.FunctionAnalysis[function.Id].Effects;
-        if ((effects & ~(SandboxEffect.Cpu | SandboxEffect.Alloc)) != SandboxEffect.None)
-        {
-            throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "compiled mode supports pure modules only"));
         }
 
         return function;

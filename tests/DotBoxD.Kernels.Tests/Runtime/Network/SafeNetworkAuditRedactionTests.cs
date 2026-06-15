@@ -13,6 +13,7 @@ public sealed class SafeNetworkAuditRedactionTests
         var policy = SandboxPolicyBuilder.Create()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
             .WithFuel(5_000)
+            .WithWallTime(TimeSpan.FromSeconds(2))
             .Build();
         var plan = await host.PrepareAsync(module, policy);
 
@@ -33,6 +34,7 @@ public sealed class SafeNetworkAuditRedactionTests
             SandboxPolicyBuilder.Create()
                 .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
                 .WithFuel(5_000)
+                .WithWallTime(TimeSpan.FromSeconds(2))
                 .Build());
 
         Assert.False(result.Succeeded);

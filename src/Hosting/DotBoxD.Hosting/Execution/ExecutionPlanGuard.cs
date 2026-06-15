@@ -26,6 +26,12 @@ internal static class ExecutionPlanGuard
         PreparedPlanIntegrityCache preparedPlans)
     {
         ArgumentNullException.ThrowIfNull(plan);
+        if (ReferenceEquals(plan.Bindings, hostBindings) &&
+            preparedPlans.ContainsTrustedReference(plan))
+        {
+            return;
+        }
+
         if (IsTrustedPreparedPlan(plan, hostBindings, preparedPlans))
         {
             // This host prepared, validated, and sealed this exact identity; the per-run check is
