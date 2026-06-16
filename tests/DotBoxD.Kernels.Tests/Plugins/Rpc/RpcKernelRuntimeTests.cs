@@ -128,7 +128,7 @@ public sealed class RpcKernelRuntimeTests
         using var server = DotBoxD.Plugins.PluginServer.Create(
             configureHost: RpcKernelTestPackages.AddKillBinding,
             defaultPolicy: RpcKernelTestPackages.KillPolicy());
-        var session = server.CreateSession();
+        using var session = server.CreateSession();
 
         var kernel = await session.InstallJsonAsync(json);
 

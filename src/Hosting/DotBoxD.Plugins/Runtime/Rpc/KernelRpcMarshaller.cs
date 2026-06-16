@@ -210,6 +210,7 @@ public static class KernelRpcMarshaller
             }
         }
 
+        properties.Sort(static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
         return properties;
     }
 
