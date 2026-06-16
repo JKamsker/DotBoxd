@@ -34,6 +34,21 @@ public sealed class KernelRpcMarshallerDtoOrderTests
             () => KernelRpcMarshaller.SandboxTypeOf(typeof(int[,])));
 
     [Fact]
+    public void ToSandboxValue_rejects_nullable_scalar_types()
+        => Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.ToSandboxValue(1, typeof(int?)));
+
+    [Fact]
+    public void FromSandboxValue_rejects_nullable_scalar_types()
+        => Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.FromSandboxValue(SandboxValue.FromInt32(1), typeof(int?)));
+
+    [Fact]
+    public void SandboxTypeOf_rejects_nullable_scalar_types()
+        => Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.SandboxTypeOf(typeof(int?)));
+
+    [Fact]
     public void ToSandboxValue_uses_property_order_when_constructor_order_differs()
     {
         var dto = new ReorderedDto(success: true, monsterId: 7);
