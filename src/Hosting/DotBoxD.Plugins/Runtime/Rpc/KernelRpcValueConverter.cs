@@ -70,10 +70,11 @@ public static class KernelRpcValueConverter
         {
             value.RequireKind(KernelRpcValueKind.List);
             var itemType = expectedType.Arguments[0];
-            var items = new SandboxValue[value.Items.Length];
-            for (var i = 0; i < value.Items.Length; i++)
+            var source = value.ItemSpan;
+            var items = new SandboxValue[source.Length];
+            for (var i = 0; i < source.Length; i++)
             {
-                items[i] = ToSandboxValue(value.Items[i], itemType);
+                items[i] = ToSandboxValue(source[i], itemType);
             }
 
             return SandboxValue.FromList(items, itemType);
@@ -82,16 +83,17 @@ public static class KernelRpcValueConverter
         if (expectedType.IsRecord)
         {
             value.RequireKind(KernelRpcValueKind.Record);
-            if (value.Items.Length != expectedType.Arguments.Count)
+            var source = value.ItemSpan;
+            if (source.Length != expectedType.Arguments.Count)
             {
                 throw new NotSupportedException(
-                    $"Kernel RPC IPC record expected {expectedType.Arguments.Count} field(s) but received {value.Items.Length}.");
+                    $"Kernel RPC IPC record expected {expectedType.Arguments.Count} field(s) but received {source.Length}.");
             }
 
-            var fields = new SandboxValue[value.Items.Length];
-            for (var i = 0; i < value.Items.Length; i++)
+            var fields = new SandboxValue[source.Length];
+            for (var i = 0; i < source.Length; i++)
             {
-                fields[i] = ToSandboxValue(value.Items[i], expectedType.Arguments[i]);
+                fields[i] = ToSandboxValue(source[i], expectedType.Arguments[i]);
             }
 
             return SandboxValue.FromRecord(fields);

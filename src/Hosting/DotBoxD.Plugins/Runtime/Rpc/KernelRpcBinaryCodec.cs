@@ -80,7 +80,7 @@ public static class KernelRpcBinaryCodec
                 return;
             case KernelRpcValueKind.List:
             case KernelRpcValueKind.Record:
-                WriteItems(stream, value.Items);
+                WriteItems(stream, value.ItemSpan);
                 return;
             default:
                 throw new NotSupportedException($"Kernel RPC value kind '{value.Kind}' is not supported.");
@@ -123,7 +123,7 @@ public static class KernelRpcBinaryCodec
             : throw new FormatException("Kernel RPC payload contains non-finite F64 value.");
     }
 
-    private static void WriteItems(MemoryStream stream, KernelRpcValue[] items)
+    private static void WriteItems(MemoryStream stream, ReadOnlySpan<KernelRpcValue> items)
     {
         WriteLength(stream, items.Length);
         foreach (var item in items)
