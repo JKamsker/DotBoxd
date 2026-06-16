@@ -74,12 +74,44 @@ public sealed class KernelRpcMarshallerDtoOrderTests
         Assert.False(dto.Success);
     }
 
+    [Fact]
+    public void FromSandboxValue_skips_dto_constructors_with_matching_names_but_wrong_types()
+    {
+        var sandbox = SandboxValue.FromRecord(
+            [SandboxValue.FromInt32(9), SandboxValue.FromBool(true)]);
+
+        var dto = Assert.IsType<OverloadedDto>(
+            KernelRpcMarshaller.FromSandboxValue(sandbox, typeof(OverloadedDto)));
+
+        Assert.Equal(9, dto.MonsterId);
+        Assert.True(dto.Success);
+    }
+
     private sealed class ReorderedDto
     {
         public ReorderedDto(bool success, int monsterId)
         {
             Success = success;
             MonsterId = monsterId;
+        }
+
+        public int MonsterId { get; }
+
+        public bool Success { get; }
+    }
+
+    private sealed class OverloadedDto
+    {
+        public OverloadedDto(string monsterId, bool success)
+        {
+            MonsterId = int.Parse(monsterId, System.Globalization.CultureInfo.InvariantCulture);
+            Success = success;
+        }
+
+        public OverloadedDto(int monsterId, bool success)
+        {
+            MonsterId = monsterId;
+            Success = success;
         }
 
         public int MonsterId { get; }
