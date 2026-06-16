@@ -12,6 +12,7 @@ public static class KernelRpcBinaryCodec
 {
     private const int MaxDecodeDepth = 64;
     private const int MaxDecodeItems = 10_000;
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
 
     public static byte[] EncodeArguments(IReadOnlyList<KernelRpcValue> arguments)
     {
@@ -92,15 +93,34 @@ public static class KernelRpcBinaryCodec
         return kind switch
         {
             KernelRpcValueKind.Unit => KernelRpcValue.Unit(),
-            KernelRpcValueKind.Bool => KernelRpcValue.Bool(reader.ReadByte() != 0),
+            KernelRpcValueKind.Bool => KernelRpcValue.Bool(ReadBool(ref reader)),
             KernelRpcValueKind.I32 => KernelRpcValue.Int32(reader.ReadInt32()),
             KernelRpcValueKind.I64 => KernelRpcValue.Int64(reader.ReadInt64()),
-            KernelRpcValueKind.F64 => KernelRpcValue.Double(BitConverter.Int64BitsToDouble(reader.ReadInt64())),
+            KernelRpcValueKind.F64 => KernelRpcValue.Double(ReadFiniteDouble(ref reader)),
             KernelRpcValueKind.String => KernelRpcValue.String(reader.ReadString()),
             KernelRpcValueKind.List => KernelRpcValue.List(ReadItems(ref reader, depth)),
             KernelRpcValueKind.Record => KernelRpcValue.Record(ReadItems(ref reader, depth)),
             _ => throw new FormatException($"Kernel RPC payload contains unknown value kind '{kind}'.")
         };
+    }
+
+    private static bool ReadBool(ref Reader reader)
+    {
+        var value = reader.ReadByte();
+        return value switch
+        {
+            0 => false,
+            1 => true,
+            _ => throw new FormatException("Kernel RPC payload contains invalid bool value.")
+        };
+    }
+
+    private static double ReadFiniteDouble(ref Reader reader)
+    {
+        var value = BitConverter.Int64BitsToDouble(reader.ReadInt64());
+        return double.IsFinite(value)
+            ? value
+            : throw new FormatException("Kernel RPC payload contains non-finite F64 value.");
     }
 
     private static void WriteItems(MemoryStream stream, KernelRpcValue[] items)
@@ -142,7 +162,7 @@ public static class KernelRpcBinaryCodec
 
     private static void WriteString(MemoryStream stream, string value)
     {
-        var bytes = Encoding.UTF8.GetBytes(value);
+        var bytes = StrictUtf8.GetBytes(value);
         WriteLength(stream, bytes.Length);
         stream.Write(bytes);
     }
@@ -236,7 +256,15 @@ public static class KernelRpcBinaryCodec
         public string ReadString()
         {
             var length = ReadLength();
-            return Encoding.UTF8.GetString(Read(length));
+            var bytes = Read(length);
+            try
+            {
+                return StrictUtf8.GetString(bytes);
+            }
+            catch (DecoderFallbackException ex)
+            {
+                throw new FormatException("Kernel RPC payload contains invalid UTF-8 string.", ex);
+            }
         }
 
         public void EnsureConsumed()

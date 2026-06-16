@@ -102,7 +102,14 @@ public readonly struct KernelRpcValue
         => new(KernelRpcValueKind.I64, value, 0D, string.Empty, []);
 
     public static KernelRpcValue Double(double value)
-        => new(KernelRpcValueKind.F64, 0L, value, string.Empty, []);
+    {
+        if (!double.IsFinite(value))
+        {
+            throw new ArgumentOutOfRangeException(nameof(value), "Kernel RPC F64 values must be finite.");
+        }
+
+        return new KernelRpcValue(KernelRpcValueKind.F64, 0L, value, string.Empty, []);
+    }
 
     public static KernelRpcValue String(string value)
         => new(KernelRpcValueKind.String, 0L, 0D, value ?? string.Empty, []);
