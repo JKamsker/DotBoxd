@@ -40,6 +40,7 @@ internal static class RpcKernelModelFactory
         try
         {
             var method = ResolveBatchMethod(type);
+            ValidateBatchMethodParameters(method);
             IMethodSymbol? serviceMethod = null;
             RpcKernelClientExtensions? clientExtensions = null;
             if (serviceType is not null)
@@ -111,6 +112,19 @@ internal static class RpcKernelModelFactory
         }
 
         return found ?? throw new NotSupportedException("A kernel RPC service must declare one public batch method whose last parameter is HookContext.");
+    }
+
+    private static void ValidateBatchMethodParameters(IMethodSymbol method)
+    {
+        for (var i = 0; i < method.Parameters.Length - 1; i++)
+        {
+            var parameter = method.Parameters[i];
+            if (parameter.RefKind != RefKind.None)
+            {
+                throw new NotSupportedException(
+                    $"Kernel RPC kernel parameter '{parameter.Name}' cannot use ref, in, or out modifiers.");
+            }
+        }
     }
 
     private static BlockSyntax MethodBody(IMethodSymbol method, CancellationToken cancellationToken)
