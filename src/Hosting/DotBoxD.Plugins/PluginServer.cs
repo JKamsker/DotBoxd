@@ -136,16 +136,16 @@ public sealed partial class PluginServer : IDisposable
         CancellationToken cancellationToken)
         => InstallRpcCoreAsync(package, policy, owner, cancellationToken);
 
-    internal void UninstallOwned(PluginSession owner, string pluginId)
+    internal bool UninstallOwned(PluginSession owner, string pluginId)
     {
         // The owning server may have been disposed first (it revokes all kernels in Dispose); a
         // session disposing afterward is a no-op rather than an ObjectDisposedException.
         if (Volatile.Read(ref _disposed) != 0)
         {
-            return;
+            return false;
         }
 
-        Kernels.RemoveOwned(owner, pluginId);
+        return Kernels.RemoveOwned(owner, pluginId);
     }
 
     private async ValueTask<InstalledKernel> InstallCoreAsync(

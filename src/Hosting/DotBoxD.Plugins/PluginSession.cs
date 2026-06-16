@@ -123,6 +123,26 @@ public sealed class PluginSession : IDisposable, IAsyncDisposable
         }
     }
 
+    public bool Uninstall(string pluginId)
+    {
+        ArgumentNullException.ThrowIfNull(pluginId);
+        _gate.Wait();
+        try
+        {
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            if (!_owned.Remove(pluginId))
+            {
+                return false;
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
+        return _server.UninstallOwned(this, pluginId);
+    }
+
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0)

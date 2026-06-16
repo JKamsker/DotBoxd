@@ -47,7 +47,16 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         var package = PluginPackageJsonSerializer.Import(packageJson);
         var policy = ServerPolicy.ForKernel(package.Manifest.RequiredCapabilities);
         var kernel = await _session.InstallAsync(package, policy, ct).ConfigureAwait(false);
-        WireHook(kernel);
+        try
+        {
+            WireHook(kernel);
+        }
+        catch
+        {
+            _session.Uninstall(kernel.Manifest.PluginId);
+            throw;
+        }
+
         return kernel.Manifest.PluginId;
     }
 
