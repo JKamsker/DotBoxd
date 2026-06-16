@@ -1,9 +1,6 @@
-namespace DotBoxD.Kernels.Game.Plugin;
+using DotBoxD.Kernels.Game.Plugin.Authoring;
 
-public interface IMonsterKillerService
-{
-    ValueTask<List<MonsterKillResult>> KillMonstersAsync(List<string> monsterIds);
-}
+namespace DotBoxD.Kernels.Game.Plugin.Kernels;
 
 public readonly record struct MonsterKillResult(
     string MonsterId,
@@ -14,20 +11,23 @@ public readonly record struct MonsterKillResult(
     bool Killed);
 
 /// <summary>
-/// Plugin-owned batch operation. It is injected the SAME <see cref="IGameWorldAccess"/> the plugin uses
-/// remotely — but because this kernel runs on the server, the awaited calls are local (no real IPC hop).
-/// From the dev's seat it reads exactly like the remote plugin code: <c>await _world.Monsters.KillAsync(id)</c>.
-/// The generated verified IR is installed and executed server-side through the server-extension bridge.
+/// Plugin-owned batch operation grafted onto <see cref="IMonsterControl"/>. It is injected the SAME
+/// <see cref="IGameWorldAccess"/> the plugin uses remotely — but because this kernel runs on the server the
+/// awaited calls are local (no real IPC hop). From the dev's seat it reads exactly like the remote plugin
+/// code: <c>await _world.Monsters.KillAsync(id)</c>.
+///
+/// <para>One class marker names the graft target once; the install id derives from the type
+/// (<c>"monster-killer"</c>); the grafted method is a bare <c>[ServerExtensionMethod]</c> whose public name is
+/// its own method name. No hand-written service interface, no repeated type, no stringly-typed method name.</para>
 /// </summary>
-[ServerExtensionClient(typeof(IMonsterControl))]
-[ServerExtension("monster-killer", typeof(IMonsterKillerService))]
+[ServerExtension(typeof(IMonsterControl))]
 public sealed partial class MonsterKillerKernel
 {
     private readonly IGameWorldAccess _world;
 
     public MonsterKillerKernel(IGameWorldAccess world) => _world = world;
 
-    [ServerExtensionMethod(typeof(IMonsterControl), "KillMonstersAsync")]
+    [ServerExtensionMethod]   // grafted as IMonsterControl.KillMonstersAsync (name = the method's name)
     public async ValueTask<List<MonsterKillResult>> KillMonstersAsync(List<string> monsterIds, HookContext ctx)
     {
         var results = new List<MonsterKillResult>();
@@ -37,12 +37,7 @@ public sealed partial class MonsterKillerKernel
             var wasMonster = await _world.Monsters.IsMonsterAsync(id);
             var level = await _world.Entities.GetLevelAsync(id);
             var position = await _world.Entities.GetPositionAsync(id);
-            var killed = false;
-            if (wasMonster && healthBefore > 0)
-            {
-                killed = await _world.Monsters.KillAsync(id);
-            }
-
+            var killed = wasMonster && healthBefore > 0 && await _world.Monsters.KillAsync(id);
             results.Add(new MonsterKillResult(id, wasMonster, level, position, healthBefore, killed));
         }
 

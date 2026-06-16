@@ -1,11 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Ergonomics target: the whole plugin toolchain (analyzer + interceptor-namespace wiring + IL weaver)
+       collapses into ONE SDK package, so a plugin author references one thing instead of four hand-wired
+       project/package refs plus interceptor props. -->
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\src\CodeGeneration\DotBoxD.Plugins.Analyzer\DotBoxD.Plugins.Analyzer.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\..\..\..\src\CodeGeneration\DotBoxD.Plugins.Fody\DotBoxD.Plugins.Fody.csproj" OutputItemType="WeaverFiles" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\..\..\..\src\Hosting\DotBoxD.Plugins\DotBoxD.Plugins.csproj" />
-    <ProjectReference Include="..\..\..\..\src\Kernels\DotBoxD.Kernels.Serialization.Json\DotBoxD.Kernels.Serialization.Json.csproj" />
-    <ProjectReference Include="..\..\..\..\src\Pushdown\DotBoxD.Pushdown.Services\DotBoxD.Pushdown.Services.csproj" />
+    <PackageReference Include="DotBoxD.Plugins.Sdk" />
     <ProjectReference Include="..\Examples.GameServer.Server.Abstractions\Examples.GameServer.Server.Abstractions.csproj" />
   </ItemGroup>
 
@@ -15,13 +14,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <DotBoxDGeneratedInterceptorsNamespace>DotBoxD.Plugins.Generated</DotBoxDGeneratedInterceptorsNamespace>
-    <InterceptorsNamespaces>$(InterceptorsNamespaces);$(DotBoxDGeneratedInterceptorsNamespace)</InterceptorsNamespaces>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Fody" PrivateAssets="all" />
-  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Examples.GameServer.Plugin.Tests" />

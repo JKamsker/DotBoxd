@@ -1,19 +1,18 @@
 using DotBoxD.Kernels.Game.Server.Abstractions.Events;
 using DotBoxD.Kernels.Game.Server.Ipc;
 using DotBoxD.Kernels.Game.Server.Simulation;
-using DotBoxD.Pushdown.Services;
 using DotBoxD.Services.Server;
 using PluginServer = DotBoxD.Plugins.PluginServer;
 
 namespace DotBoxD.Kernels.Game.Server;
 
 using System.Globalization;
-using DotBoxD.Services;
 
 /// <summary>
 /// The game server (parent process): a deterministic 1D simulation that runs a baseline phase with no
-/// plugins, launches the plugin child process to ship verified kernels over IPC, then runs a
-/// with-plugin phase showing the sandboxed kernels change behavior.
+/// plugins, launches the plugin child process to ship verified kernels over IPC, then runs a with-plugin
+/// phase showing the sandboxed kernels change behavior. The per-connection IPC ceremony is wrapped in
+/// <see cref="GamePluginHost"/> so this file reads as phases.
 /// </summary>
 internal static class Program
 {
@@ -32,22 +31,17 @@ internal static class Program
 
         var useBuilder = args.Length == 1;
 
-        // (a) Build the world and plugin server. The command sink is the example-defined capability
-        // that turns plugin messages into game-state changes; the world host backs the gated
-        // ctx.Host<IGameWorldAccess>() read bindings. Both are bound to the world once it exists.
+        // (a) Build the world and plugin server. The command sink is the example-defined capability that turns
+        // plugin messages into game-state changes; the world host backs the gated ctx.Host<IGameWorldAccess>()
+        // read bindings. Both are bound to the world once it exists.
         var sink = new GameCommandSink();
         var worldHost = new GameWorldHost();
-        // Compiled mode: the plugin's verified IR is JIT-compiled to fast, verifier-checked IL (rather
-        // than interpreted) — proving the IR library compiles valid IL from the kernels this plugin ships.
         using var server = PluginServer.Create(
             sink,
             configureHost: worldHost.AddBindings,
             defaultPolicy: ServerPolicy.Create(),
             executionMode: ExecutionMode.Compiled);
 
-        // Register convention adapters for the events plugins may subscribe to. No hand-written
-        // adapter is needed — the sandbox shape is inferred from each record's properties. Resolving
-        // them up front lets prepared-package validation check kernel parameter shapes at install.
         _ = server.Events.Resolve<MonsterAggroEvent>();
         _ = server.Events.Resolve<AttackEvent>();
 
@@ -75,46 +69,25 @@ internal static class Program
         Console.WriteLine($"Baseline: low-level players took {baselineDamage} total damage in {BaselineTicks} ticks.");
         Console.WriteLine();
 
-        // (c) Start the IPC control plane on a high-entropy pipe name. Each peer gets its own ownership
-        // session; when the connection drops, the session is disposed and the kernels it owned unload.
-        var pipeName = "dotboxd-game-" + Guid.NewGuid().ToString("N");
-        var connected = new TaskCompletionSource<GamePluginControlService>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var disconnected = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        await using var host = RpcMessagePackIpc.ListenNamedPipe(
-            pipeName,
-            peer =>
-            {
-                var session = server.CreateSession();
-                var service = new GamePluginControlService(server, session, sink, world);
-                peer.Disconnected += (_, _) =>
-                {
-                    session.Dispose();           // revoke + unregister the kernels this connection owned
-                    disconnected.TrySetResult();
-                };
-
-                // Two services now: the control-plane (install IR, settings, hold) and the domain world
-                // surface. The server simply implements IGameWorldAccess; the plugin RPC-proxies it as its
-                // GamePluginServer. ProvideGameWorldAccess is generated from [DotBoxDService] on the interface.
-                peer.ProvideGamePluginControlService(service);
-                peer.ProvideGameWorldAccess(new GameWorldAccess(world));
-                connected.TrySetResult(service);
-            });
-        await host.StartAsync().ConfigureAwait(false);
-        Console.WriteLine($"[server] listening for plugin on pipe '{pipeName}'.");
+        // (c) Start the IPC control plane. GamePluginHost owns the pipe, the per-peer ownership session, and
+        // provisioning both services; when the connection drops it disposes the session and unloads the
+        // kernels it owned.
+        await using var host = await GamePluginHost.StartAsync(server, sink, world).ConfigureAwait(false);
+        Console.WriteLine($"[server] listening for plugin on pipe '{host.PipeName}'.");
 
         // (d) Launch the plugin child process.
         Console.WriteLine("[server] launching plugin child process...");
-        var pluginProcess = PluginLauncher.Launch(pipeName, useBuilder);
+        var pluginProcess = PluginLauncher.Launch(host.PipeName, useBuilder);
         var pluginExit = pluginProcess.WaitForExitAsync();
 
-        // (e) Wait until the plugin has connected and installed its kernels (it then holds the
-        // connection). Fail fast if it exits early.
-        if (await Task.WhenAny(connected.Task, pluginExit).ConfigureAwait(false) == pluginExit && !connected.Task.IsCompleted)
+        // (e) Wait until the plugin has connected and installed its kernels (it then holds the connection).
+        // Fail fast if it exits early.
+        if (await Task.WhenAny(host.Connected, pluginExit).ConfigureAwait(false) == pluginExit && !host.Connected.IsCompleted)
         {
             return await FailAsync(host, $"plugin exited before connecting (code {pluginProcess.ExitCode}).").ConfigureAwait(false);
         }
 
-        var control = await connected.Task.ConfigureAwait(false);
+        var control = await host.Connected.ConfigureAwait(false);
         if (await Task.WhenAny(control.Ready, pluginExit).ConfigureAwait(false) == pluginExit && !control.Ready.IsCompleted)
         {
             return await FailAsync(host, $"plugin exited before installing kernels (code {pluginProcess.ExitCode}).").ConfigureAwait(false);
@@ -142,7 +115,7 @@ internal static class Program
         // (g) Release the plugin; it disconnects, and ownership unloads its kernels.
         control.SignalShutdown();
         await pluginExit.ConfigureAwait(false);
-        await disconnected.Task.ConfigureAwait(false);
+        await host.Disconnected.ConfigureAwait(false);
         if (pluginProcess.ExitCode != 0)
         {
             return await FailAsync(host, $"plugin exited with code {pluginProcess.ExitCode}.").ConfigureAwait(false);
@@ -163,7 +136,7 @@ internal static class Program
         return 0;
     }
 
-    private static async Task<int> FailAsync(RpcHost host, string message)
+    private static async Task<int> FailAsync(GamePluginHost host, string message)
     {
         await Console.Error.WriteLineAsync($"[server] {message}").ConfigureAwait(false);
         await host.StopAsync().ConfigureAwait(false);

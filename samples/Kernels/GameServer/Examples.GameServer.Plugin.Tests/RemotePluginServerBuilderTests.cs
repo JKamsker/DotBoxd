@@ -6,6 +6,9 @@ using DotBoxD.Plugins.Kernel;
 
 namespace DotBoxD.Kernels.Game.Plugin.Tests;
 
+// Install ids are now DERIVED from the kernel type (GuardianKernel -> "guardian",
+// MonsterKillerKernel -> "monster-killer"); the verbs are keyed purely by type. The literals asserted below
+// are those derived values, not hand-typed ids.
 public sealed class RemotePluginServerBuilderTests
 {
     [Fact]
@@ -52,10 +55,25 @@ public sealed class RemotePluginServerBuilderTests
 
         await server.Replace<IMonsterAggroService, GuardianKernel>();
         await server.Replace<IAttackService, RetaliationKernel>();
-        await server.Monsters.Extend<IMonsterKillerService, MonsterKillerKernel>();
+        await server.Monsters.Extend<MonsterKillerKernel>();
 
         Assert.Equal(["kernel:guardian", "kernel:retaliation", "extension:monster-killer"], control.Calls);
-        Assert.Equal("monster-killer", server.Monsters.ServerExtensions.PluginId<IMonsterKillerService>());
+        Assert.Equal("monster-killer", server.Monsters.ServerExtensions.PluginId<MonsterKillerKernel>());
+    }
+
+    [Fact]
+    public async Task Set_builder_batches_live_settings_for_an_installed_kernel()
+    {
+        var control = new RecordingGamePluginControlService();
+        using var server = GamePluginServerBuilder.FromConnection(control, new FakeWorld()).Build();
+
+        await server.Replace<IMonsterAggroService, GuardianKernel>();
+        await server.Get<GuardianKernel>()
+            .Set(k => k.CalmStrength, 35)
+            .Set(k => k.AggroRange, 6)
+            .ApplyAsync(atomic: true);
+
+        Assert.Equal(["kernel:guardian", "settings:guardian"], control.Calls);
     }
 
     [Fact]
@@ -64,7 +82,7 @@ public sealed class RemotePluginServerBuilderTests
         var control = new RecordingGamePluginControlService();
         using var server = GamePluginServerBuilder.FromConnection(control, new FakeWorld()).Build();
 
-        await server.Monsters.Extend<IMonsterKillerService, MonsterKillerKernel>();
+        await server.Monsters.Extend<MonsterKillerKernel>();
         var results = await server.Monsters.KillMonstersAsync(["monster-3", "monster-4"]);
 
         Assert.Equal("monster-killer", control.LastRpcPluginId);
@@ -161,7 +179,7 @@ public sealed class RemotePluginServerBuilderTests
     {
         await server.Replace<IMonsterAggroService, GuardianKernel>();
         await server.Replace<IAttackService, RetaliationKernel>();
-        await server.Monsters.Extend<IMonsterKillerService, MonsterKillerKernel>();
+        await server.Monsters.Extend<MonsterKillerKernel>();
     }
 
     private static string[] DecodeRequestedMonsterIds(byte[] arguments)

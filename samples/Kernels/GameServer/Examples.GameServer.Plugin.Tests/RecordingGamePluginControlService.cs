@@ -4,6 +4,11 @@ using DotBoxD.Plugins.Json;
 
 namespace DotBoxD.Kernels.Game.Plugin.Tests;
 
+/// <summary>
+/// Records control-plane calls for the builder tests. It implements exactly the trimmed
+/// <see cref="IGamePluginControlService"/> (install IR / settings / hold / world / drain) — the per-entity
+/// domain calls now live on <c>IGameWorldAccess</c> and are faked via <c>FakeWorld</c> in the tests, not here.
+/// </summary>
 internal sealed class RecordingGamePluginControlService : IGamePluginControlService, IAsyncDisposable
 {
     private readonly TaskCompletionSource _holdStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -78,37 +83,6 @@ internal sealed class RecordingGamePluginControlService : IGamePluginControlServ
     {
         ct.ThrowIfCancellationRequested();
         return ValueTask.FromResult(Array.Empty<string>());
-    }
-
-    public ValueTask<bool> KillMonsterAsync(string monsterId, CancellationToken ct = default)
-    {
-        ct.ThrowIfCancellationRequested();
-        Calls.Add("kill:" + monsterId);
-        return ValueTask.FromResult(true);
-    }
-
-    public ValueTask<bool> IsMonsterAsync(string entityId, CancellationToken ct = default)
-    {
-        ct.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(true);
-    }
-
-    public ValueTask<int> GetEntityHealthAsync(string entityId, CancellationToken ct = default)
-    {
-        ct.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(42);
-    }
-
-    public ValueTask<int> GetEntityLevelAsync(string entityId, CancellationToken ct = default)
-    {
-        ct.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(8);
-    }
-
-    public ValueTask<int> GetEntityPositionAsync(string entityId, CancellationToken ct = default)
-    {
-        ct.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(5);
     }
 
     public void SignalShutdown() => _shutdown.TrySetResult();

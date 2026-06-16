@@ -1,13 +1,15 @@
 using System.ComponentModel.DataAnnotations;
+using DotBoxD.Kernels.Game.Plugin.Authoring;
 using DotBoxD.Kernels.Game.Server.Abstractions.Events;
 
 namespace DotBoxD.Kernels.Game.Plugin.Kernels;
 
 /// <summary>
-/// Untrusted plugin kernel. Taunts a strong attacker so it switches away from the player it is
-/// hitting. Lowered to verified DotBoxD.Kernels and shipped as opaque IR over IPC.
+/// Untrusted plugin event kernel. Taunts a strong attacker so it switches away from the player it is hitting.
+/// Lowered to verified DotBoxD.Kernels and shipped as opaque IR over IPC. Install id derives from the type
+/// name (<c>"retaliation"</c>).
 /// </summary>
-[Plugin("retaliation")]
+[EventKernel]
 public sealed partial class RetaliationKernel : IAttackService
 {
     [LiveSetting]

@@ -1,96 +1,56 @@
+using DotBoxD.Kernels.Game.Plugin.Authoring;
 using DotBoxD.Kernels.Game.Plugin.Kernels;
-using DotBoxD.Kernels.Game.Server.Abstractions;
 
 namespace DotBoxD.Kernels.Game.Plugin;
 
 /// <summary>
-/// The plugin process from the developer's seat. Everything here is hand-written; the GamePluginServer
-/// facade, the IGameWorldAccess RPC proxy, the install verbs, and the InvokeAsync plumbing are all
-/// generated from the interfaces in Examples.GameServer.Server.Abstractions.
+/// The golden path, from the plugin dev's seat. The server implements <c>IGameWorldAccess</c>; the plugin
+/// holds a generated RPC proxy of the same interface (that proxy IS <c>server</c>); kernels get it injected.
+/// One surface, three call sites.
 ///
-/// The shape: the server implements IGameWorldAccess; the plugin holds a generated RPC proxy of the same
-/// interface (that proxy IS `server`); kernels get it injected. One surface, three call sites.
+/// <para><b>Which verb when:</b></para>
+/// <list type="bullet">
+///   <item><c>Replace&lt;TEvent, TKernel&gt;()</c> — swap a whole event service (root verb).</item>
+///   <item><c>Monsters.Extend&lt;TKernel&gt;()</c> — graft a reusable named batch method onto a control.</item>
+///   <item><c>Monsters.KillAsync(...)</c> — a direct domain RPC.</item>
+///   <item><c>Get&lt;TKernel&gt;()</c> — tune an installed kernel's live settings.</item>
+///   <item><c>InvokeAsync(...)</c> — a throwaway server-side probe (see <c>AdvancedUsage</c>).</item>
+/// </list>
+/// Advanced reads (server extensions, InvokeAsync probes, capture bags) live in AdvancedUsage.cs.
 /// </summary>
 internal static class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        if (args.Length != 1)
-        {
-            await Console.Error.WriteLineAsync("Usage: Examples.GameServer.Plugin <named-pipe-name>")
-                .ConfigureAwait(false);
-            return 1;
-        }
-
-        var pipeName = args[0];
+        var pipeName = GamePluginServerHost.PipeNameFromArgs(args);   // parse + usage in one line
         Console.WriteLine($"[plugin] connecting to server pipe '{pipeName}'...");
 
-        // Build() is synchronous and does no I/O; StartAsync connects.
-        using var server = GamePluginServerBuilder.FromPipeName(pipeName).Build();
-        await server.StartAsync().ConfigureAwait(false);
+        using var server = GamePluginServerBuilder.FromPipeName(pipeName).Build();   // sync, no I/O
+        await server.StartAsync();
 
-        // Install plugin-owned kernels — ships verified IR. `server` IS the world surface, so the install
-        // verbs sit right on it (Replace) and on each control (Monsters.Extend).
-        Console.WriteLine("[plugin] installing GuardianKernel...");
-        await server.Replace<IMonsterAggroService, GuardianKernel>().ConfigureAwait(false);
-        Console.WriteLine("[plugin] installing RetaliationKernel...");
-        await server.Replace<IAttackService, RetaliationKernel>().ConfigureAwait(false);
-        Console.WriteLine("[plugin] installing MonsterKillerKernel...");
-        await server.Monsters.Extend<IMonsterKillerService, MonsterKillerKernel>().ConfigureAwait(false);
+        // Install plugin-owned kernels — ships verified IR. Install ids derive from the kernel type, so the
+        // verbs are keyed purely by type: nothing to keep in sync.
+        await server.Replace<IMonsterAggroService, GuardianKernel>();
+        await server.Replace<IAttackService, RetaliationKernel>();
+        await server.Monsters.Extend<MonsterKillerKernel>();
 
-        // Tune a replaced service's live settings — strongly typed, one atomic IPC batch.
+        // One direct domain call — the same IGameWorldAccess.Monsters.KillAsync the server implements and the
+        // kernels call. No wire contract, no separate name.
+        var killed = await server.Monsters.KillAsync("monster-4");
+        Console.WriteLine($"[plugin] Monsters.KillAsync(monster-4) => {killed}.");
+
+        // Tune a replaced kernel's live settings — strongly typed member setters, one atomic batch. Only
+        // [LiveSetting] members are settable; you cannot read or mutate the kernel here.
         await server.Get<GuardianKernel>()
-            .SetValuesAsync(k => { k.CalmStrength = "35"; k.AggroRange = 6; }, atomic: true)
-            .ConfigureAwait(false);
+            .Set(k => k.CalmStrength, 35)
+            .Set(k => k.AggroRange, 6)
+            .ApplyAsync(atomic: true);
 
-        // Direct domain call — the SAME IGameWorldAccess.Monsters.KillAsync the server implements and the
-        // kernels call. No [WireCall], no separate wire name.
-        var killed = await server.Monsters.KillAsync("monster-4").ConfigureAwait(false);
-        Console.WriteLine($"[plugin] server.Monsters.KillAsync(monster-4) => {killed}.");
-
-        // Generated server-extension graft (from MonsterKillerKernel onto IMonsterControl).
-        var killResults = await server.Monsters
-            .KillMonstersAsync(["monster-3", "monster-4", "player-1"])
-            .ConfigureAwait(false);
-        Console.WriteLine($"[plugin] server.Monsters.KillMonstersAsync(...) => {killResults.Count} results.");
-
-        var health = await server.Entities.GetHealthAsync("monster-2").ConfigureAwait(false);
-        Console.WriteLine($"[plugin] server.Entities.GetHealthAsync(monster-2) => {health}.");
-
-        // Anonymous server-side invoke — the lambda is lowered to verified IR and runs sandboxed. It reads
-        // the same async world surface (local on the server).
-        var monsterHealth = await server.InvokeAsync(async (IGameWorldAccess world) =>
-        {
-            var monster = await world.Monsters.GetAsync("monster-2");
-            return monster.Health;
-        }).ConfigureAwait(false);
-        Console.WriteLine($"[plugin] InvokeAsync Monsters.GetAsync(monster-2).Health => {monsterHealth}.");
-
-        var implicitMonsterId = "monster-2";
-        var implicitLastHealth = 0;
-        var implicitMonsterName = await server.InvokeAsync(async (IGameWorldAccess world) =>
-        {
-            var monster = await world.Monsters.GetAsync(implicitMonsterId);
-            implicitLastHealth = monster.Health;
-            return monster.Name;
-        }).ConfigureAwait(false);
-        Console.WriteLine(
-            $"[plugin] InvokeAsync implicit capture {implicitMonsterId} => {implicitMonsterName} hp={implicitLastHealth}.");
-
-        // Explicit capture-bag invoke — sync values in and out across the sandbox boundary.
-        var capture = new MonsterProbeCapture { MonsterId = "monster-2" };
-        var monsterName = await server.InvokeAsync(
-            capture,
-            async (IGameWorldAccess world, MonsterProbeCapture bag) =>
-            {
-                var monster = await world.Monsters.GetAsync(bag.MonsterId);
-                bag.LastHealth = monster.Health;
-                return monster.Name;
-            }).ConfigureAwait(false);
-        Console.WriteLine($"[plugin] InvokeAsync capture {capture.MonsterId} => {monsterName} hp={capture.LastHealth}.");
+        // The advanced surface (server-extension calls + InvokeAsync probes) lives in its own file.
+        await AdvancedUsage.RunAsync(server);
 
         Console.WriteLine("[plugin] kernels live; holding until server completes...");
-        await server.HoldUntilShutdownAsync().ConfigureAwait(false);
+        await server.HoldUntilShutdownAsync();
         return 0;
     }
 }
