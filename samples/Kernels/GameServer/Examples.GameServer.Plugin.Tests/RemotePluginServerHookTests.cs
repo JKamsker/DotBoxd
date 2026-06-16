@@ -23,6 +23,22 @@ public sealed class RemotePluginServerHookTests
     }
 
     [Fact]
+    public async Task Setup_subscriptions_are_replayed_when_the_generated_server_starts()
+    {
+        var control = new RecordingGamePluginControlService();
+        await using IGameWorldServer server = GamePluginServerBuilder
+            .FromConnection(control)
+            .Setup(s => s.Subscriptions.On<AttackEvent>().Use<RetaliationKernel>())
+            .Build();
+
+        Assert.Empty(control.Calls);
+
+        await server.StartAsync();
+
+        Assert.Equal(["subscription:retaliation"], control.Calls);
+    }
+
+    [Fact]
     public async Task Generated_server_interface_exposes_hooks_after_StartAsync()
     {
         var control = new RecordingGamePluginControlService();
@@ -35,6 +51,21 @@ public sealed class RemotePluginServerHookTests
         server.Hooks.On<AttackEvent>().Use<RetaliationKernel>();
 
         Assert.Equal(["kernel:retaliation"], control.Calls);
+    }
+
+    [Fact]
+    public async Task Generated_server_interface_exposes_subscriptions_after_StartAsync()
+    {
+        var control = new RecordingGamePluginControlService();
+        await using IGameWorldServer server = GamePluginServerBuilder
+            .FromConnection(control)
+            .Build();
+
+        await server.StartAsync();
+
+        server.Subscriptions.On<AttackEvent>().Use<RetaliationKernel>();
+
+        Assert.Equal(["subscription:retaliation"], control.Calls);
     }
 
     [Fact]
@@ -51,7 +82,7 @@ public sealed class RemotePluginServerHookTests
 
         Assert.Collection(
             control.Calls,
-            call => Assert.Equal("kernel:retaliation", call),
-            call => Assert.StartsWith("kernel:chain-", call, StringComparison.Ordinal));
+            call => Assert.StartsWith("kernel:chain-", call, StringComparison.Ordinal),
+            call => Assert.StartsWith("subscription:chain-", call, StringComparison.Ordinal));
     }
 }

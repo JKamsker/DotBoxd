@@ -50,6 +50,19 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         return kernel.Manifest.PluginId;
     }
 
+    public async ValueTask<string> InstallSubscriptionAsync(string packageJson, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(packageJson);
+
+        var package = PluginPackageJsonSerializer.Import(packageJson);
+        Console.WriteLine($"[server] installing subscription kernel '{package.Manifest.PluginId}'...");
+        var policy = ServerPolicy.ForKernel(_server.GetRequiredCapabilities(package));
+        var kernel = await _session.InstallAsync(package, policy, ct).ConfigureAwait(false);
+        WireSubscription(kernel);
+        Console.WriteLine($"[server] installed subscription kernel '{kernel.Manifest.PluginId}'.");
+        return kernel.Manifest.PluginId;
+    }
+
     public async ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(packageJson);
@@ -137,7 +150,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
 
     private void WireHook(InstalledKernel kernel)
     {
-        // Map by the kernel's declared subscription event so the server stays agnostic of plugin ids.
+        // Map by the kernel's declared event so the server stays agnostic of plugin ids.
         var subscription = kernel.Manifest.Subscriptions.Count > 0
             ? kernel.Manifest.Subscriptions[0].Event
             : null;
@@ -148,6 +161,25 @@ internal sealed class GamePluginControlService : IGamePluginControlService
                 break;
             case "AttackEvent":
                 _server.Hooks.On<AttackEvent>().Use(kernel);
+                break;
+            default:
+                throw new InvalidOperationException(
+                    $"Plugin '{kernel.Manifest.PluginId}' subscribes to unsupported event '{subscription}'.");
+        }
+    }
+
+    private void WireSubscription(InstalledKernel kernel)
+    {
+        var subscription = kernel.Manifest.Subscriptions.Count > 0
+            ? kernel.Manifest.Subscriptions[0].Event
+            : null;
+        switch (subscription)
+        {
+            case "MonsterAggroEvent":
+                _server.Subscriptions.On<MonsterAggroEvent>().Use(kernel);
+                break;
+            case "AttackEvent":
+                _server.Subscriptions.On<AttackEvent>().Use(kernel);
                 break;
             default:
                 throw new InvalidOperationException(

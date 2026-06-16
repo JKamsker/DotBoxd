@@ -11,6 +11,7 @@ using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using DotBoxD.Plugins.Json;
 using DotBoxD.Plugins.Runtime;
 using DotBoxD.Plugins.Runtime.Hooks;
+using DotBoxD.Plugins.Runtime.Subscriptions;
 using DotBoxD.Services.Attributes;
 using GameServerAbstractions::DotBoxD.Kernels.Game.Server.Abstractions;
 using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.TypeNames;
@@ -63,6 +64,10 @@ public sealed class PluginAnalyzerTypeNameContractTests
             [nameof(TypeNames.HookStageOriginal)] = OriginalTypeName(typeof(HookStage<,>), "TEvent", "TCurrent"),
             [nameof(TypeNames.RemoteHookPipelineOriginal)] = OriginalTypeName(typeof(RemoteHookPipeline<>), "TEvent"),
             [nameof(TypeNames.RemoteHookStageOriginal)] = OriginalTypeName(typeof(RemoteHookStage<,>), "TEvent", "TCurrent"),
+            [nameof(TypeNames.SubscriptionPipelineOriginal)] = OriginalTypeName(typeof(SubscriptionPipeline<>), "TEvent"),
+            [nameof(TypeNames.SubscriptionStageOriginal)] = OriginalTypeName(typeof(SubscriptionStage<,>), "TEvent", "TCurrent"),
+            [nameof(TypeNames.RemoteSubscriptionPipelineOriginal)] = OriginalTypeName(typeof(RemoteSubscriptionPipeline<>), "TEvent"),
+            [nameof(TypeNames.RemoteSubscriptionStageOriginal)] = OriginalTypeName(typeof(RemoteSubscriptionStage<,>), "TEvent", "TCurrent"),
 
             [nameof(TypeNames.ListOriginal)] = OriginalTypeName(typeof(List<>), "T"),
             [nameof(TypeNames.ReadOnlyListOriginal)] = OriginalTypeName(typeof(IReadOnlyList<>), "T"),

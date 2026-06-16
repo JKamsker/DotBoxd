@@ -15,6 +15,8 @@ public interface IGamePluginControlService : DotBoxD.Plugins.IServerExtensionWir
 {
     ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default);
 
+    ValueTask<string> InstallSubscriptionAsync(string packageJson, CancellationToken ct = default);
+
     ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default);
 
     ValueTask UpdateSettingsAsync(

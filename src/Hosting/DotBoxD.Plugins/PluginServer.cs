@@ -29,6 +29,7 @@ public sealed partial class PluginServer : IDisposable
         Events = new PluginEventAdapterRegistry();
         Kernels = new KernelRegistry();
         Hooks = new HookRegistry(messages, Events, Kernels, InstallChainPackage);
+        Subscriptions = new SubscriptionRegistry(messages, Events, Kernels, InstallChainPackage);
     }
 
     // Synchronous installer the hook pipelines use to wire analyzer-generated chain packages at
@@ -40,6 +41,7 @@ public sealed partial class PluginServer : IDisposable
             .GetResult();
 
     public HookRegistry Hooks { get; }
+    public SubscriptionRegistry Subscriptions { get; }
     public KernelRegistry Kernels { get; }
     public PluginEventAdapterRegistry Events { get; }
 

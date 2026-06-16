@@ -34,6 +34,14 @@ internal sealed class RecordingGamePluginControlService : IGamePluginControlServ
         return ValueTask.FromResult(pluginId);
     }
 
+    public ValueTask<string> InstallSubscriptionAsync(string packageJson, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        var pluginId = PluginId(packageJson);
+        Calls.Add("subscription:" + pluginId);
+        return ValueTask.FromResult(pluginId);
+    }
+
     public ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();

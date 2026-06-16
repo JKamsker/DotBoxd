@@ -9,7 +9,7 @@ namespace DotBoxD.Kernels.Game.Server.Simulation;
 /// A small deterministic simulation of players and monsters on a 1D integer line. There is no RNG:
 /// given the same starting entities and the same plugin commands, every run produces identical
 /// output. The world publishes <see cref="MonsterAggroEvent"/> and <see cref="AttackEvent"/> through
-/// the plugin hook pipeline and applies any plugin commands the command sink recorded.
+/// hooks and fire-and-forget subscriptions, then applies any plugin commands the command sink recorded.
 /// </summary>
 internal sealed class GameWorld
 {
@@ -20,17 +20,19 @@ internal sealed class GameWorld
 
     private readonly List<GameEntity> _entities;
     private readonly HookRegistry _hooks;
+    private readonly SubscriptionRegistry _subscriptions;
     private int _tick;
 
-    public GameWorld(IEnumerable<GameEntity> entities, HookRegistry hooks)
+    public GameWorld(IEnumerable<GameEntity> entities, HookRegistry hooks, SubscriptionRegistry subscriptions)
     {
         _entities = [.. entities];
         _hooks = hooks;
+        _subscriptions = subscriptions;
     }
 
     public int Tick => _tick;
 
-    public static GameWorld CreateDefault(HookRegistry hooks)
+    public static GameWorld CreateDefault(HookRegistry hooks, SubscriptionRegistry subscriptions)
         => new(
             [
                 new GameEntity("player-1", EntityKind.Player, level: 1, hp: 30, position: 0),
@@ -40,7 +42,8 @@ internal sealed class GameWorld
                 new GameEntity("monster-3", EntityKind.Monster, level: 6, hp: 55, position: 80),
                 new GameEntity("monster-4", EntityKind.Monster, level: 6, hp: 45, position: 90)
             ],
-            hooks);
+            hooks,
+            subscriptions);
 
     public WorldSnapshot Snapshot()
     {
@@ -132,11 +135,11 @@ internal sealed class GameWorld
         var distance = Math.Abs(monster.Position - target.Position);
         if (distance <= AggroRange)
         {
+            var aggro = new MonsterAggroEvent(monster.Id, target.Id, distance, monster.Level, target.Level);
+            _subscriptions.Publish(aggro, cancellationToken);
+
             // Plugins observe the aggro and may calm the monster for future ticks.
-            await _hooks.PublishAsync(
-                    new MonsterAggroEvent(monster.Id, target.Id, distance, monster.Level, target.Level),
-                    cancellationToken)
-                .ConfigureAwait(false);
+            await _hooks.PublishAsync(aggro, cancellationToken).ConfigureAwait(false);
         }
 
         MonsterTargeting.StepToward(monster, target.Position);
@@ -153,11 +156,11 @@ internal sealed class GameWorld
         var damage = Math.Max(1, monster.Level - target.Level);
         target.TakeDamage(damage);
 
+        var attack = new AttackEvent(monster.Id, target.Id, damage, monster.Level);
+        _subscriptions.Publish(attack, cancellationToken);
+
         // Plugins observe the attack and may taunt the attacker off the target.
-        await _hooks.PublishAsync(
-                new AttackEvent(monster.Id, target.Id, damage, monster.Level),
-                cancellationToken)
-            .ConfigureAwait(false);
+        await _hooks.PublishAsync(attack, cancellationToken).ConfigureAwait(false);
     }
 
     private IEnumerable<GameEntity> Monsters()

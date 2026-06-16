@@ -61,8 +61,8 @@ internal static class HookChainModelFactory
         }
 
         var receiverIsKnownHookChain = IsHookChainType(model, terminalAccess.Expression, cancellationToken);
-        var receiverIsGeneratedRemoteHooks = GeneratedRemoteHookChainFallback.IsCandidateSeed(seed);
-        if (!receiverIsKnownHookChain && !receiverIsGeneratedRemoteHooks)
+        var generatedRemoteKind = GeneratedRemoteHookChainFallback.CandidateKind(seed);
+        if (!receiverIsKnownHookChain && generatedRemoteKind is null)
         {
             return null;
         }
@@ -178,7 +178,7 @@ internal static class HookChainModelFactory
                 eventType,
                 stages,
                 terminalElementTypeFullName,
-                receiverIsGeneratedRemoteHooks,
+                generatedRemoteKind,
                 cancellationToken));
     }
 
@@ -190,7 +190,7 @@ internal static class HookChainModelFactory
         INamedTypeSymbol eventType,
         IReadOnlyList<HookChainStage> stages,
         string terminalElementTypeFullName,
-        bool allowGeneratedRemoteFallback,
+        GeneratedRemoteHookChainKind? generatedRemoteKind,
         CancellationToken cancellationToken)
     {
         var location = model.GetInterceptableLocation(invocation, cancellationToken);
@@ -216,7 +216,7 @@ internal static class HookChainModelFactory
                 packageFullName);
         }
 
-        if (!allowGeneratedRemoteFallback)
+        if (generatedRemoteKind is null)
         {
             return null;
         }
@@ -226,7 +226,8 @@ internal static class HookChainModelFactory
             eventType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             stages.Any(stage => stage.IsSelect),
             terminalElementTypeFullName,
-            packageFullName);
+            packageFullName,
+            generatedRemoteKind.Value);
     }
 
     private static DotBoxDExpressionLoweringContext Context(
@@ -291,7 +292,11 @@ internal static class HookChainModelFactory
         return string.Equals(original, DotBoxDGenerationNames.TypeNames.HookPipelineOriginal, StringComparison.Ordinal) ||
                string.Equals(original, DotBoxDGenerationNames.TypeNames.HookStageOriginal, StringComparison.Ordinal) ||
                string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteHookPipelineOriginal, StringComparison.Ordinal) ||
-               string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteHookStageOriginal, StringComparison.Ordinal);
+               string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteHookStageOriginal, StringComparison.Ordinal) ||
+               string.Equals(original, DotBoxDGenerationNames.TypeNames.SubscriptionPipelineOriginal, StringComparison.Ordinal) ||
+               string.Equals(original, DotBoxDGenerationNames.TypeNames.SubscriptionStageOriginal, StringComparison.Ordinal) ||
+               string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteSubscriptionPipelineOriginal, StringComparison.Ordinal) ||
+               string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteSubscriptionStageOriginal, StringComparison.Ordinal);
     }
 
     // Accepts both lambda forms a fluent stage can take: a parenthesized lambda (e), (e, ctx) or (),

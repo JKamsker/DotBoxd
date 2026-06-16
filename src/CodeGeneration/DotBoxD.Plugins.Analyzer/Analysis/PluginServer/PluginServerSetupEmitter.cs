@@ -9,6 +9,7 @@ internal static class PluginServerSetupEmitter
         builder.AppendLine("    private enum RecordedInstallKind");
         builder.AppendLine("    {");
         builder.AppendLine("        Plugin,");
+        builder.AppendLine("        Subscription,");
         builder.AppendLine("        ServerExtension");
         builder.AppendLine("    }");
         builder.AppendLine();
@@ -54,6 +55,7 @@ internal static class PluginServerSetupEmitter
         builder.AppendLine("{");
         builder.Append("    ").Append(model.SetupInterfaceName).AppendLine(" Replace<TService, TKernel>() where TService : class where TKernel : class, TService;");
         builder.AppendLine("    global::DotBoxD.Plugins.Runtime.RemoteHookRegistry Hooks { get; }");
+        builder.AppendLine("    global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry Subscriptions { get; }");
         foreach (var control in model.Controls)
         {
             builder.Append("    ").Append(control.AccumulatorInterfaceName).Append(' ')
@@ -86,6 +88,7 @@ internal static class PluginServerSetupEmitter
         builder.AppendLine("        public global::DotBoxD.Plugins.PluginPackage Package { get; }");
         builder.AppendLine("        public global::System.Type? RegistryKey { get; }");
         builder.AppendLine("        public static RecordedInstall Plugin(global::DotBoxD.Plugins.PluginPackage package) => new(RecordedInstallKind.Plugin, package, null);");
+        builder.AppendLine("        public static RecordedInstall Subscription(global::DotBoxD.Plugins.PluginPackage package) => new(RecordedInstallKind.Subscription, package, null);");
         builder.AppendLine("        public static RecordedInstall ServerExtension(global::DotBoxD.Plugins.PluginPackage package, global::System.Type registryKey) => new(RecordedInstallKind.ServerExtension, package, registryKey);");
         builder.AppendLine("    }");
         builder.AppendLine();
@@ -119,6 +122,11 @@ internal static class PluginServerSetupEmitter
         builder.AppendLine("                _ = await InstallPluginPackageAsync(install.Package, cancellationToken).ConfigureAwait(false);");
         builder.AppendLine("                continue;");
         builder.AppendLine("            }");
+        builder.AppendLine("            if (install.Kind == RecordedInstallKind.Subscription)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                _ = await InstallSubscriptionPackageAsync(install.Package, cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine("                continue;");
+        builder.AppendLine("            }");
         builder.AppendLine("            var pluginId = await InstallServerExtensionPackageAsync(install.Package, cancellationToken).ConfigureAwait(false);");
         builder.AppendLine("            if (install.RegistryKey is not null) { _serverExtensions[install.RegistryKey] = pluginId; }");
         builder.AppendLine("        }");
@@ -133,6 +141,7 @@ internal static class PluginServerSetupEmitter
         builder.AppendLine("    {");
         builder.AppendLine("        private readonly global::System.Collections.Generic.List<RecordedInstall> _installs;");
         builder.AppendLine("        private readonly global::DotBoxD.Plugins.Runtime.RemoteHookRegistry _hooks;");
+        builder.AppendLine("        private readonly global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry _subscriptions;");
         foreach (var control in model.Controls)
         {
             builder.Append("        private readonly ").Append(control.AccumulatorInterfaceName).Append(' ')
@@ -145,6 +154,11 @@ internal static class PluginServerSetupEmitter
         builder.AppendLine("            _hooks = new global::DotBoxD.Plugins.Runtime.RemoteHookRegistry(package =>");
         builder.AppendLine("            {");
         builder.AppendLine("                _installs.Add(RecordedInstall.Plugin(package));");
+        builder.AppendLine("                return global::System.Threading.Tasks.ValueTask.FromResult(package.Manifest.PluginId);");
+        builder.AppendLine("            });");
+        builder.AppendLine("            _subscriptions = new global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry(package =>");
+        builder.AppendLine("            {");
+        builder.AppendLine("                _installs.Add(RecordedInstall.Subscription(package));");
         builder.AppendLine("                return global::System.Threading.Tasks.ValueTask.FromResult(package.Manifest.PluginId);");
         builder.AppendLine("            });");
         foreach (var control in model.Controls)
@@ -165,6 +179,7 @@ internal static class PluginServerSetupEmitter
                 .Append(control.Name).Append(" => ").Append(FieldName(control.Name)).AppendLine(";");
         }
         builder.AppendLine("        public global::DotBoxD.Plugins.Runtime.RemoteHookRegistry Hooks => _hooks;");
+        builder.AppendLine("        public global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry Subscriptions => _subscriptions;");
 
         builder.AppendLine("    }");
         builder.AppendLine();

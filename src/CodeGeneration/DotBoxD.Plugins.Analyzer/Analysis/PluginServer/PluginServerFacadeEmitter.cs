@@ -40,6 +40,7 @@ internal static class PluginServerFacadeEmitter
         builder.Append("    private ").Append(model.ControlServiceType).AppendLine("? _control;");
         builder.Append("    private ").Append(model.WorldType).AppendLine("? _world;");
         builder.AppendLine("    private global::DotBoxD.Plugins.Runtime.RemoteHookRegistry? _hooks;");
+        builder.AppendLine("    private global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry? _subscriptions;");
         builder.AppendLine("    private global::DotBoxD.Services.Peer.RpcPeerSession? _session;");
         foreach (var control in model.Controls)
         {
@@ -101,6 +102,7 @@ internal static class PluginServerFacadeEmitter
         builder.Append("    public ").Append(model.ServerInterfaceName).AppendLine(" Services => this;");
         builder.AppendLine("    public global::DotBoxD.Abstractions.IServerExtensionClientRegistry ServerExtensions => this;");
         builder.AppendLine("    public global::DotBoxD.Plugins.Runtime.RemoteHookRegistry Hooks => _started && _hooks is not null ? _hooks : throw new global::System.InvalidOperationException(NotStartedMessage);");
+        builder.AppendLine("    public global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry Subscriptions => _started && _subscriptions is not null ? _subscriptions : throw new global::System.InvalidOperationException(NotStartedMessage);");
         foreach (var control in model.Controls)
         {
             builder.Append("    public ").Append(control.Type).Append(' ').Append(control.Name)
@@ -121,6 +123,7 @@ internal static class PluginServerFacadeEmitter
         builder.Append("    ").Append(model.ServerInterfaceName).AppendLine(" Services { get; }");
         builder.AppendLine("    global::DotBoxD.Abstractions.IServerExtensionClientRegistry ServerExtensions { get; }");
         builder.AppendLine("    global::DotBoxD.Plugins.Runtime.RemoteHookRegistry Hooks { get; }");
+        builder.AppendLine("    global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry Subscriptions { get; }");
         builder.AppendLine("    global::DotBoxD.Abstractions.IServerExtensionWireClient WireClient { get; }");
         builder.AppendLine("    global::DotBoxD.Abstractions.ILiveSettingsHandle<TKernel> Get<TKernel>() where TKernel : class, new();");
         builder.AppendLine("    global::System.Threading.Tasks.Task<string> EnsureAnonymousKernelAsync(string pluginId, global::System.Func<global::DotBoxD.Plugins.PluginPackage> factory);");
@@ -172,6 +175,7 @@ internal static class PluginServerFacadeEmitter
         builder.AppendLine("        _control = control;");
         builder.AppendLine("        _world = world;");
         builder.AppendLine("        _hooks = new global::DotBoxD.Plugins.Runtime.RemoteHookRegistry(package => InstallPluginPackageAsync(package));");
+        builder.AppendLine("        _subscriptions = new global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry(package => InstallSubscriptionPackageAsync(package));");
         foreach (var control in model.Controls)
         {
             builder.Append("        _").Append(FieldName(control.Name)).Append(" = world is null ? null : new ")
@@ -215,6 +219,8 @@ internal static class PluginServerFacadeEmitter
         builder.AppendLine("        => _anonymousKernels.GetOrAdd(pluginId, id => new global::System.Lazy<global::System.Threading.Tasks.Task<string>>(() => InstallServerExtensionPackageAsync(factory()).AsTask())).Value;");
         builder.AppendLine("    private global::System.Threading.Tasks.ValueTask<string> InstallPluginPackageAsync(global::DotBoxD.Plugins.PluginPackage package, global::System.Threading.CancellationToken cancellationToken = default)");
         builder.AppendLine("        => RequireControl().InstallPluginAsync(global::DotBoxD.Plugins.Json.PluginPackageJsonSerializer.Export(package), cancellationToken);");
+        builder.AppendLine("    private global::System.Threading.Tasks.ValueTask<string> InstallSubscriptionPackageAsync(global::DotBoxD.Plugins.PluginPackage package, global::System.Threading.CancellationToken cancellationToken = default)");
+        builder.AppendLine("        => RequireControl().InstallSubscriptionAsync(global::DotBoxD.Plugins.Json.PluginPackageJsonSerializer.Export(package), cancellationToken);");
         builder.AppendLine("    private global::System.Threading.Tasks.ValueTask<string> InstallServerExtensionPackageAsync(global::DotBoxD.Plugins.PluginPackage package, global::System.Threading.CancellationToken cancellationToken = default)");
         builder.AppendLine("        => RequireControl().InstallServerExtensionAsync(global::DotBoxD.Plugins.Json.PluginPackageJsonSerializer.Export(package), cancellationToken);");
     }

@@ -11,12 +11,14 @@ namespace DotBoxD.Kernels.Game.Plugin;
 ///
 /// <para><b>Which verb when:</b></para>
 /// <list type="bullet">
-///   <item><c>Setup(s =&gt; s.Hooks.On&lt;TEvent&gt;().Use&lt;TKernel&gt;())</c> — record an event subscription;
+///   <item><c>Setup(s =&gt; s.Hooks.On&lt;TEvent&gt;().Use&lt;TKernel&gt;())</c> — record awaited decision logic;
 ///   <c>StartAsync()</c> ships and wires the kernel.</item>
-///   <item><c>server.Hooks.On&lt;TEvent&gt;()</c> — install additional subscriptions after <c>StartAsync()</c>
-///   through the generated <c>IGameWorldServer</c>.</item>
-///   <item><c>server.Hooks.On&lt;TEvent&gt;().Where(...).Select(...).Run(...)</c> — install an inline remote
-///   hook chain at runtime; filters, projections, and <c>Run</c> are lowered to verified IR.</item>
+///   <item><c>Setup(s =&gt; s.Subscriptions.On&lt;TEvent&gt;().Use&lt;TKernel&gt;())</c> — record fire-and-forget
+///   notifications for replay at <c>StartAsync()</c>.</item>
+///   <item><c>server.Hooks.On&lt;TEvent&gt;()</c> and <c>server.Subscriptions.On&lt;TEvent&gt;()</c> — install
+///   additional decision hooks or fire-and-forget notifications after <c>StartAsync()</c>.</item>
+///   <item><c>.Where(...).Select(...).Run(...)</c> — install inline remote chains at runtime; filters,
+///   projections, and <c>Run</c> are lowered to verified IR.</item>
 ///   <item><c>Setup(s =&gt; s.Monsters.Extend&lt;TKernel&gt;())</c> — record a <c>[ServerExtension]</c>; grafts a
 ///   method onto the control (batch) or onto each <c>IMonster</c> handle (per-instance).</item>
 ///   <item><c>Monsters.Get(id)</c> — a runtime scoped handle; calls on it omit the id.</item>
@@ -45,8 +47,9 @@ internal static class Program
             .FromPipeName(pipeName)
             .Setup(s =>
             {
-                // Record plugin-owned subscriptions. Build() is sync and does no I/O; StartAsync() ships the IR.
+                // Build() is sync and does no I/O; StartAsync() ships the recorded IR.
                 s.Hooks.On<MonsterAggroEvent>().Use<GuardianKernel>();
+                s.Subscriptions.On<AttackEvent>().Use<RetaliationKernel>();
 
                 s.Monsters.Extend<MonsterKillerKernel>();   // grafts onto IMonsterControl (batch)
                 s.Monsters.Extend<BlinkKernel>();           // grafts onto IMonster handles (per-instance)
@@ -82,11 +85,14 @@ internal static class Program
     {
         ArgumentNullException.ThrowIfNull(server);
 
-        // Runtime subscriptions go through the generated IGameWorldServer after StartAsync().
-        server.Hooks.On<AttackEvent>().Use<RetaliationKernel>();
         server.Hooks.On<MonsterAggroEvent>()
             .Where(e => e.Distance <= 4)
             .Select(e => e.MonsterId)
             .Run((monsterId, ctx) => ctx.Messages.Send(monsterId, "calm:inline"));
+
+        server.Subscriptions.On<AttackEvent>()
+            .Where(e => e.Damage >= 5)
+            .Select(e => e.AttackerId)
+            .Run((attackerId, ctx) => ctx.Messages.Send(attackerId, "taunt:inline"));
     }
 }

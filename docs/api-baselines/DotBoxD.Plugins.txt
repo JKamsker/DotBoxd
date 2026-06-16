@@ -146,6 +146,34 @@ public RemoteHookStage<TEvent, TNext> Select<TNext>(Func<TCurrent, HookContext, 
 public RemoteHookStage<TEvent, TNext> Select<TNext>(Func<TCurrent, TNext> projection)
 public RemoteHookStage<TEvent, TNext> Select<TNext>(Func<TEvent, HookContext, TNext> projection)
 public RemoteHookStage<TEvent, TNext> Select<TNext>(Func<TEvent, TNext> projection)
+public RemoteSubscriptionPipeline<TEvent> On<TEvent>() => new(_install)
+public RemoteSubscriptionPipeline<TEvent> Run(Action<TCurrent, HookContext> handler)
+public RemoteSubscriptionPipeline<TEvent> Run(Action<TCurrent> handler)
+public RemoteSubscriptionPipeline<TEvent> Run(Action<TEvent, HookContext> handler)
+public RemoteSubscriptionPipeline<TEvent> Run(Action<TEvent> handler)
+public RemoteSubscriptionPipeline<TEvent> Run(Func<TCurrent, HookContext, ValueTask> handler)
+public RemoteSubscriptionPipeline<TEvent> Run(Func<TCurrent, ValueTask> handler)
+public RemoteSubscriptionPipeline<TEvent> Run(Func<TEvent, HookContext, ValueTask> handler)
+public RemoteSubscriptionPipeline<TEvent> Run(Func<TEvent, ValueTask> handler)
+public RemoteSubscriptionPipeline<TEvent> RunLocal(Action<TCurrent, HookContext> handler)
+public RemoteSubscriptionPipeline<TEvent> RunLocal(Action<TCurrent> handler)
+public RemoteSubscriptionPipeline<TEvent> RunLocal(Action<TEvent, HookContext> handler)
+public RemoteSubscriptionPipeline<TEvent> RunLocal(Action<TEvent> handler)
+public RemoteSubscriptionPipeline<TEvent> RunLocal(Func<TCurrent, HookContext, ValueTask> handler)
+public RemoteSubscriptionPipeline<TEvent> RunLocal(Func<TCurrent, ValueTask> handler)
+public RemoteSubscriptionPipeline<TEvent> RunLocal(Func<TEvent, HookContext, ValueTask> handler)
+public RemoteSubscriptionPipeline<TEvent> RunLocal(Func<TEvent, ValueTask> handler)
+public RemoteSubscriptionPipeline<TEvent> Use<TKernel>() where TKernel : class
+public RemoteSubscriptionPipeline<TEvent> UseGeneratedChain(PluginPackage package)
+public RemoteSubscriptionPipeline<TEvent> Where(Func<TEvent, bool> filter)
+public RemoteSubscriptionPipeline<TEvent> Where(Func<TEvent, HookContext, bool> filter)
+public RemoteSubscriptionRegistry(Func<PluginPackage, ValueTask<string>> install)
+public RemoteSubscriptionStage<TEvent, TCurrent> Where(Func<TCurrent, bool> filter)
+public RemoteSubscriptionStage<TEvent, TCurrent> Where(Func<TCurrent, HookContext, bool> filter)
+public RemoteSubscriptionStage<TEvent, TNext> Select<TNext>(Func<TCurrent, HookContext, TNext> projection)
+public RemoteSubscriptionStage<TEvent, TNext> Select<TNext>(Func<TCurrent, TNext> projection)
+public RemoteSubscriptionStage<TEvent, TNext> Select<TNext>(Func<TEvent, HookContext, TNext> projection)
+public RemoteSubscriptionStage<TEvent, TNext> Select<TNext>(Func<TEvent, TNext> projection)
 public SandboxValue ToSandboxValue()
 public sealed class HookPipeline<TEvent>
 public sealed class HookRegistry
@@ -159,6 +187,12 @@ public sealed class PluginSession : IDisposable, IAsyncDisposable
 public sealed class RemoteHookPipeline<TEvent>
 public sealed class RemoteHookRegistry
 public sealed class RemoteHookStage<TEvent, TCurrent>
+public sealed class RemoteSubscriptionPipeline<TEvent>
+public sealed class RemoteSubscriptionRegistry
+public sealed class RemoteSubscriptionStage<TEvent, TCurrent>
+public sealed class SubscriptionPipeline<TEvent>
+public sealed class SubscriptionRegistry
+public sealed class SubscriptionStage<TEvent, TCurrent>
 public sealed class TypedInstalledKernel<TSettings> where TSettings : class
 public sealed partial class InstalledKernel
 public sealed partial class PluginServer
@@ -221,6 +255,42 @@ public string Name { get; }
 public string Name => Definition.Name
 public string TextValue
 public string? RpcEntrypoint { get; init; }
+public SubscriptionPipeline<TEvent> InvokeHostHandler(Action<TEvent, HookContext> handler)
+public SubscriptionPipeline<TEvent> InvokeHostHandler(Action<TEvent> handler)
+public SubscriptionPipeline<TEvent> InvokeHostHandler(Func<TEvent, HookContext, ValueTask> handler)
+public SubscriptionPipeline<TEvent> InvokeHostHandler(Func<TEvent, ValueTask> handler)
+public SubscriptionPipeline<TEvent> On<TEvent>()
+public SubscriptionPipeline<TEvent> On<TEvent>(IPluginEventAdapter<TEvent> adapter)
+public SubscriptionPipeline<TEvent> Run(Action<TCurrent, HookContext> handler)
+public SubscriptionPipeline<TEvent> Run(Action<TCurrent> handler)
+public SubscriptionPipeline<TEvent> Run(Action<TEvent, HookContext> handler)
+public SubscriptionPipeline<TEvent> Run(Action<TEvent> handler)
+public SubscriptionPipeline<TEvent> Run(Func<TCurrent, HookContext, ValueTask> handler)
+public SubscriptionPipeline<TEvent> Run(Func<TCurrent, ValueTask> handler)
+public SubscriptionPipeline<TEvent> Run(Func<TEvent, HookContext, ValueTask> handler)
+public SubscriptionPipeline<TEvent> Run(Func<TEvent, ValueTask> handler)
+public SubscriptionPipeline<TEvent> RunLocal(Action<TCurrent, HookContext> handler)
+public SubscriptionPipeline<TEvent> RunLocal(Action<TCurrent> handler)
+public SubscriptionPipeline<TEvent> RunLocal(Action<TEvent, HookContext> handler)
+public SubscriptionPipeline<TEvent> RunLocal(Action<TEvent> handler)
+public SubscriptionPipeline<TEvent> RunLocal(Func<TCurrent, HookContext, ValueTask> handler)
+public SubscriptionPipeline<TEvent> RunLocal(Func<TCurrent, ValueTask> handler)
+public SubscriptionPipeline<TEvent> RunLocal(Func<TEvent, HookContext, ValueTask> handler)
+public SubscriptionPipeline<TEvent> RunLocal(Func<TEvent, ValueTask> handler)
+public SubscriptionPipeline<TEvent> Use(InstalledKernel kernel)
+public SubscriptionPipeline<TEvent> Use<TKernel>() where TKernel : class
+public SubscriptionPipeline<TEvent> UseGeneratedChain(PluginPackage package)
+public SubscriptionPipeline<TEvent> Where(Func<TEvent, bool> filter)
+public SubscriptionPipeline<TEvent> Where(Func<TEvent, HookContext, bool> filter)
+public SubscriptionPipeline<TEvent> Where(Func<TEvent, HookContext, ValueTask<bool>> filter)
+public SubscriptionPipeline<TEvent> Where(Func<TEvent, ValueTask<bool>> filter)
+public SubscriptionRegistry Subscriptions { get; }
+public SubscriptionStage<TEvent, TCurrent> Where(Func<TCurrent, bool> filter)
+public SubscriptionStage<TEvent, TCurrent> Where(Func<TCurrent, HookContext, bool> filter)
+public SubscriptionStage<TEvent, TNext> Select<TNext>(Func<TCurrent, HookContext, TNext> projection)
+public SubscriptionStage<TEvent, TNext> Select<TNext>(Func<TCurrent, TNext> projection)
+public SubscriptionStage<TEvent, TNext> Select<TNext>(Func<TEvent, HookContext, TNext> projection)
+public SubscriptionStage<TEvent, TNext> Select<TNext>(Func<TEvent, TNext> projection)
 public T As<T>() where T : class => LiveContextProxy<T>.Create(this)
 public T Get<T>(string name)
 public T Value
@@ -231,9 +301,11 @@ public TypedInstalledKernel<TState> Get<TState>(string pluginId) where TState : 
 public ValueTask DisposeAsync()
 public ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)
 public ValueTask ModifyAsync( Action<TSettings> modify, bool atomic = false, CancellationToken cancellationToken = default)
+public ValueTask PublishAsync<TEvent>(TEvent e, CancellationToken cancellationToken = default)
 public ValueTask<InstalledKernel> InstallAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public ValueTask<InstalledKernel> InstallServerExtensionAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public void Dispose()
+public void Publish<TEvent>(TEvent e, CancellationToken cancellationToken = default)
 public void Register<TEvent>(IPluginEventAdapter<TEvent> adapter)
 public void RequireKind(KernelRpcValueKind expected)
 public void Revoke()

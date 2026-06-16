@@ -26,15 +26,39 @@ public sealed class GeneratedRemoteHookChainFallbackTests
         }
         """;
 
+    private const string SubscriptionSource = """
+        using DotBoxD.Plugins.Runtime;
+
+        namespace ChainSample;
+
+        public static class RemoteServerUsage
+        {
+            public static void Configure(IGeneratedWorldServer server)
+            {
+                server.Subscriptions.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                    .Where(e => e.Distance <= 5)
+                    .Select(e => e.MonsterId)
+                    .Run((id, ctx) => ctx.Messages.Send(id, "calm"));
+            }
+        }
+        """;
+
     [Fact]
     public void Fallback_lowers_remote_hook_chains_when_the_server_type_is_generated_later()
+        => AssertFallbackLowers(Source, "DotBoxDGeneratedRemoteHookFallbackTest");
+
+    [Fact]
+    public void Fallback_lowers_remote_subscription_chains_when_the_server_type_is_generated_later()
+        => AssertFallbackLowers(SubscriptionSource, "DotBoxDGeneratedRemoteSubscriptionFallbackTest");
+
+    private static void AssertFallbackLowers(string source, string assemblyName)
     {
         var parseOptions = CSharpParseOptions.Default
             .WithLanguageVersion(LanguageVersion.Preview)
             .WithFeatures([new KeyValuePair<string, string>("InterceptorsNamespaces", "DotBoxD.Plugins.Generated")]);
         var compilation = CSharpCompilation.Create(
-            "DotBoxDGeneratedRemoteHookFallbackTest",
-            [CSharpSyntaxTree.ParseText(Source, parseOptions)],
+            assemblyName,
+            [CSharpSyntaxTree.ParseText(source, parseOptions)],
             TrustedPlatformReferences()
                 .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(PluginPackage).Assembly.Location))

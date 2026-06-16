@@ -78,6 +78,7 @@ public sealed class InvokeAsyncCaptureBagRuntimeTests
             public interface IGamePluginControlService : DotBoxD.Plugins.IServerExtensionWireClient
             {
                 ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default);
+                ValueTask<string> InstallSubscriptionAsync(string packageJson, CancellationToken ct = default);
                 ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default);
                 ValueTask UpdateSettingsAsync(
                     string pluginId,
@@ -122,6 +123,9 @@ public sealed class InvokeAsyncCaptureBagRuntimeTests
                 public PluginPackage? LastPackage { get; private set; }
 
                 public ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default)
+                    => InstallPackageAsync(packageJson);
+
+                public ValueTask<string> InstallSubscriptionAsync(string packageJson, CancellationToken ct = default)
                     => InstallPackageAsync(packageJson);
 
                 public ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default)

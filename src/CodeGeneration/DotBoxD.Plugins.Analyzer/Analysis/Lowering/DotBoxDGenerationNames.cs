@@ -42,6 +42,10 @@ internal static class DotBoxDGenerationNames
         public const string HookStageOriginal = "DotBoxD.Plugins.Runtime.Hooks.HookStage<TEvent, TCurrent>";
         public const string RemoteHookPipelineOriginal = "DotBoxD.Plugins.Runtime.RemoteHookPipeline<TEvent>";
         public const string RemoteHookStageOriginal = "DotBoxD.Plugins.Runtime.Hooks.RemoteHookStage<TEvent, TCurrent>";
+        public const string SubscriptionPipelineOriginal = "DotBoxD.Plugins.Runtime.SubscriptionPipeline<TEvent>";
+        public const string SubscriptionStageOriginal = "DotBoxD.Plugins.Runtime.Subscriptions.SubscriptionStage<TEvent, TCurrent>";
+        public const string RemoteSubscriptionPipelineOriginal = "DotBoxD.Plugins.Runtime.RemoteSubscriptionPipeline<TEvent>";
+        public const string RemoteSubscriptionStageOriginal = "DotBoxD.Plugins.Runtime.Subscriptions.RemoteSubscriptionStage<TEvent, TCurrent>";
 
         public const string ListOriginal = "System.Collections.Generic.List<T>";
         public const string ReadOnlyListOriginal = "System.Collections.Generic.IReadOnlyList<T>";

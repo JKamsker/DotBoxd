@@ -4,13 +4,30 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 
+internal enum GeneratedRemoteHookChainKind
+{
+    Hook,
+    Subscription
+}
+
 internal static class GeneratedRemoteHookChainFallback
 {
-    public static bool IsCandidateSeed(InvocationExpressionSyntax seed)
-        => seed.Expression is MemberAccessExpressionSyntax onAccess &&
-           string.Equals(onAccess.Name.Identifier.ValueText, "On", StringComparison.Ordinal) &&
-           onAccess.Expression is MemberAccessExpressionSyntax hooksAccess &&
-           string.Equals(hooksAccess.Name.Identifier.ValueText, "Hooks", StringComparison.Ordinal);
+    public static GeneratedRemoteHookChainKind? CandidateKind(InvocationExpressionSyntax seed)
+    {
+        if (seed.Expression is not MemberAccessExpressionSyntax onAccess ||
+            !string.Equals(onAccess.Name.Identifier.ValueText, "On", StringComparison.Ordinal) ||
+            onAccess.Expression is not MemberAccessExpressionSyntax registryAccess)
+        {
+            return null;
+        }
+
+        return registryAccess.Name.Identifier.ValueText switch
+        {
+            "Hooks" => GeneratedRemoteHookChainKind.Hook,
+            "Subscriptions" => GeneratedRemoteHookChainKind.Subscription,
+            _ => null
+        };
+    }
 
     private static INamedTypeSymbol? EventTypeFromSeed(
         InvocationExpressionSyntax seed,
@@ -55,14 +72,20 @@ internal static class GeneratedRemoteHookChainFallback
         string eventTypeFullName,
         bool receiverIsStage,
         string terminalElementTypeFullName,
-        string packageFullName)
+        string packageFullName,
+        GeneratedRemoteHookChainKind kind)
     {
+        var pipelineName = kind == GeneratedRemoteHookChainKind.Hook
+            ? "DotBoxD.Plugins.Runtime.RemoteHookPipeline"
+            : "DotBoxD.Plugins.Runtime.RemoteSubscriptionPipeline";
+        var stageName = kind == GeneratedRemoteHookChainKind.Hook
+            ? "DotBoxD.Plugins.Runtime.Hooks.RemoteHookStage"
+            : "DotBoxD.Plugins.Runtime.Subscriptions.RemoteSubscriptionStage";
         var pipelineType = DotBoxDGenerationNames.TypeNames.GlobalPrefix +
-            "DotBoxD.Plugins.Runtime.RemoteHookPipeline<" + eventTypeFullName + ">";
+            pipelineName + "<" + eventTypeFullName + ">";
         var receiverType = receiverIsStage
             ? DotBoxDGenerationNames.TypeNames.GlobalPrefix +
-              "DotBoxD.Plugins.Runtime.Hooks.RemoteHookStage<" + eventTypeFullName + ", " +
-              terminalElementTypeFullName + ">"
+              stageName + "<" + eventTypeFullName + ", " + terminalElementTypeFullName + ">"
             : pipelineType;
         var handlerType = DotBoxDGenerationNames.TypeNames.GlobalAction + "<" +
             terminalElementTypeFullName + ", " + DotBoxDGenerationNames.TypeNames.GlobalHookContext + ">";
