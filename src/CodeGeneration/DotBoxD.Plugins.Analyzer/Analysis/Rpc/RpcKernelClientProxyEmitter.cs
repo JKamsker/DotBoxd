@@ -29,104 +29,7 @@ internal static partial class RpcKernelClientProxyEmitter
     }
 
     internal static IMethodSymbol ResolveServiceMethod(INamedTypeSymbol serviceType, IMethodSymbol kernelMethod)
-    {
-        if (serviceType.TypeKind != TypeKind.Interface)
-        {
-            throw new NotSupportedException("Kernel RPC service client generation requires an interface contract type.");
-        }
-
-        var methods = new List<IMethodSymbol>();
-        foreach (var member in serviceType.GetMembers())
-        {
-            if (member is IMethodSymbol { MethodKind: MethodKind.Ordinary, IsStatic: false } method)
-            {
-                methods.Add(method);
-            }
-        }
-
-        if (methods.Count != 1)
-        {
-            throw new NotSupportedException(
-                $"Kernel RPC service interface '{serviceType.ToDisplayString()}' must declare exactly one method.");
-        }
-
-        var serviceMethod = methods[0];
-        var expectedName = kernelMethod.Name;
-        if (!string.Equals(serviceMethod.Name, expectedName, StringComparison.Ordinal) &&
-            !string.Equals(serviceMethod.Name, expectedName + "Async", StringComparison.Ordinal))
-        {
-            throw new NotSupportedException(
-                $"Kernel RPC service method '{serviceMethod.Name}' must match kernel method '{expectedName}' or '{expectedName}Async'.");
-        }
-
-        var kernelParameterCount = kernelMethod.Parameters.Length - 1;
-        if (serviceMethod.Parameters.Length != kernelParameterCount)
-        {
-            throw new NotSupportedException(
-                $"Kernel RPC service method '{serviceMethod.Name}' must declare {kernelParameterCount} parameter(s).");
-        }
-
-        for (var i = 0; i < kernelParameterCount; i++)
-        {
-            var serviceParameter = serviceMethod.Parameters[i];
-            var kernelParameter = kernelMethod.Parameters[i];
-            RejectRefLikeParameter(serviceParameter, "service");
-            RejectRefLikeParameter(kernelParameter, "kernel");
-            if (!SymbolEqualityComparer.Default.Equals(serviceParameter.Type, kernelParameter.Type))
-            {
-                throw new NotSupportedException(
-                    $"Kernel RPC service parameter '{serviceParameter.Name}' must match kernel parameter '{kernelParameter.Name}'.");
-            }
-
-            if (!ParameterModifiersMatch(serviceParameter, kernelParameter))
-            {
-                throw new NotSupportedException(
-                    $"Kernel RPC service parameter '{serviceParameter.Name}' modifier '{DescribeParameterModifiers(serviceParameter)}' must match kernel parameter '{kernelParameter.Name}' modifier '{DescribeParameterModifiers(kernelParameter)}'.");
-            }
-        }
-
-        if (!SymbolEqualityComparer.Default.Equals(UnwrapReturn(serviceMethod.ReturnType), kernelMethod.ReturnType))
-        {
-            throw new NotSupportedException(
-                $"Kernel RPC service method '{serviceMethod.Name}' return type must match kernel method '{kernelMethod.Name}'.");
-        }
-
-        return serviceMethod;
-    }
-
-    private static void RejectRefLikeParameter(IParameterSymbol parameter, string owner)
-    {
-        if (parameter.RefKind == RefKind.None)
-        {
-            return;
-        }
-
-        throw new NotSupportedException(
-            $"Kernel RPC {owner} parameter '{parameter.Name}' cannot use ref, in, or out modifiers.");
-    }
-
-    private static ITypeSymbol UnwrapReturn(ITypeSymbol type)
-        => IsGenericTask(type, out var inner) || IsGenericValueTask(type, out inner) ? inner : type;
-
-    private static bool ParameterModifiersMatch(IParameterSymbol serviceParameter, IParameterSymbol kernelParameter)
-        => serviceParameter.RefKind == kernelParameter.RefKind &&
-            serviceParameter.IsParams == kernelParameter.IsParams;
-
-    private static string DescribeParameterModifiers(IParameterSymbol parameter)
-    {
-        var modifier = parameter.RefKind switch
-        {
-            RefKind.Ref => "ref",
-            RefKind.In => "in",
-            RefKind.Out => "out",
-            RefKind.None => "none",
-            _ => parameter.RefKind.ToString()
-        };
-
-        return parameter.IsParams
-            ? modifier == "none" ? "params" : "params " + modifier
-            : modifier;
-    }
+        => RpcKernelClientServiceMethodResolver.Resolve(serviceType, kernelMethod);
 
     private static bool IsGenericTask(ITypeSymbol type, out ITypeSymbol inner)
         => TryGenericTaskLike(type, "Task", out inner);
@@ -212,6 +115,12 @@ internal static partial class RpcKernelClientProxyEmitter
 
         private void AppendServiceMethod(StringBuilder builder)
         {
+            var locals = new GeneratedLocalNames(_serviceMethod);
+            var arguments = locals.Next("__arguments");
+            var request = locals.Next("__request");
+            var response = locals.Next("__response");
+            var result = locals.Next("__result");
+
             builder.Append("    public ");
             if (_returnShape != ReturnShape.Direct)
             {
@@ -222,27 +131,35 @@ internal static partial class RpcKernelClientProxyEmitter
                 .Append(Identifier(_serviceMethod.Name)).Append('(')
                 .Append(ParameterList(_serviceMethod)).AppendLine(")");
             builder.AppendLine("    {");
-            builder.Append("        var __arguments = new global::DotBoxD.Plugins.KernelRpcValue[")
+            builder.Append("        var ").Append(arguments).Append(" = new global::DotBoxD.Plugins.KernelRpcValue[")
                 .Append(_serviceMethod.Parameters.Length).AppendLine("];");
             for (var i = 0; i < _serviceMethod.Parameters.Length; i++)
             {
                 var parameter = _serviceMethod.Parameters[i];
-                builder.Append("        __arguments[").Append(i).Append("] = ")
+                builder.Append("        ").Append(arguments).Append('[').Append(i).Append("] = ")
                     .Append(WriteExpression(parameter.Type, Identifier(parameter.Name))).AppendLine(";");
             }
 
-            builder.AppendLine("        var __request = global::DotBoxD.Plugins.KernelRpcBinaryCodec.EncodeArguments(__arguments);");
+            builder.Append("        var ").Append(request)
+                .Append(" = global::DotBoxD.Plugins.KernelRpcBinaryCodec.EncodeArguments(")
+                .Append(arguments).AppendLine(");");
             if (_returnShape == ReturnShape.Direct)
             {
-                builder.AppendLine("        var __response = _client.InvokeKernelRpcAsync(_pluginId, __request).AsTask().GetAwaiter().GetResult();");
+                builder.Append("        var ").Append(response)
+                    .Append(" = _client.InvokeKernelRpcAsync(_pluginId, ")
+                    .Append(request).AppendLine(").AsTask().GetAwaiter().GetResult();");
             }
             else
             {
-                builder.AppendLine("        var __response = await _client.InvokeKernelRpcAsync(_pluginId, __request).ConfigureAwait(false);");
+                builder.Append("        var ").Append(response)
+                    .Append(" = await _client.InvokeKernelRpcAsync(_pluginId, ")
+                    .Append(request).AppendLine(").ConfigureAwait(false);");
             }
 
-            builder.AppendLine("        var __result = global::DotBoxD.Plugins.KernelRpcBinaryCodec.DecodeValue(__response);");
-            builder.Append("        return ").Append(ReadExpression(_payloadReturnType, "__result")).AppendLine(";");
+            builder.Append("        var ").Append(result)
+                .Append(" = global::DotBoxD.Plugins.KernelRpcBinaryCodec.DecodeValue(")
+                .Append(response).AppendLine(");");
+            builder.Append("        return ").Append(ReadExpression(_payloadReturnType, result)).AppendLine(";");
             builder.AppendLine("    }");
             builder.AppendLine();
         }
@@ -275,6 +192,30 @@ internal static partial class RpcKernelClientProxyEmitter
         }
 
         private string NextHelperName(string prefix) => prefix + "KernelRpcValue" + _nextHelper++;
+
+        private sealed class GeneratedLocalNames
+        {
+            private readonly HashSet<string> _used = new(StringComparer.Ordinal);
+
+            public GeneratedLocalNames(IMethodSymbol serviceMethod)
+            {
+                foreach (var parameter in serviceMethod.Parameters)
+                {
+                    _used.Add(parameter.Name);
+                }
+            }
+
+            public string Next(string baseName)
+            {
+                var name = baseName;
+                for (var suffix = 0; !_used.Add(name); suffix++)
+                {
+                    name = baseName + suffix.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
+                }
+
+                return name;
+            }
+        }
 
         private static string TypeName(ITypeSymbol type)
             => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
