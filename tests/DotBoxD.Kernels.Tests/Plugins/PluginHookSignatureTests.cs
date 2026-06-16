@@ -2,6 +2,7 @@ using System.Collections;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.PluginIpc.Server.Abstractions;
 using DotBoxD.Kernels.PluginLocal;
+using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Tests._TestSupport;
 using DotBoxD.Plugins;
@@ -179,7 +180,10 @@ public sealed class PluginHookSignatureTests
                 ExecutionMode.Interpreted,
                 ["Cpu", "Alloc", "HostStateWrite", "Concurrency", "Audit"],
                 [],
-                [new HookSubscriptionManifest(nameof(ConventionRecordEvent), "ConventionRecordKernel")]),
+                [new HookSubscriptionManifest(nameof(ConventionRecordEvent), "ConventionRecordKernel")])
+            {
+                RequiredCapabilities = [RuntimeCapabilityIds.Async, PluginMessageBindings.CapabilityId]
+            },
             new SandboxModule(
                 "convention-record-adapter",
                 SemVersion.One,
@@ -241,7 +245,10 @@ public sealed class PluginHookSignatureTests
                 ExecutionMode.Interpreted,
                 ["Cpu", "Alloc", "HostStateWrite", "Concurrency", "Audit"],
                 [],
-                [new HookSubscriptionManifest(nameof(ConventionDamageEvent), "ConventionKernel")]),
+                [new HookSubscriptionManifest(nameof(ConventionDamageEvent), "ConventionKernel")])
+            {
+                RequiredCapabilities = [RuntimeCapabilityIds.Async, PluginMessageBindings.CapabilityId]
+            },
             new SandboxModule(
                 "convention-adapter",
                 SemVersion.One,

@@ -139,7 +139,10 @@ public sealed class PluginRevocationTests
                 ExecutionMode.Interpreted,
                 ["Cpu", "Alloc", "HostStateWrite", "Concurrency", "Audit"],
                 [],
-                [new HookSubscriptionManifest(nameof(BlockingEvent), "BlockingKernel")]),
+                [new HookSubscriptionManifest(nameof(BlockingEvent), "BlockingKernel")])
+            {
+                RequiredCapabilities = [RuntimeCapabilityIds.Async, PluginMessageBindings.CapabilityId]
+            },
             new SandboxModule(
                 "revocation-blocking",
                 SemVersion.One,
