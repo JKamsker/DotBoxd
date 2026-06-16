@@ -179,7 +179,8 @@ public sealed class PluginPackageJsonTests
             "liveSettings": [{{liveSettings}}],
             "subscriptions": [
               { "event": "DamageEvent", "kernel": "JsonDamageKernel" }
-            ]
+            ],
+            "requiredCapabilities": ["dotboxd.runtime.async", "host.message.write"]
           },
           "module": {
             "id": "json-fire-damage",
