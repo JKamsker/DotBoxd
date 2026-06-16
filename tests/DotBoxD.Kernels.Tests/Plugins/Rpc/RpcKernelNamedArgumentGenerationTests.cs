@@ -70,6 +70,41 @@ public sealed class RpcKernelNamedArgumentGenerationTests
         }
         """;
 
+    private const string ReorderedRecordConstructorSource = """
+        using System.Collections.Generic;
+        using DotBoxD.Plugins;
+        using DotBoxD.Abstractions;
+
+        namespace Sample;
+
+        public sealed class FightResult
+        {
+            public FightResult(bool success, int monsterId)
+            {
+                Success = success;
+                MonsterId = monsterId;
+            }
+
+            public int MonsterId { get; }
+            public bool Success { get; }
+        }
+
+        [KernelRpcService("reordered-record-constructor")]
+        public sealed partial class ReorderedRecordConstructorKernel
+        {
+            public List<FightResult> Build(List<int> monsterIds, HookContext ctx)
+            {
+                var results = new List<FightResult>();
+                foreach (var id in monsterIds)
+                {
+                    results.Add(new FightResult(success: id >= 10, monsterId: id));
+                }
+
+                return results;
+            }
+        }
+        """;
+
     [Fact]
     public async Task Host_binding_named_arguments_are_lowered_in_parameter_order()
     {
@@ -99,6 +134,28 @@ public sealed class RpcKernelNamedArgumentGenerationTests
         var package = PluginAnalyzerGeneratedPackageFactory.Create(
             NamedRecordConstructorSource,
             "Sample.NamedRecordConstructorPluginPackage");
+
+        using var server = PluginServer.Create(defaultPolicy: CpuPolicy().Build());
+        var kernel = await server.InstallRpcAsync(package);
+
+        var ids = SandboxValue.FromList(
+            [SandboxValue.FromInt32(9), SandboxValue.FromInt32(10)],
+            SandboxType.I32);
+
+        var result = await kernel.InvokeRpcAsync([ids]);
+
+        var list = Assert.IsType<ListValue>(result);
+        Assert.Equal(2, list.Values.Count);
+        AssertFight(list.Values[0], 9, false);
+        AssertFight(list.Values[1], 10, true);
+    }
+
+    [Fact]
+    public async Task Record_constructor_arguments_are_lowered_in_field_order()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create(
+            ReorderedRecordConstructorSource,
+            "Sample.ReorderedRecordConstructorPluginPackage");
 
         using var server = PluginServer.Create(defaultPolicy: CpuPolicy().Build());
         var kernel = await server.InstallRpcAsync(package);
