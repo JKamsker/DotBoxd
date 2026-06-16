@@ -1,6 +1,7 @@
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Sandbox.Values;
+using DotBoxD.Plugins;
 using DotBoxD.Plugins.Json;
 using DotBoxD.Plugins.Kernel;
 
@@ -108,6 +109,24 @@ public sealed class RpcKernelRuntimeTests
             [SandboxValue.FromList([SandboxValue.FromInt32(2)], SandboxType.I32)]);
         var list = Assert.IsType<ListValue>(result);
         AssertKill(Assert.Single(list.Values), 2, true);
+    }
+
+    [Fact]
+    public async Task Install_rejects_rpc_package_without_module_kernel_metadata()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(
+            configureHost: RpcKernelTestPackages.AddKillBinding,
+            defaultPolicy: RpcKernelTestPackages.KillPolicy());
+        var package = RpcKernelTestPackages.MonsterKiller();
+        var metadata = package.Module.Metadata
+            .Where(pair => pair.Key != PluginManifestNames.ModuleMetadata.Kernel)
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        var invalid = package with { Module = package.Module with { Metadata = metadata } };
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await server.InstallRpcAsync(invalid).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK013");
     }
 
     [Fact]
