@@ -1,5 +1,6 @@
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
+using DotBoxD.Kernels.Tests.Plugins.Rpc;
 using DotBoxD.Plugins.Policies;
 
 namespace DotBoxD.Kernels.Tests.Plugins;
@@ -94,6 +95,45 @@ public sealed class PluginOwnershipTests
         Assert.True((bool)first.IsRevoked);
         Assert.False((bool)second.IsRevoked);
     }
+
+    [Fact]
+    public async Task Session_rpc_install_cannot_replace_server_owned_rpc_kernel()
+    {
+        using var server = CreateRpcServer();
+        var serverKernel = await server.InstallRpcAsync(RpcKernelTestPackages.MonsterKiller());
+        var session = server.CreateSession();
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await session.InstallRpcAsync(RpcKernelTestPackages.MonsterKiller()).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK060");
+        Assert.False((bool)serverKernel.IsRevoked);
+        Assert.True((bool)server.Kernels.TryGet("monster-killer", out var current));
+        Assert.Same(serverKernel, current);
+        Assert.False(session.Owns("monster-killer"));
+    }
+
+    [Fact]
+    public async Task Server_rpc_install_cannot_replace_session_owned_rpc_kernel()
+    {
+        using var server = CreateRpcServer();
+        var session = server.CreateSession();
+        var sessionKernel = await session.InstallRpcAsync(RpcKernelTestPackages.MonsterKiller());
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await server.InstallRpcAsync(RpcKernelTestPackages.MonsterKiller()).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK060");
+        Assert.False((bool)sessionKernel.IsRevoked);
+        Assert.True(session.Owns("monster-killer"));
+        Assert.True((bool)server.Kernels.TryGet("monster-killer", out var current));
+        Assert.Same(sessionKernel, current);
+    }
+
+    private static DotBoxD.Plugins.PluginServer CreateRpcServer()
+        => DotBoxD.Plugins.PluginServer.Create(
+            configureHost: RpcKernelTestPackages.AddKillBinding,
+            defaultPolicy: RpcKernelTestPackages.KillPolicy());
 
     private static SandboxPolicy LongWallPluginPolicy()
         => SandboxPolicyBuilder.Create()
