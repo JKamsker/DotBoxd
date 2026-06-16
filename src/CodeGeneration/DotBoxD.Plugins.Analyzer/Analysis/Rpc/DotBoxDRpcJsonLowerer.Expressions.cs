@@ -52,8 +52,8 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     private string LowerUnary(PrefixUnaryExpressionSyntax unary)
         => unary.Kind() switch
         {
-            SyntaxKind.LogicalNotExpression => Obj(("op", Str("not")), ("operand", LowerExpression(unary.Operand))),
-            SyntaxKind.UnaryMinusExpression => Obj(("op", Str("-")), ("operand", LowerExpression(unary.Operand))),
+            SyntaxKind.LogicalNotExpression => Obj(("unary", Str("not")), ("operand", LowerExpression(unary.Operand))),
+            SyntaxKind.UnaryMinusExpression => Obj(("unary", Str("-")), ("operand", LowerExpression(unary.Operand))),
             _ => throw new NotSupportedException($"Kernel RPC service unary '{unary.Kind()}' is not supported.")
         };
 
