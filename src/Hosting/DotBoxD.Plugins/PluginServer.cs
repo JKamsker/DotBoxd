@@ -323,12 +323,10 @@ public sealed class KernelRegistry : IEnumerable<InstalledKernel>
             if (_kernels.TryGetValue(kernel.Manifest.PluginId, out var existing) &&
                 !ReferenceEquals(existing, kernel))
             {
-                // Fail closed if a different session already owns this id: one plugin must not be able
-                // to hijack/replace another plugin's kernel by reusing its id. A same-owner reinstall
-                // (hot reload) replaces and revokes the prior incumbent; a null owner is the legacy
-                // in-process path and keeps replace semantics.
-                if (existing.OwnerId is not null && kernel.OwnerId is not null &&
-                    !ReferenceEquals(existing.OwnerId, kernel.OwnerId))
+                // Fail closed if a different owner already has this id. Same-owner reinstalls and
+                // direct server reinstalls (null/null) keep replace semantics; null/non-null crossings
+                // are rejected so sessions cannot hijack server kernels or vice versa.
+                if (!ReferenceEquals(existing.OwnerId, kernel.OwnerId))
                 {
                     throw new SandboxValidationException([
                         new SandboxDiagnostic(
@@ -347,8 +345,8 @@ public sealed class KernelRegistry : IEnumerable<InstalledKernel>
     }
 
     /// <summary>
-    /// Removes and revokes a kernel only if it is owned by <paramref name="owner"/> (or has no owner),
-    /// so a session disposal never tears down another session's kernel that may have replaced this id.
+    /// Removes and revokes a kernel only if it is owned by <paramref name="owner"/>, so a session
+    /// disposal never tears down a server-owned or different-session kernel with the same id.
     /// </summary>
     internal bool RemoveOwned(PluginSession owner, string pluginId)
     {
@@ -360,7 +358,7 @@ public sealed class KernelRegistry : IEnumerable<InstalledKernel>
                 return false;
             }
 
-            if (kernel.OwnerId is not null && !ReferenceEquals(kernel.OwnerId, owner))
+            if (!ReferenceEquals(kernel.OwnerId, owner))
             {
                 return false;
             }
