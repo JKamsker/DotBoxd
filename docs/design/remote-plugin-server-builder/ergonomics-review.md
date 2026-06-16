@@ -46,9 +46,10 @@ derivable from it or redundant:
   type and it vanishes.
 - The **method name** literal (1.3) already defaults to the method's own name.
 
-Net authored surface for a batch kernel: one class marker + one `[ServerExtensionMethod(typeof(IMonsterControl))]`,
-zero hand-typed ids, zero invented interfaces. This is the keystone that unblocks the 1.3 collapse and dissolves
-2.4.
+Net authored surface for a batch kernel: one class marker `[ServerExtension(typeof(IMonsterControl))]` (the
+graft target lives on the **class**, not the method) + one bare `[ServerExtensionMethod]` whose name defaults
+to the method, zero hand-typed ids, zero invented interfaces. This is the keystone that unblocks the 1.3
+collapse and dissolves 2.4.
 
 ---
 
@@ -58,7 +59,7 @@ zero hand-typed ids, zero invented interfaces. This is the keystone that unblock
 |---|-----|---------|-----|
 | 1.1 | med | **[codex] Per-plugin `.csproj` plumbing** — analyzer ref + Fody `WeaverFiles` ref + `Fody` package + `InterceptorsNamespaces` props hand-wired (`Examples.GameServer.Plugin.csproj:4–5,18–19,23`). | Collapse into one `DotBoxD.Plugins.Sdk` props/package import. **Caveat:** the `<InterceptorsNamespaces>…DotBoxD.Plugins.Generated</InterceptorsNamespaces>` line (:19) is load-bearing — omit it and every `InvokeAsync` compiles clean and throws at runtime (see 2.5). Absorb it into the SDK so the dev can't drop it. |
 | 1.2 | med | **[wf] The `IMonsterKillerService` placeholder interface** (`MonsterKillerKernel.cs:3–6`) exists only to be named in `Extend<IMonsterKillerService,…>()` / `PluginId<…>()`; never implemented or injected; re-declares the signature already on the kernel method. | Key `Extend`/`PluginId` off the kernel type (`Extend<MonsterKillerKernel>()`); the interface vanishes. |
-| 1.3 | med | **[3×] Server-extension annotation triple** (`MonsterKillerKernel.cs:22–30`) repeats `typeof(IMonsterControl)` twice, restates the method name, and carries a hand-typed install id `"monster-killer"`. | **Derive the install id from the kernel type** (kebab of the type name minus `Kernel`, exactly as 1.7 proposes for `[Plugin]` and as the generator already does for `PackageName`); keep an *optional* string override for protocol-pinning. With the id derived **and** the placeholder interface removed (1.2), the whole triple collapses to a class marker + one `[ServerExtensionMethod(typeof(IMonsterControl))]` whose name defaults to the method. See the **Identity note** below — the earlier "don't collapse, the id is asserted in tests" caution was wrong: the tests describe the hand-typed design, they don't require it; they should assert the *derived* id. |
+| 1.3 | med | **[3×] Server-extension annotation triple** (`MonsterKillerKernel.cs:22–30`) repeats `typeof(IMonsterControl)` twice, restates the method name, and carries a hand-typed install id `"monster-killer"`. | **Derive the install id from the kernel type** (kebab of the type name minus `Kernel`, exactly as 1.7 proposes for `[Plugin]` and as the generator already does for `PackageName`); keep an *optional* string override for protocol-pinning. With the id derived **and** the placeholder interface removed (1.2), the whole triple collapses to one class marker `[ServerExtension(typeof(IMonsterControl))]` (graft target on the class) + one bare `[ServerExtensionMethod]` whose name defaults to the method. See the **Identity note** below — the earlier "don't collapse, the id is asserted in tests" caution was wrong: the tests describe the hand-typed design, they don't require it; they should assert the *derived* id. |
 | 1.4 | low–med | **[codex] Hosting ceremony** — `Server/Program.cs:80–101` (pipe + 2 `TaskCompletionSource`s + session + provision + disconnect + launch); plugin `args`/usage parse (`Plugin/Program.cs:18–25`). | Small `GamePluginHost`; opt-in `GamePluginServerHost.RunFromArgs(args, …)` helper — **not** a generated `Main` (would bake in the single-pipe assumption tension E defers). |
 | 1.5 | low | **[3×] `.ConfigureAwait(false)` ×13 in the plugin `Main`** (`Program.cs:20–93`) — no sync context; sibling kernels and the doc's §7 snippet use bare `await`. | Strip it. First thing a dev copies. |
 | 1.6 | low | **[3×] Stale test double** — `RecordingGamePluginControlService.cs:83–112` implements `KillMonsterAsync`/`IsMonsterAsync`/`GetEntity*` no longer on the trimmed `IGamePluginControlService`. Dead, unasserted. | Delete; domain assertions already flow through `FakeWorld`. |

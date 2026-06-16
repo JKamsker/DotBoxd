@@ -11,14 +11,13 @@ public readonly record struct MonsterKillResult(
     bool Killed);
 
 /// <summary>
-/// Plugin-owned batch operation grafted onto <see cref="IMonsterControl"/>. It is injected the SAME
-/// <see cref="IGameWorldAccess"/> the plugin uses remotely — but because this kernel runs on the server the
-/// awaited calls are local (no real IPC hop). From the dev's seat it reads exactly like the remote plugin
-/// code: <c>await _world.Monsters.KillAsync(id)</c>.
+/// Plugin-owned batch operation grafted onto the <see cref="IMonsterControl"/> collection (contrast
+/// <see cref="BlinkKernel"/>, which grafts onto a single <see cref="IMonster"/> handle). It is injected the
+/// SAME <see cref="IGameWorldAccess"/> the plugin uses remotely — but because this kernel runs on the server
+/// the awaited calls are local (no real IPC hop).
 ///
-/// <para>One class marker names the graft target once; the install id derives from the type
-/// (<c>"monster-killer"</c>); the grafted method is a bare <c>[ServerExtensionMethod]</c> whose public name is
-/// its own method name. No hand-written service interface, no repeated type, no stringly-typed method name.</para>
+/// <para>Each id is turned into a scoped handle once via <c>_world.Monsters.Get(id)</c>, so the per-entity
+/// reads/writes below omit the id: <c>handle.GetHealthAsync()</c>, <c>handle.KillAsync()</c>.</para>
 /// </summary>
 [ServerExtension(typeof(IMonsterControl))]
 public sealed partial class MonsterKillerKernel
@@ -33,11 +32,12 @@ public sealed partial class MonsterKillerKernel
         var results = new List<MonsterKillResult>();
         foreach (var id in monsterIds)
         {
-            var healthBefore = await _world.Entities.GetHealthAsync(id);
+            var monster = _world.Monsters.Get(id);            // scoped handle — id captured once
+            var healthBefore = await monster.GetHealthAsync();
             var wasMonster = await _world.Monsters.IsMonsterAsync(id);
-            var level = await _world.Entities.GetLevelAsync(id);
-            var position = await _world.Entities.GetPositionAsync(id);
-            var killed = wasMonster && healthBefore > 0 && await _world.Monsters.KillAsync(id);
+            var level = await monster.GetLevelAsync();
+            var position = await monster.GetPositionAsync();
+            var killed = wasMonster && healthBefore > 0 && await monster.KillAsync();
             results.Add(new MonsterKillResult(id, wasMonster, level, position, healthBefore, killed));
         }
 

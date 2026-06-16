@@ -107,6 +107,9 @@ internal sealed class GameWorld
     internal int GetPosition(string entityId)
         => FindEntity(entityId)?.Position ?? 0;
 
+    internal void SetPosition(string entityId, int position)
+        => FindEntity(entityId)?.MoveTo(position);
+
     internal bool KillMonster(string monsterId)
     {
         if (FindEntity(monsterId) is not { Kind: EntityKind.Monster } monster)

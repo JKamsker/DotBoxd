@@ -39,8 +39,8 @@ public sealed class RemotePluginServerBuilderTests
         var control = new RecordingGamePluginControlService();
         using var server = GamePluginServerBuilder.FromConnection(control, new FakeWorld()).Build();
 
-        var killed = await server.Monsters.KillAsync("monster-4");
-        var health = await server.Entities.GetHealthAsync("monster-4");
+        var killed = await server.Monsters.Get("monster-4").KillAsync();        // scoped handle, id captured
+        var health = await server.Entities.Get("monster-4").GetHealthAsync();
 
         Assert.True(killed);
         Assert.Equal(42, health);
@@ -200,28 +200,49 @@ public sealed class RemotePluginServerBuilderTests
 
     private sealed class FakeMonsterControl : IMonsterControl
     {
-        public ValueTask<MonsterSnapshot> GetAsync(string entityId)
-            => ValueTask.FromResult(new MonsterSnapshot(entityId, entityId, 42, 8, 5));
-
-        public ValueTask<bool> KillAsync(string entityId)
-            => ValueTask.FromResult(true);
+        public IMonster Get(string entityId) => new FakeMonster(entityId);
 
         public ValueTask<bool> IsMonsterAsync(string entityId)
             => ValueTask.FromResult(true);
-
-        public ValueTask<int> GetThreatAsync(string entityId)
-            => ValueTask.FromResult(7);
     }
 
     private sealed class FakeEntityControl : IEntityControl
     {
-        public ValueTask<int> GetHealthAsync(string entityId)
-            => ValueTask.FromResult(42);
+        public IEntity Get(string entityId) => new FakeEntity(entityId);
+    }
 
-        public ValueTask<int> GetLevelAsync(string entityId)
-            => ValueTask.FromResult(8);
+    private sealed class FakeMonster : IMonster
+    {
+        public FakeMonster(string id) => Id = id;
 
-        public ValueTask<int> GetPositionAsync(string entityId)
-            => ValueTask.FromResult(5);
+        public string Id { get; }
+
+        public ValueTask<MonsterSnapshot> SnapshotAsync()
+            => ValueTask.FromResult(new MonsterSnapshot(Id, Id, 42, 8, 5));
+
+        public ValueTask<bool> KillAsync() => ValueTask.FromResult(true);
+
+        public ValueTask<int> GetThreatAsync() => ValueTask.FromResult(7);
+
+        public ValueTask TeleportToAsync(int position) => ValueTask.CompletedTask;
+
+        public ValueTask<int> GetHealthAsync() => ValueTask.FromResult(42);
+
+        public ValueTask<int> GetLevelAsync() => ValueTask.FromResult(8);
+
+        public ValueTask<int> GetPositionAsync() => ValueTask.FromResult(5);
+    }
+
+    private sealed class FakeEntity : IEntity
+    {
+        public FakeEntity(string id) => Id = id;
+
+        public string Id { get; }
+
+        public ValueTask<int> GetHealthAsync() => ValueTask.FromResult(42);
+
+        public ValueTask<int> GetLevelAsync() => ValueTask.FromResult(8);
+
+        public ValueTask<int> GetPositionAsync() => ValueTask.FromResult(5);
     }
 }
