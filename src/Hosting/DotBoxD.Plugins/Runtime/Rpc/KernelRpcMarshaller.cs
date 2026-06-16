@@ -20,6 +20,7 @@ public static class KernelRpcMarshaller
     {
         ArgumentNullException.ThrowIfNull(type);
         ArgumentNullException.ThrowIfNull(value);
+        RejectNullableValueType(type);
 
         if (TryScalarToSandbox(value, type) is { } scalar)
         {
@@ -61,6 +62,9 @@ public static class KernelRpcMarshaller
 
     public static object? FromSandboxValue(SandboxValue value, Type type)
     {
+        ArgumentNullException.ThrowIfNull(type);
+        RejectNullableValueType(type);
+
         if (TryScalarFromSandbox(value, type, out var scalar))
         {
             return scalar;
@@ -99,6 +103,9 @@ public static class KernelRpcMarshaller
 
     public static SandboxType SandboxTypeOf(Type type)
     {
+        ArgumentNullException.ThrowIfNull(type);
+        RejectNullableValueType(type);
+
         if (type == typeof(bool)) return SandboxType.Bool;
         if (type == typeof(int)) return SandboxType.I32;
         if (type == typeof(long)) return SandboxType.I64;
@@ -121,7 +128,7 @@ public static class KernelRpcMarshaller
     }
 
     private static SandboxValue? TryScalarToSandbox(object? value, Type type)
-        => Unwrap(type) switch
+        => type switch
         {
             var t when t == typeof(bool) => SandboxValue.FromBool((bool)value!),
             var t when t == typeof(int) => SandboxValue.FromInt32((int)value!),
@@ -133,7 +140,7 @@ public static class KernelRpcMarshaller
 
     private static bool TryScalarFromSandbox(SandboxValue value, Type type, out object? result)
     {
-        result = (Unwrap(type), value) switch
+        result = (type, value) switch
         {
             (var t, BoolValue b) when t == typeof(bool) => b.Value,
             (var t, I32Value i) when t == typeof(int) => i.Value,
@@ -145,7 +152,16 @@ public static class KernelRpcMarshaller
         return result is not null;
     }
 
-    private static Type Unwrap(Type type) => Nullable.GetUnderlyingType(type) ?? type;
+    private static void RejectNullableValueType(Type type)
+    {
+        if (Nullable.GetUnderlyingType(type) is null)
+        {
+            return;
+        }
+
+        throw new NotSupportedException(
+            $"Kernel RPC service nullable type '{type}' is not supported.");
+    }
 
     private static Type? ElementType(Type type)
     {

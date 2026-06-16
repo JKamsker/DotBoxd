@@ -15,6 +15,8 @@ internal static class DotBoxDRpcTypeMapper
 {
     public static string JsonType(ITypeSymbol type)
     {
+        RejectNullableValueType(type);
+
         switch (type.SpecialType)
         {
             case SpecialType.System_Boolean: return Scalar("Bool");
@@ -52,6 +54,8 @@ internal static class DotBoxDRpcTypeMapper
     /// <c>IReadOnlyList&lt;T&gt;</c>, <c>IEnumerable&lt;T&gt;</c>, or <c>T[]</c>), else null.</summary>
     public static ITypeSymbol? ListElementType(ITypeSymbol type)
     {
+        RejectNullableValueType(type);
+
         if (type is IArrayTypeSymbol array)
         {
             if (array.Rank != 1)
@@ -80,9 +84,12 @@ internal static class DotBoxDRpcTypeMapper
     }
 
     public static bool IsRecordDto(INamedTypeSymbol type)
-        => type.TypeKind is TypeKind.Class or TypeKind.Struct &&
-           !IsScalar(type) &&
-           RecordFields(type).Count > 0;
+    {
+        RejectNullableValueType(type);
+        return type.TypeKind is TypeKind.Class or TypeKind.Struct &&
+               !IsScalar(type) &&
+               RecordFields(type).Count > 0;
+    }
 
     /// <summary>The DTO's positional fields: public instance properties with a getter, in declaration
     /// order (for a positional record this is its primary-constructor parameter order).</summary>
@@ -108,4 +115,15 @@ internal static class DotBoxDRpcTypeMapper
     }
 
     private static string Scalar(string name) => "\"" + name + "\"";
+
+    private static void RejectNullableValueType(ITypeSymbol type)
+    {
+        if (type.OriginalDefinition.SpecialType != SpecialType.System_Nullable_T)
+        {
+            return;
+        }
+
+        throw new NotSupportedException(
+            $"Kernel RPC service nullable type '{type.ToDisplayString()}' is not supported.");
+    }
 }
