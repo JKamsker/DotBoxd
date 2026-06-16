@@ -73,6 +73,10 @@ public sealed partial class SandboxHost
         return required;
     }
 
+    private static bool EntrypointHasHostBinding(ExecutionPlan plan, string entrypoint)
+        => plan.BindingReferences.TryGetValue(entrypoint, out var bindingReferences) &&
+           bindingReferences.Count > 0;
+
     private static bool EntrypointHasAsyncBinding(ExecutionPlan plan, string entrypoint)
     {
         if (!plan.BindingReferences.TryGetValue(entrypoint, out var bindingReferences))
@@ -93,7 +97,7 @@ public sealed partial class SandboxHost
 
     private static bool ShouldUseCompiledAsyncWorker(ExecutionPlan plan, string entrypoint)
         => plan.Policy.GrantsCapability(RuntimeCapabilityIds.Async) &&
-           EntrypointHasAsyncBinding(plan, entrypoint);
+           EntrypointHasHostBinding(plan, entrypoint);
 
     private static void ValidateCapabilityId(string capabilityId)
     {
