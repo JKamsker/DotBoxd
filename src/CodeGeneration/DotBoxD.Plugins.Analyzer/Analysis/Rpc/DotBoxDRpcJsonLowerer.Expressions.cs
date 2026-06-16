@@ -143,6 +143,12 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         Allocates = true;
         var fields = DotBoxDRpcTypeMapper.RecordFields(named);
         var args = new string[fields.Count];
+        if (creation.ArgumentList is { Arguments.Count: > 0 } && creation.Initializer is not null)
+        {
+            throw new NotSupportedException(
+                $"Kernel RPC service 'new {named.Name}' cannot combine constructor arguments and object initializers.");
+        }
+
         if (creation.ArgumentList is { Arguments.Count: > 0 } argumentList)
         {
             if (argumentList.Arguments.Count != fields.Count)
