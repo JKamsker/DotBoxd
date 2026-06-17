@@ -1,7 +1,7 @@
 # Release Readiness Checklist
 
 Sections marked `release-gate: required` are enforced by
-`scripts/check-release-readiness.ps1 -RequireComplete`. Sections marked
+`eng/scripts/check-release-readiness.ps1 -RequireComplete`. Sections marked
 `release-gate: inventory` are tracked for operators and production deployments but do not block
 publishing the DotBoxD.Kernels packages.
 

@@ -180,7 +180,7 @@ if ($Update) {
 
 $actual = Normalize-LineEndings -Text (Get-Content -Raw -LiteralPath $manifestPath)
 if ($actual -ne $expected) {
-    Write-Error "Spec manifest is stale. Run ./scripts/check-spec-manifest.ps1 -Update"
+    Write-Error "Spec manifest is stale. Run ./eng/scripts/check-spec-manifest.ps1 -Update"
 }
 
 Write-Host "Spec manifest check passed. Files: $($entries.Count)"

@@ -30,19 +30,17 @@ function Assert-ExistingPath([string] $Document, [int] $LineNumber, [string] $Pa
 function Test-DocumentCommands([string] $Path) {
     $lines = Get-Content -LiteralPath $Path
     for ($i = 0; $i -lt $lines.Count; $i++) {
-        $line = $lines[$i].Trim()
-        if ($line -match '^dotnet\s+(restore|build|test|pack)\s+(?<target>\S+)') {
-            Assert-ExistingPath $Path ($i + 1) $matches["target"]
-            continue
+        $line = $lines[$i]
+        foreach ($match in [regex]::Matches($line, 'dotnet\s+(restore|build|test|pack)\s+(?<target>[^`\s]+)')) {
+            Assert-ExistingPath $Path ($i + 1) $match.Groups["target"].Value
         }
 
-        if ($line -match '^dotnet\s+run\s+--project\s+(?<project>\S+)') {
-            Assert-ExistingPath $Path ($i + 1) $matches["project"]
-            continue
+        foreach ($match in [regex]::Matches($line, 'dotnet\s+run\s+--project\s+(?<project>[^`\s]+)')) {
+            Assert-ExistingPath $Path ($i + 1) $match.Groups["project"].Value
         }
 
-        if ($line -match '^\.(?<script>\\scripts\\\S+\.ps1)') {
-            Assert-ExistingPath $Path ($i + 1) ("." + $matches["script"])
+        foreach ($match in [regex]::Matches($line, '(?<script>(?:\./|\.\\)?(?:scripts|eng/scripts|eng\\scripts)[^`\s]*\.ps1)')) {
+            Assert-ExistingPath $Path ($i + 1) $match.Groups["script"].Value
         }
     }
 }
@@ -124,8 +122,15 @@ function Invoke-DotNetProject([string] $Description, [string[]] $Arguments, [int
     }
 }
 
-Test-DocumentCommands (Join-Path $root "README.md")
-Test-DocumentCommands (Join-Path $root "docs/Specs/Addendum/Examples.md")
+$commandDocuments = @(
+    (Join-Path $root "README.md"),
+    (Join-Path $root "docs/Specs/Addendum/Examples.md")
+)
+$specDocuments = @(Get-ChildItem -LiteralPath (Join-Path $root "docs/Specs") -Recurse -File -Filter "*.md" |
+    Select-Object -ExpandProperty FullName)
+foreach ($document in @($commandDocuments + $specDocuments | Select-Object -Unique)) {
+    Test-DocumentCommands $document
+}
 
 Assert-DocsDoNotContain "Sandbox\.Parse" "JSON IR import is Sandbox.ImportJson"
 Assert-DocsDoNotContain "tenant://123/config" "file grants use canonical filesystem roots"
