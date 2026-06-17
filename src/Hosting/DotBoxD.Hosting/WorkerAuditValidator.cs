@@ -57,7 +57,7 @@ internal static class WorkerAuditValidator
             !TextIsSafe(auditEvent.Message) ||
             auditEvent.Bytes is < 0 ||
             (auditEvent.ErrorCode is { } code && !Enum.IsDefined(code)) ||
-            (auditEvent.Success && auditEvent.ErrorCode is not null) ||
+            !ResultShapeMatches(auditEvent) ||
             !TimestampMatches(plan, auditEvent.Timestamp))
         {
             return false;
@@ -67,6 +67,8 @@ internal static class WorkerAuditValidator
         {
             "RunSummary" => RunSummarySchemaMatches(plan, auditEvent),
             "WorkerExecution" => ModuleAuditMatches(plan, auditEvent),
+            "ExecutionFallback" => ExecutionFallbackAuditMatches(plan, auditEvent),
+            "VerifierFailure" => VerifierFailureAuditMatches(plan, auditEvent),
             "DebugTrace" => options.EnableDebugTrace && ModuleAuditMatches(plan, auditEvent),
             "CacheInvalidated" => false,
             "PolicyDenied" => false,
@@ -74,6 +76,11 @@ internal static class WorkerAuditValidator
             _ => false
         };
     }
+
+    private static bool ResultShapeMatches(SandboxAuditEvent auditEvent)
+        => !auditEvent.Success ||
+           auditEvent.ErrorCode is null ||
+           auditEvent.Kind == "ExecutionFallback";
 
     private static bool TimestampMatches(ExecutionPlan plan, DateTimeOffset timestamp)
     {
@@ -126,6 +133,16 @@ internal static class WorkerAuditValidator
            auditEvent.Effect == SandboxEffect.None &&
            auditEvent.Fields is null &&
            string.Equals(auditEvent.ResourceId, $"module:{plan.ModuleHash}", StringComparison.Ordinal);
+
+    private static bool ExecutionFallbackAuditMatches(ExecutionPlan plan, SandboxAuditEvent auditEvent)
+        => auditEvent.Success &&
+           auditEvent.ErrorCode is SandboxErrorCode.ValidationError or SandboxErrorCode.VerifierFailure &&
+           ModuleAuditMatches(plan, auditEvent);
+
+    private static bool VerifierFailureAuditMatches(ExecutionPlan plan, SandboxAuditEvent auditEvent)
+        => !auditEvent.Success &&
+           auditEvent.ErrorCode == SandboxErrorCode.VerifierFailure &&
+           ModuleAuditMatches(plan, auditEvent);
 
     private static bool BindingAuditMatches(
         ExecutionPlan plan,
