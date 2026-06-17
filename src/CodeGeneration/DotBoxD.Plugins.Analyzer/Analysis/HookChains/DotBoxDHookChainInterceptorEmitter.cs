@@ -20,7 +20,7 @@ internal static class DotBoxDHookChainInterceptorEmitter
         "namespace System.Runtime.CompilerServices\n" +
         "{\n" +
         "    [" + TypeNames.GlobalAttributeUsage + "(" + TypeNames.GlobalAttributeTargets + ".Method, AllowMultiple = true)]\n" +
-        "    internal sealed class InterceptsLocationAttribute : " + TypeNames.GlobalAttribute + "\n" +
+        "    file sealed class InterceptsLocationAttribute : " + TypeNames.GlobalAttribute + "\n" +
         "    {\n" +
         "        public InterceptsLocationAttribute(int version, string data) { _ = version; _ = data; }\n" +
         "    }\n" +
@@ -33,8 +33,7 @@ internal static class DotBoxDHookChainInterceptorEmitter
             return;
         }
 
-        context.AddSource("DotBoxDInterceptsLocationAttribute.g.cs", AttributeSource);
-        context.AddSource("DotBoxDHookChainInterceptors.g.cs", BuildInterceptors(interceptions));
+        context.AddSource("DotBoxDHookChainInterceptors.g.cs", AttributeSource + "\n" + BuildInterceptors(interceptions));
     }
 
     private static string BuildInterceptors(ImmutableArray<HookChainInterception> interceptions)
