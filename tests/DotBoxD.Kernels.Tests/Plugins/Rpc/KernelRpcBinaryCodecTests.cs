@@ -58,6 +58,25 @@ public sealed class KernelRpcBinaryCodecTests
     }
 
     [Fact]
+    public void DecodeArguments_rejects_excessive_aggregate_item_count()
+    {
+        var payload = new List<byte>();
+        payload.AddRange(LengthPrefix(MaxDecodeItems));
+        payload.Add((byte)KernelRpcValueKind.List);
+        payload.Add(1);
+        payload.Add((byte)KernelRpcValueKind.Unit);
+        for (var i = 1; i < MaxDecodeItems; i++)
+        {
+            payload.Add((byte)KernelRpcValueKind.Unit);
+        }
+
+        var ex = Assert.Throws<FormatException>(
+            () => KernelRpcBinaryCodec.DecodeArguments(payload.ToArray()));
+
+        Assert.Contains("too many items", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void DecodeValue_rejects_excessive_nested_item_count()
     {
         var payload = new List<byte> { (byte)KernelRpcValueKind.List };
