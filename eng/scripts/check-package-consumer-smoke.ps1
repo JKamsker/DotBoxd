@@ -242,7 +242,7 @@ if (package.Manifest.PluginId != "package-consumer-smoke")
 }
 
 if (package.Manifest.Subscriptions.Count != 1 ||
-    package.Manifest.Subscriptions[0].Event != "SmokeEvent" ||
+    package.Manifest.Subscriptions[0].Event != "DotBoxD.Kernels.PackageConsumerSmoke.SmokeEvent" ||
     package.Manifest.Subscriptions[0].Kernel != "SmokeKernel")
 {
     throw new InvalidOperationException("Generated manifest is missing the expected SmokeEvent/SmokeKernel subscription.");

@@ -43,16 +43,16 @@ public sealed class GameServerGeneratedPackageTests
             {
                 "DotBoxD.Kernels.Game.Plugin.Kernels.GuardianKernel",
                 "guardian",
-                "IEventKernel<MonsterAggroEvent>",
-                "MonsterAggroEvent",
+                "IEventKernel<DotBoxD.Kernels.Game.Server.Abstractions.Events.MonsterAggroEvent>",
+                "DotBoxD.Kernels.Game.Server.Abstractions.Events.MonsterAggroEvent",
                 null,
                 ["dotboxd.runtime.async", "host.message.write"]
             },
             {
                 "DotBoxD.Kernels.Game.Plugin.Kernels.RetaliationKernel",
                 "retaliation",
-                "IEventKernel<AttackEvent>",
-                "AttackEvent",
+                "IEventKernel<DotBoxD.Kernels.Game.Server.Abstractions.Events.AttackEvent>",
+                "DotBoxD.Kernels.Game.Server.Abstractions.Events.AttackEvent",
                 null,
                 ["dotboxd.runtime.async", "host.message.write"]
             },
