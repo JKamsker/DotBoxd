@@ -231,6 +231,10 @@ function AssertPackageEntryAllowlist($zip, [string] $id, [string] $readme, [stri
     } else {
         [void] $allowedExact.Add("lib/$tfm/$id.dll")
         [void] $allowedExact.Add("lib/$tfm/$id.xml")
+        if ($id -eq "DotBoxD") {
+            [void] $allowedExact.Add("analyzers/dotnet/cs/DotBoxD.Plugins.Analyzer.dll")
+            [void] $allowedExact.Add("analyzers/dotnet/cs/DotBoxD.Plugins.Analyzer.xml")
+        }
     }
 
     # Embedded, machine-readable JSON ingestion schemas (CMP-0012) are also packed so consumers can
