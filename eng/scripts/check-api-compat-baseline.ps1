@@ -35,6 +35,8 @@ $packages = @(
     @{ Id = "DotBoxD.Services.All"; Path = "src/Meta/DotBoxD.Services.All" }
 )
 
+$publicSurfaceAccessibilityPattern = "^(public|protected\s+internal|internal\s+protected|protected)\b"
+
 function Normalize-ApiLine([string] $Line) {
     $trimmed = Remove-LineComment $Line
     $trimmed = $trimmed.Trim()
@@ -44,7 +46,7 @@ function Normalize-ApiLine([string] $Line) {
         return $null
     }
 
-    if ($trimmed -notmatch "^(public|protected\s+internal|protected)\b") {
+    if ($trimmed -notmatch $publicSurfaceAccessibilityPattern) {
         return $null
     }
 
@@ -189,14 +191,16 @@ function Test-TypeDeclaration([string] $Trimmed) {
 
 function Test-TypeDeclarationPublic([string] $Trimmed) {
     # A type contributes to the effective public surface only when its own
-    # declaration is public, protected, or protected internal.
-    if ($Trimmed -notmatch "^(public|protected\s+internal|protected)\b") {
+    # declaration is public, protected, protected internal, or internal protected.
+    if ($Trimmed -notmatch $publicSurfaceAccessibilityPattern) {
         return $false
     }
 
     # protected internal and internal protected are public-surface-visible; a bare
     # internal/private/file modifier is not.
-    if ($Trimmed -match "^internal\b" -or $Trimmed -match "^private\b" -or $Trimmed -match "^file\b") {
+    if (($Trimmed -match "^internal\b" -and $Trimmed -notmatch "^internal\s+protected\b") -or
+        $Trimmed -match "^private\b" -or
+        $Trimmed -match "^file\b") {
         return $false
     }
 
@@ -302,7 +306,7 @@ function Normalize-ApiDeclaration([string] $Declaration) {
     $normalized = ($lines -join " ") -replace "\s+", " "
     $normalized = $normalized.TrimEnd("{", ";").Trim()
     if ([string]::IsNullOrWhiteSpace($normalized) -or
-        $normalized -notmatch "^(public|protected\s+internal|protected)\b") {
+        $normalized -notmatch $publicSurfaceAccessibilityPattern) {
         return $null
     }
 
@@ -366,7 +370,7 @@ function Add-EnumMembers([string[]] $Lines, [System.Collections.Generic.HashSet[
             # public; a public enum nested in an internal type is not consumer-visible.
             if ($null -eq $pendingEnumName -and
                 $ContainingTypePublic[$index] -and
-                $trimmed -match "^(public|protected\s+internal|protected)\s+.*\benum\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\b") {
+                $trimmed -match "$publicSurfaceAccessibilityPattern\s+.*\benum\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\b") {
                 $pendingEnumName = $Matches.name
             }
 
