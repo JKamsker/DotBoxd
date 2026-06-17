@@ -1,3 +1,4 @@
+using System.Globalization;
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 using Microsoft.CodeAnalysis;
@@ -23,7 +24,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 Allocates = true;
             }
 
-            return LiteralJson(constant.Value);
+            return LiteralJson(expression, constant.Value);
         }
 
         switch (expression)
@@ -56,6 +57,22 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             SyntaxKind.UnaryMinusExpression => Obj(("unary", Str("-")), ("operand", LowerExpression(unary.Operand))),
             _ => throw new NotSupportedException($"Kernel RPC service unary '{unary.Kind()}' is not supported.")
         };
+
+    private string LiteralJson(ExpressionSyntax expression, object? value)
+    {
+        var converted = _model.GetTypeInfo(expression, _cancellationToken).ConvertedType;
+        if (converted?.SpecialType == SpecialType.System_Int64 && value is int i)
+        {
+            return LiteralJson((long)i);
+        }
+
+        if (converted?.SpecialType == SpecialType.System_Double && value is IConvertible convertible)
+        {
+            return LiteralJson(convertible.ToDouble(CultureInfo.InvariantCulture));
+        }
+
+        return LiteralJson(value);
+    }
 
     private string LowerInvocation(InvocationExpressionSyntax invocation)
     {
