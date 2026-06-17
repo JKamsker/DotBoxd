@@ -199,6 +199,27 @@ public sealed class WorkerAuditValidationTests
     }
 
     [Fact]
+    public async Task Worker_result_with_forged_run_summary_policy_id_is_rejected()
+    {
+        var worker = new AuditForgingWorker(
+            (plan, runId) => new SandboxAuditEvent(
+                runId,
+                "WorkerExecution",
+                DateTimeOffset.UtcNow,
+                true,
+                ResourceId: $"module:{plan.ModuleHash}"),
+            MutateSummaryFields: fields => fields["policyId"] = "tenant_api_key_abc123");
+        var host = Host(worker);
+        var plan = await PrepareAsync(host);
+
+        var result = await ExecuteAsync(host, plan);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
+    }
+
+    [Fact]
     public async Task Worker_path_clears_successful_summary_suppression_so_audit_stays_valid()
     {
         // SuppressSuccessfulRunSummaryAudit is an in-process-only optimization. Worker-result
@@ -359,6 +380,7 @@ public sealed class WorkerAuditValidationTests
     private sealed class AuditForgingWorker(
         Func<ExecutionPlan, SandboxRunId, SandboxAuditEvent> forgeAuditEvent,
         bool AddSummaryExtraField = false,
+        Action<Dictionary<string, string>>? MutateSummaryFields = null,
         SandboxValue? Value = null) : ISandboxWorkerClient
     {
         public ValueTask<SandboxExecutionResult> ExecuteInWorkerAsync(
@@ -379,6 +401,7 @@ public sealed class WorkerAuditValidationTests
             {
                 summaryFields["forged"] = "field";
             }
+            MutateSummaryFields?.Invoke(summaryFields);
 
             audit.Write(new SandboxAuditEvent(
                 runId,
