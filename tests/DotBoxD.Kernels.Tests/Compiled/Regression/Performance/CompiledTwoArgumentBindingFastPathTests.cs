@@ -75,6 +75,16 @@ public sealed class CompiledTwoArgumentBindingFastPathTests
         Assert.Equal(created.Budget.AllocatedBytes, charged.Budget.AllocatedBytes);
     }
 
+    [Fact]
+    public void Create_literal_value_array_zero_reuses_empty_array()
+    {
+        var first = Kernels.Runtime.CompiledRuntime.CreateLiteralValueArray(0);
+        var second = Kernels.Runtime.CompiledRuntime.CreateLiteralValueArray(0);
+
+        Assert.Empty(first);
+        Assert.Same(first, second);
+    }
+
     private const string AddModuleJson = """
     {
       "id": "compiled-two-arg-binding-fast-path",

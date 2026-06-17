@@ -82,6 +82,11 @@ if (args.Contains("--probe-binding-dispatch-scope", StringComparer.OrdinalIgnore
     return;
 }
 
+if (args.Contains("--probe-compiled-binding-arity", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.CompiledBindingArityProbe.Run();
+    return;
+}
+
 var profileIndex = Array.FindIndex(args, arg => arg.Equals("--profile-ipc", StringComparison.OrdinalIgnoreCase));
 if (profileIndex >= 0) {
     var transport = args.ElementAtOrDefault(profileIndex + 1) ?? IpcAllocationProfile.NamedPipeTransport;
