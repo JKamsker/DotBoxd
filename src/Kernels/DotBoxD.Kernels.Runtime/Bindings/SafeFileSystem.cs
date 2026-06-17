@@ -224,7 +224,7 @@ public static partial class SafeFileSystem
 
     internal static void EnsureNoReparsePoint(string rootFull, string fullPath)
     {
-        var root = rootFull.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var root = Path.TrimEndingDirectorySeparator(rootFull);
         CheckAttributes(root);
 
         var relative = Path.GetRelativePath(root, fullPath);
