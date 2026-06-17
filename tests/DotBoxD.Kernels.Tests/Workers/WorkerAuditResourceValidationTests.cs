@@ -29,6 +29,24 @@ public sealed class WorkerAuditResourceValidationTests
     }
 
     [Fact]
+    public async Task Worker_rejects_log_audit_when_usage_underreports_binding_base_fuel()
+    {
+        var worker = new ForgedLogWorker(HostCalls: 1, LogEvents: 1, Message: "worker ok");
+        using var host = LogHost(worker);
+        var plan = await PrepareLogPlanAsync(host, SandboxPolicyBuilder.Create()
+            .GrantLogging()
+            .WithFuel(1_000)
+            .WithMaxLogEvents(10)
+            .Build());
+
+        var result = await ExecuteAsync(host, plan);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
+    }
+
+    [Fact]
     public async Task Worker_rejects_log_audit_message_that_exceeds_policy_length()
     {
         var worker = new ForgedLogWorker(HostCalls: 1, LogEvents: 1, Message: "too-long");
