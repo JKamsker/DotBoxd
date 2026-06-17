@@ -355,4 +355,69 @@ public interface IMetaSmokeService
 Invoke-ServiceGeneratorSmoke "DotBoxD.Services.All.MetaSmoke" "DotBoxD.Services.All"
 Invoke-ServiceGeneratorSmoke "DotBoxD.MetaSmoke" "DotBoxD"
 
+function Invoke-DotBoxDPluginAuthoringSmoke {
+    $projectRoot = Join-Path $resolvedWorkRoot "DotBoxD.PluginAuthoringSmoke"
+    New-Item -ItemType Directory -Path $projectRoot | Out-Null
+
+    $project = @"
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="DotBoxD" Version="$($versions["DotBoxD"])" />
+  </ItemGroup>
+</Project>
+"@
+    Set-Content -LiteralPath (Join-Path $projectRoot "DotBoxD.PluginAuthoringSmoke.csproj") -Value $project
+
+    $program = @"
+using DotBoxD.Abstractions;
+using DotBoxD.Plugins;
+
+var server = PluginServer.Create();
+_ = server;
+var package = SmokePluginPackage.Create();
+if (package.Manifest.PluginId != "dotboxd-meta-plugin-smoke")
+{
+    throw new InvalidOperationException("The root DotBoxD meta package did not expose plugin authoring generation.");
+}
+
+Console.WriteLine(package.Manifest.PluginId);
+
+public sealed record SmokeEvent(string TargetId, string Message, int Amount);
+
+[Plugin("dotboxd-meta-plugin-smoke")]
+public sealed partial class SmokeKernel : IEventKernel<SmokeEvent>
+{
+    public bool ShouldHandle(SmokeEvent e, HookContext ctx) => e.Amount > 0;
+
+    public void Handle(SmokeEvent e, HookContext ctx) => ctx.Messages.Send(e.TargetId, e.Message);
+}
+"@
+    Set-Content -LiteralPath (Join-Path $projectRoot "Program.cs") -Value $program
+
+    dotnet restore $projectRoot --configfile (Join-Path $resolvedWorkRoot "NuGet.config")
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
+    dotnet build $projectRoot --configuration $Configuration --no-restore
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
+    dotnet run --project $projectRoot --configuration $Configuration --no-build
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+}
+
+Invoke-DotBoxDPluginAuthoringSmoke
+
 Write-Host "Package consumer smoke passed."
