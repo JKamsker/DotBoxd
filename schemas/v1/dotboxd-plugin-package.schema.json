@@ -24,7 +24,7 @@
         "contract": { "type": "string" },
         "mode": {
           "type": "string",
-          "enum": ["Auto", "Interpreted", "Compiled"],
+          "pattern": "^(?:[Aa][Uu][Tt][Oo]|[Ii][Nn][Tt][Ee][Rr][Pp][Rr][Ee][Tt][Ee][Dd]|[Cc][Oo][Mm][Pp][Ii][Ll][Ee][Dd])$",
           "description": "Parsed case-insensitively into the ExecutionMode enum."
         },
         "effects": {
