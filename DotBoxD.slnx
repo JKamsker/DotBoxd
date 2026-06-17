@@ -1,4 +1,10 @@
 <Solution>
+  <Folder Name="/samples/GameServer/">
+    <Project Path="samples/GameServer/Examples.GameServer.Plugin.Tests/Examples.GameServer.Plugin.Tests.csproj" />
+    <Project Path="samples/GameServer/Examples.GameServer.Plugin/Examples.GameServer.Plugin.csproj" />
+    <Project Path="samples/GameServer/Examples.GameServer.Server.Abstractions/Examples.GameServer.Server.Abstractions.csproj" />
+    <Project Path="samples/GameServer/Examples.GameServer.Server/Examples.GameServer.Server.csproj" />
+  </Folder>
 
   <Folder Name="/Solution Items/">
     <File Path="Directory.Build.props" />
@@ -66,13 +72,6 @@
   </Folder>
 
   <Folder Name="/samples/" />
-
-  <Folder Name="/samples/Kernels/GameServer/">
-    <Project Path="samples/Kernels/GameServer/Examples.GameServer.Plugin/Examples.GameServer.Plugin.csproj" />
-    <Project Path="samples/Kernels/GameServer/Examples.GameServer.Plugin.Tests/Examples.GameServer.Plugin.Tests.csproj" />
-    <Project Path="samples/Kernels/GameServer/Examples.GameServer.Server.Abstractions/Examples.GameServer.Server.Abstractions.csproj" />
-    <Project Path="samples/Kernels/GameServer/Examples.GameServer.Server/Examples.GameServer.Server.csproj" />
-  </Folder>
 
   <Folder Name="/tools/">
     <Project Path="tools/AgentQueue/src/AgentQueue/AgentQueue.csproj" />
