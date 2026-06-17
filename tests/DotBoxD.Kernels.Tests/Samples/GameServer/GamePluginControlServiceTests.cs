@@ -37,6 +37,40 @@ public sealed class GamePluginControlServiceTests
         Assert.False(server.Kernels.TryGet("fire-damage", out _));
     }
 
+    [Fact]
+    public async Task HoldUntilShutdownAsync_observes_cancellation()
+    {
+        var gameServer = Assembly.LoadFrom(GameServerAssemblyPath());
+        var sink = (IPluginMessageSink)Create(gameServer, "DotBoxD.Kernels.Game.Server.Simulation.GameCommandSink");
+        using var server = PluginServer.Create(sink);
+        var world = gameServer
+            .GetType("DotBoxD.Kernels.Game.Server.Simulation.GameWorld", throwOnError: true)!
+            .GetMethod("CreateDefault", BindingFlags.Public | BindingFlags.Static)!
+            .Invoke(null, [server.Hooks])!;
+        var service = Create(
+            gameServer,
+            "DotBoxD.Kernels.Game.Server.Ipc.GamePluginControlService",
+            server,
+            server.CreateSession(),
+            sink,
+            world);
+        using var cts = new CancellationTokenSource();
+        var hold = HoldUntilShutdownAsync(service, cts.Token).AsTask();
+
+        try
+        {
+            cts.Cancel();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(
+                async () => await hold.WaitAsync(TimeSpan.FromSeconds(1)));
+        }
+        finally
+        {
+            service.GetType().GetMethod("SignalShutdown", BindingFlags.Public | BindingFlags.Instance)!.Invoke(service, []);
+            await Task.WhenAny(hold, Task.Delay(TimeSpan.FromSeconds(1)));
+        }
+    }
+
     private static object Create(Assembly assembly, string typeName, params object[] args)
         => Activator.CreateInstance(
             assembly.GetType(typeName, throwOnError: true)!,
@@ -51,6 +85,14 @@ public sealed class GamePluginControlServiceTests
             .GetMethod("InstallPluginAsync", BindingFlags.Public | BindingFlags.Instance)!
             .Invoke(service, [json, CancellationToken.None]);
         return await ((ValueTask<string>)result!).ConfigureAwait(false);
+    }
+
+    private static ValueTask HoldUntilShutdownAsync(object service, CancellationToken cancellationToken)
+    {
+        var result = service.GetType()
+            .GetMethod("HoldUntilShutdownAsync", BindingFlags.Public | BindingFlags.Instance)!
+            .Invoke(service, [cancellationToken]);
+        return (ValueTask)result!;
     }
 
     private static string GameServerAssemblyPath()
