@@ -9,20 +9,29 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     {
         var type = _model.GetTypeInfo(expression, _cancellationToken);
         if (type.Type is null ||
-            type.ConvertedType is null ||
-            SymbolEqualityComparer.Default.Equals(type.Type, type.ConvertedType))
+            type.ConvertedType is null)
         {
             return lowered;
         }
 
-        if (type.Type.SpecialType == SpecialType.System_Int32 &&
-            type.ConvertedType.SpecialType == SpecialType.System_Int64)
+        return ApplyNumericConversion(type.Type, type.ConvertedType, lowered);
+    }
+
+    private string ApplyNumericConversion(ITypeSymbol sourceType, ITypeSymbol targetType, string lowered)
+    {
+        if (SymbolEqualityComparer.Default.Equals(sourceType, targetType))
+        {
+            return lowered;
+        }
+
+        if (sourceType.SpecialType == SpecialType.System_Int32 &&
+            targetType.SpecialType == SpecialType.System_Int64)
         {
             return Call("numeric.toI64", null, lowered);
         }
 
-        if (type.Type.SpecialType is SpecialType.System_Int32 or SpecialType.System_Int64 &&
-            type.ConvertedType.SpecialType == SpecialType.System_Double)
+        if (sourceType.SpecialType is SpecialType.System_Int32 or SpecialType.System_Int64 &&
+            targetType.SpecialType == SpecialType.System_Double)
         {
             return Call("numeric.toF64", null, lowered);
         }

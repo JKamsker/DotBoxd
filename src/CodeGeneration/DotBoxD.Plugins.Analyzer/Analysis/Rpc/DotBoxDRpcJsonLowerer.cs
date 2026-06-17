@@ -152,7 +152,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
     private void LowerForEach(ForEachStatementSyntax loop, List<string> output)
     {
-        if (DotBoxDRpcTypeMapper.ListElementType(TypeOf(loop.Expression)) is null)
+        if (DotBoxDRpcTypeMapper.ListElementType(TypeOf(loop.Expression)) is not { } elementType)
         {
             throw new NotSupportedException(
                 $"Kernel RPC service foreach source '{loop.Expression}' must be a supported list type.");
@@ -165,7 +165,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
         var body = new List<string>
         {
-            SetStatement(loop.Identifier.ValueText, Call("list.get", null, Var(source), Var(index)))
+            SetStatement(loop.Identifier.ValueText, BuildForEachItem(loop, elementType, source, index))
         };
         LowerStatement(loop.Statement, body);
 
@@ -175,6 +175,19 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             ("start", I32(0)),
             ("end", Call("list.count", null, Var(source))),
             ("body", "[" + string.Join(",", body) + "]")));
+    }
+
+    private string BuildForEachItem(
+        ForEachStatementSyntax loop,
+        ITypeSymbol elementType,
+        string source,
+        string index)
+    {
+        var local = _model.GetDeclaredSymbol(loop, _cancellationToken)
+            ?? throw new NotSupportedException(
+                $"Kernel RPC service foreach local '{loop.Identifier.ValueText}' could not be resolved.");
+        var item = Call("list.get", null, Var(source), Var(index));
+        return ApplyNumericConversion(elementType, local.Type, item);
     }
 
     private void ReserveUserNames(BlockSyntax block)
