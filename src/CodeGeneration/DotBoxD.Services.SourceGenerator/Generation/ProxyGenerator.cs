@@ -188,7 +188,8 @@ internal static class ProxyGenerator
         var enumerationCt = locals.Reserve("__dotboxd_enumerationCt", ct);
         var sequenceName = locals.Reserve("__dotboxd_sequence", ct);
         var enumeratorName = locals.Reserve("__dotboxd_enumerator", ct);
-        sb.AppendLine($"            return {iteratorName}();");
+        var iteratorArgument = ctArg == "default" ? string.Empty : ctArg;
+        sb.AppendLine($"            return {iteratorName}({iteratorArgument});");
         sb.AppendLine();
         sb.AppendLine($"            async {method.DeclaredReturnType} {iteratorName}([{ServicesGeneratorTypeNames.GlobalEnumeratorCancellationAttribute}] {ServicesGeneratorTypeNames.GlobalCancellationToken} {enumerationCt} = default)");
         sb.AppendLine("            {");
@@ -196,7 +197,7 @@ internal static class ProxyGenerator
             sb,
             service,
             method,
-            ctArg,
+            enumerationCt,
             locals,
             ct,
             "                ");
