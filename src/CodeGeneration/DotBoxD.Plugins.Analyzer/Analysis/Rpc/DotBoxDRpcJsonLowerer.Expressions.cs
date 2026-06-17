@@ -255,13 +255,10 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         IParameterSymbol parameter,
         INamedTypeSymbol named)
     {
-        for (var i = 0; i < fields.Count; i++)
+        var index = RpcDtoFieldMatcher.FieldIndex(fields, parameter);
+        if (index >= 0)
         {
-            if (string.Equals(fields[i].Name, parameter.Name, StringComparison.OrdinalIgnoreCase) &&
-                SymbolEqualityComparer.Default.Equals(fields[i].Type, parameter.Type))
-            {
-                return i;
-            }
+            return index;
         }
 
         throw new NotSupportedException(

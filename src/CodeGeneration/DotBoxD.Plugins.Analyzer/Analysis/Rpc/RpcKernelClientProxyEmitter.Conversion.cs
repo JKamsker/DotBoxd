@@ -243,7 +243,7 @@ internal static partial class RpcKernelClientProxyEmitter
             var arguments = new List<string>(constructor.Parameters.Length);
             foreach (var parameter in constructor.Parameters)
             {
-                var fieldIndex = FieldIndex(fields, parameter.Name);
+                var fieldIndex = RpcDtoFieldMatcher.FieldIndex(fields, parameter);
                 arguments.Add(ReadExpression(fields[fieldIndex].Type, "__fields[" + fieldIndex + "]"));
             }
 
@@ -263,15 +263,17 @@ internal static partial class RpcKernelClientProxyEmitter
                 }
 
                 var matched = true;
+                var assigned = new bool[fields.Count];
                 foreach (var parameter in constructor.Parameters)
                 {
-                    var fieldIndex = FieldIndex(fields, parameter.Name);
-                    if (fieldIndex < 0 ||
-                        !SymbolEqualityComparer.Default.Equals(parameter.Type, fields[fieldIndex].Type))
+                    var fieldIndex = RpcDtoFieldMatcher.FieldIndex(fields, parameter);
+                    if (fieldIndex < 0 || assigned[fieldIndex])
                     {
                         matched = false;
                         break;
                     }
+
+                    assigned[fieldIndex] = true;
                 }
 
                 if (matched)
@@ -282,18 +284,6 @@ internal static partial class RpcKernelClientProxyEmitter
 
             throw new NotSupportedException(
                 $"Kernel RPC DTO '{type.ToDisplayString()}' must expose a constructor matching its public fields.");
-        }
-        private static int FieldIndex(IReadOnlyList<IPropertySymbol> fields, string? name)
-        {
-            for (var i = 0; i < fields.Count; i++)
-            {
-                if (string.Equals(fields[i].Name, name, StringComparison.OrdinalIgnoreCase))
-                {
-                    return i;
-                }
-            }
-
-            return -1;
         }
     }
 }

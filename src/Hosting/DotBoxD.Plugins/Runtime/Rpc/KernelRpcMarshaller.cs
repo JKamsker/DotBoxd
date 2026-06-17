@@ -227,11 +227,13 @@ public static class KernelRpcMarshaller
             }
 
             var ordered = new object?[parameters.Length];
+            var assigned = new bool[parameters.Length];
             var matched = true;
             for (var i = 0; i < parameters.Length; i++)
             {
                 var fieldIndex = FieldIndex(fields, parameters[i].Name);
                 if (fieldIndex < 0 ||
+                    assigned[fieldIndex] ||
                     parameters[i].ParameterType != fields[fieldIndex].PropertyType)
                 {
                     matched = false;
@@ -239,6 +241,7 @@ public static class KernelRpcMarshaller
                 }
 
                 ordered[i] = arguments[fieldIndex];
+                assigned[fieldIndex] = true;
             }
 
             if (matched)
@@ -261,16 +264,30 @@ public static class KernelRpcMarshaller
     {
         for (var i = 0; i < fields.Count; i++)
         {
-            if (NameMatches(fields[i].Name, name))
+            if (string.Equals(fields[i].Name, name, StringComparison.Ordinal))
             {
                 return i;
             }
         }
 
-        return -1;
-    }
+        var match = -1;
+        for (var i = 0; i < fields.Count; i++)
+        {
+            if (!string.Equals(fields[i].Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
 
-    private static bool NameMatches(string? a, string? b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+            if (match >= 0)
+            {
+                return -1;
+            }
+
+            match = i;
+        }
+
+        return match;
+    }
 
     private static Array ToArray(IList list, Type elementType)
     {

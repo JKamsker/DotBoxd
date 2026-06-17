@@ -61,7 +61,7 @@ public sealed class KernelRpcDtoCaseMatchingTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create(
             CaseResultSource,
-            "Sample.CaseKernelPluginPackage");
+            "Sample.CasePluginPackage");
         using var server = PluginServer.Create();
         var kernel = await server.InstallRpcAsync(package);
 
