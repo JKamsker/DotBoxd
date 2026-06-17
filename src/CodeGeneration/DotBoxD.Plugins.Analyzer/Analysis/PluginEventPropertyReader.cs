@@ -128,9 +128,14 @@ internal static class PluginEventPropertyReader
     }
 
     private static int DeclarationPosition(IPropertySymbol property)
-        => property.DeclaringSyntaxReferences.Length == 0
-            ? int.MaxValue
-            : property.DeclaringSyntaxReferences[0].Span.Start;
+    {
+        if (property.DeclaringSyntaxReferences.Length > 0)
+        {
+            return property.DeclaringSyntaxReferences[0].Span.Start;
+        }
+
+        return property.MetadataToken == 0 ? int.MaxValue : property.MetadataToken;
+    }
 
     private static IPropertySymbol[]? ConstructorPropertyOrder(
         INamedTypeSymbol eventType,
