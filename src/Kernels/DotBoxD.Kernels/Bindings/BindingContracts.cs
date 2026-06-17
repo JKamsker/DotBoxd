@@ -153,6 +153,9 @@ public sealed class BindingRegistry : IBindingCatalog
 
     public bool Contains(string id) => _bindings.ContainsKey(id);
 
+    internal bool TryGetDescriptor(string id, out BindingDescriptor descriptor)
+        => _bindings.TryGetValue(id, out descriptor!);
+
     public bool TryGetCapabilityGrantValidator(string capabilityId, out CapabilityGrantValidator validator)
     {
         if (_grantValidators.TryGetValue(capabilityId, out var found))

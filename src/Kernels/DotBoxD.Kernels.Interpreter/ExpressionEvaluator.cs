@@ -300,10 +300,10 @@ internal sealed class ExpressionEvaluator
             return _interpreter.InvokeFunctionAsync(function, args);
         }
 
-        if (_context.Bindings.Contains(call.Name))
+        if (_context.Bindings.TryGetDescriptor(call.Name, out var descriptor))
         {
             return InterpreterBindingCaller.CallAsync(
-                _context, _options, _moduleHash, call.Name, args, frame.FunctionId);
+                _context, _options, _moduleHash, descriptor, args, frame.FunctionId);
         }
 
         throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, $"unknown call '{call.Name}' at runtime"));

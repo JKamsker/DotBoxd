@@ -21,8 +21,8 @@ internal static class UnaryPureIntrinsicDispatcher
     {
         if (!TryGetMethod(call.Name, out var method) ||
             call.Arguments.Count != 1 ||
-            !context.Bindings.TryGet(call.Name, out var binding) ||
-            !CanUseDirectIntrinsic(binding, method))
+            !context.Bindings.TryGetDescriptor(call.Name, out var descriptor) ||
+            !CanUseDirectIntrinsic(descriptor, method))
         {
             result = default;
             return false;
@@ -31,8 +31,8 @@ internal static class UnaryPureIntrinsicDispatcher
         var operand = evaluator.EvaluateAsync(call.Arguments[0], frame);
         result = operand.IsCompletedSuccessfully
             ? new ValueTask<SandboxValue>(InvokeAfterCharge(
-                call.Name, method, operand.Result, context, options, moduleHash, functionId))
-            : AwaitOperand(call.Name, method, operand, context, options, moduleHash, functionId);
+                descriptor, method, operand.Result, context, options, moduleHash, functionId))
+            : AwaitOperand(descriptor, method, operand, context, options, moduleHash, functionId);
         return true;
     }
 
@@ -41,7 +41,7 @@ internal static class UnaryPureIntrinsicDispatcher
             or "int32.toStringInvariant" or "string.length";
 
     private static async ValueTask<SandboxValue> AwaitOperand(
-        string id,
+        BindingDescriptor descriptor,
         string method,
         ValueTask<SandboxValue> operand,
         SandboxContext context,
@@ -49,7 +49,7 @@ internal static class UnaryPureIntrinsicDispatcher
         string moduleHash,
         string functionId)
         => InvokeAfterCharge(
-            id,
+            descriptor,
             method,
             await operand.ConfigureAwait(false),
             context,
@@ -58,7 +58,7 @@ internal static class UnaryPureIntrinsicDispatcher
             functionId);
 
     private static SandboxValue InvokeAfterCharge(
-        string id,
+        BindingDescriptor descriptor,
         string method,
         SandboxValue operand,
         SandboxContext context,
@@ -66,7 +66,6 @@ internal static class UnaryPureIntrinsicDispatcher
         string moduleHash,
         string functionId)
     {
-        var descriptor = context.Bindings.GetDescriptor(id);
         InterpreterTrace.WriteBindingCall(context, options, moduleHash, functionId, descriptor);
         context.ChargeBindingCall(descriptor);
         return method switch {
@@ -82,7 +81,7 @@ internal static class UnaryPureIntrinsicDispatcher
         };
     }
 
-    private static bool CanUseDirectIntrinsic(BindingSignature binding, string method)
+    private static bool CanUseDirectIntrinsic(BindingDescriptor binding, string method)
     {
         var (parameterType, returnType) = Shape(method);
         return binding.Compiled is { Kind: "RuntimeStub" } &&
