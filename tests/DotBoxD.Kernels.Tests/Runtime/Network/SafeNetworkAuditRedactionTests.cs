@@ -51,6 +51,31 @@ public sealed class SafeNetworkAuditRedactionTests
         Assert.Contains("file", audit.ResourceId, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData("https://api.example.com/download/token%2Fabc123/file", "token")]
+    [InlineData("https://api.example.com/download/api-key%3Dabc123/file", "api-key")]
+    public async Task Http_get_redacts_percent_encoded_secret_path_segments_in_audit(
+        string uri,
+        string marker)
+    {
+        var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("remote-config"));
+        var module = await host.ImportJsonAsync(NetworkJson(uri));
+        var policy = SandboxPolicyBuilder.Create()
+            .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
+            .WithFuel(5_000)
+            .WithWallTime(TimeSpan.FromSeconds(2))
+            .Build();
+        var plan = await host.PrepareAsync(module, policy);
+
+        var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
+
+        Assert.True(result.Succeeded);
+        var audit = Assert.Single(result.AuditEvents, e => e.BindingId == "net.http.get" && e.Success);
+        Assert.DoesNotContain("abc123", audit.ResourceId, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(marker, audit.ResourceId, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("file", audit.ResourceId, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public async Task Http_get_redacts_secret_shaped_denied_path_segments_in_audit()
     {
