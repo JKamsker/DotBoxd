@@ -119,9 +119,9 @@ public sealed partial class InstalledKernel
 
     public async ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)
     {
-        _liveStateSync.SynchronizeForFlush();
         _pendingLiveUpdates.ClearError();
         await _pendingLiveUpdates.FlushAsync(cancellationToken).ConfigureAwait(false);
+        _liveStateSync.SynchronizeForFlush();
     }
 
     public async ValueTask<bool> ShouldHandleAsync<TEvent>(
