@@ -4,6 +4,7 @@ using DotBoxD.Kernels.PluginIpc.Server.Abstractions;
 using DotBoxD.Kernels.PluginLocal;
 using DotBoxD.Plugins;
 using DotBoxD.Plugins.Json;
+using DotBoxD.Plugins.Kernel;
 
 namespace DotBoxD.Kernels.Tests.Samples.GameServer;
 
@@ -36,6 +37,48 @@ public sealed class GamePluginControlServiceTests
 
         Assert.False(session.Owns("fire-damage"));
         Assert.False(server.Kernels.TryGet("fire-damage", out _));
+    }
+
+    [Fact]
+    public async Task InstallPluginAsync_failed_hot_replace_keeps_existing_kernel()
+    {
+        var gameServer = Assembly.LoadFrom(GameServerAssemblyPath());
+        var sink = (IPluginMessageSink)Create(gameServer, "DotBoxD.Kernels.Game.Server.Simulation.GameCommandSink");
+        using var server = PluginServer.Create(sink);
+        var world = gameServer
+            .GetType("DotBoxD.Kernels.Game.Server.Simulation.GameWorld", throwOnError: true)!
+            .GetMethod("CreateDefault", BindingFlags.Public | BindingFlags.Static)!
+            .Invoke(null, [server.Hooks])!;
+        sink.GetType().GetMethod("Bind", BindingFlags.Public | BindingFlags.Instance)!.Invoke(sink, [world]);
+        var session = server.CreateSession();
+        var service = Create(
+            gameServer,
+            "DotBoxD.Kernels.Game.Server.Ipc.GamePluginControlService",
+            server,
+            session,
+            sink,
+            world);
+        var retaliation = ResolveGamePluginPackage("DotBoxD.Kernels.Game.Plugin.Kernels.RetaliationKernel");
+        var subscription = Assert.Single(retaliation.Manifest.Subscriptions);
+        var unsupportedReplacement = retaliation with
+        {
+            Manifest = retaliation.Manifest with
+            {
+                Contract = "IEventKernel<DamageEvent>",
+                Subscriptions = [new HookSubscriptionManifest("DamageEvent", subscription.Kernel)]
+            }
+        };
+
+        await InstallPluginAsync(service, PluginPackageJsonSerializer.Export(retaliation));
+        var incumbent = server.Kernels.Get("retaliation");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await InstallPluginAsync(service, PluginPackageJsonSerializer.Export(unsupportedReplacement)));
+
+        Assert.True(session.Owns("retaliation"));
+        Assert.True(server.Kernels.TryGet("retaliation", out var installed));
+        Assert.Same(incumbent, installed);
+        Assert.False(incumbent.IsRevoked);
     }
 
     [Fact]
@@ -176,6 +219,12 @@ public sealed class GamePluginControlServiceTests
             .GetProperty("Ready", BindingFlags.Public | BindingFlags.Instance)!
             .GetValue(service)!;
 
+    private static PluginPackage ResolveGamePluginPackage(string typeName)
+    {
+        var kernelType = Assembly.LoadFrom(GamePluginAssemblyPath()).GetType(typeName, throwOnError: true)!;
+        return KernelPackageRegistry.Resolve(kernelType);
+    }
+
     private static bool IsGamePluginReference(XElement reference)
     {
         var include = ((string?)reference.Attribute("Include"))?.Replace('\\', '/');
@@ -205,6 +254,29 @@ public sealed class GamePluginControlServiceTests
             configuration,
             "net10.0",
             "DotBoxD.Kernels.Game.Server.dll"));
+    }
+
+    private static string GamePluginAssemblyPath()
+    {
+        var output = new DirectoryInfo(AppContext.BaseDirectory.TrimEnd(
+            Path.DirectorySeparatorChar,
+            Path.AltDirectorySeparatorChar));
+        var configuration = output.Parent!.Name;
+        return Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "samples",
+            "Kernels",
+            "GameServer",
+            "DotBoxD.Kernels.Game.Plugin",
+            "bin",
+            configuration,
+            "net10.0",
+            "DotBoxD.Kernels.Game.Plugin.dll"));
     }
 
     private static string GameServerProjectPath()
