@@ -47,8 +47,38 @@ if (args.Contains("--probe-resource-meter", StringComparer.OrdinalIgnoreCase)) {
     return;
 }
 
+if (args.Contains("--probe-http-metadata", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Http.HttpMetadataAccountingProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-value-shape-cache", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.ValueShapeCacheProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-compiled-binding-fast-path", StringComparer.OrdinalIgnoreCase)) {
     DotBoxD.Kernels.Benchmarks.Runtime.CompiledBindingFastPathProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-binding-return-credit", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.BindingReturnCreditProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-binding-registry", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Core.BindingRegistryProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-host-call-accounting", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.HostCallAccountingProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-binding-dispatch-scope", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.BindingDispatchScopeProbe.Run();
     return;
 }
 

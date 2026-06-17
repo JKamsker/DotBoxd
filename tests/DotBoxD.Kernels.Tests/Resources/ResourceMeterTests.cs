@@ -145,4 +145,29 @@ public sealed class ResourceMeterTests
         Assert.Equal(0, usage.AllocatedBytes);
         meter.ChargeHostCall("test.binding", maxCallsPerRun: 1);
     }
+    [Fact]
+    public void Resource_meter_enforces_per_binding_limit()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxHostCalls: 10));
+
+        meter.ChargeHostCall("test.binding", maxCallsPerRun: 1);
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() =>
+            meter.ChargeHostCall("test.binding", maxCallsPerRun: 1));
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
+        Assert.Equal(2, meter.HostCalls);
+    }
+
+    [Fact]
+    public void Resource_meter_unlimited_host_calls_track_global_limit()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxHostCalls: 2));
+
+        meter.ChargeHostCall("test.binding");
+        meter.ChargeHostCall("test.binding");
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() => meter.ChargeHostCall("test.binding"));
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
+        Assert.Equal(3, meter.HostCalls);
+    }
 }

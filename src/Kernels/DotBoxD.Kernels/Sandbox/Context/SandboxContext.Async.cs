@@ -8,7 +8,7 @@ public sealed partial class SandboxContext
 
     public bool AsyncEnabled => Policy.GrantsCapability(RuntimeCapabilityIds.Async, EffectiveGrantClock);
 
-    internal IDisposable BeginBindingGrantClockScope(DateTimeOffset now)
+    internal BindingGrantClockScope BeginBindingGrantClockScope(DateTimeOffset now)
     {
         var previous = _bindingGrantClock;
         _bindingGrantClock = now;
@@ -17,7 +17,7 @@ public sealed partial class SandboxContext
 
     private DateTimeOffset EffectiveGrantClock => _bindingGrantClock ?? Policy.GrantClock;
 
-    private sealed class BindingGrantClockScope(
+    internal readonly struct BindingGrantClockScope(
         SandboxContext context,
         DateTimeOffset? previous) : IDisposable
     {

@@ -95,4 +95,18 @@ public sealed partial class SandboxContext
         Budget.ChargeHostCalls(descriptor.Id, calls);
         ChargeFuel(CheckedFuel(calls, descriptor.CostModel.BaseFuel));
     }
+
+    private static long CheckedFuel(long units, long fuelPerUnit)
+    {
+        try
+        {
+            return checked(units * fuelPerUnit);
+        }
+        catch (OverflowException)
+        {
+            throw new SandboxRuntimeException(new SandboxError(
+                SandboxErrorCode.QuotaExceeded,
+                "fuel exhausted"));
+        }
+    }
 }

@@ -38,7 +38,7 @@ internal static class CompiledBindingDispatcher
         try
         {
             timeout = context.CreateWallTimeToken();
-            using var returnCredits = context.BeginBindingReturnCreditScope();
+            using var returnCredits = context.BeginBindingReturnCreditScope(descriptor.ReturnType);
             var value = AwaitBinding(context, descriptor.Invoke(context, args, timeout.Token));
             context.Checkpoint();
             value = context.ChargeBindingReturn(descriptor, value);
@@ -104,7 +104,7 @@ internal static class CompiledBindingDispatcher
         try
         {
             timeout = context.CreateWallTimeToken();
-            using var returnCredits = context.BeginBindingReturnCreditScope();
+            using var returnCredits = context.BeginBindingReturnCreditScope(descriptor.ReturnType);
             var pending = descriptor.Invoke.Target is ITwoArgumentBindingInvoker fastInvoker
                 ? fastInvoker.Invoke(context, arg0, arg1, timeout.Token)
                 : descriptor.Invoke(context, [arg0, arg1], timeout.Token);

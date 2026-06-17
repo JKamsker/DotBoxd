@@ -135,6 +135,24 @@ public sealed class BindingReturnCostTests
     [Theory]
     [InlineData(ExecutionMode.Interpreted, false)]
     [InlineData(ExecutionMode.Compiled, true)]
+    public async Task Binding_return_scalar_invariants_are_sanitized(
+        ExecutionMode mode,
+        bool compiler)
+    {
+        var result = await ExecuteAsync(
+            BadPathBinding(),
+            SandboxPolicyBuilder.Create().WithFuel(1_000).Build(),
+            mode,
+            compiler,
+            "\"SandboxPath\"");
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.BindingFailure, result.Error!.Code);
+    }
+
+    [Theory]
+    [InlineData(ExecutionMode.Interpreted, false)]
+    [InlineData(ExecutionMode.Compiled, true)]
     public async Task Binding_return_large_collection_is_charged_from_single_shape_scan(
         ExecutionMode mode,
         bool compiler)
@@ -269,6 +287,21 @@ public sealed class BindingReturnCostTests
             BindingSafety.PureHostFacade,
             (_, _, _) => ValueTask.FromResult<SandboxValue>(
                 new ListValue([SandboxValue.FromString("wrong")], SandboxType.I32)),
+            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(Kernels.Runtime.CompiledRuntime.CallBinding)));
+
+    private static BindingDescriptor BadPathBinding()
+        => new(
+            "test.badPath",
+            SemVersion.One,
+            [],
+            SandboxType.SandboxPath,
+            SandboxEffect.Cpu,
+            null,
+            BindingCostModel.Fixed(1),
+            AuditLevel.None,
+            BindingSafety.PureHostFacade,
+            (_, _, _) => ValueTask.FromResult<SandboxValue>(
+                new SandboxPathValue(new SandboxPath("../secret.txt"))),
             CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(Kernels.Runtime.CompiledRuntime.CallBinding)));
 
     private static BindingDescriptor ListBinding(int count)
