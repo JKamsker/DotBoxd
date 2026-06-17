@@ -9,6 +9,7 @@ namespace DotBoxD.Kernels.Benchmarks.Core;
 internal static class BindingRegistryProbe
 {
     private const int BindingCount = 1_000;
+    private const int BuildIterations = 200;
     private const int LookupIterations = 200_000;
     private const int SignaturesIterations = 5_000;
 
@@ -16,22 +17,38 @@ internal static class BindingRegistryProbe
     {
         var registry = BuildRegistry();
         var ids = CreateBindingIds();
+        var descriptors = CreateDescriptors();
 
+        _ = MeasureBuilds(descriptors, warmup: true);
         _ = MeasureLegacyLookups(registry, ids, warmup: true);
         _ = MeasureLookups(registry, ids, warmup: true);
         _ = MeasureLegacySignatures(registry, ids, warmup: true);
         _ = MeasureSignatures(registry, warmup: true);
 
+        var builds = MeasureBuilds(descriptors, warmup: false);
         var legacyLookups = MeasureLegacyLookups(registry, ids, warmup: false);
         var lookups = MeasureLookups(registry, ids, warmup: false);
         var legacySignatures = MeasureLegacySignatures(registry, ids, warmup: false);
         var signatures = MeasureSignatures(registry, warmup: false);
 
         Console.WriteLine($"bindings = {BindingCount:N0}");
+        Write("builder Build", builds);
         Write("legacy TryGet signature", legacyLookups);
         Write("cached TryGet signature", lookups);
         Write("legacy Signatures rebuild", legacySignatures);
         Write("cached Signatures property", signatures);
+    }
+
+    private static Measurement MeasureBuilds(BindingDescriptor[] descriptors, bool warmup)
+    {
+        var iterations = warmup ? 5 : BuildIterations;
+        return Measure(iterations, () =>
+        {
+            for (var i = 0; i < iterations; i++)
+            {
+                GC.KeepAlive(new BindingRegistryBuilder().AddRange(descriptors).Build());
+            }
+        });
     }
 
     private static Measurement MeasureLegacyLookups(BindingRegistry registry, IReadOnlyList<string> ids, bool warmup)
@@ -110,14 +127,17 @@ internal static class BindingRegistryProbe
     }
 
     private static BindingRegistry BuildRegistry()
+        => new BindingRegistryBuilder().AddRange(CreateDescriptors()).Build();
+
+    private static BindingDescriptor[] CreateDescriptors()
     {
-        var builder = new BindingRegistryBuilder();
+        var descriptors = new BindingDescriptor[BindingCount];
         for (var i = 0; i < BindingCount; i++)
         {
-            builder.Add(Descriptor(i));
+            descriptors[i] = Descriptor(i);
         }
 
-        return builder.Build();
+        return descriptors;
     }
 
     private static string[] CreateBindingIds()

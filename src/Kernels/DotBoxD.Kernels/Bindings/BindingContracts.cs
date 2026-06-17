@@ -119,12 +119,20 @@ public sealed class BindingRegistry : IBindingCatalog
     private readonly Dictionary<string, CapabilityGrantValidator> _grantValidators;
 
     public BindingRegistry(IEnumerable<BindingDescriptor> bindings)
+        : this(bindings, validate: true)
+    {
+    }
+
+    private BindingRegistry(IEnumerable<BindingDescriptor> bindings, bool validate)
     {
         var frozen = FreezeAll(bindings);
-        var diagnostics = BindingRegistryValidator.Validate(frozen);
-        if (diagnostics.Count > 0)
+        if (validate)
         {
-            throw new SandboxValidationException(diagnostics);
+            var diagnostics = BindingRegistryValidator.Validate(frozen);
+            if (diagnostics.Count > 0)
+            {
+                throw new SandboxValidationException(diagnostics);
+            }
         }
 
         _bindings = CreateBindingDictionary(frozen);
@@ -137,6 +145,9 @@ public sealed class BindingRegistry : IBindingCatalog
     public IReadOnlyList<BindingSignature> Signatures => _signatures;
 
     public string ManifestHash { get; }
+
+    internal static BindingRegistry FromValidated(IReadOnlyList<BindingDescriptor> bindings)
+        => new(bindings, validate: false);
 
     public BindingDescriptor GetDescriptor(string id) => _bindings[id];
 
@@ -366,6 +377,6 @@ public sealed class BindingRegistryBuilder
             throw new SandboxValidationException(diagnostics);
         }
 
-        return new BindingRegistry(_bindings);
+        return BindingRegistry.FromValidated(_bindings);
     }
 }
