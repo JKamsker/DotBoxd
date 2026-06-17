@@ -175,6 +175,30 @@ public sealed class Fix_CMP_0012_Tests
         Assert.Equal(int.MaxValue, maximum.GetInt32());
     }
 
+    [Fact]
+    public void Module_schema_i64_and_f64_literal_ranges_match_importer()
+    {
+        using var document = JsonDocument.Parse(File.ReadAllText(RepositoryPath(ModuleSchemaRelative)));
+        var literalProperties = document.RootElement
+            .GetProperty("$defs")
+            .GetProperty("literal")
+            .GetProperty("properties");
+        var i64 = literalProperties.GetProperty("i64");
+        var f64 = literalProperties.GetProperty("f64");
+
+        Assert.True(i64.TryGetProperty("minimum", out var i64Minimum), "i64 schema is missing minimum.");
+        Assert.Equal(long.MinValue, i64Minimum.GetInt64());
+
+        Assert.True(i64.TryGetProperty("maximum", out var i64Maximum), "i64 schema is missing maximum.");
+        Assert.Equal(long.MaxValue, i64Maximum.GetInt64());
+
+        Assert.True(f64.TryGetProperty("minimum", out var f64Minimum), "f64 schema is missing minimum.");
+        Assert.Equal(-double.MaxValue, f64Minimum.GetDouble());
+
+        Assert.True(f64.TryGetProperty("maximum", out var f64Maximum), "f64 schema is missing maximum.");
+        Assert.Equal(double.MaxValue, f64Maximum.GetDouble());
+    }
+
     /// <summary>
     /// Extracts the property-name array passed to <c>RequireAllowedProperties(..., "name", [..])</c>
     /// for the given requirement name from the maintained importer source.
