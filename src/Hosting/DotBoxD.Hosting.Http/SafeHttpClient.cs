@@ -23,6 +23,7 @@ public static class SafeHttpClient
     {
         var startedAt = DateTimeOffset.UtcNow;
         var resource = SafeHttpUriAudit.Sanitize(uri.Value);
+        var networkBytesReadBefore = context.Budget.NetworkBytesRead;
         long? responseBytes = null;
         try
         {
@@ -70,25 +71,25 @@ public static class SafeHttpClient
         }
         catch (SandboxRuntimeException ex)
         {
-            Audit(context, startedAt, false, resource, responseBytes, ex.Error.Code);
+            Audit(context, startedAt, false, resource, ObservedResponseBytes(context, networkBytesReadBefore, responseBytes), ex.Error.Code);
             throw;
         }
         catch (OperationCanceledException) when (!context.CancellationToken.IsCancellationRequested)
         {
             var error = new SandboxError(SandboxErrorCode.Timeout, "net.http.get denied: request timed out");
-            Audit(context, startedAt, false, resource, null, error.Code);
+            Audit(context, startedAt, false, resource, ObservedResponseBytes(context, networkBytesReadBefore, responseBytes), error.Code);
             throw new SandboxRuntimeException(error);
         }
         catch (OperationCanceledException)
         {
             var error = new SandboxError(SandboxErrorCode.Cancelled, "net.http.get cancelled");
-            Audit(context, startedAt, false, resource, null, error.Code);
+            Audit(context, startedAt, false, resource, ObservedResponseBytes(context, networkBytesReadBefore, responseBytes), error.Code);
             throw new SandboxRuntimeException(error);
         }
         catch (Exception)
         {
             var error = new SandboxError(SandboxErrorCode.HostFailure, "net.http.get failed");
-            Audit(context, startedAt, false, resource, null, error.Code);
+            Audit(context, startedAt, false, resource, ObservedResponseBytes(context, networkBytesReadBefore, responseBytes), error.Code);
             throw new SandboxRuntimeException(error);
         }
     }
@@ -310,6 +311,15 @@ public static class SafeHttpClient
             ErrorCode: error,
             Bytes: bytes,
             Fields: context.BindingAuditFields("network", startedAt, bytesRead: bytes)));
+
+    private static long? ObservedResponseBytes(
+        SandboxContext context,
+        long networkBytesReadBefore,
+        long? measuredBytes)
+    {
+        var observedBytes = context.Budget.NetworkBytesRead - networkBytesReadBefore;
+        return observedBytes > 0 ? observedBytes : measuredBytes;
+    }
 
     private static SandboxRuntimeException Error(SandboxErrorCode code, string message) => new(new SandboxError(code, message));
 
