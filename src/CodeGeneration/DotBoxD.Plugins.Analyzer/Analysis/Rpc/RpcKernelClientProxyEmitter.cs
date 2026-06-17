@@ -91,7 +91,8 @@ internal static partial class RpcKernelClientProxyEmitter
         {
             var builder = new StringBuilder();
             var clientName = _kernelType.Name + "RpcClient";
-            builder.Append("public sealed class ").Append(clientName).Append(" : ").AppendLine(TypeName(_serviceType));
+            builder.Append(AccessibilityKeyword(_serviceType)).Append(" sealed class ")
+                .Append(clientName).Append(" : ").AppendLine(TypeName(_serviceType));
             builder.AppendLine("{");
             builder.AppendLine("    private readonly global::DotBoxD.Plugins.IKernelRpcWireClient _client;");
             builder.AppendLine("    private readonly string _pluginId;");
@@ -112,6 +113,9 @@ internal static partial class RpcKernelClientProxyEmitter
             builder.AppendLine("}");
             return builder.ToString();
         }
+
+        private static string AccessibilityKeyword(INamedTypeSymbol type)
+            => type.DeclaredAccessibility == Accessibility.Public ? "public" : "internal";
 
         private void AppendServiceMethod(StringBuilder builder)
         {
