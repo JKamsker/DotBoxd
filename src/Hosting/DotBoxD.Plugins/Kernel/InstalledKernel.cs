@@ -119,9 +119,14 @@ public sealed partial class InstalledKernel
 
     public async ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)
     {
+        PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
         _pendingLiveUpdates.ClearError();
         await _pendingLiveUpdates.FlushAsync(cancellationToken).ConfigureAwait(false);
-        _liveStateSync.SynchronizeForFlush();
+        lock (_lifecycleGate)
+        {
+            PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
+            _liveStateSync.SynchronizeForFlush();
+        }
     }
 
     public async ValueTask<bool> ShouldHandleAsync<TEvent>(
