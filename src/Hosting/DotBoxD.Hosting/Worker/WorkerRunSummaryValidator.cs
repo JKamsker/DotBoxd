@@ -98,12 +98,7 @@ internal static class WorkerRunSummaryValidator
         => summary.Fields!.TryGetValue(key, out var value) && IsHexSha256(value);
 
     private static string ExpectedPolicyId(ExecutionPlan plan)
-        // The sanitizer is centralized in RunSummaryAuditFields; the other fields are discarded here.
-        => RunSummaryAuditFields.Create(
-            plan,
-            new ResourceMeter(plan.Budget),
-            ExecutionMode.Interpreted,
-            "None")["policyId"];
+        => RunSummaryAuditFields.SafePolicyId(plan.Policy.PolicyId);
 
     internal static bool IsHexSha256(string? value)
         => value is { Length: 64 } && value.All(Uri.IsHexDigit);
