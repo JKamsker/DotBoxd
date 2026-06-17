@@ -1,6 +1,7 @@
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using static DotBoxD.Plugins.Analyzer.Analysis.PluginServer.PluginServerFacadeNameFormatter;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.PluginServer;
 
@@ -52,6 +53,7 @@ internal static class PluginServerFacadeModelFactory
             ServerInterfaceName(worldType),
             SetupInterfaceName(type.Name),
             TypeName(worldType),
+            PluginServerWorldExtensionSuffixResolver.Resolve(compilation, worldType, cancellationToken),
             PluginServerXmlDocumentation.FromSymbol(
                 worldType,
                 "Generated plugin-side facade for the remote world domain.",
@@ -89,7 +91,8 @@ internal static class PluginServerFacadeModelFactory
         CancellationToken cancellationToken)
     {
         var controls = new List<PluginServerControlProperty>();
-        foreach (var member in worldType.GetMembers())
+        var seenProperties = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var member in MembersIncludingInherited(worldType))
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (member is not IPropertySymbol
@@ -99,7 +102,8 @@ internal static class PluginServerFacadeModelFactory
                     SetMethod: null,
                     Type: INamedTypeSymbol propertyType
                 } property ||
-                !HasAttribute(propertyType, DotBoxDGenerationNames.Metadata.DotBoxDServiceAttribute))
+                !HasAttribute(propertyType, DotBoxDGenerationNames.Metadata.DotBoxDServiceAttribute) ||
+                !seenProperties.Add(property.Name))
             {
                 continue;
             }
@@ -138,10 +142,10 @@ internal static class PluginServerFacadeModelFactory
                 } method &&
                 !IsControlPlaneMember(method.ContainingType))
             {
-                var returnWrapperName = method.ReturnType is INamedTypeSymbol returnType &&
-                    HasAttribute(returnType, DotBoxDGenerationNames.Metadata.DotBoxDServiceAttribute)
-                        ? EnsureServiceWrapper(returnType, serviceWrappers, cancellationToken)
-                        : null;
+                var (returnWrapperName, returnWrapperKind) = ResolveReturnWrapper(
+                    method.ReturnType,
+                    serviceWrappers,
+                    cancellationToken);
                 methods.Add(new PluginServerForwardedMethod(
                     method.Name,
                     TypeName(method.ReturnType),
@@ -150,6 +154,7 @@ internal static class PluginServerFacadeModelFactory
                         "Forwards " + method.Name + " to the remote domain service.",
                         cancellationToken),
                     returnWrapperName,
+                    returnWrapperKind,
                     new EquatableArray<PluginServerParameter>(ResolveParameters(method))));
             }
         }
@@ -194,6 +199,30 @@ internal static class PluginServerFacadeModelFactory
         serviceWrappers.Add(typeName, wrapper);
         PopulateServiceWrapper(serviceType, wrapper, serviceWrappers, cancellationToken);
         return wrapper.WrapperName;
+    }
+
+    private static (string? Name, PluginServerReturnWrapperKind Kind) ResolveReturnWrapper(
+        ITypeSymbol returnType,
+        Dictionary<string, ServiceWrapperBuilder> serviceWrappers,
+        CancellationToken cancellationToken)
+    {
+        var wrapperKind = PluginServerReturnWrapperKind.Sync;
+        var serviceType = returnType;
+        if (DotBoxDTypeNameReader.TryUnwrapTaskLike(returnType, out var unwrapped))
+        {
+            serviceType = unwrapped;
+            wrapperKind = returnType is INamedTypeSymbol { Name: "Task" }
+                ? PluginServerReturnWrapperKind.Task
+                : PluginServerReturnWrapperKind.ValueTask;
+        }
+
+        if (serviceType is not INamedTypeSymbol namedServiceType ||
+            !HasAttribute(namedServiceType, DotBoxDGenerationNames.Metadata.DotBoxDServiceAttribute))
+        {
+            return (null, PluginServerReturnWrapperKind.None);
+        }
+
+        return (EnsureServiceWrapper(namedServiceType, serviceWrappers, cancellationToken), wrapperKind);
     }
 
     private static void PopulateServiceWrapper(
@@ -275,52 +304,6 @@ internal static class PluginServerFacadeModelFactory
         }
     }
 
-    private static string ServiceWrapperName(INamedTypeSymbol serviceType)
-    {
-        var name = serviceType.Name;
-        if (name.StartsWith("I", StringComparison.Ordinal) && name.Length > 1 && char.IsUpper(name[1]))
-        {
-            name = name.Substring(1);
-        }
-
-        return name + "PluginService";
-    }
-
-    private static string SetupInterfaceName(string className)
-    {
-        var name = className.EndsWith("Server", StringComparison.Ordinal)
-            ? className.Substring(0, className.Length - "Server".Length)
-            : className;
-        return "I" + name + "Setup";
-    }
-
-    private static string ServerInterfaceName(INamedTypeSymbol worldType)
-    {
-        var name = worldType.Name;
-        if (name.StartsWith("I", StringComparison.Ordinal) && name.Length > 1 && char.IsUpper(name[1]))
-        {
-            name = name.Substring(1);
-        }
-
-        if (name.EndsWith("Access", StringComparison.Ordinal) && name.Length > "Access".Length)
-        {
-            name = name.Substring(0, name.Length - "Access".Length);
-        }
-
-        return "I" + name + "Server";
-    }
-
-    private static string TypeName(ITypeSymbol type)
-        => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-    private static string AccessibilityText(Accessibility accessibility)
-        => accessibility switch
-        {
-            Microsoft.CodeAnalysis.Accessibility.Public => "public",
-            Microsoft.CodeAnalysis.Accessibility.Internal => "internal",
-            _ => "internal"
-        };
-
     private sealed class ServiceWrapperBuilder(string type, string wrapperName, string documentation)
     {
         public string Type { get; } = type;
@@ -329,4 +312,5 @@ internal static class PluginServerFacadeModelFactory
         public List<PluginServerForwardedProperty> Properties { get; } = [];
         public List<PluginServerForwardedMethod> Methods { get; } = [];
     }
+
 }

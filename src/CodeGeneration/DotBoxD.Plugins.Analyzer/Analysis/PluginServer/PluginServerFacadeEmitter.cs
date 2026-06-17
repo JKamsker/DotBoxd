@@ -123,7 +123,7 @@ internal static class PluginServerFacadeEmitter
         builder.AppendLine("            if (_connectionFactory is null) { throw new global::System.InvalidOperationException(NotStartedMessage); }");
         builder.AppendLine("            _session = await _connectionFactory(cancellationToken).ConfigureAwait(false);");
         builder.AppendLine("            var control = _session.Get<" + model.ControlServiceType + ">();");
-        builder.AppendLine("            var world = global::DotBoxD.Services.Generated.DotBoxDGeneratedExtensions.Get" + ShortTypeName(model.WorldType) + "(_session.Peer);");
+            builder.AppendLine("            var world = global::DotBoxD.Services.Generated.DotBoxDGeneratedExtensions.Get" + model.WorldExtensionSuffix + "(_session.Peer);");
         builder.AppendLine("            Initialize(control, world);");
         builder.AppendLine("            _started = true;");
         builder.AppendLine("        }");
@@ -243,17 +243,6 @@ internal static class PluginServerFacadeEmitter
 
     private static string ArgumentList(PluginServerForwardedMethod method)
         => string.Join(", ", method.Parameters.Select(p => "@" + p.Name));
-
-    private static string ShortTypeName(string fullyQualified)
-    {
-        var name = fullyQualified.Substring(fullyQualified.LastIndexOf('.') + 1);
-        if (name.StartsWith("I", StringComparison.Ordinal) && name.Length > 1 && char.IsUpper(name[1]))
-        {
-            name = name.Substring(1);
-        }
-
-        return name;
-    }
 
     private static string FieldName(string propertyName)
         => char.ToLowerInvariant(propertyName[0]) + propertyName.Substring(1);

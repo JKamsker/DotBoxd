@@ -9,6 +9,7 @@ internal sealed record PluginServerFacadeModel(
     string ServerInterfaceName,
     string SetupInterfaceName,
     string WorldType,
+    string WorldExtensionSuffix,
     string WorldDocumentation,
     string ControlServiceType,
     string LiveSettingUpdateType,
@@ -29,6 +30,7 @@ internal sealed record PluginServerForwardedMethod(
     string ReturnType,
     string Documentation,
     string? ReturnWrapperName,
+    PluginServerReturnWrapperKind ReturnWrapperKind,
     EquatableArray<PluginServerParameter> Parameters);
 
 internal sealed record PluginServerForwardedProperty(string Name, string Type, string Documentation);
@@ -45,3 +47,11 @@ internal sealed record PluginServerParameter(string Name, string Type);
 internal sealed record PluginServerFacadeResult(
     GeneratedPluginPackage? Source,
     PluginKernelDiagnostic? Diagnostic);
+
+internal enum PluginServerReturnWrapperKind
+{
+    None,
+    Sync,
+    Task,
+    ValueTask,
+}
