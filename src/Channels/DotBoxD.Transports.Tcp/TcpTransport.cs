@@ -84,8 +84,19 @@ public sealed class TcpTransport : ITransport
             throw;
         }
 
+        TcpConnection connection;
+        try
+        {
+            connection = new TcpConnection(client, FrameReadIdleTimeout);
+        }
+        catch
+        {
+            client.Dispose();
+            throw;
+        }
+
         _client = client;
-        _connection = new TcpConnection(client, FrameReadIdleTimeout);
+        _connection = connection;
 
         // Full store-load fence so the _client/_connection publication above is globally visible before
         // _disposed is read. Without it an x86/x64 store-buffer (Dekker) interleaving could let this read
@@ -96,7 +107,7 @@ public sealed class TcpTransport : ITransport
         // down the connection we just created so it cannot outlive a disposed transport.
         if (Volatile.Read(ref _disposed) != 0)
         {
-            await _connection.DisposeAsync().ConfigureAwait(false);
+            await connection.DisposeAsync().ConfigureAwait(false);
             client.Dispose();
             throw new ObjectDisposedException(nameof(TcpTransport));
         }
