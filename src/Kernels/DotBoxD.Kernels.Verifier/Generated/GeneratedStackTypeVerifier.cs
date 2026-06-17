@@ -37,10 +37,7 @@ internal static class GeneratedStackTypeVerifier
             var offset = queue.Dequeue();
             var instruction = analysis.ByOffset[offset];
             Transfer(instruction, stacks[offset], stack, signature, diagnostics);
-            foreach (var successor in GeneratedMethodFlowAnalyzer.Successors(
-                         analysis.Instructions,
-                         analysis.ByOffset,
-                         instruction))
+            foreach (var successor in analysis.SuccessorsByOffset[instruction.Offset])
             {
                 TrackSuccessor(successor, stack, analysis.ByOffset, stacks, queue, diagnostics);
             }

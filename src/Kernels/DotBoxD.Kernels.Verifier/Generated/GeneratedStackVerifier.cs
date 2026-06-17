@@ -27,10 +27,7 @@ internal static class GeneratedStackVerifier
             var offset = queue.Dequeue();
             var instruction = analysis.ByOffset[offset];
             var outputDepth = OutputDepth(instruction, depths[offset], returnCount, callDeltas, diagnostics);
-            foreach (var successor in GeneratedMethodFlowAnalyzer.Successors(
-                         analysis.Instructions,
-                         analysis.ByOffset,
-                         instruction))
+            foreach (var successor in analysis.SuccessorsByOffset[instruction.Offset])
             {
                 TrackSuccessorDepth(successor, outputDepth, analysis.ByOffset, depths, queue, diagnostics);
             }
