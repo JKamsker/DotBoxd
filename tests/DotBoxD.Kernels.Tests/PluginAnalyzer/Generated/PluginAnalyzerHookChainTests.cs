@@ -293,6 +293,32 @@ public sealed class PluginAnalyzerHookChainTests
             tree => tree.ToString().Contains("HookChain_", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Does_not_lower_hook_chain_with_unsupported_event_property_type()
+    {
+        var result = RunGenerator("""
+            using System;
+            using DotBoxD.Plugins;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public sealed record MixedEvent(string TargetId, DateTime When);
+
+            public static class Usage
+            {
+                public static void Configure(HookRegistry hooks)
+                    => hooks.On<MixedEvent>()
+                        .InvokeKernel((e, ctx) => ctx.Messages.Send(e.TargetId, "hit"));
+            }
+            """);
+
+        Assert.DoesNotContain(
+            result.GeneratedTrees,
+            tree => tree.ToString().Contains("HookChain_", StringComparison.Ordinal));
+    }
+
     private static GeneratorDriverRunResult RunGenerator(string source)
     {
         var compilation = CSharpCompilation.Create(
