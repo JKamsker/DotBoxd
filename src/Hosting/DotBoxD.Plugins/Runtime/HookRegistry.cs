@@ -50,6 +50,7 @@ public sealed class HookRegistry
                 return pipeline;
             }
 
+            _events.Register(adapter);
             var created = new HookPipeline<TEvent>(adapter, _messages, _kernels, _installer);
             _pipelines[typeof(TEvent)] = created;
             return created;
