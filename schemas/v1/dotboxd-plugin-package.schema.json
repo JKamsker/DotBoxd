@@ -24,11 +24,15 @@
         "contract": { "type": "string" },
         "mode": {
           "type": "string",
+          "enum": ["Auto", "Interpreted", "Compiled"],
           "description": "Parsed case-insensitively into the ExecutionMode enum."
         },
         "effects": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string",
+            "enum": ["Cpu", "Alloc", "Time", "Random", "FileRead", "FileWrite", "Network", "HostStateRead", "HostStateWrite", "Concurrency", "Audit"]
+          }
         },
         "liveSettings": {
           "type": "array",
@@ -55,7 +59,7 @@
       "required": ["name", "type", "defaultValue"],
       "properties": {
         "name": { "type": "string" },
-        "type": { "type": "string" },
+        "type": { "type": "string", "enum": ["bool", "int", "long", "double", "string"] },
         "defaultValue": { "$ref": "#/$defs/liveSettingValue" },
         "min": { "$ref": "#/$defs/liveSettingValue" },
         "max": { "$ref": "#/$defs/liveSettingValue" }

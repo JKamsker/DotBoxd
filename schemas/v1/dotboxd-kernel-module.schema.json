@@ -197,7 +197,7 @@
       "properties": {
         "unit": { "const": true },
         "bool": { "type": "boolean" },
-        "i32": { "type": "integer" },
+        "i32": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
         "i64": { "type": "integer" },
         "f64": { "type": "number" },
         "string": { "type": "string" },
