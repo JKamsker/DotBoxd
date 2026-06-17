@@ -69,6 +69,32 @@ public sealed class PluginAnalyzerHookChainTests
     }
 
     [Fact]
+    public void Lowers_a_zero_property_event_chain()
+    {
+        var result = RunGenerator("""
+            using DotBoxD.Plugins;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public sealed record TickEvent;
+
+            public static class Usage
+            {
+                public static void Configure(HookRegistry hooks)
+                    => hooks.On<TickEvent>()
+                        .InvokeKernel((e, ctx) => ctx.Messages.Send("clock", "tick"));
+            }
+            """);
+
+        Assert.DoesNotContain(result.Diagnostics, d => d.Id == "DBXK100");
+        Assert.Contains(
+            result.GeneratedTrees,
+            tree => tree.ToString().Contains("HookChain_", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Lowers_a_multi_Where_plus_Select_chain_substituting_the_projection()
     {
         var result = RunGenerator("""
