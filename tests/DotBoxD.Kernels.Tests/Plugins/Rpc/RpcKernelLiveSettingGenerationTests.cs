@@ -1,4 +1,5 @@
 using DotBoxD.Kernels.Tests.PluginAnalyzer.Core;
+using DotBoxD.Kernels.Sandbox;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
 
@@ -36,5 +37,19 @@ public sealed class RpcKernelLiveSettingGenerationTests
         Assert.Equal(5, setting.DefaultValue);
         Assert.Equal(1, setting.Min);
         Assert.Equal(10, setting.Max);
+
+        var function = Assert.Single(package.Module.Functions);
+        Assert.Collection(
+            function.Parameters,
+            parameter =>
+            {
+                Assert.Equal("value", parameter.Name);
+                Assert.Equal(SandboxType.I32, parameter.Type);
+            },
+            parameter =>
+            {
+                Assert.Equal("Threshold", parameter.Name);
+                Assert.Equal(SandboxType.I32, parameter.Type);
+            });
     }
 }
