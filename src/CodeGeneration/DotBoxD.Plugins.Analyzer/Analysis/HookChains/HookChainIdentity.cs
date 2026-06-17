@@ -21,18 +21,21 @@ internal static class HookChainIdentity
 
     public static string Namespace(SyntaxNode node)
     {
+        var namespaces = new Stack<string>();
         for (var current = node.Parent; current is not null; current = current.Parent)
         {
             switch (current)
             {
                 case FileScopedNamespaceDeclarationSyntax fileScoped:
-                    return fileScoped.Name.ToString();
+                    namespaces.Push(fileScoped.Name.ToString());
+                    break;
                 case NamespaceDeclarationSyntax declared:
-                    return declared.Name.ToString();
+                    namespaces.Push(declared.Name.ToString());
+                    break;
             }
         }
 
-        return "";
+        return string.Join(".", namespaces);
     }
 
     private static ulong Fnv1a(string text)
