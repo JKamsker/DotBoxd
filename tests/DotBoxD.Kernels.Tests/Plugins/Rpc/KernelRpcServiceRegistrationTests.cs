@@ -8,9 +8,9 @@ public sealed class KernelRpcServiceRegistrationTests
         using var server = DotBoxD.Plugins.PluginServer.Create(
             configureHost: RpcKernelTestPackages.AddKillBinding,
             defaultPolicy: RpcKernelTestPackages.KillPolicy());
-        await server.RegisterRpcServiceAsync<IMonsterKillerService, BatchKillerKernel>();
+        var pluginId = await server.RegisterRpcServiceAsync<IMonsterKillerService, BatchKillerKernel>();
 
-        Assert.True(server.Uninstall("monster-killer"));
+        Assert.True(server.Uninstall(pluginId));
 
         var ex = Assert.Throws<InvalidOperationException>(
             () => server.RpcService<IMonsterKillerService>());
