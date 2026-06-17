@@ -113,6 +113,7 @@ public static partial class PluginPackageJsonSerializer
 
     private static IReadOnlyList<string> ReadStringArray(JsonElement array, string name)
     {
+        RequireArray(array, name);
         var values = AllocateArray<string>(array, out var count);
         if (count == 0) {
             return values;
