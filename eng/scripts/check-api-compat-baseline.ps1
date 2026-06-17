@@ -209,6 +209,41 @@ function Normalize-ApiDeclaration([string] $Declaration) {
     return $normalized
 }
 
+function Add-GenericConstraints([string] $Declaration, [string[]] $Lines, [int] $StartIndex, [ref] $Index) {
+    $result = $Declaration
+    for ($constraintIndex = $StartIndex; $constraintIndex -lt $Lines.Count; $constraintIndex++) {
+        $trimmed = (Remove-LineComment $Lines[$constraintIndex]).Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed) -or
+            $trimmed.StartsWith("[", [StringComparison]::Ordinal) -or
+            $trimmed -notmatch "^where\s+") {
+            break
+        }
+
+        $constraint = Normalize-GenericConstraintLine $trimmed
+        if (-not [string]::IsNullOrWhiteSpace($constraint)) {
+            $result = "$result`n$constraint"
+            $Index.Value = $constraintIndex
+        }
+    }
+
+    return $result
+}
+
+function Normalize-GenericConstraintLine([string] $Line) {
+    $constraint = $Line
+    $arrow = $constraint.IndexOf("=>", [StringComparison]::Ordinal)
+    if ($arrow -ge 0) {
+        $constraint = $constraint.Substring(0, $arrow)
+    }
+
+    $brace = $constraint.IndexOf("{", [StringComparison]::Ordinal)
+    if ($brace -ge 0) {
+        $constraint = $constraint.Substring(0, $brace)
+    }
+
+    return $constraint.TrimEnd(";").Trim()
+}
+
 function Add-EnumMembers([string[]] $Lines, [System.Collections.Generic.HashSet[string]] $Api, [System.Collections.Generic.List[bool]] $ContainingTypePublic) {
     $enumName = $null
     $pendingEnumName = $null
@@ -305,6 +340,7 @@ function Get-PackageApi([hashtable] $Package) {
                 $pendingDeclaration = "$pendingDeclaration`n$line"
                 $pendingParenDepth += Get-ParenthesisDelta $line
                 if ($pendingParenDepth -le 0) {
+                    $pendingDeclaration = Add-GenericConstraints $pendingDeclaration $lines ($index + 1) ([ref] $index)
                     $apiLine = Normalize-ApiDeclaration $pendingDeclaration
                     if ($null -ne $apiLine) {
                         [void] $api.Add($apiLine)
@@ -333,6 +369,10 @@ function Get-PackageApi([hashtable] $Package) {
                 $pendingDeclaration = $line
                 $pendingParenDepth = $parenDepth
                 continue
+            }
+
+            if ($apiLine.Contains("<", [StringComparison]::Ordinal)) {
+                $apiLine = Normalize-ApiDeclaration (Add-GenericConstraints $line $lines ($index + 1) ([ref] $index))
             }
 
             [void] $api.Add($apiLine)

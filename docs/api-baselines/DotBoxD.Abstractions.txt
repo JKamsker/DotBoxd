@@ -31,7 +31,7 @@ public string Capability { get; } = capability
 public string Id { get; }
 public string Id { get; } = id
 public string? Name { get; } = name
-public THost Host<THost>()
+public THost Host<THost>() where THost : class
 public Type ReceiverType { get; } = receiverType
 public Type? ServiceType { get; }
 public ValueTask SendAsync(string targetId, string message, CancellationToken cancellationToken = default)

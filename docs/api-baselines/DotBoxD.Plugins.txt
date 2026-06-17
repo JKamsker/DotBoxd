@@ -12,7 +12,7 @@ public async ValueTask<bool> ShouldHandleAsync<TEvent>( IPluginEventAdapter<TEve
 public async ValueTask<InstalledKernel> InstallAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public async ValueTask<InstalledKernel> InstallRpcAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public async ValueTask<SandboxValue> InvokeRpcAsync( IReadOnlyList<SandboxValue> arguments, CancellationToken cancellationToken = default)
-public async ValueTask<string> RegisterRpcServiceAsync<TService, TKernel>( SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
+public async ValueTask<string> RegisterRpcServiceAsync<TService, TKernel>( SandboxPolicy? policy = null, CancellationToken cancellationToken = default) where TService : class where TKernel : class
 public bool BoolValue
 public bool IsRevoked => Volatile.Read(ref _revoked) != 0
 public bool Owns(string pluginId)
@@ -96,7 +96,7 @@ public IReadOnlyList<PluginExecutionObservation> ExecutionObservations => _execu
 public IReadOnlyList<string> Effects { get => _effects; init => _effects = PluginModelCopy.List(value); }
 public IReadOnlyList<string> RequiredCapabilities
 public KernelRegistry Kernels { get; }
-public KernelRpcValue[] Items { get; }
+public KernelRpcValue[] Items => CopyItems(_items ?? EmptyItems)
 public KernelRpcValueKind Kind { get; }
 public LiveContext<T> BindContext<T>(string name, Action<T>? initialize = null) where T : class
 public LiveSettingDefinition Definition { get; }
