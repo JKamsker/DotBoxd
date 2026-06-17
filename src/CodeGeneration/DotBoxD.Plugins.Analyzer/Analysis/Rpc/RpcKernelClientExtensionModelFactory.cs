@@ -19,12 +19,18 @@ internal static class RpcKernelClientExtensionModelFactory
 
         if (property is not null)
         {
-            ValidateReceiver(property.ReceiverType, property.Name, "property");
+            property = property with
+            {
+                KernelRpcInterfaceType = ValidateReceiver(property.ReceiverType, property.Name, "property")
+            };
         }
 
         if (method is not null)
         {
-            ValidateReceiver(method.ReceiverType, method.Name, "method");
+            method = method with
+            {
+                KernelRpcInterfaceType = ValidateReceiver(method.ReceiverType, method.Name, "method")
+            };
         }
 
         if (property is not null &&
@@ -55,7 +61,7 @@ internal static class RpcKernelClientExtensionModelFactory
             var receiverType = ReceiverType(attribute, "property");
             var name = OptionalName(attribute) ?? DefaultPropertyName(kernelType.Name);
             ValidateMemberName(name, "property");
-            return new RpcKernelClientPropertyExtension(receiverType, name);
+            return new RpcKernelClientPropertyExtension(receiverType, name, KernelRpcInterfaceType: null);
         }
 
         return null;
@@ -73,7 +79,7 @@ internal static class RpcKernelClientExtensionModelFactory
             var receiverType = ReceiverType(attribute, "method");
             var name = OptionalName(attribute) ?? kernelMethod.Name;
             ValidateMemberName(name, "method");
-            return new RpcKernelClientMethodExtension(receiverType, name);
+            return new RpcKernelClientMethodExtension(receiverType, name, KernelRpcInterfaceType: null);
         }
 
         return null;
@@ -110,7 +116,7 @@ internal static class RpcKernelClientExtensionModelFactory
         }
     }
 
-    private static void ValidateReceiver(INamedTypeSymbol receiverType, string memberName, string memberKind)
+    private static INamedTypeSymbol? ValidateReceiver(INamedTypeSymbol receiverType, string memberName, string memberKind)
     {
         if (ReceiverHasMember(receiverType, memberName))
         {
@@ -118,11 +124,14 @@ internal static class RpcKernelClientExtensionModelFactory
                 $"Kernel RPC client {memberKind} '{memberName}' cannot be generated on '{receiverType.ToDisplayString()}' because that type already declares a member named '{memberName}'.");
         }
 
-        if (!ReceiverHasKernelRpcRegistry(receiverType))
+        var registryAccess = ReceiverKernelRpcRegistryAccess(receiverType);
+        if (registryAccess is null)
         {
             throw new NotSupportedException(
                 $"Kernel RPC client {memberKind} '{memberName}' requires '{receiverType.ToDisplayString()}' to expose an instance KernelRpc property assignable to {RegistryType}.");
         }
+
+        return registryAccess.InterfaceType;
     }
 
     private static bool ReceiverHasMember(INamedTypeSymbol receiverType, string memberName)
@@ -146,13 +155,13 @@ internal static class RpcKernelClientExtensionModelFactory
         return false;
     }
 
-    private static bool ReceiverHasKernelRpcRegistry(INamedTypeSymbol receiverType)
+    private static KernelRpcRegistryAccess? ReceiverKernelRpcRegistryAccess(INamedTypeSymbol receiverType)
     {
         for (INamedTypeSymbol? current = receiverType; current is not null; current = current.BaseType)
         {
             if (TypeHasKernelRpcRegistry(current))
             {
-                return true;
+                return new KernelRpcRegistryAccess(InterfaceType: null);
             }
         }
 
@@ -160,11 +169,11 @@ internal static class RpcKernelClientExtensionModelFactory
         {
             if (TypeHasKernelRpcRegistry(interfaceType))
             {
-                return true;
+                return new KernelRpcRegistryAccess(interfaceType);
             }
         }
 
-        return false;
+        return null;
     }
 
     private static bool TypeHasKernelRpcRegistry(INamedTypeSymbol receiverType)
@@ -231,4 +240,6 @@ internal static class RpcKernelClientExtensionModelFactory
         => kernelName.EndsWith(DotBoxDGenerationNames.KernelSuffix, StringComparison.Ordinal)
             ? kernelName.Substring(0, kernelName.Length - DotBoxDGenerationNames.KernelSuffix.Length)
             : kernelName;
+
+    private sealed record KernelRpcRegistryAccess(INamedTypeSymbol? InterfaceType);
 }
