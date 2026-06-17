@@ -84,4 +84,7 @@ public sealed partial class InstalledKernel
             RefreshTypedValuesFromStore();
         }
     }
+
+    internal void CommitSynchronizedLiveValues(IReadOnlyDictionary<string, object?> values)
+        => CommitSettings(values);
 }
