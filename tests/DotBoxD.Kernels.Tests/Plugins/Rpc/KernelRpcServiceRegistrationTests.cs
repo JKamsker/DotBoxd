@@ -16,4 +16,19 @@ public sealed class KernelRpcServiceRegistrationTests
             () => server.RpcService<IMonsterKillerService>());
         Assert.Contains("No kernel RPC service is registered", ex.Message);
     }
+
+    [Fact]
+    public async Task Direct_replacement_clears_rpc_service_registration()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(
+            configureHost: RpcKernelTestPackages.AddKillBinding,
+            defaultPolicy: RpcKernelTestPackages.KillPolicy());
+        await server.RegisterRpcServiceAsync<IMonsterKillerService, BatchKillerKernel>();
+
+        await server.InstallRpcAsync(RpcKernelTestPackages.MonsterKiller());
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => server.RpcService<IMonsterKillerService>());
+        Assert.Contains("No kernel RPC service is registered", ex.Message);
+    }
 }
