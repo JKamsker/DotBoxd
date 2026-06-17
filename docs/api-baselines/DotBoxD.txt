@@ -1,0 +1,6 @@
+# DotBoxD.Kernels public API baseline
+# Package: DotBoxD
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+public const string Modes = "Services, Kernels, Pushdown"
+public static class DotBoxDInfo

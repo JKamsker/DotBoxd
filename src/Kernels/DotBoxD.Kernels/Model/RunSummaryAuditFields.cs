@@ -96,10 +96,20 @@ public static class RunSummaryAuditFields
                normalized.Contains("bearer", StringComparison.Ordinal) ||
                normalized.Contains("password", StringComparison.Ordinal) ||
                normalized.Contains("passwd", StringComparison.Ordinal) ||
+               normalized.Contains("pwd", StringComparison.Ordinal) ||
                normalized.Contains("secret", StringComparison.Ordinal) ||
                normalized.Contains("token", StringComparison.Ordinal) ||
+               normalized.Contains("access-token", StringComparison.Ordinal) ||
+               normalized.Contains("access_token", StringComparison.Ordinal) ||
+               normalized.Contains("refresh-token", StringComparison.Ordinal) ||
+               normalized.Contains("refresh_token", StringComparison.Ordinal) ||
+               normalized.Contains("session-token", StringComparison.Ordinal) ||
+               normalized.Contains("session_token", StringComparison.Ordinal) ||
                normalized.Contains("api-key", StringComparison.Ordinal) ||
+               normalized.Contains("api_key", StringComparison.Ordinal) ||
                normalized.Contains("apikey", StringComparison.Ordinal) ||
+               normalized.Contains("account-key", StringComparison.Ordinal) ||
+               normalized.Contains("account_key", StringComparison.Ordinal) ||
                normalized.Contains("client_key", StringComparison.Ordinal) ||
                normalized.Contains("client-secret", StringComparison.Ordinal) ||
                normalized.Contains("client_secret", StringComparison.Ordinal) ||

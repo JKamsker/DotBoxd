@@ -17,6 +17,8 @@ public sealed class NamedPipeServerTransport : IServerTransport
     /// </summary>
     public static readonly TimeSpan DefaultFrameReadIdleTimeout = TimeSpan.FromSeconds(30);
 
+    private const int MaxSpecificServerInstances = 254;
+
     private readonly object _sync = new();
     private readonly string _pipeName;
     private readonly int _maxAllowedServerInstances;
@@ -303,12 +305,17 @@ public sealed class NamedPipeServerTransport : IServerTransport
 
     private static int ValidateMaxAllowedServerInstances(int value)
     {
-        if (value != NamedPipeServerStream.MaxAllowedServerInstances && value <= 0)
+        if (value == NamedPipeServerStream.MaxAllowedServerInstances)
+        {
+            return value;
+        }
+
+        if (value < 1 || value > MaxSpecificServerInstances)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(value),
                 value,
-                "Maximum server instances must be positive.");
+                $"Maximum server instances must be {NamedPipeServerStream.MaxAllowedServerInstances} or between 1 and {MaxSpecificServerInstances}.");
         }
 
         return value;

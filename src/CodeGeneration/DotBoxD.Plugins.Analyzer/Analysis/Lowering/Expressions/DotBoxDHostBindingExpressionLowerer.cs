@@ -29,7 +29,7 @@ internal static class DotBoxDHostBindingExpressionLowerer
             return null;
         }
 
-        var (bindingId, capability, effects) = binding;
+        var (bindingId, capability, effects, _) = binding;
         var returnType = DotBoxDTypeNameReader.SandboxTypeName(method.ReturnType);
         if (string.Equals(returnType, DotBoxDGenerationNames.ManifestTypes.Unsupported, StringComparison.Ordinal))
         {
@@ -85,7 +85,8 @@ internal static class DotBoxDHostBindingExpressionLowerer
         return new DotBoxDExpressionModel(source, returnType, allocates);
     }
 
-    internal static (string BindingId, string? Capability, IReadOnlyList<string> Effects)? HostBinding(IMethodSymbol method)
+    internal static (string BindingId, string? Capability, IReadOnlyList<string> Effects, bool IsAsync)? HostBinding(
+        IMethodSymbol method)
     {
         foreach (var attribute in method.GetAttributes())
         {
@@ -103,14 +104,14 @@ internal static class DotBoxDHostBindingExpressionLowerer
                 !string.IsNullOrEmpty(bindingId) &&
                 !string.IsNullOrEmpty(capability))
             {
-                return (bindingId, capability, EffectNames(attribute.ConstructorArguments[2]));
+                return (bindingId, capability, EffectNames(attribute.ConstructorArguments[2]), IsAsync(attribute));
             }
         }
 
         return TryAutoHostBinding(method);
     }
 
-    private static (string BindingId, string? Capability, IReadOnlyList<string> Effects)? TryAutoHostBinding(
+    private static (string BindingId, string? Capability, IReadOnlyList<string> Effects, bool IsAsync)? TryAutoHostBinding(
         IMethodSymbol method)
     {
         if (method.MethodKind != MethodKind.Ordinary ||
@@ -125,7 +126,8 @@ internal static class DotBoxDHostBindingExpressionLowerer
         return (
             HostBindingRoute(method.ContainingType, method),
             capability,
-            AutoEffectNames(method, capability));
+            AutoEffectNames(method, capability),
+            IsTaskLike(method.ReturnType));
     }
 
     private static bool HasDotBoxDServiceAttribute(INamedTypeSymbol type)
@@ -209,6 +211,28 @@ internal static class DotBoxDHostBindingExpressionLowerer
             ContainingNamespace: { } ns
         } &&
         string.Equals(ns.ToDisplayString(), "System.Threading.Tasks", StringComparison.Ordinal);
+
+    private static bool IsTaskLike(ITypeSymbol type)
+        => type is INamedTypeSymbol
+        {
+            Name: "Task" or "ValueTask",
+            ContainingNamespace: { } ns
+        } &&
+        string.Equals(ns.ToDisplayString(), "System.Threading.Tasks", StringComparison.Ordinal);
+
+    private static bool IsAsync(AttributeData attribute)
+    {
+        foreach (var argument in attribute.NamedArguments)
+        {
+            if (string.Equals(argument.Key, "IsAsync", StringComparison.Ordinal) &&
+                argument.Value.Value is bool value)
+            {
+                return value;
+            }
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// The single-bit flag names set in a <c>SandboxEffect</c> attribute argument (e.g. "Cpu",

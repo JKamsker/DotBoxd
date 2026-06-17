@@ -297,6 +297,24 @@ public sealed class HookChainRuntimeTests
         Assert.Equal("calm", message.Message);
     }
 
+    [Fact]
+    public async Task The_generated_interceptor_installs_a_Select_chain_at_the_InvokeKernel_call_site()
+    {
+        var assembly = Compile(OneParamSelectChainSource, enableInterceptors: true);
+
+        var messages = new InMemoryPluginMessageSink();
+        using var server = DotBoxD.Plugins.PluginServer.Create(messages, defaultPolicy: ChainPolicy());
+        var configure = assembly.GetType("ChainSample.Usage")!
+            .GetMethod("Configure", BindingFlags.Public | BindingFlags.Static)!;
+        configure.Invoke(null, [server.Hooks]);
+
+        await server.Hooks.PublishAsync(new ChainAggroEvent("monster-7", 3));
+
+        var message = Assert.Single(messages.Messages);
+        Assert.Equal("monster-7", message.TargetId);
+        Assert.Equal("calm", message.Message);
+    }
+
     private static Assembly Compile(string source, bool enableInterceptors)
     {
         var parseOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview);

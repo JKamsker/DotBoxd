@@ -21,7 +21,11 @@ internal static class DotBoxDPackageSourceEmitter
         builder.AppendLine("{");
         EmitBody(builder, model);
         builder.AppendLine("}");
-        return new GeneratedPluginPackage(HintName(model), builder.ToString());
+        return new GeneratedPluginPackage(
+            HintName(model),
+            builder.ToString(),
+            model.Namespace,
+            model.PackageName);
     }
 
     private static string HintName(PluginKernelModel model)
@@ -126,8 +130,7 @@ internal static class DotBoxDPackageSourceEmitter
         builder.AppendLine($"            {LiteralReader.StringLiteral(model.PluginId)},");
         builder.AppendLine($"            {TypeNames.GlobalSemVersion}.One,");
         builder.AppendLine($"            {TypeNames.GlobalSemVersion}.One,");
-        builder.AppendLine(
-            $"            [new {TypeNames.GlobalCapabilityRequest}({TypeNames.GlobalPluginMessageBindings}.CapabilityId, {LiteralReader.StringLiteral(DotBoxDGenerationNames.Capabilities.MessageWriteReason)})],");
+        DotBoxDCapabilityRequestSourceEmitter.Emit(builder, model.RequiredCapabilities);
         builder.Append("            [")
             .Append(DotBoxDGenerationNames.Entrypoints.ShouldHandle)
             .Append("(parameters), ")
@@ -152,7 +155,7 @@ internal static class DotBoxDPackageSourceEmitter
             .Append('(').Append(ReadOnlyListOf(TypeNames.GlobalParameter)).AppendLine(" parameters)");
         builder.AppendLine("        => new(");
         builder.AppendLine($"            {LiteralReader.StringLiteral(DotBoxDGenerationNames.Entrypoints.Handle)}, true, parameters, {TypeNames.GlobalSandboxType}.Unit,");
-        builder.AppendLine($"            [new {TypeNames.GlobalReturnStatement}({HandleExpression(model.Handle)}, Span)]);");
+        builder.AppendLine($"            {HandleBody(model.Handle).Source});");
         builder.AppendLine();
     }
 
@@ -345,4 +348,14 @@ internal static class DotBoxDPackageSourceEmitter
 
     private static string HandleExpression(DotBoxDHandleModel handle)
         => $"new {TypeNames.GlobalCallExpression}({TypeNames.GlobalPluginMessageBindings}.SendBindingId, [{handle.Target.Source}, {handle.Message.Source}], null, Span)";
+
+    private static DotBoxDStatementBodyModel HandleBody(DotBoxDHandleModel handle)
+    {
+        var returned = DotBoxDStatementBodyModelFactory.Return(
+            HandleExpression(handle),
+            handle.Target.Allocates || handle.Message.Allocates);
+        return handle.Prefix is null
+            ? returned
+            : DotBoxDStatementBodyModelFactory.Concat(handle.Prefix, returned);
+    }
 }

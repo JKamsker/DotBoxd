@@ -193,11 +193,14 @@ internal sealed class FunctionFrameLayout
         CallExpression call,
         IReadOnlyDictionary<string, FunctionAnalysis> functionAnalysis,
         IBindingCatalog bindings)
-        => call.Name == "list.count"
-            ? SandboxType.I32
-            : functionAnalysis.TryGetValue(call.Name, out var analysis)
+        => call.Name switch {
+            "list.count" => SandboxType.I32,
+            "numeric.toI64" => SandboxType.I64,
+            "numeric.toF64" => SandboxType.F64,
+            _ => functionAnalysis.TryGetValue(call.Name, out var analysis)
                 ? analysis.ReturnType
-                : bindings.TryGet(call.Name, out var binding) ? binding.ReturnType : null;
+                : bindings.TryGet(call.Name, out var binding) ? binding.ReturnType : null
+        };
 
     private static SandboxType? ParameterType(SandboxFunction function, string name)
     {

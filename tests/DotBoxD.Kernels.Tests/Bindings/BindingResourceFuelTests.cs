@@ -19,6 +19,7 @@ public sealed class BindingResourceFuelTests
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson("config.txt"));
         var policy = SandboxPolicyBuilder.Create()
+            .AllowRuntimeAsync()
             .GrantFileRead(temp.Path, 1024)
             .WithFuel(5_000)
             .WithWallTime(TimeSpan.FromSeconds(2))
@@ -37,6 +38,7 @@ public sealed class BindingResourceFuelTests
         var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("hello"));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
         var policy = SandboxPolicyBuilder.Create()
+            .AllowRuntimeAsync()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
             .WithFuel(5_000)
             .WithWallTime(TimeSpan.FromSeconds(2))

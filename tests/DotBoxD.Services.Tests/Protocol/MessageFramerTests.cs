@@ -196,6 +196,16 @@ public class MessageFramerTests
     }
 
     [Fact]
+    public async Task ReadMessageAsync_HeaderOnlyDeclaredPayload_ThrowsInvalidDataException()
+    {
+        var bytes = new byte[MessageFramer.HeaderSize];
+        BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(0, 4), MessageFramer.HeaderSize + 1);
+        using var stream = new MemoryStream(bytes);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => MessageFramer.ReadMessageAsync(stream));
+    }
+
+    [Fact]
     public async Task WriteMessageAsync_ShouldWriteValidFrame()
     {
         // Arrange

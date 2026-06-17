@@ -84,16 +84,28 @@ public sealed class ModuleValidator
 
             foreach (var bindingId in references)
             {
-                if (bindings.TryGet(bindingId, out var binding) &&
-                    binding.RequiredCapability is not null)
+                if (!bindings.TryGet(bindingId, out var binding))
+                {
+                    continue;
+                }
+
+                if (binding.RequiredCapability is not null)
                 {
                     required.Add(binding.RequiredCapability);
+                }
+
+                if (RequiresRuntimeAsync(binding))
+                {
+                    required.Add(RuntimeCapabilityIds.Async);
                 }
             }
         }
 
         return required;
     }
+
+    private static bool RequiresRuntimeAsync(BindingSignature binding)
+        => binding.IsAsync || (binding.Effects & SandboxEffect.Concurrency) != 0;
 
     private static bool HasNoErrors(IReadOnlyList<SandboxDiagnostic> diagnostics)
     {

@@ -98,13 +98,13 @@ internal static class ListGetI32LoopFastPathEmitter
         il.Emit(OpCodes.Sub);
         il.Emit(OpCodes.Stloc, iterations);
 
-        CompiledMeterEmitter.Fuel(il, 1);
         if (!TryEmitRemainderCycle(range, plan, iterations, readFuel, reader, fallback, finish, il, declare))
         {
             il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldloc, readFuel);
             il.Emit(OpCodes.Ldloc, iterations);
-            il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CanBulkChargeFuel)));
+            EmitInt32(il, plan.LoopFuelPerIteration);
+            il.Emit(OpCodes.Ldloc, readFuel);
+            il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CanBulkChargeLoopIterationsAndFuel)));
             il.Emit(OpCodes.Brfalse, fallback);
 
             il.Emit(OpCodes.Ldarg_0);
@@ -142,15 +142,11 @@ internal static class ListGetI32LoopFastPathEmitter
         il.Emit(OpCodes.Ldarg_0);
         il.Emit(OpCodes.Ldloc, iterations);
         EmitInt32(il, plan.LoopFuelPerIteration);
-        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CanBulkChargeLoopIterations)));
-        il.Emit(OpCodes.Brfalse, fallback);
-
-        il.Emit(OpCodes.Ldarg_0);
         il.Emit(OpCodes.Ldloc, readFuel);
-        il.Emit(OpCodes.Ldloc, iterations);
-        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CanBulkChargeFuel)));
+        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CanBulkChargeLoopIterationsAndFuel)));
         il.Emit(OpCodes.Brfalse, fallback);
 
+        CompiledMeterEmitter.Fuel(il, 1);
         il.Emit(OpCodes.Ldarg_0);
         il.Emit(OpCodes.Ldloc, reader);
         il.Emit(OpCodes.Ldloc, declare(plan.Target).Local);

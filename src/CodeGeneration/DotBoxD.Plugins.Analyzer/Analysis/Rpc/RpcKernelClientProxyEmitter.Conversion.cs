@@ -104,14 +104,14 @@ internal static partial class RpcKernelClientProxyEmitter
             var elementType = DotBoxDRpcTypeMapper.ListElementType(type)!;
             var elementName = TypeName(elementType);
             var itemExpression = ReadExpression(elementType, "__source[i]");
-            var returnsArray = type is IArrayTypeSymbol;
-            var returnType = returnsArray ? TypeName(type) : $"global::System.Collections.Generic.List<{elementName}>";
+            var arrayType = type as IArrayTypeSymbol;
+            var returnType = arrayType is not null ? TypeName(type) : $"global::System.Collections.Generic.List<{elementName}>";
             _helpers.Append("    private static ").Append(returnType).Append(' ').Append(method)
                 .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
             _helpers.AppendLine("    {");
             _helpers.AppendLine("        value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.List);");
             _helpers.AppendLine("        var __source = value.Items;");
-            AppendListReaderBody(elementName, itemExpression, returnsArray);
+            AppendListReaderBody(elementName, itemExpression, arrayType);
             _helpers.AppendLine();
             _helpers.AppendLine("        return __result;");
             _helpers.AppendLine("    }");
@@ -119,11 +119,13 @@ internal static partial class RpcKernelClientProxyEmitter
             return method;
         }
 
-        private void AppendListReaderBody(string elementName, string itemExpression, bool returnsArray)
+        private void AppendListReaderBody(string elementName, string itemExpression, IArrayTypeSymbol? arrayType)
         {
-            if (returnsArray)
+            if (arrayType is not null)
             {
-                _helpers.Append("        var __result = new ").Append(elementName).AppendLine("[__source.Length];");
+                _helpers.Append("        var __result = ")
+                    .Append(ArrayCreation(arrayType, "__source.Length"))
+                    .AppendLine(";");
                 _helpers.AppendLine("        for (var i = 0; i < __source.Length; i++)");
                 _helpers.AppendLine("        {");
                 _helpers.Append("            __result[i] = ").Append(itemExpression).AppendLine(";");
@@ -137,6 +139,31 @@ internal static partial class RpcKernelClientProxyEmitter
             _helpers.AppendLine("        {");
             _helpers.Append("            __result.Add(").Append(itemExpression).AppendLine(");");
             _helpers.AppendLine("        }");
+        }
+
+        private static string ArrayCreation(IArrayTypeSymbol arrayType, string lengthExpression)
+        {
+            if (arrayType.Rank != 1)
+            {
+                throw new NotSupportedException(
+                    $"Kernel RPC service multidimensional array type '{arrayType.ToDisplayString()}' is not supported.");
+            }
+
+            var elementType = arrayType.ElementType;
+            var trailingRanks = string.Empty;
+            while (elementType is IArrayTypeSymbol nestedArray)
+            {
+                if (nestedArray.Rank != 1)
+                {
+                    throw new NotSupportedException(
+                        $"Kernel RPC service multidimensional array type '{nestedArray.ToDisplayString()}' is not supported.");
+                }
+
+                trailingRanks += "[]";
+                elementType = nestedArray.ElementType;
+            }
+
+            return $"new {TypeName(elementType)}[{lengthExpression}]{trailingRanks}";
         }
 
         private string EnsureDtoWriter(INamedTypeSymbol type)
@@ -216,7 +243,7 @@ internal static partial class RpcKernelClientProxyEmitter
             var arguments = new List<string>(constructor.Parameters.Length);
             foreach (var parameter in constructor.Parameters)
             {
-                var fieldIndex = FieldIndex(fields, parameter.Name);
+                var fieldIndex = RpcDtoFieldMatcher.FieldIndex(fields, parameter);
                 arguments.Add(ReadExpression(fields[fieldIndex].Type, "__fields[" + fieldIndex + "]"));
             }
 
@@ -227,19 +254,26 @@ internal static partial class RpcKernelClientProxyEmitter
         {
             foreach (var constructor in type.InstanceConstructors)
             {
-                if (constructor.Parameters.Length != fields.Count || constructor.Parameters.Length == 0)
+                if (constructor.DeclaredAccessibility is not (
+                        Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal) ||
+                    constructor.Parameters.Length != fields.Count ||
+                    constructor.Parameters.Length == 0)
                 {
                     continue;
                 }
 
                 var matched = true;
+                var assigned = new bool[fields.Count];
                 foreach (var parameter in constructor.Parameters)
                 {
-                    if (FieldIndex(fields, parameter.Name) < 0)
+                    var fieldIndex = RpcDtoFieldMatcher.FieldIndex(fields, parameter);
+                    if (fieldIndex < 0 || assigned[fieldIndex])
                     {
                         matched = false;
                         break;
                     }
+
+                    assigned[fieldIndex] = true;
                 }
 
                 if (matched)
@@ -250,19 +284,6 @@ internal static partial class RpcKernelClientProxyEmitter
 
             throw new NotSupportedException(
                 $"Server extension DTO '{type.ToDisplayString()}' must expose a constructor matching its public fields.");
-        }
-
-        private static int FieldIndex(IReadOnlyList<IPropertySymbol> fields, string? name)
-        {
-            for (var i = 0; i < fields.Count; i++)
-            {
-                if (string.Equals(fields[i].Name, name, StringComparison.OrdinalIgnoreCase))
-                {
-                    return i;
-                }
-            }
-
-            return -1;
         }
     }
 }

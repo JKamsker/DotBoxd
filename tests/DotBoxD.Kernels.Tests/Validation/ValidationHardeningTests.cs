@@ -219,35 +219,29 @@ public sealed class ValidationHardeningTests
     }
 
     [Fact]
-    public async Task Deterministic_policy_denies_file_io_effects()
+    public void Deterministic_policy_denies_file_io_effects()
     {
-        var host = SandboxTestHost.Create();
-        var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson("config.json"));
-        var policy = SandboxPolicyBuilder.Create()
-            .GrantFileRead(Path.GetTempPath(), 1024)
-            .Deterministic(DateTimeOffset.UnixEpoch, randomSeed: 1)
-            .Build();
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            SandboxPolicyBuilder.Create()
+                .AllowRuntimeAsync()
+                .GrantFileRead(Path.GetTempPath(), 1024)
+                .Deterministic(DateTimeOffset.UnixEpoch, randomSeed: 1)
+                .Build());
 
-        var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () =>
-            await host.PrepareAsync(module, policy));
-
-        Assert.Contains(ex.Diagnostics, d => d.Code == "E-POLICY-DETERMINISM");
+        Assert.Contains("deterministic policies cannot grant runtime async", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task Deterministic_policy_denies_external_allowed_effects_even_for_pure_module()
+    public void Deterministic_policy_denies_external_allowed_effects_even_for_pure_module()
     {
-        var host = SandboxTestHost.Create();
-        var module = await host.ImportJsonAsync(SandboxTestHost.PureScoreJson());
-        var policy = SandboxPolicyBuilder.Create()
-            .GrantFileRead(Path.GetTempPath(), 1024)
-            .Deterministic(DateTimeOffset.UnixEpoch, randomSeed: 1)
-            .Build();
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            SandboxPolicyBuilder.Create()
+                .AllowRuntimeAsync()
+                .GrantFileRead(Path.GetTempPath(), 1024)
+                .Deterministic(DateTimeOffset.UnixEpoch, randomSeed: 1)
+                .Build());
 
-        var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () =>
-            await host.PrepareAsync(module, policy));
-
-        Assert.Contains(ex.Diagnostics, d => d.Code == "E-POLICY-DETERMINISM");
+        Assert.Contains("deterministic policies cannot grant runtime async", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -11,6 +11,7 @@ public sealed class TcpServerTransport : IServerTransport
 {
     private readonly IPAddress _address;
     private readonly int _port;
+    private readonly SemaphoreSlim _acceptLock = new(1, 1);
     private TcpListener? _listener;
     private Task<TcpClient>? _pendingAccept;
     private int _disposed;
@@ -106,6 +107,26 @@ public sealed class TcpServerTransport : IServerTransport
         // listener.AcceptTcpClientAsync() that the shutdown observation path could never reclaim.
         ct.ThrowIfCancellationRequested();
 
+        await _acceptLock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            return await AcceptCoreAsync(ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _acceptLock.Release();
+        }
+    }
+
+    private async Task<IRpcChannel> AcceptCoreAsync(CancellationToken ct)
+    {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            throw new ObjectDisposedException(nameof(TcpServerTransport));
+        }
+
+        ct.ThrowIfCancellationRequested();
+
         // Capture the listener once: a concurrent StopAsync/DisposeAsync nulls the field, and reading
         // it twice could NRE between the guard and the accept call. If Stop races in after this read,
         // AcceptTcpClientAsync simply faults on the stopped listener and the catch below maps it.
@@ -118,9 +139,10 @@ public sealed class TcpServerTransport : IServerTransport
         // netstandard2.1 has no CancellationToken overload for AcceptTcpClientAsync, and Stop()-ing
         // the listener to unblock would tear it down for every future accept. Instead race the accept
         // against the token; on cancellation keep the in-flight accept to hand back on the next call
-        // so the listener stays alive. AcceptAsync is driven by a single accept loop, but StopAsync/
+        // so the listener stays alive. AcceptAsync serializes OS-level accepts because _pendingAccept
+        // tracks only one cancelled in-flight accept for later reuse or shutdown cleanup. StopAsync/
         // DisposeAsync (any thread) reclaim _pendingAccept via Interlocked, so consume it atomically
-        // here too — a plain read+null could let both this call and ObservePendingAccept take the same
+        // here too -- a plain read+null could let both this call and ObservePendingAccept take the same
         // stashed accept, returning a TcpClient that is also disposed at shutdown.
         var claimed = ClaimPendingAccept();
         Task<TcpClient> acceptTask;
@@ -194,6 +216,10 @@ public sealed class TcpServerTransport : IServerTransport
         {
             throw new OperationCanceledException(ct);
         }
+        catch (Exception) when (Volatile.Read(ref _started) == 0 || Volatile.Read(ref _disposed) != 0)
+        {
+            throw new OperationCanceledException();
+        }
 
         try
         {
@@ -212,6 +238,8 @@ public sealed class TcpServerTransport : IServerTransport
 
     public Task StopAsync(CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
+
         // Reset state so the transport can be restarted with StartAsync, and so a subsequent
         // AcceptAsync surfaces "not started" instead of accepting on a stopped listener.
         Volatile.Write(ref _started, 0);

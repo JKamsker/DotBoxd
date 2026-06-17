@@ -63,6 +63,7 @@ public sealed class RuntimeFuzzCoverageTests
             var plan = await host.PrepareAsync(
                 module,
                 SandboxPolicyBuilder.Create()
+                    .AllowRuntimeAsync()
                     .GrantFileRead(temp.Path, 1024)
                     .WithFuel(10_000)
                     .WithWallTime(TimeSpan.FromSeconds(2))

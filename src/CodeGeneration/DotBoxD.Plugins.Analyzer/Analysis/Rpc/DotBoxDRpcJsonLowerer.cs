@@ -21,6 +21,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     private readonly ICollection<string> _effects;
     private readonly CancellationToken _cancellationToken;
     private readonly Dictionary<string, string> _serviceHandleLocals = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _reservedNames = new(StringComparer.Ordinal);
     private Func<AssignmentExpressionSyntax, Func<ExpressionSyntax, string>, string?>? _assignmentOverride;
     private IReadOnlyList<string> _returnRecordFields = [];
     private string? _returnRecordType;
@@ -58,6 +59,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         _returnRecordType = returnRecordType;
         try
         {
+            ReserveUserNames(block);
             var parts = new List<string>();
             for (var i = 0; i < leadingLocals.Count; i++)
             {
@@ -211,14 +213,20 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
     private void LowerForEach(ForEachStatementSyntax loop, List<string> output)
     {
-        var source = "__sir_src" + _tempCounter;
-        var index = "__sir_i" + _tempCounter;
-        _tempCounter++;
+        if (DotBoxDRpcTypeMapper.ListElementType(TypeOf(loop.Expression)) is not { } elementType)
+        {
+            throw new NotSupportedException(
+                $"Server extension foreach source '{loop.Expression}' must be a supported list type.");
+        }
+
+        var suffix = NextLoopTempSuffix();
+        var source = "__sir_src" + suffix;
+        var index = "__sir_i" + suffix;
         output.Add(SetStatement(source, LowerExpression(loop.Expression)));
 
         var body = new List<string>
         {
-            SetStatement(loop.Identifier.ValueText, Call("list.get", null, Var(source), Var(index)))
+            SetStatement(loop.Identifier.ValueText, BuildForEachItem(loop, elementType, source, index))
         };
         LowerStatement(loop.Statement, body);
 
@@ -228,6 +236,47 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             ("start", I32(0)),
             ("end", Call("list.count", null, Var(source))),
             ("body", "[" + string.Join(",", body) + "]")));
+    }
+
+    private string BuildForEachItem(
+        ForEachStatementSyntax loop,
+        ITypeSymbol elementType,
+        string source,
+        string index)
+    {
+        var local = _model.GetDeclaredSymbol(loop, _cancellationToken)
+            ?? throw new NotSupportedException(
+                $"Server extension foreach local '{loop.Identifier.ValueText}' could not be resolved.");
+        var item = Call("list.get", null, Var(source), Var(index));
+        return ApplyNumericConversion(elementType, local.Type, item);
+    }
+
+    private void ReserveUserNames(BlockSyntax block)
+    {
+        foreach (var token in block.DescendantTokens())
+        {
+            if (token.IsKind(SyntaxKind.IdentifierToken))
+            {
+                _reservedNames.Add(token.ValueText);
+            }
+        }
+    }
+
+    private int NextLoopTempSuffix()
+    {
+        while (true)
+        {
+            var suffix = _tempCounter++;
+            if (_reservedNames.Contains("__sir_src" + suffix) ||
+                _reservedNames.Contains("__sir_i" + suffix))
+            {
+                continue;
+            }
+
+            _reservedNames.Add("__sir_src" + suffix);
+            _reservedNames.Add("__sir_i" + suffix);
+            return suffix;
+        }
     }
 
     private string LowerIf(IfStatementSyntax branch)

@@ -21,9 +21,7 @@ public sealed partial class InstalledKernel
 
         try
         {
-            PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
-            Value.SetMany(values);
-            RefreshTypedValuesFromStore();
+            CommitSettings(values);
         }
         finally
         {
@@ -54,16 +52,19 @@ public sealed partial class InstalledKernel
                 var draftStore = Value.Copy(Manifest.LiveSettings);
                 var draft = draftStore.As<TState>();
                 modify(draft);
-                Value.SetMany(draftStore.ToObjectValues(Manifest.LiveSettings));
-                RefreshTypedValuesFromStore();
+                CommitSettings(draftStore.ToObjectValues(Manifest.LiveSettings));
                 return;
             }
 
             var classDraft = LiveKernelValueFactory.CreateDraft(current);
             modify(classDraft);
-            Value.SetMany(LiveKernelValueFactory.ExtractSettings(classDraft, Manifest.LiveSettings));
-            LiveKernelValueFactory.CopyLiveProperties(classDraft, current);
-            RefreshTypedValuesFromStore();
+            lock (_lifecycleGate)
+            {
+                PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
+                Value.SetMany(LiveKernelValueFactory.ExtractSettings(classDraft, Manifest.LiveSettings));
+                LiveKernelValueFactory.CopyLiveProperties(classDraft, current);
+                RefreshTypedValuesFromStore();
+            }
         }
         finally
         {
@@ -73,4 +74,17 @@ public sealed partial class InstalledKernel
             }
         }
     }
+
+    private void CommitSettings(IReadOnlyDictionary<string, object?> values)
+    {
+        lock (_lifecycleGate)
+        {
+            PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
+            Value.SetMany(values);
+            RefreshTypedValuesFromStore();
+        }
+    }
+
+    internal void CommitSynchronizedLiveValues(IReadOnlyDictionary<string, object?> values)
+        => CommitSettings(values);
 }

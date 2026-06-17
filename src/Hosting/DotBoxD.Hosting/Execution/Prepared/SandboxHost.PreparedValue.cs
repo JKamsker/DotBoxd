@@ -19,9 +19,9 @@ public sealed partial class SandboxHost
         Debug.Assert(Enum.IsDefined(options.Mode));
 
         ThrowIfDisposed();
-        if (TryGetRevokedCapability(plan, entrypoint, out var revoked))
+        if (TryGetCapabilityDenial(plan, entrypoint, out var denial))
         {
-            return PublishedResult(CapabilityRevokedResult(plan, options, revoked));
+            return PublishedResult(CapabilityDeniedResult(plan, options, denial));
         }
 
         if (options.RequireDeterministic && !plan.Policy.Deterministic)
@@ -69,13 +69,13 @@ public sealed partial class SandboxHost
                     options,
                     out var allowedBindings))
             {
-                var fullResult = await CompiledExecutionRunner.ExecuteAsync(
-                        executable,
-                        plan,
-                        entrypoint,
-                        input,
-                        options,
-                        cancellationToken)
+                var execution = ShouldUseCompiledAsyncWorker(plan, entrypoint)
+                    ? CompiledExecutionRunner.ExecuteOnWorkerAsync(
+                        executable, plan, entrypoint, input, options, cancellationToken)
+                    : CompiledExecutionRunner.ExecuteAsync(
+                        executable, plan, entrypoint, input, options, cancellationToken,
+                        ShouldUseCompiledInlineAwaitPump(plan, entrypoint));
+                var fullResult = await execution
                     .ConfigureAwait(false);
                 return PreparedExecutionResult.FromResult(Publish(fullResult));
             }

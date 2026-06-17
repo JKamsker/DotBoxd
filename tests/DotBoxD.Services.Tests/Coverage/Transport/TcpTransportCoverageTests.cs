@@ -192,7 +192,7 @@ public sealed class TcpTransportCoverageTests
     }
 
     [Fact]
-    public async Task ReceiveAsync_PeerClosesMidFrameBody_ReturnsEmpty()
+    public async Task ReceiveAsync_PeerClosesMidFrameBody_ThrowsInvalidData()
     {
         await using var server = new TcpServerTransport(IPAddress.Loopback, 0)
         {
@@ -208,8 +208,8 @@ public sealed class TcpTransportCoverageTests
         await rawClient.ConnectAsync(IPAddress.Loopback, port).WaitAsync(Timeout);
         await using var serverConn = await acceptTask.WaitAsync(Timeout);
 
-        // Declare a 256-byte frame, send only the header + a few body bytes, then close. The body read
-        // returns fewer bytes than declared -> the rented payload is disposed and Empty is returned.
+        // Declare a 256-byte frame, send only the header + a few body bytes, then close.
+        // Mid-body EOF is malformed framing and must not look like a clean peer disconnect.
         var full = BuildFrame(messageId: 1, type: 1, bodyLength: 256).Span.ToArray();
         var stream = rawClient.GetStream();
         var receiveTask = serverConn.ReceiveAsync();
@@ -217,8 +217,8 @@ public sealed class TcpTransportCoverageTests
         await stream.FlushAsync().WaitAsync(Timeout);
         rawClient.Close();
 
-        using var received = await receiveTask.WaitAsync(Timeout);
-        Assert.Equal(0, received.Length);
+        await Assert.ThrowsAsync<InvalidDataException>(
+            async () => await receiveTask.WaitAsync(Timeout));
     }
 
     [Fact]

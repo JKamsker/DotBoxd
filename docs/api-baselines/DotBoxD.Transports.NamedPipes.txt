@@ -1,0 +1,19 @@
+# DotBoxD.Kernels public API baseline
+# Package: DotBoxD.Transports.NamedPipes
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+public async Task ConnectAsync(CancellationToken ct = default)
+public async Task<IRpcChannel> AcceptAsync(CancellationToken ct = default)
+public async ValueTask DisposeAsync()
+public bool IsConnected => _connection?.IsConnected ?? false
+public IRpcChannel? Connection => _connection
+public NamedPipeClientTransport( string serverName, string pipeName, int maxMessageSize = MessageFramer.MaxMessageSize)
+public NamedPipeClientTransport(string pipeName, int maxMessageSize = MessageFramer.MaxMessageSize)
+public NamedPipeServerTransport( string pipeName, int maxAllowedServerInstances = NamedPipeServerStream.MaxAllowedServerInstances, int maxMessageSize = MessageFramer.MaxMessageSize)
+public sealed class NamedPipeClientTransport : ITransport
+public sealed class NamedPipeServerTransport : IServerTransport
+public static readonly TimeSpan DefaultFrameReadIdleTimeout = NamedPipeServerTransport.DefaultFrameReadIdleTimeout
+public static readonly TimeSpan DefaultFrameReadIdleTimeout = TimeSpan.FromSeconds(30)
+public Task StartAsync(CancellationToken ct = default)
+public Task StopAsync(CancellationToken ct = default)
+public TimeSpan? FrameReadIdleTimeout { get; init; }

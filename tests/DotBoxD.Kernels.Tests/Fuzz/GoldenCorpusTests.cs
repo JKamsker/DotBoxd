@@ -53,12 +53,15 @@ public sealed class GoldenCorpusTests
         var plan = await host.PrepareAsync(
             module,
             SandboxPolicyBuilder.Create()
+                .AllowRuntimeAsync()
                 .GrantFileRead(temp.Path, 1024)
                 .WithWallTime(TimeSpan.FromSeconds(2))
                 .WithFuel(10_000)
                 .Build());
 
-        Assert.Equal(SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.FileRead, plan.FunctionAnalysis["main"].Effects);
+        Assert.Equal(
+            SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.FileRead | SandboxEffect.Concurrency,
+            plan.FunctionAnalysis["main"].Effects);
 
         var result = await ExecuteAsync(host, plan, SandboxValue.Unit, ExecutionMode.Interpreted);
 

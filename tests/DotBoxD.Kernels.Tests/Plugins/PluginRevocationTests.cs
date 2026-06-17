@@ -1,3 +1,4 @@
+using System.Reflection;
 using DotBoxD.Kernels.Bindings;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.PluginIpc.Server.Abstractions;
@@ -51,6 +52,33 @@ public sealed class PluginRevocationTests
         Assert.True((bool)removed);
         Assert.True((bool)replacement.IsRevoked);
         Assert.Equal(["player-1", "player-3"], messages.Messages.Select(m => m.TargetId));
+    }
+
+    [Fact]
+    public async Task Uninstall_removes_kernel_handler_from_hook_pipeline()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: LongWallPluginPolicy());
+        var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
+        var pipeline = server.Hooks.On<DamageEvent>().Use(kernel);
+        Assert.Equal(1, HandlerCount(pipeline));
+
+        Assert.True((bool)server.Uninstall("fire-damage"));
+
+        Assert.Equal(0, HandlerCount(pipeline));
+    }
+
+    [Fact]
+    public async Task Session_dispose_removes_owned_kernel_handler_from_hook_pipeline()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: LongWallPluginPolicy());
+        var session = server.CreateSession();
+        var kernel = await session.InstallAsync(FireDamagePluginPackage.Create());
+        var pipeline = server.Hooks.On<DamageEvent>().Use(kernel);
+        Assert.Equal(1, HandlerCount(pipeline));
+
+        session.Dispose();
+
+        Assert.Equal(0, HandlerCount(pipeline));
     }
 
     [Fact]
@@ -137,9 +165,12 @@ public sealed class PluginRevocationTests
                 "revocation-blocking",
                 "IEventKernel<BlockingEvent>",
                 ExecutionMode.Interpreted,
-                ["Cpu", "Alloc", "HostStateWrite", "Audit"],
+                ["Cpu", "Alloc", "HostStateWrite", "Concurrency", "Audit"],
                 [],
-                [new HookSubscriptionManifest(nameof(BlockingEvent), "BlockingKernel")]),
+                [new HookSubscriptionManifest(nameof(BlockingEvent), "BlockingKernel")])
+            {
+                RequiredCapabilities = [RuntimeCapabilityIds.Async, PluginMessageBindings.CapabilityId]
+            },
             new SandboxModule(
                 "revocation-blocking",
                 SemVersion.One,
@@ -186,4 +217,12 @@ public sealed class PluginRevocationTests
             .WithMaxHostCalls(1_000)
             .WithWallTime(TimeSpan.FromSeconds(10))
             .Build();
+
+    private static int HandlerCount<TEvent>(HookPipeline<TEvent> pipeline)
+    {
+        var field = typeof(HookPipeline<TEvent>).GetField("_handlers", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(field);
+        var handlers = (Array)field.GetValue(pipeline)!;
+        return handlers.Length;
+    }
 }

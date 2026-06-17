@@ -1,5 +1,10 @@
+using System.Reflection;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
+using DotBoxD.Kernels.Sandbox;
+using DotBoxD.Kernels.Tests.Plugins.Rpc;
+using DotBoxD.Plugins;
+using DotBoxD.Plugins.Runtime;
 using DotBoxD.Plugins.Policies;
 
 namespace DotBoxD.Kernels.Tests.Plugins;
@@ -73,6 +78,75 @@ public sealed class PluginOwnershipTests
     }
 
     [Fact]
+    public async Task Stale_session_owner_cannot_update_reused_plugin_id()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: LongWallPluginPolicy());
+        var ownerA = server.CreateSession();
+        await ownerA.InstallAsync(FireDamagePluginPackage.Create());
+        Assert.True(server.Uninstall("fire-damage"));
+
+        var ownerB = server.CreateSession();
+        var replacement = await ownerB.InstallAsync(FireDamagePluginPackage.Create());
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await ownerA
+                .UpdateSettingsAsync("fire-damage", new Dictionary<string, object?> { ["DamageType"] = "ice" })
+                .AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK061");
+        Assert.Equal("fire", replacement.Value.Get<string>("DamageType"));
+    }
+
+    [Fact]
+    public async Task Session_dispose_waits_for_in_flight_owned_setting_update()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: LongWallPluginPolicy());
+        var session = server.CreateSession();
+        var kernel = await session.InstallAsync(FireDamagePluginPackage.Create());
+        var definition = Assert.Single(kernel.Value.Definitions, s => s.Name == "DamageType");
+        var setting = new BlockingLiveSetting(definition, "fire");
+        ReplaceSetting(kernel.Value, setting);
+        var update = Task.Run(async () => await session.UpdateSettingsAsync(
+            "fire-damage",
+            new Dictionary<string, object?> { ["DamageType"] = "ice" }).AsTask());
+        Task? dispose = null;
+        var disposedBeforeUpdateCompleted = false;
+        try
+        {
+            var updateReachedSetting = await Task.WhenAny(setting.Started, update)
+                .WaitAsync(TimeSpan.FromSeconds(5)) == setting.Started;
+            if (!updateReachedSetting)
+            {
+                await update;
+                Assert.Fail("The live setting update completed before reaching the blocking setting.");
+            }
+
+            var disposeStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            dispose = Task.Run(() => {
+                disposeStarted.SetResult();
+                session.Dispose();
+            });
+            await disposeStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            disposedBeforeUpdateCompleted =
+                await Task.WhenAny(dispose, Task.Delay(250)) == dispose;
+        }
+        finally
+        {
+            setting.Release();
+        }
+
+        await update.WaitAsync(TimeSpan.FromSeconds(5));
+        if (dispose is not null)
+        {
+            await dispose.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+
+        Assert.False(disposedBeforeUpdateCompleted);
+        Assert.Equal("ice", setting.CurrentValue);
+        Assert.True((bool)kernel.IsRevoked);
+    }
+
+    [Fact]
     public async Task Disposed_session_rejects_further_installs()
     {
         using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: LongWallPluginPolicy());
@@ -95,6 +169,45 @@ public sealed class PluginOwnershipTests
         Assert.False((bool)second.IsRevoked);
     }
 
+    [Fact]
+    public async Task Session_rpc_install_cannot_replace_server_owned_rpc_kernel()
+    {
+        using var server = CreateRpcServer();
+        var serverKernel = await server.InstallServerExtensionAsync(RpcKernelTestPackages.MonsterKiller());
+        var session = server.CreateSession();
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await session.InstallServerExtensionAsync(RpcKernelTestPackages.MonsterKiller()).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK060");
+        Assert.False((bool)serverKernel.IsRevoked);
+        Assert.True((bool)server.Kernels.TryGet("monster-killer", out var current));
+        Assert.Same(serverKernel, current);
+        Assert.False(session.Owns("monster-killer"));
+    }
+
+    [Fact]
+    public async Task Server_rpc_install_cannot_replace_session_owned_rpc_kernel()
+    {
+        using var server = CreateRpcServer();
+        var session = server.CreateSession();
+        var sessionKernel = await session.InstallServerExtensionAsync(RpcKernelTestPackages.MonsterKiller());
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await server.InstallServerExtensionAsync(RpcKernelTestPackages.MonsterKiller()).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK060");
+        Assert.False((bool)sessionKernel.IsRevoked);
+        Assert.True(session.Owns("monster-killer"));
+        Assert.True((bool)server.Kernels.TryGet("monster-killer", out var current));
+        Assert.Same(sessionKernel, current);
+    }
+
+    private static DotBoxD.Plugins.PluginServer CreateRpcServer()
+        => DotBoxD.Plugins.PluginServer.Create(
+            configureHost: RpcKernelTestPackages.AddKillBinding,
+            defaultPolicy: RpcKernelTestPackages.KillPolicy());
+
     private static SandboxPolicy LongWallPluginPolicy()
         => SandboxPolicyBuilder.Create()
             .GrantLogging()
@@ -103,4 +216,41 @@ public sealed class PluginOwnershipTests
             .WithMaxHostCalls(1_000)
             .WithWallTime(TimeSpan.FromSeconds(10))
             .Build();
+
+    private static void ReplaceSetting(LiveSettingStore store, ILiveSetting setting)
+    {
+        var field = typeof(LiveSettingStore).GetField("_settings", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(field);
+        var settings = (Dictionary<string, ILiveSetting>)field.GetValue(store)!;
+        settings[setting.Name] = setting;
+    }
+
+    private sealed class BlockingLiveSetting(
+        LiveSettingDefinition definition,
+        object? initialValue) : ILiveSetting
+    {
+        private readonly TaskCompletionSource _started =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _release =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private object? _value = initialValue;
+
+        public Task Started => _started.Task;
+        public string Name => definition.Name;
+        public LiveSettingDefinition Definition => definition;
+        public object? CurrentValue => _value;
+
+        public SandboxValue ToSandboxValue()
+            => SandboxValue.FromString((string)_value!);
+
+        public void SetObject(object? value)
+        {
+            _started.SetResult();
+            _release.Task.GetAwaiter().GetResult();
+            _value = value;
+        }
+
+        public void Release()
+            => _release.TrySetResult();
+    }
 }

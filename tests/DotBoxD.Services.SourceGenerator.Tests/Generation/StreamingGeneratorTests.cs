@@ -140,12 +140,13 @@ public sealed class StreamingGeneratorTests
                 "Streaming.Lazy",
                 "ILazyStreaming",
                 GeneratorTestHelper.GeneratedKind.Proxy));
-        var returnIndex = proxy.IndexOf("return __dotboxd_enumerate();", StringComparison.Ordinal);
+        var returnIndex = proxy.IndexOf("return __dotboxd_enumerate(ct);", StringComparison.Ordinal);
         var reserveIndex = proxy.IndexOf("ReserveStream(global::DotBoxD.Services.Protocol.RpcStreamKind.Binary)", StringComparison.Ordinal);
         returnIndex.Should().BeGreaterOrEqualTo(0);
         reserveIndex.Should().BeGreaterThan(returnIndex);
         proxy.Should().Contain("async global::System.Collections.Generic.IAsyncEnumerable<int> __dotboxd_enumerate");
         proxy.Should().Contain("[global::System.Runtime.CompilerServices.EnumeratorCancellation]");
+        proxy.Should().Contain("__dotboxd_streams, __dotboxd_enumerationCt)");
         proxy.Should().Contain(".GetAsyncEnumerator(__dotboxd_enumerationCt)");
         proxy.Should().NotContain("TaskAsyncEnumerableExtensions");
         proxy.Should().Contain("this._invoker.ReleaseStream(__dotboxd_stream1)");
@@ -237,7 +238,7 @@ public sealed class StreamingGeneratorTests
                 GeneratorTestHelper.GeneratedKind.Proxy));
         var signature = "global::System.Collections.Generic.IAsyncEnumerable<int> EchoAsync(global::System.IO.Stream bytes, global::System.Threading.CancellationToken ct = default)";
         var signatureIndex = proxy.IndexOf(signature, StringComparison.Ordinal);
-        var returnIndex = proxy.IndexOf("return __dotboxd_enumerate();", signatureIndex, StringComparison.Ordinal);
+        var returnIndex = proxy.IndexOf("return __dotboxd_enumerate(ct);", signatureIndex, StringComparison.Ordinal);
         var reserveIndex = proxy.IndexOf("ReserveStream(global::DotBoxD.Services.Protocol.RpcStreamKind.Binary)", signatureIndex, StringComparison.Ordinal);
 
         signatureIndex.Should().BeGreaterOrEqualTo(0);

@@ -69,6 +69,32 @@ public sealed class PluginAnalyzerHookChainTests
     }
 
     [Fact]
+    public void Lowers_a_zero_property_event_chain()
+    {
+        var result = RunGenerator("""
+            using DotBoxD.Plugins;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public sealed record TickEvent;
+
+            public static class Usage
+            {
+                    public static void Configure(HookRegistry hooks)
+                        => hooks.On<TickEvent>()
+                        .Run((e, ctx) => ctx.Messages.Send("clock", "tick"));
+            }
+            """);
+
+        Assert.DoesNotContain(result.Diagnostics, d => d.Id == "DBXK100");
+        Assert.Contains(
+            result.GeneratedTrees,
+            tree => tree.ToString().Contains("HookChain_", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Lowers_a_multi_Where_plus_Select_chain_substituting_the_projection()
     {
         var result = RunGenerator("""
@@ -267,7 +293,76 @@ public sealed class PluginAnalyzerHookChainTests
             tree => tree.ToString().Contains("HookChain_", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Does_not_lower_hook_chain_with_unsupported_event_property_type()
+    {
+        var result = RunGenerator("""
+            using System;
+            using DotBoxD.Plugins;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public sealed record MixedEvent(string TargetId, DateTime When);
+
+            public static class Usage
+            {
+                    public static void Configure(HookRegistry hooks)
+                        => hooks.On<MixedEvent>()
+                        .Run((e, ctx) => ctx.Messages.Send(e.TargetId, "hit"));
+            }
+            """);
+
+        Assert.DoesNotContain(
+            result.GeneratedTrees,
+            tree => tree.ToString().Contains("HookChain_", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Interceptor_attribute_coexists_with_existing_definition()
+    {
+        var output = RunGeneratorCompilation("""
+            using DotBoxD.Plugins;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Abstractions;
+
+            namespace System.Runtime.CompilerServices
+            {
+                [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = true)]
+                internal sealed class InterceptsLocationAttribute : global::System.Attribute
+                {
+                    public InterceptsLocationAttribute(int version, string data) { }
+                }
+            }
+
+            namespace Sample
+            {
+
+                public sealed record ExistingAttributeEvent(string TargetId);
+
+                public static class Usage
+                {
+                    public static void Configure(HookRegistry hooks)
+                        => hooks.On<ExistingAttributeEvent>()
+                            .Run((e, ctx) => ctx.Messages.Send(e.TargetId, "hit"));
+                }
+            }
+            """);
+
+        Assert.DoesNotContain(
+            output.GetDiagnostics(),
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error &&
+                diagnostic.Id is "CS0101" or "CS0111");
+    }
+
     private static GeneratorDriverRunResult RunGenerator(string source)
+        => RunGeneratorCore(source).Result;
+
+    private static Compilation RunGeneratorCompilation(string source)
+        => RunGeneratorCore(source).Output;
+
+    private static (Compilation Output, GeneratorDriverRunResult Result) RunGeneratorCore(string source)
     {
         var compilation = CSharpCompilation.Create(
             "DotBoxDHookChainGeneratorTest",
@@ -280,8 +375,8 @@ public sealed class PluginAnalyzerHookChainTests
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             [new PluginPackageGenerator().AsSourceGenerator()],
             parseOptions: ParseOptions);
-        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out _);
-        return driver.GetRunResult();
+        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out _);
+        return (output, driver.GetRunResult());
     }
 
     private static IEnumerable<MetadataReference> TrustedPlatformReferences()

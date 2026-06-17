@@ -16,6 +16,7 @@ public sealed class FileDeadlineTests
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson("settings.txt"));
         var policy = SandboxPolicyBuilder.Create()
+            .AllowRuntimeAsync()
             .GrantFileRead(temp.Path, 1024)
             .WithWallTime(TimeSpan.Zero)
             .WithFuel(5_000)
@@ -35,6 +36,7 @@ public sealed class FileDeadlineTests
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(FileWriteJson("result.txt", "value"));
         var policy = SandboxPolicyBuilder.Create()
+            .AllowRuntimeAsync()
             .GrantFileWrite(temp.Path, 1024, allowCreate: true, allowOverwrite: false)
             .WithWallTime(TimeSpan.Zero)
             .WithFuel(5_000)

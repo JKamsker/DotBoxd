@@ -330,11 +330,14 @@ internal sealed class ExpressionEvaluator
             "map.remove" => CollectionOperations.RemoveMapValue(Arg(args, 1), Arg(args, 0), _context),
             "record.new" => CollectionOperations.BuildRecord(args, _context),
             "record.get" => CollectionOperations.GetRecordField(Arg(args, 1), Arg(args, 0), _context),
+            "numeric.toI64" => NumericToInt64(Arg(args, 0)),
+            "numeric.toF64" => NumericToDouble(Arg(args, 0)),
             _ => SandboxValue.Unit
         };
         return call.Name is "list.empty" or "list.of" or "list.count" or "list.get" or "list.add"
             or "map.empty" or "map.containsKey" or "map.get" or "map.set" or "map.remove"
-            or "record.new" or "record.get";
+            or "record.new" or "record.get"
+            or "numeric.toI64" or "numeric.toF64";
     }
 
     public ValueTask<SandboxValue> InvokeFunctionAsync(SandboxFunction function, IReadOnlyList<SandboxValue> args)
@@ -350,4 +353,17 @@ internal sealed class ExpressionEvaluator
         => index < args.Count
             ? args[index]
             : throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "call arity mismatch"));
+
+    private static SandboxValue NumericToInt64(SandboxValue value)
+        => value switch {
+            I32Value number => SandboxValue.FromInt64(number.Value),
+            _ => throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "expected I32 value"))
+        };
+
+    private static SandboxValue NumericToDouble(SandboxValue value)
+        => value switch {
+            I32Value number => SandboxValue.FromDouble(number.Value),
+            I64Value number => SandboxValue.FromDouble(number.Value),
+            _ => throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "expected I32 or I64 value"))
+        };
 }

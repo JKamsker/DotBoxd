@@ -19,7 +19,7 @@ namespace DotBoxD.Kernels.Tests.Compiled.SideEffectParity;
 /// Tests confirm:
 ///
 /// 1. Async-yield sink: both interpreted and compiled (AllowFallback=false) deliver once
-///    with matching audit — sync-over-async AwaitBinding path is exercised compiled too.
+///    with matching audit through the compiled async worker pump.
 /// 2. Async-yield sink: compiled run does NOT fall back (ActualMode==Compiled) and matches
 ///    the interpreted run on delivery, audit, and ResourceUsage.
 /// 3. Throwing async sink: maps to BindingFailure in BOTH modes (same error code, no leak).
@@ -34,8 +34,8 @@ public sealed class CompiledSideEffectAsyncSinkParityTests
     // -----------------------------------------------------------------------
     // Test 1: async-yield sink delivers exactly once under BOTH interpreted and
     //         compiled (no fallback) modes. PR #27 runs the side-effecting binding
-    //         through the generic CallBinding dispatcher, exercising the
-    //         sync-over-async AwaitBinding path on the compiled side too.
+    //         through the generic CallBinding dispatcher; the #31 fix now drives
+    //         pending compiled awaits through the compiled async worker pump.
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -497,8 +497,8 @@ public sealed class CompiledSideEffectAsyncSinkParityTests
 
     /// <summary>
     /// A sink whose SendAsync always yields to the thread pool before recording,
-    /// so the CompiledBindingDispatcher AwaitBinding sync-over-async path is exercised
-    /// on any code path that invokes the binding.
+    /// so the CompiledBindingDispatcher pending-await path is exercised on any
+    /// code path that invokes the binding.
     /// </summary>
     private sealed class AsyncSinkAsyncSinkParityTests_AsyncYieldSink : IPluginMessageSink
     {

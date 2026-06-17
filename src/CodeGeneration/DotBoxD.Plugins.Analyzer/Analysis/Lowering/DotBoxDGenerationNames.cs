@@ -191,12 +191,14 @@ internal static class DotBoxDGenerationNames
         public const string Alloc = "Alloc";
         public const string HostStateRead = "HostStateRead";
         public const string HostStateWrite = "HostStateWrite";
+        public const string Concurrency = "Concurrency";
         public const string Audit = "Audit";
     }
 
     public static class Capabilities
     {
         public const string MessageWriteReason = "send host messages";
+        public const string RuntimeAsync = "dotboxd.runtime.async";
 
         /// <summary>The capability a <c>ctx.Messages.Send</c> requires — kept in step with
         /// <c>DotBoxD.Plugins.Runtime.PluginMessageBindings.CapabilityId</c>.</summary>

@@ -30,7 +30,7 @@ public static class HostMessagePolicyBuilderExtensions
             parameters["maxMessageLength"] = limit.ToString(CultureInfo.InvariantCulture);
         }
 
-        return builder.Grant(
+        return builder.AllowRuntimeAsync().Grant(
             PluginMessageBindings.CapabilityId,
             parameters,
             SandboxEffect.HostStateWrite | SandboxEffect.Audit);

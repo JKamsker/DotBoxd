@@ -2,15 +2,21 @@ namespace DotBoxD.Plugins.Runtime.Lifecycle;
 
 internal sealed class LiveStateSyncRegistry(Func<Type, LiveUpdateMode> getUpdateMode)
 {
+    private readonly object _gate = new();
     private readonly List<LiveStateSynchronizer> _synchronizers = [];
 
     public void Register(Type stateType, Action synchronize)
-        => _synchronizers.Add(new LiveStateSynchronizer(stateType, synchronize));
+    {
+        lock (_gate)
+        {
+            _synchronizers.Add(new LiveStateSynchronizer(stateType, synchronize));
+        }
+    }
 
     public IReadOnlyList<Action> SynchronizeForInput()
     {
         List<Action>? deferredUpdates = null;
-        foreach (var synchronizer in _synchronizers)
+        foreach (var synchronizer in Snapshot())
         {
             var mode = getUpdateMode(synchronizer.StateType);
             if ((mode & LiveUpdateMode.AsyncSet) == LiveUpdateMode.AsyncSet)
@@ -27,12 +33,20 @@ internal sealed class LiveStateSyncRegistry(Func<Type, LiveUpdateMode> getUpdate
 
     public void SynchronizeForFlush()
     {
-        foreach (var synchronizer in _synchronizers)
+        foreach (var synchronizer in Snapshot())
         {
             if ((getUpdateMode(synchronizer.StateType) & LiveUpdateMode.AsyncSet) == LiveUpdateMode.AsyncSet)
             {
                 synchronizer.Synchronize();
             }
+        }
+    }
+
+    private LiveStateSynchronizer[] Snapshot()
+    {
+        lock (_gate)
+        {
+            return [.. _synchronizers];
         }
     }
 

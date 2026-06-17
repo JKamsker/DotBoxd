@@ -295,6 +295,11 @@ internal sealed class ExpressionEmitter
 
     private void EmitCall(CallExpression call)
     {
+        if (NumericConversionCallEmitter.TryEmit(call, _stackPlan, _il, EmitAs))
+        {
+            return;
+        }
+
         if (PureBindingCallEmitter.TryEmit(call, _il, e => EmitAs(e, StackKind.Boxed)))
         {
             return;

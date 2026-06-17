@@ -3,6 +3,8 @@ using DotBoxD.Kernels.Sandbox;
 
 namespace DotBoxD.Kernels.Policies;
 
+using DotBoxD.Kernels;
+
 public sealed class SandboxPolicyBuilder
 {
     private readonly List<CapabilityGrant> _grants = [];
@@ -99,6 +101,16 @@ public sealed class SandboxPolicyBuilder
     {
         _allowedEffects |= SandboxEffect.Audit;
         _grants.Add(new CapabilityGrant("log.write", new Dictionary<string, string>()));
+        return this;
+    }
+
+    public SandboxPolicyBuilder AllowRuntimeAsync()
+        => GrantRuntimeAsyncIfMissing();
+
+    public SandboxPolicyBuilder AllowIntraKernelReentrancy()
+    {
+        _allowedEffects |= SandboxEffect.Concurrency;
+        _grants.Add(new CapabilityGrant(RuntimeCapabilityIds.Reentrant, new Dictionary<string, string>()));
         return this;
     }
 
@@ -218,6 +230,7 @@ public sealed class SandboxPolicyBuilder
     public SandboxPolicy Build()
     {
         ResourceLimitValidation.Validate(_limits);
+        ValidateRuntimeCapabilities();
         return new SandboxPolicy(
             _policyId,
             _allowedEffects,
@@ -227,6 +240,44 @@ public sealed class SandboxPolicyBuilder
             _logicalNow,
             _randomSeed,
             new HashSet<string>(_declaredOpaqueIdTypes, StringComparer.Ordinal));
+    }
+
+    private void ValidateRuntimeCapabilities()
+    {
+        var grantsAsync = false;
+        var grantsReentrant = false;
+        foreach (var grant in _grants)
+        {
+            grantsAsync |= string.Equals(grant.Id, RuntimeCapabilityIds.Async, StringComparison.Ordinal);
+            grantsReentrant |= string.Equals(grant.Id, RuntimeCapabilityIds.Reentrant, StringComparison.Ordinal);
+        }
+
+        if (grantsReentrant)
+        {
+            throw new InvalidOperationException(
+                $"{RuntimeCapabilityIds.Reentrant} is reserved until intra-kernel state isolation ships.");
+        }
+
+        if (_deterministic && grantsAsync)
+        {
+            throw new InvalidOperationException(
+                "deterministic policies cannot grant runtime async until serialized async limits are configurable.");
+        }
+    }
+
+    private SandboxPolicyBuilder GrantRuntimeAsyncIfMissing()
+    {
+        _allowedEffects |= SandboxEffect.Concurrency;
+        for (var i = 0; i < _grants.Count; i++)
+        {
+            if (string.Equals(_grants[i].Id, RuntimeCapabilityIds.Async, StringComparison.Ordinal))
+            {
+                return this;
+            }
+        }
+
+        _grants.Add(new CapabilityGrant(RuntimeCapabilityIds.Async, new Dictionary<string, string>()));
+        return this;
     }
 
     private static void ThrowIfNegative(long value, string paramName)

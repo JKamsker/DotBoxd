@@ -16,9 +16,9 @@ public sealed partial class SandboxHost
         Debug.Assert(Enum.IsDefined(options.Mode));
 
         ThrowIfDisposed();
-        if (TryGetRevokedCapability(plan, entrypoint, out var revoked))
+        if (TryGetCapabilityDenial(plan, entrypoint, out var denial))
         {
-            return ValueTask.FromResult(Publish(CapabilityRevokedResult(plan, options, revoked)));
+            return ValueTask.FromResult(Publish(CapabilityDeniedResult(plan, options, denial)));
         }
 
         if (options.RequireDeterministic && !plan.Policy.Deterministic)

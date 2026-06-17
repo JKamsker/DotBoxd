@@ -163,6 +163,14 @@ public static class PluginDiagnosticCodes
             "The manifest declares an unsupported execution mode.",
             "The manifest execution mode is not a defined mode value.",
             "Set the manifest execution mode to a supported value and re-upload the package."),
+        new("DBXK043", PluginDiagnosticPhase.PreparedPackageValidation, PluginDiagnosticAudience.HostOperator,
+            "The plugin requires async runtime capability but the install policy does not grant it.",
+            "The verified entrypoint references an async binding and the policy lacks dotboxd.runtime.async.",
+            "Call AllowRuntimeAsync() on the sandbox policy, or remove the async binding from the plugin."),
+        new("DBXK044", PluginDiagnosticPhase.PreparedPackageValidation, PluginDiagnosticAudience.PluginAuthor,
+            "The manifest required capabilities do not match the verified entrypoint capabilities.",
+            "The requiredCapabilities list was stripped, stale, duplicated, or self-asserted capabilities not present in the verified plan.",
+            "Regenerate the package so requiredCapabilities is derived from the verified kernel source."),
         new("DBXK050", PluginDiagnosticPhase.PackageValidation, PluginDiagnosticAudience.PluginAuthor,
             "A manifest text value is empty, contains control characters, or looks like a forbidden CLR/IL descriptor.",
             "A manifest identifier is blank, has control characters, or resembles a forbidden CLR or IL descriptor.",
@@ -203,6 +211,10 @@ public static class PluginDiagnosticCodes
             "A server extension entrypoint returns an unsupported type.",
             "The verified RPC entrypoint's return type is not a supported sandbox type (scalar, list, or record).",
             "Return a supported scalar, a List of one, or a DTO/record built from supported field types."),
+        new("DBXK073", PluginDiagnosticPhase.PackageValidation, PluginDiagnosticAudience.PluginAuthor,
+            "A kernel RPC service manifest also declares hook subscriptions.",
+            "RPC packages are request/response entrypoints and must not be installable as event hook kernels in the same manifest.",
+            "Remove subscriptions from the RPC manifest, or package the event hook kernel separately without rpcEntrypoint."),
     ];
 
     private static readonly IReadOnlyDictionary<string, PluginDiagnosticReference> ReferencesByCode =

@@ -27,7 +27,12 @@ public sealed class Fix_PAL_0037_Tests
             builder.UseCompilerIfAvailable();
         });
         var module = await host.ImportJsonAsync(CallDoubleJson);
-        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create()
+                .AllowRuntimeAsync()
+                .WithFuel(1_000)
+                .Build());
 
         var compiled = await host.ExecuteAsync(
             plan,
@@ -53,7 +58,12 @@ public sealed class Fix_PAL_0037_Tests
             builder.UseCompilerIfAvailable();
         });
         var module = await host.ImportJsonAsync(CallDoubleJson);
-        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create()
+                .AllowRuntimeAsync()
+                .WithFuel(1_000)
+                .Build());
 
         var interpreted = await host.ExecuteAsync(
             plan,
@@ -98,11 +108,15 @@ public sealed class Fix_PAL_0037_Tests
 
     private static BindingDescriptor AsynchronousDoubleBinding()
         => DoubleBinding(async (_, args, _) =>
-        {
-            await Task.Yield();
-            var value = ((I32Value)args[0]).Value;
-            return SandboxValue.FromInt32(value * 2);
-        });
+            {
+                await Task.Yield();
+                var value = ((I32Value)args[0]).Value;
+                return SandboxValue.FromInt32(value * 2);
+            })
+            with
+            {
+                IsAsync = true
+            };
 
     private static BindingDescriptor DoubleBinding(BindingInvoker invoke)
         => new(

@@ -1,3 +1,4 @@
+using DotBoxD.Kernels;
 using DotBoxD.Kernels.Bindings;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Runtime;
@@ -88,8 +89,9 @@ public sealed class CompiledSideEffectMidRunRevocationTests
         var module = await host.ImportJsonAsync(ModuleJson);
         var policy = new SandboxPolicy(
             "revoke-mid-run",
-            SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateWrite | SandboxEffect.Audit,
+            SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateWrite | SandboxEffect.Concurrency | SandboxEffect.Audit,
             [
+                new CapabilityGrant(RuntimeCapabilityIds.Async, new Dictionary<string, string>()),
                 new CapabilityGrant("host.message.write", new Dictionary<string, string>()),
                 new CapabilityGrant("game.write", new Dictionary<string, string>())
             ],

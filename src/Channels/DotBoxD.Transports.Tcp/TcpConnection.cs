@@ -19,6 +19,7 @@ public sealed class TcpConnection : IRpcChannel
     private readonly TcpClient _client;
     private readonly NetworkStream _stream;
     private readonly SemaphoreSlim _sendLock = new(1, 1);
+    private readonly CancellationTokenSource _disposeCts = new();
     private readonly TimeSpan _frameReadIdleTimeout;
     private int _disposed;
 
@@ -80,9 +81,10 @@ public sealed class TcpConnection : IRpcChannel
         // StreamConnection and the inbound length check in ReceiveAsync below.
         MessageFramer.ValidateOutgoingFrame(data.Span);
 
-        await _sendLock.WaitAsync(ct).ConfigureAwait(false);
+        await WaitForSendSlotAsync(ct).ConfigureAwait(false);
         try
         {
+            ThrowIfDisposed();
             await _stream.WriteAsync(data, ct).ConfigureAwait(false);
         }
         finally
@@ -145,7 +147,8 @@ public sealed class TcpConnection : IRpcChannel
                 if (bytesRead < totalLength - 4)
                 {
                     payload.Dispose();
-                    return Payload.Empty; // Connection closed
+                    throw new InvalidDataException(
+                        $"Connection closed after {bytesRead} of {totalLength - 4} frame bytes.");
                 }
             }
             catch
@@ -232,6 +235,7 @@ public sealed class TcpConnection : IRpcChannel
             return default;
         }
 
+        _disposeCts.Cancel();
         try
         {
             _stream.Close();
@@ -242,7 +246,34 @@ public sealed class TcpConnection : IRpcChannel
             // Ignore errors during cleanup
         }
 
-        _sendLock.Dispose();
         return default;
+    }
+
+    private void ThrowIfDisposed()
+    {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            throw new ObjectDisposedException(nameof(TcpConnection));
+        }
+    }
+
+    private async Task WaitForSendSlotAsync(CancellationToken ct)
+    {
+        try
+        {
+            if (ct.CanBeCanceled)
+            {
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _disposeCts.Token);
+                await _sendLock.WaitAsync(linked.Token).ConfigureAwait(false);
+                return;
+            }
+
+            await _sendLock.WaitAsync(_disposeCts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested &&
+            Volatile.Read(ref _disposed) != 0)
+        {
+            throw new ObjectDisposedException(nameof(TcpConnection));
+        }
     }
 }

@@ -213,7 +213,9 @@ public sealed class SafeFileSystemReparsePointTests
         """;
 
     private static SandboxPolicyBuilder FilePolicyBuilder()
-        => SandboxPolicyBuilder.Create().WithWallTime(TimeSpan.FromSeconds(2));
+        => SandboxPolicyBuilder.Create()
+            .AllowRuntimeAsync()
+            .WithWallTime(TimeSpan.FromSeconds(2));
 
     private static bool TryCreateDirectoryLink(string link, string target)
     {

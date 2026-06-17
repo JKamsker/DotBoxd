@@ -135,7 +135,7 @@ internal static class LiveKernelValueFactory
             }
         }
 
-        kernel.Value.SetMany(values);
+        kernel.CommitSynchronizedLiveValues(values);
     }
 
     private static bool HasSetting(IReadOnlyList<LiveSettingDefinition> settings, string name)

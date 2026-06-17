@@ -14,7 +14,7 @@ using static DotBoxDRpcJsonLowerer;
 /// parameter is <c>HookContext</c> (the host-binding lowering marker); its block body is lowered by
 /// <see cref="DotBoxDRpcJsonLowerer"/>. Unsupported shapes produce a diagnostic and no package.
 /// </summary>
-internal static class RpcKernelModelFactory
+internal static partial class RpcKernelModelFactory
 {
     public static RpcKernelModelResult? Create(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken)
     {
@@ -37,6 +37,14 @@ internal static class RpcKernelModelFactory
         try
         {
             var method = ResolveBatchMethod(type);
+            ValidateBatchMethodParameters(method);
+            var liveSettings = PluginSymbolReader.LiveSettings(type, context.SemanticModel, cancellationToken);
+            if (ContainsUnsupported(liveSettings))
+            {
+                throw new NotSupportedException("Live settings must use supported scalar types.");
+            }
+
+            ValidateGeneratedParameterNames(method, liveSettings);
             IMethodSymbol? serviceMethod = null;
             RpcKernelClientExtensions? clientExtensions = null;
             if (serviceType is not null)
@@ -64,6 +72,7 @@ internal static class RpcKernelModelFactory
                 bodyJson,
                 effects,
                 capabilities,
+                liveSettings,
                 serviceType,
                 serviceMethod,
                 clientExtensions,
@@ -106,6 +115,19 @@ internal static class RpcKernelModelFactory
         return found ?? throw new NotSupportedException("A server extension must declare one public batch method whose last parameter is HookContext.");
     }
 
+    private static void ValidateBatchMethodParameters(IMethodSymbol method)
+    {
+        for (var i = 0; i < method.Parameters.Length - 1; i++)
+        {
+            var parameter = method.Parameters[i];
+            if (parameter.RefKind != RefKind.None)
+            {
+                throw new NotSupportedException(
+                    $"Server extension parameter '{parameter.Name}' cannot use ref, in, or out modifiers.");
+            }
+        }
+    }
+
     private static BlockSyntax MethodBody(IMethodSymbol method, CancellationToken cancellationToken)
     {
         foreach (var reference in method.DeclaringSyntaxReferences)
@@ -126,6 +148,7 @@ internal static class RpcKernelModelFactory
         string bodyJson,
         SortedSet<string> effects,
         SortedSet<string> capabilities,
+        EquatableArray<LiveSettingModel> liveSettings,
         INamedTypeSymbol? serviceType,
         IMethodSymbol? serviceMethod,
         RpcKernelClientExtensions? clientExtensions,
@@ -146,6 +169,11 @@ internal static class RpcKernelModelFactory
             parameters.Add($"{{\"name\":{Str(parameter.Name)},\"type\":{DotBoxDRpcTypeMapper.JsonType(parameter.Type)}}}");
         }
 
+        foreach (var setting in liveSettings)
+        {
+            parameters.Add($"{{\"name\":{Str(setting.Name)},\"type\":{LiveSettingJsonType(setting.Type)}}}");
+        }
+
         var json =
             "{" +
             "\"manifest\":{" +
@@ -153,7 +181,7 @@ internal static class RpcKernelModelFactory
             $"\"contract\":{Str(type.Name)}," +
             "\"mode\":\"Auto\"," +
             $"\"effects\":[{JoinStrings(effects)}]," +
-            "\"liveSettings\":[]," +
+            $"\"liveSettings\":[{JoinLiveSettings(liveSettings)}]," +
             "\"subscriptions\":[]," +
             $"\"requiredCapabilities\":[{JoinStrings(capabilities)}]," +
             $"\"rpcEntrypoint\":{Str(methodName)}}}," +
@@ -170,7 +198,9 @@ internal static class RpcKernelModelFactory
 
         return new GeneratedPluginPackage(
             HintName(type),
-            BuildSource(type, json, serviceType, serviceMethod, clientExtensions, graftType, method));
+            BuildSource(type, json, serviceType, serviceMethod, clientExtensions, graftType, method),
+            Namespace(type),
+            PackageName(type.Name));
     }
 
     private static string BuildSource(
@@ -314,10 +344,14 @@ internal static class RpcKernelModelFactory
     private static string HintName(INamedTypeSymbol type)
     {
         var packageName = PackageName(type.Name);
-        return type.ContainingNamespace.IsGlobalNamespace
+        var ns = Namespace(type);
+        return string.IsNullOrEmpty(ns)
             ? packageName + ".g.cs"
-            : type.ContainingNamespace.ToDisplayString().Replace("@", "") + "." + packageName + ".g.cs";
+            : ns.Replace("@", "") + "." + packageName + ".g.cs";
     }
+
+    private static string Namespace(INamedTypeSymbol type)
+        => type.ContainingNamespace.IsGlobalNamespace ? "" : type.ContainingNamespace.ToDisplayString();
 
     private static RpcKernelModelResult Fail(ClassDeclarationSyntax declaration, string message)
         => new(null, PluginKernelDiagnostic.Create(declaration.Identifier, message));

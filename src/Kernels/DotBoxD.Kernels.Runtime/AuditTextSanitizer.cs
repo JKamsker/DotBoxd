@@ -25,7 +25,7 @@ public static partial class AuditTextSanitizer
         RedactionOptions);
 
     private static readonly Regex SecretPathSegmentRegex = new(
-        "(?i)(^|[-_.])(authorization|bearer|credential|key|password|passwd|pwd|secret|session|signature|token)([-_.]|$)",
+        "(?i)(^|[-_.])(authorization|bearer|credential|key|password|passwd|pwd|secret|session|signature|token)([-_.=:]|$)",
         RedactionOptions);
 
     public static string SanitizeAndRedact(string message)
@@ -86,26 +86,76 @@ public static partial class AuditTextSanitizer
         for (var i = 0; i < segments.Length; i++)
         {
             var segment = segments[i];
-            var isSecret = IsSecretSegment(segment);
-            if (previousWasSecretMarker || isSecret)
+            var redaction = ClassifySecretPathSegment(segment);
+            if (previousWasSecretMarker || redaction.Redact)
             {
                 segments[i] = Redacted;
             }
 
-            previousWasSecretMarker = isSecret;
+            previousWasSecretMarker = redaction.RedactFollowingSegment;
         }
 
         return string.Join("/", segments);
     }
 
-    private static bool IsSecretSegment(string segment)
+    private static (bool Redact, bool RedactFollowingSegment) ClassifySecretPathSegment(string segment)
     {
-        var normalized = segment.Trim();
+        var normalized = DecodePathSegment(segment).Trim();
         if (normalized.Length == 0)
         {
-            return false;
+            return (false, false);
         }
 
-        return SecretPathSegmentRegex.IsMatch(normalized);
+        var decodedSegments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (decodedSegments.Length > 1)
+        {
+            for (var i = 0; i < decodedSegments.Length; i++)
+            {
+                if (SecretPathSegmentRegex.IsMatch(decodedSegments[i]))
+                {
+                    return (true, false);
+                }
+            }
+
+            return (false, false);
+        }
+
+        if (!SecretPathSegmentRegex.IsMatch(normalized))
+        {
+            return (false, false);
+        }
+
+        return (true, IsStandaloneSecretMarker(normalized));
+    }
+
+    private static string DecodePathSegment(string segment)
+    {
+        try
+        {
+            return global::System.Uri.UnescapeDataString(segment);
+        }
+        catch (global::System.UriFormatException)
+        {
+            return segment;
+        }
+    }
+
+    private static bool IsStandaloneSecretMarker(string segment)
+    {
+        var normalized = segment.Trim().Trim('-', '_', '.');
+        return normalized.Equals("authorization", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("bearer", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("credential", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("key", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("password", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("passwd", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("pwd", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("secret", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("session", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("signature", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("token", StringComparison.OrdinalIgnoreCase) ||
+               normalized.EndsWith("-key", StringComparison.OrdinalIgnoreCase) ||
+               normalized.EndsWith("_key", StringComparison.OrdinalIgnoreCase) ||
+               normalized.EndsWith(".key", StringComparison.OrdinalIgnoreCase);
     }
 }

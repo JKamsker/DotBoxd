@@ -88,7 +88,7 @@ internal static class HookChainModelFactory
         }
 
         var eventProperties = PluginSymbolReader.EventProperties(eventType);
-        if (eventProperties.Count == 0)
+        if (ContainsUnsupported(eventProperties))
         {
             return null;
         }
@@ -99,55 +99,28 @@ internal static class HookChainModelFactory
         var capabilities = new SortedSet<string>(StringComparer.Ordinal);
         var effects = new SortedSet<string>(StringComparer.Ordinal);
 
-        // Forward pass: track the projected-element binding; record each Where with the context that
-        // was current at its position (event mode, or projected after a Select).
-        var whereStages = new List<(ExpressionSyntax Body, DotBoxDExpressionLoweringContext Context)>();
-        DotBoxDExpressionModel? projected = null;
-        var shouldHandleEventParam = DotBoxDGenerationNames.DefaultEventParameterName;
-        var terminalElementTypeFullName = eventType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-        foreach (var stage in stages)
-        {
-            var (elementParam, _) = LambdaParameters(stage.Lambda);
-            if (elementParam is null || stage.Lambda.ExpressionBody is not { } body)
-            {
-                return null;
-            }
-
-            var context = Context(elementParam, eventProperties, projected, model, cancellationToken, capabilities, effects);
-            if (stage.IsSelect)
-            {
-                projected = DotBoxDExpressionModelFactory.Create(body, context);
-                terminalElementTypeFullName = GeneratedRemoteHookChainFallback.TypeFullName(
-                    body,
-                    model,
-                    cancellationToken,
-                    projected.Type);
-            }
-            else
-            {
-                whereStages.Add((body, context));
-                if (projected is null)
-                {
-                    shouldHandleEventParam = elementParam;
-                }
-            }
-        }
-
-        // AND-compose the Where conditions in source order: fold from the last so the first Where is
-        // the outermost branch (if w0 then (if w1 then ... else false) else false).
-        var shouldHandle = DotBoxDConditionBodyModelFactory.AlwaysTrue();
-        for (var i = whereStages.Count - 1; i >= 0; i--)
-        {
-            shouldHandle = DotBoxDConditionBodyModelFactory.CreateBranch(
-                whereStages[i].Body,
-                shouldHandle,
-                DotBoxDConditionBodyModelFactory.AlwaysFalse(),
-                whereStages[i].Context);
-        }
-
-        var handleContext = Context(terminalElementParam, eventProperties, projected, model, cancellationToken, capabilities, effects);
-        var handle = DotBoxDHandleModelFactory.CreateFromSend(sendInvocation, handleContext);
+        var terminalElementTypeFullName = TerminalElementTypeFullName(
+            stages,
+            eventProperties,
+            eventType,
+            model,
+            cancellationToken);
+        var shouldHandle = HookChainStageLowerer.CreateShouldHandle(
+            stages,
+            eventProperties,
+            model,
+            cancellationToken,
+            capabilities,
+            effects);
+        var handle = HookChainStageLowerer.CreateHandle(
+            stages,
+            terminalElementParam,
+            sendInvocation,
+            eventProperties,
+            model,
+            cancellationToken,
+            capabilities,
+            effects);
 
         var chainId = HookChainIdentity.Compute(invocation);
         var kernelName = "HookChain_" + chainId;
@@ -157,7 +130,7 @@ internal static class HookChainModelFactory
             KernelName: kernelName,
             PackageName: kernelName + "PluginPackage",
             EventName: eventType.MetadataName,
-            EventParameterName: shouldHandleEventParam,
+            EventParameterName: DotBoxDGenerationNames.DefaultEventParameterName,
             ContextParameterName: terminalContextParam,
             HandleEventParameterName: terminalElementParam,
             HandleContextParameterName: terminalContextParam,
@@ -228,6 +201,43 @@ internal static class HookChainModelFactory
             terminalElementTypeFullName,
             packageFullName,
             generatedRemoteKind.Value);
+    }
+
+    private static string TerminalElementTypeFullName(
+        IReadOnlyList<HookChainStage> stages,
+        EquatableArray<EventPropertyModel> eventProperties,
+        INamedTypeSymbol eventType,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        DotBoxDExpressionModel? projected = null;
+        var terminalElementTypeFullName = eventType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        foreach (var stage in stages)
+        {
+            if (!stage.IsSelect)
+            {
+                continue;
+            }
+
+            var (elementParam, _) = LambdaParameters(stage.Lambda);
+            if (elementParam is null || stage.Lambda.ExpressionBody is not { } body)
+            {
+                throw new NotSupportedException();
+            }
+
+            var scratchCapabilities = new SortedSet<string>(StringComparer.Ordinal);
+            var scratchEffects = new SortedSet<string>(StringComparer.Ordinal);
+            projected = DotBoxDExpressionModelFactory.Create(
+                body,
+                Context(elementParam, eventProperties, projected, model, cancellationToken, scratchCapabilities, scratchEffects));
+            terminalElementTypeFullName = GeneratedRemoteHookChainFallback.TypeFullName(
+                body,
+                model,
+                cancellationToken,
+                projected.Type);
+        }
+
+        return terminalElementTypeFullName;
     }
 
     private static DotBoxDExpressionLoweringContext Context(
@@ -337,5 +347,18 @@ internal static class HookChainModelFactory
             default:
                 return (null, null);
         }
+    }
+
+    private static bool ContainsUnsupported(EquatableArray<EventPropertyModel> eventProperties)
+    {
+        for (var i = 0; i < eventProperties.Count; i++)
+        {
+            if (eventProperties[i].Type == DotBoxDGenerationNames.ManifestTypes.Unsupported)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

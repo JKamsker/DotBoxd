@@ -40,7 +40,7 @@ public static class SafeHttpPolicyBuilderExtensions
             "http or https");
         var requestBytes = maxRequestBytes ?? 1_048_576;
         var timeoutMs = TimeoutMilliseconds(timeout);
-        return builder.Grant(
+        return builder.AllowRuntimeAsync().Grant(
             "net.http.get",
             new Dictionary<string, string>
             {

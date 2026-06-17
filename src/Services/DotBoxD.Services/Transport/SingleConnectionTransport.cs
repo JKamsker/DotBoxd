@@ -111,6 +111,8 @@ public sealed class SingleConnectionServerTransport : IServerTransport
 
     public Task StopAsync(CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
+        Interlocked.Exchange(ref _started, 0);
         _stopped.TrySetResult(true);
         return Task.CompletedTask;
     }

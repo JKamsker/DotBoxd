@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$root = Resolve-Path (Join-Path $PSScriptRoot "..")
+$root = Resolve-Path (Join-Path $PSScriptRoot "../..")
 $justificationPath = Join-Path $root ".config/code-enforcer/justifications.json"
 $violations = [System.Collections.Generic.List[string]]::new()
 $warnings = [System.Collections.Generic.List[string]]::new()

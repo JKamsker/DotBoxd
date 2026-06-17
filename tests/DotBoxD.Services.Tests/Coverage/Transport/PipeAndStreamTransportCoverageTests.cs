@@ -94,6 +94,33 @@ public sealed class NamedPipeClientTransportCoverageTests
     }
 
     [Fact]
+    public async Task DisposeAsync_CancelsConnectAsync_BeforeStreamPublished()
+    {
+        var transport = new NamedPipeClientTransport(CreatePipeName());
+        using var cleanup = new CancellationTokenSource();
+        var connectTask = transport.ConnectAsync(cleanup.Token);
+
+        await transport.DisposeAsync();
+
+        Exception? observed = null;
+        try
+        {
+            observed = await Record.ExceptionAsync(() => connectTask.WaitAsync(TimeSpan.FromSeconds(1)));
+        }
+        finally
+        {
+            cleanup.Cancel();
+            await Record.ExceptionAsync(() => connectTask.WaitAsync(Timeout));
+        }
+
+        Assert.True(
+            observed is OperationCanceledException or ObjectDisposedException,
+            $"Expected disposal to complete the pending connect, but observed {observed?.GetType().Name ?? "success"}.");
+        Assert.False(transport.IsConnected);
+        Assert.Null(transport.Connection);
+    }
+
+    [Fact]
     public async Task ConnectAsync_Throws_WhenAlreadyDisposed()
     {
         var transport = new NamedPipeClientTransport(CreatePipeName());
@@ -185,6 +212,14 @@ public sealed class NamedPipeServerTransportCoverageTests
     {
         var ex = Assert.Throws<ArgumentOutOfRangeException>(
             () => new NamedPipeServerTransport(CreatePipeName(), maxAllowedServerInstances: 0));
+        Assert.Equal("value", ex.ParamName);
+    }
+
+    [Fact]
+    public void Constructor_Throws_WhenMaxAllowedInstancesExceedsPlatformLimit()
+    {
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(
+            () => new NamedPipeServerTransport(CreatePipeName(), maxAllowedServerInstances: 255));
         Assert.Equal("value", ex.ParamName);
     }
 

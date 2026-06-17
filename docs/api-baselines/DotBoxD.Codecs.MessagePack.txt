@@ -1,0 +1,14 @@
+# DotBoxD.Kernels public API baseline
+# Package: DotBoxD.Codecs.MessagePack
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+public MessagePackRpcSerializer() : this(CreateDefaultOptions())
+public MessagePackRpcSerializer(MessagePackSerializerOptions options)
+public MessagePackSerializerOptions Options => _options
+public object? Deserialize(ReadOnlyMemory<byte> data, Type type)
+public sealed class MessagePackRpcSerializer : ISerializer
+public static MessagePackRpcSerializer CreateUnityCompatible()
+public static MessagePackRpcSerializer CreateWithResolver(IFormatterResolver resolver) =>
+public static MessagePackSerializerOptions CreateOptions(params IFormatterResolver[] resolvers)
+public T Deserialize<T>(ReadOnlyMemory<byte> data)
+public void Serialize<T>(System.Buffers.IBufferWriter<byte> writer, T value)

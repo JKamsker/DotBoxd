@@ -74,7 +74,7 @@ namespace Snap.Nested
                     }
                     catch
                     {
-                        registry.Release("ISubSnap", __subId);
+                        await registry.ReleaseAsync("ISubSnap", __subId).ConfigureAwait(false);
                         throw;
                     }
                     return;
@@ -135,7 +135,7 @@ namespace Snap.Nested
                     }
                     catch
                     {
-                        registry.Release("ISubSnap", __subId);
+                        await registry.ReleaseAsync("ISubSnap", __subId).ConfigureAwait(false);
                         throw;
                     }
                     return;

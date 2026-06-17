@@ -64,6 +64,7 @@ internal static class DotBoxDHandleModelFactory
         RequireString(target, "targetId");
         RequireString(message, "message");
         loweringContext.Capabilities?.Add(DotBoxDGenerationNames.Capabilities.MessageWrite);
+        loweringContext.Capabilities?.Add(DotBoxDGenerationNames.Capabilities.RuntimeAsync);
         return new DotBoxDHandleModel(target, message);
     }
 

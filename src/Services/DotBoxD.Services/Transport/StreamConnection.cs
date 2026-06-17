@@ -13,10 +13,12 @@ public sealed class StreamConnection : IRpcChannel
     private readonly Stream _stream;
     private readonly bool _ownsStream;
     private readonly SemaphoreSlim _sendLock = new(1, 1);
+    private readonly CancellationTokenSource _disposeCts = new();
     private readonly string _remoteEndpoint;
     private readonly int _maxMessageSize;
     private readonly TimeSpan _frameReadIdleTimeout;
     private readonly byte[] _lengthBuffer = new byte[4];
+    private int _activeReceives;
     private int _disposed;
 
     /// <summary>
@@ -75,7 +77,7 @@ public sealed class StreamConnection : IRpcChannel
         ThrowIfDisposed();
         MessageFramer.ValidateOutgoingFrame(data.Span, _maxMessageSize);
 
-        await _sendLock.WaitAsync(ct).ConfigureAwait(false);
+        await WaitForSendSlotAsync(ct).ConfigureAwait(false);
         try
         {
             ThrowIfDisposed();
@@ -101,42 +103,46 @@ public sealed class StreamConnection : IRpcChannel
 
     public async Task<Payload> ReceiveAsync(CancellationToken ct = default)
     {
-        ThrowIfDisposed();
-
-        var read = await ReadExactAsync(_lengthBuffer.AsMemory(0, 4), ct, timeFirstRead: false).ConfigureAwait(false);
-        if (read < 4)
-        {
-            return Payload.Empty;
-        }
-
-        var totalLength = BinaryPrimitives.ReadInt32LittleEndian(_lengthBuffer.AsSpan(0, 4));
-        ValidateIncomingLength(totalLength);
-
-        var frame = Payload.Rent(totalLength);
-        BinaryPrimitives.WriteInt32LittleEndian(frame.Memory.Span.Slice(0, 4), totalLength);
-
+        Interlocked.Increment(ref _activeReceives);
         try
         {
-            read = await ReadExactAsync(frame.Memory.Slice(4), ct, timeFirstRead: true).ConfigureAwait(false);
-            if (read < totalLength - 4)
+            ThrowIfDisposed();
+
+            var read = await ReadExactAsync(_lengthBuffer.AsMemory(0, 4), ct, timeFirstRead: false)
+                .ConfigureAwait(false);
+            if (read < 4)
+            {
+                return Payload.Empty;
+            }
+
+            var totalLength = BinaryPrimitives.ReadInt32LittleEndian(_lengthBuffer.AsSpan(0, 4));
+            ValidateIncomingLength(totalLength);
+
+            var frame = Payload.Rent(totalLength);
+            BinaryPrimitives.WriteInt32LittleEndian(frame.Memory.Span.Slice(0, 4), totalLength);
+
+            try
+            {
+                read = await ReadExactAsync(frame.Memory.Slice(4), ct, timeFirstRead: true).ConfigureAwait(false);
+                if (read < totalLength - 4)
+                {
+                    frame.Dispose();
+                    throw new InvalidDataException(
+                        $"Connection closed after {read + 4} of {totalLength} frame bytes.");
+                }
+            }
+            catch
             {
                 frame.Dispose();
-                if (read == 0)
-                {
-                    return Payload.Empty;
-                }
-
-                throw new InvalidDataException(
-                    $"Connection closed after {read + 4} of {totalLength} frame bytes.");
+                throw;
             }
-        }
-        catch
-        {
-            frame.Dispose();
-            throw;
-        }
 
-        return frame;
+            return frame;
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _activeReceives);
+        }
     }
 
     /// <summary>
@@ -149,12 +155,11 @@ public sealed class StreamConnection : IRpcChannel
             return;
         }
 
-        if (_ownsStream)
+        _disposeCts.Cancel();
+        if (_ownsStream || Volatile.Read(ref _activeReceives) != 0)
         {
             await DisposeStreamAsync(_stream).ConfigureAwait(false);
         }
-
-        _sendLock.Dispose();
     }
 
     public ValueTask DisposeAsync() => new(CloseAsync());
@@ -162,6 +167,26 @@ public sealed class StreamConnection : IRpcChannel
     private void ThrowIfDisposed()
     {
         if (Volatile.Read(ref _disposed) != 0)
+        {
+            throw new ObjectDisposedException(nameof(StreamConnection));
+        }
+    }
+
+    private async Task WaitForSendSlotAsync(CancellationToken ct)
+    {
+        try
+        {
+            if (ct.CanBeCanceled)
+            {
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _disposeCts.Token);
+                await _sendLock.WaitAsync(linked.Token).ConfigureAwait(false);
+                return;
+            }
+
+            await _sendLock.WaitAsync(_disposeCts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested &&
+            Volatile.Read(ref _disposed) != 0)
         {
             throw new ObjectDisposedException(nameof(StreamConnection));
         }

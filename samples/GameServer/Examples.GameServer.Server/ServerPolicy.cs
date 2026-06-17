@@ -54,6 +54,11 @@ internal static class ServerPolicy
             builder.Grant(CombatThreat, new { }, SandboxEffect.HostStateRead);
         }
 
+        if (requiredCapabilities.Contains(RuntimeCapabilityIds.Async, StringComparer.Ordinal))
+        {
+            builder.AllowRuntimeAsync();
+        }
+
         return builder.Build();
     }
 

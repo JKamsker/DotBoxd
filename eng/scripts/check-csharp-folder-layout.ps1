@@ -10,6 +10,27 @@ function Normalize-PathText([string] $path) {
     return $path.Replace("\", "/").Trim("/")
 }
 
+function Add-Justifications($set, $entries, [string[]] $propertyNames) {
+    foreach ($entry in @($entries)) {
+        if ($null -eq $entry) {
+            continue
+        }
+
+        if ($entry -is [string]) {
+            [void] $set.Add((Normalize-PathText $entry))
+            continue
+        }
+
+        foreach ($propertyName in $propertyNames) {
+            $property = $entry.PSObject.Properties[$propertyName]
+            if ($null -ne $property -and -not [string]::IsNullOrWhiteSpace($property.Value)) {
+                [void] $set.Add((Normalize-PathText ([string] $property.Value)))
+                break
+            }
+        }
+    }
+}
+
 function Test-GeneratedFile([string] $fullPath) {
     $name = [System.IO.Path]::GetFileName($fullPath)
     if ($name -match "\.(g|generated|designer)\.cs$") {
@@ -39,6 +60,16 @@ while (-not (Test-Path -LiteralPath (Join-Path $root "DotBoxD.slnx"))) {
 
     $root = $parent
 }
+
+$justificationPath = Join-Path $root ".config/code-enforcer/justifications.json"
+$justifiedFolders = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$justifiedRootFolders = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+if (Test-Path -LiteralPath $justificationPath) {
+    $justifications = Get-Content -Raw -LiteralPath $justificationPath | ConvertFrom-Json
+    Add-Justifications $justifiedFolders $justifications.folders @("path", "folder")
+    Add-Justifications $justifiedRootFolders $justifications.rootFolders @("path", "folder", "rootFolder")
+}
+
 if ([string]::IsNullOrWhiteSpace($Path) -or $Path -eq ".") {
     $scopePath = $root
     $relativeScope = "."
@@ -83,7 +114,7 @@ foreach ($file in @($gitFiles)) {
 
 foreach ($folder in $filesByFolder.Keys) {
     $count = $filesByFolder[$folder].Count
-    if ($count -gt $MaxFilesPerFolder) {
+    if ($count -gt $MaxFilesPerFolder -and -not $justifiedFolders.Contains($folder)) {
         $violations.Add("$folder contains $count C# files, exceeding the folder limit of $MaxFilesPerFolder.")
     }
 }
@@ -101,7 +132,7 @@ if ((Test-Path -LiteralPath $scopePath -PathType Container) -and
 
 foreach ($projectFolder in $projectFolders) {
     $count = if ($filesByFolder.ContainsKey($projectFolder)) { $filesByFolder[$projectFolder].Count } else { 0 }
-    if ($count -gt $MaxFilesInProjectRoot) {
+    if ($count -gt $MaxFilesInProjectRoot -and -not $justifiedRootFolders.Contains($projectFolder)) {
         $violations.Add(
             "$projectFolder contains a .csproj and $count C# files, exceeding the project-root limit of $MaxFilesInProjectRoot.")
     }

@@ -128,9 +128,12 @@ internal sealed class LocalStackKindPlanner
     }
 
     private SandboxType? InferCallType(CallExpression call)
-        => call.Name == "list.count"
-            ? SandboxType.I32
-            : _functionAnalysis.TryGetValue(call.Name, out var analysis)
+        => call.Name switch {
+            "list.count" => SandboxType.I32,
+            "numeric.toI64" => SandboxType.I64,
+            "numeric.toF64" => SandboxType.F64,
+            _ => _functionAnalysis.TryGetValue(call.Name, out var analysis)
                 ? analysis.ReturnType
-                : _bindings.TryGet(call.Name, out var binding) ? binding.ReturnType : null;
+                : _bindings.TryGet(call.Name, out var binding) ? binding.ReturnType : null
+        };
 }

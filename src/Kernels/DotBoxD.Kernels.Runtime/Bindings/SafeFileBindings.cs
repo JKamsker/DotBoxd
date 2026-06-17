@@ -21,7 +21,10 @@ public static class SafeFileBindings
                 .ConfigureAwait(false);
             return SandboxValue.FromString(text);
         },
-        CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)));
+        CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)))
+    {
+        IsAsync = true
+    };
 
     public static BindingDescriptor WriteText { get; } = new(
         "file.writeText",
@@ -41,5 +44,8 @@ public static class SafeFileBindings
                 cancellationToken).ConfigureAwait(false);
             return SandboxValue.Unit;
         },
-        CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)));
+        CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)))
+    {
+        IsAsync = true
+    };
 }

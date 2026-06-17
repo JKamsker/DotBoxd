@@ -28,7 +28,8 @@
       "version": "1.0.0",
       "parameters": ["SandboxPath"],
       "returnType": "String",
-      "effects": ["Cpu", "Alloc", "FileRead"],
+      "effects": ["Cpu", "Alloc", "FileRead", "Concurrency"],
+      "isAsync": true,
       "requiredCapability": "file.read",
       "costModel": {
         "baseFuel": 50,
@@ -48,7 +49,8 @@
       "version": "1.0.0",
       "parameters": ["String", "String"],
       "returnType": "Unit",
-      "effects": ["Cpu", "Alloc", "HostStateWrite", "Audit"],
+      "effects": ["Cpu", "Alloc", "HostStateWrite", "Concurrency", "Audit"],
+      "isAsync": true,
       "requiredCapability": "host.message.write",
       "costModel": {
         "baseFuel": 5,
@@ -74,4 +76,4 @@ The normalized manifest is hashed and included in:
 - compiled DLL cache key
 - audit logs
 
-Changing a binding's effects, signature, capability, safety level, or compiled target invalidates compiled artifacts.
+Changing a binding's effects, signature, async flag, capability, safety level, or compiled target invalidates compiled artifacts.

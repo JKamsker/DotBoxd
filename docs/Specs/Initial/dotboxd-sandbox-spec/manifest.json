@@ -29,8 +29,8 @@
     },
     {
       "path": "checklists/release-readiness.md",
-      "sha256": "cdfa0b5aac79e69c61221406b6ab903be32fc0ea8f17bdf6c6e264b9955d6f80",
-      "bytes": 2169
+      "sha256": "bbd0357c938b0c373ea8890845e6b5603dd0d69f638f1fa72544b0b133c31c51",
+      "bytes": 2173
     },
     {
       "path": "checklists/security-review.md",
@@ -39,13 +39,13 @@
     },
     {
       "path": "examples/example-binding-manifest.md",
-      "sha256": "b7eff0e8c1ed24951e3c533b5a493c3ec320749205581b727dee9ef4cfd9786d",
-      "bytes": 1955
+      "sha256": "3cfc6343656ae972bb7af76001347f3c481c970dc3d61e179a90550e48759bae",
+      "bytes": 2043
     },
     {
       "path": "examples/example-ir.md",
-      "sha256": "0ff4247cfbc5e45ba85390f5fcaa49b32ed031a3a36e6203d96f132e9e97b585",
-      "bytes": 2405
+      "sha256": "3720fbea7c347ecad0e5870ec94b4e0bd8e5b1d37bd50ebdd0f28d54bd84f879",
+      "bytes": 2502
     },
     {
       "path": "operations/error-codes.md",
@@ -54,8 +54,8 @@
     },
     {
       "path": "operations/runbook.md",
-      "sha256": "9f0ff21c927bc57a5fd25faa121936e967bb75ff94ff098598921b74d59f63a0",
-      "bytes": 4515
+      "sha256": "c07904039599a36526866d1f6a49ad8e55d123b1c6856fbac6eb4833b7241801",
+      "bytes": 4531
     },
     {
       "path": "README.md",
@@ -84,8 +84,8 @@
     },
     {
       "path": "spec/03-architecture.md",
-      "sha256": "20e4f6f02a5eb850e0eb79dc26471fb685637e468cceb20510611c99a6ee7a69",
-      "bytes": 9631
+      "sha256": "1f7bf0b6377dc07e3cf5133821d373a34c9d75ea884d9750cdbddd296f1fcd86",
+      "bytes": 9688
     },
     {
       "path": "spec/04-ir-language.md",
@@ -99,13 +99,13 @@
     },
     {
       "path": "spec/06-effects-capabilities.md",
-      "sha256": "54246880b7a095078d1828ce50e88e848b476741eb7d96efbcd58f96b9ad824b",
-      "bytes": 6278
+      "sha256": "a4ff6a959ab7b2ceba88635d4cb81ab823a0c95dec78c5226d88b922dc2bdb88",
+      "bytes": 6386
     },
     {
       "path": "spec/07-bindings.md",
-      "sha256": "436775980ab52005c2b95d31363768d4420c00e1dd1e13d7a384c6db6453df94",
-      "bytes": 8430
+      "sha256": "b133ead0ce8a90decb63f0066f037b42cacba007f1c22fd74b2d8bac0b345b9c",
+      "bytes": 9165
     },
     {
       "path": "spec/08-runtime-safe-apis.md",
@@ -144,13 +144,13 @@
     },
     {
       "path": "spec/15-testing-red-team.md",
-      "sha256": "ea4df41c9fbff293128a5bee9c0fec211405aa68e365241b168e22f819528f0f",
-      "bytes": 7765
+      "sha256": "f4f1888e2ed92965ef21b73b05aba5c1bf29d89fdd10eb834d1674ebec719137",
+      "bytes": 7769
     },
     {
       "path": "spec/16-public-api.md",
-      "sha256": "b42401e76571ea0de6399f41ed8bc1de0fe5570fc0dda12b549ccb8313e22a85",
-      "bytes": 24426
+      "sha256": "3024a904dbc3fa1bcc78249c03594578a0db20c9791cfbd028bfab5e87d92e8f",
+      "bytes": 25284
     },
     {
       "path": "spec/17-implementation-plan.md",

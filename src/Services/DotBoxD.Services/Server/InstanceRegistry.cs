@@ -75,6 +75,16 @@ public sealed class InstanceRegistry : IInstanceRegistry
     }
 
     /// <inheritdoc />
+    public async ValueTask ReleaseAsync(string serviceName, string instanceId)
+    {
+        if (_entries.TryRemove((serviceName, instanceId), out var instance))
+        {
+            Interlocked.Decrement(ref _count);
+            await DisposeInstanceAsync(instance).ConfigureAwait(false);
+        }
+    }
+
+    /// <inheritdoc />
     public void ReleaseAll()
     {
         // TryRemove each key (Keys is a snapshot on ConcurrentDictionary) so every instance is

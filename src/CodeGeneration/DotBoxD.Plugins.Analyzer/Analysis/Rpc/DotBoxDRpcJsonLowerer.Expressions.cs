@@ -1,4 +1,5 @@
 using System.Globalization;
+using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -18,41 +19,56 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         _cancellationToken.ThrowIfCancellationRequested();
         if (_model.GetConstantValue(expression, _cancellationToken) is { HasValue: true } constant)
         {
-            return LiteralJson(constant.Value);
+            if (constant.Value is string)
+            {
+                Allocates = true;
+            }
+
+            return LiteralJson(expression, constant.Value);
         }
 
-        switch (expression)
+        var lowered = expression switch
         {
-            case ParenthesizedExpressionSyntax parenthesized:
-                return LowerExpression(parenthesized.Expression);
-            case AwaitExpressionSyntax awaited:
-                return LowerExpression(awaited.Expression);
-            case IdentifierNameSyntax identifier:
-                return Var(identifier.Identifier.ValueText);
-            case PrefixUnaryExpressionSyntax unary:
-                return LowerUnary(unary);
-            case BinaryExpressionSyntax binary:
-                return BinaryJson(JsonBinaryOperator(binary), LowerExpression(binary.Left), LowerExpression(binary.Right));
-            case InvocationExpressionSyntax invocation:
-                return LowerInvocation(invocation);
-            case ObjectCreationExpressionSyntax creation:
-                return LowerRecordCreation(creation);
-            case ElementAccessExpressionSyntax element:
-                return LowerElementAccess(element);
-            case MemberAccessExpressionSyntax member:
-                return LowerMemberAccess(member);
-            default:
-                throw new NotSupportedException($"Server extension expression '{expression}' is not supported.");
-        }
+            ParenthesizedExpressionSyntax parenthesized => LowerExpression(parenthesized.Expression),
+            AwaitExpressionSyntax awaited => LowerExpression(awaited.Expression),
+            IdentifierNameSyntax identifier => LowerIdentifier(identifier),
+            PrefixUnaryExpressionSyntax unary => LowerUnary(unary),
+            BinaryExpressionSyntax binary => BinaryJson(
+                JsonBinaryOperator(binary),
+                LowerExpression(binary.Left),
+                LowerExpression(binary.Right)),
+            InvocationExpressionSyntax invocation => LowerInvocation(invocation),
+            ObjectCreationExpressionSyntax creation => LowerRecordCreation(creation),
+            ElementAccessExpressionSyntax element => LowerElementAccess(element),
+            MemberAccessExpressionSyntax member => LowerMemberAccess(member),
+            _ => throw new NotSupportedException($"Server extension expression '{expression}' is not supported.")
+        };
+        return ApplyNumericConversion(expression, lowered);
     }
 
     private string LowerUnary(PrefixUnaryExpressionSyntax unary)
         => unary.Kind() switch
         {
-            SyntaxKind.LogicalNotExpression => Obj(("op", Str("not")), ("operand", LowerExpression(unary.Operand))),
-            SyntaxKind.UnaryMinusExpression => Obj(("op", Str("-")), ("operand", LowerExpression(unary.Operand))),
+            SyntaxKind.LogicalNotExpression => Obj(("unary", Str("not")), ("operand", LowerExpression(unary.Operand))),
+            SyntaxKind.UnaryMinusExpression => Obj(("unary", Str("-")), ("operand", LowerExpression(unary.Operand))),
             _ => throw new NotSupportedException($"Server extension unary '{unary.Kind()}' is not supported.")
         };
+
+    private string LiteralJson(ExpressionSyntax expression, object? value)
+    {
+        var converted = _model.GetTypeInfo(expression, _cancellationToken).ConvertedType;
+        if (converted?.SpecialType == SpecialType.System_Int64 && value is int i)
+        {
+            return LiteralJson((long)i);
+        }
+
+        if (converted?.SpecialType == SpecialType.System_Double && value is IConvertible convertible)
+        {
+            return LiteralJson(convertible.ToDouble(CultureInfo.InvariantCulture));
+        }
+
+        return LiteralJson(value);
+    }
 
     private string LowerInvocation(InvocationExpressionSyntax invocation)
     {
@@ -66,13 +82,11 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             AddBindingMetadata(binding);
 
-            var args = new List<string>();
-            foreach (var argument in invocation.ArgumentList.Arguments)
-            {
-                args.Add(LowerExpression(argument.Expression));
-            }
-
-            return Call(binding.BindingId, null, args.ToArray());
+            var args = LowerArgumentsInParameterOrder(
+                invocation.ArgumentList.Arguments,
+                method.Parameters,
+                $"Host binding '{binding.BindingId}'");
+            return Call(binding.BindingId, null, args);
         }
 
         throw new NotSupportedException($"Server extension call '{invocation}' is not a host binding.");
@@ -92,16 +106,18 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         }
 
         AddBindingMetadata(binding);
-        var args = new List<string> { handleId };
-        foreach (var argument in invocation.ArgumentList.Arguments)
-        {
-            args.Add(LowerExpression(argument.Expression));
-        }
+        var loweredArgs = LowerArgumentsInParameterOrder(
+            invocation.ArgumentList.Arguments,
+            method.Parameters,
+            $"Host binding '{binding.BindingId}'");
+        var args = new string[loweredArgs.Length + 1];
+        args[0] = handleId;
+        loweredArgs.CopyTo(args, 1);
 
-        return Call(binding.BindingId, null, args.ToArray());
+        return Call(binding.BindingId, null, args);
     }
 
-    private void AddBindingMetadata((string BindingId, string? Capability, IReadOnlyList<string> Effects) binding)
+    private void AddBindingMetadata((string BindingId, string? Capability, IReadOnlyList<string> Effects, bool IsAsync) binding)
     {
         if (binding.Capability is { Length: > 0 } capability)
         {
@@ -111,6 +127,12 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         foreach (var effect in binding.Effects)
         {
             _effects.Add(effect);
+        }
+
+        if (binding.IsAsync || binding.Effects.Contains(DotBoxDGenerationNames.Effects.Concurrency))
+        {
+            _effects.Add(DotBoxDGenerationNames.Effects.Concurrency);
+            _capabilities.Add(DotBoxDGenerationNames.Capabilities.RuntimeAsync);
         }
     }
 
@@ -169,6 +191,12 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         Allocates = true;
         var fields = DotBoxDRpcTypeMapper.RecordFields(named);
         var args = new string[fields.Count];
+        if (creation.ArgumentList is { Arguments.Count: > 0 } && creation.Initializer is not null)
+        {
+            throw new NotSupportedException(
+                $"Server extension 'new {named.Name}' cannot combine constructor arguments and object initializers.");
+        }
+
         if (creation.ArgumentList is { Arguments.Count: > 0 } argumentList)
         {
             if (argumentList.Arguments.Count != fields.Count)
@@ -176,9 +204,28 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 throw new NotSupportedException($"Server extension constructor for '{named.Name}' must pass one argument per field.");
             }
 
-            for (var i = 0; i < fields.Count; i++)
+            if (_model.GetSymbolInfo(creation, _cancellationToken).Symbol is not IMethodSymbol constructor ||
+                constructor.Parameters.Length != fields.Count)
             {
-                args[i] = LowerExpression(argumentList.Arguments[i].Expression);
+                throw new NotSupportedException($"Server extension constructor for '{named.Name}' must pass one argument per field.");
+            }
+
+            var lowered = LowerArgumentsInParameterOrder(
+                argumentList.Arguments,
+                constructor.Parameters,
+                $"Server extension constructor for '{named.Name}'");
+            var assigned = new bool[fields.Count];
+            for (var i = 0; i < constructor.Parameters.Length; i++)
+            {
+                var fieldIndex = ConstructorFieldIndex(fields, constructor.Parameters[i], named);
+                if (assigned[fieldIndex])
+                {
+                    throw new NotSupportedException(
+                        $"Server extension constructor for '{named.Name}' must map one argument per field.");
+                }
+
+                args[fieldIndex] = lowered[i];
+                assigned[fieldIndex] = true;
             }
         }
         else if (creation.Initializer is { } initializer)
@@ -234,6 +281,21 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         throw new NotSupportedException($"Server extension '{named.Name}' has no field '{name}'.");
     }
 
+    private static int ConstructorFieldIndex(
+        IReadOnlyList<IPropertySymbol> fields,
+        IParameterSymbol parameter,
+        INamedTypeSymbol named)
+    {
+        var index = RpcDtoFieldMatcher.FieldIndex(fields, parameter);
+        if (index >= 0)
+        {
+            return index;
+        }
+
+        throw new NotSupportedException(
+            $"Server extension DTO '{named.Name}' must expose a constructor matching its public fields.");
+    }
+
     private ITypeSymbol TypeOf(ExpressionSyntax expression)
         => _model.GetTypeInfo(expression, _cancellationToken).Type
            ?? throw new NotSupportedException($"Server extension could not resolve the type of '{expression}'.");
@@ -272,71 +334,4 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             SyntaxKind.LogicalOrExpression => "or",
             _ => throw new NotSupportedException($"Server extension operator '{binary.OperatorToken.ValueText}' is not supported.")
         };
-
-    private static string LiteralJson(object? value)
-        => value switch
-        {
-            bool b => Obj(("bool", b ? "true" : "false")),
-            int i => Obj(("i32", i.ToString(CultureInfo.InvariantCulture))),
-            long l => Obj(("i64", l.ToString(CultureInfo.InvariantCulture))),
-            double d => Obj(("f64", d.ToString("R", CultureInfo.InvariantCulture))),
-            string s => Obj(("string", Str(s))),
-            _ => throw new NotSupportedException($"Server extension literal '{value}' is not supported.")
-        };
-
-    internal static string Var(string name) => Obj(("var", Str(name)));
-
-    private static string I32(int value) => Obj(("i32", value.ToString(CultureInfo.InvariantCulture)));
-
-    private static string BinaryJson(string op, string left, string right)
-        => Obj(("op", Str(op)), ("left", left), ("right", right));
-
-    private static string Call(string name, string? genericType, params string[] args)
-    {
-        var fields = new List<(string, string)>(3) { ("call", Str(name)) };
-        if (genericType is not null)
-        {
-            fields.Add(("genericType", genericType));
-        }
-
-        fields.Add(("args", "[" + string.Join(",", args) + "]"));
-        return Obj(fields.ToArray());
-    }
-
-    private static string SetStatement(string name, string value)
-        => Obj(("op", Str("set")), ("name", Str(name)), ("value", value));
-
-    private static string Obj(params (string Key, string Value)[] fields)
-    {
-        var parts = new string[fields.Length];
-        for (var i = 0; i < fields.Length; i++)
-        {
-            parts[i] = Str(fields[i].Key) + ":" + fields[i].Value;
-        }
-
-        return "{" + string.Join(",", parts) + "}";
-    }
-
-    internal static string Str(string value)
-    {
-        var builder = new System.Text.StringBuilder(value.Length + 2);
-        builder.Append('"');
-        foreach (var ch in value)
-        {
-            switch (ch)
-            {
-                case '"': builder.Append("\\\""); break;
-                case '\\': builder.Append("\\\\"); break;
-                case '\n': builder.Append("\\n"); break;
-                case '\r': builder.Append("\\r"); break;
-                case '\t': builder.Append("\\t"); break;
-                default:
-                    builder.Append(ch);
-                    break;
-            }
-        }
-
-        builder.Append('"');
-        return builder.ToString();
-    }
 }

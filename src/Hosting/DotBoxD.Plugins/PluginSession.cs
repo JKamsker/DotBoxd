@@ -98,7 +98,18 @@ public sealed class PluginSession : IDisposable, IAsyncDisposable
                 ]);
             }
 
-            kernel = _server.Kernels.Get(pluginId);
+            if (!_server.Kernels.TryGet(pluginId, out var ownedKernel) ||
+                !ReferenceEquals(ownedKernel.OwnerId, this))
+            {
+                _owned.Remove(pluginId);
+                throw new SandboxValidationException([
+                    new SandboxDiagnostic(
+                        "DBXK061",
+                        $"plugin id '{pluginId}' is not owned by this session.")
+                ]);
+            }
+
+            kernel = ownedKernel;
         }
         finally
         {
@@ -115,12 +126,44 @@ public sealed class PluginSession : IDisposable, IAsyncDisposable
         _gate.Wait();
         try
         {
-            return Volatile.Read(ref _disposed) == 0 && _owned.Contains(pluginId);
+            if (Volatile.Read(ref _disposed) != 0 || !_owned.Contains(pluginId))
+            {
+                return false;
+            }
+
+            if (_server.Kernels.TryGet(pluginId, out var kernel) &&
+                ReferenceEquals(kernel.OwnerId, this))
+            {
+                return true;
+            }
+
+            _owned.Remove(pluginId);
+            return false;
         }
         finally
         {
             _gate.Release();
         }
+    }
+
+    public bool Uninstall(string pluginId)
+    {
+        ArgumentNullException.ThrowIfNull(pluginId);
+        _gate.Wait();
+        try
+        {
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            if (!_owned.Remove(pluginId))
+            {
+                return false;
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
+        return _server.UninstallOwned(this, pluginId);
     }
 
     public void Dispose()

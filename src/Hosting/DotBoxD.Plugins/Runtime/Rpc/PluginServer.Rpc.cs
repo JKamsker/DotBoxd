@@ -45,4 +45,15 @@ public sealed partial class PluginServer
 
         return ServerExtensionProxy.Create<TService>(Kernels.Get(pluginId));
     }
+
+    private void ClearServerExtensionRegistrations(string pluginId)
+    {
+        foreach (var pair in _serverExtensions)
+        {
+            if (string.Equals(pair.Value, pluginId, StringComparison.Ordinal))
+            {
+                _serverExtensions.TryRemove(pair.Key, out _);
+            }
+        }
+    }
 }

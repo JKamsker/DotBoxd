@@ -91,6 +91,53 @@ public sealed class RpcKernelGenerationTests
         }
         """;
 
+    private const string AsyncHostBindingSource = """
+        using System.Collections.Generic;
+        using DotBoxD.Kernels;
+        using DotBoxD.Kernels.Sandbox;
+        using DotBoxD.Plugins;
+        using DotBoxD.Abstractions;
+
+        namespace Sample;
+
+        public interface IGameWorld
+        {
+            [HostBinding("host.world.getLevel", "game.world.monster.read.level", SandboxEffect.Cpu | SandboxEffect.HostStateRead, IsAsync = true)]
+            int GetLevel(int id);
+        }
+
+        [ServerExtension("async-level")]
+        public sealed partial class AsyncLevelKernel
+        {
+            public int SumLevels(List<int> monsterIds, HookContext ctx)
+            {
+                var total = 0;
+                foreach (var id in monsterIds)
+                {
+                    total += ctx.Host<IGameWorld>().GetLevel(id);
+                }
+
+                return total;
+            }
+        }
+        """;
+
+    private const string ControlStringSource = """
+        using DotBoxD.Plugins;
+        using DotBoxD.Abstractions;
+
+        namespace Sample;
+
+        [ServerExtension("control-string")]
+        public sealed partial class ControlStringKernel
+        {
+            public string Text(HookContext ctx)
+            {
+                return "\b\f";
+            }
+        }
+        """;
+
     [Fact]
     public async Task A_generated_batch_kernel_installs_and_returns_a_list_of_dtos_in_one_roundtrip()
     {
@@ -137,6 +184,62 @@ public sealed class RpcKernelGenerationTests
         AssertKill(list.Values[1], 21, false);
     }
 
+    [Fact]
+    public void Async_host_binding_metadata_derives_runtime_async_manifest_requirements()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create(
+            AsyncHostBindingSource,
+            "Sample.AsyncLevelPluginPackage");
+
+        Assert.Contains("game.world.monster.read.level", package.Manifest.RequiredCapabilities);
+        Assert.Contains(RuntimeCapabilityIds.Async, package.Manifest.RequiredCapabilities);
+        Assert.Contains("Concurrency", package.Manifest.Effects);
+    }
+
+    [Fact]
+    public async Task String_literals_escape_json_control_characters()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create(
+            ControlStringSource,
+            "Sample.ControlStringPluginPackage");
+
+        using var server = PluginServer.Create(defaultPolicy: PurePolicy());
+        var kernel = await server.InstallServerExtensionAsync(package);
+
+        var result = await kernel.InvokeServerExtensionAsync([]);
+
+        var text = Assert.IsType<StringValue>(result);
+        Assert.Equal("\b\f", text.Value);
+    }
+
+    [Theory]
+    [InlineData("double.NaN")]
+    [InlineData("double.PositiveInfinity")]
+    [InlineData("double.NegativeInfinity")]
+    public void Non_finite_double_literals_are_rejected_by_rpc_analyzer(string literal)
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics($$"""
+            using DotBoxD.Plugins;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            [ServerExtension("bad-f64")]
+            public sealed partial class BadF64Kernel
+            {
+                public double Read(HookContext ctx)
+                {
+                    return {{literal}};
+                }
+            }
+            """);
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("finite", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static void AssertKill(SandboxValue value, int expectedId, bool expectedSuccess)
     {
         var record = Assert.IsType<RecordValue>(value);
@@ -177,6 +280,14 @@ public sealed class RpcKernelGenerationTests
         => SandboxPolicyBuilder.Create()
             .GrantLogging()
             .Grant("game.world.monster.write.*", new { }, SandboxEffect.HostStateWrite)
+            .WithFuel(100_000)
+            .WithMaxHostCalls(10_000)
+            .WithWallTime(TimeSpan.FromSeconds(10))
+            .Build();
+
+    private static SandboxPolicy PurePolicy()
+        => SandboxPolicyBuilder.Create()
+            .GrantLogging()
             .WithFuel(100_000)
             .WithMaxHostCalls(10_000)
             .WithWallTime(TimeSpan.FromSeconds(10))

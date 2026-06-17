@@ -32,6 +32,7 @@ public sealed class GenericBindingBoundaryTests
         var plan = await host.PrepareAsync(
             module,
             SandboxPolicyBuilder.Create()
+                .AllowRuntimeAsync()
                 .WithWallTime(TimeSpan.FromMilliseconds(50))
                 .WithFuel(1_000)
                 .Build());
@@ -95,7 +96,8 @@ public sealed class GenericBindingBoundaryTests
                 await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
                 return SandboxValue.FromInt32(1);
             },
-            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(Kernels.Runtime.CompiledRuntime.CallBinding)));
+            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(Kernels.Runtime.CompiledRuntime.CallBinding)))
+        { IsAsync = true };
 
     private static BindingDescriptor SpuriousCanceledBinding()
         => new(

@@ -1,3 +1,4 @@
+using DotBoxD.Kernels.Bindings;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
 
@@ -30,9 +31,11 @@ internal static class InterpreterBindingCaller
         var descriptor = context.Bindings.GetDescriptor(id);
         InterpreterTrace.WriteBindingCall(context, options, moduleHash, functionId, descriptor);
         var auditCheckpoint = context.AuditCheckpoint();
+        using var grantClock = context.BeginBindingGrantClockScope(context.Policy.GrantClock);
         try
         {
             context.ChargeBindingCall(descriptor);
+            EnsureAsyncGrant(context, descriptor);
         }
         catch (SandboxRuntimeException ex)
         {
@@ -45,7 +48,11 @@ internal static class InterpreterBindingCaller
         {
             timeout = context.CreateWallTimeToken();
             using var returnCredits = context.BeginBindingReturnCreditScope();
-            var value = await descriptor.Invoke(context, args, timeout.Token).ConfigureAwait(false);
+            var pending = descriptor.Invoke(context, args, timeout.Token);
+            var value = pending.IsCompleted
+                ? pending.GetAwaiter().GetResult()
+                : await AwaitPendingAsync(context, pending).ConfigureAwait(false);
+            context.Checkpoint();
             value = context.ChargeBindingReturn(descriptor, value);
             context.EnsureRequiredBindingSuccessAudit(descriptor, auditCheckpoint);
             return value;
@@ -82,5 +89,31 @@ internal static class InterpreterBindingCaller
         {
             timeout?.Dispose();
         }
+    }
+
+    private static void EnsureAsyncGrant(SandboxContext context, BindingDescriptor descriptor)
+    {
+        if (!descriptor.IsAsync || context.AsyncEnabled)
+        {
+            return;
+        }
+
+        throw new SandboxRuntimeException(new SandboxError(
+            SandboxErrorCode.PermissionDenied,
+            $"binding '{descriptor.Id}' requires the '{RuntimeCapabilityIds.Async}' capability"));
+    }
+
+    private static async ValueTask<SandboxValue> AwaitPendingAsync(
+        SandboxContext context,
+        ValueTask<SandboxValue> pending)
+    {
+        if (!context.AsyncEnabled)
+        {
+            throw new SandboxRuntimeException(new SandboxError(
+                SandboxErrorCode.BindingFailure,
+                "binding returned a pending result; async capability is not granted"));
+        }
+
+        return await pending.ConfigureAwait(false);
     }
 }

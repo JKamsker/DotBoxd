@@ -130,6 +130,24 @@ public sealed class JsonDuplicatePropertyTests
           ]
         }
         """)]
+    [InlineData("""
+        {
+          "id": "dupe-opaque-id",
+          "version": "1.0.0",
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [],
+              "returnType": "Unit",
+              "body": [
+                { "op": "expr", "value": { "opaqueId": { "type": "PlayerId", "type": "TenantId", "value": "player-1" } } },
+                { "op": "return", "value": { "unit": true } }
+              ]
+            }
+          ]
+        }
+        """)]
     public void Nested_shapes_reject_duplicate_properties(string json)
     {
         var ex = Assert.Throws<SandboxValidationException>(() => JsonImporter.Import(json));

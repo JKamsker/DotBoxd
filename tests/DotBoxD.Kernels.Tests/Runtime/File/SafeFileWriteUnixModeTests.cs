@@ -20,6 +20,7 @@ public sealed class SafeFileWriteUnixModeTests
         var target = Path.Combine(temp.Path, "result.txt");
         var module = await host.ImportJsonAsync(FileWriteJson("result.txt", "written"));
         var policy = SandboxPolicyBuilder.Create()
+            .AllowRuntimeAsync()
             .GrantFileWrite(temp.Path, 1024, allowCreate: true, allowOverwrite: false)
             .WithFuel(5_000)
             .WithWallTime(TimeSpan.FromSeconds(2))

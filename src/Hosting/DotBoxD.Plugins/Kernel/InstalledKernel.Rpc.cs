@@ -46,6 +46,21 @@ public sealed partial class InstalledKernel
 
     private SandboxValue BuildRpcInput(string entrypoint, IReadOnlyList<SandboxValue> arguments)
     {
+        lock (_lifecycleGate)
+        {
+            var deferredUpdates = _liveStateSync.SynchronizeForInput();
+            var input = BuildRpcInputCore(entrypoint, arguments);
+            foreach (var update in deferredUpdates)
+            {
+                _pendingLiveUpdates.Enqueue(update);
+            }
+
+            return input;
+        }
+    }
+
+    private SandboxValue BuildRpcInputCore(string entrypoint, IReadOnlyList<SandboxValue> arguments)
+    {
         var function = FindRpcEntrypoint(entrypoint);
         var liveSettings = Manifest.LiveSettings;
         var callerCount = function.Parameters.Count - liveSettings.Count;

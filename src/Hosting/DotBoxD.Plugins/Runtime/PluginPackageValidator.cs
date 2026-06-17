@@ -28,7 +28,7 @@ internal static class PluginPackageValidator
 
         var metadataKernel = ValidateModuleKernelMetadata(package, diagnostics);
         ValidateManifestMode(package.Manifest, diagnostics);
-        ValidateManifestEffects(package.Manifest, diagnostics);
+        PluginManifestEffectValidator.Validate(package.Manifest, diagnostics);
         ValidateEntrypoints(package, PluginEntrypointIndex.Build(package), diagnostics);
         foreach (var group in package.Manifest.LiveSettings.GroupBy(s => s.Name, StringComparer.Ordinal)) {
             if (group.Skip(1).Any()) {
@@ -68,7 +68,7 @@ internal static class PluginPackageValidator
         PluginPackage package,
         ExecutionPlan plan,
         PluginEventAdapterRegistry events)
-        => PluginPreparedPackageValidator.Validate(package, plan, events, ValidateManifestEffects);
+        => PluginPreparedPackageValidator.Validate(package, plan, events, PluginManifestEffectValidator.Validate);
 
     private static string? ValidateModuleKernelMetadata(PluginPackage package, List<SandboxDiagnostic> diagnostics)
     {
@@ -135,29 +135,6 @@ internal static class PluginPackageValidator
         if (SandboxDescriptorGuards.ContainsForbiddenDescriptor(value)) {
             diagnostics.Add(new SandboxDiagnostic("DBXK050", $"Plugin manifest {description} looks like a forbidden CLR or IL descriptor."));
         }
-    }
-
-    private static SandboxEffect ValidateManifestEffects(
-        PluginManifest manifest,
-        List<SandboxDiagnostic> diagnostics)
-    {
-        var effects = SandboxEffect.None;
-        foreach (var effect in manifest.Effects) {
-            if (!Enum.TryParse<SandboxEffect>(effect, ignoreCase: false, out var parsed) ||
-                parsed == SandboxEffect.None ||
-                !parsed.ContainsOnlyKnownBits()) {
-                diagnostics.Add(new SandboxDiagnostic("DBXK040", $"Plugin manifest effect '{effect}' is not supported."));
-                continue;
-            }
-
-            effects |= parsed;
-        }
-
-        if (effects == SandboxEffect.None) {
-            diagnostics.Add(new SandboxDiagnostic("DBXK040", "Plugin manifest must declare verified effects."));
-        }
-
-        return effects;
     }
 
     private static void ValidateSetting(LiveSettingDefinition setting, List<SandboxDiagnostic> diagnostics)

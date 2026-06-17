@@ -37,6 +37,7 @@ public sealed class SafeFileSystemReparseRaceTests
         var module = await host.ImportJsonAsync(FileWriteJson(path, text));
         var policy = SandboxPolicyBuilder.Create()
             .WithWallTime(TimeSpan.FromSeconds(2))
+            .AllowRuntimeAsync()
             .GrantFileWrite(root, 1024, allowCreate: true, allowOverwrite: true)
             .WithFuel(5_000)
             .Build();

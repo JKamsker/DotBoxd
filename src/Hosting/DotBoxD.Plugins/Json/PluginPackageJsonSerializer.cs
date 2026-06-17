@@ -113,6 +113,7 @@ public static partial class PluginPackageJsonSerializer
 
     private static IReadOnlyList<string> ReadStringArray(JsonElement array, string name)
     {
+        RequireArray(array, name);
         var values = AllocateArray<string>(array, out var count);
         if (count == 0) {
             return values;
@@ -232,7 +233,10 @@ public static class PluginServerJsonExtensions
     {
         ArgumentNullException.ThrowIfNull(server);
         cancellationToken.ThrowIfCancellationRequested();
-        return server.InstallAsync(PluginPackageJsonSerializer.Import(json), policy, cancellationToken);
+        var package = PluginPackageJsonSerializer.Import(json);
+        return package.Manifest.RpcEntrypoint is not null
+            ? server.InstallServerExtensionAsync(package, policy, cancellationToken)
+            : server.InstallAsync(package, policy, cancellationToken);
     }
 
     public static ValueTask<InstalledKernel> InstallJsonAsync(
@@ -243,6 +247,9 @@ public static class PluginServerJsonExtensions
     {
         ArgumentNullException.ThrowIfNull(session);
         cancellationToken.ThrowIfCancellationRequested();
-        return session.InstallAsync(PluginPackageJsonSerializer.Import(json), policy, cancellationToken);
+        var package = PluginPackageJsonSerializer.Import(json);
+        return package.Manifest.RpcEntrypoint is not null
+            ? session.InstallServerExtensionAsync(package, policy, cancellationToken)
+            : session.InstallAsync(package, policy, cancellationToken);
     }
 }

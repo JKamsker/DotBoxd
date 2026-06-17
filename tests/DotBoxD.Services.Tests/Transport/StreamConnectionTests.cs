@@ -69,6 +69,16 @@ public class StreamConnectionTests
     }
 
     [Fact]
+    public async Task ReceiveAsync_LengthPrefixThenEof_ThrowsInvalidDataException()
+    {
+        var bytes = new byte[4];
+        BinaryPrimitives.WriteInt32LittleEndian(bytes, MessageFramer.HeaderSize + 1);
+        await using var connection = new StreamConnection(new MemoryStream(bytes));
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => connection.ReceiveAsync());
+    }
+
+    [Fact]
     public async Task SendAsync_RejectsMismatchedFrameLength()
     {
         var bytes = new byte[MessageFramer.HeaderSize];

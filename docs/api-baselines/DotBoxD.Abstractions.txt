@@ -3,17 +3,18 @@
 # Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
 
 protected static NotSupportedException ControlPlaneOnly()
+public bool IsAsync { get; set; }
 public CancellationToken CancellationToken { get; }
 public delegate ValueTask<TReturn> RemoteServerInvocation<TWorld, TCaptures, TReturn>( TWorld world, TCaptures captures)
 public HookContext(IPluginMessageSink messages, CancellationToken cancellationToken)
 public InMemoryPluginMessageSink()
 public interface IEventKernel<TEvent>
 public interface IExtensibleControl
-public interface ILiveSettingsHandle<TKernel>
+public interface ILiveSettingsHandle<TKernel> where TKernel : class, new()
 public interface IPluginEventAdapter<in TEvent>
 public interface IPluginEventValueWriter<in TEvent> : IPluginEventAdapter<TEvent>
 public interface IPluginMessageSink
-public interface IPluginServer<TWorld>
+public interface IPluginServer<TWorld> where TWorld : class
 public interface IServerExtensionClientAccessor
 public interface IServerExtensionClientRegistry : IServerExtensionWireClient
 public interface IServerExtensionWireClient
@@ -50,7 +51,7 @@ public string MethodName { get; } = methodName
 public string? Id { get; }
 public string? Id { get; } = id
 public string? Name { get; } = name
-public THost Host<THost>()
+public THost Host<THost>() where THost : class
 public Type ReceiverType { get; } = receiverType
 public Type? Grafts { get; }
 public Type? ReceiverType { get; } = receiverType

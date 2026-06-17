@@ -35,6 +35,39 @@ public sealed class PluginPackageValidationTests
     }
 
     [Fact]
+    public async Task Install_rejects_manifest_required_capabilities_that_do_not_match_verified_module()
+    {
+        var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
+        var package = FireDamagePluginPackage.Create();
+        Assert.NotEmpty(package.Manifest.RequiredCapabilities);
+        var invalid = package with { Manifest = package.Manifest with { RequiredCapabilities = [] } };
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await server.InstallAsync(invalid).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK044");
+    }
+
+    [Fact]
+    public async Task Install_rejects_manifest_required_capabilities_that_self_assert_unverified_capability()
+    {
+        var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
+        var package = FireDamagePluginPackage.Create();
+        var invalid = package with
+        {
+            Manifest = package.Manifest with
+            {
+                RequiredCapabilities = [.. package.Manifest.RequiredCapabilities, "file.write"]
+            }
+        };
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await server.InstallAsync(invalid).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK044");
+    }
+
+    [Fact]
     public async Task Install_rejects_missing_kernel_entrypoint()
     {
         var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());

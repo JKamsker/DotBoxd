@@ -19,6 +19,12 @@ public sealed partial class SandboxHost
                 .ConfigureAwait(false);
         }
 
+        if (EntrypointHasAsyncBinding(plan, entrypoint))
+        {
+            return await ExecuteInterpretedAsync(plan, entrypoint, input, options, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         var hotness = _autoHotness.BeginAttempt(plan, entrypoint);
         if (hotness.Stats.RunCount == 1)
         {

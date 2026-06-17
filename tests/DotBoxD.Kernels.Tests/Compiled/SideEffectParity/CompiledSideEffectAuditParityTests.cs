@@ -561,6 +561,7 @@ public sealed class CompiledSideEffectAuditParityTests
         });
         var module = await host.ImportJsonAsync(moduleJson);
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create()
+            .AllowRuntimeAsync()
             .GrantFileWrite(root, 1024, allowCreate: false, allowOverwrite: true)
             .WithFuel(10_000)
             .WithWallTime(TimeSpan.FromSeconds(10))

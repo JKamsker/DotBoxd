@@ -62,7 +62,7 @@ public sealed class PluginAnalyzerGeneratedPackageTests
             """);
 
         Assert.Equal("generated-runtime", package.Manifest.PluginId);
-        Assert.Equal(["Cpu", "HostStateWrite", "Audit"], package.Manifest.Effects);
+        Assert.Equal(["Cpu", "HostStateWrite", "Concurrency", "Audit"], package.Manifest.Effects);
         Assert.Collection(
             package.Manifest.LiveSettings,
             setting => AssertLiveSetting(setting, "Enabled", "bool", true),

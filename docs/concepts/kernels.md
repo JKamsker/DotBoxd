@@ -11,13 +11,17 @@ Lifecycle (via `SandboxHost` in `DotBoxD.Hosting`):
 4. **Execute** — run on one of two backends:
    - **Interpreter** (`DotBoxD.Kernels.Interpreter`) — flexible, async-friendly.
    - **Compiler** (`DotBoxD.Kernels.Compiler`) — emits verified IL; the generated assembly is checked by
-     `DotBoxD.Kernels.Verifier` before it runs.
+     `DotBoxD.Kernels.Verifier` before it runs. Compiled async bindings run through a trusted runtime
+     trampoline; generated kernel IL stays synchronous.
 
 Everything is **metered**: fuel, loop iterations, call depth, list length, output bytes, and
 per-capability quotas. A buggy or hostile kernel cannot exhaust host resources or reach disallowed
 effects. Host capabilities (files, time, random, logging, HTTP via `DotBoxD.Hosting.Http`) are exposed
 only through explicit **capability grants** — see [capabilities-and-bindings](../security/sandbox-caveats.md)
 and the full spec under [`docs/Specs/`](../Specs/).
+
+Async binding tails are also capability-gated. Policies must grant `dotboxd.runtime.async` via
+`AllowRuntimeAsync()` before kernels can call bindings that may complete asynchronously.
 
 > **Important:** the kernel sandbox is the real boundary. It is **not** the same as loading a .NET
 > plugin assembly — see [security/sandbox-caveats.md](../security/sandbox-caveats.md).

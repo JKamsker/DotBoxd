@@ -19,12 +19,18 @@ internal static class RpcKernelClientExtensionModelFactory
 
         if (property is not null)
         {
-            ValidateReceiver(property.ReceiverType, property.Name, "property");
+            property = property with
+            {
+                ServerExtensionsInterfaceType = ValidateReceiver(property.ReceiverType, property.Name, "property")
+            };
         }
 
         if (method is not null)
         {
-            ValidateReceiver(method.ReceiverType, method.Name, "method");
+            method = method with
+            {
+                ServerExtensionsInterfaceType = ValidateReceiver(method.ReceiverType, method.Name, "method")
+            };
         }
 
         if (property is not null &&
@@ -55,7 +61,7 @@ internal static class RpcKernelClientExtensionModelFactory
             var receiverType = ReceiverType(attribute, "property");
             var name = OptionalName(attribute) ?? DefaultPropertyName(kernelType.Name);
             ValidateMemberName(name, "property");
-            return new RpcKernelClientPropertyExtension(receiverType, name);
+            return new RpcKernelClientPropertyExtension(receiverType, name, ServerExtensionsInterfaceType: null);
         }
 
         return null;
@@ -73,7 +79,7 @@ internal static class RpcKernelClientExtensionModelFactory
             var receiverType = ReceiverType(attribute, "method");
             var name = OptionalName(attribute) ?? kernelMethod.Name;
             ValidateMemberName(name, "method");
-            return new RpcKernelClientMethodExtension(receiverType, name);
+            return new RpcKernelClientMethodExtension(receiverType, name, ServerExtensionsInterfaceType: null);
         }
 
         return null;
@@ -110,19 +116,33 @@ internal static class RpcKernelClientExtensionModelFactory
         }
     }
 
-    private static void ValidateReceiver(INamedTypeSymbol receiverType, string memberName, string memberKind)
+    private static INamedTypeSymbol? ValidateReceiver(INamedTypeSymbol receiverType, string memberName, string memberKind)
     {
+        EnsureAccessibleFromGeneratedClient(
+            receiverType,
+            $"Server extension client {memberKind} '{memberName}' receiver type '{receiverType.ToDisplayString()}'");
+
         if (ReceiverHasMember(receiverType, memberName))
         {
             throw new NotSupportedException(
                 $"Server extension client {memberKind} '{memberName}' cannot be generated on '{receiverType.ToDisplayString()}' because that type already declares a member named '{memberName}'.");
         }
 
-        if (!ReceiverHasServerExtensionRegistry(receiverType))
+        var registryAccess = ReceiverServerExtensionRegistryAccess(receiverType);
+        if (registryAccess is null)
         {
             throw new NotSupportedException(
                 $"Server extension client {memberKind} '{memberName}' requires '{receiverType.ToDisplayString()}' to expose an instance ServerExtensions property assignable to {RegistryType}.");
         }
+
+        if (registryAccess.InterfaceType is { } interfaceType)
+        {
+            EnsureAccessibleFromGeneratedClient(
+                interfaceType,
+                $"Server extension client {memberKind} '{memberName}' ServerExtensions property interface '{interfaceType.ToDisplayString()}'");
+        }
+
+        return registryAccess.InterfaceType;
     }
 
     private static bool ReceiverHasMember(INamedTypeSymbol receiverType, string memberName)
@@ -146,13 +166,13 @@ internal static class RpcKernelClientExtensionModelFactory
         return false;
     }
 
-    private static bool ReceiverHasServerExtensionRegistry(INamedTypeSymbol receiverType)
+    private static ServerExtensionRegistryAccess? ReceiverServerExtensionRegistryAccess(INamedTypeSymbol receiverType)
     {
         for (INamedTypeSymbol? current = receiverType; current is not null; current = current.BaseType)
         {
             if (TypeHasServerExtensionRegistry(current))
             {
-                return true;
+                return new ServerExtensionRegistryAccess(InterfaceType: null);
             }
         }
 
@@ -160,18 +180,19 @@ internal static class RpcKernelClientExtensionModelFactory
         {
             if (TypeHasServerExtensionRegistry(interfaceType))
             {
-                return true;
+                return new ServerExtensionRegistryAccess(interfaceType);
             }
         }
 
-        return false;
+        return null;
     }
 
     private static bool TypeHasServerExtensionRegistry(INamedTypeSymbol receiverType)
     {
         foreach (var member in receiverType.GetMembers("ServerExtensions"))
         {
-            if (member is IPropertySymbol { IsStatic: false } property &&
+            if (member is IPropertySymbol { IsStatic: false, GetMethod: { } getter } property &&
+                IsAccessible(getter) &&
                 IsServerExtensionClientRegistry(property.Type))
             {
                 return true;
@@ -180,6 +201,51 @@ internal static class RpcKernelClientExtensionModelFactory
 
         return false;
     }
+
+    private static bool IsAccessible(IMethodSymbol getter)
+        => IsAccessibleFromGeneratedClient(getter.DeclaredAccessibility);
+
+    private static void EnsureAccessibleFromGeneratedClient(ITypeSymbol type, string description)
+    {
+        if (!IsTypeAccessibleFromGeneratedClient(type))
+        {
+            throw new NotSupportedException($"{description} must be accessible from generated client code.");
+        }
+    }
+
+    private static bool IsTypeAccessibleFromGeneratedClient(ITypeSymbol type)
+        => type switch
+        {
+            INamedTypeSymbol named => IsNamedTypeAccessibleFromGeneratedClient(named),
+            IArrayTypeSymbol array => IsTypeAccessibleFromGeneratedClient(array.ElementType),
+            IPointerTypeSymbol pointer => IsTypeAccessibleFromGeneratedClient(pointer.PointedAtType),
+            ITypeParameterSymbol or IDynamicTypeSymbol => true,
+            _ => false
+        };
+
+    private static bool IsNamedTypeAccessibleFromGeneratedClient(INamedTypeSymbol type)
+    {
+        for (INamedTypeSymbol? current = type; current is not null; current = current.ContainingType)
+        {
+            if (!IsAccessibleFromGeneratedClient(current.DeclaredAccessibility))
+            {
+                return false;
+            }
+
+            foreach (var typeArgument in current.TypeArguments)
+            {
+                if (!IsTypeAccessibleFromGeneratedClient(typeArgument))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private static bool IsAccessibleFromGeneratedClient(Accessibility accessibility)
+        => accessibility is Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal;
 
     private static bool IsServerExtensionClientRegistry(ITypeSymbol type)
     {
@@ -224,4 +290,6 @@ internal static class RpcKernelClientExtensionModelFactory
         => kernelName.EndsWith(DotBoxDGenerationNames.KernelSuffix, StringComparison.Ordinal)
             ? kernelName.Substring(0, kernelName.Length - DotBoxDGenerationNames.KernelSuffix.Length)
             : kernelName;
+
+    private sealed record ServerExtensionRegistryAccess(INamedTypeSymbol? InterfaceType);
 }

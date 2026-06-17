@@ -1,4 +1,5 @@
 using DotBoxD.Kernels.Bindings;
+using DotBoxD.Kernels.Model;
 
 namespace DotBoxD.Hosting.Worker;
 
@@ -16,6 +17,7 @@ internal static class WorkerRunSummaryValidator
             !HasNonEmptyField(summary, "cacheStatus") ||
             !FieldEquals(summary, "moduleHash", plan.ModuleHash) ||
             !FieldEquals(summary, "planHash", plan.PlanHash) ||
+            !FieldEquals(summary, "policyId", ExpectedPolicyId(plan)) ||
             !FieldEquals(summary, "policyHash", plan.PolicyHash) ||
             !FieldEquals(summary, "bindingManifestHash", plan.BindingManifestHash) ||
             !FieldEquals(summary, "fuelUsed", result.ResourceUsage.FuelUsed) ||
@@ -73,7 +75,9 @@ internal static class WorkerRunSummaryValidator
         }
 
         return IsHexSha256(result.ArtifactHash) &&
-               FieldEquals(summary, "artifactHash", result.ArtifactHash!);
+               FieldEquals(summary, "artifactHash", result.ArtifactHash!) &&
+               FieldEquals(summary, "runtimeForm", "LoadedAssembly") &&
+               HasHexSha256Field(summary, "cacheKey");
     }
 
     private static bool FieldEquals(SandboxAuditEvent summary, string key, string value)
@@ -92,6 +96,14 @@ internal static class WorkerRunSummaryValidator
 
     private static bool HasHexSha256Field(SandboxAuditEvent summary, string key)
         => summary.Fields!.TryGetValue(key, out var value) && IsHexSha256(value);
+
+    private static string ExpectedPolicyId(ExecutionPlan plan)
+        // The sanitizer is centralized in RunSummaryAuditFields; the other fields are discarded here.
+        => RunSummaryAuditFields.Create(
+            plan,
+            new ResourceMeter(plan.Budget),
+            ExecutionMode.Interpreted,
+            "None")["policyId"];
 
     internal static bool IsHexSha256(string? value)
         => value is { Length: 64 } && value.All(Uri.IsHexDigit);

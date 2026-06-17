@@ -1,3 +1,4 @@
+using DotBoxD.Kernels;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
@@ -18,6 +19,7 @@ public sealed class CapabilityRevocationTests
         var plan = await host.PrepareAsync(
             module,
             SandboxPolicyBuilder.Create()
+                .AllowRuntimeAsync()
                 .GrantFileRead(temp.Path, maxBytesPerRun: 1024)
                 .WithFuel(1_000)
                 .Build());
@@ -61,6 +63,40 @@ public sealed class CapabilityRevocationTests
         Assert.DoesNotContain(second.AuditEvents, e =>
             e.Kind == "RunSummary" &&
             e.Message?.Contains("cacheStatus=Hit", StringComparison.Ordinal) == true);
+    }
+
+    [Fact]
+    public async Task Expired_capability_denies_prepared_plan_before_execution()
+    {
+        var host = SandboxTestHost.Create();
+        var module = await host.ImportJsonAsync(PureModuleWithLoggingRequest());
+        var basePolicy = SandboxPolicyBuilder.Create()
+            .GrantLogging()
+            .WithFuel(1_000)
+            .Build();
+        var expiresAt = DateTimeOffset.UtcNow.AddSeconds(2);
+        var policy = basePolicy with
+        {
+            Grants =
+            [
+                basePolicy.Grants.Single() with { ExpiresAt = expiresAt }
+            ]
+        };
+        var plan = await host.PrepareAsync(module, policy);
+
+        var delay = expiresAt - DateTimeOffset.UtcNow + TimeSpan.FromMilliseconds(100);
+        if (delay > TimeSpan.Zero)
+        {
+            await Task.Delay(delay);
+        }
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.Unit,
+            new SandboxExecutionOptions { Mode = ExecutionMode.Interpreted });
+
+        AssertCapabilityUnavailable(result, ExecutionMode.Interpreted, "log.write");
     }
 
     [Fact]
@@ -121,6 +157,24 @@ public sealed class CapabilityRevocationTests
         Assert.Equal(capabilityId, audit.CapabilityId);
         Assert.Equal(reason, audit.Message);
         Assert.Equal(reason, audit.Fields!["reason"]);
+        Assert.Contains(result.AuditEvents, e =>
+            e.Kind == "RunSummary" &&
+            !e.Success &&
+            e.ErrorCode == SandboxErrorCode.PolicyDenied);
+    }
+
+    private static void AssertCapabilityUnavailable(
+        SandboxExecutionResult result,
+        ExecutionMode expectedMode,
+        string capabilityId)
+    {
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.PolicyDenied, result.Error!.Code);
+        Assert.Equal(expectedMode, result.ActualMode);
+        var audit = Assert.Single(result.AuditEvents, e => e.Kind == "CapabilityUnavailable");
+        Assert.False(audit.Success);
+        Assert.Equal(capabilityId, audit.CapabilityId);
+        Assert.Equal(capabilityId, audit.Fields!["capabilityId"]);
         Assert.Contains(result.AuditEvents, e =>
             e.Kind == "RunSummary" &&
             !e.Success &&

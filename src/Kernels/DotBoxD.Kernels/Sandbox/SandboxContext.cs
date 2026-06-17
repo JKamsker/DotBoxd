@@ -45,7 +45,7 @@ public sealed partial class SandboxContext
 
     public void RequireCapability(string capabilityId)
     {
-        if (!Policy.GrantsCapability(capabilityId))
+        if (!Policy.GrantsCapability(capabilityId, EffectiveGrantClock))
         {
             throw DenyCapability(capabilityId);
         }
@@ -56,7 +56,7 @@ public sealed partial class SandboxContext
         // Single indexed lookup: resolve the grant once and reuse it for the
         // permission decision instead of scanning the grant list twice (once to
         // authorize, once to fetch). The denial audit and error stay identical.
-        return Policy.TryGetGrant(capabilityId, out var grant)
+        return Policy.TryGetGrant(capabilityId, EffectiveGrantClock, out var grant)
             ? grant
             : throw DenyCapability(capabilityId);
     }

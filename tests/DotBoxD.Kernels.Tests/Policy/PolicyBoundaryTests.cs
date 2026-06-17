@@ -1,3 +1,4 @@
+using DotBoxD.Kernels;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
@@ -19,8 +20,9 @@ public sealed partial class PolicyBoundaryTests
         var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson("secret.txt"));
         var policy = new SandboxPolicy(
             "grant-expiry",
-            SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.FileRead,
+            SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.FileRead | SandboxEffect.Concurrency,
             [
+                new CapabilityGrant(RuntimeCapabilityIds.Async, new Dictionary<string, string>()),
                 FileReadGrant(expiredRoot.Path, DateTimeOffset.UtcNow.AddDays(-1)),
                 FileReadGrant(activeRoot.Path, DateTimeOffset.UtcNow.AddDays(1))
             ],

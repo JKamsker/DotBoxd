@@ -79,6 +79,7 @@ public sealed class Fix_API_0023_Tests
         Assert.Contains("dotnet run", script, StringComparison.Ordinal);
         Assert.Contains("--no-build", script, StringComparison.Ordinal);
         Assert.Contains("builder.AddNetworkBindings();", script, StringComparison.Ordinal);
+        Assert.Contains("AllowRuntimeAsync()", script, StringComparison.Ordinal);
         Assert.Contains("GrantFileRead(Path.GetTempPath(), 1024)", script, StringComparison.Ordinal);
         Assert.DoesNotContain("GrantFileRead(\"config\"", script, StringComparison.Ordinal);
     }

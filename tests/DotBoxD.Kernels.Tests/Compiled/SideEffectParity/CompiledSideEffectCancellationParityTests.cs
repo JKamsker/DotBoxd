@@ -165,6 +165,7 @@ public sealed class CompiledSideEffectCancellationParityTests
         var plan = await host.PrepareAsync(
             module,
             SandboxPolicyBuilder.Create()
+                .AllowRuntimeAsync()
                 .WithFuel(10_000)
                 .WithWallTime(TimeSpan.FromMilliseconds(50))
                 .Build());
@@ -510,7 +511,8 @@ public sealed class CompiledSideEffectCancellationParityTests
                 await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
                 return SandboxValue.FromInt32(0);
             },
-            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(Kernels.Runtime.CompiledRuntime.CallBinding)));
+            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(Kernels.Runtime.CompiledRuntime.CallBinding)))
+        { IsAsync = true };
 
     // ---------------------------------------------------------------------------
     // Nested helpers (prefixed with "Cancellation" to avoid collisions when test

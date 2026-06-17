@@ -6,6 +6,7 @@ using PluginServer = DotBoxD.Plugins.PluginServer;
 
 namespace DotBoxD.Kernels.Game.Server;
 
+using System.Diagnostics;
 using System.Globalization;
 
 /// <summary>
@@ -79,18 +80,35 @@ internal static class Program
         Console.WriteLine("[server] launching plugin child process...");
         var pluginProcess = PluginLauncher.Launch(host.PipeName, useBuilder);
         var pluginExit = pluginProcess.WaitForExitAsync();
+        var readinessTimeout = PluginReadinessGate.ReadTimeout();
 
         // (e) Wait until the plugin has connected and installed its kernels (it then holds the connection).
         // Fail fast if it exits early.
-        if (await Task.WhenAny(host.Connected, pluginExit).ConfigureAwait(false) == pluginExit && !host.Connected.IsCompleted)
+        var connectionWait = await PluginReadinessGate
+            .WaitAsync(host.Connected, pluginExit, readinessTimeout)
+            .ConfigureAwait(false);
+        if (connectionWait == PluginReadinessWaitResult.PluginExited)
         {
-            return await FailAsync(host, $"plugin exited before connecting (code {pluginProcess.ExitCode}).").ConfigureAwait(false);
+            return await FailPluginAsync(host, pluginProcess, $"plugin exited before connecting (code {pluginProcess.ExitCode}).").ConfigureAwait(false);
+        }
+
+        if (connectionWait == PluginReadinessWaitResult.TimedOut)
+        {
+            return await FailPluginAsync(host, pluginProcess, "plugin did not connect before the readiness timeout.").ConfigureAwait(false);
         }
 
         var control = await host.Connected.ConfigureAwait(false);
-        if (await Task.WhenAny(control.Ready, pluginExit).ConfigureAwait(false) == pluginExit && !control.Ready.IsCompleted)
+        var readyWait = await PluginReadinessGate
+            .WaitAsync(control.Ready, pluginExit, readinessTimeout)
+            .ConfigureAwait(false);
+        if (readyWait == PluginReadinessWaitResult.PluginExited)
         {
-            return await FailAsync(host, $"plugin exited before installing kernels (code {pluginProcess.ExitCode}).").ConfigureAwait(false);
+            return await FailPluginAsync(host, pluginProcess, $"plugin exited before installing kernels (code {pluginProcess.ExitCode}).").ConfigureAwait(false);
+        }
+
+        if (readyWait == PluginReadinessWaitResult.TimedOut)
+        {
+            return await FailPluginAsync(host, pluginProcess, "plugin did not install kernels before the readiness timeout.").ConfigureAwait(false);
         }
 
         Console.WriteLine("[server] plugin connected; event kernels and server extension are installed and live.");
@@ -114,11 +132,16 @@ internal static class Program
 
         // (g) Release the plugin; it disconnects, and ownership unloads its kernels.
         control.SignalShutdown();
+        if (await Task.WhenAny(pluginExit, Task.Delay(readinessTimeout)).ConfigureAwait(false) != pluginExit)
+        {
+            return await FailPluginAsync(host, pluginProcess, "plugin did not shut down before the readiness timeout.").ConfigureAwait(false);
+        }
+
         await pluginExit.ConfigureAwait(false);
         await host.Disconnected.ConfigureAwait(false);
         if (pluginProcess.ExitCode != 0)
         {
-            return await FailAsync(host, $"plugin exited with code {pluginProcess.ExitCode}.").ConfigureAwait(false);
+            return await FailPluginAsync(host, pluginProcess, $"plugin exited with code {pluginProcess.ExitCode}.").ConfigureAwait(false);
         }
 
         // (h) Summary, plus proof that disconnect unloaded the plugin's kernels.
@@ -141,6 +164,26 @@ internal static class Program
         await Console.Error.WriteLineAsync($"[server] {message}").ConfigureAwait(false);
         await host.StopAsync().ConfigureAwait(false);
         return 1;
+    }
+
+    private static async Task<int> FailPluginAsync(GamePluginHost host, Process pluginProcess, string message)
+    {
+        KillProcessTree(pluginProcess);
+        return await FailAsync(host, message).ConfigureAwait(false);
+    }
+
+    private static void KillProcessTree(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch (InvalidOperationException)
+        {
+        }
     }
 
     private static Dictionary<string, int> PlayerHpById(GameWorld world)

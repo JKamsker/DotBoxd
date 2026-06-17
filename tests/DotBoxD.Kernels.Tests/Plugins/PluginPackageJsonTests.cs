@@ -60,6 +60,34 @@ public sealed class PluginPackageJsonTests
     }
 
     [Fact]
+    public void Import_rejects_required_capabilities_that_are_not_an_array()
+    {
+        var json = JsonDamagePackage().Replace(
+            "\"requiredCapabilities\": [\"dotboxd.runtime.async\", \"host.message.write\"]",
+            "\"requiredCapabilities\": \"host.message.write\"",
+            StringComparison.Ordinal);
+
+        var ex = Assert.Throws<SandboxValidationException>(() => PluginPackageJsonSerializer.Import(json));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-JSON-TYPE");
+    }
+
+    [Theory]
+    [InlineData("3")]
+    [InlineData("Cpu, Alloc")]
+    public void Import_rejects_effect_strings_outside_schema_enum(string effect)
+    {
+        var json = JsonDamagePackage().Replace(
+            "\"effects\": [\"Cpu\", \"Alloc\", \"HostStateWrite\", \"Concurrency\", \"Audit\"]",
+            $"\"effects\": [\"{effect}\"]",
+            StringComparison.Ordinal);
+
+        var ex = Assert.Throws<SandboxValidationException>(() => PluginPackageJsonSerializer.Import(json));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK040");
+    }
+
+    [Fact]
     public void Import_rejects_oversized_package_json_before_dom_parse()
     {
         var oversized = "{\"manifest\":\"" + new string('x', 1_048_577) + "\"}";
@@ -175,11 +203,12 @@ public sealed class PluginPackageJsonTests
             "pluginId": "json-fire-damage",
             "contract": "IEventKernel<DamageEvent>",
             "mode": "Interpreted",
-            "effects": ["Cpu", "Alloc", "HostStateWrite", "Audit"],
+            "effects": ["Cpu", "Alloc", "HostStateWrite", "Concurrency", "Audit"],
             "liveSettings": [{{liveSettings}}],
             "subscriptions": [
               { "event": "DamageEvent", "kernel": "JsonDamageKernel" }
-            ]
+            ],
+            "requiredCapabilities": ["dotboxd.runtime.async", "host.message.write"]
           },
           "module": {
             "id": "json-fire-damage",

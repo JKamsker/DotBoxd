@@ -18,6 +18,10 @@ public static class KernelRpcMarshaller
 {
     public static SandboxValue ToSandboxValue(object? value, Type type)
     {
+        ArgumentNullException.ThrowIfNull(type);
+        ArgumentNullException.ThrowIfNull(value);
+        RejectNullableValueType(type);
+
         if (TryScalarToSandbox(value, type) is { } scalar)
         {
             return scalar;
@@ -25,13 +29,17 @@ public static class KernelRpcMarshaller
 
         if (ElementType(type) is { } elementType)
         {
-            var items = new List<SandboxValue>();
-            if (value is IEnumerable enumerable)
+            if (value is not IEnumerable enumerable)
             {
-                foreach (var item in enumerable)
-                {
-                    items.Add(ToSandboxValue(item, elementType));
-                }
+                throw new ArgumentException(
+                    $"Kernel RPC service expected '{type}' to be enumerable.",
+                    nameof(value));
+            }
+
+            var items = new List<SandboxValue>();
+            foreach (var item in enumerable)
+            {
+                items.Add(ToSandboxValue(item, elementType));
             }
 
             return SandboxValue.FromList(items, SandboxTypeOf(elementType));
@@ -54,6 +62,9 @@ public static class KernelRpcMarshaller
 
     public static object? FromSandboxValue(SandboxValue value, Type type)
     {
+        ArgumentNullException.ThrowIfNull(type);
+        RejectNullableValueType(type);
+
         if (TryScalarFromSandbox(value, type, out var scalar))
         {
             return scalar;
@@ -92,6 +103,9 @@ public static class KernelRpcMarshaller
 
     public static SandboxType SandboxTypeOf(Type type)
     {
+        ArgumentNullException.ThrowIfNull(type);
+        RejectNullableValueType(type);
+
         if (type == typeof(bool)) return SandboxType.Bool;
         if (type == typeof(int)) return SandboxType.I32;
         if (type == typeof(long)) return SandboxType.I64;
@@ -114,7 +128,7 @@ public static class KernelRpcMarshaller
     }
 
     private static SandboxValue? TryScalarToSandbox(object? value, Type type)
-        => Unwrap(type) switch
+        => type switch
         {
             var t when t == typeof(bool) => SandboxValue.FromBool((bool)value!),
             var t when t == typeof(int) => SandboxValue.FromInt32((int)value!),
@@ -126,7 +140,7 @@ public static class KernelRpcMarshaller
 
     private static bool TryScalarFromSandbox(SandboxValue value, Type type, out object? result)
     {
-        result = (Unwrap(type), value) switch
+        result = (type, value) switch
         {
             (var t, BoolValue b) when t == typeof(bool) => b.Value,
             (var t, I32Value i) when t == typeof(int) => i.Value,
@@ -138,12 +152,27 @@ public static class KernelRpcMarshaller
         return result is not null;
     }
 
-    private static Type Unwrap(Type type) => Nullable.GetUnderlyingType(type) ?? type;
+    private static void RejectNullableValueType(Type type)
+    {
+        if (Nullable.GetUnderlyingType(type) is null)
+        {
+            return;
+        }
+
+        throw new NotSupportedException(
+            $"Kernel RPC service nullable type '{type}' is not supported.");
+    }
 
     private static Type? ElementType(Type type)
     {
         if (type.IsArray)
         {
+            if (type.GetArrayRank() != 1)
+            {
+                throw new NotSupportedException(
+                    $"Kernel RPC service cannot marshal multidimensional array type '{type}'.");
+            }
+
             return type.GetElementType();
         }
 
@@ -172,7 +201,8 @@ public static class KernelRpcMarshaller
     private static IReadOnlyList<PropertyInfo> RecordFields(Type type)
     {
         var properties = new List<PropertyInfo>();
-        foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+        foreach (var property in type.GetProperties(flags))
         {
             if (property.CanRead && property.GetIndexParameters().Length == 0 &&
                 !string.Equals(property.Name, "EqualityContract", StringComparison.Ordinal))
@@ -181,24 +211,7 @@ public static class KernelRpcMarshaller
             }
         }
 
-        // For positional records/structs the primary constructor parameter order is the canonical field
-        // order the analyzer lowered against; align to it when a matching constructor exists.
-        foreach (var constructor in type.GetConstructors())
-        {
-            var parameters = constructor.GetParameters();
-            if (parameters.Length == properties.Count && parameters.Length > 0 &&
-                Array.TrueForAll(parameters, p => properties.Exists(pr => NameMatches(pr.Name, p.Name))))
-            {
-                var ordered = new List<PropertyInfo>(parameters.Length);
-                foreach (var parameter in parameters)
-                {
-                    ordered.Add(properties.Find(pr => NameMatches(pr.Name, parameter.Name))!);
-                }
-
-                return ordered;
-            }
-        }
-
+        properties.Sort(static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
         return properties;
     }
 
@@ -214,17 +227,21 @@ public static class KernelRpcMarshaller
             }
 
             var ordered = new object?[parameters.Length];
+            var assigned = new bool[parameters.Length];
             var matched = true;
             for (var i = 0; i < parameters.Length; i++)
             {
                 var fieldIndex = FieldIndex(fields, parameters[i].Name);
-                if (fieldIndex < 0)
+                if (fieldIndex < 0 ||
+                    assigned[fieldIndex] ||
+                    parameters[i].ParameterType != fields[fieldIndex].PropertyType)
                 {
                     matched = false;
                     break;
                 }
 
                 ordered[i] = arguments[fieldIndex];
+                assigned[fieldIndex] = true;
             }
 
             if (matched)
@@ -247,16 +264,30 @@ public static class KernelRpcMarshaller
     {
         for (var i = 0; i < fields.Count; i++)
         {
-            if (NameMatches(fields[i].Name, name))
+            if (string.Equals(fields[i].Name, name, StringComparison.Ordinal))
             {
                 return i;
             }
         }
 
-        return -1;
-    }
+        var match = -1;
+        for (var i = 0; i < fields.Count; i++)
+        {
+            if (!string.Equals(fields[i].Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
 
-    private static bool NameMatches(string? a, string? b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+            if (match >= 0)
+            {
+                return -1;
+            }
+
+            match = i;
+        }
+
+        return match;
+    }
 
     private static Array ToArray(IList list, Type elementType)
     {

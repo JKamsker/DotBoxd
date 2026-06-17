@@ -24,11 +24,15 @@
         "contract": { "type": "string" },
         "mode": {
           "type": "string",
+          "pattern": "^(?:[Aa][Uu][Tt][Oo]|[Ii][Nn][Tt][Ee][Rr][Pp][Rr][Ee][Tt][Ee][Dd]|[Cc][Oo][Mm][Pp][Ii][Ll][Ee][Dd])$",
           "description": "Parsed case-insensitively into the ExecutionMode enum."
         },
         "effects": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string",
+            "enum": ["Cpu", "Alloc", "Time", "Random", "FileRead", "FileWrite", "Network", "HostStateRead", "HostStateWrite", "Concurrency", "Audit"]
+          }
         },
         "liveSettings": {
           "type": "array",
@@ -55,11 +59,63 @@
       "required": ["name", "type", "defaultValue"],
       "properties": {
         "name": { "type": "string" },
-        "type": { "type": "string" },
+        "type": { "type": "string", "enum": ["bool", "int", "long", "double", "string"] },
         "defaultValue": { "$ref": "#/$defs/liveSettingValue" },
         "min": { "$ref": "#/$defs/liveSettingValue" },
         "max": { "$ref": "#/$defs/liveSettingValue" }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "bool" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "defaultValue": { "type": ["boolean", "null"] },
+              "min": { "type": "null" },
+              "max": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "int" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "defaultValue": { "type": ["integer", "null"], "minimum": -2147483648, "maximum": 2147483647 },
+              "min": { "type": ["integer", "null"], "minimum": -2147483648, "maximum": 2147483647 },
+              "max": { "type": ["integer", "null"], "minimum": -2147483648, "maximum": 2147483647 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "long" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "defaultValue": { "type": ["integer", "null"], "minimum": -9223372036854775808, "maximum": 9223372036854775807 },
+              "min": { "type": ["integer", "null"], "minimum": -9223372036854775808, "maximum": 9223372036854775807 },
+              "max": { "type": ["integer", "null"], "minimum": -9223372036854775808, "maximum": 9223372036854775807 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "double" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "defaultValue": { "type": ["number", "null"], "minimum": -1.7976931348623157e308, "maximum": 1.7976931348623157e308 },
+              "min": { "type": ["number", "null"], "minimum": -1.7976931348623157e308, "maximum": 1.7976931348623157e308 },
+              "max": { "type": ["number", "null"], "minimum": -1.7976931348623157e308, "maximum": 1.7976931348623157e308 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "string" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "defaultValue": { "type": ["string", "null"] },
+              "min": { "type": "null" },
+              "max": { "type": "null" }
+            }
+          }
+        }
+      ]
     },
     "liveSettingValue": {
       "description": "A JSON scalar (or null) interpreted according to the live setting 'type'.",

@@ -46,6 +46,7 @@ public sealed class CompilerTests
         var host = SandboxTestHost.Create(compiler: true);
         var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson("config.json"));
         var policy = SandboxPolicyBuilder.Create()
+            .AllowRuntimeAsync()
             .GrantFileRead(temp.Path, 1024)
             .WithFuel(5_000)
             .WithWallTime(TimeSpan.FromSeconds(2))

@@ -9,10 +9,10 @@ inventory items that must be configured by the product operator.
 Before publishing or enabling DotBoxD.Kernels for a tenant:
 
 - Run `dotnet test DotBoxD.slnx --configuration Release`.
-- Run `scripts/check-release-readiness.ps1 -RequireComplete`.
-- Run `scripts/check-spec-manifest.ps1`.
-- Run `scripts/check-docs-smoke.ps1`.
-- Pack and validate packages with `scripts/check-package-metadata.ps1`.
+- Run `eng/scripts/check-release-readiness.ps1 -RequireComplete`.
+- Run `eng/scripts/check-spec-manifest.ps1`.
+- Run `eng/scripts/check-docs-smoke.ps1`.
+- Pack and validate packages with `eng/scripts/check-package-metadata.ps1`.
 - Confirm package `RepositoryCommit` metadata matches the reviewed commit.
 - Confirm all production inventory items that apply to the target tenant are either completed or
   explicitly accepted by the service owner.

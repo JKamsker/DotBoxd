@@ -92,7 +92,7 @@ public sealed class ServerExtensionProxyTests
         [ServerExtension("monster-killer", typeof(IMonsterKillerService))]
         public sealed partial class MonsterKillerKernel
         {
-            public List<KillResult> KillMonsters(List<int> monsterIds, HookContext ctx)
+            public async ValueTask<List<KillResult>> KillMonsters(List<int> monsterIds, HookContext ctx)
             {
                 var results = new List<KillResult>();
                 foreach (var id in monsterIds)
@@ -172,6 +172,81 @@ public sealed class ServerExtensionProxyTests
         Assert.Equal(2, results.Length);
         AssertGeneratedKillResult(results[0], 4, true);
         AssertGeneratedKillResult(results[1], 5, false);
+    }
+
+    [Fact]
+    public void Generated_client_rejects_service_parameter_modifier_mismatch()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
+            using System.Threading.Tasks;
+            using DotBoxD.Kernels;
+            using DotBoxD.Kernels.Sandbox;
+            using DotBoxD.Plugins;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public interface IEchoService
+            {
+                ValueTask<int> EchoAsync(int value);
+            }
+
+            [ServerExtension("echo", typeof(IEchoService))]
+            public sealed partial class EchoKernel
+            {
+                public int Echo(ref int value, HookContext ctx) => value;
+            }
+            """);
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("cannot use ref, in, or out", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Generated_client_rejects_dto_constructor_parameter_type_mismatch()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
+            using System.Threading.Tasks;
+            using DotBoxD.Kernels;
+            using DotBoxD.Kernels.Sandbox;
+            using DotBoxD.Plugins;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public sealed class KillResult
+            {
+                public KillResult(string monsterId, bool success)
+                {
+                    MonsterId = monsterId.Length;
+                    Success = success;
+                }
+
+                public int MonsterId { get; }
+                public bool Success { get; }
+            }
+
+            public interface IKillService
+            {
+                ValueTask<KillResult> KillAsync(int monsterId);
+            }
+
+            [ServerExtension("kill", typeof(IKillService))]
+            public sealed partial class KillKernel
+            {
+                public KillResult Kill(int monsterId, HookContext ctx)
+                {
+                    return new KillResult("monster", true);
+                }
+            }
+            """);
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("constructor matching its public fields", StringComparison.Ordinal));
     }
 
     private static byte[] KillResultsResponse()

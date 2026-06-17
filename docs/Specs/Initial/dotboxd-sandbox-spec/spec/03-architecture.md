@@ -267,7 +267,7 @@ Example:
 ```
 
 ```text
-Effects(loadConfig) = Cpu | Alloc | FileRead
+Effects(loadConfig) = Cpu | Alloc | FileRead | Concurrency
 ```
 
 ### 6. Resolve policy
@@ -282,6 +282,8 @@ If a capability has parameters, bind them here:
 file.read:
     roots = ["/srv/tenant/123/data"]
     maxBytesPerRun = 1_000_000
+dotboxd.runtime.async:
+    parameters = {}
 ```
 
 ### 7. Build execution plan

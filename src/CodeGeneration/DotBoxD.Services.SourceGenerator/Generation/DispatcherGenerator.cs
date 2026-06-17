@@ -305,7 +305,7 @@ internal static class DispatcherGenerator
                 sb.AppendLine("                    }");
                 sb.AppendLine("                    catch");
                 sb.AppendLine("                    {");
-                sb.AppendLine($"                        registry.Release(\"{info.ServiceName}\", __subId);");
+                sb.AppendLine($"                        await registry.ReleaseAsync(\"{info.ServiceName}\", __subId).ConfigureAwait(false);");
                 sb.AppendLine("                        throw;");
                 sb.AppendLine("                    }");
                 sb.AppendLine("                    return;");

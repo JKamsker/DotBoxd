@@ -12,6 +12,7 @@ internal sealed class FunctionAnalyzer
     private readonly List<SandboxDiagnostic> _diagnostics;
     private readonly Dictionary<string, SandboxFunction> _functions;
     private readonly CollectionCallAnalyzer _collections;
+    private readonly NumericConversionCallAnalyzer _numericConversions;
     private readonly IReadOnlySet<string> _declaredOpaqueIdTypes;
     private readonly Dictionary<string, FunctionAnalysis> _analyzed = new(StringComparer.Ordinal);
     private readonly HashSet<string> _analyzing = new(StringComparer.Ordinal);
@@ -32,6 +33,7 @@ internal sealed class FunctionAnalyzer
         }
 
         _collections = new CollectionCallAnalyzer(diagnostics, AnalyzeExpression, declaredOpaqueIdTypes);
+        _numericConversions = new NumericConversionCallAnalyzer(diagnostics, AnalyzeExpression);
     }
 
     public HashSet<string> RequiredCapabilities { get; } = new(StringComparer.Ordinal);
@@ -333,6 +335,17 @@ internal sealed class FunctionAnalyzer
         bool recordCapabilities)
     {
         ValidateGenericType(call);
+        if (_numericConversions.TryAnalyze(
+                call,
+                scope,
+                ref effects,
+                ref canReorder,
+                recordCapabilities,
+                out var convertedType))
+        {
+            return convertedType;
+        }
+
         if (_collections.TryAnalyze(
                 call,
                 scope,
@@ -363,10 +376,20 @@ internal sealed class FunctionAnalyzer
         {
             CheckArguments(call, binding.Parameters, scope, ref effects, ref canReorder, recordCapabilities);
             effects |= binding.Effects;
+            if (binding.IsAsync)
+            {
+                effects |= SandboxEffect.Concurrency;
+            }
+
             canReorder &= CanReorderBinding(binding);
             if (recordCapabilities && binding.RequiredCapability is not null)
             {
                 RequiredCapabilities.Add(binding.RequiredCapability);
+            }
+
+            if (recordCapabilities && RequiresRuntimeAsync(binding))
+            {
+                RequiredCapabilities.Add(RuntimeCapabilityIds.Async);
             }
 
             return binding.ReturnType;
@@ -443,6 +466,9 @@ internal sealed class FunctionAnalyzer
 
     private static bool CanReorderBinding(BindingSignature binding)
         => binding.Safety == BindingSafety.PureIntrinsic && IsPure(binding.Effects);
+
+    private static bool RequiresRuntimeAsync(BindingSignature binding)
+        => binding.IsAsync || (binding.Effects & SandboxEffect.Concurrency) != 0;
 
     private static bool IsPure(SandboxEffect effects) => (effects & ~SandboxEffects.Pure) == SandboxEffect.None;
 

@@ -14,6 +14,7 @@ public BindingRegistryBuilder Add(BindingDescriptor descriptor)
 public BindingRegistryBuilder AddRange(IEnumerable<BindingDescriptor> descriptors)
 public BindingSignature Signature => new(
 public bool AllowFallbackToInterpreter { get; init; } = true
+public bool AsyncEnabled => Policy.GrantsCapability(RuntimeCapabilityIds.Async, EffectiveGrantClock)
 public bool Contains(string id) => _bindings.ContainsKey(id)
 public bool Deterministic { get => _deterministic; init { _deterministic = value; ResetHash(); } }
 public bool EnableDebugTrace { get; init; }
@@ -26,6 +27,7 @@ public bool ExecutionDispatched { get; init; }
 public bool GrantsCapability(string capabilityId, DateTimeOffset now)
 public bool GrantsCapability(string capabilityId)
 public bool HasBindingAuditSince( BindingDescriptor descriptor, long checkpoint, bool success, SandboxErrorCode? expectedErrorCode, SandboxRunId runId, string moduleHash, string policyHash)
+public bool IsAsync { get; init; }
 public bool IsForbidden() => IsForbidden(this)
 public bool IsKnown(int maxDepth = 8) => IsKnown(this, 0, maxDepth, declaredOpaqueIdTypes: null)
 public bool IsKnown(IReadOnlySet<string> declaredOpaqueIdTypes, int maxDepth = 8)
@@ -44,8 +46,10 @@ public CapabilityGrant GetCapability(string capabilityId)
 public CapabilityGrant GetGrant(string capabilityId)
 public const int MaxTextLiteralLength = 65_536
 public const SandboxEffect Pure = SandboxEffect.Cpu | SandboxEffect.Alloc
+public const string Async = "dotboxd.runtime.async"
 public const string CanonicalizerVersion = "dotboxd-canonicalizer-1"
 public const string RecordName = "Record"
+public const string Reentrant = "dotboxd.runtime.reentrant"
 public DateTimeOffset AuditTimestamp()
 public DateTimeOffset GrantClock
 public DateTimeOffset UtcNow()
@@ -75,6 +79,7 @@ public enum ExecutionMode.Interpreted
 public enum SandboxEffect
 public enum SandboxEffect.Alloc = 1 << 1
 public enum SandboxEffect.Audit = 1 << 11
+public enum SandboxEffect.Concurrency = 1 << 9
 public enum SandboxEffect.Cpu = 1 << 0
 public enum SandboxEffect.FileRead = 1 << 4
 public enum SandboxEffect.FileWrite = 1 << 5
@@ -196,7 +201,9 @@ public SandboxIsolation Isolation { get; init; } = SandboxIsolation.InProcess
 public SandboxModule Module { get; }
 public SandboxPolicy Build()
 public SandboxPolicy Policy { get; }
+public SandboxPolicyBuilder AllowIntraKernelReentrancy()
 public SandboxPolicyBuilder AllowPureComputation()
+public SandboxPolicyBuilder AllowRuntimeAsync()
 public SandboxPolicyBuilder DeclareOpaqueIdType(string name)
 public SandboxPolicyBuilder DeclareOpaqueIdTypes(IEnumerable<string> names)
 public SandboxPolicyBuilder Deterministic(DateTimeOffset logicalNow, ulong randomSeed)
@@ -310,6 +317,7 @@ public static class CapabilityPattern
 public static class EntrypointBinder
 public static class ResourceLimitValidation
 public static class RunSummaryAuditFields
+public static class RuntimeCapabilityIds
 public static class SandboxCollectionFuel
 public static class SandboxDescriptorGuards
 public static class SandboxEffects

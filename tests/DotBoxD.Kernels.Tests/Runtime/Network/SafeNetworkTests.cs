@@ -331,20 +331,15 @@ public sealed class SafeNetworkTests
     }
 
     [Fact]
-    public async Task Deterministic_policy_denies_network_effects()
+    public void Deterministic_policy_denies_network_effects()
     {
-        var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("ok"));
-        var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-        var policy = NetworkPolicyBuilder()
-            .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
-            .Deterministic(DateTimeOffset.UnixEpoch, randomSeed: 1)
-            .Build();
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            NetworkPolicyBuilder()
+                .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
+                .Deterministic(DateTimeOffset.UnixEpoch, randomSeed: 1)
+                .Build());
 
-        var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () =>
-            await host.PrepareAsync(module, policy));
-
-        Assert.Contains(ex.Diagnostics, d => d.Code == "E-POLICY-DETERMINISM");
+        Assert.Contains("deterministic policies cannot grant runtime async", ex.Message, StringComparison.Ordinal);
     }
 
 }
-

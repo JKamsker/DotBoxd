@@ -8,6 +8,7 @@ internal static class DotBoxDManifestEffectModel
         EquatableArray<string>.FromOwned(new[] {
             DotBoxDGenerationNames.Effects.Cpu,
             DotBoxDGenerationNames.Effects.HostStateWrite,
+            DotBoxDGenerationNames.Effects.Concurrency,
             DotBoxDGenerationNames.Effects.Audit
         });
 
@@ -16,6 +17,7 @@ internal static class DotBoxDManifestEffectModel
             DotBoxDGenerationNames.Effects.Cpu,
             DotBoxDGenerationNames.Effects.Alloc,
             DotBoxDGenerationNames.Effects.HostStateWrite,
+            DotBoxDGenerationNames.Effects.Concurrency,
             DotBoxDGenerationNames.Effects.Audit
         });
 

@@ -3,6 +3,7 @@ using DotBoxD.Services.Peer;
 using DotBoxD.Services.Protocol;
 using DotBoxD.Services.Server;
 using DotBoxD.Services.Tests.Support;
+using DotBoxD.Services.Transport;
 using DotBoxD.Transports.NamedPipes;
 using Xunit;
 
@@ -39,6 +40,22 @@ public sealed class NamedPipeTransportTests
             await clientTransport.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(30));
             await serverConnection.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(30));
         }
+    }
+
+    [Fact]
+    public async Task NamedPipeClientConnection_UsesDefaultFrameReadIdleTimeout()
+    {
+        var pipeName = CreatePipeName();
+        await using var serverTransport = new NamedPipeServerTransport(pipeName);
+        await serverTransport.StartAsync();
+
+        var acceptTask = serverTransport.AcceptAsync();
+        await using var clientTransport = new NamedPipeClientTransport(pipeName);
+        await clientTransport.ConnectAsync();
+        await using var serverConnection = await acceptTask.WaitAsync(TimeSpan.FromSeconds(30));
+
+        var clientConnection = Assert.IsType<StreamConnection>(clientTransport.Connection);
+        Assert.Equal(NamedPipeServerTransport.DefaultFrameReadIdleTimeout, clientConnection.FrameReadIdleTimeout);
     }
 
     [Fact]

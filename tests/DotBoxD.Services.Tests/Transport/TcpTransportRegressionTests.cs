@@ -110,6 +110,33 @@ public sealed class TcpTransportRegressionTests
     }
 
     [Fact]
+    public async Task ReceiveAsync_RejectsTruncatedFrameBody()
+    {
+        await using var server = new TcpServerTransport(IPAddress.Loopback, 0);
+        await server.StartAsync();
+        var port = server.LocalEndpoint?.Port ?? throw new InvalidOperationException("no bound port");
+
+        using var rawClient = new TcpClient();
+        var acceptTask = server.AcceptAsync();
+        await rawClient.ConnectAsync(IPAddress.Loopback, port);
+        await using var serverConnection = await acceptTask.WaitAsync(TimeSpan.FromSeconds(2));
+
+        var totalLength = MessageFramer.HeaderSize + 4;
+        var truncated = new byte[MessageFramer.HeaderSize + 1];
+        BinaryPrimitives.WriteInt32LittleEndian(truncated, totalLength);
+        BinaryPrimitives.WriteInt32LittleEndian(truncated.AsSpan(4), 42);
+        truncated[8] = (byte)MessageType.Request;
+        truncated[9] = 0x7F;
+
+        await rawClient.GetStream().WriteAsync(truncated);
+        await rawClient.GetStream().FlushAsync();
+        rawClient.Client.Shutdown(SocketShutdown.Send);
+
+        await Assert.ThrowsAsync<InvalidDataException>(
+            () => serverConnection.ReceiveAsync().WaitAsync(TimeSpan.FromSeconds(2)));
+    }
+
+    [Fact]
     public async Task StartAsync_AfterStopAsync_RestartsSuccessfully()
     {
         await using var server = new TcpServerTransport(IPAddress.Loopback, 0);
@@ -154,6 +181,26 @@ public sealed class TcpTransportRegressionTests
     }
 
     [Fact]
+    public async Task StopAsync_PreCancelledToken_DoesNotStopListener()
+    {
+        await using var server = new TcpServerTransport(IPAddress.Loopback, 0);
+        await server.StartAsync();
+        var port = server.LocalEndpoint?.Port ?? throw new InvalidOperationException("no bound port");
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => server.StopAsync(cts.Token));
+
+        using var client = new TcpClient();
+        var acceptTask = server.AcceptAsync();
+        await client.ConnectAsync(IPAddress.Loopback, port);
+        await using var accepted = await acceptTask.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.True(accepted.IsConnected);
+    }
+
+    [Fact]
     public async Task SendAsync_RejectsMismatchedFrameLength()
     {
         await using var server = new TcpServerTransport(IPAddress.Loopback, 0);
@@ -184,6 +231,33 @@ public sealed class TcpTransportRegressionTests
         // A failed connect must dispose its client and leave no half-open connection behind.
         Assert.False(transport.IsConnected);
         Assert.Null(transport.Connection);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenConnectionConstructionThrows_DisposesConnectedSocket()
+    {
+        await using var server = new TcpServerTransport(IPAddress.Loopback, 0);
+        await server.StartAsync();
+        var port = server.LocalEndpoint?.Port ?? throw new InvalidOperationException("no bound port");
+
+        var acceptTask = server.AcceptAsync();
+        var transport = new TcpTransport(IPAddress.Loopback.ToString(), port)
+        {
+            FrameReadIdleTimeout = TimeSpan.Zero,
+        };
+
+        try
+        {
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => transport.ConnectAsync());
+            await using var accepted = await acceptTask.WaitAsync(TimeSpan.FromSeconds(2));
+
+            using var eof = await accepted.ReceiveAsync().WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.Equal(0, eof.Length);
+        }
+        finally
+        {
+            await transport.DisposeAsync();
+        }
     }
 
     [Fact]

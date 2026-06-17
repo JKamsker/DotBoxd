@@ -77,19 +77,25 @@ Cpu
 Inferred effects:
 
 ```text
-Cpu | Alloc | FileRead
+Cpu | Alloc | FileRead | Concurrency
 ```
 
 Required grant:
 
 ```json
-{
-  "id": "file.read",
-  "parameters": {
-    "root": "C:\\tenant\\123\\config",
-    "maxBytesPerRun": 262144
+[
+  {
+    "id": "file.read",
+    "parameters": {
+      "root": "C:\\tenant\\123\\config",
+      "maxBytesPerRun": 262144
+    }
+  },
+  {
+    "id": "dotboxd.runtime.async",
+    "parameters": {}
   }
-}
+]
 ```
 
 Lowering target:

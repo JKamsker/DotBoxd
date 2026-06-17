@@ -1,0 +1,6 @@
+# DotBoxD.Kernels public API baseline
+# Package: DotBoxD.Services.All
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+public const string Components =
+public static class DotBoxDServicesInfo

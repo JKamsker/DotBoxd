@@ -295,6 +295,8 @@ public sealed class RpcPeerRegressionTests
             CancellationToken ct = default)
         {
             var started = Interlocked.Increment(ref _started);
+            var active = Interlocked.Increment(ref _active);
+            RecordMaxActive(active);
             if (started == 1)
             {
                 _firstEntered.TrySetResult(true);
@@ -304,8 +306,6 @@ public sealed class RpcPeerRegressionTests
                 _secondEntered.TrySetResult(true);
             }
 
-            var active = Interlocked.Increment(ref _active);
-            RecordMaxActive(active);
             try
             {
                 await _release.Task.WaitAsync(ct).ConfigureAwait(false);

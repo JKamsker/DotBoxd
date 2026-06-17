@@ -12,7 +12,7 @@ public async ValueTask<bool> ShouldHandleAsync<TEvent>( IPluginEventAdapter<TEve
 public async ValueTask<InstalledKernel> InstallAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public async ValueTask<InstalledKernel> InstallServerExtensionAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public async ValueTask<SandboxValue> InvokeServerExtensionAsync( IReadOnlyList<SandboxValue> arguments, CancellationToken cancellationToken = default)
-public async ValueTask<string> RegisterServerExtensionAsync<TService, TKernel>( SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
+public async ValueTask<string> RegisterServerExtensionAsync<TService, TKernel>( SandboxPolicy? policy = null, CancellationToken cancellationToken = default) where TService : class where TKernel : class
 public bool BoolValue
 public bool IsRevoked => Volatile.Read(ref _revoked) != 0
 public bool Owns(string pluginId)
@@ -97,7 +97,7 @@ public IReadOnlyList<string> Effects { get => _effects; init => _effects = Plugi
 public IReadOnlyList<string> GetRequiredCapabilities(PluginPackage package)
 public IReadOnlyList<string> RequiredCapabilities
 public KernelRegistry Kernels { get; }
-public KernelRpcValue[] Items { get; }
+public KernelRpcValue[] Items => CopyItems(_items ?? EmptyItems)
 public KernelRpcValueKind Kind { get; }
 public LiveContext<T> BindContext<T>(string name, Action<T>? initialize = null) where T : class
 public LiveSettingDefinition Definition { get; }
@@ -175,7 +175,7 @@ public RemoteSubscriptionStage<TEvent, TNext> Select<TNext>(Func<TCurrent, TNext
 public RemoteSubscriptionStage<TEvent, TNext> Select<TNext>(Func<TEvent, HookContext, TNext> projection)
 public RemoteSubscriptionStage<TEvent, TNext> Select<TNext>(Func<TEvent, TNext> projection)
 public SandboxValue ToSandboxValue()
-public sealed class HookPipeline<TEvent>
+public sealed class HookPipeline<TEvent> : IKernelHandlerPipeline
 public sealed class HookRegistry
 public sealed class HookStage<TEvent, TCurrent>
 public sealed class KernelRegistry : IEnumerable<InstalledKernel>
@@ -190,7 +190,7 @@ public sealed class RemoteHookStage<TEvent, TCurrent>
 public sealed class RemoteSubscriptionPipeline<TEvent>
 public sealed class RemoteSubscriptionRegistry
 public sealed class RemoteSubscriptionStage<TEvent, TCurrent>
-public sealed class SubscriptionPipeline<TEvent>
+public sealed class SubscriptionPipeline<TEvent> : IKernelHandlerPipeline
 public sealed class SubscriptionRegistry
 public sealed class SubscriptionStage<TEvent, TCurrent>
 public sealed class TypedInstalledKernel<TSettings> where TSettings : class
@@ -237,7 +237,7 @@ public static PluginPackage Import(string json)
 public static PluginPackage Resolve(Type kernelType)
 public static PluginPackage Resolve<TKernel>() where TKernel : class => Resolve(typeof(TKernel))
 public static PluginServer Create( IPluginMessageSink? messages = null, Action<SandboxHostBuilder>? configureHost = null, SandboxPolicy? defaultPolicy = null, ExecutionMode executionMode = ExecutionMode.Auto)
-public static SandboxHostBuilder AddBindingsFrom<TService>( this SandboxHostBuilder builder, TService implementation)
+public static SandboxHostBuilder AddBindingsFrom<TService>( this SandboxHostBuilder builder, TService implementation) where TService : class
 public static SandboxHostBuilder AddPluginMessageBindings( this SandboxHostBuilder builder, IPluginMessageSink sink)
 public static SandboxPolicyBuilder GrantHostMessageWrite( this SandboxPolicyBuilder builder, IEnumerable<string>? allowedTargets = null, IEnumerable<string>? targetPrefixes = null, int? maxMessageLength = null)
 public static SandboxPolicyBuilder GrantHostMessageWrite(this SandboxPolicyBuilder builder)

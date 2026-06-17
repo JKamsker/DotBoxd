@@ -42,6 +42,7 @@ public sealed class FileWritePolicyTests
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(FileWriteJson("existing.txt", new string('x', 1_000)));
         var policy = SandboxPolicyBuilder.Create()
+            .AllowRuntimeAsync()
             .GrantFileWrite(temp.Path, 2_000, allowCreate: false, allowOverwrite: true)
             .WithFuel(200)
             .WithWallTime(TimeSpan.FromSeconds(2))
@@ -66,6 +67,7 @@ public sealed class FileWritePolicyTests
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(FileWriteJson(path, text));
         var policy = SandboxPolicyBuilder.Create()
+            .AllowRuntimeAsync()
             .GrantFileWrite(root, 1024, allowCreate, allowOverwrite)
             .WithFuel(5_000)
             .WithWallTime(TimeSpan.FromSeconds(2))

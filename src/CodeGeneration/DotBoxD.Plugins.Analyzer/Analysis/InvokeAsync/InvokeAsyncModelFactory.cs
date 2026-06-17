@@ -132,7 +132,11 @@ internal static class InvokeAsyncModelFactory
             $"\"returnType\":{shape.ReturnTypeJson}," +
             $"\"body\":{bodyJson}}}]}}}}";
 
-        return new GeneratedPluginPackage(HintName(ns, packageName), BuildSource(ns, packageName, json));
+        return new GeneratedPluginPackage(
+            HintName(ns, packageName),
+            BuildSource(ns, packageName, json),
+            ns,
+            packageName);
     }
 
     private static InvokeAsyncInterception? Interception(

@@ -13,6 +13,7 @@ public enum SandboxEffect
     Network = 1 << 6,
     HostStateRead = 1 << 7,
     HostStateWrite = 1 << 8,
+    Concurrency = 1 << 9,
     Audit = 1 << 11
 }
 
@@ -32,6 +33,7 @@ public static class SandboxEffects
             SandboxEffect.Network |
             SandboxEffect.HostStateRead |
             SandboxEffect.HostStateWrite |
+            SandboxEffect.Concurrency |
             SandboxEffect.Audit;
 
         return (effects & ~allKnown) == SandboxEffect.None;

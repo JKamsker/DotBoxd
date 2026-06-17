@@ -6,6 +6,7 @@ public sealed partial class SandboxContext
     {
         _deterministicRandom = null;
         _returnCredits = null;
+        _bindingGrantClock = null;
         _callDepth = 0;
     }
 }

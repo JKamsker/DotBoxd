@@ -20,6 +20,7 @@ internal static partial class RpcKernelClientProxyEmitter
         INamedTypeSymbol serviceType,
         IMethodSymbol serviceMethod)
     {
+        EnsureAccessibleFromGeneratedClient(serviceType);
         if (serviceType.TypeKind != TypeKind.Interface)
         {
             throw new NotSupportedException("Server extension client generation requires an interface contract type.");
@@ -30,64 +31,24 @@ internal static partial class RpcKernelClientProxyEmitter
 
     internal static IMethodSymbol ResolveServiceMethod(INamedTypeSymbol serviceType, IMethodSymbol kernelMethod)
     {
-        if (serviceType.TypeKind != TypeKind.Interface)
-        {
-            throw new NotSupportedException("Server extension client generation requires an interface contract type.");
-        }
-
-        var methods = new List<IMethodSymbol>();
-        foreach (var member in serviceType.GetMembers())
-        {
-            if (member is IMethodSymbol { MethodKind: MethodKind.Ordinary, IsStatic: false } method)
-            {
-                methods.Add(method);
-            }
-        }
-
-        if (methods.Count != 1)
-        {
-            throw new NotSupportedException(
-                $"Server extension interface '{serviceType.ToDisplayString()}' must declare exactly one method.");
-        }
-
-        var serviceMethod = methods[0];
-        var expectedName = kernelMethod.Name;
-        if (!string.Equals(serviceMethod.Name, expectedName, StringComparison.Ordinal) &&
-            !string.Equals(serviceMethod.Name, expectedName + "Async", StringComparison.Ordinal))
-        {
-            throw new NotSupportedException(
-                $"Server extension method '{serviceMethod.Name}' must match kernel method '{expectedName}' or '{expectedName}Async'.");
-        }
-
-        var kernelParameterCount = kernelMethod.Parameters.Length - 1;
-        if (serviceMethod.Parameters.Length != kernelParameterCount)
-        {
-            throw new NotSupportedException(
-                $"Server extension method '{serviceMethod.Name}' must declare {kernelParameterCount} parameter(s).");
-        }
-
-        for (var i = 0; i < kernelParameterCount; i++)
-        {
-            if (!SymbolEqualityComparer.Default.Equals(serviceMethod.Parameters[i].Type, kernelMethod.Parameters[i].Type))
-            {
-                throw new NotSupportedException(
-                    $"Server extension parameter '{serviceMethod.Parameters[i].Name}' must match kernel parameter '{kernelMethod.Parameters[i].Name}'.");
-            }
-        }
-
-        if (!SymbolEqualityComparer.Default.Equals(
-                UnwrapReturn(serviceMethod.ReturnType),
-                UnwrapReturn(kernelMethod.ReturnType)))
-        {
-            throw new NotSupportedException(
-                $"Server extension method '{serviceMethod.Name}' return type must match kernel method '{kernelMethod.Name}'.");
-        }
-
-        return serviceMethod;
+        EnsureAccessibleFromGeneratedClient(serviceType);
+        return RpcKernelClientServiceMethodResolver.Resolve(serviceType, kernelMethod);
     }
 
-    private static ITypeSymbol UnwrapReturn(ITypeSymbol type)
-        => IsGenericTask(type, out var inner) || IsGenericValueTask(type, out inner) ? inner : type;
+    private static void EnsureAccessibleFromGeneratedClient(INamedTypeSymbol serviceType)
+    {
+        for (INamedTypeSymbol? current = serviceType; current is not null; current = current.ContainingType)
+        {
+            if (!IsAccessibleFromGeneratedClient(current.DeclaredAccessibility))
+            {
+                throw new NotSupportedException(
+                    $"Server extension interface '{serviceType.ToDisplayString()}' must be accessible from generated client code.");
+            }
+        }
+    }
+
+    private static bool IsAccessibleFromGeneratedClient(Accessibility accessibility)
+        => accessibility is Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal;
 
     private static bool IsGenericTask(ITypeSymbol type, out ITypeSymbol inner)
         => TryGenericTaskLike(type, "Task", out inner);
@@ -149,7 +110,8 @@ internal static partial class RpcKernelClientProxyEmitter
         {
             var builder = new StringBuilder();
             var clientName = _kernelType.Name + "ServerExtensionClient";
-            builder.Append("public sealed class ").Append(clientName).Append(" : ").AppendLine(TypeName(_serviceType));
+            builder.Append(AccessibilityKeyword(_serviceType)).Append(" sealed class ")
+                .Append(clientName).Append(" : ").AppendLine(TypeName(_serviceType));
             builder.AppendLine("{");
             builder.AppendLine("    private readonly global::DotBoxD.Abstractions.IServerExtensionWireClient _client;");
             builder.AppendLine("    private readonly string _pluginId;");
@@ -171,8 +133,17 @@ internal static partial class RpcKernelClientProxyEmitter
             return builder.ToString();
         }
 
+        private static string AccessibilityKeyword(INamedTypeSymbol type)
+            => type.DeclaredAccessibility == Accessibility.Public ? "public" : "internal";
+
         private void AppendServiceMethod(StringBuilder builder)
         {
+            var locals = new GeneratedLocalNames(_serviceMethod);
+            var arguments = locals.Next("__arguments");
+            var request = locals.Next("__request");
+            var response = locals.Next("__response");
+            var result = locals.Next("__result");
+
             builder.Append("    public ");
             if (_returnShape != ReturnShape.Direct)
             {
@@ -183,27 +154,35 @@ internal static partial class RpcKernelClientProxyEmitter
                 .Append(Identifier(_serviceMethod.Name)).Append('(')
                 .Append(ParameterList(_serviceMethod)).AppendLine(")");
             builder.AppendLine("    {");
-            builder.Append("        var __arguments = new global::DotBoxD.Plugins.KernelRpcValue[")
+            builder.Append("        var ").Append(arguments).Append(" = new global::DotBoxD.Plugins.KernelRpcValue[")
                 .Append(_serviceMethod.Parameters.Length).AppendLine("];");
             for (var i = 0; i < _serviceMethod.Parameters.Length; i++)
             {
                 var parameter = _serviceMethod.Parameters[i];
-                builder.Append("        __arguments[").Append(i).Append("] = ")
+                builder.Append("        ").Append(arguments).Append('[').Append(i).Append("] = ")
                     .Append(WriteExpression(parameter.Type, Identifier(parameter.Name))).AppendLine(";");
             }
 
-            builder.AppendLine("        var __request = global::DotBoxD.Plugins.KernelRpcBinaryCodec.EncodeArguments(__arguments);");
+            builder.Append("        var ").Append(request)
+                .Append(" = global::DotBoxD.Plugins.KernelRpcBinaryCodec.EncodeArguments(")
+                .Append(arguments).AppendLine(");");
             if (_returnShape == ReturnShape.Direct)
             {
-                builder.AppendLine("        var __response = _client.InvokeServerExtensionAsync(_pluginId, __request).AsTask().GetAwaiter().GetResult();");
+                builder.Append("        var ").Append(response)
+                    .Append(" = _client.InvokeServerExtensionAsync(_pluginId, ")
+                    .Append(request).AppendLine(").AsTask().GetAwaiter().GetResult();");
             }
             else
             {
-                builder.AppendLine("        var __response = await _client.InvokeServerExtensionAsync(_pluginId, __request).ConfigureAwait(false);");
+                builder.Append("        var ").Append(response)
+                    .Append(" = await _client.InvokeServerExtensionAsync(_pluginId, ")
+                    .Append(request).AppendLine(").ConfigureAwait(false);");
             }
 
-            builder.AppendLine("        var __result = global::DotBoxD.Plugins.KernelRpcBinaryCodec.DecodeValue(__response);");
-            builder.Append("        return ").Append(ReadExpression(_payloadReturnType, "__result")).AppendLine(";");
+            builder.Append("        var ").Append(result)
+                .Append(" = global::DotBoxD.Plugins.KernelRpcBinaryCodec.DecodeValue(")
+                .Append(response).AppendLine(");");
+            builder.Append("        return ").Append(ReadExpression(_payloadReturnType, result)).AppendLine(";");
             builder.AppendLine("    }");
             builder.AppendLine();
         }
@@ -236,6 +215,30 @@ internal static partial class RpcKernelClientProxyEmitter
         }
 
         private string NextHelperName(string prefix) => prefix + "KernelRpcValue" + _nextHelper++;
+
+        private sealed class GeneratedLocalNames
+        {
+            private readonly HashSet<string> _used = new(StringComparer.Ordinal);
+
+            public GeneratedLocalNames(IMethodSymbol serviceMethod)
+            {
+                foreach (var parameter in serviceMethod.Parameters)
+                {
+                    _used.Add(parameter.Name);
+                }
+            }
+
+            public string Next(string baseName)
+            {
+                var name = baseName;
+                for (var suffix = 0; !_used.Add(name); suffix++)
+                {
+                    name = baseName + suffix.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
+                }
+
+                return name;
+            }
+        }
 
         private static string TypeName(ITypeSymbol type)
             => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);

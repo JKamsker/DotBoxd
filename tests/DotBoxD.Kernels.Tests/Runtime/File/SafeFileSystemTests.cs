@@ -1,3 +1,4 @@
+using DotBoxD.Kernels;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
@@ -67,6 +68,25 @@ public sealed class SafeFileSystemTests
     }
 
     [Fact]
+    public async Task File_read_allows_in_root_filename_starting_with_two_dots()
+    {
+        using var temp = TempDirectory.Create();
+        await System.IO.File.WriteAllTextAsync(Path.Combine(temp.Path, "..safe.txt"), "safe");
+        var host = SandboxTestHost.Create();
+        var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson("..safe.txt"));
+        var policy = FilePolicyBuilder()
+            .GrantFileRead(temp.Path, 1024)
+            .WithFuel(5_000)
+            .Build();
+        var plan = await host.PrepareAsync(module, policy);
+
+        var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        Assert.Equal("safe", ((StringValue)result.Value!).Value);
+    }
+
+    [Fact]
     public async Task File_read_respects_byte_quota_while_streaming()
     {
         using var temp = TempDirectory.Create();
@@ -106,6 +126,31 @@ public sealed class SafeFileSystemTests
     }
 
     [Fact]
+    public async Task File_read_allocation_failure_audits_streamed_bytes()
+    {
+        using var temp = TempDirectory.Create();
+        var text = new string('x', 600);
+        await System.IO.File.WriteAllTextAsync(Path.Combine(temp.Path, "text.txt"), text);
+        var host = SandboxTestHost.Create();
+        var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson("text.txt"));
+        var policy = FilePolicyBuilder()
+            .GrantFileRead(temp.Path, 1024)
+            .WithMaxAllocatedBytes(500)
+            .WithFuel(5_000)
+            .Build();
+        var plan = await host.PrepareAsync(module, policy);
+
+        var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, result.Error!.Code);
+        Assert.Equal(600, result.ResourceUsage.FileBytesRead);
+        var audit = Assert.Single(result.AuditEvents, e => e.BindingId == "file.readText" && !e.Success);
+        Assert.Equal(600, audit.Bytes);
+        Assert.Equal("600", audit.Fields!["bytesRead"]);
+    }
+
+    [Fact]
     public async Task File_write_is_denied_without_host_grant()
     {
         var host = SandboxTestHost.Create();
@@ -137,6 +182,24 @@ public sealed class SafeFileSystemTests
         var audit = Assert.Single(result.AuditEvents, e => e.BindingId == "file.writeText" && e.Success);
         Assert.Equal("file", audit.Fields!["resourceKind"]);
         Assert.Equal("7", audit.Fields["bytesWritten"]);
+    }
+
+    [Fact]
+    public async Task File_write_allows_in_root_filename_starting_with_two_dots()
+    {
+        using var temp = TempDirectory.Create();
+        var host = SandboxTestHost.Create();
+        var module = await host.ImportJsonAsync(FileWriteJson("..safe.txt", "written"));
+        var policy = FilePolicyBuilder()
+            .GrantFileWrite(temp.Path, 1024, allowCreate: true, allowOverwrite: false)
+            .WithFuel(5_000)
+            .Build();
+        var plan = await host.PrepareAsync(module, policy);
+
+        var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        Assert.Equal("written", await System.IO.File.ReadAllTextAsync(Path.Combine(temp.Path, "..safe.txt")));
     }
 
     [Theory]
@@ -225,8 +288,9 @@ public sealed class SafeFileSystemTests
         var module = await host.ImportJsonAsync(FileWriteJson("missing.txt", "new"));
         var policy = new SandboxPolicy(
             "direct-file-write",
-            SandboxEffects.Pure | SandboxEffect.FileWrite | SandboxEffect.Audit,
+            SandboxEffects.Pure | SandboxEffect.FileWrite | SandboxEffect.Concurrency | SandboxEffect.Audit,
             [
+                new CapabilityGrant(RuntimeCapabilityIds.Async, new Dictionary<string, string>()),
                 new CapabilityGrant("file.write", new Dictionary<string, string>
                 {
                     ["root"] = temp.Path,
@@ -314,7 +378,9 @@ public sealed class SafeFileSystemTests
         """;
 
     private static SandboxPolicyBuilder FilePolicyBuilder()
-        => SandboxPolicyBuilder.Create().WithWallTime(TimeSpan.FromSeconds(2));
+        => SandboxPolicyBuilder.Create()
+            .AllowRuntimeAsync()
+            .WithWallTime(TimeSpan.FromSeconds(2));
 
     private sealed class TempDirectory : IDisposable
     {

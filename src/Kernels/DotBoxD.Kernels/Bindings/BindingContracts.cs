@@ -56,6 +56,7 @@ public sealed record BindingSignature(
     private IReadOnlyList<SandboxType> _parameters = ModelCopy.List(Parameters);
 
     public IReadOnlyList<SandboxType> Parameters { get => _parameters; init => _parameters = ModelCopy.List(value); }
+    public bool IsAsync { get; init; }
 }
 
 public sealed record BindingDescriptor(
@@ -77,7 +78,12 @@ public sealed record BindingDescriptor(
     public IReadOnlyList<SandboxType> Parameters { get => _parameters; init => _parameters = ModelCopy.List(value); }
 
     public BindingSignature Signature => new(
-        Id, Version, CopyParameters(Parameters), ReturnType, Effects, RequiredCapability, CostModel, AuditLevel, Safety, Compiled);
+        Id, Version, CopyParameters(Parameters), ReturnType, Effects, RequiredCapability, CostModel, AuditLevel, Safety, Compiled)
+    {
+        IsAsync = IsAsync
+    };
+
+    public bool IsAsync { get; init; }
 
     private static SandboxType[] CopyParameters(IReadOnlyList<SandboxType> parameters)
     {
@@ -298,6 +304,7 @@ public sealed class BindingRegistry : IBindingCatalog
             binding.CostModel.MaxCallsPerRun?.ToString(System.Globalization.CultureInfo.InvariantCulture),
             binding.AuditLevel.ToString(),
             binding.Safety.ToString(),
+            binding.IsAsync.ToString(System.Globalization.CultureInfo.InvariantCulture),
             binding.Compiled.Kind,
             binding.Compiled.Type,
             binding.Compiled.Method
@@ -349,4 +356,3 @@ public sealed class BindingRegistryBuilder
         return new BindingRegistry(_bindings);
     }
 }
-

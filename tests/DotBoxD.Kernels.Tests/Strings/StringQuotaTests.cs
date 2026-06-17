@@ -118,6 +118,7 @@ public sealed class StringQuotaTests
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson("config.txt"));
         var policy = SandboxPolicyBuilder.Create()
+            .AllowRuntimeAsync()
             .GrantFileRead(temp.Path, 1024)
             .WithMaxStringLength(4)
             .WithWallTime(TimeSpan.FromSeconds(2))
@@ -141,6 +142,7 @@ public sealed class StringQuotaTests
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson("config.txt"));
         var policy = SandboxPolicyBuilder.Create()
+            .AllowRuntimeAsync()
             .GrantFileRead(temp.Path, 1024)
             .WithMaxTotalStringBytes(30)
             .WithWallTime(TimeSpan.FromSeconds(2))

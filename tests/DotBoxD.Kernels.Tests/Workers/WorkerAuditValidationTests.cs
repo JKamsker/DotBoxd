@@ -164,6 +164,62 @@ public sealed class WorkerAuditValidationTests
     }
 
     [Fact]
+    public async Task Worker_result_with_unredacted_log_audit_text_is_rejected()
+    {
+        var worker = new AuditForgingWorker((plan, runId) => new SandboxAuditEvent(
+            runId,
+            "SandboxLog",
+            DateTimeOffset.UtcNow,
+            true,
+            BindingId: "log.info",
+            CapabilityId: "log.write",
+            Effect: SandboxEffect.Audit,
+            ResourceId: "log:info",
+            Message: "token=abc123 password=hunter2",
+            Fields: BindingFields(plan, "log")),
+            Value: SandboxValue.Unit);
+        var host = LogHost(worker);
+        var module = await host.ImportJsonAsync(LogJson());
+        var policy = SandboxPolicyBuilder.Create()
+            .GrantLogging()
+            .WithFuel(1_000)
+            .WithMaxLogEvents(1)
+            .Build();
+        var plan = await host.PrepareAsync(module, policy);
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.Unit,
+            new SandboxExecutionOptions { Isolation = SandboxIsolation.WorkerProcess });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.DoesNotContain("abc123", string.Join('\n', result.AuditEvents.Select(e => e.Message)));
+    }
+
+    [Fact]
+    public async Task Worker_result_with_forged_run_summary_policy_id_is_rejected()
+    {
+        var worker = new AuditForgingWorker(
+            (plan, runId) => new SandboxAuditEvent(
+                runId,
+                "WorkerExecution",
+                DateTimeOffset.UtcNow,
+                true,
+                ResourceId: $"module:{plan.ModuleHash}"),
+            MutateSummaryFields: fields => fields["policyId"] = "tenant_api_key_abc123");
+        var host = Host(worker);
+        var plan = await PrepareAsync(host);
+
+        var result = await ExecuteAsync(host, plan);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
+    }
+
+    [Fact]
     public async Task Worker_path_clears_successful_summary_suppression_so_audit_stays_valid()
     {
         // SuppressSuccessfulRunSummaryAudit is an in-process-only optimization. Worker-result
@@ -196,6 +252,15 @@ public sealed class WorkerAuditValidationTests
         => SandboxHost.Create(builder =>
         {
             builder.AddDefaultPureBindings();
+            builder.UseInterpreter();
+            builder.UseWorkerClient(worker, SandboxWorkerProfile.HardenedOutOfProcess);
+        });
+
+    private static SandboxHost LogHost(ISandboxWorkerClient worker)
+        => SandboxHost.Create(builder =>
+        {
+            builder.AddDefaultPureBindings();
+            builder.AddLogBindings();
             builder.UseInterpreter();
             builder.UseWorkerClient(worker, SandboxWorkerProfile.HardenedOutOfProcess);
         });
@@ -239,6 +304,35 @@ public sealed class WorkerAuditValidationTests
                     ])
             ],
             new Dictionary<string, string>());
+
+    private static Dictionary<string, string> BindingFields(ExecutionPlan plan, string resourceKind)
+        => new(StringComparer.Ordinal)
+        {
+            ["resourceKind"] = resourceKind,
+            ["durationMs"] = "0",
+            ["moduleHash"] = plan.ModuleHash,
+            ["policyHash"] = plan.PolicyHash
+        };
+
+    private static string LogJson()
+        => """
+        {
+          "id": "worker-audit-validation-log",
+          "version": "1.0.0",
+          "capabilityRequests": [{ "id": "log.write", "reason": "test logs" }],
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [],
+              "returnType": "Unit",
+              "body": [
+                { "op": "return", "value": { "call": "log.info", "args": [{ "string": "worker ok" }] } }
+              ]
+            }
+          ]
+        }
+        """;
 
     private sealed class RecordingWorker(Action<SandboxExecutionOptions> onOptions) : ISandboxWorkerClient
     {
@@ -285,7 +379,9 @@ public sealed class WorkerAuditValidationTests
 
     private sealed class AuditForgingWorker(
         Func<ExecutionPlan, SandboxRunId, SandboxAuditEvent> forgeAuditEvent,
-        bool AddSummaryExtraField = false) : ISandboxWorkerClient
+        bool AddSummaryExtraField = false,
+        Action<Dictionary<string, string>>? MutateSummaryFields = null,
+        SandboxValue? Value = null) : ISandboxWorkerClient
     {
         public ValueTask<SandboxExecutionResult> ExecuteInWorkerAsync(
             ExecutionPlan plan,
@@ -305,6 +401,7 @@ public sealed class WorkerAuditValidationTests
             {
                 summaryFields["forged"] = "field";
             }
+            MutateSummaryFields?.Invoke(summaryFields);
 
             audit.Write(new SandboxAuditEvent(
                 runId,
@@ -318,7 +415,7 @@ public sealed class WorkerAuditValidationTests
             return ValueTask.FromResult(new SandboxExecutionResult
             {
                 Succeeded = true,
-                Value = SandboxValue.FromInt32(35),
+                Value = Value ?? SandboxValue.FromInt32(35),
                 ResourceUsage = budget.Snapshot(),
                 AuditEvents = audit.Events,
                 ActualMode = ExecutionMode.Interpreted,

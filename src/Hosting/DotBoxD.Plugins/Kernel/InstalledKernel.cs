@@ -11,6 +11,7 @@ public sealed partial class InstalledKernel
 {
     private readonly object _typedValueGate = new();
     private readonly object _updateModeGate = new();
+    private readonly object _lifecycleGate = new();
     private readonly SemaphoreSlim _executionGate = new(1, 1);
     private readonly SandboxHost _host;
     private readonly ExecutionPlan _plan;
@@ -63,9 +64,12 @@ public sealed partial class InstalledKernel
 
     public void Revoke()
     {
-        if (Interlocked.Exchange(ref _revoked, 1) == 0)
+        lock (_lifecycleGate)
         {
-            _revocation.Cancel();
+            if (Interlocked.Exchange(ref _revoked, 1) == 0)
+            {
+                _revocation.Cancel();
+            }
         }
     }
 
@@ -115,9 +119,14 @@ public sealed partial class InstalledKernel
 
     public async ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)
     {
-        _liveStateSync.SynchronizeForFlush();
+        PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
         _pendingLiveUpdates.ClearError();
         await _pendingLiveUpdates.FlushAsync(cancellationToken).ConfigureAwait(false);
+        lock (_lifecycleGate)
+        {
+            PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
+            _liveStateSync.SynchronizeForFlush();
+        }
     }
 
     public async ValueTask<bool> ShouldHandleAsync<TEvent>(
@@ -249,7 +258,7 @@ public sealed partial class InstalledKernel
     internal void ValidateFor<TEvent>(IPluginEventAdapter<TEvent> adapter)
         => _adapterValidation.Validate(Manifest, _plan, _entrypoints, adapter);
 
-    private void RefreshTypedValuesFromStore()
+    internal void RefreshTypedValuesFromStore()
     {
         lock (_typedValueGate)
         {

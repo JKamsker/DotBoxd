@@ -40,9 +40,11 @@ public interface IMonsterControl
     /// <c>Monsters.Get(id).KillAsync()</c>. This is a nested proxy: cheap and local (no I/O); the async hop
     /// happens when you call a method on the returned <see cref="IMonster"/>.
     /// </summary>
+    [HostCapability("game.world.monster.read.handle")]
     IMonster Get(string entityId);
 
     /// <summary>Whether the id currently belongs to a monster (collection-level classification).</summary>
+    [HostCapability("game.world.monster.read.kind")]
     ValueTask<bool> IsMonsterAsync(string entityId);
 }
 
@@ -50,6 +52,7 @@ public interface IMonsterControl
 public interface IEntityControl
 {
     /// <summary>A scoped <b>handle</b> for one entity. The id is captured; calls on it omit it. No I/O.</summary>
+    [HostCapability("game.world.entity.read.handle")]
     IEntity Get(string entityId);
 }
 

@@ -119,6 +119,9 @@ public sealed record SandboxPolicy(
     public bool TryGetGrant(string capabilityId, out CapabilityGrant grant)
         => TryGetActiveGrant(capabilityId, GrantClock, out grant);
 
+    internal bool TryGetGrant(string capabilityId, DateTimeOffset now, out CapabilityGrant grant)
+        => TryGetActiveGrant(capabilityId, now, out grant);
+
     // Single O(1) indexed lookup by capability id, then a per-id active-grant check
     // (typically one candidate). Expiry is evaluated against the supplied clock so the
     // runtime path keeps its original call-time semantics (passing live GrantClock),

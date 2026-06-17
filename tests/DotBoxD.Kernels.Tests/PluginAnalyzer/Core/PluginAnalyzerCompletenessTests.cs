@@ -50,7 +50,7 @@ public sealed class PluginAnalyzerCompletenessTests
         Assert.Contains("Add(Var(\"e_Amount\"), Var(\"Offset\"))", generated);
         Assert.Contains("Sub(Var(\"MinDamage\"), I32(1))", generated);
         Assert.Contains("Not(StringEquals(Var(\"e_Message\"), Str(\"\")))", generated);
-        Assert.Contains("[\"Cpu\", \"Alloc\", \"HostStateWrite\", \"Audit\"]", generated);
+        Assert.Contains("[\"Cpu\", \"Alloc\", \"HostStateWrite\", \"Concurrency\", \"Audit\"]", generated);
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public sealed class PluginAnalyzerCompletenessTests
         Assert.Empty(diagnostics.Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
         Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
         var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
-        Assert.Contains("[\"Cpu\", \"HostStateWrite\", \"Audit\"]", generated);
+        Assert.Contains("[\"Cpu\", \"HostStateWrite\", \"Concurrency\", \"Audit\"]", generated);
         Assert.DoesNotContain("\"Alloc\"", generated);
     }
 

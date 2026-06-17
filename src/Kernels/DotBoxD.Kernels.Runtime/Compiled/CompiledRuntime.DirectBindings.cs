@@ -21,6 +21,15 @@ public static partial class CompiledRuntime
         => context.CanBulkChargeLoopIterations(count, fuelPerIteration);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool CanBulkChargeLoopIterationsAndFuel(
+        SandboxContext context,
+        int count,
+        int fuelPerIteration,
+        long fuelPerUnit)
+        => context.CanBulkChargeLoopIterations(count, fuelPerIteration) &&
+           context.CanBulkChargeFuel(fuelPerUnit, count);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool StringEqualsRaw(SandboxValue left, SandboxValue right)
         => string.Equals(((StringValue)left).Value, ((StringValue)right).Value, StringComparison.Ordinal);
 

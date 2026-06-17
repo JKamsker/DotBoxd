@@ -30,5 +30,8 @@ public static class SafeHttpBindings
                 return SandboxValue.FromString(text);
             },
             CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(CompiledRuntime.CallBinding)),
-            SafeHttpGrantValidator.Validate);
+            SafeHttpGrantValidator.Validate)
+        {
+            IsAsync = true
+        };
 }

@@ -4,9 +4,15 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.CodeAnalysis;
 
-internal sealed record RpcKernelClientPropertyExtension(INamedTypeSymbol ReceiverType, string Name);
+internal sealed record RpcKernelClientPropertyExtension(
+    INamedTypeSymbol ReceiverType,
+    string Name,
+    INamedTypeSymbol? ServerExtensionsInterfaceType);
 
-internal sealed record RpcKernelClientMethodExtension(INamedTypeSymbol ReceiverType, string Name);
+internal sealed record RpcKernelClientMethodExtension(
+    INamedTypeSymbol ReceiverType,
+    string Name,
+    INamedTypeSymbol? ServerExtensionsInterfaceType);
 
 internal sealed record RpcKernelClientExtensions(
     RpcKernelClientPropertyExtension? Property,
@@ -88,7 +94,12 @@ internal static class RpcKernelClientExtensionEmitter
     {
         builder.Append("        public ").Append(TypeName(serviceType)).Append(' ')
             .Append(Identifier(property.Name)).AppendLine();
-        AppendClientExpression(builder, kernelType, serviceType, receiver);
+        AppendClientExpression(
+            builder,
+            kernelType,
+            serviceType,
+            receiver,
+            property.ServerExtensionsInterfaceType);
     }
 
     private static void AppendMethod(
@@ -101,7 +112,13 @@ internal static class RpcKernelClientExtensionEmitter
     {
         builder.Append("        public ").Append(TypeName(serviceMethod.ReturnType)).Append(' ')
             .Append(Identifier(method.Name)).Append('(').Append(ParameterList(serviceMethod)).AppendLine(")");
-        AppendClientExpression(builder, kernelType, serviceType, receiver, serviceMethod);
+        AppendClientExpression(
+            builder,
+            kernelType,
+            serviceType,
+            receiver,
+            method.ServerExtensionsInterfaceType,
+            serviceMethod);
     }
 
     private static void AppendClientExpression(
@@ -109,11 +126,13 @@ internal static class RpcKernelClientExtensionEmitter
         INamedTypeSymbol kernelType,
         INamedTypeSymbol serviceType,
         string receiver,
+        INamedTypeSymbol? serverExtensionsInterfaceType,
         IMethodSymbol? serviceMethod = null)
     {
+        var registry = ServerExtensionsRegistryExpression(receiver, serverExtensionsInterfaceType);
         builder.Append("            => ").Append(ClientTypeName(kernelType)).AppendLine(".Create(");
-        builder.Append("                ").Append(receiver).AppendLine(".ServerExtensions,");
-        builder.Append("                ").Append(receiver).Append(".ServerExtensions.PluginId<")
+        builder.Append("                ").Append(registry).AppendLine(",");
+        builder.Append("                ").Append(registry).Append(".PluginId<")
             .Append(TypeName(serviceType)).Append(">())");
         if (serviceMethod is null)
         {
@@ -162,6 +181,11 @@ internal static class RpcKernelClientExtensionEmitter
             : kernelType.ContainingNamespace.ToDisplayString() + ".";
         return "global::" + ns + kernelType.Name + "ServerExtensionClient";
     }
+
+    private static string ServerExtensionsRegistryExpression(string receiver, INamedTypeSymbol? interfaceType)
+        => interfaceType is null
+            ? receiver + ".ServerExtensions"
+            : "((" + TypeName(interfaceType) + ")" + receiver + ").ServerExtensions";
 
     private static string TypeName(ITypeSymbol type)
         => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);

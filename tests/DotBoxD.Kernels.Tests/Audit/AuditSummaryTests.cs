@@ -96,13 +96,16 @@ public sealed class AuditSummaryTests
         Assert.Equal("summary-policy", summary.Fields["policyId"]);
     }
 
-    [Fact]
-    public async Task Run_summary_redacts_unsafe_policy_id()
+    [Theory]
+    [InlineData("tenant-prod-api-key=abc123\nnext", "api-key")]
+    [InlineData("tenant_api_key_abc123", "api_key")]
+    [InlineData("account_key_abc123", "account_key")]
+    public async Task Run_summary_redacts_unsafe_policy_id(string policyId, string marker)
     {
         var host = SandboxTestHost.Create();
         var module = await host.ImportJsonAsync(SandboxTestHost.PureScoreJson());
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create()
-            .WithPolicyId("tenant-prod-api-key=abc123\nnext")
+            .WithPolicyId(policyId)
             .WithFuel(1_000)
             .Build());
 
@@ -117,7 +120,7 @@ public sealed class AuditSummaryTests
         Assert.Equal("[redacted]", summary.Fields!["policyId"]);
         Assert.Contains("policyId=[redacted]", summary.Message!);
         Assert.DoesNotContain("abc123", summary.Message!, StringComparison.Ordinal);
-        Assert.DoesNotContain("api-key", summary.Message!, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(marker, summary.Message!, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain('\n', summary.Message!);
     }
 

@@ -133,7 +133,7 @@ jobs:
     runs-on: ubuntu-latest
     # Only ever publish from the canonical repo on a real version tag. Never from forks,
     # PRs, branches, or workflow_dispatch.
-    if: github.repository == 'JKamsker/DotBoxD' && startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'push' && github.repository == 'JKamsker/DotBoxD' && startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read
     steps:

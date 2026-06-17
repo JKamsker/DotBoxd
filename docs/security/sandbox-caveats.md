@@ -21,6 +21,10 @@ A **kernel** is restricted **IR** (intermediate representation), authored as JSO
 4. For **compiled** mode, **verifies** the generated assembly before it runs (the verifier enforces the
    same restrictions the interpreter does).
 
+Async host bindings remain part of the same boundary. They are disabled by default, add the
+`Concurrency` effect, and require the host policy to grant `dotboxd.runtime.async`. A binding that
+returns a genuinely pending `ValueTask` without that grant is rejected instead of being blocked on.
+
 This is the boundary DotBoxD is built to defend, and it is exercised by a required security-boundary
 test suite on every CI run. It defends against author-supplied *logic expressed as IR* — both buggy and
 many malicious authors.

@@ -90,6 +90,23 @@ public sealed class Fix_ALG_0019_Tests
         Assert.Equal("20", armor.ReceivedValues[0]);
     }
 
+    [Fact]
+    public void SetMany_does_not_partially_commit_when_later_custom_slot_fails()
+    {
+        var first = new LiveValue<int>("First", 1);
+        var failing = new ThrowingLiveSetting("Second");
+        var store = new LiveSettingStore([first, failing]);
+
+        Assert.Throws<InvalidOperationException>(() => store.SetMany(
+            new Dictionary<string, object?>
+            {
+                ["First"] = 2,
+                ["Second"] = 3
+            }));
+
+        Assert.Equal(1, store.Get<int>("First"));
+    }
+
     /// <summary>
     /// A test-only <see cref="ILiveSetting"/> that records every value the store delegates
     /// to it via <see cref="SetObject"/>, without performing any coercion or validation of
@@ -126,5 +143,18 @@ public sealed class Fix_ALG_0019_Tests
             LastReceivedWasUncoerced = value is string;
             CurrentValue = value;
         }
+    }
+
+    private sealed class ThrowingLiveSetting(string name) : ILiveSetting
+    {
+        public string Name => name;
+
+        public LiveSettingDefinition Definition { get; } = new(name, IntType, 0);
+
+        public object? CurrentValue => 0;
+
+        public SandboxValue ToSandboxValue() => SandboxValue.FromInt32(0);
+
+        public void SetObject(object? value) => throw new InvalidOperationException("boom");
     }
 }

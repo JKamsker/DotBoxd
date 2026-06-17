@@ -100,9 +100,10 @@ internal static class MapGetI32LoopFastPathEmitter
         il.Emit(OpCodes.Stloc, iterations);
 
         il.Emit(OpCodes.Ldarg_0);
-        il.Emit(OpCodes.Ldloc, readFuel);
         il.Emit(OpCodes.Ldloc, iterations);
-        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CanBulkChargeFuel)));
+        EmitInt32(il, plan.LoopFuelPerIteration);
+        il.Emit(OpCodes.Ldloc, readFuel);
+        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.CanBulkChargeLoopIterationsAndFuel)));
         il.Emit(OpCodes.Brfalse, fallback);
         CompiledMeterEmitter.Fuel(il, 1);
         il.Emit(OpCodes.Ldarg_0);

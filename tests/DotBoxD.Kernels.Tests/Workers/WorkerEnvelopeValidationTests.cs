@@ -11,6 +11,7 @@ namespace DotBoxD.Kernels.Tests.Workers;
 
 public sealed class WorkerEnvelopeValidationTests
 {
+    private static readonly string ValidArtifactHash = new('e', 64);
     private static readonly string ValidCacheKey = new('f', 64);
 
     [Theory]
@@ -67,6 +68,31 @@ public sealed class WorkerEnvelopeValidationTests
             Error = new SandboxError(SandboxErrorCode.InvalidInput, "defined worker error"),
             ResultMode = ExecutionMode.Compiled,
             ArtifactHash = artifactHash,
+            ForgedSummaryField = forgedField,
+            ForgedSummaryValue = forgedValue
+        };
+        var host = Host(worker);
+        var plan = await PrepareAsync(host);
+
+        var result = await ExecuteAsync(host, plan);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
+    }
+
+    [Theory]
+    [InlineData("runtimeForm", "DynamicMethod")]
+    [InlineData("cacheKey", "not-a-cache-key")]
+    public async Task Failed_compiled_worker_result_rejects_malformed_runtime_envelope(
+        string forgedField,
+        string forgedValue)
+    {
+        var worker = new EnvelopeWorker
+        {
+            Error = new SandboxError(SandboxErrorCode.InvalidInput, "defined worker error"),
+            ResultMode = ExecutionMode.Compiled,
+            ArtifactHash = ValidArtifactHash,
             ForgedSummaryField = forgedField,
             ForgedSummaryValue = forgedValue
         };

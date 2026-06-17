@@ -66,7 +66,7 @@ public sealed class KernelRegistry : IEnumerable<InstalledKernel>
         return Get(pluginId);
     }
 
-    internal void Add(InstalledKernel kernel)
+    internal InstalledKernel? Add(InstalledKernel kernel)
     {
         InstalledKernel? revoke = null;
         lock (_gate)
@@ -74,8 +74,8 @@ public sealed class KernelRegistry : IEnumerable<InstalledKernel>
             if (_kernels.TryGetValue(kernel.Manifest.PluginId, out var existing) &&
                 !ReferenceEquals(existing, kernel))
             {
-                if (existing.OwnerId is not null && kernel.OwnerId is not null &&
-                    !ReferenceEquals(existing.OwnerId, kernel.OwnerId))
+                if (!ReferenceEquals(existing.OwnerId, kernel.OwnerId) &&
+                    (existing.OwnerId is not null || kernel.OwnerId is not null))
                 {
                     throw new SandboxValidationException([
                         new SandboxDiagnostic(
@@ -91,51 +91,69 @@ public sealed class KernelRegistry : IEnumerable<InstalledKernel>
         }
 
         revoke?.Revoke();
+        return revoke;
     }
 
     /// <summary>
     /// Removes and revokes a kernel only if it is owned by <paramref name="owner"/> (or has no owner),
     /// so a session disposal never tears down another session's kernel that may have replaced this id.
     /// </summary>
-    internal bool RemoveOwned(PluginSession owner, string pluginId)
+    internal InstalledKernel? RemoveOwned(PluginSession owner, string pluginId)
     {
         InstalledKernel? kernel;
         lock (_gate)
         {
             if (!_kernels.TryGetValue(pluginId, out kernel))
             {
-                return false;
+                return null;
             }
 
             if (kernel.OwnerId is not null && !ReferenceEquals(kernel.OwnerId, owner))
             {
-                return false;
+                return null;
             }
 
             _kernels.Remove(pluginId);
         }
 
         kernel.Revoke();
-        return true;
+        return kernel;
     }
 
-    internal bool Remove(string pluginId)
+    internal InstalledKernel? Remove(string pluginId)
     {
         InstalledKernel? kernel;
         lock (_gate)
         {
             if (!_kernels.Remove(pluginId, out kernel))
             {
-                return false;
+                return null;
             }
         }
 
         if (kernel is null)
         {
-            return false;
+            return null;
         }
 
         kernel.Revoke();
-        return true;
+        return kernel;
+    }
+
+    internal InstalledKernel? Remove(InstalledKernel kernel)
+    {
+        lock (_gate)
+        {
+            if (!_kernels.TryGetValue(kernel.Manifest.PluginId, out var current) ||
+                !ReferenceEquals(current, kernel))
+            {
+                return null;
+            }
+
+            _kernels.Remove(kernel.Manifest.PluginId);
+        }
+
+        kernel.Revoke();
+        return kernel;
     }
 }

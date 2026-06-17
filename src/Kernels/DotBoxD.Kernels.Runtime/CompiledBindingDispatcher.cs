@@ -8,14 +8,25 @@ using DotBoxD.Kernels;
 
 internal static class CompiledBindingDispatcher
 {
+    [ThreadStatic] private static ICompiledAwaitPump? _pump;
+
+    internal static IDisposable InstallAwaitPump(ICompiledAwaitPump pump)
+    {
+        var previous = _pump;
+        _pump = pump;
+        return new AwaitPumpScope(previous);
+    }
+
     public static SandboxValue CallBinding(SandboxContext context, string id, SandboxValue[] args)
     {
         var descriptor = context.Bindings.GetDescriptor(id);
         var auditCheckpoint = context.AuditCheckpoint();
+        using var grantClock = context.BeginBindingGrantClockScope(context.Policy.GrantClock);
         try
         {
             ValidateArguments(descriptor, args);
             context.ChargeBindingCall(descriptor);
+            EnsureAsyncGrant(context, descriptor);
         }
         catch (SandboxRuntimeException ex)
         {
@@ -28,7 +39,8 @@ internal static class CompiledBindingDispatcher
         {
             timeout = context.CreateWallTimeToken();
             using var returnCredits = context.BeginBindingReturnCreditScope();
-            var value = AwaitBinding(descriptor.Invoke(context, args, timeout.Token));
+            var value = AwaitBinding(context, descriptor.Invoke(context, args, timeout.Token));
+            context.Checkpoint();
             value = context.ChargeBindingReturn(descriptor, value);
             context.EnsureRequiredBindingSuccessAudit(descriptor, auditCheckpoint);
             return value;
@@ -75,10 +87,12 @@ internal static class CompiledBindingDispatcher
     {
         var descriptor = context.Bindings.GetDescriptor(id);
         var auditCheckpoint = context.AuditCheckpoint();
+        using var grantClock = context.BeginBindingGrantClockScope(context.Policy.GrantClock);
         try
         {
             ValidateArguments(descriptor, arg0, arg1);
             context.ChargeBindingCall(descriptor);
+            EnsureAsyncGrant(context, descriptor);
         }
         catch (SandboxRuntimeException ex)
         {
@@ -94,7 +108,8 @@ internal static class CompiledBindingDispatcher
             var pending = descriptor.Invoke.Target is ITwoArgumentBindingInvoker fastInvoker
                 ? fastInvoker.Invoke(context, arg0, arg1, timeout.Token)
                 : descriptor.Invoke(context, [arg0, arg1], timeout.Token);
-            var value = AwaitBinding(pending);
+            var value = AwaitBinding(context, pending);
+            context.Checkpoint();
             value = context.ChargeBindingReturn(descriptor, value);
             context.EnsureRequiredBindingSuccessAudit(descriptor, auditCheckpoint);
             return value;
@@ -133,17 +148,51 @@ internal static class CompiledBindingDispatcher
         }
     }
 
-    private static SandboxValue AwaitBinding(ValueTask<SandboxValue> pending)
+    private static void EnsureAsyncGrant(SandboxContext context, BindingDescriptor descriptor)
+    {
+        if (!descriptor.IsAsync || context.AsyncEnabled)
+        {
+            return;
+        }
+
+        throw new SandboxRuntimeException(new SandboxError(
+            SandboxErrorCode.PermissionDenied,
+            $"binding '{descriptor.Id}' requires the '{RuntimeCapabilityIds.Async}' capability"));
+    }
+
+    private static SandboxValue AwaitBinding(SandboxContext context, ValueTask<SandboxValue> pending)
     {
         // Synchronous bindings (the common case) complete inline, so read the
         // result directly and avoid allocating a Task<SandboxValue> wrapper.
-        // Only genuinely asynchronous completions fall back to AsTask().
-        if (pending.IsCompletedSuccessfully)
+        if (pending.IsCompleted)
         {
-            return pending.Result;
+            return pending.GetAwaiter().GetResult();
         }
 
-        return pending.AsTask().GetAwaiter().GetResult();
+        if (!context.AsyncEnabled)
+        {
+            throw new SandboxRuntimeException(new SandboxError(
+                SandboxErrorCode.BindingFailure,
+                "binding returned a pending result; async capability is not granted"));
+        }
+
+        var pump = _pump;
+        if (pump is null)
+        {
+            throw new SandboxRuntimeException(new SandboxError(
+                SandboxErrorCode.BindingFailure,
+                "async pump is not installed"));
+        }
+
+        return pump.RunToCompletion(pending);
+    }
+
+    private sealed class AwaitPumpScope(ICompiledAwaitPump? previous) : IDisposable
+    {
+        public void Dispose()
+        {
+            _pump = previous;
+        }
     }
 
     // Compiled IR was already verified against the binding signature and every
@@ -190,4 +239,9 @@ internal static class CompiledBindingDispatcher
                 $"binding '{descriptor.Id}' argument type does not match verified plan"));
         }
     }
+}
+
+internal interface ICompiledAwaitPump
+{
+    SandboxValue RunToCompletion(ValueTask<SandboxValue> pending);
 }

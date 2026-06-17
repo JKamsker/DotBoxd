@@ -59,6 +59,7 @@ public sealed partial class SandboxContext
     internal bool CanBulkChargeBindingCalls(BindingDescriptor descriptor, long calls)
     {
         if (calls < 0 ||
+            descriptor.IsAsync ||
             descriptor.RequiredCapability is not null ||
             descriptor.CostModel.MaxCallsPerRun is not null ||
             AllowedBindingIds is not null && !AllowedBindingIds.Contains(descriptor.Id) ||

@@ -5,6 +5,7 @@ namespace DotBoxD.Hosting;
 
 using System.Globalization;
 using DotBoxD.Kernels;
+using DotBoxD.Kernels.Runtime;
 
 internal static class WorkerAuditValidator
 {
@@ -56,7 +57,7 @@ internal static class WorkerAuditValidator
             !TextIsSafe(auditEvent.Message) ||
             auditEvent.Bytes is < 0 ||
             (auditEvent.ErrorCode is { } code && !Enum.IsDefined(code)) ||
-            (auditEvent.Success && auditEvent.ErrorCode is not null) ||
+            !ResultShapeMatches(auditEvent) ||
             !TimestampMatches(plan, auditEvent.Timestamp))
         {
             return false;
@@ -66,6 +67,8 @@ internal static class WorkerAuditValidator
         {
             "RunSummary" => RunSummarySchemaMatches(plan, auditEvent),
             "WorkerExecution" => ModuleAuditMatches(plan, auditEvent),
+            "ExecutionFallback" => ExecutionFallbackAuditMatches(plan, auditEvent),
+            "VerifierFailure" => VerifierFailureAuditMatches(plan, auditEvent),
             "DebugTrace" => options.EnableDebugTrace && ModuleAuditMatches(plan, auditEvent),
             "CacheInvalidated" => false,
             "PolicyDenied" => false,
@@ -73,6 +76,11 @@ internal static class WorkerAuditValidator
             _ => false
         };
     }
+
+    private static bool ResultShapeMatches(SandboxAuditEvent auditEvent)
+        => !auditEvent.Success ||
+           auditEvent.ErrorCode is null ||
+           auditEvent.Kind == "ExecutionFallback";
 
     private static bool TimestampMatches(ExecutionPlan plan, DateTimeOffset timestamp)
     {
@@ -126,6 +134,16 @@ internal static class WorkerAuditValidator
            auditEvent.Fields is null &&
            string.Equals(auditEvent.ResourceId, $"module:{plan.ModuleHash}", StringComparison.Ordinal);
 
+    private static bool ExecutionFallbackAuditMatches(ExecutionPlan plan, SandboxAuditEvent auditEvent)
+        => auditEvent.Success &&
+           auditEvent.ErrorCode is SandboxErrorCode.ValidationError or SandboxErrorCode.VerifierFailure &&
+           ModuleAuditMatches(plan, auditEvent);
+
+    private static bool VerifierFailureAuditMatches(ExecutionPlan plan, SandboxAuditEvent auditEvent)
+        => !auditEvent.Success &&
+           auditEvent.ErrorCode == SandboxErrorCode.VerifierFailure &&
+           ModuleAuditMatches(plan, auditEvent);
+
     private static bool BindingAuditMatches(
         ExecutionPlan plan,
         string entrypoint,
@@ -140,6 +158,7 @@ internal static class WorkerAuditValidator
             !CapabilityMatches(auditEvent, binding) ||
             !EffectMatches(auditEvent, binding) ||
             !ResultMatches(auditEvent) ||
+            !LogAuditMatchesPolicy(plan, auditEvent) ||
             !RequiredBindingFieldsMatch(plan, auditEvent))
         {
             return false;
@@ -167,6 +186,11 @@ internal static class WorkerAuditValidator
 
     private static bool ResultMatches(SandboxAuditEvent auditEvent)
         => auditEvent.Success ? auditEvent.ErrorCode is null : auditEvent.ErrorCode is not null;
+
+    private static bool LogAuditMatchesPolicy(ExecutionPlan plan, SandboxAuditEvent auditEvent)
+        => auditEvent.Kind != "SandboxLog" ||
+           auditEvent.Message is not null &&
+           auditEvent.Message.Length <= plan.Budget.MaxLogMessageLength;
 
     private static bool RequiredBindingFieldsMatch(ExecutionPlan plan, SandboxAuditEvent auditEvent)
     {
@@ -201,5 +225,6 @@ internal static class WorkerAuditValidator
     }
 
     private static bool TextIsSafe(string? value)
-        => value is null || value.All(c => !char.IsControl(c));
+        => value is null ||
+           string.Equals(AuditTextSanitizer.SanitizeAndRedact(value), value, StringComparison.Ordinal);
 }

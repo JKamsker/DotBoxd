@@ -176,6 +176,10 @@ jobs:
         shell: pwsh
         run: ./eng/scripts/check-release-workflow-security.ps1
 
+      - name: Release readiness
+        shell: pwsh
+        run: ./eng/scripts/check-release-readiness.ps1 -RequireComplete
+
       - name: Security-boundary required tests
         shell: pwsh
         run: |
@@ -189,6 +193,8 @@ jobs:
               "FileExtensionPolicyTests",
               "PathUriLiteralValidationTests",
               "CompiledArtifactGuardTests",
+              "CompiledAsyncCapabilityParityTests",
+              "CompiledAsyncSynchronizationContextParityTests",
               "CompiledRuntimeQuotaTests",
               "CompiledCacheAuditTests",
               "CompiledCacheConcurrencyTests",

@@ -33,6 +33,50 @@ public sealed class NetworkAuditTests
         Assert.True(double.Parse(audit.Fields["durationMs"], System.Globalization.CultureInfo.InvariantCulture) >= 0);
     }
 
+    [Fact]
+    public async Task Http_get_quota_failure_audits_streamed_response_bytes()
+    {
+        var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("too-large"));
+        var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
+        var policy = NetworkPolicyBuilder()
+            .GrantHttpGet(["api.example.com"], maxResponseBytes: 22)
+            .WithFuel(5_000)
+            .Build();
+        var plan = await host.PrepareAsync(module, policy);
+
+        var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, result.Error!.Code);
+        Assert.Equal(23, result.ResourceUsage.NetworkBytesRead);
+        var audit = Assert.Single(result.AuditEvents, e => e.BindingId == "net.http.get" && !e.Success);
+        Assert.Equal(result.ResourceUsage.NetworkBytesRead, audit.Bytes);
+        Assert.Equal(
+            result.ResourceUsage.NetworkBytesRead.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            audit.Fields!["bytesRead"]);
+    }
+
+    [Fact]
+    public async Task Http_get_audit_includes_request_bytes_written()
+    {
+        var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("ok"));
+        var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
+        var policy = NetworkPolicyBuilder()
+            .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
+            .WithFuel(5_000)
+            .Build();
+        var plan = await host.PrepareAsync(module, policy);
+
+        var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        Assert.True(result.ResourceUsage.NetworkBytesWritten > 0);
+        var audit = Assert.Single(result.AuditEvents, e => e.BindingId == "net.http.get" && e.Success);
+        Assert.Equal(
+            result.ResourceUsage.NetworkBytesWritten.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            audit.Fields!["bytesWritten"]);
+    }
+
     private static SafeInMemoryHttpMessageInvoker RawBytesInvoker(byte[] rawBytes)
         => new(rawBytes);
 }

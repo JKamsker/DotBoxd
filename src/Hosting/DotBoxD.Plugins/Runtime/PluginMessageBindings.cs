@@ -42,7 +42,10 @@ public static class PluginMessageBindings
             BindingSafety.SideEffectingExternal,
             invoker.Invoke,
             CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(Kernels.Runtime.CompiledRuntime.CallBinding)),
-            ValidateGrant);
+            ValidateGrant)
+        {
+            IsAsync = true
+        };
     }
 
     private static void ValidateGrant(CapabilityGrant grant, ICollection<SandboxDiagnostic> diagnostics)

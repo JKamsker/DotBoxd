@@ -1,0 +1,28 @@
+# DotBoxD.Kernels public API baseline
+# Package: DotBoxD.Transports.Tcp
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+public async Task ConnectAsync(CancellationToken ct = default)
+public async Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
+public async Task<IRpcChannel> AcceptAsync(CancellationToken ct = default)
+public async Task<Payload> ReceiveAsync(CancellationToken ct = default)
+public async ValueTask DisposeAsync()
+public bool IsConnected => _client.Connected && Volatile.Read(ref _disposed) == 0
+public bool IsConnected => _connection?.IsConnected ?? false
+public IPEndPoint? LocalEndpoint => _listener?.LocalEndpoint as IPEndPoint
+public IRpcChannel? Connection => _connection
+public sealed class TcpConnection : IRpcChannel
+public sealed class TcpServerTransport : IServerTransport
+public sealed class TcpTransport : ITransport
+public static readonly TimeSpan DefaultFrameReadIdleTimeout = TimeSpan.FromSeconds(30)
+public string RemoteEndpoint { get; }
+public Task StartAsync(CancellationToken ct = default)
+public Task StopAsync(CancellationToken ct = default)
+public TcpConnection(TcpClient client, TimeSpan? frameReadIdleTimeout)
+public TcpConnection(TcpClient client) : this(client, null)
+public TcpServerTransport(int port) : this(IPAddress.Any, port)
+public TcpServerTransport(IPAddress address, int port)
+public TcpServerTransport(string address, int port)
+public TcpTransport(string host, int port)
+public TimeSpan? FrameReadIdleTimeout { get; init; }
+public ValueTask DisposeAsync()

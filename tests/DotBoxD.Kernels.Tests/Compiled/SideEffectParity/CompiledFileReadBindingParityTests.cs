@@ -353,6 +353,7 @@ public sealed class CompiledFileReadBindingParityTests
 
         // GrantFileRead scoped to the temp directory root
         var policy = SandboxPolicyBuilder.Create()
+            .AllowRuntimeAsync()
             .GrantFileRead(root, maxBytesPerRun: 65_536)
             .WithFuel(10_000)
             .WithWallTime(TimeSpan.FromSeconds(10))

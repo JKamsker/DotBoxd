@@ -89,6 +89,7 @@ internal static class JsonLiteralReader
             throw Error("E-JSON-TYPE", "'opaqueId' must be an object with 'type' and 'value'");
         }
 
+        RequireAllowedProperties(element, "opaqueId", ["type", "value"]);
         string? typeName = null;
         string? idValue = null;
         foreach (var property in element.EnumerateObject())
@@ -101,8 +102,6 @@ internal static class JsonLiteralReader
                 case "value":
                     idValue = ReadStringValue(property.Value, "opaqueId.value");
                     break;
-                default:
-                    throw Error("E-JSON-ID", $"'opaqueId' has an unexpected property '{property.Name}'");
             }
         }
 

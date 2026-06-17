@@ -25,6 +25,11 @@ public interface IInstanceRegistry
     /// </summary>
     void Release(string serviceName, string instanceId);
 
+    /// <summary>
+    /// Releases an instance early, awaiting async disposal when the instance supports it.
+    /// </summary>
+    ValueTask ReleaseAsync(string serviceName, string instanceId);
+
     /// <summary>Removes every entry — called from the connection-cleanup path.</summary>
     void ReleaseAll();
 }

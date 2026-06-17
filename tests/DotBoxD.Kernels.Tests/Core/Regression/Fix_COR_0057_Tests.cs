@@ -178,6 +178,27 @@ public sealed class Fix_COR_0057_Tests
     }
 
     [Fact]
+    public async Task Unsupported_wildcard_grant_parameter_is_rejected_during_preparation()
+    {
+        var messages = new InMemoryPluginMessageSink();
+        var host = CreateHost(messages);
+        var module = await host.ImportJsonAsync(SendModule("player-1", "hello"));
+        var policy = SandboxPolicyBuilder.Create()
+            .AllowRuntimeAsync()
+            .Grant(
+                "host.*",
+                new { allowedTarget = "player-1" },
+                SandboxEffect.HostStateWrite | SandboxEffect.Audit)
+            .WithFuel(10_000)
+            .Build();
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await host.PrepareAsync(module, policy));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-POLICY-GRANT-PARAM");
+    }
+
+    [Fact]
     public async Task Invalid_max_message_length_grant_is_rejected_during_preparation()
     {
         var messages = new InMemoryPluginMessageSink();

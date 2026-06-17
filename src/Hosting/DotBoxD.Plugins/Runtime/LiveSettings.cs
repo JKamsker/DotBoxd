@@ -153,23 +153,49 @@ public sealed class LiveSettingStore
                 resolved[index++] = (Resolve(item.Key), item.Value);
             }
 
-            // Coerce and range-validate the whole batch up front for slots that support the
-            // validate/store split, again preserving atomicity: a single invalid value aborts
-            // the batch before anything is stored. Trusted typed values are then applied without
-            // re-coercing. Foreign slots keep their own single coercion site via SetObject.
+            // Coerce and range-validate built-in slots before anything is applied. Foreign slots
+            // keep their own single coercion site via SetObject, so they are applied before the
+            // built-in commit phase and rolled back best-effort if a later foreign slot fails.
             for (var i = 0; i < resolved.Length; i++) {
                 if (resolved[i].Setting is ICoercibleLiveSetting coercible) {
                     resolved[i] = (coercible, coercible.Coerce(resolved[i].Value));
                 }
             }
 
+            ApplyForeignSettings(resolved);
             foreach (var (setting, value) in resolved) {
                 if (setting is ICoercibleLiveSetting coercible) {
                     coercible.ApplyCoerced(value);
-                } else {
-                    setting.SetObject(value);
                 }
             }
+        }
+    }
+
+    private static void ApplyForeignSettings((ILiveSetting Setting, object? Value)[] resolved)
+    {
+        List<(ILiveSetting Setting, object? Previous)>? applied = null;
+        try {
+            foreach (var (setting, value) in resolved) {
+                if (setting is ICoercibleLiveSetting) {
+                    continue;
+                }
+
+                applied ??= [];
+                applied.Add((setting, setting.CurrentValue));
+                setting.SetObject(value);
+            }
+        } catch {
+            if (applied is not null) {
+                for (var i = applied.Count - 1; i >= 0; i--) {
+                    try {
+                        applied[i].Setting.SetObject(applied[i].Previous);
+                    } catch {
+                        // A foreign slot can reject rollback too; preserve the original failure.
+                    }
+                }
+            }
+
+            throw;
         }
     }
 

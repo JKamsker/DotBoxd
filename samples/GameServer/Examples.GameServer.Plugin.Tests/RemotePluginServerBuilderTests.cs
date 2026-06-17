@@ -254,6 +254,12 @@ public sealed class RemotePluginServerBuilderTests
             .WithMaxHostCalls(1_000);
         foreach (var capability in capabilities)
         {
+            if (string.Equals(capability, RuntimeCapabilityIds.Async, StringComparison.Ordinal))
+            {
+                builder.AllowRuntimeAsync();
+                continue;
+            }
+
             var effect = capability.Contains(".write.", StringComparison.Ordinal)
                 ? SandboxEffect.HostStateWrite
                 : SandboxEffect.HostStateRead;

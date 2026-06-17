@@ -1,0 +1,307 @@
+# DotBoxD.Kernels public API baseline
+# Package: DotBoxD.Services
+# Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
+
+public abstract class RpcStreamAttachment
+public async Task CloseAsync(CancellationToken ct = default)
+public async Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
+public async Task StartAsync(CancellationToken ct = default)
+public async Task<IRpcChannel> AcceptAsync(CancellationToken ct = default)
+public async Task<Payload> ReceiveAsync(CancellationToken ct = default)
+public async ValueTask DisposeAsync()
+public async ValueTask ReleaseAsync(string serviceName, string instanceId)
+public bool DisableInboundRequestCancellation { get; init; }
+public bool EnableLowAllocationValueTaskInvocations { get; init; }
+public bool IsConnected =>
+public bool IsConnected => Peer.IsConnected && _transport.IsConnected
+public bool IsConnected => Volatile.Read(ref _disposed) == 0 && _connection.IsConnected
+public bool IsSuccess { get; set; }
+public bool RejectInboundCalls { get; init; }
+public bool TryGet(string serviceName, string instanceId, out object instance)
+public class RemoteServiceException : ServiceException
+public class ServiceConnectionException : ServiceException
+public class ServiceException : Exception
+public class ServiceNotFoundException : ServiceException
+public class ServiceProtocolException : ServiceException
+public class ServiceTimeoutException : ServiceException
+public const int DefaultInboundQueueCapacity = 1024
+public const int DefaultMaxConcurrentInboundDispatch = 1
+public const int DefaultMaxPendingRequests = 4096
+public const int EnvelopeLengthSize = 4
+public const int HeaderSize = 9
+public const int MaxMessageSize = 16 * 1024 * 1024
+public const long DefaultMaxInboundBytes = 64L * 1024 * 1024
+public const string InboundRejected = "RpcInboundRejected"
+public const string InstanceNotFound = "RpcInstanceNotFound"
+public const string InternalError = "RpcInternalError"
+public const string MethodNotFound = "DotBoxDMethodNotFound"
+public const string ProtocolError = "RpcProtocolError"
+public const string QueueFull = "RpcQueueFull"
+public const string ServiceNotFound = "DotBoxDServiceNotFound"
+public enum GeneratedReturnKind
+public enum GeneratedReturnKind.AsyncEnumerable
+public enum GeneratedReturnKind.Pipe
+public enum GeneratedReturnKind.Stream
+public enum GeneratedReturnKind.Sync
+public enum GeneratedReturnKind.SyncNestedService
+public enum GeneratedReturnKind.Task
+public enum GeneratedReturnKind.TaskOfAsyncEnumerable
+public enum GeneratedReturnKind.TaskOfNestedService
+public enum GeneratedReturnKind.TaskOfPipe
+public enum GeneratedReturnKind.TaskOfStream
+public enum GeneratedReturnKind.TaskOfT
+public enum GeneratedReturnKind.ValueTask
+public enum GeneratedReturnKind.ValueTaskOfAsyncEnumerable
+public enum GeneratedReturnKind.ValueTaskOfNestedService
+public enum GeneratedReturnKind.ValueTaskOfPipe
+public enum GeneratedReturnKind.ValueTaskOfStream
+public enum GeneratedReturnKind.ValueTaskOfT
+public enum GeneratedReturnKind.Void
+public enum MessageType : byte
+public enum MessageType.Cancel = 0x04
+public enum MessageType.Error = 0x03
+public enum MessageType.Request = 0x01
+public enum MessageType.Response = 0x02
+public enum MessageType.StreamCancel = 0x09
+public enum MessageType.StreamComplete = 0x06
+public enum MessageType.StreamCredit = 0x08
+public enum MessageType.StreamError = 0x07
+public enum MessageType.StreamItem = 0x05
+public enum NotFoundKind
+public enum NotFoundKind.Instance
+public enum NotFoundKind.Method
+public enum NotFoundKind.Service
+public enum QueueFullMode
+public enum QueueFullMode.DropIncoming = 1
+public enum QueueFullMode.Wait = 0
+public enum RpcStreamKind : byte
+public enum RpcStreamKind.Binary = 1
+public enum RpcStreamKind.Items = 2
+public event EventHandler<RpcDisconnectedEventArgs>? Disconnected
+public event EventHandler<RpcDispatchErrorEventArgs>? DispatchError
+public event EventHandler<RpcHostErrorEventArgs>? AcceptError
+public event EventHandler<RpcPeerEventArgs>? PeerConnected
+public event EventHandler<RpcPeerEventArgs>? PeerDisconnected
+public event EventHandler<RpcProtocolErrorEventArgs>? ProtocolError
+public event EventHandler<RpcReadErrorEventArgs>? ReadError
+public Exception Error { get; }
+public Exception? Error { get; }
+public Func<Exception, RpcErrorInfo?>? ExceptionTransformer { get; init; }
+public GeneratedService( Type serviceType, Type proxyType, Type dispatcherType, string serviceName, IReadOnlyList<GeneratedMethod> methods)
+public IAsyncEnumerable<T> GetAsyncEnumerable<T>(RpcStreamHandle handle)
+public IAsyncEnumerable<T> InvokeAsyncEnumerable<T>(string service, string method, CancellationToken ct = default) =>
+public IAsyncEnumerable<T> InvokeAsyncEnumerable<TRequest, T>(string service, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
+public IAsyncEnumerable<T> InvokeAsyncEnumerableOnInstance<T>(string service, string instanceId, string method, CancellationToken ct = default) =>
+public IAsyncEnumerable<T> InvokeAsyncEnumerableOnInstance<TRequest, T>(string service, string instanceId, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
+public InstanceRegistry() : this(DefaultMaxInstances) { }
+public InstanceRegistry(int maxInstances)
+public int Length => _length
+public int Length => _memory.Length
+public int MaxConcurrentInboundDispatch
+public int MaxPendingRequests
+public int MessageId { get; }
+public int MessageId { get; set; }
+public int StreamId { get; set; }
+public int WrittenCount => _written
+public int? InboundQueueCapacity
+public interface IDotBoxDGeneratedServiceRegistrationSink
+public interface IDotBoxDServiceRegistrationSink
+public interface IInstanceRegistry
+public interface INonStreamingServiceDispatcher
+public interface IRpcChannel : IAsyncDisposable
+public interface IRpcFrameChannel : IRpcValueTaskChannel
+public interface IRpcInvoker
+public interface IRpcStreamingContext
+public interface IRpcValueTaskChannel : IRpcChannel
+public interface ISerializer
+public interface IServerTransport : IAsyncDisposable
+public interface IServiceDispatcher
+public interface ITransport : IAsyncDisposable
+public IReadOnlyList<GeneratedMethod> Methods { get; init; } = Array.Empty<GeneratedMethod>()
+public IRpcChannel? Connection => Volatile.Read(ref _disposed) == 0 ? _connection : null
+public IServiceProvider? ServiceProvider { get; init; }
+public long? MaxInboundBytes
+public Memory<byte> GetMemory(int sizeHint = 0)
+public Memory<byte> Memory =>
+public MessageType MessageType { get; }
+public NotFoundKind Kind { get; }
+public Payload DetachPayload()
+public Pipe GetPipe(RpcStreamHandle handle)
+public PooledBufferWriter(int initialCapacity = 256)
+public QueueFullMode QueueFullMode
+public readonly record struct FramedMessage(int MessageId, MessageType Type, Payload Body)
+public readonly record struct GeneratedMethod( string Name, string WireName, Type ReturnType, Type? ResultType, GeneratedReturnKind ReturnKind, bool ReturnsNestedService, IReadOnlyList<GeneratedParameter> Parameters)
+public readonly record struct GeneratedParameter( string Name, Type Type, int Position, bool IsCancellationToken, bool HasDefaultValue, object? DefaultValue)
+public readonly record struct GeneratedService( Type ServiceType, Type ProxyType, Type DispatcherType, string ServiceName)
+public readonly record struct RpcErrorInfo(string Message, string Type)
+public ReadOnlyMemory<byte> Memory => _memory
+public ReadOnlyMemory<byte> WrittenMemory =>
+public ReadOnlySpan<byte> Span =>
+public RemoteServiceException(string message, string remoteExceptionType)
+public RpcDiagnosticErrorEventArgs(string operation, Exception error)
+public RpcDisconnectedEventArgs(string remoteEndpoint, Exception? error)
+public RpcDispatchErrorEventArgs( string remoteEndpoint, int messageId, string serviceName, string methodName, string? instanceId, Exception error)
+public RpcFrame(Payload payload)
+public RpcFrame(PooledBufferWriter writer)
+public RpcHost ForEachPeer(Action<RpcPeer> configure)
+public RpcHostErrorEventArgs(Exception exception)
+public RpcPeer Peer { get; }
+public RpcPeer Provide(IServiceDispatcher dispatcher)
+public RpcPeer Provide<TService>() where TService : class
+public RpcPeer Provide<TService>(TService implementation) where TService : class
+public RpcPeer Start()
+public RpcPeerEventArgs(RpcPeer peer)
+public RpcProtocolErrorEventArgs( string remoteEndpoint, int messageId, MessageType messageType, string message, Exception? error)
+public RpcProtocolErrorEventArgs( string remoteEndpoint, int messageId, MessageType messageType, string message)
+public RpcReadErrorEventArgs(string remoteEndpoint, Exception error)
+public RpcRequest()
+public RpcStreamHandle Handle { get; }
+public RpcStreamHandle ReserveStream(RpcStreamKind kind) =>
+public RpcStreamHandle? Stream { get; set; }
+public RpcStreamHandle(int streamId, RpcStreamKind kind)
+public RpcStreamHandle[]? Streams { get; set; }
+public RpcStreamKind Kind { get; set; }
+public sealed class DotBoxDMethodAttribute : Attribute
+public sealed class DotBoxDServiceAttribute : Attribute
+public sealed class InstanceRegistry : IInstanceRegistry
+public sealed class Payload : IMemoryOwner<byte>
+public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
+public sealed class RpcDiagnosticErrorEventArgs : EventArgs
+public sealed class RpcDisconnectedEventArgs : EventArgs
+public sealed class RpcDispatchErrorEventArgs : EventArgs
+public sealed class RpcHost : IAsyncDisposable
+public sealed class RpcHostErrorEventArgs : EventArgs
+public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
+public sealed class RpcPeerEventArgs : EventArgs
+public sealed class RpcPeerOptions
+public sealed class RpcPeerSession : IAsyncDisposable
+public sealed class RpcProtocolErrorEventArgs : EventArgs
+public sealed class RpcReadErrorEventArgs : EventArgs
+public sealed class RpcStreamingContext : IRpcStreamingContext
+public sealed class SingleConnectionServerTransport : IServerTransport
+public sealed class SingleConnectionTransport : ITransport
+public sealed class StreamConnection : IRpcChannel
+public ServiceConnectionException(string message, Exception innerException) : base(message, innerException)
+public ServiceConnectionException(string message) : base(message)
+public ServiceException()
+public ServiceException(string message, Exception innerException) : base(message, innerException)
+public ServiceException(string message) : base(message)
+public ServiceHandle()
+public ServiceNotFoundException(string message, NotFoundKind kind) : base(message)
+public ServiceNotFoundException(string message) : this(message, NotFoundKind.Service)
+public ServiceProtocolException(string message) : base(message)
+public ServiceTimeoutException(string message) : base(message)
+public SingleConnectionServerTransport(IRpcChannel connection, bool ownsConnection = false)
+public SingleConnectionTransport(IRpcChannel connection, bool ownsConnection = false)
+public Span<byte> GetSpan(int sizeHint = 0)
+public static async Task WriteMessageAsync( Stream stream, int messageId, MessageType type, ReadOnlyMemory<byte> payload, CancellationToken ct = default)
+public static async Task<FramedMessage?> ReadMessageAsync( Stream stream, CancellationToken ct = default)
+public static bool TryReadFrame( ReadOnlyMemory<byte> source, out int messageId, out MessageType type, out ReadOnlyMemory<byte> envelope, out ReadOnlyMemory<byte> payload)
+public static bool TryReadFrameHeader( ReadOnlyMemory<byte> source, out int messageId, out MessageType type)
+public static class GeneratedServiceRegistry
+public static class MessageFramer
+public static class RpcDiagnostics
+public static class RpcErrorTypes
+public static class RpcTransportExtensions
+public static class SerializerExtensions
+public static event EventHandler<RpcDiagnosticErrorEventArgs>? Error
+public static GeneratedService GetService(Type serviceInterface) =>
+public static GeneratedService GetService<TService>() where TService : class
+public static IReadOnlyList<GeneratedService> GetServices(Assembly assembly)
+public static IReadOnlyList<GeneratedService> GetServices(IEnumerable<Assembly> assemblies)
+public static IServiceDispatcher CreateDispatcher(Type serviceInterface, object implementation)
+public static IServiceDispatcher CreateDispatcher<TService>(TService implementation) where TService : class
+public static object CreateProxy(Type serviceInterface, IRpcInvoker invoker)
+public static Payload Empty { get; } = new(Array.Empty<byte>(), 0)
+public static Payload FrameMessage<T>( ISerializer serializer, int messageId, MessageType type, T envelope, ReadOnlySpan<byte> payload)
+public static Payload FrameRequest<TEnvelope, TArgument>( ISerializer serializer, int messageId, MessageType type, TEnvelope envelope, TArgument argument)
+public static Payload FrameToPayload(int messageId, MessageType type, ReadOnlySpan<byte> payload)
+public static Payload Rent(int length)
+public static Payload SerializeToPayload<T>(this ISerializer serializer, T value)
+public static RpcErrorInfo FromException(Exception exception) =>
+public static RpcHost Listen(IServerTransport listener, ISerializer serializer, RpcPeerOptions? options = null)
+public static RpcPeer Over(IRpcChannel channel, ISerializer serializer, RpcPeerOptions? options = null)
+public static RpcStreamAttachment FromAsyncEnumerable<T>( RpcStreamHandle handle, IAsyncEnumerable<T> source)
+public static RpcStreamAttachment FromPipe( RpcStreamHandle handle, Pipe pipe, bool completeReader = false)
+public static RpcStreamAttachment FromStream( RpcStreamHandle handle, Stream stream, bool leaveOpen = true)
+public static RpcStreamingContext Disabled { get; } = new()
+public static Task<RpcPeerSession> ConnectAsync( ITransport transport, ISerializer serializer, Action<RpcPeer> configurePeer, RpcPeerOptions? options = null, CancellationToken ct = default)
+public static Task<RpcPeerSession> ConnectAsync( ITransport transport, ISerializer serializer, RpcPeerOptions? options = null, CancellationToken ct = default) =>
+public static Task<RpcPeerSession> ConnectPeerAsync( this ITransport transport, ISerializer serializer, Action<RpcPeer> configurePeer, RpcPeerOptions? options = null, CancellationToken ct = default) =>
+public static Task<RpcPeerSession> ConnectPeerAsync( this ITransport transport, ISerializer serializer, RpcPeerOptions? options = null, CancellationToken ct = default) =>
+public static TService CreateProxy<TService>(IRpcInvoker invoker) where TService : class
+public static void Register<TService>( Func<IRpcInvoker, TService> proxyFactory, Func<object, IServiceDispatcher> dispatcherFactory, GeneratedService service) where TService : class
+public static void Register<TService>( Func<IRpcInvoker, TService> proxyFactory, Func<object, IServiceDispatcher> dispatcherFactory) where TService : class
+public static void RegisterGeneratedServices( IEnumerable<Assembly> assemblies, IDotBoxDGeneratedServiceRegistrationSink sink)
+public static void RegisterServices( IEnumerable<Assembly> assemblies, IDotBoxDServiceRegistrationSink sink)
+public static void RegisterServices(Assembly assembly, IReadOnlyList<GeneratedService> services)
+public static void ValidateOutgoingFrame(ReadOnlySpan<byte> frame, int maxMessageSize = MaxMessageSize)
+public static void WriteFrame(IBufferWriter<byte> writer, int messageId, MessageType type, ReadOnlySpan<byte> payload)
+public Stream GetStream(RpcStreamHandle handle)
+public StreamConnection( Stream stream, string? remoteEndpoint = null, bool ownsStream = true, int maxMessageSize = MessageFramer.MaxMessageSize, TimeSpan? frameReadIdleTimeout = null)
+public string InstanceId { get; set; } = string.Empty
+public string Message { get; }
+public string MethodName { get; }
+public string MethodName { get; set; } = string.Empty
+public string Operation { get; }
+public string Register(string serviceName, object instance)
+public string RemoteEndpoint { get; }
+public string RemoteEndpoint => _channel.RemoteEndpoint
+public string RemoteEndpoint => _remoteEndpoint
+public string RemoteEndpoint => Peer.RemoteEndpoint
+public string RemoteExceptionType { get; }
+public string ServiceName { get; }
+public string ServiceName { get; set; } = string.Empty
+public string? ErrorMessage { get; set; }
+public string? ErrorType { get; set; }
+public string? InstanceId { get; }
+public string? InstanceId { get; set; }
+public string? Name { get; set; }
+public struct RpcFrame : IDisposable
+public struct RpcRequest
+public struct RpcResponse
+public struct RpcStreamHandle
+public struct ServiceHandle
+public Task ConnectAsync(CancellationToken ct = default)
+public Task InvokeAsync(string service, string method, CancellationToken ct = default) =>
+public Task InvokeAsync<TRequest>(string service, string method, TRequest request, CancellationToken ct = default) =>
+public Task InvokeAsync<TRequest>(string service, string method, TRequest request, RpcStreamAttachment[] streams, CancellationToken ct = default) =>
+public Task InvokeOnInstanceAsync(string service, string instanceId, string method, CancellationToken ct = default) =>
+public Task InvokeOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, CancellationToken ct = default) =>
+public Task InvokeOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, RpcStreamAttachment[] streams, CancellationToken ct = default) =>
+public Task StartAsync(CancellationToken ct = default)
+public Task StopAsync(CancellationToken ct = default)
+public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableAsync<T>(string service, string method, CancellationToken ct = default) =>
+public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableAsync<TRequest, T>(string service, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
+public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableOnInstanceAsync<T>(string service, string instanceId, string method, CancellationToken ct = default) =>
+public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableOnInstanceAsync<TRequest, T>(string service, string instanceId, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
+public Task<Pipe> InvokePipeAsync(string service, string method, CancellationToken ct = default) =>
+public Task<Pipe> InvokePipeAsync<TRequest>(string service, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
+public Task<Pipe> InvokePipeOnInstanceAsync(string service, string instanceId, string method, CancellationToken ct = default) =>
+public Task<Pipe> InvokePipeOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
+public Task<Stream> InvokeStreamAsync(string service, string method, CancellationToken ct = default) =>
+public Task<Stream> InvokeStreamAsync<TRequest>(string service, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
+public Task<Stream> InvokeStreamOnInstanceAsync(string service, string instanceId, string method, CancellationToken ct = default) =>
+public Task<Stream> InvokeStreamOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
+public Task<TResponse> InvokeAsync<TRequest, TResponse>(string service, string method, TRequest request, CancellationToken ct = default) =>
+public Task<TResponse> InvokeAsync<TRequest, TResponse>(string service, string method, TRequest request, RpcStreamAttachment[] streams, CancellationToken ct = default) =>
+public Task<TResponse> InvokeAsync<TResponse>(string service, string method, CancellationToken ct = default) =>
+public Task<TResponse> InvokeOnInstanceAsync<TRequest, TResponse>(string service, string instanceId, string method, TRequest request, CancellationToken ct = default) =>
+public Task<TResponse> InvokeOnInstanceAsync<TRequest, TResponse>(string service, string instanceId, string method, TRequest request, RpcStreamAttachment[] streams, CancellationToken ct = default) =>
+public Task<TResponse> InvokeOnInstanceAsync<TResponse>(string service, string instanceId, string method, CancellationToken ct = default) =>
+public TimeSpan RequestTimeout
+public TService Get<TService>() where TService : class
+public ValueTask DisposeAsync()
+public ValueTask DisposeAsync() => new(CloseAsync())
+public ValueTask<TResponse> InvokeValueAsync<TRequest, TResponse>(string service, string method, TRequest request, CancellationToken ct = default) =>
+public ValueTask<TResponse> InvokeValueAsync<TResponse>(string service, string method, CancellationToken ct = default) =>
+public ValueTask<TResponse> InvokeValueOnInstanceAsync<TRequest, TResponse>(string service, string instanceId, string method, TRequest request, CancellationToken ct = default) =>
+public ValueTask<TResponse> InvokeValueOnInstanceAsync<TResponse>(string service, string instanceId, string method, CancellationToken ct = default) =>
+public void Advance(int count)
+public void Dispose()
+public void Release(string serviceName, string instanceId)
+public void ReleaseAll()
+public void ReleaseStream(RpcStreamHandle handle) =>
+public void SetResponse(Pipe pipe)
+public void SetResponse(Stream stream)
+public void SetResponse<T>(IAsyncEnumerable<T> items)

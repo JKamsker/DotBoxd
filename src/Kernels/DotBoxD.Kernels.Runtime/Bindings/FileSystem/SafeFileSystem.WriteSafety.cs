@@ -34,7 +34,7 @@ public static partial class SafeFileSystem
 
     internal static void EnsureDirectWritePath(string rootFull, string fullPath)
     {
-        var root = rootFull.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var root = Path.TrimEndingDirectorySeparator(rootFull);
         var directory = Path.GetDirectoryName(fullPath);
         if (!PathsEqual(root, directory ?? ""))
         {

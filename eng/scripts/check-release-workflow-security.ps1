@@ -13,6 +13,7 @@
       - main-branch CI prerelease publishing is gated to the canonical repo and only
         publishes packages produced by its pack job;
       - provenance attestation covers both .nupkg and .snupkg with a pinned action;
+      - CI gates run the release-readiness checklist evidence gate in require-complete mode;
       - the line-length guard is not abused to run local dotnet tools.
 
     Lives in eng/scripts/ (repo root is two levels up).
@@ -67,19 +68,35 @@ function Get-CiWorkflowJobBlock([string] $jobId) {
 
 $ciPackJob = Get-CiWorkflowJobBlock "pack-packages"
 $ciPublishJob = Get-CiWorkflowJobBlock "publish-nuget"
+$ciGatesJob = Get-CiWorkflowJobBlock "gates"
 
 # 1. Every action reference must be pinned to a full commit SHA.
-$usesMatches = [regex]::Matches($workflow, "(?m)^\s*uses:\s*(?<action>[^@\s]+)@(?<ref>[^\s#]+)")
-foreach ($match in $usesMatches) {
+function Assert-PinnedActions([string] $workflowText, [string] $description) {
+    $usesMatches = [regex]::Matches($workflowText, "(?m)^\s*uses:\s*(?<action>[^@\s]+)@(?<ref>[^\s#]+)")
+    foreach ($match in $usesMatches) {
+        $action = $match.Groups["action"].Value
+        $ref = $match.Groups["ref"].Value
+        # Local reusable workflow references (./.github/...) have no @ref; the regex won't match
+        # them. Any external action that does match must be SHA-pinned.
+        if ($action.StartsWith("./", [StringComparison]::Ordinal)) {
+            continue
+        }
+        if ($ref -notmatch "^[0-9a-fA-F]{40}$") {
+            throw "$description action '$action@$ref' must be pinned to a full 40-character commit SHA."
+        }
+    }
+}
+
+Assert-PinnedActions $workflow "Release workflow"
+$ciUsesMatches = [regex]::Matches($ciWorkflow, "(?m)^\s*uses:\s*(?<action>[^@\s]+)@(?<ref>[^\s#]+)")
+foreach ($match in $ciUsesMatches) {
     $action = $match.Groups["action"].Value
     $ref = $match.Groups["ref"].Value
-    # Local reusable workflow references (./.github/...) have no @ref; the regex won't match
-    # them. Any external action that does match must be SHA-pinned.
     if ($action.StartsWith("./", [StringComparison]::Ordinal)) {
         continue
     }
     if ($ref -notmatch "^[0-9a-fA-F]{40}$") {
-        throw "Workflow action '$action@$ref' must be pinned to a full 40-character commit SHA."
+        throw "CI workflow action '$action@$ref' must be pinned to a full 40-character commit SHA."
     }
 }
 
@@ -132,8 +149,12 @@ if ($publishJob -notmatch "github\.repository\s*==\s*'JKamsker/DotBoxD'") {
     throw "Publish job must be gated to the canonical repository (github.repository == 'JKamsker/DotBoxD')."
 }
 
-if ($publishJob -notmatch "startsWith\(github\.ref,\s*'refs/tags/'\)") {
-    throw "Publish job must be gated to tag refs (startsWith(github.ref, 'refs/tags/'))."
+if ($publishJob -notmatch "github\.event_name\s*==\s*'push'") {
+    throw "Publish job must be gated to push events."
+}
+
+if ($publishJob -notmatch "startsWith\(github\.ref,\s*'refs/tags/v'\)") {
+    throw "Publish job must be gated to version tag refs (startsWith(github.ref, 'refs/tags/v'))."
 }
 
 # 5. The reused CI workflow must gate the release (verify job uses ci.yml).
@@ -141,7 +162,12 @@ if ($workflow -notmatch "(?m)^\s+uses:\s+\./\.github/workflows/ci\.yml\s*$") {
     throw "Release workflow must reuse ci.yml as a verification gate (uses: ./.github/workflows/ci.yml)."
 }
 
-# 6. Main-branch CI publishing must consume pack artifacts and stay tightly gated.
+# 6. CI must run release readiness before it can produce publishable package artifacts.
+if ($ciGatesJob -notmatch "check-release-readiness\.ps1\s+-RequireComplete") {
+    throw "CI gates job must run eng/scripts/check-release-readiness.ps1 -RequireComplete."
+}
+
+# 7. Main-branch CI publishing must consume pack artifacts and stay tightly gated.
 if ($ciPackJob -notmatch "(?m)^\s{4}needs:\s+\[build-test,\s*gates\]\s*$") {
     throw "CI pack job must depend on build-test and gates before producing publishable packages."
 }
@@ -182,7 +208,7 @@ if ($ciPublishJob -notmatch "dotnet\s+nuget\s+push\s+`"artifacts/packages/\*\.nu
     throw "CI publish job must push the downloaded .nupkg files from artifacts/packages."
 }
 
-# 7. The line guard must not install, restore, or execute dotnet local tools.
+# 8. The line guard must not install, restore, or execute dotnet local tools.
 if ($lineGuard -match "(?im)^\s*&?\s*dotnet\s+(tool\s+(install|restore|run)|new\s+tool-manifest)\b") {
     throw "Release line guard must not install, restore, or execute dotnet local tools."
 }

@@ -2,6 +2,7 @@ using System.Collections;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.PluginIpc.Server.Abstractions;
 using DotBoxD.Kernels.PluginLocal;
+using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Tests._TestSupport;
 using DotBoxD.Plugins;
@@ -21,6 +22,19 @@ public sealed class PluginHookSignatureTests
             () => server.Hooks.On(new MismatchedDamageEventAdapter()).Use<FireDamageKernel>());
 
         Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK033");
+    }
+
+    [Fact]
+    public void UseGeneratedChain_rolls_back_when_adapter_signature_fails()
+    {
+        var server = PluginAddendumTestPolicies.CreateServer();
+
+        var ex = Assert.Throws<SandboxValidationException>(
+            () => server.Hooks.On(new MismatchedDamageEventAdapter())
+                .UseGeneratedChain(FireDamagePluginPackage.Create()));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK033");
+        Assert.False(server.Kernels.TryGet("fire-damage", out _));
     }
 
     [Fact]
@@ -106,6 +120,18 @@ public sealed class PluginHookSignatureTests
         Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK034");
     }
 
+    [Fact]
+    public void RegisterEventAdapter_rejects_different_adapter_after_pipeline_exists()
+    {
+        var server = DotBoxD.Plugins.PluginServer.Create();
+        _ = server.Hooks.On(DamageEventAdapter.Instance);
+
+        var ex = Assert.Throws<SandboxValidationException>(
+            () => server.RegisterEventAdapter(new MismatchedDamageEventAdapter()));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK034");
+    }
+
     private sealed class AdminDamageEventAdapter : IPluginEventAdapter<DamageEvent>
     {
         public string EventName => "AdminEvent";
@@ -177,9 +203,12 @@ public sealed class PluginHookSignatureTests
                 "convention-record-adapter",
                 "IEventKernel<ConventionRecordEvent>",
                 ExecutionMode.Interpreted,
-                ["Cpu", "Alloc", "HostStateWrite", "Audit"],
+                ["Cpu", "Alloc", "HostStateWrite", "Concurrency", "Audit"],
                 [],
-                [new HookSubscriptionManifest(nameof(ConventionRecordEvent), "ConventionRecordKernel")]),
+                [new HookSubscriptionManifest(nameof(ConventionRecordEvent), "ConventionRecordKernel")])
+            {
+                RequiredCapabilities = [RuntimeCapabilityIds.Async, PluginMessageBindings.CapabilityId]
+            },
             new SandboxModule(
                 "convention-record-adapter",
                 SemVersion.One,
@@ -239,9 +268,12 @@ public sealed class PluginHookSignatureTests
                 "convention-adapter",
                 "IEventKernel<ConventionDamageEvent>",
                 ExecutionMode.Interpreted,
-                ["Cpu", "Alloc", "HostStateWrite", "Audit"],
+                ["Cpu", "Alloc", "HostStateWrite", "Concurrency", "Audit"],
                 [],
-                [new HookSubscriptionManifest(nameof(ConventionDamageEvent), "ConventionKernel")]),
+                [new HookSubscriptionManifest(nameof(ConventionDamageEvent), "ConventionKernel")])
+            {
+                RequiredCapabilities = [RuntimeCapabilityIds.Async, PluginMessageBindings.CapabilityId]
+            },
             new SandboxModule(
                 "convention-adapter",
                 SemVersion.One,

@@ -24,7 +24,7 @@ internal static class PluginServerFacadeEmitter
         builder.AppendLine();
         PluginServerSetupEmitter.AppendBuilder(builder, model);
         PluginServerSetupEmitter.AppendSetupInterfaces(builder, model);
-        return new GeneratedPluginPackage(HintName(model), builder.ToString());
+        return new GeneratedPluginPackage(HintName(model), builder.ToString(), model.Namespace, model.ClassName);
     }
 
     private static void AppendFacade(StringBuilder builder, PluginServerFacadeModel model)

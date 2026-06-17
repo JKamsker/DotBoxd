@@ -28,6 +28,7 @@ internal static class HostServiceBindingFactory
             returnType,
             effects,
             capability,
+            IsTaskLike(interfaceMethod.ReturnType),
             (context, args, cancellationToken) =>
                 InvokeAsync(context, args, cancellationToken, id, capability, effects, targetMethod, target, payloadType));
     }
@@ -54,6 +55,7 @@ internal static class HostServiceBindingFactory
             returnType,
             effects,
             capability,
+            IsTaskLike(handleInterfaceMethod.ReturnType),
             (context, args, cancellationToken) =>
                 InvokeHandleAsync(
                     context,
@@ -90,6 +92,7 @@ internal static class HostServiceBindingFactory
         SandboxType returnType,
         SandboxEffect effects,
         string capability,
+        bool isAsync,
         BindingInvoker binding)
     {
         var safety = (effects & SandboxEffect.HostStateWrite) != SandboxEffect.None
@@ -108,7 +111,10 @@ internal static class HostServiceBindingFactory
             safety,
             binding,
             CompiledBinding.RuntimeStub("DotBoxD.Kernels.Runtime.CompiledRuntime", "CallBinding"),
-            GrantValidator: static (_, _) => { });
+            GrantValidator: static (_, _) => { })
+        {
+            IsAsync = isAsync
+        };
     }
 
     private static async ValueTask<SandboxValue> InvokeAsync(
@@ -235,6 +241,12 @@ internal static class HostServiceBindingFactory
 
     private static bool IsGenericValueTask(Type type)
         => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ValueTask<>);
+
+    private static bool IsTaskLike(Type type)
+        => type == typeof(Task) ||
+           type == typeof(ValueTask) ||
+           IsGenericTask(type) ||
+           IsGenericValueTask(type);
 
     private static SandboxEffect InferEffects(MethodInfo method, SandboxType returnType, string capability)
     {

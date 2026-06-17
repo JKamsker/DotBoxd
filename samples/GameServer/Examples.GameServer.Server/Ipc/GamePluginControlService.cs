@@ -42,6 +42,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         ArgumentNullException.ThrowIfNull(packageJson);
 
         var package = PluginPackageJsonSerializer.Import(packageJson);
+        ValidateSupportedEvent(package);
         Console.WriteLine($"[server] installing plugin kernel '{package.Manifest.PluginId}'...");
         var policy = ServerPolicy.ForKernel(_server.GetRequiredCapabilities(package));
         var kernel = await _session.InstallAsync(package, policy, ct).ConfigureAwait(false);
@@ -55,6 +56,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         ArgumentNullException.ThrowIfNull(packageJson);
 
         var package = PluginPackageJsonSerializer.Import(packageJson);
+        ValidateSupportedEvent(package);
         Console.WriteLine($"[server] installing subscription kernel '{package.Manifest.PluginId}'...");
         var policy = ServerPolicy.ForKernel(_server.GetRequiredCapabilities(package));
         var kernel = await _session.InstallAsync(package, policy, ct).ConfigureAwait(false);
@@ -70,7 +72,17 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         var package = PluginPackageJsonSerializer.Import(packageJson);
         Console.WriteLine($"[server] installing server extension '{package.Manifest.PluginId}'...");
         var policy = ServerPolicy.ForKernel(_server.GetRequiredCapabilities(package));
-        var kernel = await _session.InstallServerExtensionAsync(package, policy, ct).ConfigureAwait(false);
+        InstalledKernel kernel;
+        try
+        {
+            kernel = await _session.InstallServerExtensionAsync(package, policy, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[server] server extension install failed: {ex}");
+            throw;
+        }
+
         Console.WriteLine($"[server] installed server extension '{kernel.Manifest.PluginId}'.");
         return kernel.Manifest.PluginId;
     }
@@ -82,12 +94,12 @@ internal sealed class GamePluginControlService : IGamePluginControlService
     {
         ArgumentNullException.ThrowIfNull(pluginId);
         ArgumentNullException.ThrowIfNull(arguments);
-        if (!_session.Owns(pluginId))
+        if (!_server.Kernels.TryGet(pluginId, out var kernel) ||
+            !ReferenceEquals(kernel.OwnerId, _session))
         {
             throw new InvalidOperationException($"Server extension '{pluginId}' is not owned by this plugin session.");
         }
 
-        var kernel = _server.Kernels.Get(pluginId);
         var function = RpcEntrypoint(kernel);
         var rpcArguments = KernelRpcBinaryCodec.DecodeArguments(arguments);
         var liveSettings = kernel.Manifest.LiveSettings.Count;
@@ -128,8 +140,9 @@ internal sealed class GamePluginControlService : IGamePluginControlService
 
     public async ValueTask HoldUntilShutdownAsync(CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         _ready.TrySetResult();
-        await _shutdown.Task.ConfigureAwait(false);
+        await _shutdown.Task.WaitAsync(ct).ConfigureAwait(false);
     }
 
     public ValueTask<WorldSnapshot> GetWorldAsync(CancellationToken ct = default)
@@ -166,6 +179,20 @@ internal sealed class GamePluginControlService : IGamePluginControlService
                 throw new InvalidOperationException(
                     $"Plugin '{kernel.Manifest.PluginId}' subscribes to unsupported event '{subscription}'.");
         }
+    }
+
+    private static void ValidateSupportedEvent(PluginPackage package)
+    {
+        var subscription = package.Manifest.Subscriptions.Count > 0
+            ? package.Manifest.Subscriptions[0].Event
+            : null;
+        if (subscription is "MonsterAggroEvent" or "AttackEvent")
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Plugin '{package.Manifest.PluginId}' subscribes to unsupported event '{subscription}'.");
     }
 
     private void WireSubscription(InstalledKernel kernel)

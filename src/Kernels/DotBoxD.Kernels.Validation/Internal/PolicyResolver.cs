@@ -24,7 +24,12 @@ internal static class PolicyResolver
             diagnostics.Add(new SandboxDiagnostic("E-POLICY-EFFECT", "policy declares unknown effects"));
         }
 
-        PolicyGrantValidator.Validate(policy, bindings, requiredCapabilities, diagnostics);
+        PolicyGrantValidator.Validate(
+            policy,
+            bindings,
+            requiredCapabilities,
+            module.CapabilityRequests,
+            diagnostics);
 
         // Capture the grant clock once so every membership probe in this validation pass
         // shares a single consistent snapshot instead of re-reading DateTimeOffset.UtcNow
@@ -49,6 +54,12 @@ internal static class PolicyResolver
         }
 
         if (policy.Deterministic) {
+            if (policy.GrantsCapability(RuntimeCapabilityIds.Async, now)) {
+                diagnostics.Add(new SandboxDiagnostic(
+                    "E-POLICY-DETERMINISM",
+                    "deterministic policy cannot grant runtime async until serialized async limits are configurable"));
+            }
+
             if ((requiredEffects & SandboxEffect.Time) != 0 && policy.LogicalNow is null) {
                 diagnostics.Add(new SandboxDiagnostic("E-POLICY-DETERMINISM", "deterministic policy requires logical time for Time effects"));
             }

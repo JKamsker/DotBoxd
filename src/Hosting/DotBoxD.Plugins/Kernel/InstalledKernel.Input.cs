@@ -14,24 +14,27 @@ public sealed partial class InstalledKernel
         TEvent e,
         string entrypoint)
     {
-        var deferredUpdates = _liveStateSync.SynchronizeForInput();
-        return UsesReusableNoAuditInput(entrypoint)
-            ? PluginKernelInputBuilder.BuildWithReusableBuffer(
-                adapter,
-                e,
-                deferredUpdates,
-                Manifest.LiveSettings,
-                Value,
-                _pendingLiveUpdates.Enqueue,
-                ref _preparedInputValues,
-                ref _preparedInputList)
-            : PluginKernelInputBuilder.Build(
-                adapter,
-                e,
-                deferredUpdates,
-                Manifest.LiveSettings,
-                Value,
-                _pendingLiveUpdates.Enqueue);
+        lock (_lifecycleGate)
+        {
+            var deferredUpdates = _liveStateSync.SynchronizeForInput();
+            return UsesReusableNoAuditInput(entrypoint)
+                ? PluginKernelInputBuilder.BuildWithReusableBuffer(
+                    adapter,
+                    e,
+                    deferredUpdates,
+                    Manifest.LiveSettings,
+                    Value,
+                    _pendingLiveUpdates.Enqueue,
+                    ref _preparedInputValues,
+                    ref _preparedInputList)
+                : PluginKernelInputBuilder.Build(
+                    adapter,
+                    e,
+                    deferredUpdates,
+                    Manifest.LiveSettings,
+                    Value,
+                    _pendingLiveUpdates.Enqueue);
+        }
     }
 
     private bool UsesReusableNoAuditInput(string entrypoint)

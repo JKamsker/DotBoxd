@@ -20,14 +20,22 @@ $packages = @(
     @{ Id = "DotBoxD.Kernels.Serialization.Json"; Path = "src/Kernels/DotBoxD.Kernels.Serialization.Json" },
     @{ Id = "DotBoxD.Hosting.Http"; Path = "src/Hosting/DotBoxD.Hosting.Http" },
     @{ Id = "DotBoxD.Pushdown.Services"; Path = "src/Pushdown/DotBoxD.Pushdown.Services" },
+    @{ Id = "DotBoxD.Services"; Path = "src/Services/DotBoxD.Services" },
+    @{ Id = "DotBoxD.Codecs.MessagePack"; Path = "src/Channels/DotBoxD.Codecs.MessagePack" },
+    @{ Id = "DotBoxD.Transports.NamedPipes"; Path = "src/Channels/DotBoxD.Transports.NamedPipes" },
+    @{ Id = "DotBoxD.Transports.Tcp"; Path = "src/Channels/DotBoxD.Transports.Tcp" },
     @{ Id = "DotBoxD.Kernels.Interpreter"; Path = "src/Kernels/DotBoxD.Kernels.Interpreter" },
     @{ Id = "DotBoxD.Kernels.Compiler"; Path = "src/Kernels/DotBoxD.Kernels.Compiler" },
     @{ Id = "DotBoxD.Kernels.Verifier"; Path = "src/Kernels/DotBoxD.Kernels.Verifier" },
     @{ Id = "DotBoxD.Hosting"; Path = "src/Hosting/DotBoxD.Hosting" },
     @{ Id = "DotBoxD.Plugins.Analyzer"; Path = "src/CodeGeneration/DotBoxD.Plugins.Analyzer" },
     @{ Id = "DotBoxD.Plugins"; Path = "src/Hosting/DotBoxD.Plugins" },
-    @{ Id = "DotBoxD.Abstractions"; Path = "src/Hosting/DotBoxD.Abstractions" }
+    @{ Id = "DotBoxD.Abstractions"; Path = "src/Hosting/DotBoxD.Abstractions" },
+    @{ Id = "DotBoxD"; Path = "src/Meta/DotBoxD" },
+    @{ Id = "DotBoxD.Services.All"; Path = "src/Meta/DotBoxD.Services.All" }
 )
+
+$publicSurfaceAccessibilityPattern = "^(public|protected\s+internal|internal\s+protected|protected)\b"
 
 function Normalize-ApiLine([string] $Line) {
     $trimmed = Remove-LineComment $Line
@@ -38,7 +46,7 @@ function Normalize-ApiLine([string] $Line) {
         return $null
     }
 
-    if ($trimmed -notmatch "^(public|protected\s+internal|protected)\b") {
+    if ($trimmed -notmatch $publicSurfaceAccessibilityPattern) {
         return $null
     }
 
@@ -56,12 +64,110 @@ function Normalize-ApiLine([string] $Line) {
 }
 
 function Remove-LineComment([string] $Line) {
-    $commentIndex = $Line.IndexOf("//", [StringComparison]::Ordinal)
-    if ($commentIndex -lt 0) {
-        return $Line
+    $doubleQuote = [char]34
+    $singleQuote = [char]39
+    $backslash = [char]92
+    $slash = [char]47
+    $at = [char]64
+    $nullChar = [char]0
+
+    $inString = $false
+    $inVerbatimString = $false
+    $inRawString = $false
+    $rawStringQuotes = 0
+    $inChar = $false
+
+    for ($index = 0; $index -lt $Line.Length; $index++) {
+        $current = $Line[$index]
+        $next = if ($index + 1 -lt $Line.Length) { $Line[$index + 1] } else { $nullChar }
+
+        if ($inRawString) {
+            if ($current -eq $doubleQuote) {
+                $quoteCount = Count-ConsecutiveChars $Line $index $doubleQuote
+                if ($quoteCount -ge $rawStringQuotes) {
+                    $index += $rawStringQuotes - 1
+                    $inRawString = $false
+                }
+            }
+
+            continue
+        }
+
+        if ($inString) {
+            if ($inVerbatimString) {
+                if ($current -eq $doubleQuote -and $next -eq $doubleQuote) {
+                    $index++
+                } elseif ($current -eq $doubleQuote) {
+                    $inString = $false
+                    $inVerbatimString = $false
+                }
+
+                continue
+            }
+
+            if ($current -eq $backslash) {
+                $index++
+            } elseif ($current -eq $doubleQuote) {
+                $inString = $false
+            }
+
+            continue
+        }
+
+        if ($inChar) {
+            if ($current -eq $backslash) {
+                $index++
+            } elseif ($current -eq $singleQuote) {
+                $inChar = $false
+            }
+
+            continue
+        }
+
+        if ($current -eq $slash -and $next -eq $slash) {
+            return $Line.Substring(0, $index)
+        }
+
+        if ($current -eq $at -and $next -eq $doubleQuote) {
+            $inString = $true
+            $inVerbatimString = $true
+            $index++
+            continue
+        }
+
+        if ($current -eq $doubleQuote) {
+            $quoteCount = Count-ConsecutiveChars $Line $index $doubleQuote
+            if ($quoteCount -ge 3) {
+                $inRawString = $true
+                $rawStringQuotes = $quoteCount
+                $index += $quoteCount - 1
+            } else {
+                $inString = $true
+                $inVerbatimString = $false
+            }
+
+            continue
+        }
+
+        if ($current -eq $singleQuote) {
+            $inChar = $true
+        }
     }
 
-    return $Line.Substring(0, $commentIndex)
+    return $Line
+}
+
+function Count-ConsecutiveChars([string] $Text, [int] $StartIndex, [char] $Character) {
+    $count = 0
+    for ($index = $StartIndex; $index -lt $Text.Length; $index++) {
+        if ($Text[$index] -ne $Character) {
+            break
+        }
+
+        $count++
+    }
+
+    return $count
 }
 
 function Get-ParenthesisDelta([string] $Text) {
@@ -85,14 +191,16 @@ function Test-TypeDeclaration([string] $Trimmed) {
 
 function Test-TypeDeclarationPublic([string] $Trimmed) {
     # A type contributes to the effective public surface only when its own
-    # declaration is public, protected, or protected internal.
-    if ($Trimmed -notmatch "^(public|protected\s+internal|protected)\b") {
+    # declaration is public, protected, protected internal, or internal protected.
+    if ($Trimmed -notmatch $publicSurfaceAccessibilityPattern) {
         return $false
     }
 
     # protected internal and internal protected are public-surface-visible; a bare
     # internal/private/file modifier is not.
-    if ($Trimmed -match "^internal\b" -or $Trimmed -match "^private\b" -or $Trimmed -match "^file\b") {
+    if (($Trimmed -match "^internal\b" -and $Trimmed -notmatch "^internal\s+protected\b") -or
+        $Trimmed -match "^private\b" -or
+        $Trimmed -match "^file\b") {
         return $false
     }
 
@@ -198,7 +306,7 @@ function Normalize-ApiDeclaration([string] $Declaration) {
     $normalized = ($lines -join " ") -replace "\s+", " "
     $normalized = $normalized.TrimEnd("{", ";").Trim()
     if ([string]::IsNullOrWhiteSpace($normalized) -or
-        $normalized -notmatch "^(public|protected\s+internal|protected)\b") {
+        $normalized -notmatch $publicSurfaceAccessibilityPattern) {
         return $null
     }
 
@@ -207,6 +315,41 @@ function Normalize-ApiDeclaration([string] $Declaration) {
     }
 
     return $normalized
+}
+
+function Add-GenericConstraints([string] $Declaration, [string[]] $Lines, [int] $StartIndex, [ref] $Index) {
+    $result = $Declaration
+    for ($constraintIndex = $StartIndex; $constraintIndex -lt $Lines.Count; $constraintIndex++) {
+        $trimmed = (Remove-LineComment $Lines[$constraintIndex]).Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed) -or
+            $trimmed.StartsWith("[", [StringComparison]::Ordinal) -or
+            $trimmed -notmatch "^where\s+") {
+            break
+        }
+
+        $constraint = Normalize-GenericConstraintLine $trimmed
+        if (-not [string]::IsNullOrWhiteSpace($constraint)) {
+            $result = "$result`n$constraint"
+            $Index.Value = $constraintIndex
+        }
+    }
+
+    return $result
+}
+
+function Normalize-GenericConstraintLine([string] $Line) {
+    $constraint = $Line
+    $arrow = $constraint.IndexOf("=>", [StringComparison]::Ordinal)
+    if ($arrow -ge 0) {
+        $constraint = $constraint.Substring(0, $arrow)
+    }
+
+    $brace = $constraint.IndexOf("{", [StringComparison]::Ordinal)
+    if ($brace -ge 0) {
+        $constraint = $constraint.Substring(0, $brace)
+    }
+
+    return $constraint.TrimEnd(";").Trim()
 }
 
 function Add-EnumMembers([string[]] $Lines, [System.Collections.Generic.HashSet[string]] $Api, [System.Collections.Generic.List[bool]] $ContainingTypePublic) {
@@ -227,7 +370,7 @@ function Add-EnumMembers([string[]] $Lines, [System.Collections.Generic.HashSet[
             # public; a public enum nested in an internal type is not consumer-visible.
             if ($null -eq $pendingEnumName -and
                 $ContainingTypePublic[$index] -and
-                $trimmed -match "^(public|protected\s+internal|protected)\s+.*\benum\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\b") {
+                $trimmed -match "$publicSurfaceAccessibilityPattern\s+.*\benum\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)\b") {
                 $pendingEnumName = $Matches.name
             }
 
@@ -305,6 +448,7 @@ function Get-PackageApi([hashtable] $Package) {
                 $pendingDeclaration = "$pendingDeclaration`n$line"
                 $pendingParenDepth += Get-ParenthesisDelta $line
                 if ($pendingParenDepth -le 0) {
+                    $pendingDeclaration = Add-GenericConstraints $pendingDeclaration $lines ($index + 1) ([ref] $index)
                     $apiLine = Normalize-ApiDeclaration $pendingDeclaration
                     if ($null -ne $apiLine) {
                         [void] $api.Add($apiLine)
@@ -333,6 +477,10 @@ function Get-PackageApi([hashtable] $Package) {
                 $pendingDeclaration = $line
                 $pendingParenDepth = $parenDepth
                 continue
+            }
+
+            if ($apiLine.Contains("<", [StringComparison]::Ordinal)) {
+                $apiLine = Normalize-ApiDeclaration (Add-GenericConstraints $line $lines ($index + 1) ([ref] $index))
             }
 
             [void] $api.Add($apiLine)

@@ -44,7 +44,8 @@ public static class BindingReferenceCollector
 
     private static bool IsCollectionCall(string name)
         => name is "list.empty" or "list.of" or "list.count" or "list.get" or "list.add"
-            or "map.empty" or "map.containsKey" or "map.get" or "map.set" or "map.remove";
+            or "map.empty" or "map.containsKey" or "map.get" or "map.set" or "map.remove"
+            or "record.new" or "record.get";
 
     private sealed class ModuleBindingReferenceCollector
     {

@@ -1,4 +1,5 @@
 using System.Reflection;
+using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Plugins.Runtime.Input;
 using DotBoxD.Plugins.Runtime.Lifecycle;
@@ -13,9 +14,9 @@ public sealed class PluginEventAdapterRegistry
     {
         var parameters = adapter.Parameters;
         PluginEventValueWriterShapeValidator.Validate(adapter, parameters);
-        _adapters[typeof(TEvent)] = new(
-            adapter,
-            new PluginEventShape(adapter.EventName, parameters));
+        var shape = new PluginEventShape(adapter.EventName, parameters);
+        ValidateEventNameShape(typeof(TEvent), shape);
+        _adapters[typeof(TEvent)] = new(adapter, shape);
     }
 
     public IPluginEventAdapter<TEvent> Resolve<TEvent>()
@@ -58,6 +59,27 @@ public sealed class PluginEventAdapterRegistry
         }
 
         return null;
+    }
+
+    private void ValidateEventNameShape(Type eventType, PluginEventShape shape)
+    {
+        foreach (var registered in _adapters)
+        {
+            if (registered.Key == eventType)
+            {
+                continue;
+            }
+
+            var current = registered.Value.Shape;
+            if (!string.Equals(current.EventName, shape.EventName, StringComparison.Ordinal) ||
+                PluginParameterShape.Matches(current.Parameters, shape.Parameters))
+            {
+                continue;
+            }
+            throw new SandboxValidationException([
+                new SandboxDiagnostic("DBXK034", $"Event adapter name '{shape.EventName}' is already registered with a different parameter shape.")
+            ]);
+        }
     }
 
     private static object? StaticInstance(Type type)

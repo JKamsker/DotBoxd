@@ -20,6 +20,7 @@ var tenantId = "123";
 var configRoot = Path.GetFullPath(Path.Combine(hostDataRoot, "tenants", tenantId, "config"));
 var policy = SandboxPolicyBuilder.Create()
     .AllowPureComputation()
+    .AllowRuntimeAsync()
     .GrantFileRead(root: configRoot, maxBytesPerRun: 256_000)
     .WithFuel(100_000)
     .WithWallTime(TimeSpan.FromMilliseconds(50))
@@ -187,6 +188,8 @@ public sealed class SandboxPolicyBuilder
         long maxBytesPerRun,
         bool allowCreate = false,
         bool allowOverwrite = false);
+    public SandboxPolicyBuilder AllowRuntimeAsync();
+    public SandboxPolicyBuilder AllowIntraKernelReentrancy();
     public SandboxPolicyBuilder GrantTimeNow();
     public SandboxPolicyBuilder GrantRandom();
     public SandboxPolicyBuilder GrantLogging();
@@ -232,11 +235,13 @@ runtime fails closed when either flag is absent or `false`.
 ```csharp
 // Create-only grant: new files may be created under the root, but existing files are protected.
 var createOnly = SandboxPolicyBuilder.Create()
+    .AllowRuntimeAsync()
     .GrantFileWrite(root: outputRoot, maxBytesPerRun: 256_000, allowCreate: true, allowOverwrite: false)
     .Build();
 
 // Overwrite-enabled grant: existing files may be replaced (typically alongside allowCreate).
 var overwrite = SandboxPolicyBuilder.Create()
+    .AllowRuntimeAsync()
     .GrantFileWrite(root: outputRoot, maxBytesPerRun: 256_000, allowCreate: true, allowOverwrite: true)
     .Build();
 ```
@@ -255,6 +260,17 @@ helpers are the intended safe way to authorize a module that declares those capa
 
 Both helpers are first-class alternatives to the generic `Grant(...)` escape hatch, so deterministic
 host setup stays copyable without source or test spelunking.
+
+### Runtime async capability
+
+Bindings marked `BindingDescriptor.IsAsync` require the `dotboxd.runtime.async` capability and add the
+`Concurrency` effect. `AllowRuntimeAsync()` grants that capability and enables the effect. File helpers
+do not grant runtime async implicitly; call `AllowRuntimeAsync()` explicitly when a module uses async
+file bindings. HTTP and plugin-message policy helpers call it because those built-in helper grants are
+always async-only operations.
+
+`AllowIntraKernelReentrancy()` is reserved for a future isolated reentrant execution mode and currently
+fails closed when the policy is built.
 
 `Deterministic(logicalNow, randomSeed)` pairs with these grants to make time and random replayable:
 
@@ -299,13 +315,16 @@ builder.Add(new BindingDescriptor(
     Version: SemVersion.Parse("1.0.0"),
     Parameters: [SandboxType.SandboxPath],
     ReturnType: SandboxType.String,
-    Effects: SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.FileRead,
+    Effects: SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.FileRead | SandboxEffect.Concurrency,
     RequiredCapability: "file.read",
     CostModel: BindingCostModel.PerByte(baseFuel: 50, perByteFuel: 1),
     AuditLevel: AuditLevel.PerResource,
     Safety: BindingSafety.ReadOnlyExternal,
     Invoke: SafeFileBindings.ReadText.Invoke,
-    Compiled: CompiledBinding.RuntimeStub("DotBoxD.Kernels.Runtime.CompiledRuntime", "CallBinding")));
+    Compiled: CompiledBinding.RuntimeStub("DotBoxD.Kernels.Runtime.CompiledRuntime", "CallBinding"))
+{
+    IsAsync = true
+});
 ```
 
 ## Execution plan

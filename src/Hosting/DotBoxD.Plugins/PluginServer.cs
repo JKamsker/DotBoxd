@@ -94,6 +94,8 @@ public sealed partial class PluginServer : IDisposable
 
     public PluginServer RegisterEventAdapter<TEvent>(IPluginEventAdapter<TEvent> adapter)
     {
+        Hooks.EnsureCanRegister(adapter);
+        Subscriptions.EnsureCanRegister(adapter);
         Events.Register(adapter);
         return this;
     }
@@ -130,7 +132,14 @@ public sealed partial class PluginServer : IDisposable
     public bool Uninstall(string pluginId)
     {
         ThrowIfDisposed();
-        return Kernels.Remove(pluginId);
+        var removed = Kernels.Remove(pluginId);
+        if (removed is not null)
+        {
+            RemoveKernelReferences(removed);
+            ClearServerExtensionRegistrations(pluginId);
+        }
+
+        return removed is not null;
     }
 
     internal ValueTask<InstalledKernel> InstallOwnedAsync(
@@ -147,16 +156,23 @@ public sealed partial class PluginServer : IDisposable
         CancellationToken cancellationToken)
         => InstallServerExtensionCoreAsync(package, policy, owner, cancellationToken);
 
-    internal void UninstallOwned(PluginSession owner, string pluginId)
+    internal bool UninstallOwned(PluginSession owner, string pluginId)
     {
         // The owning server may have been disposed first (it revokes all kernels in Dispose); a
         // session disposing afterward is a no-op rather than an ObjectDisposedException.
         if (Volatile.Read(ref _disposed) != 0)
         {
-            return;
+            return false;
         }
 
-        Kernels.RemoveOwned(owner, pluginId);
+        var removed = Kernels.RemoveOwned(owner, pluginId);
+        if (removed is not null)
+        {
+            RemoveKernelReferences(removed);
+            ClearServerExtensionRegistrations(pluginId);
+        }
+
+        return removed is not null;
     }
 
     private async ValueTask<InstalledKernel> InstallCoreAsync(
@@ -171,7 +187,12 @@ public sealed partial class PluginServer : IDisposable
             .ConfigureAwait(false);
         PluginPackageValidator.ValidatePrepared(package, plan, Events);
         var kernel = new InstalledKernel(_host, plan, package, _executionMode, owner);
-        Kernels.Add(kernel);
+        var replaced = Kernels.Add(kernel);
+        if (replaced is not null)
+        {
+            RemoveKernelReferences(replaced);
+        }
+
         return kernel;
     }
 
@@ -189,8 +210,20 @@ public sealed partial class PluginServer : IDisposable
         // Server-extension kernels honor the server's execution mode like event kernels; their
         // record/list IR compiles to verified IL (record.new/record.get), so Auto/Compiled produces fast code.
         var kernel = new InstalledKernel(_host, plan, package, _executionMode, owner);
-        Kernels.Add(kernel);
+        var replaced = Kernels.Add(kernel);
+        if (replaced is not null)
+        {
+            RemoveKernelReferences(replaced);
+        }
+
+        ClearServerExtensionRegistrations(package.Manifest.PluginId);
         return kernel;
+    }
+
+    private void RemoveKernelReferences(InstalledKernel kernel)
+    {
+        Hooks.RemoveKernel(kernel);
+        Subscriptions.RemoveKernel(kernel);
     }
 
     /// <summary>

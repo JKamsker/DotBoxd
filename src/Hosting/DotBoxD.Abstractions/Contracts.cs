@@ -28,7 +28,8 @@ public sealed class LiveSettingAttribute : Attribute;
 /// <c>CallExpression(<paramref name="bindingId"/>, …)</c>, records <paramref name="capability"/> in the
 /// manifest's required capabilities, and adds <paramref name="effects"/> to the manifest's effects. The
 /// host registers a matching binding (same id, capability, and effects) so install-time policy and
-/// effect validation gate the call.
+/// effect validation gate the call. Set <see cref="IsAsync"/> when that registered binding declares
+/// asynchronous host work.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class HostBindingAttribute(string bindingId, string capability, SandboxEffect effects) : Attribute
@@ -45,6 +46,12 @@ public sealed class HostBindingAttribute(string bindingId, string capability, Sa
     /// <c>SandboxEffect.Cpu | SandboxEffect.HostStateRead</c>).
     /// </summary>
     public SandboxEffect Effects { get; } = effects;
+
+    /// <summary>
+    /// True when the registered sandbox binding uses asynchronous host work even if its declared
+    /// effects are otherwise ordinary read/write effects.
+    /// </summary>
+    public bool IsAsync { get; set; }
 }
 
 /// <summary>

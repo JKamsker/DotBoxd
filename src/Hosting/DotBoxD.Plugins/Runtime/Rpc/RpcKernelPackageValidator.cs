@@ -33,6 +33,16 @@ internal static class RpcKernelPackageValidator
             diagnostics.Add(new SandboxDiagnostic("DBXK012", "Plugin module metadata must bind to the manifest plugin id."));
         }
 
+        if (!package.Module.Metadata.TryGetValue(PluginManifestNames.ModuleMetadata.Kernel, out var metadataKernel) ||
+            string.IsNullOrWhiteSpace(metadataKernel))
+        {
+            diagnostics.Add(new SandboxDiagnostic("DBXK013", "Plugin module metadata must bind to the manifest kernel."));
+        }
+        else
+        {
+            ValidateText(metadataKernel, "kernel metadata", diagnostics);
+        }
+
         if (string.IsNullOrWhiteSpace(package.Manifest.RpcEntrypoint))
         {
             diagnostics.Add(new SandboxDiagnostic("DBXK070", "Server extension manifest must declare an rpcEntrypoint."));
@@ -44,8 +54,15 @@ internal static class RpcKernelPackageValidator
                 $"Server extension entrypoint '{package.Manifest.RpcEntrypoint}' is missing or not a public entrypoint."));
         }
 
+        if (package.Manifest.Subscriptions.Count > 0)
+        {
+            diagnostics.Add(new SandboxDiagnostic(
+                "DBXK073",
+                "Kernel RPC service manifests must not declare hook subscriptions."));
+        }
+
         ValidateMode(package.Manifest, diagnostics);
-        _ = ValidateEffects(package.Manifest, diagnostics);
+        _ = PluginManifestEffectValidator.Validate(package.Manifest, diagnostics);
         ValidateLiveSettings(package.Manifest, diagnostics);
         ThrowIfErrors(diagnostics);
     }
@@ -53,7 +70,7 @@ internal static class RpcKernelPackageValidator
     public static void ValidatePrepared(PluginPackage package, ExecutionPlan plan)
     {
         var diagnostics = new List<SandboxDiagnostic>();
-        var manifestEffects = ValidateEffects(package.Manifest, diagnostics);
+        var manifestEffects = PluginManifestEffectValidator.Validate(package.Manifest, diagnostics);
         var entrypointId = package.Manifest.RpcEntrypoint;
         if (string.IsNullOrWhiteSpace(entrypointId) ||
             !PluginEntrypointIndex.Build(package).TryGet(entrypointId, out var entrypoint))
@@ -71,12 +88,21 @@ internal static class RpcKernelPackageValidator
                     $"Plugin manifest effects '{manifestEffects}' do not match verified entrypoint effects '{analysis.Effects}'."));
             }
 
+            if ((analysis.Effects & SandboxEffect.Concurrency) != 0 &&
+                !plan.Policy.GrantsCapability(RuntimeCapabilityIds.Async))
+            {
+                diagnostics.Add(new SandboxDiagnostic(
+                    "DBXK043",
+                    $"Plugin requires async but policy does not grant '{RuntimeCapabilityIds.Async}'."));
+            }
+
             if (!analysis.ReturnType.IsKnown() || analysis.ReturnType.IsForbidden())
             {
                 diagnostics.Add(new SandboxDiagnostic("DBXK072", $"Server extension return type '{analysis.ReturnType}' is not supported."));
             }
         }
 
+        PluginManifestCapabilityValidator.Validate(package.Manifest, plan, [entrypointId], diagnostics);
         ValidateLiveSettingSuffix(package.Manifest.LiveSettings, entrypoint, diagnostics);
         ThrowIfErrors(diagnostics);
     }
@@ -109,30 +135,6 @@ internal static class RpcKernelPackageValidator
                     $"Server extension entrypoint '{function.Id}' must declare live setting '{settings[i].Name}' as a trailing parameter of type '{expected}'."));
             }
         }
-    }
-
-    private static SandboxEffect ValidateEffects(PluginManifest manifest, List<SandboxDiagnostic> diagnostics)
-    {
-        var effects = SandboxEffect.None;
-        foreach (var effect in manifest.Effects)
-        {
-            if (!Enum.TryParse<SandboxEffect>(effect, ignoreCase: false, out var parsed) ||
-                parsed == SandboxEffect.None ||
-                !parsed.ContainsOnlyKnownBits())
-            {
-                diagnostics.Add(new SandboxDiagnostic("DBXK040", $"Plugin manifest effect '{effect}' is not supported."));
-                continue;
-            }
-
-            effects |= parsed;
-        }
-
-        if (effects == SandboxEffect.None)
-        {
-            diagnostics.Add(new SandboxDiagnostic("DBXK040", "Plugin manifest must declare verified effects."));
-        }
-
-        return effects;
     }
 
     private static void ValidateMode(PluginManifest manifest, List<SandboxDiagnostic> diagnostics)

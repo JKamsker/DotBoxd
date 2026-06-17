@@ -1,4 +1,5 @@
 using DotBoxD.Kernels.Policies;
+using DotBoxD.Kernels;
 using DotBoxD.Kernels.Sandbox;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Capability;
@@ -35,6 +36,7 @@ public sealed class CapabilityGatingInstallTests
         => SandboxPolicyBuilder.Create()
             .GrantLogging()
             .Grant("host.*", new { }, SandboxEffect.HostStateWrite | SandboxEffect.Audit)
+            .Grant(RuntimeCapabilityIds.Async, new { }, SandboxEffect.Concurrency)
             .WithFuel(100_000)
             .WithMaxHostCalls(1_000)
             .WithWallTime(TimeSpan.FromSeconds(10))

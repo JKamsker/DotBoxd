@@ -4,7 +4,10 @@ internal sealed record DotBoxDExpressionModel(string Source, string Type, bool A
 
 internal sealed record DotBoxDStatementBodyModel(string Source, bool Allocates);
 
-internal sealed record DotBoxDHandleModel(DotBoxDExpressionModel Target, DotBoxDExpressionModel Message)
+internal sealed record DotBoxDHandleModel(
+    DotBoxDExpressionModel Target,
+    DotBoxDExpressionModel Message,
+    DotBoxDStatementBodyModel? Prefix = null)
 {
-    public bool Allocates => Target.Allocates || Message.Allocates;
+    public bool Allocates => Target.Allocates || Message.Allocates || Prefix?.Allocates == true;
 }

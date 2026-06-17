@@ -122,6 +122,7 @@ internal static class BindingCallEmitter
         => binding.Compiled.Kind == "RuntimeStub" &&
            binding.Compiled.Type == typeof(Runtime.CompiledRuntime).FullName &&
            binding.Compiled.Method != nameof(Kernels.Runtime.CompiledRuntime.CallBinding) &&
+           !binding.IsAsync &&
            binding.RequiredCapability is null &&
            binding.Safety == BindingSafety.PureIntrinsic &&
            (binding.Effects & ~(SandboxEffect.Cpu | SandboxEffect.Alloc)) == SandboxEffect.None &&

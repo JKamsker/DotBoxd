@@ -17,6 +17,11 @@ internal static class DotBoxDRpcTypeMapper
     public static string JsonType(ITypeSymbol type)
     {
         type = DotBoxDTypeNameReader.UnwrapTaskLike(type);
+        if (IsNullableValueType(type))
+        {
+            throw new NotSupportedException($"Server extension nullable type '{type.ToDisplayString()}' is not supported.");
+        }
+
         switch (type.SpecialType)
         {
             case SpecialType.System_Boolean: return Scalar("Bool");
@@ -56,6 +61,12 @@ internal static class DotBoxDRpcTypeMapper
     {
         if (type is IArrayTypeSymbol array)
         {
+            if (array.Rank != 1)
+            {
+                throw new NotSupportedException(
+                    $"Server extension multidimensional array type '{array.ToDisplayString()}' is not supported.");
+            }
+
             return array.ElementType;
         }
 
@@ -78,6 +89,7 @@ internal static class DotBoxDRpcTypeMapper
     public static bool IsRecordDto(INamedTypeSymbol type)
         => type.TypeKind is TypeKind.Class or TypeKind.Struct &&
            !IsScalar(type) &&
+           !IsNullableValueType(type) &&
            RecordFields(type).Count > 0;
 
     /// <summary>The DTO's positional fields: public instance properties with a getter, in declaration
@@ -104,4 +116,8 @@ internal static class DotBoxDRpcTypeMapper
     }
 
     private static string Scalar(string name) => "\"" + name + "\"";
+
+    private static bool IsNullableValueType(ITypeSymbol type)
+        => type is INamedTypeSymbol named &&
+           named.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T;
 }

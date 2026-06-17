@@ -1,4 +1,5 @@
 using DotBoxD.Kernels.Model;
+using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Tests._TestSupport;
 using DotBoxD.Plugins;
@@ -117,9 +118,12 @@ public sealed class PluginInputAllocationTests
                 "input-build",
                 "IEventKernel<IndexOnlyEvent>",
                 ExecutionMode.Interpreted,
-                ["Cpu", "Alloc", "HostStateWrite", "Audit"],
+                ["Cpu", "Alloc", "HostStateWrite", "Concurrency", "Audit"],
                 [new LiveSettingDefinition("Enabled", "bool", true)],
-                [new HookSubscriptionManifest(nameof(IndexOnlyEvent), "InputBuildKernel")]),
+                [new HookSubscriptionManifest(nameof(IndexOnlyEvent), "InputBuildKernel")])
+            {
+                RequiredCapabilities = [RuntimeCapabilityIds.Async, PluginMessageBindings.CapabilityId]
+            },
             new SandboxModule(
                 "input-build",
                 SemVersion.One,
