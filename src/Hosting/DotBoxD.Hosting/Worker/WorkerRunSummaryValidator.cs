@@ -75,7 +75,9 @@ internal static class WorkerRunSummaryValidator
         }
 
         return IsHexSha256(result.ArtifactHash) &&
-               FieldEquals(summary, "artifactHash", result.ArtifactHash!);
+               FieldEquals(summary, "artifactHash", result.ArtifactHash!) &&
+               FieldEquals(summary, "runtimeForm", "LoadedAssembly") &&
+               HasHexSha256Field(summary, "cacheKey");
     }
 
     private static bool FieldEquals(SandboxAuditEvent summary, string key, string value)
