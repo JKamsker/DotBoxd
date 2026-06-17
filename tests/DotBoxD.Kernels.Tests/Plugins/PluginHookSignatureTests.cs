@@ -25,6 +25,19 @@ public sealed class PluginHookSignatureTests
     }
 
     [Fact]
+    public void UseGeneratedChain_rolls_back_when_adapter_signature_fails()
+    {
+        var server = PluginAddendumTestPolicies.CreateServer();
+
+        var ex = Assert.Throws<SandboxValidationException>(
+            () => server.Hooks.On(new MismatchedDamageEventAdapter())
+                .UseGeneratedChain(FireDamagePluginPackage.Create()));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK033");
+        Assert.False(server.Kernels.TryGet("fire-damage", out _));
+    }
+
+    [Fact]
     public async Task Convention_adapter_uses_generated_event_parameter_names()
     {
         var messages = new InMemoryPluginMessageSink();
