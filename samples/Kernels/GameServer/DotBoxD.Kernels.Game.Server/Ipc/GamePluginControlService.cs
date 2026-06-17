@@ -1,6 +1,7 @@
 using DotBoxD.Kernels.Game.Server.Abstractions.Events;
 using DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
 using DotBoxD.Kernels.Game.Server.Simulation;
+using DotBoxD.Plugins;
 using DotBoxD.Plugins.Json;
 using DotBoxD.Plugins.Kernel;
 using PluginServer = DotBoxD.Plugins.PluginServer;
@@ -47,6 +48,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         // privilege). The plugin cannot widen this: RequiredCapabilities reflects what the verified IR
         // actually touches, not what the plugin asserts.
         var package = PluginPackageJsonSerializer.Import(packageJson);
+        _ = SupportedSubscription(package.Manifest);
         var policy = ServerPolicy.ForKernel(package.Manifest.RequiredCapabilities);
         var kernel = await _session.InstallAsync(package, policy, ct).ConfigureAwait(false);
         try
@@ -185,10 +187,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
     private void WireHook(InstalledKernel kernel)
     {
         // Map by the kernel's declared subscription event so the server stays agnostic of plugin ids.
-        var subscription = kernel.Manifest.Subscriptions.Count > 0
-            ? kernel.Manifest.Subscriptions[0].Event
-            : null;
-        switch (subscription)
+        switch (SupportedSubscription(kernel.Manifest))
         {
             case "MonsterAggroEvent":
                 _server.Hooks.On<MonsterAggroEvent>().UseKernel(kernel);
@@ -196,10 +195,20 @@ internal sealed class GamePluginControlService : IGamePluginControlService
             case "AttackEvent":
                 _server.Hooks.On<AttackEvent>().UseKernel(kernel);
                 break;
-            default:
-                throw new InvalidOperationException(
-                    $"Plugin '{kernel.Manifest.PluginId}' subscribes to unsupported event '{subscription}'.");
         }
+    }
+
+    private static string SupportedSubscription(PluginManifest manifest)
+    {
+        var subscription = manifest.Subscriptions.Count > 0
+            ? manifest.Subscriptions[0].Event
+            : null;
+        return subscription switch
+        {
+            "MonsterAggroEvent" or "AttackEvent" => subscription,
+            _ => throw new InvalidOperationException(
+                $"Plugin '{manifest.PluginId}' subscribes to unsupported event '{subscription}'.")
+        };
     }
 
     private static SandboxFunction RpcEntrypoint(InstalledKernel kernel)
