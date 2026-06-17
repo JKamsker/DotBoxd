@@ -16,6 +16,8 @@ namespace DotBoxD.Kernels.Game.Server.Ipc;
 /// </summary>
 internal sealed class GamePluginControlService : IGamePluginControlService
 {
+    private const string MonsterWriteKillCapability = "game.world.monster.write.kill";
+
     private readonly PluginServer _server;
     private readonly PluginSession _session;
     private readonly GameCommandSink _sink;
@@ -143,6 +145,11 @@ internal sealed class GamePluginControlService : IGamePluginControlService
     {
         ArgumentNullException.ThrowIfNull(monsterId);
         ct.ThrowIfCancellationRequested();
+        if (!OwnsKernelRequiring(MonsterWriteKillCapability))
+        {
+            return ValueTask.FromResult(false);
+        }
+
         return ValueTask.FromResult(_world.KillMonster(monsterId));
     }
 
@@ -211,5 +218,20 @@ internal sealed class GamePluginControlService : IGamePluginControlService
 
         throw new InvalidOperationException(
             $"Kernel RPC service '{kernel.Manifest.PluginId}' is missing entrypoint '{entrypoint}'.");
+    }
+
+    private bool OwnsKernelRequiring(string capabilityId)
+    {
+        foreach (var kernel in _server.Kernels.Snapshot())
+        {
+            if (!kernel.IsRevoked &&
+                ReferenceEquals(kernel.OwnerId, _session) &&
+                kernel.Manifest.RequiredCapabilities.Contains(capabilityId, StringComparer.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
