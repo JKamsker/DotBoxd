@@ -29,18 +29,26 @@ internal static class ServerPolicy
     /// <summary>
     /// Builds the policy granting exactly what a kernel's verified IR declares it needs. Grants are
     /// derived from the manifest's <see cref="DotBoxD.Plugins.PluginManifest.RequiredCapabilities"/> — the
-    /// plugin cannot widen them, since the analyzer derived them from what the IR actually touches.
+    /// plugin cannot widen them, since the analyzer derived them from what the IR actually touches. Event
+    /// kernels intentionally cannot receive monster-write grants; writes are reserved for RPC kernels.
     /// </summary>
     public static SandboxPolicy ForKernel(IReadOnlyList<string> requiredCapabilities)
-        => ForRequiredCapabilities(requiredCapabilities, grantEventMessageWrite: true);
+        => ForRequiredCapabilities(
+            requiredCapabilities,
+            grantEventMessageWrite: true,
+            grantMonsterWrite: false);
 
     /// <summary>Builds the policy for a kernel RPC service, without event-kernel base grants.</summary>
     public static SandboxPolicy ForRpcKernel(IReadOnlyList<string> requiredCapabilities)
-        => ForRequiredCapabilities(requiredCapabilities, grantEventMessageWrite: false);
+        => ForRequiredCapabilities(
+            requiredCapabilities,
+            grantEventMessageWrite: false,
+            grantMonsterWrite: true);
 
     private static SandboxPolicy ForRequiredCapabilities(
         IReadOnlyList<string> requiredCapabilities,
-        bool grantEventMessageWrite)
+        bool grantEventMessageWrite,
+        bool grantMonsterWrite)
     {
         var builder = SandboxPolicyBuilder.Create()
             .GrantLogging()
@@ -63,7 +71,8 @@ internal static class ServerPolicy
             builder.Grant("game.world.monster.read.*", new { }, SandboxEffect.HostStateRead);
         }
 
-        if (requiredCapabilities.Any(capability =>
+        if (grantMonsterWrite &&
+            requiredCapabilities.Any(capability =>
                 capability.StartsWith(MonsterWritePrefix, StringComparison.Ordinal)))
         {
             builder.Grant("game.world.monster.write.*", new { }, SandboxEffect.HostStateWrite);
