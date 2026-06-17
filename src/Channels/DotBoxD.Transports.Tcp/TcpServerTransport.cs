@@ -194,6 +194,10 @@ public sealed class TcpServerTransport : IServerTransport
         {
             throw new OperationCanceledException(ct);
         }
+        catch (Exception) when (Volatile.Read(ref _started) == 0 || Volatile.Read(ref _disposed) != 0)
+        {
+            throw new OperationCanceledException();
+        }
 
         try
         {
