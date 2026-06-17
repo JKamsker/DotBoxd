@@ -36,7 +36,7 @@ public static class HostServiceBindingExtensions
             return;
         }
 
-        foreach (var method in serviceType.GetMethods())
+        foreach (var method in ServiceMethods(serviceType))
         {
             if (ShouldSkipMethod(method))
             {
@@ -48,12 +48,13 @@ public static class HostServiceBindingExtensions
                 continue;
             }
 
-            var target = ResolveTargetMethod(serviceType, implementation.GetType(), method);
+            var declaringType = method.DeclaringType ?? serviceType;
+            var target = ResolveTargetMethod(declaringType, implementation.GetType(), method);
             var capability = target.GetCustomAttribute<HostCapabilityAttribute>();
             if (capability is null)
             {
                 throw new InvalidOperationException(
-                    $"Host service method '{serviceType.FullName}.{method.Name}' must declare [HostCapability] on its implementation.");
+                    $"Host service method '{declaringType.FullName}.{method.Name}' must declare [HostCapability] on its implementation.");
             }
 
             AddBinding(
@@ -62,7 +63,7 @@ public static class HostServiceBindingExtensions
                 HostServiceBindingFactory.CreateBinding(method, target, implementation, capability.Capability));
         }
 
-        foreach (var property in serviceType.GetProperties())
+        foreach (var property in ServiceProperties(serviceType))
         {
             if (ShouldSkipProperty(property))
             {
@@ -93,8 +94,9 @@ public static class HostServiceBindingExtensions
             return false;
         }
 
-        var targetFactory = ResolveTargetMethod(parentServiceType, parentImplementation.GetType(), factoryMethod);
-        foreach (var handleMethod in handleServiceType.GetMethods())
+        var factoryDeclaringType = factoryMethod.DeclaringType ?? parentServiceType;
+        var targetFactory = ResolveTargetMethod(factoryDeclaringType, parentImplementation.GetType(), factoryMethod);
+        foreach (var handleMethod in ServiceMethods(handleServiceType))
         {
             if (ShouldSkipMethod(handleMethod))
             {
@@ -152,8 +154,25 @@ public static class HostServiceBindingExtensions
     {
         var getter = property.GetMethod
             ?? throw new InvalidOperationException($"Host service property '{property.Name}' must have a getter.");
-        var targetGetter = ResolveTargetMethod(interfaceType, implementation.GetType(), getter);
+        var getterDeclaringType = getter.DeclaringType ?? interfaceType;
+        var targetGetter = ResolveTargetMethod(getterDeclaringType, implementation.GetType(), getter);
         return targetGetter.Invoke(implementation, null);
+    }
+
+    private static IEnumerable<MethodInfo> ServiceMethods(Type serviceType)
+        => ServiceTypes(serviceType).SelectMany(static type => type.GetMethods());
+
+    private static IEnumerable<PropertyInfo> ServiceProperties(Type serviceType)
+        => ServiceTypes(serviceType).SelectMany(static type => type.GetProperties());
+
+    private static IEnumerable<Type> ServiceTypes(Type serviceType)
+    {
+        foreach (var inherited in serviceType.GetInterfaces().OrderBy(static type => type.FullName, StringComparer.Ordinal))
+        {
+            yield return inherited;
+        }
+
+        yield return serviceType;
     }
 
     private static bool ShouldSkipMethod(MethodInfo method)

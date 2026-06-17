@@ -34,11 +34,17 @@ internal static class RpcKernelDirectClientExtensionEmitter
         private void AppendMethod(StringBuilder builder)
         {
             var returnType = TypeName(kernelMethod.ReturnType);
-            var payloadReturnType = DotBoxDTypeNameReader.UnwrapTaskLike(kernelMethod.ReturnType);
+            var isAsyncReturn = TryGetPayloadReturnType(kernelMethod.ReturnType, out var payloadReturnType);
             var hasReceiverId = HasReceiverId(receiverType);
             var userParameterCount = kernelMethod.Parameters.Length - 1;
             var argumentOffset = hasReceiverId ? 1 : 0;
-            builder.Append("    public static async ").Append(returnType).Append(' ')
+            builder.Append("    public static ");
+            if (isAsyncReturn)
+            {
+                builder.Append("async ");
+            }
+
+            builder.Append(returnType).Append(' ')
                 .Append(Identifier(kernelMethod.Name)).Append("(this ").Append(TypeName(receiverType)).Append(" value");
             for (var i = 0; i < userParameterCount; i++)
             {
@@ -68,20 +74,39 @@ internal static class RpcKernelDirectClientExtensionEmitter
             }
 
             builder.AppendLine("        var __request = global::DotBoxD.Plugins.KernelRpcBinaryCodec.EncodeArguments(__arguments);");
-            builder.Append("        var __response = await __accessor.ServerExtensions.InvokeServerExtensionAsync(");
-            builder.Append("__accessor.ServerExtensions.PluginId<").Append(TypeName(kernelType)).AppendLine(">(), __request).ConfigureAwait(false);");
-            if (payloadReturnType.SpecialType == SpecialType.System_Void)
+            if (payloadReturnType is null)
             {
+                AppendInvoke(builder, isAsyncReturn, assignResponse: false);
                 builder.AppendLine("        return;");
             }
             else
             {
+                AppendInvoke(builder, isAsyncReturn, assignResponse: true);
                 builder.AppendLine("        var __result = global::DotBoxD.Plugins.KernelRpcBinaryCodec.DecodeValue(__response);");
                 builder.Append("        return ").Append(ReadExpression(payloadReturnType, "__result")).AppendLine(";");
             }
 
             builder.AppendLine("    }");
             builder.AppendLine();
+        }
+
+        private void AppendInvoke(StringBuilder builder, bool isAsyncReturn, bool assignResponse)
+        {
+            builder.Append("        ");
+            if (assignResponse)
+            {
+                builder.Append("var __response = ");
+            }
+
+            if (isAsyncReturn)
+            {
+                builder.Append("await __accessor.ServerExtensions.InvokeServerExtensionAsync(");
+                builder.Append("__accessor.ServerExtensions.PluginId<").Append(TypeName(kernelType)).AppendLine(">(), __request).ConfigureAwait(false);");
+                return;
+            }
+
+            builder.Append("__accessor.ServerExtensions.InvokeServerExtensionAsync(");
+            builder.Append("__accessor.ServerExtensions.PluginId<").Append(TypeName(kernelType)).AppendLine(">(), __request).AsTask().GetAwaiter().GetResult();");
         }
 
         private string WriteExpression(ITypeSymbol type, string expression)
@@ -257,5 +282,30 @@ internal static class RpcKernelDirectClientExtensionEmitter
         }
 
         private static string Identifier(string name) => "@" + name;
+
+        private static bool TryGetPayloadReturnType(ITypeSymbol returnType, out ITypeSymbol? payloadReturnType)
+        {
+            if (returnType.SpecialType == SpecialType.System_Void)
+            {
+                payloadReturnType = null;
+                return false;
+            }
+
+            if (returnType is INamedTypeSymbol
+                {
+                    Name: "Task" or "ValueTask",
+                    ContainingNamespace: { } ns
+                } taskLike &&
+                string.Equals(ns.ToDisplayString(), "System.Threading.Tasks", StringComparison.Ordinal))
+            {
+                payloadReturnType = taskLike is { IsGenericType: true, TypeArguments.Length: 1 }
+                    ? taskLike.TypeArguments[0]
+                    : null;
+                return true;
+            }
+
+            payloadReturnType = returnType;
+            return false;
+        }
     }
 }

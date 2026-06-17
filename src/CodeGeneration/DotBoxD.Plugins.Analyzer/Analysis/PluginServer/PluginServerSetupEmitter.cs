@@ -265,11 +265,13 @@ internal static class PluginServerSetupEmitter
             "Records a server-extension kernel for the requested service contract and replays it at StartAsync.");
         builder.Append("        public ").Append(control.AccumulatorInterfaceName).AppendLine(" Extend<TService, TKernel>() where TService : class where TKernel : class");
         builder.AppendLine("        {");
-        builder.AppendLine("            Add<TKernel>();");
+        builder.AppendLine("            Add<TService, TKernel>();");
         builder.AppendLine("            return this;");
         builder.AppendLine("        }");
         builder.AppendLine("        private void Add<TKernel>() where TKernel : class");
         builder.AppendLine("            => _installs.Add(RecordedInstall.ServerExtension(global::DotBoxD.Plugins.Kernel.KernelPackageRegistry.Resolve<TKernel>(), typeof(TKernel)));");
+        builder.AppendLine("        private void Add<TService, TKernel>() where TService : class where TKernel : class");
+        builder.AppendLine("            => _installs.Add(RecordedInstall.ServerExtension(global::DotBoxD.Plugins.Kernel.KernelPackageRegistry.Resolve<TKernel>(), typeof(TService)));");
         builder.AppendLine("    }");
         builder.AppendLine();
     }

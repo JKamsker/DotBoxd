@@ -59,6 +59,50 @@ public sealed class ServerExtensionClientExtensionTests
         }
         """;
 
+    private const string DirectSyncExtensionSource = """
+        using System.Collections.Generic;
+        using DotBoxD.Kernels;
+        using DotBoxD.Kernels.Sandbox;
+        using DotBoxD.Plugins;
+        using DotBoxD.Plugins.Runtime;
+        using DotBoxD.Abstractions;
+
+        namespace Sample;
+
+        public sealed class RemoteMonsterControl : IServerExtensionClientAccessor
+        {
+            public RemoteMonsterControl(DotBoxD.Abstractions.IServerExtensionClientRegistry serverExtensions) => ServerExtensions = serverExtensions;
+            public DotBoxD.Abstractions.IServerExtensionClientRegistry ServerExtensions { get; }
+        }
+
+        public interface IGameWorld
+        {
+            [HostBinding("host.world.kill", "game.world.monster.write.kill", SandboxEffect.Cpu | SandboxEffect.HostStateWrite)]
+            bool Kill(int id);
+        }
+
+        public readonly record struct KillResult(int MonsterId, bool Success);
+
+        [ServerExtension(typeof(RemoteMonsterControl), "monster-killer")]
+        public sealed partial class MonsterKillerKernel
+        {
+            [ServerExtensionMethod(typeof(RemoteMonsterControl))]
+            public List<KillResult> KillMonsters(List<int> monsterIds, HookContext ctx)
+            {
+                var results = new List<KillResult>();
+                foreach (var id in monsterIds)
+                    results.Add(new KillResult(id, ctx.Host<IGameWorld>().Kill(id)));
+                return results;
+            }
+        }
+
+        public static class Probe
+        {
+            public static List<KillResult> Kill(RemoteMonsterControl control, List<int> monsterIds)
+                => control.KillMonsters(monsterIds);
+        }
+        """;
+
     [Fact]
     public async Task Generated_domain_extensions_resolve_registered_server_extension_client()
     {
@@ -81,6 +125,26 @@ public sealed class ServerExtensionClientExtensionTests
         var arguments = KernelRpcBinaryCodec.DecodeArguments(registry.LastArguments);
         Assert.Equal([4, 5], arguments[0].Items.Select(item => item.Int32Value));
 
+        var results = Assert.IsAssignableFrom<System.Collections.IEnumerable>(result).Cast<object>().ToArray();
+        Assert.Equal(2, results.Length);
+        AssertGeneratedKillResult(results[0], 4, true);
+        AssertGeneratedKillResult(results[1], 5, false);
+    }
+
+    [Fact]
+    public void Generated_direct_extensions_support_synchronous_kernel_returns()
+    {
+        var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly(DirectSyncExtensionSource);
+        var controlType = assembly.GetType("Sample.RemoteMonsterControl", throwOnError: true)!;
+        var probeType = assembly.GetType("Sample.Probe", throwOnError: true)!;
+        var registry = new RecordingServerExtensionsRegistry(KillResultsResponse());
+        var control = Activator.CreateInstance(controlType, [registry])!;
+
+        var result = probeType.GetMethod("Kill", BindingFlags.Public | BindingFlags.Static)!
+            .Invoke(null, [control, new List<int> { 4, 5 }])!;
+
+        Assert.Equal("monster-killer", registry.LastPluginId);
+        Assert.Equal("Sample.MonsterKillerKernel", registry.LastServiceType);
         var results = Assert.IsAssignableFrom<System.Collections.IEnumerable>(result).Cast<object>().ToArray();
         Assert.Equal(2, results.Length);
         AssertGeneratedKillResult(results[0], 4, true);

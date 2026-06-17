@@ -72,11 +72,25 @@ internal static class PluginServerWrapperEmitter
     private static void AppendMethod(StringBuilder builder, PluginServerForwardedMethod method, string indent)
     {
         PluginServerXmlDocumentation.Append(builder, indent, method.Documentation);
-        builder.Append(indent).Append("public ").Append(method.ReturnType).Append(' ').Append(method.Name)
+        builder.Append(indent).Append("public ");
+        if (method.ReturnWrapperKind is PluginServerReturnWrapperKind.Task or PluginServerReturnWrapperKind.ValueTask)
+        {
+            builder.Append("async ");
+        }
+
+        builder.Append(method.ReturnType).Append(' ').Append(method.Name)
             .Append('(').Append(ParameterList(method)).Append(") => ");
         if (method.ReturnWrapperName is null)
         {
             builder.Append("_inner.").Append(method.Name).Append('(').Append(ArgumentList(method)).AppendLine(");");
+            return;
+        }
+
+        if (method.ReturnWrapperKind is PluginServerReturnWrapperKind.Task or PluginServerReturnWrapperKind.ValueTask)
+        {
+            builder.Append("new ").Append(method.ReturnWrapperName).Append("(_owner, await _inner.")
+                .Append(method.Name).Append('(').Append(ArgumentList(method))
+                .AppendLine(").ConfigureAwait(false));");
             return;
         }
 
