@@ -201,7 +201,8 @@ public static class KernelRpcMarshaller
     private static IReadOnlyList<PropertyInfo> RecordFields(Type type)
     {
         var properties = new List<PropertyInfo>();
-        foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+        foreach (var property in type.GetProperties(flags))
         {
             if (property.CanRead && property.GetIndexParameters().Length == 0 &&
                 !string.Equals(property.Name, "EqualityContract", StringComparison.Ordinal))
