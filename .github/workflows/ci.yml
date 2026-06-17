@@ -36,6 +36,7 @@ jobs:
   build-test:
     name: Build & Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     permissions:
       contents: read
     strategy:
@@ -74,6 +75,7 @@ jobs:
 
       - name: Test
         shell: pwsh
+        timeout-minutes: 30
         # Run test projects sequentially rather than `dotnet test DotBoxD.slnx` (all assemblies at
         # once): the sandbox's wall-clock deadline/quota tests can flip to Timeout under concurrent
         # multi-assembly load on shared CI runners. Each project passes reliably on its own.
@@ -98,7 +100,10 @@ jobs:
               Write-Host "::group::dotnet test $name (attempt $attempt)"
               dotnet test $p -c Release --no-build `
                 --logger "trx;LogFileName=$name.trx" `
-                --results-directory artifacts/test-results
+                --results-directory artifacts/test-results `
+                --blame-hang `
+                --blame-hang-timeout 5m `
+                --blame-hang-dump-type mini
               $code = $LASTEXITCODE
               Write-Host "::endgroup::"
               if ($code -eq 0) { $passed = $true; break }
@@ -115,12 +120,12 @@ jobs:
         shell: pwsh
         run: ./eng/scripts/check-docs-smoke.ps1 -Configuration Release
 
-      - name: Upload test results (TRX)
+      - name: Upload test diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-results-${{ matrix.os }}
-          path: artifacts/test-results/**/*.trx
+          path: artifacts/test-results/**/*
           if-no-files-found: ignore
           retention-days: 7
 
