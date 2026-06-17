@@ -84,10 +84,6 @@ internal static class HookChainModelFactory
         }
 
         var eventProperties = PluginSymbolReader.EventProperties(eventType);
-        if (eventProperties.Count == 0)
-        {
-            return null;
-        }
 
         // Collectors for the whole chain: every Where/Select/terminal-Send deposits the capabilities its
         // IR needs (Send, [HostBinding] calls, gated event-property reads) and every extra sandbox effect
