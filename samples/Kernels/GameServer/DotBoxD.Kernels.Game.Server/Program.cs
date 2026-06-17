@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using DotBoxD.Kernels.Game.Server.Abstractions.Events;
 using DotBoxD.Kernels.Game.Server.Ipc;
 using DotBoxD.Kernels.Game.Server.Simulation;
@@ -89,20 +90,53 @@ internal static class Program
 
         // (d) Launch the plugin child process.
         Console.WriteLine("[server] launching plugin child process...");
-        var pluginProcess = PluginLauncher.Launch(pipeName);
+        using var pluginProcess = PluginLauncher.Launch(pipeName);
         var pluginExit = pluginProcess.WaitForExitAsync();
+        var readinessTimeout = PluginReadinessGate.ReadTimeout();
 
         // (e) Wait until the plugin has connected and installed its kernels (it then holds the
         // connection). Fail fast if it exits early.
-        if (await Task.WhenAny(connected.Task, pluginExit).ConfigureAwait(false) == pluginExit && !connected.Task.IsCompleted)
+        var connectionResult = await PluginReadinessGate
+            .WaitAsync(connected.Task, pluginExit, readinessTimeout)
+            .ConfigureAwait(false);
+        if (connectionResult == PluginReadinessWaitResult.PluginExited)
         {
-            return await FailAsync(host, $"plugin exited before connecting (code {pluginProcess.ExitCode}).").ConfigureAwait(false);
+            return await FailAsync(
+                    host,
+                    pluginProcess,
+                    $"plugin exited before connecting (code {pluginProcess.ExitCode}).")
+                .ConfigureAwait(false);
+        }
+
+        if (connectionResult == PluginReadinessWaitResult.TimedOut)
+        {
+            return await FailAsync(
+                    host,
+                    pluginProcess,
+                    $"plugin did not connect within {FormatDuration(readinessTimeout)}.")
+                .ConfigureAwait(false);
         }
 
         var control = await connected.Task.ConfigureAwait(false);
-        if (await Task.WhenAny(control.Ready, pluginExit).ConfigureAwait(false) == pluginExit && !control.Ready.IsCompleted)
+        var readyResult = await PluginReadinessGate
+            .WaitAsync(control.Ready, pluginExit, readinessTimeout)
+            .ConfigureAwait(false);
+        if (readyResult == PluginReadinessWaitResult.PluginExited)
         {
-            return await FailAsync(host, $"plugin exited before installing kernels (code {pluginProcess.ExitCode}).").ConfigureAwait(false);
+            return await FailAsync(
+                    host,
+                    pluginProcess,
+                    $"plugin exited before installing kernels (code {pluginProcess.ExitCode}).")
+                .ConfigureAwait(false);
+        }
+
+        if (readyResult == PluginReadinessWaitResult.TimedOut)
+        {
+            return await FailAsync(
+                    host,
+                    pluginProcess,
+                    $"plugin connected but did not become ready within {FormatDuration(readinessTimeout)}.")
+                .ConfigureAwait(false);
         }
 
         Console.WriteLine("[server] plugin connected; event kernels and kernel RPC service are installed and live.");
@@ -130,7 +164,8 @@ internal static class Program
         await disconnected.Task.ConfigureAwait(false);
         if (pluginProcess.ExitCode != 0)
         {
-            return await FailAsync(host, $"plugin exited with code {pluginProcess.ExitCode}.").ConfigureAwait(false);
+            return await FailAsync(host, pluginProcess, $"plugin exited with code {pluginProcess.ExitCode}.")
+                .ConfigureAwait(false);
         }
 
         // (h) Summary, plus proof that disconnect unloaded the plugin's kernels.
@@ -148,12 +183,39 @@ internal static class Program
         return 0;
     }
 
-    private static async Task<int> FailAsync(RpcHost host, string message)
+    private static async Task<int> FailAsync(RpcHost host, Process? pluginProcess, string message)
     {
         await Console.Error.WriteLineAsync($"[server] {message}").ConfigureAwait(false);
+        await StopPluginAsync(pluginProcess).ConfigureAwait(false);
         await host.StopAsync().ConfigureAwait(false);
         return 1;
     }
+
+    private static async Task StopPluginAsync(Process? pluginProcess)
+    {
+        if (pluginProcess is null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!pluginProcess.HasExited)
+            {
+                pluginProcess.Kill(entireProcessTree: true);
+            }
+
+            await pluginProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or TimeoutException)
+        {
+        }
+    }
+
+    private static string FormatDuration(TimeSpan timeout)
+        => timeout.TotalSeconds >= 1
+            ? timeout.TotalSeconds.ToString("0.#", CultureInfo.InvariantCulture) + "s"
+            : timeout.TotalMilliseconds.ToString("0", CultureInfo.InvariantCulture) + "ms";
 
     private static Dictionary<string, int> PlayerHpById(GameWorld world)
         => world.Players().ToDictionary(p => p.Id, p => p.Hp, StringComparer.Ordinal);
