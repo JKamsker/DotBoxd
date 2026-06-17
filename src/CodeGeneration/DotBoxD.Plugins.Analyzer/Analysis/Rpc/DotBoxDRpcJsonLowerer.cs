@@ -152,6 +152,12 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
     private void LowerForEach(ForEachStatementSyntax loop, List<string> output)
     {
+        if (DotBoxDRpcTypeMapper.ListElementType(TypeOf(loop.Expression)) is null)
+        {
+            throw new NotSupportedException(
+                $"Kernel RPC service foreach source '{loop.Expression}' must be a supported list type.");
+        }
+
         var suffix = NextLoopTempSuffix();
         var source = "__sir_src" + suffix;
         var index = "__sir_i" + suffix;
