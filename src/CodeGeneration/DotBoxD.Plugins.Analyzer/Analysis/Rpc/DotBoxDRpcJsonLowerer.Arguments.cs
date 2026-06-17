@@ -18,11 +18,26 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         var lowered = new string[parameters.Count];
         var assigned = new bool[parameters.Count];
         var nextPositional = 0;
-        foreach (var argument in arguments)
+        var hasOutOfPositionNamedArgument = false;
+        for (var ordinal = 0; ordinal < arguments.Count; ordinal++)
         {
-            var index = argument.NameColon is { } name
-                ? IndexOfParameter(parameters, name.Name.Identifier.ValueText, description)
-                : nextPositional;
+            var argument = arguments[ordinal];
+            int index;
+            if (argument.NameColon is { } name)
+            {
+                index = IndexOfParameter(parameters, name.Name.Identifier.ValueText, description);
+                hasOutOfPositionNamedArgument |= index != ordinal;
+            }
+            else
+            {
+                if (hasOutOfPositionNamedArgument)
+                {
+                    throw new NotSupportedException($"{description} call has duplicate or misplaced arguments.");
+                }
+
+                index = nextPositional;
+            }
+
             if (index >= parameters.Count || assigned[index])
             {
                 throw new NotSupportedException($"{description} call has duplicate or misplaced arguments.");
@@ -30,10 +45,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
             lowered[index] = LowerExpression(argument.Expression);
             assigned[index] = true;
-            if (argument.NameColon is null)
-            {
-                nextPositional = NextUnassigned(assigned, index + 1);
-            }
+            nextPositional = NextUnassigned(assigned, nextPositional);
         }
 
         for (var i = 0; i < assigned.Length; i++)
