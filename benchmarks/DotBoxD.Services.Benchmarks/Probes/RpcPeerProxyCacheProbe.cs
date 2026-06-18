@@ -23,6 +23,7 @@ internal static class RpcPeerProxyCacheProbe
 
             var legacyGate = new object();
             var uncached = Measure(Iterations, () => GeneratedServiceRegistry.CreateProxy<IGameService>(peer));
+            var legacyExtension = Measure(Iterations, () => new GameServiceProxy(peer));
             var legacy = Measure(
                 Iterations,
                 () =>
@@ -33,11 +34,14 @@ internal static class RpcPeerProxyCacheProbe
                     }
                 });
             var cached = Measure(Iterations, () => peer.Get<IGameService>());
+            var generatedExtension = Measure(Iterations, () => peer.GetGameService());
 
             Console.WriteLine("RpcPeer proxy lookup probe");
             Write("Uncached registry CreateProxy", uncached);
+            Write("Legacy generated Get extension", legacyExtension);
             Write("Legacy locked proxy creation", legacy);
             Write("Cached RpcPeer.Get", cached);
+            Write("Cached generated Get extension", generatedExtension);
         }
         finally
         {

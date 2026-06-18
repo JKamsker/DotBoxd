@@ -20,7 +20,7 @@ namespace DotBoxD.Services.Generated
         /// Gets a proxy to call IOne on the other peer.
         /// </summary>
         public static global::Snap.Two.IOne GetOne(this global::DotBoxD.Services.Peer.RpcPeer peer)
-            => new global::Snap.Two.OneProxy(peer);
+            => peer.Get<global::Snap.Two.IOne>();
 
         /// <summary>
         /// Provides a ITwo implementation for the other peer to call.
@@ -32,6 +32,6 @@ namespace DotBoxD.Services.Generated
         /// Gets a proxy to call ITwo on the other peer.
         /// </summary>
         public static global::Snap.Two.ITwo GetTwo(this global::DotBoxD.Services.Peer.RpcPeer peer)
-            => new global::Snap.Two.TwoProxy(peer);
+            => peer.Get<global::Snap.Two.ITwo>();
     }
 }

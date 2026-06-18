@@ -25,6 +25,19 @@ public sealed class RpcPeerProxyCacheTests
     }
 
     [Fact]
+    public async Task GeneratedGetExtension_UsesCachedRootProxy()
+    {
+        await using var channel = new ScriptedConnection();
+        await using var peer = RpcPeer.Over(channel, new MessagePackRpcSerializer());
+
+        var direct = peer.Get<IGameService>();
+        var extension = peer.GetGameService();
+
+        Assert.Same(direct, extension);
+        Assert.Same(extension, peer.GetGameService());
+    }
+
+    [Fact]
     public async Task Get_AfterDispose_ThrowsEvenWhenProxyWasCached()
     {
         await using var channel = new ScriptedConnection();

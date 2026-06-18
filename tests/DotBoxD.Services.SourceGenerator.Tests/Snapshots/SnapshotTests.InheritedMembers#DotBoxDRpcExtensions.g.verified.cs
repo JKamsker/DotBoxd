@@ -20,6 +20,6 @@ namespace DotBoxD.Services.Generated
         /// Gets a proxy to call IDerived on the other peer.
         /// </summary>
         public static global::Snap.Inherit.IDerived GetDerived(this global::DotBoxD.Services.Peer.RpcPeer peer)
-            => new global::Snap.Inherit.DerivedProxy(peer);
+            => peer.Get<global::Snap.Inherit.IDerived>();
     }
 }
