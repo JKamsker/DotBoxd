@@ -72,6 +72,11 @@ if (args.Contains("--probe-i32-math-intrinsic", StringComparer.OrdinalIgnoreCase
     return;
 }
 
+if (args.Contains("--probe-f64-math-intrinsic", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.F64MathIntrinsicProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-binding-return-credit", StringComparer.OrdinalIgnoreCase)) {
     DotBoxD.Kernels.Benchmarks.Runtime.BindingReturnCreditProbe.Run();
     return;

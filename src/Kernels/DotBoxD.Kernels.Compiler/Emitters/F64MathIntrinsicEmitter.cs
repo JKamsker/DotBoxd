@@ -17,8 +17,8 @@ internal static class F64MathIntrinsicEmitter
         Action<Expression, StackKind> emitAs)
     {
         if (expression is not CallExpression call ||
-            call is not { Name: "math.sqrt", Arguments.Count: 1 } ||
-            !CanEmitRawSqrt(call, bindings))
+            call.Arguments.Count != 1 ||
+            !TryGetRawIntrinsic(call, bindings, out var rawMethod))
         {
             return false;
         }
@@ -32,15 +32,25 @@ internal static class F64MathIntrinsicEmitter
         il.Emit(OpCodes.Ldstr, call.Name);
         il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.ChargeBindingCall)));
         il.Emit(OpCodes.Ldloc, operand);
-        il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.SqrtF64Raw)));
+        il.Emit(OpCodes.Call, Runtime(rawMethod));
         return true;
     }
 
-    private static bool CanEmitRawSqrt(CallExpression call, IBindingCatalog bindings)
-        => bindings.TryGet(call.Name, out var binding) &&
+    private static bool TryGetRawIntrinsic(CallExpression call, IBindingCatalog bindings, out string rawMethod)
+    {
+        rawMethod = call.Name switch {
+            "math.sqrt" => nameof(Kernels.Runtime.CompiledRuntime.SqrtF64Raw),
+            "math.floor" => nameof(Kernels.Runtime.CompiledRuntime.FloorF64Raw),
+            "math.ceil" => nameof(Kernels.Runtime.CompiledRuntime.CeilF64Raw),
+            "math.round" => nameof(Kernels.Runtime.CompiledRuntime.RoundF64Raw),
+            _ => ""
+        };
+
+        return rawMethod.Length > 0 &&
+           bindings.TryGet(call.Name, out var binding) &&
            binding.Compiled is { Kind: "RuntimeStub" } &&
            binding.Compiled.Type == typeof(Runtime.CompiledRuntime).FullName &&
-           binding.Compiled.Method == nameof(Kernels.Runtime.CompiledRuntime.SqrtF64) &&
+           binding.Compiled.Method == BoxedMethod(call.Name) &&
            binding.Parameters.Count == 1 &&
            binding.Parameters[0].Equals(SandboxType.F64) &&
            binding.ReturnType.Equals(SandboxType.F64) &&
@@ -48,4 +58,14 @@ internal static class F64MathIntrinsicEmitter
            binding.Safety == BindingSafety.PureIntrinsic &&
            binding.AuditLevel == AuditLevel.None &&
            (binding.Effects & ~(SandboxEffect.Cpu | SandboxEffect.Alloc)) == SandboxEffect.None;
+    }
+
+    private static string BoxedMethod(string bindingId)
+        => bindingId switch {
+            "math.sqrt" => nameof(Kernels.Runtime.CompiledRuntime.SqrtF64),
+            "math.floor" => nameof(Kernels.Runtime.CompiledRuntime.FloorF64),
+            "math.ceil" => nameof(Kernels.Runtime.CompiledRuntime.CeilF64),
+            "math.round" => nameof(Kernels.Runtime.CompiledRuntime.RoundF64),
+            _ => ""
+        };
 }
