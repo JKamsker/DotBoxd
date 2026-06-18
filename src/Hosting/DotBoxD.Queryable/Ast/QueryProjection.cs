@@ -41,7 +41,8 @@ public sealed record QueryProjection
         {
             Kind = QueryProjectionKind.Construct,
             TypeName = typeName,
-            Fields = fields,
+            // Snapshot so a mutable list passed/cast by the caller cannot mutate the AST after construction.
+            Fields = [.. fields],
         };
     }
 }

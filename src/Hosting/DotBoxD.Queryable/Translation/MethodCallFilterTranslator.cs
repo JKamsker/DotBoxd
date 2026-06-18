@@ -156,30 +156,15 @@ internal static class MethodCallFilterTranslator
 
     private static bool HasNonOrdinalComparer(object collection)
     {
-        if (collection.GetType().GetProperty("Comparer")?.GetValue(collection) is not { } comparer)
+        if (collection.GetType().GetProperty("Comparer")?.GetValue(collection) is not IEqualityComparer<string> comparer)
         {
             return false;
         }
 
-        foreach (var rejected in NonOrdinalComparers)
-        {
-            if (ReferenceEquals(comparer, rejected))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        // Behavioral probe rather than identity checks against the public singletons: an ordinal/default
+        // comparer treats these pairs as distinct, while any case-insensitive or culture-sensitive comparer —
+        // including factory-created ones via StringComparer.Create(...) — considers at least one pair equal, so
+        // an ordinal In cannot reproduce its membership semantics. A default HashSet<string> is ordinal -> safe.
+        return comparer.Equals("a", "A");
     }
-
-    // The case-insensitive / culture-sensitive StringComparer singletons. A collection built with one of these
-    // has membership semantics an ordinal In cannot reproduce, so Contains over it is rejected.
-    private static readonly object[] NonOrdinalComparers =
-    [
-        StringComparer.OrdinalIgnoreCase,
-        StringComparer.InvariantCulture,
-        StringComparer.InvariantCultureIgnoreCase,
-        StringComparer.CurrentCulture,
-        StringComparer.CurrentCultureIgnoreCase,
-    ];
 }

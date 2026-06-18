@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using DotBoxD.Abstractions;
@@ -134,5 +135,41 @@ public sealed class QueryReviewHardeningTests
         await host.PublishAsync(new AttackTestEvent("a", "b", 1, 1), context);
 
         Assert.Equal(1, second);
+    }
+
+    [Fact]
+    public void Contains_over_a_factory_created_culture_comparer_is_rejected()
+    {
+        // Not a public StringComparer singleton, so an identity check would miss it; the behavioral probe
+        // catches it because it reports "a" == "A".
+        var watched = new HashSet<string>(StringComparer.Create(CultureInfo.InvariantCulture, ignoreCase: true)) { "a" };
+        Assert.Throws<QueryTranslationException>(() =>
+            ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(e => watched.Contains(e.AttackerId)));
+    }
+
+    [Fact]
+    public void Contains_over_a_default_hashset_still_lowers_to_in()
+    {
+        var watched = new HashSet<string> { "a", "b" };
+        var filter = ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(e => watched.Contains(e.AttackerId));
+        Assert.Equal(QueryFilterKind.In, filter.Kind);
+    }
+
+    [Fact]
+    public void Query_filter_in_snapshots_its_values()
+    {
+        var values = new List<QueryValue> { QueryValue.FromInteger(1) };
+        var filter = QueryFilter.In("Damage", values);
+        values.Add(QueryValue.FromInteger(2));
+        Assert.Single(filter.Values);
+    }
+
+    [Fact]
+    public void Query_projection_construct_snapshots_its_fields()
+    {
+        var fields = new List<QueryProjectionField> { QueryProjectionField.FromMember("a", "X") };
+        var projection = QueryProjection.Construct("T", fields);
+        fields.Add(QueryProjectionField.FromMember("b", "Y"));
+        Assert.Single(projection.Fields);
     }
 }

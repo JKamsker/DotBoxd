@@ -97,7 +97,9 @@ public static class EventQueryIndexAdapter
         QueryValueKind.Boolean => ((object?)value.Boolean, BoolType),
         QueryValueKind.Integer => ((object?)value.Integer, LongType),
         QueryValueKind.Number => ((object?)value.Number, DoubleType),
-        QueryValueKind.String => ((object?)value.String!, StringType),
+        QueryValueKind.String => value.String is { } text
+            ? ((object?)text, StringType)
+            : throw new NotSupportedException("A null string bound is not index-eligible."),
         _ => throw new NotSupportedException(
             $"Query value kind '{value.Kind}' is not index-eligible and cannot be mapped to a host index predicate."),
     };

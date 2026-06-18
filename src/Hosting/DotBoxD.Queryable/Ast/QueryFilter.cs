@@ -62,7 +62,8 @@ public sealed record QueryFilter
         {
             Kind = QueryFilterKind.In,
             Field = EnsureFieldPath(field),
-            Values = values,
+            // Snapshot so a mutable list passed/cast by the caller cannot mutate the AST after construction.
+            Values = [.. values],
             IgnoreCase = ignoreCase,
         };
     }
@@ -137,6 +138,6 @@ public sealed record QueryFilter
 
         return flattened.Count == 1
             ? flattened[0]
-            : new QueryFilter { Kind = kind, Children = flattened };
+            : new QueryFilter { Kind = kind, Children = [.. flattened] };
     }
 }
