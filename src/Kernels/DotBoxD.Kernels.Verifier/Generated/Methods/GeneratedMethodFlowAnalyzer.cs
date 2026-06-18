@@ -8,9 +8,16 @@ internal static class GeneratedMethodFlowAnalyzer
         IReadOnlyList<GeneratedInstruction> instructions,
         Func<GeneratedInstruction, GeneratedMeterState> stateFor)
     {
-        var byOffset = instructions.ToDictionary(i => i.Offset);
-        var indexByOffset = InstructionIndexes(instructions);
-        var successorsByOffset = SuccessorMap(instructions, byOffset);
+        var byOffset = new Dictionary<int, GeneratedInstruction>(instructions.Count);
+        var indexByOffset = new Dictionary<int, int>(instructions.Count);
+        for (var i = 0; i < instructions.Count; i++)
+        {
+            var instruction = instructions[i];
+            byOffset.Add(instruction.Offset, instruction);
+            indexByOffset.Add(instruction.Offset, i);
+        }
+
+        var successorsByOffset = SuccessorMap(instructions, indexByOffset);
         var predecessorsByOffset = PredecessorMap(instructions, successorsByOffset);
         var reachableCalls = new HashSet<string>(StringComparer.Ordinal);
         var returnStates = new List<GeneratedMeterState>();
@@ -24,35 +31,20 @@ internal static class GeneratedMethodFlowAnalyzer
             reachableCalls,
             states,
             returnStates,
-            HasUnmeteredCycle(byOffset, successorsByOffset, states.Keys));
-    }
-
-    private static Dictionary<int, int> InstructionIndexes(IReadOnlyList<GeneratedInstruction> instructions)
-    {
-        var indexes = new Dictionary<int, int>(instructions.Count);
-        for (var i = 0; i < instructions.Count; i++)
-        {
-            indexes[instructions[i].Offset] = i;
-        }
-
-        return indexes;
+            HasUnmeteredCycle(byOffset, successorsByOffset, states));
     }
 
     private static Dictionary<int, SuccessorSet> SuccessorMap(
         IReadOnlyList<GeneratedInstruction> instructions,
-        IReadOnlyDictionary<int, GeneratedInstruction> byOffset)
+        IReadOnlyDictionary<int, int> indexByOffset)
     {
         var successors = new Dictionary<int, SuccessorSet>(instructions.Count);
-        var buffer = new List<int>();
         foreach (var instruction in instructions)
         {
-            buffer.Clear();
-            foreach (var successor in Successors(instructions, byOffset, instruction))
-            {
-                buffer.Add(successor);
-            }
-
-            successors[instruction.Offset] = SuccessorSet.From(buffer);
+            successors[instruction.Offset] = GeneratedInstructionSuccessors.For(
+                instructions,
+                indexByOffset,
+                instruction);
         }
 
         return successors;
@@ -73,62 +65,6 @@ internal static class GeneratedMethodFlowAnalyzer
         }
 
         return predecessors;
-    }
-
-    public static IEnumerable<int> Successors(
-        IReadOnlyList<GeneratedInstruction> instructions,
-        IReadOnlyDictionary<int, GeneratedInstruction> byOffset,
-        GeneratedInstruction instruction)
-    {
-        if (instruction.Opcode == ILOpCode.Ret)
-        {
-            yield break;
-        }
-
-        if (instruction.Opcode is ILOpCode.Br or ILOpCode.Br_s)
-        {
-            if (instruction.BranchTarget is { } target)
-            {
-                yield return target;
-            }
-
-            yield break;
-        }
-
-        if (instruction.Opcode == ILOpCode.Switch)
-        {
-            foreach (var target in instruction.SwitchTargets)
-            {
-                yield return target;
-            }
-
-            if (NextInstructionOffset(instructions, byOffset, instruction) is { } next)
-            {
-                yield return next;
-            }
-
-            yield break;
-        }
-
-        if (instruction.Opcode.IsBranch())
-        {
-            if (instruction.BranchTarget is { } target)
-            {
-                yield return target;
-            }
-
-            if (NextInstructionOffset(instructions, byOffset, instruction) is { } next)
-            {
-                yield return next;
-            }
-
-            yield break;
-        }
-
-        if (NextInstructionOffset(instructions, byOffset, instruction) is { } fallthrough)
-        {
-            yield return fallthrough;
-        }
     }
 
     private static Dictionary<int, GeneratedMeterState> ReachableStates(
@@ -193,18 +129,25 @@ internal static class GeneratedMethodFlowAnalyzer
     private static bool HasUnmeteredCycle(
         IReadOnlyDictionary<int, GeneratedInstruction> byOffset,
         IReadOnlyDictionary<int, SuccessorSet> successorsByOffset,
-        IEnumerable<int> reachableOffsets)
+        IReadOnlyDictionary<int, GeneratedMeterState> reachableStates)
     {
-        var reachable = reachableOffsets.ToHashSet();
-        var colors = new Dictionary<int, VisitColor>();
-        return reachable.Any(offset => Visit(offset, byOffset, successorsByOffset, reachable, colors));
+        var colors = new Dictionary<int, VisitColor>(reachableStates.Count);
+        foreach (var offset in reachableStates.Keys)
+        {
+            if (Visit(offset, byOffset, successorsByOffset, reachableStates, colors))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool Visit(
         int offset,
         IReadOnlyDictionary<int, GeneratedInstruction> byOffset,
         IReadOnlyDictionary<int, SuccessorSet> successorsByOffset,
-        HashSet<int> reachable,
+        IReadOnlyDictionary<int, GeneratedMeterState> reachableStates,
         Dictionary<int, VisitColor> colors)
     {
         // Iterative depth-first search. The recursive form blew the call stack for methods
@@ -213,7 +156,7 @@ internal static class GeneratedMethodFlowAnalyzer
         // and the "a grey successor is a back edge" cycle rule are preserved exactly: a node
         // is marked Visiting when first entered, its successors are explored, then it is marked
         // Visited once its whole subtree completes.
-        if (!IsTraversable(offset, byOffset, reachable))
+        if (!IsTraversable(offset, byOffset, reachableStates))
         {
             return false;
         }
@@ -234,7 +177,7 @@ internal static class GeneratedMethodFlowAnalyzer
             {
                 var successor = frame.Successors.Current;
 
-                if (!IsTraversable(successor, byOffset, reachable))
+                if (!IsTraversable(successor, byOffset, reachableStates))
                 {
                     continue;
                 }
@@ -264,32 +207,12 @@ internal static class GeneratedMethodFlowAnalyzer
     private static bool IsTraversable(
         int offset,
         IReadOnlyDictionary<int, GeneratedInstruction> byOffset,
-        HashSet<int> reachable)
-        => reachable.Contains(offset)
+        IReadOnlyDictionary<int, GeneratedMeterState> reachableStates)
+        => reachableStates.ContainsKey(offset)
             && byOffset.TryGetValue(offset, out var instruction)
             && !IsLoopIterationCharge(instruction);
 
     private static bool IsLoopIterationCharge(GeneratedInstruction instruction)
         => instruction.CalledMember == GeneratedMethodShapeSignatures.ChargeLoopIterationSignature;
 
-    private static int? NextInstructionOffset(
-        IReadOnlyList<GeneratedInstruction> instructions,
-        IReadOnlyDictionary<int, GeneratedInstruction> byOffset,
-        GeneratedInstruction instruction)
-    {
-        if (byOffset.ContainsKey(instruction.NextOffset))
-        {
-            return instruction.NextOffset;
-        }
-
-        for (var i = 0; i + 1 < instructions.Count; i++)
-        {
-            if (instructions[i] == instruction)
-            {
-                return instructions[i + 1].Offset;
-            }
-        }
-
-        return null;
-    }
 }
