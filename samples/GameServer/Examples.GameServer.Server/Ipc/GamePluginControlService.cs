@@ -163,11 +163,11 @@ internal sealed class GamePluginControlService : IGamePluginControlService
 
     private void WireHook(InstalledKernel kernel)
     {
-        // Map by the kernel's declared event so the server stays agnostic of plugin ids.
-        var subscription = kernel.Manifest.Subscriptions.Count > 0
-            ? kernel.Manifest.Subscriptions[0].Event
-            : null;
-        switch (subscription)
+        // Map by the kernel's declared event so the server stays agnostic of plugin ids. Manifests now
+        // carry the fully-qualified event name; match on the simple-name tail so qualified and legacy
+        // simple-name manifests both wire correctly.
+        var subscription = SubscribedEvent(kernel.Manifest);
+        switch (SimpleEventName(subscription))
         {
             case "MonsterAggroEvent":
                 _server.Hooks.On<MonsterAggroEvent>().Use(kernel);
@@ -183,10 +183,8 @@ internal sealed class GamePluginControlService : IGamePluginControlService
 
     private static void ValidateSupportedEvent(PluginPackage package)
     {
-        var subscription = package.Manifest.Subscriptions.Count > 0
-            ? package.Manifest.Subscriptions[0].Event
-            : null;
-        if (subscription is "MonsterAggroEvent" or "AttackEvent")
+        var subscription = SubscribedEvent(package.Manifest);
+        if (SimpleEventName(subscription) is "MonsterAggroEvent" or "AttackEvent")
         {
             return;
         }
@@ -197,10 +195,8 @@ internal sealed class GamePluginControlService : IGamePluginControlService
 
     private void WireSubscription(InstalledKernel kernel)
     {
-        var subscription = kernel.Manifest.Subscriptions.Count > 0
-            ? kernel.Manifest.Subscriptions[0].Event
-            : null;
-        switch (subscription)
+        var subscription = SubscribedEvent(kernel.Manifest);
+        switch (SimpleEventName(subscription))
         {
             case "MonsterAggroEvent":
                 _server.Subscriptions.On<MonsterAggroEvent>().Use(kernel);
@@ -212,6 +208,22 @@ internal sealed class GamePluginControlService : IGamePluginControlService
                 throw new InvalidOperationException(
                     $"Plugin '{kernel.Manifest.PluginId}' subscribes to unsupported event '{subscription}'.");
         }
+    }
+
+    private static string? SubscribedEvent(PluginManifest manifest)
+        => manifest.Subscriptions.Count > 0 ? manifest.Subscriptions[0].Event : null;
+
+    private static string? SimpleEventName(string? eventName)
+    {
+        if (string.IsNullOrEmpty(eventName))
+        {
+            return eventName;
+        }
+
+        var lastDot = eventName!.LastIndexOf('.');
+        return lastDot >= 0 && lastDot < eventName.Length - 1
+            ? eventName[(lastDot + 1)..]
+            : eventName;
     }
 
     private static SandboxFunction RpcEntrypoint(InstalledKernel kernel)

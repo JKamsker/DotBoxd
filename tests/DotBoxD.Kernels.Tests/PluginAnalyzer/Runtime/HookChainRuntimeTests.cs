@@ -192,7 +192,9 @@ public sealed class HookChainRuntimeTests
         configure.Invoke(null, [registry]);
 
         var package = Assert.Single(installed);
-        Assert.Equal("ChainAggroEvent", Assert.Single(package.Manifest.Subscriptions).Event);
+        Assert.Equal(
+            "DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent",
+            Assert.Single(package.Manifest.Subscriptions).Event);
     }
 
     [Fact]
@@ -213,7 +215,9 @@ public sealed class HookChainRuntimeTests
         configure.Invoke(null, [server]);
 
         var package = Assert.Single(installed);
-        Assert.Equal("ChainAggroEvent", Assert.Single(package.Manifest.Subscriptions).Event);
+        Assert.Equal(
+            "DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent",
+            Assert.Single(package.Manifest.Subscriptions).Event);
     }
 
     [Fact]

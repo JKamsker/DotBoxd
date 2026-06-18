@@ -21,7 +21,7 @@ internal static class KernelEntrypointValidator
         KernelEntrypoints entrypoints,
         PluginEventShape adapterShape)
     {
-        if (!manifest.Subscriptions.Any(s => string.Equals(s.Event, adapterShape.EventName, StringComparison.Ordinal)))
+        if (!manifest.Subscriptions.Any(s => EventNameMatch.Matches(s.Event, adapterShape.EventName)))
         {
             throw new SandboxValidationException([
                 new SandboxDiagnostic("DBXK031", $"Plugin '{manifest.PluginId}' is not subscribed to event '{adapterShape.EventName}'.")

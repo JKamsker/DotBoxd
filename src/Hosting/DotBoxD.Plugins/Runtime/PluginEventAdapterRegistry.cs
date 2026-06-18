@@ -35,7 +35,9 @@ public sealed class PluginEventAdapterRegistry
         foreach (var adapter in _adapters.Values)
         {
             var current = adapter.Shape;
-            if (string.Equals(current.EventName, eventName, StringComparison.Ordinal))
+            // The manifest event name may be fully qualified (Namespace.TypeName) while an adapter reports
+            // only the simple name; EventNameMatch bridges that seam and still honours exact matches.
+            if (EventNameMatch.Matches(current.EventName, eventName))
             {
                 shape = current;
                 return true;

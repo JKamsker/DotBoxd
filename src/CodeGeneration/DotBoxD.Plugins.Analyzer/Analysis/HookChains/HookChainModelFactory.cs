@@ -129,7 +129,7 @@ internal static class HookChainModelFactory
             Namespace: HookChainIdentity.Namespace(invocation),
             KernelName: kernelName,
             PackageName: kernelName + "PluginPackage",
-            EventName: eventType.MetadataName,
+            EventName: EventTypeName.Qualified(eventType),
             EventParameterName: DotBoxDGenerationNames.DefaultEventParameterName,
             ContextParameterName: terminalContextParam,
             HandleEventParameterName: terminalElementParam,

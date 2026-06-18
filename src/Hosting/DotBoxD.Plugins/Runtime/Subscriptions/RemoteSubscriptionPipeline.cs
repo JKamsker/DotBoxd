@@ -79,8 +79,10 @@ public sealed class RemoteSubscriptionPipeline<TEvent>
     private static void ValidateSubscription(PluginPackage package)
     {
         var actual = package.Manifest.Subscriptions.Count > 0 ? package.Manifest.Subscriptions[0].Event : null;
-        var expected = typeof(TEvent).Name;
-        if (!string.Equals(actual, expected, StringComparison.Ordinal))
+        // Manifests now carry the fully-qualified event name; compare against typeof(TEvent).FullName but
+        // accept the legacy simple-name form via EventNameMatch for back-compat.
+        var expected = typeof(TEvent).FullName ?? typeof(TEvent).Name;
+        if (!EventNameMatch.Matches(actual, expected))
         {
             throw new InvalidOperationException(
                 $"Subscription package '{package.Manifest.PluginId}' subscribes to '{actual ?? "<none>"}', not '{expected}'.");
