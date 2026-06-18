@@ -199,30 +199,6 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         return BinaryJson(op, Var(target.Identifier.ValueText), LowerExpression(assignment.Right));
     }
 
-    /// <summary>
-    /// Lowers <c>dict[key] = value</c> on a map-typed local to a rebinding <c>map.set</c>: because the kernel
-    /// map is immutable, the assignment becomes <c>dict = map.set(dict, key, value)</c> (the same
-    /// rebind-the-local shape <c>list.add</c> uses). Returns null when the indexed target is not a map local
-    /// so the assignment falls through to the other statement forms.
-    /// </summary>
-    private string? TryLowerMapIndexSet(ElementAccessExpressionSyntax element, ExpressionSyntax valueExpression)
-    {
-        var receiverType = _model.GetTypeInfo(element.Expression, _cancellationToken).Type;
-        if (element.Expression is not IdentifierNameSyntax mapLocal ||
-            element.ArgumentList.Arguments.Count != 1 ||
-            receiverType is null ||
-            DotBoxDRpcTypeMapper.MapTypes(receiverType) is null)
-        {
-            return null;
-        }
-
-        var name = mapLocal.Identifier.ValueText;
-        var keyJson = LowerExpression(element.ArgumentList.Arguments[0].Expression);
-        var valueJson = LowerExpression(valueExpression);
-        Allocates = true;
-        return SetStatement(name, Call("map.set", null, Var(name), keyJson, valueJson));
-    }
-
     private string? TryLowerListAdd(InvocationExpressionSyntax invocation)
     {
         if (invocation.Expression is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Add" } member ||

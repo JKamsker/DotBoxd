@@ -122,39 +122,6 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         return Call(binding.BindingId, null, args);
     }
 
-    /// <summary>
-    /// Lowers a supported method call on a map-typed receiver to the matching <c>map.*</c> intrinsic. Only
-    /// <c>ContainsKey</c> is supported as an expression (returns <c>Bool</c>); <c>map.get</c>/<c>map.set</c>
-    /// reach the lowerer through indexer syntax. Returns null when the receiver is not a map so non-map
-    /// invocations fall through to the host-binding path.
-    /// </summary>
-    private string? TryLowerMapMethod(InvocationExpressionSyntax invocation)
-    {
-        if (invocation.Expression is not MemberAccessExpressionSyntax member)
-        {
-            return null;
-        }
-
-        var receiverType = _model.GetTypeInfo(member.Expression, _cancellationToken).Type;
-        if (receiverType is null || DotBoxDRpcTypeMapper.MapTypes(receiverType) is null)
-        {
-            return null;
-        }
-
-        if (string.Equals(member.Name.Identifier.ValueText, "ContainsKey", StringComparison.Ordinal) &&
-            invocation.ArgumentList.Arguments.Count == 1)
-        {
-            return Call(
-                "map.containsKey",
-                null,
-                LowerExpression(member.Expression),
-                LowerExpression(invocation.ArgumentList.Arguments[0].Expression));
-        }
-
-        throw new NotSupportedException(
-            $"Server extension map operation '{invocation}' is not supported; supported map calls are ContainsKey.");
-    }
-
     private void AddBindingMetadata((string BindingId, string? Capability, IReadOnlyList<string> Effects, bool IsAsync) binding)
     {
         if (binding.Capability is { Length: > 0 } capability)
@@ -200,23 +167,15 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
     private string LowerElementAccess(ElementAccessExpressionSyntax element)
     {
-        if (element.ArgumentList.Arguments.Count != 1)
-        {
-            throw new NotSupportedException($"Server extension indexing '{element}' is not supported.");
-        }
-
         var receiverType = TypeOf(element.Expression);
-        if (DotBoxDRpcTypeMapper.ListElementType(receiverType) is not null)
+        if (element.ArgumentList.Arguments.Count == 1 &&
+            DotBoxDRpcTypeMapper.ListElementType(receiverType) is not null)
         {
             return Call("list.get", null, LowerExpression(element.Expression), LowerExpression(element.ArgumentList.Arguments[0].Expression));
         }
 
-        if (DotBoxDRpcTypeMapper.MapTypes(receiverType) is not null)
-        {
-            return Call("map.get", null, LowerExpression(element.Expression), LowerExpression(element.ArgumentList.Arguments[0].Expression));
-        }
-
-        throw new NotSupportedException($"Server extension indexing '{element}' is not supported.");
+        return TryLowerMapElementGet(element, receiverType)
+            ?? throw new NotSupportedException($"Server extension indexing '{element}' is not supported.");
     }
 
     private string LowerRecordCreation(ObjectCreationExpressionSyntax creation)
@@ -231,13 +190,9 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             return Call("list.empty", DotBoxDRpcTypeMapper.JsonType(elementType));
         }
 
-        // new Dictionary<K,V>() → an empty typed map.
-        if (DotBoxDRpcTypeMapper.MapTypes(created) is not null &&
-            creation.Initializer is null &&
-            (creation.ArgumentList is null || creation.ArgumentList.Arguments.Count == 0))
+        if (TryLowerEmptyMapCreation(creation, created) is { } emptyMap)
         {
-            Allocates = true;
-            return Call("map.empty", DotBoxDRpcTypeMapper.JsonType(created));
+            return emptyMap;
         }
 
         if (created is not INamedTypeSymbol named || !DotBoxDRpcTypeMapper.IsRecordDto(named))
