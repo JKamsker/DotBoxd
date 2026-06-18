@@ -49,6 +49,13 @@ internal sealed partial class RpcKernelValueConversionEmitter
 
     private string WriteComplexExpression(ITypeSymbol type, string expression)
     {
+        if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
+        {
+            return DotBoxDRpcTypeMapper.EnumUsesI64(enumType)
+                ? $"global::DotBoxD.Plugins.KernelRpcValue.Int64((long){expression})"
+                : $"global::DotBoxD.Plugins.KernelRpcValue.Int32((int){expression})";
+        }
+
         if (DotBoxDRpcTypeMapper.ListElementType(type) is not null)
         {
             return $"{EnsureListWriter(type)}({expression})";
@@ -64,6 +71,12 @@ internal sealed partial class RpcKernelValueConversionEmitter
 
     private string ReadComplexExpression(ITypeSymbol type, string expression)
     {
+        if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
+        {
+            var accessor = DotBoxDRpcTypeMapper.EnumUsesI64(enumType) ? "Int64Value" : "Int32Value";
+            return $"({TypeName(type)})({expression}.{accessor})";
+        }
+
         if (DotBoxDRpcTypeMapper.ListElementType(type) is not null)
         {
             return $"{EnsureListReader(type)}({expression})";

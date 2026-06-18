@@ -31,6 +31,11 @@ internal static class DotBoxDRpcTypeMapper
             case SpecialType.System_String: return Scalar("String");
         }
 
+        if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
+        {
+            return Scalar(EnumUsesI64(enumType) ? "I64" : "I32");
+        }
+
         if (ListElementType(type) is { } elementType)
         {
             return $"{{\"name\":\"List\",\"arguments\":[{JsonType(elementType)}]}}";
@@ -38,6 +43,7 @@ internal static class DotBoxDRpcTypeMapper
 
         if (type is INamedTypeSymbol named && IsRecordDto(named))
         {
+            RejectInheritedDtoProperties(named);
             var fields = RecordFields(named);
             var fieldTypes = new List<string>(fields.Count);
             foreach (var field in fields)
@@ -113,6 +119,45 @@ internal static class DotBoxDRpcTypeMapper
         }
 
         return fields;
+    }
+
+    /// <summary>An enum marshals through its underlying integer; widths that overflow <c>I32</c>
+    /// (<c>uint</c>, <c>long</c>, <c>ulong</c>) use <c>I64</c>, everything else <c>I32</c>.</summary>
+    public static bool EnumUsesI64(INamedTypeSymbol enumType)
+        => enumType.EnumUnderlyingType?.SpecialType is
+            SpecialType.System_UInt32 or SpecialType.System_Int64 or SpecialType.System_UInt64;
+
+    /// <summary>
+    /// Rejects a DTO that inherits public instance properties from a base type: <see cref="RecordFields"/>
+    /// only sees declared members (so inherited fields would be silently dropped on both the analyzer and the
+    /// runtime marshaller). Fail generation with a clear message instead.
+    /// </summary>
+    private static void RejectInheritedDtoProperties(INamedTypeSymbol type)
+    {
+        for (var baseType = type.BaseType; baseType is not null; baseType = baseType.BaseType)
+        {
+            if (baseType.SpecialType is SpecialType.System_Object or SpecialType.System_ValueType)
+            {
+                continue;
+            }
+
+            foreach (var member in baseType.GetMembers())
+            {
+                if (member is IPropertySymbol
+                    {
+                        DeclaredAccessibility: Accessibility.Public,
+                        IsStatic: false,
+                        GetMethod: not null,
+                        IsIndexer: false
+                    } property &&
+                    !property.IsImplicitlyDeclared)
+                {
+                    throw new NotSupportedException(
+                        $"Server extension DTO '{type.ToDisplayString()}' must not inherit public properties from " +
+                        $"base type '{baseType.ToDisplayString()}'; flatten the DTO into a single type.");
+                }
+            }
+        }
     }
 
     private static string Scalar(string name) => "\"" + name + "\"";

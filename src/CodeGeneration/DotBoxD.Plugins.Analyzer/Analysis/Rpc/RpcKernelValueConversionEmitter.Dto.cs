@@ -1,6 +1,7 @@
 namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 
 using System.Collections.Generic;
+using System.Text;
 using Microsoft.CodeAnalysis;
 
 /// <summary>
@@ -49,8 +50,11 @@ internal sealed partial class RpcKernelValueConversionEmitter
         var method = NextHelperName("Read");
         _readers[key] = method;
         var fields = DotBoxDRpcTypeMapper.RecordFields(type);
-        var constructor = ResolveConstructor(type, fields);
-        var constructorArguments = DtoConstructorArguments(fields, constructor);
+
+        // Compute the field expressions (which append nested list/DTO helpers) BEFORE writing this method's
+        // body, so a nested helper is never spliced into the middle of the reconstruction statement.
+        var body = BuildDtoReconstruction(type, fields);
+
         _helpers.Append("    private static ").Append(TypeName(type)).Append(' ').Append(method)
             .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
         _helpers.AppendLine("    {");
@@ -61,12 +65,43 @@ internal sealed partial class RpcKernelValueConversionEmitter
         _helpers.AppendLine("            throw new global::System.NotSupportedException(\"Server extension record field count did not match the generated DTO shape.\");");
         _helpers.AppendLine("        }");
         _helpers.AppendLine();
-        _helpers.Append("        return new ").Append(TypeName(type)).Append('(');
-        _helpers.Append(string.Join(", ", constructorArguments));
-        _helpers.AppendLine(");");
+        _helpers.AppendLine(body);
         _helpers.AppendLine("    }");
         _helpers.AppendLine();
         return method;
+    }
+
+    /// <summary>
+    /// Reconstructs a DTO from its positional <c>__fields</c>: through a constructor matching the public
+    /// fields when one exists, otherwise through an object initializer (parameterless constructor + settable
+    /// properties). Throws at generation time when neither shape is available.
+    /// </summary>
+    private string BuildDtoReconstruction(INamedTypeSymbol type, IReadOnlyList<IPropertySymbol> fields)
+    {
+        if (TryResolveConstructor(type, fields) is { } constructor)
+        {
+            return "        return new " + TypeName(type) + "(" +
+                string.Join(", ", DtoConstructorArguments(fields, constructor)) + ");";
+        }
+
+        if (CanUseObjectInitializer(type, fields))
+        {
+            var initializer = new StringBuilder();
+            initializer.Append("        return new ").Append(TypeName(type)).AppendLine();
+            initializer.AppendLine("        {");
+            for (var i = 0; i < fields.Count; i++)
+            {
+                initializer.Append("            ").Append(Identifier(fields[i].Name)).Append(" = ")
+                    .Append(ReadExpression(fields[i].Type, "__fields[" + i + "]")).AppendLine(",");
+            }
+
+            initializer.Append("        };");
+            return initializer.ToString();
+        }
+
+        throw new NotSupportedException(
+            $"Server extension DTO '{type.ToDisplayString()}' must expose either a constructor matching its " +
+            "public fields or a parameterless constructor with settable properties.");
     }
 
     private List<string> DtoWriteExpressions(INamedTypeSymbol type)
@@ -95,7 +130,7 @@ internal sealed partial class RpcKernelValueConversionEmitter
         return arguments;
     }
 
-    private static IMethodSymbol ResolveConstructor(INamedTypeSymbol type, IReadOnlyList<IPropertySymbol> fields)
+    private static IMethodSymbol? TryResolveConstructor(INamedTypeSymbol type, IReadOnlyList<IPropertySymbol> fields)
     {
         foreach (var constructor in type.InstanceConstructors)
         {
@@ -127,7 +162,52 @@ internal sealed partial class RpcKernelValueConversionEmitter
             }
         }
 
-        throw new NotSupportedException(
-            $"Server extension DTO '{type.ToDisplayString()}' must expose a constructor matching its public fields.");
+        return null;
+    }
+
+    /// <summary>
+    /// A DTO can be reconstructed with an object initializer when every field has an accessible setter
+    /// (<c>set</c> or <c>init</c>) and the type is a value type or exposes an accessible parameterless
+    /// constructor — the same fallback the runtime marshaller uses.
+    /// </summary>
+    private static bool CanUseObjectInitializer(INamedTypeSymbol type, IReadOnlyList<IPropertySymbol> fields)
+    {
+        if (fields.Count == 0)
+        {
+            return false;
+        }
+
+        if (!type.IsValueType && !HasAccessibleParameterlessConstructor(type))
+        {
+            return false;
+        }
+
+        foreach (var field in fields)
+        {
+            if (field.SetMethod is not
+                {
+                    DeclaredAccessibility: Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal
+                })
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool HasAccessibleParameterlessConstructor(INamedTypeSymbol type)
+    {
+        foreach (var constructor in type.InstanceConstructors)
+        {
+            if (constructor.Parameters.Length == 0 &&
+                constructor.DeclaredAccessibility is
+                    Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

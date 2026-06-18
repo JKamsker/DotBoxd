@@ -22,11 +22,16 @@ Services, Kernels, and Pushdown.
 - **GameServer example:** `samples/GameServer/Examples.GameServer.Server` is the maintained
   runnable example for service IPC, event kernels, live settings, host bindings, policies, and
   kernel RPC. Removed sample coverage is tracked in `docs/examples/coverage-gaps.md`.
-- **Server-extension DTO parameters:** `[ServerExtensionMethod]` entrypoints now accept record/
-  value-object parameters — including nested DTOs and plain `class` DTOs — on the grafted client path,
-  matching the typed-proxy path (issue #41). The proxy and grafted clients now share one marshaller, which
-  also fixes invalid generated C# for a record return whose field is a `List<T>`. `samples/GameServer` adds
-  a `WorldRangeQuery` value-object example (`RangeMonsterKillerKernel.KillMonstersInRangeAsync`).
+- **Server-extension DTO parameters & broader type support:** `[ServerExtensionMethod]` entrypoints now
+  accept record/value-object parameters — including nested DTOs and plain `class` DTOs — on the grafted
+  client path, matching the typed-proxy path (issue #41). The proxy and grafted clients now share one
+  marshaller, which also fixes invalid generated C# for a record return whose field is a `List<T>`.
+  Additionally: **enums** marshal through their underlying integer (params, returns, and DTO fields); DTOs
+  with `init`/`set` properties and no matching constructor are reconstructed via an object initializer
+  (parity with the runtime marshaller); and a DTO that **inherits public properties** from a base type is
+  now rejected with a clear diagnostic instead of silently dropping the inherited fields.
+  `samples/GameServer` adds a `WorldRangeQuery` value-object example
+  (`RangeMonsterKillerKernel.KillMonstersInRangeAsync`).
 - **Documentation & repo polish:** new top-level README, `docs/` information architecture
   (getting-started, concepts, security, reference, contributing), `SECURITY.md`, `CONTRIBUTING.md`,
   `CODE_OF_CONDUCT.md`, and GitHub repo metadata files.

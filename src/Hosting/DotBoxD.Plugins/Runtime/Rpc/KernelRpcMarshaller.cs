@@ -27,6 +27,13 @@ public static class KernelRpcMarshaller
             return scalar;
         }
 
+        if (type.IsEnum)
+        {
+            return EnumUsesI64(type)
+                ? SandboxValue.FromInt64(Convert.ToInt64(value))
+                : SandboxValue.FromInt32(Convert.ToInt32(value));
+        }
+
         if (ElementType(type) is { } elementType)
         {
             if (value is not IEnumerable enumerable)
@@ -70,6 +77,17 @@ public static class KernelRpcMarshaller
             return scalar;
         }
 
+        if (type.IsEnum)
+        {
+            return value switch
+            {
+                I32Value i => Enum.ToObject(type, i.Value),
+                I64Value l => Enum.ToObject(type, l.Value),
+                _ => throw new NotSupportedException(
+                    $"Server extension cannot marshal a sandbox value to enum '{type}'.")
+            };
+        }
+
         if (ElementType(type) is { } elementType && value is ListValue list)
         {
             var resultList = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType))!;
@@ -111,6 +129,7 @@ public static class KernelRpcMarshaller
         if (type == typeof(long)) return SandboxType.I64;
         if (type == typeof(double)) return SandboxType.F64;
         if (type == typeof(string)) return SandboxType.String;
+        if (type.IsEnum) return EnumUsesI64(type) ? SandboxType.I64 : SandboxType.I32;
         if (ElementType(type) is { } elementType) return SandboxType.List(SandboxTypeOf(elementType));
         if (IsDto(type))
         {
@@ -188,6 +207,13 @@ public static class KernelRpcMarshaller
         }
 
         return null;
+    }
+
+    // An enum marshals through its underlying integer; widths that overflow I32 (uint/long/ulong) use I64.
+    private static bool EnumUsesI64(Type type)
+    {
+        var underlying = Enum.GetUnderlyingType(type);
+        return underlying == typeof(uint) || underlying == typeof(long) || underlying == typeof(ulong);
     }
 
     private static bool IsDto(Type type)
