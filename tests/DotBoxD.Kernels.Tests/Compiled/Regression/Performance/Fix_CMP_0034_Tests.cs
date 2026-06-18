@@ -43,6 +43,35 @@ public sealed class Fix_CMP_0034_Tests
         Assert.Equal(mode, result.ActualMode);
     }
 
+    [Theory]
+    [InlineData("abs")]
+    [InlineData("min")]
+    [InlineData("max")]
+    [InlineData("clamp")]
+    public async Task I32_math_intrinsic_non_loop_assignment_stays_compiled_and_charges_binding(
+        string intrinsic)
+    {
+        using var host = SandboxTestHost.Create(compiler: true);
+        var module = await host.ImportJsonAsync(NonLoopModuleJson(intrinsic));
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create()
+                .WithFuel(1_000)
+                .WithMaxHostCalls(10)
+                .Build());
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.Unit,
+            new SandboxExecutionOptions { Mode = ExecutionMode.Compiled, AllowFallbackToInterpreter = false });
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        Assert.Equal(IntrinsicValue(intrinsic, 12), ((I32Value)result.Value!).Value);
+        Assert.Equal(1, result.ResourceUsage.HostCalls);
+        Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
+    }
+
     private static int Expected(string intrinsic, int iterations)
     {
         var total = 0;
@@ -103,6 +132,55 @@ public sealed class Fix_CMP_0034_Tests
           ]
         }
         """;
+
+    private static string NonLoopModuleJson(string intrinsic)
+        => $$"""
+        {
+          "id": "compiled-i32-math-{{intrinsic}}-non-loop",
+          "version": "1.0.0",
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [],
+              "returnType": "I32",
+              "body": [
+                { "op": "set", "name": "result", "value": {{NonLoopIntrinsicJson(intrinsic)}} },
+                { "op": "return", "value": { "var": "result" } }
+              ]
+            }
+          ]
+        }
+        """;
+
+    private static string NonLoopIntrinsicJson(string intrinsic)
+        => intrinsic switch
+        {
+            "abs" => """
+            {
+              "call": "math.abs",
+              "args": [{ "i32": -38 }]
+            }
+            """,
+            "min" => """
+            {
+              "call": "math.min",
+              "args": [{ "i32": 12 }, { "i32": 17 }]
+            }
+            """,
+            "max" => """
+            {
+              "call": "math.max",
+              "args": [{ "i32": 12 }, { "i32": 3 }]
+            }
+            """,
+            _ => """
+            {
+              "call": "math.clamp",
+              "args": [{ "i32": 12 }, { "i32": 0 }, { "i32": 20 }]
+            }
+            """
+        };
 
     private static string IntrinsicJson(string intrinsic)
         => intrinsic switch

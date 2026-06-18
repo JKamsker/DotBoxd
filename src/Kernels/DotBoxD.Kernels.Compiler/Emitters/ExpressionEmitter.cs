@@ -37,6 +37,11 @@ internal sealed class ExpressionEmitter
 
     public void EmitAs(Expression expression, StackKind want)
     {
+        if (want == StackKind.I32 && I32MathIntrinsicEmitter.TryEmit(expression, _bindings, _il, EmitAs))
+        {
+            return;
+        }
+
         if (want == StackKind.F64 && F64MathIntrinsicEmitter.TryEmit(expression, _bindings, _il, EmitAs))
         {
             return;
