@@ -37,4 +37,17 @@ public sealed class KernelRpcValueTests
 
         Assert.Equal(1, value.Items[0].Int32Value);
     }
+
+    [Fact]
+    public void Decoded_items_return_a_copy()
+    {
+        var payload = KernelRpcBinaryCodec.EncodeValue(
+            KernelRpcValue.List([KernelRpcValue.Int32(1)]));
+        var value = KernelRpcBinaryCodec.DecodeValue(payload);
+        var items = value.Items;
+
+        items[0] = KernelRpcValue.Int32(2);
+
+        Assert.Equal(1, value.Items[0].Int32Value);
+    }
 }

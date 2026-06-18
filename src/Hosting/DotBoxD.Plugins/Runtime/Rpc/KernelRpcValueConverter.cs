@@ -20,8 +20,8 @@ public static class KernelRpcValueConverter
             I64Value number => KernelRpcValue.Int64(number.Value),
             F64Value number => KernelRpcValue.Double(number.Value),
             StringValue text => KernelRpcValue.String(text.Value),
-            ListValue list => KernelRpcValue.List(ConvertList(list.Values)),
-            RecordValue record => KernelRpcValue.Record(ConvertList(record.Fields)),
+            ListValue list => KernelRpcValue.ListFromOwnedItems(ConvertList(list.Values)),
+            RecordValue record => KernelRpcValue.RecordFromOwnedFields(ConvertList(record.Fields)),
             _ => throw new NotSupportedException(
                 $"Server extension IPC cannot marshal sandbox value '{value.GetType().Name}'.")
         };

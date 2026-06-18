@@ -134,10 +134,25 @@ public readonly struct KernelRpcValue
         return new KernelRpcValue(KernelRpcValueKind.Record, 0L, 0D, string.Empty, CopyItems(fields));
     }
 
+    internal static KernelRpcValue ListFromOwnedItems(KernelRpcValue[] items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        return new KernelRpcValue(KernelRpcValueKind.List, 0L, 0D, string.Empty, UseOwnedItems(items));
+    }
+
+    internal static KernelRpcValue RecordFromOwnedFields(KernelRpcValue[] fields)
+    {
+        ArgumentNullException.ThrowIfNull(fields);
+        return new KernelRpcValue(KernelRpcValueKind.Record, 0L, 0D, string.Empty, UseOwnedItems(fields));
+    }
+
     private static KernelRpcValue[] CopyItems(KernelRpcValue[] items)
         => items.Length == 0
             ? EmptyItems
             : (KernelRpcValue[])items.Clone();
+
+    private static KernelRpcValue[] UseOwnedItems(KernelRpcValue[] items)
+        => items.Length == 0 ? EmptyItems : items;
 
     public void RequireKind(KernelRpcValueKind expected)
     {
