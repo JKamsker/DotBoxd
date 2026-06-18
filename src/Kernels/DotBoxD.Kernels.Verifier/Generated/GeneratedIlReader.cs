@@ -265,7 +265,7 @@ internal static class GeneratedIlReader
     private static bool IsIlFormatException(Exception exception)
         => exception is BadImageFormatException or ArgumentOutOfRangeException or InvalidOperationException;
 
-    private sealed record DecodedOperand(
+    private readonly record struct DecodedOperand(
         EntityHandle? Handle = null,
         string? CalledMember = null,
         bool IsLocalCall = false,
