@@ -47,8 +47,8 @@ public sealed class Fix_ALG_0013_Tests
     [Fact]
     public async Task Repeated_execution_does_not_scale_host_allocation_with_module_size()
     {
-        var smallPerRun = await MeasurePerRunHostAllocationAsync(SmallExtraFunctions);
-        var largePerRun = await MeasurePerRunHostAllocationAsync(LargeExtraFunctions);
+        var smallPerRun = await MeasurePerRunAllocationAsync(SmallExtraFunctions);
+        var largePerRun = await MeasurePerRunAllocationAsync(LargeExtraFunctions);
 
         // Guard against a degenerate near-zero small baseline making the ratio meaningless.
         Assert.True(smallPerRun > 0, "expected non-zero per-run host allocation to compare against");
@@ -63,7 +63,7 @@ public sealed class Fix_ALG_0013_Tests
             "re-canonical-hashes, and reseals the whole prepared plan on every execution.");
     }
 
-    private static async Task<long> MeasurePerRunHostAllocationAsync(int extraFunctions)
+    private static async Task<long> MeasurePerRunAllocationAsync(int extraFunctions)
     {
         using var host = BuildHost();
         var module = BuildPureModule(extraFunctions);
