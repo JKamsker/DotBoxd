@@ -77,6 +77,11 @@ if (args.Contains("--probe-f64-math-intrinsic", StringComparer.OrdinalIgnoreCase
     return;
 }
 
+if (args.Contains("--probe-raw-unary-negation", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.RawUnaryNegationProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-binding-return-credit", StringComparer.OrdinalIgnoreCase)) {
     DotBoxD.Kernels.Benchmarks.Runtime.BindingReturnCreditProbe.Run();
     return;

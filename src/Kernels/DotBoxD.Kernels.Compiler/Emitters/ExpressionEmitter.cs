@@ -132,11 +132,9 @@ internal sealed class ExpressionEmitter
 
     private StackKind EmitUnary(UnaryExpression unary)
     {
-        if (unary.Operator == "-" && _stackPlan.Infer(unary.Operand) is { Name: "I32" })
+        if (RawUnaryEmitter.TryEmit(unary, _stackPlan, _il, EmitAs, out var kind))
         {
-            EmitAs(unary.Operand, StackKind.I32);
-            _il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.NegI32Raw)));
-            return StackKind.I32;
+            return kind;
         }
 
         EmitAs(unary.Operand, StackKind.Boxed);
