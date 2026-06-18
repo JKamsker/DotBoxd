@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Reflection;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Sandbox.Values;
 using DotBoxD.Plugins.Kernel;
@@ -14,7 +13,7 @@ namespace DotBoxD.Plugins.Runtime.Rpc;
 /// and DTOs (records/structs/classes) mapped to positional records by their fields' declaration order —
 /// the same order the analyzer used when it lowered the kernel, so fields line up by position.
 /// </summary>
-public static class KernelRpcMarshaller
+public static partial class KernelRpcMarshaller
 {
     public static SandboxValue ToSandboxValue(object? value, Type type)
     {
@@ -54,7 +53,7 @@ public static class KernelRpcMarshaller
                 values[i] = ToSandboxValue(fields[i].GetValue(value), fields[i].PropertyType);
             }
 
-            return SandboxValue.FromRecord(values);
+            return SandboxValue.FromOwnedRecord(values);
         }
 
         throw new NotSupportedException($"Server extension cannot marshal type '{type}' to a sandbox value.");
@@ -161,132 +160,6 @@ public static class KernelRpcMarshaller
 
         throw new NotSupportedException(
             $"Kernel RPC service nullable type '{type}' is not supported.");
-    }
-
-    private static Type? ElementType(Type type)
-    {
-        if (type.IsArray)
-        {
-            if (type.GetArrayRank() != 1)
-            {
-                throw new NotSupportedException(
-                    $"Kernel RPC service cannot marshal multidimensional array type '{type}'.");
-            }
-
-            return type.GetElementType();
-        }
-
-        if (type.IsGenericType)
-        {
-            var definition = type.GetGenericTypeDefinition();
-            if (definition == typeof(List<>) || definition == typeof(IReadOnlyList<>) ||
-                definition == typeof(IList<>) || definition == typeof(IEnumerable<>) ||
-                definition == typeof(IReadOnlyCollection<>))
-            {
-                return type.GetGenericArguments()[0];
-            }
-        }
-
-        return null;
-    }
-
-    private static bool IsDto(Type type)
-        => type != typeof(string) &&
-           !type.IsPrimitive &&
-           !type.IsEnum &&
-           ElementType(type) is null &&
-           (type.IsClass || type.IsValueType) &&
-           RecordFields(type).Count > 0;
-
-    private static IReadOnlyList<PropertyInfo> RecordFields(Type type)
-    {
-        var properties = new List<PropertyInfo>();
-        const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
-        foreach (var property in type.GetProperties(flags))
-        {
-            if (property.CanRead && property.GetIndexParameters().Length == 0 &&
-                !string.Equals(property.Name, "EqualityContract", StringComparison.Ordinal))
-            {
-                properties.Add(property);
-            }
-        }
-
-        properties.Sort(static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
-        return properties;
-    }
-
-    private static object Construct(Type type, IReadOnlyList<PropertyInfo> fields, object?[] arguments)
-    {
-        // arguments[i] is the value for fields[i]; reorder to each candidate constructor's parameter order.
-        foreach (var constructor in type.GetConstructors())
-        {
-            var parameters = constructor.GetParameters();
-            if (parameters.Length != fields.Count || parameters.Length == 0)
-            {
-                continue;
-            }
-
-            var ordered = new object?[parameters.Length];
-            var assigned = new bool[parameters.Length];
-            var matched = true;
-            for (var i = 0; i < parameters.Length; i++)
-            {
-                var fieldIndex = FieldIndex(fields, parameters[i].Name);
-                if (fieldIndex < 0 ||
-                    assigned[fieldIndex] ||
-                    parameters[i].ParameterType != fields[fieldIndex].PropertyType)
-                {
-                    matched = false;
-                    break;
-                }
-
-                ordered[i] = arguments[fieldIndex];
-                assigned[fieldIndex] = true;
-            }
-
-            if (matched)
-            {
-                return constructor.Invoke(ordered);
-            }
-        }
-
-        var instance = Activator.CreateInstance(type)
-            ?? throw new NotSupportedException($"Server extension could not construct '{type}'.");
-        for (var i = 0; i < fields.Count; i++)
-        {
-            fields[i].SetValue(instance, arguments[i]);
-        }
-
-        return instance;
-    }
-
-    private static int FieldIndex(IReadOnlyList<PropertyInfo> fields, string? name)
-    {
-        for (var i = 0; i < fields.Count; i++)
-        {
-            if (string.Equals(fields[i].Name, name, StringComparison.Ordinal))
-            {
-                return i;
-            }
-        }
-
-        var match = -1;
-        for (var i = 0; i < fields.Count; i++)
-        {
-            if (!string.Equals(fields[i].Name, name, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (match >= 0)
-            {
-                return -1;
-            }
-
-            match = i;
-        }
-
-        return match;
     }
 
     private static Array ToArray(IList list, Type elementType)
