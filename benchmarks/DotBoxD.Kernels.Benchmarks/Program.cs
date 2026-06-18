@@ -117,6 +117,11 @@ if (args.Contains("--probe-server-extension-proxy-lookup", StringComparer.Ordina
     return;
 }
 
+if (args.Contains("--probe-installed-rpc-input", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.InstalledRpcInputProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-literal-scalar-safety", StringComparer.OrdinalIgnoreCase)) {
     DotBoxD.Kernels.Benchmarks.Validation.LiteralScalarSafetyProbe.Run();
     return;

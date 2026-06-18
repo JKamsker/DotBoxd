@@ -24,6 +24,7 @@ as targeted before/after evidence, not BenchmarkDotNet statistical reports.
 | General unary negation compiled `I64`/`F64` through boxed runtime helpers. | `--probe-raw-unary-negation` | 1,000,000 assign-style unary negations | 9.4 ms / 5.2 ms | 9.4 / 5.2 | 48,000,040 B / 48,000,040 B | 48.0 / 48.0 | 0.9 ms / 0.7 ms | 0.9 / 0.7 | 40 B / 40 B | ~0 / ~0 | `I64` / `F64`; return-style final boxing measured 5.2 ms / 4.1 ms and 24.0 B/op. |
 | Scalar literal safety checks used stack-backed flatten walks even for non-collection literals. | `--probe-literal-scalar-safety` | 1,000,000 I32 `ContainsDangerousReference` + `Validate` pairs | 169.8 ms | 169.8 | 304,000,040 B | 304.0 | 27.9 ms | 27.9 | 40 B | ~0 | Probe compares the legacy flatten-based scalar walks with the direct scalar checks now used before collection fallback. |
 | Registered server-extension service lookup created a fresh `DispatchProxy` on every call. | `--probe-server-extension-proxy-lookup` | 1,000,000 `ServerExtension<TService>` lookups | 321.7 ms | 321.7 | 288,002,456 B | 288.0 | 22.3 ms | 22.3 | 80 B | ~0 | Probe simulates the old lookup with direct `ServerExtensionProxy.Create`; cached registrations are invalidated on unregister/replacement. |
+| Installed server-extension invocation scanned module functions to resolve the same RPC entrypoint on every call. | `--probe-installed-rpc-input` | 200,000 RPC input builds over 512 module functions | 350.9 ms | 1,754.5 | 6,400,040 B | 32.0 | 1.4 ms | 7.0 | 40 B | ~0 | Cached the resolved `SandboxFunction` and caller argument count on `InstalledKernel` construction. |
 
 ## Probe Commands
 
@@ -42,4 +43,5 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-raw-unary-negation
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-literal-scalar-safety
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-server-extension-proxy-lookup
+dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-installed-rpc-input
 ```

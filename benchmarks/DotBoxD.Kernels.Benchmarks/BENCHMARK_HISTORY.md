@@ -34,6 +34,7 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-raw-unary-negation
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-literal-scalar-safety
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-server-extension-proxy-lookup
+dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-installed-rpc-input
 ```
 
 ## History
@@ -95,6 +96,7 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 | Raw unary negation for general compiled expressions | this commit | `--probe-raw-unary-negation` | The old boxed assign shape (`I64`/`F64` operand boxed, `CompiledRuntime.Neg`, then unboxed) measured 9.4 ms / 5.2 ms and 48,000,040 B for 1M calls. The raw assign shape measured 0.9 ms / 0.7 ms and 40 B. Return-shape final boxing measured 5.2 ms / 4.1 ms and 24,000,040 B. |
 | Scalar literal safety fast path | this commit | `--probe-literal-scalar-safety` | Avoided the stack-backed flatten iterator for non-collection literal safety checks while keeping collection literals on the existing recursive walk. The 1M I32 `ContainsDangerousReference` + `Validate` pair probe improved from a legacy flatten-walk simulation at 169.8 ms and 304,000,040 B to direct scalar checks at 27.9 ms and 40 B. |
 | Server-extension proxy lookup cache | this commit | `--probe-server-extension-proxy-lookup` | Cached the typed `DispatchProxy` inside the server-extension service registration and cleared that registration on uninstall or direct same-plugin replacement. The 1M lookup probe compares simulated legacy `ServerExtensionProxy.Create` calls at 321.7 ms and 288,002,456 B with cached `PluginServer.ServerExtension<TService>` lookups at 22.3 ms and 80 B. |
+| Installed RPC entrypoint input cache | this commit | `--probe-installed-rpc-input` | Cached the resolved server-extension RPC `SandboxFunction` and caller argument count on `InstalledKernel` construction instead of scanning module functions for every invocation. The 200k input-build probe over 512 module functions improved from the legacy scan at 350.9 ms and 6,400,040 B to the cached shape at 1.4 ms and 40 B. |
 
 Versioning note for the two-argument binding fast path: `CallBinding2` and `ChargeValueArray`
 are public generated-code ABI on `CompiledRuntime` for the same reason as the existing facade

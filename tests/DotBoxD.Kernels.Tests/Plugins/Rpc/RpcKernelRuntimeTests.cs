@@ -1,6 +1,7 @@
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Sandbox.Values;
+using DotBoxD.Plugins;
 using DotBoxD.Plugins.Json;
 using DotBoxD.Plugins.Kernel;
 
@@ -15,6 +16,8 @@ namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
 /// </summary>
 public sealed class RpcKernelRuntimeTests
 {
+    private static readonly SourceSpan Span = new(1, 1);
+
     [Fact]
     public async Task A_batch_kernel_loops_server_side_and_returns_a_list_of_records()
     {
@@ -77,6 +80,22 @@ public sealed class RpcKernelRuntimeTests
     }
 
     [Fact]
+    public async Task A_batch_kernel_with_many_helper_functions_uses_the_manifest_rpc_entrypoint()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(
+            configureHost: RpcKernelTestPackages.AddKillBinding,
+            defaultPolicy: RpcKernelTestPackages.KillPolicy());
+        var kernel = await server.InstallServerExtensionAsync(WithHelperFunctions(RpcKernelTestPackages.MonsterKiller(), 128));
+
+        var ids = SandboxValue.FromList([SandboxValue.FromInt32(6)], SandboxType.I32);
+
+        var result = await kernel.InvokeServerExtensionAsync([ids]);
+
+        var list = Assert.IsType<ListValue>(result);
+        AssertKill(Assert.Single(list.Values), 6, true);
+    }
+
+    [Fact]
     public void Required_capabilities_are_derived_from_registered_host_bindings()
     {
         var package = RpcKernelTestPackages.MonsterKiller();
@@ -111,4 +130,28 @@ public sealed class RpcKernelRuntimeTests
         var record = Assert.IsType<RecordValue>(value);
         Assert.Equal([SandboxValue.FromInt32(expectedId), SandboxValue.FromBool(expectedSuccess)], record.Fields);
     }
+
+    private static PluginPackage WithHelperFunctions(PluginPackage package, int helperCount)
+    {
+        var functions = new SandboxFunction[helperCount + package.Module.Functions.Count];
+        for (var i = 0; i < helperCount; i++)
+        {
+            functions[i] = HelperFunction(i);
+        }
+
+        for (var i = 0; i < package.Module.Functions.Count; i++)
+        {
+            functions[helperCount + i] = package.Module.Functions[i];
+        }
+
+        return package with { Module = package.Module with { Functions = functions } };
+    }
+
+    private static SandboxFunction HelperFunction(int index)
+        => new(
+            "Helper" + index.ToString("D3"),
+            IsEntrypoint: false,
+            [],
+            SandboxType.I32,
+            [new ReturnStatement(new LiteralExpression(SandboxValue.FromInt32(index), Span), Span)]);
 }
