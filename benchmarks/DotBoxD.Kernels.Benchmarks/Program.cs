@@ -107,6 +107,11 @@ if (args.Contains("--probe-capability-grant-lookup", StringComparer.OrdinalIgnor
     return;
 }
 
+if (args.Contains("--probe-server-extension-proxy-lookup", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.ServerExtensionProxyLookupProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-literal-scalar-safety", StringComparer.OrdinalIgnoreCase)) {
     DotBoxD.Kernels.Benchmarks.Validation.LiteralScalarSafetyProbe.Run();
     return;

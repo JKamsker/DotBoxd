@@ -21,6 +21,7 @@ as targeted before/after evidence, not BenchmarkDotNet statistical reports.
 | Compiled I32 math intrinsics used boxed direct binding helpers inside raw loops. | `--probe-i32-math-intrinsic` | 1,000,000 charged `math.abs` calls | 7.5 ms | 7.5 | 11,643,616 B | 11.6 | 3.9 ms | 3.9 | 40 B | ~0 | Raw helpers preserve binding host-call/fuel accounting and avoid `SandboxValue` argument/result materialization. |
 | Non-loop F64 `math.floor`/`ceil`/`round` assignments missed the raw helper path. | `--probe-f64-math-intrinsic` | 1,000,000 charged `math.floor` calls | 9.4 ms | 9.4 | 48,000,040 B | 48.0 | 2.9 ms | 2.9 | 40 B | ~0 | Raw helpers preserve binding host-call/fuel accounting and avoid boxed F64 argument/result materialization. |
 | Scalar literal safety checks used stack-backed flatten walks even for non-collection literals. | `--probe-literal-scalar-safety` | 1,000,000 I32 `ContainsDangerousReference` + `Validate` pairs | 169.8 ms | 169.8 | 304,000,040 B | 304.0 | 27.9 ms | 27.9 | 40 B | ~0 | Probe compares the legacy flatten-based scalar walks with the direct scalar checks now used before collection fallback. |
+| Registered server-extension service lookup created a fresh `DispatchProxy` on every call. | `--probe-server-extension-proxy-lookup` | 1,000,000 `ServerExtension<TService>` lookups | 321.7 ms | 321.7 | 288,002,456 B | 288.0 | 22.3 ms | 22.3 | 80 B | ~0 | Probe simulates the old lookup with direct `ServerExtensionProxy.Create`; cached registrations are invalidated on unregister/replacement. |
 
 ## Probe Commands
 
@@ -37,4 +38,5 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-i32-math-intrinsic
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-f64-math-intrinsic
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-literal-scalar-safety
+dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-server-extension-proxy-lookup
 ```
