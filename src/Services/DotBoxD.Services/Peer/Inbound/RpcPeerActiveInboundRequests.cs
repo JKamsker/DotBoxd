@@ -20,13 +20,7 @@ internal sealed class RpcPeerActiveInboundRequests
     {
         lock (_gate)
         {
-            if (_requests.ContainsKey(messageId))
-            {
-                return false;
-            }
-
-            _requests.Add(messageId, requestCts);
-            return true;
+            return _requests.TryAdd(messageId, requestCts);
         }
     }
 

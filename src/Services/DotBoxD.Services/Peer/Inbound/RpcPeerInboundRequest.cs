@@ -1,4 +1,5 @@
 using DotBoxD.Services.Protocol;
+using DotBoxD.Services.Server;
 using DotBoxD.Services.Transport;
 
 namespace DotBoxD.Services.Peer.Inbound;
@@ -10,13 +11,17 @@ internal readonly struct RpcPeerInboundRequest
         RpcRequest request,
         int messageId,
         ReadOnlyMemory<byte> body,
-        CancellationTokenSource? requestCts)
+        CancellationTokenSource? requestCts,
+        IServiceDispatcher? dispatcher,
+        bool requiresStreamingContext)
     {
         Frame = frame;
         Request = request;
         MessageId = messageId;
         Body = body;
         RequestCts = requestCts;
+        Dispatcher = dispatcher;
+        RequiresStreamingContext = requiresStreamingContext;
     }
 
     public RpcFrame Frame { get; }
@@ -28,6 +33,10 @@ internal readonly struct RpcPeerInboundRequest
     public ReadOnlyMemory<byte> Body { get; }
 
     public CancellationTokenSource? RequestCts { get; }
+
+    public IServiceDispatcher? Dispatcher { get; }
+
+    public bool RequiresStreamingContext { get; }
 
     public CancellationToken CancellationToken =>
         RequestCts?.Token ?? CancellationToken.None;

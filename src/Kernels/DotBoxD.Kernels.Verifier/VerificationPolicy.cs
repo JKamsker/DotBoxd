@@ -26,13 +26,15 @@ public sealed record VerificationPolicy(
     private IReadOnlySet<string> _allowedMembers = Freeze(AllowedMembers);
     private IReadOnlySet<string> _forbiddenTypePrefixes = Freeze(ForbiddenTypePrefixes);
     private IReadOnlySet<string> _runtimeFacadeIdentities = Freeze(RuntimeFacadeIdentities);
+    private string? _allowlistHash;
+    private string? _runtimeFacadeHash;
 
-    public IReadOnlySet<string> AllowedAssemblies { get => _allowedAssemblies; init => _allowedAssemblies = Freeze(value); }
-    public IReadOnlySet<string> AllowedAssemblyIdentities { get => _allowedAssemblyIdentities; init => _allowedAssemblyIdentities = Freeze(value); }
-    public IReadOnlySet<string> AllowedTypes { get => _allowedTypes; init => _allowedTypes = Freeze(value); }
-    public IReadOnlySet<string> AllowedMembers { get => _allowedMembers; init => _allowedMembers = Freeze(value); }
-    public IReadOnlySet<string> ForbiddenTypePrefixes { get => _forbiddenTypePrefixes; init => _forbiddenTypePrefixes = Freeze(value); }
-    public IReadOnlySet<string> RuntimeFacadeIdentities { get => _runtimeFacadeIdentities; init => _runtimeFacadeIdentities = Freeze(value); }
+    public IReadOnlySet<string> AllowedAssemblies { get => _allowedAssemblies; init { _allowedAssemblies = Freeze(value); InvalidateHashes(); } }
+    public IReadOnlySet<string> AllowedAssemblyIdentities { get => _allowedAssemblyIdentities; init { _allowedAssemblyIdentities = Freeze(value); InvalidateHashes(); } }
+    public IReadOnlySet<string> AllowedTypes { get => _allowedTypes; init { _allowedTypes = Freeze(value); InvalidateHashes(); } }
+    public IReadOnlySet<string> AllowedMembers { get => _allowedMembers; init { _allowedMembers = Freeze(value); InvalidateHashes(); } }
+    public IReadOnlySet<string> ForbiddenTypePrefixes { get => _forbiddenTypePrefixes; init { _forbiddenTypePrefixes = Freeze(value); InvalidateHashes(); } }
+    public IReadOnlySet<string> RuntimeFacadeIdentities { get => _runtimeFacadeIdentities; init { _runtimeFacadeIdentities = Freeze(value); InvalidateHashes(); } }
 
     public static VerificationPolicy BoxedValueDefaults()
         => new(
@@ -104,6 +106,10 @@ public sealed record VerificationPolicy(
                 RuntimeMember("RemI32Raw", $"{Int32Name},{Int32Name}", Int32Name),
                 RuntimeMember("AddRemI32Raw", $"{Int32Name},{Int32Name},{Int32Name}", Int32Name),
                 RuntimeMember("NegI32Raw", Int32Name, Int32Name),
+                RuntimeMember("AbsI32Raw", Int32Name, Int32Name),
+                RuntimeMember("MinI32Raw", $"{Int32Name},{Int32Name}", Int32Name),
+                RuntimeMember("MaxI32Raw", $"{Int32Name},{Int32Name}", Int32Name),
+                RuntimeMember("ClampI32Raw", $"{Int32Name},{Int32Name},{Int32Name}", Int32Name),
                 RuntimeMember("AddF64Raw", $"{DoubleName},{DoubleName}", DoubleName),
                 RuntimeMember("SubF64Raw", $"{DoubleName},{DoubleName}", DoubleName),
                 RuntimeMember("MulF64Raw", $"{DoubleName},{DoubleName}", DoubleName),
@@ -220,7 +226,7 @@ public sealed record VerificationPolicy(
         => this with { ExpectedManifestIdentity = identity };
 
     public string AllowlistHash
-        => Hash(
+        => _allowlistHash ??= Hash(
             "allowlist",
             AllowedAssemblies
                 .Concat(AllowedAssemblyIdentities)
@@ -229,11 +235,17 @@ public sealed record VerificationPolicy(
                 .Concat(ForbiddenTypePrefixes));
 
     public string RuntimeFacadeHash
-        => Hash(
+        => _runtimeFacadeHash ??= Hash(
             "runtime-facade",
             AllowedMembers
                 .Where(m => m.StartsWith($"{CompiledRuntimeName}.", StringComparison.Ordinal))
                 .Concat(RuntimeFacadeIdentities));
+
+    private void InvalidateHashes()
+    {
+        _allowlistHash = null;
+        _runtimeFacadeHash = null;
+    }
 
     private static string Hash(string prefix, IEnumerable<string> values)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(

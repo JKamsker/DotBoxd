@@ -143,7 +143,7 @@ public sealed record SandboxUri(string Value)
 
 public sealed record SandboxUriValue(SandboxUri Value) : SandboxValue
 {
-    public override SandboxType Type => SandboxType.Scalar("SandboxUri");
+    public override SandboxType Type => SandboxType.SandboxUri;
 }
 
 public sealed record RecordValue : SandboxValue

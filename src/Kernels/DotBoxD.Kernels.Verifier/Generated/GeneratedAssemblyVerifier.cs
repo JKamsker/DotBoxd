@@ -2,6 +2,7 @@ using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
 using System.Security.Cryptography;
+using DotBoxD.Kernels.Verifier.Generated.Methods;
 
 namespace DotBoxD.Kernels.Verifier.Generated;
 
@@ -14,7 +15,7 @@ public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifi
         CancellationToken cancellationToken)
     {
         var diagnostics = new List<VerificationDiagnostic>();
-        var assemblyHash = Convert.ToHexString(SHA256.HashData(assemblyBytes.Span)).ToLowerInvariant();
+        var assemblyHash = ComputeSha256LowerHex(assemblyBytes.Span);
         if (string.IsNullOrWhiteSpace(manifest.AssemblyHash))
         {
             diagnostics.Add(new VerificationDiagnostic("V-MANIFEST-HASH", "assembly hash is required"));
@@ -36,7 +37,8 @@ public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifi
             }
             else
             {
-                VerifyMetadata(peReader, peReader.GetMetadataReader(), policy, diagnostics, cancellationToken);
+                var reader = peReader.GetMetadataReader();
+                VerifyMetadata(peReader, reader, policy, diagnostics, cancellationToken);
             }
         }
         catch (BadImageFormatException ex)
@@ -52,6 +54,29 @@ public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifi
             DateTimeOffset.UtcNow));
     }
 
+    private static string ComputeSha256LowerHex(ReadOnlySpan<byte> source)
+    {
+        Span<byte> hash = stackalloc byte[32];
+        var bytesWritten = SHA256.HashData(source, hash);
+        if (bytesWritten != hash.Length)
+        {
+            throw new CryptographicException("SHA-256 hash length mismatch.");
+        }
+
+        Span<char> hex = stackalloc char[hash.Length * 2];
+        for (var i = 0; i < hash.Length; i++)
+        {
+            var value = hash[i];
+            hex[i * 2] = ToLowerHex(value >> 4);
+            hex[(i * 2) + 1] = ToLowerHex(value & 0xF);
+        }
+
+        return new string(hex);
+    }
+
+    private static char ToLowerHex(int value)
+        => (char)(value < 10 ? '0' + value : 'a' + (value - 10));
+
     private static void VerifyMetadata(
         PEReader peReader,
         MetadataReader reader,
@@ -59,13 +84,15 @@ public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifi
         List<VerificationDiagnostic> diagnostics,
         CancellationToken cancellationToken)
     {
+        var memberSignatures = new MemberSignatureCache();
+        var methodSignatures = new MethodDefinitionSignatureCache();
         PeStructureVerifier.Verify(peReader, diagnostics);
         VerifyAssemblyReferences(reader, policy, diagnostics);
         VerifyTypeReferences(reader, policy, diagnostics);
-        VerifyMemberReferences(reader, policy, diagnostics);
+        VerifyMemberReferences(reader, policy, diagnostics, memberSignatures);
         VerifyCustomAttributes(reader, diagnostics);
         MetadataTableVerifier.Verify(reader, diagnostics);
-        VerifyDefinitions(peReader, reader, policy, diagnostics, cancellationToken);
+        VerifyDefinitions(peReader, reader, policy, diagnostics, cancellationToken, memberSignatures, methodSignatures);
         if (reader.ManifestResources.Count > 0)
         {
             diagnostics.Add(new VerificationDiagnostic("V-RESOURCE", "embedded resources are not allowed"));
@@ -120,11 +147,12 @@ public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifi
     private static void VerifyMemberReferences(
         MetadataReader reader,
         VerificationPolicy policy,
-        List<VerificationDiagnostic> diagnostics)
+        List<VerificationDiagnostic> diagnostics,
+        MemberSignatureCache memberSignatures)
     {
         foreach (var handle in reader.MemberReferences)
         {
-            var member = MetadataName.MemberSignature(reader, handle);
+            var member = memberSignatures.Get(reader, (EntityHandle)handle);
             if (!policy.IsMemberAllowed(member.Signature))
             {
                 diagnostics.Add(new VerificationDiagnostic("V-MEMBER", $"member '{member.Signature}' is not allowed"));
@@ -151,7 +179,9 @@ public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifi
         MetadataReader reader,
         VerificationPolicy policy,
         List<VerificationDiagnostic> diagnostics,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        MemberSignatureCache memberSignatures,
+        MethodDefinitionSignatureCache methodSignatures)
     {
         var generatedTypeCount = 0;
         foreach (var typeHandle in reader.TypeDefinitions)
@@ -168,7 +198,7 @@ public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifi
             VerifyTypeSurface(reader, type, diagnostics);
             GenericParameterVerifier.VerifyType(reader, type, diagnostics);
             VerifyFields(reader, type, diagnostics);
-            VerifyMethods(peReader, reader, policy, type, diagnostics);
+            VerifyMethods(peReader, reader, policy, type, diagnostics, memberSignatures, methodSignatures);
         }
 
         if (generatedTypeCount != 1)

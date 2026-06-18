@@ -11,16 +11,14 @@ internal static class GeneratedIlReader
     public static IReadOnlyList<GeneratedInstruction> ReadInstructions(
         MetadataReader reader,
         MethodBodyBlock body,
-        List<VerificationDiagnostic> diagnostics)
+        List<VerificationDiagnostic> diagnostics,
+        MemberSignatureCache memberSignatures)
     {
         var instructions = new List<GeneratedInstruction>();
-        // Decode each call target signature once per token; repeated call sites to the
-        // same runtime helper then reuse the cached immutable signature string.
-        var signatureCache = new Dictionary<int, string>();
         var il = body.GetILReader();
         while (il.RemainingBytes > 0)
         {
-            if (!TryReadInstruction(reader, signatureCache, ref il, out var instruction, out var diagnostic))
+            if (!TryReadInstruction(reader, memberSignatures, ref il, out var instruction, out var diagnostic))
             {
                 diagnostics.Add(diagnostic!);
                 break;
@@ -34,7 +32,7 @@ internal static class GeneratedIlReader
 
     private static bool TryReadInstruction(
         MetadataReader reader,
-        Dictionary<int, string> signatureCache,
+        MemberSignatureCache memberSignatures,
         ref BlobReader il,
         out GeneratedInstruction instruction,
         out VerificationDiagnostic? diagnostic)
@@ -45,7 +43,7 @@ internal static class GeneratedIlReader
         try
         {
             var opcode = ReadOpCode(ref il);
-            var operand = ReadOperand(reader, signatureCache, opcode, ref il);
+            var operand = ReadOperand(reader, memberSignatures, opcode, ref il);
             instruction = new GeneratedInstruction(
                 offset,
                 opcode,
@@ -76,7 +74,7 @@ internal static class GeneratedIlReader
 
     private static DecodedOperand ReadOperand(
         MetadataReader reader,
-        Dictionary<int, string> signatureCache,
+        MemberSignatureCache memberSignatures,
         ILOpCode opcode,
         ref BlobReader il)
     {
@@ -84,11 +82,7 @@ internal static class GeneratedIlReader
         {
             var token = il.ReadInt32();
             var handle = MetadataTokens.EntityHandle(token);
-            if (!signatureCache.TryGetValue(token, out var signature))
-            {
-                signature = MetadataName.MemberSignature(reader, handle).Signature;
-                signatureCache[token] = signature;
-            }
+            var signature = memberSignatures.Get(reader, handle).Signature;
 
             return new DecodedOperand(
                 handle,
@@ -271,7 +265,7 @@ internal static class GeneratedIlReader
     private static bool IsIlFormatException(Exception exception)
         => exception is BadImageFormatException or ArgumentOutOfRangeException or InvalidOperationException;
 
-    private sealed record DecodedOperand(
+    private readonly record struct DecodedOperand(
         EntityHandle? Handle = null,
         string? CalledMember = null,
         bool IsLocalCall = false,

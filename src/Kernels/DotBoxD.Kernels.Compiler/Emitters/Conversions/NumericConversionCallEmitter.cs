@@ -10,6 +10,47 @@ using static DotBoxD.Kernels.Compiler.IlEmitterPrimitives;
 
 internal static class NumericConversionCallEmitter
 {
+    public static bool TryEmitRaw(
+        Expression expression,
+        StackKind target,
+        LocalStackKindPlanner stackPlan,
+        ILGenerator il,
+        Action<Expression, StackKind> emitAs)
+    {
+        if (expression is not CallExpression call || call.Arguments.Count != 1)
+        {
+            return false;
+        }
+
+        var argument = call.Arguments[0];
+        var sourceType = stackPlan.Infer(argument);
+        if (target == StackKind.I64 && call.Name == "numeric.toI64" && sourceType == SandboxType.I32)
+        {
+            CompiledMeterEmitter.Fuel(il, 1);
+            emitAs(argument, StackKind.I32);
+            il.Emit(OpCodes.Conv_I8);
+            return true;
+        }
+
+        if (target == StackKind.F64 && call.Name == "numeric.toF64" && sourceType == SandboxType.I32)
+        {
+            CompiledMeterEmitter.Fuel(il, 1);
+            emitAs(argument, StackKind.I32);
+            il.Emit(OpCodes.Conv_R8);
+            return true;
+        }
+
+        if (target == StackKind.F64 && call.Name == "numeric.toF64" && sourceType == SandboxType.I64)
+        {
+            CompiledMeterEmitter.Fuel(il, 1);
+            emitAs(argument, StackKind.I64);
+            il.Emit(OpCodes.Conv_R8);
+            return true;
+        }
+
+        return false;
+    }
+
     public static bool TryEmit(
         CallExpression call,
         LocalStackKindPlanner stackPlan,

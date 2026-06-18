@@ -4,12 +4,14 @@
 
 public abstract class RpcStreamAttachment
 public async Task CloseAsync(CancellationToken ct = default)
-public async Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
 public async Task StartAsync(CancellationToken ct = default)
 public async Task<IRpcChannel> AcceptAsync(CancellationToken ct = default)
-public async Task<Payload> ReceiveAsync(CancellationToken ct = default)
 public async ValueTask DisposeAsync()
 public async ValueTask ReleaseAsync(string serviceName, string instanceId)
+public async ValueTask SendFrameValueAsync(PooledBufferWriter frame, CancellationToken ct = default)
+public async ValueTask SendValueAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
+public async ValueTask<Payload> ReceiveValueAsync(CancellationToken ct = default)
+public async ValueTask<RpcFrame> ReceiveFrameValueAsync(CancellationToken ct = default)
 public bool DisableInboundRequestCancellation { get; init; }
 public bool EnableLowAllocationValueTaskInvocations { get; init; }
 public bool IsConnected =>
@@ -110,7 +112,6 @@ public interface IInstanceRegistry
 public interface INonStreamingServiceDispatcher
 public interface IRpcChannel : IAsyncDisposable
 public interface IRpcFrameChannel : IRpcValueTaskChannel
-public interface IRpcInvoker
 public interface IRpcStreamingContext
 public interface IRpcValueTaskChannel : IRpcChannel
 public interface ISerializer
@@ -125,6 +126,7 @@ public Memory<byte> GetMemory(int sizeHint = 0)
 public Memory<byte> Memory =>
 public MessageType MessageType { get; }
 public NotFoundKind Kind { get; }
+public partial interface IRpcInvoker
 public Payload DetachPayload()
 public Pipe GetPipe(RpcStreamHandle handle)
 public PooledBufferWriter(int initialCapacity = 256)
@@ -180,7 +182,7 @@ public sealed class RpcReadErrorEventArgs : EventArgs
 public sealed class RpcStreamingContext : IRpcStreamingContext
 public sealed class SingleConnectionServerTransport : IServerTransport
 public sealed class SingleConnectionTransport : ITransport
-public sealed class StreamConnection : IRpcChannel
+public sealed class StreamConnection : IRpcFrameChannel
 public ServiceConnectionException(string message, Exception innerException) : base(message, innerException)
 public ServiceConnectionException(string message) : base(message)
 public ServiceException()
@@ -258,6 +260,8 @@ public string? InstanceId { get; }
 public string? InstanceId { get; set; }
 public string? Name { get; set; }
 public struct RpcFrame : IDisposable
+public Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default) =>
+public Task<Payload> ReceiveAsync(CancellationToken ct = default) =>
 public struct RpcRequest
 public struct RpcResponse
 public struct RpcStreamHandle
@@ -293,6 +297,10 @@ public TimeSpan RequestTimeout
 public TService Get<TService>() where TService : class
 public ValueTask DisposeAsync()
 public ValueTask DisposeAsync() => new(CloseAsync())
+public ValueTask InvokeValueAsync(string service, string method, CancellationToken ct = default) =>
+public ValueTask InvokeValueAsync<TRequest>(string service, string method, TRequest request, CancellationToken ct = default) =>
+public ValueTask InvokeValueOnInstanceAsync(string service, string instanceId, string method, CancellationToken ct = default) =>
+public ValueTask InvokeValueOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, CancellationToken ct = default) =>
 public ValueTask<TResponse> InvokeValueAsync<TRequest, TResponse>(string service, string method, TRequest request, CancellationToken ct = default) =>
 public ValueTask<TResponse> InvokeValueAsync<TResponse>(string service, string method, CancellationToken ct = default) =>
 public ValueTask<TResponse> InvokeValueOnInstanceAsync<TRequest, TResponse>(string service, string instanceId, string method, TRequest request, CancellationToken ct = default) =>

@@ -82,7 +82,7 @@ public static partial class CompiledRuntime
         context.ChargeLoopIterations(iterations, fuelPerIteration);
         return (int)(start + step * iterations);
     }
-    [MethodImpl(AggressiveInlining)] public static void ChargeBindingCall(SandboxContext context, string id) => context.ChargeBindingCall(context.Bindings.GetDescriptor(id));
+    [MethodImpl(AggressiveInlining)] public static void ChargeBindingCall(SandboxContext context, string id) => context.ChargeBindingCall(context.GetBindingDescriptor(id));
     public static void EnterCall(SandboxContext context) => context.EnterCall();
     public static void ExitCall(SandboxContext context) => context.ExitCall();
     [MethodImpl(AggressiveInlining)] public static void EnterInlineCall(SandboxContext context) => context.EnterCall();

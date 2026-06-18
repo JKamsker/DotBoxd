@@ -16,7 +16,6 @@ public static partial class SafeFileSystem
         try
         {
             var resolved = ResolvePath(context, path, "file.read", "file.readText");
-            using var timeout = CreateWallTimeToken(context, cancellationToken);
             var info = new FileInfo(resolved.FullPath);
             if (!info.Exists)
             {
@@ -30,7 +29,7 @@ public static partial class SafeFileSystem
                 throw Error(SandboxErrorCode.QuotaExceeded, "file.readText denied: file exceeds read limit");
             }
 
-            using var bytes = await ReadLimitedBytesAsync(context, resolved, maxBytes, timeout.Token).ConfigureAwait(false);
+            using var bytes = await ReadLimitedBytesAsync(context, resolved, maxBytes, cancellationToken).ConfigureAwait(false);
             var length = CheckedLength(bytes.Length);
             var buffer = bytes.GetBuffer();
             context.ChargeFuel(length);
@@ -75,7 +74,6 @@ public static partial class SafeFileSystem
         try
         {
             var resolved = ResolvePath(context, path, "file.write", "file.writeText");
-            using var timeout = CreateWallTimeToken(context, cancellationToken);
             var byteCount = Encoding.UTF8.GetByteCount(text);
             var permission = SafeFileWritePublisher.EnsureAllowed(resolved.Grant, resolved.FullPath, byteCount);
             context.Budget.ChargeFileWrite(byteCount);
@@ -83,6 +81,7 @@ public static partial class SafeFileSystem
             context.ChargeFuel(byteCount);
             var bytes = Encoding.UTF8.GetBytes(text);
 
+            context.Budget.CheckDeadline();
             EnsureNoReparsePoint(resolved.RootFull, resolved.FullPath);
             FileSystem.SafeFileSystem.EnsureDirectWritePath(resolved.RootFull, resolved.FullPath);
             SafeFileWritePublisher.EnsureParentDirectory(resolved.RootFull, resolved.FullPath, permission);
@@ -93,8 +92,8 @@ public static partial class SafeFileSystem
                 EnsureNoReparsePoint(resolved.RootFull, tempPath);
                 await using (var temp = SafeFileNoFollow.CreateNewWrite(tempPath))
                 {
-                    await temp.WriteAsync(bytes, timeout.Token).ConfigureAwait(false);
-                    await temp.FlushAsync(timeout.Token).ConfigureAwait(false);
+                    await temp.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+                    await temp.FlushAsync(cancellationToken).ConfigureAwait(false);
                 }
 
                 context.CancellationToken.ThrowIfCancellationRequested();
@@ -288,14 +287,6 @@ public static partial class SafeFileSystem
 
     private static string EnsureTrailingSeparator(string path)
         => path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
-
-    private static CancellationTokenSource CreateWallTimeToken(SandboxContext context, CancellationToken cancellationToken)
-    {
-        var remaining = context.Budget.RemainingWallTime();
-        var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(remaining);
-        return timeout;
-    }
 
     internal static SandboxRuntimeException Error(SandboxErrorCode code, string message) => new(new SandboxError(code, message));
 

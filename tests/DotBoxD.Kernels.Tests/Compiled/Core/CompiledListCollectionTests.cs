@@ -98,6 +98,39 @@ public sealed class CompiledListCollectionTests
         Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
     }
 
+    [Fact]
+    public async Task Compiled_list_add_accepts_record_items()
+    {
+        var result = await ExecuteReturnAsync(
+            """
+            {
+              "call": "list.add",
+              "args": [
+                {
+                  "call": "list.empty",
+                  "genericType": { "name": "Record", "arguments": ["I32", "String"] },
+                  "args": []
+                },
+                {
+                  "call": "record.new",
+                  "genericType": { "name": "Record", "arguments": ["I32", "String"] },
+                  "args": [{ "i32": 7 }, { "string": "ok" }]
+                }
+              ]
+            }
+            """,
+            """{ "name": "List", "arguments": [{ "name": "Record", "arguments": ["I32", "String"] }] }""",
+            SandboxPolicyBuilder.Create().Build(),
+            new SandboxExecutionOptions { Mode = ExecutionMode.Compiled, AllowFallbackToInterpreter = false });
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        var list = Assert.IsType<ListValue>(result.Value);
+        Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
+        var record = Assert.IsType<RecordValue>(Assert.Single(list.Values));
+        Assert.Equal(7, Assert.IsType<I32Value>(record.Fields[0]).Value);
+        Assert.Equal("ok", Assert.IsType<StringValue>(record.Fields[1]).Value);
+    }
+
     private static async Task<SandboxExecutionResult> ExecuteListAsync(
         string expression,
         SandboxExecutionOptions options)

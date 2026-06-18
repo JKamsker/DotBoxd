@@ -32,4 +32,14 @@ public sealed class SandboxValueFactoryTests
         Assert.Same(first, second);
         Assert.Equal(new I32Value(value), first);
     }
+
+    [Fact]
+    public void Built_in_value_types_reuse_singleton_sandbox_types()
+    {
+        var path = SandboxValue.FromPath("config/settings.json");
+        var uri = SandboxValue.FromUri("https://example.test/config");
+
+        Assert.Same(SandboxType.SandboxPath, path.Type);
+        Assert.Same(SandboxType.SandboxUri, uri.Type);
+    }
 }

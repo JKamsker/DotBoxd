@@ -24,7 +24,7 @@ namespace DotBoxD.Services.Generated
         /// Gets a proxy to call IRootSnap on the other peer.
         /// </summary>
         public static global::Snap.Nested.IRootSnap GetRootSnap(this global::DotBoxD.Services.Peer.RpcPeer peer)
-            => new global::Snap.Nested.RootSnapProxy(peer);
+            => peer.Get<global::Snap.Nested.IRootSnap>();
 
         /// <summary>
         /// Provides a ISubSnap implementation for the other peer to call.
@@ -36,6 +36,6 @@ namespace DotBoxD.Services.Generated
         /// Gets a proxy to call ISubSnap on the other peer.
         /// </summary>
         public static global::Snap.Nested.ISubSnap GetSubSnap(this global::DotBoxD.Services.Peer.RpcPeer peer)
-            => new global::Snap.Nested.SubSnapProxy(peer);
+            => peer.Get<global::Snap.Nested.ISubSnap>();
     }
 }

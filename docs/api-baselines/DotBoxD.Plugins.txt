@@ -84,6 +84,7 @@ public IEnumerator<InstalledKernel> GetEnumerator() => Snapshot().GetEnumerator(
 public InstalledKernel Get(string pluginId)
 public InstalledKernel Kernel { get; }
 public int Int32Value
+public int ItemCount => (_items ?? EmptyItems).Length
 public interface ILiveSetting
 public interface IServerExtensionClientRegistry :
 public interface IServerExtensionWireClient : DotBoxD.Abstractions.IServerExtensionWireClient
@@ -97,6 +98,7 @@ public IReadOnlyList<string> Effects { get => _effects; init => _effects = Plugi
 public IReadOnlyList<string> GetRequiredCapabilities(PluginPackage package)
 public IReadOnlyList<string> RequiredCapabilities
 public KernelRegistry Kernels { get; }
+public KernelRpcValue GetItem(int index) => (_items ?? EmptyItems)[index]
 public KernelRpcValue[] Items => CopyItems(_items ?? EmptyItems)
 public KernelRpcValueKind Kind { get; }
 public LiveContext<T> BindContext<T>(string name, Action<T>? initialize = null) where T : class
@@ -212,7 +214,7 @@ public static class HostMessagePolicyBuilderExtensions
 public static class HostServiceBindingExtensions
 public static class KernelPackageRegistry
 public static class KernelRpcBinaryCodec
-public static class KernelRpcMarshaller
+public static partial class KernelRpcMarshaller
 public static class KernelRpcValueConverter
 public static class PluginDiagnosticCodes
 public static class PluginMessageBindings

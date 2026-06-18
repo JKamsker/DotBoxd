@@ -194,7 +194,7 @@ internal static class BindingRegistryValidator
         SandboxType type,
         List<SandboxDiagnostic> diagnostics)
     {
-        if (!type.IsKnownBuiltIn() || type.IsForbidden())
+        if (!type.IsKnownBuiltIn())
         {
             diagnostics.Add(new SandboxDiagnostic("E-BINDING-TYPE", $"binding '{binding.Id}' exposes forbidden or unknown type '{type}'"));
         }

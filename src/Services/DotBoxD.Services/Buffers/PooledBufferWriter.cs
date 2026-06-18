@@ -106,6 +106,17 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
         _written += count;
     }
 
+    internal void Rewind(int writtenCount)
+    {
+        if (writtenCount < 0 || writtenCount > _written)
+        {
+            throw new ArgumentOutOfRangeException(nameof(writtenCount));
+        }
+
+        _ = _buffer ?? throw new ObjectDisposedException(nameof(PooledBufferWriter));
+        _written = writtenCount;
+    }
+
     public Memory<byte> GetMemory(int sizeHint = 0)
     {
         EnsureCapacity(sizeHint);

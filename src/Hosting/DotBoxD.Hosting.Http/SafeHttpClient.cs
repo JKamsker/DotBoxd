@@ -43,9 +43,8 @@ public static class SafeHttpClient
             using var pinnedResponse = await SafePinnedHttpTransport.SendAsync(invoker, message, addresses, timeout.Token)
                 .ConfigureAwait(false);
             var response = pinnedResponse.Message;
-            var metadataBytes = SafeHttpResponseAccounting.MeasureMetadataBytes(response);
+            var metadataBytes = SafeHttpResponseAccounting.ChargeMetadata(context, response, request.MaxResponseBytes);
             responseBytes = metadataBytes;
-            SafeHttpResponseAccounting.ChargeMetadata(context, response, request.MaxResponseBytes);
             if (response.RequestMessage?.RequestUri is { } finalUri && !SafeHttpUriAudit.SameUri(finalUri, request.Uri))
             {
                 throw Error(SandboxErrorCode.PermissionDenied, "net.http.get denied: redirects are not allowed");

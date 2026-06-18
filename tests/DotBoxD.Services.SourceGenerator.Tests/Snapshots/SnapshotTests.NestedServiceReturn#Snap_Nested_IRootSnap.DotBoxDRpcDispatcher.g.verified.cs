@@ -25,82 +25,39 @@ namespace Snap.Nested
         public global::System.Threading.Tasks.Task DispatchAsync(string method, global::System.ReadOnlyMemory<byte> payload, global::DotBoxD.Services.Serialization.ISerializer serializer, global::DotBoxD.Services.Server.IInstanceRegistry registry, global::System.Buffers.IBufferWriter<byte> output, global::System.Threading.CancellationToken ct = default) =>
             DispatchAsync(method, payload, serializer, registry, output, global::DotBoxD.Services.Streaming.Remote.RpcStreamingContext.Disabled, ct);
 
-#pragma warning disable CS1998
-        public async global::System.Threading.Tasks.Task DispatchAsync(string method, global::System.ReadOnlyMemory<byte> payload, global::DotBoxD.Services.Serialization.ISerializer serializer, global::DotBoxD.Services.Server.IInstanceRegistry registry, global::System.Buffers.IBufferWriter<byte> output, global::DotBoxD.Services.Streaming.Remote.IRpcStreamingContext streaming, global::System.Threading.CancellationToken ct = default)
-#pragma warning restore CS1998
+        public global::System.Threading.Tasks.Task DispatchAsync(string method, global::System.ReadOnlyMemory<byte> payload, global::DotBoxD.Services.Serialization.ISerializer serializer, global::DotBoxD.Services.Server.IInstanceRegistry registry, global::System.Buffers.IBufferWriter<byte> output, global::DotBoxD.Services.Streaming.Remote.IRpcStreamingContext streaming, global::System.Threading.CancellationToken ct = default)
         {
             if (_service is null)
             {
                 throw new global::DotBoxD.Services.Exceptions.ServiceNotFoundException("Service 'IRootSnap' can only dispatch instance calls.", global::DotBoxD.Services.Exceptions.ServiceNotFoundException.NotFoundKind.Service);
             }
-            var __service = _service;
-            switch (method)
-            {
-                case "GetSubAsync":
-                {
-                    var arg = serializer.Deserialize<string>(payload);
-                    var __dotboxd_task = __service.GetSubAsync(arg);
-                    var __sub = __dotboxd_task.IsCompletedSuccessfully
-                        ? __dotboxd_task.Result
-                        : await __dotboxd_task;
-                    string __subId;
-                    try
-                    {
-                        __subId = registry.Register("ISubSnap", __sub);
-                    }
-                    catch
-                    {
-                        try
-                        {
-                            if (__sub is global::System.IAsyncDisposable __ad)
-                            {
-                                await __ad.DisposeAsync().ConfigureAwait(false);
-                            }
-                            else if (__sub is global::System.IDisposable __d)
-                            {
-                                __d.Dispose();
-                            }
-                        }
-                        catch
-                        {
-                            // Best-effort cleanup of the orphaned sub-service: a faulting disposer must
-                            // not replace the original registration failure that is about to be rethrown.
-                        }
-                        throw;
-                    }
-                    try
-                    {
-                        serializer.Serialize(output, new global::DotBoxD.Services.Protocol.ServiceHandle { ServiceName = "ISubSnap", InstanceId = __subId });
-                    }
-                    catch
-                    {
-                        await registry.ReleaseAsync("ISubSnap", __subId).ConfigureAwait(false);
-                        throw;
-                    }
-                    return;
-                }
-                default:
-                    throw new global::DotBoxD.Services.Exceptions.ServiceNotFoundException("Method '" + method + "' not found on service 'IRootSnap'.", global::DotBoxD.Services.Exceptions.ServiceNotFoundException.NotFoundKind.Method);
-            }
+
+            return DispatchCoreAsync(_service, method, payload, serializer, registry, output, streaming, ct);
         }
 
         public global::System.Threading.Tasks.Task DispatchOnInstanceAsync(string instanceId, string method, global::System.ReadOnlyMemory<byte> payload, global::DotBoxD.Services.Serialization.ISerializer serializer, global::DotBoxD.Services.Server.IInstanceRegistry registry, global::System.Buffers.IBufferWriter<byte> output, global::System.Threading.CancellationToken ct = default) =>
             DispatchOnInstanceAsync(instanceId, method, payload, serializer, registry, output, global::DotBoxD.Services.Streaming.Remote.RpcStreamingContext.Disabled, ct);
 
-#pragma warning disable CS1998
-        public async global::System.Threading.Tasks.Task DispatchOnInstanceAsync(string instanceId, string method, global::System.ReadOnlyMemory<byte> payload, global::DotBoxD.Services.Serialization.ISerializer serializer, global::DotBoxD.Services.Server.IInstanceRegistry registry, global::System.Buffers.IBufferWriter<byte> output, global::DotBoxD.Services.Streaming.Remote.IRpcStreamingContext streaming, global::System.Threading.CancellationToken ct = default)
-#pragma warning restore CS1998
+        public global::System.Threading.Tasks.Task DispatchOnInstanceAsync(string instanceId, string method, global::System.ReadOnlyMemory<byte> payload, global::DotBoxD.Services.Serialization.ISerializer serializer, global::DotBoxD.Services.Server.IInstanceRegistry registry, global::System.Buffers.IBufferWriter<byte> output, global::DotBoxD.Services.Streaming.Remote.IRpcStreamingContext streaming, global::System.Threading.CancellationToken ct = default)
         {
             if (!registry.TryGet("IRootSnap", instanceId, out var __obj) || __obj is not global::Snap.Nested.IRootSnap __inst)
             {
                 throw new global::DotBoxD.Services.Exceptions.ServiceNotFoundException("Instance '" + instanceId + "' not found for service 'IRootSnap'.", global::DotBoxD.Services.Exceptions.ServiceNotFoundException.NotFoundKind.Instance);
             }
+
+            return DispatchCoreAsync(__inst, method, payload, serializer, registry, output, streaming, ct);
+        }
+
+#pragma warning disable CS1998
+        private async global::System.Threading.Tasks.Task DispatchCoreAsync(global::Snap.Nested.IRootSnap receiver, string method, global::System.ReadOnlyMemory<byte> payload, global::DotBoxD.Services.Serialization.ISerializer serializer, global::DotBoxD.Services.Server.IInstanceRegistry registry, global::System.Buffers.IBufferWriter<byte> output, global::DotBoxD.Services.Streaming.Remote.IRpcStreamingContext streaming, global::System.Threading.CancellationToken ct)
+#pragma warning restore CS1998
+        {
             switch (method)
             {
                 case "GetSubAsync":
                 {
                     var arg = serializer.Deserialize<string>(payload);
-                    var __dotboxd_task = __inst.GetSubAsync(arg);
+                    var __dotboxd_task = receiver.GetSubAsync(arg);
                     var __sub = __dotboxd_task.IsCompletedSuccessfully
                         ? __dotboxd_task.Result
                         : await __dotboxd_task;

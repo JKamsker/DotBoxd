@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Collections.Concurrent;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Plugins.Kernel;
 
@@ -15,10 +16,11 @@ namespace DotBoxD.Plugins.Runtime.Rpc;
 /// </summary>
 public class ServerExtensionProxy : DispatchProxy
 {
-    private static readonly MethodInfo InvokeTaskAsyncMethod =
-        typeof(ServerExtensionProxy).GetMethod(nameof(InvokeTaskAsync), BindingFlags.Static | BindingFlags.NonPublic)!;
-    private static readonly MethodInfo InvokeValueTaskAsyncMethod =
-        typeof(ServerExtensionProxy).GetMethod(nameof(InvokeValueTaskAsync), BindingFlags.Static | BindingFlags.NonPublic)!;
+    private static readonly ConcurrentDictionary<MethodInfo, ServerExtensionMethod> MethodCache = new();
+    private static readonly MethodInfo BoxTaskAsyncMethod =
+        typeof(ServerExtensionProxy).GetMethod(nameof(BoxTaskAsync), BindingFlags.Static | BindingFlags.NonPublic)!;
+    private static readonly MethodInfo BoxValueTaskAsyncMethod =
+        typeof(ServerExtensionProxy).GetMethod(nameof(BoxValueTaskAsync), BindingFlags.Static | BindingFlags.NonPublic)!;
 
     private InstalledKernel _kernel = null!;
 
@@ -37,38 +39,67 @@ public class ServerExtensionProxy : DispatchProxy
             throw new NotSupportedException("Server extension proxy received a null method.");
         }
 
-        var parameters = targetMethod.GetParameters();
-        var arguments = new SandboxValue[parameters.Length];
-        for (var i = 0; i < parameters.Length; i++)
+        var method = MethodCache.GetOrAdd(targetMethod, static target => new ServerExtensionMethod(target));
+        var arguments = new SandboxValue[method.ParameterTypes.Length];
+        for (var i = 0; i < method.ParameterTypes.Length; i++)
         {
-            arguments[i] = KernelRpcMarshaller.ToSandboxValue(args?[i], parameters[i].ParameterType);
+            arguments[i] = KernelRpcMarshaller.ToSandboxValue(args?[i], method.ParameterTypes[i]);
         }
 
-        return Materialize(targetMethod.ReturnType, _kernel.InvokeServerExtensionAsync(arguments));
+        return method.Materialize(_kernel.InvokeServerExtensionAsync(arguments));
     }
 
-    private static object? Materialize(Type returnType, ValueTask<SandboxValue> pending)
+    private static Func<ValueTask<SandboxValue>, object?> CreateMaterializer(Type returnType)
     {
-        // Only Task<T>/ValueTask<T> unwrap to an awaitable; every other return type (including
-        // List<T>) is marshaled whole.
         if (returnType.IsGenericType)
         {
             var definition = returnType.GetGenericTypeDefinition();
             if (definition == typeof(Task<>))
             {
                 var inner = returnType.GetGenericArguments()[0];
-                return InvokeTaskAsyncMethod.MakeGenericMethod(inner).Invoke(null, [pending]);
+                return (Func<ValueTask<SandboxValue>, object?>)BoxTaskAsyncMethod
+                    .MakeGenericMethod(inner)
+                    .CreateDelegate(typeof(Func<ValueTask<SandboxValue>, object?>));
             }
 
             if (definition == typeof(ValueTask<>))
             {
                 var inner = returnType.GetGenericArguments()[0];
-                return InvokeValueTaskAsyncMethod.MakeGenericMethod(inner).Invoke(null, [pending]);
+                return (Func<ValueTask<SandboxValue>, object?>)BoxValueTaskAsyncMethod
+                    .MakeGenericMethod(inner)
+                    .CreateDelegate(typeof(Func<ValueTask<SandboxValue>, object?>));
             }
         }
 
-        var result = pending.AsTask().GetAwaiter().GetResult();
-        return KernelRpcMarshaller.FromSandboxValue(result, returnType);
+        return pending =>
+        {
+            var result = pending.AsTask().GetAwaiter().GetResult();
+            return KernelRpcMarshaller.FromSandboxValue(result, returnType);
+        };
+    }
+
+    private static object BoxTaskAsync<T>(ValueTask<SandboxValue> pending)
+        => InvokeTaskAsync<T>(pending);
+
+    private static object BoxValueTaskAsync<T>(ValueTask<SandboxValue> pending)
+        => InvokeValueTaskAsync<T>(pending);
+
+    private sealed class ServerExtensionMethod
+    {
+        private readonly Func<ValueTask<SandboxValue>, object?> _materializer;
+
+        public ServerExtensionMethod(MethodInfo method)
+        {
+            ParameterTypes = method.GetParameters()
+                .Select(static parameter => parameter.ParameterType)
+                .ToArray();
+            _materializer = CreateMaterializer(method.ReturnType);
+        }
+
+        public Type[] ParameterTypes { get; }
+
+        public object? Materialize(ValueTask<SandboxValue> pending)
+            => _materializer(pending);
     }
 
     private static async Task<T> InvokeTaskAsync<T>(ValueTask<SandboxValue> pending)

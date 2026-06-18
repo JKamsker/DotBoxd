@@ -10,6 +10,10 @@ namespace DotBoxD.Services.Generated;
 public static class GeneratedServiceRegistry
 {
     private static readonly ConcurrentDictionary<Type, RegisteredService> s_services = new();
+    private static readonly object s_registrationLock = new();
+    private static long s_registrationVersion;
+
+    internal static long CurrentRegistrationVersion => Volatile.Read(ref s_registrationVersion);
 
     /// <summary>
     /// Registers generated factories for a service interface.
@@ -48,10 +52,16 @@ public static class GeneratedServiceRegistry
 
         ValidateService<TService>(service);
 
-        s_services[typeof(TService)] = new RegisteredService(
-            invoker => proxyFactory(invoker)!,
-            dispatcherFactory,
-            service);
+        lock (s_registrationLock)
+        {
+            var version = s_registrationVersion + 1;
+            s_services[typeof(TService)] = new RegisteredService(
+                invoker => proxyFactory(invoker)!,
+                dispatcherFactory,
+                service,
+                version);
+            Volatile.Write(ref s_registrationVersion, version);
+        }
     }
 
     /// <summary>
@@ -171,12 +181,28 @@ public static class GeneratedServiceRegistry
     /// </summary>
     public static object CreateProxy(Type serviceInterface, IRpcInvoker invoker)
     {
+        return CreateProxy(serviceInterface, invoker, out _);
+    }
+
+    internal static object CreateProxy(Type serviceInterface, IRpcInvoker invoker, out long registrationVersion)
+    {
         if (invoker is null)
         {
             throw new ArgumentNullException(nameof(invoker));
         }
         var registration = Resolve(serviceInterface);
+        registrationVersion = registration.Version;
         return registration.CreateProxy(invoker);
+    }
+
+    internal static bool IsRegistrationCurrent(
+        Type serviceInterface,
+        long registrationVersion,
+        out long registryVersion)
+    {
+        registryVersion = CurrentRegistrationVersion;
+        return s_services.TryGetValue(serviceInterface, out var registration) &&
+            registration.Version == registrationVersion;
     }
 
     /// <summary>
@@ -270,22 +296,4 @@ public static class GeneratedServiceRegistry
 
     private static string FormatType(Type type) => type.FullName ?? type.Name;
 
-    private sealed class RegisteredService
-    {
-        public RegisteredService(
-            Func<IRpcInvoker, object> proxyFactory,
-            Func<object, IServiceDispatcher> dispatcherFactory,
-            GeneratedService service)
-        {
-            CreateProxy = proxyFactory;
-            CreateDispatcher = dispatcherFactory;
-            Service = service;
-        }
-
-        public Func<IRpcInvoker, object> CreateProxy { get; }
-
-        public Func<object, IServiceDispatcher> CreateDispatcher { get; }
-
-        public GeneratedService Service { get; }
-    }
 }

@@ -38,7 +38,7 @@ internal sealed class BranchedI32LoopFastPathEmitter
         if (_stackPlan.LocalKind(range.LocalName) != StackKind.I32 ||
             range.Body.Count != 1 ||
             range.Body[0] is not IfStatement branch ||
-            !TryCreateCondition(branch.Condition, out var condition) ||
+            !RawI32ConditionPlan.TryCreate(branch.Condition, _stackPlan, _functions, out var condition) ||
             !TryCreateBranch(branch.Then, out var thenBranch) ||
             !TryCreateBranch(branch.Else, out var elseBranch))
         {
@@ -68,9 +68,7 @@ internal sealed class BranchedI32LoopFastPathEmitter
         _il.Emit(OpCodes.Ldloc, index);
         _il.Emit(OpCodes.Stloc, loopVar);
 
-        condition.Left.Emit(_il, _declare);
-        condition.Right.Emit(_il, _declare);
-        _il.Emit(OpCodes.Call, Runtime(condition.Method));
+        condition.Emit(_il, _declare);
         _il.Emit(OpCodes.Brfalse, elseLabel);
 
         EmitBranch(thenBranch);
@@ -103,29 +101,6 @@ internal sealed class BranchedI32LoopFastPathEmitter
         }
     }
 
-    private bool TryCreateCondition(Expression expression, out Condition condition)
-    {
-        condition = default;
-        if (expression is not BinaryExpression { Operator: "==" or "!=" or "<" or "<=" or ">" or ">=" } binary ||
-            !RawI32ExpressionPlan.TryCreate(binary.Left, _stackPlan, _functions, out var left) ||
-            !RawI32ExpressionPlan.TryCreate(binary.Right, _stackPlan, _functions, out var right))
-        {
-            return false;
-        }
-
-        var method = binary.Operator switch
-        {
-            "<" => nameof(CompiledRuntime.LtI32Raw),
-            "<=" => nameof(CompiledRuntime.LteI32Raw),
-            ">" => nameof(CompiledRuntime.GtI32Raw),
-            ">=" => nameof(CompiledRuntime.GteI32Raw),
-            "==" => nameof(CompiledRuntime.EqI32Raw),
-            _ => nameof(CompiledRuntime.NeI32Raw)
-        };
-        condition = new Condition(left, right, method, 1 + left.FuelCost + right.FuelCost);
-        return true;
-    }
-
     private bool TryCreateBranch(IReadOnlyList<Statement> statements, out Branch branch)
     {
         branch = default;
@@ -151,6 +126,4 @@ internal sealed class BranchedI32LoopFastPathEmitter
     private readonly record struct AssignmentPlan(string Target, RawI32ExpressionPlan Expression);
 
     private readonly record struct Branch(AssignmentPlan[] Assignments, int Fuel);
-
-    private readonly record struct Condition(RawI32ExpressionPlan Left, RawI32ExpressionPlan Right, string Method, int Fuel);
 }

@@ -26,7 +26,7 @@ internal sealed class RpcPeerInboundRequestQueue
     private readonly Action<RpcPeerInboundRequest> _release;
     private readonly bool _dropIncomingWhenFull;
     private readonly bool _dispatchSerially;
-    private readonly SemaphoreSlim _slots;
+    private readonly SemaphoreSlim? _slots;
     private readonly long _maxInboundBytes;
     private readonly object _byteGate = new();
     private long _inFlightBytes;
@@ -53,7 +53,7 @@ internal sealed class RpcPeerInboundRequestQueue
         _maxInboundBytes = maxInboundBytes ?? long.MaxValue;
         // maxConcurrency == 1 keeps dispatch strictly serial; > 1 admits that many concurrent
         // dispatches. Total in-flight inbound work is bounded by capacity + maxConcurrency.
-        _slots = new SemaphoreSlim(maxConcurrency, maxConcurrency);
+        _slots = _dispatchSerially ? null : new SemaphoreSlim(maxConcurrency, maxConcurrency);
         _queue = Channel.CreateBounded<RpcPeerInboundRequest>(new BoundedChannelOptions(capacity)
         {
             SingleReader = true,
@@ -225,7 +225,7 @@ internal sealed class RpcPeerInboundRequestQueue
         await WaitForInFlightAsync().ConfigureAwait(false);
 
         Drain();
-        _slots.Dispose();
+        _slots?.Dispose();
         _cts?.Dispose();
     }
 
@@ -237,6 +237,7 @@ internal sealed class RpcPeerInboundRequestQueue
             return;
         }
 
+        var slots = _slots ?? throw new InvalidOperationException("parallel dispatch requires a slot semaphore");
         try
         {
             while (await _queue.Reader.WaitToReadAsync(ct).ConfigureAwait(false))
@@ -246,15 +247,15 @@ internal sealed class RpcPeerInboundRequestQueue
                 // maxConcurrency items are removed from the channel beyond what is dispatching,
                 // keeping read-side backpressure at exactly capacity + maxConcurrency (and
                 // identical to inline serial dispatch when maxConcurrency == 1).
-                await _slots.WaitAsync(ct).ConfigureAwait(false);
+                await slots.WaitAsync(ct).ConfigureAwait(false);
                 if (_queue.Reader.TryRead(out var inbound))
                 {
-                    StartProcessing(inbound);
+                    StartProcessing(inbound, slots);
                 }
                 else
                 {
                     // Writer completed with no item left for this slot; hand it back.
-                    _slots.Release();
+                    slots.Release();
                 }
             }
         }
@@ -296,13 +297,13 @@ internal sealed class RpcPeerInboundRequestQueue
         }
     }
 
-    private void StartProcessing(RpcPeerInboundRequest inbound)
+    private void StartProcessing(RpcPeerInboundRequest inbound, SemaphoreSlim slots)
     {
         Interlocked.Increment(ref _inFlightCount);
-        _ = ProcessOneAsync(inbound);
+        _ = ProcessOneAsync(inbound, slots);
     }
 
-    private async Task ProcessOneAsync(RpcPeerInboundRequest inbound)
+    private async Task ProcessOneAsync(RpcPeerInboundRequest inbound, SemaphoreSlim slots)
     {
         // Capture before dispatch: _processAsync disposes the frame, and the byte budget must be
         // released exactly once when the frame leaves the queue.
@@ -320,7 +321,7 @@ internal sealed class RpcPeerInboundRequestQueue
             ReleaseBytes(bytes);
             try
             {
-                _slots.Release();
+                slots.Release();
             }
             catch (ObjectDisposedException)
             {

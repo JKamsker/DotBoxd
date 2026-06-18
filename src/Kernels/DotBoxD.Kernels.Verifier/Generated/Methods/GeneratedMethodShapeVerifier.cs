@@ -10,13 +10,14 @@ internal static class GeneratedMethodShapeVerifier
         MetadataReader reader,
         MethodDefinition method,
         MethodBodyBlock body,
+        MethodSignature<string> signature,
         IReadOnlyList<GeneratedInstruction> instructions,
         string methodName,
         List<VerificationDiagnostic> diagnostics)
     {
         var analysis = GeneratedMethodFlowAnalyzer.Analyze(instructions, StateFor);
-        GeneratedStackVerifier.Verify(reader, method, analysis, diagnostics);
-        GeneratedStackTypeVerifier.Verify(reader, method, body, analysis, diagnostics);
+        GeneratedStackVerifier.Verify(signature, analysis, diagnostics);
+        GeneratedStackTypeVerifier.Verify(reader, method, body, signature, analysis, diagnostics);
         if (methodName == "Execute")
         {
             GeneratedExecuteShapeVerifier.Verify(analysis, diagnostics);

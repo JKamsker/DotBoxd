@@ -15,9 +15,52 @@ internal static class RpcRawFrame
 
     public static Payload Finish(PooledBufferWriter writer)
     {
+        Complete(writer);
         var frame = writer.DetachPayload();
-        BinaryPrimitives.WriteInt32LittleEndian(frame.Memory.Span.Slice(0, 4), frame.Length);
         return frame;
+    }
+
+    public static void Complete(PooledBufferWriter writer) =>
+        BinaryPrimitives.WriteInt32LittleEndian(writer.WrittenSpan.Slice(0, 4), writer.WrittenCount);
+
+    public static PooledBufferWriter RentFrame(int messageId, MessageType type, ReadOnlySpan<byte> payload)
+    {
+        var writer = PooledBufferWriter.Rent(MessageFramer.HeaderSize + payload.Length);
+        try
+        {
+            WritePrefix(writer, messageId, type);
+            if (payload.Length > 0)
+            {
+                var span = writer.GetSpan(payload.Length);
+                payload.CopyTo(span);
+                writer.Advance(payload.Length);
+            }
+            Complete(writer);
+            return writer;
+        }
+        catch
+        {
+            writer.Dispose();
+            throw;
+        }
+    }
+
+    public static PooledBufferWriter RentInt32Frame(int messageId, MessageType type, int value)
+    {
+        var writer = PooledBufferWriter.Rent(MessageFramer.HeaderSize + sizeof(int));
+        try
+        {
+            WritePrefix(writer, messageId, type);
+            BinaryPrimitives.WriteInt32LittleEndian(writer.GetSpan(sizeof(int)), value);
+            writer.Advance(sizeof(int));
+            Complete(writer);
+            return writer;
+        }
+        catch
+        {
+            writer.Dispose();
+            throw;
+        }
     }
 
     public static Payload FrameInt32(int messageId, MessageType type, int value)

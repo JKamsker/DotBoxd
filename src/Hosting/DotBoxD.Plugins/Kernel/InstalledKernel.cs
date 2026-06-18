@@ -26,6 +26,8 @@ public sealed partial class InstalledKernel
     private readonly CancellationTokenSource _revocation = new();
     private readonly object? _ownerId;
     private readonly SandboxExecutionOptions _executionOptions;
+    private readonly SandboxFunction? _rpcEntrypointFunction;
+    private readonly int _rpcCallerArgumentCount;
     private int _revoked;
 
     internal InstalledKernel(
@@ -45,6 +47,10 @@ public sealed partial class InstalledKernel
         _entrypoints = package.Entrypoints;
         _liveStateSync = new LiveStateSyncRegistry(GetUpdateMode);
         _executionOptions = new SandboxExecutionOptions { Mode = executionMode, SuppressSuccessfulRunSummaryAudit = true };
+        _rpcEntrypointFunction = FindRpcEntrypoint(package);
+        _rpcCallerArgumentCount = _rpcEntrypointFunction is null
+            ? 0
+            : _rpcEntrypointFunction.Parameters.Count - Manifest.LiveSettings.Count;
     }
 
     public PluginPackage Package { get; }

@@ -59,7 +59,7 @@ public sealed class ServerExtensionClientExtensionTests
         }
         """;
 
-    private const string DirectSyncExtensionSource = """
+    internal const string DirectSyncExtensionSource = """
         using System.Collections.Generic;
         using DotBoxD.Kernels;
         using DotBoxD.Kernels.Sandbox;

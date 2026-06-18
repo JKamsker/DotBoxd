@@ -156,15 +156,15 @@ internal static class InvokeAsyncModelFactory
             return null;
         }
 
-        var reader = new InvokeAsyncResultReaderSource();
+        var reader = new InvokeAsyncResultReaderSource("ReadInvokeAsyncResult_" + packageName + "_");
         var resultExpression = reader.ReadExpression(
             shape.ReturnType,
-            shape.SyncOuts.Count == 0 ? "__result" : "__fields[0]");
+            shape.SyncOuts.Count == 0 ? "__result" : "__result.GetItem(0)");
         var syncOutAssignments = new string[shape.SyncOuts.Count];
         for (var i = 0; i < shape.SyncOuts.Count; i++)
         {
             var syncOut = shape.SyncOuts[i];
-            var value = reader.ReadExpression(syncOut.Type, "__fields[" + (i + 1) + "]");
+            var value = reader.ReadExpression(syncOut.Type, "__result.GetItem(" + (i + 1) + ")");
             syncOutAssignments[i] = shape.UsesReflectionCaptures
                 ? "__WriteCapture(lambda, " + Str(syncOut.TargetName) + ", " + value + ")"
                 : "captures." + syncOut.TargetName + " = " + value;

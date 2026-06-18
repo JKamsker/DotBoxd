@@ -87,4 +87,27 @@ public class StreamConnectionTests
 
         await Assert.ThrowsAsync<InvalidDataException>(() => connection.SendAsync(bytes));
     }
+
+    [Fact]
+    public async Task FrameChannel_SendsPooledWriterAndReceivesRpcFrame()
+    {
+        var output = new MemoryStream();
+        await using var sender = new StreamConnection(output, ownsStream: false);
+        var sendChannel = Assert.IsAssignableFrom<IRpcFrameChannel>(sender);
+        var frame = new PooledBufferWriter();
+        MessageFramer.WriteFrame(frame, 7, MessageType.Request, ReadOnlySpan<byte>.Empty);
+
+        await sendChannel.SendFrameValueAsync(frame);
+
+        Assert.Throws<ObjectDisposedException>(() => _ = frame.WrittenMemory);
+        await using var receiver = new StreamConnection(
+            new MemoryStream(output.ToArray()),
+            ownsStream: false);
+        var receiveChannel = Assert.IsAssignableFrom<IRpcFrameChannel>(receiver);
+        using var received = await receiveChannel.ReceiveFrameValueAsync();
+
+        Assert.True(MessageFramer.TryReadFrameHeader(received.Memory, out var messageId, out var type));
+        Assert.Equal(7, messageId);
+        Assert.Equal(MessageType.Request, type);
+    }
 }

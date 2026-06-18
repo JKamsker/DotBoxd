@@ -11,6 +11,8 @@ namespace DotBoxD.Hosting.Execution;
 
 public sealed partial class SandboxHost : IDisposable
 {
+    private static readonly SandboxExecutionOptions DefaultExecutionOptions = new();
+
     private readonly BindingRegistry _bindings;
     private readonly ISandboxInterpreter _interpreter;
     private readonly CompiledExecutionProvider _compiled;
@@ -98,7 +100,7 @@ public sealed partial class SandboxHost : IDisposable
         CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
-        options ??= new SandboxExecutionOptions();
+        options ??= DefaultExecutionOptions;
         ExecutionPlanGuard.EnsurePrepared(plan, _bindings, _planSigningKey, _preparedPlans);
         if (!Enum.IsDefined(options.Mode))
         {

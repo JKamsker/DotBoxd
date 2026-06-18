@@ -372,11 +372,8 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         var requestSent = false;
         try
         {
-            using (frame)
-            {
-                await _sendAsync(frame.WrittenMemory, ct).ConfigureAwait(false);
-                requestSent = true;
-            }
+            await SendOwnedFrameAsync(frame, ct).ConfigureAwait(false);
+            requestSent = true;
             outboundStreams.Start();
 
             ReceivedResponse received;

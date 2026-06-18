@@ -20,6 +20,6 @@ namespace DotBoxD.Services.Generated
         /// Gets a proxy to call IRefOutSnap on the other peer.
         /// </summary>
         public static global::Snap.RefOut.IRefOutSnap GetRefOutSnap(this global::DotBoxD.Services.Peer.RpcPeer peer)
-            => new global::Snap.RefOut.RefOutSnapProxy(peer);
+            => peer.Get<global::Snap.RefOut.IRefOutSnap>();
     }
 }

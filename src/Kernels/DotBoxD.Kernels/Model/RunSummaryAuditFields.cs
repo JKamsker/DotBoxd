@@ -64,7 +64,7 @@ public static class RunSummaryAuditFields
         }
     }
 
-    private static string SafePolicyId(string? policyId)
+    internal static string SafePolicyId(string? policyId)
     {
         if (string.IsNullOrWhiteSpace(policyId))
         {

@@ -58,9 +58,9 @@ internal static class GeneratedMethodMeterAnalyzer
 
         var instruction = analysis.Instructions[instructionIndex];
         var previous = analysis.Instructions[instructionIndex - 1];
-        analysis.PredecessorsByOffset.TryGetValue(instruction.Offset, out var predecessors);
-        return predecessors is { Count: 1 } &&
-               predecessors[0].Offset == previous.Offset &&
+        analysis.PredecessorsByOffset.TryGetValue(instruction.Offset, out var predecessor);
+        return predecessor is { Count: 1 } &&
+               predecessor.Offset == previous.Offset &&
                previous.Int32Value is > 0 &&
                analysis.EntryStates.ContainsKey(previous.Offset);
     }

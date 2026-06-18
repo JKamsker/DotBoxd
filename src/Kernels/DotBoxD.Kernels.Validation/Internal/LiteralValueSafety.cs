@@ -12,6 +12,11 @@ internal static class LiteralValueSafety
 
     public static bool Validate(SandboxValue value)
     {
+        if (value is not (ListValue or MapValue or RecordValue))
+        {
+            return ValidateScalar(value);
+        }
+
         var allocates = false;
         foreach (var current in Flatten(value))
         {
@@ -23,24 +28,34 @@ internal static class LiteralValueSafety
 
     public static bool ContainsDangerousReference(SandboxValue value)
     {
+        if (value is not (ListValue or MapValue or RecordValue))
+        {
+            return ContainsDangerousScalarReference(value);
+        }
+
         foreach (var current in Flatten(value))
         {
-            var text = current switch
-            {
-                StringValue item => item.Value,
-                OpaqueIdValue item => item.Value,
-                SandboxPathValue item => item.Value.RelativePath,
-                SandboxUriValue item => item.Value.Value,
-                _ => null
-            };
-
-            if (text is not null && DangerousReferenceDetector.IsDangerousReference(text))
+            if (ContainsDangerousScalarReference(current))
             {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private static bool ContainsDangerousScalarReference(SandboxValue value)
+    {
+        var text = value switch
+        {
+            StringValue item => item.Value,
+            OpaqueIdValue item => item.Value,
+            SandboxPathValue item => item.Value.RelativePath,
+            SandboxUriValue item => item.Value.Value,
+            _ => null
+        };
+
+        return text is not null && DangerousReferenceDetector.IsDangerousReference(text);
     }
 
     private static bool ValidateScalar(SandboxValue value)

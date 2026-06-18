@@ -61,9 +61,9 @@ public sealed partial class InstalledKernel
 
     private SandboxValue BuildRpcInputCore(string entrypoint, IReadOnlyList<SandboxValue> arguments)
     {
-        var function = FindRpcEntrypoint(entrypoint);
+        var function = _rpcEntrypointFunction ?? throw RpcEntrypointNotFound(entrypoint);
         var liveSettings = Manifest.LiveSettings;
-        var callerCount = function.Parameters.Count - liveSettings.Count;
+        var callerCount = _rpcCallerArgumentCount;
         if (callerCount < 0)
         {
             throw new SandboxRuntimeException(new SandboxError(
@@ -98,12 +98,17 @@ public sealed partial class InstalledKernel
             Value.CopySandboxValues(liveSettings, values, callerCount);
         }
 
-        return SandboxValue.FromList(values, values[0].Type);
+        return SandboxValue.FromOwnedList(values, values[0].Type);
     }
 
-    private SandboxFunction FindRpcEntrypoint(string entrypoint)
+    private static SandboxFunction? FindRpcEntrypoint(PluginPackage package)
     {
-        foreach (var function in Package.Module.Functions)
+        if (package.Manifest.RpcEntrypoint is not { } entrypoint)
+        {
+            return null;
+        }
+
+        foreach (var function in package.Module.Functions)
         {
             if (function.IsEntrypoint && string.Equals(function.Id, entrypoint, StringComparison.Ordinal))
             {
@@ -111,7 +116,11 @@ public sealed partial class InstalledKernel
             }
         }
 
-        throw new SandboxRuntimeException(new SandboxError(
-            SandboxErrorCode.ValidationError, $"server extension entrypoint '{entrypoint}' was not found"));
+        return null;
     }
+
+    private static SandboxRuntimeException RpcEntrypointNotFound(string entrypoint)
+        => new(new SandboxError(
+            SandboxErrorCode.ValidationError,
+            $"server extension entrypoint '{entrypoint}' was not found"));
 }

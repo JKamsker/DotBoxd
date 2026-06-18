@@ -92,6 +92,24 @@ internal static class DotBoxDRpcTypeMapper
         return null;
     }
 
+    public static bool SupportsIndexedListWrite(ITypeSymbol type)
+    {
+        if (type is IArrayTypeSymbol)
+        {
+            return true;
+        }
+
+        if (type is not INamedTypeSymbol { IsGenericType: true } named)
+        {
+            return false;
+        }
+
+        var definition = named.ConstructedFrom.ToDisplayString();
+        return definition is TypeNames.ListOriginal
+            or TypeNames.ReadOnlyListOriginal
+            or TypeNames.ListInterfaceOriginal;
+    }
+
     public static bool IsRecordDto(INamedTypeSymbol type)
         => type.TypeKind is TypeKind.Class or TypeKind.Struct &&
            !IsScalar(type) &&

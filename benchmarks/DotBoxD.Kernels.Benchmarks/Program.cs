@@ -47,8 +47,123 @@ if (args.Contains("--probe-resource-meter", StringComparer.OrdinalIgnoreCase)) {
     return;
 }
 
+if (args.Contains("--probe-http-metadata", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Http.HttpMetadataAccountingProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-value-shape-cache", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.ValueShapeCacheProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-validated-value-type", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Validation.ValidatedValueTypeProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-compiled-binding-fast-path", StringComparer.OrdinalIgnoreCase)) {
     DotBoxD.Kernels.Benchmarks.Runtime.CompiledBindingFastPathProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-compiled-binding-structural-validation", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.CompiledBindingStructuralValidationProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-i32-math-intrinsic", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.I32MathIntrinsicProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-f64-math-intrinsic", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.F64MathIntrinsicProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-raw-unary-negation", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.RawUnaryNegationProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-numeric-conversion", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.NumericConversionProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-binding-return-credit", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.BindingReturnCreditProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-binding-registry", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Core.BindingRegistryProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-map-remove", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Core.MapRemoveProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-list-add-type-match", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Core.ListAddTypeMatchProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-host-call-accounting", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.HostCallAccountingProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-binding-dispatch-scope", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.BindingDispatchScopeProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-compiled-binding-arity", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.CompiledBindingArityProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-capability-grant-lookup", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.CapabilityGrantLookupProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-server-extension-proxy-lookup", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.ServerExtensionProxyLookupProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-installed-rpc-input", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.InstalledRpcInputProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-kernel-rpc-value-items", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.KernelRpcValueItemsProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-kernel-rpc-value-list-writer", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.KernelRpcValueListWriterProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-literal-scalar-safety", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Validation.LiteralScalarSafetyProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-sandbox-type-validation", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Validation.SandboxTypeValidationProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-verifier-opcode-branches", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Verifier.GeneratedVerifierOpcodeProbe.Run();
     return;
 }
 

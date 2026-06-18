@@ -30,8 +30,7 @@ internal sealed partial class SandboxWorkerExecutor(ConfiguredSandboxWorker? wor
             Isolation = SandboxIsolation.InProcess,
             SuppressSuccessfulRunSummaryAudit = false
         };
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(plan.Budget.EffectiveWallTime);
+        using var timeout = CreateWorkerTimeoutSource(cancellationToken, plan.Budget.EffectiveWallTime);
         try
         {
             var result = await worker.Client.ExecuteInWorkerAsync(
@@ -87,4 +86,15 @@ internal sealed partial class SandboxWorkerExecutor(ConfiguredSandboxWorker? wor
         => callerToken.IsCancellationRequested
             ? new SandboxError(SandboxErrorCode.Cancelled, "worker process execution was cancelled")
             : new SandboxError(SandboxErrorCode.Timeout, "worker process execution timed out");
+
+    private static CancellationTokenSource CreateWorkerTimeoutSource(
+        CancellationToken callerToken,
+        TimeSpan wallTime)
+    {
+        var timeout = callerToken.CanBeCanceled
+            ? CancellationTokenSource.CreateLinkedTokenSource(callerToken)
+            : new CancellationTokenSource();
+        timeout.CancelAfter(wallTime);
+        return timeout;
+    }
 }

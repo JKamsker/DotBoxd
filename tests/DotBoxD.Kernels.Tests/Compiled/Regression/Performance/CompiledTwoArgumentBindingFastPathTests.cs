@@ -75,6 +75,62 @@ public sealed class CompiledTwoArgumentBindingFastPathTests
         Assert.Equal(created.Budget.AllocatedBytes, charged.Budget.AllocatedBytes);
     }
 
+    [Fact]
+    public void Create_literal_value_array_zero_reuses_empty_array()
+    {
+        var first = Kernels.Runtime.CompiledRuntime.CreateLiteralValueArray(0);
+        var second = Kernels.Runtime.CompiledRuntime.CreateLiteralValueArray(0);
+
+        Assert.Empty(first);
+        Assert.Same(first, second);
+    }
+
+    [Fact]
+    public void Compiled_binding_validation_accepts_structural_arguments()
+    {
+        var invoked = false;
+        var binding = StructuralBinding(
+            "test.structural",
+            [
+                SandboxType.List(SandboxType.I32),
+                SandboxType.Record([SandboxType.Map(SandboxType.String, SandboxType.I32)])
+            ],
+            () => invoked = true);
+        var context = Context(binding);
+        var list = SandboxValue.FromList([SandboxValue.FromInt32(1)], SandboxType.I32);
+        var map = SandboxValue.FromMap(
+            new Dictionary<SandboxValue, SandboxValue>
+            {
+                [SandboxValue.FromString("one")] = SandboxValue.FromInt32(1)
+            },
+            SandboxType.String,
+            SandboxType.I32);
+        var record = SandboxValue.FromRecord([map]);
+
+        var result = Kernels.Runtime.CompiledRuntime.CallBinding2(context, binding.Id, list, record);
+
+        Assert.Same(SandboxValue.Unit, result);
+        Assert.True(invoked);
+    }
+
+    [Fact]
+    public void Compiled_binding_validation_rejects_structural_mismatch_before_host_invoke()
+    {
+        var invoked = false;
+        var binding = StructuralBinding(
+            "test.list64",
+            [SandboxType.List(SandboxType.I64)],
+            () => invoked = true);
+        var context = Context(binding);
+        var wrong = SandboxValue.FromList([SandboxValue.FromInt32(1)], SandboxType.I32);
+
+        var error = Assert.Throws<SandboxRuntimeException>(
+            () => Kernels.Runtime.CompiledRuntime.CallBinding(context, binding.Id, [wrong]));
+
+        Assert.Equal(SandboxErrorCode.ValidationError, error.Error.Code);
+        Assert.False(invoked);
+    }
+
     private const string AddModuleJson = """
     {
       "id": "compiled-two-arg-binding-fast-path",
@@ -96,17 +152,38 @@ public sealed class CompiledTwoArgumentBindingFastPathTests
     }
     """;
 
-    private static SandboxContext Context()
+    private static SandboxContext Context(params BindingDescriptor[] bindings)
     {
         var limits = new ResourceLimits(MaxFuel: 1_000_000, MaxAllocatedBytes: 1_000_000);
         return new SandboxContext(
             SandboxRunId.New(),
             SandboxPolicyBuilder.Create().Build() with { ResourceLimits = limits },
             new ResourceMeter(limits),
-            new BindingRegistryBuilder().Build(),
+            new BindingRegistryBuilder().AddRange(bindings).Build(),
             new InMemoryAuditSink(),
             CancellationToken.None);
     }
+
+    private static BindingDescriptor StructuralBinding(
+        string id,
+        IReadOnlyList<SandboxType> parameters,
+        Action invoked)
+        => new(
+            id,
+            SemVersion.One,
+            parameters,
+            SandboxType.Unit,
+            SandboxEffect.Cpu,
+            null,
+            BindingCostModel.Fixed(1),
+            AuditLevel.None,
+            BindingSafety.PureHostFacade,
+            (_, _, _) =>
+            {
+                invoked();
+                return ValueTask.FromResult(SandboxValue.Unit);
+            },
+            CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(Kernels.Runtime.CompiledRuntime.CallBinding)));
 
     private sealed class FastAddBinding : ITwoArgumentBindingInvoker
     {

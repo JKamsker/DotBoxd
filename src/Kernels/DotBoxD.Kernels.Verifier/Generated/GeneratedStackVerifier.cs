@@ -6,13 +6,13 @@ namespace DotBoxD.Kernels.Verifier.Generated;
 internal static class GeneratedStackVerifier
 {
     public static void Verify(
-        MetadataReader reader,
-        MethodDefinition method,
+        MethodSignature<string> methodSignature,
         GeneratedMethodFlow analysis,
         List<VerificationDiagnostic> diagnostics)
     {
-        var returnCount = ReturnCount(reader, method);
+        var returnCount = methodSignature.ReturnType == "System.Void" ? 0 : 1;
         var callDeltas = new Dictionary<string, int>(StringComparer.Ordinal);
+        var callSignatures = new ParsedCallSignatureCache();
         var depths = new Dictionary<int, int>();
         var queue = new Queue<int>();
         if (analysis.Instructions.Count == 0)
@@ -26,11 +26,8 @@ internal static class GeneratedStackVerifier
         {
             var offset = queue.Dequeue();
             var instruction = analysis.ByOffset[offset];
-            var outputDepth = OutputDepth(instruction, depths[offset], returnCount, callDeltas, diagnostics);
-            foreach (var successor in GeneratedMethodFlowAnalyzer.Successors(
-                         analysis.Instructions,
-                         analysis.ByOffset,
-                         instruction))
+            var outputDepth = OutputDepth(instruction, depths[offset], returnCount, callDeltas, callSignatures, diagnostics);
+            foreach (var successor in analysis.SuccessorsByOffset[instruction.Offset])
             {
                 TrackSuccessorDepth(successor, outputDepth, analysis.ByOffset, depths, queue, diagnostics);
             }
@@ -42,6 +39,7 @@ internal static class GeneratedStackVerifier
         int inputDepth,
         int returnCount,
         Dictionary<string, int> callDeltas,
+        ParsedCallSignatureCache callSignatures,
         List<VerificationDiagnostic> diagnostics)
     {
         if (instruction.Opcode == ILOpCode.Ret && inputDepth != returnCount)
@@ -49,7 +47,7 @@ internal static class GeneratedStackVerifier
             diagnostics.Add(new VerificationDiagnostic("V-STACK", "return stack height does not match method signature"));
         }
 
-        var outputDepth = inputDepth + StackDelta(instruction, callDeltas);
+        var outputDepth = inputDepth + StackDelta(instruction, callDeltas, callSignatures);
         if (outputDepth < 0)
         {
             diagnostics.Add(new VerificationDiagnostic("V-STACK", "method body has an operand stack underflow"));
@@ -85,7 +83,10 @@ internal static class GeneratedStackVerifier
         }
     }
 
-    private static int StackDelta(GeneratedInstruction instruction, Dictionary<string, int> callDeltas)
+    private static int StackDelta(
+        GeneratedInstruction instruction,
+        Dictionary<string, int> callDeltas,
+        ParsedCallSignatureCache callSignatures)
         => instruction.Opcode switch
         {
             ILOpCode.Ldarg or ILOpCode.Ldarg_s or ILOpCode.Ldarg_0 or ILOpCode.Ldarg_1 or ILOpCode.Ldarg_2
@@ -105,13 +106,17 @@ internal static class GeneratedStackVerifier
             ILOpCode.Beq or ILOpCode.Beq_s or ILOpCode.Bne_un or ILOpCode.Bne_un_s
                 or ILOpCode.Blt or ILOpCode.Blt_s or ILOpCode.Bgt or ILOpCode.Bgt_s
                 or ILOpCode.Ble or ILOpCode.Ble_s or ILOpCode.Bge or ILOpCode.Bge_s => -2,
+            ILOpCode.Conv_i8 or ILOpCode.Conv_r8 => 0,
             ILOpCode.Dup => 1,
             ILOpCode.Stelem_ref => -3,
-            ILOpCode.Call or ILOpCode.Callvirt or ILOpCode.Newobj => CallDelta(instruction.CalledMember, callDeltas),
+            ILOpCode.Call or ILOpCode.Callvirt or ILOpCode.Newobj => CallDelta(instruction.CalledMember, callDeltas, callSignatures),
             _ => 0
         };
 
-    private static int CallDelta(string? signature, Dictionary<string, int> callDeltas)
+    private static int CallDelta(
+        string? signature,
+        Dictionary<string, int> callDeltas,
+        ParsedCallSignatureCache callSignatures)
     {
         if (signature is null)
         {
@@ -120,39 +125,11 @@ internal static class GeneratedStackVerifier
 
         if (!callDeltas.TryGetValue(signature, out var delta))
         {
-            delta = -ParameterCount(signature) + (ReturnsVoid(signature) ? 0 : 1);
+            var parsed = callSignatures.Get(signature);
+            delta = -parsed.Parameters.Count + (parsed.ReturnType == "System.Void" ? 0 : 1);
             callDeltas.Add(signature, delta);
         }
 
         return delta;
     }
-
-    private static int ParameterCount(string signature)
-    {
-        var start = signature.IndexOf('(');
-        var end = signature.LastIndexOf("):", StringComparison.Ordinal);
-        if (start < 0 || end <= start + 1)
-        {
-            return 0;
-        }
-
-        var count = 1;
-        for (var i = start + 1; i < end; i++)
-        {
-            if (signature[i] == ',')
-            {
-                count++;
-            }
-        }
-
-        return count;
-    }
-
-    private static bool ReturnsVoid(string signature)
-        => signature.EndsWith(":System.Void", StringComparison.Ordinal);
-
-    private static int ReturnCount(MetadataReader reader, MethodDefinition method)
-        => method.DecodeSignature(MethodSignatureNameProvider.Instance, genericContext: null).ReturnType == "System.Void"
-            ? 0
-            : 1;
 }

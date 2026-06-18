@@ -8,10 +8,10 @@ using DotBoxD.Kernels;
 
 internal sealed class FunctionScope
 {
-    private readonly Dictionary<string, SandboxType> _locals;
+    private Dictionary<string, SandboxType>? _locals;
     private readonly FunctionScope? _parent;
 
-    private FunctionScope(Dictionary<string, SandboxType> locals, FunctionScope? parent)
+    private FunctionScope(Dictionary<string, SandboxType>? locals, FunctionScope? parent)
     {
         _locals = locals;
         _parent = parent;
@@ -19,6 +19,11 @@ internal sealed class FunctionScope
 
     public static FunctionScope FromParameters(IReadOnlyList<Parameter> parameters)
     {
+        if (parameters.Count == 0)
+        {
+            return new FunctionScope(locals: null, parent: null);
+        }
+
         var locals = new Dictionary<string, SandboxType>(parameters.Count, StringComparer.Ordinal);
         for (var i = 0; i < parameters.Count; i++)
         {
@@ -32,7 +37,7 @@ internal sealed class FunctionScope
     // Copy-on-write child scope: writes land in this overlay only and lookups fall
     // back to the parent chain, so a block stores just the locals it introduces or
     // changes instead of copying every visible local.
-    public FunctionScope Clone() => new(new Dictionary<string, SandboxType>(StringComparer.Ordinal), parent: this);
+    public FunctionScope Clone() => new(locals: null, parent: this);
 
     public SandboxType Get(string name, List<SandboxDiagnostic> diagnostics, SourceSpan span)
     {
@@ -53,14 +58,14 @@ internal sealed class FunctionScope
             return;
         }
 
-        _locals[name] = type;
+        (_locals ??= new Dictionary<string, SandboxType>(StringComparer.Ordinal))[name] = type;
     }
 
     private bool TryResolve(string name, [MaybeNullWhen(false)] out SandboxType type)
     {
         for (var scope = this; scope is not null; scope = scope._parent)
         {
-            if (scope._locals.TryGetValue(name, out type))
+            if (scope._locals is not null && scope._locals.TryGetValue(name, out type))
             {
                 return true;
             }

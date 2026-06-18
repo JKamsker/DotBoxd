@@ -20,6 +20,6 @@ namespace DotBoxD.Services.Generated
         /// Gets a proxy to call ICalculator on the other peer.
         /// </summary>
         public static global::Snap.One.ICalculator GetCalculator(this global::DotBoxD.Services.Peer.RpcPeer peer)
-            => new global::Snap.One.CalculatorProxy(peer);
+            => peer.Get<global::Snap.One.ICalculator>();
     }
 }

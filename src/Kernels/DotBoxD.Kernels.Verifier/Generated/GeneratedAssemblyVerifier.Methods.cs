@@ -54,14 +54,17 @@ public sealed partial class GeneratedAssemblyVerifier
         MetadataReader reader,
         VerificationPolicy policy,
         TypeDefinition type,
-        List<VerificationDiagnostic> diagnostics)
+        List<VerificationDiagnostic> diagnostics,
+        MemberSignatureCache memberSignatures,
+        MethodDefinitionSignatureCache methodSignatures)
     {
         var executeMethods = 0;
         foreach (var methodHandle in type.GetMethods())
         {
             var method = reader.GetMethodDefinition(methodHandle);
             var name = reader.GetString(method.Name);
-            VerifyMethodSurface(reader, method, name, diagnostics);
+            var signature = methodSignatures.Get(methodHandle, method);
+            VerifyMethodSurface(method, name, signature, diagnostics);
             GenericParameterVerifier.VerifyMethod(reader, method, name, diagnostics);
             VerifyMethodImplementation(method, name, diagnostics);
             if (name == "Execute" && (method.Attributes & MethodAttributes.Public) != 0)
@@ -87,9 +90,9 @@ public sealed partial class GeneratedAssemblyVerifier
             if (method.RelativeVirtualAddress != 0)
             {
                 var body = peReader.GetMethodBody(method.RelativeVirtualAddress);
-                var instructions = GeneratedIlReader.ReadInstructions(reader, body, diagnostics);
+                var instructions = GeneratedIlReader.ReadInstructions(reader, body, diagnostics, memberSignatures);
                 OpCodeVerifier.VerifyBody(reader, policy, body, instructions, diagnostics);
-                GeneratedMethodShapeVerifier.VerifyBody(reader, method, body, instructions, name, diagnostics);
+                GeneratedMethodShapeVerifier.VerifyBody(reader, method, body, signature, instructions, name, diagnostics);
             }
         }
 
@@ -102,9 +105,9 @@ public sealed partial class GeneratedAssemblyVerifier
     }
 
     private static void VerifyMethodSurface(
-        MetadataReader reader,
         MethodDefinition method,
         string name,
+        MethodSignature<string> signature,
         List<VerificationDiagnostic> diagnostics)
     {
         if (!GeneratedNameVerifier.IsAllowedMethodName(name))
@@ -132,7 +135,7 @@ public sealed partial class GeneratedAssemblyVerifier
                     "Execute must be public and static"));
             }
 
-            VerifyExecuteSignature(reader, method, diagnostics);
+            VerifyExecuteSignature(signature, diagnostics);
             return;
         }
 
@@ -150,16 +153,14 @@ public sealed partial class GeneratedAssemblyVerifier
 
         if (name.StartsWith("Fn_", StringComparison.Ordinal))
         {
-            VerifyFunctionSignature(reader, method, name, diagnostics);
+            VerifyFunctionSignature(signature, name, diagnostics);
         }
     }
 
     private static void VerifyExecuteSignature(
-        MetadataReader reader,
-        MethodDefinition method,
+        MethodSignature<string> signature,
         List<VerificationDiagnostic> diagnostics)
     {
-        var signature = method.DecodeSignature(MethodSignatureNameProvider.Instance, genericContext: null);
         if (signature.ReturnType != SandboxValueName ||
             signature.ParameterTypes.Length != 2 ||
             signature.ParameterTypes[0] != SandboxContextName ||
@@ -172,12 +173,10 @@ public sealed partial class GeneratedAssemblyVerifier
     }
 
     private static void VerifyFunctionSignature(
-        MetadataReader reader,
-        MethodDefinition method,
+        MethodSignature<string> signature,
         string name,
         List<VerificationDiagnostic> diagnostics)
     {
-        var signature = method.DecodeSignature(MethodSignatureNameProvider.Instance, genericContext: null);
         if (signature.ReturnType != SandboxValueName ||
             signature.ParameterTypes.Length == 0 ||
             signature.ParameterTypes[0] != SandboxContextName ||

@@ -7,11 +7,23 @@ internal sealed record GeneratedMethodFlow(
     IReadOnlyDictionary<int, GeneratedInstruction> ByOffset,
     IReadOnlyDictionary<int, int> IndexByOffset,
     IReadOnlyDictionary<int, SuccessorSet> SuccessorsByOffset,
-    IReadOnlyDictionary<int, IReadOnlyList<GeneratedInstruction>> PredecessorsByOffset,
+    IReadOnlyDictionary<int, PredecessorSummary> PredecessorsByOffset,
     HashSet<string> ReachableCalls,
     IReadOnlyDictionary<int, GeneratedMeterState> EntryStates,
     IReadOnlyList<GeneratedMeterState> ReturnStates,
     bool HasUnmeteredCycle);
+
+internal readonly record struct PredecessorSummary(int Count, int Offset)
+{
+    public PredecessorSummary Add(GeneratedInstruction predecessor)
+        => Count == 0 ? new PredecessorSummary(1, predecessor.Offset) : this with { Count = Count + 1 };
+}
+
+internal enum VisitColor
+{
+    Visiting,
+    Visited
+}
 
 internal sealed record GeneratedInstruction(
     int Offset,

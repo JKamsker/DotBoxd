@@ -212,7 +212,7 @@ internal static class StructuralValidator
             diagnostics.Add(new SandboxDiagnostic("E-TYPE-MAP-KEY", $"map key type '{type.Arguments[0]}' is not supported"));
         }
 
-        if (!type.IsKnown(declaredOpaqueIdTypes) || type.IsForbidden())
+        if (!type.IsKnown(declaredOpaqueIdTypes))
         {
             diagnostics.Add(new SandboxDiagnostic("E-TYPE-UNKNOWN", $"unknown or forbidden type '{type}'"));
         }

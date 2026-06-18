@@ -5,7 +5,7 @@ namespace DotBoxD.Kernels.Model;
 
 public sealed partial class ResourceMeter
 {
-    private const int MaxUnchargedShapeScanValues = 62;
+    private const int MaxUnchargedShapeScanValues = 61;
 
     private bool TryChargeFlatScalarValue(SandboxValue value, CancellationToken cancellationToken)
     {

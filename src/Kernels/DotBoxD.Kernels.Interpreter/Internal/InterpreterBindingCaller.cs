@@ -16,7 +16,7 @@ using DotBoxD.Kernels;
 internal static class InterpreterBindingCaller
 {
     /// <summary>
-    /// Invokes the host binding identified by <paramref name="id"/>. The
+    /// Invokes the host binding identified by <paramref name="descriptor"/>. The
     /// <paramref name="args"/> sequence is caller-owned and may be retained by the host
     /// binding, so it must be a stable, dedicated sequence (never a pooled or reused buffer).
     /// </summary>
@@ -24,11 +24,10 @@ internal static class InterpreterBindingCaller
         SandboxContext context,
         SandboxExecutionOptions options,
         string moduleHash,
-        string id,
+        BindingDescriptor descriptor,
         IReadOnlyList<SandboxValue> args,
         string functionId)
     {
-        var descriptor = context.Bindings.GetDescriptor(id);
         InterpreterTrace.WriteBindingCall(context, options, moduleHash, functionId, descriptor);
         var auditCheckpoint = context.AuditCheckpoint();
         using var grantClock = context.BeginBindingGrantClockScope(context.Policy.GrantClock);
@@ -47,7 +46,7 @@ internal static class InterpreterBindingCaller
         try
         {
             timeout = context.CreateWallTimeToken();
-            using var returnCredits = context.BeginBindingReturnCreditScope();
+            using var returnCredits = context.BeginBindingReturnCreditScope(descriptor.ReturnType);
             var pending = descriptor.Invoke(context, args, timeout.Token);
             var value = pending.IsCompleted
                 ? pending.GetAwaiter().GetResult()
@@ -69,19 +68,19 @@ internal static class InterpreterBindingCaller
         }
         catch (OperationCanceledException) when (timeout?.IsCancellationRequested == true)
         {
-            var error = new SandboxError(SandboxErrorCode.Timeout, $"binding '{id}' timed out");
+            var error = new SandboxError(SandboxErrorCode.Timeout, $"binding '{descriptor.Id}' timed out");
             context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, error.Code);
             throw new SandboxRuntimeException(error);
         }
         catch (OperationCanceledException)
         {
-            var error = new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{id}' failed");
+            var error = new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{descriptor.Id}' failed");
             context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, error.Code);
             throw new SandboxRuntimeException(error);
         }
         catch (Exception)
         {
-            var error = new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{id}' failed");
+            var error = new SandboxError(SandboxErrorCode.BindingFailure, $"binding '{descriptor.Id}' failed");
             context.EnsureRequiredBindingFailureAudit(descriptor, auditCheckpoint, error.Code);
             throw new SandboxRuntimeException(error);
         }

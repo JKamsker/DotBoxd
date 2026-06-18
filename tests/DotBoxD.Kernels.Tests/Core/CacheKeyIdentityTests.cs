@@ -117,6 +117,23 @@ public sealed class CacheKeyIdentityTests
         Assert.False(policy.AllowedMembers is HashSet<string>);
     }
 
+    [Fact]
+    public void Verification_policy_with_expression_invalidates_cached_hashes()
+    {
+        var policy = VerificationPolicy.BoxedValueDefaults();
+        var allowlistHash = policy.AllowlistHash;
+        var runtimeFacadeHash = policy.RuntimeFacadeHash;
+        var changedPolicy = policy with
+        {
+            AllowedMembers = policy.AllowedMembers
+                .Append("DotBoxD.Kernels.Runtime.CompiledRuntime.TestOnly(DotBoxD.Kernels.Sandbox.SandboxContext):System.Void")
+                .ToHashSet(StringComparer.Ordinal)
+        };
+
+        Assert.NotEqual(allowlistHash, changedPolicy.AllowlistHash);
+        Assert.NotEqual(runtimeFacadeHash, changedPolicy.RuntimeFacadeHash);
+    }
+
     private static string HashParts(params string[] parts)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('|', parts)))).ToLowerInvariant();
 }

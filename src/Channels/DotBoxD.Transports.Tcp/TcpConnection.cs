@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Buffers.Binary;
 using System.Net;
 using System.Net.Sockets;
@@ -11,7 +10,7 @@ namespace DotBoxD.Transports.Tcp;
 /// <summary>
 /// TCP-based connection implementation.
 /// </summary>
-public sealed class TcpConnection : IRpcChannel
+public sealed class TcpConnection : IRpcFrameChannel
 {
     /// <summary>Default inter-read idle timeout applied to an in-progress frame read (30 seconds).</summary>
     public static readonly TimeSpan DefaultFrameReadIdleTimeout = TimeSpan.FromSeconds(30);
@@ -21,6 +20,8 @@ public sealed class TcpConnection : IRpcChannel
     private readonly SemaphoreSlim _sendLock = new(1, 1);
     private readonly CancellationTokenSource _disposeCts = new();
     private readonly TimeSpan _frameReadIdleTimeout;
+    private readonly FrameReadTimeoutSource? _frameReadTimeout;
+    private readonly byte[] _lengthBuffer = new byte[4];
     private int _disposed;
 
     public TcpConnection(TcpClient client) : this(client, null)
@@ -51,6 +52,7 @@ public sealed class TcpConnection : IRpcChannel
         }
 
         _frameReadIdleTimeout = timeout;
+        _frameReadTimeout = timeout == Timeout.InfiniteTimeSpan ? null : new FrameReadTimeoutSource();
         _client.NoDelay = true;
         _stream = client.GetStream();
         // Capture the endpoint once: after DisposeAsync closes the client its underlying socket is
@@ -70,7 +72,10 @@ public sealed class TcpConnection : IRpcChannel
 
     public string RemoteEndpoint { get; }
 
-    public async Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
+    public Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default) =>
+        SendValueAsync(data, ct).AsTask();
+
+    public async ValueTask SendValueAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
     {
         if (Volatile.Read(ref _disposed) != 0)
         {
@@ -101,74 +106,85 @@ public sealed class TcpConnection : IRpcChannel
         }
     }
 
-    public async Task<Payload> ReceiveAsync(CancellationToken ct = default)
+    public Task<Payload> ReceiveAsync(CancellationToken ct = default) =>
+        ReceiveValueAsync(ct).AsTask();
+
+    public async ValueTask<Payload> ReceiveValueAsync(CancellationToken ct = default)
     {
         if (Volatile.Read(ref _disposed) != 0)
         {
             throw new ObjectDisposedException(nameof(TcpConnection));
         }
 
-        // Read length prefix (4 bytes)
-        var lengthBuffer = ArrayPool<byte>.Shared.Rent(4);
+        // Read length prefix (4 bytes). Keep this per connection instead of renting
+        // a tiny ArrayPool buffer for every received frame.
+        var lengthBuffer = _lengthBuffer;
+        var bytesRead = await ReadExactAsync(lengthBuffer.AsMemory(0, 4), ct, timeFirstRead: false)
+            .ConfigureAwait(false);
+        if (bytesRead < 4)
+        {
+            return Payload.Empty; // Connection closed
+        }
+
+        var totalLength = BinaryPrimitives.ReadInt32LittleEndian(lengthBuffer.AsSpan(0, 4));
+
+        // A valid frame is at least a full header (length prefix + type + message id). Rejecting
+        // sub-header lengths (1-3) before renting also avoids the Slice(0, 4) below throwing on a
+        // too-small buffer and leaking it. Mirrors StreamConnection.ValidateIncomingLength.
+        if (totalLength < MessageFramer.HeaderSize || totalLength > MessageFramer.MaxMessageSize)
+        {
+            // A malformed length from the peer is invalid inbound DATA, not a local state error.
+            // Matches StreamConnection.ValidateIncomingLength and MessageFramer.ReadMessageAsync so
+            // the IRpcChannel contract surfaces one exception type across every transport.
+            throw new InvalidDataException($"Invalid DotBoxD frame length: {totalLength}.");
+        }
+
+        // Rent the full frame buffer and write back the length prefix we already consumed.
+        var payload = Payload.Rent(totalLength);
         try
         {
-            // The first read of the length prefix waits for the next frame and is not timed (an idle
-            // connection is legitimate); once any byte arrives, the rest of the frame is timed.
-            var bytesRead = await ReadExactAsync(lengthBuffer.AsMemory(0, 4), ct, timeFirstRead: false)
+            lengthBuffer.AsSpan(0, 4).CopyTo(payload.Memory.Span);
+
+            // The header has fully arrived, so a frame is in progress: time every body read so a
+            // peer that stalls mid-frame cannot pin this rented buffer indefinitely.
+            bytesRead = await ReadExactAsync(payload.Memory.Slice(4), ct, timeFirstRead: true)
                 .ConfigureAwait(false);
-            if (bytesRead < 4)
+            if (bytesRead < totalLength - 4)
             {
-                return Payload.Empty; // Connection closed
+                throw new InvalidDataException(
+                    $"Connection closed after {bytesRead} of {totalLength - 4} frame bytes.");
             }
+        }
+        catch
+        {
+            payload.Dispose();
+            throw;
+        }
 
-            var totalLength = BinaryPrimitives.ReadInt32LittleEndian(lengthBuffer.AsSpan(0, 4));
+        return payload;
+    }
 
-            // A valid frame is at least a full header (length prefix + type + message id). Rejecting
-            // sub-header lengths (1-3) before renting also avoids the Slice(0, 4) below throwing on a
-            // too-small buffer and leaking it. Mirrors StreamConnection.ValidateIncomingLength.
-            if (totalLength < MessageFramer.HeaderSize || totalLength > MessageFramer.MaxMessageSize)
-            {
-                // A malformed length from the peer is invalid inbound DATA, not a local state error.
-                // Matches StreamConnection.ValidateIncomingLength and MessageFramer.ReadMessageAsync so
-                // the IRpcChannel contract surfaces one exception type across every transport.
-                throw new InvalidDataException($"Invalid DotBoxD frame length: {totalLength}.");
-            }
-
-            // Rent the full frame buffer and write back the length prefix we already consumed.
-            var payload = Payload.Rent(totalLength);
-            try
-            {
-                BinaryPrimitives.WriteInt32LittleEndian(payload.Memory.Span.Slice(0, 4), totalLength);
-
-                // The header has fully arrived, so a frame is in progress: time every body read so a
-                // peer that stalls mid-frame cannot pin this rented buffer indefinitely.
-                bytesRead = await ReadExactAsync(payload.Memory.Slice(4), ct, timeFirstRead: true)
-                    .ConfigureAwait(false);
-                if (bytesRead < totalLength - 4)
-                {
-                    payload.Dispose();
-                    throw new InvalidDataException(
-                        $"Connection closed after {bytesRead} of {totalLength - 4} frame bytes.");
-                }
-            }
-            catch
-            {
-                payload.Dispose();
-                throw;
-            }
-
-            return payload;
+    public async ValueTask SendFrameValueAsync(PooledBufferWriter frame, CancellationToken ct = default)
+    {
+        try
+        {
+            await SendValueAsync(frame.WrittenMemory, ct).ConfigureAwait(false);
         }
         finally
         {
-            ArrayPool<byte>.Shared.Return(lengthBuffer);
+            frame.Dispose();
         }
+    }
+
+    public async ValueTask<RpcFrame> ReceiveFrameValueAsync(CancellationToken ct = default)
+    {
+        var payload = await ReceiveValueAsync(ct).ConfigureAwait(false);
+        return new RpcFrame(payload);
     }
 
     private async Task<int> ReadExactAsync(Memory<byte> buffer, CancellationToken ct, bool timeFirstRead)
     {
         var totalRead = 0;
-        CancellationTokenSource? timeoutCts = null;
         try
         {
             while (totalRead < buffer.Length)
@@ -176,14 +192,7 @@ public sealed class TcpConnection : IRpcChannel
                 // Apply the idle timeout once a frame is in progress: always for body reads, and for the
                 // length prefix only after its first byte has arrived (the initial wait is idle, not a stall).
                 var applyTimeout = timeFirstRead || totalRead > 0;
-                if (applyTimeout &&
-                    timeoutCts is null &&
-                    _frameReadIdleTimeout != Timeout.InfiniteTimeSpan)
-                {
-                    timeoutCts = CreateFrameReadTimeoutSource(ct);
-                }
-
-                var read = await ReadChunkAsync(buffer.Slice(totalRead), ct, timeoutCts, applyTimeout)
+                var read = await ReadChunkAsync(buffer.Slice(totalRead), ct, applyTimeout)
                     .ConfigureAwait(false);
                 if (read == 0)
                 {
@@ -194,7 +203,7 @@ public sealed class TcpConnection : IRpcChannel
         }
         finally
         {
-            timeoutCts?.Dispose();
+            _frameReadTimeout?.CancelPendingTimeout();
         }
 
         return totalRead;
@@ -203,30 +212,29 @@ public sealed class TcpConnection : IRpcChannel
     private async Task<int> ReadChunkAsync(
         Memory<byte> buffer,
         CancellationToken ct,
-        CancellationTokenSource? timeoutCts,
         bool applyTimeout)
     {
-        if (!applyTimeout || timeoutCts is null)
+        var timeout = _frameReadTimeout;
+        if (!applyTimeout || timeout is null)
         {
             return await _stream.ReadAsync(buffer, ct).ConfigureAwait(false);
         }
 
-        timeoutCts.CancelAfter(_frameReadIdleTimeout);
+        var readToken = timeout.Start(ct, _frameReadIdleTimeout);
         try
         {
-            return await _stream.ReadAsync(buffer, timeoutCts.Token).ConfigureAwait(false);
+            return await _stream.ReadAsync(buffer, readToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (timeout.IsTimeoutCancellation(ct))
         {
             throw new IOException(
                 $"Inbound frame read stalled for longer than {_frameReadIdleTimeout} with no data (possible slow-loris peer).");
         }
+        finally
+        {
+            timeout.CancelPendingTimeout();
+        }
     }
-
-    private static CancellationTokenSource CreateFrameReadTimeoutSource(CancellationToken ct) =>
-        ct.CanBeCanceled
-            ? CancellationTokenSource.CreateLinkedTokenSource(ct)
-            : new CancellationTokenSource();
 
     public ValueTask DisposeAsync()
     {
@@ -236,6 +244,7 @@ public sealed class TcpConnection : IRpcChannel
         }
 
         _disposeCts.Cancel();
+        _frameReadTimeout?.Dispose();
         try
         {
             _stream.Close();

@@ -36,8 +36,6 @@ internal sealed class FunctionAnalyzer
         _numericConversions = new NumericConversionCallAnalyzer(diagnostics, AnalyzeExpression);
     }
 
-    public HashSet<string> RequiredCapabilities { get; } = new(StringComparer.Ordinal);
-
     public IReadOnlyDictionary<string, FunctionAnalysis> AnalyzeAll()
     {
         foreach (var function in _functions.Values)
@@ -79,8 +77,7 @@ internal sealed class FunctionAnalyzer
                 scope,
                 function.ReturnType,
                 ref effects,
-                ref canReorder,
-                recordCapabilities: true);
+                ref canReorder);
         }
 
         if (!alwaysReturns)
@@ -100,8 +97,7 @@ internal sealed class FunctionAnalyzer
         FunctionScope scope,
         SandboxType returnType,
         ref SandboxEffect effects,
-        ref bool canReorder,
-        bool recordCapabilities)
+        ref bool canReorder)
     {
         switch (statement)
         {
@@ -110,22 +106,21 @@ internal sealed class FunctionAnalyzer
                     assignment.Value,
                     scope,
                     ref effects,
-                    ref canReorder,
-                    recordCapabilities);
+                    ref canReorder);
                 scope.Set(assignment.Name, assignmentType, _diagnostics, assignment.Span);
                 return false;
             case ReturnStatement ret:
                 Require(
-                    AnalyzeExpression(ret.Value, scope, ref effects, ref canReorder, recordCapabilities),
+                    AnalyzeExpression(ret.Value, scope, ref effects, ref canReorder),
                     returnType,
                     ret.Span);
                 return true;
             case ExpressionStatement expr:
-                AnalyzeExpression(expr.Value, scope, ref effects, ref canReorder, recordCapabilities);
+                AnalyzeExpression(expr.Value, scope, ref effects, ref canReorder);
                 return false;
             case IfStatement branch:
                 Require(
-                    AnalyzeExpression(branch.Condition, scope, ref effects, ref canReorder, recordCapabilities),
+                    AnalyzeExpression(branch.Condition, scope, ref effects, ref canReorder),
                     SandboxType.Bool,
                     branch.Span);
                 var thenReturns = AnalyzeBlock(
@@ -133,35 +128,33 @@ internal sealed class FunctionAnalyzer
                     scope.Clone(),
                     returnType,
                     ref effects,
-                    ref canReorder,
-                    recordCapabilities);
+                    ref canReorder);
                 var elseReturns = AnalyzeBlock(
                     branch.Else,
                     scope.Clone(),
                     returnType,
                     ref effects,
-                    ref canReorder,
-                    recordCapabilities);
+                    ref canReorder);
                 return thenReturns && elseReturns;
             case WhileStatement loop:
                 Require(
-                    AnalyzeExpression(loop.Condition, scope, ref effects, ref canReorder, recordCapabilities),
+                    AnalyzeExpression(loop.Condition, scope, ref effects, ref canReorder),
                     SandboxType.Bool,
                     loop.Span);
-                AnalyzeBlock(loop.Body, scope.Clone(), returnType, ref effects, ref canReorder, recordCapabilities);
+                AnalyzeBlock(loop.Body, scope.Clone(), returnType, ref effects, ref canReorder);
                 return false;
             case ForRangeStatement range:
                 Require(
-                    AnalyzeExpression(range.Start, scope, ref effects, ref canReorder, recordCapabilities),
+                    AnalyzeExpression(range.Start, scope, ref effects, ref canReorder),
                     SandboxType.I32,
                     range.Span);
                 Require(
-                    AnalyzeExpression(range.End, scope, ref effects, ref canReorder, recordCapabilities),
+                    AnalyzeExpression(range.End, scope, ref effects, ref canReorder),
                     SandboxType.I32,
                     range.Span);
                 var child = scope.Clone();
                 child.Set(range.LocalName, SandboxType.I32, _diagnostics, range.Span);
-                AnalyzeBlock(range.Body, child, returnType, ref effects, ref canReorder, recordCapabilities);
+                AnalyzeBlock(range.Body, child, returnType, ref effects, ref canReorder);
                 return false;
             default:
                 _diagnostics.Add(new SandboxDiagnostic("E-STMT-UNKNOWN", $"unsupported statement '{statement.GetType().Name}'", Span: statement.Span));
@@ -178,8 +171,7 @@ internal sealed class FunctionAnalyzer
             scope,
             returnType,
             ref ignoredEffects,
-            ref ignoredCanReorder,
-            recordCapabilities: false);
+            ref ignoredCanReorder);
     }
 
     private bool AnalyzeBlock(
@@ -187,8 +179,7 @@ internal sealed class FunctionAnalyzer
         FunctionScope scope,
         SandboxType returnType,
         ref SandboxEffect effects,
-        ref bool canReorder,
-        bool recordCapabilities)
+        ref bool canReorder)
     {
         var alwaysReturns = false;
         foreach (var statement in block)
@@ -204,8 +195,7 @@ internal sealed class FunctionAnalyzer
                 scope,
                 returnType,
                 ref effects,
-                ref canReorder,
-                recordCapabilities);
+                ref canReorder);
         }
 
         return alwaysReturns;
@@ -215,17 +205,16 @@ internal sealed class FunctionAnalyzer
         Expression expression,
         FunctionScope scope,
         ref SandboxEffect effects,
-        ref bool canReorder,
-        bool recordCapabilities)
+        ref bool canReorder)
     {
         effects |= SandboxEffect.Cpu;
         return expression switch
         {
             LiteralExpression literal => LiteralExpressionAnalyzer.Analyze(literal, ref effects),
             VariableExpression variable => scope.Get(variable.Name, _diagnostics, variable.Span),
-            UnaryExpression unary => AnalyzeUnary(unary, scope, ref effects, ref canReorder, recordCapabilities),
-            BinaryExpression binary => AnalyzeBinary(binary, scope, ref effects, ref canReorder, recordCapabilities),
-            CallExpression call => AnalyzeCall(call, scope, ref effects, ref canReorder, recordCapabilities),
+            UnaryExpression unary => AnalyzeUnary(unary, scope, ref effects, ref canReorder),
+            BinaryExpression binary => AnalyzeBinary(binary, scope, ref effects, ref canReorder),
+            CallExpression call => AnalyzeCall(call, scope, ref effects, ref canReorder),
             _ => UnknownExpression(expression)
         };
     }
@@ -240,10 +229,9 @@ internal sealed class FunctionAnalyzer
         UnaryExpression unary,
         FunctionScope scope,
         ref SandboxEffect effects,
-        ref bool canReorder,
-        bool recordCapabilities)
+        ref bool canReorder)
     {
-        var operand = AnalyzeExpression(unary.Operand, scope, ref effects, ref canReorder, recordCapabilities);
+        var operand = AnalyzeExpression(unary.Operand, scope, ref effects, ref canReorder);
         if (unary.Operator == "!")
         {
             Require(operand, SandboxType.Bool, unary.Span);
@@ -263,11 +251,10 @@ internal sealed class FunctionAnalyzer
         BinaryExpression binary,
         FunctionScope scope,
         ref SandboxEffect effects,
-        ref bool canReorder,
-        bool recordCapabilities)
+        ref bool canReorder)
     {
-        var left = AnalyzeExpression(binary.Left, scope, ref effects, ref canReorder, recordCapabilities);
-        var right = AnalyzeExpression(binary.Right, scope, ref effects, ref canReorder, recordCapabilities);
+        var left = AnalyzeExpression(binary.Left, scope, ref effects, ref canReorder);
+        var right = AnalyzeExpression(binary.Right, scope, ref effects, ref canReorder);
         if (binary.Operator is "==" or "!=")
         {
             Require(left, right, binary.Span);
@@ -331,8 +318,7 @@ internal sealed class FunctionAnalyzer
         CallExpression call,
         FunctionScope scope,
         ref SandboxEffect effects,
-        ref bool canReorder,
-        bool recordCapabilities)
+        ref bool canReorder)
     {
         ValidateGenericType(call);
         if (_numericConversions.TryAnalyze(
@@ -340,7 +326,6 @@ internal sealed class FunctionAnalyzer
                 scope,
                 ref effects,
                 ref canReorder,
-                recordCapabilities,
                 out var convertedType))
         {
             return convertedType;
@@ -351,7 +336,6 @@ internal sealed class FunctionAnalyzer
                 scope,
                 ref effects,
                 ref canReorder,
-                recordCapabilities,
                 out var collectionType))
         {
             return collectionType;
@@ -364,8 +348,7 @@ internal sealed class FunctionAnalyzer
                 function.Parameters,
                 scope,
                 ref effects,
-                ref canReorder,
-                recordCapabilities);
+                ref canReorder);
             var analysis = Analyze(function.Id);
             effects |= analysis.Effects;
             canReorder &= analysis.CanReorder;
@@ -374,7 +357,7 @@ internal sealed class FunctionAnalyzer
 
         if (_bindings.TryGet(call.Name, out var binding))
         {
-            CheckArguments(call, binding.Parameters, scope, ref effects, ref canReorder, recordCapabilities);
+            CheckArguments(call, binding.Parameters, scope, ref effects, ref canReorder);
             effects |= binding.Effects;
             if (binding.IsAsync)
             {
@@ -382,16 +365,6 @@ internal sealed class FunctionAnalyzer
             }
 
             canReorder &= CanReorderBinding(binding);
-            if (recordCapabilities && binding.RequiredCapability is not null)
-            {
-                RequiredCapabilities.Add(binding.RequiredCapability);
-            }
-
-            if (recordCapabilities && RequiresRuntimeAsync(binding))
-            {
-                RequiredCapabilities.Add(RuntimeCapabilityIds.Async);
-            }
-
             return binding.ReturnType;
         }
 
@@ -407,7 +380,7 @@ internal sealed class FunctionAnalyzer
             return;
         }
 
-        if (!call.GenericType.IsKnown(_declaredOpaqueIdTypes) || call.GenericType.IsForbidden())
+        if (!call.GenericType.IsKnown(_declaredOpaqueIdTypes))
         {
             _diagnostics.Add(new SandboxDiagnostic("E-TYPE-UNKNOWN", $"unknown or forbidden type '{call.GenericType}'", Span: call.Span));
         }
@@ -423,8 +396,7 @@ internal sealed class FunctionAnalyzer
         IReadOnlyList<Parameter> expected,
         FunctionScope scope,
         ref SandboxEffect effects,
-        ref bool canReorder,
-        bool recordCapabilities)
+        ref bool canReorder)
     {
         if (call.Arguments.Count != expected.Count)
         {
@@ -435,7 +407,7 @@ internal sealed class FunctionAnalyzer
         for (var i = 0; i < expected.Count; i++)
         {
             Require(
-                AnalyzeExpression(call.Arguments[i], scope, ref effects, ref canReorder, recordCapabilities),
+                AnalyzeExpression(call.Arguments[i], scope, ref effects, ref canReorder),
                 expected[i].Type,
                 call.Arguments[i].Span);
         }
@@ -446,8 +418,7 @@ internal sealed class FunctionAnalyzer
         IReadOnlyList<SandboxType> expected,
         FunctionScope scope,
         ref SandboxEffect effects,
-        ref bool canReorder,
-        bool recordCapabilities)
+        ref bool canReorder)
     {
         if (call.Arguments.Count != expected.Count)
         {
@@ -458,7 +429,7 @@ internal sealed class FunctionAnalyzer
         for (var i = 0; i < expected.Count; i++)
         {
             Require(
-                AnalyzeExpression(call.Arguments[i], scope, ref effects, ref canReorder, recordCapabilities),
+                AnalyzeExpression(call.Arguments[i], scope, ref effects, ref canReorder),
                 expected[i],
                 call.Arguments[i].Span);
         }
@@ -466,9 +437,6 @@ internal sealed class FunctionAnalyzer
 
     private static bool CanReorderBinding(BindingSignature binding)
         => binding.Safety == BindingSafety.PureIntrinsic && IsPure(binding.Effects);
-
-    private static bool RequiresRuntimeAsync(BindingSignature binding)
-        => binding.IsAsync || (binding.Effects & SandboxEffect.Concurrency) != 0;
 
     private static bool IsPure(SandboxEffect effects) => (effects & ~SandboxEffects.Pure) == SandboxEffect.None;
 

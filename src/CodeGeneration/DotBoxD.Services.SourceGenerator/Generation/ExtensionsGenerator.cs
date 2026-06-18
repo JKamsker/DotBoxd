@@ -31,10 +31,8 @@ internal static class ExtensionsGenerator
             ct.ThrowIfCancellationRequested();
             var serviceName = NamingHelpers.StripInterfacePrefix(service.InterfaceName);
             var extensionSuffix = extensionSuffixes[ServiceKey(service)];
-            var proxyName = serviceName + "Proxy";
             var dispatcherName = serviceName + "Dispatcher";
             var fullInterfaceName = IdentifierHelpers.QualifyTypeName(service.Namespace, service.InterfaceName);
-            var fullProxyName = IdentifierHelpers.QualifyTypeName(service.Namespace, proxyName);
             var fullDispatcherName = IdentifierHelpers.QualifyTypeName(service.Namespace, dispatcherName);
 
             sb.AppendLine();
@@ -93,7 +91,7 @@ internal static class ExtensionsGenerator
             sb.AppendLine($"        /// Gets a proxy to call {service.InterfaceName} on the other peer.");
             sb.AppendLine("        /// </summary>");
             sb.AppendLine($"        public static {fullInterfaceName} Get{extensionSuffix}(this {ServicesGeneratorTypeNames.GlobalRpcPeer} peer)");
-            sb.AppendLine($"            => new {fullProxyName}(peer);");
+            sb.AppendLine($"            => peer.Get<{fullInterfaceName}>();");
         }
 
         sb.AppendLine("    }");

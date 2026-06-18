@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using DotBoxD.Kernels.Model;
 
 namespace DotBoxD.Kernels.Sandbox.Values;
 
@@ -28,8 +29,8 @@ internal static class ValueShapeCache
         // Scalars and text are O(1) to measure and not worth caching (one frame, no children).
         if (value is not (ListValue or MapValue or RecordValue))
         {
-            var (shape, nodes) = SandboxValueShapeMeter.MeasureWithNodes(value, cancellationToken);
-            return new ShapeInfo(shape, nodes);
+            cancellationToken.ThrowIfCancellationRequested();
+            return new ShapeInfo(MeasureScalar(value), Nodes: 1);
         }
 
         if (Cache.TryGetValue(value, out var box))
@@ -42,6 +43,19 @@ internal static class ValueShapeCache
         Cache.AddOrUpdate(value, new StrongBox<ShapeInfo>(info));
         return info;
     }
+
+    private static ValueShape MeasureScalar(SandboxValue value)
+        => value switch
+        {
+            UnitValue or BoolValue or I32Value or I64Value or F64Value => new ValueShape(0, 0, 0, 0, 0, 0),
+            StringValue text => SandboxLiteralConstraints.TextShape(text.Value),
+            OpaqueIdValue id => SandboxLiteralConstraints.TextShape(id.Value),
+            SandboxPathValue path => SandboxLiteralConstraints.TextShape(path.Value.RelativePath),
+            SandboxUriValue uri => SandboxLiteralConstraints.TextShape(uri.Value.Value),
+            _ => throw new SandboxRuntimeException(new SandboxError(
+                SandboxErrorCode.InvalidInput,
+                "unknown sandbox value kind is not supported"))
+        };
 
     /// <summary>Records a precomputed shape for a value built by an incremental operation.</summary>
     public static void Set(SandboxValue value, ShapeInfo info)

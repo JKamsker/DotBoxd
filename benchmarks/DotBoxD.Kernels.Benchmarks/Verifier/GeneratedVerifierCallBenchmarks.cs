@@ -85,3 +85,97 @@ public class GeneratedVerifierCallBenchmarks
     private static MethodInfo Runtime(string name)
         => typeof(Kernels.Runtime.CompiledRuntime).GetMethod(name)!;
 }
+
+internal static class GeneratedVerifierOpcodeProbe
+{
+    private const int InstructionCount = 10_000;
+    private const int Iterations = 5_000;
+
+    public static void Run()
+    {
+        var offsets = BuildOffsets(InstructionCount);
+        _ = MeasureLegacyBranchFree(offsets, warmup: true);
+        _ = MeasureLazyBranchFree(offsets, warmup: true);
+
+        var legacy = MeasureLegacyBranchFree(offsets, warmup: false);
+        var lazy = MeasureLazyBranchFree(offsets, warmup: false);
+
+        Console.WriteLine($"iterations = {Iterations:N0}, instructions = {InstructionCount:N0}");
+        Write("legacy branch-free offsets", legacy);
+        Write("lazy branch-free offsets", lazy);
+        Console.WriteLine($"saved per verification: {(legacy.AllocatedBytes - lazy.AllocatedBytes) / (double)Iterations:N1} B");
+    }
+
+    private static Measurement MeasureLegacyBranchFree(int[] offsets, bool warmup)
+    {
+        ForceGc();
+
+        var iterations = warmup ? 200 : Iterations;
+        var checksum = 0;
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        for (var i = 0; i < iterations; i++)
+        {
+            var instructionOffsets = new HashSet<int>();
+            var branchTargets = new HashSet<int>();
+            foreach (var offset in offsets)
+            {
+                instructionOffsets.Add(offset);
+                checksum ^= offset;
+            }
+
+            checksum ^= branchTargets.Count;
+        }
+
+        sw.Stop();
+        return new Measurement(sw.Elapsed.TotalMilliseconds, GC.GetAllocatedBytesForCurrentThread() - before, checksum);
+    }
+
+    private static Measurement MeasureLazyBranchFree(int[] offsets, bool warmup)
+    {
+        ForceGc();
+
+        var iterations = warmup ? 200 : Iterations;
+        var checksum = 0;
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        for (var i = 0; i < iterations; i++)
+        {
+            HashSet<int>? branchTargets = null;
+            foreach (var offset in offsets)
+            {
+                checksum ^= offset;
+            }
+
+            checksum ^= branchTargets?.Count ?? 0;
+        }
+
+        sw.Stop();
+        return new Measurement(sw.Elapsed.TotalMilliseconds, GC.GetAllocatedBytesForCurrentThread() - before, checksum);
+    }
+
+    private static int[] BuildOffsets(int count)
+    {
+        var offsets = new int[count];
+        for (var i = 0; i < offsets.Length; i++)
+        {
+            offsets[i] = i * 5;
+        }
+
+        return offsets;
+    }
+
+    private static void ForceGc()
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+    }
+
+    private static void Write(string name, Measurement measurement)
+        => Console.WriteLine(
+            $"{name,-28} {measurement.Milliseconds,8:N1} ms " +
+            $"{measurement.AllocatedBytes,14:N0} B checksum={measurement.Checksum:N0}");
+
+    private readonly record struct Measurement(double Milliseconds, long AllocatedBytes, int Checksum);
+}

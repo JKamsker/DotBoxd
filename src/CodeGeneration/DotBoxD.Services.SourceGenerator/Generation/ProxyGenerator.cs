@@ -299,7 +299,7 @@ internal static class ProxyGenerator
         var streamSetup = ProxyStreamSetupEmitter.Emit(sb, method, requestParameters, locals, ct, indent);
         var streamArray = streamSetup.ArrayName;
         var useStreamAwareTaskValueInvocation =
-            method.ReturnKind == MethodReturnKind.ValueTaskOf && streamArray is not null;
+            streamArray is not null && (method.ReturnKind is MethodReturnKind.ValueTask or MethodReturnKind.ValueTaskOf);
         var svc = service.ServiceName;
         var rpc = method.RpcName;
         var singletonMethod = GetInvokerMethod(
@@ -364,7 +364,8 @@ internal static class ProxyGenerator
             $"(this._instanceId is null ? this._invoker.{singletonMethod}{typeArgs}({callArgs}) : this._invoker.{instanceMethod}{typeArgs}({callArgsInst}))";
         if (useStreamAwareTaskValueInvocation)
         {
-            invocation = $"new {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalValueTask, returnType!)}({invocation})";
+            invocation = method.ReturnKind == MethodReturnKind.ValueTask ? $"new {ServicesGeneratorTypeNames.GlobalValueTask}({invocation})" :
+                $"new {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalValueTask, returnType!)}({invocation})";
         }
 
         return (invocation, streamSetup.Reservations);
@@ -439,7 +440,8 @@ internal static class ProxyGenerator
                 : eager ? "InvokeAsyncEnumerableAsync" : "InvokeAsyncEnumerable";
         }
 
-        if (returnKind == MethodReturnKind.ValueTaskOf && !useStreamAwareTaskValueInvocation)
+        if (returnKind is MethodReturnKind.ValueTask or MethodReturnKind.ValueTaskOf &&
+            !useStreamAwareTaskValueInvocation)
         {
             return isInstanceScoped ? "InvokeValueOnInstanceAsync" : "InvokeValueAsync";
         }

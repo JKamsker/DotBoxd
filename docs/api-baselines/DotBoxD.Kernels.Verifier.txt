@@ -52,12 +52,12 @@ public interface IGeneratedAssemblyVerifier
 public IReadOnlyList<string> OptimizationFlags
 public IReadOnlyList<string>? OptimizationFlags
 public IReadOnlyList<VerificationDiagnostic> Diagnostics
-public IReadOnlySet<string> AllowedAssemblies { get => _allowedAssemblies; init => _allowedAssemblies = Freeze(value); }
-public IReadOnlySet<string> AllowedAssemblyIdentities { get => _allowedAssemblyIdentities; init => _allowedAssemblyIdentities = Freeze(value); }
-public IReadOnlySet<string> AllowedMembers { get => _allowedMembers; init => _allowedMembers = Freeze(value); }
-public IReadOnlySet<string> AllowedTypes { get => _allowedTypes; init => _allowedTypes = Freeze(value); }
-public IReadOnlySet<string> ForbiddenTypePrefixes { get => _forbiddenTypePrefixes; init => _forbiddenTypePrefixes = Freeze(value); }
-public IReadOnlySet<string> RuntimeFacadeIdentities { get => _runtimeFacadeIdentities; init => _runtimeFacadeIdentities = Freeze(value); }
+public IReadOnlySet<string> AllowedAssemblies { get => _allowedAssemblies; init { _allowedAssemblies = Freeze(value); InvalidateHashes(); } }
+public IReadOnlySet<string> AllowedAssemblyIdentities { get => _allowedAssemblyIdentities; init { _allowedAssemblyIdentities = Freeze(value); InvalidateHashes(); } }
+public IReadOnlySet<string> AllowedMembers { get => _allowedMembers; init { _allowedMembers = Freeze(value); InvalidateHashes(); } }
+public IReadOnlySet<string> AllowedTypes { get => _allowedTypes; init { _allowedTypes = Freeze(value); InvalidateHashes(); } }
+public IReadOnlySet<string> ForbiddenTypePrefixes { get => _forbiddenTypePrefixes; init { _forbiddenTypePrefixes = Freeze(value); InvalidateHashes(); } }
+public IReadOnlySet<string> RuntimeFacadeIdentities { get => _runtimeFacadeIdentities; init { _runtimeFacadeIdentities = Freeze(value); InvalidateHashes(); } }
 public sealed partial class GeneratedAssemblyVerifier
 public sealed partial class GeneratedAssemblyVerifier : IGeneratedAssemblyVerifier
 public sealed record ArtifactManifest( int ArtifactVersion, string CacheKey, string ModuleHash, string PlanHash, string PolicyHash, string BindingManifestHash, string RuntimeFacadeHash, string CompilerVersion, string TypeSystemVersion, string EffectAnalysisVersion, string VerifierVersion, string LanguageVersion, string TargetFramework, IReadOnlyList<string> OptimizationFlags, string AssemblyHash, DateTimeOffset CreatedAt)

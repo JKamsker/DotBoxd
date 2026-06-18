@@ -12,12 +12,13 @@ internal static class GeneratedStackTypeOperations
     public static void Call(
         GeneratedInstruction instruction,
         List<string> stack,
+        ParsedCallSignatureCache callSignatures,
         List<VerificationDiagnostic> diagnostics)
     {
-        var signature = ParsedCallSignature.Parse(instruction.CalledMember);
-        foreach (var parameter in signature.Parameters.Reverse())
+        var signature = callSignatures.Get(instruction.CalledMember);
+        for (var i = signature.Parameters.Count - 1; i >= 0; i--)
         {
-            PopExpected(instruction, stack, parameter, diagnostics);
+            PopExpected(instruction, stack, signature.Parameters[i], diagnostics);
         }
 
         if (signature.ReturnType != VoidName)
@@ -92,6 +93,38 @@ internal static class GeneratedStackTypeOperations
         }
 
         stack.Add(value);
+    }
+
+    public static void ConvertToInt64(
+        GeneratedInstruction instruction,
+        List<string> stack,
+        List<VerificationDiagnostic> diagnostics)
+    {
+        var value = PopAny(instruction, stack, diagnostics);
+        if (value is not (Int32Name or UnknownType))
+        {
+            AddTypeDiagnostic(instruction, Int32Name, value, diagnostics);
+            stack.Add(UnknownType);
+            return;
+        }
+
+        stack.Add(Int64Name);
+    }
+
+    public static void ConvertToDouble(
+        GeneratedInstruction instruction,
+        List<string> stack,
+        List<VerificationDiagnostic> diagnostics)
+    {
+        var value = PopAny(instruction, stack, diagnostics);
+        if (value is not (Int32Name or Int64Name or UnknownType))
+        {
+            AddTypeDiagnostic(instruction, "System.Int32 or System.Int64", value, diagnostics);
+            stack.Add(UnknownType);
+            return;
+        }
+
+        stack.Add(DoubleName);
     }
 
     public static void Compare(
@@ -259,28 +292,4 @@ internal static class GeneratedStackTypeOperations
             "V-STACK-TYPE",
             $"opcode '{instruction.Opcode}' expected {expected} but found {actual}"));
 
-    private sealed record ParsedCallSignature(string ReturnType, IReadOnlyList<string> Parameters)
-    {
-        public static ParsedCallSignature Parse(string? signature)
-        {
-            if (signature is null)
-            {
-                return new ParsedCallSignature(UnknownType, []);
-            }
-
-            var start = signature.IndexOf('(');
-            var end = signature.LastIndexOf("):", StringComparison.Ordinal);
-            if (start < 0 || end < start)
-            {
-                return new ParsedCallSignature(UnknownType, []);
-            }
-
-            var returnType = signature[(end + 2)..];
-            var parameterText = signature[(start + 1)..end];
-            IReadOnlyList<string> parameters = parameterText.Length == 0
-                ? []
-                : parameterText.Split(',', StringSplitOptions.None);
-            return new ParsedCallSignature(returnType, parameters);
-        }
-    }
 }

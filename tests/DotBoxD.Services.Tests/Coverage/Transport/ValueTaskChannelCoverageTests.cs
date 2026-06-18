@@ -3,6 +3,7 @@ using DotBoxD.Services.Buffers;
 using DotBoxD.Services.Client;
 using DotBoxD.Services.Exceptions;
 using DotBoxD.Services.Peer;
+using DotBoxD.Services.Protocol;
 using DotBoxD.Services.Streaming.Core;
 using DotBoxD.Services.Transport;
 using Xunit;
@@ -41,15 +42,15 @@ public sealed class ValueTaskChannelCoverageTests
     }
 
     [Fact]
-    public async Task InvokeValueAsync_UsesTaskBackedPath_ByDefault()
+    public async Task InvokeValueAsync_UsesTaskBackedResponsePath_ByDefault()
     {
         await using var harness = new ValueTaskInvokerHarness(
             new RpcPeerOptions { RequestTimeout = System.Threading.Timeout.InfiniteTimeSpan });
 
         var call = harness.Invoker.InvokeValueAsync<int, string>("Svc", "Op", 42);
 
-        Assert.Equal(1, harness.SendTaskCalls);
-        Assert.Equal(0, harness.SendFrameCalls);
+        Assert.Equal(0, harness.SendTaskCalls);
+        Assert.Equal(1, harness.SendFrameCalls);
         await AssertFaultedPendingCallAsync(call, harness);
     }
 
@@ -71,7 +72,79 @@ public sealed class ValueTaskChannelCoverageTests
     }
 
     [Fact]
-    public async Task InvokeValueAsync_OptInUsesTaskBackedPath_WhenTimeoutOrCancellationIsRequired()
+    public async Task InvokeAsync_TaskResult_UsesFrameSender_WhenAvailable()
+    {
+        await using var harness = new ValueTaskInvokerHarness(
+            new RpcPeerOptions { RequestTimeout = System.Threading.Timeout.InfiniteTimeSpan });
+
+        var call = harness.Invoker.InvokeAsync<int, string>("Svc", "Op", 42);
+
+        Assert.Equal(0, harness.SendTaskCalls);
+        Assert.Equal(1, harness.SendFrameCalls);
+        await AssertFaultedPendingCallAsync(call, harness);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_TaskNoResult_UsesFrameSender_WhenAvailable()
+    {
+        await using var harness = new ValueTaskInvokerHarness(
+            new RpcPeerOptions { RequestTimeout = System.Threading.Timeout.InfiniteTimeSpan });
+
+        var call = harness.Invoker.InvokeAsync<int>("Svc", "Op", 42);
+
+        Assert.Equal(0, harness.SendTaskCalls);
+        Assert.Equal(1, harness.SendFrameCalls);
+        await AssertFaultedPendingCallAsync(call, harness);
+    }
+
+    [Fact]
+    public async Task InvokeValueAsync_NoResult_UsesFrameValueTaskPath_WhenExplicitlyEnabled()
+    {
+        await using var harness = new ValueTaskInvokerHarness(
+            new RpcPeerOptions
+            {
+                EnableLowAllocationValueTaskInvocations = true,
+                RequestTimeout = System.Threading.Timeout.InfiniteTimeSpan,
+            });
+
+        var call = harness.Invoker.InvokeValueAsync<int>("Svc", "Op", 42);
+
+        Assert.Equal(0, harness.SendTaskCalls);
+        Assert.Equal(1, harness.SendFrameCalls);
+        Assert.True(harness.Invoker.TryCompleteResponse(1, MessageFramer.FrameMessage(
+            new MessagePackRpcSerializer(),
+            1,
+            MessageType.Response,
+            new RpcResponse { MessageId = 1, IsSuccess = true },
+            ReadOnlySpan<byte>.Empty)));
+        await call.AsTask().WaitAsync(Timeout);
+    }
+
+    [Fact]
+    public async Task InvokeValueAsync_NoResult_FaultsPendingOnce_OnLowAllocationPath()
+    {
+        await using var harness = new ValueTaskInvokerHarness(
+            new RpcPeerOptions
+            {
+                EnableLowAllocationValueTaskInvocations = true,
+                RequestTimeout = System.Threading.Timeout.InfiniteTimeSpan,
+            });
+
+        var call = harness.Invoker.InvokeValueAsync<int>("Svc", "Op", 42);
+
+        Assert.Equal(0, harness.SendTaskCalls);
+        Assert.Equal(1, harness.SendFrameCalls);
+
+        // The pooled no-response IValueTaskSource (PendingValueTaskNoResponse) must surface the connection
+        // failure, and a redundant failure must not re-complete or throw on the already-faulted source.
+        harness.Invoker.FailPending(new ServiceConnectionException("Connection closed."));
+        harness.Invoker.FailPending(new ServiceConnectionException("Connection closed again."));
+
+        await Assert.ThrowsAsync<ServiceConnectionException>(() => call.AsTask().WaitAsync(Timeout));
+    }
+
+    [Fact]
+    public async Task InvokeValueAsync_OptInUsesTaskBackedResponsePath_WhenTimeoutOrCancellationIsRequired()
     {
         await using (var timeoutHarness = new ValueTaskInvokerHarness(
             new RpcPeerOptions
@@ -82,8 +155,8 @@ public sealed class ValueTaskChannelCoverageTests
         {
             var call = timeoutHarness.Invoker.InvokeValueAsync<int, string>("Svc", "Op", 42);
 
-            Assert.Equal(1, timeoutHarness.SendTaskCalls);
-            Assert.Equal(0, timeoutHarness.SendFrameCalls);
+            Assert.Equal(0, timeoutHarness.SendTaskCalls);
+            Assert.Equal(1, timeoutHarness.SendFrameCalls);
             await AssertFaultedPendingCallAsync(call, timeoutHarness);
         }
 
@@ -101,8 +174,8 @@ public sealed class ValueTaskChannelCoverageTests
             42,
             cts.Token);
 
-        Assert.Equal(1, cancellationHarness.SendTaskCalls);
-        Assert.Equal(0, cancellationHarness.SendFrameCalls);
+        Assert.Equal(0, cancellationHarness.SendTaskCalls);
+        Assert.Equal(1, cancellationHarness.SendFrameCalls);
         await AssertFaultedPendingCallAsync(cancellableCall, cancellationHarness);
     }
 
@@ -113,6 +186,23 @@ public sealed class ValueTaskChannelCoverageTests
         harness.Invoker.FailPending(new ServiceConnectionException("Connection closed."));
         await Assert.ThrowsAsync<ServiceConnectionException>(
             () => call.AsTask().WaitAsync(Timeout));
+    }
+
+    private static async Task AssertFaultedPendingCallAsync<T>(
+        Task<T> call,
+        ValueTaskInvokerHarness harness)
+    {
+        harness.Invoker.FailPending(new ServiceConnectionException("Connection closed."));
+        await Assert.ThrowsAsync<ServiceConnectionException>(() => call.WaitAsync(Timeout));
+    }
+
+    private static async Task AssertFaultedPendingCallAsync(
+        Task call,
+        ValueTaskInvokerHarness harness)
+    {
+        harness.Invoker.FailPending(new ServiceConnectionException("Connection closed."));
+        await Assert.ThrowsAsync<ServiceConnectionException>(
+            () => call.WaitAsync(Timeout));
     }
 
     private sealed class CountingValueTaskChannel : IRpcValueTaskChannel

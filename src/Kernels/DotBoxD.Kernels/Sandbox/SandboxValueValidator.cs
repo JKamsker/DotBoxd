@@ -24,6 +24,11 @@ public static class SandboxValueValidator
             return;
         }
 
+        if (!expectedType.IsKnown())
+        {
+            throw Error(errorCode, message);
+        }
+
         var active = new HashSet<object>(ReferenceEqualityComparer.Instance);
         var stack = new Stack<Frame>();
         stack.Push(new Frame(value, expectedType, Exit: false));
@@ -36,10 +41,7 @@ public static class SandboxValueValidator
                 continue;
             }
 
-            if (!IsKnownValueKind(frame.Value) ||
-                frame.Value.Type != frame.ExpectedType ||
-                !frame.ExpectedType.IsKnown() ||
-                frame.ExpectedType.IsForbidden())
+            if (!SandboxValueTypeMatcher.MatchesValidationFrame(frame.Value, frame.ExpectedType))
             {
                 throw Error(errorCode, message);
             }
@@ -75,10 +77,8 @@ public static class SandboxValueValidator
             return;
         }
 
-        if (!IsKnownValueKind(value) ||
-            value.Type != expectedType ||
-            !expectedType.IsKnown() ||
-            expectedType.IsForbidden())
+        if (!SandboxValueTypeMatcher.MatchesValidationFrame(value, expectedType) ||
+            !expectedType.IsKnown())
         {
             throw Error(errorCode, message);
         }
@@ -172,10 +172,6 @@ public static class SandboxValueValidator
 
     private static SandboxRuntimeException Error(SandboxErrorCode code, string message)
         => new(new SandboxError(code, message));
-
-    private static bool IsKnownValueKind(SandboxValue value)
-        => value is UnitValue or BoolValue or I32Value or I64Value or F64Value or StringValue or OpaqueIdValue
-            or SandboxPathValue or SandboxUriValue or ListValue or MapValue or RecordValue;
 
     private static bool IsBuiltInScalarType(SandboxValue value, SandboxType expectedType)
         => value switch

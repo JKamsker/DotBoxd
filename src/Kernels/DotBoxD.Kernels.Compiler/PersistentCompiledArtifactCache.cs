@@ -6,7 +6,6 @@ using DotBoxD.Kernels.Verifier.Generated;
 namespace DotBoxD.Kernels.Compiler;
 
 using System.Collections.Concurrent;
-using System.Security.Cryptography;
 using System.Text.Json;
 using DotBoxD.Kernels;
 using DotBoxD.Kernels.Verifier;
@@ -125,20 +124,11 @@ public sealed partial class PersistentCompiledArtifactCache
             // path: the manifest identity, the cached verification result, and the host-bound
             // origin proof have all been validated above, and the origin proof is an HMAC over
             // the exact assembly bytes plus that verification record signed by this host's secret
-            // key. Re-running the full generated-assembly verifier here only repeats PE/metadata/IL
-            // work the write path already performed (and that the host repeats once more before it
-            // loads the assembly), so it is pure cache-hit latency. We still bind the bytes to the
-            // claimed hash with a cheap SHA-256 check so a tampered module fails closed even if the
-            // origin key were ever compromised. The verifier parameter is retained for the contract
-            // and remains the gate on the write path.
+            // key. Re-running the full generated-assembly verifier or hashing the bytes again here
+            // only repeats work the write path already performed and that materialization repeats
+            // before loading the assembly. The verifier parameter is retained for the contract and
+            // remains the gate on the write path.
             _ = verifier;
-            var actualHash = Convert.ToHexString(SHA256.HashData(assemblyBytes)).ToLowerInvariant();
-            if (!StringComparer.Ordinal.Equals(actualHash, manifest.AssemblyHash))
-            {
-                throw new SandboxRuntimeException(new SandboxError(
-                    SandboxErrorCode.CacheInvalid,
-                    "cached artifact bytes do not match manifest hash"));
-            }
 
             return new CompiledCacheLookup(CompiledCacheStatus.Hit, new CompiledArtifact(
                 assemblyBytes,

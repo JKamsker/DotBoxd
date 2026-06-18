@@ -90,7 +90,8 @@ internal sealed class MethodEmitter
                 UpdateF64Facts(assignment.Name, assignment.Value);
                 return false;
             case ReturnStatement ret:
-                if (BoolReturnFastPathEmitter.TryEmit(ret.Value, _il, _stackPlan, Declare))
+                if (BoolReturnFastPathEmitter.TryEmit(ret.Value, _il, _stackPlan, Declare) ||
+                    F64RawReturnEmitter.TryEmit(ret.Value, _function.ReturnType, _bindings, _il, _expressions))
                 {
                     EmitReturnValue();
                     return true;
@@ -160,6 +161,20 @@ internal sealed class MethodEmitter
             return;
         }
 
+        if (BranchedF64LoopFastPathEmitter.TryEmit(
+            range,
+            _il,
+            _stackPlan,
+            _expressions,
+            _functionModels,
+            _bindings,
+            _nonNegativeF64Locals,
+            Declare))
+        {
+            _nonNegativeF64Locals.Clear();
+            return;
+        }
+
         if (MapGetI32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, Declare))
         {
             _nonNegativeF64Locals.Clear();
@@ -184,7 +199,7 @@ internal sealed class MethodEmitter
             return;
         }
 
-        if (I32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, _functionModels, Declare))
+        if (I32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, _functionModels, _bindings, Declare))
         {
             _nonNegativeF64Locals.Clear();
             return;

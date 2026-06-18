@@ -46,7 +46,7 @@ namespace Snap.Vt
         {
             try
             {
-                return new global::System.Threading.Tasks.ValueTask((this._instanceId is null ? this._invoker.InvokeAsync("IVtSnap", "PingAsync", default) : this._invoker.InvokeOnInstanceAsync("IVtSnap", this._instanceId!, "PingAsync", default)));
+                return (this._instanceId is null ? this._invoker.InvokeValueAsync("IVtSnap", "PingAsync", default) : this._invoker.InvokeValueOnInstanceAsync("IVtSnap", this._instanceId!, "PingAsync", default));
             }
             catch (global::System.OperationCanceledException __dotboxd_canceled) when (__dotboxd_canceled.CancellationToken.IsCancellationRequested)
             {
@@ -78,7 +78,7 @@ namespace Snap.Vt
         {
             try
             {
-                return new global::System.Threading.Tasks.ValueTask((this._instanceId is null ? this._invoker.InvokeAsync("IVtSnap", "PingAsync", ct) : this._invoker.InvokeOnInstanceAsync("IVtSnap", this._instanceId!, "PingAsync", ct)));
+                return (this._instanceId is null ? this._invoker.InvokeValueAsync("IVtSnap", "PingAsync", ct) : this._invoker.InvokeValueOnInstanceAsync("IVtSnap", this._instanceId!, "PingAsync", ct));
             }
             catch (global::System.OperationCanceledException __dotboxd_canceled) when (__dotboxd_canceled.CancellationToken.IsCancellationRequested)
             {

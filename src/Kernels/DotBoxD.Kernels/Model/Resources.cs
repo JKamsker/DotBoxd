@@ -11,6 +11,8 @@ public sealed partial class ResourceMeter
     private const int LoopDeadlineCheckInterval = 4096;
 
     private Dictionary<string, int>? _callsByBinding;
+    private string? _lastLimitedBindingId;
+    private int _lastLimitedBindingCalls;
     private long _deadline;
     private int _chargesSinceDeadlineCheck;
 
@@ -134,25 +136,6 @@ public sealed partial class ResourceMeter
         ChargeStringShape(new ValueShape(0, 0, 0, 0, charLength, bytes));
     }
 
-    public void ChargeHostCall(string bindingId, int? maxCallsPerRun = null)
-    {
-        HostCalls = AddChecked(HostCalls, 1, $"host call budget exhausted at {bindingId}");
-        if (HostCalls > Limits.MaxHostCalls)
-        {
-            throw Quota($"host call budget exhausted at {bindingId}");
-        }
-
-        var callsByBinding = CallsByBinding;
-        var bindingCalls = callsByBinding.TryGetValue(bindingId, out var existing)
-            ? AddChecked(existing, 1, $"binding call budget exhausted at {bindingId}")
-            : 1;
-        callsByBinding[bindingId] = bindingCalls;
-        if (maxCallsPerRun is not null && bindingCalls > maxCallsPerRun.Value)
-        {
-            throw Quota($"binding call budget exhausted at {bindingId}");
-        }
-    }
-
     public void ChargeFileRead(long bytes)
     {
         ThrowIfNegative(bytes, nameof(bytes));
@@ -234,9 +217,6 @@ public sealed partial class ResourceMeter
 
     private static SandboxRuntimeException Quota(string message)
         => new(new SandboxError(SandboxErrorCode.QuotaExceeded, message));
-
-    private Dictionary<string, int> CallsByBinding
-        => _callsByBinding ??= new Dictionary<string, int>(StringComparer.Ordinal);
 
     private static void ThrowIfNegative(long amount, string paramName)
     {

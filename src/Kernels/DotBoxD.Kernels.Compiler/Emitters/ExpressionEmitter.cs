@@ -37,6 +37,16 @@ internal sealed class ExpressionEmitter
 
     public void EmitAs(Expression expression, StackKind want)
     {
+        if (NumericConversionCallEmitter.TryEmitRaw(expression, want, _stackPlan, _il, EmitAs))
+        {
+            return;
+        }
+
+        if (want == StackKind.I32 && I32MathIntrinsicEmitter.TryEmit(expression, _bindings, _il, EmitAs))
+        {
+            return;
+        }
+
         if (want == StackKind.F64 && F64MathIntrinsicEmitter.TryEmit(expression, _bindings, _il, EmitAs))
         {
             return;
@@ -132,11 +142,9 @@ internal sealed class ExpressionEmitter
 
     private StackKind EmitUnary(UnaryExpression unary)
     {
-        if (unary.Operator == "-" && _stackPlan.Infer(unary.Operand) is { Name: "I32" })
+        if (RawUnaryEmitter.TryEmit(unary, _stackPlan, _il, EmitAs, out var kind))
         {
-            EmitAs(unary.Operand, StackKind.I32);
-            _il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.NegI32Raw)));
-            return StackKind.I32;
+            return kind;
         }
 
         EmitAs(unary.Operand, StackKind.Boxed);

@@ -1,4 +1,5 @@
 using System.Reflection.Emit;
+using DotBoxD.Kernels.Bindings;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Runtime;
 using DotBoxD.Kernels.Sandbox;
@@ -10,7 +11,7 @@ using static Compiler.IlEmitterPrimitives;
 // Unboxed i32 expression plan for loop fast paths: builds a small tree from an i32 expression and emits raw IL
 // (via the *I32Raw runtime helpers) with no per-node fuel metering — the loop runner charges the statically
 // known FuelCost in bulk instead. Shared by I32LoopFastPathEmitter and BranchedI32LoopFastPathEmitter.
-internal sealed class RawI32ExpressionPlan
+internal sealed partial class RawI32ExpressionPlan
 {
     private static readonly IReadOnlyDictionary<string, SandboxFunction> NoFunctions = new Dictionary<string, SandboxFunction>(StringComparer.Ordinal);
 
@@ -21,7 +22,14 @@ internal sealed class RawI32ExpressionPlan
     private readonly RawI32ExpressionPlan? _right;
     private readonly RawI32ExpressionPlan? _third;
 
-    private RawI32ExpressionPlan(ExpressionKind kind, string? name = null, int literal = 0, RawI32ExpressionPlan? left = null, RawI32ExpressionPlan? right = null, RawI32ExpressionPlan? third = null, int extraFuel = 0)
+    private RawI32ExpressionPlan(
+        ExpressionKind kind,
+        string? name = null,
+        int literal = 0,
+        RawI32ExpressionPlan? left = null,
+        RawI32ExpressionPlan? right = null,
+        RawI32ExpressionPlan? third = null,
+        int extraFuel = 0)
     {
         _kind = kind;
         _name = name;
@@ -30,9 +38,11 @@ internal sealed class RawI32ExpressionPlan
         _right = right;
         _third = third;
         FuelCost = 1 + extraFuel + (left?.FuelCost ?? 0) + (right?.FuelCost ?? 0) + (third?.FuelCost ?? 0);
-        InstructionCost = kind is ExpressionKind.Literal or ExpressionKind.Variable
-            ? 1
-            : 1 + (left?.InstructionCost ?? 0) + (right?.InstructionCost ?? 0) + (third?.InstructionCost ?? 0);
+        InstructionCost =
+            BaseInstructionCost(kind) +
+            (left?.InstructionCost ?? 0) +
+            (right?.InstructionCost ?? 0) +
+            (third?.InstructionCost ?? 0);
     }
 
     public int FuelCost { get; }
@@ -40,9 +50,18 @@ internal sealed class RawI32ExpressionPlan
     public int InstructionCost { get; }
 
     public static bool TryCreate(Expression expression, LocalStackKindPlanner stackPlan, IReadOnlyDictionary<string, SandboxFunction> functions, out RawI32ExpressionPlan plan)
-        => TryCreate(expression, stackPlan, functions, substitutions: null, out plan);
+        => TryCreate(expression, stackPlan, functions, bindings: null, substitutions: null, out plan);
 
-    private static bool TryCreate(Expression expression, LocalStackKindPlanner stackPlan, IReadOnlyDictionary<string, SandboxFunction> functions, IReadOnlyDictionary<string, RawI32ExpressionPlan>? substitutions, out RawI32ExpressionPlan plan)
+    public static bool TryCreate(Expression expression, LocalStackKindPlanner stackPlan, IReadOnlyDictionary<string, SandboxFunction> functions, IBindingCatalog bindings, out RawI32ExpressionPlan plan)
+        => TryCreate(expression, stackPlan, functions, bindings, substitutions: null, out plan);
+
+    private static bool TryCreate(
+        Expression expression,
+        LocalStackKindPlanner stackPlan,
+        IReadOnlyDictionary<string, SandboxFunction> functions,
+        IBindingCatalog? bindings,
+        IReadOnlyDictionary<string, RawI32ExpressionPlan>? substitutions,
+        out RawI32ExpressionPlan plan)
     {
         switch (expression)
         {
@@ -56,14 +75,15 @@ internal sealed class RawI32ExpressionPlan
                 plan = new RawI32ExpressionPlan(ExpressionKind.Variable, name: variable.Name);
                 return true;
             case UnaryExpression { Operator: "-" } unary
-                when TryCreate(unary.Operand, stackPlan, functions, substitutions, out var operand):
+                when TryCreate(unary.Operand, stackPlan, functions, bindings, substitutions, out var operand):
                 plan = new RawI32ExpressionPlan(ExpressionKind.Negate, left: operand);
                 return true;
             case BinaryExpression binary when binary.Operator is "+" or "-" or "*" or "/" or "%":
                 return TryCreateAddRemainder(binary, stackPlan, functions, substitutions, out plan) ||
-                       TryCreateBinary(binary, stackPlan, functions, substitutions, out plan);
+                       TryCreateBinary(binary, stackPlan, functions, bindings, substitutions, out plan);
             case CallExpression call:
-                return TryCreateInlineCall(call, stackPlan, functions, out plan);
+                return bindings is not null && TryCreateMathIntrinsic(call, stackPlan, functions, bindings, substitutions, out plan) ||
+                       TryCreateInlineCall(call, stackPlan, functions, bindings, out plan);
             default:
                 plan = null!;
                 return false;
@@ -83,6 +103,25 @@ internal sealed class RawI32ExpressionPlan
             case ExpressionKind.Negate:
                 _left!.Emit(il, declare);
                 il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.NegI32Raw)));
+                break;
+            case ExpressionKind.Abs:
+                _left!.Emit(il, declare);
+                EmitChargeBindingCall(il, _name!);
+                il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.AbsI32Raw)));
+                break;
+            case ExpressionKind.Min:
+            case ExpressionKind.Max:
+                _left!.Emit(il, declare);
+                _right!.Emit(il, declare);
+                EmitChargeBindingCall(il, _name!);
+                il.Emit(OpCodes.Call, Runtime(RuntimeMethod(_kind)));
+                break;
+            case ExpressionKind.Clamp:
+                _left!.Emit(il, declare);
+                _right!.Emit(il, declare);
+                _third!.Emit(il, declare);
+                EmitChargeBindingCall(il, _name!);
+                il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ClampI32Raw)));
                 break;
             case ExpressionKind.InlineCall:
                 il.Emit(OpCodes.Ldarg_0);
@@ -133,77 +172,48 @@ internal sealed class RawI32ExpressionPlan
             return false;
         }
 
-        plan = new RawI32ExpressionPlan(ExpressionKind.AddRemainder, left: left, right: right, third: divisor, extraFuel: 1);
+        plan = new RawI32ExpressionPlan(
+            ExpressionKind.AddRemainder,
+            left: left,
+            right: right,
+            third: divisor,
+            extraFuel: 1);
         return true;
     }
 
-    private static bool TryCreateBinary(BinaryExpression binary, LocalStackKindPlanner stackPlan, IReadOnlyDictionary<string, SandboxFunction> functions, IReadOnlyDictionary<string, RawI32ExpressionPlan>? substitutions, out RawI32ExpressionPlan plan)
+    private static bool TryCreateBinary(
+        BinaryExpression binary,
+        LocalStackKindPlanner stackPlan,
+        IReadOnlyDictionary<string, SandboxFunction> functions,
+        IBindingCatalog? bindings,
+        IReadOnlyDictionary<string, RawI32ExpressionPlan>? substitutions,
+        out RawI32ExpressionPlan plan)
     {
-        if (!TryCreate(binary.Left, stackPlan, functions, substitutions, out var left) ||
-            !TryCreate(binary.Right, stackPlan, functions, substitutions, out var right))
+        if (!TryCreate(binary.Left, stackPlan, functions, bindings, substitutions, out var left) ||
+            !TryCreate(binary.Right, stackPlan, functions, bindings, substitutions, out var right))
         {
             plan = null!;
             return false;
         }
 
-        plan = new RawI32ExpressionPlan(BinaryKind(binary.Operator), left: left, right: right);
+        plan = new RawI32ExpressionPlan(
+            BinaryKind(binary.Operator),
+            left: left,
+            right: right);
         return true;
     }
 
-    private static bool TryCreateInlineCall(CallExpression call, LocalStackKindPlanner stackPlan, IReadOnlyDictionary<string, SandboxFunction> functions, out RawI32ExpressionPlan plan)
+    private static void EmitChargeBindingCall(ILGenerator il, string bindingId)
     {
-        plan = null!;
-        if (!functions.TryGetValue(call.Name, out var function) ||
-            !TryGetInlineableInt32Return(function, call, out var expression) ||
-            !TryCreate(call.Arguments[0], stackPlan, functions, out var argument))
-        {
-            return false;
-        }
-
-        var substitutions = new Dictionary<string, RawI32ExpressionPlan>(StringComparer.Ordinal) { [function.Parameters[0].Name] = argument };
-        if (TryCreate(expression, stackPlan, NoFunctions, substitutions, out var body))
-        {
-            plan = new RawI32ExpressionPlan(ExpressionKind.InlineCall, left: body, extraFuel: 3);
-            return true;
-        }
-
-        return false;
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Ldstr, bindingId);
+        il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.ChargeBindingCall)));
     }
 
-    private static bool TryGetInlineableInt32Return(SandboxFunction function, CallExpression call, out Expression expression)
-    {
-        var inlineable = call.Arguments.Count == 1 &&
-                         IsSimpleInlineArgument(call.Arguments[0]) &&
-                         function.Parameters.Count == 1 &&
-                         function.Parameters[0].Type == SandboxType.I32 &&
-                         function.ReturnType == SandboxType.I32 &&
-                         function.Body.Count == 1 &&
-                         function.Body[0] is ReturnStatement ret &&
-                         !ContainsCall(ret.Value) &&
-                         CountVariableUses(ret.Value, function.Parameters[0].Name) == 1;
-        expression = inlineable ? ((ReturnStatement)function.Body[0]).Value : null!;
-        return inlineable;
-    }
-
-    private static int CountVariableUses(Expression expression, string name)
-        => expression switch {
-            VariableExpression variable => string.Equals(variable.Name, name, StringComparison.Ordinal) ? 1 : 0,
-            UnaryExpression unary => CountVariableUses(unary.Operand, name),
-            BinaryExpression binary => CountVariableUses(binary.Left, name) + CountVariableUses(binary.Right, name),
-            CallExpression call => call.Arguments.Sum(argument => CountVariableUses(argument, name)),
-            _ => 0
-        };
-
-    private static bool IsSimpleInlineArgument(Expression expression)
-        => expression is LiteralExpression { Value: I32Value } or VariableExpression;
-
-    private static bool ContainsCall(Expression expression)
-        => expression switch {
-            CallExpression => true,
-            UnaryExpression unary => ContainsCall(unary.Operand),
-            BinaryExpression binary => ContainsCall(binary.Left) || ContainsCall(binary.Right),
-            _ => false
-        };
+    private static int BaseInstructionCost(ExpressionKind kind)
+        => kind is ExpressionKind.Abs or ExpressionKind.Min or ExpressionKind.Max or ExpressionKind.Clamp
+            ? 4
+            : 1;
 
     private static ExpressionKind BinaryKind(string op)
         => op switch
@@ -224,6 +234,8 @@ internal sealed class RawI32ExpressionPlan
             ExpressionKind.Multiply => nameof(CompiledRuntime.MulI32Raw),
             ExpressionKind.Divide => nameof(CompiledRuntime.DivI32Raw),
             ExpressionKind.Remainder => nameof(CompiledRuntime.RemI32Raw),
+            ExpressionKind.Min => nameof(CompiledRuntime.MinI32Raw),
+            ExpressionKind.Max => nameof(CompiledRuntime.MaxI32Raw),
             _ => throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "unsupported i32 expression"))
         };
 
@@ -238,6 +250,10 @@ internal sealed class RawI32ExpressionPlan
         Multiply,
         Divide,
         Remainder,
-        AddRemainder
+        AddRemainder,
+        Abs,
+        Min,
+        Max,
+        Clamp
     }
 }

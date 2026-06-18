@@ -96,7 +96,7 @@ internal static class RpcKernelPackageValidator
                     $"Plugin requires async but policy does not grant '{RuntimeCapabilityIds.Async}'."));
             }
 
-            if (!analysis.ReturnType.IsKnown() || analysis.ReturnType.IsForbidden())
+            if (!analysis.ReturnType.IsKnown())
             {
                 diagnostics.Add(new SandboxDiagnostic("DBXK072", $"Server extension return type '{analysis.ReturnType}' is not supported."));
             }

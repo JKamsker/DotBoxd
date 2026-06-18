@@ -30,7 +30,7 @@ public sealed partial class SandboxHost
             return false;
         }
 
-        foreach (var capabilityId in RequiredCapabilities(plan, entrypoint))
+        foreach (var capabilityId in plan.GetEntrypointMetadata(entrypoint).RequiredCapabilities)
         {
             if (_revokedCapabilities.TryGetValue(capabilityId, out revoked!))
             {
@@ -54,7 +54,7 @@ public sealed partial class SandboxHost
         }
 
         var now = plan.Policy.GrantClock;
-        foreach (var capabilityId in RequiredCapabilities(plan, entrypoint))
+        foreach (var capabilityId in plan.GetEntrypointMetadata(entrypoint).RequiredCapabilities)
         {
             if (!plan.Policy.GrantsCapability(capabilityId, now))
             {
@@ -67,59 +67,11 @@ public sealed partial class SandboxHost
         return false;
     }
 
-    private static IEnumerable<string> RequiredCapabilities(ExecutionPlan plan, string entrypoint)
-    {
-        var required = new HashSet<string>(
-            plan.Module.CapabilityRequests.Select(request => request.Id),
-            StringComparer.Ordinal);
-
-        if (!plan.BindingReferences.TryGetValue(entrypoint, out var bindingReferences))
-        {
-            return required;
-        }
-
-        foreach (var bindingId in bindingReferences)
-        {
-            if (!plan.Bindings.TryGet(bindingId, out var binding))
-            {
-                continue;
-            }
-
-            if (binding.RequiredCapability is not null)
-            {
-                required.Add(binding.RequiredCapability);
-            }
-
-            if (binding.IsAsync || (binding.Effects & SandboxEffect.Concurrency) != 0)
-            {
-                required.Add(RuntimeCapabilityIds.Async);
-            }
-        }
-
-        return required;
-    }
-
     private static bool EntrypointHasAsyncBinding(ExecutionPlan plan, string entrypoint)
-    {
-        if (!plan.BindingReferences.TryGetValue(entrypoint, out var bindingReferences))
-        {
-            return false;
-        }
-
-        foreach (var bindingId in bindingReferences)
-        {
-            if (plan.Bindings.TryGet(bindingId, out var binding) && binding.IsAsync)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+        => plan.GetEntrypointMetadata(entrypoint).HasAsyncBinding;
 
     private static bool EntrypointHasHostBinding(ExecutionPlan plan, string entrypoint)
-        => plan.BindingReferences.TryGetValue(entrypoint, out var bindingReferences) &&
-           bindingReferences.Count > 0;
+        => plan.GetEntrypointMetadata(entrypoint).HasHostBinding;
 
     private static bool ShouldUseCompiledAsyncWorker(ExecutionPlan plan, string entrypoint)
         => plan.Policy.GrantsCapability(RuntimeCapabilityIds.Async) &&

@@ -52,16 +52,11 @@ public sealed partial class ResourceMeter
     {
         if (!CanChargeHostCalls(calls))
         {
-            throw Quota($"host call budget exhausted at {bindingId}");
+            throw HostCallQuota(bindingId);
         }
 
         var count = checked((int)calls);
-        HostCalls = AddChecked(HostCalls, count, $"host call budget exhausted at {bindingId}");
-        var callsByBinding = CallsByBinding;
-        var bindingCalls = callsByBinding.TryGetValue(bindingId, out var existing)
-            ? AddChecked(existing, count, $"binding call budget exhausted at {bindingId}")
-            : count;
-        callsByBinding[bindingId] = bindingCalls;
+        HostCalls = AddHostCallCount(HostCalls, count, bindingId);
     }
 
     internal bool CanChargeStringValues(string value, long count)

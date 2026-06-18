@@ -114,43 +114,47 @@ public interface IBindingCatalog
 public sealed class BindingRegistry : IBindingCatalog
 {
     private readonly Dictionary<string, BindingDescriptor> _bindings;
+    private readonly Dictionary<string, BindingSignature> _signaturesById;
+    private readonly IReadOnlyList<BindingSignature> _signatures;
     private readonly Dictionary<string, CapabilityGrantValidator> _grantValidators;
 
     public BindingRegistry(IEnumerable<BindingDescriptor> bindings)
+        : this(bindings, validate: true)
+    {
+    }
+
+    private BindingRegistry(IEnumerable<BindingDescriptor> bindings, bool validate)
     {
         var frozen = FreezeAll(bindings);
-        var diagnostics = BindingRegistryValidator.Validate(frozen);
-        if (diagnostics.Count > 0)
+        if (validate)
         {
-            throw new SandboxValidationException(diagnostics);
+            var diagnostics = BindingRegistryValidator.Validate(frozen);
+            if (diagnostics.Count > 0)
+            {
+                throw new SandboxValidationException(diagnostics);
+            }
         }
 
         _bindings = CreateBindingDictionary(frozen);
+        _signatures = CreateSignatures(frozen);
+        _signaturesById = CreateSignatureDictionary(_signatures);
         _grantValidators = CreateGrantValidators(frozen);
-        ManifestHash = ComputeManifestHash(Signatures);
+        ManifestHash = ComputeManifestHash(_signatures);
     }
 
-    public IReadOnlyList<BindingSignature> Signatures
-    {
-        get
-        {
-            var signatures = new BindingSignature[_bindings.Count];
-            var index = 0;
-            foreach (var binding in _bindings.Values)
-            {
-                signatures[index++] = binding.Signature;
-            }
-
-            Array.Sort(signatures, static (left, right) => string.Compare(left.Id, right.Id, StringComparison.Ordinal));
-            return signatures;
-        }
-    }
+    public IReadOnlyList<BindingSignature> Signatures => _signatures;
 
     public string ManifestHash { get; }
+
+    internal static BindingRegistry FromValidated(IReadOnlyList<BindingDescriptor> bindings)
+        => new(bindings, validate: false);
 
     public BindingDescriptor GetDescriptor(string id) => _bindings[id];
 
     public bool Contains(string id) => _bindings.ContainsKey(id);
+
+    internal bool TryGetDescriptor(string id, out BindingDescriptor descriptor)
+        => _bindings.TryGetValue(id, out descriptor!);
 
     public bool TryGetCapabilityGrantValidator(string capabilityId, out CapabilityGrantValidator validator)
     {
@@ -166,9 +170,9 @@ public sealed class BindingRegistry : IBindingCatalog
 
     public bool TryGet(string id, out BindingSignature binding)
     {
-        if (_bindings.TryGetValue(id, out var descriptor))
+        if (_signaturesById.TryGetValue(id, out var signature))
         {
-            binding = descriptor.Signature;
+            binding = signature;
             return true;
         }
 
@@ -206,6 +210,29 @@ public sealed class BindingRegistry : IBindingCatalog
         for (var i = 0; i < bindings.Count; i++)
         {
             dictionary.Add(bindings[i].Id, bindings[i]);
+        }
+
+        return dictionary;
+    }
+
+    private static IReadOnlyList<BindingSignature> CreateSignatures(IReadOnlyList<BindingDescriptor> bindings)
+    {
+        var signatures = new BindingSignature[bindings.Count];
+        for (var i = 0; i < bindings.Count; i++)
+        {
+            signatures[i] = bindings[i].Signature;
+        }
+
+        Array.Sort(signatures, static (left, right) => string.Compare(left.Id, right.Id, StringComparison.Ordinal));
+        return Array.AsReadOnly(signatures);
+    }
+
+    private static Dictionary<string, BindingSignature> CreateSignatureDictionary(IReadOnlyList<BindingSignature> signatures)
+    {
+        var dictionary = new Dictionary<string, BindingSignature>(signatures.Count, StringComparer.Ordinal);
+        for (var i = 0; i < signatures.Count; i++)
+        {
+            dictionary.Add(signatures[i].Id, signatures[i]);
         }
 
         return dictionary;
@@ -353,6 +380,6 @@ public sealed class BindingRegistryBuilder
             throw new SandboxValidationException(diagnostics);
         }
 
-        return new BindingRegistry(_bindings);
+        return BindingRegistry.FromValidated(_bindings);
     }
 }

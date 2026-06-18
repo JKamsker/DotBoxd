@@ -26,6 +26,7 @@ public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
     private readonly RpcStreamManager _streams;
     private readonly object _lifecycleLock = new();
     private readonly IServiceProvider? _serviceProvider;
+    private Dictionary<Type, ProxyCacheEntry>? _proxyCache;
     private CancellationTokenSource? _cts;
     private Task? _readLoop;
     private Task? _disposeTask;
@@ -37,7 +38,7 @@ public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
     {
         _channel = channel;
         _sender = new RpcPeerSender(channel, () => Volatile.Read(ref _closed) != 0);
-        _streams = new RpcStreamManager(serializer, _sender.SendAsync, options.ExceptionTransformer);
+        _streams = new RpcStreamManager(serializer, _sender.SendAsync, options.ExceptionTransformer, _sender.SendFrameValueAsync);
         _inbound = new RpcPeerInboundDispatcher(
             serializer,
             options,
@@ -191,9 +192,33 @@ public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
             {
                 throw new ObjectDisposedException(nameof(RpcPeer));
             }
-        }
 
-        return GeneratedServiceRegistry.CreateProxy<TService>(this);
+            var serviceType = typeof(TService);
+            if (_proxyCache is not null && _proxyCache.TryGetValue(serviceType, out var cached))
+            {
+                if (cached.RegistryVersion == GeneratedServiceRegistry.CurrentRegistrationVersion)
+                {
+                    return (TService)cached.Proxy;
+                }
+
+                if (GeneratedServiceRegistry.IsRegistrationCurrent(
+                    serviceType,
+                    cached.RegistrationVersion,
+                    out var currentRegistryVersion))
+                {
+                    _proxyCache[serviceType] = new ProxyCacheEntry(
+                        cached.Proxy,
+                        cached.RegistrationVersion,
+                        currentRegistryVersion);
+                    return (TService)cached.Proxy;
+                }
+            }
+
+            var proxy = GeneratedServiceRegistry.CreateProxy(serviceType, this, out var registrationVersion);
+            (_proxyCache ??= new Dictionary<Type, ProxyCacheEntry>())[serviceType] =
+                new ProxyCacheEntry(proxy, registrationVersion, registrationVersion);
+            return (TService)proxy;
+        }
     }
 
     /// <summary>Begins the read loop. Idempotent; safe to call from a fluent chain.</summary>
@@ -241,10 +266,14 @@ public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
         _outbound.InvokeValueAsync<TResponse>(service, method, ct);
     public Task InvokeAsync<TRequest>(string service, string method, TRequest request, CancellationToken ct = default) =>
         _outbound.InvokeAsync(service, method, request, ct);
+    public ValueTask InvokeValueAsync<TRequest>(string service, string method, TRequest request, CancellationToken ct = default) =>
+        _outbound.InvokeValueAsync(service, method, request, ct);
     public Task InvokeAsync<TRequest>(string service, string method, TRequest request, RpcStreamAttachment[] streams, CancellationToken ct = default) =>
         _outbound.InvokeAsync(service, method, request, streams, ct);
     public Task InvokeAsync(string service, string method, CancellationToken ct = default) =>
         _outbound.InvokeAsync(service, method, ct);
+    public ValueTask InvokeValueAsync(string service, string method, CancellationToken ct = default) =>
+        _outbound.InvokeValueAsync(service, method, ct);
     public Task<Stream> InvokeStreamAsync(string service, string method, CancellationToken ct = default) =>
         _outbound.InvokeStreamAsync(service, method, ct);
     public Task<Stream> InvokeStreamAsync<TRequest>(string service, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
@@ -273,10 +302,14 @@ public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
         _outbound.InvokeValueOnInstanceAsync<TResponse>(service, instanceId, method, ct);
     public Task InvokeOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, CancellationToken ct = default) =>
         _outbound.InvokeOnInstanceAsync(service, instanceId, method, request, ct);
+    public ValueTask InvokeValueOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, CancellationToken ct = default) =>
+        _outbound.InvokeValueOnInstanceAsync(service, instanceId, method, request, ct);
     public Task InvokeOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, RpcStreamAttachment[] streams, CancellationToken ct = default) =>
         _outbound.InvokeOnInstanceAsync(service, instanceId, method, request, streams, ct);
     public Task InvokeOnInstanceAsync(string service, string instanceId, string method, CancellationToken ct = default) =>
         _outbound.InvokeOnInstanceAsync(service, instanceId, method, ct);
+    public ValueTask InvokeValueOnInstanceAsync(string service, string instanceId, string method, CancellationToken ct = default) =>
+        _outbound.InvokeValueOnInstanceAsync(service, instanceId, method, ct);
     public Task<Stream> InvokeStreamOnInstanceAsync(string service, string instanceId, string method, CancellationToken ct = default) =>
         _outbound.InvokeStreamOnInstanceAsync(service, instanceId, method, ct);
     public Task<Stream> InvokeStreamOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
@@ -324,6 +357,7 @@ public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
 
             _disposed = 1;
             Interlocked.Exchange(ref _closed, 1);
+            _proxyCache = null;
             cts = _cts;
             readLoop = _readLoop;
             cts?.Cancel();
@@ -411,4 +445,9 @@ public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
             Disconnected,
             this,
             new RpcDisconnectedEventArgs(_channel.RemoteEndpoint, error));
+
+    private readonly record struct ProxyCacheEntry(
+        object Proxy,
+        long RegistrationVersion,
+        long RegistryVersion);
 }

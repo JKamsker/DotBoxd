@@ -8,7 +8,7 @@ using DotBoxD.Services.Streaming.Frames;
 
 namespace DotBoxD.Services.Streaming.Core;
 
-internal sealed class RpcStreamManager
+internal sealed partial class RpcStreamManager
 {
     public const int WindowSize = 4;
     private readonly ConcurrentDictionary<int, RpcStreamReceiver> _receivers = new();
@@ -18,19 +18,19 @@ internal sealed class RpcStreamManager
     private readonly ConcurrentDictionary<int, int> _pendingCredits = new();
     private readonly ConcurrentDictionary<int, byte> _reservedOutbound = new();
     private readonly ConcurrentDictionary<int, RpcStreamSendState> _senders = new();
-    private readonly Func<ReadOnlyMemory<byte>, CancellationToken, Task> _sendAsync;
+    private readonly RpcStreamFrameSender _frameSender;
     private readonly ISerializer _serializer;
     private readonly Func<Exception, RpcErrorInfo?>? _exceptionTransformer;
     private int _outboundStreamIdCounter;
     private int _activeInboundCount;
-
     public RpcStreamManager(
         ISerializer serializer,
         Func<ReadOnlyMemory<byte>, CancellationToken, Task> sendAsync,
-        Func<Exception, RpcErrorInfo?>? exceptionTransformer)
+        Func<Exception, RpcErrorInfo?>? exceptionTransformer,
+        Func<PooledBufferWriter, CancellationToken, ValueTask>? sendFrameAsync = null)
     {
         _serializer = serializer;
-        _sendAsync = sendAsync;
+        _frameSender = new RpcStreamFrameSender(sendAsync, sendFrameAsync);
         _exceptionTransformer = exceptionTransformer;
     }
     internal int InboundReceiverCount => Volatile.Read(ref _activeInboundCount);
@@ -42,7 +42,6 @@ internal sealed class RpcStreamManager
     internal Action<int, RpcStreamReceiver>? AfterInboundReceiverObservedForTest { get; set; }
     internal Action<int>? AfterReservedOutboundCreditObservedForTest { get; set; }
     internal Action<int>? AfterOutboundSenderMissForTest { get; set; }
-
     public RpcStreamReceiver GetRegisteredInbound(RpcStreamHandle handle)
     {
         if (handle.StreamId == 0)
@@ -63,7 +62,6 @@ internal sealed class RpcStreamManager
 
         return existing;
     }
-
     public RpcStreamReceiver RegisterInboundResponse(RpcStreamHandle handle, CancellationToken ct) => RegisterInbound(handle, ct);
     internal RpcStreamHandle ReserveOutbound(RpcStreamKind kind)
     {
@@ -81,7 +79,6 @@ internal sealed class RpcStreamManager
             }
         }
     }
-
     internal void ReserveOutbound(int streamId)
     {
         if (streamId == 0)
@@ -189,10 +186,8 @@ internal sealed class RpcStreamManager
         RpcStreamAttachment[]? attachments,
         CancellationToken ct)
     {
-        if (attachments is null || attachments.Length == 0)
-        {
-            return RpcOutboundStreamSet.Empty;
-        }
+        if (attachments is null || attachments.Length == 0) { return RpcOutboundStreamSet.Empty; }
+        if (attachments.Length == 1) { return RegisterOutbound(attachments[0], ct); }
         var rows = new (RpcStreamAttachment Attachment, RpcStreamSendState State)[attachments.Length];
         var added = new RpcStreamSendState[attachments.Length];
         var addedCount = 0;
@@ -232,7 +227,6 @@ internal sealed class RpcStreamManager
             throw;
         }
     }
-
     public RpcOutboundStreamSet RegisterOutbound(
         RpcStreamAttachment attachment,
         CancellationToken ct)
@@ -440,53 +434,6 @@ internal sealed class RpcStreamManager
             state.DisposeAfterCompletion();
         }
     }
-    public async Task SendStreamItemAsync(int streamId, ReadOnlyMemory<byte> payload, CancellationToken ct)
-    {
-        var state = GetSender(streamId);
-        await state.WaitForCreditAsync(ct).ConfigureAwait(false);
-        using var frame = MessageFramer.FrameToPayload(streamId, MessageType.StreamItem, payload.Span);
-        await _sendAsync(frame.Memory, ct).ConfigureAwait(false);
-    }
-    public async Task SendStreamItemAsync<T>(
-        int streamId,
-        T item,
-        ISerializer serializer,
-        CancellationToken ct)
-    {
-        var state = GetSender(streamId);
-        await state.WaitForCreditAsync(ct).ConfigureAwait(false);
-        using var writer = PooledBufferWriter.Rent(MessageFramer.HeaderSize);
-        RpcRawFrame.WritePrefix(writer, streamId, MessageType.StreamItem);
-        serializer.Serialize(writer, item);
-        using var frame = RpcRawFrame.Finish(writer);
-        await _sendAsync(frame.Memory, ct).ConfigureAwait(false);
-    }
-    public Task SendStreamCompleteAsync(int streamId, CancellationToken ct) =>
-        SendControlAsync(streamId, MessageType.StreamComplete, ct);
-    public Task SendCancelAsync(int streamId, CancellationToken ct) =>
-        SendControlAsync(streamId, MessageType.StreamCancel, ct);
-    public async Task SendCreditAsync(int streamId, int count, CancellationToken ct)
-    {
-        using var frame = RpcRawFrame.FrameInt32(streamId, MessageType.StreamCredit, count);
-        await _sendAsync(frame.Memory, ct).ConfigureAwait(false);
-    }
-    public async Task SendStreamErrorAsync(int streamId, Exception error, CancellationToken ct)
-    {
-        var rpcError = RpcErrors.FromException(error, _exceptionTransformer);
-        using var frame = MessageFramer.FrameMessage(
-            _serializer,
-            streamId,
-            MessageType.StreamError,
-            new RpcResponse
-            {
-                MessageId = streamId,
-                IsSuccess = false,
-                ErrorMessage = rpcError.Message,
-                ErrorType = rpcError.Type,
-            },
-            ReadOnlySpan<byte>.Empty);
-        await _sendAsync(frame.Memory, ct).ConfigureAwait(false);
-    }
     public void Stop()
     {
         var receivers = new List<RpcStreamReceiver>();
@@ -549,10 +496,5 @@ internal sealed class RpcStreamManager
         {
             receiver.Abort(new ServiceConnectionException($"Stream '{streamId}' is no longer active."));
         }
-    }
-    private async Task SendControlAsync(int streamId, MessageType type, CancellationToken ct)
-    {
-        using var frame = MessageFramer.FrameToPayload(streamId, type, ReadOnlySpan<byte>.Empty);
-        await _sendAsync(frame.Memory, ct).ConfigureAwait(false);
     }
 }

@@ -20,6 +20,6 @@ namespace DotBoxD.Services.Generated
         /// Gets a proxy to call IKwSnap on the other peer.
         /// </summary>
         public static global::Snap.Kw.IKwSnap GetKwSnap(this global::DotBoxD.Services.Peer.RpcPeer peer)
-            => new global::Snap.Kw.KwSnapProxy(peer);
+            => peer.Get<global::Snap.Kw.IKwSnap>();
     }
 }

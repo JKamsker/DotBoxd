@@ -105,14 +105,13 @@ internal sealed partial class RpcPeerOutboundInvoker
         string method,
         CancellationToken ct)
     {
-        Task sendTask;
+        ValueTask sendTask;
         try
         {
-            sendTask = _sendAsync(frame.WrittenMemory, ct);
+            sendTask = SendOwnedFrameAsync(frame, ct);
         }
         catch (Exception ex)
         {
-            frame.Dispose();
             _pending.Remove(messageId, pending, consumed: true);
             ReleasePendingSlot();
             return ToFaultedTask<TResponse>(ex);
@@ -133,7 +132,6 @@ internal sealed partial class RpcPeerOutboundInvoker
         return AwaitUnaryResponseAsync(
             messageId,
             pending,
-            frame,
             sendTask,
             service,
             method,
@@ -143,8 +141,7 @@ internal sealed partial class RpcPeerOutboundInvoker
     private async Task<TResponse> AwaitUnaryResponseAsync<TResponse>(
         int messageId,
         PendingUnaryResponse<TResponse> pending,
-        PooledBufferWriter frame,
-        Task sendTask,
+        ValueTask sendTask,
         string service,
         string method,
         CancellationToken ct)
@@ -153,11 +150,8 @@ internal sealed partial class RpcPeerOutboundInvoker
         var requestSent = false;
         try
         {
-            using (frame)
-            {
-                await sendTask.ConfigureAwait(false);
-                requestSent = true;
-            }
+            await sendTask.ConfigureAwait(false);
+            requestSent = true;
 
             var callerCancellation = ct.CanBeCanceled
                 ? ct.Register(static state => ((IPendingResponse)state!).CancelByCaller(), pending)

@@ -99,6 +99,21 @@ public sealed class ResourceMeterTests
     }
 
     [Fact]
+    public void Flat_scalar_list_fast_path_matches_shape_scan_fuel_boundary()
+    {
+        var freeMeter = new ResourceMeter(new ResourceLimits(MaxFuel: 0));
+        var freeValue = CreateFlatScalarList(61);
+
+        freeMeter.ChargeValue(freeValue);
+
+        var chargedMeter = new ResourceMeter(new ResourceLimits(MaxFuel: 0));
+        var chargedValue = CreateFlatScalarList(62);
+        var ex = Assert.Throws<SandboxRuntimeException>(() => chargedMeter.ChargeValue(chargedValue));
+
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
+    }
+
+    [Fact]
     public void Flat_scalar_list_charge_preserves_resource_usage()
     {
         var meter = new ResourceMeter(new ResourceLimits());
@@ -145,4 +160,51 @@ public sealed class ResourceMeterTests
         Assert.Equal(0, usage.AllocatedBytes);
         meter.ChargeHostCall("test.binding", maxCallsPerRun: 1);
     }
+
+    [Fact]
+    public void Resource_meter_enforces_per_binding_limit()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxHostCalls: 10));
+
+        meter.ChargeHostCall("test.binding", maxCallsPerRun: 1);
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() =>
+            meter.ChargeHostCall("test.binding", maxCallsPerRun: 1));
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
+        Assert.Equal(2, meter.HostCalls);
+    }
+
+    [Fact]
+    public void Resource_meter_enforces_per_binding_limit_after_switching_bindings()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxHostCalls: 10));
+
+        meter.ChargeHostCall("test.binding.a", maxCallsPerRun: 1);
+        meter.ChargeHostCall("test.binding.b", maxCallsPerRun: 1);
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() =>
+            meter.ChargeHostCall("test.binding.a", maxCallsPerRun: 1));
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
+        Assert.Equal(3, meter.HostCalls);
+    }
+
+    [Fact]
+    public void Resource_meter_unlimited_host_calls_track_global_limit()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxHostCalls: 2));
+
+        meter.ChargeHostCall("test.binding");
+        meter.ChargeHostCall("test.binding");
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() => meter.ChargeHostCall("test.binding"));
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
+        Assert.Equal(3, meter.HostCalls);
+    }
+
+    private static SandboxValue CreateFlatScalarList(int count)
+        => SandboxValue.FromList(
+            Enumerable.Range(0, count)
+                .Select(SandboxValue.FromInt32)
+                .ToArray(),
+            SandboxType.I32);
 }

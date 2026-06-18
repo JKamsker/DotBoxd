@@ -235,9 +235,10 @@ internal sealed class RpcPeerInboundDispatcher
             return false;
         }
 
+        var dispatcher = _responseBuilder.ResolveDispatcher(request, out var requiresStreamingContext);
         var requestCts = !_disableInboundRequestCancellation ||
             request.Streams is not null ||
-            _responseBuilder.RequiresStreamingContext(request)
+            requiresStreamingContext
                 ? new CancellationTokenSource()
                 : null;
         if (!_activeInbound.TryAdd(messageId, requestCts))
@@ -257,7 +258,14 @@ internal sealed class RpcPeerInboundDispatcher
             return false;
         }
 
-        inbound = new RpcPeerInboundRequest(frame, request, messageId, payload, requestCts);
+        inbound = new RpcPeerInboundRequest(
+            frame,
+            request,
+            messageId,
+            payload,
+            requestCts,
+            dispatcher,
+            requiresStreamingContext);
         try
         {
             _streams.RegisterInbound(request.Streams, inbound.CancellationToken);
@@ -311,7 +319,7 @@ internal sealed class RpcPeerInboundDispatcher
         {
             using (inbound.Frame)
             {
-                streaming = _responseBuilder.RequiresStreamingContext(inbound.Request)
+                streaming = inbound.RequiresStreamingContext
                     ? new RpcStreamingContext(
                         _streams,
                         _serializer,
@@ -323,6 +331,7 @@ internal sealed class RpcPeerInboundDispatcher
                     inbound.MessageId,
                     inbound.Body,
                     streaming,
+                    inbound.Dispatcher,
                     inbound.CancellationToken).ConfigureAwait(false);
                 var responseStream = response.Stream;
                 try

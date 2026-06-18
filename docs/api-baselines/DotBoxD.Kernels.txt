@@ -132,7 +132,7 @@ public IReadOnlyDictionary<string, string> BindingAuditFields( string resourceKi
 public IReadOnlyDictionary<string, string> Metadata { get => _metadata; init => _metadata = ModelCopy.StringDictionary(value); }
 public IReadOnlyDictionary<string, string> Parameters { get; init; } =
 public IReadOnlyDictionary<string, string>? Fields { get => _fields; init => _fields = CopyFields(value); }
-public IReadOnlyList<BindingSignature> Signatures
+public IReadOnlyList<BindingSignature> Signatures => _signatures
 public IReadOnlyList<CapabilityGrant> Grants
 public IReadOnlyList<CapabilityRequest> CapabilityRequests { get => _capabilityRequests; init => _capabilityRequests = ModelCopy.List(value); }
 public IReadOnlyList<Expression> Arguments { get => _arguments; init => _arguments = ModelCopy.List(value); }
@@ -170,7 +170,7 @@ public override SandboxType Type => SandboxType.I64
 public override SandboxType Type => SandboxType.List(ItemType)
 public override SandboxType Type => SandboxType.Map(KeyType, ValueType)
 public override SandboxType Type => SandboxType.SandboxPath
-public override SandboxType Type => SandboxType.Scalar("SandboxUri")
+public override SandboxType Type => SandboxType.SandboxUri
 public override SandboxType Type => SandboxType.Scalar(TypeName)
 public override SandboxType Type => SandboxType.String
 public override SandboxType Type => SandboxType.Unit

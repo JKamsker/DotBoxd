@@ -132,6 +132,99 @@ public sealed class CollectionCopyAccountingTests
         AssertCopyQuota(result, 32);
     }
 
+    [Fact]
+    public async Task Map_remove_existing_key_is_equivalent_across_modes()
+    {
+        var interpreted = await ExecuteMapRemoveAsync(removeKey: 1, lookupKey: 2, ExecutionMode.Interpreted);
+        var compiled = await ExecuteMapRemoveAsync(removeKey: 1, lookupKey: 2, ExecutionMode.Compiled);
+
+        AssertMapRemoveEquivalent(interpreted, compiled, expectedLookup: 20);
+    }
+
+    [Fact]
+    public async Task Map_remove_missing_key_is_equivalent_across_modes()
+    {
+        var interpreted = await ExecuteMapRemoveAsync(removeKey: 9, lookupKey: 1, ExecutionMode.Interpreted);
+        var compiled = await ExecuteMapRemoveAsync(removeKey: 9, lookupKey: 1, ExecutionMode.Compiled);
+
+        AssertMapRemoveEquivalent(interpreted, compiled, expectedLookup: 10);
+    }
+
+    private static async Task<SandboxExecutionResult> ExecuteMapRemoveAsync(
+        int removeKey,
+        int lookupKey,
+        ExecutionMode mode)
+    {
+        var host = SandboxTestHost.Create(compiler: true);
+        var module = await host.ImportJsonAsync($$"""
+        {
+          "id": "map-remove-differential",
+          "version": "1.0.0",
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [
+                { "name": "input", "type": { "name": "Map", "arguments": ["I32", "I32"] } }
+              ],
+              "returnType": "I32",
+              "body": [
+                {
+                  "op": "set",
+                  "name": "trimmed",
+                  "value": {
+                    "call": "map.remove",
+                    "args": [{ "var": "input" }, { "i32": {{removeKey}} }]
+                  }
+                },
+                {
+                  "op": "return",
+                  "value": {
+                    "call": "map.get",
+                    "args": [{ "var": "trimmed" }, { "i32": {{lookupKey}} }]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+        """);
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().Build());
+        return await host.ExecuteAsync(
+            plan,
+            "main",
+            I32MapWithTwoEntries(),
+            new SandboxExecutionOptions { Mode = mode, AllowFallbackToInterpreter = false });
+    }
+
+    private static SandboxValue I32MapWithTwoEntries()
+        => SandboxValue.FromMap(
+            new Dictionary<SandboxValue, SandboxValue>
+            {
+                [SandboxValue.FromInt32(1)] = SandboxValue.FromInt32(10),
+                [SandboxValue.FromInt32(2)] = SandboxValue.FromInt32(20)
+            },
+            SandboxType.I32,
+            SandboxType.I32);
+
+    // map.remove now shares immutable backing instead of deep-revalidating + copying the source map. The result
+    // contents and the shape-derived charges (AllocatedBytes/CollectionElements) must stay identical to the
+    // interpreter for both an existing-key removal and a no-op missing-key removal.
+    private static void AssertMapRemoveEquivalent(
+        SandboxExecutionResult interpreted,
+        SandboxExecutionResult compiled,
+        int expectedLookup)
+    {
+        Assert.True(interpreted.Succeeded, interpreted.Error?.SafeMessage);
+        Assert.True(compiled.Succeeded, compiled.Error?.SafeMessage);
+        Assert.Equal(ExecutionMode.Interpreted, interpreted.ActualMode);
+        Assert.Equal(ExecutionMode.Compiled, compiled.ActualMode);
+        Assert.Equal(expectedLookup, ((I32Value)interpreted.Value!).Value);
+        Assert.Equal(expectedLookup, ((I32Value)compiled.Value!).Value);
+        Assert.Equal(interpreted.ResourceUsage.AllocatedBytes, compiled.ResourceUsage.AllocatedBytes);
+        Assert.Equal(interpreted.ResourceUsage.CollectionElements, compiled.ResourceUsage.CollectionElements);
+    }
+
     private static async Task<SandboxExecutionResult> ExecuteCompiledCopyAsync(
         string moduleJson,
         SandboxValue input,

@@ -65,7 +65,7 @@ public sealed class ServerExtensionProxyTests
         }
         """;
 
-    private const string MonsterKillerWithGeneratedClientSource = """
+    internal const string MonsterKillerWithGeneratedClientSource = """
         using System.Collections.Generic;
         using System.Threading.Tasks;
         using DotBoxD.Kernels;

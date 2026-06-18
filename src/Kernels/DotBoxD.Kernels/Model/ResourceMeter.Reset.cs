@@ -7,6 +7,8 @@ public sealed partial class ResourceMeter
     internal void ResetForReuse()
     {
         _callsByBinding?.Clear();
+        _lastLimitedBindingId = null;
+        _lastLimitedBindingCalls = 0;
         _deadline = CreateDeadline(Limits);
         _chargesSinceDeadlineCheck = 0;
         FuelUsed = 0;

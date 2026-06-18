@@ -20,6 +20,6 @@ namespace DotBoxD.Services.Generated
         /// Gets a proxy to call IVtSnap on the other peer.
         /// </summary>
         public static global::Snap.Vt.IVtSnap GetVtSnap(this global::DotBoxD.Services.Peer.RpcPeer peer)
-            => new global::Snap.Vt.VtSnapProxy(peer);
+            => peer.Get<global::Snap.Vt.IVtSnap>();
     }
 }

@@ -21,6 +21,7 @@ internal static class HostServiceBindingFactory
         var returnType = payloadType is null ? SandboxType.Unit : KernelRpcMarshaller.SandboxTypeOf(payloadType);
         var effects = InferEffects(interfaceMethod, returnType, capability);
         var id = HostBindingRoute(interfaceMethod.DeclaringType!, interfaceMethod);
+        var callTarget = new HostServiceCallTarget(targetMethod);
 
         return CreateDescriptor(
             id,
@@ -30,7 +31,7 @@ internal static class HostServiceBindingFactory
             capability,
             IsTaskLike(interfaceMethod.ReturnType),
             (context, args, cancellationToken) =>
-                InvokeAsync(context, args, cancellationToken, id, capability, effects, targetMethod, target, payloadType));
+                InvokeAsync(context, args, cancellationToken, id, capability, effects, callTarget, target, payloadType));
     }
 
     public static BindingDescriptor CreateHandleBinding(
@@ -48,6 +49,8 @@ internal static class HostServiceBindingFactory
         var returnType = payloadType is null ? SandboxType.Unit : KernelRpcMarshaller.SandboxTypeOf(payloadType);
         var effects = InferEffects(handleInterfaceMethod, returnType, capability);
         var id = HostBindingRoute(handleInterfaceMethod.DeclaringType!, handleInterfaceMethod);
+        var factoryCallTarget = new HostServiceCallTarget(factoryTargetMethod);
+        var handleCallTarget = new HostServiceCallTarget(handleInterfaceMethod);
 
         return CreateDescriptor(
             id,
@@ -65,26 +68,14 @@ internal static class HostServiceBindingFactory
                     capability,
                     effects,
                     factoryInterfaceMethod,
-                    factoryTargetMethod,
+                    factoryCallTarget,
                     factoryTarget,
-                    handleInterfaceMethod,
+                    handleCallTarget,
                     payloadType));
     }
 
     public static Type? UnwrapReturnType(Type type)
-    {
-        if (type == typeof(void) || type == typeof(Task) || type == typeof(ValueTask))
-        {
-            return null;
-        }
-
-        if ((IsGenericTask(type) || IsGenericValueTask(type)) && type.GetGenericArguments() is [var payload])
-        {
-            return payload;
-        }
-
-        return type;
-    }
+        => HostServiceCallTarget.UnwrapReturnType(type);
 
     private static BindingDescriptor CreateDescriptor(
         string id,
@@ -124,16 +115,16 @@ internal static class HostServiceBindingFactory
         string bindingId,
         string capability,
         SandboxEffect effects,
-        MethodInfo targetMethod,
+        HostServiceCallTarget callTarget,
         object target,
         Type? payloadType)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var startedAt = DateTimeOffset.UtcNow;
-        var values = ConvertArguments(targetMethod, args);
-        var result = targetMethod.Invoke(target, values);
-        var payload = await AwaitReturnAsync(result, targetMethod.ReturnType).ConfigureAwait(false);
-        WriteAudit(context, bindingId, capability, effects, startedAt, values);
+        var values = ConvertArguments(callTarget.ParameterTypes, args, startIndex: 0);
+        var result = callTarget.Invoke(target, values);
+        var payload = await callTarget.ReadReturnAsync(result).ConfigureAwait(false);
+        WriteAudit(context, bindingId, capability, effects, startedAt, values.Length > 0 ? values[0] : null);
         return payloadType is null
             ? SandboxValue.Unit
             : KernelRpcMarshaller.ToSandboxValue(payload, payloadType);
@@ -147,72 +138,38 @@ internal static class HostServiceBindingFactory
         string capability,
         SandboxEffect effects,
         MethodInfo factoryInterfaceMethod,
-        MethodInfo factoryTargetMethod,
+        HostServiceCallTarget factoryCallTarget,
         object factoryTarget,
-        MethodInfo handleInterfaceMethod,
+        HostServiceCallTarget handleCallTarget,
         Type? payloadType)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var startedAt = DateTimeOffset.UtcNow;
-        var factoryArgumentCount = factoryInterfaceMethod.GetParameters().Length;
-        var factoryValues = ConvertArguments(factoryTargetMethod, args.Take(factoryArgumentCount).ToArray());
-        var handle = factoryTargetMethod.Invoke(factoryTarget, factoryValues)
+        var factoryValues = ConvertArguments(factoryCallTarget.ParameterTypes, args, startIndex: 0);
+        var handle = factoryCallTarget.Invoke(factoryTarget, factoryValues)
             ?? throw new InvalidOperationException($"Host service factory '{factoryInterfaceMethod.Name}' returned null.");
-        var handleValues = ConvertArguments(handleInterfaceMethod, args.Skip(factoryArgumentCount).ToArray());
-        var result = handleInterfaceMethod.Invoke(handle, handleValues);
-        var payload = await AwaitReturnAsync(result, handleInterfaceMethod.ReturnType).ConfigureAwait(false);
-        WriteAudit(context, bindingId, capability, effects, startedAt, factoryValues.Concat(handleValues).ToArray());
+        var handleValues = ConvertArguments(handleCallTarget.ParameterTypes, args, factoryCallTarget.ParameterTypes.Length);
+        var result = handleCallTarget.Invoke(handle, handleValues);
+        var payload = await handleCallTarget.ReadReturnAsync(result).ConfigureAwait(false);
+        var auditValue = factoryValues.Length > 0 ? factoryValues[0] : handleValues.Length > 0 ? handleValues[0] : null;
+        WriteAudit(context, bindingId, capability, effects, startedAt, auditValue);
         return payloadType is null
             ? SandboxValue.Unit
             : KernelRpcMarshaller.ToSandboxValue(payload, payloadType);
     }
 
-    private static object?[] ConvertArguments(MethodInfo targetMethod, IReadOnlyList<SandboxValue> args)
+    private static object?[] ConvertArguments(
+        Type[] parameterTypes,
+        IReadOnlyList<SandboxValue> args,
+        int startIndex)
     {
-        var parameters = targetMethod.GetParameters();
-        var values = new object?[parameters.Length];
-        for (var i = 0; i < parameters.Length; i++)
+        var values = new object?[parameterTypes.Length];
+        for (var i = 0; i < parameterTypes.Length; i++)
         {
-            values[i] = KernelRpcMarshaller.FromSandboxValue(args[i], parameters[i].ParameterType);
+            values[i] = KernelRpcMarshaller.FromSandboxValue(args[startIndex + i], parameterTypes[i]);
         }
 
         return values;
-    }
-
-    private static async ValueTask<object?> AwaitReturnAsync(object? result, Type returnType)
-    {
-        if (returnType == typeof(void) || result is null)
-        {
-            return null;
-        }
-
-        if (returnType == typeof(ValueTask))
-        {
-            await ((ValueTask)result).ConfigureAwait(false);
-            return null;
-        }
-
-        if (returnType == typeof(Task))
-        {
-            await ((Task)result).ConfigureAwait(false);
-            return null;
-        }
-
-        if (IsGenericValueTask(returnType))
-        {
-            var task = (Task)returnType.GetMethod(nameof(ValueTask<int>.AsTask))!.Invoke(result, null)!;
-            await task.ConfigureAwait(false);
-            return task.GetType().GetProperty(nameof(Task<int>.Result))!.GetValue(task);
-        }
-
-        if (IsGenericTask(returnType))
-        {
-            var task = (Task)result;
-            await task.ConfigureAwait(false);
-            return task.GetType().GetProperty(nameof(Task<int>.Result))!.GetValue(task);
-        }
-
-        return result;
     }
 
     private static void WriteAudit(
@@ -221,9 +178,9 @@ internal static class HostServiceBindingFactory
         string capability,
         SandboxEffect effects,
         DateTimeOffset startedAt,
-        IReadOnlyList<object?> values)
+        object? firstArgument)
     {
-        var resourceId = values.Count > 0 && values[0] is string id ? $"entity:{id}" : bindingId;
+        var resourceId = firstArgument is string id ? $"entity:{id}" : bindingId;
         context.Audit.Write(new SandboxAuditEvent(
             context.RunId,
             "BindingCall",
@@ -236,17 +193,8 @@ internal static class HostServiceBindingFactory
             Fields: context.BindingAuditFields("host-service", startedAt)));
     }
 
-    private static bool IsGenericTask(Type type)
-        => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Task<>);
-
-    private static bool IsGenericValueTask(Type type)
-        => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ValueTask<>);
-
     private static bool IsTaskLike(Type type)
-        => type == typeof(Task) ||
-           type == typeof(ValueTask) ||
-           IsGenericTask(type) ||
-           IsGenericValueTask(type);
+        => HostServiceCallTarget.IsTaskLike(type);
 
     private static SandboxEffect InferEffects(MethodInfo method, SandboxType returnType, string capability)
     {

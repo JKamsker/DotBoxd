@@ -99,8 +99,8 @@ public static class KernelRpcBinaryCodec
             KernelRpcValueKind.I64 => KernelRpcValue.Int64(reader.ReadInt64()),
             KernelRpcValueKind.F64 => ReadDouble(ref reader),
             KernelRpcValueKind.String => KernelRpcValue.String(reader.ReadString()),
-            KernelRpcValueKind.List => KernelRpcValue.List(ReadItems(ref reader, depth)),
-            KernelRpcValueKind.Record => KernelRpcValue.Record(ReadItems(ref reader, depth)),
+            KernelRpcValueKind.List => KernelRpcValue.ListFromOwnedItems(ReadItems(ref reader, depth)),
+            KernelRpcValueKind.Record => KernelRpcValue.RecordFromOwnedFields(ReadItems(ref reader, depth)),
             _ => throw new FormatException($"Server extension payload contains unknown value kind '{kind}'.")
         };
     }

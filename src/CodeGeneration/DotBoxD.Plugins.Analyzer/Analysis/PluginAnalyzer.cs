@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using Microsoft.CodeAnalysis;
@@ -237,76 +236,4 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
     private static bool IsAllowedLiveSettingType(ITypeSymbol type)
         => DotBoxDTypeNameReader.IsSupportedScalar(type);
 
-    private sealed class ForbiddenHelperCallGraph
-    {
-        private readonly ConcurrentDictionary<ISymbol, ITypeSymbol> _forbidden = new(SymbolEqualityComparer.Default);
-        private readonly ConcurrentBag<HelperCall> _calls = [];
-
-        public void RecordForbidden(IMethodSymbol method, ITypeSymbol type)
-            => _forbidden.TryAdd(method.OriginalDefinition, type);
-
-        public void RecordCall(IMethodSymbol caller, IMethodSymbol target, Location location)
-        {
-            if (target.DeclaringSyntaxReferences.Length == 0 ||
-                IsEventKernel(target.ContainingType)) {
-                return;
-            }
-
-            _calls.Add(new HelperCall(caller.OriginalDefinition, target.OriginalDefinition, location));
-        }
-
-        public void ReportDiagnostics(CompilationAnalysisContext context)
-        {
-            var tainted = PropagateForbiddenHelpers();
-            foreach (var call in _calls) {
-                if (IsEventKernel(call.Caller.ContainingType) &&
-                    tainted.TryGetValue(call.Target, out var type)) {
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        ForbiddenHostApiRule,
-                        call.Location,
-                        type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)));
-                }
-            }
-        }
-
-        private Dictionary<ISymbol, ITypeSymbol> PropagateForbiddenHelpers()
-        {
-            var tainted = new Dictionary<ISymbol, ITypeSymbol>(_forbidden, SymbolEqualityComparer.Default);
-            if (tainted.Count == 0) {
-                return tainted;
-            }
-
-            var callersByTarget = new Dictionary<ISymbol, List<ISymbol>>(SymbolEqualityComparer.Default);
-            foreach (var call in _calls) {
-                if (!callersByTarget.TryGetValue(call.Target, out var callers)) {
-                    callers = [];
-                    callersByTarget.Add(call.Target, callers);
-                }
-
-                callers.Add(call.Caller);
-            }
-
-            var pending = new Queue<ISymbol>(tainted.Keys);
-            while (pending.Count > 0) {
-                var target = pending.Dequeue();
-                if (!tainted.TryGetValue(target, out var type) ||
-                    !callersByTarget.TryGetValue(target, out var callers)) {
-                    continue;
-                }
-
-                foreach (var caller in callers) {
-                    if (tainted.ContainsKey(caller)) {
-                        continue;
-                    }
-
-                    tainted.Add(caller, type);
-                    pending.Enqueue(caller);
-                }
-            }
-
-            return tainted;
-        }
-    }
-
-    private sealed record HelperCall(IMethodSymbol Caller, IMethodSymbol Target, Location Location);
 }

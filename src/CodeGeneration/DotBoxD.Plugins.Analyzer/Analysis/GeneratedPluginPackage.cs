@@ -6,8 +6,15 @@ internal sealed record GeneratedPluginPackage(
     string Namespace,
     string PackageName);
 
-internal sealed record GeneratedPluginPackageDiagnostic(string Message);
+internal readonly record struct GeneratedPluginPackageIdentity(
+    string Namespace,
+    string PackageName)
+{
+    public static GeneratedPluginPackageIdentity From(GeneratedPluginPackage package)
+        => new(package.Namespace, package.PackageName);
 
-internal sealed record GeneratedPluginPackageBatch(
-    EquatableArray<GeneratedPluginPackage> Packages,
-    EquatableArray<GeneratedPluginPackageDiagnostic> Diagnostics);
+    public string NamespaceDisplay
+        => string.IsNullOrWhiteSpace(Namespace) ? "<global>" : Namespace;
+}
+
+internal sealed record GeneratedPluginPackageDiagnostic(string Message);

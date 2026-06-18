@@ -10,6 +10,8 @@ public sealed record FunctionAnalysis(SandboxType ReturnType, SandboxEffect Effe
 
 public sealed class ExecutionPlan
 {
+    private ExecutionPlanEntrypointMetadata? _moduleOnlyEntrypointMetadata;
+    private FrozenDictionary<string, ExecutionPlanEntrypointMetadata>? _entrypointMetadataLookup;
     private FrozenDictionary<string, SandboxFunction>? _functionLookup;
 
     public ExecutionPlan(
@@ -66,11 +68,93 @@ public sealed class ExecutionPlan
     public IReadOnlyDictionary<string, SandboxFunction> FunctionLookup
         => Volatile.Read(ref _functionLookup) ?? BuildFunctionLookup();
 
+    internal ExecutionPlanEntrypointMetadata GetEntrypointMetadata(string entrypoint)
+    {
+        var lookup = Volatile.Read(ref _entrypointMetadataLookup) ?? BuildEntrypointMetadataLookup();
+        return lookup.TryGetValue(entrypoint, out var metadata)
+            ? metadata
+            : Volatile.Read(ref _moduleOnlyEntrypointMetadata)!;
+    }
+
     private FrozenDictionary<string, SandboxFunction> BuildFunctionLookup()
     {
         var lookup = Module.Functions.ToFrozenDictionary(f => f.Id, StringComparer.Ordinal);
         Volatile.Write(ref _functionLookup, lookup);
         return lookup;
+    }
+
+    private FrozenDictionary<string, ExecutionPlanEntrypointMetadata> BuildEntrypointMetadataLookup()
+    {
+        var moduleCapabilities = ModuleCapabilityIds();
+        Volatile.Write(
+            ref _moduleOnlyEntrypointMetadata,
+            new ExecutionPlanEntrypointMetadata(moduleCapabilities, hasAsyncBinding: false, hasHostBinding: false));
+
+        var metadata = new Dictionary<string, ExecutionPlanEntrypointMetadata>(
+            BindingReferences.Count,
+            StringComparer.Ordinal);
+        foreach (var pair in BindingReferences)
+        {
+            metadata[pair.Key] = BuildEntrypointMetadata(moduleCapabilities, pair.Value);
+        }
+
+        var lookup = metadata.ToFrozenDictionary(StringComparer.Ordinal);
+        Volatile.Write(ref _entrypointMetadataLookup, lookup);
+        return lookup;
+    }
+
+    private string[] ModuleCapabilityIds()
+    {
+        var capabilities = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var request in Module.CapabilityRequests)
+        {
+            capabilities.Add(request.Id);
+        }
+
+        return capabilities.Count == 0 ? [] : capabilities.ToArray();
+    }
+
+    private ExecutionPlanEntrypointMetadata BuildEntrypointMetadata(
+        string[] moduleCapabilities,
+        IReadOnlySet<string> bindingReferences)
+    {
+        if (bindingReferences.Count == 0)
+        {
+            return new ExecutionPlanEntrypointMetadata(
+                moduleCapabilities,
+                hasAsyncBinding: false,
+                hasHostBinding: false);
+        }
+
+        var required = new HashSet<string>(moduleCapabilities, StringComparer.Ordinal);
+        var hasAsyncBinding = false;
+        foreach (var bindingId in bindingReferences)
+        {
+            if (!Bindings.TryGet(bindingId, out var binding))
+            {
+                continue;
+            }
+
+            if (binding.RequiredCapability is not null)
+            {
+                required.Add(binding.RequiredCapability);
+            }
+
+            if (binding.IsAsync)
+            {
+                hasAsyncBinding = true;
+            }
+
+            if (binding.IsAsync || (binding.Effects & SandboxEffect.Concurrency) != 0)
+            {
+                required.Add(RuntimeCapabilityIds.Async);
+            }
+        }
+
+        return new ExecutionPlanEntrypointMetadata(
+            required.Count == 0 ? [] : required.ToArray(),
+            hasAsyncBinding,
+            hasHostBinding: true);
     }
 
     private static IReadOnlyDictionary<string, IReadOnlySet<string>> CopyBindingReferences(

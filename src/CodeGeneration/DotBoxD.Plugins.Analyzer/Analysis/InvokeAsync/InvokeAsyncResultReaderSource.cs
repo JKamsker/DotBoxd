@@ -8,7 +8,13 @@ internal sealed class InvokeAsyncResultReaderSource
 {
     private readonly Dictionary<string, string> _readers = new(StringComparer.Ordinal);
     private readonly StringBuilder _helpers = new();
+    private readonly string _helperPrefix;
     private int _nextHelper;
+
+    public InvokeAsyncResultReaderSource(string helperPrefix = "ReadInvokeAsyncResult")
+    {
+        _helperPrefix = helperPrefix;
+    }
 
     public static (string Expression, string Helpers) Create(ITypeSymbol type, string expression)
     {
@@ -56,14 +62,14 @@ internal sealed class InvokeAsyncResultReaderSource
         _readers[key] = method;
         var elementType = DotBoxDRpcTypeMapper.ListElementType(type)!;
         var elementName = TypeName(elementType);
-        var itemExpression = ReadExpression(elementType, "__source[i]");
+        var itemExpression = ReadExpression(elementType, "value.GetItem(i)");
         var returnsArray = type is IArrayTypeSymbol;
         var returnType = returnsArray ? TypeName(type) : $"global::System.Collections.Generic.List<{elementName}>";
         _helpers.Append("        private static ").Append(returnType).Append(' ').Append(method)
             .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
         _helpers.AppendLine("        {");
         _helpers.AppendLine("            value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.List);");
-        _helpers.AppendLine("            var __source = value.Items;");
+        _helpers.AppendLine("            var __count = value.ItemCount;");
         AppendListReaderBody(elementName, itemExpression, returnsArray);
         _helpers.AppendLine();
         _helpers.AppendLine("            return __result;");
@@ -76,8 +82,8 @@ internal sealed class InvokeAsyncResultReaderSource
     {
         if (returnsArray)
         {
-            _helpers.Append("            var __result = new ").Append(elementName).AppendLine("[__source.Length];");
-            _helpers.AppendLine("            for (var i = 0; i < __source.Length; i++)");
+            _helpers.Append("            var __result = new ").Append(elementName).AppendLine("[__count];");
+            _helpers.AppendLine("            for (var i = 0; i < __count; i++)");
             _helpers.AppendLine("            {");
             _helpers.Append("                __result[i] = ").Append(itemExpression).AppendLine(";");
             _helpers.AppendLine("            }");
@@ -85,8 +91,8 @@ internal sealed class InvokeAsyncResultReaderSource
         }
 
         _helpers.Append("            var __result = new global::System.Collections.Generic.List<")
-            .Append(elementName).AppendLine(">(__source.Length);");
-        _helpers.AppendLine("            for (var i = 0; i < __source.Length; i++)");
+            .Append(elementName).AppendLine(">(__count);");
+        _helpers.AppendLine("            for (var i = 0; i < __count; i++)");
         _helpers.AppendLine("            {");
         _helpers.Append("                __result.Add(").Append(itemExpression).AppendLine(");");
         _helpers.AppendLine("            }");
@@ -108,8 +114,7 @@ internal sealed class InvokeAsyncResultReaderSource
             .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
         _helpers.AppendLine("        {");
         _helpers.AppendLine("            value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Record);");
-        _helpers.AppendLine("            var __fields = value.Items;");
-        _helpers.Append("            if (__fields.Length != ").Append(fields.Count).AppendLine(")");
+        _helpers.Append("            if (value.ItemCount != ").Append(fields.Count).AppendLine(")");
         _helpers.AppendLine("            {");
         _helpers.AppendLine("                throw new global::System.NotSupportedException(\"Server extension record field count did not match the generated DTO shape.\");");
         _helpers.AppendLine("            }");
@@ -127,7 +132,7 @@ internal sealed class InvokeAsyncResultReaderSource
         foreach (var parameter in constructor.Parameters)
         {
             var fieldIndex = FieldIndex(fields, parameter.Name);
-            arguments.Add(ReadExpression(fields[fieldIndex].Type, "__fields[" + fieldIndex + "]"));
+            arguments.Add(ReadExpression(fields[fieldIndex].Type, "value.GetItem(" + fieldIndex + ")"));
         }
 
         return arguments;
@@ -165,7 +170,7 @@ internal sealed class InvokeAsyncResultReaderSource
         return -1;
     }
 
-    private string NextHelperName() => "ReadInvokeAsyncResult" + _nextHelper++;
+    private string NextHelperName() => _helperPrefix + _nextHelper++;
 
     private static string TypeName(ITypeSymbol type)
         => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);

@@ -55,7 +55,7 @@ public static partial class CompiledRuntime
         // Trust the already-validated, immutable source (as the read path does) and validate only the new
         // item; the deep-validating AsList re-walked the whole list on every add (O(n) per call).
         var source = AsListReadOnly(list);
-        if (item.Type != source.ItemType)
+        if (!SandboxValueTypeMatcher.MatchesExactType(item, source.ItemType))
         {
             throw InvalidInput("list item type mismatch");
         }

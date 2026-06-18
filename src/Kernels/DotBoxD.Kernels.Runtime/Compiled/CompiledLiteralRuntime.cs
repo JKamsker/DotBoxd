@@ -60,7 +60,7 @@ internal static class CompiledLiteralRuntime
             throw InvalidInput("array length must be non-negative");
         }
 
-        return new SandboxValue[count];
+        return count == 0 ? Array.Empty<SandboxValue>() : new SandboxValue[count];
     }
 
     private static SandboxRuntimeException InvalidInput(string message)

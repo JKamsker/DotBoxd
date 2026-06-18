@@ -1396,7 +1396,7 @@ public class CodegenRegressionTests
             .Single(g => g.HintName == GeneratorTestHelper.HintName(
                 "Regress.CtOrder", "ICtOrder", GeneratorTestHelper.GeneratedKind.Dispatcher))
             .SourceText.ToString();
-        dispatcher.Should().Contain("_service.SumAsync(args.Item1, ct, args.Item2)");
+        dispatcher.Should().Contain("receiver.SumAsync(args.Item1, ct, args.Item2)");
     }
 
     /// <summary>

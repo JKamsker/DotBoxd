@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using DotBoxD.Hosting.Execution;
 using DotBoxD.Kernels.Sandbox;
 
@@ -34,17 +35,25 @@ public interface ISandboxWorkerClient
 /// or restricted account, this provides a real out-of-process boundary with a documented envelope.
 /// </summary>
 /// <remarks>
-/// The supplied factory is invoked once per request so the worker-side host can be scoped to the
-/// boundary's lifetime. The worker host's bindings must match the requesting host's bindings;
-/// otherwise the re-prepared identity hashes diverge and the requesting host fails the result
-/// closed. Re-preparation or execution failures are surfaced as a closed, fail-safe error result.
+/// The supplied factory is invoked lazily once per client instance so worker-side plan, compiled,
+/// and hotness caches can survive across requests. The worker host's bindings must match the
+/// requesting host's bindings; otherwise the re-prepared identity hashes diverge and the requesting
+/// host fails the result closed. Re-preparation or execution failures are surfaced as a closed,
+/// fail-safe error result.
 /// </remarks>
-public sealed class SandboxHostWorkerClient : ISandboxWorkerClient
+public sealed class SandboxHostWorkerClient : ISandboxWorkerClient, IDisposable
 {
-    private readonly Func<SandboxHost> _hostFactory;
+    private readonly ConcurrentDictionary<ExecutionPlanSeal, ExecutionPlan> _preparedPlans = new();
+    private readonly Lazy<SandboxHost> _workerHost;
+    private int _disposed;
 
     public SandboxHostWorkerClient(Func<SandboxHost> hostFactory)
-        => _hostFactory = hostFactory ?? throw new ArgumentNullException(nameof(hostFactory));
+    {
+        ArgumentNullException.ThrowIfNull(hostFactory);
+        _workerHost = new Lazy<SandboxHost>(
+            () => hostFactory() ?? throw new InvalidOperationException("worker host factory returned null"),
+            LazyThreadSafetyMode.ExecutionAndPublication);
+    }
 
     public async ValueTask<SandboxExecutionResult> ExecuteInWorkerAsync(
         ExecutionPlan plan,
@@ -56,17 +65,46 @@ public sealed class SandboxHostWorkerClient : ISandboxWorkerClient
         ArgumentNullException.ThrowIfNull(plan);
         ArgumentNullException.ThrowIfNull(options);
 
-        var workerHost = _hostFactory()
-            ?? throw new InvalidOperationException("worker host factory returned null");
-        using (workerHost)
+        var workerHost = WorkerHost();
+        var workerPlan = await PrepareWorkerPlanAsync(workerHost, plan, cancellationToken)
+            .ConfigureAwait(false);
+        return await workerHost
+            .ExecuteAsync(workerPlan, entrypoint, input, options, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0 ||
+            !_workerHost.IsValueCreated)
         {
-            var workerPlan = await workerHost
-                .PrepareAsync(plan.Module, plan.Policy, cancellationToken)
-                .ConfigureAwait(false);
-            return await workerHost
-                .ExecuteAsync(workerPlan, entrypoint, input, options, cancellationToken)
-                .ConfigureAwait(false);
+            return;
         }
+
+        _workerHost.Value.Dispose();
+    }
+
+    private async ValueTask<ExecutionPlan> PrepareWorkerPlanAsync(
+        SandboxHost workerHost,
+        ExecutionPlan plan,
+        CancellationToken cancellationToken)
+    {
+        if (_preparedPlans.TryGetValue(plan.PlanSeal, out var cached))
+        {
+            return cached;
+        }
+
+        var prepared = await workerHost
+            .PrepareAsync(plan.Module, plan.Policy, cancellationToken)
+            .ConfigureAwait(false);
+        _preparedPlans.TryAdd(plan.PlanSeal, prepared);
+        return prepared;
+    }
+
+    private SandboxHost WorkerHost()
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        return _workerHost.Value;
     }
 }
 

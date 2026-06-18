@@ -1,4 +1,5 @@
 using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
 
 namespace DotBoxD.Kernels.Verifier.Generated;
 
@@ -92,5 +93,23 @@ internal static class MetadataName
     {
         var prefix = string.IsNullOrEmpty(typeName) ? memberName : typeName + "." + memberName;
         return prefix + "(" + string.Join(",", signature.ParameterTypes) + "):" + signature.ReturnType;
+    }
+}
+
+internal sealed class MemberSignatureCache
+{
+    private readonly Dictionary<int, (string TypeName, string MemberName, string Signature)> _items = [];
+
+    public (string TypeName, string MemberName, string Signature) Get(MetadataReader reader, EntityHandle handle)
+    {
+        var token = MetadataTokens.GetToken(handle);
+        if (_items.TryGetValue(token, out var cached))
+        {
+            return cached;
+        }
+
+        var member = MetadataName.MemberSignature(reader, handle);
+        _items[token] = member;
+        return member;
     }
 }

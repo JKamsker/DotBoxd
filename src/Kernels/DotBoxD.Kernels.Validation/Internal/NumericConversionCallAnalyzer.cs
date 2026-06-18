@@ -21,7 +21,6 @@ internal sealed class NumericConversionCallAnalyzer
         FunctionScope scope,
         ref SandboxEffect effects,
         ref bool canReorder,
-        bool recordCapabilities,
         out SandboxType type)
     {
         type = SandboxType.Unit;
@@ -44,8 +43,7 @@ internal sealed class NumericConversionCallAnalyzer
             call.Arguments[0],
             scope,
             ref effects,
-            ref canReorder,
-            recordCapabilities);
+            ref canReorder);
         type = TargetType(call);
         if (call.Name == "numeric.toI64")
         {

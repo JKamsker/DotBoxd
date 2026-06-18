@@ -12,6 +12,7 @@ internal static class GeneratedStackTypeVerifier
         MetadataReader reader,
         MethodDefinition method,
         MethodBodyBlock body,
+        MethodSignature<string> methodSignature,
         GeneratedMethodFlow analysis,
         List<VerificationDiagnostic> diagnostics)
     {
@@ -20,10 +21,10 @@ internal static class GeneratedStackTypeVerifier
             return;
         }
 
-        var signature = GeneratedMethodSignatureReader.Read(reader, method, body);
-        var stacks = new Dictionary<int, string[]>();
+        var signature = GeneratedMethodSignatureReader.Read(reader, method, body, methodSignature);
+        var stacks = new Dictionary<int, StackTypeSnapshot>();
         var queue = new Queue<int>();
-        stacks[analysis.Instructions[0].Offset] = [];
+        stacks[analysis.Instructions[0].Offset] = StackTypeSnapshot.Empty;
         queue.Enqueue(analysis.Instructions[0].Offset);
 
         // Reused mutable working buffer for the transfer of each instruction.
@@ -31,16 +32,14 @@ internal static class GeneratedStackTypeVerifier
         // buffer from the incoming snapshot avoids cloning the whole stack on
         // every reachable instruction.
         var stack = new List<string>();
+        var callSignatures = new ParsedCallSignatureCache();
 
         while (queue.Count > 0)
         {
             var offset = queue.Dequeue();
             var instruction = analysis.ByOffset[offset];
-            Transfer(instruction, stacks[offset], stack, signature, diagnostics);
-            foreach (var successor in GeneratedMethodFlowAnalyzer.Successors(
-                         analysis.Instructions,
-                         analysis.ByOffset,
-                         instruction))
+            Transfer(instruction, stacks[offset], stack, signature, callSignatures, diagnostics);
+            foreach (var successor in analysis.SuccessorsByOffset[instruction.Offset])
             {
                 TrackSuccessor(successor, stack, analysis.ByOffset, stacks, queue, diagnostics);
             }
@@ -49,13 +48,13 @@ internal static class GeneratedStackTypeVerifier
 
     private static void Transfer(
         GeneratedInstruction instruction,
-        IReadOnlyList<string> input,
+        StackTypeSnapshot input,
         List<string> stack,
         GeneratedMethodSignature signature,
+        ParsedCallSignatureCache callSignatures,
         List<VerificationDiagnostic> diagnostics)
     {
-        stack.Clear();
-        stack.AddRange(input);
+        input.CopyTo(stack);
         switch (instruction.Opcode)
         {
             case ILOpCode.Ldarg or ILOpCode.Ldarg_s or ILOpCode.Ldarg_0 or ILOpCode.Ldarg_1
@@ -106,6 +105,12 @@ internal static class GeneratedStackTypeVerifier
             case ILOpCode.Ceq or ILOpCode.Clt or ILOpCode.Cgt:
                 Compare(instruction, stack, diagnostics);
                 break;
+            case ILOpCode.Conv_i8:
+                ConvertToInt64(instruction, stack, diagnostics);
+                break;
+            case ILOpCode.Conv_r8:
+                ConvertToDouble(instruction, stack, diagnostics);
+                break;
             case ILOpCode.Beq or ILOpCode.Beq_s or ILOpCode.Bne_un or ILOpCode.Bne_un_s
                 or ILOpCode.Blt or ILOpCode.Blt_s or ILOpCode.Bgt or ILOpCode.Bgt_s
                 or ILOpCode.Ble or ILOpCode.Ble_s or ILOpCode.Bge or ILOpCode.Bge_s:
@@ -118,7 +123,7 @@ internal static class GeneratedStackTypeVerifier
                 PopExpected(instruction, stack, Int32Name, diagnostics);
                 break;
             case ILOpCode.Call or ILOpCode.Callvirt or ILOpCode.Newobj:
-                Call(instruction, stack, diagnostics);
+                Call(instruction, stack, callSignatures, diagnostics);
                 break;
             case ILOpCode.Stelem_ref:
                 StoreElement(instruction, stack, diagnostics);
@@ -161,7 +166,7 @@ internal static class GeneratedStackTypeVerifier
         int successor,
         List<string> output,
         IReadOnlyDictionary<int, GeneratedInstruction> byOffset,
-        Dictionary<int, string[]> stacks,
+        Dictionary<int, StackTypeSnapshot> stacks,
         Queue<int> queue,
         List<VerificationDiagnostic> diagnostics)
     {
@@ -172,16 +177,104 @@ internal static class GeneratedStackTypeVerifier
 
         if (!stacks.TryGetValue(successor, out var existing))
         {
-            stacks[successor] = output.ToArray();
+            stacks[successor] = StackTypeSnapshot.From(output);
             queue.Enqueue(successor);
             return;
         }
 
-        if (!existing.SequenceEqual(output, StringComparer.Ordinal))
+        if (!existing.Matches(output))
         {
             diagnostics.Add(new VerificationDiagnostic(
                 "V-STACK-TYPE",
                 "branch target has inconsistent stack types"));
+        }
+    }
+
+    private readonly struct StackTypeSnapshot
+    {
+        private readonly string? _first;
+        private readonly string? _second;
+        private readonly string[]? _items;
+
+        private StackTypeSnapshot(int count, string? first, string? second, string[]? items)
+        {
+            Count = count;
+            _first = first;
+            _second = second;
+            _items = items;
+        }
+
+        public static StackTypeSnapshot Empty { get; } = new(0, null, null, null);
+
+        public int Count { get; }
+
+        public static StackTypeSnapshot From(IReadOnlyList<string> stack)
+            => stack.Count switch {
+                0 => Empty,
+                1 => new StackTypeSnapshot(1, stack[0], null, null),
+                2 => new StackTypeSnapshot(2, stack[0], stack[1], null),
+                _ => new StackTypeSnapshot(stack.Count, null, null, Copy(stack))
+            };
+
+        public void CopyTo(List<string> stack)
+        {
+            stack.Clear();
+            switch (Count)
+            {
+                case 0:
+                    return;
+                case 1:
+                    stack.Add(_first!);
+                    return;
+                case 2:
+                    stack.Add(_first!);
+                    stack.Add(_second!);
+                    return;
+                default:
+                    stack.AddRange(_items!);
+                    return;
+            }
+        }
+
+        public bool Matches(IReadOnlyList<string> stack)
+        {
+            if (stack.Count != Count)
+            {
+                return false;
+            }
+
+            return Count switch {
+                0 => true,
+                1 => string.Equals(_first, stack[0], StringComparison.Ordinal),
+                2 => string.Equals(_first, stack[0], StringComparison.Ordinal) &&
+                     string.Equals(_second, stack[1], StringComparison.Ordinal),
+                _ => MatchesItems(stack)
+            };
+        }
+
+        private bool MatchesItems(IReadOnlyList<string> stack)
+        {
+            var items = _items!;
+            for (var i = 0; i < items.Length; i++)
+            {
+                if (!string.Equals(items[i], stack[i], StringComparison.Ordinal))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static string[] Copy(IReadOnlyList<string> stack)
+        {
+            var items = new string[stack.Count];
+            for (var i = 0; i < items.Length; i++)
+            {
+                items[i] = stack[i];
+            }
+
+            return items;
         }
     }
 }

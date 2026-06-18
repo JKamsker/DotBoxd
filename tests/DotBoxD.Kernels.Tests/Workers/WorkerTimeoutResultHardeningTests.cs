@@ -36,6 +36,38 @@ public sealed class WorkerTimeoutResultHardeningTests
         Assert.Equal(1, worker.Calls);
     }
 
+    [Fact]
+    public async Task Worker_execution_observes_caller_cancellation()
+    {
+        var worker = new CallerCancellationWorker();
+        using var host = Host(worker);
+        var module = await host.ImportJsonAsync(SandboxTestHost.PureScoreJson());
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create()
+                .WithFuel(1_000)
+                .WithWallTime(TimeSpan.FromSeconds(30))
+                .Build());
+
+        using var caller = new CancellationTokenSource();
+        var resultTask = host.ExecuteAsync(
+                plan,
+                "main",
+                SandboxValue.FromList([SandboxValue.FromInt32(1), SandboxValue.FromInt32(1)]),
+                new SandboxExecutionOptions { Isolation = SandboxIsolation.WorkerProcess },
+                caller.Token)
+            .AsTask();
+
+        await worker.Started.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        await caller.CancelAsync();
+
+        var result = await resultTask.WaitAsync(TimeSpan.FromSeconds(30));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.Cancelled, result.Error!.Code);
+        Assert.True(worker.ObservedCancellation);
+    }
+
     private static SandboxHost Host(ISandboxWorkerClient worker)
         => SandboxHost.Create(builder =>
         {
@@ -92,6 +124,33 @@ public sealed class WorkerTimeoutResultHardeningTests
                 PlanHash = plan.PlanHash,
                 PolicyHash = plan.PolicyHash
             };
+        }
+    }
+
+    private sealed class CallerCancellationWorker : ISandboxWorkerClient
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public bool ObservedCancellation { get; private set; }
+
+        public async ValueTask<SandboxExecutionResult> ExecuteInWorkerAsync(
+            ExecutionPlan plan,
+            string entrypoint,
+            SandboxValue input,
+            SandboxExecutionOptions options,
+            CancellationToken cancellationToken = default)
+        {
+            Started.SetResult();
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                ObservedCancellation = true;
+                throw;
+            }
+
+            throw new InvalidOperationException("The caller cancellation test should cancel the worker.");
         }
     }
 }

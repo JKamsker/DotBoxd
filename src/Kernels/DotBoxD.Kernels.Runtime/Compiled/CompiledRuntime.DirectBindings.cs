@@ -49,11 +49,11 @@ public static partial class CompiledRuntime
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool CanBulkChargeBindingCalls(SandboxContext context, string id, int count)
-        => context.CanBulkChargeBindingCalls(context.Bindings.GetDescriptor(id), count);
+        => context.CanBulkChargeBindingCalls(context.GetBindingDescriptor(id), count);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ChargeBindingCalls(SandboxContext context, string id, int count)
-        => context.ChargeBindingCalls(context.Bindings.GetDescriptor(id), count);
+        => context.ChargeBindingCalls(context.GetBindingDescriptor(id), count);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool CanBulkChargeBindingCallsScaled(
@@ -63,7 +63,7 @@ public static partial class CompiledRuntime
         int callsPerIteration)
         => callsPerIteration > 0 &&
            CanScale(iterations, callsPerIteration, out var calls) &&
-           context.CanBulkChargeBindingCalls(context.Bindings.GetDescriptor(id), calls);
+           context.CanBulkChargeBindingCalls(context.GetBindingDescriptor(id), calls);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ChargeBindingCallsScaled(
@@ -79,7 +79,7 @@ public static partial class CompiledRuntime
                 $"binding call budget exhausted at {id}"));
         }
 
-        context.ChargeBindingCalls(context.Bindings.GetDescriptor(id), calls);
+        context.ChargeBindingCalls(context.GetBindingDescriptor(id), calls);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

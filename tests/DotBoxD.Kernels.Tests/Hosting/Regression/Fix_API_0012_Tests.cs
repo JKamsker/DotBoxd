@@ -46,6 +46,36 @@ public sealed class Fix_API_0012_Tests
     }
 
     [Fact]
+    public async Task Shipped_worker_client_reuses_worker_host_across_requests()
+    {
+        var factoryCalls = 0;
+        using var worker = new SandboxHostWorkerClient(() =>
+        {
+            Interlocked.Increment(ref factoryCalls);
+            return WorkerHostFactory();
+        });
+        using var host = SandboxHost.Create(builder =>
+        {
+            builder.AddDefaultPureBindings();
+            builder.UseInterpreter();
+            builder.UseWorkerClient(worker, SandboxWorkerProfile.HardenedOutOfProcess);
+        });
+        var plan = await PrepareAsync(host);
+        var options = new SandboxExecutionOptions
+        {
+            Mode = ExecutionMode.Interpreted,
+            Isolation = SandboxIsolation.WorkerProcess
+        };
+
+        var first = await host.ExecuteAsync(plan, "main", Input(), options);
+        var second = await host.ExecuteAsync(plan, "main", Input(), options);
+
+        Assert.True(first.Succeeded, first.Error?.SafeMessage);
+        Assert.True(second.Succeeded, second.Error?.SafeMessage);
+        Assert.Equal(1, Volatile.Read(ref factoryCalls));
+    }
+
+    [Fact]
     public async Task Shipped_worker_client_fails_closed_when_profile_is_incomplete()
     {
         var host = SandboxHost.Create(builder =>

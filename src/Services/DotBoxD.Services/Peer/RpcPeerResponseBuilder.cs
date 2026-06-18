@@ -30,11 +30,37 @@ internal sealed class RpcPeerResponseBuilder
     public bool RequiresStreamingContext(RpcRequest request) =>
         !_rejectInboundCalls && _inner.RequiresStreamingContext(request);
 
+    public IServiceDispatcher? ResolveDispatcher(
+        RpcRequest request,
+        out bool requiresStreamingContext)
+    {
+        requiresStreamingContext = false;
+        if (_rejectInboundCalls || !_inner.TryResolveDispatcher(request, out var dispatcher))
+        {
+            return null;
+        }
+
+        requiresStreamingContext = dispatcher is not INonStreamingServiceDispatcher;
+        return dispatcher;
+    }
+
     public ValueTask<RpcDispatchResult> BuildAsync(
         RpcRequest request,
         int messageId,
         ReadOnlyMemory<byte> payload,
         RpcStreamingContext streaming,
+        CancellationToken ct)
+    {
+        var dispatcher = ResolveDispatcher(request, out _);
+        return BuildAsync(request, messageId, payload, streaming, dispatcher, ct);
+    }
+
+    public ValueTask<RpcDispatchResult> BuildAsync(
+        RpcRequest request,
+        int messageId,
+        ReadOnlyMemory<byte> payload,
+        RpcStreamingContext streaming,
+        IServiceDispatcher? dispatcher,
         CancellationToken ct)
     {
         if (_rejectInboundCalls)
@@ -46,7 +72,7 @@ internal sealed class RpcPeerResponseBuilder
                 stream: null));
         }
 
-        return _inner.BuildAsync(request, messageId, payload, _registry, streaming, ct);
+        return _inner.BuildAsync(request, messageId, payload, _registry, streaming, dispatcher, ct);
     }
 
     public Payload BuildProtocolErrorFrame(int messageId, string errorMessage) =>

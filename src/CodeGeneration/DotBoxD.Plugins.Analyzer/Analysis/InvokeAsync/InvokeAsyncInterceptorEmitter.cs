@@ -100,8 +100,7 @@ internal static class InvokeAsyncInterceptorEmitter
         if (interception.SyncOutAssignments.Count > 0)
         {
             builder.AppendLine("            __result.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Record);");
-            builder.AppendLine("            var __fields = __result.Items;");
-            builder.Append("            if (__fields.Length != ")
+            builder.Append("            if (__result.ItemCount != ")
                 .Append((interception.SyncOutAssignments.Count + 1).ToString(CultureInfo.InvariantCulture))
                 .AppendLine(")");
             builder.AppendLine("            {");

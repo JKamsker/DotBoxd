@@ -20,6 +20,6 @@ namespace DotBoxD.Services.Generated
         /// Gets a proxy to call IHello on the other peer.
         /// </summary>
         public static global::Snap.Renamed.IHello GetHello(this global::DotBoxD.Services.Peer.RpcPeer peer)
-            => new global::Snap.Renamed.HelloProxy(peer);
+            => peer.Get<global::Snap.Renamed.IHello>();
     }
 }

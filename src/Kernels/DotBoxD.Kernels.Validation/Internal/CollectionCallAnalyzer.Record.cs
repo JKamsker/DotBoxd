@@ -17,14 +17,13 @@ internal sealed partial class CollectionCallAnalyzer
         CallExpression call,
         FunctionScope scope,
         ref SandboxEffect effects,
-        ref bool canReorder,
-        bool recordCapabilities)
+        ref bool canReorder)
     {
         effects |= SandboxEffect.Alloc;
         if (call.GenericType is not { } recordType || !recordType.IsRecord)
         {
             _diagnostics.Add(new SandboxDiagnostic("E-CALL-GENERIC", "record.new requires a Record genericType", Span: call.Span));
-            return AnalyzeRecordFieldsFallback(call, scope, ref effects, ref canReorder, recordCapabilities);
+            return AnalyzeRecordFieldsFallback(call, scope, ref effects, ref canReorder);
         }
 
         CheckKnownType(recordType, call.Span);
@@ -39,7 +38,7 @@ internal sealed partial class CollectionCallAnalyzer
 
         for (var i = 0; i < call.Arguments.Count; i++)
         {
-            var fieldType = _analyzeExpression(call.Arguments[i], scope, ref effects, ref canReorder, recordCapabilities);
+            var fieldType = _analyzeExpression(call.Arguments[i], scope, ref effects, ref canReorder);
             Require(fieldType, recordType.Arguments[i], call.Arguments[i].Span);
         }
 
@@ -50,12 +49,11 @@ internal sealed partial class CollectionCallAnalyzer
         CallExpression call,
         FunctionScope scope,
         ref SandboxEffect effects,
-        ref bool canReorder,
-        bool recordCapabilities)
+        ref bool canReorder)
     {
         foreach (var argument in call.Arguments)
         {
-            _ = _analyzeExpression(argument, scope, ref effects, ref canReorder, recordCapabilities);
+            _ = _analyzeExpression(argument, scope, ref effects, ref canReorder);
         }
 
         return SandboxType.Unit;
@@ -65,8 +63,7 @@ internal sealed partial class CollectionCallAnalyzer
         CallExpression call,
         FunctionScope scope,
         ref SandboxEffect effects,
-        ref bool canReorder,
-        bool recordCapabilities)
+        ref bool canReorder)
     {
         if (call.Arguments.Count != 2)
         {
@@ -74,10 +71,10 @@ internal sealed partial class CollectionCallAnalyzer
             return SandboxType.Unit;
         }
 
-        var recordType = _analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder, recordCapabilities);
+        var recordType = _analyzeExpression(call.Arguments[0], scope, ref effects, ref canReorder);
         // The field index must be a constant so the field type is statically known; analyze the second
         // operand for effects either way.
-        _ = _analyzeExpression(call.Arguments[1], scope, ref effects, ref canReorder, recordCapabilities);
+        _ = _analyzeExpression(call.Arguments[1], scope, ref effects, ref canReorder);
         if (!recordType.IsRecord)
         {
             _diagnostics.Add(new SandboxDiagnostic("E-TYPE-MISMATCH", $"expected Record, got {recordType}", Span: call.Arguments[0].Span));
@@ -101,7 +98,7 @@ internal sealed partial class CollectionCallAnalyzer
 
     private void CheckKnownType(SandboxType type, SourceSpan span)
     {
-        if (!type.IsKnown(_declaredOpaqueIdTypes) || type.IsForbidden())
+        if (!type.IsKnown(_declaredOpaqueIdTypes))
         {
             _diagnostics.Add(new SandboxDiagnostic("E-TYPE-UNKNOWN", $"unknown or forbidden type '{type}'", Span: span));
         }

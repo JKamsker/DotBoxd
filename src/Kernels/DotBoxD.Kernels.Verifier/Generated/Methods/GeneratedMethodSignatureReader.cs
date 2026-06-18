@@ -8,9 +8,9 @@ internal static class GeneratedMethodSignatureReader
     public static GeneratedMethodSignature Read(
         MetadataReader reader,
         MethodDefinition method,
-        MethodBodyBlock body)
+        MethodBodyBlock body,
+        MethodSignature<string> signature)
     {
-        var signature = method.DecodeSignature(MethodSignatureNameProvider.Instance, genericContext: null);
         var arguments = signature.ParameterTypes.ToList();
         if ((method.Attributes & MethodAttributes.Static) == 0)
         {
