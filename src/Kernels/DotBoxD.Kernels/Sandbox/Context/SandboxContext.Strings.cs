@@ -47,6 +47,15 @@ public sealed partial class SandboxContext
 
     public IDisposable BeginBindingReturnCreditScope() => ReturnCredits.BeginScope();
 
+    // A return-credit scope only affects accounting through ChargeBindingReturn -> TryConsume, which credits a
+    // pre-charged string ONLY when the return value is itself a bare StringValue (TryConsume never recurses into
+    // composites). So only String-returning bindings can ever have their pre-charged return string credited;
+    // SandboxType.String is a singleton, so ReferenceEquals selects exactly those. For any other return type the
+    // scope would be allocated but never consumed, so skipping it is behavior-preserving: a composite return such
+    // as List<String> is charged once via ChargeValueShape both before and after this optimization (the old
+    // unconditional scope never credited composites either). Host string builders (file.readText,
+    // string.*Budgeted, net.http.get) pre-charge via ChargeString and declare String returns, so they still get a
+    // scope and are not double-charged -- pinned by Precharged_string_binding_return_is_not_charged_twice.
     internal IDisposable? BeginBindingReturnCreditScope(SandboxType returnType)
         => ReferenceEquals(returnType, SandboxType.String) ? ReturnCredits.BeginScope() : null;
 
