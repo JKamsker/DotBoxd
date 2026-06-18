@@ -19,7 +19,7 @@ internal static class GeneratedFactoryGenerator
         sb.AppendLine("    /// <summary>");
         sb.AppendLine("    /// Factory methods for DotBoxD-generated proxies and dispatchers.");
         sb.AppendLine("    /// </summary>");
-        sb.AppendLine("    public static class DotBoxDGenerated");
+        sb.AppendLine("    internal static class DotBoxDGenerated");
         sb.AppendLine("    {");
         GeneratedFactoryMetadataEmitter.AppendMethodArrays(sb, services, ct);
         sb.AppendLine();

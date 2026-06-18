@@ -7,7 +7,7 @@ namespace DotBoxD.Services.Generated
     /// <summary>
     /// Factory methods for DotBoxD-generated proxies and dispatchers.
     /// </summary>
-    public static class DotBoxDGenerated
+    internal static class DotBoxDGenerated
     {
         private static readonly global::DotBoxD.Services.Generated.GeneratedMethod[] s_service0Methods =
         {
