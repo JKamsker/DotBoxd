@@ -97,6 +97,11 @@ if (args.Contains("--probe-binding-registry", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+if (args.Contains("--probe-map-remove", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Core.MapRemoveProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-host-call-accounting", StringComparer.OrdinalIgnoreCase)) {
     DotBoxD.Kernels.Benchmarks.Runtime.HostCallAccountingProbe.Run();
     return;

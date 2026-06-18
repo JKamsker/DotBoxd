@@ -30,6 +30,17 @@ public sealed record MapValue(
         return new MapValue(immutable.SetItem(key, value), KeyType, ValueType);
     }
 
+    /// <summary>
+    /// Returns a new map with <paramref name="key"/> removed, sharing structure with this map via an
+    /// immutable backing so removal avoids copying the whole dictionary on every operation.
+    /// </summary>
+    internal MapValue RemoveEntry(SandboxValue key)
+    {
+        var immutable = _values as ImmutableDictionary<SandboxValue, SandboxValue>
+            ?? ImmutableDictionary.CreateRange(_values);
+        return new MapValue(immutable.Remove(key), KeyType, ValueType);
+    }
+
     public override SandboxType Type => SandboxType.Map(KeyType, ValueType);
 
     public bool Equals(MapValue? other)

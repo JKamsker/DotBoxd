@@ -151,14 +151,15 @@ internal static class CollectionOperations
 
     public static SandboxValue RemoveMapValue(SandboxValue key, SandboxValue map, SandboxContext context)
     {
-        var typedMap = AsMap(map);
+        // Source map is already validated and immutable, so trust its entries (as reads and map.set do) and
+        // validate only the key. The result still uses a full shape charge because removal changes an
+        // existing subtree set and cannot be composed forward from the source shape without subtracting.
+        var typedMap = AsMapReadOnly(map);
         RequireType(key, typedMap.KeyType, "map key type mismatch");
         context.ChargeFuel(SandboxCollectionFuel.Copy(typedMap.Values.Count));
         var count = typedMap.Values.ContainsKey(key) ? typedMap.Values.Count - 1 : typedMap.Values.Count;
         context.ChargeAllocation(SandboxCollectionFuel.AllocationBytes(count, 32, minimumOne: true));
-        var values = new Dictionary<SandboxValue, SandboxValue>(typedMap.Values);
-        values.Remove(key);
-        return Charge(context, SandboxValue.FromMap(values, typedMap.KeyType, typedMap.ValueType));
+        return Charge(context, typedMap.RemoveEntry(key));
     }
 
     private static ListValue AsList(SandboxValue value)
