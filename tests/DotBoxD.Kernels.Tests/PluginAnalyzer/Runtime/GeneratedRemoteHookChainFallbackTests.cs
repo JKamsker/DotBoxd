@@ -43,7 +43,7 @@ public sealed class GeneratedRemoteHookChainFallbackTests
         }
         """;
 
-    private const string HostCallbackSubscriptionSource = """
+    private const string LocalCallbackSubscriptionSource = """
         using System.Threading.Tasks;
         using DotBoxD.Plugins.Runtime;
 
@@ -55,7 +55,7 @@ public sealed class GeneratedRemoteHookChainFallbackTests
             {
                 server.Subscriptions.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
                     .Where(e => e.Distance <= 5)
-                    .RunHost((e, ctx) => ValueTask.CompletedTask);
+                    .RunLocal((e, ctx) => ValueTask.CompletedTask);
             }
         }
         """;
@@ -69,11 +69,11 @@ public sealed class GeneratedRemoteHookChainFallbackTests
         => AssertFallbackLowers(SubscriptionSource, "DotBoxDGeneratedRemoteSubscriptionFallbackTest");
 
     [Fact]
-    public void Fallback_lowers_remote_subscription_RunHost_chains()
+    public void Fallback_lowers_remote_subscription_RunLocal_chains()
         => AssertFallbackLowers(
-            HostCallbackSubscriptionSource,
-            "DotBoxDGeneratedRemoteSubscriptionHostFallbackTest",
-            "UseGeneratedHostCallbackChain");
+            LocalCallbackSubscriptionSource,
+            "DotBoxDGeneratedRemoteSubscriptionLocalFallbackTest",
+            "UseGeneratedLocalCallbackChain");
 
     private static void AssertFallbackLowers(
         string source,

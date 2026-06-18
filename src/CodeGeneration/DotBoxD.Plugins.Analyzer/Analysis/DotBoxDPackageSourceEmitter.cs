@@ -197,7 +197,7 @@ internal static class DotBoxDPackageSourceEmitter
             .Append(DotBoxDGenerationNames.Entrypoints.Handle)
             .Append('(').Append(ReadOnlyListOf(TypeNames.GlobalParameter)).AppendLine(" parameters)");
         builder.AppendLine("        => new(");
-        builder.AppendLine($"            {LiteralReader.StringLiteral(DotBoxDGenerationNames.Entrypoints.Handle)}, true, parameters, {TypeNames.GlobalSandboxType}.Unit,");
+        builder.AppendLine($"            {LiteralReader.StringLiteral(DotBoxDGenerationNames.Entrypoints.Handle)}, true, parameters, {model.HandleReturnTypeSource},");
         builder.AppendLine($"            {model.HandleBody.Source});");
         builder.AppendLine();
     }

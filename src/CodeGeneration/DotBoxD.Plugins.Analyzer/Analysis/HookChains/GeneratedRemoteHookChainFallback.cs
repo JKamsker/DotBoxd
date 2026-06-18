@@ -88,7 +88,7 @@ internal static class GeneratedRemoteHookChainFallback
             ? DotBoxDGenerationNames.TypeNames.GlobalPrefix +
               stageName + "<" + eventTypeFullName + ", " + terminalElementTypeFullName + ">"
             : pipelineType;
-        var handlerType = installKind == HookChainInterceptorInstallKind.HostCallback
+        var handlerType = installKind == HookChainInterceptorInstallKind.LocalCallback
             ? DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" +
               terminalElementTypeFullName + ", " + DotBoxDGenerationNames.TypeNames.GlobalHookContext + ", " +
               DotBoxDGenerationNames.TypeNames.GlobalValueTask + ">"

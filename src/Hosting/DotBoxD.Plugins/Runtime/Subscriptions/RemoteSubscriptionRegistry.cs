@@ -8,15 +8,15 @@ namespace DotBoxD.Plugins.Runtime;
 public sealed class RemoteSubscriptionRegistry
 {
     private readonly Func<PluginPackage, ValueTask<string>> _install;
-    private readonly Func<RemoteHostCallbackRegistration, ValueTask<string>>? _installHostCallback;
+    private readonly Func<RemoteLocalCallbackRegistration, ValueTask<string>>? _installLocalCallback;
 
     public RemoteSubscriptionRegistry(
         Func<PluginPackage, ValueTask<string>> install,
-        Func<RemoteHostCallbackRegistration, ValueTask<string>>? installHostCallback = null)
+        Func<RemoteLocalCallbackRegistration, ValueTask<string>>? installLocalCallback = null)
     {
         _install = install ?? throw new ArgumentNullException(nameof(install));
-        _installHostCallback = installHostCallback;
+        _installLocalCallback = installLocalCallback;
     }
 
-    public RemoteSubscriptionPipeline<TEvent> On<TEvent>() => new(_install, _installHostCallback);
+    public RemoteSubscriptionPipeline<TEvent> On<TEvent>() => new(_install, _installLocalCallback);
 }

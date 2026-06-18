@@ -36,6 +36,26 @@ public sealed class RemoteHookStage<TEvent, TCurrent>
     public RemoteHookPipeline<TEvent> UseGeneratedChain(PluginPackage package)
         => _root.UseGeneratedChain(package);
 
+    public RemoteHookPipeline<TEvent> UseGeneratedLocalCallbackChain(
+        PluginPackage package,
+        Func<TCurrent, HookContext, ValueTask> handler)
+        => _root.UseGeneratedLocalCallbackChain(package, handler);
+
+    public RemoteHookPipeline<TEvent> UseGeneratedLocalCallbackChain(
+        PluginPackage package,
+        Action<TCurrent, HookContext> handler)
+        => _root.UseGeneratedLocalCallbackChain(package, handler);
+
+    public RemoteHookPipeline<TEvent> UseGeneratedLocalCallbackChain(
+        PluginPackage package,
+        Func<TCurrent, ValueTask> handler)
+        => _root.UseGeneratedLocalCallbackChain(package, handler);
+
+    public RemoteHookPipeline<TEvent> UseGeneratedLocalCallbackChain(
+        PluginPackage package,
+        Action<TCurrent> handler)
+        => _root.UseGeneratedLocalCallbackChain(package, handler);
+
     public RemoteHookPipeline<TEvent> Run(Func<TCurrent, HookContext, ValueTask> handler)
         => throw NotLowered();
 
@@ -49,20 +69,17 @@ public sealed class RemoteHookStage<TEvent, TCurrent>
         => throw NotLowered();
 
     public RemoteHookPipeline<TEvent> RunLocal(Func<TCurrent, HookContext, ValueTask> handler)
-        => throw LocalHandlersNotSupported();
+        => throw NotLowered();
 
     public RemoteHookPipeline<TEvent> RunLocal(Action<TCurrent, HookContext> handler)
-        => throw LocalHandlersNotSupported();
+        => throw NotLowered();
 
     public RemoteHookPipeline<TEvent> RunLocal(Func<TCurrent, ValueTask> handler)
-        => throw LocalHandlersNotSupported();
+        => throw NotLowered();
 
     public RemoteHookPipeline<TEvent> RunLocal(Action<TCurrent> handler)
-        => throw LocalHandlersNotSupported();
+        => throw NotLowered();
 
     private static InvalidOperationException NotLowered()
-        => new("Remote hook Run(lambda) calls must be intercepted by the DotBoxD plugin generator.");
-
-    private static NotSupportedException LocalHandlersNotSupported()
-        => new("Remote hook RunLocal requires an event callback transport; use PluginServer.Hooks for local handlers.");
+        => new("Remote hook Run/RunLocal lambda calls must be intercepted by the DotBoxD plugin generator.");
 }

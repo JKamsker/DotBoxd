@@ -1,3 +1,4 @@
+using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Plugins;
 using DotBoxD.Plugins.Kernel;
 using DotBoxD.Plugins.Runtime.Subscriptions;
@@ -7,14 +8,14 @@ namespace DotBoxD.Plugins.Runtime;
 public sealed class RemoteSubscriptionPipeline<TEvent>
 {
     private readonly Func<PluginPackage, ValueTask<string>> _install;
-    private readonly Func<RemoteHostCallbackRegistration, ValueTask<string>>? _installHostCallback;
+    private readonly Func<RemoteLocalCallbackRegistration, ValueTask<string>>? _installLocalCallback;
 
     internal RemoteSubscriptionPipeline(
         Func<PluginPackage, ValueTask<string>> install,
-        Func<RemoteHostCallbackRegistration, ValueTask<string>>? installHostCallback)
+        Func<RemoteLocalCallbackRegistration, ValueTask<string>>? installLocalCallback)
     {
         _install = install;
-        _installHostCallback = installHostCallback;
+        _installLocalCallback = installLocalCallback;
     }
 
     public RemoteSubscriptionPipeline<TEvent> Use<TKernel>() where TKernel : class
@@ -28,51 +29,55 @@ public sealed class RemoteSubscriptionPipeline<TEvent>
         return this;
     }
 
-    public RemoteSubscriptionPipeline<TEvent> UseGeneratedHostCallbackChain(
+    public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalCallbackChain<TPayload>(
         PluginPackage package,
-        Func<TEvent, HookContext, ValueTask> handler)
+        Func<TPayload, HookContext, ValueTask> handler)
     {
         ArgumentNullException.ThrowIfNull(package);
         ArgumentNullException.ThrowIfNull(handler);
-        if (_installHostCallback is null)
+        if (_installLocalCallback is null)
         {
-            throw HostCallbacksNotSupported();
+            throw LocalCallbacksNotSupported();
         }
 
         ValidateSubscription(package);
-        _installHostCallback(new RemoteHostCallbackRegistration(typeof(TEvent), package, handler))
+        _installLocalCallback(new RemoteLocalCallbackRegistration(
+                typeof(TEvent),
+                Payload<TPayload>(package),
+                package,
+                handler))
             .AsTask()
             .GetAwaiter()
             .GetResult();
         return this;
     }
 
-    public RemoteSubscriptionPipeline<TEvent> UseGeneratedHostCallbackChain(
+    public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalCallbackChain<TPayload>(
         PluginPackage package,
-        Action<TEvent, HookContext> handler)
+        Action<TPayload, HookContext> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
-        return UseGeneratedHostCallbackChain(package, (e, context) =>
+        return UseGeneratedLocalCallbackChain(package, (TPayload e, HookContext context) =>
         {
             handler(e, context);
             return ValueTask.CompletedTask;
         });
     }
 
-    public RemoteSubscriptionPipeline<TEvent> UseGeneratedHostCallbackChain(
+    public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalCallbackChain<TPayload>(
         PluginPackage package,
-        Func<TEvent, ValueTask> handler)
+        Func<TPayload, ValueTask> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
-        return UseGeneratedHostCallbackChain(package, (e, _) => handler(e));
+        return UseGeneratedLocalCallbackChain(package, (TPayload e, HookContext _) => handler(e));
     }
 
-    public RemoteSubscriptionPipeline<TEvent> UseGeneratedHostCallbackChain(
+    public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalCallbackChain<TPayload>(
         PluginPackage package,
-        Action<TEvent> handler)
+        Action<TPayload> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
-        return UseGeneratedHostCallbackChain(package, (e, _) =>
+        return UseGeneratedLocalCallbackChain(package, (TPayload e, HookContext _) =>
         {
             handler(e);
             return ValueTask.CompletedTask;
@@ -116,37 +121,22 @@ public sealed class RemoteSubscriptionPipeline<TEvent>
         => throw NotLowered();
 
     public RemoteSubscriptionPipeline<TEvent> RunLocal(Func<TEvent, HookContext, ValueTask> handler)
-        => throw LocalHandlersNotSupported();
+        => throw NotLowered();
 
     public RemoteSubscriptionPipeline<TEvent> RunLocal(Action<TEvent, HookContext> handler)
-        => throw LocalHandlersNotSupported();
+        => throw NotLowered();
 
     public RemoteSubscriptionPipeline<TEvent> RunLocal(Func<TEvent, ValueTask> handler)
-        => throw LocalHandlersNotSupported();
+        => throw NotLowered();
 
     public RemoteSubscriptionPipeline<TEvent> RunLocal(Action<TEvent> handler)
-        => throw LocalHandlersNotSupported();
-
-    public RemoteSubscriptionPipeline<TEvent> RunHost(Func<TEvent, HookContext, ValueTask> handler)
-        => throw NotLowered();
-
-    public RemoteSubscriptionPipeline<TEvent> RunHost(Action<TEvent, HookContext> handler)
-        => throw NotLowered();
-
-    public RemoteSubscriptionPipeline<TEvent> RunHost(Func<TEvent, ValueTask> handler)
-        => throw NotLowered();
-
-    public RemoteSubscriptionPipeline<TEvent> RunHost(Action<TEvent> handler)
         => throw NotLowered();
 
     private static InvalidOperationException NotLowered()
-        => new("Remote subscription Run/RunHost lambda calls must be intercepted by the DotBoxD plugin generator.");
+        => new("Remote subscription Run/RunLocal lambda calls must be intercepted by the DotBoxD plugin generator.");
 
-    private static NotSupportedException LocalHandlersNotSupported()
-        => new("Remote subscription RunLocal requires an event callback transport; use PluginServer.Subscriptions for local handlers.");
-
-    private static NotSupportedException HostCallbacksNotSupported()
-        => new("Remote subscription RunHost requires a host callback transport.");
+    private static NotSupportedException LocalCallbacksNotSupported()
+        => new("Remote subscription RunLocal requires a local callback transport.");
 
     private static void ValidateSubscription(PluginPackage package)
     {
@@ -159,5 +149,32 @@ public sealed class RemoteSubscriptionPipeline<TEvent>
             throw new InvalidOperationException(
                 $"Subscription package '{package.Manifest.PluginId}' subscribes to '{actual ?? "<none>"}', not '{expected}'.");
         }
+    }
+
+    private static RemoteLocalCallbackPayload Payload<TPayload>(PluginPackage package)
+    {
+        var handle = package.Module.Functions.FirstOrDefault(
+            function => string.Equals(function.Id, package.Entrypoints.Handle, StringComparison.Ordinal));
+        if (handle is null)
+        {
+            throw new InvalidOperationException(
+                $"Subscription package '{package.Manifest.PluginId}' has no callback payload entrypoint '{package.Entrypoints.Handle}'.");
+        }
+
+        if (handle.ReturnType == SandboxType.Unit)
+        {
+            if (typeof(TPayload) != typeof(TEvent))
+            {
+                throw new InvalidOperationException(
+                    $"Subscription package '{package.Manifest.PluginId}' sends the original event, not '{typeof(TPayload).FullName}'.");
+            }
+
+            return new RemoteLocalCallbackPayload(RemoteLocalCallbackPayloadKind.Event, typeof(TEvent), null);
+        }
+
+        return new RemoteLocalCallbackPayload(
+            RemoteLocalCallbackPayloadKind.Projection,
+            typeof(TPayload),
+            handle.Id);
     }
 }

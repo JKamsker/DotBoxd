@@ -20,6 +20,16 @@ internal static class DotBoxDHandleBodyModelFactory
             $"new {TypeNames.GlobalLiteralExpression}({TypeNames.GlobalSandboxValue}.Unit, Span)",
             allocates: false);
 
+    public static DotBoxDStatementBodyModel ReturnExpression(
+        DotBoxDExpressionModel expression,
+        DotBoxDStatementBodyModel? prefix = null)
+    {
+        var returned = DotBoxDStatementBodyModelFactory.Return(expression.Source, expression.Allocates);
+        return prefix is null
+            ? returned
+            : DotBoxDStatementBodyModelFactory.Concat(prefix, returned);
+    }
+
     private static string SendExpression(DotBoxDHandleModel handle)
         => $"new {TypeNames.GlobalCallExpression}({TypeNames.GlobalPluginMessageBindings}.SendBindingId, [{handle.Target.Source}, {handle.Message.Source}], null, Span)";
 }

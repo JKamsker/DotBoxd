@@ -11,7 +11,7 @@ internal sealed record HookChainResult(PluginKernelModel Model, HookChainInterce
 internal enum HookChainInterceptorInstallKind
 {
     GeneratedChain,
-    HostCallback
+    LocalCallback
 }
 
 /// <summary>

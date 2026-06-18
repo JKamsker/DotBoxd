@@ -118,6 +118,7 @@ internal static class PluginKernelModelFactory
                 LiveSettings: liveSettings,
                 ShouldHandle: shouldHandleBody,
                 HandleBody: handleBody,
+                HandleReturnTypeSource: DotBoxDGenerationNames.TypeNames.GlobalSandboxType + ".Unit",
                 ManifestEffects: DotBoxDManifestEffectModel.Create(shouldHandleBody, handleBody, effects),
                 RequiredCapabilities: EquatableArray<string>.FromOwned([.. capabilities]),
                 // Index-predicate metadata is only mined from inline .Where(...) chains; kernel-class

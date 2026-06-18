@@ -45,6 +45,27 @@ public sealed class PluginSession : IDisposable, IAsyncDisposable
         }
     }
 
+    public async ValueTask<InstalledKernel> InstallLocalCallbackAsync(
+        PluginPackage package,
+        SandboxPolicy? policy = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(package);
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            var kernel = await _server.InstallOwnedLocalCallbackAsync(this, package, policy, cancellationToken)
+                .ConfigureAwait(false);
+            _owned.Add(package.Manifest.PluginId);
+            return kernel;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     /// <summary>
     /// Installs a <b>server extension</b> package owned by this session (see
     /// <see cref="PluginServer.InstallServerExtensionAsync"/>). Same ownership/atomicity guarantees as

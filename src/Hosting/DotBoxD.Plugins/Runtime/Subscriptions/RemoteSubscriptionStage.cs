@@ -36,6 +36,26 @@ public sealed class RemoteSubscriptionStage<TEvent, TCurrent>
     public RemoteSubscriptionPipeline<TEvent> UseGeneratedChain(PluginPackage package)
         => _root.UseGeneratedChain(package);
 
+    public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalCallbackChain(
+        PluginPackage package,
+        Func<TCurrent, HookContext, ValueTask> handler)
+        => _root.UseGeneratedLocalCallbackChain(package, handler);
+
+    public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalCallbackChain(
+        PluginPackage package,
+        Action<TCurrent, HookContext> handler)
+        => _root.UseGeneratedLocalCallbackChain(package, handler);
+
+    public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalCallbackChain(
+        PluginPackage package,
+        Func<TCurrent, ValueTask> handler)
+        => _root.UseGeneratedLocalCallbackChain(package, handler);
+
+    public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalCallbackChain(
+        PluginPackage package,
+        Action<TCurrent> handler)
+        => _root.UseGeneratedLocalCallbackChain(package, handler);
+
     public RemoteSubscriptionPipeline<TEvent> Run(Func<TCurrent, HookContext, ValueTask> handler)
         => throw NotLowered();
 
@@ -49,20 +69,17 @@ public sealed class RemoteSubscriptionStage<TEvent, TCurrent>
         => throw NotLowered();
 
     public RemoteSubscriptionPipeline<TEvent> RunLocal(Func<TCurrent, HookContext, ValueTask> handler)
-        => throw LocalHandlersNotSupported();
+        => throw NotLowered();
 
     public RemoteSubscriptionPipeline<TEvent> RunLocal(Action<TCurrent, HookContext> handler)
-        => throw LocalHandlersNotSupported();
+        => throw NotLowered();
 
     public RemoteSubscriptionPipeline<TEvent> RunLocal(Func<TCurrent, ValueTask> handler)
-        => throw LocalHandlersNotSupported();
+        => throw NotLowered();
 
     public RemoteSubscriptionPipeline<TEvent> RunLocal(Action<TCurrent> handler)
-        => throw LocalHandlersNotSupported();
+        => throw NotLowered();
 
     private static InvalidOperationException NotLowered()
-        => new("Remote subscription Run(lambda) calls must be intercepted by the DotBoxD plugin generator.");
-
-    private static NotSupportedException LocalHandlersNotSupported()
-        => new("Remote subscription RunLocal requires an event callback transport; use PluginServer.Subscriptions for local handlers.");
+        => new("Remote subscription Run/RunLocal lambda calls must be intercepted by the DotBoxD plugin generator.");
 }

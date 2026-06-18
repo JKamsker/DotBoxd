@@ -6,27 +6,56 @@ namespace DotBoxD.Plugins.Runtime.Input;
 internal sealed class PluginEventAdapterValidationCache
 {
     private readonly ConditionalWeakTable<object, StrongBox<PluginEventShape>> _validatedAdapters = new();
+    private readonly ConditionalWeakTable<object, StrongBox<PluginEventShape>> _validatedLocalCallbackAdapters = new();
 
     public void Validate<TEvent>(
         PluginManifest manifest,
         ExecutionPlan plan,
         KernelEntrypoints entrypoints,
         IPluginEventAdapter<TEvent> adapter)
+        => Validate(
+            manifest,
+            plan,
+            entrypoints,
+            adapter,
+            _validatedAdapters,
+            KernelEntrypointValidator.Validate);
+
+    public void ValidateLocalCallback<TEvent>(
+        PluginManifest manifest,
+        ExecutionPlan plan,
+        KernelEntrypoints entrypoints,
+        IPluginEventAdapter<TEvent> adapter)
+        => Validate(
+            manifest,
+            plan,
+            entrypoints,
+            adapter,
+            _validatedLocalCallbackAdapters,
+            KernelEntrypointValidator.ValidateLocalCallback);
+
+    private static void Validate<TEvent>(
+        PluginManifest manifest,
+        ExecutionPlan plan,
+        KernelEntrypoints entrypoints,
+        IPluginEventAdapter<TEvent> adapter,
+        ConditionalWeakTable<object, StrongBox<PluginEventShape>> validatedAdapters,
+        Action<PluginManifest, ExecutionPlan, KernelEntrypoints, PluginEventShape> validateEntrypoints)
     {
         ArgumentNullException.ThrowIfNull(adapter);
 
         var eventName = adapter.EventName;
         var parameters = adapter.Parameters;
         PluginEventValueWriterShapeValidator.Validate(adapter, parameters);
-        if (_validatedAdapters.TryGetValue(adapter, out var cached) &&
+        if (validatedAdapters.TryGetValue(adapter, out var cached) &&
             cached.Value.Matches(eventName, parameters))
         {
             return;
         }
 
         var shape = new PluginEventShape(eventName, parameters);
-        KernelEntrypointValidator.Validate(manifest, plan, entrypoints, shape);
-        _validatedAdapters.AddOrUpdate(adapter, new StrongBox<PluginEventShape>(shape));
+        validateEntrypoints(manifest, plan, entrypoints, shape);
+        validatedAdapters.AddOrUpdate(adapter, new StrongBox<PluginEventShape>(shape));
     }
 }
 

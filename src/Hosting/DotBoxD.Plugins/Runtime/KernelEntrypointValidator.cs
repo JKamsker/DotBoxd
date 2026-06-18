@@ -20,6 +20,21 @@ internal static class KernelEntrypointValidator
         ExecutionPlan plan,
         KernelEntrypoints entrypoints,
         PluginEventShape adapterShape)
+        => Validate(manifest, plan, entrypoints, adapterShape, requireUnitHandle: true);
+
+    public static void ValidateLocalCallback(
+        PluginManifest manifest,
+        ExecutionPlan plan,
+        KernelEntrypoints entrypoints,
+        PluginEventShape adapterShape)
+        => Validate(manifest, plan, entrypoints, adapterShape, requireUnitHandle: false);
+
+    private static void Validate(
+        PluginManifest manifest,
+        ExecutionPlan plan,
+        KernelEntrypoints entrypoints,
+        PluginEventShape adapterShape,
+        bool requireUnitHandle)
     {
         if (!manifest.Subscriptions.Any(s => EventNameMatch.Matches(s.Event, adapterShape.EventName)))
         {
@@ -30,13 +45,13 @@ internal static class KernelEntrypointValidator
 
         var expected = PluginParameterShape.BuildExpected(adapterShape.Parameters, manifest.LiveSettings);
         ValidateFunction(plan, entrypoints.ShouldHandle, SandboxType.Bool, expected);
-        ValidateFunction(plan, entrypoints.Handle, SandboxType.Unit, expected);
+        ValidateFunction(plan, entrypoints.Handle, requireUnitHandle ? SandboxType.Unit : null, expected);
     }
 
     private static void ValidateFunction(
         ExecutionPlan plan,
         string functionId,
-        SandboxType returnType,
+        SandboxType? returnType,
         IReadOnlyList<Parameter> expected)
     {
         var function = plan.Module.Functions.FirstOrDefault(f => string.Equals(f.Id, functionId, StringComparison.Ordinal));
@@ -47,7 +62,7 @@ internal static class KernelEntrypointValidator
             ]);
         }
 
-        if (function.ReturnType != returnType ||
+        if ((returnType is not null && function.ReturnType != returnType) ||
             !PluginParameterShape.Matches(function.Parameters, expected))
         {
             throw SignatureError(functionId);

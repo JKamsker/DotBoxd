@@ -69,6 +69,42 @@ internal static class HookChainStageLowerer
         return new DotBoxDHandleModel(handle.Target, handle.Message, prefix);
     }
 
+    public static HookChainProjection? CreateProjection(
+        IReadOnlyList<HookChainStage> stages,
+        EquatableArray<EventPropertyModel> eventProperties,
+        SemanticModel model,
+        CancellationToken cancellationToken,
+        ICollection<string> capabilities,
+        ICollection<string> effects)
+    {
+        DotBoxDExpressionModel? current = null;
+        DotBoxDStatementBodyModel? prefix = null;
+        for (var i = 0; i < stages.Count; i++)
+        {
+            if (!stages[i].IsSelect)
+            {
+                continue;
+            }
+
+            var projection = LowerSelect(
+                stages[i],
+                current,
+                eventProperties,
+                model,
+                cancellationToken,
+                capabilities,
+                effects);
+            prefix = prefix is null
+                ? projection.Assignment
+                : DotBoxDStatementBodyModelFactory.Concat(prefix, projection.Assignment);
+            current = projection.Current;
+        }
+
+        return current is null
+            ? null
+            : new HookChainProjection(prefix, current);
+    }
+
     private static DotBoxDStatementBodyModel BuildShouldHandle(
         IReadOnlyList<HookChainStage> stages,
         int index,
@@ -206,3 +242,7 @@ internal static class HookChainStageLowerer
         DotBoxDStatementBodyModel Assignment,
         DotBoxDExpressionModel Current);
 }
+
+internal sealed record HookChainProjection(
+    DotBoxDStatementBodyModel? Prefix,
+    DotBoxDExpressionModel Value);

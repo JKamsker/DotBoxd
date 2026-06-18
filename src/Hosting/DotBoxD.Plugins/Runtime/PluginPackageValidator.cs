@@ -72,6 +72,12 @@ internal static class PluginPackageValidator
         PluginEventAdapterRegistry events)
         => PluginPreparedPackageValidator.Validate(package, plan, events, PluginManifestEffectValidator.Validate);
 
+    public static void ValidatePreparedLocalCallback(
+        PluginPackage package,
+        ExecutionPlan plan,
+        PluginEventAdapterRegistry events)
+        => PluginPreparedPackageValidator.ValidateLocalCallback(package, plan, events, PluginManifestEffectValidator.Validate);
+
     private static string? ValidateModuleKernelMetadata(PluginPackage package, List<SandboxDiagnostic> diagnostics)
     {
         if (!package.Module.Metadata.TryGetValue(PluginManifestNames.ModuleMetadata.Kernel, out var metadataKernel) ||

@@ -16,6 +16,21 @@ internal static class PluginPreparedPackageValidator
         ExecutionPlan plan,
         PluginEventAdapterRegistry events,
         ManifestEffectsValidator validateManifestEffects)
+        => Validate(package, plan, events, validateManifestEffects, requireUnitHandle: true);
+
+    public static void ValidateLocalCallback(
+        PluginPackage package,
+        ExecutionPlan plan,
+        PluginEventAdapterRegistry events,
+        ManifestEffectsValidator validateManifestEffects)
+        => Validate(package, plan, events, validateManifestEffects, requireUnitHandle: false);
+
+    private static void Validate(
+        PluginPackage package,
+        ExecutionPlan plan,
+        PluginEventAdapterRegistry events,
+        ManifestEffectsValidator validateManifestEffects,
+        bool requireUnitHandle)
     {
         var diagnostics = new List<SandboxDiagnostic>();
         var manifestEffects = validateManifestEffects(package.Manifest, diagnostics);
@@ -34,7 +49,7 @@ internal static class PluginPreparedPackageValidator
             [package.Entrypoints.ShouldHandle, package.Entrypoints.Handle],
             diagnostics);
         var contractEvent = ValidateContract(package, diagnostics);
-        ValidatePreparedEntrypoints(package, plan, events, contractEvent, diagnostics);
+        ValidatePreparedEntrypoints(package, plan, events, contractEvent, requireUnitHandle, diagnostics);
         ThrowIfErrors(diagnostics);
     }
 
@@ -111,6 +126,7 @@ internal static class PluginPreparedPackageValidator
         ExecutionPlan plan,
         PluginEventAdapterRegistry events,
         string? contractEvent,
+        bool requireUnitHandle,
         List<SandboxDiagnostic> diagnostics)
     {
         var entrypointIndex = PluginEntrypointIndex.Build(package);
@@ -120,7 +136,7 @@ internal static class PluginPreparedPackageValidator
             return;
         }
 
-        ValidateReturnTypes(plan, shouldHandle, handle, diagnostics);
+        ValidateReturnTypes(plan, shouldHandle, handle, requireUnitHandle, diagnostics);
         if (!ParametersMatch(shouldHandle.Parameters, handle.Parameters))
         {
             diagnostics.Add(new SandboxDiagnostic("DBXK034", "Kernel entrypoints must use the same parameter shape."));
@@ -141,6 +157,7 @@ internal static class PluginPreparedPackageValidator
         ExecutionPlan plan,
         SandboxFunction shouldHandle,
         SandboxFunction handle,
+        bool requireUnitHandle,
         List<SandboxDiagnostic> diagnostics)
     {
         if (plan.FunctionAnalysis.TryGetValue(shouldHandle.Id, out var shouldAnalysis) &&
@@ -149,7 +166,8 @@ internal static class PluginPreparedPackageValidator
             diagnostics.Add(new SandboxDiagnostic("DBXK033", "Kernel ShouldHandle entrypoint must return Bool."));
         }
 
-        if (plan.FunctionAnalysis.TryGetValue(handle.Id, out var handleAnalysis) &&
+        if (requireUnitHandle &&
+            plan.FunctionAnalysis.TryGetValue(handle.Id, out var handleAnalysis) &&
             handleAnalysis.ReturnType != SandboxType.Unit)
         {
             diagnostics.Add(new SandboxDiagnostic("DBXK033", "Kernel Handle entrypoint must return Unit."));

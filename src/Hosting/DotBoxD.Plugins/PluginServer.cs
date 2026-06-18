@@ -106,6 +106,12 @@ public sealed partial class PluginServer : IDisposable
         CancellationToken cancellationToken = default)
         => InstallCoreAsync(package, policy, owner: null, cancellationToken);
 
+    public ValueTask<InstalledKernel> InstallLocalCallbackAsync(
+        PluginPackage package,
+        SandboxPolicy? policy = null,
+        CancellationToken cancellationToken = default)
+        => InstallLocalCallbackCoreAsync(package, policy, owner: null, cancellationToken);
+
     /// <summary>
     /// Installs a <b>server extension</b> package: a kernel invoked request/response (via
     /// <see cref="InstalledKernel.InvokeServerExtensionAsync"/>) rather than wired to an event. It is
@@ -149,6 +155,13 @@ public sealed partial class PluginServer : IDisposable
         CancellationToken cancellationToken)
         => InstallCoreAsync(package, policy, owner, cancellationToken);
 
+    internal ValueTask<InstalledKernel> InstallOwnedLocalCallbackAsync(
+        PluginSession owner,
+        PluginPackage package,
+        SandboxPolicy? policy,
+        CancellationToken cancellationToken)
+        => InstallLocalCallbackCoreAsync(package, policy, owner, cancellationToken);
+
     internal ValueTask<InstalledKernel> InstallOwnedServerExtensionAsync(
         PluginSession owner,
         PluginPackage package,
@@ -186,6 +199,27 @@ public sealed partial class PluginServer : IDisposable
         var plan = await _host.PrepareAsync(package.Module, policy ?? _defaultPolicy, cancellationToken)
             .ConfigureAwait(false);
         PluginPackageValidator.ValidatePrepared(package, plan, Events);
+        var kernel = new InstalledKernel(_host, plan, package, _executionMode, owner);
+        var replaced = Kernels.Add(kernel);
+        if (replaced is not null)
+        {
+            RemoveKernelReferences(replaced);
+        }
+
+        return kernel;
+    }
+
+    private async ValueTask<InstalledKernel> InstallLocalCallbackCoreAsync(
+        PluginPackage package,
+        SandboxPolicy? policy,
+        object? owner,
+        CancellationToken cancellationToken)
+    {
+        ThrowIfDisposed();
+        PluginPackageValidator.Validate(package);
+        var plan = await _host.PrepareAsync(package.Module, policy ?? _defaultPolicy, cancellationToken)
+            .ConfigureAwait(false);
+        PluginPackageValidator.ValidatePreparedLocalCallback(package, plan, Events);
         var kernel = new InstalledKernel(_host, plan, package, _executionMode, owner);
         var replaced = Kernels.Add(kernel);
         if (replaced is not null)
