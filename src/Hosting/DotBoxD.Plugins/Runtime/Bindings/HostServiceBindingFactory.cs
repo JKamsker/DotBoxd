@@ -21,6 +21,7 @@ internal static class HostServiceBindingFactory
         var returnType = payloadType is null ? SandboxType.Unit : KernelRpcMarshaller.SandboxTypeOf(payloadType);
         var effects = InferEffects(interfaceMethod, returnType, capability);
         var id = HostBindingRoute(interfaceMethod.DeclaringType!, interfaceMethod);
+        var targetParameterTypes = ParameterTypes(targetMethod);
 
         return CreateDescriptor(
             id,
@@ -30,7 +31,7 @@ internal static class HostServiceBindingFactory
             capability,
             IsTaskLike(interfaceMethod.ReturnType),
             (context, args, cancellationToken) =>
-                InvokeAsync(context, args, cancellationToken, id, capability, effects, targetMethod, target, payloadType));
+                InvokeAsync(context, args, cancellationToken, id, capability, effects, targetMethod, target, targetParameterTypes, payloadType));
     }
 
     public static BindingDescriptor CreateHandleBinding(
@@ -48,6 +49,8 @@ internal static class HostServiceBindingFactory
         var returnType = payloadType is null ? SandboxType.Unit : KernelRpcMarshaller.SandboxTypeOf(payloadType);
         var effects = InferEffects(handleInterfaceMethod, returnType, capability);
         var id = HostBindingRoute(handleInterfaceMethod.DeclaringType!, handleInterfaceMethod);
+        var factoryParameterTypes = ParameterTypes(factoryTargetMethod);
+        var handleParameterTypes = ParameterTypes(handleInterfaceMethod);
 
         return CreateDescriptor(
             id,
@@ -68,6 +71,8 @@ internal static class HostServiceBindingFactory
                     factoryTargetMethod,
                     factoryTarget,
                     handleInterfaceMethod,
+                    factoryParameterTypes,
+                    handleParameterTypes,
                     payloadType));
     }
 
@@ -126,14 +131,15 @@ internal static class HostServiceBindingFactory
         SandboxEffect effects,
         MethodInfo targetMethod,
         object target,
+        Type[] targetParameterTypes,
         Type? payloadType)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var startedAt = DateTimeOffset.UtcNow;
-        var values = ConvertArguments(targetMethod, args);
+        var values = ConvertArguments(targetParameterTypes, args, startIndex: 0);
         var result = targetMethod.Invoke(target, values);
         var payload = await AwaitReturnAsync(result, targetMethod.ReturnType).ConfigureAwait(false);
-        WriteAudit(context, bindingId, capability, effects, startedAt, values);
+        WriteAudit(context, bindingId, capability, effects, startedAt, values.Length > 0 ? values[0] : null);
         return payloadType is null
             ? SandboxValue.Unit
             : KernelRpcMarshaller.ToSandboxValue(payload, payloadType);
@@ -150,30 +156,37 @@ internal static class HostServiceBindingFactory
         MethodInfo factoryTargetMethod,
         object factoryTarget,
         MethodInfo handleInterfaceMethod,
+        Type[] factoryParameterTypes,
+        Type[] handleParameterTypes,
         Type? payloadType)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var startedAt = DateTimeOffset.UtcNow;
-        var factoryArgumentCount = factoryInterfaceMethod.GetParameters().Length;
-        var factoryValues = ConvertArguments(factoryTargetMethod, args.Take(factoryArgumentCount).ToArray());
+        var factoryValues = ConvertArguments(factoryParameterTypes, args, startIndex: 0);
         var handle = factoryTargetMethod.Invoke(factoryTarget, factoryValues)
             ?? throw new InvalidOperationException($"Host service factory '{factoryInterfaceMethod.Name}' returned null.");
-        var handleValues = ConvertArguments(handleInterfaceMethod, args.Skip(factoryArgumentCount).ToArray());
+        var handleValues = ConvertArguments(handleParameterTypes, args, factoryParameterTypes.Length);
         var result = handleInterfaceMethod.Invoke(handle, handleValues);
         var payload = await AwaitReturnAsync(result, handleInterfaceMethod.ReturnType).ConfigureAwait(false);
-        WriteAudit(context, bindingId, capability, effects, startedAt, factoryValues.Concat(handleValues).ToArray());
+        var auditValue = factoryValues.Length > 0 ? factoryValues[0] : handleValues.Length > 0 ? handleValues[0] : null;
+        WriteAudit(context, bindingId, capability, effects, startedAt, auditValue);
         return payloadType is null
             ? SandboxValue.Unit
             : KernelRpcMarshaller.ToSandboxValue(payload, payloadType);
     }
 
-    private static object?[] ConvertArguments(MethodInfo targetMethod, IReadOnlyList<SandboxValue> args)
+    private static Type[] ParameterTypes(MethodInfo method)
+        => method.GetParameters().Select(static parameter => parameter.ParameterType).ToArray();
+
+    private static object?[] ConvertArguments(
+        Type[] parameterTypes,
+        IReadOnlyList<SandboxValue> args,
+        int startIndex)
     {
-        var parameters = targetMethod.GetParameters();
-        var values = new object?[parameters.Length];
-        for (var i = 0; i < parameters.Length; i++)
+        var values = new object?[parameterTypes.Length];
+        for (var i = 0; i < parameterTypes.Length; i++)
         {
-            values[i] = KernelRpcMarshaller.FromSandboxValue(args[i], parameters[i].ParameterType);
+            values[i] = KernelRpcMarshaller.FromSandboxValue(args[startIndex + i], parameterTypes[i]);
         }
 
         return values;
@@ -221,9 +234,9 @@ internal static class HostServiceBindingFactory
         string capability,
         SandboxEffect effects,
         DateTimeOffset startedAt,
-        IReadOnlyList<object?> values)
+        object? firstArgument)
     {
-        var resourceId = values.Count > 0 && values[0] is string id ? $"entity:{id}" : bindingId;
+        var resourceId = firstArgument is string id ? $"entity:{id}" : bindingId;
         context.Audit.Write(new SandboxAuditEvent(
             context.RunId,
             "BindingCall",
