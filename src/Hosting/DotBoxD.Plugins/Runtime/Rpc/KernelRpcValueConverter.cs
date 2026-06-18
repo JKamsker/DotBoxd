@@ -77,7 +77,7 @@ public static class KernelRpcValueConverter
                 items[i] = ToSandboxValue(source[i], itemType);
             }
 
-            return SandboxValue.FromList(items, itemType);
+            return SandboxValue.FromOwnedList(items, itemType);
         }
 
         if (expectedType.IsRecord)
@@ -96,7 +96,7 @@ public static class KernelRpcValueConverter
                 fields[i] = ToSandboxValue(source[i], expectedType.Arguments[i]);
             }
 
-            return SandboxValue.FromRecord(fields);
+            return SandboxValue.FromOwnedRecord(fields);
         }
 
         throw new NotSupportedException($"Server extension IPC cannot marshal expected sandbox type '{expectedType}'.");
