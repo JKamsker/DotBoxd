@@ -184,7 +184,7 @@ internal sealed class MethodEmitter
             return;
         }
 
-        if (I32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, _functionModels, Declare))
+        if (I32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, _functionModels, _bindings, Declare))
         {
             _nonNegativeF64Locals.Clear();
             return;

@@ -29,6 +29,7 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-compiled-binding-arity
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-capability-grant-lookup
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-compiled-binding-structural-validation
+dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-i32-math-intrinsic
 ```
 
 ## History
@@ -84,6 +85,7 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 | Shared generated zero-arg binding arrays | this commit | `--probe-compiled-binding-arity` | Reused `Array.Empty<SandboxValue>()` for generated-code `CreateLiteralValueArray(0)` calls. The generated-shape zero-argument runtime-stub binding probe improved from 236.4 ms and 12,000,184 B to 221.7 ms and 184 B for 500k calls, while `ChargeValueArray` kept the same sandbox fuel/allocation charges. |
 | Capability grant lookup cache | this commit | `--probe-capability-grant-lookup` | Cached the last successful `SandboxContext.GetCapability` grant by requested capability id and `EffectiveGrantClock`, avoiding the common capability-backed binding sequence that calls `RequireCapability` and then resolves the same grant again. The 1M-pair probe improved from 24.5 ms (24.5 ns/op) and 728 B to 2.2 ms (2.2 ns/op) and 728 B; this is a time-only improvement with expiry/clock semantics preserved. |
 | Structural compiled binding validation | this commit | `--probe-compiled-binding-structural-validation` | Replaced the compiled binding dispatcher's structural `.Type.Equals(expected)` argument check with a direct shape matcher keyed by scalar kind and list/map/record metadata, preserving mismatch errors while avoiding nested `SandboxType` materialization. The 1M list + record argument-pair probe (2M validations) improved from 350.2 ms, 175.1 ns/check, and 520,000,040 B to 74.8 ms, 37.4 ns/check, and 40 B. |
+| Raw I32 math intrinsic helpers | this commit | `--probe-i32-math-intrinsic` | Added verifier-allowlisted raw helpers for `math.abs`, `math.min`, `math.max`, and `math.clamp`, and let the straight I32 loop fast path use them for approved pure math bindings while emitting the same `ChargeBindingCall` before each raw helper call. The charged `math.abs` probe improved from 7.5 ms and 11,643,616 B for the boxed direct helper shape to 3.9 ms and 40 B for 1M calls, with identical host-call count and total. |
 
 Versioning note for the two-argument binding fast path: `CallBinding2` and `ChargeValueArray`
 are public generated-code ABI on `CompiledRuntime` for the same reason as the existing facade

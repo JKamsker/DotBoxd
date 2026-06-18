@@ -18,6 +18,7 @@ as targeted before/after evidence, not BenchmarkDotNet statistical reports.
 | Generated zero-argument runtime-stub binding calls allocated a fresh empty argument array. | `--probe-compiled-binding-arity` | 500,000 generated-shape zero-arg binding calls | 236.4 ms | 472.8 | 12,000,184 B | 24.0 | 221.7 ms | 443.4 | 184 B | 0.0 | `ChargeValueArray` still charges the same resource fuel/allocation; only the backing CLR empty array is shared. |
 | Capability-gated dispatch/bindings resolved the same grant twice. | `--probe-capability-grant-lookup` | 1,000,000 `RequireCapability` + `GetCapability` pairs | 24.5 ms | 24.5 | 728 B | ~0 | 2.2 ms | 2.2 | 728 B | ~0 | Time-only improvement; grant cache is keyed by capability id and `EffectiveGrantClock`. |
 | Structural compiled binding validation materialized `SandboxValue.Type` for nested list/map/record arguments. | `--probe-compiled-binding-structural-validation` | 1,000,000 list + record argument-pair validations (2,000,000 checks) | 350.2 ms | 175.1 | 520,000,040 B | 260.0 | 74.8 ms | 37.4 | 40 B | ~0 | Probe compares the legacy `.Type.Equals` shape check with the direct matcher now used by the dispatcher. |
+| Compiled I32 math intrinsics used boxed direct binding helpers inside raw loops. | `--probe-i32-math-intrinsic` | 1,000,000 charged `math.abs` calls | 7.5 ms | 7.5 | 11,643,616 B | 11.6 | 3.9 ms | 3.9 | 40 B | ~0 | Raw helpers preserve binding host-call/fuel accounting and avoid `SandboxValue` argument/result materialization. |
 
 ## Probe Commands
 
@@ -31,4 +32,5 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-compiled-binding-arity
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-capability-grant-lookup
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-compiled-binding-structural-validation
+dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-i32-math-intrinsic
 ```

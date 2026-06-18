@@ -1,4 +1,5 @@
 using DotBoxD.Kernels.Compiler.Emitters.Loops;
+using DotBoxD.Kernels.Bindings;
 
 namespace DotBoxD.Kernels.Compiler.Emitters;
 
@@ -16,19 +17,34 @@ internal sealed class I32LoopFastPathEmitter
     private readonly LocalStackKindPlanner _stackPlan;
     private readonly ExpressionEmitter _expressions;
     private readonly IReadOnlyDictionary<string, SandboxFunction> _functions;
+    private readonly IBindingCatalog _bindings;
     private readonly Func<string, (LocalBuilder Local, StackKind Kind)> _declare;
 
-    private I32LoopFastPathEmitter(ILGenerator il, LocalStackKindPlanner stackPlan, ExpressionEmitter expressions, IReadOnlyDictionary<string, SandboxFunction> functions, Func<string, (LocalBuilder Local, StackKind Kind)> declare)
+    private I32LoopFastPathEmitter(
+        ILGenerator il,
+        LocalStackKindPlanner stackPlan,
+        ExpressionEmitter expressions,
+        IReadOnlyDictionary<string, SandboxFunction> functions,
+        IBindingCatalog bindings,
+        Func<string, (LocalBuilder Local, StackKind Kind)> declare)
     {
         _il = il;
         _stackPlan = stackPlan;
         _expressions = expressions;
         _functions = functions;
+        _bindings = bindings;
         _declare = declare;
     }
 
-    public static bool TryEmit(ForRangeStatement range, ILGenerator il, LocalStackKindPlanner stackPlan, ExpressionEmitter expressions, IReadOnlyDictionary<string, SandboxFunction> functions, Func<string, (LocalBuilder Local, StackKind Kind)> declare)
-        => new I32LoopFastPathEmitter(il, stackPlan, expressions, functions, declare).TryEmit(range);
+    public static bool TryEmit(
+        ForRangeStatement range,
+        ILGenerator il,
+        LocalStackKindPlanner stackPlan,
+        ExpressionEmitter expressions,
+        IReadOnlyDictionary<string, SandboxFunction> functions,
+        IBindingCatalog bindings,
+        Func<string, (LocalBuilder Local, StackKind Kind)> declare)
+        => new I32LoopFastPathEmitter(il, stackPlan, expressions, functions, bindings, declare).TryEmit(range);
 
     private bool TryEmit(ForRangeStatement range)
     {
@@ -53,7 +69,6 @@ internal sealed class I32LoopFastPathEmitter
         _il.Emit(OpCodes.Ldloc, end);
         _il.Emit(OpCodes.Bge, finishLabel);
         CompiledMeterEmitter.LoopIteration(_il, fuelPerIteration);
-
         var (loopVar, _) = _declare(range.LocalName);
         _il.Emit(OpCodes.Ldloc, index);
         _il.Emit(OpCodes.Stloc, loopVar);
@@ -74,7 +89,11 @@ internal sealed class I32LoopFastPathEmitter
         return true;
     }
 
-    private bool TryCreateBodyPlan(ForRangeStatement range, out AssignmentPlan[] body, out int fuelPerIteration, out int instructionCost)
+    private bool TryCreateBodyPlan(
+        ForRangeStatement range,
+        out AssignmentPlan[] body,
+        out int fuelPerIteration,
+        out int instructionCost)
     {
         body = new AssignmentPlan[range.Body.Count];
         fuelPerIteration = LoopFuel;
@@ -84,7 +103,7 @@ internal sealed class I32LoopFastPathEmitter
         {
             if (range.Body[i] is not AssignmentStatement assignment ||
                 _stackPlan.LocalKind(assignment.Name) != StackKind.I32 ||
-                !RawI32ExpressionPlan.TryCreate(assignment.Value, _stackPlan, _functions, out var expression))
+                !RawI32ExpressionPlan.TryCreate(assignment.Value, _stackPlan, _functions, _bindings, out var expression))
             {
                 body = [];
                 return false;
