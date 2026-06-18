@@ -1,7 +1,11 @@
 # Index-predicate metadata for lowered subscriptions
 
 > Implements [issue #47](https://github.com/JKamsker/DotBoxD/issues/47):
-> *Expose host-readable index metadata for lowered subscription predicates.*
+> *Expose host-readable index metadata for lowered subscription predicates*,
+> plus the follow-ups [#49](https://github.com/JKamsker/DotBoxD/issues/49) (live GameServer dispatch
+> through the index), [#50](https://github.com/JKamsker/DotBoxD/issues/50) (a first-class framework index),
+> and [#51](https://github.com/JKamsker/DotBoxD/issues/51), candidate 1 (kernel-class `ShouldHandle`
+> extraction).
 
 ## Why
 
@@ -62,9 +66,17 @@ the generated manifest subscription serializes to:
 ## Extraction rules (v1)
 
 Extraction happens in `HookChainIndexPredicateExtractor`
-(`src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/HookChains/`) from the `.Where(...)` stages,
-reusing the same member/constant detection the IR lowering already performs. A leaf is index-eligible
-when it is `event-property <op> compile-time-constant`:
+(`src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/HookChains/`), reusing the same member/constant
+detection the IR lowering already performs. Two sources feed it:
+
+- **Inline `.Where(...)` chains** — `Extract(...)` walks the chain stages.
+- **Kernel-class `ShouldHandle` bodies** (issue #51, candidate 1) — `ExtractFromShouldHandle(...)` treats an
+  expression-bodied predicate (`=> …`) or a single `return …;` block exactly like a `.Where(...)` lambda.
+  `PluginKernelModelFactory` feeds it the lowered kernel's `ShouldHandle`, so kernel-authored subscriptions
+  now ship the same index metadata inline chains do. (Multi-statement bodies, live-setting/captured-field
+  comparisons, and any non-constant leaf stay non-indexed, exactly as before.)
+
+A leaf is index-eligible when it is `event-property <op> compile-time-constant`:
 
 - Operators: `==`, `!=`, `>`, `>=`, `<`, `<=`.
 - Operands are **normalized** so the event property is the left operand
@@ -80,34 +92,50 @@ no `!`, no `.Where()` after a `.Select()`, no non-constant or non-property leaf,
 Anything else conservatively forces partial coverage (`false`) and the un-indexable parts remain in
 the verified IR.
 
+## Framework index (issue #50)
+
+The matcher and its attribute are first-class framework types in `DotBoxD.Plugins.Indexing`, so no host
+reimplements them:
+
+- `EventIndexKeyAttribute` — a host marks the event properties it indexes.
+- `EventIndexMatcher<TEvent>` — compiles manifest predicates into cheap checks over **precompiled property
+  getters** (expression-tree delegates built once per closed generic, never per-event reflection). It honors
+  only `[EventIndexKey]` paths and reconciles each predicate value to the property's CLR type; a value whose
+  type can't be reconciled (or a comparison it can't decide) is left to the verified IR rather than turned
+  into a throwing or unsound check.
+- `EventIndexRegistry` / `EventIndexStats` — register a subscription + its predicates, then `Publish` events;
+  the registry prefilters via the matcher and dispatches survivors to the verified IR, exposing
+  considered/prefiltered/dispatched counters. `Register` returns `false` when no predicate path is an index
+  key, so the host keeps that subscription on its broad pipeline.
+
 ## How a host uses it (correctness fallback)
 
-1. **Register**: read `IndexedPredicates`, keep the ones whose `Path` it actually indexes, build
-   equality/range buckets.
-2. **Prefilter**: on publish, evaluate the cheap index checks. Any failure ⇒ skip dispatch entirely
-   (no event materialization, no sandbox entry).
-3. **Fallback**: if the index check passes, run the verified IR predicate **unless**
-   `IndexCoversPredicate` is `true`. The verified IR stays the source of truth; the index is only an
-   optimization.
+1. **Register**: `EventIndexRegistry.Register(adapter, kernel, IndexedPredicates, IndexCoversPredicate)`.
+2. **Prefilter**: `Publish(event)` evaluates the cheap index checks. Any definitive failure ⇒ skip dispatch
+   entirely (no sandbox entry).
+3. **Fallback**: a survivor runs the verified IR predicate **unless** the index fully covers it
+   (`IndexCoversPredicate` true *and* every predicate path is an honored index key, doubles excluded). The
+   verified IR stays the source of truth; the index is only an optimization.
 
 ## Sample demonstration (`samples/GameServer`)
 
-- `AttackEvent` marks `AttackerId`, `TargetId`, `Damage` with `[EventIndexKey]` — the host's
-  declaration of which fields it indexes (`Examples.GameServer.Server.Abstractions`).
-- `EventIndexMatcher<TEvent>` compiles the manifest metadata into a cheap, reflection-free-per-call
-  prefilter, honoring only `[EventIndexKey]` paths.
-- The plugin installs an indexed subscription in `Program.ConfigureRuntimeHooks`.
-- On install, the server logs what it indexed:
-  ```text
-  [server] registered indexed subscription: AttackEvent AttackerId == player-1
-  [server] registered indexed prefilter: AttackEvent Damage >= 5
-  ```
-- `EventIndexFanoutTests` publishes 100 attacks where only 3 share the indexed bucket and proves the
-  lowered predicate ran exactly 3 times — the other 97 never entered the sandbox.
+- `AttackEvent` marks `AttackerId`, `TargetId`, `Damage` with `[EventIndexKey]` (the framework attribute).
+- `GameWorld` owns an internal `EventIndexRegistry` (issue #49); `GamePluginControlService.WireSubscription`
+  routes any subscription that carries honored index metadata into it instead of the broad pipeline, and
+  `GameWorld` publishes each event through both the broad pipeline (non-indexed subscriptions) and the index
+  registry (indexed ones). Live dispatch now actually reduces fan-out — the smoke run still calms/taunts.
+- On install the server still logs what it indexed (`[server] registered indexed subscription: …`).
+- `EventIndexFanoutTests` + `EventIndexRegistryTests` publish 100 attacks where only 3 share the indexed
+  bucket and prove the verified IR ran exactly 3 times — the other 97 never entered the sandbox.
 
 ## Non-goals / follow-ups
 
-- The running sample only *logs* what it indexed; wiring the matcher into live `GameWorld` dispatch
-  is tracked as a follow-up.
-- Promoting `EventIndexMatcher` into a first-class framework index registry (so every host doesn't
-  reimplement it), kernel-class `ShouldHandle` extraction, and nested property paths are follow-ups.
+- **Done**: live GameServer dispatch through the index (#49), framework-level matcher + registry (#50),
+  kernel-class `ShouldHandle` extraction (#51 candidate 1).
+- **Blocked on lowering, not implemented** (remaining #51 candidates): *nested property paths*
+  (`e.Inner.Field`) — events are validated to scalar-only properties and both lowering and extraction accept
+  only flat `e.Property`, so the model can't carry nested objects today; and *captured/effectively-constant
+  locals* — the IR lowerer rejects non-inlined local identifiers and a runtime value can't be baked into a
+  compile-time `IndexedPredicate.Value`. Both need a lowering/event-model change first.
+- *Optional*: integrating the prefilter directly into `SubscriptionPipeline`/`HookPipeline` (the registry is
+  the standalone alternative shipped here).

@@ -5,6 +5,7 @@ using System.Reflection;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Plugins;
 using DotBoxD.Plugins.Analyzer.Analysis;
+using DotBoxD.Plugins.Indexing;
 using DotBoxD.Plugins.Kernel;
 using DotBoxD.Plugins.Policies;
 using GameServerAbstractions::DotBoxD.Kernels.Game.Server.Abstractions.Events;
@@ -85,6 +86,64 @@ public sealed class EventIndexFanoutTests
         // and a different attacker is rejected regardless of level.
         Assert.True(matcher.CouldMatch(new AttackEvent("player-1", "player-2", 3, 1)));
         Assert.False(matcher.CouldMatch(new AttackEvent("monster-1", "player-2", 99, 12)));
+    }
+
+    [Fact]
+    public async Task Index_registry_dispatches_verified_ir_only_for_events_that_pass_the_index()
+    {
+        // Issue #49/#50: the framework EventIndexRegistry is the live-dispatch mechanism a host (and the
+        // GameServer sample) routes indexed subscriptions through. Publishing 100 attacks where only 3 share
+        // the indexed bucket must prefilter 97 before any sandbox entry and dispatch the verified IR for
+        // exactly the 3 survivors.
+        var package = GeneratedAttackPackage();
+        var subscription = Assert.Single(package.Manifest.Subscriptions);
+
+        var sink = new RecordingMessageSink();
+        using var server = DotBoxD.Plugins.PluginServer.Create(sink, defaultPolicy: ChainPolicy());
+        var adapter = server.Events.Resolve<AttackEvent>();
+        var kernel = await server.InstallAsync(package, ChainPolicy());
+
+        var registry = new EventIndexRegistry();
+        Assert.True(registry.Register(adapter, kernel, subscription.IndexedPredicates, subscription.IndexCoversPredicate));
+
+        foreach (var attack in Attacks(total: 100, matching: 3))
+        {
+            registry.Publish(attack);
+        }
+
+        var stats = registry.Stats;
+        Assert.Equal(100, stats.Considered);
+        Assert.Equal(97, stats.Prefiltered);
+        Assert.Equal(3, stats.Dispatched);
+        Assert.Equal(stats.Considered, stats.Prefiltered + stats.Dispatched);
+
+        await registry.DrainAsync();
+        Assert.Equal(3, sink.Messages.Count);
+        Assert.All(sink.Messages, message => Assert.Equal("indexed-taunt:inline", message.Message));
+        Assert.All(sink.Messages, message => Assert.Equal("player-2", message.TargetId));
+    }
+
+    [Fact]
+    public async Task Index_registry_declines_subscriptions_with_no_indexed_field()
+    {
+        // AttackerLevel is not an [EventIndexKey], so a predicate over it alone cannot be served from the
+        // index; the registry declines registration and the host keeps it on the broad pipeline.
+        var package = GeneratedAttackPackage();
+        var sink = new RecordingMessageSink();
+        using var server = DotBoxD.Plugins.PluginServer.Create(sink, defaultPolicy: ChainPolicy());
+        var adapter = server.Events.Resolve<AttackEvent>();
+        var kernel = await server.InstallAsync(package, ChainPolicy());
+
+        var registry = new EventIndexRegistry();
+        var predicates = new[]
+        {
+            new IndexedPredicate("AttackerLevel", IndexPredicateOperator.GreaterThanOrEqual, 9, "int"),
+        };
+
+        Assert.False(registry.Register(adapter, kernel, predicates, indexCoversPredicate: false));
+
+        registry.Publish(new AttackEvent("monster-1", "player-2", 9, 12));
+        Assert.Equal(0, registry.Stats.Considered);
     }
 
     private static IEnumerable<AttackEvent> Attacks(int total, int matching)

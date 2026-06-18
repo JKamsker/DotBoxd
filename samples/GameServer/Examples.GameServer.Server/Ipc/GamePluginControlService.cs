@@ -200,15 +200,48 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         switch (SimpleEventName(subscription))
         {
             case "MonsterAggroEvent":
-                _server.Subscriptions.On<MonsterAggroEvent>().Use(kernel);
+                if (!TryRouteThroughIndex<MonsterAggroEvent>(kernel))
+                {
+                    _server.Subscriptions.On<MonsterAggroEvent>().Use(kernel);
+                }
+
                 break;
             case "AttackEvent":
-                _server.Subscriptions.On<AttackEvent>().Use(kernel);
+                if (!TryRouteThroughIndex<AttackEvent>(kernel))
+                {
+                    _server.Subscriptions.On<AttackEvent>().Use(kernel);
+                }
+
                 break;
             default:
                 throw new InvalidOperationException(
                     $"Plugin '{kernel.Manifest.PluginId}' subscribes to unsupported event '{subscription}'.");
         }
+    }
+
+    // Issue #49: an indexed subscription is dispatched through the world's EventIndexRegistry — events are
+    // cheaply prefiltered before the verified IR runs — instead of the broad subscription pipeline. Returns
+    // false (leaving the subscription on the broad pipeline) when the manifest carried no index metadata or
+    // none of its predicate paths are fields this host indexes.
+    private bool TryRouteThroughIndex<TEvent>(InstalledKernel kernel)
+    {
+        if (kernel.Manifest.Subscriptions.Count == 0)
+        {
+            return false;
+        }
+
+        var subscription = kernel.Manifest.Subscriptions[0];
+        if (subscription.IndexedPredicates.Count == 0)
+        {
+            return false;
+        }
+
+        var adapter = _server.Events.Resolve<TEvent>();
+        return _world.IndexRegistry.Register(
+            adapter,
+            kernel,
+            subscription.IndexedPredicates,
+            subscription.IndexCoversPredicate);
     }
 
     private static string? SubscribedEvent(PluginManifest manifest)

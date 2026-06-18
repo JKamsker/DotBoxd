@@ -61,6 +61,53 @@ internal static class HookChainIndexPredicateExtractor
             : (EquatableArray<IndexPredicateModel>.FromOwned([.. predicates]), fullyCovered);
     }
 
+    /// <summary>
+    /// Mines the same index metadata from a kernel-class <c>ShouldHandle</c> body (issue #51, candidate 1):
+    /// an expression-bodied predicate or a single <c>return &lt;expr&gt;;</c> is treated exactly like a
+    /// <c>.Where(...)</c> lambda — every <c>event-property &lt;op&gt; constant</c> leaf reachable through
+    /// top-level <c>&amp;&amp;</c> becomes a necessary index condition, and full coverage means the whole
+    /// predicate is that conjunction. Any other shape (block bodies with statements, context reads, method
+    /// calls, <c>||</c>/<c>!</c>) stays conservatively non-indexed so the verified IR remains the authority.
+    /// </summary>
+    public static (EquatableArray<IndexPredicateModel> Predicates, bool FullyCovered) ExtractFromShouldHandle(
+        MethodDeclarationSyntax shouldHandle,
+        string elementParam,
+        EquatableArray<EventPropertyModel> eventProperties,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        var predicateExpression = PredicateExpression(shouldHandle);
+        if (predicateExpression is null)
+        {
+            return (default, false);
+        }
+
+        var predicates = new List<IndexPredicateModel>();
+        var fullyCovered = true;
+        CollectConjunction(
+            predicateExpression, elementParam, eventProperties, model, cancellationToken, predicates, ref fullyCovered);
+
+        return predicates.Count == 0
+            ? (default, false)
+            : (EquatableArray<IndexPredicateModel>.FromOwned([.. predicates]), fullyCovered);
+    }
+
+    // The single boolean predicate a ShouldHandle reduces to, or null for any shape we won't mine: an
+    // expression body (=> expr) or a block whose only statement is `return expr;`. A multi-statement body
+    // is deliberately left non-indexed.
+    private static ExpressionSyntax? PredicateExpression(MethodDeclarationSyntax method)
+    {
+        if (method.ExpressionBody?.Expression is { } expression)
+        {
+            return expression;
+        }
+
+        return method.Body is { Statements.Count: 1 } block &&
+               block.Statements[0] is ReturnStatementSyntax { Expression: { } returned }
+            ? returned
+            : null;
+    }
+
     private static void CollectConjunction(
         ExpressionSyntax expression,
         string elementParam,
