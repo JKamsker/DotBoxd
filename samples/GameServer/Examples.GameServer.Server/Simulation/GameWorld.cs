@@ -1,6 +1,7 @@
 using DotBoxD.Kernels.Game.Server.Abstractions;
 using DotBoxD.Kernels.Game.Server.Abstractions.Events;
 using DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
+using DotBoxD.Plugins.Indexing;
 using DotBoxD.Plugins.Runtime;
 
 namespace DotBoxD.Kernels.Game.Server.Simulation;
@@ -31,6 +32,15 @@ internal sealed class GameWorld
     }
 
     public int Tick => _tick;
+
+    /// <summary>
+    /// The host's dispatch index (issue #49). Subscriptions whose lowered <c>.Where(...)</c> shipped index
+    /// metadata over <see cref="EventIndexKeyAttribute"/> fields are routed here instead of the broad
+    /// subscription pipeline: each published event is cheaply prefiltered before the verified IR runs, so
+    /// the sandbox is entered only for events that pass the index. Created internally so the existing
+    /// reflection-pinned <see cref="GameWorld"/> constructor and <c>CreateDefault</c> shapes stay stable.
+    /// </summary>
+    public EventIndexRegistry IndexRegistry { get; } = new();
 
     public static GameWorld CreateDefault(HookRegistry hooks, SubscriptionRegistry subscriptions)
         => new(
@@ -137,6 +147,7 @@ internal sealed class GameWorld
         {
             var aggro = new MonsterAggroEvent(monster.Id, target.Id, distance, monster.Level, target.Level);
             _subscriptions.Publish(aggro, cancellationToken);
+            IndexRegistry.Publish(aggro, cancellationToken);
 
             // Plugins observe the aggro and may calm the monster for future ticks.
             await _hooks.PublishAsync(aggro, cancellationToken).ConfigureAwait(false);
@@ -158,6 +169,7 @@ internal sealed class GameWorld
 
         var attack = new AttackEvent(monster.Id, target.Id, damage, monster.Level);
         _subscriptions.Publish(attack, cancellationToken);
+        IndexRegistry.Publish(attack, cancellationToken);
 
         // Plugins observe the attack and may taunt the attacker off the target.
         await _hooks.PublishAsync(attack, cancellationToken).ConfigureAwait(false);

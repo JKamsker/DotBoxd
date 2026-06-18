@@ -1,3 +1,5 @@
+using DotBoxD.Plugins.Indexing;
+
 namespace DotBoxD.Kernels.Game.Server.Abstractions.Events;
 
 /// <summary>

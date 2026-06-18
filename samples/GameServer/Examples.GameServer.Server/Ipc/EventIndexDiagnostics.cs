@@ -1,4 +1,5 @@
 using DotBoxD.Kernels.Game.Server.Abstractions.Events;
+using DotBoxD.Plugins.Indexing;
 using DotBoxD.Plugins.Kernel;
 
 namespace DotBoxD.Kernels.Game.Server.Ipc;

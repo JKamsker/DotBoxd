@@ -3,6 +3,7 @@
 # Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
 
 protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+public async Task DrainAsync()
 public async ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)
 public async ValueTask HandleAsync<TEvent>( IPluginEventAdapter<TEvent> adapter, TEvent e, CancellationToken cancellationToken = default)
 public async ValueTask ModifySettingsAsync( IReadOnlyDictionary<string, object?> values, bool atomic = false, CancellationToken cancellationToken = default)
@@ -14,9 +15,12 @@ public async ValueTask<InstalledKernel> InstallServerExtensionAsync( PluginPacka
 public async ValueTask<SandboxValue> InvokeServerExtensionAsync( IReadOnlyList<SandboxValue> arguments, CancellationToken cancellationToken = default)
 public async ValueTask<string> RegisterServerExtensionAsync<TService, TKernel>( SandboxPolicy? policy = null, CancellationToken cancellationToken = default) where TService : class where TKernel : class
 public bool BoolValue
+public bool CouldMatch(TEvent value)
+public bool HasIndex => _checks.Count > 0
 public bool IndexCoversPredicate { get; init; }
 public bool IsRevoked => Volatile.Read(ref _revoked) != 0
 public bool Owns(string pluginId)
+public bool Register<TEvent>( IPluginEventAdapter<TEvent> adapter, InstalledKernel kernel, IReadOnlyList<IndexedPredicate> predicates, bool indexCoversPredicate)
 public bool TryGet(string pluginId, [MaybeNullWhen(false)] out InstalledKernel kernel)
 public bool Uninstall(string pluginId)
 public class ServerExtensionProxy : DispatchProxy
@@ -50,6 +54,7 @@ public enum PluginDiagnosticPhase.LiveSetting
 public enum PluginDiagnosticPhase.PackageValidation
 public enum PluginDiagnosticPhase.PreparedPackageValidation
 public enum PluginDiagnosticPhase.RuntimeEntrypoint
+public EventIndexStats Stats => new(
 public Exception? LastAsyncUpdateError => _pendingLiveUpdates.LastError
 public Exception? LastAsyncUpdateError => Kernel.LastAsyncUpdateError
 public HookPipeline<TEvent> InvokeHostHandler(Action<TEvent, HookContext> handler)
@@ -98,6 +103,7 @@ public interface IServerExtensionClientRegistry :
 public interface IServerExtensionWireClient : DotBoxD.Abstractions.IServerExtensionWireClient
 public IPluginEventAdapter<TEvent> Resolve<TEvent>()
 public IReadOnlyList<HookSubscriptionManifest> Subscriptions { get => _subscriptions; init => _subscriptions = PluginModelCopy.List(value); }
+public IReadOnlyList<IndexedPredicate> HonoredPredicates { get; }
 public IReadOnlyList<IndexedPredicate> IndexedPredicates
 public IReadOnlyList<InstalledKernel> Snapshot()
 public IReadOnlyList<LiveSettingDefinition> Definitions
@@ -128,6 +134,7 @@ public PluginManifest Manifest { get; }
 public PluginPackage Package { get; }
 public PluginServer RegisterEventAdapter<TEvent>(IPluginEventAdapter<TEvent> adapter)
 public PluginSession CreateSession()
+public readonly record struct EventIndexStats(long Considered, long Prefiltered, long Dispatched)
 public readonly struct KernelRpcValue
 public RemoteHookPipeline<TEvent> On<TEvent>() => new(_install)
 public RemoteHookPipeline<TEvent> Run(Action<TCurrent, HookContext> handler)
@@ -186,6 +193,9 @@ public RemoteSubscriptionStage<TEvent, TNext> Select<TNext>(Func<TCurrent, TNext
 public RemoteSubscriptionStage<TEvent, TNext> Select<TNext>(Func<TEvent, HookContext, TNext> projection)
 public RemoteSubscriptionStage<TEvent, TNext> Select<TNext>(Func<TEvent, TNext> projection)
 public SandboxValue ToSandboxValue()
+public sealed class EventIndexKeyAttribute : Attribute
+public sealed class EventIndexMatcher<TEvent>
+public sealed class EventIndexRegistry
 public sealed class HookPipeline<TEvent> : IKernelHandlerPipeline
 public sealed class HookRegistry
 public sealed class HookStage<TEvent, TCurrent>
@@ -224,12 +234,13 @@ public static class HostMessagePolicyBuilderExtensions
 public static class HostServiceBindingExtensions
 public static class KernelPackageRegistry
 public static class KernelRpcBinaryCodec
-public static partial class KernelRpcMarshaller
 public static class KernelRpcValueConverter
 public static class PluginDiagnosticCodes
 public static class PluginMessageBindings
 public static class PluginPackageJsonSchemas
 public static class PluginServerJsonExtensions
+public static EventIndexMatcher<TEvent> Create(IReadOnlyList<IndexedPredicate> predicates)
+public static IReadOnlyCollection<string> IndexKeyNames => (IReadOnlyCollection<string>)IndexKeys.Keys
 public static IReadOnlyList<PluginDiagnosticReference> All => References
 public static KernelRpcValue Bool(bool value)
 public static KernelRpcValue DecodeValue(ReadOnlyMemory<byte> payload)
@@ -243,6 +254,7 @@ public static KernelRpcValue String(string value)
 public static KernelRpcValue Unit()
 public static KernelRpcValue[] DecodeArguments(ReadOnlyMemory<byte> payload)
 public static object? FromSandboxValue(SandboxValue value, Type type)
+public static partial class KernelRpcMarshaller
 public static partial class PluginPackageJsonSerializer
 public static PluginPackage Create( PluginManifest manifest, SandboxModule module, KernelEntrypoints? entrypoints = null)
 public static PluginPackage Import(string json)
@@ -318,6 +330,7 @@ public ValueTask<InstalledKernel> InstallAsync( PluginPackage package, SandboxPo
 public ValueTask<InstalledKernel> InstallServerExtensionAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public void Dispose()
 public void Publish<TEvent>(TEvent e, CancellationToken cancellationToken = default)
+public void Publish<TEvent>(TEvent value, CancellationToken cancellationToken = default)
 public void Register<TEvent>(IPluginEventAdapter<TEvent> adapter)
 public void RequireKind(KernelRpcValueKind expected)
 public void Revoke()
@@ -325,3 +338,4 @@ public void Set<T>(string name, T value)
 public void SetMany(IReadOnlyDictionary<string, object?> values)
 public void SetObject(object? value)
 public void SetObject(string name, object? value)
+public void Unregister(InstalledKernel kernel)

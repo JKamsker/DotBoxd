@@ -1,3 +1,4 @@
+using DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 using Microsoft.CodeAnalysis;
@@ -93,6 +94,16 @@ internal static class PluginKernelModelFactory
                 effects: effects);
             var shouldHandleBody = DotBoxDShouldHandleBodyModelFactory.Create(shouldHandle, shouldHandleContext);
 
+            // Issue #51: mine host-readable index metadata from the kernel's ShouldHandle the same way inline
+            // chains mine it from .Where(...). Live-setting and other non-constant comparisons resolve to no
+            // constant, so they stay non-indexed (default, false) exactly as before.
+            var (indexPredicates, indexCoversPredicate) = HookChainIndexPredicateExtractor.ExtractFromShouldHandle(
+                shouldHandle,
+                eventParameterName,
+                eventProperties,
+                context.SemanticModel,
+                cancellationToken);
+
             var handleModel = DotBoxDHandleModelFactory.Create(
                 handle,
                 handleEventParameterName,
@@ -119,10 +130,8 @@ internal static class PluginKernelModelFactory
                 Handle: handleModel,
                 ManifestEffects: DotBoxDManifestEffectModel.Create(shouldHandleBody, handleModel, effects),
                 RequiredCapabilities: EquatableArray<string>.FromOwned([.. capabilities]),
-                // Index-predicate metadata is only mined from inline .Where(...) chains; kernel-class
-                // ShouldHandle bodies stay non-indexed (broad fan-out, the existing behavior).
-                IndexPredicates: default,
-                IndexCoversPredicate: false);
+                IndexPredicates: indexPredicates,
+                IndexCoversPredicate: indexCoversPredicate);
             return new PluginKernelModelResult(model, null);
         }
         catch (NotSupportedException ex)
