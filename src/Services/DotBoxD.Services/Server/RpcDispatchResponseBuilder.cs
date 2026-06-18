@@ -35,13 +35,33 @@ internal sealed class RpcDispatchResponseBuilder
 
     public bool RequiresStreamingContext(RpcRequest request)
     {
-        if (string.IsNullOrEmpty(request.ServiceName) ||
-            !TryGetDispatcher(request.ServiceName, out var dispatcher))
+        if (!TryResolveDispatcher(request, out var dispatcher))
         {
             return false;
         }
 
         return dispatcher is not INonStreamingServiceDispatcher;
+    }
+
+    public bool TryResolveDispatcher(RpcRequest request, out IServiceDispatcher dispatcher)
+    {
+        dispatcher = null!;
+        return !string.IsNullOrEmpty(request.ServiceName) &&
+            TryGetDispatcher(request.ServiceName, out dispatcher);
+    }
+
+    public ValueTask<RpcDispatchResult> BuildAsync(
+        RpcRequest request,
+        int messageId,
+        ReadOnlyMemory<byte> payload,
+        IInstanceRegistry registry,
+        RpcStreamingContext streaming,
+        CancellationToken ct)
+    {
+        var dispatcher = TryResolveDispatcher(request, out var resolved)
+            ? resolved
+            : null;
+        return BuildAsync(request, messageId, payload, registry, streaming, dispatcher, ct);
     }
 
     public async ValueTask<RpcDispatchResult> BuildAsync(
@@ -50,13 +70,13 @@ internal sealed class RpcDispatchResponseBuilder
         ReadOnlyMemory<byte> payload,
         IInstanceRegistry registry,
         RpcStreamingContext streaming,
+        IServiceDispatcher? dispatcher,
         CancellationToken ct)
     {
         // request.ServiceName is remote-supplied and can deserialize to null from a hostile/malformed
         // envelope (MessagePack nil). Guard before the dictionary lookup so that malformed input is
         // reported as ServiceNotFound instead of escaping as an internal lookup error.
-        if (string.IsNullOrEmpty(request.ServiceName) ||
-            !TryGetDispatcher(request.ServiceName, out var dispatcher))
+        if (dispatcher is null)
         {
             return new RpcDispatchResult(BuildErrorFrame(messageId, RpcErrors.ServiceNotFound()), stream: null);
         }
