@@ -13,6 +13,8 @@ namespace DotBoxD.Services.Protocol;
 /// </summary>
 public static class MessageFramer
 {
+    private const int MinimumFrameWriterCapacity = 256;
+
     /// <summary>
     /// Header size: 4 (length) + 4 (messageId) + 1 (type) = 9 bytes
     /// </summary>
@@ -90,7 +92,7 @@ public static class MessageFramer
         T envelope,
         ReadOnlySpan<byte> payload)
     {
-        using var writer = PooledBufferWriter.Rent(HeaderSize + EnvelopeLengthSize + payload.Length);
+        using var writer = RentFrameWriter(payload.Length);
         WriteFramePrefix(writer, messageId, type);
 
         var envelopeStart = writer.WrittenCount;
@@ -114,7 +116,7 @@ public static class MessageFramer
         T envelope,
         ReadOnlySpan<byte> payload)
     {
-        var writer = PooledBufferWriter.Rent(HeaderSize + EnvelopeLengthSize + payload.Length);
+        var writer = RentFrameWriter(payload.Length);
         try
         {
             WriteFramePrefix(writer, messageId, type);
@@ -153,7 +155,7 @@ public static class MessageFramer
         TEnvelope envelope,
         TArgument argument)
     {
-        using var writer = PooledBufferWriter.Rent(HeaderSize + EnvelopeLengthSize);
+        using var writer = RentFrameWriter();
         WriteFramePrefix(writer, messageId, type);
 
         var envelopeStart = writer.WrittenCount;
@@ -172,7 +174,7 @@ public static class MessageFramer
         TEnvelope envelope,
         TArgument argument)
     {
-        var writer = PooledBufferWriter.Rent(HeaderSize + EnvelopeLengthSize);
+        var writer = RentFrameWriter();
         try
         {
             WriteFramePrefix(writer, messageId, type);
@@ -207,6 +209,11 @@ public static class MessageFramer
         prefix[8] = (byte)type;
         writer.Advance(HeaderSize + EnvelopeLengthSize);
     }
+
+    internal static PooledBufferWriter RentFrameWriter(int knownPayloadLength = 0)
+        => PooledBufferWriter.Rent(Math.Max(
+            HeaderSize + EnvelopeLengthSize + knownPayloadLength,
+            MinimumFrameWriterCapacity));
 
     /// <summary>
     /// Detaches the written bytes as a <see cref="Payload"/> and patches the total length and the

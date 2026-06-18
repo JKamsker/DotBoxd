@@ -61,7 +61,7 @@ internal sealed class RpcDispatchResponseBuilder
             return new RpcDispatchResult(BuildErrorFrame(messageId, RpcErrors.ServiceNotFound()), stream: null);
         }
 
-        var writer = PooledBufferWriter.Rent(MessageFramer.HeaderSize + MessageFramer.EnvelopeLengthSize);
+        var writer = MessageFramer.RentFrameWriter();
         MessageFramer.WriteFramePrefix(writer, messageId, MessageType.Response);
         var envelopeStart = writer.WrittenCount;
         _serializer.Serialize(writer, new RpcResponse { MessageId = messageId, IsSuccess = true });
@@ -113,8 +113,7 @@ internal sealed class RpcDispatchResponseBuilder
                     IsSuccess = true,
                     Stream = stream.Handle,
                 };
-                responseWriter = PooledBufferWriter.Rent(
-                    MessageFramer.HeaderSize + MessageFramer.EnvelopeLengthSize);
+                responseWriter = MessageFramer.RentFrameWriter();
                 MessageFramer.WriteFramePrefix(responseWriter, messageId, MessageType.Response);
                 var responseEnvelopeStart = responseWriter.WrittenCount;
                 _serializer.Serialize(responseWriter, response);
