@@ -139,6 +139,27 @@ public sealed class HookChainIndexMetadataTests
         Assert.Empty(imported.Manifest.Subscriptions[0].IndexedPredicates);
     }
 
+    [Fact]
+    public void Importing_a_null_indexed_predicate_value_is_rejected()
+    {
+        var package = GeneratedPackage(
+            """
+            subscriptions.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                .Where(e => e.MonsterId == "needle-value")
+                .Select(e => e.MonsterId)
+                .Run((id, ctx) => ctx.Messages.Send(id, "calm"));
+            """);
+
+        // Null is not a valid index value (the schema forbids it); the importer must reject it rather than
+        // carry a null the host can never match.
+        var json = PluginPackageJsonSerializer.Export(package)
+            .Replace("\"needle-value\"", "null", StringComparison.Ordinal);
+
+        var ex = Assert.Throws<DotBoxD.Kernels.Model.SandboxValidationException>(
+            () => PluginPackageJsonSerializer.Import(json));
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-JSON-VALUE");
+    }
+
     private static HookSubscriptionManifest GeneratedSubscription(string chain)
         => GeneratedPackage(chain).Manifest.Subscriptions.Single();
 

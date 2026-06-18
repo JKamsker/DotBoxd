@@ -247,10 +247,15 @@ public static partial class PluginPackageJsonSerializer
     {
         RequireAllowedProperties(element, "indexed predicate", ["path", "operator", "value", "valueType"]);
         var valueType = RequiredString(element, "valueType");
+        // Unlike a live-setting default, an index predicate value is the constant being compared against —
+        // null is not a valid index value (and the schema forbids it), so reject it rather than carry a
+        // null the host can never match.
+        var value = ReadLiveSettingValue(Required(element, "value"), valueType, "indexed predicate value")
+            ?? throw Error("E-JSON-VALUE", "indexed predicate value must not be null");
         return new IndexedPredicate(
             RequiredString(element, "path"),
             ReadIndexPredicateOperator(RequiredString(element, "operator")),
-            ReadLiveSettingValue(Required(element, "value"), valueType, "indexed predicate value"),
+            value,
             valueType);
     }
 

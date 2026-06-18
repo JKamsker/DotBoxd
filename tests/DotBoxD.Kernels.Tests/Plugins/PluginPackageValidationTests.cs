@@ -68,6 +68,55 @@ public sealed class PluginPackageValidationTests
     }
 
     [Fact]
+    public async Task Install_rejects_indexed_predicate_value_that_does_not_match_its_declared_type()
+    {
+        var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
+        var package = FireDamagePluginPackage.Create();
+        var subscription = package.Manifest.Subscriptions[0];
+        var invalid = package with
+        {
+            Manifest = package.Manifest with
+            {
+                Subscriptions =
+                [
+                    subscription with
+                    {
+                        // valueType says int but the boxed value is a long — only reachable by building a
+                        // manifest in-memory (the JSON importer parses per valueType).
+                        IndexedPredicates =
+                            [new IndexedPredicate("Damage", IndexPredicateOperator.Equals, 5L, "int")],
+                    }
+                ]
+            }
+        };
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await server.InstallAsync(invalid).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK049");
+    }
+
+    [Fact]
+    public async Task Install_rejects_full_index_coverage_with_no_indexed_predicates()
+    {
+        var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
+        var package = FireDamagePluginPackage.Create();
+        var subscription = package.Manifest.Subscriptions[0];
+        var invalid = package with
+        {
+            Manifest = package.Manifest with
+            {
+                Subscriptions = [subscription with { IndexCoversPredicate = true }]
+            }
+        };
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await server.InstallAsync(invalid).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK048");
+    }
+
+    [Fact]
     public async Task Install_rejects_missing_kernel_entrypoint()
     {
         var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());

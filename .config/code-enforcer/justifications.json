@@ -2,6 +2,10 @@
   "version": 1,
   "files": [
     {
+      "path": "src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/DotBoxDPackageSourceEmitter.cs",
+      "justification": "Single-pass emitter for the whole generated plugin package (manifest, indexed-predicate metadata, module, entrypoints, and the IR helper library). Keep listed until the IR helper emission is split from the package/manifest emission."
+    },
+    {
       "path": "src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/HookChains/HookChainModelFactory.cs",
       "justification": "True-async hook-chain lowering shares projection, terminal, and remote-fallback model construction in one pass. Keep listed until hook-chain model construction is split by stage family."
     },

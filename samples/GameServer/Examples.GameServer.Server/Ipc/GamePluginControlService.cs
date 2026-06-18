@@ -1,7 +1,6 @@
 using DotBoxD.Kernels.Game.Server.Abstractions.Events;
 using DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
 using DotBoxD.Kernels.Game.Server.Simulation;
-using DotBoxD.Plugins;
 using DotBoxD.Plugins.Json;
 using DotBoxD.Plugins.Kernel;
 using PluginServer = DotBoxD.Plugins.PluginServer;
@@ -62,7 +61,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         var policy = ServerPolicy.ForKernel(_server.GetRequiredCapabilities(package));
         var kernel = await _session.InstallAsync(package, policy, ct).ConfigureAwait(false);
         WireSubscription(kernel);
-        ReportEventIndex(kernel);
+        EventIndexDiagnostics.Report(kernel);
         Console.WriteLine($"[server] installed subscription kernel '{kernel.Manifest.PluginId}'.");
         return kernel.Manifest.PluginId;
     }
@@ -211,60 +210,6 @@ internal sealed class GamePluginControlService : IGamePluginControlService
                     $"Plugin '{kernel.Manifest.PluginId}' subscribes to unsupported event '{subscription}'.");
         }
     }
-
-    // The host reads DotBoxD's index metadata and compiles it into its own dispatch view. Here we only
-    // log what we could index (issue #47 sample diagnostics) — the kernel is still wired to the broad
-    // subscription pipeline above, and the host-side prefilter that turns this metadata into reduced
-    // fan-out lives in EventIndexMatcher (see the EventIndex fan-out tests).
-    private static void ReportEventIndex(InstalledKernel kernel)
-    {
-        foreach (var subscription in kernel.Manifest.Subscriptions)
-        {
-            if (subscription.IndexedPredicates.Count == 0)
-            {
-                continue;
-            }
-
-            var simpleName = SimpleEventName(subscription.Event);
-            var honored = HonoredPredicates(simpleName, subscription.IndexedPredicates);
-            foreach (var predicate in honored)
-            {
-                // "subscription" for an equality bucket, "prefilter" for a range constraint — matching the
-                // vocabulary in issue #47.
-                var kind = predicate.Operator == IndexPredicateOperator.Equals ? "subscription" : "prefilter";
-                Console.WriteLine(
-                    $"[server] registered indexed {kind}: {simpleName} {predicate.Path} {OperatorSymbol(predicate.Operator)} {predicate.Value}");
-            }
-
-            if (honored.Count > 0 && !subscription.IndexCoversPredicate)
-            {
-                Console.WriteLine(
-                    $"[server] indexed prefilter for {simpleName} is partial; verified IR stays the authority.");
-            }
-        }
-    }
-
-    private static IReadOnlyList<IndexedPredicate> HonoredPredicates(
-        string? simpleEventName,
-        IReadOnlyList<IndexedPredicate> predicates)
-        => simpleEventName switch
-        {
-            "AttackEvent" => EventIndexMatcher<AttackEvent>.Create(predicates).HonoredPredicates,
-            "MonsterAggroEvent" => EventIndexMatcher<MonsterAggroEvent>.Create(predicates).HonoredPredicates,
-            _ => [],
-        };
-
-    private static string OperatorSymbol(IndexPredicateOperator op)
-        => op switch
-        {
-            IndexPredicateOperator.Equals => "==",
-            IndexPredicateOperator.NotEquals => "!=",
-            IndexPredicateOperator.GreaterThan => ">",
-            IndexPredicateOperator.GreaterThanOrEqual => ">=",
-            IndexPredicateOperator.LessThan => "<",
-            IndexPredicateOperator.LessThanOrEqual => "<=",
-            _ => "?",
-        };
 
     private static string? SubscribedEvent(PluginManifest manifest)
         => manifest.Subscriptions.Count > 0 ? manifest.Subscriptions[0].Event : null;
