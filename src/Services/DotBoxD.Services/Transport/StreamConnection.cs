@@ -8,7 +8,7 @@ namespace DotBoxD.Services.Transport;
 /// <summary>
 /// DotBoxD connection over a duplex stream, including named pipe streams.
 /// </summary>
-public sealed class StreamConnection : IRpcChannel
+public sealed class StreamConnection : IRpcFrameChannel
 {
     private readonly Stream _stream;
     private readonly bool _ownsStream;
@@ -17,17 +17,12 @@ public sealed class StreamConnection : IRpcChannel
     private readonly string _remoteEndpoint;
     private readonly int _maxMessageSize;
     private readonly TimeSpan _frameReadIdleTimeout;
+    private readonly FrameReadTimeoutSource? _frameReadTimeout;
     private readonly byte[] _lengthBuffer = new byte[4];
     private int _activeReceives;
     private int _disposed;
 
-    /// <summary>
-    /// Creates a framed connection over <paramref name="stream"/>. <paramref name="frameReadIdleTimeout"/>
-    /// mirrors <c>TcpConnection</c>'s slow-loris defense: it bounds how long an in-progress frame body read
-    /// may stall with no data before the connection is torn down (surfaced as an <see cref="IOException"/>).
-    /// Pass <see langword="null"/> or <see cref="Timeout.InfiniteTimeSpan"/> to leave body reads untimed
-    /// (the default, preserving the original behaviour for clients and direct callers).
-    /// </summary>
+    /// <summary>Creates a framed connection over <paramref name="stream"/>.</summary>
     public StreamConnection(
         Stream stream,
         string? remoteEndpoint = null,
@@ -58,12 +53,10 @@ public sealed class StreamConnection : IRpcChannel
         _remoteEndpoint = remoteEndpoint ?? "stream";
         _maxMessageSize = maxMessageSize;
         _frameReadIdleTimeout = timeout;
+        _frameReadTimeout = timeout == Timeout.InfiniteTimeSpan ? null : new FrameReadTimeoutSource();
     }
 
-    /// <summary>
-    /// Configured inter-read idle timeout for in-progress frame body reads
-    /// (<see cref="Timeout.InfiniteTimeSpan"/> when disabled). Test/transport seam.
-    /// </summary>
+    /// <summary>Configured inter-read idle timeout for in-progress frame body reads.</summary>
     internal TimeSpan FrameReadIdleTimeout => _frameReadIdleTimeout;
 
     public bool IsConnected =>
@@ -72,7 +65,10 @@ public sealed class StreamConnection : IRpcChannel
 
     public string RemoteEndpoint => _remoteEndpoint;
 
-    public async Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
+    public Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default) =>
+        SendValueAsync(data, ct).AsTask();
+
+    public async ValueTask SendValueAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
     {
         ThrowIfDisposed();
         MessageFramer.ValidateOutgoingFrame(data.Span, _maxMessageSize);
@@ -101,7 +97,10 @@ public sealed class StreamConnection : IRpcChannel
         }
     }
 
-    public async Task<Payload> ReceiveAsync(CancellationToken ct = default)
+    public Task<Payload> ReceiveAsync(CancellationToken ct = default) =>
+        ReceiveValueAsync(ct).AsTask();
+
+    public async ValueTask<Payload> ReceiveValueAsync(CancellationToken ct = default)
     {
         var trackActiveReceive = !_ownsStream;
         if (trackActiveReceive)
@@ -153,6 +152,24 @@ public sealed class StreamConnection : IRpcChannel
         }
     }
 
+    public async ValueTask SendFrameValueAsync(PooledBufferWriter frame, CancellationToken ct = default)
+    {
+        try
+        {
+            await SendValueAsync(frame.WrittenMemory, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            frame.Dispose();
+        }
+    }
+
+    public async ValueTask<RpcFrame> ReceiveFrameValueAsync(CancellationToken ct = default)
+    {
+        var payload = await ReceiveValueAsync(ct).ConfigureAwait(false);
+        return new RpcFrame(payload);
+    }
+
     /// <summary>
     /// Closes the connection. This operation is idempotent.
     /// </summary>
@@ -164,6 +181,7 @@ public sealed class StreamConnection : IRpcChannel
         }
 
         _disposeCts.Cancel();
+        _frameReadTimeout?.Dispose();
         if (_ownsStream || Volatile.Read(ref _activeReceives) != 0)
         {
             await DisposeStreamAsync(_stream).ConfigureAwait(false);
@@ -211,7 +229,6 @@ public sealed class StreamConnection : IRpcChannel
     private async Task<int> ReadExactAsync(Memory<byte> buffer, CancellationToken ct, bool timeFirstRead)
     {
         var totalRead = 0;
-        CancellationTokenSource? timeoutCts = null;
         try
         {
             while (totalRead < buffer.Length)
@@ -219,14 +236,7 @@ public sealed class StreamConnection : IRpcChannel
                 // Apply the idle timeout once a frame is in progress: always for body reads, and for the
                 // length prefix only after its first byte has arrived (the initial wait is idle, not a stall).
                 var applyTimeout = timeFirstRead || totalRead > 0;
-                if (applyTimeout &&
-                    timeoutCts is null &&
-                    _frameReadIdleTimeout != Timeout.InfiniteTimeSpan)
-                {
-                    timeoutCts = CreateFrameReadTimeoutSource(ct);
-                }
-
-                var read = await ReadChunkAsync(buffer.Slice(totalRead), ct, timeoutCts, applyTimeout)
+                var read = await ReadChunkAsync(buffer.Slice(totalRead), ct, applyTimeout)
                     .ConfigureAwait(false);
                 if (read == 0)
                 {
@@ -238,7 +248,7 @@ public sealed class StreamConnection : IRpcChannel
         }
         finally
         {
-            timeoutCts?.Dispose();
+            _frameReadTimeout?.CancelPendingTimeout();
         }
 
         return totalRead;
@@ -247,30 +257,29 @@ public sealed class StreamConnection : IRpcChannel
     private async Task<int> ReadChunkAsync(
         Memory<byte> buffer,
         CancellationToken ct,
-        CancellationTokenSource? timeoutCts,
         bool applyTimeout)
     {
-        if (!applyTimeout || timeoutCts is null)
+        var timeout = _frameReadTimeout;
+        if (!applyTimeout || timeout is null)
         {
             return await _stream.ReadAsync(buffer, ct).ConfigureAwait(false);
         }
 
-        timeoutCts.CancelAfter(_frameReadIdleTimeout);
+        var readToken = timeout.Start(ct, _frameReadIdleTimeout);
         try
         {
-            return await _stream.ReadAsync(buffer, timeoutCts.Token).ConfigureAwait(false);
+            return await _stream.ReadAsync(buffer, readToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (timeout.IsTimeoutCancellation(ct))
         {
             throw new IOException(
                 $"Inbound frame read stalled for longer than {_frameReadIdleTimeout} with no data (possible slow-loris peer).");
         }
+        finally
+        {
+            timeout.CancelPendingTimeout();
+        }
     }
-
-    private static CancellationTokenSource CreateFrameReadTimeoutSource(CancellationToken ct) =>
-        ct.CanBeCanceled
-            ? CancellationTokenSource.CreateLinkedTokenSource(ct)
-            : new CancellationTokenSource();
 
     private static async ValueTask DisposeStreamAsync(Stream stream)
     {
