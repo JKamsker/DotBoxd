@@ -318,24 +318,3 @@ public sealed partial class SandboxHost
             ? plan.Policy.LogicalNow ?? DateTimeOffset.UnixEpoch
             : DateTimeOffset.UtcNow;
 }
-
-internal static class SandboxAuditEventSequence
-{
-    public static IReadOnlyList<SandboxAuditEvent> ToSequencedArray(this IEnumerable<SandboxAuditEvent> events)
-    {
-        var sink = new InMemoryAuditSink();
-        foreach (var auditEvent in events)
-        {
-            sink.Write(auditEvent);
-        }
-
-        return sink.OwnedEventSnapshot();
-    }
-
-    /// <summary>
-    /// Wraps the sink's already-fresh event array in a read-only collection without copying
-    /// it again, producing an owned immutable snapshot that result construction can adopt.
-    /// </summary>
-    internal static IReadOnlyList<SandboxAuditEvent> OwnedEventSnapshot(this InMemoryAuditSink sink)
-        => sink.SnapshotEvents();
-}

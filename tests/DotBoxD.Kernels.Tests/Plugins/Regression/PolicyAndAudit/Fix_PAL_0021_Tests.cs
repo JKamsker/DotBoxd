@@ -145,4 +145,39 @@ public sealed class Fix_PAL_0021_Tests
         Assert.Equal(1, result.AuditEvents[0].SequenceNumber);
         Assert.Equal(2, result.AuditEvents[1].SequenceNumber);
     }
+
+    [Fact]
+    public void Already_sequenced_owned_snapshot_is_reused()
+    {
+        var sink = new InMemoryAuditSink();
+        sink.Write(new SandboxAuditEvent(SandboxRunId.New(), "First", DateTimeOffset.UtcNow, true));
+        sink.Write(new SandboxAuditEvent(SandboxRunId.New(), "Second", DateTimeOffset.UtcNow, true));
+        var snapshot = sink.OwnedEventSnapshot();
+
+        var sequenced = snapshot.ToSequencedArray();
+        var result = ResultWith(sequenced);
+
+        Assert.Same(snapshot, sequenced);
+        Assert.Same(sequenced, result.AuditEvents);
+    }
+
+    [Fact]
+    public void Already_sequenced_public_list_is_wrapped_as_owned_snapshot()
+    {
+        var runId = SandboxRunId.New();
+        var events = new[]
+        {
+            new SandboxAuditEvent(runId, "First", DateTimeOffset.UtcNow, true, SequenceNumber: 1),
+            new SandboxAuditEvent(runId, "Second", DateTimeOffset.UtcNow, true, SequenceNumber: 2)
+        };
+
+        var sequenced = events.ToSequencedArray();
+        var result = ResultWith(sequenced);
+
+        Assert.NotSame(events, sequenced);
+        Assert.IsAssignableFrom<ReadOnlyCollection<SandboxAuditEvent>>(sequenced);
+        Assert.Same(sequenced, result.AuditEvents);
+        Assert.Equal(1, result.AuditEvents[0].SequenceNumber);
+        Assert.Equal(2, result.AuditEvents[1].SequenceNumber);
+    }
 }
