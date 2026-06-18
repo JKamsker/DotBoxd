@@ -111,8 +111,10 @@ internal static class DotBoxDPackageSourceEmitter
     {
         var head = $"            [new {TypeNames.GlobalHookSubscriptionManifest}(" +
             $"{LiteralReader.StringLiteral(model.EventName)}, {LiteralReader.StringLiteral(model.KernelName)})";
-        var hasIndex = model.IndexPredicates.Count > 0;
-        if (!hasIndex && !model.LocalTerminal)
+        var hasPredicates = model.IndexPredicates.Count > 0;
+        // No index metadata and not a local-terminal chain → emit the pre-feature two-argument form so
+        // ordinary (incl. .Run) chains generate byte-for-byte the same source.
+        if (!hasPredicates && !model.LocalTerminal)
         {
             builder.Append(head).AppendLine("])");
             return;
@@ -120,7 +122,7 @@ internal static class DotBoxDPackageSourceEmitter
 
         builder.AppendLine(head);
         builder.AppendLine("            {");
-        if (hasIndex)
+        if (hasPredicates)
         {
             builder.Append("                ").Append(IndexedPredicatesProperty).Append(" = [");
             for (var i = 0; i < model.IndexPredicates.Count; i++)
@@ -146,12 +148,17 @@ internal static class DotBoxDPackageSourceEmitter
                 .AppendLine(",");
         }
 
+        // Mine's host-readable mark for a lowered RunLocal chain: persisted so the runtime pushes (Event vs
+        // Projection is carried via LocalPayloadKind in a later phase) rather than re-deriving from IR.
         if (model.LocalTerminal)
         {
             builder.Append("                ").Append(LocalTerminalProperty).Append(" = ")
                 .Append(DotBoxDGenerationNames.CSharpLiterals.True).AppendLine(",");
-            builder.Append("                ").Append(ProjectedTypeProperty).Append(" = ")
-                .Append(LiteralReader.StringLiteral(model.ProjectedType!)).AppendLine(",");
+            if (model.ProjectedType is not null)
+            {
+                builder.Append("                ").Append(ProjectedTypeProperty).Append(" = ")
+                    .Append(LiteralReader.StringLiteral(model.ProjectedType)).AppendLine(",");
+            }
         }
 
         builder.AppendLine("            }])");
@@ -208,31 +215,14 @@ internal static class DotBoxDPackageSourceEmitter
         builder.AppendLine($"            {LiteralReader.StringLiteral(DotBoxDGenerationNames.Entrypoints.ShouldHandle)}, true, parameters, {TypeNames.GlobalSandboxType}.Bool,");
         builder.AppendLine($"            {model.ShouldHandle.Source});");
         builder.AppendLine();
-        // A RunLocal chain's Handle RETURNS the projected value (the lowered Select), so its return type is the
-        // projected sandbox type and its body returns that value. An ordinary chain's Handle performs the host
-        // send and returns Unit — emitted byte-for-byte as before.
-        var (handleReturnType, handleBodySource) = model.LocalTerminal
-            ? ($"{TypeNames.GlobalSandboxType}.{ProjectionReturnMember(model.ProjectedType!)}", model.ProjectionBody!.Source)
-            : ($"{TypeNames.GlobalSandboxType}.Unit", HandleBody(model.Handle!).Source);
         builder.Append("    private static ").Append(TypeNames.GlobalSandboxFunction).Append(' ')
             .Append(DotBoxDGenerationNames.Entrypoints.Handle)
             .Append('(').Append(ReadOnlyListOf(TypeNames.GlobalParameter)).AppendLine(" parameters)");
         builder.AppendLine("        => new(");
-        builder.AppendLine($"            {LiteralReader.StringLiteral(DotBoxDGenerationNames.Entrypoints.Handle)}, true, parameters, {handleReturnType},");
-        builder.AppendLine($"            {handleBodySource});");
+        builder.AppendLine($"            {LiteralReader.StringLiteral(DotBoxDGenerationNames.Entrypoints.Handle)}, true, parameters, {model.HandleReturnTypeSource},");
+        builder.AppendLine($"            {model.HandleBody.Source});");
         builder.AppendLine();
     }
-
-    // Maps a projected manifest type to the SandboxType member used as the Handle entrypoint's return type.
-    private static string ProjectionReturnMember(string manifestType) => manifestType switch
-    {
-        DotBoxDGenerationNames.ManifestTypes.Bool => "Bool",
-        DotBoxDGenerationNames.ManifestTypes.Int => "I32",
-        DotBoxDGenerationNames.ManifestTypes.Long => "I64",
-        DotBoxDGenerationNames.ManifestTypes.Double => "F64",
-        DotBoxDGenerationNames.ManifestTypes.String => "String",
-        _ => throw new InvalidOperationException($"Unsupported projected terminal type '{manifestType}'."),
-    };
 
     private static void EmitHelpers(StringBuilder builder, PluginKernelModel model)
     {
@@ -421,16 +411,4 @@ internal static class DotBoxDPackageSourceEmitter
             $"{TypeNames.GlobalExpression} left, {TypeNames.GlobalExpression} right",
             $"new {TypeNames.GlobalBinaryExpression}(left, {LiteralReader.StringLiteral(op)}, right, Span)");
 
-    private static string HandleExpression(DotBoxDHandleModel handle)
-        => $"new {TypeNames.GlobalCallExpression}({TypeNames.GlobalPluginMessageBindings}.SendBindingId, [{handle.Target.Source}, {handle.Message.Source}], null, Span)";
-
-    private static DotBoxDStatementBodyModel HandleBody(DotBoxDHandleModel handle)
-    {
-        var returned = DotBoxDStatementBodyModelFactory.Return(
-            HandleExpression(handle),
-            handle.Target.Allocates || handle.Message.Allocates);
-        return handle.Prefix is null
-            ? returned
-            : DotBoxDStatementBodyModelFactory.Concat(handle.Prefix, returned);
-    }
 }

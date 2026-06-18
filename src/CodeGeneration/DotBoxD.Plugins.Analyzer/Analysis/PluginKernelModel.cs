@@ -15,16 +15,35 @@ internal sealed record PluginKernelModel(
     EquatableArray<EventPropertyModel> EventProperties,
     EquatableArray<LiveSettingModel> LiveSettings,
     DotBoxDStatementBodyModel ShouldHandle,
-    DotBoxDHandleModel? Handle,
+    DotBoxDStatementBodyModel HandleBody,
+    string HandleReturnTypeSource,
     EquatableArray<string> ManifestEffects,
     EquatableArray<string> RequiredCapabilities,
     EquatableArray<IndexPredicateModel> IndexPredicates,
-    bool IndexCoversPredicate,
-    // Local-terminal (remote RunLocal) chains: the Handle entrypoint RETURNS the projected value
-    // (ProjectionBody) of manifest type ProjectedType instead of performing a host send (Handle is null).
-    bool LocalTerminal = false,
-    string? ProjectedType = null,
-    DotBoxDStatementBodyModel? ProjectionBody = null);
+    bool IndexCoversPredicate)
+{
+    /// <summary>
+    /// True for a lowered remote <c>RunLocal</c> chain: the verified IR filters and projects server-side and
+    /// the host pushes only the result back to the plugin's native delegate. Default false for ordinary chains.
+    /// </summary>
+    public bool LocalTerminal { get; init; }
+
+    /// <summary>The manifest type the <c>Select</c> projection returns (null for a whole-event RunLocal).</summary>
+    public string? ProjectedType { get; init; }
+
+    /// <summary>Whether the host pushes the whole event or the projected value to the plugin's delegate.</summary>
+    public LocalPayloadKind LocalPayloadKind { get; init; }
+}
+
+/// <summary>
+/// What a remote <c>RunLocal</c> host pushes back to the plugin: the original event (no <c>Select</c>) or the
+/// value the <c>Select</c> projection produced.
+/// </summary>
+internal enum LocalPayloadKind
+{
+    Event,
+    Projection
+}
 
 internal sealed record EventPropertyModel(string Name, string Type);
 

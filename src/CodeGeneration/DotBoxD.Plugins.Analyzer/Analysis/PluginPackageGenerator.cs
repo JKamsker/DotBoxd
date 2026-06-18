@@ -58,10 +58,7 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
         // to the same PluginKernelModel a kernel class produces. Unsupported shapes fail safe (null).
         var chainResults = context.SyntaxProvider
             .CreateSyntaxProvider(
-                static (node, _) => node is InvocationExpressionSyntax
-                {
-                    Expression: MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Run" or "RunLocal" }
-                },
+                static (node, _) => IsHookChainTerminal(node),
                 static (syntaxContext, ct) => HookChainModelFactory.Create(syntaxContext, ct))
             .Where(static result => result is not null)
             .Select(static (result, _) => result!);
@@ -179,6 +176,15 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
         RegistrationAccumulatorGenerator.Register(context);
 
     }
+
+    private static bool IsHookChainTerminal(SyntaxNode node)
+        => node is InvocationExpressionSyntax
+        {
+            Expression: MemberAccessExpressionSyntax
+            {
+                Name.Identifier.ValueText: "Run" or "RunLocal"
+            }
+        };
 
     private static void RegisterDiagnostics(
         IncrementalGeneratorInitializationContext context,

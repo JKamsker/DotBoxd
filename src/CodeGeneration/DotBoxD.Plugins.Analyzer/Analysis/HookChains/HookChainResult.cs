@@ -8,6 +8,12 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 /// </summary>
 internal sealed record HookChainResult(PluginKernelModel Model, HookChainInterception? Interception);
 
+internal enum HookChainInterceptorInstallKind
+{
+    GeneratedChain,
+    LocalCallback
+}
+
 /// <summary>
 /// Everything the generator needs to emit one <c>[InterceptsLocation]</c> method that wires a lowered
 /// chain into the pipeline it was called on. All fields are equatable strings/flags so the generator's
@@ -19,6 +25,4 @@ internal sealed record HookChainInterception(
     string HandlerTypeFullName,
     string ReturnTypeFullName,
     string PackageFullName,
-    // When true the chain is a lowered RunLocal: the interceptor wires it via UseGeneratedLocalChain
-    // (installing the filter+projection package AND registering the native handler) instead of UseGeneratedChain.
-    bool IsLocalTerminal = false);
+    HookChainInterceptorInstallKind InstallKind);
