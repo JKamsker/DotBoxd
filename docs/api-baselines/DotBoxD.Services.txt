@@ -110,7 +110,6 @@ public interface IInstanceRegistry
 public interface INonStreamingServiceDispatcher
 public interface IRpcChannel : IAsyncDisposable
 public interface IRpcFrameChannel : IRpcValueTaskChannel
-public interface IRpcInvoker
 public interface IRpcStreamingContext
 public interface IRpcValueTaskChannel : IRpcChannel
 public interface ISerializer
@@ -125,6 +124,7 @@ public Memory<byte> GetMemory(int sizeHint = 0)
 public Memory<byte> Memory =>
 public MessageType MessageType { get; }
 public NotFoundKind Kind { get; }
+public partial interface IRpcInvoker
 public Payload DetachPayload()
 public Pipe GetPipe(RpcStreamHandle handle)
 public PooledBufferWriter(int initialCapacity = 256)
@@ -293,6 +293,10 @@ public TimeSpan RequestTimeout
 public TService Get<TService>() where TService : class
 public ValueTask DisposeAsync()
 public ValueTask DisposeAsync() => new(CloseAsync())
+public ValueTask InvokeValueAsync(string service, string method, CancellationToken ct = default) =>
+public ValueTask InvokeValueAsync<TRequest>(string service, string method, TRequest request, CancellationToken ct = default) =>
+public ValueTask InvokeValueOnInstanceAsync(string service, string instanceId, string method, CancellationToken ct = default) =>
+public ValueTask InvokeValueOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, CancellationToken ct = default) =>
 public ValueTask<TResponse> InvokeValueAsync<TRequest, TResponse>(string service, string method, TRequest request, CancellationToken ct = default) =>
 public ValueTask<TResponse> InvokeValueAsync<TResponse>(string service, string method, CancellationToken ct = default) =>
 public ValueTask<TResponse> InvokeValueOnInstanceAsync<TRequest, TResponse>(string service, string instanceId, string method, TRequest request, CancellationToken ct = default) =>

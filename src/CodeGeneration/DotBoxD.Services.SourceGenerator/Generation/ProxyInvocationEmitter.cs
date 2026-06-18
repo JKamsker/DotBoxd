@@ -35,14 +35,7 @@ internal static class ProxyInvocationEmitter
                 EmitTaskLikeReturn(sb, method, invocation, locals, ct, indent, captureSynchronousExceptions);
                 break;
             case MethodReturnKind.ValueTask:
-                EmitTaskLikeReturn(
-                    sb,
-                    method,
-                    $"new {ServicesGeneratorTypeNames.GlobalValueTask}({invocation})",
-                    locals,
-                    ct,
-                    indent,
-                    captureSynchronousExceptions);
+                EmitTaskLikeReturn(sb, method, invocation, locals, ct, indent, captureSynchronousExceptions);
                 break;
             case MethodReturnKind.TaskOf:
             case MethodReturnKind.TaskOfStream:

@@ -13,17 +13,10 @@ internal sealed class PendingRequests : IDisposable
 
     public PendingRequests()
     {
-        _timeoutTimer = new Timer(
-            static state => ((PendingRequests)state!).CancelExpired(),
-            this,
-            Timeout.Infinite,
-            Timeout.Infinite);
+        _timeoutTimer = new Timer(static state => ((PendingRequests)state!).CancelExpired(), this, Timeout.Infinite, Timeout.Infinite);
     }
 
-    public int Count
-    {
-        get { lock (_requestsGate) { return _requests.Count; } }
-    }
+    public int Count { get { lock (_requestsGate) { return _requests.Count; } } }
 
     public bool TryAdd(int messageId, out PendingReceivedResponse pending) =>
         TryAddCore(messageId, new PendingReceivedResponse(this, messageId), out pending);
@@ -45,11 +38,17 @@ internal sealed class PendingRequests : IDisposable
         return TryAddCore(messageId, candidate, out pending);
     }
 
-    public bool TryAddValueTaskUnary<TResponse>(
-        int messageId,
-        out PendingValueTaskUnaryResponse<TResponse> pending)
+    public bool TryAddValueTaskUnary<TResponse>(int messageId, out PendingValueTaskUnaryResponse<TResponse> pending)
     {
         var candidate = PendingValueTaskUnaryResponse<TResponse>.Rent(messageId);
+        var added = TryAddCore(messageId, candidate, out pending);
+        if (!added) candidate.Abandon();
+        return added;
+    }
+
+    public bool TryAddValueTaskNoResponse(int messageId, out PendingValueTaskNoResponse pending)
+    {
+        var candidate = PendingValueTaskNoResponse.Rent(messageId);
         var added = TryAddCore(messageId, candidate, out pending);
         if (!added) candidate.Abandon();
         return added;

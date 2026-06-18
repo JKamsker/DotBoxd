@@ -241,10 +241,14 @@ public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
         _outbound.InvokeValueAsync<TResponse>(service, method, ct);
     public Task InvokeAsync<TRequest>(string service, string method, TRequest request, CancellationToken ct = default) =>
         _outbound.InvokeAsync(service, method, request, ct);
+    public ValueTask InvokeValueAsync<TRequest>(string service, string method, TRequest request, CancellationToken ct = default) =>
+        _outbound.InvokeValueAsync(service, method, request, ct);
     public Task InvokeAsync<TRequest>(string service, string method, TRequest request, RpcStreamAttachment[] streams, CancellationToken ct = default) =>
         _outbound.InvokeAsync(service, method, request, streams, ct);
     public Task InvokeAsync(string service, string method, CancellationToken ct = default) =>
         _outbound.InvokeAsync(service, method, ct);
+    public ValueTask InvokeValueAsync(string service, string method, CancellationToken ct = default) =>
+        _outbound.InvokeValueAsync(service, method, ct);
     public Task<Stream> InvokeStreamAsync(string service, string method, CancellationToken ct = default) =>
         _outbound.InvokeStreamAsync(service, method, ct);
     public Task<Stream> InvokeStreamAsync<TRequest>(string service, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
@@ -273,10 +277,14 @@ public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
         _outbound.InvokeValueOnInstanceAsync<TResponse>(service, instanceId, method, ct);
     public Task InvokeOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, CancellationToken ct = default) =>
         _outbound.InvokeOnInstanceAsync(service, instanceId, method, request, ct);
+    public ValueTask InvokeValueOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, CancellationToken ct = default) =>
+        _outbound.InvokeValueOnInstanceAsync(service, instanceId, method, request, ct);
     public Task InvokeOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, RpcStreamAttachment[] streams, CancellationToken ct = default) =>
         _outbound.InvokeOnInstanceAsync(service, instanceId, method, request, streams, ct);
     public Task InvokeOnInstanceAsync(string service, string instanceId, string method, CancellationToken ct = default) =>
         _outbound.InvokeOnInstanceAsync(service, instanceId, method, ct);
+    public ValueTask InvokeValueOnInstanceAsync(string service, string instanceId, string method, CancellationToken ct = default) =>
+        _outbound.InvokeValueOnInstanceAsync(service, instanceId, method, ct);
     public Task<Stream> InvokeStreamOnInstanceAsync(string service, string instanceId, string method, CancellationToken ct = default) =>
         _outbound.InvokeStreamOnInstanceAsync(service, instanceId, method, ct);
     public Task<Stream> InvokeStreamOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
