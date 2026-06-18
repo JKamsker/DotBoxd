@@ -4,12 +4,14 @@
 
 public abstract class RpcStreamAttachment
 public async Task CloseAsync(CancellationToken ct = default)
-public async Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
 public async Task StartAsync(CancellationToken ct = default)
 public async Task<IRpcChannel> AcceptAsync(CancellationToken ct = default)
-public async Task<Payload> ReceiveAsync(CancellationToken ct = default)
 public async ValueTask DisposeAsync()
 public async ValueTask ReleaseAsync(string serviceName, string instanceId)
+public async ValueTask SendFrameValueAsync(PooledBufferWriter frame, CancellationToken ct = default)
+public async ValueTask SendValueAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
+public async ValueTask<Payload> ReceiveValueAsync(CancellationToken ct = default)
+public async ValueTask<RpcFrame> ReceiveFrameValueAsync(CancellationToken ct = default)
 public bool DisableInboundRequestCancellation { get; init; }
 public bool EnableLowAllocationValueTaskInvocations { get; init; }
 public bool IsConnected =>
@@ -180,7 +182,7 @@ public sealed class RpcReadErrorEventArgs : EventArgs
 public sealed class RpcStreamingContext : IRpcStreamingContext
 public sealed class SingleConnectionServerTransport : IServerTransport
 public sealed class SingleConnectionTransport : ITransport
-public sealed class StreamConnection : IRpcChannel
+public sealed class StreamConnection : IRpcFrameChannel
 public ServiceConnectionException(string message, Exception innerException) : base(message, innerException)
 public ServiceConnectionException(string message) : base(message)
 public ServiceException()
@@ -258,6 +260,8 @@ public string? InstanceId { get; }
 public string? InstanceId { get; set; }
 public string? Name { get; set; }
 public struct RpcFrame : IDisposable
+public Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default) =>
+public Task<Payload> ReceiveAsync(CancellationToken ct = default) =>
 public struct RpcRequest
 public struct RpcResponse
 public struct RpcStreamHandle

@@ -23,7 +23,7 @@ public SandboxHostBuilder UseWorkerClient( ISandboxWorkerClient workerClient, Sa
 public SandboxHostWorkerClient(Func<SandboxHost> hostFactory)
 public sealed class HotnessExecutionModeSelector : IExecutionModeSelector
 public sealed class SandboxHostBuilder
-public sealed class SandboxHostWorkerClient : ISandboxWorkerClient
+public sealed class SandboxHostWorkerClient : ISandboxWorkerClient, IDisposable
 public sealed partial class SandboxHost
 public sealed partial class SandboxHost : IDisposable
 public sealed record ExecutionModeDecision(ExecutionMode Mode)
