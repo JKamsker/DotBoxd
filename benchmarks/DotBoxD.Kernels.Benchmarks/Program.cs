@@ -152,6 +152,11 @@ if (args.Contains("--probe-sandbox-type-validation", StringComparer.OrdinalIgnor
     return;
 }
 
+if (args.Contains("--probe-verifier-opcode-branches", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Verifier.GeneratedVerifierOpcodeProbe.Run();
+    return;
+}
+
 var profileIndex = Array.FindIndex(args, arg => arg.Equals("--profile-ipc", StringComparison.OrdinalIgnoreCase));
 if (profileIndex >= 0) {
     var transport = args.ElementAtOrDefault(profileIndex + 1) ?? IpcAllocationProfile.NamedPipeTransport;

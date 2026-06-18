@@ -46,18 +46,27 @@ internal static class OpCodeVerifier
             diagnostics.Add(new VerificationDiagnostic("V-EXCEPTION", "exception handlers are not allowed"));
         }
 
-        var instructionOffsets = new HashSet<int>();
-        var branchTargets = new HashSet<int>();
+        HashSet<int>? branchTargets = null;
         foreach (var instruction in instructions)
         {
-            instructionOffsets.Add(instruction.Offset);
             var opcode = instruction.Opcode;
             if (Forbidden.Contains(opcode) || !Allowed.Contains(opcode))
             {
                 diagnostics.Add(new VerificationDiagnostic("V-OPCODE", $"opcode '{opcode}' is not allowed"));
             }
 
-            VerifyOperand(reader, policy, instruction, diagnostics, branchTargets);
+            VerifyOperand(reader, policy, instruction, diagnostics, ref branchTargets);
+        }
+
+        if (branchTargets is null)
+        {
+            return;
+        }
+
+        var instructionOffsets = new HashSet<int>();
+        foreach (var instruction in instructions)
+        {
+            instructionOffsets.Add(instruction.Offset);
         }
 
         foreach (var target in branchTargets)
@@ -76,7 +85,7 @@ internal static class OpCodeVerifier
         VerificationPolicy policy,
         GeneratedInstruction instruction,
         List<VerificationDiagnostic> diagnostics,
-        HashSet<int> branchTargets)
+        ref HashSet<int>? branchTargets)
     {
         var opcode = instruction.Opcode;
         if (opcode is ILOpCode.Call or ILOpCode.Callvirt or ILOpCode.Newobj)
@@ -123,7 +132,7 @@ internal static class OpCodeVerifier
         {
             foreach (var target in instruction.SwitchTargets)
             {
-                branchTargets.Add(target);
+                AddBranchTarget(ref branchTargets, target);
             }
 
             return;
@@ -133,9 +142,15 @@ internal static class OpCodeVerifier
         {
             if (instruction.BranchTarget is { } target)
             {
-                branchTargets.Add(target);
+                AddBranchTarget(ref branchTargets, target);
             }
         }
+    }
+
+    private static void AddBranchTarget(ref HashSet<int>? branchTargets, int target)
+    {
+        branchTargets ??= [];
+        branchTargets.Add(target);
     }
 
     private static void VerifyLocalCall(
