@@ -46,4 +46,18 @@ internal readonly record struct EventQueryRoutingKey(
         key = default;
         return false;
     }
+
+    /// <summary>
+    /// A path-independent token for the key's value, used to build composite (multi-equality) routing keys
+    /// where the path order is implied by position.
+    /// </summary>
+    public string ValueToken() => Kind switch
+    {
+        QueryValueKind.Boolean => Boolean ? "B1" : "B0",
+        // Canonicalize signed zero (-0.0 and 0.0 compare equal) so a member holding -0.0 still routes to a
+        // `== 0.0` subscription, keeping the routing token consistent with the comparer's equality.
+        QueryValueKind.Number => "N" + (Number == 0.0 ? 0.0 : Number).ToString("R", System.Globalization.CultureInfo.InvariantCulture),
+        QueryValueKind.String => "S" + Text,
+        _ => "X",
+    };
 }

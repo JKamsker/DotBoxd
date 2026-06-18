@@ -160,4 +160,32 @@ public sealed class ExpressionQueryTranslatorTests
         Assert.Throws<QueryTranslationException>(
             () => ExpressionQueryTranslator.TranslateProjection<AttackTestEvent, int>(e => e.Damage + 1));
     }
+
+    [Fact]
+    public void TranslateFilter_rejects_non_finite_constant()
+    {
+        var ex = Assert.Throws<QueryTranslationException>(
+            () => ExpressionQueryTranslator.TranslateFilter<MetricTestEvent>(e => e.Score == double.NaN));
+        Assert.Contains("non-finite", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void QueryValue_rejects_non_finite_numbers()
+    {
+        Assert.Throws<ArgumentException>(() => QueryValue.FromNumber(double.NaN));
+        Assert.Throws<ArgumentException>(() => QueryValue.FromNumber(double.PositiveInfinity));
+    }
+
+    [Fact]
+    public void QueryFilter_rejects_non_identifier_field_paths()
+    {
+        Assert.Throws<ArgumentException>(
+            () => QueryFilter.Compare("1bad", QueryComparisonOperator.Equal, QueryValue.FromInteger(1)));
+        Assert.Throws<ArgumentException>(
+            () => QueryFilter.Compare("has space", QueryComparisonOperator.Equal, QueryValue.FromInteger(1)));
+
+        // A dotted identifier path is valid.
+        var ok = QueryFilter.Compare("Source.Id", QueryComparisonOperator.Equal, QueryValue.FromString("x"));
+        Assert.Equal("Source.Id", ok.Field);
+    }
 }

@@ -26,6 +26,21 @@ public static class QueryValueComparer
         _ => false,
     };
 
+    /// <summary>Returns <see langword="true"/> when <paramref name="actual"/> equals any of <paramref name="candidates"/>.</summary>
+    public static bool IsAnyEqual(object? actual, IReadOnlyList<QueryValue> candidates, bool ignoreCase)
+    {
+        ArgumentNullException.ThrowIfNull(candidates);
+        for (var i = 0; i < candidates.Count; i++)
+        {
+            if (AreEqual(actual, candidates[i], ignoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>Determines value equality between a runtime value and a portable value.</summary>
     public static bool AreEqual(object? actual, QueryValue expected, bool ignoreCase)
     {

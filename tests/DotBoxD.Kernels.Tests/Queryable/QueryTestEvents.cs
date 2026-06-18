@@ -23,3 +23,6 @@ public sealed record ThrowingGetterEvent(string Id)
 {
     public string Boom => throw new InvalidTimeZoneException("boom");
 }
+
+/// <summary>An event with a <see cref="ulong"/> member exceeding <see cref="long.MaxValue"/>.</summary>
+public sealed record UnsignedTestEvent(ulong Big);

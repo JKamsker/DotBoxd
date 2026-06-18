@@ -1,3 +1,4 @@
+using System.Text;
 using DotBoxD.Queryable.Ast;
 using DotBoxD.Queryable.Execution;
 using DotBoxD.Queryable.Planning;
@@ -6,11 +7,12 @@ using DotBoxD.Queryable.Serialization;
 namespace DotBoxD.Queryable.Authoring;
 
 /// <summary>
-/// Routes events of one type to matching query subscriptions. Subscriptions with an equality routing key
-/// are indexed; an incoming event probes the index by its member values, so only subscriptions whose
-/// indexed equality the event satisfies become candidates. Each candidate's residual filter is then
-/// interpreted from the portable AST and, on a match, the projection is materialized and dispatched.
-/// Subscriptions without a routing key are evaluated against every event (an explicit broad fallback).
+/// Routes events of one type to matching query subscriptions. Subscriptions with equality predicates are
+/// indexed by a <em>composite</em> key over all their equality members, so an event becomes a candidate
+/// only when it matches every indexed equality at once (more selective than a single-key index). Each
+/// candidate's filter — including any residual/range predicates — is then evaluated (interpreted, promoting
+/// to compiled when hot) and, on a match, the projection is materialized and dispatched. Subscriptions with
+/// no equality predicate are evaluated against every event (an explicit broad fallback).
 /// </summary>
 internal sealed class EventQueryDispatcher<TEvent>(MemberValueReader reader)
 {
@@ -28,11 +30,12 @@ internal sealed class EventQueryDispatcher<TEvent>(MemberValueReader reader)
     {
         QueryFilterEvaluator.EnsureWithinLimits(document.Filter);
         var fingerprint = QueryFingerprint.Compute(document);
+        var routingKeys = RoutingKeysFor(plan);
 
-        Entry entry = null!;
+        EventQuerySubscriptionEntry<TEvent> entry = null!;
         var handle = new EventQuerySubscriptionHandle(
-            document, plan, fingerprint, () => EventsObserved, () => Remove(entry));
-        entry = new Entry(document.Filter, RoutingKeyFor(plan), project, dispatch, handle);
+            document, plan, fingerprint, () => EventsObserved, () => entry.IsCompiled, () => Remove(entry));
+        entry = new EventQuerySubscriptionEntry<TEvent>(document.Filter, routingKeys, project, dispatch, handle);
 
         lock (_gate)
         {
@@ -70,11 +73,11 @@ internal sealed class EventQueryDispatcher<TEvent>(MemberValueReader reader)
         }
     }
 
-    private bool TryEvaluate(Entry entry, TEvent e)
+    private bool TryEvaluate(EventQuerySubscriptionEntry<TEvent> entry, TEvent e)
     {
         try
         {
-            return QueryFilterEvaluator.Evaluate(entry.Filter, e!, reader);
+            return entry.Matches(e, reader);
         }
         catch (InvalidOperationException)
         {
@@ -82,7 +85,7 @@ internal sealed class EventQueryDispatcher<TEvent>(MemberValueReader reader)
         }
     }
 
-    private static bool TryProject(Entry entry, TEvent e, out object? projected)
+    private static bool TryProject(EventQuerySubscriptionEntry<TEvent> entry, TEvent e, out object? projected)
     {
         try
         {
@@ -96,7 +99,7 @@ internal sealed class EventQueryDispatcher<TEvent>(MemberValueReader reader)
         }
     }
 
-    private void Remove(Entry entry)
+    private void Remove(EventQuerySubscriptionEntry<TEvent> entry)
     {
         lock (_gate)
         {
@@ -104,86 +107,146 @@ internal sealed class EventQueryDispatcher<TEvent>(MemberValueReader reader)
         }
     }
 
-    private static EventQueryRoutingKey? RoutingKeyFor(EventQueryPlan plan)
-        => plan.RoutingKeys.Count > 0
-            ? EventQueryRoutingKey.FromValue(plan.RoutingKeys[0].Path, plan.RoutingKeys[0].Value)
-            : null;
-
-    private sealed class Entry(
-        QueryFilter filter,
-        EventQueryRoutingKey? routingKey,
-        Func<TEvent, object?> project,
-        Func<object?, HookContext, ValueTask> dispatch,
-        EventQuerySubscriptionHandle handle)
+    private static IReadOnlyList<EventQueryRoutingKey> RoutingKeysFor(EventQueryPlan plan)
     {
-        public QueryFilter Filter { get; } = filter;
+        if (plan.RoutingKeys.Count == 0)
+        {
+            return [];
+        }
 
-        public EventQueryRoutingKey? RoutingKey { get; } = routingKey;
+        var keys = new List<EventQueryRoutingKey>(plan.RoutingKeys.Count);
+        var seenPaths = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var predicate in plan.RoutingKeys)
+        {
+            if (seenPaths.Add(predicate.Path))
+            {
+                keys.Add(EventQueryRoutingKey.FromValue(predicate.Path, predicate.Value));
+            }
+        }
 
-        public Func<TEvent, object?> Project { get; } = project;
-
-        public Func<object?, HookContext, ValueTask> Dispatch { get; } = dispatch;
-
-        public EventQuerySubscriptionHandle Handle { get; } = handle;
+        return keys;
     }
 
     private sealed class Snapshot
     {
         public static readonly Snapshot Empty = new([]);
 
-        private readonly Entry[] _all;
-        private readonly Entry[] _broad;
-        private readonly string[] _routingPaths;
-        private readonly Dictionary<EventQueryRoutingKey, List<Entry>> _index;
+        private const string Separator = "\u0001";
 
-        private Snapshot(Entry[] all)
+        private readonly EventQuerySubscriptionEntry<TEvent>[] _all;
+        private readonly EventQuerySubscriptionEntry<TEvent>[] _broad;
+        private readonly RoutingGroup[] _groups;
+
+        private Snapshot(EventQuerySubscriptionEntry<TEvent>[] all)
         {
             _all = all;
-            var broad = new List<Entry>();
-            var paths = new HashSet<string>(StringComparer.Ordinal);
-            _index = [];
+            var broad = new List<EventQuerySubscriptionEntry<TEvent>>();
+            var builders = new Dictionary<string, RoutingGroup>(StringComparer.Ordinal);
             foreach (var entry in all)
             {
-                if (entry.RoutingKey is { } key)
-                {
-                    paths.Add(key.Path);
-                    if (!_index.TryGetValue(key, out var bucket))
-                    {
-                        bucket = [];
-                        _index[key] = bucket;
-                    }
-
-                    bucket.Add(entry);
-                }
-                else
+                if (!entry.IsRoutable)
                 {
                     broad.Add(entry);
+                    continue;
                 }
+
+                var paths = entry.RoutingKeys
+                    .Select(k => k.Path)
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(p => p, StringComparer.Ordinal)
+                    .ToArray();
+
+                var groupKey = string.Join(Separator, paths);
+                if (!builders.TryGetValue(groupKey, out var group))
+                {
+                    group = new RoutingGroup(paths);
+                    builders[groupKey] = group;
+                }
+
+                group.Add(CompositeKey(entry, paths), entry);
             }
 
             _broad = [.. broad];
-            _routingPaths = [.. paths];
+            _groups = [.. builders.Values];
         }
 
         public bool IsEmpty => _all.Length == 0;
 
-        public Snapshot With(Entry entry) => new([.. _all, entry]);
+        public Snapshot With(EventQuerySubscriptionEntry<TEvent> entry) => new([.. _all, entry]);
 
-        public Snapshot Without(Entry entry) => new(_all.Where(e => !ReferenceEquals(e, entry)).ToArray());
+        public Snapshot Without(EventQuerySubscriptionEntry<TEvent> entry)
+            => new(_all.Where(e => !ReferenceEquals(e, entry)).ToArray());
 
-        public IEnumerable<Entry> Candidates(TEvent e, MemberValueReader reader)
+        public IEnumerable<EventQuerySubscriptionEntry<TEvent>> Candidates(TEvent e, MemberValueReader reader)
         {
-            var matched = new List<Entry>(_broad);
-            foreach (var path in _routingPaths)
+            // Lazily yield broad subscriptions then index-matched buckets — no per-event list allocation.
+            foreach (var entry in _broad)
             {
-                if (EventQueryRoutingKey.TryFromRuntime(path, reader.Read(e!, path), out var key) &&
-                    _index.TryGetValue(key, out var bucket))
-                {
-                    matched.AddRange(bucket);
-                }
+                yield return entry;
             }
 
-            return matched;
+            foreach (var group in _groups)
+            {
+                if (TryEventKey(group.Paths, e, reader, out var key) && group.TryGet(key, out var bucket))
+                {
+                    foreach (var entry in bucket)
+                    {
+                        yield return entry;
+                    }
+                }
+            }
         }
+
+        private static string CompositeKey(EventQuerySubscriptionEntry<TEvent> entry, string[] sortedPaths)
+        {
+            var builder = new StringBuilder();
+            foreach (var path in sortedPaths)
+            {
+                var key = entry.RoutingKeys.First(k => k.Path == path);
+                builder.Append(key.ValueToken()).Append(Separator);
+            }
+
+            return builder.ToString();
+        }
+
+        private static bool TryEventKey(string[] sortedPaths, TEvent e, MemberValueReader reader, out string key)
+        {
+            var builder = new StringBuilder();
+            foreach (var path in sortedPaths)
+            {
+                if (!EventQueryRoutingKey.TryFromRuntime(path, reader.Read(e!, path), out var runtimeKey))
+                {
+                    key = string.Empty;
+                    return false;
+                }
+
+                builder.Append(runtimeKey.ValueToken()).Append(Separator);
+            }
+
+            key = builder.ToString();
+            return true;
+        }
+    }
+
+    private sealed class RoutingGroup(string[] paths)
+    {
+        private readonly Dictionary<string, List<EventQuerySubscriptionEntry<TEvent>>> _byValue =
+            new(StringComparer.Ordinal);
+
+        public string[] Paths { get; } = paths;
+
+        public void Add(string compositeKey, EventQuerySubscriptionEntry<TEvent> entry)
+        {
+            if (!_byValue.TryGetValue(compositeKey, out var bucket))
+            {
+                bucket = [];
+                _byValue[compositeKey] = bucket;
+            }
+
+            bucket.Add(entry);
+        }
+
+        public bool TryGet(string compositeKey, out List<EventQuerySubscriptionEntry<TEvent>> bucket)
+            => _byValue.TryGetValue(compositeKey, out bucket!);
     }
 }

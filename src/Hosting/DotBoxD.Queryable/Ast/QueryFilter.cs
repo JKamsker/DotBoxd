@@ -43,12 +43,11 @@ public sealed record QueryFilter
         QueryValue value,
         bool ignoreCase = false)
     {
-        ArgumentException.ThrowIfNullOrEmpty(field);
         ArgumentNullException.ThrowIfNull(value);
         return new QueryFilter
         {
             Kind = QueryFilterKind.Compare,
-            Field = field,
+            Field = EnsureFieldPath(field),
             Operator = op,
             Value = value,
             IgnoreCase = ignoreCase,
@@ -58,12 +57,11 @@ public sealed record QueryFilter
     /// <summary>Builds a set-membership node.</summary>
     public static QueryFilter In(string field, IReadOnlyList<QueryValue> values, bool ignoreCase = false)
     {
-        ArgumentException.ThrowIfNullOrEmpty(field);
         ArgumentNullException.ThrowIfNull(values);
         return new QueryFilter
         {
             Kind = QueryFilterKind.In,
-            Field = field,
+            Field = EnsureFieldPath(field),
             Values = values,
             IgnoreCase = ignoreCase,
         };
@@ -80,6 +78,32 @@ public sealed record QueryFilter
     {
         ArgumentNullException.ThrowIfNull(child);
         return new QueryFilter { Kind = QueryFilterKind.Not, Children = [child] };
+    }
+
+    // A field is a dotted member path; each segment must be an identifier. Enforcing this keeps the model
+    // consistent with how members are read and ensures every filter round-trips through the text DSL.
+    private static string EnsureFieldPath(string field)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(field);
+        foreach (var segment in field.Split('.'))
+        {
+            if (segment.Length == 0 || !(char.IsLetter(segment[0]) || segment[0] == '_'))
+            {
+                throw new ArgumentException(
+                    $"Invalid query field path '{field}'; each '.'-separated segment must be an identifier.", nameof(field));
+            }
+
+            for (var i = 1; i < segment.Length; i++)
+            {
+                if (!char.IsLetterOrDigit(segment[i]) && segment[i] != '_')
+                {
+                    throw new ArgumentException(
+                        $"Invalid query field path '{field}'; each '.'-separated segment must be an identifier.", nameof(field));
+                }
+            }
+        }
+
+        return field;
     }
 
     private static QueryFilter Connective(QueryFilterKind kind, IReadOnlyList<QueryFilter> children)
