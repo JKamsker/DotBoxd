@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using DotBoxD.Queryable.Analysis;
 using DotBoxD.Queryable.Ast;
 using DotBoxD.Queryable.Execution;
 using DotBoxD.Queryable.Planning;
@@ -42,6 +43,7 @@ public sealed class EventQueryHost : IEventQuerySource
         ArgumentNullException.ThrowIfNull(handler);
 
         var filter = BuildFilter(predicates);
+        QuerySatisfiability.EnsureSatisfiable(filter);
         var (projectionAst, project) = BuildProjection(projection);
         var document = EventQueryDocument.Create(ExpressionQueryTranslator.EventName<TEvent>(), filter, projectionAst);
         var plan = EventQueryPlanner.Plan(document);

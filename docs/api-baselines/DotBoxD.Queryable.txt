@@ -5,6 +5,7 @@
 public bool Boolean { get; }
 public bool HasSubscriptions<TEvent>() => TryGetDispatcher<TEvent>() is not null
 public bool IgnoreCase { get; init; }
+public bool IsCompiled => _isCompiled()
 public bool IsEquality => Operator == QueryComparisonOperator.Equal
 public bool IsRoutable => RoutingKeys.Count > 0
 public const int MaxDepth = 32
@@ -104,6 +105,8 @@ public sealed record QueryValue
 public static bool AreEqual(object? actual, QueryValue expected, bool ignoreCase)
 public static bool Compare(object? actual, QueryComparisonOperator op, QueryValue expected, bool ignoreCase) => op switch
 public static bool Evaluate(QueryFilter filter, object target, MemberValueReader reader)
+public static bool IsAnyEqual(object? actual, IReadOnlyList<QueryValue> candidates, bool ignoreCase)
+public static bool IsSatisfiable(QueryFilter filter)
 public static bool TryFromObject(object? value, out QueryValue result)
 public static class EventQueryCanonicalizer
 public static class EventQueryDiagnostics
@@ -111,8 +114,11 @@ public static class EventQueryJson
 public static class EventQueryPlanner
 public static class ExpressionQueryTranslator
 public static class QueryEvaluationLimits
+public static class QueryFilterCompiler
 public static class QueryFilterEvaluator
 public static class QueryFingerprint
+public static class QuerySatisfiability
+public static class QueryText
 public static class QueryValueComparer
 public static class SubscriptionRegistryQueryExtensions
 public static EventQuery<TEvent> Query<TEvent>(this SubscriptionRegistry subscriptions)
@@ -121,6 +127,7 @@ public static EventQueryDocument Create( string eventName, QueryFilter? filter, 
 public static EventQueryDocument Deserialize(string json)
 public static EventQueryPlan Plan(EventQueryDocument document)
 public static EventQueryPlan Plan(QueryFilter filter)
+public static Func<object, bool> Compile(QueryFilter filter, MemberValueReader reader)
 public static IReadOnlyList<string> Describe(EventQuerySubscriptionHandle handle)
 public static JsonSerializerOptions Options { get; } = CreateOptions(indented: false)
 public static QueryFilter And(IReadOnlyList<QueryFilter> children) => Connective(QueryFilterKind.And, children)
@@ -130,6 +137,7 @@ public static QueryFilter In(string field, IReadOnlyList<QueryValue> values, boo
 public static QueryFilter MatchAll { get; } = new() { Kind = QueryFilterKind.MatchAll }
 public static QueryFilter Not(QueryFilter child)
 public static QueryFilter Or(IReadOnlyList<QueryFilter> children) => Connective(QueryFilterKind.Or, children)
+public static QueryFilter Parse(string text)
 public static QueryFilter TranslateFilter<TEvent>(Expression<Func<TEvent, bool>> predicate)
 public static QueryProjection Construct(string typeName, IReadOnlyList<QueryProjectionField> fields)
 public static QueryProjection Identity { get; } = new() { Kind = QueryProjectionKind.Identity }
@@ -140,14 +148,16 @@ public static QueryProjectionField FromMember(string name, string path)
 public static QueryTranslationException Unsupported(Expression expression, string? reason = null)
 public static QueryValue FromBoolean(bool value) => new(QueryValueKind.Boolean, value, 0, 0, null)
 public static QueryValue FromInteger(long value) => new(QueryValueKind.Integer, false, value, 0, null)
-public static QueryValue FromNumber(double value) => new(QueryValueKind.Number, false, 0, value, null)
+public static QueryValue FromNumber(double value)
 public static QueryValue FromString(string? value) =>
 public static QueryValue Null { get; } = new(QueryValueKind.Null, false, 0, 0, null)
 public static string Compute(EventQueryDocument document)
 public static string ComputeShort(EventQueryDocument document)
 public static string DescribeText(EventQuerySubscriptionHandle handle)
 public static string EventName<TEvent>() => typeof(TEvent).FullName ?? typeof(TEvent).Name
+public static string Format(QueryFilter filter)
 public static string Serialize(EventQueryDocument document, bool indented = false)
+public static void EnsureSatisfiable(QueryFilter filter)
 public static void EnsureWithinLimits(QueryFilter filter)
 public string Field { get; init; } = string.Empty
 public string Fingerprint { get; }

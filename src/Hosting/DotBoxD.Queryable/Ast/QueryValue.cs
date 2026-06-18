@@ -50,8 +50,19 @@ public sealed record QueryValue
     /// <summary>Creates an integral value.</summary>
     public static QueryValue FromInteger(long value) => new(QueryValueKind.Integer, false, value, 0, null);
 
-    /// <summary>Creates a floating-point value.</summary>
-    public static QueryValue FromNumber(double value) => new(QueryValueKind.Number, false, 0, value, null);
+    /// <summary>
+    /// Creates a floating-point value. Non-finite values (NaN, ±Infinity) are rejected: the portable model
+    /// (and its JSON wire form) cannot represent them, and they have no meaningful equality/ordering here.
+    /// </summary>
+    public static QueryValue FromNumber(double value)
+    {
+        if (!double.IsFinite(value))
+        {
+            throw new ArgumentException("Non-finite numeric values (NaN, Infinity) are not supported.", nameof(value));
+        }
+
+        return new QueryValue(QueryValueKind.Number, false, 0, value, null);
+    }
 
     /// <summary>Creates a string value; a <c>null</c> argument yields <see cref="Null"/>.</summary>
     public static QueryValue FromString(string? value) =>
@@ -79,10 +90,19 @@ public sealed record QueryValue
                 result = FromInteger(Convert.ToInt64(value, CultureInfo.InvariantCulture));
                 return true;
             case ulong u:
-                result = FromInteger(unchecked((long)u));
+                // ulong can exceed long.MaxValue; carry it as a double so the captured (expected) value and
+                // the runtime (actual) value, which the comparer also widens to double, agree.
+                result = FromNumber((double)u);
                 return true;
             case float or double:
-                result = FromNumber(Convert.ToDouble(value, CultureInfo.InvariantCulture));
+                var number = Convert.ToDouble(value, CultureInfo.InvariantCulture);
+                if (!double.IsFinite(number))
+                {
+                    result = Null;
+                    return false;
+                }
+
+                result = FromNumber(number);
                 return true;
             case decimal m:
                 result = FromNumber((double)m);

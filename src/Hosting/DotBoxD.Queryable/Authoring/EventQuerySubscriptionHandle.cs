@@ -12,6 +12,7 @@ namespace DotBoxD.Queryable.Authoring;
 public sealed class EventQuerySubscriptionHandle : IDisposable
 {
     private readonly Func<long> _eventsObserved;
+    private readonly Func<bool> _isCompiled;
     private Action? _unsubscribe;
     private long _filterEvaluations;
     private long _matches;
@@ -22,12 +23,14 @@ public sealed class EventQuerySubscriptionHandle : IDisposable
         EventQueryPlan plan,
         string fingerprint,
         Func<long> eventsObserved,
+        Func<bool> isCompiled,
         Action unsubscribe)
     {
         Document = document;
         Plan = plan;
         Fingerprint = fingerprint;
         _eventsObserved = eventsObserved;
+        _isCompiled = isCompiled;
         _unsubscribe = unsubscribe;
     }
 
@@ -51,6 +54,9 @@ public sealed class EventQuerySubscriptionHandle : IDisposable
 
     /// <summary>How many projected payloads were dispatched to the handler.</summary>
     public long Dispatches => Interlocked.Read(ref _dispatches);
+
+    /// <summary>Whether this subscription's filter has been promoted to the compiled (hot-path) tier.</summary>
+    public bool IsCompiled => _isCompiled();
 
     /// <summary>Renders the human-readable diagnostic fact lines for this subscription.</summary>
     public IReadOnlyList<string> Describe() => EventQueryDiagnostics.Describe(this);

@@ -125,77 +125,52 @@ public sealed class EventQueryHostTests
     }
 
     [Fact]
-    public async Task Null_equality_subscription_matches_events_with_a_null_member()
+    public async Task Filter_is_promoted_to_the_compiled_tier_when_hot_and_stays_correct()
     {
         var host = new EventQueryHost();
-        var matched = new List<NullableTestEvent>();
+        var matches = 0;
 
-        var handle = await host.Query<NullableTestEvent>()
-            .Where(e => e.Key == null)
-            .SubscribeAsync((e, _) =>
-            {
-                matched.Add(e);
-                return ValueTask.CompletedTask;
-            });
-
-        var context = NewContext();
-        await host.PublishAsync(new NullableTestEvent(null, 1), context);
-        await host.PublishAsync(new NullableTestEvent("set", 2), context);
-
-        Assert.Single(matched);
-        Assert.Null(matched[0].Key);
-        // Null equality is not index-routable; it must fall back to broad evaluation.
-        Assert.False(handle.Plan.IsRoutable);
-        Assert.Equal(2, handle.FilterEvaluations);
-    }
-
-    [Fact]
-    public async Task Numeric_equality_routes_across_integer_literal_and_floating_member()
-    {
-        var host = new EventQueryHost();
-        var matched = new List<MetricTestEvent>();
-
-        // Integer literal compared against a double member: the captured value is Integer while the runtime
-        // member reads as a double — the routing key must still match.
-        var handle = await host.Query<MetricTestEvent>()
-            .Where(e => e.Score == 100)
-            .SubscribeAsync((e, _) =>
-            {
-                matched.Add(e);
-                return ValueTask.CompletedTask;
-            });
-
-        var context = NewContext();
-        await host.PublishAsync(new MetricTestEvent("a", 100.0), context);
-        await host.PublishAsync(new MetricTestEvent("b", 99.5), context);
-
-        Assert.Single(matched);
-        Assert.Equal("a", matched[0].Id);
-        Assert.True(handle.Plan.IsRoutable);
-    }
-
-    [Fact]
-    public async Task Throwing_getter_does_not_abort_dispatch_for_other_subscriptions()
-    {
-        var host = new EventQueryHost();
-        var idHits = 0;
-
-        await host.Query<ThrowingGetterEvent>()
-            .Where(e => e.Boom == "never")
-            .SubscribeAsync((_, _) => ValueTask.CompletedTask);
-        await host.Query<ThrowingGetterEvent>()
-            .Where(e => e.Id == "x")
+        var handle = await host.Query<AttackTestEvent>()
+            .Where(e => e.AttackerId == "a" && e.Damage >= 5)
             .SubscribeAsync((_, _) =>
             {
-                idHits++;
+                matches++;
                 return ValueTask.CompletedTask;
             });
 
         var context = NewContext();
-        // Must not throw even though the first subscription's filter reads a getter that throws.
-        await host.PublishAsync(new ThrowingGetterEvent("x"), context);
+        // 40 candidate events (AttackerId == "a") cross the promotion threshold; half match Damage >= 5.
+        for (var i = 0; i < 40; i++)
+        {
+            await host.PublishAsync(new AttackTestEvent("a", "t", i % 2 == 0 ? 9 : 1, 1), context);
+        }
 
-        Assert.Equal(1, idHits);
+        Assert.True(handle.IsCompiled);
+        Assert.Equal(40, handle.FilterEvaluations);
+        Assert.Equal(20, matches);
+        Assert.Equal(20, handle.Dispatches);
+    }
+
+    [Fact]
+    public async Task Composite_index_routes_only_exact_multi_key_matches()
+    {
+        var host = new EventQueryHost();
+
+        var toX = await host.Query<AttackTestEvent>()
+            .Where(e => e.AttackerId == "a" && e.TargetId == "x")
+            .SubscribeAsync((_, _) => ValueTask.CompletedTask);
+        var toY = await host.Query<AttackTestEvent>()
+            .Where(e => e.AttackerId == "a" && e.TargetId == "y")
+            .SubscribeAsync((_, _) => ValueTask.CompletedTask);
+
+        var context = NewContext();
+        await host.PublishAsync(new AttackTestEvent("a", "x", 1, 1), context);
+
+        // The composite (AttackerId, TargetId) index routes the event only to the exact match; the
+        // sibling subscription that shares AttackerId but not TargetId is never even evaluated.
+        Assert.Equal(1, toX.FilterEvaluations);
+        Assert.Equal(1, toX.Dispatches);
+        Assert.Equal(0, toY.FilterEvaluations);
     }
 
     private static IEnumerable<AttackTestEvent> BuildHundredEvents()

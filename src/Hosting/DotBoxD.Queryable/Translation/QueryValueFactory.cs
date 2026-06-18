@@ -53,6 +53,12 @@ internal static class QueryValueFactory
             return value;
         }
 
+        if (raw is double d && !double.IsFinite(d) || raw is float f && !float.IsFinite(f))
+        {
+            throw new QueryTranslationException(
+                $"Non-finite numeric values (NaN, Infinity) are not supported in '{source}'.");
+        }
+
         throw new QueryTranslationException(
             $"Unsupported constant value type '{raw?.GetType().Name}' in '{source}'. " +
             "Only bool, integral and floating types, string, and enums are supported.");
