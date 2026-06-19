@@ -114,6 +114,71 @@ public sealed class RemoteRunLocalIpcPremiseTests
         Assert.Empty(serverMessages.Messages);
     }
 
+    [Fact]
+    public async Task WholeEvent_RunLocal_chain_filters_server_side_and_pushes_the_full_event_over_ipc()
+    {
+        // --- Plugin authoring: a no-Select whole-event RunLocal. The Where lowers server-side; the WHOLE
+        // event record is pushed per matching event. Authored in the plugin project so the analyzer lowers it. ---
+        var aggroOnPluginSide = new List<MonsterAggroEvent>();
+        var localHandlers = new RemoteLocalHandlerRegistry();
+        PluginPackage? lowered = null;
+        string? subscriptionId = null;
+        var hooks = new RemoteHookRegistry(
+            package =>
+            {
+                lowered = package;
+                subscriptionId = package.Manifest.PluginId;
+                return ValueTask.FromResult(package.Manifest.PluginId);
+            },
+            localHandlers);
+
+        LocalReactions.ConfigureWholeEventReaction(hooks, aggro =>
+        {
+            lock (aggroOnPluginSide)
+            {
+                aggroOnPluginSide.Add(aggro);
+            }
+        });
+
+        Assert.NotNull(lowered);
+        Assert.NotNull(subscriptionId);
+        var subscription = Assert.Single(lowered!.Manifest.Subscriptions);
+        Assert.True(subscription.LocalTerminal);
+        Assert.Null(subscription.ProjectedType);   // no Select => whole-event push
+
+        // --- Live named-pipe IPC: plugin PROVIDES the callback; server GETS the proxy. ---
+        var pipeName = "dotboxd-runlocal-we-e2e-" + Guid.NewGuid().ToString("N");
+        var serverPeerReady = new TaskCompletionSource<RpcPeer>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var ipcHost = RpcMessagePackIpc.ListenNamedPipe(pipeName, peer => serverPeerReady.TrySetResult(peer));
+        await ipcHost.StartAsync();
+
+        var callbackSink = new CallbackSink(localHandlers);
+        await using var clientSession = await RpcMessagePackIpc.ConnectAsync(
+            new NamedPipeClientTransport(".", pipeName),
+            peer => peer.ProvidePluginEventCallback(callbackSink));
+
+        var serverPeer = await serverPeerReady.Task;
+        var pushProxy = serverPeer.GetPluginEventCallback();
+
+        // --- Server side: install + wire the projecting push across the pipe. ---
+        var serverMessages = new InMemoryPluginMessageSink();
+        using var server = PluginServer.Create(serverMessages, defaultPolicy: ProjectionPolicy());
+        var kernel = await server.InstallAsync(lowered!);
+        RemoteLocalPush push = (subId, payload, ct) => pushProxy.OnEventAsync(subId, payload, ct);
+        server.Hooks.On<MonsterAggroEvent>().UseProjecting(kernel, subscriptionId!, push);
+
+        var matching = new MonsterAggroEvent("monster-7", "player-1", 3, 8, 1);
+        await server.Hooks.PublishAsync(matching);                                            // matches
+        await server.Hooks.PublishAsync(new MonsterAggroEvent("monster-9", "player-2", 10, 8, 1)); // filtered server-side
+
+        // PREMISE 1: filter ran SERVER-SIDE before any IPC — exactly one of two events crossed the pipe.
+        Assert.Equal(1, callbackSink.PushCount);
+        // PREMISE 2: the native delegate ran PLUGIN-side and received the FULL event record (all fields equal).
+        Assert.Equal([matching], aggroOnPluginSide);
+        // PREMISE 3: whole-event push performs no host send.
+        Assert.Empty(serverMessages.Messages);
+    }
+
     private static SandboxPolicy ProjectionPolicy()
         => SandboxPolicyBuilder.Create()
             .WithFuel(100_000)

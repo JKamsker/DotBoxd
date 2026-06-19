@@ -3,6 +3,8 @@ using DotBoxD.Kernels.Policies;
 using DotBoxD.Plugins;
 using DotBoxD.Plugins.Analyzer.Analysis;
 using DotBoxD.Plugins.Policies;
+using DotBoxD.Plugins.Runtime;
+using DotBoxD.Plugins.Runtime.Hooks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -86,25 +88,29 @@ public sealed class RemoteRunLocalValidationTests
         await server.InstallAsync(package);   // non-Unit Handle accepted for a projection chain
     }
 
-    // Boundary marker: removing the analyzer's IsWireScalar cap lets the VALIDATOR accept any non-Unit
-    // projection, but the expression/event-property lowering still only produces scalar projections today
-    // (a List-typed event property is treated as unsupported, so the chain does not lower — true on both
-    // source branches; neither delivered non-scalar projection end-to-end). Kept skipped so it unskips
-    // cleanly if non-scalar projection lowering is added later, at which point the lifted validator already
-    // accepts it.
-    [Fact(Skip = "Non-scalar projection lowering (e.g. a List event property) is not produced by the analyzer yet; the lifted validator cap is ready for it. Follow-up analyzer task.")]
-    public async Task Non_scalar_list_projection_RunLocal_installs()
+    // Non-scalar PROJECTION (e.g. a List-typed event property) is NOT lowered by the analyzer on EITHER source
+    // branch — the expression/event-property lowering yields scalars only, so a list projection is unsupported.
+    // It must FAIL SAFE: no verified-IR package is produced, so the un-intercepted RunLocal call site remains a
+    // throwing stub rather than emitting an unmarshallable package. (A non-scalar RECORD reaches the wire via
+    // the whole-event path; non-scalar projection lowering is a documented follow-up — the lifted validator cap
+    // is already ready for it.)
+    [Fact]
+    public void Non_scalar_list_projection_does_not_lower_and_RunLocal_stays_a_throwing_stub()
     {
-        var package = LowerToPackage(ListProjectionSource);
+        var assembly = Compile(ListProjectionSource);
 
-        var subscription = Assert.Single(package.Manifest.Subscriptions);
-        Assert.True(subscription.LocalTerminal);
-        Assert.NotNull(subscription.ProjectedType);   // a non-scalar projected type (list)
+        // No verified-IR package is generated for a non-scalar projection — fail safe, not a broken package.
+        Assert.DoesNotContain(assembly.GetTypes(), type =>
+            type.Name.StartsWith("HookChain_", StringComparison.Ordinal) &&
+            type.Name.EndsWith("PluginPackage", StringComparison.Ordinal));
 
-        using var server = PluginServer.Create(new InMemoryPluginMessageSink(), defaultPolicy: Policy());
-        // The lifted scalar cap means a list projection lowers; the validator must accept the non-Unit,
-        // non-scalar Handle return without throwing on the projected type.
-        await server.InstallAsync(package);
+        // The .RunLocal call site was not intercepted (the chain did not lower), so invoking Configure hits the
+        // runtime RunLocal stub, which throws — the un-lowered RunLocal never runs unsandboxed.
+        var usage = assembly.GetType("ChainSample.ListProjectionUsage")!;
+        var registry = new RemoteHookRegistry(_ => ValueTask.FromResult("unused"), new RemoteLocalHandlerRegistry());
+        var ex = Assert.Throws<TargetInvocationException>(() =>
+            usage.GetMethod("Configure", BindingFlags.Public | BindingFlags.Static)!.Invoke(null, [registry]));
+        Assert.IsType<NotSupportedException>(ex.InnerException);
     }
 
     private static SandboxPolicy Policy()

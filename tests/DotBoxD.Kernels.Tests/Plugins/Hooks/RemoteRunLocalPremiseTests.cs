@@ -81,4 +81,32 @@ public sealed class RemoteRunLocalPremiseTests
 
         Assert.False(ranClientSide, "remote subscription Where/Select must lower to server-side IR, never run on the client");
     }
+
+    [Fact]
+    public void Remote_hook_whole_event_Where_does_not_evaluate_on_the_client()
+    {
+        // A no-Select (whole-event) RunLocal still lowers its Where to server-side IR — the client builder
+        // must never run the predicate.
+        var evaluatedClientSide = false;
+        Hooks().On<Aggro>().Where(e =>
+        {
+            evaluatedClientSide = true;
+            return e.Distance <= 4;
+        });
+
+        Assert.False(evaluatedClientSide, "remote whole-event Where must lower to server-side IR, never run on the client");
+    }
+
+    [Fact]
+    public void Remote_subscription_whole_event_Where_does_not_evaluate_on_the_client()
+    {
+        var evaluatedClientSide = false;
+        Subscriptions().On<Aggro>().Where(e =>
+        {
+            evaluatedClientSide = true;
+            return e.Distance <= 4;
+        });
+
+        Assert.False(evaluatedClientSide, "remote whole-event subscription Where must lower to server-side IR, never run on the client");
+    }
 }

@@ -21,4 +21,19 @@ public static class LocalReactions
             .Select(e => e.MonsterId)
             .RunLocal(monsterId => onCalmedMonster(monsterId));
     }
+
+    /// <summary>
+    /// Authors a remote whole-event <c>RunLocal</c> reaction (no <c>Select</c>). The <c>Where</c> filter lowers
+    /// to server-side verified IR; for each matching event the WHOLE event record crosses the IPC boundary and
+    /// the native delegate runs in the plugin process with the full event.
+    /// </summary>
+    public static void ConfigureWholeEventReaction(RemoteHookRegistry hooks, Action<MonsterAggroEvent> onAggro)
+    {
+        ArgumentNullException.ThrowIfNull(hooks);
+        ArgumentNullException.ThrowIfNull(onAggro);
+
+        hooks.On<MonsterAggroEvent>()
+            .Where(e => e.Distance <= 4)
+            .RunLocal(aggro => onAggro(aggro));
+    }
 }
