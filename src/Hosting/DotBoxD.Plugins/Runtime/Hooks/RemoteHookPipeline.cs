@@ -94,6 +94,35 @@ public sealed class RemoteHookPipeline<TEvent>
         }, decoder);
     }
 
+    public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, HookContext, ValueTask> handler, Func<ReadOnlyMemory<byte>, TEvent> decoder)
+        => InstallLocal(package, handler, decoder);
+
+    public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TEvent, HookContext> handler, Func<ReadOnlyMemory<byte>, TEvent> decoder)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        return InstallLocal<TEvent>(package, (e, ctx) =>
+        {
+            handler(e, ctx);
+            return ValueTask.CompletedTask;
+        }, decoder);
+    }
+
+    public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, ValueTask> handler, Func<ReadOnlyMemory<byte>, TEvent> decoder)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        return InstallLocal<TEvent>(package, (e, _) => handler(e), decoder);
+    }
+
+    public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TEvent> handler, Func<ReadOnlyMemory<byte>, TEvent> decoder)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        return InstallLocal<TEvent>(package, (e, _) =>
+        {
+            handler(e);
+            return ValueTask.CompletedTask;
+        }, decoder);
+    }
+
     /// <summary>
     /// Installs a lowered local-terminal package and registers <paramref name="handler"/> as the client-side
     /// terminal for the projected type <typeparamref name="TProjected"/>. Shared by this pipeline and by
@@ -119,6 +148,22 @@ public sealed class RemoteHookPipeline<TEvent>
     /// reflection-free <paramref name="decoder"/> for the projected type <typeparamref name="TProjected"/>.
     /// </summary>
     internal RemoteHookPipeline<TEvent> InstallLocal<TProjected>(PluginPackage package, Func<TProjected, HookContext, ValueTask> handler, Func<KernelRpcValue, TProjected> decoder)
+    {
+        ArgumentNullException.ThrowIfNull(package);
+        ArgumentNullException.ThrowIfNull(handler);
+        ArgumentNullException.ThrowIfNull(decoder);
+        ValidateSubscription(package);
+        if (_localHandlers is null)
+        {
+            throw LocalHandlersNotSupported();
+        }
+
+        var subscriptionId = _install(package).AsTask().GetAwaiter().GetResult();
+        _localHandlers.Register(subscriptionId, handler, decoder);
+        return this;
+    }
+
+    internal RemoteHookPipeline<TEvent> InstallLocal<TProjected>(PluginPackage package, Func<TProjected, HookContext, ValueTask> handler, Func<ReadOnlyMemory<byte>, TProjected> decoder)
     {
         ArgumentNullException.ThrowIfNull(package);
         ArgumentNullException.ThrowIfNull(handler);

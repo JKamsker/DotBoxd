@@ -152,6 +152,11 @@ if (args.Contains("--probe-kernel-rpc-value-list-writer", StringComparer.Ordinal
     return;
 }
 
+if (args.Contains("--probe-kernel-rpc-marshaller-dto", StringComparer.OrdinalIgnoreCase)) {
+    DotBoxD.Kernels.Benchmarks.Runtime.KernelRpcMarshallerDtoProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-runlocal-push", StringComparer.OrdinalIgnoreCase)) {
     DotBoxD.Kernels.Benchmarks.Ipc.RunLocal.RunLocalPushProbe.Run();
     return;

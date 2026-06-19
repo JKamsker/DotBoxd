@@ -15,7 +15,7 @@ using DotBoxD.Plugins.Runtime.Rpc;
 /// buffer and hand its written span straight to the transport. The <c>byte[]</c>-returning overloads stay for
 /// server-extension callers and tests; they encode through a pooled writer and copy once at the boundary.
 /// </remarks>
-public static class KernelRpcBinaryCodec
+public static partial class KernelRpcBinaryCodec
 {
     private const int MaxDecodeDepth = 64;
     private const int MaxDecodeItems = 10_000;

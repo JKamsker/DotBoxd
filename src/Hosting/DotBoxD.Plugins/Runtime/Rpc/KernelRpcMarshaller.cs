@@ -94,13 +94,13 @@ public static partial class KernelRpcMarshaller
             return SandboxValue.FromMap(entries, keyType, valueType);
         }
 
-        if (IsDto(type))
+        if (DtoShape(type) is { } shape)
         {
-            var fields = GetRecordShape(type).Fields;
+            var fields = shape.Fields;
             var values = new SandboxValue[fields.Count];
             for (var i = 0; i < fields.Count; i++)
             {
-                values[i] = MarshalChild(fields[i].GetValue(value), fields[i].PropertyType, $"DTO field '{fields[i].Name}'");
+                values[i] = MarshalChild(shape.GetValue(value, i), fields[i].PropertyType, $"DTO field '{fields[i].Name}'");
             }
 
             return SandboxValue.FromOwnedRecord(values);
@@ -144,6 +144,17 @@ public static partial class KernelRpcMarshaller
             };
         }
 
+        if (value is RecordValue record && DtoShape(type) is { } shape)
+        {
+            var fields = shape.Fields;
+            if (record.Fields.Count != fields.Count)
+            {
+                throw new NotSupportedException($"Server extension record has {record.Fields.Count} fields but '{type}' expects {fields.Count}.");
+            }
+
+            return shape.Construct(record);
+        }
+
         if (ElementType(type) is { } elementType && value is ListValue list)
         {
             if (type.IsArray)
@@ -171,24 +182,6 @@ public static partial class KernelRpcMarshaller
             }
 
             return result;
-        }
-
-        if (IsDto(type) && value is RecordValue record)
-        {
-            var shape = GetRecordShape(type);
-            var fields = shape.Fields;
-            if (record.Fields.Count != fields.Count)
-            {
-                throw new NotSupportedException($"Server extension record has {record.Fields.Count} fields but '{type}' expects {fields.Count}.");
-            }
-
-            var arguments = new object?[fields.Count];
-            for (var i = 0; i < fields.Count; i++)
-            {
-                arguments[i] = FromSandboxValue(record.Fields[i], fields[i].PropertyType);
-            }
-
-            return shape.Construct(arguments);
         }
 
         throw new NotSupportedException($"Server extension cannot marshal a sandbox value to type '{type}'.");
@@ -240,9 +233,9 @@ public static partial class KernelRpcMarshaller
             return SandboxType.Map(keyType, SandboxTypeOf(mapTypes.Value, depth + 1));
         }
 
-        if (IsDto(type))
+        if (DtoShape(type) is { } shape)
         {
-            var fields = GetRecordShape(type).Fields;
+            var fields = shape.Fields;
             var fieldTypes = new SandboxType[fields.Count];
             for (var i = 0; i < fields.Count; i++)
             {

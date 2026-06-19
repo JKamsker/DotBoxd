@@ -1,4 +1,6 @@
+using System.Buffers;
 using System.Buffers.Binary;
+using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Plugins;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
@@ -44,6 +46,34 @@ public sealed class KernelRpcBinaryCodecTests
         Assert.Equal(1, value.GetItem(1).Int32Value);
         Assert.Equal("b", value.GetItem(2).TextValue);
         Assert.Equal(2, value.GetItem(3).Int32Value);
+    }
+
+    [Fact]
+    public void EncodeValue_writes_sandbox_values_like_the_kernel_value_route()
+    {
+        var sandbox = SandboxValue.FromRecord(
+        [
+            SandboxValue.FromInt32(7),
+            SandboxValue.FromString("crypt"),
+            SandboxValue.FromList(
+                [SandboxValue.FromGuid(Guid.Parse("5e74eabc-3c70-4ff1-9ba7-a08f9d27676d"))],
+                SandboxType.Guid),
+            SandboxValue.FromMap(
+                new Dictionary<SandboxValue, SandboxValue>
+                {
+                    [SandboxValue.FromString("score")] = SandboxValue.FromInt64(9001)
+                },
+                SandboxType.String,
+                SandboxType.I64)
+        ]);
+        var expected = KernelRpcBinaryCodec.EncodeValue(KernelRpcValueConverter.FromSandboxValue(sandbox));
+
+        var directBytes = KernelRpcBinaryCodec.EncodeValue(sandbox);
+        var writer = new ArrayBufferWriter<byte>();
+        KernelRpcBinaryCodec.EncodeValue(sandbox, writer);
+
+        Assert.Equal(expected, directBytes);
+        Assert.Equal(expected, writer.WrittenSpan.ToArray());
     }
 
     [Fact]

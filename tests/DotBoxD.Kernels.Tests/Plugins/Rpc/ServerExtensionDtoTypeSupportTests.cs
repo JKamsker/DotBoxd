@@ -131,6 +131,19 @@ public sealed class ServerExtensionDtoTypeSupportTests
     }
 
     [Fact]
+    public void Marshaller_reconstructs_a_settable_dto_without_matching_constructor()
+    {
+        var sandbox = SandboxValue.FromRecord(
+            [SandboxValue.FromInt32(7), SandboxValue.FromString("hero")]);
+
+        var profile = Assert.IsType<MarshalProfile>(
+            KernelRpcMarshaller.FromSandboxValue(sandbox, typeof(MarshalProfile)));
+
+        Assert.Equal(7, profile.Id);
+        Assert.Equal("hero", profile.Name);
+    }
+
+    [Fact]
     public void Direct_extension_round_trips_an_enum_parameter_and_return()
     {
         var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly(EnumEchoSource);
@@ -187,6 +200,13 @@ public sealed class ServerExtensionDtoTypeSupportTests
         var controlType = assembly.GetType("Sample.RemoteWorldControl", throwOnError: true)!;
         registry = new RecordingRegistry(response);
         return Activator.CreateInstance(controlType, [registry])!;
+    }
+
+    private sealed class MarshalProfile
+    {
+        public int Id { get; set; }
+
+        public string Name { get; init; } = string.Empty;
     }
 
     private sealed class RecordingRegistry(byte[] response) : DotBoxD.Plugins.IServerExtensionClientRegistry
