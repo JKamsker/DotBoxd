@@ -47,6 +47,25 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
         Assert.Equal(SampleId, DecodeGenerated<Guid>(AnonymousIntermediateSource, payload));
     }
 
+    private const string AnonymousTerminalSource = Prelude + """
+        public static class AnonymousTerminalUsage
+        {
+            public static void Configure(RemoteHookRegistry hooks)
+                => hooks.On<Ev.EncounterEvent>().Where(e => e.Distance <= 4)
+                    .Select(e => new { Id = e.EncounterId, Zone = e.Zone })
+                    .RunLocal((x, ctx) => { });
+        }
+        """;
+
+    [Fact]
+    public void Anonymous_terminal_projection_is_skipped_and_emits_valid_code()
+    {
+        // An anonymous type as the PUSHED value cannot be intercepted (the interceptor handler parameter and the
+        // decoder must name the projected type). The chain is skipped rather than emitting a ReadProjected that
+        // names <anonymous type> — so generation stays valid. Compile asserts emit success internally.
+        _ = Compile(AnonymousTerminalSource, enableInterceptors: true);
+    }
+
     [Fact]
     public async Task Anonymous_intermediate_projection_with_multiple_fields_filters_server_side()
     {

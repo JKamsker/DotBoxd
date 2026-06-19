@@ -148,6 +148,17 @@ internal static class HookChainModelFactory
         var projectedTypeSymbol = installKind == HookChainInterceptorInstallKind.LocalCallback
             ? ProjectedTypeSymbol(stages, eventType, model, cancellationToken)
             : null;
+
+        // An anonymous type cannot be the TERMINAL (pushed) projection: the generated interceptor's handler
+        // parameter and the reflection-free decoder must NAME the projected type, and a C# anonymous type has no
+        // nameable identity. Skip the chain (leave it un-intercepted) rather than emit code that names an
+        // <anonymous type>. Anonymous types stay usable as INTERMEDIATE, server-side projections — those resolve
+        // to a named terminal type and never reach here.
+        if (projectedTypeSymbol is INamedTypeSymbol { IsAnonymousType: true })
+        {
+            return null;
+        }
+
         var handleReturnType = installKind == HookChainInterceptorInstallKind.LocalCallback
             ? LocalCallbackHandleReturnType(localCallbackProjection, projectedTypeSymbol)
             : DotBoxDGenerationNames.TypeNames.GlobalSandboxType + ".Unit";
