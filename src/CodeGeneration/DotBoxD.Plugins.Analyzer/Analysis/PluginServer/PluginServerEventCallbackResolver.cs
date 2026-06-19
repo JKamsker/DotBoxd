@@ -6,14 +6,30 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.PluginServer;
 /// <summary>
 /// Resolves the reverse server-&gt;plugin event-callback contract for a generated plugin facade, discovered by
 /// the same <c>{worldNs}.Ipc</c> convention the factory uses for the control service. Optional: a world with no
-/// such contract keeps the original facade (no local handlers). A shape guard requires the
-/// <c>[DotBoxDService]</c> interface to carry the expected
-/// <c>OnEventAsync(string, byte[], CancellationToken) -&gt; ValueTask</c> method so the generated sink compiles;
-/// a mismatching type is ignored rather than emitting broken code.
+/// such contract keeps the original facade (no local handlers). Two guards keep the emitted facade compilable:
+/// a shape guard requires the <c>[DotBoxDService]</c> interface to carry the expected
+/// <c>OnEventAsync(string, byte[], CancellationToken) -&gt; ValueTask</c> method, and a transport guard requires
+/// the compilation to actually expose the generated <c>DotBoxDGeneratedExtensions.Provide{suffix}</c> extension
+/// (absent or ambiguous — e.g. a test stub — falls back to the original wiring instead of a dangling call).
 /// </summary>
 internal static class PluginServerEventCallbackResolver
 {
-    public static INamedTypeSymbol? Resolve(Compilation compilation, INamedTypeSymbol worldType)
+    public static (INamedTypeSymbol Type, string ProvideSuffix)? Resolve(
+        Compilation compilation,
+        INamedTypeSymbol worldType,
+        CancellationToken cancellationToken)
+    {
+        var callback = ResolveContract(compilation, worldType);
+        if (callback is null)
+        {
+            return null;
+        }
+
+        var suffix = PluginServerWorldExtensionSuffixResolver.Resolve(compilation, callback, cancellationToken);
+        return HasProvideExtension(compilation, suffix) ? (callback, suffix) : null;
+    }
+
+    private static INamedTypeSymbol? ResolveContract(Compilation compilation, INamedTypeSymbol worldType)
     {
         var worldNamespace = worldType.ContainingNamespace.ToDisplayString();
         var callback = compilation.GetTypeByMetadataName(worldNamespace + ".Ipc.IPluginEventCallback");
@@ -38,6 +54,29 @@ internal static class PluginServerEventCallbackResolver
                     method.Parameters[2].Type.ToDisplayString(),
                     "System.Threading.CancellationToken",
                     StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // The Provide{suffix} extension is generated into DotBoxDGeneratedExtensions by the services source
+    // generator in the assembly that declares the contract. GetTypeByMetadataName returns null when that type is
+    // absent or ambiguous (defined in both source and a reference), so a test that stubs only the Get* members
+    // falls back to the original wiring rather than referencing a method that does not exist.
+    private static bool HasProvideExtension(Compilation compilation, string provideSuffix)
+    {
+        var extensions = compilation.GetTypeByMetadataName("DotBoxD.Services.Generated.DotBoxDGeneratedExtensions");
+        if (extensions is null)
+        {
+            return false;
+        }
+
+        foreach (var member in extensions.GetMembers("Provide" + provideSuffix))
+        {
+            if (member is IMethodSymbol)
             {
                 return true;
             }
