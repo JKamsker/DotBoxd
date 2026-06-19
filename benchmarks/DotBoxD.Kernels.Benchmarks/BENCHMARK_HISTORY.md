@@ -761,3 +761,29 @@ dedicated pass rather than a context-tail hand-edit.
 
 Each remaining combinatorial cell is at worst the general path's per-node metering (compiled, ~20x for f64 due
 to the finiteness branches) or, where an interpreter runner is missing, boxing — both already characterized.
+
+## Anonymous RunLocal terminal decode
+
+Added coverage for terminal anonymous-object `RunLocal` projections to the run-local push probe. The attempted
+`UnsafeAccessorTypeAttribute` path is not a safe general source-generator strategy here: Roslyn does not expose
+the compiler-generated anonymous metadata name before emit, and generic `UnsafeAccessor` constructor targets
+resolve to the canonical generic parameter rather than the closed anonymous type. The generator now emits the
+same anonymous-object literal shape directly and casts through `TProjected`; C# unifies anonymous types with the
+same property names, types, and order inside the assembly.
+
+Command:
+
+```text
+dotnet run --project benchmarks\DotBoxD.Kernels.Benchmarks\DotBoxD.Kernels.Benchmarks.csproj -c Release -- --probe-runlocal-push
+```
+
+Representative local run, 200k measured iterations:
+
+```text
+Case          Half          ms      B/op
+AnonymousDto  decode       83.3    312.0
+AnonymousDto  decode-gen   52.9    200.0
+```
+
+The generated anonymous decoder removes the `SandboxValue` fallback path for this shape: about 36% less decode
+time and 112 fewer bytes/op in this probe run.

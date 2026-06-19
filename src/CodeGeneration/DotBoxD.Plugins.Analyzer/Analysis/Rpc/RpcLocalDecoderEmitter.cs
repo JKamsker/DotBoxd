@@ -22,6 +22,11 @@ internal static class RpcLocalDecoderEmitter
     {
         try
         {
+            if (projectedType is INamedTypeSymbol { IsAnonymousType: true } anonymousType)
+            {
+                return TryEmitAnonymous(anonymousType);
+            }
+
             var conv = new RpcKernelValueConversionEmitter();
             // Compute the read expression first: it appends any nested list/DTO helpers to conv.Helpers, so the
             // ReadProjected body never splices a helper into the middle of itself.
@@ -41,4 +46,48 @@ internal static class RpcLocalDecoderEmitter
             return null;
         }
     }
+
+    private static string TryEmitAnonymous(INamedTypeSymbol projectedType)
+    {
+        var fields = DotBoxDRpcTypeMapper.RecordFields(projectedType);
+        if (fields.Count == 0)
+        {
+            throw new NotSupportedException("Anonymous projection must expose at least one field.");
+        }
+
+        var conv = new RpcKernelValueConversionEmitter();
+        var arguments = new string[fields.Count];
+        for (var i = 0; i < fields.Count; i++)
+        {
+            arguments[i] = conv.ReadExpression(fields[i].Type, "value.GetItem(" + i + ")");
+        }
+
+        var builder = new StringBuilder();
+        builder.AppendLine("    public static TProjected ReadProjected<TProjected>(global::DotBoxD.Plugins.KernelRpcValue value)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Record);");
+        builder.Append("        if (value.ItemCount != ").Append(fields.Count).AppendLine(")");
+        builder.AppendLine("        {");
+        builder.AppendLine("            throw new global::System.NotSupportedException(\"Server extension record field count did not match the generated anonymous projection shape.\");");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.Append("        return (TProjected)(object)new { ");
+        for (var i = 0; i < fields.Count; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append(", ");
+            }
+
+            builder.Append(Identifier(fields[i].Name)).Append(" = ").Append(arguments[i]);
+        }
+
+        builder.AppendLine(" };");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+        builder.Append(conv.Helpers);
+        return builder.ToString();
+    }
+
+    private static string Identifier(string name) => "@" + name;
 }

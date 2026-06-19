@@ -77,8 +77,14 @@ internal static class DotBoxDHookChainInterceptorEmitter
             return ".Create()";
         }
 
-        return interception.HasLocalDecoder
-            ? ".Create(), handler, " + interception.PackageFullName + ".ReadProjected"
-            : ".Create(), handler";
+        if (!interception.HasLocalDecoder)
+        {
+            return ".Create(), handler";
+        }
+
+        var decoder = interception.LocalDecoderTypeArgument is { Length: > 0 } typeArgument
+            ? interception.PackageFullName + ".ReadProjected<" + typeArgument + ">"
+            : interception.PackageFullName + ".ReadProjected";
+        return ".Create(), handler, " + decoder;
     }
 }

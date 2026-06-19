@@ -28,6 +28,9 @@ public enum RunLocalPushCase
     /// <summary>A small DTO record projection (<c>int</c> + <c>string</c>).</summary>
     Dto,
 
+    /// <summary>A terminal anonymous-object projection with the same wire shape as <see cref="Dto"/>.</summary>
+    AnonymousDto,
+
     /// <summary>A whole-event record push (no <c>Select</c>) — several scalar fields.</summary>
     WholeEvent,
 }
@@ -88,6 +91,9 @@ internal sealed class RunLocalPushScenario
                 SandboxType.I32)),
             RunLocalPushCase.Dto => Build(SandboxValue.FromRecord(
                 [SandboxValue.FromInt32(73), SandboxValue.FromString("ogre")])),
+            RunLocalPushCase.AnonymousDto => BuildAnonymous(
+                new { MonsterId = 73, Name = "crypt" },
+                SandboxValue.FromRecord([SandboxValue.FromInt32(73), SandboxValue.FromString("crypt")])),
             RunLocalPushCase.WholeEvent => Build(SandboxValue.FromRecord(
             [
                 SandboxValue.FromInt32(73),
@@ -98,7 +104,11 @@ internal sealed class RunLocalPushScenario
             _ => throw new ArgumentOutOfRangeException(nameof(scenario), scenario, null),
         };
 
-        instance.Register(scenario);
+        if (scenario != RunLocalPushCase.AnonymousDto)
+        {
+            instance.Register(scenario);
+        }
+
         return instance;
     }
 
@@ -132,6 +142,14 @@ internal sealed class RunLocalPushScenario
 
     private static RunLocalPushScenario Build(SandboxValue payload) => new(payload);
 
+    private static RunLocalPushScenario BuildAnonymous<TProjected>(TProjected sample, SandboxValue payload)
+        where TProjected : class
+    {
+        var instance = Build(payload);
+        instance.RegisterAnonymous(sample);
+        return instance;
+    }
+
     private static byte[] Encode(SandboxValue payload)
         => KernelRpcBinaryCodec.EncodeValue(KernelRpcValueConverter.FromSandboxValue(payload));
 
@@ -164,6 +182,8 @@ internal sealed class RunLocalPushScenario
                 _registry.Register<RunLocalHit>(GeneratedSubscriptionId, (value, _) => Accumulate(value.MonsterId),
                     static v => new RunLocalHit(v.GetItem(0).Int32Value, v.GetItem(1).TextValue));
                 break;
+            case RunLocalPushCase.AnonymousDto:
+                throw new InvalidOperationException("Anonymous projections are registered through their inferred type.");
             case RunLocalPushCase.WholeEvent:
                 _registry.Register<RunLocalMonsterDamaged>(SubscriptionId, (value, _) => Accumulate(value.Damage));
                 _registry.Register<RunLocalMonsterDamaged>(GeneratedSubscriptionId, (value, _) => Accumulate(value.Damage),
@@ -173,6 +193,29 @@ internal sealed class RunLocalPushScenario
             default:
                 throw new ArgumentOutOfRangeException(nameof(scenario), scenario, null);
         }
+    }
+
+    private void RegisterAnonymous<TProjected>(TProjected sample)
+        where TProjected : class
+    {
+        _registry.Register<TProjected>(SubscriptionId, (value, _) => Accumulate(value.GetHashCode()));
+        _registry.Register<TProjected>(
+            GeneratedSubscriptionId,
+            (value, _) => Accumulate(value.GetHashCode()),
+            static v => ReadAnonymous<TProjected>(v));
+        GC.KeepAlive(sample);
+    }
+
+    private static TProjected ReadAnonymous<TProjected>(KernelRpcValue value)
+        where TProjected : class
+    {
+        value.RequireKind(KernelRpcValueKind.Record);
+        if (value.ItemCount != 2)
+        {
+            throw new NotSupportedException("Anonymous benchmark projection field count changed.");
+        }
+
+        return (TProjected)(object)new { MonsterId = value.GetItem(0).Int32Value, Name = value.GetItem(1).TextValue };
     }
 
     private static List<int> ReadInt32List(KernelRpcValue value)

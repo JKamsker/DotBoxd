@@ -29,6 +29,10 @@ internal sealed record HookChainInterception(
     // True when the lowered local chain has a generated reflection-free decoder, so the interceptor passes
     // <Package>.ReadProjected as the 3rd UseGeneratedLocalChain argument; false keeps the 2-arg reflective form.
     bool HasLocalDecoder = false,
+    // Non-null when the generated decoder itself is generic and must be closed with one of this interceptor's
+    // inferred type parameters. Used for anonymous terminal projections: the package exposes
+    // ReadProjected<TCurrent>, and the generic interceptor passes ReadProjected<TCurrent> explicitly.
+    string? LocalDecoderTypeArgument = null,
     // When non-null, the interceptor is emitted as a GENERIC method with this comma-joined type-parameter list
     // (e.g. "TEvent, TCurrent"), and the receiver/handler/return types reference those parameters instead of
     // naming the type arguments. Used when the terminal projection is an anonymous type: it has a real metadata

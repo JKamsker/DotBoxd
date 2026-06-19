@@ -20,6 +20,7 @@ public class RunLocalPushBenchmarks
         RunLocalPushCase.Enum,
         RunLocalPushCase.ListInt32,
         RunLocalPushCase.Dto,
+        RunLocalPushCase.AnonymousDto,
         RunLocalPushCase.WholeEvent)]
     public RunLocalPushCase Projection { get; set; }
 

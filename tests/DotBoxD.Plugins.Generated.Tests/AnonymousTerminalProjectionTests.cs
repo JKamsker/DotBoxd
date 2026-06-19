@@ -46,8 +46,9 @@ public sealed class AnonymousTerminalProjectionTests
         // The build-time source generator intercepts THIS RunLocal call site. Where/Select lower to verified IR
         // that filters and projects the anonymous { Id, Zone } server-side; the projected value crosses the wire to
         // the native RunLocal delegate. The projected type is anonymous — never named in any generated source — so
-        // the interceptor is emitted generic and Roslyn infers the type at this call site. (If the interceptor had
-        // NOT been generated, the real RemoteHookStage.RunLocal would throw, so this also proves interception ran.)
+        // the interceptor and decoder are emitted generic and the decoder constructs the same anonymous shape with a
+        // source-generated object literal. (If the interceptor had NOT been generated, the real RemoteHookStage.RunLocal
+        // would throw, so this also proves interception ran.)
         hooks.On<MonsterAggroEvent>()
             .Where(e => e.Distance <= 4)
             .Select(e => new { Id = e.MonsterId, e.Zone })
