@@ -55,6 +55,18 @@ internal static class JsonImport
         return uri;
     }
 
+    public static System.Guid ReadGuidValue(JsonElement value, string name)
+    {
+        var text = ReadStringValue(value, name);
+        // Pin the canonical hyphenated form JsonExporter emits (Guid.ToString() == "D"), so a round-trip is
+        // deterministic and non-canonical spellings (braces, no hyphens) are rejected up front.
+        if (!System.Guid.TryParseExact(text, "D", out var guid)) {
+            throw Error("E-JSON-TYPE", $"'{name}' must be a canonical hyphenated GUID");
+        }
+
+        return guid;
+    }
+
     public static int ReadInt32Value(JsonElement value, string name)
     {
         if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out var result)) {

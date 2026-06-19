@@ -8,7 +8,12 @@ internal static class PluginEventPropertyReader
     {
         var properties = ReadableProperties(eventType);
         ValidatePropertyNames(properties);
-        return ConstructorPropertyOrder(eventType, properties) ?? properties;
+        // Declaration order — the single wire-field order. The decoder side (DotBoxDRpcTypeMapper.RecordFields
+        // and the runtime KernelRpcMarshaller.GetRecordShape) reads positional record fields in declaration
+        // order and reconstructs via the constructor map, so encoder, kernel parameters, and decoder must all
+        // agree on declaration order. Reordering to constructor-parameter order here would only match for
+        // positional records and silently misalign a non-positional event class whose constructor order differs.
+        return properties;
     }
 
     private static void ValidatePropertyNames(IPropertySymbol[] properties)
@@ -136,88 +141,4 @@ internal static class PluginEventPropertyReader
 
         return property.MetadataToken == 0 ? int.MaxValue : property.MetadataToken;
     }
-
-    private static IPropertySymbol[]? ConstructorPropertyOrder(
-        INamedTypeSymbol eventType,
-        IPropertySymbol[] properties)
-    {
-        foreach (var constructor in eventType.InstanceConstructors)
-        {
-            if (constructor.DeclaredAccessibility != Accessibility.Public)
-            {
-                continue;
-            }
-
-            if (constructor.Parameters.Length == 0 || constructor.Parameters.Length != properties.Length)
-            {
-                continue;
-            }
-
-            if (MatchesDeclaredPropertyOrder(constructor, properties))
-            {
-                return properties;
-            }
-
-            if (ReorderedConstructorProperties(constructor, properties) is { } reordered)
-            {
-                return reordered;
-            }
-        }
-
-        return null;
-    }
-
-    private static bool MatchesDeclaredPropertyOrder(IMethodSymbol constructor, IPropertySymbol[] properties)
-    {
-        for (var i = 0; i < properties.Length; i++)
-        {
-            var parameter = constructor.Parameters[i];
-            var property = properties[i];
-            if (!NameMatches(parameter.Name, property.Name) ||
-                !SymbolEqualityComparer.Default.Equals(property.Type, parameter.Type))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static IPropertySymbol[]? ReorderedConstructorProperties(
-        IMethodSymbol constructor,
-        IPropertySymbol[] properties)
-    {
-        var selected = new IPropertySymbol[properties.Length];
-        for (var i = 0; i < constructor.Parameters.Length; i++)
-        {
-            var parameter = constructor.Parameters[i];
-            var property = FindProperty(properties, parameter);
-            if (property is null)
-            {
-                return null;
-            }
-
-            selected[i] = property;
-        }
-
-        return selected;
-    }
-
-    private static IPropertySymbol? FindProperty(IPropertySymbol[] properties, IParameterSymbol parameter)
-    {
-        for (var i = 0; i < properties.Length; i++)
-        {
-            var property = properties[i];
-            if (NameMatches(parameter.Name, property.Name) &&
-                SymbolEqualityComparer.Default.Equals(property.Type, parameter.Type))
-            {
-                return property;
-            }
-        }
-
-        return null;
-    }
-
-    private static bool NameMatches(string parameterName, string propertyName)
-        => string.Equals(parameterName, propertyName, StringComparison.OrdinalIgnoreCase);
 }

@@ -77,6 +77,7 @@ public sealed class JsonExporterTests
                         Literal(SandboxValue.FromInt64(8L)),
                         Literal(SandboxValue.FromDouble(1.5D)),
                         Literal(SandboxValue.FromString("text")),
+                        Literal(SandboxValue.FromGuid(new Guid("0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9"))),
                         Literal(SandboxValue.FromOpaqueId("PlayerId", "player-1")),
                         Literal(SandboxValue.FromOpaqueId("ItemId", "item-1")),
                         Literal(SandboxValue.FromOpaqueId("QuestId", "quest-1")),
@@ -98,6 +99,7 @@ public sealed class JsonExporterTests
             statement => Assert.IsType<I64Value>(LiteralValue(statement)),
             statement => Assert.IsType<F64Value>(LiteralValue(statement)),
             statement => Assert.IsType<StringValue>(LiteralValue(statement)),
+            statement => Assert.IsType<GuidValue>(LiteralValue(statement)),
             statement => Assert.IsType<OpaqueIdValue>(LiteralValue(statement)),
             statement => Assert.IsType<OpaqueIdValue>(LiteralValue(statement)),
             statement => Assert.IsType<OpaqueIdValue>(LiteralValue(statement)),
@@ -105,6 +107,37 @@ public sealed class JsonExporterTests
             statement => Assert.IsType<SandboxPathValue>(LiteralValue(statement)),
             statement => Assert.IsType<SandboxUriValue>(LiteralValue(statement)),
             statement => Assert.IsType<UnitValue>(LiteralValue(statement)));
+    }
+
+    [Fact]
+    public void Export_round_trips_a_guid_literal_value_exactly()
+    {
+        var guid = new Guid("0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9");
+        var module = new SandboxModule(
+            "guid-literal",
+            SemVersion.One,
+            SemVersion.One,
+            [],
+            [new SandboxFunction("GuidLiteral", true, [], SandboxType.Guid,
+                [new ReturnStatement(new LiteralExpression(SandboxValue.FromGuid(guid), Span), Span)])],
+            new Dictionary<string, string>());
+
+        var roundTrip = JsonImporter.Import(JsonExporter.Export(module));
+
+        var ret = Assert.IsType<ReturnStatement>(Assert.Single(Assert.Single(roundTrip.Functions).Body));
+        var value = Assert.IsType<GuidValue>(((LiteralExpression)ret.Value).Value);
+        Assert.Equal(guid, value.Value);
+    }
+
+    [Fact]
+    public void Import_rejects_a_non_canonical_guid_literal()
+    {
+        // The importer pins the canonical hyphenated form; a braces/no-hyphen spelling must be rejected. The module
+        // is otherwise valid (returnType "Guid"), so the only failure is the non-canonical literal.
+        var json = """{"id":"g","version":"1.0.0","targetSandboxVersion":"1.0.0","capabilityRequests":[],"metadata":{},"functions":[{"id":"F","visibility":"entrypoint","parameters":[],"returnType":"Guid","body":[{"op":"return","value":{"guid":"{0a1b2c3d4e5f60718293a4b5c6d7e8f9}"}}]}]}""";
+
+        var error = Assert.ThrowsAny<Exception>(() => JsonImporter.Import(json));
+        Assert.Contains("GUID", error.Message);
     }
 
     [Fact]

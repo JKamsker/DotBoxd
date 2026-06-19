@@ -20,8 +20,10 @@ public static class KernelRpcValueConverter
             I64Value number => KernelRpcValue.Int64(number.Value),
             F64Value number => KernelRpcValue.Double(number.Value),
             StringValue text => KernelRpcValue.String(text.Value),
+            GuidValue guid => KernelRpcValue.Guid(guid.Value),
             ListValue list => KernelRpcValue.ListFromOwnedItems(ConvertList(list.Values)),
             RecordValue record => KernelRpcValue.RecordFromOwnedFields(ConvertList(record.Fields)),
+            MapValue map => KernelRpcValue.MapFromOwnedEntries(ConvertMap(map.Values)),
             _ => throw new NotSupportedException(
                 $"Server extension IPC cannot marshal sandbox value '{value.GetType().Name}'.")
         };
@@ -66,6 +68,12 @@ public static class KernelRpcValueConverter
             return SandboxValue.FromString(value.TextValue);
         }
 
+        if (expectedType.Equals(SandboxType.Guid))
+        {
+            value.RequireKind(KernelRpcValueKind.Guid);
+            return SandboxValue.FromGuid(value.GuidValue);
+        }
+
         if (expectedType.Name == "List" && expectedType.Arguments.Count == 1)
         {
             value.RequireKind(KernelRpcValueKind.List);
@@ -78,6 +86,22 @@ public static class KernelRpcValueConverter
             }
 
             return SandboxValue.FromOwnedList(items, itemType);
+        }
+
+        if (expectedType.Name == "Map" && expectedType.Arguments.Count == 2)
+        {
+            value.RequireKind(KernelRpcValueKind.Map);
+            var keyType = expectedType.Arguments[0];
+            var valueType = expectedType.Arguments[1];
+            var source = value.ItemSpan;
+            var entries = new Dictionary<SandboxValue, SandboxValue>(source.Length / 2);
+            for (var i = 0; i + 1 < source.Length; i += 2)
+            {
+                var key = ToSandboxValue(source[i], keyType);
+                entries[key] = ToSandboxValue(source[i + 1], valueType);
+            }
+
+            return SandboxValue.FromMap(entries, keyType, valueType);
         }
 
         if (expectedType.IsRecord)
@@ -111,5 +135,20 @@ public static class KernelRpcValueConverter
         }
 
         return converted;
+    }
+
+    // Maps marshal to a flat key/value sequence (key, value, key, value, …) to match
+    // KernelRpcValue.Map's representation; the host reads it back into a Dictionary by pairs.
+    private static KernelRpcValue[] ConvertMap(IReadOnlyDictionary<SandboxValue, SandboxValue> values)
+    {
+        var entries = new KernelRpcValue[values.Count * 2];
+        var index = 0;
+        foreach (var pair in values)
+        {
+            entries[index++] = FromSandboxValue(pair.Key);
+            entries[index++] = FromSandboxValue(pair.Value);
+        }
+
+        return entries;
     }
 }

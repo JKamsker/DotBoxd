@@ -142,15 +142,29 @@ internal static class HookChainModelFactory
                 cancellationToken,
                 capabilities,
                 effects);
+        // The CLR type the pushed value carries: the final Select element, or the whole event when there is no
+        // Select. Resolved once and reused for both the Handle return SandboxType (projection chains) and the
+        // reflection-free decoder. Null only for a non-local chain.
+        var projectedTypeSymbol = installKind == HookChainInterceptorInstallKind.LocalCallback
+            ? ProjectedTypeSymbol(stages, eventType, model, cancellationToken)
+            : null;
+
+        // An anonymous type CAN be the terminal (pushed) projection — it has a real metadata identity Roslyn can
+        // infer as a type ARGUMENT — but it has no C#-source-nameable name. The interceptor handles it by binding
+        // the projection slot as a generic type PARAMETER (see Interception), and NO reflection-free decoder is
+        // emitted (a ReadProjected method cannot declare an anonymous return type); the chain falls back to the
+        // reflective registration, which reconstructs the anonymous type via its public positional constructor.
+        var projectionIsUnnameable = projectedTypeSymbol is INamedTypeSymbol { IsAnonymousType: true };
+
         var handleReturnType = installKind == HookChainInterceptorInstallKind.LocalCallback
-            ? LocalCallbackHandleReturnType(localCallbackProjection)
+            ? LocalCallbackHandleReturnType(localCallbackProjection, projectedTypeSymbol)
             : DotBoxDGenerationNames.TypeNames.GlobalSandboxType + ".Unit";
 
         // The reflection-free decoder for the pushed value's projected type (final Select element, or the whole
-        // event when there is no Select). Null for a non-local chain or a type that is not wire-eligible — those
-        // keep the reflective 2-arg registration so they do not regress.
-        var localDecoderSource = installKind == HookChainInterceptorInstallKind.LocalCallback
-            ? BuildLocalDecoderSource(stages, eventType, model, cancellationToken)
+        // event when there is no Select). Null for a non-local chain, an un-nameable (anonymous) projection, or a
+        // type that is not wire-eligible — those keep the reflective 2-arg registration so they do not regress.
+        var localDecoderSource = installKind == HookChainInterceptorInstallKind.LocalCallback && !projectionIsUnnameable
+            ? BuildLocalDecoderSource(projectedTypeSymbol)
             : null;
 
         var (indexPredicates, indexCoversPredicate) = HookChainIndexPredicateExtractor.Extract(
@@ -202,6 +216,7 @@ internal static class HookChainModelFactory
                 generatedRemoteKind,
                 installKind.Value,
                 localDecoderSource is not null,
+                projectedTypeSymbol,
                 cancellationToken));
     }
 
@@ -209,17 +224,10 @@ internal static class HookChainModelFactory
     // terminal handler receives: the final Select element type, or the whole event when there is no Select.
     // Returns null when the type is not wire-eligible (the reader emitter declines) so the chain falls back to
     // the reflective registration.
-    private static string? BuildLocalDecoderSource(
-        IReadOnlyList<HookChainStage> stages,
-        INamedTypeSymbol eventType,
-        SemanticModel model,
-        CancellationToken cancellationToken)
-    {
-        var projectedType = ProjectedTypeSymbol(stages, eventType, model, cancellationToken);
-        return projectedType is null
+    private static string? BuildLocalDecoderSource(ITypeSymbol? projectedTypeSymbol)
+        => projectedTypeSymbol is null
             ? null
-            : Rpc.RpcLocalDecoderEmitter.TryEmit(projectedType);
-    }
+            : Rpc.RpcLocalDecoderEmitter.TryEmit(projectedTypeSymbol);
 
     // The CLR type the pushed value decodes to: the final Select body's type (using the same
     // ConvertedType ?? Type resolution as TerminalElementTypeFullName so the generated ReadProjected return
@@ -282,10 +290,26 @@ internal static class HookChainModelFactory
             ? DotBoxDHandleBodyModelFactory.ReturnUnit()
             : DotBoxDHandleBodyModelFactory.ReturnExpression(projection.Value, projection.Prefix);
 
-    private static string LocalCallbackHandleReturnType(HookChainProjection? projection)
-        => projection is null
-            ? DotBoxDGenerationNames.TypeNames.GlobalSandboxType + ".Unit"
-            : $"TypeOf({LiteralReader.StringLiteral(projection.Value.Type)})";
+    private static string LocalCallbackHandleReturnType(
+        HookChainProjection? projection,
+        ITypeSymbol? projectedTypeSymbol)
+    {
+        if (projection is null)
+        {
+            // Whole-event push: the Handle returns Unit and the host pushes the event record itself.
+            return DotBoxDGenerationNames.TypeNames.GlobalSandboxType + ".Unit";
+        }
+
+        // A projection chain's Handle returns the projected value, so its return type is the full SandboxType the
+        // projected CLR type maps to (scalar, Guid, enum, list, map, or DTO record). A projection whose type is
+        // not marshaller-eligible yields no source and the chain fails safe (TryCreate returns null, no package).
+        if (projectedTypeSymbol is not null && Rpc.SandboxTypeSourceEmitter.TryEmit(projectedTypeSymbol) is { } source)
+        {
+            return source;
+        }
+
+        throw new NotSupportedException();
+    }
 
     private static DotBoxDStatementBodyModel LowerSendHandle(
         IReadOnlyList<HookChainStage> stages,
@@ -328,6 +352,7 @@ internal static class HookChainModelFactory
         GeneratedRemoteHookChainKind? generatedRemoteKind,
         HookChainInterceptorInstallKind installKind,
         bool hasLocalDecoder,
+        ITypeSymbol? projectedTypeSymbol,
         CancellationToken cancellationToken)
     {
         var location = model.GetInterceptableLocation(invocation, cancellationToken);
@@ -345,6 +370,33 @@ internal static class HookChainModelFactory
             model.GetTypeInfo(receiver, cancellationToken).Type is INamedTypeSymbol receiverType &&
             ReceiverKind(receiverType) is not null)
         {
+            // When the terminal projection is an anonymous type, neither the receiver (RemoteHookStage<TEvent, T>)
+            // nor the handler (Func/Action<T, ...>) can spell T in C# source. Emit a GENERIC interceptor whose
+            // arity matches the interceptable method's generic context (CS9177): EVERY receiver type argument
+            // becomes a type parameter (reusing the receiver's own parameter names), and the receiver/handler/
+            // return types reference those parameters. Roslyn infers them — including the anonymous one — at the
+            // call site, so the emitted source never names the anonymous type.
+            if (projectedTypeSymbol is INamedTypeSymbol { IsAnonymousType: true } &&
+                method.Parameters[0].Type is INamedTypeSymbol handlerType)
+            {
+                var typeParameters = receiverType.ConstructedFrom.TypeParameters;
+                var substitution = new Dictionary<ISymbol, string>(SymbolEqualityComparer.Default);
+                for (var i = 0; i < receiverType.TypeArguments.Length && i < typeParameters.Length; i++)
+                {
+                    substitution[receiverType.TypeArguments[i]] = typeParameters[i].Name;
+                }
+
+                return new HookChainInterception(
+                    location.GetInterceptsLocationAttributeSyntax(),
+                    RewriteWithTypeParameters(receiverType, substitution),
+                    RewriteWithTypeParameters(handlerType, substitution),
+                    RewriteWithTypeParameters((INamedTypeSymbol)method.ReturnType, substitution),
+                    packageFullName,
+                    installKind,
+                    hasLocalDecoder,
+                    string.Join(", ", typeParameters.Select(parameter => parameter.Name)));
+            }
+
             return new HookChainInterception(
                 location.GetInterceptsLocationAttributeSyntax(),
                 receiverType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
@@ -360,6 +412,15 @@ internal static class HookChainModelFactory
             return null;
         }
 
+        // The generated-remote fallback spells the terminal element by its full type name, but an anonymous
+        // projection has no nameable name (terminalElementTypeFullName would be the un-spellable "<anonymous
+        // type ...>"). Only the known-stage branch above can emit a generic interceptor that lets Roslyn infer
+        // it; decline here so no broken source is emitted (the real RunLocal then fails fast at the call site).
+        if (projectedTypeSymbol is INamedTypeSymbol { IsAnonymousType: true })
+        {
+            return null;
+        }
+
         return GeneratedRemoteHookChainFallback.CreateInterception(
             location.GetInterceptsLocationAttributeSyntax(),
             eventType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
@@ -371,6 +432,34 @@ internal static class HookChainModelFactory
             hasLocalDecoder);
     }
 
+    // The fully-qualified display of <paramref name="type"/> with any type (at any nesting depth) present in
+    // <paramref name="substitution"/> replaced by its type-parameter name. Used to spell a generic interceptor's
+    // receiver/handler/return when a type argument is an un-nameable anonymous type.
+    private static string RewriteWithTypeParameters(ITypeSymbol type, Dictionary<ISymbol, string> substitution)
+    {
+        if (substitution.TryGetValue(type, out var parameterName))
+        {
+            return parameterName;
+        }
+
+        if (type is not INamedTypeSymbol { IsGenericType: true } named)
+        {
+            return type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        }
+
+        var prefix = named.ContainingNamespace.IsGlobalNamespace
+            ? string.Empty
+            : named.ContainingNamespace.ToDisplayString() + ".";
+        var arguments = new List<string>(named.TypeArguments.Length);
+        foreach (var argument in named.TypeArguments)
+        {
+            arguments.Add(RewriteWithTypeParameters(argument, substitution));
+        }
+
+        return DotBoxDGenerationNames.TypeNames.GlobalPrefix + prefix + named.Name +
+            "<" + string.Join(", ", arguments) + ">";
+    }
+
     private static string TerminalElementTypeFullName(
         IReadOnlyList<HookChainStage> stages,
         EquatableArray<EventPropertyModel> eventProperties,
@@ -379,6 +468,7 @@ internal static class HookChainModelFactory
         CancellationToken cancellationToken)
     {
         DotBoxDExpressionModel? projected = null;
+        ITypeSymbol? projectedType = null;
         var terminalElementTypeFullName = eventType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         foreach (var stage in stages)
         {
@@ -397,7 +487,9 @@ internal static class HookChainModelFactory
             var scratchEffects = new SortedSet<string>(StringComparer.Ordinal);
             projected = DotBoxDExpressionModelFactory.Create(
                 body,
-                Context(elementParam, eventProperties, projected, model, cancellationToken, scratchCapabilities, scratchEffects));
+                Context(elementParam, eventProperties, projected, projectedType, model, cancellationToken, scratchCapabilities, scratchEffects));
+            var bodyTypeInfo = model.GetTypeInfo(body, cancellationToken);
+            projectedType = bodyTypeInfo.ConvertedType ?? bodyTypeInfo.Type;
             terminalElementTypeFullName = GeneratedRemoteHookChainFallback.TypeFullName(
                 body,
                 model,
@@ -412,6 +504,7 @@ internal static class HookChainModelFactory
         string elementParam,
         EquatableArray<EventPropertyModel> eventProperties,
         DotBoxDExpressionModel? projected,
+        ITypeSymbol? projectedType,
         SemanticModel model,
         CancellationToken cancellationToken,
         ICollection<string> capabilities,
@@ -421,8 +514,12 @@ internal static class HookChainModelFactory
                 elementParam, eventProperties, default, model, cancellationToken,
                 capabilities: capabilities, effects: effects)
             : new DotBoxDExpressionLoweringContext(
-                elementParam, eventProperties, default, model, cancellationToken, elementParam, projected,
-                capabilities, effects);
+                elementParam, eventProperties, default, model, cancellationToken,
+                projectedElementName: elementParam,
+                projectedElement: projected,
+                projectedElementType: projectedType,
+                capabilities: capabilities,
+                effects: effects);
 
     private static InvocationExpressionSyntax? WalkToSeed(ExpressionSyntax receiver, List<HookChainStage> stages)
     {

@@ -2,7 +2,7 @@ using System.Reflection;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Plugins.Runtime.Input;
-using DotBoxD.Plugins.Runtime.Lifecycle;
+using DotBoxD.Plugins.Runtime.Rpc;
 
 namespace DotBoxD.Plugins.Runtime;
 
@@ -104,13 +104,17 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
         for (var i = 0; i < properties.Count; i++)
         {
             var property = properties[i];
-            var settingType = LiveSettingTypeConverter.FromClrType(property.PropertyType);
+            // Event properties marshal through KernelRpcMarshaller — the full marshaller-eligible set (scalars,
+            // Guid, enums, lists/arrays, maps, and DTO records), not just the 5 live-setting scalars — so the
+            // adapter's parameter shape and per-event values match the SandboxTypes the analyzer now emits for the
+            // kernel (see SandboxTypeSourceEmitter). This is what lets a whole-event RunLocal push the entire
+            // record (Guid id, enum, nested DTO, …) rather than only scalar events.
             _properties[i] = new ConventionEventProperty<TEvent>(
-                settingType,
+                property.PropertyType,
                 CreateGetter(property));
             parameters[i] = new Parameter(
                 EventParameterName(property.Name),
-                LiveSettingTypeConverter.ToSandboxType(settingType));
+                KernelRpcMarshaller.SandboxTypeOf(property.PropertyType));
         }
 
         Parameters = parameters;
@@ -133,9 +137,12 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
         var properties = ReadablePropertiesInHierarchy(eventType).ToArray();
         ValidatePropertyNames(properties);
 
-        return TryConstructorPropertyOrder(eventType, properties, out var ordered)
-            ? ordered
-            : properties;
+        // Declaration order (MetadataToken within each hierarchy level), the single wire-field order shared with
+        // the analyzer's kernel parameters (PluginEventPropertyReader) and the decoder side
+        // (KernelRpcMarshaller.GetRecordShape, which reconstructs via the constructor map). Reordering to
+        // constructor-parameter order would only match positional records and would silently misalign the pushed
+        // whole-event record from the decoder for a non-positional event class.
+        return properties;
     }
 
     private static void ValidatePropertyNames(IReadOnlyList<PropertyInfo> properties)
@@ -177,92 +184,6 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
         }
     }
 
-    private static bool TryConstructorPropertyOrder(
-        Type eventType,
-        IReadOnlyList<PropertyInfo> properties,
-        out IReadOnlyList<PropertyInfo> ordered)
-    {
-        foreach (var constructor in eventType.GetConstructors(BindingFlags.Instance | BindingFlags.Public))
-        {
-            var parameters = constructor.GetParameters();
-            if (parameters.Length == 0 || parameters.Length != properties.Count)
-            {
-                continue;
-            }
-
-            if (MatchesDeclaredPropertyOrder(parameters, properties))
-            {
-                ordered = properties;
-                return true;
-            }
-
-            if (ReorderedConstructorProperties(parameters, properties) is { } selected)
-            {
-                ordered = selected;
-                return true;
-            }
-        }
-
-        ordered = [];
-        return false;
-    }
-
-    private static bool MatchesDeclaredPropertyOrder(
-        IReadOnlyList<ParameterInfo> parameters,
-        IReadOnlyList<PropertyInfo> properties)
-    {
-        for (var i = 0; i < properties.Count; i++)
-        {
-            var parameter = parameters[i];
-            var property = properties[i];
-            if (!NameMatches(parameter.Name, property.Name) ||
-                property.PropertyType != parameter.ParameterType)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static PropertyInfo[]? ReorderedConstructorProperties(
-        IReadOnlyList<ParameterInfo> parameters,
-        IReadOnlyList<PropertyInfo> properties)
-    {
-        var selected = new PropertyInfo[parameters.Count];
-        for (var i = 0; i < parameters.Count; i++)
-        {
-            var parameter = parameters[i];
-            var property = FindProperty(properties, parameter);
-            if (property is null)
-            {
-                return null;
-            }
-
-            selected[i] = property;
-        }
-
-        return selected;
-    }
-
-    private static PropertyInfo? FindProperty(IReadOnlyList<PropertyInfo> properties, ParameterInfo parameter)
-    {
-        for (var i = 0; i < properties.Count; i++)
-        {
-            var property = properties[i];
-            if (NameMatches(parameter.Name, property.Name) &&
-                property.PropertyType == parameter.ParameterType)
-            {
-                return property;
-            }
-        }
-
-        return null;
-    }
-
-    private static bool NameMatches(string? parameterName, string propertyName)
-        => string.Equals(parameterName, propertyName, StringComparison.OrdinalIgnoreCase);
-
     public IReadOnlyList<SandboxValue> ToSandboxValues(TEvent e)
     {
         var values = new SandboxValue[_properties.Length];
@@ -294,9 +215,24 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
 }
 
 internal readonly record struct ConventionEventProperty<TEvent>(
-    string SettingType,
+    Type PropertyType,
     Func<TEvent, object?> Getter)
 {
     public SandboxValue ToSandboxValue(TEvent e)
-        => LiveSettingTypeConverter.ToSandboxValue(SettingType, Getter(e));
+    {
+        var value = Getter(e);
+
+        // The sandbox/wire model has no null. Preserve the historical scalar behaviour of treating a null
+        // string as empty; other null reference-typed properties fail with a clear message instead of the
+        // marshaller's bare ArgumentNullException.
+        if (value is null)
+        {
+            return PropertyType == typeof(string)
+                ? SandboxValue.FromString(string.Empty)
+                : throw new NotSupportedException(
+                    $"Event property of type '{PropertyType}' was null; the sandbox value model has no null.");
+        }
+
+        return KernelRpcMarshaller.ToSandboxValue(value, PropertyType);
+    }
 }

@@ -18,6 +18,7 @@ internal static class HookChainStageLowerer
             stages,
             index: 0,
             current: null,
+            currentType: null,
             eventProperties,
             model,
             cancellationToken,
@@ -35,6 +36,7 @@ internal static class HookChainStageLowerer
         ICollection<string> effects)
     {
         DotBoxDExpressionModel? current = null;
+        ITypeSymbol? currentType = null;
         DotBoxDStatementBodyModel? prefix = null;
         for (var i = 0; i < stages.Count; i++)
         {
@@ -46,6 +48,7 @@ internal static class HookChainStageLowerer
             var projection = LowerSelect(
                 stages[i],
                 current,
+                currentType,
                 eventProperties,
                 model,
                 cancellationToken,
@@ -55,12 +58,14 @@ internal static class HookChainStageLowerer
                 ? projection.Assignment
                 : DotBoxDStatementBodyModelFactory.Concat(prefix, projection.Assignment);
             current = projection.Current;
+            currentType = projection.CurrentType;
         }
 
         var context = Context(
             terminalElementParam,
             eventProperties,
             current,
+            currentType,
             model,
             cancellationToken,
             capabilities,
@@ -78,6 +83,7 @@ internal static class HookChainStageLowerer
         ICollection<string> effects)
     {
         DotBoxDExpressionModel? current = null;
+        ITypeSymbol? currentType = null;
         DotBoxDStatementBodyModel? prefix = null;
         for (var i = 0; i < stages.Count; i++)
         {
@@ -89,6 +95,7 @@ internal static class HookChainStageLowerer
             var projection = LowerSelect(
                 stages[i],
                 current,
+                currentType,
                 eventProperties,
                 model,
                 cancellationToken,
@@ -98,6 +105,7 @@ internal static class HookChainStageLowerer
                 ? projection.Assignment
                 : DotBoxDStatementBodyModelFactory.Concat(prefix, projection.Assignment);
             current = projection.Current;
+            currentType = projection.CurrentType;
         }
 
         return current is null
@@ -109,6 +117,7 @@ internal static class HookChainStageLowerer
         IReadOnlyList<HookChainStage> stages,
         int index,
         DotBoxDExpressionModel? current,
+        ITypeSymbol? currentType,
         EquatableArray<EventPropertyModel> eventProperties,
         SemanticModel model,
         CancellationToken cancellationToken,
@@ -128,11 +137,12 @@ internal static class HookChainStageLowerer
                 return DotBoxDConditionBodyModelFactory.AlwaysTrue();
             }
 
-            var projection = LowerSelect(stage, current, eventProperties, model, cancellationToken, capabilities, effects);
+            var projection = LowerSelect(stage, current, currentType, eventProperties, model, cancellationToken, capabilities, effects);
             var next = BuildShouldHandle(
                 stages,
                 index + 1,
                 projection.Current,
+                projection.CurrentType,
                 eventProperties,
                 model,
                 cancellationToken,
@@ -147,11 +157,12 @@ internal static class HookChainStageLowerer
             throw new NotSupportedException();
         }
 
-        var context = Context(elementParam, eventProperties, current, model, cancellationToken, capabilities, effects);
+        var context = Context(elementParam, eventProperties, current, currentType, model, cancellationToken, capabilities, effects);
         var whenTrue = BuildShouldHandle(
             stages,
             index + 1,
             current,
+            currentType,
             eventProperties,
             model,
             cancellationToken,
@@ -167,6 +178,7 @@ internal static class HookChainStageLowerer
     private static Projection LowerSelect(
         HookChainStage stage,
         DotBoxDExpressionModel? current,
+        ITypeSymbol? currentType,
         EquatableArray<EventPropertyModel> eventProperties,
         SemanticModel model,
         CancellationToken cancellationToken,
@@ -179,29 +191,40 @@ internal static class HookChainStageLowerer
             throw new NotSupportedException();
         }
 
-        var context = Context(elementParam, eventProperties, current, model, cancellationToken, capabilities, effects);
+        var context = Context(elementParam, eventProperties, current, currentType, model, cancellationToken, capabilities, effects);
         var value = DotBoxDExpressionModelFactory.Create(body, context);
         var name = SelectTemp(stage.Lambda);
+
+        // Carry the projection's CLR type so a downstream stage can read its fields by name (record.get).
+        var bodyTypeInfo = model.GetTypeInfo(body, cancellationToken);
+        var bodyType = bodyTypeInfo.ConvertedType ?? bodyTypeInfo.Type;
+
         return new Projection(
             DotBoxDStatementBodyModelFactory.Assign(name, value),
-            DotBoxDStatementBodyModelFactory.Variable(name, value.Type));
+            DotBoxDStatementBodyModelFactory.Variable(name, value.Type),
+            bodyType);
     }
 
     private static DotBoxDExpressionLoweringContext Context(
         string elementParam,
         EquatableArray<EventPropertyModel> eventProperties,
         DotBoxDExpressionModel? current,
+        ITypeSymbol? currentType,
         SemanticModel model,
         CancellationToken cancellationToken,
         ICollection<string> capabilities,
         ICollection<string> effects)
-        => current is null
-            ? new DotBoxDExpressionLoweringContext(
-                elementParam, eventProperties, default, model, cancellationToken,
-                capabilities: capabilities, effects: effects)
-            : new DotBoxDExpressionLoweringContext(
-                elementParam, eventProperties, default, model, cancellationToken, elementParam, current,
-                capabilities, effects);
+        => new(
+            elementParam,
+            eventProperties,
+            default,
+            model,
+            cancellationToken,
+            projectedElementName: current is null ? null : elementParam,
+            projectedElement: current,
+            projectedElementType: current is null ? null : currentType,
+            capabilities: capabilities,
+            effects: effects);
 
     private static bool HasWhereAtOrAfter(IReadOnlyList<HookChainStage> stages, int index)
     {
@@ -240,7 +263,8 @@ internal static class HookChainStageLowerer
 
     private sealed record Projection(
         DotBoxDStatementBodyModel Assignment,
-        DotBoxDExpressionModel Current);
+        DotBoxDExpressionModel Current,
+        ITypeSymbol? CurrentType);
 }
 
 internal sealed record HookChainProjection(

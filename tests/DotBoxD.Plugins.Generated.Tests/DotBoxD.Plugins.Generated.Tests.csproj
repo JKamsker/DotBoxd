@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A behavioural test project that loads the DotBoxD source generator as a REAL build-time analyzer (not via
+       dynamic compilation) and exercises the interceptors it emits for RunLocal chains authored as ordinary code
+       in this project — exactly the wiring a plugin/SDK consumer uses. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <!-- Opt the generated interceptors namespace into C# interceptors, exactly as a real plugin project does. -->
+    <DotBoxDGeneratedInterceptorsNamespace>DotBoxD.Plugins.Generated</DotBoxDGeneratedInterceptorsNamespace>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);$(DotBoxDGeneratedInterceptorsNamespace)</InterceptorsNamespaces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The source generator, loaded as an analyzer so it runs at build time over this project's own code. -->
+    <ProjectReference Include="..\..\src\CodeGeneration\DotBoxD.Plugins.Analyzer\DotBoxD.Plugins.Analyzer.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\Hosting\DotBoxD.Plugins\DotBoxD.Plugins.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

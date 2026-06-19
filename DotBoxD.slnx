@@ -59,6 +59,7 @@
 
   <Folder Name="/tests/">
     <Project Path="tests/DotBoxD.Kernels.Tests/DotBoxD.Kernels.Tests.csproj" />
+    <Project Path="tests/DotBoxD.Plugins.Generated.Tests/DotBoxD.Plugins.Generated.Tests.csproj" />
     <Project Path="tests/DotBoxD.Kernels.TestFixtures.PluginAbstractions/DotBoxD.Kernels.TestFixtures.PluginAbstractions.csproj" />
     <Project Path="tests/DotBoxD.Kernels.TestFixtures.PluginLocal/DotBoxD.Kernels.TestFixtures.PluginLocal.csproj" />
     <Project Path="tests/DotBoxD.Services.Tests/DotBoxD.Services.Tests.csproj" />

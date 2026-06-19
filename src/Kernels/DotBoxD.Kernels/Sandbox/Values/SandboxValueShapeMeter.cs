@@ -54,7 +54,7 @@ internal static class SandboxValueShapeMeter
                 case RecordValue record:
                     shape = AddRecord(shape, record, frame.Depth, active, stack, limits);
                     break;
-                case UnitValue or BoolValue or I32Value or I64Value or F64Value:
+                case UnitValue or BoolValue or I32Value or I64Value or F64Value or GuidValue:
                     break;
                 default:
                     throw new SandboxRuntimeException(new SandboxError(
@@ -116,7 +116,7 @@ internal static class SandboxValueShapeMeter
                 case RecordValue record:
                     shape = AddRecord(shape, record, frame.Depth, active, stack, null);
                     break;
-                case UnitValue or BoolValue or I32Value or I64Value or F64Value:
+                case UnitValue or BoolValue or I32Value or I64Value or F64Value or GuidValue:
                     break;
                 default:
                     throw new SandboxRuntimeException(new SandboxError(

@@ -56,6 +56,13 @@ internal static class JsonLiteralReader
             return true;
         }
 
+        if (element.TryGetProperty("guid", out var guid))
+        {
+            value = SandboxValue.FromGuid(ReadGuidValue(guid, "guid"));
+            literalName = "guid";
+            return true;
+        }
+
         if (element.TryGetProperty("opaqueId", out var opaqueId))
         {
             value = ReadOpaqueId(opaqueId);

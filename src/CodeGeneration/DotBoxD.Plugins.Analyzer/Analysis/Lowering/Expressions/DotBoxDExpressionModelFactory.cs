@@ -1,10 +1,11 @@
+using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 
-internal static class DotBoxDExpressionModelFactory
+internal static partial class DotBoxDExpressionModelFactory
 {
     public static DotBoxDExpressionModel Create(
         ExpressionSyntax expression,
@@ -38,6 +39,12 @@ internal static class DotBoxDExpressionModelFactory
             MemberAccessExpressionSyntax member => LowerMemberAccess(member, context),
             InterpolatedStringExpressionSyntax interpolated =>
                 DotBoxDInterpolatedStringExpressionLowerer.Lower(interpolated, part => Lower(part, context)),
+            BaseObjectCreationExpressionSyntax creation
+                when DotBoxDRecordCreationExpressionLowerer.TryLower(creation, context, part => Lower(part, context)) is { } record =>
+                record,
+            AnonymousObjectCreationExpressionSyntax anonymous
+                when DotBoxDAnonymousObjectCreationExpressionLowerer.TryLower(anonymous, context, part => Lower(part, context)) is { } anonymousRecord =>
+                anonymousRecord,
             LiteralExpressionSyntax literal => DotBoxDLiteralExpressionLowerer.Lower(literal),
             _ => Unsupported(expression)
         };
@@ -264,57 +271,46 @@ internal static class DotBoxDExpressionModelFactory
         DotBoxDExpressionLoweringContext context)
     {
         var memberName = member.Name.Identifier.ValueText;
-        if (member.Expression is IdentifierNameSyntax identifier &&
-            string.Equals(identifier.Identifier.ValueText, context.EventParameterName, StringComparison.Ordinal)) {
-            for (var i = 0; i < context.EventProperties.Count; i++) {
-                var property = context.EventProperties[i];
-                if (string.Equals(property.Name, memberName, StringComparison.Ordinal)) {
-                    CollectEventPropertyCapability(member, context);
-                    return new DotBoxDExpressionModel(
-                        $"{DotBoxDGenerationNames.Helpers.Var}({LiteralReader.StringLiteral(EventVariable(memberName))})",
-                        property.Type,
-                        false);
+        if (member.Expression is IdentifierNameSyntax identifier) {
+            // After a Select, the downstream lambda's parameter is the PROJECTED element. A field access on it
+            // (dto.X) reads the projection's field by name via record.get — checked BEFORE the event-property
+            // branch so a field that shares a name with an event property is never silently misread as it. If it
+            // is not a record field (e.g. .Count on a projected list), fall through to the general member chain.
+            if (context.ProjectedElementName is { } projectedName &&
+                string.Equals(identifier.Identifier.ValueText, projectedName, StringComparison.Ordinal)) {
+                if (TryLowerProjectedRecordField(memberName, context) is { } projectedField) {
+                    return projectedField;
                 }
             }
+            else if (string.Equals(identifier.Identifier.ValueText, context.EventParameterName, StringComparison.Ordinal)) {
+                for (var i = 0; i < context.EventProperties.Count; i++) {
+                    var property = context.EventProperties[i];
+                    if (string.Equals(property.Name, memberName, StringComparison.Ordinal)) {
+                        CollectEventPropertyCapability(member, context);
+                        return new DotBoxDExpressionModel(
+                            $"{DotBoxDGenerationNames.Helpers.Var}({LiteralReader.StringLiteral(EventVariable(memberName))})",
+                            property.Type,
+                            false);
+                    }
+                }
 
-            throw new NotSupportedException($"Unknown event property '{memberName}'.");
+                throw new NotSupportedException($"Unknown event property '{memberName}'.");
+            }
         }
 
         if (member.Expression is ThisExpressionSyntax) {
             return LowerIdentifier(memberName, context);
         }
 
+        // General member chain: a `.Count`/`.Length` read on a list-shaped receiver, or a field read on a record
+        // receiver. The receiver may itself be a projected element, an event property, a host-call result, or a
+        // further chain hop — it is lowered recursively and dispatched on its sandbox shape, so e.g.
+        // `ctx...GetInRange(id, 4).Count` or `dto.Inner.Field` lower. Anything else fails safe.
+        if (TryLowerMemberChain(member, memberName, context) is { } chained) {
+            return chained;
+        }
+
         return Unsupported(member);
-    }
-
-    /// <summary>
-    /// Records the capability gating a <c>[Capability]</c>-annotated event property so reading it
-    /// contributes to the kernel's required capabilities (deny-at-install if the policy lacks it).
-    /// Unannotated properties stay ungated.
-    /// </summary>
-    private static void CollectEventPropertyCapability(
-        MemberAccessExpressionSyntax member,
-        DotBoxDExpressionLoweringContext context)
-    {
-        if (context.Capabilities is null ||
-            context.SemanticModel.GetSymbolInfo(member, context.CancellationToken).Symbol is not IPropertySymbol property)
-        {
-            return;
-        }
-
-        foreach (var attribute in property.GetAttributes())
-        {
-            if (string.Equals(
-                    attribute.AttributeClass?.ToDisplayString(),
-                    DotBoxDGenerationNames.Metadata.CapabilityAttribute,
-                    StringComparison.Ordinal) &&
-                attribute.ConstructorArguments.Length == 1 &&
-                attribute.ConstructorArguments[0].Value is string id &&
-                !string.IsNullOrEmpty(id))
-            {
-                context.Capabilities.Add(id);
-            }
-        }
     }
 
     public static string EventVariable(string name) => DotBoxDGenerationNames.GeneratedVariables.EventPrefix + name;

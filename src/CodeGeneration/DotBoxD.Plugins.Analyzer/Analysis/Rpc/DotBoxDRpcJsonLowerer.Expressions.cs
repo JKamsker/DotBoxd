@@ -77,6 +77,11 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             return serviceHandleCall;
         }
 
+        if (TryLowerMapMethod(invocation) is { } mapCall)
+        {
+            return mapCall;
+        }
+
         if (_model.GetSymbolInfo(invocation, _cancellationToken).Symbol is IMethodSymbol method &&
             DotBoxDHostBindingExpressionLowerer.HostBinding(method) is { } binding)
         {
@@ -162,13 +167,15 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
     private string LowerElementAccess(ElementAccessExpressionSyntax element)
     {
-        if (element.ArgumentList.Arguments.Count != 1 ||
-            DotBoxDRpcTypeMapper.ListElementType(TypeOf(element.Expression)) is null)
+        var receiverType = TypeOf(element.Expression);
+        if (element.ArgumentList.Arguments.Count == 1 &&
+            DotBoxDRpcTypeMapper.ListElementType(receiverType) is not null)
         {
-            throw new NotSupportedException($"Server extension indexing '{element}' is not supported.");
+            return Call("list.get", null, LowerExpression(element.Expression), LowerExpression(element.ArgumentList.Arguments[0].Expression));
         }
 
-        return Call("list.get", null, LowerExpression(element.Expression), LowerExpression(element.ArgumentList.Arguments[0].Expression));
+        return TryLowerMapElementGet(element, receiverType)
+            ?? throw new NotSupportedException($"Server extension indexing '{element}' is not supported.");
     }
 
     private string LowerRecordCreation(ObjectCreationExpressionSyntax creation)
@@ -181,6 +188,11 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             Allocates = true;
             return Call("list.empty", DotBoxDRpcTypeMapper.JsonType(elementType));
+        }
+
+        if (TryLowerEmptyMapCreation(creation, created) is { } emptyMap)
+        {
+            return emptyMap;
         }
 
         if (created is not INamedTypeSymbol named || !DotBoxDRpcTypeMapper.IsRecordDto(named))

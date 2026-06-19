@@ -90,6 +90,7 @@ jobs:
             'tests/DotBoxD.Services.SourceGenerator.Tests/DotBoxD.Services.SourceGenerator.Tests.csproj',
             'tests/DotBoxD.Services.Tests/DotBoxD.Services.Tests.csproj',
             'tests/DotBoxD.Kernels.Tests/DotBoxD.Kernels.Tests.csproj',
+            'tests/DotBoxD.Plugins.Generated.Tests/DotBoxD.Plugins.Generated.Tests.csproj',
             'samples/GameServer/Examples.GameServer.Plugin.Tests/Examples.GameServer.Plugin.Tests.csproj',
             'tools/AgentQueue/tests/AgentQueue.Tests/AgentQueue.Tests.csproj'
           )
@@ -142,22 +143,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup .NET SDKs
-        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
-        with:
-          dotnet-version: |
-            8.0.x
-            9.0.x
-            10.0.x
-          cache: true
-          cache-dependency-path: '**/*.csproj'
-
-      - name: Restore
-        run: dotnet restore DotBoxD.slnx
-
-      - name: Build
-        run: dotnet build DotBoxD.slnx -c Release --no-restore
-
+      # Build-independent static gates run first so a file-length, layout, rebrand,
+      # spec-manifest, API-baseline, or workflow-security violation fails in seconds
+      # instead of only after the multi-minute restore + build below.
       - name: Rebrand completeness
         shell: pwsh
         run: ./eng/scripts/check-rebrand-complete.ps1
@@ -185,6 +173,22 @@ jobs:
       - name: Release readiness
         shell: pwsh
         run: ./eng/scripts/check-release-readiness.ps1 -RequireComplete
+
+      - name: Setup .NET SDKs
+        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+
+      - name: Restore
+        run: dotnet restore DotBoxD.slnx
+
+      - name: Build
+        run: dotnet build DotBoxD.slnx -c Release --no-restore
 
       - name: Security-boundary required tests
         shell: pwsh

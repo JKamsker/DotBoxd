@@ -41,9 +41,11 @@ public enum IndexPredicateOperator.NotEquals
 public enum KernelRpcValueKind : byte
 public enum KernelRpcValueKind.Bool = 1
 public enum KernelRpcValueKind.F64 = 4
+public enum KernelRpcValueKind.Guid = 9
 public enum KernelRpcValueKind.I32 = 2
 public enum KernelRpcValueKind.I64 = 3
 public enum KernelRpcValueKind.List = 6
+public enum KernelRpcValueKind.Map = 8
 public enum KernelRpcValueKind.Record = 7
 public enum KernelRpcValueKind.String = 5
 public enum KernelRpcValueKind.Unit = 0
@@ -286,9 +288,11 @@ public static KernelRpcValue Bool(bool value)
 public static KernelRpcValue DecodeValue(ReadOnlyMemory<byte> payload)
 public static KernelRpcValue Double(double value)
 public static KernelRpcValue FromSandboxValue(SandboxValue value)
+public static KernelRpcValue Guid(System.Guid value) => new(value)
 public static KernelRpcValue Int32(int value)
 public static KernelRpcValue Int64(long value)
 public static KernelRpcValue List(KernelRpcValue[] items)
+public static KernelRpcValue Map(KernelRpcValue[] entries)
 public static KernelRpcValue Record(KernelRpcValue[] fields)
 public static KernelRpcValue String(string value)
 public static KernelRpcValue Unit()
@@ -359,6 +363,7 @@ public SubscriptionStage<TEvent, TNext> Select<TNext>(Func<TCurrent, HookContext
 public SubscriptionStage<TEvent, TNext> Select<TNext>(Func<TCurrent, TNext> projection)
 public SubscriptionStage<TEvent, TNext> Select<TNext>(Func<TEvent, HookContext, TNext> projection)
 public SubscriptionStage<TEvent, TNext> Select<TNext>(Func<TEvent, TNext> projection)
+public System.Guid GuidValue
 public T As<T>() where T : class => LiveContextProxy<T>.Create(this)
 public T Get<T>(string name)
 public T Value

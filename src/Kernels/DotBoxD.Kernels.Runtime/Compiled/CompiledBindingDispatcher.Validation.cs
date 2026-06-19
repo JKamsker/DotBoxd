@@ -72,6 +72,7 @@ internal static partial class CompiledBindingDispatcher
             I64Value => expectedName == SandboxType.I64.Name,
             F64Value => expectedName == SandboxType.F64.Name,
             StringValue => expectedName == SandboxType.String.Name,
+            GuidValue => expectedName == SandboxType.Guid.Name,
             OpaqueIdValue opaque => string.Equals(opaque.TypeName, expectedName, StringComparison.Ordinal),
             SandboxPathValue => expectedName == SandboxType.SandboxPath.Name,
             SandboxUriValue => expectedName == SandboxType.SandboxUri.Name,

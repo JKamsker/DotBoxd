@@ -34,6 +34,9 @@ internal static partial class SandboxValidatedValueShapeMeter
                 RequireScalarType(expectedType, "String", failure);
                 shape = AddText(shape, SandboxLiteralConstraints.TextShape(text.Value), limits);
                 return true;
+            case GuidValue:
+                RequireScalarType(expectedType, "Guid", failure);
+                return true;
             case OpaqueIdValue id:
                 RequireScalarType(expectedType, id.TypeName, failure);
                 RequireOpaqueId(id, failure);

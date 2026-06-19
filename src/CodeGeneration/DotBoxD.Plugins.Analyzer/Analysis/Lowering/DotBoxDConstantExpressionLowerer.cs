@@ -1,4 +1,5 @@
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
+using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -28,6 +29,18 @@ internal static class DotBoxDConstantExpressionLowerer
         if (type is null)
         {
             throw new NotSupportedException($"Unsupported plugin constant expression '{expression}'.");
+        }
+
+        // An enum constant (e.g. GamePhase.Battle) lowers to its underlying integer literal — the same I32/I64
+        // representation an enum event property or enum DTO field carries (by underlying width). Convert handles
+        // narrow (byte/short/…) and wide (uint/long/ulong) backing types. Only applied when the caller imposes no
+        // explicit target type. This is what lets `e.Phase == GamePhase.Battle` filters and
+        // `Select(e => new Dto(e.Id, GamePhase.Battle))` projections lower.
+        if (targetType is null && type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
+        {
+            return DotBoxDRpcTypeMapper.EnumUsesI64(enumType)
+                ? Int64(EnumConstantToInt64(constant.Value, enumType))
+                : Int32(Convert.ToInt32(constant.Value));
         }
 
         return Lower(expression, constant.Value, targetType ?? DotBoxDTypeNameReader.SandboxTypeName(type));
@@ -64,6 +77,13 @@ internal static class DotBoxDConstantExpressionLowerer
             $"{DotBoxDGenerationNames.Helpers.I64}({LiteralReader.ObjectLiteral(value)})",
             DotBoxDGenerationNames.ManifestTypes.Long,
             false);
+
+    // A ulong-backed enum value above long.MaxValue overflows a range-checked Convert.ToInt64; reinterpret its
+    // bits instead so the value carries losslessly (the decoder casts the I64 back to the enum, also unchecked).
+    private static long EnumConstantToInt64(object? value, INamedTypeSymbol enumType)
+        => enumType.EnumUnderlyingType?.SpecialType == Microsoft.CodeAnalysis.SpecialType.System_UInt64
+            ? unchecked((long)Convert.ToUInt64(value))
+            : Convert.ToInt64(value);
 
     private static DotBoxDExpressionModel Float64(double value)
         => new(

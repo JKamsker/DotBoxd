@@ -32,6 +32,15 @@ Services, Kernels, and Pushdown.
   now rejected with a clear diagnostic instead of silently dropping the inherited fields.
   `samples/GameServer` adds a `WorldRangeQuery` value-object example
   (`RangeMonsterKillerKernel.KillMonstersInRangeAsync`).
+- **Server-extension `Dictionary<K,V>` / map support:** `[ServerExtensionMethod]` entrypoints now accept
+  `Dictionary<K,V>` / `IReadOnlyDictionary<K,V>` / `IDictionary<K,V>` as parameters, returns, and nested DTO
+  fields (issue #44). This adds a wire `Map` kind to `KernelRpcValue` (entries are a flat key/value
+  sequence; additive public-API change) with codec, converter, and runtime-marshaller support, and the
+  generated client marshals dictionaries to/from it. A kernel body can also read a map (`dict[key]`,
+  `dict.ContainsKey(key)`) and build one (`new Dictionary<K,V>()`, `dict[key] = value`), lowered to the
+  `map.get`/`map.containsKey`/`map.empty`/`map.set` kernel intrinsics. Map keys must be scalar
+  (`bool`/`int`/`long`/`string`/enum); a non-scalar key is rejected at generation time. Not yet supported
+  (no runtime intrinsic): `dict.Count`, iterating a map, and `dict.Add`/`dict.Remove`.
 - **Documentation & repo polish:** new top-level README, `docs/` information architecture
   (getting-started, concepts, security, reference, contributing), `SECURITY.md`, `CONTRIBUTING.md`,
   `CODE_OF_CONDUCT.md`, and GitHub repo metadata files.

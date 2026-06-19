@@ -46,7 +46,14 @@ internal sealed record PluginKernelModel(
     public string? LocalDecoderSource { get; init; }
 }
 
-internal sealed record EventPropertyModel(string Name, string Type);
+/// <summary>
+/// A lowered event property. <see cref="Type"/> is the coarse manifest tag the expression lowerer carries for
+/// reads of this property (a scalar token, or a non-scalar shape tag such as <c>guid</c>/<c>list</c>/<c>record</c>);
+/// <see cref="SandboxTypeSource"/> is the full C# <c>SandboxType</c> construction emitted for the kernel
+/// parameter, so non-scalar (Guid/enum/list/record) properties declare the exact sandbox type the runtime
+/// convention adapter produces. Empty when the property is not marshaller-eligible (the chain fails safe).
+/// </summary>
+internal sealed record EventPropertyModel(string Name, string Type, string SandboxTypeSource);
 
 /// <summary>
 /// One index-eligible <c>event-property &lt;op&gt; constant</c> comparison extracted from a lowered

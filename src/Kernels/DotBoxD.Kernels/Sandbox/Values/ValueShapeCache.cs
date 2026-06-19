@@ -47,7 +47,7 @@ internal static class ValueShapeCache
     private static ValueShape MeasureScalar(SandboxValue value)
         => value switch
         {
-            UnitValue or BoolValue or I32Value or I64Value or F64Value => new ValueShape(0, 0, 0, 0, 0, 0),
+            UnitValue or BoolValue or I32Value or I64Value or F64Value or GuidValue => new ValueShape(0, 0, 0, 0, 0, 0),
             StringValue text => SandboxLiteralConstraints.TextShape(text.Value),
             OpaqueIdValue id => SandboxLiteralConstraints.TextShape(id.Value),
             SandboxPathValue path => SandboxLiteralConstraints.TextShape(path.Value.RelativePath),

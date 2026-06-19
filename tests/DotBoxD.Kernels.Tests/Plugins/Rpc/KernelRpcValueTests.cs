@@ -18,6 +18,25 @@ public sealed class KernelRpcValueTests
         => Assert.Throws<ArgumentNullException>(() => KernelRpcValue.Record(null!));
 
     [Fact]
+    public void Map_rejects_null_entries()
+        => Assert.Throws<ArgumentNullException>(() => KernelRpcValue.Map(null!));
+
+    [Fact]
+    public void Map_rejects_an_odd_entry_count()
+        => Assert.Throws<ArgumentException>(() => KernelRpcValue.Map([KernelRpcValue.Int32(1)]));
+
+    [Fact]
+    public void Map_copies_entries_from_caller()
+    {
+        var entries = new[] { KernelRpcValue.String("k"), KernelRpcValue.Int32(1) };
+        var value = KernelRpcValue.Map(entries);
+
+        entries[1] = KernelRpcValue.Int32(2);
+
+        Assert.Equal(1, value.GetItem(1).Int32Value);
+    }
+
+    [Fact]
     public void List_copies_items_from_caller()
     {
         var items = new[] { KernelRpcValue.Int32(1) };

@@ -49,6 +49,11 @@ internal sealed partial class RpcKernelValueConversionEmitter
 
     private string WriteComplexExpression(ITypeSymbol type, string expression)
     {
+        if (DotBoxDRpcTypeMapper.IsGuid(type))
+        {
+            return $"global::DotBoxD.Plugins.KernelRpcValue.Guid({expression})";
+        }
+
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return DotBoxDRpcTypeMapper.EnumUsesI64(enumType)
@@ -61,6 +66,11 @@ internal sealed partial class RpcKernelValueConversionEmitter
             return $"{EnsureListWriter(type)}({expression})";
         }
 
+        if (DotBoxDRpcTypeMapper.MapTypes(type) is { } map)
+        {
+            return $"{EnsureMapWriter(type, map.Key, map.Value)}({expression})";
+        }
+
         if (type is INamedTypeSymbol named && DotBoxDRpcTypeMapper.IsRecordDto(named))
         {
             return $"{EnsureDtoWriter(named)}({expression})";
@@ -71,6 +81,11 @@ internal sealed partial class RpcKernelValueConversionEmitter
 
     private string ReadComplexExpression(ITypeSymbol type, string expression)
     {
+        if (DotBoxDRpcTypeMapper.IsGuid(type))
+        {
+            return $"{expression}.GuidValue";
+        }
+
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             var accessor = DotBoxDRpcTypeMapper.EnumUsesI64(enumType) ? "Int64Value" : "Int32Value";
@@ -80,6 +95,11 @@ internal sealed partial class RpcKernelValueConversionEmitter
         if (DotBoxDRpcTypeMapper.ListElementType(type) is not null)
         {
             return $"{EnsureListReader(type)}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.MapTypes(type) is { } map)
+        {
+            return $"{EnsureMapReader(type, map.Key, map.Value)}({expression})";
         }
 
         if (type is INamedTypeSymbol named && DotBoxDRpcTypeMapper.IsRecordDto(named))

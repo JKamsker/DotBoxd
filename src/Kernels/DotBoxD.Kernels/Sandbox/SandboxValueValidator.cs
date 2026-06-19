@@ -182,6 +182,7 @@ public static class SandboxValueValidator
             I64Value => ReferenceEquals(expectedType, SandboxType.I64),
             F64Value => ReferenceEquals(expectedType, SandboxType.F64),
             StringValue => ReferenceEquals(expectedType, SandboxType.String),
+            GuidValue => ReferenceEquals(expectedType, SandboxType.Guid),
             SandboxPathValue => ReferenceEquals(expectedType, SandboxType.SandboxPath),
             SandboxUriValue => ReferenceEquals(expectedType, SandboxType.SandboxUri),
             _ => false
