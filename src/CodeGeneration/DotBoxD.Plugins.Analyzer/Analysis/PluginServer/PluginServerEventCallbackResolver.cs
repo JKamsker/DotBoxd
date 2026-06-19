@@ -26,7 +26,7 @@ internal static class PluginServerEventCallbackResolver
         }
 
         var suffix = PluginServerWorldExtensionSuffixResolver.Resolve(compilation, callback.Value.Type, cancellationToken);
-        return HasProvideExtension(compilation, suffix)
+        return HasProvideExtension(compilation, suffix, callback.Value.Type)
             ? (callback.Value.Type, suffix, callback.Value.Method.ReturnType, ReturnHasValue(callback.Value.Method.ReturnType))
             : null;
     }
@@ -84,17 +84,22 @@ internal static class PluginServerEventCallbackResolver
     // generator in the assembly that declares the contract. GetTypeByMetadataName returns null when that type is
     // absent or ambiguous (defined in both source and a reference), so a test that stubs only the Get* members
     // falls back to the original wiring rather than referencing a method that does not exist.
-    private static bool HasProvideExtension(Compilation compilation, string provideSuffix)
+    private static bool HasProvideExtension(
+        Compilation compilation,
+        string provideSuffix,
+        INamedTypeSymbol callbackType)
     {
         var extensions = compilation.GetTypeByMetadataName("DotBoxD.Services.Generated.DotBoxDGeneratedExtensions");
-        if (extensions is null)
+        var rpcPeerType = compilation.GetTypeByMetadataName("DotBoxD.Services.Peer.RpcPeer");
+        if (extensions is null || rpcPeerType is null)
         {
             return false;
         }
 
         foreach (var member in extensions.GetMembers("Provide" + provideSuffix))
         {
-            if (member is IMethodSymbol)
+            if (member is IMethodSymbol method &&
+                IsProvideExtensionMethod(method, rpcPeerType, callbackType))
             {
                 return true;
             }
@@ -102,6 +107,15 @@ internal static class PluginServerEventCallbackResolver
 
         return false;
     }
+
+    private static bool IsProvideExtensionMethod(
+        IMethodSymbol method,
+        INamedTypeSymbol rpcPeerType,
+        INamedTypeSymbol callbackType)
+        => method is { IsStatic: true, IsGenericMethod: false, Parameters.Length: 2 } &&
+        SymbolEqualityComparer.Default.Equals(method.ReturnType, rpcPeerType) &&
+        SymbolEqualityComparer.Default.Equals(method.Parameters[0].Type, rpcPeerType) &&
+        SymbolEqualityComparer.Default.Equals(method.Parameters[1].Type, callbackType);
 
     private static bool HasDotBoxDServiceAttribute(INamedTypeSymbol type)
     {

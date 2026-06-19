@@ -66,11 +66,10 @@ public sealed class PluginServerRemoteLocalWiringTests
                         DotBoxD.Services.Peer.RpcPeer peer)
                         => throw new System.InvalidOperationException("not used");
 
-                    public static void ProvidePluginEventCallback(
+                    public static DotBoxD.Services.Peer.RpcPeer ProvidePluginEventCallback(
                         DotBoxD.Services.Peer.RpcPeer peer,
                         Reactive.Game.Ipc.IPluginEventCallback implementation)
-                    {
-                    }
+                        => peer;
                 }
             }
 
@@ -230,11 +229,10 @@ public sealed class PluginServerRemoteLocalWiringTests
                         DotBoxD.Services.Peer.RpcPeer peer)
                         => throw new System.InvalidOperationException("not used");
 
-                    public static void ProvidePluginEventCallback(
+                    public static DotBoxD.Services.Peer.RpcPeer ProvidePluginEventCallback(
                         DotBoxD.Services.Peer.RpcPeer peer,
                         WrongCallback.Game.Ipc.IPluginEventCallback implementation)
-                    {
-                    }
+                        => peer;
                 }
             }
 
