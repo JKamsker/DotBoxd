@@ -61,6 +61,11 @@ internal sealed partial class RpcKernelValueConversionEmitter
             return $"{EnsureListWriter(type)}({expression})";
         }
 
+        if (DotBoxDRpcTypeMapper.MapTypes(type) is { } map)
+        {
+            return $"{EnsureMapWriter(type, map.Key, map.Value)}({expression})";
+        }
+
         if (type is INamedTypeSymbol named && DotBoxDRpcTypeMapper.IsRecordDto(named))
         {
             return $"{EnsureDtoWriter(named)}({expression})";
@@ -80,6 +85,11 @@ internal sealed partial class RpcKernelValueConversionEmitter
         if (DotBoxDRpcTypeMapper.ListElementType(type) is not null)
         {
             return $"{EnsureListReader(type)}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.MapTypes(type) is { } map)
+        {
+            return $"{EnsureMapReader(type, map.Key, map.Value)}({expression})";
         }
 
         if (type is INamedTypeSymbol named && DotBoxDRpcTypeMapper.IsRecordDto(named))

@@ -163,6 +163,10 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                     ? LowerExpression(assignment.Right)
                     : LowerCompound(assignment, target);
                 return SetStatement(target.Identifier.ValueText, value);
+            case AssignmentExpressionSyntax { Left: ElementAccessExpressionSyntax element } assignment
+                when assignment.Kind() == SyntaxKind.SimpleAssignmentExpression &&
+                     TryLowerMapIndexSet(element, assignment.Right) is { } mapSet:
+                return mapSet;
             case AssignmentExpressionSyntax assignment
                 when _assignmentOverride?.Invoke(assignment, LowerExpression) is { } lowered:
                 return lowered;

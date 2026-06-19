@@ -26,6 +26,39 @@ public sealed class KernelRpcBinaryCodecTests
     }
 
     [Fact]
+    public void Map_value_survives_a_binary_round_trip()
+    {
+        var payload = KernelRpcBinaryCodec.EncodeValue(KernelRpcValue.Map(
+        [
+            KernelRpcValue.String("a"),
+            KernelRpcValue.Int32(1),
+            KernelRpcValue.String("b"),
+            KernelRpcValue.Int32(2)
+        ]));
+
+        var value = KernelRpcBinaryCodec.DecodeValue(payload);
+
+        value.RequireKind(KernelRpcValueKind.Map);
+        Assert.Equal(4, value.ItemCount);
+        Assert.Equal("a", value.GetItem(0).TextValue);
+        Assert.Equal(1, value.GetItem(1).Int32Value);
+        Assert.Equal("b", value.GetItem(2).TextValue);
+        Assert.Equal(2, value.GetItem(3).Int32Value);
+    }
+
+    [Fact]
+    public void DecodeValue_rejects_a_map_with_an_odd_entry_count()
+    {
+        var payload = new List<byte> { (byte)KernelRpcValueKind.Map };
+        payload.AddRange(LengthPrefix(1));
+        payload.Add((byte)KernelRpcValueKind.Unit);
+
+        var ex = Assert.Throws<FormatException>(() => KernelRpcBinaryCodec.DecodeValue(payload.ToArray()));
+
+        Assert.Contains("odd", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void DecodeValue_allows_payload_at_maximum_depth()
     {
         var value = KernelRpcBinaryCodec.DecodeValue(NestedListPayload(MaxDecodeDepth));

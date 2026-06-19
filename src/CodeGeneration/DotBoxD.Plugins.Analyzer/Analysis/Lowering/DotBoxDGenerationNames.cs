@@ -52,6 +52,9 @@ internal static class DotBoxDGenerationNames
         public const string ListInterfaceOriginal = "System.Collections.Generic.IList<T>";
         public const string EnumerableOriginal = "System.Collections.Generic.IEnumerable<T>";
         public const string ReadOnlyCollectionOriginal = "System.Collections.Generic.IReadOnlyCollection<T>";
+        public const string DictionaryOriginal = "System.Collections.Generic.Dictionary<TKey, TValue>";
+        public const string ReadOnlyDictionaryOriginal = "System.Collections.Generic.IReadOnlyDictionary<TKey, TValue>";
+        public const string DictionaryInterfaceOriginal = "System.Collections.Generic.IDictionary<TKey, TValue>";
         public const string SystemActionPrefix = "System.Action";
         public const string SystemActivator = "System.Activator";
         public const string SystemEnvironment = "System.Environment";

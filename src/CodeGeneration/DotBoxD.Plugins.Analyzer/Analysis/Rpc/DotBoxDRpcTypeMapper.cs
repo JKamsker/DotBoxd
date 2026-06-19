@@ -41,6 +41,18 @@ internal static class DotBoxDRpcTypeMapper
             return $"{{\"name\":\"List\",\"arguments\":[{JsonType(elementType)}]}}";
         }
 
+        if (MapTypes(type) is { } map)
+        {
+            if (!IsSupportedMapKey(map.Key))
+            {
+                throw new NotSupportedException(
+                    $"Server extension map key type '{map.Key.ToDisplayString()}' is not supported; " +
+                    "map keys must be bool, int, long, string, or an enum.");
+            }
+
+            return $"{{\"name\":\"Map\",\"arguments\":[{JsonType(map.Key)},{JsonType(map.Value)}]}}";
+        }
+
         if (type is INamedTypeSymbol named && IsRecordDto(named))
         {
             RejectInheritedDtoProperties(named);
@@ -92,6 +104,32 @@ internal static class DotBoxDRpcTypeMapper
         return null;
     }
 
+    /// <summary>The key and value types of a map-shaped parameter/return/field (<c>Dictionary&lt;K,V&gt;</c>,
+    /// <c>IReadOnlyDictionary&lt;K,V&gt;</c>, or <c>IDictionary&lt;K,V&gt;</c>), else null.</summary>
+    public static (ITypeSymbol Key, ITypeSymbol Value)? MapTypes(ITypeSymbol type)
+    {
+        if (type is INamedTypeSymbol { IsGenericType: true } named && named.TypeArguments.Length == 2)
+        {
+            var definition = named.ConstructedFrom.ToDisplayString();
+            if (definition is TypeNames.DictionaryOriginal
+                or TypeNames.ReadOnlyDictionaryOriginal
+                or TypeNames.DictionaryInterfaceOriginal)
+            {
+                return (named.TypeArguments[0], named.TypeArguments[1]);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>A map key must lower to a scalar the kernel verifier accepts as a key: <c>bool</c>,
+    /// <c>int</c>, <c>long</c>, <c>string</c>, or an enum (which lowers to <c>I32</c>/<c>I64</c>).
+    /// <c>double</c> and composite types are rejected.</summary>
+    public static bool IsSupportedMapKey(ITypeSymbol type)
+        => type.SpecialType is SpecialType.System_Boolean or SpecialType.System_Int32
+               or SpecialType.System_Int64 or SpecialType.System_String
+           || type.TypeKind == TypeKind.Enum;
+
     public static bool SupportsIndexedListWrite(ITypeSymbol type)
     {
         if (type is IArrayTypeSymbol)
@@ -114,6 +152,7 @@ internal static class DotBoxDRpcTypeMapper
         => type.TypeKind is TypeKind.Class or TypeKind.Struct &&
            !IsScalar(type) &&
            !IsNullableValueType(type) &&
+           MapTypes(type) is null &&
            RecordFields(type).Count > 0;
 
     /// <summary>The DTO's positional fields: public instance properties with a getter, in declaration

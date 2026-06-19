@@ -10,7 +10,8 @@ public enum KernelRpcValueKind : byte
     F64 = 4,
     String = 5,
     List = 6,
-    Record = 7
+    Record = 7,
+    Map = 8
 }
 
 /// <summary>
@@ -136,6 +137,24 @@ public readonly struct KernelRpcValue
         return new KernelRpcValue(KernelRpcValueKind.Record, 0L, 0D, string.Empty, CopyItems(fields));
     }
 
+    /// <summary>
+    /// A map value whose <paramref name="entries"/> are a flat key/value sequence: index 0 is the first
+    /// key, index 1 its value, index 2 the next key, and so on. Its length must therefore be even. Keys
+    /// and values each carry the kinds matching the verified <c>Map&lt;K,V&gt;</c> kernel IR type.
+    /// </summary>
+    public static KernelRpcValue Map(KernelRpcValue[] entries)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+        if ((entries.Length & 1) != 0)
+        {
+            throw new ArgumentException(
+                "Server extension map entries must be a flat key/value sequence with an even length.",
+                nameof(entries));
+        }
+
+        return new KernelRpcValue(KernelRpcValueKind.Map, 0L, 0D, string.Empty, CopyItems(entries));
+    }
+
     internal static KernelRpcValue ListFromOwnedItems(KernelRpcValue[] items)
     {
         ArgumentNullException.ThrowIfNull(items);
@@ -146,6 +165,17 @@ public readonly struct KernelRpcValue
     {
         ArgumentNullException.ThrowIfNull(fields);
         return new KernelRpcValue(KernelRpcValueKind.Record, 0L, 0D, string.Empty, UseOwnedItems(fields));
+    }
+
+    internal static KernelRpcValue MapFromOwnedEntries(KernelRpcValue[] entries)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+        if ((entries.Length & 1) != 0)
+        {
+            throw new FormatException("Server extension map payload has an odd key/value entry count.");
+        }
+
+        return new KernelRpcValue(KernelRpcValueKind.Map, 0L, 0D, string.Empty, UseOwnedItems(entries));
     }
 
     public KernelRpcValue GetItem(int index) => (_items ?? EmptyItems)[index];

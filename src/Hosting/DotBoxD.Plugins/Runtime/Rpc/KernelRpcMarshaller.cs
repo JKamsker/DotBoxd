@@ -64,6 +64,27 @@ public static partial class KernelRpcMarshaller
             return SandboxValue.FromOwnedList(values.ToArray(), itemType);
         }
 
+        if (MapTypes(type) is { } mapTypes)
+        {
+            if (value is not IDictionary dictionary)
+            {
+                throw new ArgumentException(
+                    $"Kernel RPC service expected '{type}' to be a dictionary.",
+                    nameof(value));
+            }
+
+            var keyType = SandboxTypeOf(mapTypes.Key);
+            var valueType = SandboxTypeOf(mapTypes.Value);
+            var entries = new Dictionary<SandboxValue, SandboxValue>(dictionary.Count);
+            foreach (DictionaryEntry entry in dictionary)
+            {
+                var key = ToSandboxValue(entry.Key, mapTypes.Key);
+                entries[key] = ToSandboxValue(entry.Value, mapTypes.Value);
+            }
+
+            return SandboxValue.FromMap(entries, keyType, valueType);
+        }
+
         if (IsDto(type))
         {
             var fields = GetRecordShape(type).Fields;
@@ -116,6 +137,19 @@ public static partial class KernelRpcMarshaller
             return resultList;
         }
 
+        if (MapTypes(type) is { } mapTypes && value is MapValue map)
+        {
+            var result = CreateDictionary(mapTypes.Key, mapTypes.Value);
+            foreach (var pair in map.Values)
+            {
+                var key = FromSandboxValue(pair.Key, mapTypes.Key)
+                    ?? throw new NotSupportedException("Server extension cannot marshal a null map key.");
+                result[key] = FromSandboxValue(pair.Value, mapTypes.Value);
+            }
+
+            return result;
+        }
+
         if (IsDto(type) && value is RecordValue record)
         {
             var shape = GetRecordShape(type);
@@ -149,6 +183,11 @@ public static partial class KernelRpcMarshaller
         if (type == typeof(string)) return SandboxType.String;
         if (type.IsEnum) return EnumUsesI64(type) ? SandboxType.I64 : SandboxType.I32;
         if (ElementType(type) is { } elementType) return SandboxType.List(SandboxTypeOf(elementType));
+        if (MapTypes(type) is { } mapTypes)
+        {
+            return SandboxType.Map(SandboxTypeOf(mapTypes.Key), SandboxTypeOf(mapTypes.Value));
+        }
+
         if (IsDto(type))
         {
             var fields = GetRecordShape(type).Fields;

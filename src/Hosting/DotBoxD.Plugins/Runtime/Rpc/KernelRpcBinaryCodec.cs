@@ -102,6 +102,7 @@ public static class KernelRpcBinaryCodec
                 return;
             case KernelRpcValueKind.List:
             case KernelRpcValueKind.Record:
+            case KernelRpcValueKind.Map:
                 WriteItems(writer, value.ItemSpan);
                 return;
             default:
@@ -122,6 +123,7 @@ public static class KernelRpcBinaryCodec
             KernelRpcValueKind.String => KernelRpcValue.String(reader.ReadString()),
             KernelRpcValueKind.List => KernelRpcValue.ListFromOwnedItems(ReadItems(ref reader, depth)),
             KernelRpcValueKind.Record => KernelRpcValue.RecordFromOwnedFields(ReadItems(ref reader, depth)),
+            KernelRpcValueKind.Map => KernelRpcValue.MapFromOwnedEntries(ReadItems(ref reader, depth)),
             _ => throw new FormatException($"Server extension payload contains unknown value kind '{kind}'.")
         };
     }
