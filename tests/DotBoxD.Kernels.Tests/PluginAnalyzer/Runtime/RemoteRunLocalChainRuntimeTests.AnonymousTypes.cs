@@ -112,4 +112,71 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
         _ = Compile(DerivedFieldSource, enableInterceptors: true);
         Assert.DoesNotContain("record.new", GeneratedSource(DerivedFieldSource));
     }
+
+    private const string NonScalarEqualitySource = Prelude + """
+        public static class NonScalarEqualityUsage
+        {
+            public static void Configure(RemoteHookRegistry hooks)
+                => hooks.On<Ev.ScoreEvent>().Where(e => e.Scores == e.Scores)
+                    .Select(e => e.Threshold)
+                    .RunLocal((threshold, ctx) => { });
+        }
+        """;
+
+    private const string InheritedDtoSource = Prelude + """
+        public record BaseInfo(string Zone);
+        public sealed record DerivedShape(string Zone, int Distance) : BaseInfo(Zone);
+
+        public static class InheritedDtoUsage
+        {
+            public static void Configure(RemoteHookRegistry hooks)
+                => hooks.On<Ev.EncounterEvent>().Where(e => e.Distance <= 4)
+                    .Select(e => new DerivedShape(e.Zone, e.Distance))
+                    .RunLocal((shape, ctx) => { });
+        }
+        """;
+
+    private const string ConvertingCtorSource = Prelude + """
+        public sealed class ConvertingInfo
+        {
+            public int Distance { get; }
+            public ConvertingInfo(long distance) => Distance = (int)distance;  // param type (long) != field type (int)
+        }
+
+        public static class ConvertingCtorUsage
+        {
+            public static void Configure(RemoteHookRegistry hooks)
+                => hooks.On<Ev.EncounterEvent>().Where(e => e.Distance <= 4)
+                    .Select(e => new ConvertingInfo(e.Distance))
+                    .RunLocal((info, ctx) => { });
+        }
+        """;
+
+    [Fact]
+    public void Equality_on_non_scalar_operands_is_rejected_and_the_chain_is_skipped()
+    {
+        // e.Scores == e.Scores compares two List<int> values. C# `==` is reference equality there, but the sandbox
+        // compares structurally — so the predicate's meaning would change. The chain fails safe (skipped), not
+        // lowered to a structural list comparison.
+        _ = Compile(NonScalarEqualitySource, enableInterceptors: true);
+        Assert.DoesNotContain("ReadProjected", GeneratedSource(NonScalarEqualitySource));
+    }
+
+    [Fact]
+    public void Projection_of_a_dto_that_inherits_public_properties_fails_safe()
+    {
+        // DerivedShape inherits Zone from BaseInfo; RecordFields (and the runtime marshaller) see only declared
+        // members, so the base property would be silently dropped. The chain is skipped instead.
+        _ = Compile(InheritedDtoSource, enableInterceptors: true);
+        Assert.DoesNotContain("ReadProjected", GeneratedSource(InheritedDtoSource));
+    }
+
+    [Fact]
+    public void Projection_with_a_converting_constructor_fails_safe()
+    {
+        // ConvertingInfo's ctor takes a long but the field is int; record.new declares the field's (int) sandbox
+        // type while the value flows from the long parameter. The exact param/field type-match guard rejects it.
+        _ = Compile(ConvertingCtorSource, enableInterceptors: true);
+        Assert.DoesNotContain("ReadProjected", GeneratedSource(ConvertingCtorSource));
+    }
 }

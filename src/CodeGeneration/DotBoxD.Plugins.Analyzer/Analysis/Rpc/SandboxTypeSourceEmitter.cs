@@ -17,10 +17,11 @@ internal static class SandboxTypeSourceEmitter
     private const string SandboxType = TypeNames.GlobalSandboxType;
 
     // A record field whose type leads back to an enclosing record (directly or through a list/map/record) would
-    // recurse forever, so the depth of a record/list/map nesting chain is bounded. The bound also keeps the
-    // emitted SandboxType within the kernel verifier's structural depth limit; anything deeper is treated as
-    // not marshaller-eligible and the chain fails safe.
-    private const int MaxDepth = 16;
+    // recurse forever, so the depth of a record/list/map nesting chain is bounded. The bound is kept at or below
+    // the kernel verifier's structural depth limit (SandboxType.IsKnown defaults to maxDepth 8) so a type the
+    // analyzer emits is never rejected at install as "unknown"; anything deeper is treated as not
+    // marshaller-eligible and the chain fails safe at generation.
+    private const int MaxDepth = 8;
 
     /// <summary>The <c>SandboxType</c> construction source for <paramref name="type"/>, or <c>null</c> when it
     /// is not marshaller-eligible (so the caller fails the chain safe rather than emitting an invalid kernel).</summary>
@@ -124,6 +125,10 @@ internal static class SandboxTypeSourceEmitter
 
         if (type is INamedTypeSymbol named && DotBoxDRpcTypeMapper.IsRecordDto(named))
         {
+            // A DTO that inherits public instance properties would silently drop them: RecordFields (and the
+            // runtime marshaller's GetRecordShape) see only declared members. Fail safe instead of emitting a
+            // partial record shape — same rule the server-extension JsonType path enforces.
+            DotBoxDRpcTypeMapper.RejectInheritedDtoProperties(named);
             var fields = DotBoxDRpcTypeMapper.RecordFields(named);
             var fieldTypes = new string[fields.Count];
             for (var i = 0; i < fields.Count; i++)

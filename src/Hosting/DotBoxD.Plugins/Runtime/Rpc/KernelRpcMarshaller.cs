@@ -193,8 +193,9 @@ public static partial class KernelRpcMarshaller
 
     // The list/map/record nesting depth is bounded so a self-referential DTO (e.g. a class with a property of
     // its own type) fails with a catchable NotSupportedException instead of an uncatchable StackOverflowException
-    // when, say, ConventionEventAdapter is constructed for it. Matches the analyzer's SandboxTypeSourceEmitter cap.
-    private const int MaxTypeNestingDepth = 16;
+    // when, say, ConventionEventAdapter is constructed for it. Kept at or below the kernel verifier's structural
+    // depth limit (SandboxType.IsKnown defaults to maxDepth 8) so a produced type is never rejected at install.
+    private const int MaxTypeNestingDepth = 8;
 
     private static SandboxType SandboxTypeOf(Type type, int depth)
     {
@@ -217,7 +218,17 @@ public static partial class KernelRpcMarshaller
         if (ElementType(type) is { } elementType) return SandboxType.List(SandboxTypeOf(elementType, depth + 1));
         if (MapTypes(type) is { } mapTypes)
         {
-            return SandboxType.Map(SandboxTypeOf(mapTypes.Key, depth + 1), SandboxTypeOf(mapTypes.Value, depth + 1));
+            var keyType = SandboxTypeOf(mapTypes.Key, depth + 1);
+            // The kernel verifier only accepts a fixed set of scalar map keys (bool/int/long/string/opaque-id, not
+            // Guid or double). Reject an unsupported key here with a catchable NotSupportedException instead of
+            // producing a Map<Guid,V> that later fails IsKnown validation at install.
+            if (!keyType.IsValidMapKey())
+            {
+                throw new NotSupportedException(
+                    $"Kernel RPC service map key type '{mapTypes.Key}' is not a supported sandbox map key.");
+            }
+
+            return SandboxType.Map(keyType, SandboxTypeOf(mapTypes.Value, depth + 1));
         }
 
         if (IsDto(type))

@@ -64,6 +64,35 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
         Assert.Equal(42, DecodeGenerated<int>(HostScalarSource, payload));
     }
 
+    private const string GuidAutoBindingSource = HostPrelude + """
+        [global::DotBoxD.Services.Attributes.DotBoxDService]
+        public interface IIdWorld
+        {
+            [HostCapability("probe.read.id")]
+            System.Guid GenerateId(string zone);
+        }
+
+        public static class GuidAutoBindingUsage
+        {
+            public static void Configure(RemoteHookRegistry hooks)
+                => hooks.On<Ev.EncounterEvent>().Where(e => e.Distance <= 4)
+                    .Select((e, ctx) => ctx.Host<IIdWorld>().GenerateId(e.Zone))
+                    .RunLocal((id, ctx) => { });
+        }
+        """;
+
+    [Fact]
+    public async Task Guid_returning_auto_binding_in_a_select_installs_and_round_trips()
+    {
+        // Regression for the DBXK041 mismatch: an auto-binding ([DotBoxDService], no [HostBinding]) returning a
+        // Guid is classified as allocating by the runtime, so the manifest must also carry the Alloc effect or
+        // install fails. PushFirstMatching installs the package (asserting no effect-mismatch) and pushes the Guid.
+        var payload = await PushFirstMatchingHosted(GuidAutoBindingSource, Matching, Filtered);
+
+        Assert.Equal(SampleId, DecodeReflective<Guid>(payload));
+        Assert.Equal(SampleId, DecodeGenerated<Guid>(GuidAutoBindingSource, payload));
+    }
+
     [Fact]
     public async Task Host_list_read_in_a_select_with_downstream_count_filters_server_side()
     {
@@ -121,9 +150,42 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
 
     private static void AddChainHostBindings(SandboxHostBuilder builder)
     {
-        HostSupport.AddProbeBindings(builder);   // host.probe.getValue -> 42 (probe.read.value)
-        builder.AddBinding(GetTagsBinding());    // host.probe.getTags -> tag list (probe.read.tags)
+        HostSupport.AddProbeBindings(builder);     // host.probe.getValue -> 42 (probe.read.value)
+        builder.AddBinding(GetTagsBinding());      // host.probe.getTags -> tag list (probe.read.tags)
+        builder.AddBinding(GenerateIdBinding());   // host.ChainSample.IIdWorld.GenerateId -> Guid (probe.read.id)
     }
+
+    // An AUTO-binding ([DotBoxDService], no explicit [HostBinding]) returning a Guid. The id is the analyzer's
+    // auto-derived route host.{ns}.{Type}.{Method}; the effects include Alloc because the runtime classifies a Guid
+    // return as allocating — the manifest must agree (the fix under test) or install fails DBXK041.
+    private static BindingDescriptor GenerateIdBinding()
+        => new(
+            "host.ChainSample.IIdWorld.GenerateId",
+            SemVersion.One,
+            [SandboxType.String],
+            SandboxType.Guid,
+            SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateRead,
+            "probe.read.id",
+            BindingCostModel.Fixed(2),
+            AuditLevel.PerResource,
+            BindingSafety.ReadOnlyExternal,
+            (context, _, _) =>
+            {
+                var startedAt = DateTimeOffset.UtcNow;
+                context.Audit.Write(new SandboxAuditEvent(
+                    context.RunId,
+                    "BindingCall",
+                    startedAt,
+                    true,
+                    BindingId: "host.ChainSample.IIdWorld.GenerateId",
+                    CapabilityId: "probe.read.id",
+                    Effect: SandboxEffect.HostStateRead,
+                    ResourceId: "entity:id",
+                    Fields: context.BindingAuditFields("probe", startedAt)));
+                return ValueTask.FromResult(SandboxValue.FromGuid(SampleId));
+            },
+            CompiledBinding.RuntimeStub("DotBoxD.Kernels.Runtime.CompiledRuntime", "CallBinding"),
+            GrantValidator: static (_, _) => { });
 
     // A host binding returning a List<string> whose length depends on the entity id, so a downstream .Count filter
     // has something to discriminate on: "crypt" yields three tags, anything else a single tag.

@@ -91,10 +91,13 @@ internal static class DotBoxDHostBindingExpressionLowerer
         return new DotBoxDExpressionModel(source, returnType, allocates);
     }
 
-    // A host-call result allocates when its sandbox shape is heap-backed: a string, list, map, or record. The
-    // scalar tags (bool/int/long/double/Guid) do not allocate.
+    // Which host-call return shapes the runtime binding factory counts as allocating. This MUST match
+    // HostServiceBindingFactory.ReturnAllocates, which treats anything that is not Unit/Bool/I32/I64/F64 as
+    // allocating — so string, Guid, list, map, and record all allocate (Guid included: the manifest effect must
+    // match the registered binding's, or install fails DBXK041). The bool/int/long/double scalar tags do not.
     private static bool IsAllocatingTag(string tag)
         => string.Equals(tag, ManifestTypes.String, StringComparison.Ordinal) ||
+           string.Equals(tag, ManifestTypes.Guid, StringComparison.Ordinal) ||
            string.Equals(tag, ManifestTypes.List, StringComparison.Ordinal) ||
            string.Equals(tag, ManifestTypes.Map, StringComparison.Ordinal) ||
            string.Equals(tag, ManifestTypes.Record, StringComparison.Ordinal);
@@ -210,12 +213,11 @@ internal static class DotBoxDHostBindingExpressionLowerer
            method.Name.StartsWith("Move", StringComparison.Ordinal) ||
            method.Name.StartsWith("Teleport", StringComparison.Ordinal);
 
+    // The auto-binding's Alloc effect must use the SAME allocation classification as the model-flag path
+    // (IsAllocatingTag) and the runtime binding factory — otherwise a Guid/map return adds Alloc on one side only
+    // and install fails DBXK041. Delegate to the shared tag classifier (string/Guid/list/map/record allocate).
     private static bool ReturnAllocates(ITypeSymbol type)
-        => !IsUnitTaskLike(type) &&
-           (type.SpecialType == SpecialType.System_String ||
-           DotBoxD.Plugins.Analyzer.Analysis.Rpc.DotBoxDRpcTypeMapper.ListElementType(type) is not null ||
-           type is INamedTypeSymbol named &&
-           DotBoxD.Plugins.Analyzer.Analysis.Rpc.DotBoxDRpcTypeMapper.IsRecordDto(named));
+        => !IsUnitTaskLike(type) && IsAllocatingTag(SandboxTypeSourceEmitter.ManifestTag(type));
 
     private static bool IsUnitTaskLike(ITypeSymbol type)
         => type is INamedTypeSymbol

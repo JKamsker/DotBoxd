@@ -200,7 +200,7 @@ internal static class DotBoxDRpcTypeMapper
     /// only sees declared members (so inherited fields would be silently dropped on both the analyzer and the
     /// runtime marshaller). Fail generation with a clear message instead.
     /// </summary>
-    private static void RejectInheritedDtoProperties(INamedTypeSymbol type)
+    internal static void RejectInheritedDtoProperties(INamedTypeSymbol type)
     {
         for (var baseType = type.BaseType; baseType is not null; baseType = baseType.BaseType)
         {

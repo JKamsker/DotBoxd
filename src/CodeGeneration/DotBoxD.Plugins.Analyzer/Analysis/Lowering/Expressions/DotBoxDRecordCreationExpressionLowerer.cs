@@ -57,6 +57,16 @@ internal static class DotBoxDRecordCreationExpressionLowerer
                 throw new System.NotSupportedException();
             }
 
+            // record.new declares the FIELD's sandbox type, and the value comes from the constructor parameter that
+            // fills it. If that parameter is a different CLR type than the field (a converting ctor, e.g. an int
+            // arg into an enum field, or List<long> into a List<int> field), the coarse manifest-tag check below
+            // would still pass while the emitted record carried a value of the wrong shape. Require an exact type
+            // match so only a faithful positional construction lowers; anything else fails safe.
+            if (!SymbolEqualityComparer.Default.Equals(constructor.Parameters[argumentIndex].Type, fields[fieldIndex].Type))
+            {
+                throw new System.NotSupportedException();
+            }
+
             var lowered = lowerExpression(arguments[argumentIndex].Expression);
             if (!string.Equals(lowered.Type, SandboxTypeSourceEmitter.ManifestTag(fields[fieldIndex].Type), StringComparison.Ordinal))
             {
