@@ -256,6 +256,34 @@ public sealed record QueryValue
     internal static string CanonicalTimestamp(DateTimeOffset value) =>
         value.UtcDateTime.ToString("O", CultureInfo.InvariantCulture);
 
+    /// <summary>
+    /// Whether a timestamp string carries an explicit offset — a trailing <c>Z</c> or a <c>±hh:mm</c> suffix.
+    /// Parsers reject offset-less strings: <see cref="DateTimeOffset"/> parsing would otherwise default a
+    /// missing offset to the host's local time zone, making the captured instant non-deterministic across
+    /// machines. The canonical form this type emits always includes <c>Z</c>, so only malformed input is rejected.
+    /// </summary>
+    internal static bool HasExplicitTimestampOffset(string text)
+    {
+        if (text.EndsWith('Z') || text.EndsWith('z'))
+        {
+            return true;
+        }
+
+        if (text.Length >= 6)
+        {
+            var tail = text.AsSpan(text.Length - 6);
+            if ((tail[0] == '+' || tail[0] == '-') &&
+                char.IsAsciiDigit(tail[1]) && char.IsAsciiDigit(tail[2]) &&
+                tail[3] == ':' &&
+                char.IsAsciiDigit(tail[4]) && char.IsAsciiDigit(tail[5]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static DateTimeOffset ToOffset(DateTime value) => value.Kind switch
     {
         DateTimeKind.Utc => new DateTimeOffset(value, TimeSpan.Zero),

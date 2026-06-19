@@ -116,7 +116,9 @@ public sealed class QueryValueJsonConverter : JsonConverter<QueryValue>
             "guid" => QueryValue.FromGuid(Guid.Parse(text)),
             "decimal" => QueryValue.FromDecimal(decimal.Parse(text, NumberStyles.Number, CultureInfo.InvariantCulture)),
             "ulong" => QueryValue.FromUnsignedInteger(ulong.Parse(text, NumberStyles.Integer, CultureInfo.InvariantCulture)),
-            "timestamp" => QueryValue.FromTimestamp(DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind)),
+            "timestamp" => QueryValue.HasExplicitTimestampOffset(text)
+                ? QueryValue.FromTimestamp(DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind))
+                : throw new JsonException($"Timestamp '{text}' must include an explicit UTC 'Z' or +/-hh:mm offset."),
             _ => throw new JsonException($"Unknown tagged query value kind '{kind}'."),
         };
     }

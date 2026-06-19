@@ -184,9 +184,10 @@ internal static class QueryTextParser
             "guid" => Guid.TryParse(inner.Text, out var g)
                 ? QueryValue.FromGuid(g)
                 : throw new QueryTranslationException($"Invalid guid '{inner.Text}' in query text."),
-            "ts" => DateTimeOffset.TryParse(inner.Text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dto)
+            "ts" => QueryValue.HasExplicitTimestampOffset(inner.Text)
+                    && DateTimeOffset.TryParse(inner.Text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dto)
                 ? QueryValue.FromTimestamp(dto)
-                : throw new QueryTranslationException($"Invalid timestamp '{inner.Text}' in query text."),
+                : throw new QueryTranslationException($"Invalid or offset-less timestamp '{inner.Text}' in query text."),
             _ => throw new QueryTranslationException($"Unknown value tag '{tag}'."),
         };
     }

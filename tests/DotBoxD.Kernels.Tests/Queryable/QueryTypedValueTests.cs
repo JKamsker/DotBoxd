@@ -266,4 +266,15 @@ public sealed class QueryTypedValueTests
 
         Assert.Equal(new[] { big }, matched);
     }
+
+    [Fact]
+    public void Offset_less_timestamp_is_rejected()
+    {
+        // The canonical form always carries 'Z'; an offset-less value would deserialize against the host's
+        // local time zone, so both the JSON and text parsers reject it rather than capture a host-dependent instant.
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<QueryValue>(
+            "{\"kind\":\"timestamp\",\"value\":\"2026-06-19T12:00:00\"}", EventQueryJson.Options));
+        Assert.Throws<DotBoxD.Queryable.Translation.QueryTranslationException>(
+            () => QueryText.Parse("At == ts(\"2026-06-19T12:00:00\")"));
+    }
 }
