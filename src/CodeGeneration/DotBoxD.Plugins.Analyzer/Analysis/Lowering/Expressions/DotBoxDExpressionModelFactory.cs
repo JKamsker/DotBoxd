@@ -42,6 +42,9 @@ internal static class DotBoxDExpressionModelFactory
             BaseObjectCreationExpressionSyntax creation
                 when DotBoxDRecordCreationExpressionLowerer.TryLower(creation, context, part => Lower(part, context)) is { } record =>
                 record,
+            AnonymousObjectCreationExpressionSyntax anonymous
+                when DotBoxDAnonymousObjectCreationExpressionLowerer.TryLower(anonymous, context, part => Lower(part, context)) is { } anonymousRecord =>
+                anonymousRecord,
             LiteralExpressionSyntax literal => DotBoxDLiteralExpressionLowerer.Lower(literal),
             _ => Unsupported(expression)
         };
