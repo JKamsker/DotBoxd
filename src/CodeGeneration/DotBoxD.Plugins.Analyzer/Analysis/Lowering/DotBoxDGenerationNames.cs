@@ -173,6 +173,17 @@ internal static class DotBoxDGenerationNames
         public const string Long = "long";
         public const string Double = "double";
         public const string String = "string";
+
+        // Non-scalar marshaller-eligible event-property / projection tags. These values are carried, never
+        // operated on, by the lowered IR; the kernel parameter and projection return SandboxType is emitted in
+        // full from the CLR type (see SandboxTypeSourceEmitter), so these tags only mark a value as a non-scalar
+        // of a given shape for the expression lowerer and the chain gate. An enum is carried as its underlying
+        // integer, so it reuses Int/Long rather than a distinct tag.
+        public const string Guid = "guid";
+        public const string List = "list";
+        public const string Record = "record";
+        public const string Map = "map";
+
         public const string Unsupported = "unsupported";
 
         public static bool IsNumeric(string type)

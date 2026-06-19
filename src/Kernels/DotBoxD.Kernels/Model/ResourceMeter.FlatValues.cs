@@ -58,7 +58,7 @@ public sealed partial class ResourceMeter
     {
         switch (value)
         {
-            case UnitValue or BoolValue or I32Value or I64Value or F64Value:
+            case UnitValue or BoolValue or I32Value or I64Value or F64Value or GuidValue:
                 return true;
             case StringValue text:
                 AddTextShape(ref shape, SandboxLiteralConstraints.TextShape(text.Value));

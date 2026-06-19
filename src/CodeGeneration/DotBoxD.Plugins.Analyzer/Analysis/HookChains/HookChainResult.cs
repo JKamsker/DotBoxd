@@ -28,4 +28,10 @@ internal sealed record HookChainInterception(
     HookChainInterceptorInstallKind InstallKind,
     // True when the lowered local chain has a generated reflection-free decoder, so the interceptor passes
     // <Package>.ReadProjected as the 3rd UseGeneratedLocalChain argument; false keeps the 2-arg reflective form.
-    bool HasLocalDecoder = false);
+    bool HasLocalDecoder = false,
+    // When non-null, the interceptor is emitted as a GENERIC method with this comma-joined type-parameter list
+    // (e.g. "TEvent, TCurrent"), and the receiver/handler/return types reference those parameters instead of
+    // naming the type arguments. Used when the terminal projection is an anonymous type: it has a real metadata
+    // identity (a legal type ARGUMENT Roslyn infers at the call site) but no C#-source-nameable name. The arity
+    // must match the interceptable method's generic context, so EVERY receiver type argument becomes a parameter.
+    string? InterceptorTypeParameters = null);

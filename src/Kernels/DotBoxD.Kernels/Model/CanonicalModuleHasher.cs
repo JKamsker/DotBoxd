@@ -172,6 +172,7 @@ public static class CanonicalModuleHasher
             I64Value number => Node("i64", number.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             F64Value number => Node("f64", number.Value.ToString("R", System.Globalization.CultureInfo.InvariantCulture)),
             StringValue text => Node("string", text.Value),
+            GuidValue guid => Node("guid", guid.Value.ToString("N", System.Globalization.CultureInfo.InvariantCulture)),
             OpaqueIdValue id => Node("opaque-id", id.TypeName, id.Value),
             SandboxPathValue path => Node("path", path.Value.RelativePath),
             SandboxUriValue uri => Node("uri", uri.Value.Value),

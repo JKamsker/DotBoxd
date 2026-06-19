@@ -11,7 +11,8 @@ public enum KernelRpcValueKind : byte
     String = 5,
     List = 6,
     Record = 7,
-    Map = 8
+    Map = 8,
+    Guid = 9
 }
 
 /// <summary>
@@ -23,6 +24,7 @@ public readonly struct KernelRpcValue
 {
     private static readonly KernelRpcValue[] EmptyItems = [];
     private readonly KernelRpcValue[] _items;
+    private readonly System.Guid _guid;
 
     private KernelRpcValue(
         KernelRpcValueKind kind,
@@ -36,6 +38,17 @@ public readonly struct KernelRpcValue
         FloatValue = floatValue;
         StringValue = stringValue;
         _items = items;
+        _guid = default;
+    }
+
+    private KernelRpcValue(System.Guid guidValue)
+    {
+        Kind = KernelRpcValueKind.Guid;
+        IntegerValue = 0L;
+        FloatValue = 0D;
+        StringValue = string.Empty;
+        _items = EmptyItems;
+        _guid = guidValue;
     }
 
     public KernelRpcValueKind Kind { get; }
@@ -97,6 +110,15 @@ public readonly struct KernelRpcValue
         }
     }
 
+    public System.Guid GuidValue
+    {
+        get
+        {
+            RequireKind(KernelRpcValueKind.Guid);
+            return _guid;
+        }
+    }
+
     public static KernelRpcValue Unit()
         => new(KernelRpcValueKind.Unit, 0L, 0D, string.Empty, EmptyItems);
 
@@ -124,6 +146,8 @@ public readonly struct KernelRpcValue
         ArgumentNullException.ThrowIfNull(value);
         return new KernelRpcValue(KernelRpcValueKind.String, 0L, 0D, value, EmptyItems);
     }
+
+    public static KernelRpcValue Guid(System.Guid value) => new(value);
 
     public static KernelRpcValue List(KernelRpcValue[] items)
     {

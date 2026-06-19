@@ -40,8 +40,16 @@ internal static class DotBoxDHookChainInterceptorEmitter
             var interception = interceptions[i];
             builder.Append("        ").AppendLine(interception.AttributeSyntax);
             builder.Append("        public static ").Append(interception.ReturnTypeFullName).Append(" Intercept_")
-                .Append(i.ToString(System.Globalization.CultureInfo.InvariantCulture))
-                .AppendLine("(");
+                .Append(i.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            // An un-nameable (anonymous) terminal projection makes the interceptor generic; Roslyn infers the type
+            // parameters from the intercepted call site, so the source never names the type. The arity must match
+            // the interceptable method's generic context, so the full receiver type-parameter list is emitted.
+            if (interception.InterceptorTypeParameters is { } interceptorTypeParameters)
+            {
+                builder.Append('<').Append(interceptorTypeParameters).Append('>');
+            }
+
+            builder.AppendLine("(");
             builder.Append("            this ").Append(interception.ReceiverTypeFullName).AppendLine(" pipeline,");
             builder.Append("            ").Append(interception.HandlerTypeFullName).AppendLine(" handler)");
             builder.Append("            => pipeline.")

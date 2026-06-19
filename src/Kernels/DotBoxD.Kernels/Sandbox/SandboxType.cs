@@ -12,7 +12,7 @@ public sealed record SandboxType(string Name, IReadOnlyList<SandboxType> Argumen
     private const int MaxOpaqueIdNameLength = 64;
 
     private static readonly HashSet<string> AllowedScalars = new(StringComparer.Ordinal) {
-        "Unit", "Bool", "I32", "I64", "F64", "String",
+        "Unit", "Bool", "I32", "I64", "F64", "String", "Guid",
         "SandboxPath", "SandboxUri"
     };
 
@@ -36,6 +36,7 @@ public sealed record SandboxType(string Name, IReadOnlyList<SandboxType> Argumen
     public static SandboxType I64 { get; } = Scalar("I64");
     public static SandboxType F64 { get; } = Scalar("F64");
     public static SandboxType String { get; } = Scalar("String");
+    public static SandboxType Guid { get; } = Scalar("Guid");
     public static SandboxType SandboxPath { get; } = Scalar("SandboxPath");
     public static SandboxType SandboxUri { get; } = Scalar("SandboxUri");
 

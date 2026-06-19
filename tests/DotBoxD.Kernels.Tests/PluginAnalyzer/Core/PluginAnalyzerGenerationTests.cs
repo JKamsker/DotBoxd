@@ -162,10 +162,15 @@ public sealed class PluginAnalyzerGenerationTests
             }
             """);
 
+        // DamageEvent is non-positional: declaration order is [Amount, DamageType, TargetId] but the constructor
+        // order is [DamageType, Amount, TargetId]. The generated kernel parameters, the runtime convention
+        // adapter, AND the decoder (KernelRpcMarshaller.GetRecordShape, which is declaration order) must all agree
+        // on declaration order — so e_Amount (declared first) comes before e_DamageType. Encoding in constructor
+        // order here would silently misalign a whole-event push from the declaration-order decoder.
         var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
         Assert.True(
-            generated.IndexOf("parameters[0] = new global::DotBoxD.Kernels.Parameter(\"e_DamageType\"", StringComparison.Ordinal) <
-            generated.IndexOf("parameters[1] = new global::DotBoxD.Kernels.Parameter(\"e_Amount\"", StringComparison.Ordinal));
+            generated.IndexOf("parameters[0] = new global::DotBoxD.Kernels.Parameter(\"e_Amount\"", StringComparison.Ordinal) <
+            generated.IndexOf("parameters[1] = new global::DotBoxD.Kernels.Parameter(\"e_DamageType\"", StringComparison.Ordinal));
     }
 
     [Fact]

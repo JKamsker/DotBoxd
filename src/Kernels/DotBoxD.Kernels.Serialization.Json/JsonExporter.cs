@@ -231,6 +231,10 @@ public static class JsonExporter
             case StringValue text:
                 writer.WriteString("string", text.Value);
                 break;
+            case GuidValue guid:
+                // Canonical hyphenated form (Guid.ToString() == "D"); JsonLiteralReader parses it back exactly.
+                writer.WriteString("guid", guid.Value.ToString());
+                break;
             case OpaqueIdValue id:
                 writer.WriteStartObject("opaqueId");
                 writer.WriteString("type", id.TypeName);

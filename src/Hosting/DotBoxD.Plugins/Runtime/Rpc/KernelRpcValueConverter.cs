@@ -20,6 +20,7 @@ public static class KernelRpcValueConverter
             I64Value number => KernelRpcValue.Int64(number.Value),
             F64Value number => KernelRpcValue.Double(number.Value),
             StringValue text => KernelRpcValue.String(text.Value),
+            GuidValue guid => KernelRpcValue.Guid(guid.Value),
             ListValue list => KernelRpcValue.ListFromOwnedItems(ConvertList(list.Values)),
             RecordValue record => KernelRpcValue.RecordFromOwnedFields(ConvertList(record.Fields)),
             MapValue map => KernelRpcValue.MapFromOwnedEntries(ConvertMap(map.Values)),
@@ -65,6 +66,12 @@ public static class KernelRpcValueConverter
         {
             value.RequireKind(KernelRpcValueKind.String);
             return SandboxValue.FromString(value.TextValue);
+        }
+
+        if (expectedType.Equals(SandboxType.Guid))
+        {
+            value.RequireKind(KernelRpcValueKind.Guid);
+            return SandboxValue.FromGuid(value.GuidValue);
         }
 
         if (expectedType.Name == "List" && expectedType.Arguments.Count == 1)

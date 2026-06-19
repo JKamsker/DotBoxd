@@ -90,6 +90,7 @@ jobs:
             'tests/DotBoxD.Services.SourceGenerator.Tests/DotBoxD.Services.SourceGenerator.Tests.csproj',
             'tests/DotBoxD.Services.Tests/DotBoxD.Services.Tests.csproj',
             'tests/DotBoxD.Kernels.Tests/DotBoxD.Kernels.Tests.csproj',
+            'tests/DotBoxD.Plugins.Generated.Tests/DotBoxD.Plugins.Generated.Tests.csproj',
             'samples/GameServer/Examples.GameServer.Plugin.Tests/Examples.GameServer.Plugin.Tests.csproj',
             'tools/AgentQueue/tests/AgentQueue.Tests/AgentQueue.Tests.csproj'
           )

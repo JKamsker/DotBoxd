@@ -32,6 +32,8 @@ public abstract record SandboxValue
 
     public static SandboxValue FromString(string value) => new StringValue(value);
 
+    public static SandboxValue FromGuid(System.Guid value) => new GuidValue(value);
+
     public static SandboxValue FromOpaqueId(string typeName, string value)
         => SandboxType.IsKnownOpaqueId(typeName) && SandboxLiteralConstraints.IsOpaqueId(value)
             ? new OpaqueIdValue(typeName, value)
@@ -119,6 +121,16 @@ public sealed record F64Value(double Value) : SandboxValue
 public sealed record StringValue(string Value) : SandboxValue
 {
     public override SandboxType Type => SandboxType.String;
+}
+
+/// <summary>
+/// A 128-bit <see cref="System.Guid"/> carried as a first-class sandbox scalar. The kernel never operates on
+/// it (no arithmetic, comparison, or string semantics) — it only reads, stores, projects, and returns it — so
+/// it crosses the wire as a compact 16-byte value rather than its 36-char text form.
+/// </summary>
+public sealed record GuidValue(System.Guid Value) : SandboxValue
+{
+    public override SandboxType Type => SandboxType.Guid;
 }
 
 public sealed record OpaqueIdValue(string TypeName, string Value) : SandboxValue

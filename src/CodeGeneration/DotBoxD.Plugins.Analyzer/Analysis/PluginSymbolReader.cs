@@ -1,5 +1,6 @@
 using System.Globalization;
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
+using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -59,7 +60,15 @@ internal static class PluginSymbolReader
         var models = new EventPropertyModel[properties.Length];
         for (var i = 0; i < properties.Length; i++) {
             var property = properties[i];
-            models[i] = new EventPropertyModel(property.Name, DotBoxDTypeNameReader.SandboxTypeName(property.Type));
+            // The full marshaller-eligible set (scalars + Guid + enum + list/array + Dictionary + DTO record) is
+            // classified here, not just the 5 scalars: a non-scalar property becomes a real tag plus the C#
+            // SandboxType the kernel parameter declares, so a thin event carrying a Guid id (or richer payload)
+            // is no longer rejected wholesale. Genuinely unmarshallable types stay 'unsupported' and fail safe.
+            var source = SandboxTypeSourceEmitter.TryEmit(property.Type);
+            models[i] = new EventPropertyModel(
+                property.Name,
+                SandboxTypeSourceEmitter.ManifestTag(property.Type),
+                source ?? string.Empty);
         }
 
         return EquatableArray<EventPropertyModel>.FromOwned(models);

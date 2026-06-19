@@ -1,5 +1,7 @@
+using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using ManifestTypes = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.ManifestTypes;
 using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.TypeNames;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
@@ -30,11 +32,15 @@ internal static class DotBoxDHostBindingExpressionLowerer
         }
 
         var (bindingId, capability, effects, _) = binding;
-        var returnType = DotBoxDTypeNameReader.SandboxTypeName(method.ReturnType);
-        if (string.Equals(returnType, DotBoxDGenerationNames.ManifestTypes.Unsupported, StringComparison.Ordinal))
+        // The return (and arguments) may be any marshaller-eligible type — scalar, Guid, enum, list, map, or a
+        // DTO record — not just a scalar. The kernel verifier and runtime binding dispatch already accept these
+        // return shapes; the analyzer's manifest tag drives the downstream chain's type tracking (so e.g.
+        // GetInRange(...).Count lowers the list result to list.count). Anything not wire-eligible fails safe.
+        var returnType = SandboxTypeSourceEmitter.ManifestTag(DotBoxDTypeNameReader.UnwrapTaskLike(method.ReturnType));
+        if (string.Equals(returnType, ManifestTypes.Unsupported, StringComparison.Ordinal))
         {
             throw new NotSupportedException(
-                $"Host binding '{bindingId}' must return a supported scalar type.");
+                $"Host binding '{bindingId}' must return a marshaller-eligible type.");
         }
 
         var arguments = invocation.ArgumentList.Arguments;
@@ -45,7 +51,7 @@ internal static class DotBoxDHostBindingExpressionLowerer
         }
 
         var loweredSources = new List<string>(arguments.Count);
-        var allocates = string.Equals(returnType, DotBoxDGenerationNames.ManifestTypes.String, StringComparison.Ordinal);
+        var allocates = IsAllocatingTag(returnType);
         for (var i = 0; i < arguments.Count; i++)
         {
             if (arguments[i].NameColon is not null)
@@ -55,7 +61,7 @@ internal static class DotBoxDHostBindingExpressionLowerer
             }
 
             var lowered = lowerExpression(arguments[i].Expression);
-            var expected = DotBoxDTypeNameReader.SandboxTypeName(method.Parameters[i].Type);
+            var expected = SandboxTypeSourceEmitter.ManifestTag(method.Parameters[i].Type);
             if (!string.Equals(lowered.Type, expected, StringComparison.Ordinal))
             {
                 throw new NotSupportedException(
@@ -84,6 +90,17 @@ internal static class DotBoxDHostBindingExpressionLowerer
             $"[{string.Join(", ", loweredSources)}], null, Span)";
         return new DotBoxDExpressionModel(source, returnType, allocates);
     }
+
+    // Which host-call return shapes the runtime binding factory counts as allocating. This MUST match
+    // HostServiceBindingFactory.ReturnAllocates, which treats anything that is not Unit/Bool/I32/I64/F64 as
+    // allocating — so string, Guid, list, map, and record all allocate (Guid included: the manifest effect must
+    // match the registered binding's, or install fails DBXK041). The bool/int/long/double scalar tags do not.
+    private static bool IsAllocatingTag(string tag)
+        => string.Equals(tag, ManifestTypes.String, StringComparison.Ordinal) ||
+           string.Equals(tag, ManifestTypes.Guid, StringComparison.Ordinal) ||
+           string.Equals(tag, ManifestTypes.List, StringComparison.Ordinal) ||
+           string.Equals(tag, ManifestTypes.Map, StringComparison.Ordinal) ||
+           string.Equals(tag, ManifestTypes.Record, StringComparison.Ordinal);
 
     internal static (string BindingId, string? Capability, IReadOnlyList<string> Effects, bool IsAsync)? HostBinding(
         IMethodSymbol method)
@@ -196,12 +213,11 @@ internal static class DotBoxDHostBindingExpressionLowerer
            method.Name.StartsWith("Move", StringComparison.Ordinal) ||
            method.Name.StartsWith("Teleport", StringComparison.Ordinal);
 
+    // The auto-binding's Alloc effect must use the SAME allocation classification as the model-flag path
+    // (IsAllocatingTag) and the runtime binding factory — otherwise a Guid/map return adds Alloc on one side only
+    // and install fails DBXK041. Delegate to the shared tag classifier (string/Guid/list/map/record allocate).
     private static bool ReturnAllocates(ITypeSymbol type)
-        => !IsUnitTaskLike(type) &&
-           (type.SpecialType == SpecialType.System_String ||
-           DotBoxD.Plugins.Analyzer.Analysis.Rpc.DotBoxDRpcTypeMapper.ListElementType(type) is not null ||
-           type is INamedTypeSymbol named &&
-           DotBoxD.Plugins.Analyzer.Analysis.Rpc.DotBoxDRpcTypeMapper.IsRecordDto(named));
+        => !IsUnitTaskLike(type) && IsAllocatingTag(SandboxTypeSourceEmitter.ManifestTag(type));
 
     private static bool IsUnitTaskLike(ITypeSymbol type)
         => type is INamedTypeSymbol

@@ -100,6 +100,9 @@ public static class KernelRpcBinaryCodec
             case KernelRpcValueKind.String:
                 WriteString(writer, value.TextValue);
                 return;
+            case KernelRpcValueKind.Guid:
+                WriteGuid(writer, value.GuidValue);
+                return;
             case KernelRpcValueKind.List:
             case KernelRpcValueKind.Record:
             case KernelRpcValueKind.Map:
@@ -121,6 +124,7 @@ public static class KernelRpcBinaryCodec
             KernelRpcValueKind.I64 => KernelRpcValue.Int64(reader.ReadInt64()),
             KernelRpcValueKind.F64 => ReadDouble(ref reader),
             KernelRpcValueKind.String => KernelRpcValue.String(reader.ReadString()),
+            KernelRpcValueKind.Guid => KernelRpcValue.Guid(reader.ReadGuid()),
             KernelRpcValueKind.List => KernelRpcValue.ListFromOwnedItems(ReadItems(ref reader, depth)),
             KernelRpcValueKind.Record => KernelRpcValue.RecordFromOwnedFields(ReadItems(ref reader, depth)),
             KernelRpcValueKind.Map => KernelRpcValue.MapFromOwnedEntries(ReadItems(ref reader, depth)),
@@ -192,6 +196,12 @@ public static class KernelRpcBinaryCodec
         var span = writer.GetSpan(byteCount);
         var written = Encoding.UTF8.GetBytes(value, span);
         writer.Advance(written);
+    }
+
+    private static void WriteGuid(IBufferWriter<byte> writer, Guid value)
+    {
+        value.TryWriteBytes(writer.GetSpan(16));   // 16 raw bytes; write/read share layout → order-symmetric
+        writer.Advance(16);
     }
 
     private static void WriteInt32(IBufferWriter<byte> writer, int value)
@@ -266,6 +276,8 @@ public static class KernelRpcBinaryCodec
             var bytes = Read(sizeof(long));
             return BinaryPrimitives.ReadInt64LittleEndian(bytes);
         }
+
+        public Guid ReadGuid() => new(Read(16));
 
         public int ReadLength()
         {

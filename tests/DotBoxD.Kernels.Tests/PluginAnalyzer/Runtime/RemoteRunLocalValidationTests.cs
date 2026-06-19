@@ -59,6 +59,21 @@ public sealed class RemoteRunLocalValidationTests
         }
         """;
 
+    // An event carrying a genuinely unmarshallable property (object has no wire representation) must STILL fail
+    // safe: no verified-IR package is produced and the un-intercepted RunLocal call site stays a throwing stub.
+    private const string UnmarshallableEventSource = """
+        using DotBoxD.Plugins.Runtime;
+        namespace ChainSample;
+        public sealed record UnmarshallableEvent(string Id, object Payload);
+        public static class UnmarshallableUsage
+        {
+            public static void Configure(RemoteHookRegistry hooks)
+                => hooks.On<UnmarshallableEvent>()
+                    .Where(e => e.Id == "x")
+                    .RunLocal((e, ctx) => { });
+        }
+        """;
+
     [Fact]
     public async Task Whole_event_RunLocal_no_select_lowers_to_a_unit_handle_and_installs()
     {
@@ -88,25 +103,37 @@ public sealed class RemoteRunLocalValidationTests
         await server.InstallAsync(package);   // non-Unit Handle accepted for a projection chain
     }
 
-    // Non-scalar PROJECTION (e.g. a List-typed event property) is NOT lowered by the analyzer on EITHER source
-    // branch — the expression/event-property lowering yields scalars only, so a list projection is unsupported.
-    // It must FAIL SAFE: no verified-IR package is produced, so the un-intercepted RunLocal call site remains a
-    // throwing stub rather than emitting an unmarshallable package. (A non-scalar RECORD reaches the wire via
-    // the whole-event path; non-scalar projection lowering is a documented follow-up — the lifted validator cap
-    // is already ready for it.)
+    // A non-scalar PROJECTION (here a List-typed event property) now lowers: the Where/Select run server-side and
+    // the projected List is pushed over the wire. This is the documented follow-up the lifted validator cap was
+    // already ready for — it installs with a non-null projected-type mark.
     [Fact]
-    public void Non_scalar_list_projection_does_not_lower_and_RunLocal_stays_a_throwing_stub()
+    public async Task List_projection_RunLocal_lowers_and_installs()
     {
-        var assembly = Compile(ListProjectionSource);
+        var package = LowerToPackage(ListProjectionSource);
 
-        // No verified-IR package is generated for a non-scalar projection — fail safe, not a broken package.
+        var subscription = Assert.Single(package.Manifest.Subscriptions);
+        Assert.True(subscription.LocalTerminal);
+        Assert.Equal("list", subscription.ProjectedType);   // non-null => projection push
+
+        using var server = PluginServer.Create(new InMemoryPluginMessageSink(), defaultPolicy: Policy());
+        await server.InstallAsync(package);
+    }
+
+    // A genuinely unmarshallable property (object has no sandbox/wire representation) must STILL fail safe: no
+    // verified-IR package is produced, so the un-intercepted RunLocal call site remains a throwing stub rather
+    // than emitting a package whose value the host cannot build.
+    [Fact]
+    public void Unmarshallable_event_property_does_not_lower_and_RunLocal_stays_a_throwing_stub()
+    {
+        var assembly = Compile(UnmarshallableEventSource);
+
         Assert.DoesNotContain(assembly.GetTypes(), type =>
             type.Name.StartsWith("HookChain_", StringComparison.Ordinal) &&
             type.Name.EndsWith("PluginPackage", StringComparison.Ordinal));
 
         // The .RunLocal call site was not intercepted (the chain did not lower), so invoking Configure hits the
         // runtime RunLocal stub, which throws — the un-lowered RunLocal never runs unsandboxed.
-        var usage = assembly.GetType("ChainSample.ListProjectionUsage")!;
+        var usage = assembly.GetType("ChainSample.UnmarshallableUsage")!;
         var registry = new RemoteHookRegistry(_ => ValueTask.FromResult("unused"), new RemoteLocalHandlerRegistry());
         var ex = Assert.Throws<TargetInvocationException>(() =>
             usage.GetMethod("Configure", BindingFlags.Public | BindingFlags.Static)!.Invoke(null, [registry]));

@@ -14,6 +14,7 @@ internal sealed class DotBoxDExpressionLoweringContext
         CancellationToken cancellationToken,
         string? projectedElementName = null,
         DotBoxDExpressionModel? projectedElement = null,
+        ITypeSymbol? projectedElementType = null,
         ICollection<string>? capabilities = null,
         ICollection<string>? effects = null,
         IReadOnlyDictionary<string, DotBoxDExpressionModel>? inlinedBindings = null,
@@ -26,6 +27,7 @@ internal sealed class DotBoxDExpressionLoweringContext
         CancellationToken = cancellationToken;
         ProjectedElementName = projectedElementName;
         ProjectedElement = projectedElement;
+        ProjectedElementType = projectedElementType;
         Capabilities = capabilities;
         Effects = effects;
         InlinedBindings = inlinedBindings;
@@ -50,6 +52,13 @@ internal sealed class DotBoxDExpressionLoweringContext
     public string? ProjectedElementName { get; }
 
     public DotBoxDExpressionModel? ProjectedElement { get; }
+
+    /// <summary>
+    /// The CLR type of <see cref="ProjectedElement"/> (the <c>Select</c> body's type). When it is a DTO record,
+    /// a downstream member access <c>dto.Field</c> resolves to a <c>record.get</c> on the projected value rather
+    /// than being misread as a same-named event property. Null in event mode or for a non-record projection.
+    /// </summary>
+    public ITypeSymbol? ProjectedElementType { get; }
 
     /// <summary>
     /// Sink for capabilities the lowered IR requires (a <c>ctx.Messages.Send</c>, a

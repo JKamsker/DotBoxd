@@ -49,6 +49,11 @@ public sealed class KernelRpcMarshallerDtoOrderTests
             () => KernelRpcMarshaller.SandboxTypeOf(typeof(int?)));
 
     [Fact]
+    public void SandboxTypeOf_rejects_a_self_referential_dto_instead_of_stack_overflowing()
+        => Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.SandboxTypeOf(typeof(SelfReferentialDto)));
+
+    [Fact]
     public void ToSandboxValue_uses_property_order_when_constructor_order_differs()
     {
         var dto = new ReorderedDto(success: true, monsterId: 7);
@@ -155,5 +160,13 @@ public sealed class KernelRpcMarshallerDtoOrderTests
         public int MonsterId { get; } = monsterId;
 
         public bool Success { get; } = success;
+    }
+
+    // A DTO whose field type is itself — SandboxTypeOf must fail the depth guard rather than recurse forever.
+    private sealed class SelfReferentialDto
+    {
+        public int Value { get; init; }
+
+        public SelfReferentialDto? Next { get; init; }
     }
 }

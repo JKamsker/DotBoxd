@@ -256,11 +256,14 @@ internal static class DotBoxDPackageSourceEmitter
             .AppendLine("];");
         var parameterIndex = 0;
         foreach (var property in model.EventProperties) {
+            // Event parameters carry the full SandboxType the property's CLR type maps to (scalars, Guid, enum,
+            // list/array, map, and DTO record), emitted directly rather than through the scalar-only TypeOf
+            // switch, so a non-scalar property declares the exact sandbox type the runtime adapter produces.
             builder.Append("        parameters[")
                 .Append(parameterIndex)
                 .Append("] = new ").Append(TypeNames.GlobalParameter).Append('(');
             builder.Append(LiteralReader.StringLiteral(DotBoxDExpressionModelFactory.EventVariable(property.Name)));
-            builder.Append(", TypeOf(").Append(LiteralReader.StringLiteral(property.Type)).AppendLine("));");
+            builder.Append(", ").Append(property.SandboxTypeSource).AppendLine(");");
             parameterIndex++;
         }
 
