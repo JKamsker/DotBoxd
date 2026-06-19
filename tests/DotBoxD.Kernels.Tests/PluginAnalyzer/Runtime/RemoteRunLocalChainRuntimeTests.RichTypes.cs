@@ -258,16 +258,15 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
         return (T)KernelRpcMarshaller.FromSandboxValue(sandbox, typeof(T))!;
     }
 
-    // The generated reflection-free decode path: invoke the package's emitted ReadProjected(KernelRpcValue)
-    // straight on the pushed wire value, exactly as the interceptor wires it for the native delegate.
+    // The generated reflection-free decode path: invoke the package's emitted ReadProjectedPayload(bytes)
+    // straight on the pushed payload, exactly as the interceptor wires it for the native delegate.
     private static T DecodeGenerated<T>(string source, byte[] payload)
     {
         var assembly = Compile(source, enableInterceptors: true);
         var packageType = assembly.GetTypes().Single(type =>
             type.Name.StartsWith("HookChain_", StringComparison.Ordinal) &&
             type.Name.EndsWith("PluginPackage", StringComparison.Ordinal));
-        var readProjected = packageType.GetMethod("ReadProjected", BindingFlags.Public | BindingFlags.Static)!;
-        var wire = KernelRpcBinaryCodec.DecodeValue(payload);
-        return (T)readProjected.Invoke(null, [wire])!;
+        var readProjected = packageType.GetMethod("ReadProjectedPayload", BindingFlags.Public | BindingFlags.Static)!;
+        return (T)readProjected.Invoke(null, [new ReadOnlyMemory<byte>(payload)])!;
     }
 }

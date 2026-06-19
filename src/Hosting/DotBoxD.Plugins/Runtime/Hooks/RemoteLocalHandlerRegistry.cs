@@ -46,7 +46,7 @@ public sealed class RemoteLocalHandlerRegistry
         // Runtime fallback: validate the projected type once, then decode straight from KernelRpcValue. This is
         // used when the projected type has no generated decoder, so it avoids the SandboxValue graph on dispatch.
         _ = KernelRpcMarshaller.SandboxTypeOf(typeof(TProjected));
-        return RegisterHandler(subscriptionId, (wireValue, context) =>
+        return RegisterKernelHandler(subscriptionId, (wireValue, context) =>
         {
             var projected = (TProjected)KernelRpcMarshaller.FromKernelRpcValue(wireValue, typeof(TProjected))!;
             return handler(projected, context);
@@ -69,14 +69,41 @@ public sealed class RemoteLocalHandlerRegistry
         ArgumentNullException.ThrowIfNull(handler);
         ArgumentNullException.ThrowIfNull(decoder);
 
-        return RegisterHandler(subscriptionId, (wireValue, context) =>
+        return RegisterKernelHandler(subscriptionId, (wireValue, context) =>
         {
             var projected = decoder(wireValue);
             return handler(projected, context);
         });
     }
 
-    private IDisposable RegisterHandler(string subscriptionId, Func<KernelRpcValue, HookContext, ValueTask> invoke)
+    /// <summary>
+    /// Registers a generated decoder that reads directly from the pushed binary payload. This is the fastest
+    /// generated path because dispatch does not materialize an intermediate <see cref="KernelRpcValue"/> tree.
+    /// </summary>
+    public IDisposable Register<TProjected>(
+        string subscriptionId,
+        Func<TProjected, HookContext, ValueTask> handler,
+        Func<ReadOnlyMemory<byte>, TProjected> decoder)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(subscriptionId);
+        ArgumentNullException.ThrowIfNull(handler);
+        ArgumentNullException.ThrowIfNull(decoder);
+
+        return RegisterRawHandler(subscriptionId, (payload, context) =>
+        {
+            var projected = decoder(payload);
+            return handler(projected, context);
+        });
+    }
+
+    private IDisposable RegisterKernelHandler(string subscriptionId, Func<KernelRpcValue, HookContext, ValueTask> invoke)
+        => RegisterRawHandler(subscriptionId, (payload, context) =>
+        {
+            var wireValue = KernelRpcBinaryCodec.DecodeValue(payload);
+            return invoke(wireValue, context);
+        });
+
+    private IDisposable RegisterRawHandler(string subscriptionId, Func<ReadOnlyMemory<byte>, HookContext, ValueTask> invoke)
     {
         var entry = new Handler(invoke);
         _handlers[subscriptionId] = entry;
@@ -104,8 +131,7 @@ public sealed class RemoteLocalHandlerRegistry
                 $"No remote local handler is registered for subscription '{subscriptionId}'.");
         }
 
-        var wireValue = KernelRpcBinaryCodec.DecodeValue(projectedValue);
-        await handler.Invoke(wireValue, context).ConfigureAwait(false);
+        await handler.Invoke(projectedValue, context).ConfigureAwait(false);
     }
 
     /// <summary>Removes the handler for <paramref name="subscriptionId"/>. Returns <c>true</c> if one was present.</summary>
@@ -123,9 +149,9 @@ public sealed class RemoteLocalHandlerRegistry
     /// </summary>
     public void Clear() => _handlers.Clear();
 
-    private sealed class Handler(Func<KernelRpcValue, HookContext, ValueTask> invoke)
+    private sealed class Handler(Func<ReadOnlyMemory<byte>, HookContext, ValueTask> invoke)
     {
-        public Func<KernelRpcValue, HookContext, ValueTask> Invoke { get; } = invoke;
+        public Func<ReadOnlyMemory<byte>, HookContext, ValueTask> Invoke { get; } = invoke;
     }
 
     private sealed class Registration(

@@ -73,6 +73,31 @@ public sealed class RemoteLocalHandlerRegistryTests
     }
 
     [Fact]
+    public async Task DispatchAsync_can_use_a_generated_raw_payload_decoder()
+    {
+        var registry = new RemoteLocalHandlerRegistry();
+        string? observed = null;
+        byte[]? rawPayload = null;
+        registry.Register(
+            "sub-raw",
+            (string value, HookContext _) =>
+            {
+                observed = value;
+                return ValueTask.CompletedTask;
+            },
+            (Func<ReadOnlyMemory<byte>, string>)(payload =>
+            {
+                rawPayload = payload.ToArray();
+                return "decoded";
+            }));
+
+        await registry.DispatchAsync("sub-raw", new byte[] { 255 }, Context());
+
+        Assert.Equal("decoded", observed);
+        Assert.Equal(new byte[] { 255 }, rawPayload);
+    }
+
+    [Fact]
     public async Task DispatchAsync_passes_the_supplied_context_to_the_delegate()
     {
         var registry = new RemoteLocalHandlerRegistry();

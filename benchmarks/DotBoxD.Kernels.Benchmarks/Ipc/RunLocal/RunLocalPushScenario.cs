@@ -128,7 +128,7 @@ internal sealed class RunLocalPushScenario
 
     /// <summary>
     /// The client-side decode half via the generated reflection-free decoder — the path the plugin generator
-    /// emits for wire-eligible projected types: typed reads off the <c>KernelRpcValue</c>, no <c>SandboxValue</c>.
+    /// emits for wire-eligible projected types: typed reads straight off the binary payload.
     /// </summary>
     public ValueTask DecodeInvokeGeneratedAsync() => _registry.DispatchAsync(GeneratedSubscriptionId, Encoded, _context);
 
@@ -163,32 +163,31 @@ internal sealed class RunLocalPushScenario
         {
             case RunLocalPushCase.Int32:
                 _registry.Register<int>(SubscriptionId, (value, _) => Accumulate(value));
-                _registry.Register<int>(GeneratedSubscriptionId, (value, _) => Accumulate(value), static v => v.Int32Value);
+                _registry.Register<int>(GeneratedSubscriptionId, (value, _) => Accumulate(value), static payload => ReadInt32Payload(payload));
                 break;
             case RunLocalPushCase.String:
                 _registry.Register<string>(SubscriptionId, (value, _) => Accumulate(value.Length));
-                _registry.Register<string>(GeneratedSubscriptionId, (value, _) => Accumulate(value.Length), static v => v.TextValue);
+                _registry.Register<string>(GeneratedSubscriptionId, (value, _) => Accumulate(value.Length), static payload => ReadStringPayload(payload));
                 break;
             case RunLocalPushCase.Enum:
                 _registry.Register<RunLocalReaction>(SubscriptionId, (value, _) => Accumulate((int)value));
-                _registry.Register<RunLocalReaction>(GeneratedSubscriptionId, (value, _) => Accumulate((int)value), static v => (RunLocalReaction)v.Int32Value);
+                _registry.Register<RunLocalReaction>(GeneratedSubscriptionId, (value, _) => Accumulate((int)value), static payload => ReadReactionPayload(payload));
                 break;
             case RunLocalPushCase.ListInt32:
                 _registry.Register<List<int>>(SubscriptionId, (value, _) => Accumulate(value.Count));
-                _registry.Register<List<int>>(GeneratedSubscriptionId, (value, _) => Accumulate(value.Count), static v => ReadInt32List(v));
+                _registry.Register<List<int>>(GeneratedSubscriptionId, (value, _) => Accumulate(value.Count), static payload => ReadInt32ListPayload(payload));
                 break;
             case RunLocalPushCase.Dto:
                 _registry.Register<RunLocalHit>(SubscriptionId, (value, _) => Accumulate(value.MonsterId));
                 _registry.Register<RunLocalHit>(GeneratedSubscriptionId, (value, _) => Accumulate(value.MonsterId),
-                    static v => new RunLocalHit(v.GetItem(0).Int32Value, v.GetItem(1).TextValue));
+                    static payload => ReadHitPayload(payload));
                 break;
             case RunLocalPushCase.AnonymousDto:
                 throw new InvalidOperationException("Anonymous projections are registered through their inferred type.");
             case RunLocalPushCase.WholeEvent:
                 _registry.Register<RunLocalMonsterDamaged>(SubscriptionId, (value, _) => Accumulate(value.Damage));
                 _registry.Register<RunLocalMonsterDamaged>(GeneratedSubscriptionId, (value, _) => Accumulate(value.Damage),
-                    static v => new RunLocalMonsterDamaged(
-                        v.GetItem(0).Int32Value, v.GetItem(1).Int32Value, v.GetItem(2).Int64Value, v.GetItem(3).BoolValue));
+                    static payload => ReadMonsterDamagedPayload(payload));
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(scenario), scenario, null);
@@ -202,33 +201,83 @@ internal sealed class RunLocalPushScenario
         _registry.Register<TProjected>(
             GeneratedSubscriptionId,
             (value, _) => Accumulate(value.GetHashCode()),
-            static v => ReadAnonymous<TProjected>(v));
+            static payload => ReadAnonymousPayload<TProjected>(payload));
         GC.KeepAlive(sample);
     }
 
-    private static TProjected ReadAnonymous<TProjected>(KernelRpcValue value)
-        where TProjected : class
+    private static int ReadInt32Payload(ReadOnlyMemory<byte> payload)
     {
-        value.RequireKind(KernelRpcValueKind.Record);
-        if (value.ItemCount != 2)
-        {
-            throw new NotSupportedException("Anonymous benchmark projection field count changed.");
-        }
-
-        return (TProjected)(object)new { MonsterId = value.GetItem(0).Int32Value, Name = value.GetItem(1).TextValue };
+        var reader = new KernelRpcPayloadReader(payload.Span);
+        var result = reader.ReadInt32();
+        reader.EnsureConsumed();
+        return result;
     }
 
-    private static List<int> ReadInt32List(KernelRpcValue value)
+    private static string ReadStringPayload(ReadOnlyMemory<byte> payload)
     {
-        value.RequireKind(KernelRpcValueKind.List);
-        var count = value.ItemCount;
+        var reader = new KernelRpcPayloadReader(payload.Span);
+        var result = reader.ReadString();
+        reader.EnsureConsumed();
+        return result;
+    }
+
+    private static RunLocalReaction ReadReactionPayload(ReadOnlyMemory<byte> payload)
+    {
+        var reader = new KernelRpcPayloadReader(payload.Span);
+        var result = (RunLocalReaction)reader.ReadInt32();
+        reader.EnsureConsumed();
+        return result;
+    }
+
+    private static List<int> ReadInt32ListPayload(ReadOnlyMemory<byte> payload)
+    {
+        var reader = new KernelRpcPayloadReader(payload.Span);
+        var count = reader.ReadListHeader();
         var result = new List<int>(count);
         for (var i = 0; i < count; i++)
         {
-            result.Add(value.GetItem(i).Int32Value);
+            result.Add(reader.ReadInt32());
         }
 
+        reader.EnsureConsumed();
         return result;
+    }
+
+    private static RunLocalHit ReadHitPayload(ReadOnlyMemory<byte> payload)
+    {
+        var reader = new KernelRpcPayloadReader(payload.Span);
+        RequireRecordFields(ref reader, 2);
+        var result = new RunLocalHit(reader.ReadInt32(), reader.ReadString());
+        reader.EnsureConsumed();
+        return result;
+    }
+
+    private static RunLocalMonsterDamaged ReadMonsterDamagedPayload(ReadOnlyMemory<byte> payload)
+    {
+        var reader = new KernelRpcPayloadReader(payload.Span);
+        RequireRecordFields(ref reader, 4);
+        var result = new RunLocalMonsterDamaged(
+            reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt64(), reader.ReadBool());
+        reader.EnsureConsumed();
+        return result;
+    }
+
+    private static TProjected ReadAnonymousPayload<TProjected>(ReadOnlyMemory<byte> payload)
+        where TProjected : class
+    {
+        var reader = new KernelRpcPayloadReader(payload.Span);
+        RequireRecordFields(ref reader, 2);
+        var result = (TProjected)(object)new { MonsterId = reader.ReadInt32(), Name = reader.ReadString() };
+        reader.EnsureConsumed();
+        return result;
+    }
+
+    private static void RequireRecordFields(ref KernelRpcPayloadReader reader, int expected)
+    {
+        if (reader.ReadRecordHeader() != expected)
+        {
+            throw new NotSupportedException("Benchmark projection field count changed.");
+        }
     }
 
     private ValueTask Accumulate(long value)

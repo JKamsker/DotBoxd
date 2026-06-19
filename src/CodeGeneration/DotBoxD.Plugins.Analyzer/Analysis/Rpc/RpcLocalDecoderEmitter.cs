@@ -28,9 +28,11 @@ internal static class RpcLocalDecoderEmitter
             }
 
             var conv = new RpcKernelValueConversionEmitter();
+            var payload = new RpcKernelPayloadReadEmitter();
             // Compute the read expression first: it appends any nested list/DTO helpers to conv.Helpers, so the
             // ReadProjected body never splices a helper into the middle of itself.
             var readExpression = conv.ReadExpression(projectedType, "value");
+            var payloadExpression = payload.ReadExpression(projectedType, "reader");
             var typeName = projectedType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
             var builder = new StringBuilder();
@@ -39,6 +41,8 @@ internal static class RpcLocalDecoderEmitter
             builder.Append("        => ").Append(readExpression).AppendLine(";");
             builder.AppendLine();
             builder.Append(conv.Helpers);
+            AppendPayloadReader(builder, typeName, payloadExpression);
+            builder.Append(payload.Helpers);
             return builder.ToString();
         }
         catch (NotSupportedException)
@@ -56,10 +60,13 @@ internal static class RpcLocalDecoderEmitter
         }
 
         var conv = new RpcKernelValueConversionEmitter();
+        var payload = new RpcKernelPayloadReadEmitter();
         var arguments = new string[fields.Count];
+        var payloadArguments = new string[fields.Count];
         for (var i = 0; i < fields.Count; i++)
         {
             arguments[i] = conv.ReadExpression(fields[i].Type, "value.GetItem(" + i + ")");
+            payloadArguments[i] = payload.ReadExpression(fields[i].Type, "reader");
         }
 
         var builder = new StringBuilder();
@@ -86,7 +93,51 @@ internal static class RpcLocalDecoderEmitter
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.Append(conv.Helpers);
+        AppendAnonymousPayloadReader(builder, fields, payloadArguments, payload);
+        builder.Append(payload.Helpers);
         return builder.ToString();
+    }
+
+    private static void AppendPayloadReader(StringBuilder builder, string typeName, string payloadExpression)
+    {
+        builder.Append("    public static ").Append(typeName)
+            .AppendLine(" ReadProjectedPayload(global::System.ReadOnlyMemory<byte> payload)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        var reader = new global::DotBoxD.Plugins.KernelRpcPayloadReader(payload.Span);");
+        builder.Append("        var result = ").Append(payloadExpression).AppendLine(";");
+        builder.AppendLine("        reader.EnsureConsumed();");
+        builder.AppendLine("        return result;");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+    }
+
+    private static void AppendAnonymousPayloadReader(
+        StringBuilder builder,
+        IReadOnlyList<IPropertySymbol> fields,
+        IReadOnlyList<string> payloadArguments,
+        RpcKernelPayloadReadEmitter payload)
+    {
+        builder.AppendLine("    public static TProjected ReadProjectedPayload<TProjected>(global::System.ReadOnlyMemory<byte> payload)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        var reader = new global::DotBoxD.Plugins.KernelRpcPayloadReader(payload.Span);");
+        payload.AppendRecordHeaderGuard(builder, fields.Count);
+        builder.AppendLine();
+        builder.Append("        var result = (TProjected)(object)new { ");
+        for (var i = 0; i < fields.Count; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append(", ");
+            }
+
+            builder.Append(Identifier(fields[i].Name)).Append(" = ").Append(payloadArguments[i]);
+        }
+
+        builder.AppendLine(" };");
+        builder.AppendLine("        reader.EnsureConsumed();");
+        builder.AppendLine("        return result;");
+        builder.AppendLine("    }");
+        builder.AppendLine();
     }
 
     private static string Identifier(string name) => "@" + name;

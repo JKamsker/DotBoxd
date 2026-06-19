@@ -818,3 +818,34 @@ WholeEvent     68.8 / 416.0     81.9 / 288.0
 The direct fallback removes the `SandboxValue` graph from 2-arg dispatch. DTO/anonymous fallback allocation now
 matches the generated decoder's intrinsic object/string cost in this probe; wall-clock remains noisier for the
 wider record rows, but the allocation reduction is stable.
+
+## Generated RunLocal direct binary decode
+
+Generated local-chain interceptors now pass `ReadProjectedPayload(ReadOnlyMemory<byte>)` instead of
+`ReadProjected(KernelRpcValue)` when a reflection-free decoder is available. The generated package still emits
+the `KernelRpcValue` reader for compatibility/tests, but dispatch no longer materializes the intermediate
+`KernelRpcValue` tree. A public low-level `KernelRpcPayloadReader` is exposed for generated code only
+(`EditorBrowsable(Never)`).
+
+Command:
+
+```text
+dotnet run --project benchmarks\DotBoxD.Kernels.Benchmarks\DotBoxD.Kernels.Benchmarks.csproj -c Release -- --probe-runlocal-push
+```
+
+Representative local run, 200k measured iterations. The "before" values are the previous generated decode
+half after the direct runtime fallback commit; "after" is the generated raw-payload decoder:
+
+```text
+Case          Before ms/Bop    After ms/Bop
+Int32          23.0 /   0.0     19.8 /   0.0
+String         29.4 /  40.0     26.7 /  40.0
+Enum           23.1 /   0.0     21.6 /   0.0
+ListInt32      58.4 / 264.0     35.2 /  72.0
+Dto            49.0 / 200.0     35.5 /  64.0
+AnonymousDto   70.6 / 200.0     38.4 /  64.0
+WholeEvent     66.7 / 288.0     35.6 /  40.0
+```
+
+The remaining generated decode allocation is now the intrinsic CLR result cost: strings, lists, and DTO objects,
+not the intermediate wire tree.

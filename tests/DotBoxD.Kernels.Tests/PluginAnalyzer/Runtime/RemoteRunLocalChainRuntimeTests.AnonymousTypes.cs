@@ -74,8 +74,9 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
         var generated = GeneratedSource(AnonymousTerminalSource);
         Assert.Contains("Intercept_0<TEvent, TCurrent>", generated);
         Assert.Contains("ReadProjected<TProjected>", generated);
+        Assert.Contains("ReadProjectedPayload<TProjected>", generated);
         Assert.Contains("return (TProjected)(object)new {", generated);
-        Assert.Contains(".ReadProjected<TCurrent>", generated);
+        Assert.Contains(".ReadProjectedPayload<TCurrent>", generated);
     }
 
     private const string AnonTerminalRoundTripSource = Prelude + """
