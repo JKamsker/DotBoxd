@@ -119,6 +119,48 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
     }
 
     [Fact]
+    public async Task Anonymous_terminal_projection_runs_end_to_end_through_a_real_server()
+    {
+        // The fullest behavioral test, exercising the generated source: the generated interceptor installs the
+        // generated package into a REAL PluginServer and wires the server's projection push to the local handler
+        // registry, so ONE PublishAsync drives the whole pipeline — server-side filter -> anonymous projection ->
+        // wire -> generic interceptor -> reflective decode -> native RunLocal lambda.
+        var assembly = Compile(AnonTerminalRoundTripSource, enableInterceptors: true);
+        var usage = assembly.GetType("ChainSample.AnonTerminalRoundTripUsage")!;
+        var received = (System.Collections.Generic.List<string>)usage
+            .GetField("Received", BindingFlags.Public | BindingFlags.Static)!.GetValue(null)!;
+        received.Clear();
+
+        var sink = new InMemoryPluginMessageSink();
+        using var server = PluginServer.Create(sink, defaultPolicy: ChainPolicy());
+        var localHandlers = new RemoteLocalHandlerRegistry();
+
+        // The install callback installs the generated package into the live server and forwards every server push
+        // into the local handler registry that the generated interceptor registers the native delegate against.
+        var registry = new RemoteHookRegistry(
+            package =>
+            {
+                var kernel = server.InstallAsync(package).AsTask().GetAwaiter().GetResult();
+                var subscriptionId = package.Manifest.PluginId;
+                server.Hooks.On<EncounterEvent>().UseProjecting(
+                    kernel,
+                    subscriptionId,
+                    (id, payload, token) => localHandlers.DispatchAsync(id, payload.ToArray(), new HookContext(sink, token)));
+                return ValueTask.FromResult(subscriptionId);
+            },
+            localHandlers);
+
+        // Running the GENERATED interceptor: it redirects .RunLocal(...) to UseGeneratedLocalChain, installing the
+        // package and registering the native delegate.
+        usage.GetMethod("Configure", BindingFlags.Public | BindingFlags.Static)!.Invoke(null, [registry]);
+
+        await server.Hooks.PublishAsync(Matching);   // Distance 3 <= 4 -> projected + pushed -> lambda fires
+        await server.Hooks.PublishAsync(Filtered);   // Distance 99 -> filtered server-side -> no push
+
+        Assert.Equal($"{SampleId}|crypt", Assert.Single(received));
+    }
+
+    [Fact]
     public async Task Anonymous_intermediate_projection_with_multiple_fields_filters_server_side()
     {
         // A wider anonymous tuple (string/long/bool) filtered on two of its fields, then a named terminal projection.
