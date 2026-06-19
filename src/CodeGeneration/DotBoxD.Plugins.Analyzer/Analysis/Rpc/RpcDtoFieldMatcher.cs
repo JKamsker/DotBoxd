@@ -5,7 +5,7 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 internal static class RpcDtoFieldMatcher
 {
     public static int FieldIndex(
-        IReadOnlyList<IPropertySymbol> fields,
+        IReadOnlyList<RecordMember> fields,
         IParameterSymbol parameter)
     {
         for (var i = 0; i < fields.Count; i++)

@@ -90,29 +90,44 @@ public static partial class KernelRpcMarshaller
     private static RecordShape GetRecordShape(Type type)
         => RecordShapeCache.GetOrAdd(type, static candidate =>
         {
-            var properties = new List<PropertyInfo>();
             const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+            var members = new List<MemberInfo>();
             foreach (var property in candidate.GetProperties(flags))
             {
                 if (property.CanRead && property.GetIndexParameters().Length == 0 &&
                     !string.Equals(property.Name, "EqualityContract", StringComparison.Ordinal) &&
                     !IsIgnoredMember(property))
                 {
-                    properties.Add(property);
+                    members.Add(property);
                 }
             }
 
-            properties.Sort(static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
-            return new RecordShape(candidate, properties.ToArray());
+            // A value type that carries its data in public fields rather than properties (e.g. a math vector
+            // like System.Numerics.Vector3, whose X/Y/Z are float fields) has no readable properties; fall back
+            // to its public instance fields so it still marshals as a record. The fallback only runs when there
+            // are no properties, so property-based DTOs are unaffected and this stays strictly additive.
+            if (members.Count == 0)
+            {
+                foreach (var field in candidate.GetFields(flags))
+                {
+                    if (!IsIgnoredMember(field))
+                    {
+                        members.Add(field);
+                    }
+                }
+            }
+
+            members.Sort(static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
+            return new RecordShape(candidate, members.ToArray());
         });
 
-    // A property marked [IgnoreDataMember] (System.Runtime.Serialization) is non-wire — a lazily-resolved or
+    // A member marked [IgnoreDataMember] (System.Runtime.Serialization) is non-wire — a lazily-resolved or
     // computed member, not serialized data — so it is excluded from the marshalled record shape, matching the
     // analyzer (DotBoxDRpcTypeMapper.IsIgnoredDataMember) and the convention event adapter so all three readers
     // agree on the wire field set. Matched by name via GetCustomAttributesData so the attribute need not load.
-    internal static bool IsIgnoredMember(PropertyInfo property)
+    internal static bool IsIgnoredMember(MemberInfo member)
     {
-        foreach (var attribute in property.GetCustomAttributesData())
+        foreach (var attribute in member.GetCustomAttributesData())
         {
             if (string.Equals(
                     attribute.AttributeType.FullName,
@@ -126,6 +141,26 @@ public static partial class KernelRpcMarshaller
         return false;
     }
 
+    // A record member is a public property (with a getter) or, for a field-only value type, a public field.
+    // These helpers read either uniformly so the marshaller treats both the same.
+    private static Type RecordMemberType(MemberInfo member)
+        => member is PropertyInfo property ? property.PropertyType : ((FieldInfo)member).FieldType;
+
+    private static object? GetRecordMemberValue(MemberInfo member, object instance)
+        => member is PropertyInfo property ? property.GetValue(instance) : ((FieldInfo)member).GetValue(instance);
+
+    private static void SetRecordMemberValue(MemberInfo member, object instance, object? value)
+    {
+        if (member is PropertyInfo property)
+        {
+            property.SetValue(instance, value);
+        }
+        else
+        {
+            ((FieldInfo)member).SetValue(instance, value);
+        }
+    }
+
     private sealed class RecordShape
     {
         private readonly ConstructorInfo? _constructor;
@@ -133,7 +168,7 @@ public static partial class KernelRpcMarshaller
         private readonly bool _constructorUsesFieldOrder;
         private readonly Type _type;
 
-        public RecordShape(Type type, PropertyInfo[] fields)
+        public RecordShape(Type type, MemberInfo[] fields)
         {
             _type = type;
             Fields = fields;
@@ -141,7 +176,7 @@ public static partial class KernelRpcMarshaller
             _constructorUsesFieldOrder = IsIdentityMap(_constructorMap);
         }
 
-        public IReadOnlyList<PropertyInfo> Fields { get; }
+        public IReadOnlyList<MemberInfo> Fields { get; }
 
         public object Construct(object?[] arguments)
         {
@@ -154,7 +189,7 @@ public static partial class KernelRpcMarshaller
                 ?? throw new NotSupportedException($"Server extension could not construct '{_type}'.");
             for (var i = 0; i < Fields.Count; i++)
             {
-                Fields[i].SetValue(instance, arguments[i]);
+                SetRecordMemberValue(Fields[i], instance, arguments[i]);
             }
 
             return instance;
@@ -173,7 +208,7 @@ public static partial class KernelRpcMarshaller
 
         private static (ConstructorInfo? Constructor, int[] Map) FindConstructor(
             Type type,
-            IReadOnlyList<PropertyInfo> fields)
+            IReadOnlyList<MemberInfo> fields)
         {
             foreach (var constructor in type.GetConstructors())
             {
@@ -196,7 +231,7 @@ public static partial class KernelRpcMarshaller
 
         private static bool TryMapConstructor(
             IReadOnlyList<ParameterInfo> parameters,
-            IReadOnlyList<PropertyInfo> fields,
+            IReadOnlyList<MemberInfo> fields,
             int[] map,
             bool[] assigned)
         {
@@ -205,7 +240,7 @@ public static partial class KernelRpcMarshaller
                 var fieldIndex = FieldIndex(fields, parameters[i].Name);
                 if (fieldIndex < 0 ||
                     assigned[fieldIndex] ||
-                    parameters[i].ParameterType != fields[fieldIndex].PropertyType)
+                    parameters[i].ParameterType != RecordMemberType(fields[fieldIndex]))
                 {
                     return false;
                 }
@@ -230,7 +265,7 @@ public static partial class KernelRpcMarshaller
             return true;
         }
 
-        private static int FieldIndex(IReadOnlyList<PropertyInfo> fields, string? name)
+        private static int FieldIndex(IReadOnlyList<MemberInfo> fields, string? name)
         {
             for (var i = 0; i < fields.Count; i++)
             {

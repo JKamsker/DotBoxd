@@ -126,7 +126,7 @@ internal sealed class InvokeAsyncResultReaderSource
         return method;
     }
 
-    private List<string> DtoConstructorArguments(IReadOnlyList<IPropertySymbol> fields, IMethodSymbol constructor)
+    private List<string> DtoConstructorArguments(IReadOnlyList<RecordMember> fields, IMethodSymbol constructor)
     {
         var arguments = new List<string>(constructor.Parameters.Length);
         foreach (var parameter in constructor.Parameters)
@@ -138,7 +138,7 @@ internal sealed class InvokeAsyncResultReaderSource
         return arguments;
     }
 
-    private static IMethodSymbol ResolveConstructor(INamedTypeSymbol type, IReadOnlyList<IPropertySymbol> fields)
+    private static IMethodSymbol ResolveConstructor(INamedTypeSymbol type, IReadOnlyList<RecordMember> fields)
     {
         foreach (var constructor in type.InstanceConstructors)
         {
@@ -157,7 +157,7 @@ internal sealed class InvokeAsyncResultReaderSource
             $"Server extension DTO '{type.ToDisplayString()}' must expose a constructor matching its public fields.");
     }
 
-    private static int FieldIndex(IReadOnlyList<IPropertySymbol> fields, string? name)
+    private static int FieldIndex(IReadOnlyList<RecordMember> fields, string? name)
     {
         for (var i = 0; i < fields.Count; i++)
         {

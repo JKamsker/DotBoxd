@@ -254,7 +254,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
     private void BindInitializer(
         InitializerExpressionSyntax initializer,
-        IReadOnlyList<IPropertySymbol> fields,
+        IReadOnlyList<RecordMember> fields,
         INamedTypeSymbol named,
         string[] args)
     {
@@ -280,7 +280,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         }
     }
 
-    private static int IndexOfField(IReadOnlyList<IPropertySymbol> fields, string name, INamedTypeSymbol named)
+    private static int IndexOfField(IReadOnlyList<RecordMember> fields, string name, INamedTypeSymbol named)
     {
         for (var i = 0; i < fields.Count; i++)
         {
@@ -294,7 +294,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     }
 
     private static int ConstructorFieldIndex(
-        IReadOnlyList<IPropertySymbol> fields,
+        IReadOnlyList<RecordMember> fields,
         IParameterSymbol parameter,
         INamedTypeSymbol named)
     {

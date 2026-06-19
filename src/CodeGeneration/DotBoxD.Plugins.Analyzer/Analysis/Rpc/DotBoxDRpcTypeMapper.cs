@@ -28,6 +28,7 @@ internal static class DotBoxDRpcTypeMapper
             case SpecialType.System_Int32: return Scalar("I32");
             case SpecialType.System_Int64: return Scalar("I64");
             case SpecialType.System_Double: return Scalar("F64");
+            case SpecialType.System_Single: return Scalar("F64");
             case SpecialType.System_String: return Scalar("String");
         }
 
@@ -74,9 +75,27 @@ internal static class DotBoxDRpcTypeMapper
         throw new NotSupportedException($"Server extension type '{type.ToDisplayString()}' is not supported.");
     }
 
+    /// <summary>
+    /// True when <paramref name="member"/> can be written through an object initializer: a property with an
+    /// accessible <c>set</c>/<c>init</c>, or a non-readonly public field. Used for the parameterless-construct
+    /// + object-initializer fallback when a DTO exposes no constructor matching its fields.
+    /// </summary>
+    public static bool IsObjectInitializerWritable(RecordMember member)
+        => member.Symbol switch
+        {
+            IPropertySymbol
+            {
+                SetMethod.DeclaredAccessibility:
+                    Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal
+            } => true,
+            IFieldSymbol { IsReadOnly: false, IsConst: false } => true,
+            _ => false
+        };
+
     public static bool IsScalar(ITypeSymbol type)
         => type.SpecialType is SpecialType.System_Boolean or SpecialType.System_Int32
-            or SpecialType.System_Int64 or SpecialType.System_Double or SpecialType.System_String;
+            or SpecialType.System_Int64 or SpecialType.System_Double or SpecialType.System_Single
+            or SpecialType.System_String;
 
     /// <summary><see cref="System.Guid"/> is a first-class 16-byte scalar (sandbox <c>Guid</c> kind), distinct
     /// from <c>string</c>. Detected structurally so it is robust to display-format differences.</summary>
@@ -166,11 +185,16 @@ internal static class DotBoxDRpcTypeMapper
            MapTypes(type) is null &&
            RecordFields(type).Count > 0;
 
-    /// <summary>The DTO's positional fields: public instance properties with a getter, in declaration
-    /// order (for a positional record this is its primary-constructor parameter order).</summary>
-    public static IReadOnlyList<IPropertySymbol> RecordFields(INamedTypeSymbol type)
+    /// <summary>
+    /// The DTO's positional fields, in declaration order (for a positional record this is its primary-constructor
+    /// parameter order): its public instance properties with a getter, or — for a value type that carries its
+    /// data in public fields rather than properties (e.g. <c>System.Numerics.Vector3</c>, whose <c>X/Y/Z</c> are
+    /// <c>float</c> fields) — its public instance fields. The field fallback only runs when there are no readable
+    /// properties, so a property-based DTO is unaffected and the change is strictly additive.
+    /// </summary>
+    public static IReadOnlyList<RecordMember> RecordFields(INamedTypeSymbol type)
     {
-        var fields = new List<IPropertySymbol>();
+        var members = new List<RecordMember>();
         foreach (var member in type.GetMembers())
         {
             if (member is IPropertySymbol
@@ -183,24 +207,42 @@ internal static class DotBoxDRpcTypeMapper
                 !property.IsImplicitlyDeclared &&
                 !IsIgnoredDataMember(property))
             {
-                fields.Add(property);
+                members.Add(new RecordMember(property.Name, property.Type, property));
             }
         }
 
-        return fields;
+        if (members.Count == 0)
+        {
+            foreach (var member in type.GetMembers())
+            {
+                if (member is IFieldSymbol
+                    {
+                        DeclaredAccessibility: Accessibility.Public,
+                        IsStatic: false,
+                        IsConst: false
+                    } field &&
+                    !field.IsImplicitlyDeclared &&
+                    !IsIgnoredDataMember(field))
+                {
+                    members.Add(new RecordMember(field.Name, field.Type, field));
+                }
+            }
+        }
+
+        return members;
     }
 
     /// <summary>
-    /// True when <paramref name="property"/> is marked <c>[IgnoreDataMember]</c>
+    /// True when <paramref name="member"/> is marked <c>[IgnoreDataMember]</c>
     /// (<c>System.Runtime.Serialization</c>). Such a member is non-wire — a lazily-resolved or computed
     /// projection of the record (e.g. a context snapshot resolved on first read), not part of its serialized
     /// data — so it is excluded from the marshalled record/event field set. The runtime convention adapter and
     /// the decode-side record shape exclude it too, keeping the analyzer's wire field set in lockstep with both
     /// runtime readers, and letting a record/event that carries such a member still lower.
     /// </summary>
-    public static bool IsIgnoredDataMember(IPropertySymbol property)
+    public static bool IsIgnoredDataMember(ISymbol member)
     {
-        foreach (var attribute in property.GetAttributes())
+        foreach (var attribute in member.GetAttributes())
         {
             if (attribute.AttributeClass is { } attributeClass &&
                 string.Equals(
@@ -261,3 +303,9 @@ internal static class DotBoxDRpcTypeMapper
         => type is INamedTypeSymbol named &&
            named.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T;
 }
+
+/// <summary>
+/// A DTO/record field for marshalling: a public property, or (for a field-only value type) a public field.
+/// <see cref="Symbol"/> is the underlying property/field symbol for callers that need more than name and type.
+/// </summary>
+internal readonly record struct RecordMember(string Name, ITypeSymbol Type, ISymbol Symbol);
