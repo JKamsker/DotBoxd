@@ -3,22 +3,25 @@ namespace DotBoxD.Plugins.Runtime.Rpc;
 using System.Buffers;
 
 /// <summary>
-/// An <see cref="IBufferWriter{T}"/> backed by an array rented from <see cref="ArrayPool{T}"/>, used to encode
-/// a single <c>RunLocal</c> / server-extension payload without the per-event <c>MemoryStream</c> + <c>ToArray</c>
-/// the codec's <c>byte[]</c> overloads incur. The writer object itself is pooled (rent-on-<see cref="Rent"/>,
-/// return-on-<see cref="Dispose"/>) so the encode half approaches zero steady-state allocations.
+/// A minimal <see cref="IBufferWriter{T}"/> backed by an array rented from <see cref="ArrayPool{T}"/>, used to
+/// encode a single <c>RunLocal</c> / server-extension payload without the per-event <c>MemoryStream</c> + growth
+/// + <c>ToArray</c> the codec's <c>byte[]</c> overloads incur.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The lifetime contract is: <see cref="Rent"/> a writer, encode into it, hand <see cref="WrittenMemory"/> to a
-/// transport, and only <see cref="Dispose"/> it <i>after</i> that transport has finished copying the bytes —
-/// the rented array aliases <see cref="WrittenMemory"/>, so returning it to the pool while a send still reads
-/// from it would be a use-after-free. The remote push path satisfies this by disposing in a <c>using</c> whose
-/// scope ends after <c>await push(...)</c> completes.
+/// This is the core of CommunityToolkit's <c>ArrayPoolBufferWriter&lt;T&gt;</c> (rent the buffer, grow by
+/// doubling, return it on <see cref="Dispose"/>), trimmed to this path's needs. It deliberately does NOT pool
+/// the writer object itself — one instance is created per encode and discarded — so there is no shared or
+/// concurrent state, and therefore nothing concurrency-subtle to get wrong. The per-encode object is a small
+/// gen0 allocation; the buffer it manages is fully pooled, which is where the cost lives.
 /// </para>
 /// <para>
-/// Cannot reuse <c>DotBoxD.Services.Buffers.PooledBufferWriter</c>: <c>DotBoxD.Plugins</c> does not reference
-/// <c>DotBoxD.Services</c> (layering). This is the minimal equivalent for the codec's hot path.
+/// Lifetime contract: encode into the writer, hand <see cref="WrittenMemory"/> to a transport, and only
+/// <see cref="Dispose"/> it <i>after</i> that transport has finished copying the bytes — the rented array
+/// aliases <see cref="WrittenMemory"/>, so returning it to the pool while a send still reads from it would be a
+/// use-after-free. The remote push path satisfies this by disposing in a <c>using</c> whose scope ends after
+/// <c>await push(...)</c> completes. Cannot reuse <c>DotBoxD.Services.Buffers.PooledBufferWriter</c>:
+/// <c>DotBoxD.Plugins</c> does not (and should not) reference the RPC transport layer.
 /// </para>
 /// </remarks>
 internal sealed class PooledRpcBufferWriter : IBufferWriter<byte>, IDisposable
@@ -27,53 +30,18 @@ internal sealed class PooledRpcBufferWriter : IBufferWriter<byte>, IDisposable
     private const int MaxArrayLength = 0x7FFFFFC7;
     private const int DefaultCapacity = 256;
 
-    [ThreadStatic]
-    private static PooledRpcBufferWriter? s_threadCached;
-    private static readonly object s_globalGate = new();
-    private static PooledRpcBufferWriter? s_globalCached;
-
     private byte[]? _buffer;
     private int _written;
-    private PooledRpcBufferWriter? _nextCached;
 
-    private PooledRpcBufferWriter(int initialCapacity)
-    {
-        _buffer = ArrayPool<byte>.Shared.Rent(Math.Max(initialCapacity, 1));
-        _written = 0;
-    }
+    public PooledRpcBufferWriter(int initialCapacity = DefaultCapacity)
+        => _buffer = ArrayPool<byte>.Shared.Rent(Math.Max(initialCapacity, 1));
+
+    /// <summary>Creates a writer that rents its buffer from <see cref="ArrayPool{T}.Shared"/>.</summary>
+    public static PooledRpcBufferWriter Rent(int initialCapacity = DefaultCapacity) => new(initialCapacity);
 
     /// <summary>The bytes written so far. Valid only until <see cref="Dispose"/> returns the array to the pool.</summary>
     public ReadOnlyMemory<byte> WrittenMemory =>
         (_buffer ?? throw new ObjectDisposedException(nameof(PooledRpcBufferWriter))).AsMemory(0, _written);
-
-    /// <summary>
-    /// Rents a pooled writer. The caller owns it until <see cref="Dispose"/>; concurrent <see cref="Rent"/> calls
-    /// (e.g. across an <c>await</c>) never vend the same instance because the cache slot is claimed atomically.
-    /// </summary>
-    public static PooledRpcBufferWriter Rent(int initialCapacity = DefaultCapacity)
-    {
-        var writer = Interlocked.Exchange(ref s_threadCached, null);
-        if (writer is null)
-        {
-            lock (s_globalGate)
-            {
-                writer = s_globalCached;
-                if (writer is not null)
-                {
-                    s_globalCached = writer._nextCached;
-                    writer._nextCached = null;
-                }
-            }
-        }
-
-        if (writer is null)
-        {
-            return new PooledRpcBufferWriter(initialCapacity);
-        }
-
-        writer.Reset(initialCapacity);
-        return writer;
-    }
 
     public void Advance(int count)
     {
@@ -103,35 +71,14 @@ internal sealed class PooledRpcBufferWriter : IBufferWriter<byte>, IDisposable
         return _buffer!.AsSpan(_written);
     }
 
-    /// <summary>Returns the rented array to the pool and the writer to the cache. Idempotent.</summary>
+    /// <summary>Returns the rented array to the pool. Idempotent — safe to call once the encode is done.</summary>
     public void Dispose()
     {
         var buffer = Interlocked.Exchange(ref _buffer, null);
-        if (buffer is null)
+        if (buffer is not null)
         {
-            return;
+            ArrayPool<byte>.Shared.Return(buffer);
         }
-
-        ArrayPool<byte>.Shared.Return(buffer);
-        _written = 0;
-
-        if (Interlocked.CompareExchange(ref s_threadCached, this, null) is null)
-        {
-            return;
-        }
-
-        lock (s_globalGate)
-        {
-            _nextCached = s_globalCached;
-            s_globalCached = this;
-        }
-    }
-
-    private void Reset(int initialCapacity)
-    {
-        _buffer = ArrayPool<byte>.Shared.Rent(Math.Max(initialCapacity, 1));
-        _written = 0;
-        _nextCached = null;
     }
 
     private void EnsureCapacity(int sizeHint)
