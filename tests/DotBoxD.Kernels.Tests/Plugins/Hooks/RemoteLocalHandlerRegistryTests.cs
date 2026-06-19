@@ -97,13 +97,41 @@ public sealed class RemoteLocalHandlerRegistryTests
     }
 
     [Fact]
-    public void Register_rejects_a_duplicate_subscription_id()
+    public async Task Register_replaces_the_handler_for_a_reused_subscription_id()
+    {
+        // Idempotent re-registration: a plugin that reconnects and re-installs with the same id must not throw,
+        // and the latest handler wins.
+        var registry = new RemoteLocalHandlerRegistry();
+        string? observed = null;
+        registry.Register<string>("dup", (_, _) =>
+        {
+            observed = "first";
+            return ValueTask.CompletedTask;
+        });
+        registry.Register<string>("dup", (value, _) =>
+        {
+            observed = "second:" + value;
+            return ValueTask.CompletedTask;
+        });
+
+        await registry.DispatchAsync("dup", EncodeProjected("x"), Context());
+
+        Assert.Equal("second:x", observed);
+    }
+
+    [Fact]
+    public async Task Clear_removes_all_handlers()
     {
         var registry = new RemoteLocalHandlerRegistry();
-        registry.Register<string>("dup", (_, _) => ValueTask.CompletedTask);
+        registry.Register<string>("a", (_, _) => ValueTask.CompletedTask);
+        registry.Register<string>("b", (_, _) => ValueTask.CompletedTask);
 
-        Assert.Throws<InvalidOperationException>(
-            () => registry.Register<string>("dup", (_, _) => ValueTask.CompletedTask));
+        registry.Clear();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await registry.DispatchAsync("a", EncodeProjected("x"), Context()));
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await registry.DispatchAsync("b", EncodeProjected("x"), Context()));
     }
 
     [Fact]

@@ -32,8 +32,10 @@ public sealed class RemoteLocalHandlerRegistry
 
     /// <summary>
     /// Registers the native terminal delegate for a lowered local chain. <typeparamref name="TProjected"/> is
-    /// the type produced by the chain's final <c>Select</c> (or the event type when there is no projection).
-    /// Returns a token that unregisters the handler when disposed.
+    /// the type produced by the chain's final <c>Select</c> (or the event type when there is no projection — a
+    /// whole-event chain). Idempotent: re-registering the same <paramref name="subscriptionId"/> replaces the
+    /// previous handler, so a plugin that reconnects and re-installs with a reused id does not throw. Returns a
+    /// token that unregisters this handler when disposed.
     /// </summary>
     public IDisposable Register<TProjected>(
         string subscriptionId,
@@ -49,12 +51,7 @@ public sealed class RemoteLocalHandlerRegistry
             await handler(projected, context).ConfigureAwait(false);
         });
 
-        if (!_handlers.TryAdd(subscriptionId, entry))
-        {
-            throw new InvalidOperationException(
-                $"A remote local handler is already registered for subscription '{subscriptionId}'.");
-        }
-
+        _handlers[subscriptionId] = entry;
         return new Registration(this, subscriptionId);
     }
 
@@ -87,6 +84,12 @@ public sealed class RemoteLocalHandlerRegistry
     /// <summary>Removes the handler for <paramref name="subscriptionId"/>. Returns <c>true</c> if one was present.</summary>
     public bool Unregister(string subscriptionId)
         => !string.IsNullOrEmpty(subscriptionId) && _handlers.TryRemove(subscriptionId, out _);
+
+    /// <summary>
+    /// Removes all registered handlers. Called when the plugin connection tears down (session disposed / peer
+    /// disconnected) so a dropped plugin's callbacks do not linger.
+    /// </summary>
+    public void Clear() => _handlers.Clear();
 
     private sealed record Handler(SandboxType ExpectedType, Func<SandboxValue, HookContext, ValueTask> Invoke);
 

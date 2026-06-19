@@ -186,17 +186,14 @@ public sealed class HookPipeline<TEvent> : IKernelHandlerPipeline
         ArgumentException.ThrowIfNullOrEmpty(subscriptionId);
         ArgumentNullException.ThrowIfNull(push);
         kernel.ValidateFor(_adapter);
-        AddKernelHandler(kernel, async (e, context) =>
+        var wholeEvent = LocalCallbackProjection.IsWholeEvent(kernel.Manifest);
+        if (wholeEvent)
         {
-            var projection = await kernel.InvokeProjectingAsync(_adapter, e, context.CancellationToken).ConfigureAwait(false);
-            if (!projection.Matched)
-            {
-                return;
-            }
+            LocalCallbackProjection.EnsureWholeEventSupported(_adapter);
+        }
 
-            var payload = KernelRpcBinaryCodec.EncodeValue(KernelRpcValueConverter.FromSandboxValue(projection.Value));
-            await push(subscriptionId, payload, context.CancellationToken).ConfigureAwait(false);
-        });
+        AddKernelHandler(kernel, (e, context) =>
+            LocalCallbackProjection.PushAsync(kernel, _adapter, e, context, wholeEvent, subscriptionId, push));
 
         return this;
     }

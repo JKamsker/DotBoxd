@@ -39,6 +39,24 @@ public sealed class RemoteRunLocalChainRuntimeTests
         }
         """;
 
+    // A whole-event remote RunLocal chain: Where only, no Select; the native terminal receives the EVENT.
+    private const string RemoteWholeEventSource = """
+        using System.Collections.Generic;
+        using DotBoxD.Plugins.Runtime;
+
+        namespace ChainSample;
+
+        public static class RemoteWholeEventUsage
+        {
+            public static readonly List<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent> Received = new();
+
+            public static void Configure(RemoteHookRegistry hooks)
+                => hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                    .Where(e => e.Distance <= 4)
+                    .RunLocal((e, ctx) => Received.Add(e));
+        }
+        """;
+
     [Fact]
     public void RunLocal_chain_lowers_to_a_local_terminal_projection_package()
     {
@@ -133,6 +151,58 @@ public sealed class RemoteRunLocalChainRuntimeTests
             pushedPayloads[0],
             new HookContext(messages, CancellationToken.None));
         Assert.Equal("monster-7", received);
+    }
+
+    [Fact]
+    public void Whole_event_chain_lowers_to_a_local_terminal_with_null_projected_type()
+    {
+        var package = LowerToPackage(RemoteWholeEventSource);
+
+        var subscription = Assert.Single(package.Manifest.Subscriptions);
+        Assert.True(subscription.LocalTerminal);     // a local-terminal (RunLocal) chain
+        Assert.Null(subscription.ProjectedType);     // no Select => whole-event push (not a projection)
+        Assert.Empty(package.Manifest.RequiredCapabilities);
+    }
+
+    [Fact]
+    public async Task The_server_filters_then_pushes_the_whole_event_record_for_matching_events()
+    {
+        var package = LowerToPackage(RemoteWholeEventSource);
+
+        var messages = new InMemoryPluginMessageSink();
+        using var server = DotBoxD.Plugins.PluginServer.Create(messages, defaultPolicy: ChainPolicy());
+        var kernel = await server.InstallAsync(package);
+
+        var pushedPayloads = new List<byte[]>();
+        RemoteLocalPush push = (_, payload, _) =>
+        {
+            pushedPayloads.Add(payload);
+            return ValueTask.CompletedTask;
+        };
+        server.Hooks.On<ChainAggroEvent>().UseProjecting(kernel, "sub-we", push);
+
+        await server.Hooks.PublishAsync(new ChainAggroEvent("monster-7", 3));   // 3 <= 4 → matches
+        await server.Hooks.PublishAsync(new ChainAggroEvent("monster-9", 10));  // 10 > 4 → filtered server-side
+
+        // PREMISE: the filter ran server-side BEFORE any IPC — exactly one of two events crossed the wire.
+        Assert.Single(pushedPayloads);
+        // PREMISE: a whole-event push performs no host send.
+        Assert.Empty(messages.Messages);
+
+        // PREMISE: the WHOLE event record crossed (all fields), round-tripping to the original on the client —
+        // proves the value-writer field order matches the marshaller's record reconstruction order.
+        var clientRegistry = new RemoteLocalHandlerRegistry();
+        ChainAggroEvent? received = null;
+        clientRegistry.Register<ChainAggroEvent>("sub-we", (evt, _) =>
+        {
+            received = evt;
+            return ValueTask.CompletedTask;
+        });
+        await clientRegistry.DispatchAsync(
+            "sub-we",
+            pushedPayloads[0],
+            new HookContext(messages, CancellationToken.None));
+        Assert.Equal(new ChainAggroEvent("monster-7", 3), received);
     }
 
     private static byte[] EncodeString(string value)
