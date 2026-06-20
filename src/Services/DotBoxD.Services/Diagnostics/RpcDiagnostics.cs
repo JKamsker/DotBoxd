@@ -47,7 +47,9 @@ public static class RpcDiagnostics
             {
                 try
                 {
-                    ((EventHandler<RpcDiagnosticErrorEventArgs>)subscriber).Invoke(typeof(RpcDiagnostics), args);
+                    // Match the primary dispatch above (sender: null) so a subscriber sees the same
+                    // sender whether or not an earlier subscriber threw and forced this retry path.
+                    ((EventHandler<RpcDiagnosticErrorEventArgs>)subscriber).Invoke(null, args);
                 }
                 catch (Exception subscriberError)
                 {

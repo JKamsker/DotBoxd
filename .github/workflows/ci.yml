@@ -241,10 +241,15 @@ jobs:
       - name: Coverage threshold
         shell: pwsh
         run: |
+          # Native `dotnet test` failures do not stop a pwsh script on their own, so check
+          # $LASTEXITCODE after each run. Otherwise a crashed/failed suite that still emitted
+          # partial coverage could let check-coverage.ps1 pass while a suite never contributed.
           dotnet test tests/DotBoxD.Kernels.Tests/DotBoxD.Kernels.Tests.csproj -c Release --no-build `
             --collect "XPlat Code Coverage" --results-directory artifacts/coverage
+          if ($LASTEXITCODE -ne 0) { throw "Kernels coverage test run failed (exit $LASTEXITCODE)." }
           dotnet test tests/DotBoxD.Services.Tests/DotBoxD.Services.Tests.csproj -c Release --no-build `
             --collect "XPlat Code Coverage" --results-directory artifacts/coverage
+          if ($LASTEXITCODE -ne 0) { throw "Services coverage test run failed (exit $LASTEXITCODE)." }
           ./eng/scripts/check-coverage.ps1 -CoverageDirectory artifacts/coverage
 
       - name: Docs & examples smoke

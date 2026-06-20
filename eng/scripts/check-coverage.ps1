@@ -41,6 +41,22 @@ function Test-ShippingPackage([string] $name) {
     return $true
 }
 
+function Test-ShippingSourceFile([string] $file) {
+    if ([string]::IsNullOrEmpty($file)) {
+        return $false
+    }
+
+    # The package name alone does not separate shipping code from test-only code: fixture and
+    # contract projects such as tests/DotBoxD.Kernels.TestFixtures.* , tests/DotBoxD.Services.TestContracts,
+    # and tests/DotBoxD.Services.Tests.GeneratedFixtures all carry the DotBoxD.* prefix and do not end in
+    # ".Tests", so they slip past Test-ShippingPackage and would count against the src/ coverage floor.
+    # Their sources live under tests/, never src/, so require the source file to sit under a src/ directory.
+    # Cobertura emits either absolute paths (.../DotBoxD/src/...) or deterministic CI paths (/_/src/...);
+    # both contain a src/ path segment once separators are normalized.
+    $normalized = $file.Replace('\', '/')
+    return $normalized -match '(^|/)src/'
+}
+
 # Merge across reports: union the set of covered (and valid) line numbers per source
 # file, so a line counted by any test project counts once and nothing is double-counted.
 $validLines = @{}
@@ -59,7 +75,7 @@ foreach ($report in $reports) {
             }
 
             $file = [string] $class.filename
-            if ([string]::IsNullOrEmpty($file)) {
+            if (-not (Test-ShippingSourceFile $file)) {
                 continue
             }
 
