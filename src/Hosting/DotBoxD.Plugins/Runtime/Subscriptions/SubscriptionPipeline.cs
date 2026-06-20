@@ -245,67 +245,6 @@ public sealed class SubscriptionPipeline<TEvent> : IKernelHandlerPipeline
             ? new HookContext(_messages, cancellationToken)
             : _defaultContext;
         var onFault = _onFault;
-        _ = Task.Run(() => PublishSafelyAsync(filters, handlers, e, context, onFault).AsTask());
-    }
-
-    // Delivery runs on a background task (it must not block the publishing game loop), so a throwing filter or
-    // handler cannot propagate to a caller and is caught here. Swallowing it silently is what makes a broken
-    // RunLocal subscription look like "it just does nothing" — so every caught fault is reported to the optional
-    // observer (wired by the host to its plugin logger) before delivery is abandoned. Control flow is unchanged:
-    // a failed filter still drops the event, a failed handler still lets the remaining handlers run.
-    private static async ValueTask PublishSafelyAsync(
-        Func<TEvent, HookContext, ValueTask<bool>>[] filters,
-        Func<TEvent, HookContext, ValueTask>[] handlers,
-        TEvent e,
-        HookContext context,
-        Action<SubscriptionDeliveryFault>? onFault)
-    {
-        try
-        {
-            for (var i = 0; i < filters.Length; i++)
-            {
-                if (!await filters[i](e, context).ConfigureAwait(false))
-                {
-                    return;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Report(onFault, ex, SubscriptionDeliveryStage.Filter);
-            return;
-        }
-
-        for (var i = 0; i < handlers.Length; i++)
-        {
-            try
-            {
-                await handlers[i](e, context).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Report(onFault, ex, SubscriptionDeliveryStage.Handler);
-            }
-        }
-    }
-
-    private static void Report(
-        Action<SubscriptionDeliveryFault>? onFault,
-        Exception exception,
-        SubscriptionDeliveryStage stage)
-    {
-        if (onFault is null)
-        {
-            return;
-        }
-
-        try
-        {
-            onFault(new SubscriptionDeliveryFault(typeof(TEvent), stage, exception));
-        }
-        catch
-        {
-            // A faulty fault observer must never escalate into the background delivery task.
-        }
+        _ = Task.Run(() => SubscriptionDelivery.PublishSafelyAsync(filters, handlers, e, context, onFault).AsTask());
     }
 }

@@ -62,6 +62,9 @@ public enum PluginDiagnosticPhase.LiveSetting
 public enum PluginDiagnosticPhase.PackageValidation
 public enum PluginDiagnosticPhase.PreparedPackageValidation
 public enum PluginDiagnosticPhase.RuntimeEntrypoint
+public enum SubscriptionDeliveryStage
+public enum SubscriptionDeliveryStage.Filter
+public enum SubscriptionDeliveryStage.Handler
 public EventIndexStats Stats => new(
 public Exception? LastAsyncUpdateError => _pendingLiveUpdates.LastError
 public Exception? LastAsyncUpdateError => Kernel.LastAsyncUpdateError
@@ -154,6 +157,7 @@ public PluginPackage Package { get; }
 public PluginServer RegisterEventAdapter<TEvent>(IPluginEventAdapter<TEvent> adapter)
 public PluginSession CreateSession()
 public readonly record struct EventIndexStats(long Considered, long Prefiltered, long Dispatched)
+public readonly record struct SubscriptionDeliveryFault( Type EventType, SubscriptionDeliveryStage Stage, Exception Exception)
 public readonly struct KernelRpcValue
 public ref struct KernelRpcPayloadReader
 public RemoteHookPipeline<TEvent> On<TEvent>() => new(_install, _localHandlers)
@@ -332,7 +336,7 @@ public static PluginPackage Create( PluginManifest manifest, SandboxModule modul
 public static PluginPackage Import(string json)
 public static PluginPackage Resolve(Type kernelType)
 public static PluginPackage Resolve<TKernel>() where TKernel : class => Resolve(typeof(TKernel))
-public static PluginServer Create( IPluginMessageSink? messages = null, Action<SandboxHostBuilder>? configureHost = null, SandboxPolicy? defaultPolicy = null, ExecutionMode executionMode = ExecutionMode.Auto)
+public static PluginServer Create( IPluginMessageSink? messages = null, Action<SandboxHostBuilder>? configureHost = null, SandboxPolicy? defaultPolicy = null, ExecutionMode executionMode = ExecutionMode.Auto, Action<SubscriptionDeliveryFault>? onSubscriptionFault = null)
 public static SandboxHostBuilder AddBindingsFrom<TService>( this SandboxHostBuilder builder, TService implementation) where TService : class
 public static SandboxHostBuilder AddPluginMessageBindings( this SandboxHostBuilder builder, IPluginMessageSink sink)
 public static SandboxPolicyBuilder GrantHostMessageWrite( this SandboxPolicyBuilder builder, IEnumerable<string>? allowedTargets = null, IEnumerable<string>? targetPrefixes = null, int? maxMessageLength = null)
