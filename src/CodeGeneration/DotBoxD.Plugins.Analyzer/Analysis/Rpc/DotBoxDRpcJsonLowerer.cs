@@ -138,22 +138,6 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         }
     }
 
-    private bool TryLowerServiceHandleLocal(string localName, ExpressionSyntax value, List<string> output)
-    {
-        if (value is not InvocationExpressionSyntax invocation ||
-            _model.GetSymbolInfo(invocation, _cancellationToken).Symbol is not IMethodSymbol method ||
-            !HasDotBoxDServiceAttribute(method.ReturnType) ||
-            invocation.ArgumentList.Arguments.Count == 0)
-        {
-            return false;
-        }
-
-        var handleId = LowerExpression(invocation.ArgumentList.Arguments[0].Expression);
-        _serviceHandleLocals[localName] = handleId;
-        output.Add(SetStatement(localName, handleId));
-        return true;
-    }
-
     private string LowerExpressionStatement(ExpressionSyntax expression)
     {
         switch (expression)

@@ -97,31 +97,6 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         throw new NotSupportedException($"Server extension call '{invocation}' is not a host binding.");
     }
 
-    private string? TryLowerServiceHandleInvocation(InvocationExpressionSyntax invocation)
-    {
-        if (invocation.Expression is not MemberAccessExpressionSyntax
-            {
-                Expression: IdentifierNameSyntax receiver
-            } ||
-            !_serviceHandleLocals.TryGetValue(receiver.Identifier.ValueText, out var handleId) ||
-            _model.GetSymbolInfo(invocation, _cancellationToken).Symbol is not IMethodSymbol method ||
-            DotBoxDHostBindingExpressionLowerer.HostBinding(method) is not { } binding)
-        {
-            return null;
-        }
-
-        AddBindingMetadata(binding);
-        var loweredArgs = LowerArgumentsInParameterOrder(
-            invocation.ArgumentList.Arguments,
-            method.Parameters,
-            $"Host binding '{binding.BindingId}'");
-        var args = new string[loweredArgs.Length + 1];
-        args[0] = handleId;
-        loweredArgs.CopyTo(args, 1);
-
-        return Call(binding.BindingId, null, args);
-    }
-
     private void AddBindingMetadata((string BindingId, string? Capability, IReadOnlyList<string> Effects, bool IsAsync) binding)
     {
         if (binding.Capability is { Length: > 0 } capability)
