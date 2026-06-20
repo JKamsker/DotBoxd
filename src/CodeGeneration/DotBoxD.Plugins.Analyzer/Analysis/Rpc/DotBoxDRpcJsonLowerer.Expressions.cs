@@ -186,15 +186,14 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
         if (creation.ArgumentList is { Arguments.Count: > 0 } argumentList)
         {
-            if (argumentList.Arguments.Count != fields.Count)
-            {
-                throw new NotSupportedException($"Server extension constructor for '{named.Name}' must pass one argument per field.");
-            }
-
+            // A record's constructor sets only its declared members; derived/get-only members (e.g. `Sum => X + Y`)
+            // still appear as wire fields but have no constructor parameter, so the parameter count is a subset of
+            // the field count. (Mirrors the runtime KernelRpcMarshaller.FindConstructor.)
             if (_model.GetSymbolInfo(creation, _cancellationToken).Symbol is not IMethodSymbol constructor ||
-                constructor.Parameters.Length != fields.Count)
+                argumentList.Arguments.Count != constructor.Parameters.Length ||
+                constructor.Parameters.Length > fields.Count)
             {
-                throw new NotSupportedException($"Server extension constructor for '{named.Name}' must pass one argument per field.");
+                throw new NotSupportedException($"Server extension constructor for '{named.Name}' must pass one argument per constructor parameter, and the constructor must not have more parameters than the record has fields.");
             }
 
             var lowered = LowerArgumentsInParameterOrder(
@@ -213,6 +212,17 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
                 args[fieldIndex] = lowered[i];
                 assigned[fieldIndex] = true;
+            }
+
+            // Each remaining field has no constructor parameter — it is a derived/get-only member. Build its wire
+            // slot by lowering its getter over the constructor-bound members, so the constructed record carries
+            // the same derived value the member would compute (and an in-sandbox read of it stays correct).
+            for (var i = 0; i < fields.Count; i++)
+            {
+                if (!assigned[i])
+                {
+                    args[i] = LowerDerivedField(fields, assigned, args, named, fields[i]);
+                }
             }
         }
         else if (creation.Initializer is { } initializer)
