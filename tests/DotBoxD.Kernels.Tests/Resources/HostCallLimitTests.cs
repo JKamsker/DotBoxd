@@ -69,7 +69,8 @@ public sealed class HostCallLimitTests
     }
 
     private static SandboxHost CreateHost(BindingDescriptor binding)
-        => SandboxHost.Create(builder => {
+        => SandboxHost.Create(builder =>
+        {
             builder.AddBinding(binding);
             builder.UseInterpreter();
         });

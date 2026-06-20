@@ -139,7 +139,8 @@ public sealed class CompilerTests
 
         Assert.Equal(CompiledRuntimeFormKind.LoadedAssembly, artifact.RuntimeForm);
         Assert.NotEmpty(artifact.AssemblyBytes);
-        Assert.Throws<InvalidOperationException>((Action)(() => {
+        Assert.Throws<InvalidOperationException>((Action)(() =>
+        {
             _ = artifact.Entrypoint(
                     new SandboxContext(
                         SandboxRunId.New(),
@@ -274,7 +275,8 @@ public sealed class CompilerTests
 
         public void Dispose()
         {
-            if (Directory.Exists(Path)) {
+            if (Directory.Exists(Path))
+            {
                 Directory.Delete(Path, recursive: true);
             }
         }

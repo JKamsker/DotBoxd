@@ -262,13 +262,13 @@ internal static class DotBoxDHostBindingExpressionLowerer
             return [];
         }
 
-        var bits = Convert.ToInt64(effects.Value);
+        var bits = Convert.ToInt64(effects.Value, System.Globalization.CultureInfo.InvariantCulture);
         var names = new List<string>();
         foreach (var member in enumType.GetMembers())
         {
             if (member is IFieldSymbol { HasConstantValue: true } field && field.ConstantValue is not null)
             {
-                var memberBits = Convert.ToInt64(field.ConstantValue);
+                var memberBits = Convert.ToInt64(field.ConstantValue, System.Globalization.CultureInfo.InvariantCulture);
                 if (memberBits != 0 && (bits & memberBits) == memberBits)
                 {
                     names.Add(field.Name);

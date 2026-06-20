@@ -6,8 +6,6 @@ namespace DotBoxD.Kernels.Benchmarks.Interpreter;
 
 using System.Diagnostics;
 using DotBoxD.Kernels;
-using DotBoxD.Hosting;
-using DotBoxD.Kernels.Serialization.Json;
 
 /// <summary>
 /// Quick stopwatch probe comparing a tight scalar loop (<c>total = (total + i) % 1_000_003</c>) across

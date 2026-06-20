@@ -4,7 +4,6 @@ using DotBoxD.Kernels.Sandbox;
 namespace DotBoxD.Kernels.Benchmarks.Runtime;
 
 using System.Diagnostics;
-using DotBoxD.Kernels;
 
 internal static class ResourceMeterProbe
 {

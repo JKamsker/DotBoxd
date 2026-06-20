@@ -89,7 +89,8 @@ internal sealed class InterpreterEvaluator : I32CallEvaluator
             return false;
         }
 
-        var substitutions = new Dictionary<string, I32ExpressionPlan>(StringComparer.Ordinal) {
+        var substitutions = new Dictionary<string, I32ExpressionPlan>(StringComparer.Ordinal)
+        {
             [parameter.Name] = argument
         };
         if (!I32ExpressionPlan.TryCreate(
@@ -233,7 +234,8 @@ internal sealed class InterpreterEvaluator : I32CallEvaluator
     }
 
     private static int CountVariableUses(Expression expression, string name)
-        => expression switch {
+        => expression switch
+        {
             VariableExpression variable => string.Equals(variable.Name, name, StringComparison.Ordinal) ? 1 : 0,
             UnaryExpression unary => CountVariableUses(unary.Operand, name),
             BinaryExpression binary => CountVariableUses(binary.Left, name) + CountVariableUses(binary.Right, name),
@@ -245,7 +247,8 @@ internal sealed class InterpreterEvaluator : I32CallEvaluator
         => expression is LiteralExpression { Value: I32Value } or VariableExpression;
 
     private static bool ContainsCall(Expression expression)
-        => expression switch {
+        => expression switch
+        {
             CallExpression => true,
             UnaryExpression unary => ContainsCall(unary.Operand),
             BinaryExpression binary => ContainsCall(binary.Left) || ContainsCall(binary.Right),

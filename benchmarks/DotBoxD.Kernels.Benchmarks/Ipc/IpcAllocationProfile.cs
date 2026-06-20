@@ -5,7 +5,6 @@ using DotBoxD.Services.Server;
 namespace DotBoxD.Kernels.Benchmarks.Ipc;
 
 using System.Globalization;
-using DotBoxD.Services;
 using DotBoxD.Services.Transport;
 
 internal static class IpcAllocationProfile
@@ -15,7 +14,8 @@ internal static class IpcAllocationProfile
 
     public static async Task RunAsync(string transport, int iterations, bool disableTimeout, bool lowAllocationProfile)
     {
-        if (iterations <= 0) {
+        if (iterations <= 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(iterations), iterations, "Iterations must be positive.");
         }
 
@@ -45,7 +45,8 @@ internal static class IpcAllocationProfile
     {
         var clientOptions = CreateClientOptions(disableTimeout, lowAllocationProfile);
         var serverOptions = CreateServerOptions(disableTimeout, lowAllocationProfile);
-        if (transport.Equals(NamedPipeTransport, StringComparison.OrdinalIgnoreCase)) {
+        if (transport.Equals(NamedPipeTransport, StringComparison.OrdinalIgnoreCase))
+        {
             var pipeName = "dotboxd-ipc-profile-" + Guid.NewGuid().ToString("N");
             var host = RpcMessagePackIpc.ListenNamedPipe(
                 pipeName,
@@ -57,7 +58,8 @@ internal static class IpcAllocationProfile
             return new ProfileFixture(host, session);
         }
 
-        if (transport.Equals(InMemoryTransport, StringComparison.OrdinalIgnoreCase)) {
+        if (transport.Equals(InMemoryTransport, StringComparison.OrdinalIgnoreCase))
+        {
             var (serverChannel, clientChannel) = InMemoryRpcChannel.CreatePair();
             var host = RpcMessagePackIpc.Listen(
                 new SingleConnectionServerTransport(serverChannel, ownsConnection: true),
@@ -76,11 +78,13 @@ internal static class IpcAllocationProfile
 
     private static RpcPeerOptions? CreateClientOptions(bool disableTimeout, bool lowAllocationProfile)
     {
-        if (!disableTimeout && !lowAllocationProfile) {
+        if (!disableTimeout && !lowAllocationProfile)
+        {
             return null;
         }
 
-        return new RpcPeerOptions {
+        return new RpcPeerOptions
+        {
             EnableLowAllocationValueTaskInvocations = lowAllocationProfile,
             RejectInboundCalls = true,
             RequestTimeout = disableTimeout || lowAllocationProfile
@@ -91,8 +95,10 @@ internal static class IpcAllocationProfile
 
     private static RpcPeerOptions? CreateServerOptions(bool disableTimeout, bool lowAllocationProfile)
     {
-        if (lowAllocationProfile) {
-            return new RpcPeerOptions {
+        if (lowAllocationProfile)
+        {
+            return new RpcPeerOptions
+            {
                 DisableInboundRequestCancellation = true,
                 InboundQueueCapacity = null,
                 RequestTimeout = Timeout.InfiniteTimeSpan,
@@ -112,7 +118,8 @@ internal static class IpcAllocationProfile
         Collect();
 
         var before = GC.GetTotalAllocatedBytes(precise: true);
-        for (var i = 0; i < iterations; i++) {
+        for (var i = 0; i < iterations; i++)
+        {
             _ = await service.AddAsync(42).ConfigureAwait(false);
         }
 
@@ -125,7 +132,8 @@ internal static class IpcAllocationProfile
         Collect();
 
         var before = GC.GetTotalAllocatedBytes(precise: true);
-        for (var i = 0; i < iterations; i++) {
+        for (var i = 0; i < iterations; i++)
+        {
             _ = await service.EchoAsync(new PingRequest(42, 123)).ConfigureAwait(false);
         }
 

@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using DotBoxD.Hosting;
 using DotBoxD.Kernels.Bindings;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;

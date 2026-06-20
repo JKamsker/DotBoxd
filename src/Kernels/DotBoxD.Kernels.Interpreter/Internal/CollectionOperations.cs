@@ -5,8 +5,6 @@ using SandboxContext = DotBoxD.Kernels.Sandbox.SandboxContext;
 
 namespace DotBoxD.Kernels.Interpreter.Internal;
 
-using DotBoxD.Kernels;
-
 internal static class CollectionOperations
 {
     public static SandboxValue CreateList(SandboxType itemType, SandboxContext context)

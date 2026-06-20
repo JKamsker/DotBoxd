@@ -10,7 +10,8 @@ internal static class SandboxTestHost
         string? compilerCache = null,
         SafeInMemoryHttpMessageInvoker? networkInvoker = null,
         SafeDnsResolver? dnsResolver = null)
-        => SandboxHost.Create(builder => {
+        => SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.AddFileBindings();
             builder.AddTimeBindings();
@@ -18,11 +19,13 @@ internal static class SandboxTestHost
             builder.AddNetworkBindings(networkInvoker, dnsResolver ?? (networkInvoker is null ? null : PublicDns));
             builder.AddLogBindings();
             builder.UseInterpreter();
-            if (compilerCache is not null) {
+            if (compilerCache is not null)
+            {
                 builder.UseCompilerCache(compilerCache);
             }
 
-            if (compiler) {
+            if (compiler)
+            {
                 builder.UseCompilerIfAvailable();
             }
         });

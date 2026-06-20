@@ -35,10 +35,12 @@ public static class JsonExporter
     {
         writer.WritePropertyName("capabilityRequests");
         writer.WriteStartArray();
-        foreach (var request in requests) {
+        foreach (var request in requests)
+        {
             writer.WriteStartObject();
             writer.WriteString("id", request.Id);
-            if (request.Reason is not null) {
+            if (request.Reason is not null)
+            {
                 writer.WriteString("reason", request.Reason);
             }
 
@@ -52,7 +54,8 @@ public static class JsonExporter
     {
         writer.WritePropertyName("metadata");
         writer.WriteStartObject();
-        foreach (var item in metadata.OrderBy(item => item.Key, StringComparer.Ordinal)) {
+        foreach (var item in metadata.OrderBy(item => item.Key, StringComparer.Ordinal))
+        {
             writer.WriteString(item.Key, item.Value);
         }
 
@@ -63,7 +66,8 @@ public static class JsonExporter
     {
         writer.WritePropertyName("functions");
         writer.WriteStartArray();
-        foreach (var function in functions) {
+        foreach (var function in functions)
+        {
             WriteFunction(writer, function);
         }
 
@@ -87,7 +91,8 @@ public static class JsonExporter
     {
         writer.WritePropertyName("parameters");
         writer.WriteStartArray();
-        foreach (var parameter in parameters) {
+        foreach (var parameter in parameters)
+        {
             writer.WriteStartObject();
             writer.WriteString("name", parameter.Name);
             writer.WritePropertyName("type");
@@ -101,7 +106,8 @@ public static class JsonExporter
     private static void WriteStatements(Utf8JsonWriter writer, IReadOnlyList<Statement> statements)
     {
         writer.WriteStartArray();
-        foreach (var statement in statements) {
+        foreach (var statement in statements)
+        {
             WriteStatement(writer, statement);
         }
 
@@ -111,7 +117,8 @@ public static class JsonExporter
     private static void WriteStatement(Utf8JsonWriter writer, Statement statement)
     {
         writer.WriteStartObject();
-        switch (statement) {
+        switch (statement)
+        {
             case AssignmentStatement assignment:
                 writer.WriteString("op", "set");
                 writer.WriteString("name", assignment.Name);
@@ -164,7 +171,8 @@ public static class JsonExporter
     private static void WriteExpression(Utf8JsonWriter writer, Expression expression)
     {
         writer.WriteStartObject();
-        switch (expression) {
+        switch (expression)
+        {
             case VariableExpression variable:
                 writer.WriteString("var", variable.Name);
                 break;
@@ -196,14 +204,16 @@ public static class JsonExporter
     private static void WriteCall(Utf8JsonWriter writer, CallExpression call)
     {
         writer.WriteString("call", call.Name);
-        if (call.GenericType is not null) {
+        if (call.GenericType is not null)
+        {
             writer.WritePropertyName("genericType");
             WriteType(writer, call.GenericType);
         }
 
         writer.WritePropertyName("args");
         writer.WriteStartArray();
-        foreach (var argument in call.Arguments) {
+        foreach (var argument in call.Arguments)
+        {
             WriteExpression(writer, argument);
         }
 
@@ -212,7 +222,8 @@ public static class JsonExporter
 
     private static void WriteLiteral(Utf8JsonWriter writer, SandboxValue value)
     {
-        switch (value) {
+        switch (value)
+        {
             case UnitValue:
                 writer.WriteBoolean("unit", true);
                 break;
@@ -254,7 +265,8 @@ public static class JsonExporter
 
     private static void WriteType(Utf8JsonWriter writer, SandboxType type)
     {
-        if (type.Arguments.Count == 0) {
+        if (type.Arguments.Count == 0)
+        {
             writer.WriteStringValue(type.Name);
             return;
         }
@@ -263,7 +275,8 @@ public static class JsonExporter
         writer.WriteString("name", type.Name);
         writer.WritePropertyName("arguments");
         writer.WriteStartArray();
-        foreach (var argument in type.Arguments) {
+        foreach (var argument in type.Arguments)
+        {
             WriteType(writer, argument);
         }
 

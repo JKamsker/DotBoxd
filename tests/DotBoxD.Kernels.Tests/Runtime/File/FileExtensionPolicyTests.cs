@@ -73,7 +73,8 @@ public sealed class FileExtensionPolicyTests
 
         public void Dispose()
         {
-            if (Directory.Exists(Path)) {
+            if (Directory.Exists(Path))
+            {
                 Directory.Delete(Path, recursive: true);
             }
         }

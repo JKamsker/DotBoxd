@@ -30,7 +30,7 @@ public static partial class KernelRpcMarshaller
         {
             return EnumUsesI64(type)
                 ? SandboxValue.FromInt64(EnumToInt64(value, type))
-                : SandboxValue.FromInt32(Convert.ToInt32(value));
+                : SandboxValue.FromInt32(Convert.ToInt32(value, System.Globalization.CultureInfo.InvariantCulture));
         }
 
         if (ElementType(type) is { } elementType)
@@ -203,15 +203,23 @@ public static partial class KernelRpcMarshaller
     {
         RejectNullableValueType(type);
 
-        if (type == typeof(bool)) return SandboxType.Bool;
-        if (type == typeof(int)) return SandboxType.I32;
-        if (type == typeof(long)) return SandboxType.I64;
-        if (type == typeof(double)) return SandboxType.F64;
+        if (type == typeof(bool))
+            return SandboxType.Bool;
+        if (type == typeof(int))
+            return SandboxType.I32;
+        if (type == typeof(long))
+            return SandboxType.I64;
+        if (type == typeof(double))
+            return SandboxType.F64;
         // float widens losslessly to the sandbox's only floating kind (F64); decode narrows back exactly.
-        if (type == typeof(float)) return SandboxType.F64;
-        if (type == typeof(string)) return SandboxType.String;
-        if (type == typeof(Guid)) return SandboxType.Guid;
-        if (type.IsEnum) return EnumUsesI64(type) ? SandboxType.I64 : SandboxType.I32;
+        if (type == typeof(float))
+            return SandboxType.F64;
+        if (type == typeof(string))
+            return SandboxType.String;
+        if (type == typeof(Guid))
+            return SandboxType.Guid;
+        if (type.IsEnum)
+            return EnumUsesI64(type) ? SandboxType.I64 : SandboxType.I32;
 
         if (depth >= MaxTypeNestingDepth)
         {
@@ -219,7 +227,8 @@ public static partial class KernelRpcMarshaller
                 $"Kernel RPC service type '{type}' nests beyond the supported depth of {MaxTypeNestingDepth}.");
         }
 
-        if (ElementType(type) is { } elementType) return SandboxType.List(SandboxTypeOf(elementType, depth + 1));
+        if (ElementType(type) is { } elementType)
+            return SandboxType.List(SandboxTypeOf(elementType, depth + 1));
         if (MapTypes(type) is { } mapTypes)
         {
             var keyType = SandboxTypeOf(mapTypes.Key, depth + 1);
@@ -312,6 +321,6 @@ public static partial class KernelRpcMarshaller
     // bits instead so the value carries losslessly (decode uses Enum.ToObject, which is also bit-preserving).
     private static long EnumToInt64(object value, Type type)
         => Enum.GetUnderlyingType(type) == typeof(ulong)
-            ? unchecked((long)Convert.ToUInt64(value))
-            : Convert.ToInt64(value);
+            ? unchecked((long)Convert.ToUInt64(value, System.Globalization.CultureInfo.InvariantCulture))
+            : Convert.ToInt64(value, System.Globalization.CultureInfo.InvariantCulture);
 }

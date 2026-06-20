@@ -36,21 +36,25 @@ public sealed class Fix_PAL_0036_Tests
         // Warm up both paths so JIT/first-call costs are excluded from the measurement.
         for (var i = 0; i < 200; i++)
         {
-            using (PluginExecutionCancellation.Create(CancellationToken.None, revocation.Token)) { }
-            using (PluginExecutionCancellation.Create(caller.Token, revocation.Token)) { }
+            using (PluginExecutionCancellation.Create(CancellationToken.None, revocation.Token))
+            { }
+            using (PluginExecutionCancellation.Create(caller.Token, revocation.Token))
+            { }
         }
 
         var beforeNonCancelable = GC.GetAllocatedBytesForCurrentThread();
         for (var i = 0; i < Iterations; i++)
         {
-            using (PluginExecutionCancellation.Create(CancellationToken.None, revocation.Token)) { }
+            using (PluginExecutionCancellation.Create(CancellationToken.None, revocation.Token))
+            { }
         }
         var nonCancelablePerCall = (GC.GetAllocatedBytesForCurrentThread() - beforeNonCancelable) / Iterations;
 
         var beforeBoth = GC.GetAllocatedBytesForCurrentThread();
         for (var i = 0; i < Iterations; i++)
         {
-            using (PluginExecutionCancellation.Create(caller.Token, revocation.Token)) { }
+            using (PluginExecutionCancellation.Create(caller.Token, revocation.Token))
+            { }
         }
         var bothCancelablePerCall = (GC.GetAllocatedBytesForCurrentThread() - beforeBoth) / Iterations;
 

@@ -43,7 +43,8 @@ public sealed class SafeInMemoryHttpMessageInvoker : HttpMessageInvoker
             TimeSpan? responseDelay)
         {
             ArgumentNullException.ThrowIfNull(responseBytes);
-            if (responseDelay is not null && responseDelay.Value < TimeSpan.Zero) {
+            if (responseDelay is not null && responseDelay.Value < TimeSpan.Zero)
+            {
                 throw new ArgumentOutOfRangeException(nameof(responseDelay));
             }
 
@@ -58,17 +59,20 @@ public sealed class SafeInMemoryHttpMessageInvoker : HttpMessageInvoker
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            if (_responseDelay > TimeSpan.Zero) {
+            if (_responseDelay > TimeSpan.Zero)
+            {
                 await Task.Delay(_responseDelay, cancellationToken).ConfigureAwait(false);
             }
 
-            var message = new HttpResponseMessage(_statusCode) {
+            var message = new HttpResponseMessage(_statusCode)
+            {
                 Content = new StreamContent(new NonSeekableMemoryStream(_responseBytes)),
                 RequestMessage = _finalRequestUri is null
                     ? request
                     : new HttpRequestMessage(request.Method, _finalRequestUri)
             };
-            if (_location is not null) {
+            if (_location is not null)
+            {
                 message.Headers.Location = _location;
             }
 

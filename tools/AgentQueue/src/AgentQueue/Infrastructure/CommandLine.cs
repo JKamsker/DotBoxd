@@ -38,7 +38,7 @@ internal sealed class CommandLine
 
         string command = args[0];
         List<string> positionals = [];
-        Dictionary<string, List<string>> options = new(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, List<string>> parsedOptions = new(StringComparer.OrdinalIgnoreCase);
 
         for (int index = 1; index < args.Length; index++)
         {
@@ -62,16 +62,16 @@ internal sealed class CommandLine
                 value = args[++index];
             }
 
-            if (!options.TryGetValue(option, out List<string>? values))
+            if (!parsedOptions.TryGetValue(option, out List<string>? values))
             {
                 values = [];
-                options.Add(option, values);
+                parsedOptions.Add(option, values);
             }
 
             values.Add(value);
         }
 
-        return new CommandLine(command, positionals, options);
+        return new CommandLine(command, positionals, parsedOptions);
     }
 
     public bool CommandEquals(string value) =>

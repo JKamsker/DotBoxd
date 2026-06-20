@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Threading.Tasks;
 using DotBoxD.Services.Diagnostics;
 
 namespace DotBoxD.Services.Server;
@@ -35,7 +34,8 @@ public sealed class InstanceRegistry : IInstanceRegistry
     /// <inheritdoc />
     public string Register(string serviceName, object instance)
     {
-        if (instance is null) throw new ArgumentNullException(nameof(instance));
+        if (instance is null)
+            throw new ArgumentNullException(nameof(instance));
 
         // Reserve a slot atomically. A plain Count check followed by an add lets several threads
         // pass the check before any of them adds, so concurrent sub-service creation could exceed

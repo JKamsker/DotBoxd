@@ -44,10 +44,13 @@ internal static class PersistentCompiledArtifactCacheOrigin
             .ConfigureAwait(false);
         var proof = new CacheOriginProof(ProofVersion, ProofAlgorithm, signature);
         var path = Path.Combine(entryPath, ProofFileName);
-        await using var stream = DurableCreate(path);
-        await JsonSerializer.SerializeAsync(stream, proof, JsonOptions, cancellationToken).ConfigureAwait(false);
-        await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-        stream.Flush(flushToDisk: true);
+        var stream = DurableCreate(path);
+        await using (stream.ConfigureAwait(false))
+        {
+            await JsonSerializer.SerializeAsync(stream, proof, JsonOptions, cancellationToken).ConfigureAwait(false);
+            await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+            stream.Flush(flushToDisk: true);
+        }
     }
 
     public static async ValueTask ValidateProofAsync(
@@ -62,7 +65,8 @@ internal static class PersistentCompiledArtifactCacheOrigin
     {
         var path = Path.Combine(entryPath, ProofFileName);
         CacheOriginProof proof;
-        await using (var stream = File.OpenRead(path))
+        var stream = File.OpenRead(path);
+        await using (stream.ConfigureAwait(false))
         {
             proof = await JsonSerializer.DeserializeAsync<CacheOriginProof>(stream, JsonOptions, cancellationToken)
                     .ConfigureAwait(false) ??
@@ -252,7 +256,8 @@ internal static class PersistentCompiledArtifactCacheOrigin
         TryScrubFile(keyPath);
 
         var key = RandomNumberGenerator.GetBytes(OriginKeyByteLength);
-        await using (var stream = DurableCreate(keyPath))
+        var stream = DurableCreate(keyPath);
+        await using (stream.ConfigureAwait(false))
         {
             await stream.WriteAsync(key, cancellationToken).ConfigureAwait(false);
             await stream.FlushAsync(cancellationToken).ConfigureAwait(false);

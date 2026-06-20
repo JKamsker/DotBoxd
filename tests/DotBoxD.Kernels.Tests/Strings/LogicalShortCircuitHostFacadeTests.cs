@@ -16,7 +16,8 @@ public sealed partial class LogicalShortCircuitTests
         var host = SandboxHost.Create(builder =>
         {
             builder.AddBinding(BoolBinding(
-                () => {
+                () =>
+                {
                     calls++;
                     return true;
                 },

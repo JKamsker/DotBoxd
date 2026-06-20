@@ -42,7 +42,8 @@ internal sealed class PendingRequests : IDisposable
     {
         var candidate = PendingValueTaskUnaryResponse<TResponse>.Rent(messageId);
         var added = TryAddCore(messageId, candidate, out pending);
-        if (!added) candidate.Abandon();
+        if (!added)
+            candidate.Abandon();
         return added;
     }
 
@@ -50,7 +51,8 @@ internal sealed class PendingRequests : IDisposable
     {
         var candidate = PendingValueTaskNoResponse.Rent(messageId);
         var added = TryAddCore(messageId, candidate, out pending);
-        if (!added) candidate.Abandon();
+        if (!added)
+            candidate.Abandon();
         return added;
     }
 
@@ -258,7 +260,8 @@ internal sealed class PendingRequests : IDisposable
 
     private void ScheduleTimerLocked()
     {
-        if (_disposed != 0) return;
+        if (_disposed != 0)
+            return;
 
         if (_nextTimeoutTimestamp == long.MaxValue)
         {
@@ -281,7 +284,8 @@ internal sealed class PendingRequests : IDisposable
 
     private bool TryRemove(int messageId, IPendingResponse pending)
     {
-        lock (_requestsGate) { return TryRemoveCore(messageId, pending); }
+        lock (_requestsGate)
+        { return TryRemoveCore(messageId, pending); }
     }
 
     private bool TryRemoveCore(int messageId, IPendingResponse pending)

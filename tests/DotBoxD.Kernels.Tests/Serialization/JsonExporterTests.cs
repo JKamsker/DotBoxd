@@ -144,7 +144,8 @@ public sealed class JsonExporterTests
     public void Export_returns_complete_json_for_large_module_after_buffer_writer_change()
     {
         var statements = new List<Statement>();
-        for (var i = 0; i < 2000; i++) {
+        for (var i = 0; i < 2000; i++)
+        {
             statements.Add(new AssignmentStatement($"total_{i}", I32(i), Span));
         }
 

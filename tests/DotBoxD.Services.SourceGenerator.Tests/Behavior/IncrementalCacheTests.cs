@@ -225,7 +225,8 @@ public class IncrementalCacheTests
 
     private static string? InterfaceNameOf(object? maybeModel)
     {
-        if (maybeModel is null) return null;
+        if (maybeModel is null)
+            return null;
         return maybeModel.GetType().GetProperty("InterfaceName")?.GetValue(maybeModel) as string;
     }
 

@@ -1,6 +1,5 @@
 using DotBoxD.Services.Buffers;
 using DotBoxD.Services.Protocol;
-using DotBoxD.Services.Streaming;
 using DotBoxD.Services.Streaming.Core;
 using DotBoxD.Services.Transport;
 

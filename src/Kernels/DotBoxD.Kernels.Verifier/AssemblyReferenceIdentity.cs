@@ -18,7 +18,8 @@ internal static class AssemblyReferenceIdentity
 
     private static string PublicKeyToken(byte[] keyOrToken, AssemblyFlags flags)
     {
-        if ((flags & AssemblyFlags.PublicKey) == 0) {
+        if ((flags & AssemblyFlags.PublicKey) == 0)
+        {
             return Convert.ToHexString(keyOrToken).ToLowerInvariant();
         }
 

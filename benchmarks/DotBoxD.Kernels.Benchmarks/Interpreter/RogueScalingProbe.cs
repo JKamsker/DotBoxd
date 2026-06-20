@@ -6,8 +6,6 @@ namespace DotBoxD.Kernels.Benchmarks.Interpreter;
 
 using System.Diagnostics;
 using DotBoxD.Kernels;
-using DotBoxD.Hosting;
-using DotBoxD.Kernels.Serialization.Json;
 
 /// <summary>
 /// Hunts for "rogue" invocations: code whose absolute wall-time grows super-linearly with input size,

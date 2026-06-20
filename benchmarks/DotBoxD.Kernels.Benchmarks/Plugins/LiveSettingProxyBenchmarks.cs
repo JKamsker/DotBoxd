@@ -3,7 +3,6 @@ using DotBoxD.Plugins.Runtime;
 namespace DotBoxD.Kernels.Benchmarks.Plugins;
 
 using BenchmarkDotNet.Attributes;
-using DotBoxD.Plugins;
 
 [MemoryDiagnoser]
 public class LiveSettingProxyBenchmarks

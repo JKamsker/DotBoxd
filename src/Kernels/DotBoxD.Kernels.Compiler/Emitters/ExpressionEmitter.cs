@@ -7,7 +7,6 @@ namespace DotBoxD.Kernels.Compiler.Emitters;
 using System.Reflection;
 using System.Reflection.Emit;
 using DotBoxD.Kernels;
-using DotBoxD.Kernels.Runtime;
 using static DotBoxD.Kernels.Compiler.IlEmitterPrimitives;
 
 internal sealed class ExpressionEmitter

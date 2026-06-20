@@ -1,7 +1,7 @@
 namespace DotBoxD.Kernels.Benchmarks.Ipc;
 
-using MessagePack;
 using DotBoxD.Services.Attributes;
+using MessagePack;
 
 [DotBoxDService]
 public interface IAllocationProbeService

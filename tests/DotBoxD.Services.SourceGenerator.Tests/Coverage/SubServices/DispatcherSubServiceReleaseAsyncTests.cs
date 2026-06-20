@@ -202,7 +202,7 @@ public sealed class DispatcherSubServiceReleaseAsyncTests
                 try
                 {
                     var root = asyncMethod();
-                    root.ContinueWith(_ => context.Complete(), TaskScheduler.Default);
+                    _ = root.ContinueWith(_ => context.Complete(), TaskScheduler.Default);
                     context.PumpUntilComplete();
                     if (root.IsCompletedSuccessfully)
                     {

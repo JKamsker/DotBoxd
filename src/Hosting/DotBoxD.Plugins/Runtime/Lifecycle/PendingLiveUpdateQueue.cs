@@ -9,7 +9,8 @@ internal sealed class PendingLiveUpdateQueue
     {
         get
         {
-            lock (_gate) {
+            lock (_gate)
+            {
                 return _lastError;
             }
         }
@@ -19,29 +20,37 @@ internal sealed class PendingLiveUpdateQueue
 
     public void Enqueue(Action update)
     {
-        var task = Task.Run(() => {
-            try {
+        var task = Task.Run(() =>
+        {
+            try
+            {
                 update();
             }
-            catch (Exception ex) {
-                lock (_gate) {
+            catch (Exception ex)
+            {
+                lock (_gate)
+                {
                     _lastError = ex;
                 }
 
                 throw;
             }
         });
-        lock (_gate) {
+        lock (_gate)
+        {
             _pending.Add(task);
         }
 
         _ = task.ContinueWith(
-            completed => {
-                if (!completed.IsCompletedSuccessfully) {
+            completed =>
+            {
+                if (!completed.IsCompletedSuccessfully)
+                {
                     return;
                 }
 
-                lock (_gate) {
+                lock (_gate)
+                {
                     _pending.Remove(completed);
                 }
             },
@@ -50,7 +59,8 @@ internal sealed class PendingLiveUpdateQueue
 
     public void ClearError()
     {
-        lock (_gate) {
+        lock (_gate)
+        {
             _lastError = null;
         }
     }
@@ -58,17 +68,21 @@ internal sealed class PendingLiveUpdateQueue
     public async ValueTask FlushAsync(CancellationToken cancellationToken = default)
     {
         Task[] pending;
-        lock (_gate) {
+        lock (_gate)
+        {
             _pending.RemoveAll(task => task.IsCompletedSuccessfully);
             pending = _pending.ToArray();
         }
 
-        try {
+        try
+        {
             await Task.WhenAll(pending).WaitAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException || LastError is not null) {
+        catch (Exception ex) when (ex is not OperationCanceledException || LastError is not null)
+        {
             var failure = LastError ?? ex;
-            lock (_gate) {
+            lock (_gate)
+            {
                 _pending.RemoveAll(task => task.IsCompleted);
                 _lastError = failure;
             }
@@ -76,7 +90,8 @@ internal sealed class PendingLiveUpdateQueue
             throw new InvalidOperationException("A fire-and-forget live setting update failed.", failure);
         }
 
-        lock (_gate) {
+        lock (_gate)
+        {
             _pending.RemoveAll(task => task.IsCompleted);
             _lastError = null;
         }

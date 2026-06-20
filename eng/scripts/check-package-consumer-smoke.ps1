@@ -139,6 +139,13 @@ $project = @"
          inline PackageReference versions with NU1008. A real external consumer is not under our
          CPM, so opt out here to simulate that hermetic consumption. -->
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <!-- The same inheritance would inject the repo's Roslynator/Meziantou analyzers as versionless
+         PackageReferences (NU1015 once CPM is off); a real external consumer never gets them. -->
+    <DotBoxDDisableExtraAnalyzers>true</DotBoxDDisableExtraAnalyzers>
+    <!-- Likewise the repo's .editorconfig + EnforceCodeStyleInBuild would fail this throwaway
+         consumer's generated Program.cs on style rules (e.g. IDE0005); an external consumer has
+         neither, so simulate that and keep the smoke focused on restore/build/run. -->
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="DotBoxD.Hosting" Version="$($versions["DotBoxD.Hosting"])" />
@@ -308,6 +315,13 @@ function Invoke-ServiceGeneratorSmoke([string] $Name, [string] $PackageId) {
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <!-- The same inheritance would inject the repo's Roslynator/Meziantou analyzers as versionless
+         PackageReferences (NU1015 once CPM is off); a real external consumer never gets them. -->
+    <DotBoxDDisableExtraAnalyzers>true</DotBoxDDisableExtraAnalyzers>
+    <!-- Likewise the repo's .editorconfig + EnforceCodeStyleInBuild would fail this throwaway
+         consumer's generated Program.cs on style rules (e.g. IDE0005); an external consumer has
+         neither, so simulate that and keep the smoke focused on restore/build/run. -->
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="$PackageId" Version="$($versions[$PackageId])" />
@@ -368,6 +382,13 @@ function Invoke-DotBoxDPluginAuthoringSmoke {
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <!-- The same inheritance would inject the repo's Roslynator/Meziantou analyzers as versionless
+         PackageReferences (NU1015 once CPM is off); a real external consumer never gets them. -->
+    <DotBoxDDisableExtraAnalyzers>true</DotBoxDDisableExtraAnalyzers>
+    <!-- Likewise the repo's .editorconfig + EnforceCodeStyleInBuild would fail this throwaway
+         consumer's generated Program.cs on style rules (e.g. IDE0005); an external consumer has
+         neither, so simulate that and keep the smoke focused on restore/build/run. -->
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="DotBoxD" Version="$($versions["DotBoxD"])" />

@@ -22,7 +22,8 @@ internal static class MetadataName
     }
 
     public static string Type(MetadataReader reader, EntityHandle handle)
-        => handle.Kind switch {
+        => handle.Kind switch
+        {
             HandleKind.TypeReference => TypeReference(reader, (TypeReferenceHandle)handle),
             HandleKind.TypeDefinition => TypeDefinition(reader, (TypeDefinitionHandle)handle),
             _ => handle.Kind.ToString()
@@ -30,17 +31,20 @@ internal static class MetadataName
 
     public static (string TypeName, string MemberName) Member(MetadataReader reader, EntityHandle handle)
     {
-        if (handle.Kind == HandleKind.MemberReference) {
+        if (handle.Kind == HandleKind.MemberReference)
+        {
             var member = reader.GetMemberReference((MemberReferenceHandle)handle);
             return (ParentName(reader, member.Parent), reader.GetString(member.Name));
         }
 
-        if (handle.Kind == HandleKind.MethodDefinition) {
+        if (handle.Kind == HandleKind.MethodDefinition)
+        {
             var method = reader.GetMethodDefinition((MethodDefinitionHandle)handle);
             return ("", reader.GetString(method.Name));
         }
 
-        if (handle.Kind == HandleKind.MethodSpecification) {
+        if (handle.Kind == HandleKind.MethodSpecification)
+        {
             var spec = reader.GetMethodSpecification((MethodSpecificationHandle)handle);
             return Member(reader, spec.Method);
         }
@@ -52,11 +56,13 @@ internal static class MetadataName
         MetadataReader reader,
         EntityHandle handle)
     {
-        if (handle.Kind == HandleKind.MemberReference) {
+        if (handle.Kind == HandleKind.MemberReference)
+        {
             var member = reader.GetMemberReference((MemberReferenceHandle)handle);
             var typeName = ParentName(reader, member.Parent);
             var memberName = reader.GetString(member.Name);
-            if (member.GetKind() != MemberReferenceKind.Method) {
+            if (member.GetKind() != MemberReferenceKind.Method)
+            {
                 return (typeName, memberName, $"{typeName}.{memberName}:field");
             }
 
@@ -66,7 +72,8 @@ internal static class MetadataName
                 member.DecodeMethodSignature(MethodSignatureNameProvider.Instance, genericContext: null)));
         }
 
-        if (handle.Kind == HandleKind.MethodDefinition) {
+        if (handle.Kind == HandleKind.MethodDefinition)
+        {
             var method = reader.GetMethodDefinition((MethodDefinitionHandle)handle);
             var memberName = reader.GetString(method.Name);
             return ("", memberName, MethodSignature(
@@ -79,7 +86,8 @@ internal static class MetadataName
     }
 
     private static string ParentName(MetadataReader reader, EntityHandle parent)
-        => parent.Kind switch {
+        => parent.Kind switch
+        {
             HandleKind.TypeReference => TypeReference(reader, (TypeReferenceHandle)parent),
             HandleKind.TypeDefinition => TypeDefinition(reader, (TypeDefinitionHandle)parent),
             HandleKind.TypeSpecification => "TypeSpecification",

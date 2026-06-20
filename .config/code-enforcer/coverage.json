@@ -1,0 +1,4 @@
+{
+  "minimumLineCoverage": 80,
+  "_comment": "Minimum line coverage (percent) over DotBoxD shipping assemblies (src/), enforced by eng/scripts/check-coverage.ps1 across the Kernels and Services test suites. Measured baseline at adoption: ~84.4%. Raise toward the current value to ratchet coverage up."
+}

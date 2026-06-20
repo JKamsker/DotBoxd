@@ -21,7 +21,8 @@ public sealed class PluginEventAdapterRegistry
 
     public IPluginEventAdapter<TEvent> Resolve<TEvent>()
     {
-        if (_adapters.TryGetValue(typeof(TEvent), out var registered)) {
+        if (_adapters.TryGetValue(typeof(TEvent), out var registered))
+        {
             return (IPluginEventAdapter<TEvent>)registered.Adapter;
         }
 
@@ -51,8 +52,10 @@ public sealed class PluginEventAdapterRegistry
     private static IPluginEventAdapter<TEvent>? TryDiscoverAdapter<TEvent>()
     {
         var adapterType = typeof(IPluginEventAdapter<TEvent>);
-        foreach (var type in typeof(TEvent).Assembly.GetTypes()) {
-            if (type.IsAbstract || !adapterType.IsAssignableFrom(type)) {
+        foreach (var type in typeof(TEvent).Assembly.GetTypes())
+        {
+            if (type.IsAbstract || !adapterType.IsAssignableFrom(type))
+            {
                 continue;
             }
 

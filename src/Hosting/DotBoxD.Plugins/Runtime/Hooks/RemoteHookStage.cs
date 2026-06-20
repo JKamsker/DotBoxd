@@ -1,5 +1,3 @@
-using DotBoxD.Plugins;
-
 namespace DotBoxD.Plugins.Runtime.Hooks;
 
 public sealed class RemoteHookStage<TEvent, TCurrent>

@@ -37,7 +37,8 @@ internal sealed class MethodSignatureNameProvider : ISignatureTypeProvider<strin
         => elementType + "*";
 
     public string GetPrimitiveType(PrimitiveTypeCode typeCode)
-        => typeCode switch {
+        => typeCode switch
+        {
             PrimitiveTypeCode.Void => VoidName,
             PrimitiveTypeCode.Boolean => BooleanName,
             PrimitiveTypeCode.Int32 => Int32Name,

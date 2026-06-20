@@ -104,7 +104,8 @@ public sealed class Wave1_BugAndPerfTests
             var t2 = Task.Run(() =>
             {
                 barrier.Wait();
-                try { detached = writer.DetachPayload(); }
+                try
+                { detached = writer.DetachPayload(); }
                 catch (InvalidOperationException) { detachFailed = true; }
             });
 

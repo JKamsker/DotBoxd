@@ -211,11 +211,13 @@ public sealed class BindingReturnCostTests
         bool compiler,
         string returnType = "\"String\"")
     {
-        var host = SandboxHost.Create(builder => {
+        var host = SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.AddBinding(binding);
             builder.UseInterpreter();
-            if (compiler) {
+            if (compiler)
+            {
                 builder.UseCompilerIfAvailable();
             }
         });

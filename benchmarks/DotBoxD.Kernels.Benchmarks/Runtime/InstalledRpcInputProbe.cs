@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using DotBoxD.Kernels;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Plugins;
@@ -37,7 +36,8 @@ internal static class InstalledRpcInputProbe
         PluginPackage package,
         IReadOnlyList<SandboxValue> arguments,
         int iterations)
-        => Measure(iterations, () => {
+        => Measure(iterations, () =>
+        {
             var function = FindRpcEntrypoint(package)!;
             var callerCount = function.Parameters.Count - package.Manifest.LiveSettings.Count;
             return BuildInput(function, callerCount, package.Manifest.LiveSettings, arguments);

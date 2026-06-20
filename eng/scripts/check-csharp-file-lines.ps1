@@ -2,7 +2,10 @@ param(
     [int] $WarnAt = 300,
     [int] $FailAt = 350,
     [int] $MaxFilesPerFolder = 15,
-    [int] $MaxFilesInProjectFolder = 5
+    [int] $MaxFilesInProjectFolder = 5,
+    # Ratcheting budget for soft-limit (CE0002, > $WarnAt lines) files. -1 reads
+    # `maxSoftLimitViolations` from .config/code-enforcer/code-enforcer.json.
+    [int] $MaxSoftLimitViolations = -1
 )
 
 $ErrorActionPreference = "Stop"
@@ -141,6 +144,31 @@ foreach ($projectFolder in $projectFolders) {
 
 foreach ($warning in $warnings) {
     Write-Warning $warning
+}
+
+# Soft-limit budget: the count of files over the soft cap (CE0002) is a ratcheting
+# budget. It may shrink but never grow, so a new oversized file forces a split or a
+# deliberate budget bump instead of silently accumulating soft-limit debt.
+$softLimitCount = $warnings.Count
+$budget = $MaxSoftLimitViolations
+if ($budget -lt 0) {
+    $configPath = Join-Path $root ".config/code-enforcer/code-enforcer.json"
+    if (Test-Path -LiteralPath $configPath) {
+        $config = Get-Content -Raw -LiteralPath $configPath | ConvertFrom-Json
+        $field = $config.PSObject.Properties["maxSoftLimitViolations"]
+        if ($null -ne $field) {
+            $budget = [int] $field.Value
+        }
+    }
+}
+
+if ($budget -ge 0) {
+    if ($softLimitCount -gt $budget) {
+        $violations.Add("CE0006 soft-limit budget exceeded: $softLimitCount file(s) over $WarnAt lines, budget is $budget. Split a file under $WarnAt lines, or deliberately raise maxSoftLimitViolations in .config/code-enforcer/code-enforcer.json.")
+    }
+    elseif ($softLimitCount -lt $budget) {
+        Write-Host "CodeEnforcer: soft-limit count ($softLimitCount) is below the budget ($budget). Lower maxSoftLimitViolations in .config/code-enforcer/code-enforcer.json to lock in the improvement."
+    }
 }
 
 if ($violations.Count -gt 0) {

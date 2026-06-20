@@ -15,7 +15,8 @@ namespace DotBoxD.Kernels.Tests.Compiled.Core;
 
 public sealed class CompiledCacheMetadataTests
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
         WriteIndented = true
     };
 
@@ -138,7 +139,8 @@ public sealed class CompiledCacheMetadataTests
     {
         var path = Path.Combine(entryPath, "manifest.json");
         ArtifactManifest manifest;
-        await using (var read = File.OpenRead(path)) {
+        await using (var read = File.OpenRead(path))
+        {
             manifest = await JsonSerializer.DeserializeAsync<ArtifactManifest>(read, JsonOptions) ??
                 throw new JsonException("empty manifest");
         }
@@ -170,7 +172,8 @@ public sealed class CompiledCacheMetadataTests
     {
         var path = Path.Combine(entryPath, "verification.json");
         VerificationResult verification;
-        await using (var read = File.OpenRead(path)) {
+        await using (var read = File.OpenRead(path))
+        {
             verification = await JsonSerializer.DeserializeAsync<VerificationResult>(read, JsonOptions) ??
                 throw new JsonException("empty verification");
         }
@@ -194,7 +197,8 @@ public sealed class CompiledCacheMetadataTests
 
         public void Dispose()
         {
-            if (Directory.Exists(Path)) {
+            if (Directory.Exists(Path))
+            {
                 Directory.Delete(Path, recursive: true);
             }
         }

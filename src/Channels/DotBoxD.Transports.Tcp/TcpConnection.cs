@@ -1,5 +1,4 @@
 using System.Buffers.Binary;
-using System.Net;
 using System.Net.Sockets;
 using DotBoxD.Services.Buffers;
 using DotBoxD.Services.Protocol;

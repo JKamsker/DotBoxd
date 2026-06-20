@@ -15,7 +15,8 @@ namespace DotBoxD.Kernels.Tests.Compiled.Core;
 
 public sealed class CompiledCacheTests
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
         WriteIndented = true
     };
 
@@ -225,7 +226,8 @@ public sealed class CompiledCacheTests
         => CacheKeyBuilder.Build(plan, "main", VerificationPolicy.BoxedValueDefaults(), optimize: false);
 
     private static SandboxHost HostWithExtraBinding(string cacheDirectory)
-        => SandboxHost.Create(builder => {
+        => SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.AddBinding(ExtraBinding());
             builder.UseInterpreter();
@@ -256,7 +258,8 @@ public sealed class CompiledCacheTests
     {
         var path = Path.Combine(entryPath, "manifest.json");
         ArtifactManifest manifest;
-        await using (var read = File.OpenRead(path)) {
+        await using (var read = File.OpenRead(path))
+        {
             manifest = await JsonSerializer.DeserializeAsync<ArtifactManifest>(read, JsonOptions) ??
                 throw new JsonException("empty manifest");
         }
@@ -271,7 +274,8 @@ public sealed class CompiledCacheTests
     {
         var path = Path.Combine(entryPath, "verification.json");
         VerificationResult verification;
-        await using (var read = File.OpenRead(path)) {
+        await using (var read = File.OpenRead(path))
+        {
             verification = await JsonSerializer.DeserializeAsync<VerificationResult>(read, JsonOptions) ??
                 throw new JsonException("empty verification");
         }
@@ -295,7 +299,8 @@ public sealed class CompiledCacheTests
 
         public void Dispose()
         {
-            if (Directory.Exists(Path)) {
+            if (Directory.Exists(Path))
+            {
                 Directory.Delete(Path, recursive: true);
             }
         }

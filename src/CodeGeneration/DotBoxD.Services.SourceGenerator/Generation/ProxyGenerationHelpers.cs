@@ -17,7 +17,8 @@ internal static class ProxyGenerationHelpers
         {
             ct.ThrowIfCancellationRequested();
 
-            if (i > 0) sb.Append(", ");
+            if (i > 0)
+                sb.Append(", ");
             var p = parameters[i];
             sb.Append(p.RefKindKeyword).Append(p.Type).Append(' ').Append(p.Name);
             AppendDefaultValue(sb, p);

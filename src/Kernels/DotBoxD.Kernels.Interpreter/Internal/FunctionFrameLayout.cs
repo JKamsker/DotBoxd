@@ -49,7 +49,8 @@ internal sealed class FunctionFrameLayout
 
         // Parameters bind first and in order so positional argument binding maps
         // straight onto the leading slots.
-        for (var i = 0; i < function.Parameters.Count; i++) {
+        for (var i = 0; i < function.Parameters.Count; i++)
+        {
             Reserve(slots, function.Parameters[i].Name);
         }
 
@@ -74,14 +75,16 @@ internal sealed class FunctionFrameLayout
 
     private static void CollectStatements(IReadOnlyList<Statement> statements, Dictionary<string, int> slots)
     {
-        foreach (var statement in statements) {
+        foreach (var statement in statements)
+        {
             CollectStatement(statement, slots);
         }
     }
 
     private static void CollectStatement(Statement statement, Dictionary<string, int> slots)
     {
-        switch (statement) {
+        switch (statement)
+        {
             case AssignmentStatement assignment:
                 Reserve(slots, assignment.Name);
                 break;
@@ -101,7 +104,8 @@ internal sealed class FunctionFrameLayout
 
     private static void Reserve(Dictionary<string, int> slots, string name)
     {
-        if (!slots.ContainsKey(name)) {
+        if (!slots.ContainsKey(name))
+        {
             slots[name] = slots.Count;
         }
     }
@@ -193,7 +197,8 @@ internal sealed class FunctionFrameLayout
         CallExpression call,
         IReadOnlyDictionary<string, FunctionAnalysis> functionAnalysis,
         IBindingCatalog bindings)
-        => call.Name switch {
+        => call.Name switch
+        {
             "list.count" => SandboxType.I32,
             "numeric.toI64" => SandboxType.I64,
             "numeric.toF64" => SandboxType.F64,
@@ -216,7 +221,8 @@ internal sealed class FunctionFrameLayout
     }
 
     private static SlotKind KindOf(SandboxType? type)
-        => type switch {
+        => type switch
+        {
             { Name: "I32" } => SlotKind.I32,
             { Name: "I64" } => SlotKind.I64,
             { Name: "F64" } => SlotKind.F64,
@@ -224,7 +230,8 @@ internal sealed class FunctionFrameLayout
         };
 
     private static SandboxType? TypeOf(SlotKind kind)
-        => kind switch {
+        => kind switch
+        {
             SlotKind.I32 => SandboxType.I32,
             SlotKind.I64 => SandboxType.I64,
             SlotKind.F64 => SandboxType.F64,

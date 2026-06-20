@@ -56,18 +56,21 @@ internal static class InMemoryRpcChannel
 
         public ValueTask SendFrameValueAsync(PooledBufferWriter frame, CancellationToken ct = default)
         {
-            if (_disposed) {
+            if (_disposed)
+            {
                 frame.Dispose();
                 throw new ObjectDisposedException(nameof(PipeConnection));
             }
 
-            if (ct.IsCancellationRequested) {
+            if (ct.IsCancellationRequested)
+            {
                 frame.Dispose();
                 return new ValueTask(Task.FromCanceled(ct));
             }
 
             var remote = _remote;
-            if (remote is null) {
+            if (remote is null)
+            {
                 frame.Dispose();
                 throw new InvalidOperationException("Pipe is not connected.");
             }
@@ -83,7 +86,8 @@ internal static class InMemoryRpcChannel
         public ValueTask<Payload> ReceiveValueAsync(CancellationToken ct = default)
         {
             var frame = ReceiveFrameValueAsync(ct);
-            if (frame.IsCompletedSuccessfully) {
+            if (frame.IsCompletedSuccessfully)
+            {
                 return new ValueTask<Payload>(frame.Result.DetachPayload());
             }
 
@@ -92,35 +96,44 @@ internal static class InMemoryRpcChannel
 
         public ValueTask<RpcFrame> ReceiveFrameValueAsync(CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) {
+            if (ct.IsCancellationRequested)
+            {
                 return new ValueTask<RpcFrame>(Task.FromCanceled<RpcFrame>(ct));
             }
 
-            lock (_gate) {
-                if (_inbound.TryDequeue(out var frame)) {
+            lock (_gate)
+            {
+                if (_inbound.TryDequeue(out var frame))
+                {
                     return new ValueTask<RpcFrame>(frame);
                 }
 
-                if (_disposed) {
+                if (_disposed)
+                {
                     return new ValueTask<RpcFrame>(new RpcFrame(Payload.Empty));
                 }
 
-                if (_waiting) {
+                if (_waiting)
+                {
                     throw new InvalidOperationException("Only one pending receive is supported.");
                 }
 
                 _receiver.Reset();
                 _waiting = true;
                 var version = _receiver.Version;
-                if (ct.CanBeCanceled) {
-                    var registration = ct.UnsafeRegister(static state => {
+                if (ct.CanBeCanceled)
+                {
+                    var registration = ct.UnsafeRegister(static state =>
+                    {
                         var pending = (PendingReceive)state!;
                         pending.Connection.CancelPendingReceive(pending.Version, pending.CancellationToken);
                     }, new PendingReceive(this, version, ct));
-                    if (_waiting) {
+                    if (_waiting)
+                    {
                         _receiveCancellation = registration;
                     }
-                    else {
+                    else
+                    {
                         registration.Dispose();
                     }
                 }
@@ -132,8 +145,10 @@ internal static class InMemoryRpcChannel
         public ValueTask DisposeAsync()
         {
             PipeConnection? remote;
-            lock (_gate) {
-                if (_disposed) {
+            lock (_gate)
+            {
+                if (_disposed)
+                {
                     return default;
                 }
 
@@ -161,24 +176,29 @@ internal static class InMemoryRpcChannel
         {
             var complete = false;
             CancellationTokenRegistration registration = default;
-            lock (_gate) {
-                if (_disposed) {
+            lock (_gate)
+            {
+                if (_disposed)
+                {
                     frame.Dispose();
                     return false;
                 }
 
-                if (_waiting) {
+                if (_waiting)
+                {
                     _waiting = false;
                     registration = _receiveCancellation;
                     _receiveCancellation = default;
                     complete = true;
                 }
-                else {
+                else
+                {
                     _inbound.Enqueue(frame);
                 }
             }
 
-            if (complete) {
+            if (complete)
+            {
                 registration.Dispose();
                 _receiver.SetResult(frame);
             }
@@ -190,20 +210,24 @@ internal static class InMemoryRpcChannel
         {
             var complete = false;
             CancellationTokenRegistration registration = default;
-            lock (_gate) {
-                if (_waiting) {
+            lock (_gate)
+            {
+                if (_waiting)
+                {
                     _waiting = false;
                     registration = _receiveCancellation;
                     _receiveCancellation = default;
                     complete = true;
                 }
 
-                while (_inbound.TryDequeue(out var frame)) {
+                while (_inbound.TryDequeue(out var frame))
+                {
                     frame.Dispose();
                 }
             }
 
-            if (complete) {
+            if (complete)
+            {
                 registration.Dispose();
                 _receiver.SetResult(new RpcFrame(Payload.Empty));
             }
@@ -212,15 +236,18 @@ internal static class InMemoryRpcChannel
         private void CancelPendingReceive(short version, CancellationToken ct)
         {
             var complete = false;
-            lock (_gate) {
-                if (_waiting && _receiver.Version == version) {
+            lock (_gate)
+            {
+                if (_waiting && _receiver.Version == version)
+                {
                     _waiting = false;
                     _receiveCancellation = default;
                     complete = true;
                 }
             }
 
-            if (complete) {
+            if (complete)
+            {
                 _receiver.SetException(new OperationCanceledException(ct));
             }
         }

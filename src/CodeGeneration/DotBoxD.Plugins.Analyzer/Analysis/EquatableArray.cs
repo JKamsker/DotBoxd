@@ -23,13 +23,16 @@ internal readonly struct EquatableArray<T> : IReadOnlyList<T>, IEquatable<Equata
 
     public bool Equals(EquatableArray<T> other)
     {
-        if (Count != other.Count) {
+        if (Count != other.Count)
+        {
             return false;
         }
 
         var comparer = EqualityComparer<T>.Default;
-        for (var i = 0; i < Count; i++) {
-            if (!comparer.Equals(this[i], other[i])) {
+        for (var i = 0; i < Count; i++)
+        {
+            if (!comparer.Equals(this[i], other[i]))
+            {
                 return false;
             }
         }
@@ -42,9 +45,11 @@ internal readonly struct EquatableArray<T> : IReadOnlyList<T>, IEquatable<Equata
 
     public override int GetHashCode()
     {
-        unchecked {
+        unchecked
+        {
             var hash = 17;
-            foreach (var item in Items) {
+            foreach (var item in Items)
+            {
                 hash = (hash * 31) + (item is null ? 0 : item.GetHashCode());
             }
 
@@ -77,7 +82,8 @@ internal readonly struct EquatableArray<T> : IReadOnlyList<T>, IEquatable<Equata
         public bool MoveNext()
         {
             var next = _index + 1;
-            if ((uint)next >= (uint)_items.Length) {
+            if ((uint)next >= (uint)_items.Length)
+            {
                 return false;
             }
 

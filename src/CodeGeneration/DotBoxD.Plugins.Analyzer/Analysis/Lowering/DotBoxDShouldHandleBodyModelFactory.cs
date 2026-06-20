@@ -61,7 +61,8 @@ internal static class DotBoxDShouldHandleBodyModelFactory
     private static DotBoxDStatementBodyModel LowerStatement(
         StatementSyntax statement,
         DotBoxDExpressionLoweringContext context)
-        => statement switch {
+        => statement switch
+        {
             ReturnStatementSyntax ret when ret.Expression is not null =>
                 DotBoxDConditionBodyModelFactory.Create(ret.Expression, context),
             IfStatementSyntax branch when branch.Else is not null =>

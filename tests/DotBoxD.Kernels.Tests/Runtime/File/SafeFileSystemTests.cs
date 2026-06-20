@@ -1,4 +1,3 @@
-using DotBoxD.Kernels;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
@@ -397,7 +396,8 @@ public sealed class SafeFileSystemTests
 
         public void Dispose()
         {
-            if (Directory.Exists(Path)) {
+            if (Directory.Exists(Path))
+            {
                 Directory.Delete(Path, recursive: true);
             }
         }

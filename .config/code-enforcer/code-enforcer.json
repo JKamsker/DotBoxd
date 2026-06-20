@@ -3,5 +3,6 @@
   "maxFilesPerDir": 15,
   "maxFilesPerRootDir": 5,
   "maxLinesSoft": 350,
-  "maxLinesHard": 500
+  "maxLinesHard": 500,
+  "maxSoftLimitViolations": 113
 }

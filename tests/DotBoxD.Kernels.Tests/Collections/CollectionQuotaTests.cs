@@ -146,7 +146,8 @@ public sealed class CollectionQuotaTests
         }
         """);
         SandboxValue input = SandboxValue.FromInt32(0);
-        for (var i = 0; i < 2_048; i++) {
+        for (var i = 0; i < 2_048; i++)
+        {
             input = new ListValue([input], input.Type);
         }
 

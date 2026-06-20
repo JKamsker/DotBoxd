@@ -79,7 +79,8 @@ public sealed partial class ResourceMeter
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ChargeLoopIteration(long fuelAmount)
     {
-        if (fuelAmount <= 0) { throw new ArgumentOutOfRangeException(nameof(fuelAmount)); }
+        if (fuelAmount <= 0)
+        { throw new ArgumentOutOfRangeException(nameof(fuelAmount)); }
 
         LoopIterations = AddNonNegativeChecked(LoopIterations, 1, "loop iteration budget exhausted");
         if (LoopIterations > Limits.MaxLoopIterations)

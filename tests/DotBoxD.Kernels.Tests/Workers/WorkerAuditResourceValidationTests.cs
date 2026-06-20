@@ -66,7 +66,8 @@ public sealed class WorkerAuditResourceValidationTests
     }
 
     private static SandboxHost LogHost(ISandboxWorkerClient worker)
-        => SandboxHost.Create(builder => {
+        => SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.AddLogBindings();
             builder.UseInterpreter();

@@ -48,7 +48,8 @@ public sealed class VerifierTests
     }
 
     private static byte[] FileReadAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var method = type.DefineMethod("Execute", MethodAttributes.Public | MethodAttributes.Static, typeof(string), []);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldstr, "secret.txt");
@@ -57,7 +58,8 @@ public sealed class VerifierTests
         });
 
     private static byte[] TypeGetTypeAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var method = type.DefineMethod("Execute", MethodAttributes.Public | MethodAttributes.Static, typeof(Type), []);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldstr, "System.IO.File");
@@ -66,7 +68,8 @@ public sealed class VerifierTests
         });
 
     private static byte[] AssemblyLoadAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var method = type.DefineMethod("Execute", MethodAttributes.Public | MethodAttributes.Static, typeof(Assembly), []);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldstr, "System.Private.CoreLib");
@@ -75,7 +78,8 @@ public sealed class VerifierTests
         });
 
     private static byte[] MethodInfoInvokeAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var method = type.DefineMethod("Execute", MethodAttributes.Public | MethodAttributes.Static, typeof(object), []);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldnull);
@@ -85,7 +89,8 @@ public sealed class VerifierTests
         });
 
     private static byte[] EnvironmentAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var method = type.DefineMethod("Execute", MethodAttributes.Public | MethodAttributes.Static, typeof(string), []);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldstr, "SECRET");
@@ -94,7 +99,8 @@ public sealed class VerifierTests
         });
 
     private static byte[] ThreadAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var method = type.DefineMethod("Execute", MethodAttributes.Public | MethodAttributes.Static, typeof(void), []);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldc_I4_0);
@@ -103,7 +109,8 @@ public sealed class VerifierTests
         });
 
     private static byte[] ActivatorAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var method = type.DefineMethod("Execute", MethodAttributes.Public | MethodAttributes.Static, typeof(object), []);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldtoken, typeof(string));
@@ -113,7 +120,8 @@ public sealed class VerifierTests
         });
 
     private static byte[] PInvokeAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             type.DefinePInvokeMethod(
                 "GetTickCount",
                 "kernel32.dll",
@@ -126,7 +134,8 @@ public sealed class VerifierTests
         });
 
     private static byte[] LdTokenAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var method = type.DefineMethod("Execute", MethodAttributes.Public | MethodAttributes.Static, typeof(void), []);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldtoken, typeof(string));
@@ -135,14 +144,16 @@ public sealed class VerifierTests
         });
 
     private static byte[] MutableStaticFieldAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             type.DefineField("State", typeof(int), FieldAttributes.Public | FieldAttributes.Static);
             var method = type.DefineMethod("Execute", MethodAttributes.Public | MethodAttributes.Static, typeof(void), []);
             method.GetILGenerator().Emit(OpCodes.Ret);
         });
 
     private static byte[] StaticConstructorAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var cctor = type.DefineTypeInitializer();
             cctor.GetILGenerator().Emit(OpCodes.Ret);
             var method = type.DefineMethod("Execute", MethodAttributes.Public | MethodAttributes.Static, typeof(void), []);
@@ -150,7 +161,8 @@ public sealed class VerifierTests
         });
 
     private static byte[] UnbudgetedStringFactoryAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var factory = typeof(CompiledRuntime).GetMethod(
                 "String",
                 BindingFlags.NonPublic | BindingFlags.Static,
@@ -165,7 +177,8 @@ public sealed class VerifierTests
         });
 
     private static byte[] LocalHelperFileReadAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var helper = type.DefineMethod(
                 "Read",
                 MethodAttributes.Private | MethodAttributes.Static,
@@ -183,7 +196,8 @@ public sealed class VerifierTests
         });
 
     private static byte[] ObjectArrayAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var method = type.DefineMethod("Execute", MethodAttributes.Public | MethodAttributes.Static, typeof(object[]), []);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldc_I4_1);
@@ -192,14 +206,16 @@ public sealed class VerifierTests
         });
 
     private static byte[] ExtraPublicMethodAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             DefineVoidExecute(type);
             var method = type.DefineMethod("Inspect", MethodAttributes.Public | MethodAttributes.Static, typeof(void), []);
             method.GetILGenerator().Emit(OpCodes.Ret);
         });
 
     private static byte[] WrongExecuteReturnTypeAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var method = type.DefineMethod(
                 "Execute",
                 MethodAttributes.Public | MethodAttributes.Static,
@@ -209,7 +225,8 @@ public sealed class VerifierTests
         });
 
     private static byte[] WrongExecuteParameterAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var method = type.DefineMethod(
                 "Execute",
                 MethodAttributes.Public | MethodAttributes.Static,
@@ -255,7 +272,8 @@ public sealed class VerifierTests
     }
 
     private static byte[] SynchronizedMethodAssembly()
-        => BuildAssembly(type => {
+        => BuildAssembly(type =>
+        {
             var method = type.DefineMethod("Execute", MethodAttributes.Public | MethodAttributes.Static, typeof(void), []);
             method.SetImplementationFlags(MethodImplAttributes.Synchronized);
             method.GetILGenerator().Emit(OpCodes.Ret);

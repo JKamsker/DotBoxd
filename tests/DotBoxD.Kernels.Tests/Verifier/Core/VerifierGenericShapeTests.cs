@@ -11,7 +11,8 @@ public sealed class VerifierGenericShapeTests
     public async Task Verifier_rejects_generic_generated_types()
     {
         var result = await VerifierTestHelpers.VerifyAsync(
-            VerifierTestHelpers.BuildGeneratedAssembly(type => {
+            VerifierTestHelpers.BuildGeneratedAssembly(type =>
+            {
                 type.DefineGenericParameters("TValue");
                 VerifierTestHelpers.DefineValidExecute(type);
             }));
@@ -24,7 +25,8 @@ public sealed class VerifierGenericShapeTests
     public async Task Verifier_rejects_generic_generated_methods()
     {
         var result = await VerifierTestHelpers.VerifyAsync(
-            VerifierTestHelpers.BuildGeneratedAssembly(type => {
+            VerifierTestHelpers.BuildGeneratedAssembly(type =>
+            {
                 VerifierTestHelpers.DefineValidExecute(type);
                 var method = type.DefineMethod(
                     "Fn_0",

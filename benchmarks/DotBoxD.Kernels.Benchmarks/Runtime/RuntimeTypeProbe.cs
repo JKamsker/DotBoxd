@@ -3,7 +3,6 @@ using DotBoxD.Kernels.Sandbox;
 namespace DotBoxD.Kernels.Benchmarks.Runtime;
 
 using System.Diagnostics;
-using DotBoxD.Kernels.Runtime;
 
 internal static class RuntimeTypeProbe
 {
@@ -39,7 +38,8 @@ internal static class RuntimeTypeProbe
     }
 
     private static Measurement Measure(int iterations, Func<SandboxType> action)
-        => Measure(iterations, () => {
+        => Measure(iterations, () =>
+        {
             var result = action();
             GC.KeepAlive(result);
         });

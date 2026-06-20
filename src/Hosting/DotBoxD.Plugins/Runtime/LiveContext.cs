@@ -77,7 +77,8 @@ internal static class LiveContextFactory
 {
     public static LiveContext<T> Create<T>(string name, Action<T>? initialize = null) where T : class
     {
-        if (!typeof(T).IsInterface) {
+        if (!typeof(T).IsInterface)
+        {
             throw LiveSettingTypeConverter.Diagnostic("Live context bindings must use an interface type.");
         }
 
@@ -92,7 +93,8 @@ internal static class LiveContextFactory
 
     private static LiveSettingDefinition CreateDefinition(PropertyInfo property)
     {
-        if (!property.CanRead || !property.CanWrite) {
+        if (!property.CanRead || !property.CanWrite)
+        {
             throw LiveSettingTypeConverter.Diagnostic(
                 $"Live setting '{property.Name}' must expose both get and set accessors.");
         }

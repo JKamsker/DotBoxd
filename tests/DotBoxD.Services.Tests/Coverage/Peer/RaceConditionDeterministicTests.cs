@@ -3,7 +3,6 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Reflection.Emit;
 using DotBoxD.Codecs.MessagePack;
-using DotBoxD.Services.Generated;
 using DotBoxD.Services.Server;
 using DotBoxD.Services.Tests.Support;
 using DotBoxD.Services.Transport;

@@ -26,19 +26,22 @@ public sealed class VerifierMetadataTableTests
         };
 
     private static byte[] PropertyMetadataAssembly()
-        => VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             VerifierTestHelpers.DefineValidExecute(type);
             type.DefineProperty("State", PropertyAttributes.None, typeof(int), []);
         });
 
     private static byte[] EventMetadataAssembly()
-        => VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             VerifierTestHelpers.DefineValidExecute(type);
             type.DefineEvent("Changed", EventAttributes.None, typeof(Action));
         });
 
     private static byte[] NestedTypeAssembly()
-        => VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             VerifierTestHelpers.DefineValidExecute(type);
             var nested = type.DefineNestedType(
                 "Nested",
@@ -47,7 +50,8 @@ public sealed class VerifierMetadataTableTests
         });
 
     private static byte[] GenericMethodSpecificationAssembly()
-        => VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             var method = type.DefineMethod(
                 "Execute",
                 MethodAttributes.Public | MethodAttributes.Static,

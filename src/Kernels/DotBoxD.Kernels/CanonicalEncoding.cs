@@ -17,7 +17,8 @@ internal static class CanonicalEncoding
 
     public static void AppendRecord(StringBuilder builder, IEnumerable<string?> fields)
     {
-        foreach (var field in fields) {
+        foreach (var field in fields)
+        {
             AppendField(builder, field);
         }
     }
@@ -36,7 +37,8 @@ internal static class CanonicalEncoding
 
     private static void AppendField(StringBuilder builder, string? value)
     {
-        if (value is null) {
+        if (value is null)
+        {
             builder.Append('n').Append(';');
             return;
         }
@@ -48,7 +50,8 @@ internal static class CanonicalEncoding
     private static string Escape(string value)
     {
         var builder = new StringBuilder(value.Length);
-        foreach (var character in value) {
+        foreach (var character in value)
+        {
             AppendEscaped(builder, character);
         }
 
@@ -57,7 +60,8 @@ internal static class CanonicalEncoding
 
     private static void AppendEscaped(StringBuilder builder, char character)
     {
-        switch (character) {
+        switch (character)
+        {
             case '\\':
                 builder.Append(@"\\");
                 break;
@@ -71,7 +75,8 @@ internal static class CanonicalEncoding
                 builder.Append(@"\t");
                 break;
             default:
-                if (char.IsControl(character)) {
+                if (char.IsControl(character))
+                {
                     builder.Append(@"\u");
                     builder.Append(((int)character).ToString("x4", System.Globalization.CultureInfo.InvariantCulture));
                     return;

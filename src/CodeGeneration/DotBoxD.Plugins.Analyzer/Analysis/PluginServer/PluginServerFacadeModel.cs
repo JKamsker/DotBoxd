@@ -1,5 +1,3 @@
-using DotBoxD.Plugins.Analyzer.Analysis;
-
 namespace DotBoxD.Plugins.Analyzer.Analysis.PluginServer;
 
 internal sealed record PluginServerFacadeModel(

@@ -6,7 +6,6 @@ namespace DotBoxD.Kernels.Compiler.Internal;
 using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using System.Security.Principal;
-using DotBoxD.Kernels;
 
 internal static class PersistentCompiledArtifactCacheRootGuard
 {

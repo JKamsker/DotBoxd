@@ -1,5 +1,3 @@
-using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
-using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -25,7 +23,8 @@ internal static partial class DotBoxDExpressionModelFactory
             return constant;
         }
 
-        return expression switch {
+        return expression switch
+        {
             ParenthesizedExpressionSyntax parenthesized => Lower(parenthesized.Expression, context),
             PrefixUnaryExpressionSyntax unary => LowerUnary(unary, context),
             BinaryExpressionSyntax binary => LowerBinary(binary, context),
@@ -60,7 +59,8 @@ internal static partial class DotBoxDExpressionModelFactory
         }
 
         var operand = Lower(unary.Operand, context);
-        return unary.Kind() switch {
+        return unary.Kind() switch
+        {
             SyntaxKind.LogicalNotExpression => Unary(
                 DotBoxDGenerationNames.Helpers.Not,
                 DotBoxDGenerationNames.Operators.LogicalNot,
@@ -95,7 +95,8 @@ internal static partial class DotBoxDExpressionModelFactory
         DotBoxDNumericConstantPromoter.Promote(binary, context, ref left, ref right);
         var allocates = left.Allocates || right.Allocates;
 
-        return binary.Kind() switch {
+        return binary.Kind() switch
+        {
             SyntaxKind.EqualsExpression => DotBoxDEqualityExpressionLowerer.Lower(
                 left,
                 right,
@@ -253,9 +254,11 @@ internal static partial class DotBoxDExpressionModelFactory
         }
 
         var liveSettings = context.LiveSettings;
-        for (var i = 0; i < liveSettings.Count; i++) {
+        for (var i = 0; i < liveSettings.Count; i++)
+        {
             var setting = liveSettings[i];
-            if (string.Equals(setting.Name, name, StringComparison.Ordinal)) {
+            if (string.Equals(setting.Name, name, StringComparison.Ordinal))
+            {
                 return new DotBoxDExpressionModel(
                     $"{DotBoxDGenerationNames.Helpers.Var}({LiteralReader.StringLiteral(name)})",
                     setting.Type,
@@ -271,21 +274,27 @@ internal static partial class DotBoxDExpressionModelFactory
         DotBoxDExpressionLoweringContext context)
     {
         var memberName = member.Name.Identifier.ValueText;
-        if (member.Expression is IdentifierNameSyntax identifier) {
+        if (member.Expression is IdentifierNameSyntax identifier)
+        {
             // After a Select, the downstream lambda's parameter is the PROJECTED element. A field access on it
             // (dto.X) reads the projection's field by name via record.get — checked BEFORE the event-property
             // branch so a field that shares a name with an event property is never silently misread as it. If it
             // is not a record field (e.g. .Count on a projected list), fall through to the general member chain.
             if (context.ProjectedElementName is { } projectedName &&
-                string.Equals(identifier.Identifier.ValueText, projectedName, StringComparison.Ordinal)) {
-                if (TryLowerProjectedRecordField(memberName, context) is { } projectedField) {
+                string.Equals(identifier.Identifier.ValueText, projectedName, StringComparison.Ordinal))
+            {
+                if (TryLowerProjectedRecordField(memberName, context) is { } projectedField)
+                {
                     return projectedField;
                 }
             }
-            else if (string.Equals(identifier.Identifier.ValueText, context.EventParameterName, StringComparison.Ordinal)) {
-                for (var i = 0; i < context.EventProperties.Count; i++) {
+            else if (string.Equals(identifier.Identifier.ValueText, context.EventParameterName, StringComparison.Ordinal))
+            {
+                for (var i = 0; i < context.EventProperties.Count; i++)
+                {
                     var property = context.EventProperties[i];
-                    if (string.Equals(property.Name, memberName, StringComparison.Ordinal)) {
+                    if (string.Equals(property.Name, memberName, StringComparison.Ordinal))
+                    {
                         CollectEventPropertyCapability(member, context);
                         return new DotBoxDExpressionModel(
                             $"{DotBoxDGenerationNames.Helpers.Var}({LiteralReader.StringLiteral(EventVariable(memberName))})",
@@ -298,7 +307,8 @@ internal static partial class DotBoxDExpressionModelFactory
             }
         }
 
-        if (member.Expression is ThisExpressionSyntax) {
+        if (member.Expression is ThisExpressionSyntax)
+        {
             return LowerIdentifier(memberName, context);
         }
 
@@ -306,7 +316,8 @@ internal static partial class DotBoxDExpressionModelFactory
         // receiver. The receiver may itself be a projected element, an event property, a host-call result, or a
         // further chain hop — it is lowered recursively and dispatched on its sandbox shape, so e.g.
         // `ctx...GetInRange(id, 4).Count` or `dto.Inner.Field` lower. Anything else fails safe.
-        if (TryLowerMemberChain(member, memberName, context) is { } chained) {
+        if (TryLowerMemberChain(member, memberName, context) is { } chained)
+        {
             return chained;
         }
 
@@ -317,7 +328,8 @@ internal static partial class DotBoxDExpressionModelFactory
 
     private static void RequireType(DotBoxDExpressionModel expression, string expected, string context)
     {
-        if (!string.Equals(expression.Type, expected, StringComparison.Ordinal)) {
+        if (!string.Equals(expression.Type, expected, StringComparison.Ordinal))
+        {
             throw new NotSupportedException($"{context} requires {expected} operands.");
         }
     }

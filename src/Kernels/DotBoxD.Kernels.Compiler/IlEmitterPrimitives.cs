@@ -6,8 +6,6 @@ namespace DotBoxD.Kernels.Compiler;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Reflection.Emit;
-using DotBoxD.Kernels;
-using DotBoxD.Kernels.Runtime;
 
 internal static class IlEmitterPrimitives
 {
@@ -15,7 +13,8 @@ internal static class IlEmitterPrimitives
 
     public static void EmitInt32(ILGenerator il, int value)
     {
-        switch (value) {
+        switch (value)
+        {
             case -1:
                 il.Emit(OpCodes.Ldc_I4_M1);
                 break;
@@ -64,31 +63,36 @@ internal static class IlEmitterPrimitives
 
     public static void EmitSandboxType(ILGenerator il, SandboxType type)
     {
-        if (type.Arguments.Count == 0) {
+        if (type.Arguments.Count == 0)
+        {
             il.Emit(OpCodes.Ldstr, type.Name);
             il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.TypeScalar)));
             return;
         }
 
-        if (type is { Name: "List", Arguments.Count: 1 }) {
+        if (type is { Name: "List", Arguments.Count: 1 })
+        {
             EmitSandboxType(il, type.Arguments[0]);
             il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.TypeList)));
             return;
         }
 
-        if (type is { Name: "Map", Arguments.Count: 2 }) {
+        if (type is { Name: "Map", Arguments.Count: 2 })
+        {
             EmitSandboxType(il, type.Arguments[0]);
             EmitSandboxType(il, type.Arguments[1]);
             il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.TypeMap)));
             return;
         }
 
-        if (type.IsRecord) {
+        if (type.IsRecord)
+        {
             // Build DotBoxD.Kernels.SandboxType[] via the trusted runtime facade (no newarr in verified IL),
             // populate each field type, then fold into a record type — mirrors the value-array path.
             EmitInt32(il, type.Arguments.Count);
             il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.CreateTypeArray)));
-            for (var i = 0; i < type.Arguments.Count; i++) {
+            for (var i = 0; i < type.Arguments.Count; i++)
+            {
                 il.Emit(OpCodes.Dup);
                 EmitInt32(il, i);
                 EmitSandboxType(il, type.Arguments[i]);

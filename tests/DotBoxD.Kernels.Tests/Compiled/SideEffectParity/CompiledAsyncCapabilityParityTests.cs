@@ -134,9 +134,9 @@ public sealed class CompiledAsyncCapabilityParityTests
                 return SandboxValue.FromInt32(42);
             })
             with
-            {
-                IsAsync = true
-            };
+        {
+            IsAsync = true
+        };
 
     private static BindingDescriptor ThreadIdBinding()
         => BaseBinding((_, _, _) =>

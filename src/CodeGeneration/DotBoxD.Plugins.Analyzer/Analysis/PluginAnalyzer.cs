@@ -98,11 +98,13 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeProperty(SymbolAnalysisContext context)
     {
         var property = (IPropertySymbol)context.Symbol;
-        if (!HasAttribute(property, DotBoxDGenerationNames.Metadata.LiveSettingAttribute)) {
+        if (!HasAttribute(property, DotBoxDGenerationNames.Metadata.LiveSettingAttribute))
+        {
             return;
         }
 
-        if (!IsAllowedLiveSettingType(property.Type)) {
+        if (!IsAllowedLiveSettingType(property.Type))
+        {
             context.ReportDiagnostic(Diagnostic.Create(
                 LiveSettingTypeRule,
                 property.Locations.FirstOrDefault(),
@@ -113,7 +115,8 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeInvocation(OperationAnalysisContext context, ForbiddenHelperCallGraph helperGraph)
     {
         var invocation = (IInvocationOperation)context.Operation;
-        if (context.ContainingSymbol is not IMethodSymbol method) {
+        if (context.ContainingSymbol is not IMethodSymbol method)
+        {
             return;
         }
 
@@ -123,7 +126,8 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeObjectCreation(OperationAnalysisContext context, ForbiddenHelperCallGraph helperGraph)
     {
-        if (context.ContainingSymbol is not IMethodSymbol method) {
+        if (context.ContainingSymbol is not IMethodSymbol method)
+        {
             return;
         }
 
@@ -132,7 +136,8 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzePropertyReference(OperationAnalysisContext context, ForbiddenHelperCallGraph helperGraph)
     {
-        if (context.ContainingSymbol is not IMethodSymbol method) {
+        if (context.ContainingSymbol is not IMethodSymbol method)
+        {
             return;
         }
 
@@ -141,7 +146,8 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeFieldReference(OperationAnalysisContext context, ForbiddenHelperCallGraph helperGraph)
     {
-        if (context.ContainingSymbol is not IMethodSymbol method) {
+        if (context.ContainingSymbol is not IMethodSymbol method)
+        {
             return;
         }
 
@@ -150,7 +156,8 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeTypeOf(OperationAnalysisContext context, ForbiddenHelperCallGraph helperGraph)
     {
-        if (context.ContainingSymbol is not IMethodSymbol method) {
+        if (context.ContainingSymbol is not IMethodSymbol method)
+        {
             return;
         }
 
@@ -169,12 +176,14 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
         IMethodSymbol method,
         ITypeSymbol? type)
     {
-        if (!IsForbiddenHostApi(type)) {
+        if (!IsForbiddenHostApi(type))
+        {
             return;
         }
 
         helperGraph.RecordForbidden(method, type!);
-        if (!IsEventKernel(method.ContainingType)) {
+        if (!IsEventKernel(method.ContainingType))
+        {
             return;
         }
 
@@ -187,7 +196,8 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
     private static bool IsForbiddenHostApi(ITypeSymbol? type)
     {
         var name = type?.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
-        if (string.IsNullOrWhiteSpace(name)) {
+        if (string.IsNullOrWhiteSpace(name))
+        {
             return false;
         }
 
@@ -218,8 +228,10 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
             "Microsoft.CSharp.",
             "Microsoft.EntityFrameworkCore."
         ];
-        foreach (var prefix in prefixes) {
-            if (typeName.StartsWith(prefix, StringComparison.Ordinal)) {
+        foreach (var prefix in prefixes)
+        {
+            if (typeName.StartsWith(prefix, StringComparison.Ordinal))
+            {
                 return true;
             }
         }

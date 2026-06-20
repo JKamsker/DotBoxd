@@ -179,10 +179,12 @@ public sealed partial class SandboxHost : IDisposable
             {
                 observer(auditEvent);
             }
+#pragma warning disable RCS1075 // Intentional isolation boundary: audit-observer failures must never alter sandbox execution.
             catch (Exception)
             {
                 // Operational forwarding failures must not change sandbox execution behavior.
             }
+#pragma warning restore RCS1075
         }
     }
 

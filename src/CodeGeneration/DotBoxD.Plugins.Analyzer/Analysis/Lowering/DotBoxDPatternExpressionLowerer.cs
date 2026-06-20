@@ -20,7 +20,8 @@ internal static class DotBoxDPatternExpressionLowerer
         PatternSyntax pattern,
         DotBoxDExpressionLoweringContext context,
         Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression)
-        => pattern switch {
+        => pattern switch
+        {
             ParenthesizedPatternSyntax parenthesized =>
                 LowerPattern(value, parenthesized.Pattern, context, lowerExpression),
             ConstantPatternSyntax constant =>
@@ -103,7 +104,8 @@ internal static class DotBoxDPatternExpressionLowerer
     }
 
     private static (string Helper, string Symbol) RelationalOperator(RelationalPatternSyntax pattern)
-        => pattern.OperatorToken.Kind() switch {
+        => pattern.OperatorToken.Kind() switch
+        {
             SyntaxKind.GreaterThanEqualsToken => (
                 DotBoxDGenerationNames.Helpers.Ge,
                 DotBoxDGenerationNames.Operators.GreaterThanOrEqual),

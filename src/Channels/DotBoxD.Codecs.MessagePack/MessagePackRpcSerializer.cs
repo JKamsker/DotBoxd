@@ -1,8 +1,8 @@
 using System.Buffers;
+using DotBoxD.Services.Serialization;
 using MessagePack;
 using MessagePack.Formatters;
 using MessagePack.Resolvers;
-using DotBoxD.Services.Serialization;
 
 namespace DotBoxD.Codecs.MessagePack;
 

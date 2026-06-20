@@ -61,16 +61,19 @@ public sealed class HookPipelineFluentTests
         using var server = DotBoxD.Plugins.PluginServer.Create();
         var observed = new List<string>();
         server.Hooks.On<Ping>()
-            .Where(async (_, _) => {
+            .Where(async (_, _) =>
+            {
                 await Task.Yield();
                 observed.Add("filter-1");
                 return true;
             })
-            .Where((_, _) => {
+            .Where((_, _) =>
+            {
                 observed.Add("filter-2");
                 return true;
             })
-            .RunLocal(async (_, _) => {
+            .RunLocal(async (_, _) =>
+            {
                 await Task.Yield();
                 observed.Add("handler-1");
             })
@@ -87,7 +90,8 @@ public sealed class HookPipelineFluentTests
         using var server = DotBoxD.Plugins.PluginServer.Create();
         var handled = false;
         server.Hooks.On<Ping>()
-            .Where(async (_, _) => {
+            .Where(async (_, _) =>
+            {
                 await Task.Yield();
                 return false;
             })

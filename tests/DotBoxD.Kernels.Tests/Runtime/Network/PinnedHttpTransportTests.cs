@@ -18,7 +18,8 @@ public sealed class PinnedHttpTransportTests
         using var target = new LoopbackHttpServer("target-response");
         using var proxy = new LoopbackHttpServer("proxy-response");
         var previousProxy = HttpClient.DefaultProxy;
-        try {
+        try
+        {
             HttpClient.DefaultProxy = new WebProxy($"http://127.0.0.1:{proxy.Port}");
             var result = await ExecutePinnedAsync(target.Port);
 
@@ -27,7 +28,8 @@ public sealed class PinnedHttpTransportTests
             await target.ResponseSent;
             Assert.False(await proxy.WaitForResponseAsync(TimeSpan.FromMilliseconds(50)));
         }
-        finally {
+        finally
+        {
             HttpClient.DefaultProxy = previousProxy;
         }
     }
@@ -108,7 +110,8 @@ public sealed class PinnedHttpTransportTests
 
         private async Task RunAsync()
         {
-            try {
+            try
+            {
                 using var client = await _listener.AcceptTcpClientAsync().ConfigureAwait(false);
                 await using var stream = client.GetStream();
                 await ReadHeadersAsync(stream).ConfigureAwait(false);
@@ -118,16 +121,19 @@ public sealed class PinnedHttpTransportTests
                     $"Content-Length: {_response.Length}\r\n" +
                     "Connection: close\r\n\r\n");
                 await stream.WriteAsync(headers).ConfigureAwait(false);
-                if (_bodyDelay > TimeSpan.Zero) {
+                if (_bodyDelay > TimeSpan.Zero)
+                {
                     await Task.Delay(_bodyDelay).ConfigureAwait(false);
                 }
 
                 var body = Encoding.ASCII.GetBytes(_response);
                 await stream.WriteAsync(body).ConfigureAwait(false);
             }
-            catch (ObjectDisposedException) when (_disposed) {
+            catch (ObjectDisposedException) when (_disposed)
+            {
             }
-            catch (SocketException) when (_disposed) {
+            catch (SocketException) when (_disposed)
+            {
             }
         }
 
@@ -135,13 +141,16 @@ public sealed class PinnedHttpTransportTests
         {
             var buffer = new byte[1];
             var window = new Queue<byte>(4);
-            while (await stream.ReadAsync(buffer).ConfigureAwait(false) == 1) {
-                if (window.Count == 4) {
+            while (await stream.ReadAsync(buffer).ConfigureAwait(false) == 1)
+            {
+                if (window.Count == 4)
+                {
                     window.Dequeue();
                 }
 
                 window.Enqueue(buffer[0]);
-                if (window.SequenceEqual(new byte[] { 13, 10, 13, 10 })) {
+                if (window.SequenceEqual(new byte[] { 13, 10, 13, 10 }))
+                {
                     return;
                 }
             }

@@ -57,7 +57,8 @@ internal static class DispatcherCaseGenerator
         {
             ct.ThrowIfCancellationRequested();
 
-            if (i > 0) tupleTypes.Append(", ");
+            if (i > 0)
+                tupleTypes.Append(", ");
             tupleTypes.Append(ProxyGenerationHelpers.GetWireType(requestParameters[i]));
         }
 
@@ -113,7 +114,8 @@ internal static class DispatcherCaseGenerator
         {
             ct.ThrowIfCancellationRequested();
 
-            if (i > 0) argList.Append(", ");
+            if (i > 0)
+                argList.Append(", ");
             argList.Append(argumentExpressions[i]);
         }
 

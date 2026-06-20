@@ -1,4 +1,3 @@
-using System.Linq;
 using DotBoxD.Plugins.Kernel;
 
 namespace DotBoxD.Plugins.Indexing;

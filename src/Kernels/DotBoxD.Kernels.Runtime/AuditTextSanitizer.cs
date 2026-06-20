@@ -5,28 +5,38 @@ using System.Text.RegularExpressions;
 public static partial class AuditTextSanitizer
 {
     private const string Redacted = "[redacted]";
+
+    // ExplicitCapture: every extraction below is by named group, so unnamed groups need not be
+    // captured. All patterns run over untrusted audit text, so each Regex is given an explicit
+    // match timeout to bound worst-case backtracking (MA0009 regex-DoS hardening).
     private const RegexOptions RedactionOptions =
-        RegexOptions.Compiled | RegexOptions.CultureInvariant;
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture;
+    private static readonly TimeSpan RedactionTimeout = TimeSpan.FromSeconds(1);
 
     private static readonly Regex AuthorizationHeaderRegex = new(
         "(?i)(?<key>\\bauthorization\\s*[:=]\\s*)(?:(?<scheme>bearer|basic)\\s+)?(?<value>[^\\s,;]+)",
-        RedactionOptions);
+        RedactionOptions,
+        RedactionTimeout);
 
     private static readonly Regex SecretRegex = new(
         "(?i)(?<key>\\b(?:password|passwd|pwd|secret|token|access[_-]?token|refresh[_-]?token|session[_-]?token|api[_-]?key|account[_-]?key|client[_-]?secret|private[_-]?key)\\s*[:=]\\s*)(?<value>[^\\s,;]+)",
-        RedactionOptions);
+        RedactionOptions,
+        RedactionTimeout);
 
     private static readonly Regex AuthSchemeRegex = new(
         "(?i)\\b(?<scheme>bearer|basic)\\s+[A-Za-z0-9._~+/=-]+",
-        RedactionOptions);
+        RedactionOptions,
+        RedactionTimeout);
 
     private static readonly Regex UriCredentialRegex = new(
         "(?<prefix>\\b[A-Za-z][A-Za-z0-9+.-]*://)[^\\s/@:]+:[^\\s/@]+@",
-        RedactionOptions);
+        RedactionOptions,
+        RedactionTimeout);
 
     private static readonly Regex SecretPathSegmentRegex = new(
         "(?i)(^|[-_.])(authorization|bearer|credential|key|password|passwd|pwd|secret|session|signature|token)([-_.=:]|$)",
-        RedactionOptions);
+        RedactionOptions,
+        RedactionTimeout);
 
     public static string SanitizeAndRedact(string message)
     {

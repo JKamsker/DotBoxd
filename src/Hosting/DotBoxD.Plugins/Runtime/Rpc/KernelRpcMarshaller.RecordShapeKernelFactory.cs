@@ -166,13 +166,20 @@ public static partial class KernelRpcMarshaller
 
     private static LinqExpression ReadSandboxRecordField(LinqExpression sandboxField, Type fieldType)
     {
-        if (fieldType == typeof(bool)) return LinqExpression.Call(ReadBoolMethod, sandboxField);
-        if (fieldType == typeof(int)) return LinqExpression.Call(ReadInt32Method, sandboxField);
-        if (fieldType == typeof(long)) return LinqExpression.Call(ReadInt64Method, sandboxField);
-        if (fieldType == typeof(double)) return LinqExpression.Call(ReadDoubleMethod, sandboxField);
-        if (fieldType == typeof(float)) return LinqExpression.Call(ReadFloatMethod, sandboxField);
-        if (fieldType == typeof(string)) return LinqExpression.Call(ReadStringMethod, sandboxField);
-        if (fieldType == typeof(Guid)) return LinqExpression.Call(ReadGuidMethod, sandboxField);
+        if (fieldType == typeof(bool))
+            return LinqExpression.Call(ReadBoolMethod, sandboxField);
+        if (fieldType == typeof(int))
+            return LinqExpression.Call(ReadInt32Method, sandboxField);
+        if (fieldType == typeof(long))
+            return LinqExpression.Call(ReadInt64Method, sandboxField);
+        if (fieldType == typeof(double))
+            return LinqExpression.Call(ReadDoubleMethod, sandboxField);
+        if (fieldType == typeof(float))
+            return LinqExpression.Call(ReadFloatMethod, sandboxField);
+        if (fieldType == typeof(string))
+            return LinqExpression.Call(ReadStringMethod, sandboxField);
+        if (fieldType == typeof(Guid))
+            return LinqExpression.Call(ReadGuidMethod, sandboxField);
 
         return LinqExpression.Call(
             FromSandboxValueMethod,
@@ -182,18 +189,24 @@ public static partial class KernelRpcMarshaller
 
     private static LinqExpression ReadKernelRecordField(LinqExpression kernelField, Type fieldType)
     {
-        if (fieldType == typeof(bool)) return LinqExpression.Property(kernelField, nameof(KernelRpcValue.BoolValue));
-        if (fieldType == typeof(int)) return LinqExpression.Property(kernelField, nameof(KernelRpcValue.Int32Value));
-        if (fieldType == typeof(long)) return LinqExpression.Property(kernelField, nameof(KernelRpcValue.Int64Value));
+        if (fieldType == typeof(bool))
+            return LinqExpression.Property(kernelField, nameof(KernelRpcValue.BoolValue));
+        if (fieldType == typeof(int))
+            return LinqExpression.Property(kernelField, nameof(KernelRpcValue.Int32Value));
+        if (fieldType == typeof(long))
+            return LinqExpression.Property(kernelField, nameof(KernelRpcValue.Int64Value));
         if (fieldType == typeof(float))
         {
             return LinqExpression.Convert(
                 LinqExpression.Property(kernelField, nameof(KernelRpcValue.DoubleValue)),
                 typeof(float));
         }
-        if (fieldType == typeof(double)) return LinqExpression.Property(kernelField, nameof(KernelRpcValue.DoubleValue));
-        if (fieldType == typeof(string)) return LinqExpression.Property(kernelField, nameof(KernelRpcValue.TextValue));
-        if (fieldType == typeof(Guid)) return LinqExpression.Property(kernelField, nameof(KernelRpcValue.GuidValue));
+        if (fieldType == typeof(double))
+            return LinqExpression.Property(kernelField, nameof(KernelRpcValue.DoubleValue));
+        if (fieldType == typeof(string))
+            return LinqExpression.Property(kernelField, nameof(KernelRpcValue.TextValue));
+        if (fieldType == typeof(Guid))
+            return LinqExpression.Property(kernelField, nameof(KernelRpcValue.GuidValue));
         if (fieldType.IsEnum)
         {
             var propertyName = EnumUsesI64(fieldType) ? nameof(KernelRpcValue.Int64Value) : nameof(KernelRpcValue.Int32Value);

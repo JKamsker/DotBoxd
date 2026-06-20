@@ -209,9 +209,15 @@ internal sealed class ExpressionEvaluator
 
             switch (i)
             {
-                case 0: arg0 = argTask.Result; break;
-                case 1: arg1 = argTask.Result; break;
-                default: arg2 = argTask.Result; break;
+                case 0:
+                    arg0 = argTask.Result;
+                    break;
+                case 1:
+                    arg1 = argTask.Result;
+                    break;
+                default:
+                    arg2 = argTask.Result;
+                    break;
             }
         }
 
@@ -232,9 +238,15 @@ internal sealed class ExpressionEvaluator
         var resolved = await pendingTask.ConfigureAwait(false);
         switch (pending)
         {
-            case 0: arg0 = resolved; break;
-            case 1: arg1 = resolved; break;
-            default: arg2 = resolved; break;
+            case 0:
+                arg0 = resolved;
+                break;
+            case 1:
+                arg1 = resolved;
+                break;
+            default:
+                arg2 = resolved;
+                break;
         }
 
         for (var i = pending + 1; i < arity; i++)
@@ -242,8 +254,12 @@ internal sealed class ExpressionEvaluator
             var operand = await EvaluateAsync(call.Arguments[i], frame).ConfigureAwait(false);
             switch (i)
             {
-                case 1: arg1 = operand; break;
-                default: arg2 = operand; break;
+                case 1:
+                    arg1 = operand;
+                    break;
+                default:
+                    arg2 = operand;
+                    break;
             }
         }
 
@@ -355,13 +371,15 @@ internal sealed class ExpressionEvaluator
             : throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "call arity mismatch"));
 
     private static SandboxValue NumericToInt64(SandboxValue value)
-        => value switch {
+        => value switch
+        {
             I32Value number => SandboxValue.FromInt64(number.Value),
             _ => throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "expected I32 value"))
         };
 
     private static SandboxValue NumericToDouble(SandboxValue value)
-        => value switch {
+        => value switch
+        {
             I32Value number => SandboxValue.FromDouble(number.Value),
             I64Value number => SandboxValue.FromDouble(number.Value),
             _ => throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "expected I32 or I64 value"))

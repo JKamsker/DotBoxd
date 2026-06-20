@@ -420,10 +420,13 @@ internal sealed class RpcPeerInboundDispatcher
         var registered = false;
         try
         {
-            await using var outbound = _streams.RegisterOutbound(stream, inbound.CancellationToken);
-            registered = true;
-            outbound.Start();
-            await outbound.WaitAsync().ConfigureAwait(false);
+            var outbound = _streams.RegisterOutbound(stream, inbound.CancellationToken);
+            await using (outbound.ConfigureAwait(false))
+            {
+                registered = true;
+                outbound.Start();
+                await outbound.WaitAsync().ConfigureAwait(false);
+            }
         }
         catch (OperationCanceledException) when (!registered || inbound.IsCancellationRequested)
         {

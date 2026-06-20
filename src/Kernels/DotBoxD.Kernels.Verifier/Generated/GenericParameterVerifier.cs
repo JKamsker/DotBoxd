@@ -23,7 +23,8 @@ internal static class GenericParameterVerifier
         string owner,
         List<VerificationDiagnostic> diagnostics)
     {
-        foreach (var parameterHandle in parameters) {
+        foreach (var parameterHandle in parameters)
+        {
             var parameter = reader.GetGenericParameter(parameterHandle);
             var name = reader.GetString(parameter.Name);
             diagnostics.Add(new VerificationDiagnostic(

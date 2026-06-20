@@ -40,7 +40,8 @@ internal static class IpcAllocationSmoke
         Collect();
 
         var before = GC.GetTotalAllocatedBytes(precise: true);
-        for (var i = 0; i < Iterations; i++) {
+        for (var i = 0; i < Iterations; i++)
+        {
             _ = await service.AddAsync(42).ConfigureAwait(false);
         }
 
@@ -53,7 +54,8 @@ internal static class IpcAllocationSmoke
         Collect();
 
         var before = GC.GetTotalAllocatedBytes(precise: true);
-        for (var i = 0; i < Iterations; i++) {
+        for (var i = 0; i < Iterations; i++)
+        {
             _ = await service.EchoAsync(new PingRequest(42, 123)).ConfigureAwait(false);
         }
 

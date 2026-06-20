@@ -6,7 +6,6 @@ namespace DotBoxD.Kernels.Benchmarks.Verifier;
 using System.Reflection;
 using System.Reflection.Emit;
 using BenchmarkDotNet.Attributes;
-using DotBoxD.Kernels.Runtime;
 using DotBoxD.Kernels.Verifier;
 
 [MemoryDiagnoser]

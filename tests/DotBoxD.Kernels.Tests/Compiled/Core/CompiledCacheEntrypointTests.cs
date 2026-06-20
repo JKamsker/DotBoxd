@@ -1,4 +1,3 @@
-using DotBoxD.Hosting.Execution;
 using DotBoxD.Kernels.Compiler;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
@@ -77,7 +76,8 @@ public sealed class CompiledCacheEntrypointTests
 
         public void Dispose()
         {
-            if (Directory.Exists(Path)) {
+            if (Directory.Exists(Path))
+            {
                 Directory.Delete(Path, recursive: true);
             }
         }

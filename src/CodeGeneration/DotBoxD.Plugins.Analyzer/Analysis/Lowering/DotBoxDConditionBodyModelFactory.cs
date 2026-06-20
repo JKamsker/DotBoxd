@@ -33,7 +33,8 @@ internal static class DotBoxDConditionBodyModelFactory
         DotBoxDExpressionLoweringContext context)
     {
         context.CancellationToken.ThrowIfCancellationRequested();
-        return expression switch {
+        return expression switch
+        {
             ParenthesizedExpressionSyntax parenthesized =>
                 LowerCondition(parenthesized.Expression, whenTrue, whenFalse, context),
             ConditionalExpressionSyntax conditional =>

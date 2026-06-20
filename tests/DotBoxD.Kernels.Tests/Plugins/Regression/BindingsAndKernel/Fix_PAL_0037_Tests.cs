@@ -114,9 +114,9 @@ public sealed class Fix_PAL_0037_Tests
                 return SandboxValue.FromInt32(value * 2);
             })
             with
-            {
-                IsAsync = true
-            };
+        {
+            IsAsync = true
+        };
 
     private static BindingDescriptor DoubleBinding(BindingInvoker invoke)
         => new(

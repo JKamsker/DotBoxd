@@ -1,5 +1,4 @@
 using DotBoxD.Kernels.Compiler;
-using DotBoxD.Kernels.Compiler.Emitters;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Runtime;
 using DotBoxD.Kernels.Sandbox;
@@ -114,7 +113,8 @@ public sealed class Fix_CMP_0036_Tests
 
     private static bool CallsRuntime(Instruction instruction, string method)
         => instruction.OpCode.Code == Code.Call &&
-           instruction.Operand is MethodReference {
+           instruction.Operand is MethodReference
+           {
                Name: var name,
                DeclaringType.FullName: "DotBoxD.Kernels.Runtime.CompiledRuntime"
            } &&

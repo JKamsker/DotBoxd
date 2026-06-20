@@ -89,7 +89,8 @@ public sealed class Fix_CMP_0020_Tests
     }
 
     private static SandboxHost CreateLoggingHost()
-        => SandboxHost.Create(builder => {
+        => SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.AddLogBindings();
             builder.UseInterpreter();

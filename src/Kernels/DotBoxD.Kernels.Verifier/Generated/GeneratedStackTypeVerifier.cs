@@ -209,7 +209,8 @@ internal static class GeneratedStackTypeVerifier
         public int Count { get; }
 
         public static StackTypeSnapshot From(IReadOnlyList<string> stack)
-            => stack.Count switch {
+            => stack.Count switch
+            {
                 0 => Empty,
                 1 => new StackTypeSnapshot(1, stack[0], null, null),
                 2 => new StackTypeSnapshot(2, stack[0], stack[1], null),
@@ -243,7 +244,8 @@ internal static class GeneratedStackTypeVerifier
                 return false;
             }
 
-            return Count switch {
+            return Count switch
+            {
                 0 => true,
                 1 => string.Equals(_first, stack[0], StringComparison.Ordinal),
                 2 => string.Equals(_first, stack[0], StringComparison.Ordinal) &&

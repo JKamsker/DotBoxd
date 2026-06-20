@@ -54,7 +54,8 @@ internal static class JsonExpressionReader
     {
         RequireArray(array, "args");
         var expressions = AllocateArray<Expression>(array, out var count);
-        if (count == 0) {
+        if (count == 0)
+        {
             return expressions;
         }
 
@@ -103,7 +104,8 @@ internal static class JsonExpressionReader
     {
         RequireArray(array, "type arguments");
         var arguments = AllocateArray<SandboxType>(array, out var count);
-        if (count == 0) {
+        if (count == 0)
+        {
             return arguments;
         }
 

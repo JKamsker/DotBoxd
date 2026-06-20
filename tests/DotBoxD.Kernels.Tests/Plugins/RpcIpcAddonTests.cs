@@ -127,10 +127,12 @@ public sealed class RpcIpcAddonTests
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
             var payload = Payload.Rent(data.Length);
             data.CopyTo(payload.Memory);
-            try {
+            try
+            {
                 await _outbound.WriteAsync(payload, ct).ConfigureAwait(false);
             }
-            catch {
+            catch
+            {
                 payload.Dispose();
                 throw;
             }
@@ -139,22 +141,26 @@ public sealed class RpcIpcAddonTests
         public async Task<Payload> ReceiveAsync(CancellationToken ct = default)
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
-            try {
+            try
+            {
                 return await _inbound.ReadAsync(ct).ConfigureAwait(false);
             }
-            catch (ChannelClosedException) {
+            catch (ChannelClosedException)
+            {
                 return Payload.Empty;
             }
         }
 
         public ValueTask DisposeAsync()
         {
-            if (Interlocked.Exchange(ref _disposed, 1) != 0) {
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            {
                 return ValueTask.CompletedTask;
             }
 
             _outbound.TryComplete();
-            while (_inbound.TryRead(out var payload)) {
+            while (_inbound.TryRead(out var payload))
+            {
                 payload.Dispose();
             }
 

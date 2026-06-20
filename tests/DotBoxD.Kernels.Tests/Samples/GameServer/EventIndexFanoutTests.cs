@@ -6,7 +6,6 @@ using DotBoxD.Kernels.Policies;
 using DotBoxD.Plugins;
 using DotBoxD.Plugins.Analyzer.Analysis;
 using DotBoxD.Plugins.Indexing;
-using DotBoxD.Plugins.Kernel;
 using DotBoxD.Plugins.Policies;
 using GameServerAbstractions::DotBoxD.Kernels.Game.Server.Abstractions.Events;
 using Microsoft.CodeAnalysis;

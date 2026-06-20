@@ -14,7 +14,12 @@ internal sealed class JsonSourceMap
     public static JsonSourceMap Create(string json, JsonElement root)
     {
         var tokenSpans = JsonTokenSpans.Read(json);
+        // JsonElement is keyed by identity within this single parsed document: its default struct
+        // equality compares the backing document plus element index, which is exactly the lookup
+        // this source map needs. MA0066's general hash-unfriendliness warning does not apply here.
+#pragma warning disable MA0066
         var spansByElement = new Dictionary<JsonElement, SourceSpan>();
+#pragma warning restore MA0066
         var index = 0;
         Visit(root, tokenSpans, spansByElement, ref index);
         return new JsonSourceMap(spansByElement);

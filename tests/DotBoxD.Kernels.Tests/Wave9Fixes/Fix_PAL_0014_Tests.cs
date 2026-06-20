@@ -49,7 +49,8 @@ public sealed class Fix_PAL_0014_Tests
         var (serverChannel, clientChannel) = InMemoryRpcChannel.CreatePair();
 
         var serverOptions = useLowAllocationOptions
-            ? new RpcPeerOptions {
+            ? new RpcPeerOptions
+            {
                 DisableInboundRequestCancellation = true,
                 InboundQueueCapacity = null,
                 RequestTimeout = Timeout.InfiniteTimeSpan
@@ -57,7 +58,8 @@ public sealed class Fix_PAL_0014_Tests
             : null;
 
         var clientOptions = useLowAllocationOptions
-            ? new RpcPeerOptions {
+            ? new RpcPeerOptions
+            {
                 EnableLowAllocationValueTaskInvocations = true,
                 RejectInboundCalls = true,
                 RequestTimeout = Timeout.InfiniteTimeSpan
@@ -78,13 +80,15 @@ public sealed class Fix_PAL_0014_Tests
 
         // Warm up JIT/tiered compilation and any first-call caches so the measured window only
         // reflects steady-state per-call allocation.
-        for (var i = 0; i < WarmupIterations; i++) {
+        for (var i = 0; i < WarmupIterations; i++)
+        {
             _ = await service.AddAsync(i).ConfigureAwait(false);
         }
 
         Collect();
         var before = GC.GetTotalAllocatedBytes(precise: true);
-        for (var i = 0; i < MeasureIterations; i++) {
+        for (var i = 0; i < MeasureIterations; i++)
+        {
             _ = await service.AddAsync(i).ConfigureAwait(false);
         }
 
@@ -143,10 +147,12 @@ public sealed class Fix_PAL_0014_Tests
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
             var payload = Payload.Rent(data.Length);
             data.CopyTo(payload.Memory);
-            try {
+            try
+            {
                 await _outbound.WriteAsync(payload, ct).ConfigureAwait(false);
             }
-            catch {
+            catch
+            {
                 payload.Dispose();
                 throw;
             }
@@ -155,22 +161,26 @@ public sealed class Fix_PAL_0014_Tests
         public async Task<Payload> ReceiveAsync(CancellationToken ct = default)
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
-            try {
+            try
+            {
                 return await _inbound.ReadAsync(ct).ConfigureAwait(false);
             }
-            catch (ChannelClosedException) {
+            catch (ChannelClosedException)
+            {
                 return Payload.Empty;
             }
         }
 
         public ValueTask DisposeAsync()
         {
-            if (Interlocked.Exchange(ref _disposed, 1) != 0) {
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            {
                 return ValueTask.CompletedTask;
             }
 
             _outbound.TryComplete();
-            while (_inbound.TryRead(out var payload)) {
+            while (_inbound.TryRead(out var payload))
+            {
                 payload.Dispose();
             }
 

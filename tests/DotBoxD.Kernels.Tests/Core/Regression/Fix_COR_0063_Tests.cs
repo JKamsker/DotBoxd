@@ -33,7 +33,8 @@ public sealed class Fix_COR_0063_Tests
     }
 
     private static SandboxHost CreateHost()
-        => SandboxHost.Create(builder => {
+        => SandboxHost.Create(builder =>
+        {
             builder.AddBinding(ConcurrentBinding());
             builder.UseInterpreter();
             builder.UseCompilerIfAvailable();

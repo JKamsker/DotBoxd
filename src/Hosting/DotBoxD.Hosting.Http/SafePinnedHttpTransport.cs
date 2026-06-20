@@ -11,17 +11,20 @@ internal static class SafePinnedHttpTransport
         IReadOnlyList<IPAddress> vettedAddresses,
         CancellationToken cancellationToken)
     {
-        if (invoker is not null) {
+        if (invoker is not null)
+        {
             var response = await invoker.SendAsync(message, cancellationToken).ConfigureAwait(false);
             return new SafePinnedHttpResponse(response, null);
         }
 
         var pinned = CreatePinnedInvoker(vettedAddresses);
-        try {
+        try
+        {
             var response = await pinned.SendAsync(message, cancellationToken).ConfigureAwait(false);
             return new SafePinnedHttpResponse(response, pinned);
         }
-        catch {
+        catch
+        {
             pinned.Dispose();
             throw;
         }
@@ -29,24 +32,30 @@ internal static class SafePinnedHttpTransport
 
     private static HttpMessageInvoker CreatePinnedInvoker(IReadOnlyList<IPAddress> vettedAddresses)
     {
-        var handler = new SocketsHttpHandler {
+        var handler = new SocketsHttpHandler
+        {
             AllowAutoRedirect = false,
             UseProxy = false,
-            ConnectCallback = async (context, cancellationToken) => {
-                foreach (var address in vettedAddresses) {
+            ConnectCallback = async (context, cancellationToken) =>
+            {
+                foreach (var address in vettedAddresses)
+                {
                     var socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                    try {
+                    try
+                    {
                         await socket.ConnectAsync(
                                 new IPEndPoint(address, context.DnsEndPoint.Port),
                                 cancellationToken)
                             .ConfigureAwait(false);
                         return new NetworkStream(socket, ownsSocket: true);
                     }
-                    catch (Exception) when (cancellationToken.IsCancellationRequested) {
+                    catch (Exception) when (cancellationToken.IsCancellationRequested)
+                    {
                         socket.Dispose();
                         throw;
                     }
-                    catch (Exception) when (!cancellationToken.IsCancellationRequested) {
+                    catch (Exception) when (!cancellationToken.IsCancellationRequested)
+                    {
                         socket.Dispose();
                     }
                 }

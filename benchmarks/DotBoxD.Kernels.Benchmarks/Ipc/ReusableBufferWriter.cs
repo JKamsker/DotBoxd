@@ -20,7 +20,8 @@ internal sealed class ReusableBufferWriter : IBufferWriter<byte>
 
     public void Advance(int count)
     {
-        if (count < 0 || _written + count > _buffer.Length) {
+        if (count < 0 || _written + count > _buffer.Length)
+        {
             throw new ArgumentOutOfRangeException(nameof(count));
         }
 
@@ -42,7 +43,8 @@ internal sealed class ReusableBufferWriter : IBufferWriter<byte>
     private void EnsureCapacity(int sizeHint)
     {
         var required = _written + Math.Max(sizeHint, 1);
-        if (required <= _buffer.Length) {
+        if (required <= _buffer.Length)
+        {
             return;
         }
 

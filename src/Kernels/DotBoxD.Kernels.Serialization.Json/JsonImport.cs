@@ -28,7 +28,8 @@ internal static class JsonImport
 
     public static string ReadStringValue(JsonElement value, string name)
     {
-        if (value.ValueKind != JsonValueKind.String) {
+        if (value.ValueKind != JsonValueKind.String)
+        {
             throw Error("E-JSON-TYPE", $"'{name}' must be a string");
         }
 
@@ -38,7 +39,8 @@ internal static class JsonImport
     public static string ReadPathValue(JsonElement value, string name)
     {
         var path = ReadStringValue(value, name);
-        if (!SandboxLiteralConstraints.IsPortableRelativePath(path)) {
+        if (!SandboxLiteralConstraints.IsPortableRelativePath(path))
+        {
             throw Error("E-JSON-PATH", $"'{name}' must be a portable relative path");
         }
 
@@ -48,7 +50,8 @@ internal static class JsonImport
     public static string ReadUriValue(JsonElement value, string name)
     {
         var uri = ReadStringValue(value, name);
-        if (!SandboxLiteralConstraints.IsSandboxUri(uri)) {
+        if (!SandboxLiteralConstraints.IsSandboxUri(uri))
+        {
             throw Error("E-JSON-URI", $"'{name}' must be an absolute URI without user info");
         }
 
@@ -60,7 +63,8 @@ internal static class JsonImport
         var text = ReadStringValue(value, name);
         // Pin the canonical hyphenated form JsonExporter emits (Guid.ToString() == "D"), so a round-trip is
         // deterministic and non-canonical spellings (braces, no hyphens) are rejected up front.
-        if (!System.Guid.TryParseExact(text, "D", out var guid)) {
+        if (!System.Guid.TryParseExact(text, "D", out var guid))
+        {
             throw Error("E-JSON-TYPE", $"'{name}' must be a canonical hyphenated GUID");
         }
 
@@ -69,7 +73,8 @@ internal static class JsonImport
 
     public static int ReadInt32Value(JsonElement value, string name)
     {
-        if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out var result)) {
+        if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out var result))
+        {
             throw Error("E-JSON-TYPE", $"'{name}' must be a 32-bit integer");
         }
 
@@ -78,7 +83,8 @@ internal static class JsonImport
 
     public static long ReadInt64Value(JsonElement value, string name)
     {
-        if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt64(out var result)) {
+        if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt64(out var result))
+        {
             throw Error("E-JSON-TYPE", $"'{name}' must be a 64-bit integer");
         }
 
@@ -89,7 +95,8 @@ internal static class JsonImport
     {
         if (value.ValueKind != JsonValueKind.Number ||
             !value.TryGetDouble(out var result) ||
-            !double.IsFinite(result)) {
+            !double.IsFinite(result))
+        {
             throw Error("E-JSON-TYPE", $"'{name}' must be a finite number");
         }
 
@@ -98,7 +105,8 @@ internal static class JsonImport
 
     public static bool ReadBoolValue(JsonElement value, string name)
     {
-        if (value.ValueKind is not JsonValueKind.True and not JsonValueKind.False) {
+        if (value.ValueKind is not JsonValueKind.True and not JsonValueKind.False)
+        {
             throw Error("E-JSON-TYPE", $"'{name}' must be a boolean");
         }
 
@@ -107,14 +115,16 @@ internal static class JsonImport
 
     public static void RequireObject(JsonElement value, string name)
     {
-        if (value.ValueKind != JsonValueKind.Object) {
+        if (value.ValueKind != JsonValueKind.Object)
+        {
             throw Error("E-JSON-TYPE", $"{name} must be an object");
         }
     }
 
     public static JsonElement RequireArray(JsonElement value, string name)
     {
-        if (value.ValueKind != JsonValueKind.Array) {
+        if (value.ValueKind != JsonValueKind.Array)
+        {
             throw Error("E-JSON-TYPE", $"{name} must be an array");
         }
 
@@ -130,8 +140,10 @@ internal static class JsonImport
     public static void RequireAllowedProperties(JsonElement value, string name, params string[] allowed)
     {
         RequireUniqueProperties(value, name);
-        foreach (var property in value.EnumerateObject()) {
-            if (!allowed.Contains(property.Name, StringComparer.Ordinal)) {
+        foreach (var property in value.EnumerateObject())
+        {
+            if (!allowed.Contains(property.Name, StringComparer.Ordinal))
+            {
                 throw Error("E-JSON-SCHEMA", $"{name} contains unsupported property '{property.Name}'");
             }
         }
@@ -141,8 +153,10 @@ internal static class JsonImport
     {
         RequireObject(value, name);
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var property in value.EnumerateObject()) {
-            if (!seen.Add(property.Name)) {
+        foreach (var property in value.EnumerateObject())
+        {
+            if (!seen.Add(property.Name))
+            {
                 throw Error("E-JSON-SCHEMA", $"{name} contains duplicate property '{property.Name}'");
             }
         }

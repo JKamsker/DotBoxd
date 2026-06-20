@@ -6,7 +6,6 @@ namespace DotBoxD.Kernels.Benchmarks.Examples;
 
 using System.Diagnostics;
 using DotBoxD.Kernels;
-using DotBoxD.Plugins;
 
 internal static class PreparedValueProbe
 {

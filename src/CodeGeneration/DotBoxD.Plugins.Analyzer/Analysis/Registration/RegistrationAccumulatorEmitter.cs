@@ -1,8 +1,8 @@
 namespace DotBoxD.Plugins.Analyzer.Analysis.Registration;
 
+using System.Text;
 using DotBoxD.Plugins.Analyzer.Analysis;
 using Microsoft.CodeAnalysis.CSharp;
-using System.Text;
 
 internal static class RegistrationAccumulatorEmitter
 {

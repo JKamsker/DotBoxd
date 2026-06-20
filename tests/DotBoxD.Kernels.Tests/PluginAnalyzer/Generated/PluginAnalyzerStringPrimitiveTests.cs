@@ -26,7 +26,8 @@ public sealed class PluginAnalyzerStringPrimitiveTests
     {
         var package = CreatePackage();
         Assert.Contains("Alloc", package.Manifest.Effects);
-        var host = SandboxHost.Create(builder => {
+        var host = SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.AddPluginMessageBindings(new InMemoryPluginMessageSink());
             builder.UseInterpreter();
@@ -133,7 +134,8 @@ public sealed class PluginAnalyzerStringPrimitiveTests
     }
 
     private static int CountCalls(Statement statement, string name)
-        => statement switch {
+        => statement switch
+        {
             AssignmentStatement assignment => CountCalls(assignment.Value, name),
             ReturnStatement ret => CountCalls(ret.Value, name),
             ExpressionStatement expression => CountCalls(expression.Value, name),
@@ -148,7 +150,8 @@ public sealed class PluginAnalyzerStringPrimitiveTests
         };
 
     private static int CountCalls(Expression expression, string name)
-        => expression switch {
+        => expression switch
+        {
             UnaryExpression unary => CountCalls(unary.Operand, name),
             BinaryExpression binary => CountCalls(binary.Left, name) + CountCalls(binary.Right, name),
             CallExpression call => (call.Name == name ? 1 : 0) +

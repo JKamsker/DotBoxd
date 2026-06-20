@@ -17,7 +17,8 @@ public sealed class ModuleValidator
         var diagnostics = new List<SandboxDiagnostic>();
         var declaredOpaqueIdTypes = policy?.DeclaredOpaqueIdTypes ?? NoDeclaredOpaqueIdTypes;
         StructuralValidator.Validate(module, diagnostics, declaredOpaqueIdTypes);
-        if (diagnostics.Count > 0) {
+        if (diagnostics.Count > 0)
+        {
             return ModuleValidationResult.Failure(diagnostics);
         }
 
@@ -78,7 +79,8 @@ public sealed class ModuleValidator
                 continue;
             }
 
-            if (!bindingReferences.TryGetValue(function.Id, out var references)) {
+            if (!bindingReferences.TryGetValue(function.Id, out var references))
+            {
                 continue;
             }
 

@@ -53,7 +53,8 @@ public sealed class NetworkDeadlineTests
             .Build();
 
     private static SafeDnsResolver SlowDns()
-        => async (_, cancellationToken) => {
+        => async (_, cancellationToken) =>
+        {
             await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
             return [IPAddress.Parse("93.184.216.34")];
         };

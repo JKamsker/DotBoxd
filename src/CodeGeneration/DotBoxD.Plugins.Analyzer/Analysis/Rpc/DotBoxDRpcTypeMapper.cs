@@ -1,6 +1,6 @@
+using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using Microsoft.CodeAnalysis;
 using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.TypeNames;
-using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 
@@ -24,12 +24,18 @@ internal static class DotBoxDRpcTypeMapper
 
         switch (type.SpecialType)
         {
-            case SpecialType.System_Boolean: return Scalar("Bool");
-            case SpecialType.System_Int32: return Scalar("I32");
-            case SpecialType.System_Int64: return Scalar("I64");
-            case SpecialType.System_Double: return Scalar("F64");
-            case SpecialType.System_Single: return Scalar("F64");
-            case SpecialType.System_String: return Scalar("String");
+            case SpecialType.System_Boolean:
+                return Scalar("Bool");
+            case SpecialType.System_Int32:
+                return Scalar("I32");
+            case SpecialType.System_Int64:
+                return Scalar("I64");
+            case SpecialType.System_Double:
+                return Scalar("F64");
+            case SpecialType.System_Single:
+                return Scalar("F64");
+            case SpecialType.System_String:
+                return Scalar("String");
         }
 
         if (IsGuid(type))

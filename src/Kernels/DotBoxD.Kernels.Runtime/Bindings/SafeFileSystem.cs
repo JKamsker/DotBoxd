@@ -90,7 +90,8 @@ public static partial class SafeFileSystem
             {
                 FileSystem.SafeFileSystem.BeforeTempCreateForTests.Value?.Invoke();
                 EnsureNoReparsePoint(resolved.RootFull, tempPath);
-                await using (var temp = SafeFileNoFollow.CreateNewWrite(tempPath))
+                var temp = SafeFileNoFollow.CreateNewWrite(tempPath);
+                await using (temp.ConfigureAwait(false))
                 {
                     await temp.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
                     await temp.FlushAsync(cancellationToken).ConfigureAwait(false);
@@ -185,36 +186,39 @@ public static partial class SafeFileSystem
         long maxBytes,
         CancellationToken cancellationToken)
     {
-        await using var stream = SafeFileNoFollow.OpenRead(resolved.FullPath);
-        EnsureNoReparsePoint(resolved.RootFull, resolved.FullPath);
-        var memory = new MemoryStream();
-        try
+        var stream = SafeFileNoFollow.OpenRead(resolved.FullPath);
+        await using (stream.ConfigureAwait(false))
         {
-            var buffer = new byte[4096];
-            while (true)
+            EnsureNoReparsePoint(resolved.RootFull, resolved.FullPath);
+            var memory = new MemoryStream();
+            try
             {
-                context.Budget.CheckDeadline();
-                var read = await SafeFileNoFollow.ReadAsync(stream, buffer, cancellationToken).ConfigureAwait(false);
-                context.Budget.CheckDeadline();
-                if (read == 0)
+                var buffer = new byte[4096];
+                while (true)
                 {
-                    return memory;
-                }
+                    context.Budget.CheckDeadline();
+                    var read = await SafeFileNoFollow.ReadAsync(stream, buffer, cancellationToken).ConfigureAwait(false);
+                    context.Budget.CheckDeadline();
+                    if (read == 0)
+                    {
+                        return memory;
+                    }
 
-                context.Budget.ChargeFileRead(read);
-                if (memory.Length + read > maxBytes)
-                {
-                    throw Error(SandboxErrorCode.QuotaExceeded, "file.readText denied: file exceeds read limit");
-                }
+                    context.Budget.ChargeFileRead(read);
+                    if (memory.Length + read > maxBytes)
+                    {
+                        throw Error(SandboxErrorCode.QuotaExceeded, "file.readText denied: file exceeds read limit");
+                    }
 
-                context.ChargeAllocation(read);
-                memory.Write(buffer, 0, read);
+                    context.ChargeAllocation(read);
+                    memory.Write(buffer, 0, read);
+                }
             }
-        }
-        catch
-        {
-            memory.Dispose();
-            throw;
+            catch
+            {
+                memory.Dispose();
+                throw;
+            }
         }
     }
 

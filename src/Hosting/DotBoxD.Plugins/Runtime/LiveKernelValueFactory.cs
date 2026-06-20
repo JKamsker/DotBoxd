@@ -16,7 +16,8 @@ internal static class LiveKernelValueFactory
 
     public static T Create<T>(InstalledKernel kernel) where T : class
     {
-        if (typeof(T).IsInterface) {
+        if (typeof(T).IsInterface)
+        {
             return kernel.Value.As<T>();
         }
 
@@ -39,8 +40,10 @@ internal static class LiveKernelValueFactory
         IReadOnlyList<LiveSettingDefinition> settings) where T : class
     {
         var values = new Dictionary<string, object?>(settings.Count, StringComparer.Ordinal);
-        foreach (var property in LiveProperties(typeof(T))) {
-            if (HasSetting(settings, property.Name)) {
+        foreach (var property in LiveProperties(typeof(T)))
+        {
+            if (HasSetting(settings, property.Name))
+            {
                 values[property.Name] = property.GetValue(state);
             }
         }
@@ -50,7 +53,8 @@ internal static class LiveKernelValueFactory
 
     public static void CopyLiveProperties<T>(T source, T target) where T : class
     {
-        foreach (var property in LiveProperties(typeof(T))) {
+        foreach (var property in LiveProperties(typeof(T)))
+        {
             property.SetValue(target, property.GetValue(source));
         }
     }
@@ -79,25 +83,31 @@ internal static class LiveKernelValueFactory
     private static PropertyInfo[] FilterLiveProperties(PropertyInfo[] properties, bool requireAttribute)
     {
         var count = 0;
-        for (var i = 0; i < properties.Length; i++) {
-            if (IsLiveProperty(properties[i], requireAttribute)) {
+        for (var i = 0; i < properties.Length; i++)
+        {
+            if (IsLiveProperty(properties[i], requireAttribute))
+            {
                 count++;
             }
         }
 
-        if (count == 0) {
+        if (count == 0)
+        {
             return [];
         }
 
-        if (count == properties.Length) {
+        if (count == properties.Length)
+        {
             return properties;
         }
 
         var filtered = new PropertyInfo[count];
         var index = 0;
-        for (var i = 0; i < properties.Length; i++) {
+        for (var i = 0; i < properties.Length; i++)
+        {
             var property = properties[i];
-            if (IsLiveProperty(property, requireAttribute)) {
+            if (IsLiveProperty(property, requireAttribute))
+            {
                 filtered[index] = property;
                 index++;
             }
@@ -115,8 +125,10 @@ internal static class LiveKernelValueFactory
 
     private static void PullFromStore<T>(InstalledKernel kernel, T state, IReadOnlyList<PropertyInfo> properties)
     {
-        foreach (var property in properties) {
-            if (!HasSetting(kernel.Manifest.LiveSettings, property.Name)) {
+        foreach (var property in properties)
+        {
+            if (!HasSetting(kernel.Manifest.LiveSettings, property.Name))
+            {
                 continue;
             }
 
@@ -129,8 +141,10 @@ internal static class LiveKernelValueFactory
     {
         var settings = kernel.Manifest.LiveSettings;
         var values = new Dictionary<string, object?>(settings.Count, StringComparer.Ordinal);
-        foreach (var property in properties) {
-            if (HasSetting(settings, property.Name)) {
+        foreach (var property in properties)
+        {
+            if (HasSetting(settings, property.Name))
+            {
                 values[property.Name] = property.GetValue(state);
             }
         }
@@ -140,8 +154,10 @@ internal static class LiveKernelValueFactory
 
     private static bool HasSetting(IReadOnlyList<LiveSettingDefinition> settings, string name)
     {
-        for (var i = 0; i < settings.Count; i++) {
-            if (string.Equals(settings[i].Name, name, StringComparison.Ordinal)) {
+        for (var i = 0; i < settings.Count; i++)
+        {
+            if (string.Equals(settings[i].Name, name, StringComparison.Ordinal))
+            {
                 return true;
             }
         }

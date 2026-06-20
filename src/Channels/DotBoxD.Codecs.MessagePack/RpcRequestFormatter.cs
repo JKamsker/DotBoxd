@@ -1,7 +1,7 @@
 using System.Text;
+using DotBoxD.Services.Protocol;
 using MessagePack;
 using MessagePack.Formatters;
-using DotBoxD.Services.Protocol;
 
 namespace DotBoxD.Codecs.MessagePack;
 

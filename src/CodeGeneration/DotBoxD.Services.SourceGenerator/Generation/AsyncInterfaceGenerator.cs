@@ -51,7 +51,8 @@ internal static class AsyncInterfaceGenerator
                 continue;
             }
 
-            if (!first) sb.AppendLine();
+            if (!first)
+                sb.AppendLine();
             first = false;
             EmitSignature(sb, s, ct);
         }
@@ -78,7 +79,8 @@ internal static class AsyncInterfaceGenerator
         {
             ct.ThrowIfCancellationRequested();
 
-            if (i > 0) paramList.Append(", ");
+            if (i > 0)
+                paramList.Append(", ");
             var p = s.Parameters[i];
             paramList.Append(p.RefKindKeyword).Append(p.Type).Append(' ').Append(p.Name);
             ProxyGenerationHelpers.AppendDefaultValue(paramList, p);

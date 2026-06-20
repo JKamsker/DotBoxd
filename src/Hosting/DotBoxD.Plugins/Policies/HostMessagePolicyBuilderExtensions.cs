@@ -41,7 +41,8 @@ public static class HostMessagePolicyBuilderExtensions
         string key,
         IEnumerable<string>? values)
     {
-        if (values is null) return;
+        if (values is null)
+            return;
 
         var normalized = values
             .Select(value => (value ?? "").Trim())

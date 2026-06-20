@@ -5,7 +5,8 @@ public static class BindingReferenceCollector
     public static IReadOnlySet<string> Collect(SandboxModule module, IBindingCatalog bindings)
     {
         var all = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var references in CollectByFunction(module, bindings).Values) {
+        foreach (var references in CollectByFunction(module, bindings).Values)
+        {
             all.UnionWith(references);
         }
 
@@ -14,7 +15,8 @@ public static class BindingReferenceCollector
 
     public static IReadOnlySet<string> Collect(SandboxModule module, IBindingCatalog bindings, string? entrypoint)
     {
-        if (entrypoint is null) {
+        if (entrypoint is null)
+        {
             return Collect(module, bindings);
         }
 
@@ -63,22 +65,27 @@ public static class BindingReferenceCollector
 
         public IReadOnlyDictionary<string, IReadOnlySet<string>> Collect()
         {
-            foreach (var function in _functions.Values) {
+            foreach (var function in _functions.Values)
+            {
                 AnalyzeFunction(function);
             }
 
             var references = CopyDirectBindings();
             var pending = new Queue<string>(_functions.Keys);
-            while (pending.Count > 0) {
+            while (pending.Count > 0)
+            {
                 var target = pending.Dequeue();
                 if (!references.TryGetValue(target, out var targetReferences) ||
                     targetReferences.Count == 0 ||
-                    !_callersByTarget.TryGetValue(target, out var callers)) {
+                    !_callersByTarget.TryGetValue(target, out var callers))
+                {
                     continue;
                 }
 
-                foreach (var caller in callers) {
-                    if (references[caller].IsSupersetOf(targetReferences)) {
+                foreach (var caller in callers)
+                {
+                    if (references[caller].IsSupersetOf(targetReferences))
+                    {
                         continue;
                     }
 
@@ -99,7 +106,8 @@ public static class BindingReferenceCollector
 
         private bool CollectStatement(SandboxFunction function, Statement statement, HashSet<string> ids)
         {
-            switch (statement) {
+            switch (statement)
+            {
                 case AssignmentStatement assignment:
                     CollectExpression(function, assignment.Value, ids);
                     return false;
@@ -131,8 +139,10 @@ public static class BindingReferenceCollector
         private bool CollectBlock(SandboxFunction function, IReadOnlyList<Statement> statements, HashSet<string> ids)
         {
             var alwaysReturns = false;
-            foreach (var statement in statements) {
-                if (alwaysReturns) {
+            foreach (var statement in statements)
+            {
+                if (alwaysReturns)
+                {
                     continue;
                 }
 
@@ -144,26 +154,33 @@ public static class BindingReferenceCollector
 
         private void CollectExpression(SandboxFunction function, Expression expression, HashSet<string> ids)
         {
-            if (expression is CallExpression call) {
-                foreach (var argument in call.Arguments) {
+            if (expression is CallExpression call)
+            {
+                foreach (var argument in call.Arguments)
+                {
                     CollectExpression(function, argument, ids);
                 }
 
-                if (IsCollectionCall(call.Name)) {
+                if (IsCollectionCall(call.Name))
+                {
                     return;
                 }
 
-                if (_functions.ContainsKey(call.Name)) {
+                if (_functions.ContainsKey(call.Name))
+                {
                     RecordCall(function.Id, call.Name);
                 }
-                else if (_bindings.TryGet(call.Name, out _)) {
+                else if (_bindings.TryGet(call.Name, out _))
+                {
                     ids.Add(call.Name);
                 }
             }
-            else if (expression is UnaryExpression unary) {
+            else if (expression is UnaryExpression unary)
+            {
                 CollectExpression(function, unary.Operand, ids);
             }
-            else if (expression is BinaryExpression binary) {
+            else if (expression is BinaryExpression binary)
+            {
                 CollectExpression(function, binary.Left, ids);
                 CollectExpression(function, binary.Right, ids);
             }
@@ -171,7 +188,8 @@ public static class BindingReferenceCollector
 
         private void RecordCall(string caller, string target)
         {
-            if (!_callersByTarget.TryGetValue(target, out var callers)) {
+            if (!_callersByTarget.TryGetValue(target, out var callers))
+            {
                 callers = [];
                 _callersByTarget.Add(target, callers);
             }
@@ -182,7 +200,8 @@ public static class BindingReferenceCollector
         private Dictionary<string, HashSet<string>> CopyDirectBindings()
         {
             var copy = new Dictionary<string, HashSet<string>>(_directBindings.Count, StringComparer.Ordinal);
-            foreach (var item in _directBindings) {
+            foreach (var item in _directBindings)
+            {
                 copy.Add(item.Key, new HashSet<string>(item.Value, StringComparer.Ordinal));
             }
 
@@ -193,7 +212,8 @@ public static class BindingReferenceCollector
             IReadOnlyDictionary<string, HashSet<string>> references)
         {
             var copy = new Dictionary<string, IReadOnlySet<string>>(references.Count, StringComparer.Ordinal);
-            foreach (var item in references) {
+            foreach (var item in references)
+            {
                 copy.Add(item.Key, new HashSet<string>(item.Value, StringComparer.Ordinal));
             }
 

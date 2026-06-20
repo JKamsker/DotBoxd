@@ -9,7 +9,6 @@ namespace DotBoxD.Kernels.Compiler.Emitters;
 using System.Reflection;
 using System.Reflection.Emit;
 using DotBoxD.Kernels;
-using DotBoxD.Kernels.Runtime;
 using static DotBoxD.Kernels.Compiler.IlEmitterPrimitives;
 
 internal sealed class MethodEmitter
@@ -282,7 +281,8 @@ internal sealed class MethodEmitter
     }
 
     private static Type LocalType(StackKind kind)
-        => kind switch {
+        => kind switch
+        {
             StackKind.I32 => typeof(int),
             StackKind.I64 => typeof(long),
             StackKind.F64 => typeof(double),
@@ -318,7 +318,8 @@ internal sealed class MethodEmitter
     }
 
     private bool IsNonNegativeF64(Expression expression)
-        => expression switch {
+        => expression switch
+        {
             LiteralExpression { Value: F64Value value } => value.Value >= 0,
             VariableExpression variable => _nonNegativeF64Locals.Contains(variable.Name),
             CallExpression { Name: "math.sqrt", Arguments.Count: 1 } call => IsNonNegativeF64(call.Arguments[0]),

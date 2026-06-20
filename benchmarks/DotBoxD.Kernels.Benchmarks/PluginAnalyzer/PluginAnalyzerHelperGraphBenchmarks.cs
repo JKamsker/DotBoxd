@@ -6,8 +6,6 @@ using BenchmarkDotNet.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
-using DotBoxD.Plugins.Analyzer;
-using DotBoxD.Plugins;
 
 [MemoryDiagnoser]
 public class PluginAnalyzerHelperGraphBenchmarks
@@ -42,14 +40,17 @@ public class PluginAnalyzerHelperGraphBenchmarks
         source.AppendLine("using DotBoxD.Plugins;");
         source.AppendLine("public static class BadHelper");
         source.AppendLine("{");
-        for (var i = 0; i < helperCount; i++) {
+        for (var i = 0; i < helperCount; i++)
+        {
             source.Append("    public static void Step");
             source.Append(i);
             source.Append("() => ");
-            if (i + 1 == helperCount) {
+            if (i + 1 == helperCount)
+            {
                 source.AppendLine("System.IO.File.WriteAllText(\"x.txt\", \"bad\");");
             }
-            else {
+            else
+            {
                 source.Append("Step");
                 source.Append(i + 1);
                 source.AppendLine("();");

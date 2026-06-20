@@ -60,6 +60,7 @@ public sealed class ApiBaselineScriptTests
         using var process = Process.Start(new ProcessStartInfo
         {
             FileName = "pwsh",
+            UseShellExecute = false,
             ArgumentList = { "-NoProfile", "-NonInteractive", "-File", scriptPath },
             RedirectStandardOutput = true,
             RedirectStandardError = true

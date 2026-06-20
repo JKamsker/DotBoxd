@@ -9,7 +9,6 @@ namespace DotBoxD.Kernels.Benchmarks.Http;
 
 using System.Net;
 using BenchmarkDotNet.Attributes;
-using DotBoxD.Kernels.Runtime;
 using DotBoxD.Hosting.Http;
 
 [MemoryDiagnoser]

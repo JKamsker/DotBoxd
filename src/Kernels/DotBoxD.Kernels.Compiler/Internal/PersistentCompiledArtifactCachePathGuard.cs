@@ -3,8 +3,6 @@ using DotBoxD.Kernels.Sandbox;
 
 namespace DotBoxD.Kernels.Compiler.Internal;
 
-using DotBoxD.Kernels;
-
 internal static class PersistentCompiledArtifactCachePathGuard
 {
     public static void ValidateEntryPath(string rootDirectory, string entryPath)

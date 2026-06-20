@@ -87,6 +87,7 @@ jobs:
         # Retries are surfaced as CI warnings so flakiness stays visible rather than silently masked.
         run: |
           $projects = @(
+            'tests/DotBoxD.Architecture.Tests/DotBoxD.Architecture.Tests.csproj',
             'tests/DotBoxD.Services.SourceGenerator.Tests/DotBoxD.Services.SourceGenerator.Tests.csproj',
             'tests/DotBoxD.Services.Tests/DotBoxD.Services.Tests.csproj',
             'tests/DotBoxD.Kernels.Tests/DotBoxD.Kernels.Tests.csproj',
@@ -187,6 +188,12 @@ jobs:
       - name: Restore
         run: dotnet restore DotBoxD.slnx
 
+      # Enforce .editorconfig formatting. Whitespace-only so the gate stays decoupled
+      # from the analyzer layer (style/analyzer rules are enforced by the build itself
+      # via EnforceCodeStyleInBuild + warnings-as-errors).
+      - name: Formatting (dotnet format)
+        run: dotnet format whitespace DotBoxD.slnx --verify-no-changes --no-restore
+
       - name: Build
         run: dotnet build DotBoxD.slnx -c Release --no-restore
 
@@ -228,6 +235,22 @@ jobs:
               "PinnedHttpTransportTests",
               "DifferentialFuzzTests"
             )
+
+      # Collect coverage from the two suites that exercise the bulk of the shipping
+      # code, then enforce the line-coverage floor (.config/code-enforcer/coverage.json).
+      - name: Coverage threshold
+        shell: pwsh
+        run: |
+          # Native `dotnet test` failures do not stop a pwsh script on their own, so check
+          # $LASTEXITCODE after each run. Otherwise a crashed/failed suite that still emitted
+          # partial coverage could let check-coverage.ps1 pass while a suite never contributed.
+          dotnet test tests/DotBoxD.Kernels.Tests/DotBoxD.Kernels.Tests.csproj -c Release --no-build `
+            --collect "XPlat Code Coverage" --results-directory artifacts/coverage
+          if ($LASTEXITCODE -ne 0) { throw "Kernels coverage test run failed (exit $LASTEXITCODE)." }
+          dotnet test tests/DotBoxD.Services.Tests/DotBoxD.Services.Tests.csproj -c Release --no-build `
+            --collect "XPlat Code Coverage" --results-directory artifacts/coverage
+          if ($LASTEXITCODE -ne 0) { throw "Services coverage test run failed (exit $LASTEXITCODE)." }
+          ./eng/scripts/check-coverage.ps1 -CoverageDirectory artifacts/coverage
 
       - name: Docs & examples smoke
         shell: pwsh

@@ -59,7 +59,8 @@ public sealed class BindingResolutionTests
     }
 
     private static SandboxHost CreateHost(ISandboxCompiler? compiler = null)
-        => SandboxHost.Create(builder => {
+        => SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.AddBinding(RogueBinding());
             builder.UseInterpreter();
