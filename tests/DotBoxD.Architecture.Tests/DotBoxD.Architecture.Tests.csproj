@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Architecture / convention guard tests. Reflection over the shipping assemblies plus a few
+       source/config scans, enforcing invariants the compiler and analyzers cannot express:
+       layer dependencies, naming conventions, and that the analyzer configuration is not silently
+       weakened. References the upper-layer projects so all 16 shipping assemblies are loadable. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hosting\DotBoxD.Plugins\DotBoxD.Plugins.csproj" />
+    <ProjectReference Include="..\..\src\Hosting\DotBoxD.Hosting.Http\DotBoxD.Hosting.Http.csproj" />
+    <ProjectReference Include="..\..\src\Pushdown\DotBoxD.Pushdown.Services\DotBoxD.Pushdown.Services.csproj" />
+    <ProjectReference Include="..\..\src\Channels\DotBoxD.Transports.Tcp\DotBoxD.Transports.Tcp.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

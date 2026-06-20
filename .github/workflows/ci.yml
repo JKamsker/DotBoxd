@@ -87,6 +87,7 @@ jobs:
         # Retries are surfaced as CI warnings so flakiness stays visible rather than silently masked.
         run: |
           $projects = @(
+            'tests/DotBoxD.Architecture.Tests/DotBoxD.Architecture.Tests.csproj',
             'tests/DotBoxD.Services.SourceGenerator.Tests/DotBoxD.Services.SourceGenerator.Tests.csproj',
             'tests/DotBoxD.Services.Tests/DotBoxD.Services.Tests.csproj',
             'tests/DotBoxD.Kernels.Tests/DotBoxD.Kernels.Tests.csproj',
