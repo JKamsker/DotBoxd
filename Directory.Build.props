@@ -46,4 +46,23 @@
     <PackageReference Include="Roslynator.Analyzers" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Include="Meziantou.Analyzer" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
   </ItemGroup>
+
+  <!-- Auto-install the repo git hooks for local development by pointing core.hooksPath at the
+       tracked .githooks directory (a relative path, so it resolves inside whichever working tree
+       runs git). core.hooksPath lives in the shared git config, so this single setting also covers
+       every git worktree with no per-worktree step. No-op on CI, when git is missing, or when
+       already configured. Opt out with <DotBoxDSkipGitHooks>true</DotBoxDSkipGitHooks>. -->
+  <Target Name="DotBoxDConfigureGitHooks" BeforeTargets="Build"
+          Condition=" '$(GITHUB_ACTIONS)' != 'true' and '$(DotBoxDSkipGitHooks)' != 'true' ">
+    <Exec Command="git config --get core.hooksPath"
+          WorkingDirectory="$(MSBuildThisFileDirectory)"
+          ConsoleToMSBuild="true" ContinueOnError="true"
+          StandardOutputImportance="low" StandardErrorImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_DotBoxDHooksPath" />
+    </Exec>
+    <Exec Command="git config core.hooksPath .githooks"
+          Condition=" '$(_DotBoxDHooksPath)' != '.githooks' "
+          WorkingDirectory="$(MSBuildThisFileDirectory)"
+          ContinueOnError="true" StandardErrorImportance="low" />
+  </Target>
 </Project>
