@@ -30,6 +30,15 @@ dotnet run -c Release --project samples/GameServer/Examples.GameServer.Server/Ex
 > To reproduce CI strictness locally, set the environment variable before building:
 > `GITHUB_ACTIONS=true dotnet build DotBoxD.slnx -c Release`.
 
+### Analyzers and formatting
+
+The build runs the .NET analyzers (`AnalysisLevel` 10) plus **Roslynator** and **Meziantou**,
+with every rule severity configured centrally in [`.editorconfig`](.editorconfig). Because warnings
+are errors in CI, a new analyzer finding fails the build. The `.editorconfig` documents, per rule,
+which rules are enforced and which are deliberately disabled (with the reason). Format your changes
+with `dotnet format` before pushing — CI verifies formatting with
+`dotnet format whitespace --verify-no-changes`.
+
 ## CI gates
 
 Every pull request runs the `ci` workflow (`.github/workflows/ci.yml`):
@@ -42,11 +51,17 @@ the .NET 8/9/10 SDKs.
 | Gate | Script | Checks |
 |------|--------|--------|
 | Rebrand completeness | `check-rebrand-complete.ps1` | No legacy `ShaRPC`/`SafeIR`/`SGP#` tokens in active source |
-| C# file-length / layout | `check-csharp-file-lines.ps1` | File and folder size limits (see `AGENTS.md`) |
+| Formatting | `dotnet format whitespace --verify-no-changes` | Code matches `.editorconfig` |
+| C# file-length / layout | `check-csharp-file-lines.ps1` | File and folder size limits + a ratcheting soft-limit budget (see `AGENTS.md`) |
 | Spec manifest integrity | `check-spec-manifest.ps1` | The sandbox spec manifest is consistent |
 | Public API baseline | `check-api-compat-baseline.ps1` | Public package API matches `docs/api-baselines/*.txt` |
 | Security-boundary tests | `run-required-tests.ps1` | A required allowlist of sandbox/security tests passes |
+| Coverage threshold | `check-coverage.ps1` | Line coverage over the `DotBoxD.*` assemblies stays above the floor in `.config/code-enforcer/coverage.json` |
 | Docs & examples smoke | `check-docs-smoke.ps1` | Doc commands point at real paths; the GameServer sample runs on Windows |
+
+The `tests/DotBoxD.Architecture.Tests` project additionally enforces layer dependencies, naming
+conventions, and that the analyzer configuration is not silently weakened; it runs as part of the
+test matrix.
 
 **Package validation** — after build/test and gates pass, CI packs every product package, runs
 `check-package-metadata.ps1`, runs the package consumer smoke test, and uploads the package artifact.
