@@ -15,18 +15,21 @@ public sealed class SubscriptionPipeline<TEvent> : IKernelHandlerPipeline
     private readonly HookContext _defaultContext;
     private readonly KernelRegistry _kernels;
     private readonly Func<PluginPackage, InstalledKernel>? _installer;
+    private readonly Action<SubscriptionDeliveryFault>? _onFault;
 
     internal SubscriptionPipeline(
         IPluginEventAdapter<TEvent> adapter,
         IPluginMessageSink messages,
         KernelRegistry kernels,
-        Func<PluginPackage, InstalledKernel>? installer = null)
+        Func<PluginPackage, InstalledKernel>? installer = null,
+        Action<SubscriptionDeliveryFault>? onFault = null)
     {
         _adapter = adapter;
         _messages = messages;
         _defaultContext = new HookContext(messages, CancellationToken.None);
         _kernels = kernels;
         _installer = installer;
+        _onFault = onFault;
     }
 
     public SubscriptionPipeline<TEvent> UseGeneratedChain(PluginPackage package)
@@ -241,14 +244,21 @@ public sealed class SubscriptionPipeline<TEvent> : IKernelHandlerPipeline
         var context = cancellationToken.CanBeCanceled
             ? new HookContext(_messages, cancellationToken)
             : _defaultContext;
-        _ = Task.Run(() => PublishSafelyAsync(filters, handlers, e, context).AsTask());
+        var onFault = _onFault;
+        _ = Task.Run(() => PublishSafelyAsync(filters, handlers, e, context, onFault).AsTask());
     }
 
+    // Delivery runs on a background task (it must not block the publishing game loop), so a throwing filter or
+    // handler cannot propagate to a caller and is caught here. Swallowing it silently is what makes a broken
+    // RunLocal subscription look like "it just does nothing" — so every caught fault is reported to the optional
+    // observer (wired by the host to its plugin logger) before delivery is abandoned. Control flow is unchanged:
+    // a failed filter still drops the event, a failed handler still lets the remaining handlers run.
     private static async ValueTask PublishSafelyAsync(
         Func<TEvent, HookContext, ValueTask<bool>>[] filters,
         Func<TEvent, HookContext, ValueTask>[] handlers,
         TEvent e,
-        HookContext context)
+        HookContext context,
+        Action<SubscriptionDeliveryFault>? onFault)
     {
         try
         {
@@ -260,8 +270,9 @@ public sealed class SubscriptionPipeline<TEvent> : IKernelHandlerPipeline
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Report(onFault, ex, SubscriptionDeliveryStage.Filter);
             return;
         }
 
@@ -271,9 +282,30 @@ public sealed class SubscriptionPipeline<TEvent> : IKernelHandlerPipeline
             {
                 await handlers[i](e, context).ConfigureAwait(false);
             }
-            catch
+            catch (Exception ex)
             {
+                Report(onFault, ex, SubscriptionDeliveryStage.Handler);
             }
+        }
+    }
+
+    private static void Report(
+        Action<SubscriptionDeliveryFault>? onFault,
+        Exception exception,
+        SubscriptionDeliveryStage stage)
+    {
+        if (onFault is null)
+        {
+            return;
+        }
+
+        try
+        {
+            onFault(new SubscriptionDeliveryFault(typeof(TEvent), stage, exception));
+        }
+        catch
+        {
+            // A faulty fault observer must never escalate into the background delivery task.
         }
     }
 }

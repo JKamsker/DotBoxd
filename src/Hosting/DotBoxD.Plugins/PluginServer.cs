@@ -19,7 +19,8 @@ public sealed partial class PluginServer : IDisposable
         Hosting.Execution.SandboxHost host,
         SandboxPolicy defaultPolicy,
         IPluginMessageSink messages,
-        ExecutionMode executionMode)
+        ExecutionMode executionMode,
+        Action<SubscriptionDeliveryFault>? onSubscriptionFault)
     {
         _host = host;
         _defaultPolicy = defaultPolicy;
@@ -27,7 +28,7 @@ public sealed partial class PluginServer : IDisposable
         Events = new PluginEventAdapterRegistry();
         Kernels = new KernelRegistry();
         Hooks = new HookRegistry(messages, Events, Kernels, InstallChainPackage);
-        Subscriptions = new SubscriptionRegistry(messages, Events, Kernels, InstallChainPackage);
+        Subscriptions = new SubscriptionRegistry(messages, Events, Kernels, InstallChainPackage, onSubscriptionFault);
     }
 
     // Synchronous installer the hook pipelines use to wire analyzer-generated chain packages at
@@ -47,7 +48,8 @@ public sealed partial class PluginServer : IDisposable
         IPluginMessageSink? messages = null,
         Action<SandboxHostBuilder>? configureHost = null,
         SandboxPolicy? defaultPolicy = null,
-        ExecutionMode executionMode = ExecutionMode.Auto)
+        ExecutionMode executionMode = ExecutionMode.Auto,
+        Action<SubscriptionDeliveryFault>? onSubscriptionFault = null)
     {
         if (!Enum.IsDefined(executionMode))
         {
@@ -69,7 +71,7 @@ public sealed partial class PluginServer : IDisposable
             .WithFuel(100_000)
             .WithMaxHostCalls(1_000)
             .Build();
-        return new PluginServer(host, defaultPolicy, messages, executionMode);
+        return new PluginServer(host, defaultPolicy, messages, executionMode, onSubscriptionFault);
     }
 
     /// <summary>
