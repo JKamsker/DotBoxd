@@ -29,15 +29,15 @@ public sealed class AnonymousTerminalProjectionTests
         // The plugin-side authoring registry: its install callback installs the generated package into the live
         // server and forwards each server push into the local handler registry the interceptor registers against.
         var hooks = new RemoteHookRegistry(
-            package =>
+            async package =>
             {
-                var kernel = server.InstallAsync(package).AsTask().GetAwaiter().GetResult();
+                var kernel = await server.InstallAsync(package).ConfigureAwait(false);
                 var subscriptionId = package.Manifest.PluginId;
                 server.Hooks.On<MonsterAggroEvent>().UseProjecting(
                     kernel,
                     subscriptionId,
                     (id, payload, token) => localHandlers.DispatchAsync(id, payload.ToArray(), new HookContext(sink, token)));
-                return ValueTask.FromResult(subscriptionId);
+                return subscriptionId;
             },
             localHandlers);
 
