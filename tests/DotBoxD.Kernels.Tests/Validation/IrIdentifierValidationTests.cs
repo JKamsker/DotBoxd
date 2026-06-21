@@ -113,7 +113,8 @@ public sealed class IrIdentifierValidationTests
         Assert.Equal("reason-text", plan.Module.Id);
     }
 
-    private static SandboxHost Host => SandboxHost.Create(builder => {
+    private static SandboxHost Host => SandboxHost.Create(builder =>
+    {
         builder.AddDefaultPureBindings();
         builder.UseInterpreter();
     });

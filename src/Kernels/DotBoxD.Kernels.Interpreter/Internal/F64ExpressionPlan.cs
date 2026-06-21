@@ -6,7 +6,6 @@ using DotBoxD.Kernels.Sandbox;
 namespace DotBoxD.Kernels.Interpreter.Internal;
 
 using DotBoxD.Kernels;
-using DotBoxD.Kernels.Runtime;
 
 internal sealed class F64ExpressionPlan
 {
@@ -40,7 +39,8 @@ internal sealed class F64ExpressionPlan
     public bool PreservesNonNegative { get; }
 
     public double Evaluate(InterpreterFrame frame)
-        => _kind switch {
+        => _kind switch
+        {
             ExpressionKind.Literal => _literal,
             ExpressionKind.RawVariable => frame.ReadRawDoubleSlot(_slot),
             ExpressionKind.BoxedVariable => frame.ReadDoubleSlot(_slot),
@@ -179,7 +179,8 @@ internal sealed class F64ExpressionPlan
 
     private static bool TryGetKind(string id, out ExpressionKind kind)
     {
-        kind = id switch {
+        kind = id switch
+        {
             "math.sqrt" => ExpressionKind.Sqrt,
             "math.floor" => ExpressionKind.Floor,
             "math.ceil" => ExpressionKind.Ceil,
@@ -190,7 +191,8 @@ internal sealed class F64ExpressionPlan
     }
 
     private static string RuntimeMethod(ExpressionKind kind)
-        => kind switch {
+        => kind switch
+        {
             ExpressionKind.Sqrt => nameof(Runtime.CompiledRuntime.SqrtF64),
             ExpressionKind.Floor => nameof(Runtime.CompiledRuntime.FloorF64),
             ExpressionKind.Ceil => nameof(Runtime.CompiledRuntime.CeilF64),

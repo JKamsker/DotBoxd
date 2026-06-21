@@ -30,8 +30,10 @@ internal static class MetadataTableVerifier
 
     public static void Verify(MetadataReader reader, List<VerificationDiagnostic> diagnostics)
     {
-        foreach (var item in ForbiddenTables) {
-            if (reader.GetTableRowCount(item.Table) == 0) {
+        foreach (var item in ForbiddenTables)
+        {
+            if (reader.GetTableRowCount(item.Table) == 0)
+            {
                 continue;
             }
 

@@ -1,7 +1,5 @@
 namespace DotBoxD.Kernels.Serialization.Json.Internal;
 
-using DotBoxD.Hosting;
-
 internal static class SandboxHostJsonExtensions
 {
     public static ValueTask<SandboxModule> ImportJsonAsync(

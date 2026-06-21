@@ -104,6 +104,14 @@ Control flow:
 }
 ```
 
+Loops support structured control flow. `continue` skips to the next iteration of the
+innermost enclosing loop; `break` exits it. Both are rejected outside a loop.
+
+```json
+{ "op": "continue" }
+{ "op": "break" }
+```
+
 Loops are fuel-accounted. Recursion is disabled in the MVP.
 
 ## Expressions

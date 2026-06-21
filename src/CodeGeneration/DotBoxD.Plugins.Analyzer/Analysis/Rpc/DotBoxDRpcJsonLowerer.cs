@@ -9,8 +9,9 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 /// the same JSON the host imports at install. Supports the canonical batch shape: local declarations, a
 /// <c>foreach</c> over a list, <c>if</c>/<c>else</c>, host-binding calls via <c>ctx.Host&lt;T&gt;()</c> or
 /// constructor-injected service fields, building DTOs (<c>new T(...)</c>/<c>new T{...}</c> →
-/// <c>record.new</c>) and accumulating into a list (<c>list.Add</c> → <c>list.add</c>), and
-/// <c>return</c>. Capabilities/effects from host bindings are collected. Unsupported shapes throw
+/// <c>record.new</c>) and accumulating into a list (<c>list.Add</c> → <c>list.add</c>),
+/// <c>return</c>, and the loop-control statements <c>continue</c>/<c>break</c> (lowered to the
+/// kernel IR's structured loop control). Capabilities/effects from host bindings are collected. Unsupported shapes throw
 /// <see cref="NotSupportedException"/> so the kernel fails safe. The
 /// expression half lives in the partial <c>DotBoxDRpcJsonLowerer.Expressions.cs</c>.
 /// </summary>
@@ -107,6 +108,12 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             case ReturnStatementSyntax { Expression: { } returned }:
                 output.Add(Obj(("op", Str("return")), ("value", ReturnValue(LowerExpression(returned)))));
                 break;
+            case ContinueStatementSyntax:
+                output.Add(Obj(("op", Str("continue"))));
+                break;
+            case BreakStatementSyntax:
+                output.Add(Obj(("op", Str("break"))));
+                break;
             case BlockSyntax block:
                 foreach (var inner in block.Statements)
                 {
@@ -136,22 +143,6 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
             output.Add(SetStatement(localName, LowerExpression(initializer.Value)));
         }
-    }
-
-    private bool TryLowerServiceHandleLocal(string localName, ExpressionSyntax value, List<string> output)
-    {
-        if (value is not InvocationExpressionSyntax invocation ||
-            _model.GetSymbolInfo(invocation, _cancellationToken).Symbol is not IMethodSymbol method ||
-            !HasDotBoxDServiceAttribute(method.ReturnType) ||
-            invocation.ArgumentList.Arguments.Count == 0)
-        {
-            return false;
-        }
-
-        var handleId = LowerExpression(invocation.ArgumentList.Arguments[0].Expression);
-        _serviceHandleLocals[localName] = handleId;
-        output.Add(SetStatement(localName, handleId));
-        return true;
     }
 
     private string LowerExpressionStatement(ExpressionSyntax expression)

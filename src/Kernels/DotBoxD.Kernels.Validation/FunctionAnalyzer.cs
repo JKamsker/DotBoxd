@@ -68,7 +68,7 @@ internal sealed class FunctionAnalyzer
         {
             if (alwaysReturns)
             {
-                AnalyzeDeadStatement(statement, scope, function.ReturnType);
+                AnalyzeDeadStatement(statement, scope, function.ReturnType, loopDepth: 0);
                 continue;
             }
 
@@ -77,7 +77,8 @@ internal sealed class FunctionAnalyzer
                 scope,
                 function.ReturnType,
                 ref effects,
-                ref canReorder);
+                ref canReorder,
+                loopDepth: 0);
         }
 
         if (!alwaysReturns)
@@ -97,7 +98,8 @@ internal sealed class FunctionAnalyzer
         FunctionScope scope,
         SandboxType returnType,
         ref SandboxEffect effects,
-        ref bool canReorder)
+        ref bool canReorder,
+        int loopDepth)
     {
         switch (statement)
         {
@@ -128,20 +130,22 @@ internal sealed class FunctionAnalyzer
                     scope.Clone(),
                     returnType,
                     ref effects,
-                    ref canReorder);
+                    ref canReorder,
+                    loopDepth);
                 var elseReturns = AnalyzeBlock(
                     branch.Else,
                     scope.Clone(),
                     returnType,
                     ref effects,
-                    ref canReorder);
+                    ref canReorder,
+                    loopDepth);
                 return thenReturns && elseReturns;
             case WhileStatement loop:
                 Require(
                     AnalyzeExpression(loop.Condition, scope, ref effects, ref canReorder),
                     SandboxType.Bool,
                     loop.Span);
-                AnalyzeBlock(loop.Body, scope.Clone(), returnType, ref effects, ref canReorder);
+                AnalyzeBlock(loop.Body, scope.Clone(), returnType, ref effects, ref canReorder, loopDepth + 1);
                 return false;
             case ForRangeStatement range:
                 Require(
@@ -154,7 +158,13 @@ internal sealed class FunctionAnalyzer
                     range.Span);
                 var child = scope.Clone();
                 child.Set(range.LocalName, SandboxType.I32, _diagnostics, range.Span);
-                AnalyzeBlock(range.Body, child, returnType, ref effects, ref canReorder);
+                AnalyzeBlock(range.Body, child, returnType, ref effects, ref canReorder, loopDepth + 1);
+                return false;
+            case ContinueStatement:
+                RequireInsideLoop("continue", loopDepth, statement.Span);
+                return false;
+            case BreakStatement:
+                RequireInsideLoop("break", loopDepth, statement.Span);
                 return false;
             default:
                 _diagnostics.Add(new SandboxDiagnostic("E-STMT-UNKNOWN", $"unsupported statement '{statement.GetType().Name}'", Span: statement.Span));
@@ -162,7 +172,18 @@ internal sealed class FunctionAnalyzer
         }
     }
 
-    private void AnalyzeDeadStatement(Statement statement, FunctionScope scope, SandboxType returnType)
+    private void RequireInsideLoop(string keyword, int loopDepth, SourceSpan span)
+    {
+        if (loopDepth == 0)
+        {
+            _diagnostics.Add(new SandboxDiagnostic(
+                "E-LOOP-CONTROL",
+                $"'{keyword}' is only valid inside a loop",
+                Span: span));
+        }
+    }
+
+    private void AnalyzeDeadStatement(Statement statement, FunctionScope scope, SandboxType returnType, int loopDepth)
     {
         var ignoredEffects = SandboxEffect.None;
         var ignoredCanReorder = true;
@@ -171,7 +192,8 @@ internal sealed class FunctionAnalyzer
             scope,
             returnType,
             ref ignoredEffects,
-            ref ignoredCanReorder);
+            ref ignoredCanReorder,
+            loopDepth);
     }
 
     private bool AnalyzeBlock(
@@ -179,14 +201,15 @@ internal sealed class FunctionAnalyzer
         FunctionScope scope,
         SandboxType returnType,
         ref SandboxEffect effects,
-        ref bool canReorder)
+        ref bool canReorder,
+        int loopDepth)
     {
         var alwaysReturns = false;
         foreach (var statement in block)
         {
             if (alwaysReturns)
             {
-                AnalyzeDeadStatement(statement, scope, returnType);
+                AnalyzeDeadStatement(statement, scope, returnType, loopDepth);
                 continue;
             }
 
@@ -195,7 +218,8 @@ internal sealed class FunctionAnalyzer
                 scope,
                 returnType,
                 ref effects,
-                ref canReorder);
+                ref canReorder,
+                loopDepth);
         }
 
         return alwaysReturns;

@@ -72,7 +72,8 @@ public sealed class Fix_CMP_0014_Tests
         public ValueTask SetSettingAsync(string name, string value, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (name == "MinDamage") {
+            if (name == "MinDamage")
+            {
                 _minDamage = value;
             }
 
@@ -83,7 +84,8 @@ public sealed class Fix_CMP_0014_Tests
         {
             cancellationToken.ThrowIfCancellationRequested();
             var threshold = int.Parse(_minDamage);
-            if (request.Amount < threshold) {
+            if (request.Amount < threshold)
+            {
                 return ValueTask.FromResult(Array.Empty<string>());
             }
 
@@ -148,10 +150,12 @@ public sealed class Fix_CMP_0014_Tests
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
             var payload = Payload.Rent(data.Length);
             data.CopyTo(payload.Memory);
-            try {
+            try
+            {
                 await _outbound.WriteAsync(payload, ct).ConfigureAwait(false);
             }
-            catch {
+            catch
+            {
                 payload.Dispose();
                 throw;
             }
@@ -160,22 +164,26 @@ public sealed class Fix_CMP_0014_Tests
         public async Task<Payload> ReceiveAsync(CancellationToken ct = default)
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
-            try {
+            try
+            {
                 return await _inbound.ReadAsync(ct).ConfigureAwait(false);
             }
-            catch (ChannelClosedException) {
+            catch (ChannelClosedException)
+            {
                 return Payload.Empty;
             }
         }
 
         public ValueTask DisposeAsync()
         {
-            if (Interlocked.Exchange(ref _disposed, 1) != 0) {
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            {
                 return ValueTask.CompletedTask;
             }
 
             _outbound.TryComplete();
-            while (_inbound.TryRead(out var payload)) {
+            while (_inbound.TryRead(out var payload))
+            {
                 payload.Dispose();
             }
 

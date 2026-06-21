@@ -157,15 +157,18 @@ internal static class DotBoxDHandleModelFactory
         string contextParameterName)
     {
         var expression = method.ExpressionBody?.Expression;
-        if (expression is null) {
+        if (expression is null)
+        {
             if (method.Body is null ||
-                !TryBodySendExpression(method.Body, out expression)) {
+                !TryBodySendExpression(method.Body, out expression))
+            {
                 throw new NotSupportedException(SingleSendBodyMessage);
             }
         }
 
         if (expression is not InvocationExpressionSyntax invocation ||
-            !IsContextMessageSend(invocation.Expression, contextParameterName)) {
+            !IsContextMessageSend(invocation.Expression, contextParameterName))
+        {
             throw new NotSupportedException(SendCallMessage);
         }
 
@@ -198,7 +201,8 @@ internal static class DotBoxDHandleModelFactory
         if (expression is not MemberAccessExpressionSyntax sendAccess ||
             !string.Equals(sendAccess.Name.Identifier.ValueText, DotBoxDGenerationNames.HookContext.SendMethod, StringComparison.Ordinal) ||
             sendAccess.Expression is not MemberAccessExpressionSyntax messagesAccess ||
-            !string.Equals(messagesAccess.Name.Identifier.ValueText, DotBoxDGenerationNames.HookContext.MessagesProperty, StringComparison.Ordinal)) {
+            !string.Equals(messagesAccess.Name.Identifier.ValueText, DotBoxDGenerationNames.HookContext.MessagesProperty, StringComparison.Ordinal))
+        {
             return false;
         }
 
@@ -208,7 +212,8 @@ internal static class DotBoxDHandleModelFactory
 
     private static void RequireString(DotBoxDExpressionModel expression, string argumentName)
     {
-        if (!string.Equals(expression.Type, DotBoxDGenerationNames.ManifestTypes.String, StringComparison.Ordinal)) {
+        if (!string.Equals(expression.Type, DotBoxDGenerationNames.ManifestTypes.String, StringComparison.Ordinal))
+        {
             throw new NotSupportedException(
                 $"Kernel Handle {argumentName} argument must lower to a string expression.");
         }

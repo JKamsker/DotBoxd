@@ -17,7 +17,8 @@ public sealed record SemVersion(int Major, int Minor, int Patch)
 
     public static SemVersion Parse(string text)
     {
-        if (!TryParse(text, out var version)) {
+        if (!TryParse(text, out var version))
+        {
             throw new FormatException($"Invalid semantic version '{text}'.");
         }
 
@@ -30,18 +31,21 @@ public sealed record SemVersion(int Major, int Minor, int Patch)
         var value = text.StartsWith('v') ? text[1..] : text;
         var parts = value.Split('.');
 
-        if (parts.Length == 1 && int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var major)) {
+        if (parts.Length == 1 && int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var major))
+        {
             version = new SemVersion(major, 0, 0);
             return true;
         }
 
-        if (parts.Length != 3) {
+        if (parts.Length != 3)
+        {
             return false;
         }
 
         if (!int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out major) ||
             !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var minor) ||
-            !int.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out var patch)) {
+            !int.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out var patch))
+        {
             return false;
         }
 
@@ -51,12 +55,14 @@ public sealed record SemVersion(int Major, int Minor, int Patch)
 
     public int CompareTo(SemVersion? other)
     {
-        if (other is null) {
+        if (other is null)
+        {
             return 1;
         }
 
         var major = Major.CompareTo(other.Major);
-        if (major != 0) {
+        if (major != 0)
+        {
             return major;
         }
 

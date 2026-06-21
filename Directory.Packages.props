@@ -21,6 +21,13 @@
          (DotBoxD.Plugins.Analyzer + DotBoxD.Kernels.Tests -> 4.14.0, DotBoxD.Services.SourceGenerator.Tests -> 4.11.0). -->
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" />
+
+    <!-- Static-analysis layer (analyzer-only, wired in Directory.Build.props with
+         PrivateAssets=all so they never flow into the package graph). Severities are
+         configured centrally in .editorconfig. -->
+    <PackageVersion Include="Roslynator.Analyzers" Version="4.15.0" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.105" />
+
     <PackageVersion Include="Fody" Version="6.9.3" />
     <PackageVersion Include="FodyHelpers" Version="6.9.3" />
     <PackageVersion Include="Mono.Cecil" Version="0.11.6" />

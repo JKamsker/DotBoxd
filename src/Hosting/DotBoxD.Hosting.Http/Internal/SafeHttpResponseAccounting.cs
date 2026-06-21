@@ -5,7 +5,6 @@ namespace DotBoxD.Hosting.Http.Internal;
 
 using System.Net.Http.Headers;
 using System.Text;
-using DotBoxD.Kernels;
 
 internal static class SafeHttpResponseAccounting
 {

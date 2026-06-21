@@ -115,7 +115,8 @@ public static partial class PluginPackageJsonSerializer
     {
         RequireArray(array, name);
         var values = AllocateArray<string>(array, out var count);
-        if (count == 0) {
+        if (count == 0)
+        {
             return values;
         }
 
@@ -132,7 +133,8 @@ public static partial class PluginPackageJsonSerializer
     private static IReadOnlyList<LiveSettingDefinition> ReadLiveSettings(JsonElement array)
     {
         var settings = AllocateArray<LiveSettingDefinition>(array, out var count);
-        if (count == 0) {
+        if (count == 0)
+        {
             return settings;
         }
 
@@ -193,7 +195,8 @@ public static partial class PluginPackageJsonSerializer
     private static IReadOnlyList<HookSubscriptionManifest> ReadSubscriptions(JsonElement array)
     {
         var subscriptions = AllocateArray<HookSubscriptionManifest>(array, out var count);
-        if (count == 0) {
+        if (count == 0)
+        {
             return subscriptions;
         }
 

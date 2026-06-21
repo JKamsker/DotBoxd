@@ -1,8 +1,3 @@
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.CodeAnalysis;
-using VerifyXunit;
-
 namespace DotBoxD.Services.SourceGenerator.Tests;
 
 /// <summary>

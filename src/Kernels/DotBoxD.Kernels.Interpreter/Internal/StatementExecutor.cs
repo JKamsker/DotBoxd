@@ -60,6 +60,10 @@ internal sealed class StatementExecutor
                 return ExecuteWhileAsync(loop, frame);
             case ForRangeStatement range:
                 return ExecuteForAsync(range, frame);
+            case ContinueStatement:
+                return new ValueTask<SandboxValue?>(LoopSignal.Continue);
+            case BreakStatement:
+                return new ValueTask<SandboxValue?>(LoopSignal.Break);
             default:
                 throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "unsupported statement"));
         }
@@ -174,9 +178,9 @@ internal sealed class StatementExecutor
         {
             _context.ChargeLoopIteration(5);
             var value = await ExecuteBlockAsync(statement.Body, frame).ConfigureAwait(false);
-            if (value is not null)
+            if (value is not null && !LoopSignal.IsContinue(value))
             {
-                return value;
+                return LoopSignal.IsBreak(value) ? null : value;
             }
         }
 
@@ -263,9 +267,11 @@ internal sealed class StatementExecutor
             }
 
             var value = bodyTask.Result;
-            if (value is not null)
+            if (value is not null && !LoopSignal.IsContinue(value))
             {
-                return new ValueTask<SandboxValue?>(value);
+                return LoopSignal.IsBreak(value)
+                    ? default
+                    : new ValueTask<SandboxValue?>(value);
             }
         }
 
@@ -280,9 +286,9 @@ internal sealed class StatementExecutor
         InterpreterFrame frame)
     {
         var value = await pendingTask.ConfigureAwait(false);
-        if (value is not null)
+        if (value is not null && !LoopSignal.IsContinue(value))
         {
-            return value;
+            return LoopSignal.IsBreak(value) ? null : value;
         }
 
         for (var i = nextIndex; i < end; i++)
@@ -290,9 +296,9 @@ internal sealed class StatementExecutor
             _context.ChargeLoopIteration(5);
             frame.WriteInt32(statement.LocalName, i);
             value = await ExecuteBlockAsync(statement.Body, frame).ConfigureAwait(false);
-            if (value is not null)
+            if (value is not null && !LoopSignal.IsContinue(value))
             {
-                return value;
+                return LoopSignal.IsBreak(value) ? null : value;
             }
         }
 

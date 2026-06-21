@@ -301,27 +301,35 @@ public class NestedServiceTests
 
         public Task<TR> InvokeOnInstanceAsync<TQ, TR>(string svc, string id, string method, TQ req, CancellationToken ct = default)
         {
-            LastInstanceCallService = svc; LastInstanceCallId = id; LastInstanceCallMethod = method;
+            LastInstanceCallService = svc;
+            LastInstanceCallId = id;
+            LastInstanceCallMethod = method;
             LastInstanceRequest = req;
             LastInstanceCancellationToken = ct;
             return Task.FromResult((TR)(object)CountResult);
         }
         public Task<TR> InvokeOnInstanceAsync<TR>(string svc, string id, string method, CancellationToken ct = default)
         {
-            LastInstanceCallService = svc; LastInstanceCallId = id; LastInstanceCallMethod = method;
+            LastInstanceCallService = svc;
+            LastInstanceCallId = id;
+            LastInstanceCallMethod = method;
             LastInstanceCancellationToken = ct;
             return Task.FromResult((TR)(object)CountResult);
         }
         public Task InvokeOnInstanceAsync<TQ>(string svc, string id, string method, TQ req, CancellationToken ct = default)
         {
-            LastInstanceCallService = svc; LastInstanceCallId = id; LastInstanceCallMethod = method;
+            LastInstanceCallService = svc;
+            LastInstanceCallId = id;
+            LastInstanceCallMethod = method;
             LastInstanceRequest = req;
             LastInstanceCancellationToken = ct;
             return Task.CompletedTask;
         }
         public Task InvokeOnInstanceAsync(string svc, string id, string method, CancellationToken ct = default)
         {
-            LastInstanceCallService = svc; LastInstanceCallId = id; LastInstanceCallMethod = method;
+            LastInstanceCallService = svc;
+            LastInstanceCallId = id;
+            LastInstanceCallMethod = method;
             LastInstanceCancellationToken = ct;
             return Task.CompletedTask;
         }
@@ -347,8 +355,10 @@ public class NestedServiceTests
         public int Count;
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
-            if (targetMethod?.Name == "CountAsync") return Task.FromResult(Count);
-            if (targetMethod?.Name == "SumAsync") return Task.FromResult((int)args![0]! + (int)args[1]!);
+            if (targetMethod?.Name == "CountAsync")
+                return Task.FromResult(Count);
+            if (targetMethod?.Name == "SumAsync")
+                return Task.FromResult((int)args![0]! + (int)args[1]!);
             throw new InvalidOperationException("unexpected " + targetMethod?.Name);
         }
     }

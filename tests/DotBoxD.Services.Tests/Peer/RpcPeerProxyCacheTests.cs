@@ -1,6 +1,5 @@
 using System.Buffers;
 using DotBoxD.Codecs.MessagePack;
-using DotBoxD.Services.Generated;
 using DotBoxD.Services.Peer;
 using DotBoxD.Services.Serialization;
 using DotBoxD.Services.Server;

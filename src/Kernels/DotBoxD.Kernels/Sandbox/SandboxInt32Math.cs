@@ -52,11 +52,13 @@ public static class SandboxInt32Math
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int Divide(int left, int right)
     {
-        if (right == 0) {
+        if (right == 0)
+        {
             throw InvalidInput("integer division by zero");
         }
 
-        if (left == int.MinValue && right == -1) {
+        if (left == int.MinValue && right == -1)
+        {
             throw InvalidInput("integer overflow");
         }
 
@@ -66,11 +68,13 @@ public static class SandboxInt32Math
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int Remainder(int left, int right)
     {
-        if (right == 0) {
+        if (right == 0)
+        {
             throw InvalidInput("integer division by zero");
         }
 
-        if (left == int.MinValue && right == -1) {
+        if (left == int.MinValue && right == -1)
+        {
             throw InvalidInput("integer overflow");
         }
 

@@ -4,6 +4,7 @@ using DotBoxD.Kernels.Policies;
 using DotBoxD.Plugins;
 using DotBoxD.Plugins.Analyzer.Analysis;
 using DotBoxD.Plugins.Policies;
+using DotBoxD.Plugins.Runtime;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -59,6 +60,44 @@ public sealed class SubscriptionRuntimeTests
         server.Subscriptions.Publish(new ChainAggroEvent("monster-1", 3));
 
         await handled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task A_throwing_handler_is_reported_to_the_fault_observer()
+    {
+        var reported = new TaskCompletionSource<SubscriptionDeliveryFault>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var server = DotBoxD.Plugins.PluginServer.Create(
+            defaultPolicy: ChainPolicy(),
+            onSubscriptionFault: fault => reported.TrySetResult(fault));
+        server.Subscriptions.On<ChainAggroEvent>()
+            .RunLocal(_ => throw new InvalidOperationException("boom"));
+
+        server.Subscriptions.Publish(new ChainAggroEvent("monster-1", 3));
+
+        var fault = await reported.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(SubscriptionDeliveryStage.Handler, fault.Stage);
+        Assert.Equal(typeof(ChainAggroEvent), fault.EventType);
+        Assert.Equal("boom", Assert.IsType<InvalidOperationException>(fault.Exception).Message);
+    }
+
+    [Fact]
+    public async Task A_throwing_filter_is_reported_to_the_fault_observer()
+    {
+        var reported = new TaskCompletionSource<SubscriptionDeliveryFault>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var server = DotBoxD.Plugins.PluginServer.Create(
+            defaultPolicy: ChainPolicy(),
+            onSubscriptionFault: fault => reported.TrySetResult(fault));
+        server.Subscriptions.On<ChainAggroEvent>()
+            .Where((Func<ChainAggroEvent, bool>)(_ => throw new InvalidOperationException("bad filter")))
+            .RunLocal(_ => { });
+
+        server.Subscriptions.Publish(new ChainAggroEvent("monster-1", 3));
+
+        var fault = await reported.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(SubscriptionDeliveryStage.Filter, fault.Stage);
+        Assert.Equal("bad filter", Assert.IsType<InvalidOperationException>(fault.Exception).Message);
     }
 
     [Fact]

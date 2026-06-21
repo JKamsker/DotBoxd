@@ -1,0 +1,277 @@
+# DotBoxD editorconfig
+#
+# Single source of truth for formatting, code-style (IDExxxx), and analyzer rule
+# severities across the repository. Paired with:
+#   - Directory.Build.props: EnforceCodeStyleInBuild=true, AnalysisLevel=10.0,
+#     TreatWarningsAsErrors=true on CI (GITHUB_ACTIONS=true).
+#   - Roslynator.Analyzers + Meziantou.Analyzer (wired in Directory.Build.props).
+#   - CI gate: `dotnet format --verify-no-changes` enforces this file.
+#
+# Severity discipline (because CI = warnings-as-errors):
+#   * `warning`/`error` => surfaces at build and FAILS CI. Only used for rules that
+#     `dotnet format` can auto-fix, or that the whole tree already satisfies.
+#   * `suggestion`/`silent` => IDE-only nudge; never breaks the build. Used as the
+#     ratchet staging area for rules not yet clean tree-wide.
+root = true
+
+# ---------------------------------------------------------------------------
+# All files
+# ---------------------------------------------------------------------------
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml,csproj,props,targets,slnx,editorconfig}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{cmd,bat}]
+end_of_line = crlf
+
+# ---------------------------------------------------------------------------
+# C# files
+# ---------------------------------------------------------------------------
+[*.cs]
+indent_size = 4
+tab_width = 4
+max_line_length = 140
+
+#### .NET formatting (auto-fixed by `dotnet format whitespace`) ####
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+dotnet_style_namespace_match_folder = true:suggestion
+
+# Newline preferences
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_new_line_before_members_in_object_initializers = true
+csharp_new_line_before_members_in_anonymous_types = true
+csharp_new_line_between_query_expression_clauses = true
+
+# Indentation
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+csharp_indent_labels = one_less_than_current
+csharp_indent_block_contents = true
+csharp_indent_braces = false
+csharp_indent_case_contents_when_block = false
+
+# Spacing
+csharp_space_after_cast = false
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_space_between_method_declaration_parameter_list_parentheses = false
+csharp_space_between_method_call_parameter_list_parentheses = false
+csharp_space_between_parentheses = false
+csharp_space_before_colon_in_inheritance_clause = true
+csharp_space_after_colon_in_inheritance_clause = true
+csharp_space_around_binary_operators = before_and_after
+csharp_space_between_method_declaration_empty_parameter_list_parentheses = false
+csharp_space_between_method_call_name_and_opening_parenthesis = false
+csharp_space_between_method_call_empty_parameter_list_parentheses = false
+
+# Wrapping
+csharp_preserve_single_line_statements = false
+csharp_preserve_single_line_blocks = true
+
+#### Language and code-style preferences ####
+
+# Namespaces — repo is overwhelmingly file-scoped; `dotnet format` converts the
+# remaining block-scoped stragglers. Enforced.
+csharp_style_namespace_declarations = file_scoped:warning
+
+# `this.` qualification — repo style omits it. Enforced (auto-fixable).
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_qualification_for_property = false:warning
+dotnet_style_qualification_for_method = false:warning
+dotnet_style_qualification_for_event = false:warning
+
+# Language keywords over BCL type names (int vs Int32). Enforced (auto-fixable).
+dotnet_style_predefined_type_for_locals_parameters_members = true:warning
+dotnet_style_predefined_type_for_member_access = true:warning
+
+# `var` — the codebase uses var pervasively but not universally; leave as an IDE
+# nudge so we never force a multi-thousand-line churn or fight existing style.
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = true:suggestion
+
+# Expression-bodied members — suggestion only (subjective, not auto-safe).
+csharp_style_expression_bodied_methods = true:suggestion
+csharp_style_expression_bodied_constructors = false:suggestion
+csharp_style_expression_bodied_operators = true:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_expression_bodied_indexers = true:suggestion
+csharp_style_expression_bodied_accessors = true:suggestion
+csharp_style_expression_bodied_lambdas = true:suggestion
+csharp_style_expression_bodied_local_functions = true:suggestion
+
+# Modern language features — high-value, mostly auto-fixable; staged at suggestion
+# until the tree is confirmed clean, then ratcheted in the analyzer pass.
+csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
+csharp_style_pattern_matching_over_as_with_null_check = true:suggestion
+csharp_style_prefer_switch_expression = true:suggestion
+csharp_style_prefer_pattern_matching = true:suggestion
+csharp_style_prefer_not_pattern = true:suggestion
+csharp_style_inlined_variable_declaration = true:suggestion
+csharp_style_deconstructed_variable_declaration = true:suggestion
+csharp_prefer_simple_default_expression = true:suggestion
+csharp_style_prefer_index_operator = true:suggestion
+csharp_style_prefer_range_operator = true:suggestion
+csharp_style_throw_expression = true:suggestion
+csharp_style_conditional_delegate_call = true:suggestion
+csharp_prefer_braces = true:suggestion
+csharp_prefer_simple_using_statement = true:suggestion
+csharp_style_prefer_method_group_conversion = true:silent
+csharp_style_prefer_top_level_statements = true:silent
+csharp_style_prefer_primary_constructors = false:suggestion
+
+dotnet_style_object_initializer = true:suggestion
+dotnet_style_collection_initializer = true:suggestion
+dotnet_style_prefer_collection_expression = when_types_loosely_match:suggestion
+dotnet_style_explicit_tuple_names = true:warning
+dotnet_style_prefer_inferred_tuple_names = true:suggestion
+dotnet_style_prefer_inferred_anonymous_type_member_names = true:suggestion
+dotnet_style_prefer_auto_properties = true:suggestion
+dotnet_style_prefer_conditional_expression_over_assignment = true:silent
+dotnet_style_prefer_conditional_expression_over_return = true:silent
+dotnet_style_prefer_compound_assignment = true:suggestion
+dotnet_style_prefer_simplified_interpolation = true:suggestion
+dotnet_style_prefer_simplified_boolean_expressions = true:suggestion
+dotnet_style_coalesce_expression = true:suggestion
+dotnet_style_null_propagation = true:suggestion
+dotnet_style_prefer_is_null_check_over_reference_equality_method = true:suggestion
+
+# Readonly fields — high-value correctness nudge.
+dotnet_style_readonly_field = true:suggestion
+csharp_prefer_static_local_function = true:suggestion
+csharp_style_prefer_readonly_struct = true:suggestion
+
+# Parentheses clarity
+dotnet_style_parentheses_in_arithmetic_binary_operators = always_for_clarity:silent
+dotnet_style_parentheses_in_relational_binary_operators = always_for_clarity:silent
+dotnet_style_parentheses_in_other_binary_operators = always_for_clarity:silent
+dotnet_style_parentheses_in_other_operators = never_if_unnecessary:silent
+
+# Accessibility modifiers — enforced; auto-fixable.
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+
+# Unused usings (IDE0005) — enforced; auto-removed by `dotnet format`. Requires
+# GenerateDocumentationFile=true (set in Directory.Build.props).
+dotnet_diagnostic.IDE0005.severity = warning
+
+# Unnecessary suppression should be visible.
+dotnet_remove_unnecessary_suppression_exclusions = none
+
+# 'using' directive placement — NOT enforced. DotBoxD.Kernels.Compiler intentionally
+# keeps some usings inside its file-scoped namespace so the simple name `Runtime`
+# binds to a static IL-emit helper rather than the `DotBoxD.Kernels.Runtime`
+# namespace. Hoisting those usings (IDE0065 outside_namespace) flips that binding and
+# changes name resolution across the tree, so placement is left at the author's
+# discretion rather than auto-rewritten.
+csharp_using_directive_placement = outside_namespace:silent
+
+#### Naming conventions ####
+# Staged at `suggestion`: renames are not reliably auto-fixed and many symbols are
+# public API. The architecture/convention test enforces the few hard invariants
+# (interface 'I' prefix, async 'Async' suffix) surgically instead.
+
+dotnet_naming_rule.interfaces_should_be_prefixed_with_i.severity = suggestion
+dotnet_naming_rule.interfaces_should_be_prefixed_with_i.symbols = interface_symbols
+dotnet_naming_rule.interfaces_should_be_prefixed_with_i.style = prefix_i_style
+dotnet_naming_symbols.interface_symbols.applicable_kinds = interface
+dotnet_naming_symbols.interface_symbols.applicable_accessibilities = *
+dotnet_naming_style.prefix_i_style.required_prefix = I
+dotnet_naming_style.prefix_i_style.capitalization = pascal_case
+
+dotnet_naming_rule.types_should_be_pascal_case.severity = suggestion
+dotnet_naming_rule.types_should_be_pascal_case.symbols = type_symbols
+dotnet_naming_rule.types_should_be_pascal_case.style = pascal_case_style
+dotnet_naming_symbols.type_symbols.applicable_kinds = class, struct, interface, enum, delegate
+dotnet_naming_symbols.type_symbols.applicable_accessibilities = *
+dotnet_naming_style.pascal_case_style.capitalization = pascal_case
+
+dotnet_naming_rule.constants_should_be_pascal_case.severity = suggestion
+dotnet_naming_rule.constants_should_be_pascal_case.symbols = constant_symbols
+dotnet_naming_rule.constants_should_be_pascal_case.style = pascal_case_style
+dotnet_naming_symbols.constant_symbols.applicable_kinds = field
+dotnet_naming_symbols.constant_symbols.required_modifiers = const
+
+dotnet_naming_rule.private_fields_camel_case.severity = suggestion
+dotnet_naming_rule.private_fields_camel_case.symbols = private_field_symbols
+dotnet_naming_rule.private_fields_camel_case.style = underscore_camel_case_style
+dotnet_naming_symbols.private_field_symbols.applicable_kinds = field
+dotnet_naming_symbols.private_field_symbols.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel_case_style.required_prefix = _
+dotnet_naming_style.underscore_camel_case_style.capitalization = camel_case
+
+# ---------------------------------------------------------------------------
+# Third-party analyzer severities (Roslynator + Meziantou)
+#
+# Adoption policy under warnings-as-errors: high-value correctness/security rules
+# are ENFORCED (warning => CI build error) and fixed tree-wide; opinionated or
+# high-churn rules are DISABLED with a rationale. Parenthetical counts are the
+# tree-wide hit counts measured at adoption time.
+# ---------------------------------------------------------------------------
+
+# -- Disabled: opinionated or not a fit for this codebase --
+dotnet_diagnostic.MA0006.severity = none        # `==` on strings is idiomatic here (2178)
+dotnet_diagnostic.MA0048.severity = none        # multi-type files are intentional; CodeEnforcer governs file org (790)
+dotnet_diagnostic.MA0074.severity = none        # implicit-culture Contains/StartsWith on internal ASCII strings (666)
+dotnet_diagnostic.MA0002.severity = none        # default-comparer dictionaries/sets are intentional (270)
+dotnet_diagnostic.MA0051.severity = none        # method length governed by review + CodeEnforcer file limits (206)
+dotnet_diagnostic.MA0008.severity = none        # StructLayout micro-tuning is not a blanket requirement (88)
+dotnet_diagnostic.RCS1194.severity = none       # domain exceptions carry required context (Diagnostics/Error/Kind/...) and intentionally omit the standard parameterless/(string) constructors (24)
+dotnet_diagnostic.RCS1210.severity = none       # methods intentionally return nullable Task<T>? as a "no work" sentinel; a completed task wrapping null is not equivalent (2)
+dotnet_diagnostic.MA0022.severity = none        # same nullable Task<T>? sentinel as RCS1210; a genuine null from a non-nullable Task<T> is already caught by CS8603 (2)
+dotnet_diagnostic.MA0012.severity = none        # all uses are deliberate BCL-parity throws: BadImageFormatException for malformed IL in the verifier, OutOfMemoryException for over-capacity buffer writers mirroring ArrayBufferWriter<T> (10)
+dotnet_diagnostic.MA0015.severity = none        # the codebase deliberately surfaces the validated property/field name as ParamName for precise diagnostics (verified by tests); MA0015 wants a literal method-parameter name (20)
+
+# -- Suggestion: valuable but high-churn or TFM-conditional; ratchet later --
+dotnet_diagnostic.MA0016.severity = suggestion  # return-type abstraction is case-by-case (20)
+dotnet_diagnostic.MA0099.severity = suggestion  # explicit enum-zero member (74)
+dotnet_diagnostic.MA0158.severity = suggestion  # System.Threading.Lock is net9+, repo multi-targets netstandard2.0/2.1 (62)
+dotnet_diagnostic.MA0097.severity = suggestion  # adding comparison operators to a public comparable type broadens the tracked API baseline; keep that a deliberate design decision, not an automated fix (1)
+
+# -- Enforced correctness / security (analyzers' default `warning`; all violations fixed) --
+# Listed for intent + auditability:
+#   MA0004 ConfigureAwait(false) on library awaits      MA0009 Regex DoS / match timeout
+#   MA0011 parse/TryParse with IFormatProvider          MA0023 Regex ExplicitCapture
+#   MA0025 raise NotSupportedException, not NotImplemented   MA0066 hash-table-friendly keys
+#   MA0084 local does not hide a field                  MA0092 null sender for static events
+#   MA0134 observe async results                        MA0163 UseShellExecute=false when redirecting
+#   RCS1075 no empty catch of System.Exception
+dotnet_diagnostic.MA0004.severity = warning
+dotnet_diagnostic.RCS1075.severity = warning
+
+# ---------------------------------------------------------------------------
+# Generated code — analyzers and style must not run here.
+# ---------------------------------------------------------------------------
+[*.{g,i,designer,generated}.cs]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none
+
+[*.g.cs]
+generated_code = true
+
+# ---------------------------------------------------------------------------
+# Tests / benchmarks / samples / tools — relax rules that do not apply outside
+# shipping library code (kept as the analyzer pass adds the package severities).
+# ---------------------------------------------------------------------------
+# Rules that only matter for shipping library code are silenced here; correctness
+# rules (MA0015, MA0084, MA0134, RCS1075, RCS1194, ...) stay enforced everywhere.
+[{tests,benchmarks,samples,tools}/**/*.cs]
+dotnet_diagnostic.CA1707.severity = none        # underscores in test/sample identifiers
+dotnet_diagnostic.MA0004.severity = none        # ConfigureAwait: no SynchronizationContext to capture in tests/tools
+dotnet_diagnostic.MA0011.severity = none        # culture-invariant parsing of in-repo literals
+dotnet_diagnostic.MA0009.severity = none        # regexes here run on controlled, in-repo inputs
+
+[tests/**/*.cs]
+dotnet_diagnostic.IDE1006.severity = none

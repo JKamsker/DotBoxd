@@ -33,7 +33,8 @@ internal static class BindingRegistryValidator
     };
 
     private static readonly IReadOnlyDictionary<string, SandboxEffect> BuiltInCapabilityEffects =
-        new Dictionary<string, SandboxEffect>(StringComparer.Ordinal) {
+        new Dictionary<string, SandboxEffect>(StringComparer.Ordinal)
+        {
             ["file.read"] = SandboxEffect.FileRead,
             ["file.write"] = SandboxEffect.FileWrite,
             ["time.now"] = SandboxEffect.Time,
@@ -317,7 +318,8 @@ internal static class BindingRegistryValidator
 
     private static void ValidateDirectCompiledSignature(BindingDescriptor binding, List<SandboxDiagnostic> diagnostics)
     {
-        if (binding.Compiled.Method == GenericBindingStub) { return; }
+        if (binding.Compiled.Method == GenericBindingStub)
+        { return; }
 
         var expected = DirectCompiledSignature(binding.Compiled.Method);
         if (!binding.ReturnType.Equals(expected.Return) ||
@@ -338,7 +340,8 @@ internal static class BindingRegistryValidator
     }
 
     private static (SandboxType Return, SandboxType[] Parameters) DirectCompiledSignature(string method)
-        => method switch {
+        => method switch
+        {
             "Int32ToStringInvariant" => (SandboxType.String, [SandboxType.I32]),
             "StringLength" => (SandboxType.I32, [SandboxType.String]),
             "ConcatString" => (SandboxType.String, [SandboxType.String, SandboxType.String]),

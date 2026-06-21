@@ -5,7 +5,6 @@ namespace DotBoxD.Kernels.Runtime;
 
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
-using DotBoxD.Kernels;
 
 internal static partial class SafeFileNoFollow
 {

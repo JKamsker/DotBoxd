@@ -14,13 +14,15 @@ internal static class PluginKernelModelFactory
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (context.TargetSymbol is not INamedTypeSymbol type ||
-            context.TargetNode is not ClassDeclarationSyntax declaration) {
+            context.TargetNode is not ClassDeclarationSyntax declaration)
+        {
             return null;
         }
 
         var pluginId = PluginSymbolReader.PluginId(context.Attributes) ?? KernelId(type.Name);
         var eventTypes = PluginSymbolReader.EventTypes(type);
-        if (string.IsNullOrWhiteSpace(pluginId)) {
+        if (string.IsNullOrWhiteSpace(pluginId))
+        {
             var diagnostic = PluginKernelDiagnostic.Create(
                 declaration.Identifier,
                 "Plugin id must be a non-empty string.");
@@ -265,8 +267,10 @@ internal static class PluginKernelModelFactory
 
     private static bool ContainsUnsupported(EquatableArray<EventPropertyModel> eventProperties)
     {
-        for (var i = 0; i < eventProperties.Count; i++) {
-            if (eventProperties[i].Type == DotBoxDGenerationNames.ManifestTypes.Unsupported) {
+        for (var i = 0; i < eventProperties.Count; i++)
+        {
+            if (eventProperties[i].Type == DotBoxDGenerationNames.ManifestTypes.Unsupported)
+            {
                 return true;
             }
         }
@@ -276,8 +280,10 @@ internal static class PluginKernelModelFactory
 
     private static bool ContainsUnsupported(EquatableArray<LiveSettingModel> liveSettings)
     {
-        for (var i = 0; i < liveSettings.Count; i++) {
-            if (liveSettings[i].Type == DotBoxDGenerationNames.ManifestTypes.Unsupported) {
+        for (var i = 0; i < liveSettings.Count; i++)
+        {
+            if (liveSettings[i].Type == DotBoxDGenerationNames.ManifestTypes.Unsupported)
+            {
                 return true;
             }
         }

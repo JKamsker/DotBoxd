@@ -21,7 +21,8 @@ public sealed class PluginEventAdapterRegistry
 
     public IPluginEventAdapter<TEvent> Resolve<TEvent>()
     {
-        if (_adapters.TryGetValue(typeof(TEvent), out var registered)) {
+        if (_adapters.TryGetValue(typeof(TEvent), out var registered))
+        {
             return (IPluginEventAdapter<TEvent>)registered.Adapter;
         }
 
@@ -51,8 +52,10 @@ public sealed class PluginEventAdapterRegistry
     private static IPluginEventAdapter<TEvent>? TryDiscoverAdapter<TEvent>()
     {
         var adapterType = typeof(IPluginEventAdapter<TEvent>);
-        foreach (var type in typeof(TEvent).Assembly.GetTypes()) {
-            if (type.IsAbstract || !adapterType.IsAssignableFrom(type)) {
+        foreach (var type in typeof(TEvent).Assembly.GetTypes())
+        {
+            if (type.IsAbstract || !adapterType.IsAssignableFrom(type))
+            {
                 continue;
             }
 
@@ -176,7 +179,11 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
             Array.Sort(properties, static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
             foreach (var property in properties)
             {
-                if (property.GetMethod?.IsPublic == true && property.GetIndexParameters().Length == 0)
+                // Skip [IgnoreDataMember] non-wire members (e.g. a lazily-resolved context snapshot): they are
+                // not serialized data, so excluding them here keeps the pushed whole-event record's fields in
+                // lockstep with the analyzer's kernel parameters and the decode-side GetRecordShape.
+                if (property.GetMethod?.IsPublic == true && property.GetIndexParameters().Length == 0 &&
+                    !KernelRpcMarshaller.IsIgnoredMember(property))
                 {
                     yield return property;
                 }

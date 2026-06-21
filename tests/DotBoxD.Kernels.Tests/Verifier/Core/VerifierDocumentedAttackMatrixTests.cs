@@ -34,7 +34,8 @@ public sealed class VerifierDocumentedAttackMatrixTests
     }
 
     private static byte[] ExceptionHandlerAssembly()
-        => VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             var method = DefineExecute(type);
             var local = method.GetILGenerator().DeclareLocal(typeof(SandboxValue));
             var il = method.GetILGenerator();
@@ -84,7 +85,8 @@ public sealed class VerifierDocumentedAttackMatrixTests
     }
 
     private static byte[] ThreadStartAssembly()
-        => VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             var method = DefineExecute(type);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldnull);
@@ -93,7 +95,8 @@ public sealed class VerifierDocumentedAttackMatrixTests
         });
 
     private static byte[] StreamAssembly()
-        => VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             var method = DefineExecute(type);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldnull);
@@ -103,7 +106,8 @@ public sealed class VerifierDocumentedAttackMatrixTests
         });
 
     private static byte[] ServiceProviderAssembly()
-        => VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             var method = DefineExecute(type);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldnull);

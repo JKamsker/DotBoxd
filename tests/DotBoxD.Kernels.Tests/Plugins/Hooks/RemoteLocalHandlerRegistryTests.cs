@@ -15,13 +15,12 @@ public sealed class RemoteLocalHandlerRegistryTests
 {
     private static HookContext Context() => new(new InMemoryPluginMessageSink(), CancellationToken.None);
 
-    // Encodes a CLR value exactly as the server push handler would: marshal to a sandbox value, convert to the
-    // wire IR, then binary-encode.
+    // Encodes a CLR value exactly as the server push handler would: marshal to a sandbox value, then
+    // binary-encode.
     private static byte[] EncodeProjected<T>(T value)
     {
         var sandboxValue = KernelRpcMarshaller.ToSandboxValue(value, typeof(T));
-        var wire = KernelRpcValueConverter.FromSandboxValue(sandboxValue);
-        return KernelRpcBinaryCodec.EncodeValue(wire);
+        return KernelRpcBinaryCodec.EncodeValue(sandboxValue);
     }
 
     [Fact]
@@ -70,6 +69,31 @@ public sealed class RemoteLocalHandlerRegistryTests
         await registry.DispatchAsync("sub-dto", EncodeProjected(new Hit("player-1", 9)), Context());
 
         Assert.Equal(new Hit("player-1", 9), observed);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_can_use_a_generated_raw_payload_decoder()
+    {
+        var registry = new RemoteLocalHandlerRegistry();
+        string? observed = null;
+        byte[]? rawPayload = null;
+        registry.Register(
+            "sub-raw",
+            (string value, HookContext _) =>
+            {
+                observed = value;
+                return ValueTask.CompletedTask;
+            },
+            (Func<ReadOnlyMemory<byte>, string>)(payload =>
+            {
+                rawPayload = payload.ToArray();
+                return "decoded";
+            }));
+
+        await registry.DispatchAsync("sub-raw", new byte[] { 255 }, Context());
+
+        Assert.Equal("decoded", observed);
+        Assert.Equal(new byte[] { 255 }, rawPayload);
     }
 
     [Fact]

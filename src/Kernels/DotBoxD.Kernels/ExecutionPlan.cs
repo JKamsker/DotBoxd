@@ -161,7 +161,8 @@ public sealed class ExecutionPlan
         IReadOnlyDictionary<string, IReadOnlySet<string>> bindingReferences)
     {
         var copy = new Dictionary<string, IReadOnlySet<string>>(bindingReferences.Count, StringComparer.Ordinal);
-        foreach (var item in bindingReferences) {
+        foreach (var item in bindingReferences)
+        {
             copy.Add(item.Key, item.Value.ToFrozenSet(StringComparer.Ordinal));
         }
 

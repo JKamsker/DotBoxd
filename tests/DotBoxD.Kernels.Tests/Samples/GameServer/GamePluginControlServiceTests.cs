@@ -1,7 +1,6 @@
 using System.Reflection;
 using System.Xml.Linq;
 using DotBoxD.Kernels.PluginIpc.Server.Abstractions;
-using DotBoxD.Kernels.PluginLocal;
 using DotBoxD.Plugins;
 using DotBoxD.Plugins.Json;
 using DotBoxD.Plugins.Kernel;

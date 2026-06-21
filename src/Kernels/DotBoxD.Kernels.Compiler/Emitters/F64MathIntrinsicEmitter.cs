@@ -5,7 +5,6 @@ namespace DotBoxD.Kernels.Compiler.Emitters;
 
 using System.Reflection.Emit;
 using DotBoxD.Kernels;
-using DotBoxD.Kernels.Runtime;
 using static DotBoxD.Kernels.Compiler.IlEmitterPrimitives;
 
 internal static class F64MathIntrinsicEmitter
@@ -38,7 +37,8 @@ internal static class F64MathIntrinsicEmitter
 
     private static bool TryGetRawIntrinsic(CallExpression call, IBindingCatalog bindings, out string rawMethod)
     {
-        rawMethod = call.Name switch {
+        rawMethod = call.Name switch
+        {
             "math.sqrt" => nameof(Kernels.Runtime.CompiledRuntime.SqrtF64Raw),
             "math.floor" => nameof(Kernels.Runtime.CompiledRuntime.FloorF64Raw),
             "math.ceil" => nameof(Kernels.Runtime.CompiledRuntime.CeilF64Raw),
@@ -61,7 +61,8 @@ internal static class F64MathIntrinsicEmitter
     }
 
     private static string BoxedMethod(string bindingId)
-        => bindingId switch {
+        => bindingId switch
+        {
             "math.sqrt" => nameof(Kernels.Runtime.CompiledRuntime.SqrtF64),
             "math.floor" => nameof(Kernels.Runtime.CompiledRuntime.FloorF64),
             "math.ceil" => nameof(Kernels.Runtime.CompiledRuntime.CeilF64),
@@ -112,14 +113,16 @@ internal static class I32MathIntrinsicEmitter
         out string rawMethod,
         out int argumentCount)
     {
-        rawMethod = call.Name switch {
+        rawMethod = call.Name switch
+        {
             "math.abs" => nameof(Kernels.Runtime.CompiledRuntime.AbsI32Raw),
             "math.min" => nameof(Kernels.Runtime.CompiledRuntime.MinI32Raw),
             "math.max" => nameof(Kernels.Runtime.CompiledRuntime.MaxI32Raw),
             "math.clamp" => nameof(Kernels.Runtime.CompiledRuntime.ClampI32Raw),
             _ => ""
         };
-        argumentCount = call.Name switch {
+        argumentCount = call.Name switch
+        {
             "math.abs" => 1,
             "math.min" or "math.max" => 2,
             "math.clamp" => 3,
@@ -154,7 +157,8 @@ internal static class I32MathIntrinsicEmitter
     }
 
     private static string BoxedMethod(string bindingId)
-        => bindingId switch {
+        => bindingId switch
+        {
             "math.abs" => nameof(Kernels.Runtime.CompiledRuntime.AbsI32),
             "math.min" => nameof(Kernels.Runtime.CompiledRuntime.MinI32),
             "math.max" => nameof(Kernels.Runtime.CompiledRuntime.MaxI32),

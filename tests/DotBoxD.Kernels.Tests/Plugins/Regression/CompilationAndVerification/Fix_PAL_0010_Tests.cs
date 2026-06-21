@@ -18,7 +18,8 @@ public sealed class Fix_PAL_0010_Tests
     {
         using var root = TempRoot.Create();
 
-        for (var i = 0; i < UniqueKeyCount; i++) {
+        for (var i = 0; i < UniqueKeyCount; i++)
+        {
             var key = SyntheticCacheKey(i);
             await using var entryLock = await PersistentCacheEntryLock.AcquireAsync(
                 root.Path,
@@ -55,16 +56,19 @@ public sealed class Fix_PAL_0010_Tests
                 key,
                 CancellationToken.None);
 
-            lock (gate) {
+            lock (gate)
+            {
                 concurrent++;
-                if (concurrent > maxConcurrent) {
+                if (concurrent > maxConcurrent)
+                {
                     maxConcurrent = concurrent;
                 }
             }
 
             await Task.Delay(5);
 
-            lock (gate) {
+            lock (gate)
+            {
                 concurrent--;
             }
         }
@@ -82,7 +86,8 @@ public sealed class Fix_PAL_0010_Tests
     private static int CountLockFiles(string root)
     {
         var locksDirectory = Path.Combine(root, ".locks");
-        if (!Directory.Exists(locksDirectory)) {
+        if (!Directory.Exists(locksDirectory))
+        {
             return 0;
         }
 
@@ -108,7 +113,8 @@ public sealed class Fix_PAL_0010_Tests
 
         public void Dispose()
         {
-            if (Directory.Exists(Path)) {
+            if (Directory.Exists(Path))
+            {
                 Directory.Delete(Path, recursive: true);
             }
         }

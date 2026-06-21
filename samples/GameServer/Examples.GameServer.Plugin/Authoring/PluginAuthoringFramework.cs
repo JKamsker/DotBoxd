@@ -7,5 +7,5 @@ namespace DotBoxD.Kernels.Game.Plugin.Authoring;
 public static class GamePluginServerHost
 {
     public static string PipeNameFromArgs(string[] args)
-        => args.Length >= 1 ? args[0] : throw new ArgumentException("Usage: <plugin> <named-pipe-name>");
+        => args.Length >= 1 ? args[0] : throw new ArgumentException("Usage: <plugin> <named-pipe-name>", nameof(args));
 }

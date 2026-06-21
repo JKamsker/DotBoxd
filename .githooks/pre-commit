@@ -1,4 +1,44 @@
 #!/usr/bin/env sh
+#
+# DotBoxD pre-commit hook.
+#
+# Auto-formats the staged C# files with `dotnet format` (whitespace, per .editorconfig) and
+# re-stages the result, so commits land already formatted and pass the CI
+# `dotnet format whitespace --verify-no-changes` gate. CodeEnforcer is intentionally NOT run here.
+#
+# Active via core.hooksPath=.githooks, which is auto-configured on build (see Directory.Build.props).
+# That setting lives in the shared git config, so it also covers every git worktree with no
+# per-worktree step. Set DOTBOXD_SKIP_FORMAT_HOOK=1 to bypass for a single commit.
 set -eu
 
-# exec pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/check-csharp-file-lines.ps1
+if [ "${DOTBOXD_SKIP_FORMAT_HOOK:-}" = "1" ]; then
+    exit 0
+fi
+
+# Staged, non-deleted C# files (Added / Copied / Modified / Renamed).
+files=$(git diff --cached --name-only --diff-filter=ACMR -- '*.cs')
+[ -n "$files" ] || exit 0
+
+if ! command -v dotnet >/dev/null 2>&1; then
+    echo "pre-commit: 'dotnet' not found on PATH; skipping C# auto-format (CI still verifies)." >&2
+    exit 0
+fi
+
+cd "$(git rev-parse --show-toplevel)"
+
+# Format only the staged files (scoped + --no-restore keeps it fast). A formatter failure must not
+# block the commit; the CI format gate is the backstop.
+# shellcheck disable=SC2086
+if ! echo $files | xargs dotnet format whitespace DotBoxD.slnx --no-restore --include; then
+    echo "pre-commit: 'dotnet format' failed; committing without auto-format (CI still verifies)." >&2
+    exit 0
+fi
+
+# Re-stage whatever the formatter rewrote (only files that were already staged).
+printf '%s\n' "$files" | while IFS= read -r file; do
+    if [ -n "$file" ] && [ -f "$file" ]; then
+        git add -- "$file"
+    fi
+done
+
+exit 0

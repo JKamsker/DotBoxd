@@ -43,6 +43,7 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-installed-rpc-input
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-kernel-rpc-value-items
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-kernel-rpc-value-list-writer
+dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-kernel-rpc-marshaller-dto
 ```
 
 ## History
@@ -115,6 +116,7 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 | Installed RPC entrypoint input cache | this commit | `--probe-installed-rpc-input` | Cached the resolved server-extension RPC `SandboxFunction` and caller argument count on `InstalledKernel` construction instead of scanning module functions for every invocation. The 200k input-build probe over 512 module functions improved from the legacy scan at 350.9 ms and 6,400,040 B to the cached shape at 1.4 ms and 40 B. |
 | Kernel RPC value indexed read path | this commit | `--probe-kernel-rpc-value-items` | Added read-only `ItemCount`/`GetItem` accessors so generated plugin RPC readers can materialize lists and records without cloning the defensive `Items` array. The 1M 4-field record-read probe improved from the legacy `Items` clone shape at 38.6 ms and 184,000,040 B to indexed reads at 3.2 ms and 40 B; `Items` still returns a copy for public callers. |
 | Kernel RPC generated counted list writers | this commit | `--probe-kernel-rpc-value-list-writer` | Emitted direct `KernelRpcValue[]` fills for counted array/list arguments instead of building a temporary `List<KernelRpcValue>` and calling `ToArray()`. The 1M 4-item `List<int>` write probe improved from 77.1 ms and 584,000,040 B to 43.4 ms and 368,000,040 B; plain `IEnumerable<T>` keeps the foreach fallback. |
+| Kernel RPC anonymous DTO shape factory | this commit | `--probe-kernel-rpc-marshaller-dto` | Cached compiled DTO field getters and constructor factories for `KernelRpcMarshaller` record shapes, and used a single cached DTO-shape lookup for record-valued `FromSandboxValue` calls. The 500k anonymous `{ Guid Id, string Zone }` reconstruction probe improved from a cached-reflection constructor baseline at 90.0 ms and 56,000,040 B to the compiled shape path at 71.5 ms and 20,000,040 B. |
 
 Versioning note for the two-argument binding fast path: `CallBinding2` and `ChargeValueArray`
 are public generated-code ABI on `CompiledRuntime` for the same reason as the existing facade
@@ -759,3 +761,144 @@ dedicated pass rather than a context-tail hand-edit.
 
 Each remaining combinatorial cell is at worst the general path's per-node metering (compiled, ~20x for f64 due
 to the finiteness branches) or, where an interpreter runner is missing, boxing — both already characterized.
+
+## Anonymous RunLocal terminal decode
+
+Added coverage for terminal anonymous-object `RunLocal` projections to the run-local push probe. The attempted
+`UnsafeAccessorTypeAttribute` path is not a safe general source-generator strategy here: Roslyn does not expose
+the compiler-generated anonymous metadata name before emit, and generic `UnsafeAccessor` constructor targets
+resolve to the canonical generic parameter rather than the closed anonymous type. The generator now emits the
+same anonymous-object literal shape directly and casts through `TProjected`; C# unifies anonymous types with the
+same property names, types, and order inside the assembly.
+
+Command:
+
+```text
+dotnet run --project benchmarks\DotBoxD.Kernels.Benchmarks\DotBoxD.Kernels.Benchmarks.csproj -c Release -- --probe-runlocal-push
+```
+
+Representative local run, 200k measured iterations:
+
+```text
+Case          Half          ms      B/op
+AnonymousDto  decode       83.3    312.0
+AnonymousDto  decode-gen   52.9    200.0
+```
+
+The generated anonymous decoder removes the `SandboxValue` fallback path for this shape: about 36% less decode
+time and 112 fewer bytes/op in this probe run.
+
+## Runtime RunLocal fallback direct KernelRpcValue decode
+
+Changed `RemoteLocalHandlerRegistry`'s 2-arg registration path from `KernelRpcValue -> SandboxValue ->
+KernelRpcMarshaller.FromSandboxValue` to a direct `KernelRpcValue -> CLR` marshaller. DTO constructor shapes use
+the same cached `RecordShape` metadata and now compile a `KernelRpcValue` constructor delegate alongside the
+existing `SandboxValue` delegate.
+
+Command:
+
+```text
+dotnet run --project benchmarks\DotBoxD.Kernels.Benchmarks\DotBoxD.Kernels.Benchmarks.csproj -c Release -- --probe-runlocal-push
+```
+
+Representative local run, 200k measured iterations. The "before" values are the previous ledger run for the
+2-arg fallback decode half; "after" is after direct `KernelRpcValue` fallback decode:
+
+```text
+Case          Before ms/Bop    After ms/Bop
+Int32          55.1 /  24.0     27.3 /  24.0
+String         77.0 /  64.0     33.0 /  40.0
+Enum           59.9 /  24.0     30.7 /  24.0
+ListInt32     305.3 / 480.0     92.4 / 336.0
+Dto           188.8 / 312.0     61.9 / 200.0
+AnonymousDto   83.3 / 312.0     81.3 / 200.0
+WholeEvent     68.8 / 416.0     81.9 / 288.0
+```
+
+The direct fallback removes the `SandboxValue` graph from 2-arg dispatch. DTO/anonymous fallback allocation now
+matches the generated decoder's intrinsic object/string cost in this probe; wall-clock remains noisier for the
+wider record rows, but the allocation reduction is stable.
+
+## Generated RunLocal direct binary decode
+
+Generated local-chain interceptors now pass `ReadProjectedPayload(ReadOnlyMemory<byte>)` instead of
+`ReadProjected(KernelRpcValue)` when a reflection-free decoder is available. The generated package still emits
+the `KernelRpcValue` reader for compatibility/tests, but dispatch no longer materializes the intermediate
+`KernelRpcValue` tree. A public low-level `KernelRpcPayloadReader` is exposed for generated code only
+(`EditorBrowsable(Never)`).
+
+Command:
+
+```text
+dotnet run --project benchmarks\DotBoxD.Kernels.Benchmarks\DotBoxD.Kernels.Benchmarks.csproj -c Release -- --probe-runlocal-push
+```
+
+Representative local run, 200k measured iterations. The "before" values are the previous generated decode
+half after the direct runtime fallback commit; "after" is the generated raw-payload decoder:
+
+```text
+Case          Before ms/Bop    After ms/Bop
+Int32          23.0 /   0.0     19.8 /   0.0
+String         29.4 /  40.0     26.7 /  40.0
+Enum           23.1 /   0.0     21.6 /   0.0
+ListInt32      58.4 / 264.0     35.2 /  72.0
+Dto            49.0 / 200.0     35.5 /  64.0
+AnonymousDto   70.6 / 200.0     38.4 /  64.0
+WholeEvent     66.7 / 288.0     35.6 /  40.0
+```
+
+The remaining generated decode allocation is now the intrinsic CLR result cost: strings, lists, and DTO objects,
+not the intermediate wire tree.
+
+## RunLocal direct SandboxValue binary encode
+
+The server-side push path now encodes `SandboxValue` straight into the binary payload instead of first building
+a parallel `KernelRpcValue` graph. The old `KernelRpcValue` route remains for compatibility and is used as a
+byte-for-byte parity oracle in codec tests.
+
+Command:
+
+```text
+dotnet run --project benchmarks\DotBoxD.Kernels.Benchmarks\DotBoxD.Kernels.Benchmarks.csproj -c Release -- --probe-runlocal-push
+```
+
+Representative local run, 200k measured iterations. The "before" values are the encode half after generated
+direct binary decode; "after" is direct `SandboxValue` encode:
+
+```text
+Case          Before ms/Bop    After ms/Bop
+Int32          12.0 /   0.0      8.2 /   0.0
+String         20.1 /   0.0     17.9 /   0.0
+Enum           13.2 /   0.0      8.3 /   0.0
+ListInt32      78.6 / 192.0     52.2 /   0.0
+Dto            65.2 / 136.0     44.2 /   0.0
+AnonymousDto   64.1 / 136.0     44.1 /   0.0
+WholeEvent     91.0 / 248.0     58.5 /   0.0
+```
+
+This removes the encode-side intermediate wire tree. Scalar rows were already allocation-free; record and list
+pushes now are too.
+
+## Compiled setter DTO fallback
+
+DTOs without a matching constructor used the fallback path: build an `object?[]`, call `Activator.CreateInstance`,
+then set every property through `PropertyInfo.SetValue`. `RecordShape` now compiles a parameterless
+object-initializer factory for public settable DTOs, using the same direct scalar readers as constructor DTOs.
+Shapes without a public parameterless constructor or public setters keep the old fallback.
+
+Command:
+
+```text
+dotnet run --project benchmarks\DotBoxD.Kernels.Benchmarks\DotBoxD.Kernels.Benchmarks.csproj -c Release -- --probe-kernel-rpc-marshaller-dto
+```
+
+Representative local run, 500k measured iterations. The "before" settable row is the same probe after adding
+the settable DTO case but before the compiled setter factory; "after" is the compiled setter factory:
+
+```text
+Case                         Before ms/Bop    After ms/Bop
+Settable DTO fallback         178.7 / 96.0     69.8 / 32.0
+```
+
+The remaining allocation is the DTO object itself. Constructor-backed anonymous DTO rows stayed in the same
+range (about 75 ms and 40 B/op), which confirms the shared field-reader refactor did not regress that path.

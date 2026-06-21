@@ -18,7 +18,8 @@ internal static class GeneratedNameVerifier
         if (ns == GeneratedNamespace &&
             name.StartsWith(GeneratedTypePrefix, StringComparison.Ordinal) &&
             name.Length == GeneratedTypePrefix.Length + 16 &&
-            name[GeneratedTypePrefix.Length..].All(IsLowerHex)) {
+            name[GeneratedTypePrefix.Length..].All(IsLowerHex))
+        {
             return;
         }
 

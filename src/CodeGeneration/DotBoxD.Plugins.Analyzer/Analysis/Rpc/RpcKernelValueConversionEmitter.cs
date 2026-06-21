@@ -31,6 +31,8 @@ internal sealed partial class RpcKernelValueConversionEmitter
             SpecialType.System_Int32 => $"global::DotBoxD.Plugins.KernelRpcValue.Int32({expression})",
             SpecialType.System_Int64 => $"global::DotBoxD.Plugins.KernelRpcValue.Int64({expression})",
             SpecialType.System_Double => $"global::DotBoxD.Plugins.KernelRpcValue.Double({expression})",
+            // float widens losslessly to the wire's only floating kind (F64); read narrows it back.
+            SpecialType.System_Single => $"global::DotBoxD.Plugins.KernelRpcValue.Double({expression})",
             SpecialType.System_String => $"global::DotBoxD.Plugins.KernelRpcValue.String({expression})",
             _ => WriteComplexExpression(type, expression)
         };
@@ -43,6 +45,7 @@ internal sealed partial class RpcKernelValueConversionEmitter
             SpecialType.System_Int32 => $"{expression}.Int32Value",
             SpecialType.System_Int64 => $"{expression}.Int64Value",
             SpecialType.System_Double => $"{expression}.DoubleValue",
+            SpecialType.System_Single => $"(float){expression}.DoubleValue",
             SpecialType.System_String => $"{expression}.TextValue",
             _ => ReadComplexExpression(type, expression)
         };

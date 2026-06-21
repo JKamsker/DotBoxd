@@ -30,7 +30,8 @@ public sealed class PluginAnalyzerStringConcatTests
     public async Task Generated_should_handle_executes_string_concat_in_compiled_mode()
     {
         var package = CreatePackage();
-        var host = SandboxHost.Create(builder => {
+        var host = SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.AddPluginMessageBindings(new InMemoryPluginMessageSink());
             builder.UseInterpreter();

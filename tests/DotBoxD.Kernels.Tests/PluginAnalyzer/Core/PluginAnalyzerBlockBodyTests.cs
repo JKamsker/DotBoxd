@@ -104,7 +104,8 @@ public sealed class PluginAnalyzerBlockBodyTests
         BodyShape shape)
     {
         var package = CreatePackage(shape);
-        var host = SandboxHost.Create(builder => {
+        var host = SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.AddPluginMessageBindings(new InMemoryPluginMessageSink());
             builder.UseInterpreter();
@@ -126,7 +127,8 @@ public sealed class PluginAnalyzerBlockBodyTests
     }
 
     private static PluginPackage CreatePackage(BodyShape shape)
-        => PluginAnalyzerGeneratedPackageFactory.Create(shape switch {
+        => PluginAnalyzerGeneratedPackageFactory.Create(shape switch
+        {
             BodyShape.IfElse => IfElseSource,
             BodyShape.GuardReturn => GuardReturnSource,
             BodyShape.MultiGuardReturn => MultiGuardReturnSource,

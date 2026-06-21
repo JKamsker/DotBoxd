@@ -309,7 +309,8 @@ internal sealed partial class InterpreterFrame
 
         // Parameters occupy the leading slots in declaration order (see
         // FunctionFrameLayout.Build), so positional arguments map directly.
-        for (var i = 0; i < function.Parameters.Count; i++) {
+        for (var i = 0; i < function.Parameters.Count; i++)
+        {
             if (layout.IsI32Slot(i))
             {
                 i32Slots[i] = ((I32Value)args[i]).Value;

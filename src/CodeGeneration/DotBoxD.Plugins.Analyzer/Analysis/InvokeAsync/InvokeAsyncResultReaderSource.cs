@@ -31,6 +31,7 @@ internal sealed class InvokeAsyncResultReaderSource
             SpecialType.System_Int32 => $"{expression}.Int32Value",
             SpecialType.System_Int64 => $"{expression}.Int64Value",
             SpecialType.System_Double => $"{expression}.DoubleValue",
+            SpecialType.System_Single => $"(float){expression}.DoubleValue",
             SpecialType.System_String => $"{expression}.TextValue",
             _ => ReadComplexExpression(type, expression)
         };
@@ -126,19 +127,19 @@ internal sealed class InvokeAsyncResultReaderSource
         return method;
     }
 
-    private List<string> DtoConstructorArguments(IReadOnlyList<IPropertySymbol> fields, IMethodSymbol constructor)
+    private List<string> DtoConstructorArguments(IReadOnlyList<RecordMember> fields, IMethodSymbol constructor)
     {
         var arguments = new List<string>(constructor.Parameters.Length);
         foreach (var parameter in constructor.Parameters)
         {
-            var fieldIndex = FieldIndex(fields, parameter.Name);
+            var fieldIndex = RpcDtoFieldMatcher.FieldIndex(fields, parameter);
             arguments.Add(ReadExpression(fields[fieldIndex].Type, "value.GetItem(" + fieldIndex + ")"));
         }
 
         return arguments;
     }
 
-    private static IMethodSymbol ResolveConstructor(INamedTypeSymbol type, IReadOnlyList<IPropertySymbol> fields)
+    private static IMethodSymbol ResolveConstructor(INamedTypeSymbol type, IReadOnlyList<RecordMember> fields)
     {
         foreach (var constructor in type.InstanceConstructors)
         {
@@ -147,7 +148,21 @@ internal sealed class InvokeAsyncResultReaderSource
                 continue;
             }
 
-            if (constructor.Parameters.All(parameter => FieldIndex(fields, parameter.Name) >= 0))
+            var matched = true;
+            var assigned = new bool[fields.Count];
+            foreach (var parameter in constructor.Parameters)
+            {
+                var fieldIndex = RpcDtoFieldMatcher.FieldIndex(fields, parameter);
+                if (fieldIndex < 0 || assigned[fieldIndex])
+                {
+                    matched = false;
+                    break;
+                }
+
+                assigned[fieldIndex] = true;
+            }
+
+            if (matched)
             {
                 return constructor;
             }
@@ -155,19 +170,6 @@ internal sealed class InvokeAsyncResultReaderSource
 
         throw new NotSupportedException(
             $"Server extension DTO '{type.ToDisplayString()}' must expose a constructor matching its public fields.");
-    }
-
-    private static int FieldIndex(IReadOnlyList<IPropertySymbol> fields, string? name)
-    {
-        for (var i = 0; i < fields.Count; i++)
-        {
-            if (string.Equals(fields[i].Name, name, StringComparison.OrdinalIgnoreCase))
-            {
-                return i;
-            }
-        }
-
-        return -1;
     }
 
     private string NextHelperName() => _helperPrefix + _nextHelper++;

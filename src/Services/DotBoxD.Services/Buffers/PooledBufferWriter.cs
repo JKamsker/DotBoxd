@@ -210,6 +210,8 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
         if (required > MaxArrayLength)
         {
             // The request cannot be satisfied by a single array; refuse rather than silently truncate.
+            // OutOfMemoryException mirrors System.Buffers.ArrayBufferWriter<T> for this exact case
+            // (the IBufferWriter<T> contract); covered by Round5_PooledBufferWriterOverflowTests.
             throw new OutOfMemoryException(
                 $"Requested buffer capacity ({required}) exceeds the maximum array length ({MaxArrayLength}).");
         }

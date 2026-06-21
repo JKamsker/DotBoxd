@@ -19,7 +19,8 @@ public sealed class ArithmeticSafetyTests
             """{ "unary": "-", "operand": { "i32": -2147483648 } }"""
         };
         var data = new TheoryData<ExecutionMode, string>();
-        foreach (var expression in cases) {
+        foreach (var expression in cases)
+        {
             data.Add(ExecutionMode.Interpreted, expression);
             data.Add(ExecutionMode.Compiled, expression);
         }

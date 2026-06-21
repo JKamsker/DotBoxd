@@ -90,7 +90,8 @@ public sealed class Fix_CMP_0022_Tests
     }
 
     private static SandboxHost CreateTenantHost()
-        => SandboxHost.Create(builder => {
+        => SandboxHost.Create(builder =>
+        {
             builder.AddBinding(TenantLookupBinding());
             builder.UseInterpreter();
             builder.UseCompilerIfAvailable();

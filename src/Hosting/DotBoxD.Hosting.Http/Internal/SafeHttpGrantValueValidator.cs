@@ -25,7 +25,7 @@ internal static class SafeHttpGrantValueValidator
             host = value[..colon];
             var portText = value[(colon + 1)..];
             if (host.Contains(':') ||
-                !int.TryParse(portText, out var port) ||
+                !int.TryParse(portText, System.Globalization.CultureInfo.InvariantCulture, out var port) ||
                 port is < 1 or > 65_535)
             {
                 return false;

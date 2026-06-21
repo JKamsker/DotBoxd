@@ -92,7 +92,8 @@ public sealed class ImportedHostBehaviorTests
         var host = SandboxTestHost.Create(compiler: true);
         var module = await host.ImportJsonAsync(SumForRangeModule());
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
-        var options = new SandboxExecutionOptions {
+        var options = new SandboxExecutionOptions
+        {
             Mode = mode,
             AllowFallbackToInterpreter = false
         };
@@ -131,7 +132,8 @@ public sealed class ImportedHostBehaviorTests
             plan,
             "main",
             input,
-            new SandboxExecutionOptions {
+            new SandboxExecutionOptions
+            {
                 Mode = mode,
                 AllowFallbackToInterpreter = false
             });

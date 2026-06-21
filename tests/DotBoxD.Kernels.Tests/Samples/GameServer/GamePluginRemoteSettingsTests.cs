@@ -105,7 +105,7 @@ public sealed class GamePluginRemoteSettingsTests
                 return ValueTask.CompletedTask;
             }
 
-            throw new NotImplementedException(targetMethod?.Name);
+            throw new NotSupportedException(targetMethod?.Name);
         }
 
         private void CaptureUpdates(Array updates)

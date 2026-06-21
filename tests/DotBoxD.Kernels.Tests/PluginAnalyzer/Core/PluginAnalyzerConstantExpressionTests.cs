@@ -66,7 +66,8 @@ public sealed class PluginAnalyzerConstantExpressionTests
 
     private static async Task AssertCompiledShouldHandleAsync(PluginPackage package, bool matching)
     {
-        var host = SandboxHost.Create(builder => {
+        var host = SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.AddPluginMessageBindings(new InMemoryPluginMessageSink());
             builder.UseInterpreter();

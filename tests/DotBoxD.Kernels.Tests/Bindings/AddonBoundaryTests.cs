@@ -49,7 +49,8 @@ public sealed class AddonBoundaryTests
     {
         var directory = Path.Combine(RepositoryRoot(), relativeDirectory);
         var files = Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories);
-        foreach (var file in files) {
+        foreach (var file in files)
+        {
             var text = await File.ReadAllTextAsync(file);
             Assert.DoesNotContain(forbiddenToken, text, StringComparison.Ordinal);
         }
@@ -66,7 +67,8 @@ public sealed class AddonBoundaryTests
             .Select(e => e.Attribute("Include")?.Value ?? "")
             .ToArray();
 
-        foreach (var forbidden in ForbiddenAddonReferences) {
+        foreach (var forbidden in ForbiddenAddonReferences)
+        {
             Assert.DoesNotContain(references, reference => reference.Contains(forbidden, StringComparison.Ordinal));
         }
     }
@@ -98,8 +100,10 @@ public sealed class AddonBoundaryTests
     public static TheoryData<string, string> CoreLibraryForbiddenTokens()
     {
         var data = new TheoryData<string, string>();
-        foreach (var directory in CoreLibraryDirectories) {
-            foreach (var token in ForbiddenCoreTokens) {
+        foreach (var directory in CoreLibraryDirectories)
+        {
+            foreach (var token in ForbiddenCoreTokens)
+            {
                 data.Add(directory, token);
             }
         }
@@ -110,7 +114,8 @@ public sealed class AddonBoundaryTests
     public static TheoryData<string> CoreLibraryProjectPaths()
     {
         var data = new TheoryData<string>();
-        foreach (var project in CoreLibraryProjects) {
+        foreach (var project in CoreLibraryProjects)
+        {
             data.Add(project);
         }
 
@@ -123,16 +128,21 @@ public sealed class AddonBoundaryTests
         using var document = await JsonDocument.ParseAsync(stream);
         var dependencyIds = new SortedSet<string>(StringComparer.Ordinal);
 
-        if (document.RootElement.TryGetProperty("targets", out var targets)) {
-            foreach (var target in targets.EnumerateObject()) {
-                foreach (var dependency in target.Value.EnumerateObject()) {
+        if (document.RootElement.TryGetProperty("targets", out var targets))
+        {
+            foreach (var target in targets.EnumerateObject())
+            {
+                foreach (var dependency in target.Value.EnumerateObject())
+                {
                     dependencyIds.Add(ReadDependencyId(dependency.Name));
                 }
             }
         }
 
-        if (document.RootElement.TryGetProperty("libraries", out var libraries)) {
-            foreach (var library in libraries.EnumerateObject()) {
+        if (document.RootElement.TryGetProperty("libraries", out var libraries))
+        {
+            foreach (var library in libraries.EnumerateObject())
+            {
                 dependencyIds.Add(ReadDependencyId(library.Name));
             }
         }
@@ -149,7 +159,8 @@ public sealed class AddonBoundaryTests
     private static string RepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "DotBoxD.slnx"))) {
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "DotBoxD.slnx")))
+        {
             directory = directory.Parent;
         }
 

@@ -101,7 +101,7 @@ internal static class LocalCallbackProjection
         // only when this method's scope exits, i.e. AFTER await push completes and the transport has finished
         // copying the bytes; returning it sooner would alias a buffer the send still reads from.
         using var writer = PooledRpcBufferWriter.Rent();
-        KernelRpcBinaryCodec.EncodeValue(KernelRpcValueConverter.FromSandboxValue(payloadValue), writer);
+        KernelRpcBinaryCodec.EncodeValue(payloadValue, writer);
         await push(subscriptionId, writer.WrittenMemory, context.CancellationToken).ConfigureAwait(false);
     }
 

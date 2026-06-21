@@ -2,7 +2,6 @@ using System.Reflection;
 using DotBoxD.Codecs.MessagePack;
 using DotBoxD.Services.Diagnostics;
 using DotBoxD.Services.Exceptions;
-using DotBoxD.Services.Generated;
 using DotBoxD.Services.Peer;
 using DotBoxD.Services.Server;
 using DotBoxD.Services.Tests.Support;

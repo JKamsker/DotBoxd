@@ -1,4 +1,3 @@
-using DotBoxD.Abstractions;
 using DotBoxD.Plugins;
 using DotBoxD.Plugins.Analyzer.Analysis;
 using Microsoft.CodeAnalysis;

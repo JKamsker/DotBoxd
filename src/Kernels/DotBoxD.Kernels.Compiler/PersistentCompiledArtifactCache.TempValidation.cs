@@ -32,7 +32,8 @@ public sealed partial class PersistentCompiledArtifactCache
         var tempAssembly = await File.ReadAllBytesAsync(Path.Combine(tempPath, "module.dll"), cancellationToken)
             .ConfigureAwait(false);
         var tempHash = Convert.ToHexString(SHA256.HashData(tempAssembly)).ToLowerInvariant();
-        if (!StringComparer.Ordinal.Equals(tempHash, tempManifest.AssemblyHash)) {
+        if (!StringComparer.Ordinal.Equals(tempHash, tempManifest.AssemblyHash))
+        {
             throw new SandboxRuntimeException(new SandboxError(
                 SandboxErrorCode.CacheInvalid,
                 "temporary cache artifact hash does not match manifest"));

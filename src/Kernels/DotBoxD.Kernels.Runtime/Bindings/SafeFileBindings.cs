@@ -16,7 +16,8 @@ public static class SafeFileBindings
         BindingCostModel.Fixed(50),
         AuditLevel.PerResource,
         BindingSafety.ReadOnlyExternal,
-        async (context, args, cancellationToken) => {
+        async (context, args, cancellationToken) =>
+        {
             var text = await SafeFileSystem.ReadTextAsync(context, ((SandboxPathValue)args[0]).Value, cancellationToken)
                 .ConfigureAwait(false);
             return SandboxValue.FromString(text);
@@ -36,7 +37,8 @@ public static class SafeFileBindings
         BindingCostModel.Fixed(50),
         AuditLevel.PerResource,
         BindingSafety.SideEffectingExternal,
-        async (context, args, cancellationToken) => {
+        async (context, args, cancellationToken) =>
+        {
             await SafeFileSystem.WriteTextAsync(
                 context,
                 ((SandboxPathValue)args[0]).Value,

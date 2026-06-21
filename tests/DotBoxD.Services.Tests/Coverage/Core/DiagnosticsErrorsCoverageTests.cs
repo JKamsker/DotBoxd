@@ -56,7 +56,7 @@ public sealed class DiagnosticsErrorsCoverageTests
 
                 Assert.Same(boom, args.Error);
                 Assert.False(string.IsNullOrEmpty(args.Operation));
-                // The event payload's sender is the diagnostics type itself.
+                // RpcDiagnostics raises Error with a null sender on both the normal and retry paths.
             }
             finally
             {

@@ -28,6 +28,9 @@ public enum RunLocalPushCase
     /// <summary>A small DTO record projection (<c>int</c> + <c>string</c>).</summary>
     Dto,
 
+    /// <summary>A terminal anonymous-object projection with the same wire shape as <see cref="Dto"/>.</summary>
+    AnonymousDto,
+
     /// <summary>A whole-event record push (no <c>Select</c>) — several scalar fields.</summary>
     WholeEvent,
 }
@@ -88,6 +91,9 @@ internal sealed class RunLocalPushScenario
                 SandboxType.I32)),
             RunLocalPushCase.Dto => Build(SandboxValue.FromRecord(
                 [SandboxValue.FromInt32(73), SandboxValue.FromString("ogre")])),
+            RunLocalPushCase.AnonymousDto => BuildAnonymous(
+                new { MonsterId = 73, Name = "crypt" },
+                SandboxValue.FromRecord([SandboxValue.FromInt32(73), SandboxValue.FromString("crypt")])),
             RunLocalPushCase.WholeEvent => Build(SandboxValue.FromRecord(
             [
                 SandboxValue.FromInt32(73),
@@ -98,27 +104,31 @@ internal sealed class RunLocalPushScenario
             _ => throw new ArgumentOutOfRangeException(nameof(scenario), scenario, null),
         };
 
-        instance.Register(scenario);
+        if (scenario != RunLocalPushCase.AnonymousDto)
+        {
+            instance.Register(scenario);
+        }
+
         return instance;
     }
 
     /// <summary>
-    /// The server-side encode half exactly as the push path runs it: <c>SandboxValue → KernelRpcValue</c> then
-    /// encode into a reused buffer (no per-call array). Returns the byte count so nothing is allocated to observe.
+    /// The server-side encode half exactly as the push path runs it: encode a sandbox value straight into a
+    /// reused buffer (no per-call array). Returns the byte count so nothing is allocated to observe.
     /// </summary>
     public int Encode()
     {
         _encodeWriter.ResetWrittenCount();
-        KernelRpcBinaryCodec.EncodeValue(KernelRpcValueConverter.FromSandboxValue(Payload), _encodeWriter);
+        KernelRpcBinaryCodec.EncodeValue(Payload, _encodeWriter);
         return _encodeWriter.WrittenCount;
     }
 
-    /// <summary>The client-side decode half via the reflective fallback (SandboxValue graph + reflection).</summary>
+    /// <summary>The client-side decode half via the runtime fallback decoder.</summary>
     public ValueTask DecodeInvokeAsync() => _registry.DispatchAsync(SubscriptionId, Encoded, _context);
 
     /// <summary>
     /// The client-side decode half via the generated reflection-free decoder — the path the plugin generator
-    /// emits for wire-eligible projected types: typed reads off the <c>KernelRpcValue</c>, no <c>SandboxValue</c>.
+    /// emits for wire-eligible projected types: typed reads straight off the binary payload.
     /// </summary>
     public ValueTask DecodeInvokeGeneratedAsync() => _registry.DispatchAsync(GeneratedSubscriptionId, Encoded, _context);
 
@@ -126,17 +136,24 @@ internal sealed class RunLocalPushScenario
     public ValueTask RoundTripAsync()
     {
         _encodeWriter.ResetWrittenCount();
-        KernelRpcBinaryCodec.EncodeValue(KernelRpcValueConverter.FromSandboxValue(Payload), _encodeWriter);
+        KernelRpcBinaryCodec.EncodeValue(Payload, _encodeWriter);
         return _registry.DispatchAsync(SubscriptionId, _encodeWriter.WrittenMemory, _context);
     }
 
     private static RunLocalPushScenario Build(SandboxValue payload) => new(payload);
 
-    private static byte[] Encode(SandboxValue payload)
-        => KernelRpcBinaryCodec.EncodeValue(KernelRpcValueConverter.FromSandboxValue(payload));
+    private static RunLocalPushScenario BuildAnonymous<TProjected>(TProjected sample, SandboxValue payload)
+        where TProjected : class
+    {
+        var instance = Build(payload);
+        instance.RegisterAnonymous(sample);
+        return instance;
+    }
 
-    // Registers the native terminal twice per case: once reflectively (the 2-arg fallback) and once with a
-    // generated-shape decoder (the 3-arg path), so the probe/benchmark can compare the two decode halves. The
+    private static byte[] Encode(SandboxValue payload) => KernelRpcBinaryCodec.EncodeValue(payload);
+
+    // Registers the native terminal twice per case: once through the runtime fallback (the 2-arg overload) and
+    // once with a generated-shape decoder (the 3-arg path), so the probe/benchmark can compare both decode halves. The
     // generated decoders read straight off KernelRpcValue's typed fields — byte-for-byte what
     // RpcKernelValueConversionEmitter emits — so they faithfully model the generator's output.
     private void Register(RunLocalPushCase scenario)
@@ -145,47 +162,121 @@ internal sealed class RunLocalPushScenario
         {
             case RunLocalPushCase.Int32:
                 _registry.Register<int>(SubscriptionId, (value, _) => Accumulate(value));
-                _registry.Register<int>(GeneratedSubscriptionId, (value, _) => Accumulate(value), static v => v.Int32Value);
+                _registry.Register<int>(GeneratedSubscriptionId, (value, _) => Accumulate(value), static payload => ReadInt32Payload(payload));
                 break;
             case RunLocalPushCase.String:
                 _registry.Register<string>(SubscriptionId, (value, _) => Accumulate(value.Length));
-                _registry.Register<string>(GeneratedSubscriptionId, (value, _) => Accumulate(value.Length), static v => v.TextValue);
+                _registry.Register<string>(GeneratedSubscriptionId, (value, _) => Accumulate(value.Length), static payload => ReadStringPayload(payload));
                 break;
             case RunLocalPushCase.Enum:
                 _registry.Register<RunLocalReaction>(SubscriptionId, (value, _) => Accumulate((int)value));
-                _registry.Register<RunLocalReaction>(GeneratedSubscriptionId, (value, _) => Accumulate((int)value), static v => (RunLocalReaction)v.Int32Value);
+                _registry.Register<RunLocalReaction>(GeneratedSubscriptionId, (value, _) => Accumulate((int)value), static payload => ReadReactionPayload(payload));
                 break;
             case RunLocalPushCase.ListInt32:
                 _registry.Register<List<int>>(SubscriptionId, (value, _) => Accumulate(value.Count));
-                _registry.Register<List<int>>(GeneratedSubscriptionId, (value, _) => Accumulate(value.Count), static v => ReadInt32List(v));
+                _registry.Register<List<int>>(GeneratedSubscriptionId, (value, _) => Accumulate(value.Count), static payload => ReadInt32ListPayload(payload));
                 break;
             case RunLocalPushCase.Dto:
                 _registry.Register<RunLocalHit>(SubscriptionId, (value, _) => Accumulate(value.MonsterId));
                 _registry.Register<RunLocalHit>(GeneratedSubscriptionId, (value, _) => Accumulate(value.MonsterId),
-                    static v => new RunLocalHit(v.GetItem(0).Int32Value, v.GetItem(1).TextValue));
+                    static payload => ReadHitPayload(payload));
                 break;
+            case RunLocalPushCase.AnonymousDto:
+                throw new InvalidOperationException("Anonymous projections are registered through their inferred type.");
             case RunLocalPushCase.WholeEvent:
                 _registry.Register<RunLocalMonsterDamaged>(SubscriptionId, (value, _) => Accumulate(value.Damage));
                 _registry.Register<RunLocalMonsterDamaged>(GeneratedSubscriptionId, (value, _) => Accumulate(value.Damage),
-                    static v => new RunLocalMonsterDamaged(
-                        v.GetItem(0).Int32Value, v.GetItem(1).Int32Value, v.GetItem(2).Int64Value, v.GetItem(3).BoolValue));
+                    static payload => ReadMonsterDamagedPayload(payload));
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(scenario), scenario, null);
         }
     }
 
-    private static List<int> ReadInt32List(KernelRpcValue value)
+    private void RegisterAnonymous<TProjected>(TProjected sample)
+        where TProjected : class
     {
-        value.RequireKind(KernelRpcValueKind.List);
-        var count = value.ItemCount;
+        _registry.Register<TProjected>(SubscriptionId, (value, _) => Accumulate(value.GetHashCode()));
+        _registry.Register<TProjected>(
+            GeneratedSubscriptionId,
+            (value, _) => Accumulate(value.GetHashCode()),
+            static payload => ReadAnonymousPayload<TProjected>(payload));
+        GC.KeepAlive(sample);
+    }
+
+    private static int ReadInt32Payload(ReadOnlyMemory<byte> payload)
+    {
+        var reader = new KernelRpcPayloadReader(payload.Span);
+        var result = reader.ReadInt32();
+        reader.EnsureConsumed();
+        return result;
+    }
+
+    private static string ReadStringPayload(ReadOnlyMemory<byte> payload)
+    {
+        var reader = new KernelRpcPayloadReader(payload.Span);
+        var result = reader.ReadString();
+        reader.EnsureConsumed();
+        return result;
+    }
+
+    private static RunLocalReaction ReadReactionPayload(ReadOnlyMemory<byte> payload)
+    {
+        var reader = new KernelRpcPayloadReader(payload.Span);
+        var result = (RunLocalReaction)reader.ReadInt32();
+        reader.EnsureConsumed();
+        return result;
+    }
+
+    private static List<int> ReadInt32ListPayload(ReadOnlyMemory<byte> payload)
+    {
+        var reader = new KernelRpcPayloadReader(payload.Span);
+        var count = reader.ReadListHeader();
         var result = new List<int>(count);
         for (var i = 0; i < count; i++)
         {
-            result.Add(value.GetItem(i).Int32Value);
+            result.Add(reader.ReadInt32());
         }
 
+        reader.EnsureConsumed();
         return result;
+    }
+
+    private static RunLocalHit ReadHitPayload(ReadOnlyMemory<byte> payload)
+    {
+        var reader = new KernelRpcPayloadReader(payload.Span);
+        RequireRecordFields(ref reader, 2);
+        var result = new RunLocalHit(reader.ReadInt32(), reader.ReadString());
+        reader.EnsureConsumed();
+        return result;
+    }
+
+    private static RunLocalMonsterDamaged ReadMonsterDamagedPayload(ReadOnlyMemory<byte> payload)
+    {
+        var reader = new KernelRpcPayloadReader(payload.Span);
+        RequireRecordFields(ref reader, 4);
+        var result = new RunLocalMonsterDamaged(
+            reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt64(), reader.ReadBool());
+        reader.EnsureConsumed();
+        return result;
+    }
+
+    private static TProjected ReadAnonymousPayload<TProjected>(ReadOnlyMemory<byte> payload)
+        where TProjected : class
+    {
+        var reader = new KernelRpcPayloadReader(payload.Span);
+        RequireRecordFields(ref reader, 2);
+        var result = (TProjected)(object)new { MonsterId = reader.ReadInt32(), Name = reader.ReadString() };
+        reader.EnsureConsumed();
+        return result;
+    }
+
+    private static void RequireRecordFields(ref KernelRpcPayloadReader reader, int expected)
+    {
+        if (reader.ReadRecordHeader() != expected)
+        {
+            throw new NotSupportedException("Benchmark projection field count changed.");
+        }
     }
 
     private ValueTask Accumulate(long value)

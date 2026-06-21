@@ -87,7 +87,7 @@
       "properties": {
         "op": {
           "type": "string",
-          "enum": ["set", "return", "expr", "if", "while", "forRange"]
+          "enum": ["set", "return", "expr", "if", "while", "forRange", "continue", "break"]
         }
       },
       "oneOf": [
@@ -144,6 +144,20 @@
             "start": { "$ref": "#/$defs/expression" },
             "end": { "$ref": "#/$defs/expression" },
             "body": { "type": "array", "items": { "$ref": "#/$defs/statement" } }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op"],
+          "properties": {
+            "op": { "const": "continue" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op"],
+          "properties": {
+            "op": { "const": "break" }
           }
         }
       ]

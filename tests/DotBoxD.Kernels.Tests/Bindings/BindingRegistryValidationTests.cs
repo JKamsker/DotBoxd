@@ -1,10 +1,9 @@
-using DotBoxD.Hosting.Execution;
 using DotBoxD.Hosting.Http.Bindings;
 using DotBoxD.Hosting.Http.Hosting;
 using DotBoxD.Kernels.Bindings;
 using DotBoxD.Kernels.Model;
-using DotBoxD.Kernels.Runtime.Bindings;
 using DotBoxD.Kernels.Runtime;
+using DotBoxD.Kernels.Runtime.Bindings;
 using DotBoxD.Kernels.Sandbox;
 
 namespace DotBoxD.Kernels.Tests.Bindings;
@@ -193,7 +192,8 @@ public sealed class BindingRegistryValidationTests
             .Build();
 
         Assert.NotEmpty(registry.Signatures);
-        Assert.All(registry.Signatures, binding => {
+        Assert.All(registry.Signatures, binding =>
+        {
             Assert.Equal("RuntimeStub", binding.Compiled.Kind);
             Assert.Equal(typeof(CompiledRuntime).FullName, binding.Compiled.Type);
         });

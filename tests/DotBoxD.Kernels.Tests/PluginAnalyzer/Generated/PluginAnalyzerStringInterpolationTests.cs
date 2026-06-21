@@ -106,7 +106,8 @@ public sealed class PluginAnalyzerStringInterpolationTests
         string damageType,
         bool expected)
     {
-        var host = SandboxHost.Create(builder => {
+        var host = SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.AddPluginMessageBindings(new InMemoryPluginMessageSink());
             builder.UseInterpreter();

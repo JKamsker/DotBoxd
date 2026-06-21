@@ -99,7 +99,8 @@ public sealed class SandboxHostBuilder
     internal SandboxHost Build()
     {
         _interpreter ??= new SandboxInterpreter();
-        if (_useCompiler) {
+        if (_useCompiler)
+        {
             _compiler ??= CreateDefaultCompiler();
         }
 

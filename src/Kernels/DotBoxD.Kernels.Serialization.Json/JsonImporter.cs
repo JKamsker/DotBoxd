@@ -82,7 +82,8 @@ public static class JsonImporter
 
         RequireArray(array, "capabilityRequests");
         var requests = AllocateArray<CapabilityRequest>(array, out var count);
-        if (count == 0) {
+        if (count == 0)
+        {
             return requests;
         }
 
@@ -100,7 +101,8 @@ public static class JsonImporter
     {
         var array = RequiredArray(module, "functions");
         var functions = AllocateArray<SandboxFunction>(array, out var count);
-        if (count == 0) {
+        if (count == 0)
+        {
             return functions;
         }
 
@@ -140,7 +142,8 @@ public static class JsonImporter
 
         RequireArray(array, "parameters");
         var parameters = AllocateArray<Parameter>(array, out var count);
-        if (count == 0) {
+        if (count == 0)
+        {
             return parameters;
         }
 
@@ -159,7 +162,8 @@ public static class JsonImporter
     private static IReadOnlyList<Statement> ReadStatements(JsonElement array, JsonSourceMap source)
     {
         var statements = AllocateArray<Statement>(array, out var count);
-        if (count == 0) {
+        if (count == 0)
+        {
             return statements;
         }
 
@@ -184,8 +188,22 @@ public static class JsonImporter
             "if" => ReadIfStatement(element, source),
             "while" => ReadWhileStatement(element, source),
             "forRange" => ReadForRangeStatement(element, source),
+            "continue" => ReadContinueStatement(element, source),
+            "break" => ReadBreakStatement(element, source),
             _ => throw Error("E-JSON-STATEMENT", $"unknown statement op '{op}'")
         };
+    }
+
+    private static ContinueStatement ReadContinueStatement(JsonElement element, JsonSourceMap source)
+    {
+        RequireAllowedProperties(element, "continue statement", ["op"]);
+        return new ContinueStatement(source.SpanFor(element));
+    }
+
+    private static BreakStatement ReadBreakStatement(JsonElement element, JsonSourceMap source)
+    {
+        RequireAllowedProperties(element, "break statement", ["op"]);
+        return new BreakStatement(source.SpanFor(element));
     }
 
     private static AssignmentStatement ReadSetStatement(JsonElement element, JsonSourceMap source)

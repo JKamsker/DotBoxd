@@ -4,8 +4,8 @@ using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Tests.Plugins.Rpc;
 using DotBoxD.Plugins;
-using DotBoxD.Plugins.Runtime;
 using DotBoxD.Plugins.Policies;
+using DotBoxD.Plugins.Runtime;
 
 namespace DotBoxD.Kernels.Tests.Plugins;
 
@@ -122,7 +122,8 @@ public sealed class PluginOwnershipTests
             }
 
             var disposeStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            dispose = Task.Run(() => {
+            dispose = Task.Run(() =>
+            {
                 disposeStarted.SetResult();
                 session.Dispose();
             });

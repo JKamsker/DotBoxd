@@ -9,7 +9,8 @@ public static class EntrypointBinder
     {
         ValidateInputShape(input, function.Parameters.Count);
         var args = new SandboxValue[function.Parameters.Count];
-        for (var i = 0; i < args.Length; i++) {
+        for (var i = 0; i < args.Length; i++)
+        {
             args[i] = GetArgument(input, i, args.Length, function.Parameters[i].Type);
         }
 
@@ -18,16 +19,19 @@ public static class EntrypointBinder
 
     public static void ValidateInputShape(SandboxValue input, int parameterCount)
     {
-        if (parameterCount == 0) {
+        if (parameterCount == 0)
+        {
             RequireType(input, SandboxType.Unit, "entrypoint input argument mismatch");
             return;
         }
 
-        if (parameterCount == 1) {
+        if (parameterCount == 1)
+        {
             return;
         }
 
-        if (input is not ListValue list || list.Values.Count != parameterCount) {
+        if (input is not ListValue list || list.Values.Count != parameterCount)
+        {
             throw InvalidInput("entrypoint input argument mismatch");
         }
     }
@@ -38,7 +42,8 @@ public static class EntrypointBinder
         int parameterCount,
         SandboxType expectedType)
     {
-        if (index < 0 || index >= parameterCount) {
+        if (index < 0 || index >= parameterCount)
+        {
             throw InvalidInput("entrypoint input argument mismatch");
         }
 

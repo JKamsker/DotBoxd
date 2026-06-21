@@ -44,13 +44,17 @@ public sealed class LiveValue<T> : ICoercibleLiveSetting
 
     public T Value
     {
-        get {
-            lock (_gate) {
+        get
+        {
+            lock (_gate)
+            {
                 return _value;
             }
         }
-        set {
-            lock (_gate) {
+        set
+        {
+            lock (_gate)
+            {
                 _value = value;
             }
         }
@@ -85,7 +89,8 @@ public sealed class LiveSettingStore
     {
         ArgumentNullException.ThrowIfNull(settings);
         _settings = new Dictionary<string, ILiveSetting>(StringComparer.Ordinal);
-        foreach (var setting in settings) {
+        foreach (var setting in settings)
+        {
             _settings.Add(setting.Name, setting);
         }
     }
@@ -95,10 +100,12 @@ public sealed class LiveSettingStore
 
     public IReadOnlyList<LiveSettingDefinition> Definitions
     {
-        get {
+        get
+        {
             var definitions = new LiveSettingDefinition[_settings.Count];
             var index = 0;
-            foreach (var setting in _settings.Values) {
+            foreach (var setting in _settings.Values)
+            {
                 definitions[index] = setting.Definition;
                 index++;
             }
@@ -111,7 +118,8 @@ public sealed class LiveSettingStore
 
     public T Get<T>(string name)
     {
-        lock (_gate) {
+        lock (_gate)
+        {
             return _settings.TryGetValue(name, out var setting)
                 ? (T)LiveSettingTypeConverter.CoerceClr(typeof(T), setting.CurrentValue)!
                 : throw new KeyNotFoundException($"Live setting '{name}' is not registered.");
@@ -120,7 +128,8 @@ public sealed class LiveSettingStore
 
     public object? GetObject(string name)
     {
-        lock (_gate) {
+        lock (_gate)
+        {
             return _settings.TryGetValue(name, out var setting)
                 ? setting.CurrentValue
                 : throw new KeyNotFoundException($"Live setting '{name}' is not registered.");
@@ -134,7 +143,8 @@ public sealed class LiveSettingStore
 
     public void SetObject(string name, object? value)
     {
-        lock (_gate) {
+        lock (_gate)
+        {
             // The slot is the single coercion/validation site; hand it the raw caller value
             // so conversion and range checks run exactly once instead of once here and again
             // inside the slot.
@@ -144,27 +154,33 @@ public sealed class LiveSettingStore
 
     public void SetMany(IReadOnlyDictionary<string, object?> values)
     {
-        lock (_gate) {
+        lock (_gate)
+        {
             // Resolve every slot first so an unknown setting fails before any value is applied,
             // preserving the all-or-nothing batch contract.
             var resolved = new (ILiveSetting Setting, object? Value)[values.Count];
             var index = 0;
-            foreach (var item in values) {
+            foreach (var item in values)
+            {
                 resolved[index++] = (Resolve(item.Key), item.Value);
             }
 
             // Coerce and range-validate built-in slots before anything is applied. Foreign slots
             // keep their own single coercion site via SetObject, so they are applied before the
             // built-in commit phase and rolled back best-effort if a later foreign slot fails.
-            for (var i = 0; i < resolved.Length; i++) {
-                if (resolved[i].Setting is ICoercibleLiveSetting coercible) {
+            for (var i = 0; i < resolved.Length; i++)
+            {
+                if (resolved[i].Setting is ICoercibleLiveSetting coercible)
+                {
                     resolved[i] = (coercible, coercible.Coerce(resolved[i].Value));
                 }
             }
 
             ApplyForeignSettings(resolved);
-            foreach (var (setting, value) in resolved) {
-                if (setting is ICoercibleLiveSetting coercible) {
+            foreach (var (setting, value) in resolved)
+            {
+                if (setting is ICoercibleLiveSetting coercible)
+                {
                     coercible.ApplyCoerced(value);
                 }
             }
@@ -174,9 +190,12 @@ public sealed class LiveSettingStore
     private static void ApplyForeignSettings((ILiveSetting Setting, object? Value)[] resolved)
     {
         List<(ILiveSetting Setting, object? Previous)>? applied = null;
-        try {
-            foreach (var (setting, value) in resolved) {
-                if (setting is ICoercibleLiveSetting) {
+        try
+        {
+            foreach (var (setting, value) in resolved)
+            {
+                if (setting is ICoercibleLiveSetting)
+                {
                     continue;
                 }
 
@@ -184,12 +203,19 @@ public sealed class LiveSettingStore
                 applied.Add((setting, setting.CurrentValue));
                 setting.SetObject(value);
             }
-        } catch {
-            if (applied is not null) {
-                for (var i = applied.Count - 1; i >= 0; i--) {
-                    try {
+        }
+        catch
+        {
+            if (applied is not null)
+            {
+                for (var i = applied.Count - 1; i >= 0; i--)
+                {
+                    try
+                    {
                         applied[i].Setting.SetObject(applied[i].Previous);
-                    } catch {
+                    }
+                    catch
+                    {
                         // A foreign slot can reject rollback too; preserve the original failure.
                     }
                 }
@@ -203,7 +229,8 @@ public sealed class LiveSettingStore
 
     internal SandboxValue ToSandboxValue(LiveSettingDefinition setting)
     {
-        lock (_gate) {
+        lock (_gate)
+        {
             return _settings[setting.Name].ToSandboxValue();
         }
     }
@@ -213,8 +240,10 @@ public sealed class LiveSettingStore
         SandboxValue[] destination,
         int destinationIndex)
     {
-        lock (_gate) {
-            for (var i = 0; i < orderedSettings.Count; i++) {
+        lock (_gate)
+        {
+            for (var i = 0; i < orderedSettings.Count; i++)
+            {
                 destination[destinationIndex + i] = _settings[orderedSettings[i].Name].ToSandboxValue();
             }
         }
@@ -222,9 +251,11 @@ public sealed class LiveSettingStore
 
     internal IReadOnlyDictionary<string, object?> ToObjectValues(IReadOnlyList<LiveSettingDefinition> orderedSettings)
     {
-        lock (_gate) {
+        lock (_gate)
+        {
             var values = new Dictionary<string, object?>(orderedSettings.Count, StringComparer.Ordinal);
-            for (var i = 0; i < orderedSettings.Count; i++) {
+            for (var i = 0; i < orderedSettings.Count; i++)
+            {
                 var setting = orderedSettings[i];
                 values.Add(setting.Name, _settings[setting.Name].CurrentValue);
             }
@@ -235,9 +266,11 @@ public sealed class LiveSettingStore
 
     internal LiveSettingStore Copy(IReadOnlyList<LiveSettingDefinition> orderedSettings)
     {
-        lock (_gate) {
+        lock (_gate)
+        {
             var definitions = new LiveSettingDefinition[orderedSettings.Count];
-            for (var i = 0; i < orderedSettings.Count; i++) {
+            for (var i = 0; i < orderedSettings.Count; i++)
+            {
                 var setting = orderedSettings[i];
                 definitions[i] = setting with { DefaultValue = _settings[setting.Name].CurrentValue };
             }
@@ -250,8 +283,10 @@ public sealed class LiveSettingStore
     {
         ArgumentNullException.ThrowIfNull(definitions);
         var settings = new Dictionary<string, ILiveSetting>(StringComparer.Ordinal);
-        foreach (var definition in definitions) {
-            var value = definition.Type switch {
+        foreach (var definition in definitions)
+        {
+            var value = definition.Type switch
+            {
                 PluginManifestNames.LiveSettingTypes.Bool => LiveSettingTypeConverter.CoerceClr(typeof(bool), definition.DefaultValue),
                 PluginManifestNames.LiveSettingTypes.Int => LiveSettingTypeConverter.CoerceClr(typeof(int), definition.DefaultValue),
                 PluginManifestNames.LiveSettingTypes.Long => LiveSettingTypeConverter.CoerceClr(typeof(long), definition.DefaultValue),
@@ -282,8 +317,10 @@ public sealed class LiveSettingStore
 
         public object? CurrentValue
         {
-            get {
-                lock (_gate) {
+            get
+            {
+                lock (_gate)
+                {
                     return _value;
                 }
             }
@@ -291,7 +328,8 @@ public sealed class LiveSettingStore
 
         public SandboxValue ToSandboxValue()
         {
-            lock (_gate) {
+            lock (_gate)
+            {
                 return _sandboxValue ??= LiveSettingTypeConverter.ToSandboxValue(definition.Type, _value);
             }
         }
@@ -301,7 +339,8 @@ public sealed class LiveSettingStore
 
         public object? Coerce(object? value)
         {
-            var coerced = definition.Type switch {
+            var coerced = definition.Type switch
+            {
                 PluginManifestNames.LiveSettingTypes.Bool => LiveSettingTypeConverter.CoerceClr(typeof(bool), value),
                 PluginManifestNames.LiveSettingTypes.Int => LiveSettingTypeConverter.CoerceClr(typeof(int), value),
                 PluginManifestNames.LiveSettingTypes.Long => LiveSettingTypeConverter.CoerceClr(typeof(long), value),
@@ -315,7 +354,8 @@ public sealed class LiveSettingStore
 
         public void ApplyCoerced(object? coercedValue)
         {
-            lock (_gate) {
+            lock (_gate)
+            {
                 _value = coercedValue;
                 _sandboxValue = null;
             }

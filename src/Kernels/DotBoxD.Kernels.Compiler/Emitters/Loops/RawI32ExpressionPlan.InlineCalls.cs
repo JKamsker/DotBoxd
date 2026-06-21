@@ -49,7 +49,8 @@ internal sealed partial class RawI32ExpressionPlan
     }
 
     private static int CountVariableUses(Expression expression, string name)
-        => expression switch {
+        => expression switch
+        {
             VariableExpression variable => string.Equals(variable.Name, name, StringComparison.Ordinal) ? 1 : 0,
             UnaryExpression unary => CountVariableUses(unary.Operand, name),
             BinaryExpression binary => CountVariableUses(binary.Left, name) + CountVariableUses(binary.Right, name),
@@ -61,7 +62,8 @@ internal sealed partial class RawI32ExpressionPlan
         => expression is LiteralExpression { Value: I32Value } or VariableExpression;
 
     private static bool ContainsCall(Expression expression)
-        => expression switch {
+        => expression switch
+        {
             CallExpression => true,
             UnaryExpression unary => ContainsCall(unary.Operand),
             BinaryExpression binary => ContainsCall(binary.Left) || ContainsCall(binary.Right),

@@ -269,7 +269,8 @@ internal static class ReturnTypeClassifier
                 break;
             }
         }
-        if (serviceAttr is null) return false;
+        if (serviceAttr is null)
+            return false;
 
         string serviceName = named.Name;
         foreach (var arg in serviceAttr.NamedArguments)

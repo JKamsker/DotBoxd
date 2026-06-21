@@ -18,9 +18,11 @@ internal sealed class PersistentCacheEntryLock : IAsyncDisposable
         PersistentCompiledArtifactCachePathGuard.ValidateEntryPath(rootDirectory, lockDirectory);
         Directory.CreateDirectory(lockDirectory);
         PersistentCompiledArtifactCachePathGuard.ValidateEntryPath(rootDirectory, lockDirectory);
-        while (true) {
+        while (true)
+        {
             cancellationToken.ThrowIfCancellationRequested();
-            try {
+            try
+            {
                 var stream = new FileStream(
                     path,
                     FileMode.OpenOrCreate,
@@ -30,10 +32,12 @@ internal sealed class PersistentCacheEntryLock : IAsyncDisposable
                     FileOptions.Asynchronous | FileOptions.DeleteOnClose);
                 return new PersistentCacheEntryLock(stream);
             }
-            catch (IOException) {
+            catch (IOException)
+            {
                 await Task.Delay(RetryDelayMilliseconds, cancellationToken).ConfigureAwait(false);
             }
-            catch (UnauthorizedAccessException) {
+            catch (UnauthorizedAccessException)
+            {
                 await Task.Delay(RetryDelayMilliseconds, cancellationToken).ConfigureAwait(false);
             }
         }

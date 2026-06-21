@@ -123,7 +123,9 @@ public sealed class BugFixStressTests
             {
                 var firstAccept = server.AcceptAsync(cts.Token);
                 cts.Cancel();
-                try { await firstAccept.WaitAsync(Timeout); } catch (OperationCanceledException) { }
+                try
+                { await firstAccept.WaitAsync(Timeout); }
+                catch (OperationCanceledException) { }
             }
 
             using var client = new TcpClient();
@@ -133,7 +135,9 @@ public sealed class BugFixStressTests
             IRpcChannel? accepted = null;
             var acceptTask = Task.Run(async () =>
             {
-                try { accepted = await server.AcceptAsync(); } catch { /* may fault if stop won */ }
+                try
+                { accepted = await server.AcceptAsync(); }
+                catch { /* may fault if stop won */ }
             });
             var stopTask = Task.Run(() => server.StopAsync());
             await Task.WhenAll(acceptTask, stopTask).WaitAsync(Timeout);

@@ -14,16 +14,19 @@ internal static class SafeFileWritePublisher
     {
         var options = SafeFileGrantReader.Read(grant);
         var exists = File.Exists(fullPath);
-        if (exists && !options.AllowOverwrite) {
+        if (exists && !options.AllowOverwrite)
+        {
             throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: overwrite is not allowed");
         }
 
-        if (!exists && !options.AllowCreate) {
+        if (!exists && !options.AllowCreate)
+        {
             throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: create is not allowed");
         }
 
         var maxBytes = options.MaxBytesPerRun ?? long.MaxValue;
-        if (byteCount > maxBytes) {
+        if (byteCount > maxBytes)
+        {
             throw Error(SandboxErrorCode.QuotaExceeded, "file.writeText denied: content exceeds write limit");
         }
 
@@ -36,17 +39,20 @@ internal static class SafeFileWritePublisher
         SafeFileWritePermission permission)
     {
         var directory = Path.GetDirectoryName(fullPath);
-        if (string.IsNullOrWhiteSpace(directory)) {
+        if (string.IsNullOrWhiteSpace(directory))
+        {
             return;
         }
 
         var root = Path.TrimEndingDirectorySeparator(rootFull);
         var relative = Path.GetRelativePath(root, directory);
-        if (SafeFileSystem.IsRootEscapeRelativePath(relative)) {
+        if (SafeFileSystem.IsRootEscapeRelativePath(relative))
+        {
             throw Error(SandboxErrorCode.PermissionDenied, "file access denied: path is outside the granted sandbox root");
         }
 
-        if (relative is "." or "") {
+        if (relative is "." or "")
+        {
             SafeFileSystem.EnsureNoReparsePoint(rootFull, fullPath);
             return;
         }
@@ -54,19 +60,23 @@ internal static class SafeFileWritePublisher
         var current = root;
         foreach (var part in relative.Split(
             new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
-            StringSplitOptions.RemoveEmptyEntries)) {
+            StringSplitOptions.RemoveEmptyEntries))
+        {
             current = Path.Combine(current, part);
-            if (Directory.Exists(current) || File.Exists(current)) {
+            if (Directory.Exists(current) || File.Exists(current))
+            {
                 SafeFileSystem.EnsureNoReparsePoint(rootFull, current);
                 continue;
             }
 
-            if (!permission.AllowCreate) {
+            if (!permission.AllowCreate)
+            {
                 throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: create is not allowed");
             }
 
             FileSystem.SafeFileSystem.InvokeBeforeDirectoryCreateForTests(current);
-            if (Directory.Exists(current) || File.Exists(current)) {
+            if (Directory.Exists(current) || File.Exists(current))
+            {
                 SafeFileSystem.EnsureNoReparsePoint(rootFull, current);
                 continue;
             }
@@ -75,7 +85,8 @@ internal static class SafeFileWritePublisher
             SafeFileSystem.EnsureNoReparsePoint(rootFull, current);
         }
 
-        if (!Directory.Exists(directory)) {
+        if (!Directory.Exists(directory))
+        {
             throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: create is not allowed");
         }
 
@@ -87,20 +98,25 @@ internal static class SafeFileWritePublisher
         string finalPath,
         SafeFileWritePermission permission)
     {
-        lock (GetPublishLock(finalPath)) {
-            try {
+        lock (GetPublishLock(finalPath))
+        {
+            try
+            {
                 EnsurePublishAllowed(finalPath, permission);
-                if (!permission.AllowCreate) {
+                if (!permission.AllowCreate)
+                {
                     File.Replace(tempPath, finalPath, destinationBackupFileName: null);
                     return;
                 }
 
                 File.Move(tempPath, finalPath, overwrite: permission.AllowOverwrite);
             }
-            catch (IOException) when (!permission.AllowOverwrite && File.Exists(finalPath)) {
+            catch (IOException) when (!permission.AllowOverwrite && File.Exists(finalPath))
+            {
                 throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: overwrite is not allowed");
             }
-            catch (IOException) when (!permission.AllowCreate && !File.Exists(finalPath)) {
+            catch (IOException) when (!permission.AllowCreate && !File.Exists(finalPath))
+            {
                 throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: create is not allowed");
             }
         }
@@ -108,14 +124,18 @@ internal static class SafeFileWritePublisher
 
     public static void TryDelete(string path)
     {
-        try {
-            if (File.Exists(path)) {
+        try
+        {
+            if (File.Exists(path))
+            {
                 File.Delete(path);
             }
         }
-        catch (IOException) {
+        catch (IOException)
+        {
         }
-        catch (UnauthorizedAccessException) {
+        catch (UnauthorizedAccessException)
+        {
         }
     }
 
@@ -125,11 +145,13 @@ internal static class SafeFileWritePublisher
     private static void EnsurePublishAllowed(string finalPath, SafeFileWritePermission permission)
     {
         var exists = File.Exists(finalPath);
-        if (exists && !permission.AllowOverwrite) {
+        if (exists && !permission.AllowOverwrite)
+        {
             throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: overwrite is not allowed");
         }
 
-        if (!exists && !permission.AllowCreate) {
+        if (!exists && !permission.AllowCreate)
+        {
             throw Error(SandboxErrorCode.PermissionDenied, "file.writeText denied: create is not allowed");
         }
     }
@@ -145,7 +167,8 @@ internal static class SafeFileWritePublisher
     private static object[] CreatePublishLocks()
     {
         var locks = new object[64];
-        for (var i = 0; i < locks.Length; i++) {
+        for (var i = 0; i < locks.Length; i++)
+        {
             locks[i] = new object();
         }
 

@@ -49,7 +49,8 @@ public sealed class Fix_CMP_0013_Tests
     }
 
     private static SandboxHost CreateExampleHost()
-        => SandboxHost.Create(builder => {
+        => SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.AddNetworkBindings(
                 new SafeInMemoryHttpMessageInvoker("remote-config"),

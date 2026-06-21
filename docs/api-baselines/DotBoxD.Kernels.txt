@@ -253,10 +253,12 @@ public sealed record BindingCostModel( long BaseFuel, long PerByteFuel = 0, bool
 public sealed record BindingDescriptor( string Id, SemVersion Version, IReadOnlyList<SandboxType> Parameters, SandboxType ReturnType, SandboxEffect Effects, string? RequiredCapability, BindingCostModel CostModel, AuditLevel AuditLevel, BindingSafety Safety, BindingInvoker Invoke, CompiledBinding Compiled, CapabilityGrantValidator? GrantValidator = null)
 public sealed record BindingSignature( string Id, SemVersion Version, IReadOnlyList<SandboxType> Parameters, SandboxType ReturnType, SandboxEffect Effects, string? RequiredCapability, BindingCostModel CostModel, AuditLevel AuditLevel, BindingSafety Safety, CompiledBinding Compiled)
 public sealed record BoolValue(bool Value) : SandboxValue
+public sealed record BreakStatement(SourceSpan Span) : Statement(Span)
 public sealed record CallExpression(string Name, IReadOnlyList<Expression> Arguments, SandboxType? GenericType, SourceSpan Span)
 public sealed record CapabilityGrant( string Id, IReadOnlyDictionary<string, string> Parameters, DateTimeOffset? ExpiresAt = null, string GrantedBy = "host-policy", string Reason = "")
 public sealed record CapabilityRequest(string Id, string? Reason)
 public sealed record CompiledBinding(string Kind, string Type, string Method)
+public sealed record ContinueStatement(SourceSpan Span) : Statement(Span)
 public sealed record ExpressionStatement(Expression Value, SourceSpan Span) : Statement(Span)
 public sealed record F64Value(double Value) : SandboxValue
 public sealed record ForRangeStatement(string LocalName, Expression Start, Expression End, IReadOnlyList<Statement> Body, SourceSpan Span)

@@ -5,9 +5,9 @@ using BenchmarkDotNet.Attributes;
 /// <summary>
 /// Allocation yardstick for the remote <c>RunLocal</c> push path (issue #60). Measures the encode-half and
 /// decode-half separately so each phase's win is visible: Phase 1+2 (pooled encode + <c>ReadOnlyMemory</c>
-/// contract) should drive <see cref="Encode"/> toward zero allocations for scalars; Phase 3 (generated
-/// reflection-free decoder) should drive <see cref="DecodeInvoke"/> toward the intrinsic projected-value cost
-/// (the final object plus its strings) with no <c>SandboxValue</c> graph and no boxing.
+/// contract) should drive <see cref="Encode"/> toward zero allocations for scalars; direct runtime/generated
+/// decoders should drive <see cref="DecodeInvoke"/> and <see cref="DecodeInvokeGenerated"/> toward the intrinsic
+/// projected-value cost (the final object plus its strings) with no <c>SandboxValue</c> graph.
 /// </summary>
 [MemoryDiagnoser]
 public class RunLocalPushBenchmarks
@@ -20,6 +20,7 @@ public class RunLocalPushBenchmarks
         RunLocalPushCase.Enum,
         RunLocalPushCase.ListInt32,
         RunLocalPushCase.Dto,
+        RunLocalPushCase.AnonymousDto,
         RunLocalPushCase.WholeEvent)]
     public RunLocalPushCase Projection { get; set; }
 

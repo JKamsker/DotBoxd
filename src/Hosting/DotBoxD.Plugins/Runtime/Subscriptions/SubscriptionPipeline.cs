@@ -15,18 +15,21 @@ public sealed class SubscriptionPipeline<TEvent> : IKernelHandlerPipeline
     private readonly HookContext _defaultContext;
     private readonly KernelRegistry _kernels;
     private readonly Func<PluginPackage, InstalledKernel>? _installer;
+    private readonly Action<SubscriptionDeliveryFault>? _onFault;
 
     internal SubscriptionPipeline(
         IPluginEventAdapter<TEvent> adapter,
         IPluginMessageSink messages,
         KernelRegistry kernels,
-        Func<PluginPackage, InstalledKernel>? installer = null)
+        Func<PluginPackage, InstalledKernel>? installer = null,
+        Action<SubscriptionDeliveryFault>? onFault = null)
     {
         _adapter = adapter;
         _messages = messages;
         _defaultContext = new HookContext(messages, CancellationToken.None);
         _kernels = kernels;
         _installer = installer;
+        _onFault = onFault;
     }
 
     public SubscriptionPipeline<TEvent> UseGeneratedChain(PluginPackage package)
@@ -241,39 +244,7 @@ public sealed class SubscriptionPipeline<TEvent> : IKernelHandlerPipeline
         var context = cancellationToken.CanBeCanceled
             ? new HookContext(_messages, cancellationToken)
             : _defaultContext;
-        _ = Task.Run(() => PublishSafelyAsync(filters, handlers, e, context).AsTask());
-    }
-
-    private static async ValueTask PublishSafelyAsync(
-        Func<TEvent, HookContext, ValueTask<bool>>[] filters,
-        Func<TEvent, HookContext, ValueTask>[] handlers,
-        TEvent e,
-        HookContext context)
-    {
-        try
-        {
-            for (var i = 0; i < filters.Length; i++)
-            {
-                if (!await filters[i](e, context).ConfigureAwait(false))
-                {
-                    return;
-                }
-            }
-        }
-        catch
-        {
-            return;
-        }
-
-        for (var i = 0; i < handlers.Length; i++)
-        {
-            try
-            {
-                await handlers[i](e, context).ConfigureAwait(false);
-            }
-            catch
-            {
-            }
-        }
+        var onFault = _onFault;
+        _ = Task.Run(() => SubscriptionDelivery.PublishSafelyAsync(filters, handlers, e, context, onFault).AsTask());
     }
 }

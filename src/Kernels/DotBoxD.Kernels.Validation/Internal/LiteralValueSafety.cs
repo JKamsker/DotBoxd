@@ -4,8 +4,6 @@ using DotBoxD.Kernels.Sandbox.Values;
 
 namespace DotBoxD.Kernels.Validation.Internal;
 
-using DotBoxD.Kernels;
-
 internal static class LiteralValueSafety
 {
     private const int MaxTextLiteralLength = 65_536;

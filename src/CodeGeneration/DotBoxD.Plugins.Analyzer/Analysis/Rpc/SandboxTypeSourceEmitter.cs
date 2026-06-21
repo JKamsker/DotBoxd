@@ -50,11 +50,18 @@ internal static class SandboxTypeSourceEmitter
 
         switch (type.SpecialType)
         {
-            case SpecialType.System_Boolean: return ManifestTypes.Bool;
-            case SpecialType.System_Int32: return ManifestTypes.Int;
-            case SpecialType.System_Int64: return ManifestTypes.Long;
-            case SpecialType.System_Double: return ManifestTypes.Double;
-            case SpecialType.System_String: return ManifestTypes.String;
+            case SpecialType.System_Boolean:
+                return ManifestTypes.Bool;
+            case SpecialType.System_Int32:
+                return ManifestTypes.Int;
+            case SpecialType.System_Int64:
+                return ManifestTypes.Long;
+            case SpecialType.System_Double:
+                return ManifestTypes.Double;
+            case SpecialType.System_Single:
+                return ManifestTypes.Double;
+            case SpecialType.System_String:
+                return ManifestTypes.String;
         }
 
         if (DotBoxDRpcTypeMapper.IsGuid(type))
@@ -84,11 +91,18 @@ internal static class SandboxTypeSourceEmitter
     {
         switch (type.SpecialType)
         {
-            case SpecialType.System_Boolean: return SandboxType + ".Bool";
-            case SpecialType.System_Int32: return SandboxType + ".I32";
-            case SpecialType.System_Int64: return SandboxType + ".I64";
-            case SpecialType.System_Double: return SandboxType + ".F64";
-            case SpecialType.System_String: return SandboxType + ".String";
+            case SpecialType.System_Boolean:
+                return SandboxType + ".Bool";
+            case SpecialType.System_Int32:
+                return SandboxType + ".I32";
+            case SpecialType.System_Int64:
+                return SandboxType + ".I64";
+            case SpecialType.System_Double:
+                return SandboxType + ".F64";
+            case SpecialType.System_Single:
+                return SandboxType + ".F64";
+            case SpecialType.System_String:
+                return SandboxType + ".String";
         }
 
         if (DotBoxDRpcTypeMapper.IsGuid(type))

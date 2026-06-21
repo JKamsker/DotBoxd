@@ -40,7 +40,7 @@ internal static class DotBoxDConstantExpressionLowerer
         {
             return DotBoxDRpcTypeMapper.EnumUsesI64(enumType)
                 ? Int64(EnumConstantToInt64(constant.Value, enumType))
-                : Int32(Convert.ToInt32(constant.Value));
+                : Int32(Convert.ToInt32(constant.Value, System.Globalization.CultureInfo.InvariantCulture));
         }
 
         return Lower(expression, constant.Value, targetType ?? DotBoxDTypeNameReader.SandboxTypeName(type));
@@ -82,8 +82,8 @@ internal static class DotBoxDConstantExpressionLowerer
     // bits instead so the value carries losslessly (the decoder casts the I64 back to the enum, also unchecked).
     private static long EnumConstantToInt64(object? value, INamedTypeSymbol enumType)
         => enumType.EnumUnderlyingType?.SpecialType == Microsoft.CodeAnalysis.SpecialType.System_UInt64
-            ? unchecked((long)Convert.ToUInt64(value))
-            : Convert.ToInt64(value);
+            ? unchecked((long)Convert.ToUInt64(value, System.Globalization.CultureInfo.InvariantCulture))
+            : Convert.ToInt64(value, System.Globalization.CultureInfo.InvariantCulture);
 
     private static DotBoxDExpressionModel Float64(double value)
         => new(

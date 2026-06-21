@@ -3,7 +3,6 @@ using DotBoxD.Kernels.Sandbox;
 namespace DotBoxD.Kernels.PluginIpc.Server.Abstractions;
 
 using DotBoxD.Kernels;
-using DotBoxD.Plugins;
 
 public sealed record DamageEvent(string DamageType, int Amount, string TargetId);
 

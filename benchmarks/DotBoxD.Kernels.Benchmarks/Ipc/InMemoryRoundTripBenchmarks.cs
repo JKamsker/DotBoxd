@@ -5,7 +5,6 @@ using DotBoxD.Services.Server;
 namespace DotBoxD.Kernels.Benchmarks.Ipc;
 
 using BenchmarkDotNet.Attributes;
-using DotBoxD.Services;
 using DotBoxD.Services.Transport;
 
 [MemoryDiagnoser]
@@ -40,11 +39,13 @@ public class InMemoryRoundTripBenchmarks
     [GlobalCleanup]
     public async Task CleanupAsync()
     {
-        if (_client is not null) {
+        if (_client is not null)
+        {
             await _client.DisposeAsync().ConfigureAwait(false);
         }
 
-        if (_host is not null) {
+        if (_host is not null)
+        {
             await _host.DisposeAsync().ConfigureAwait(false);
         }
     }
@@ -62,7 +63,8 @@ public class InMemoryRoundTripBenchmarks
 
     private static RpcPeerOptions CreateServerOptions(bool lowAllocationProfile)
         => lowAllocationProfile
-            ? new RpcPeerOptions {
+            ? new RpcPeerOptions
+            {
                 DisableInboundRequestCancellation = true,
                 InboundQueueCapacity = null,
                 RequestTimeout = Timeout.InfiniteTimeSpan
@@ -71,7 +73,8 @@ public class InMemoryRoundTripBenchmarks
 
     private static RpcPeerOptions? CreateClientOptions(bool lowAllocationProfile)
         => lowAllocationProfile
-            ? new RpcPeerOptions {
+            ? new RpcPeerOptions
+            {
                 EnableLowAllocationValueTaskInvocations = true,
                 RejectInboundCalls = true,
                 RequestTimeout = Timeout.InfiniteTimeSpan

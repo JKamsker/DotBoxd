@@ -100,7 +100,11 @@ internal static class PluginEventPropertyReader
         => property.DeclaredAccessibility == Accessibility.Public &&
            !property.IsStatic &&
            property.GetMethod?.DeclaredAccessibility == Accessibility.Public &&
-           property.Parameters.Length == 0;
+           property.Parameters.Length == 0 &&
+           // A non-wire computed member (e.g. a lazily-resolved context snapshot) marked [IgnoreDataMember] is
+           // not part of the event's serialized shape; skip it so an event carrying one still lowers and the
+           // analyzer's wire fields stay in lockstep with the runtime convention adapter and decode record shape.
+           !Rpc.DotBoxDRpcTypeMapper.IsIgnoredDataMember(property);
 
     private static int ComparePropertyOrder(
         IPropertySymbol left,

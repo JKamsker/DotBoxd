@@ -1,6 +1,5 @@
 using System.Reflection;
 using DotBoxD.Plugins;
-using DotBoxD.Plugins.Runtime;
 using DotBoxD.Plugins.Runtime.Hooks;
 using DotBoxD.Plugins.Runtime.Rpc;
 
@@ -43,7 +42,7 @@ public sealed record EncounterEvent(
 /// Rich-type coverage for remote <c>RunLocal</c>: a whole-event push of an event carrying Guid/enum/array/nested
 /// DTO, and projections to each non-scalar kind (Guid, enum, list, nested DTO, and a constructed
 /// <c>new Dto(...)</c>). Every case asserts the value survives the full server-filter -&gt; server-project/encode
-/// -&gt; wire -&gt; decode path with field-level fidelity, over BOTH decode paths (the reflective fallback and the
+/// -&gt; wire -&gt; decode path with field-level fidelity, over BOTH decode paths (the runtime fallback and the
 /// generated reflection-free decoder), and that filtering stays server-side.
 /// </summary>
 public sealed partial class RemoteRunLocalChainRuntimeTests
@@ -249,8 +248,8 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
         return pushed[0];
     }
 
-    // The reflective fallback decode path (RemoteLocalHandlerRegistry's 2-arg Register): wire -> SandboxValue ->
-    // CLR via reflection.
+    // The runtime fallback decode path (RemoteLocalHandlerRegistry's 2-arg Register): wire -> CLR without a
+    // generated decoder.
     private static T DecodeReflective<T>(byte[] payload)
     {
         var wire = KernelRpcBinaryCodec.DecodeValue(payload);
@@ -258,16 +257,15 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
         return (T)KernelRpcMarshaller.FromSandboxValue(sandbox, typeof(T))!;
     }
 
-    // The generated reflection-free decode path: invoke the package's emitted ReadProjected(KernelRpcValue)
-    // straight on the pushed wire value, exactly as the interceptor wires it for the native delegate.
+    // The generated reflection-free decode path: invoke the package's emitted ReadProjectedPayload(bytes)
+    // straight on the pushed payload, exactly as the interceptor wires it for the native delegate.
     private static T DecodeGenerated<T>(string source, byte[] payload)
     {
         var assembly = Compile(source, enableInterceptors: true);
         var packageType = assembly.GetTypes().Single(type =>
             type.Name.StartsWith("HookChain_", StringComparison.Ordinal) &&
             type.Name.EndsWith("PluginPackage", StringComparison.Ordinal));
-        var readProjected = packageType.GetMethod("ReadProjected", BindingFlags.Public | BindingFlags.Static)!;
-        var wire = KernelRpcBinaryCodec.DecodeValue(payload);
-        return (T)readProjected.Invoke(null, [wire])!;
+        var readProjected = packageType.GetMethod("ReadProjectedPayload", BindingFlags.Public | BindingFlags.Static)!;
+        return (T)readProjected.Invoke(null, [new ReadOnlyMemory<byte>(payload)])!;
     }
 }

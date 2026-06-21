@@ -5,7 +5,6 @@ using DotBoxD.Kernels.Sandbox;
 namespace DotBoxD.Kernels.Interpreter.Internal;
 
 using DotBoxD.Kernels;
-using DotBoxD.Kernels.Runtime;
 
 internal static class UnaryPureIntrinsicDispatcher
 {
@@ -68,7 +67,8 @@ internal static class UnaryPureIntrinsicDispatcher
     {
         InterpreterTrace.WriteBindingCall(context, options, moduleHash, functionId, descriptor);
         context.ChargeBindingCall(descriptor);
-        return method switch {
+        return method switch
+        {
             nameof(Runtime.CompiledRuntime.AbsI32) => Runtime.CompiledRuntime.AbsI32(operand),
             nameof(Runtime.CompiledRuntime.Int32ToStringInvariant) =>
                 Runtime.CompiledRuntime.Int32ToStringInvariant(context, operand),
@@ -98,7 +98,8 @@ internal static class UnaryPureIntrinsicDispatcher
 
     private static bool TryGetMethod(string id, out string method)
     {
-        method = id switch {
+        method = id switch
+        {
             "math.abs" => nameof(Runtime.CompiledRuntime.AbsI32),
             "int32.toStringInvariant" => nameof(Runtime.CompiledRuntime.Int32ToStringInvariant),
             "string.length" => nameof(Runtime.CompiledRuntime.StringLength),
@@ -112,7 +113,8 @@ internal static class UnaryPureIntrinsicDispatcher
     }
 
     private static (SandboxType Parameter, SandboxType Return) Shape(string method)
-        => method switch {
+        => method switch
+        {
             nameof(Runtime.CompiledRuntime.AbsI32) => (SandboxType.I32, SandboxType.I32),
             nameof(Runtime.CompiledRuntime.Int32ToStringInvariant) => (SandboxType.I32, SandboxType.String),
             nameof(Runtime.CompiledRuntime.StringLength) => (SandboxType.String, SandboxType.I32),

@@ -2,7 +2,6 @@ namespace DotBoxD.Kernels.Compiler.Emitters;
 
 using System.Reflection.Emit;
 using DotBoxD.Kernels;
-using DotBoxD.Kernels.Runtime;
 using static DotBoxD.Kernels.Compiler.IlEmitterPrimitives;
 
 internal static class ValueArrayEmitter

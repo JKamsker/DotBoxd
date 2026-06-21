@@ -376,7 +376,8 @@ public class BehavioralTests
 
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
-            if (targetMethod is null || Impl is null) return null;
+            if (targetMethod is null || Impl is null)
+                return null;
             // Forward by name; assume the impl exposes a method with matching name + arity.
             var implMethod = Impl.GetType().GetMethod(
                 targetMethod.Name,
@@ -406,7 +407,8 @@ public class BehavioralTests
 
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
-            if (targetMethod is null) return null;
+            if (targetMethod is null)
+                return null;
             switch (targetMethod.Name)
             {
                 case "AddAsync":

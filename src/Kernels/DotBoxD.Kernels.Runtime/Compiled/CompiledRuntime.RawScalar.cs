@@ -21,7 +21,8 @@ public static partial class CompiledRuntime
     [MethodImpl(AggressiveInlining)] public static int AbsI32Raw(int value) => value == int.MinValue ? throw InvalidInput("math.abs overflow") : Math.Abs(value);
     [MethodImpl(AggressiveInlining)] public static int MinI32Raw(int left, int right) => Math.Min(left, right);
     [MethodImpl(AggressiveInlining)] public static int MaxI32Raw(int left, int right) => Math.Max(left, right);
-    [MethodImpl(AggressiveInlining)] public static int ClampI32Raw(int value, int min, int max)
+    [MethodImpl(AggressiveInlining)]
+    public static int ClampI32Raw(int value, int min, int max)
         => min <= max ? Math.Clamp(value, min, max) : throw InvalidInput("math.clamp range is invalid");
 
     [MethodImpl(AggressiveInlining)] public static double AddF64Raw(double left, double right) => SandboxFloat64Math.Add(left, right);

@@ -40,7 +40,8 @@ public sealed class PluginAnalyzerNumericOperatorTests
                     => ctx.Messages.Send(e.TargetId, e.Message);
             }
             """);
-        var host = SandboxHost.Create(builder => {
+        var host = SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.AddPluginMessageBindings(new InMemoryPluginMessageSink());
             builder.UseInterpreter();
@@ -83,7 +84,8 @@ public sealed class PluginAnalyzerNumericOperatorTests
                     => ctx.Messages.Send(e.TargetId, e.Message);
             }
             """);
-        var host = SandboxHost.Create(builder => {
+        var host = SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.AddPluginMessageBindings(new InMemoryPluginMessageSink());
             builder.UseInterpreter();

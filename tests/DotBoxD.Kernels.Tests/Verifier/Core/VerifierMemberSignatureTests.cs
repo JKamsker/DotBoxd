@@ -15,12 +15,14 @@ public sealed class VerifierMemberSignatureTests
     [Fact]
     public async Task Verifier_rejects_name_only_member_allowlist_entries()
     {
-        var policy = VerificationPolicy.BoxedValueDefaults() with {
+        var policy = VerificationPolicy.BoxedValueDefaults() with
+        {
             AllowedMembers = new HashSet<string>(StringComparer.Ordinal) {
                 "DotBoxD.Kernels.Runtime.CompiledRuntime.I32"
             }
         };
-        var bytes = VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        var bytes = VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             var method = type.DefineMethod(
                 "Execute",
                 MethodAttributes.Public | MethodAttributes.Static,
@@ -41,7 +43,8 @@ public sealed class VerifierMemberSignatureTests
     [Fact]
     public async Task Verifier_allows_i64_runtime_facade_signature()
     {
-        var bytes = VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        var bytes = VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             var fn = type.DefineMethod(
                 "Fn_0",
                 MethodAttributes.Private | MethodAttributes.Static,
@@ -81,7 +84,8 @@ public sealed class VerifierMemberSignatureTests
     public async Task Verifier_rejects_spoofed_runtime_assembly_identity()
     {
         var fakeRuntimeI32 = FakeRuntimeMethod();
-        var bytes = VerifierTestHelpers.BuildGeneratedAssembly(type => {
+        var bytes = VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
             var fn = type.DefineMethod(
                 "Fn_0",
                 MethodAttributes.Private | MethodAttributes.Static,
@@ -242,7 +246,8 @@ public sealed class VerifierMemberSignatureTests
             .Parameters(
                 2,
                 returnType => returnType.Type().String(),
-                parameters => {
+                parameters =>
+                {
                     parameters.AddParameter().Type().String();
                     parameters.AddParameter().Type().String();
                 });

@@ -95,7 +95,8 @@ public sealed class CanonicalModuleHasherTests
     {
         var module = JsonImporter.Import(ModuleWithReturn("""{ "f64": 1.5 }""", "F64"));
         var originalCulture = CultureInfo.CurrentCulture;
-        try {
+        try
+        {
             CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
             var germanHash = CanonicalModuleHasher.Hash(module);
 
@@ -107,7 +108,8 @@ public sealed class CanonicalModuleHasherTests
             Assert.Contains("1.5", serialized);
             Assert.DoesNotContain("1,5", serialized);
         }
-        finally {
+        finally
+        {
             CultureInfo.CurrentCulture = originalCulture;
         }
     }

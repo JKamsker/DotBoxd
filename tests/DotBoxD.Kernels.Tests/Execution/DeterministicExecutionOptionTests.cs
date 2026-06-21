@@ -1,4 +1,3 @@
-using DotBoxD.Hosting.Execution;
 using DotBoxD.Kernels.Compiler;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
@@ -76,7 +75,8 @@ public sealed class DeterministicExecutionOptionTests
     }
 
     private static SandboxHost SandboxHostForCompiler(ISandboxCompiler compiler)
-        => SandboxHost.Create(builder => {
+        => SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.UseInterpreter();
             builder.UseCompilerIfAvailable(compiler);

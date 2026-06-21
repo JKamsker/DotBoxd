@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using Microsoft.CodeAnalysis;
 

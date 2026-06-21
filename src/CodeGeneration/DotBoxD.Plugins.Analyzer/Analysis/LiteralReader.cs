@@ -13,16 +13,19 @@ internal static class LiteralReader
         SemanticModel semanticModel,
         CancellationToken cancellationToken)
     {
-        if (expression is not null) {
+        if (expression is not null)
+        {
             var constant = semanticModel.GetConstantValue(expression, cancellationToken);
-            if (!constant.HasValue) {
+            if (!constant.HasValue)
+            {
                 throw new NotSupportedException("Live setting defaults must be compile-time constants.");
             }
 
             return ObjectLiteral(constant.Value);
         }
 
-        return type.SpecialType switch {
+        return type.SpecialType switch
+        {
             SpecialType.System_Boolean => DotBoxDGenerationNames.CSharpLiterals.False,
             SpecialType.System_Int32 => DotBoxDGenerationNames.CSharpLiterals.Int32Default,
             SpecialType.System_Int64 => DotBoxDGenerationNames.CSharpLiterals.Int64Default,
@@ -33,7 +36,8 @@ internal static class LiteralReader
     }
 
     public static string ObjectLiteral(object? value)
-        => value switch {
+        => value switch
+        {
             null => DotBoxDGenerationNames.CSharpLiterals.Null,
             bool boolean => boolean
                 ? DotBoxDGenerationNames.CSharpLiterals.True

@@ -1,6 +1,5 @@
 using System.Reflection.Emit;
 using DotBoxD.Kernels.Bindings;
-using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Runtime;
 using DotBoxD.Kernels.Sandbox;
 

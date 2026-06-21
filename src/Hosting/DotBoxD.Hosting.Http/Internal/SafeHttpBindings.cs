@@ -5,8 +5,6 @@ using CompiledRuntime = DotBoxD.Kernels.Runtime.CompiledRuntime;
 
 namespace DotBoxD.Hosting.Http.Internal;
 
-using DotBoxD.Kernels;
-
 public static class SafeHttpBindings
 {
     public static BindingDescriptor GetText(SafeInMemoryHttpMessageInvoker? invoker = null, SafeDnsResolver? dnsResolver = null)
@@ -20,7 +18,8 @@ public static class SafeHttpBindings
             BindingCostModel.Fixed(75),
             AuditLevel.PerResource,
             BindingSafety.ReadOnlyExternal,
-            async (context, args, cancellationToken) => {
+            async (context, args, cancellationToken) =>
+            {
                 var text = await SafeHttpClient.GetTextAsync(
                     context,
                     ((SandboxUriValue)args[0]).Value,

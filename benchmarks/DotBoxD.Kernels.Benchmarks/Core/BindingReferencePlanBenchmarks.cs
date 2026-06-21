@@ -5,7 +5,6 @@ using DotBoxD.Kernels.Sandbox;
 namespace DotBoxD.Kernels.Benchmarks.Core;
 
 using BenchmarkDotNet.Attributes;
-using DotBoxD.Hosting;
 
 [MemoryDiagnoser]
 public class BindingReferencePlanBenchmarks
@@ -41,7 +40,8 @@ public class BindingReferencePlanBenchmarks
     private static SandboxModule BuildModule(int entrypointCount)
     {
         var functions = new List<SandboxFunction>(entrypointCount + 3);
-        for (var i = 0; i < entrypointCount; i++) {
+        for (var i = 0; i < entrypointCount; i++)
+        {
             functions.Add(new SandboxFunction(
                 $"main{i}",
                 true,

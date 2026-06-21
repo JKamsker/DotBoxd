@@ -89,8 +89,8 @@
     },
     {
       "path": "spec/04-ir-language.md",
-      "sha256": "a93b97c6a6b6794fab6467554e7899e75244d70f542b540848bf2e1c218995c1",
-      "bytes": 6112
+      "sha256": "6c354742db8a61ad14efaf6b6598a2ca0fb31286a5bf56b8c9aa9d4627daead2",
+      "bytes": 6328
     },
     {
       "path": "spec/05-type-system.md",

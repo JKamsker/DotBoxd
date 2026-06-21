@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using DotBoxD.Hosting.Execution;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
@@ -19,7 +18,8 @@ public sealed class DifferentialFuzzTests
         var host = SandboxTestHost.Create(compiler: true);
         var random = new Random(0x51AFE);
 
-        for (var index = 0; index < 40; index++) {
+        for (var index = 0; index < 40; index++)
+        {
             var expression = Expression(random, depth: 4);
             var json = ModuleJson(index, expression);
             var module = await host.ImportJsonAsync(json);
@@ -82,13 +82,15 @@ public sealed class DifferentialFuzzTests
 
     private static JsonObject Expression(Random random, int depth)
     {
-        if (depth == 0 || random.Next(4) == 0) {
+        if (depth == 0 || random.Next(4) == 0)
+        {
             return random.Next(2) == 0
                 ? new JsonObject { ["i32"] = random.Next(-3, 4) }
                 : new JsonObject { ["var"] = Parameters[random.Next(Parameters.Length)] };
         }
 
-        return new JsonObject {
+        return new JsonObject
+        {
             ["op"] = Operator(random),
             ["left"] = Expression(random, depth - 1),
             ["right"] = Expression(random, depth - 1)
@@ -96,14 +98,16 @@ public sealed class DifferentialFuzzTests
     }
 
     private static string Operator(Random random)
-        => random.Next(3) switch {
+        => random.Next(3) switch
+        {
             0 => "add",
             1 => "sub",
             _ => "mul"
         };
 
     private static string ModuleJson(int index, JsonObject expression)
-        => new JsonObject {
+        => new JsonObject
+        {
             ["id"] = $"differential-fuzz-{index}",
             ["version"] = "1.0.0",
             ["functions"] = new JsonArray {
@@ -127,7 +131,8 @@ public sealed class DifferentialFuzzTests
         }.ToJsonString(JsonOptions);
 
     private static JsonObject Parameter(string name)
-        => new() {
+        => new()
+        {
             ["name"] = name,
             ["type"] = "I32"
         };

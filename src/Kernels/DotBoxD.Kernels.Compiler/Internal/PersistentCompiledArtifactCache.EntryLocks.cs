@@ -8,10 +8,13 @@ public sealed partial class PersistentCompiledArtifactCache
         CancellationToken cancellationToken)
     {
         using var entryLock = await AcquireEntryLockAsync(cacheKey, cancellationToken).ConfigureAwait(false);
-        await using var fileLock = await PersistentCacheEntryLock
+        var fileLock = await PersistentCacheEntryLock
             .AcquireAsync(_rootDirectory, cacheKey, cancellationToken)
             .ConfigureAwait(false);
-        return await action().ConfigureAwait(false);
+        await using (fileLock.ConfigureAwait(false))
+        {
+            return await action().ConfigureAwait(false);
+        }
     }
 
     private async ValueTask WithEntryLockAsync(
@@ -20,10 +23,13 @@ public sealed partial class PersistentCompiledArtifactCache
         CancellationToken cancellationToken)
     {
         using var entryLock = await AcquireEntryLockAsync(cacheKey, cancellationToken).ConfigureAwait(false);
-        await using var fileLock = await PersistentCacheEntryLock
+        var fileLock = await PersistentCacheEntryLock
             .AcquireAsync(_rootDirectory, cacheKey, cancellationToken)
             .ConfigureAwait(false);
-        await action().ConfigureAwait(false);
+        await using (fileLock.ConfigureAwait(false))
+        {
+            await action().ConfigureAwait(false);
+        }
     }
 
     private async ValueTask<EntryLockLease> AcquireEntryLockAsync(

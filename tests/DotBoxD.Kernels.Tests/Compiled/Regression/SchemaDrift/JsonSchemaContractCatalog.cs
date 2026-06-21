@@ -24,6 +24,8 @@ internal static class JsonSchemaContractCatalog
             "if statement" => ["op", "condition", "then"],
             "while statement" => ["op", "condition", "body"],
             "forRange statement" => ["op", "local", "start", "end", "body"],
+            "continue statement" => ["op"],
+            "break statement" => ["op"],
             "type" => ["name"],
             "variable expression" => ["var"],
             "call expression" => ["call"],
@@ -52,6 +54,8 @@ internal static class JsonSchemaContractCatalog
             "if statement" => "if",
             "while statement" => "while",
             "forRange statement" => "forRange",
+            "continue statement" => "continue",
+            "break statement" => "break",
             _ => null
         };
 

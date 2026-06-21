@@ -9,7 +9,6 @@ namespace DotBoxD.Kernels.Compiler.Emitters;
 using System.Reflection;
 using System.Reflection.Emit;
 using DotBoxD.Kernels;
-using DotBoxD.Kernels.Runtime;
 using static DotBoxD.Kernels.Compiler.IlEmitterPrimitives;
 
 internal sealed class MethodEmitter
@@ -20,6 +19,11 @@ internal sealed class MethodEmitter
     private readonly IBindingCatalog _bindings;
     private readonly Dictionary<string, (LocalBuilder Local, StackKind Kind)> _locals = new(StringComparer.Ordinal);
     private readonly HashSet<string> _nonNegativeF64Locals = new(StringComparer.Ordinal);
+
+    // Branch targets for the innermost enclosing generic loop: `continue` re-enters the loop (the
+    // forRange increment / while condition recheck), `break` exits it. The assignment-only loop fast
+    // paths reject loop-control bodies, so continue/break only flow through the generic paths below.
+    private readonly Stack<(Label Continue, Label Break)> _loops = new();
     private readonly LocalStackKindPlanner _stackPlan;
     private readonly ExpressionEmitter _expressions;
 
@@ -112,6 +116,12 @@ internal sealed class MethodEmitter
             case WhileStatement loop:
                 EmitWhile(loop);
                 return false;
+            case ContinueStatement:
+                _il.Emit(OpCodes.Br, _loops.Peek().Continue);
+                return true;
+            case BreakStatement:
+                _il.Emit(OpCodes.Br, _loops.Peek().Break);
+                return true;
             default:
                 throw Unsupported("statement not supported");
         }
@@ -175,43 +185,13 @@ internal sealed class MethodEmitter
             return;
         }
 
-        if (MapGetI32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, Declare))
-        {
-            _nonNegativeF64Locals.Clear();
-            return;
-        }
-
-        if (ListGetI32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, Declare))
-        {
-            _nonNegativeF64Locals.Clear();
-            return;
-        }
-
-        if (ListCountLoopFastPathEmitter.TryEmit(range, _il, _stackPlan, Declare))
-        {
-            _nonNegativeF64Locals.Clear();
-            return;
-        }
-
-        if (StringLengthLoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _bindings, Declare))
-        {
-            _nonNegativeF64Locals.Clear();
-            return;
-        }
-
-        if (I32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, _functionModels, _bindings, Declare))
-        {
-            _nonNegativeF64Locals.Clear();
-            return;
-        }
-
-        if (BranchedI32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, _functionModels, Declare))
-        {
-            _nonNegativeF64Locals.Clear();
-            return;
-        }
-
-        if (I64LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, Declare))
+        if (MapGetI32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, Declare) ||
+            ListGetI32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, Declare) ||
+            ListCountLoopFastPathEmitter.TryEmit(range, _il, _stackPlan, Declare) ||
+            StringLengthLoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _bindings, Declare) ||
+            I32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, _functionModels, _bindings, Declare) ||
+            BranchedI32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, _functionModels, Declare) ||
+            I64LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, Declare))
         {
             _nonNegativeF64Locals.Clear();
             return;
@@ -226,6 +206,7 @@ internal sealed class MethodEmitter
         _il.Emit(OpCodes.Stloc, end);
 
         var startLabel = _il.DefineLabel();
+        var continueLabel = _il.DefineLabel();
         var finishLabel = _il.DefineLabel();
         _il.MarkLabel(startLabel);
         _il.Emit(OpCodes.Ldloc, index);
@@ -236,7 +217,11 @@ internal sealed class MethodEmitter
         _il.Emit(OpCodes.Ldloc, index);
         _expressions.Coerce(StackKind.I32, loopKind);
         _il.Emit(OpCodes.Stloc, loopVar);
+        // `continue` branches to the increment (continueLabel), not the condition check, so it still advances.
+        _loops.Push((continueLabel, finishLabel));
         EmitBlock(range.Body);
+        _loops.Pop();
+        _il.MarkLabel(continueLabel);
         _il.Emit(OpCodes.Ldloc, index);
         EmitInt32(_il, 1);
         _il.Emit(OpCodes.Add);
@@ -261,7 +246,10 @@ internal sealed class MethodEmitter
         _expressions.EmitAs(loop.Condition, StackKind.Bool);
         _il.Emit(OpCodes.Brfalse, finishLabel);
         CompiledMeterEmitter.LoopIteration(_il, 5);
+        // `continue` re-evaluates the condition, so it targets the loop's start label.
+        _loops.Push((startLabel, finishLabel));
         EmitBlock(loop.Body);
+        _loops.Pop();
         _nonNegativeF64Locals.Clear();
         _il.Emit(OpCodes.Br, startLabel);
         _il.MarkLabel(finishLabel);
@@ -282,7 +270,8 @@ internal sealed class MethodEmitter
     }
 
     private static Type LocalType(StackKind kind)
-        => kind switch {
+        => kind switch
+        {
             StackKind.I32 => typeof(int),
             StackKind.I64 => typeof(long),
             StackKind.F64 => typeof(double),
@@ -318,7 +307,8 @@ internal sealed class MethodEmitter
     }
 
     private bool IsNonNegativeF64(Expression expression)
-        => expression switch {
+        => expression switch
+        {
             LiteralExpression { Value: F64Value value } => value.Value >= 0,
             VariableExpression variable => _nonNegativeF64Locals.Contains(variable.Name),
             CallExpression { Name: "math.sqrt", Arguments.Count: 1 } call => IsNonNegativeF64(call.Arguments[0]),

@@ -1,5 +1,4 @@
 using DotBoxD.Hosting;
-using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
@@ -14,7 +13,8 @@ public sealed class WorkerFallbackAuditTests
     public async Task Worker_process_accepts_compiled_to_interpreted_fallback_audit()
     {
         var worker = new SandboxHostWorkerClient(WorkerHost);
-        using var host = SandboxHost.Create(builder => {
+        using var host = SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.UseInterpreter();
             builder.UseWorkerClient(worker, SandboxWorkerProfile.HardenedOutOfProcess);
@@ -40,7 +40,8 @@ public sealed class WorkerFallbackAuditTests
     }
 
     private static SandboxHost WorkerHost()
-        => SandboxHost.Create(builder => {
+        => SandboxHost.Create(builder =>
+        {
             builder.AddDefaultPureBindings();
             builder.UseInterpreter();
         });

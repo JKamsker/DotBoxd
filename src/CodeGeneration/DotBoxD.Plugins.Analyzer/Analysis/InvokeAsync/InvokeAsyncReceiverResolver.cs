@@ -112,9 +112,9 @@ internal static class InvokeAsyncReceiverResolver
         facadeName = string.Empty;
         var current = buildReceiver;
         while (current is InvocationExpressionSyntax
-               {
-                   Expression: MemberAccessExpressionSyntax { Expression: { } next }
-               })
+            {
+                Expression: MemberAccessExpressionSyntax { Expression: { } next }
+            })
         {
             if (TryFacadeNameFromBuilderType(next, out facadeName))
             {

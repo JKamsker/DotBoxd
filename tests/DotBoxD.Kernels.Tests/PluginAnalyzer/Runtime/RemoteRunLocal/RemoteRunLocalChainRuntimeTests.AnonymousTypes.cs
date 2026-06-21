@@ -9,8 +9,8 @@ namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime;
 /// P4 coverage: anonymous-object projections, both as INTERMEDIATE server-side stages (lowering to the same
 /// <c>record.new</c> as a named DTO, fields read via <c>record.get</c>) and as the TERMINAL pushed value. A terminal
 /// anonymous projection is wired by a GENERIC interceptor whose type parameters Roslyn infers at the call site (the
-/// source never names the anonymous type) and decoded by the reflective registration via the anonymous type's
-/// public positional constructor. Shares the <see cref="RemoteRunLocalChainRuntimeTests"/> harness.
+/// source never names the anonymous type) and decoded by a generated anonymous-object literal with the same shape.
+/// Shares the <see cref="RemoteRunLocalChainRuntimeTests"/> harness.
 /// </summary>
 public sealed partial class RemoteRunLocalChainRuntimeTests
 {
@@ -68,12 +68,15 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
         // The terminal projection is anonymous. Instead of skipping, the generator emits a GENERIC interceptor
         // whose projection slot is a TProjected type parameter that Roslyn binds to the anonymous type at the call
         // site — so the emitted source never names the anonymous type. Compile asserts the generic interceptor is
-        // valid C# that actually binds to the intercepted call (the load-bearing guarantee), and no ReadProjected
-        // decoder (which could not name an anonymous return type) is emitted.
+        // valid C# that actually binds to the intercepted call (the load-bearing guarantee). The decoder is generic
+        // too: it returns TProjected and constructs the same anonymous shape with a source-generated object literal.
         _ = Compile(AnonymousTerminalSource, enableInterceptors: true);
         var generated = GeneratedSource(AnonymousTerminalSource);
         Assert.Contains("Intercept_0<TEvent, TCurrent>", generated);
-        Assert.DoesNotContain("ReadProjected", generated);
+        Assert.Contains("ReadProjected<TProjected>", generated);
+        Assert.Contains("ReadProjectedPayload<TProjected>", generated);
+        Assert.Contains("return (TProjected)(object)new {", generated);
+        Assert.Contains(".ReadProjectedPayload<TCurrent>", generated);
     }
 
     private const string AnonTerminalRoundTripSource = Prelude + """
@@ -93,7 +96,7 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
     {
         // Full client+server round-trip. The server projects the anonymous { Id, Zone } and pushes it; the generic
         // interceptor wires the native RunLocal delegate, which receives the anonymous instance reconstructed by the
-        // reflective registration (anonymous types are DTO-shaped: public positional ctor + declaration-order props).
+        // generated anonymous-object decoder.
         var payload = await PushFirstMatching(AnonTerminalRoundTripSource, Matching, Filtered);
 
         var assembly = Compile(AnonTerminalRoundTripSource, enableInterceptors: true);
@@ -124,7 +127,7 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
         // The fullest behavioral test, exercising the generated source: the generated interceptor installs the
         // generated package into a REAL PluginServer and wires the server's projection push to the local handler
         // registry, so ONE PublishAsync drives the whole pipeline — server-side filter -> anonymous projection ->
-        // wire -> generic interceptor -> reflective decode -> native RunLocal lambda.
+        // wire -> generic interceptor -> generated anonymous decoder -> native RunLocal lambda.
         var assembly = Compile(AnonTerminalRoundTripSource, enableInterceptors: true);
         var usage = assembly.GetType("ChainSample.AnonTerminalRoundTripUsage")!;
         var received = (System.Collections.Generic.List<string>)usage

@@ -4,7 +4,6 @@ using DotBoxD.Kernels.Verifier.Generated;
 namespace DotBoxD.Kernels.Compiler;
 
 using DotBoxD.Kernels;
-using DotBoxD.Kernels.Verifier;
 
 public delegate SandboxValue SandboxCompiledEntrypoint(SandboxContext context, SandboxValue input);
 

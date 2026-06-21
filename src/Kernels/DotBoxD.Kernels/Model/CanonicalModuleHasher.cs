@@ -140,6 +140,12 @@ public static class CanonicalModuleHasher
                 WriteStatements(writer, range.Body);
                 writer.Write("endfor");
                 break;
+            case ContinueStatement:
+                writer.Write("continue");
+                break;
+            case BreakStatement:
+                writer.Write("break");
+                break;
             default:
                 throw new NotSupportedException(statement.GetType().Name);
         }

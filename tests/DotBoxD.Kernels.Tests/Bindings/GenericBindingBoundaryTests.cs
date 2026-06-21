@@ -21,7 +21,8 @@ public sealed class GenericBindingBoundaryTests
     [MemberData(nameof(Modes))]
     public async Task Generic_binding_timeout_uses_wall_time_budget(ExecutionMode mode)
     {
-        var host = SandboxHost.Create(builder => {
+        var host = SandboxHost.Create(builder =>
+        {
             builder.AddBinding(SlowBinding());
             builder.UseInterpreter();
             builder.UseCompilerIfAvailable();
@@ -51,7 +52,8 @@ public sealed class GenericBindingBoundaryTests
     [MemberData(nameof(Modes))]
     public async Task Binding_operation_canceled_without_host_cancellation_is_sanitized(ExecutionMode mode)
     {
-        var host = SandboxHost.Create(builder => {
+        var host = SandboxHost.Create(builder =>
+        {
             builder.AddBinding(SpuriousCanceledBinding());
             builder.UseInterpreter();
             builder.UseCompilerIfAvailable();
@@ -76,7 +78,8 @@ public sealed class GenericBindingBoundaryTests
             plan,
             "main",
             SandboxValue.Unit,
-            new SandboxExecutionOptions {
+            new SandboxExecutionOptions
+            {
                 Mode = mode,
                 AllowFallbackToInterpreter = false
             });
@@ -92,7 +95,8 @@ public sealed class GenericBindingBoundaryTests
             BindingCostModel.Fixed(1),
             AuditLevel.None,
             BindingSafety.PureHostFacade,
-            async (_, _, cancellationToken) => {
+            async (_, _, cancellationToken) =>
+            {
                 await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
                 return SandboxValue.FromInt32(1);
             },

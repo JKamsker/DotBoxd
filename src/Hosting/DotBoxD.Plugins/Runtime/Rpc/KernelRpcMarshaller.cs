@@ -30,7 +30,7 @@ public static partial class KernelRpcMarshaller
         {
             return EnumUsesI64(type)
                 ? SandboxValue.FromInt64(EnumToInt64(value, type))
-                : SandboxValue.FromInt32(Convert.ToInt32(value));
+                : SandboxValue.FromInt32(Convert.ToInt32(value, System.Globalization.CultureInfo.InvariantCulture));
         }
 
         if (ElementType(type) is { } elementType)
@@ -94,13 +94,13 @@ public static partial class KernelRpcMarshaller
             return SandboxValue.FromMap(entries, keyType, valueType);
         }
 
-        if (IsDto(type))
+        if (DtoShape(type) is { } shape)
         {
-            var fields = GetRecordShape(type).Fields;
+            var fields = shape.Fields;
             var values = new SandboxValue[fields.Count];
             for (var i = 0; i < fields.Count; i++)
             {
-                values[i] = MarshalChild(fields[i].GetValue(value), fields[i].PropertyType, $"DTO field '{fields[i].Name}'");
+                values[i] = MarshalChild(shape.GetValue(value, i), fields[i].Type, $"DTO field '{fields[i].Name}'");
             }
 
             return SandboxValue.FromOwnedRecord(values);
@@ -144,6 +144,17 @@ public static partial class KernelRpcMarshaller
             };
         }
 
+        if (value is RecordValue record && DtoShape(type) is { } shape)
+        {
+            var fields = shape.Fields;
+            if (record.Fields.Count != fields.Count)
+            {
+                throw new NotSupportedException($"Server extension record has {record.Fields.Count} fields but '{type}' expects {fields.Count}.");
+            }
+
+            return shape.Construct(record);
+        }
+
         if (ElementType(type) is { } elementType && value is ListValue list)
         {
             if (type.IsArray)
@@ -173,24 +184,6 @@ public static partial class KernelRpcMarshaller
             return result;
         }
 
-        if (IsDto(type) && value is RecordValue record)
-        {
-            var shape = GetRecordShape(type);
-            var fields = shape.Fields;
-            if (record.Fields.Count != fields.Count)
-            {
-                throw new NotSupportedException($"Server extension record has {record.Fields.Count} fields but '{type}' expects {fields.Count}.");
-            }
-
-            var arguments = new object?[fields.Count];
-            for (var i = 0; i < fields.Count; i++)
-            {
-                arguments[i] = FromSandboxValue(record.Fields[i], fields[i].PropertyType);
-            }
-
-            return shape.Construct(arguments);
-        }
-
         throw new NotSupportedException($"Server extension cannot marshal a sandbox value to type '{type}'.");
     }
 
@@ -210,13 +203,23 @@ public static partial class KernelRpcMarshaller
     {
         RejectNullableValueType(type);
 
-        if (type == typeof(bool)) return SandboxType.Bool;
-        if (type == typeof(int)) return SandboxType.I32;
-        if (type == typeof(long)) return SandboxType.I64;
-        if (type == typeof(double)) return SandboxType.F64;
-        if (type == typeof(string)) return SandboxType.String;
-        if (type == typeof(Guid)) return SandboxType.Guid;
-        if (type.IsEnum) return EnumUsesI64(type) ? SandboxType.I64 : SandboxType.I32;
+        if (type == typeof(bool))
+            return SandboxType.Bool;
+        if (type == typeof(int))
+            return SandboxType.I32;
+        if (type == typeof(long))
+            return SandboxType.I64;
+        if (type == typeof(double))
+            return SandboxType.F64;
+        // float widens losslessly to the sandbox's only floating kind (F64); decode narrows back exactly.
+        if (type == typeof(float))
+            return SandboxType.F64;
+        if (type == typeof(string))
+            return SandboxType.String;
+        if (type == typeof(Guid))
+            return SandboxType.Guid;
+        if (type.IsEnum)
+            return EnumUsesI64(type) ? SandboxType.I64 : SandboxType.I32;
 
         if (depth >= MaxTypeNestingDepth)
         {
@@ -224,7 +227,8 @@ public static partial class KernelRpcMarshaller
                 $"Kernel RPC service type '{type}' nests beyond the supported depth of {MaxTypeNestingDepth}.");
         }
 
-        if (ElementType(type) is { } elementType) return SandboxType.List(SandboxTypeOf(elementType, depth + 1));
+        if (ElementType(type) is { } elementType)
+            return SandboxType.List(SandboxTypeOf(elementType, depth + 1));
         if (MapTypes(type) is { } mapTypes)
         {
             var keyType = SandboxTypeOf(mapTypes.Key, depth + 1);
@@ -240,13 +244,13 @@ public static partial class KernelRpcMarshaller
             return SandboxType.Map(keyType, SandboxTypeOf(mapTypes.Value, depth + 1));
         }
 
-        if (IsDto(type))
+        if (DtoShape(type) is { } shape)
         {
-            var fields = GetRecordShape(type).Fields;
+            var fields = shape.Fields;
             var fieldTypes = new SandboxType[fields.Count];
             for (var i = 0; i < fields.Count; i++)
             {
-                fieldTypes[i] = SandboxTypeOf(fields[i].PropertyType, depth + 1);
+                fieldTypes[i] = SandboxTypeOf(fields[i].Type, depth + 1);
             }
 
             return SandboxType.Record(fieldTypes);
@@ -262,6 +266,7 @@ public static partial class KernelRpcMarshaller
             var t when t == typeof(int) => SandboxValue.FromInt32((int)value!),
             var t when t == typeof(long) => SandboxValue.FromInt64((long)value!),
             var t when t == typeof(double) => SandboxValue.FromDouble((double)value!),
+            var t when t == typeof(float) => SandboxValue.FromDouble((float)value!),
             var t when t == typeof(string) => SandboxValue.FromString((string)value!),
             var t when t == typeof(Guid) => SandboxValue.FromGuid((Guid)value!),
             _ => null
@@ -275,6 +280,7 @@ public static partial class KernelRpcMarshaller
             (var t, I32Value i) when t == typeof(int) => i.Value,
             (var t, I64Value l) when t == typeof(long) => l.Value,
             (var t, F64Value d) when t == typeof(double) => d.Value,
+            (var t, F64Value d) when t == typeof(float) => (float)d.Value,
             (var t, StringValue s) when t == typeof(string) => s.Value,
             (var t, GuidValue g) when t == typeof(Guid) => g.Value,
             _ => null
@@ -315,6 +321,6 @@ public static partial class KernelRpcMarshaller
     // bits instead so the value carries losslessly (decode uses Enum.ToObject, which is also bit-preserving).
     private static long EnumToInt64(object value, Type type)
         => Enum.GetUnderlyingType(type) == typeof(ulong)
-            ? unchecked((long)Convert.ToUInt64(value))
-            : Convert.ToInt64(value);
+            ? unchecked((long)Convert.ToUInt64(value, System.Globalization.CultureInfo.InvariantCulture))
+            : Convert.ToInt64(value, System.Globalization.CultureInfo.InvariantCulture);
 }

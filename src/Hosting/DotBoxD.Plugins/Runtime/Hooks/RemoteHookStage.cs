@@ -1,5 +1,3 @@
-using DotBoxD.Plugins;
-
 namespace DotBoxD.Plugins.Runtime.Hooks;
 
 public sealed class RemoteHookStage<TEvent, TCurrent>
@@ -92,6 +90,35 @@ public sealed class RemoteHookStage<TEvent, TCurrent>
     }
 
     public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TCurrent> handler, Func<KernelRpcValue, TCurrent> decoder)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        return _root.InstallLocal<TCurrent>(package, (value, _) =>
+        {
+            handler(value);
+            return ValueTask.CompletedTask;
+        }, decoder);
+    }
+
+    public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TCurrent, HookContext, ValueTask> handler, Func<ReadOnlyMemory<byte>, TCurrent> decoder)
+        => _root.InstallLocal(package, handler, decoder);
+
+    public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TCurrent, HookContext> handler, Func<ReadOnlyMemory<byte>, TCurrent> decoder)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        return _root.InstallLocal<TCurrent>(package, (value, ctx) =>
+        {
+            handler(value, ctx);
+            return ValueTask.CompletedTask;
+        }, decoder);
+    }
+
+    public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TCurrent, ValueTask> handler, Func<ReadOnlyMemory<byte>, TCurrent> decoder)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        return _root.InstallLocal<TCurrent>(package, (value, _) => handler(value), decoder);
+    }
+
+    public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TCurrent> handler, Func<ReadOnlyMemory<byte>, TCurrent> decoder)
     {
         ArgumentNullException.ThrowIfNull(handler);
         return _root.InstallLocal<TCurrent>(package, (value, _) =>

@@ -72,6 +72,12 @@ public sealed record ForRangeStatement(string LocalName, Expression Start, Expre
     public IReadOnlyList<Statement> Body { get => _body; init => _body = ModelCopy.List(value); }
 }
 
+/// <summary>Skips to the next iteration of the innermost enclosing loop (<c>continue;</c>).</summary>
+public sealed record ContinueStatement(SourceSpan Span) : Statement(Span);
+
+/// <summary>Exits the innermost enclosing loop (<c>break;</c>).</summary>
+public sealed record BreakStatement(SourceSpan Span) : Statement(Span);
+
 public abstract record Expression(SourceSpan Span);
 
 public sealed record LiteralExpression(SandboxValue Value, SourceSpan Span) : Expression(Span);

@@ -1,5 +1,4 @@
 using System.Text;
-using DotBoxD.Plugins.Analyzer.Analysis;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.PluginServer;
 
@@ -140,7 +139,7 @@ internal static class PluginServerFacadeEmitter
             builder.AppendLine("            _session = await _connectionFactory(null, cancellationToken).ConfigureAwait(false);");
         }
         builder.AppendLine("            var control = _session.Get<" + model.ControlServiceType + ">();");
-            builder.AppendLine("            var world = global::DotBoxD.Services.Generated.DotBoxDGeneratedExtensions.Get" + model.WorldExtensionSuffix + "(_session.Peer);");
+        builder.AppendLine("            var world = global::DotBoxD.Services.Generated.DotBoxDGeneratedExtensions.Get" + model.WorldExtensionSuffix + "(_session.Peer);");
         builder.AppendLine("            Initialize(control, world);");
         builder.AppendLine("            _started = true;");
         builder.AppendLine("        }");
@@ -245,7 +244,7 @@ internal static class PluginServerFacadeEmitter
         builder.AppendLine("            => _owner.RequireControl().UpdateSettingsAsync(_pluginId, _updates.ToArray(), atomic);");
         builder.AppendLine("        public global::System.Threading.Tasks.ValueTask SetValuesAsync(global::System.Action<TKernel> set, bool atomic = false)");
         builder.AppendLine("        {");
-            builder.AppendLine("            var draft = new TKernel();");
+        builder.AppendLine("            var draft = new TKernel();");
         builder.AppendLine("            set(draft);");
         builder.AppendLine("            var updates = typeof(TKernel).GetProperties(global::System.Reflection.BindingFlags.Public | global::System.Reflection.BindingFlags.Instance)");
         builder.AppendLine("                .Where(p => p.GetMethod is not null && p.GetCustomAttributes(typeof(global::DotBoxD.Abstractions.LiveSettingAttribute), inherit: true).Length != 0)");

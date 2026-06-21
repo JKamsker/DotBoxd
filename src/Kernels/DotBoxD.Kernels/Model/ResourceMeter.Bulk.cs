@@ -6,8 +6,10 @@ public sealed partial class ResourceMeter
 {
     public void ChargeLoopIterations(long iterations, long fuelPerIteration)
     {
-        if (iterations < 0) { throw new ArgumentOutOfRangeException(nameof(iterations)); }
-        if (fuelPerIteration <= 0) { throw new ArgumentOutOfRangeException(nameof(fuelPerIteration)); }
+        if (iterations < 0)
+        { throw new ArgumentOutOfRangeException(nameof(iterations)); }
+        if (fuelPerIteration <= 0)
+        { throw new ArgumentOutOfRangeException(nameof(fuelPerIteration)); }
         if (iterations == 0)
         {
             return;

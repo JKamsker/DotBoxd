@@ -103,6 +103,8 @@ public sealed class Fix_CMP_0012_Tests
     [InlineData(ModuleSchemaRelative, ImporterRelative, "if statement", new[] { "op", "condition", "then", "else" })]
     [InlineData(ModuleSchemaRelative, ImporterRelative, "while statement", new[] { "op", "condition", "body" })]
     [InlineData(ModuleSchemaRelative, ImporterRelative, "forRange statement", new[] { "op", "local", "start", "end", "body" })]
+    [InlineData(ModuleSchemaRelative, ImporterRelative, "continue statement", new[] { "op" })]
+    [InlineData(ModuleSchemaRelative, ImporterRelative, "break statement", new[] { "op" })]
     [InlineData(ModuleSchemaRelative, ExpressionReaderRelative, "type", new[] { "name", "arguments" })]
     [InlineData(ModuleSchemaRelative, ExpressionReaderRelative, "variable expression", new[] { "var" })]
     [InlineData(ModuleSchemaRelative, ExpressionReaderRelative, "call expression", new[] { "call", "args", "genericType" })]

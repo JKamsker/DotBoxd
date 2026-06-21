@@ -10,7 +10,8 @@ internal static class PluginSymbolReader
 {
     public static string? PluginId(IReadOnlyList<AttributeData> attributes)
     {
-        for (var i = 0; i < attributes.Count; i++) {
+        for (var i = 0; i < attributes.Count; i++)
+        {
             var attribute = attributes[i];
             if (string.Equals(
                     attribute.AttributeClass?.ToDisplayString(),
@@ -19,7 +20,8 @@ internal static class PluginSymbolReader
                 string.Equals(
                     attribute.AttributeClass?.ToDisplayString(),
                     DotBoxDGenerationNames.Metadata.EventKernelAttribute,
-                    StringComparison.Ordinal)) {
+                    StringComparison.Ordinal))
+            {
                 return attribute.ConstructorArguments.Length > 0
                     ? attribute.ConstructorArguments[0].Value as string
                     : null;
@@ -32,7 +34,8 @@ internal static class PluginSymbolReader
     public static IReadOnlyList<INamedTypeSymbol> EventTypes(INamedTypeSymbol kernelType)
     {
         var eventTypes = new List<INamedTypeSymbol>();
-        foreach (var implementedInterface in kernelType.AllInterfaces) {
+        foreach (var implementedInterface in kernelType.AllInterfaces)
+        {
             if (IsEventKernelInterface(implementedInterface) &&
                 implementedInterface.TypeArguments.Length > 0 &&
                 implementedInterface.TypeArguments[0] is INamedTypeSymbol eventType)
@@ -53,12 +56,14 @@ internal static class PluginSymbolReader
     public static EquatableArray<EventPropertyModel> EventProperties(INamedTypeSymbol eventType)
     {
         var properties = PluginEventPropertyReader.Read(eventType);
-        if (properties.Length == 0) {
+        if (properties.Length == 0)
+        {
             return default;
         }
 
         var models = new EventPropertyModel[properties.Length];
-        for (var i = 0; i < properties.Length; i++) {
+        for (var i = 0; i < properties.Length; i++)
+        {
             var property = properties[i];
             // The full marshaller-eligible set (scalars + Guid + enum + list/array + Dictionary + DTO record) is
             // classified here, not just the 5 scalars: a non-scalar property becomes a real tag plus the C#
@@ -80,15 +85,18 @@ internal static class PluginSymbolReader
         CancellationToken cancellationToken)
     {
         var count = CountLiveSettingProperties(kernelType);
-        if (count == 0) {
+        if (count == 0)
+        {
             return default;
         }
 
         var names = new HashSet<string>(StringComparer.Ordinal);
         var settings = new LiveSettingModel[count];
         var index = 0;
-        foreach (var property in LiveSettingProperties(kernelType)) {
-            if (!names.Add(property.Name)) {
+        foreach (var property in LiveSettingProperties(kernelType))
+        {
+            if (!names.Add(property.Name))
+            {
                 throw new NotSupportedException($"Live setting '{property.Name}' is declared more than once.");
             }
 
@@ -117,7 +125,8 @@ internal static class PluginSymbolReader
     private static int CountLiveSettingProperties(INamedTypeSymbol kernelType)
     {
         var count = 0;
-        foreach (var property in LiveSettingProperties(kernelType)) {
+        foreach (var property in LiveSettingProperties(kernelType))
+        {
             _ = property;
             count++;
         }
@@ -192,7 +201,8 @@ internal static class PluginSymbolReader
     {
         var range = RangeAttribute(property);
         if (range is null ||
-            range.ConstructorArguments.Length < DotBoxDGenerationNames.RangeAttributeArguments.NumericOverloadCount) {
+            range.ConstructorArguments.Length < DotBoxDGenerationNames.RangeAttributeArguments.NumericOverloadCount)
+        {
             return (null, null);
         }
 

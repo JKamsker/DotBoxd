@@ -17,12 +17,14 @@ public static class RpcMessagePackIpc
     // (and the caller passes no cancellable token). Keeping the convenience default on this profile
     // means the easy path is the measured low-allocation path (PAL-0014). Callers needing a per-call
     // timeout can pass their own RpcPeerOptions or a CancellationToken.
-    private static readonly RpcPeerOptions DefaultClientOptions = new() {
+    private static readonly RpcPeerOptions DefaultClientOptions = new()
+    {
         RequestTimeout = Timeout.InfiniteTimeSpan,
         EnableLowAllocationValueTaskInvocations = true,
         RejectInboundCalls = true
     };
-    private static readonly RpcPeerOptions DefaultBidirectionalClientOptions = new() {
+    private static readonly RpcPeerOptions DefaultBidirectionalClientOptions = new()
+    {
         RequestTimeout = TimeSpan.FromSeconds(10)
     };
     // Server-side convenience default. DotBoxD.Kernels plugin IPC hosts answer unary calls from trusted
@@ -33,7 +35,8 @@ public static class RpcMessagePackIpc
     // default on this profile means the easy listen path is the measured low-allocation path
     // (PAL-0014). Hosts needing bounded backpressure or cancellable handlers can pass their own
     // RpcPeerOptions.
-    private static readonly RpcPeerOptions DefaultServerOptions = new() {
+    private static readonly RpcPeerOptions DefaultServerOptions = new()
+    {
         RequestTimeout = Timeout.InfiniteTimeSpan,
         DisableInboundRequestCancellation = true,
         InboundQueueCapacity = null

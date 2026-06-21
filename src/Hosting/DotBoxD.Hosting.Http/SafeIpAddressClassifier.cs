@@ -6,11 +6,13 @@ internal static class SafeIpAddressClassifier
 {
     public static bool IsNonGlobal(IPAddress address)
     {
-        if (IPAddress.IsLoopback(address)) {
+        if (IPAddress.IsLoopback(address))
+        {
             return true;
         }
 
-        if (address.IsIPv4MappedToIPv6) {
+        if (address.IsIPv4MappedToIPv6)
+        {
             return IsNonGlobal(address.MapToIPv4());
         }
 

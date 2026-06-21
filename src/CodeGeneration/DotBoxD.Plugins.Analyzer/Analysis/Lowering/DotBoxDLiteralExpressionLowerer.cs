@@ -7,7 +7,8 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 internal static class DotBoxDLiteralExpressionLowerer
 {
     public static DotBoxDExpressionModel Lower(LiteralExpressionSyntax literal)
-        => literal.Token.Value switch {
+        => literal.Token.Value switch
+        {
             bool value => Bool(value),
             int value => Int32(value),
             long value => Int64(value),
@@ -24,7 +25,8 @@ internal static class DotBoxDLiteralExpressionLowerer
             return null;
         }
 
-        return literal.Token.Value switch {
+        return literal.Token.Value switch
+        {
             int value when value != int.MinValue => Int32(-value),
             long value when value != long.MinValue => Int64(-value),
             double value when IsFinite(value) => Float64(-value),

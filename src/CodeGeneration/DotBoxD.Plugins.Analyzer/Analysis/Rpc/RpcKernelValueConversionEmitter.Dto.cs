@@ -75,7 +75,7 @@ internal sealed partial class RpcKernelValueConversionEmitter
     /// fields when one exists, otherwise through an object initializer (parameterless constructor + settable
     /// properties). Throws at generation time when neither shape is available.
     /// </summary>
-    private string BuildDtoReconstruction(INamedTypeSymbol type, IReadOnlyList<IPropertySymbol> fields)
+    private string BuildDtoReconstruction(INamedTypeSymbol type, IReadOnlyList<RecordMember> fields)
     {
         if (TryResolveConstructor(type, fields) is { } constructor)
         {
@@ -116,7 +116,7 @@ internal sealed partial class RpcKernelValueConversionEmitter
     }
 
     private List<string> DtoConstructorArguments(
-        IReadOnlyList<IPropertySymbol> fields,
+        IReadOnlyList<RecordMember> fields,
         IMethodSymbol constructor)
     {
         var arguments = new List<string>(constructor.Parameters.Length);
@@ -129,7 +129,7 @@ internal sealed partial class RpcKernelValueConversionEmitter
         return arguments;
     }
 
-    private static IMethodSymbol? TryResolveConstructor(INamedTypeSymbol type, IReadOnlyList<IPropertySymbol> fields)
+    private static IMethodSymbol? TryResolveConstructor(INamedTypeSymbol type, IReadOnlyList<RecordMember> fields)
     {
         foreach (var constructor in type.InstanceConstructors)
         {
@@ -169,7 +169,7 @@ internal sealed partial class RpcKernelValueConversionEmitter
     /// (<c>set</c> or <c>init</c>) and the type is a value type or exposes an accessible parameterless
     /// constructor — the same fallback the runtime marshaller uses.
     /// </summary>
-    private static bool CanUseObjectInitializer(INamedTypeSymbol type, IReadOnlyList<IPropertySymbol> fields)
+    private static bool CanUseObjectInitializer(INamedTypeSymbol type, IReadOnlyList<RecordMember> fields)
     {
         if (fields.Count == 0)
         {
@@ -183,10 +183,7 @@ internal sealed partial class RpcKernelValueConversionEmitter
 
         foreach (var field in fields)
         {
-            if (field.SetMethod is not
-                {
-                    DeclaredAccessibility: Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal
-                })
+            if (!DotBoxDRpcTypeMapper.IsObjectInitializerWritable(field))
             {
                 return false;
             }

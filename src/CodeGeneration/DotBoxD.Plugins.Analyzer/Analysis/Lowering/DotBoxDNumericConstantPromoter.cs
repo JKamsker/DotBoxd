@@ -13,16 +13,19 @@ internal static class DotBoxDNumericConstantPromoter
     {
         if (string.Equals(left.Type, right.Type, StringComparison.Ordinal) ||
             !DotBoxDNumericExpressionLowerer.IsNumeric(left) ||
-            !DotBoxDNumericExpressionLowerer.IsNumeric(right)) {
+            !DotBoxDNumericExpressionLowerer.IsNumeric(right))
+        {
             return;
         }
 
-        if (TryPromoteConstant(binary.Left, context, right.Type) is { } promotedLeft) {
+        if (TryPromoteConstant(binary.Left, context, right.Type) is { } promotedLeft)
+        {
             left = promotedLeft;
             return;
         }
 
-        if (TryPromoteConstant(binary.Right, context, left.Type) is { } promotedRight) {
+        if (TryPromoteConstant(binary.Right, context, left.Type) is { } promotedRight)
+        {
             right = promotedRight;
         }
     }

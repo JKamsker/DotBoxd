@@ -2,9 +2,8 @@
 // netstandard2.1 reference assemblies. Required so that init accessors
 // (e.g. TcpServerTransport.FrameReadIdleTimeout) compile on this target.
 
-namespace System.Runtime.CompilerServices
+namespace System.Runtime.CompilerServices;
+
+internal static class IsExternalInit
 {
-    internal static class IsExternalInit
-    {
-    }
 }

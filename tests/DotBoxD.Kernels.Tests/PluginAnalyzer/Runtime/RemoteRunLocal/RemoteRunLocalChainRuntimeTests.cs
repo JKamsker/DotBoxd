@@ -234,8 +234,12 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
             "public static string ReadProjected(global::DotBoxD.Plugins.KernelRpcValue value)",
             projection,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "public static string ReadProjectedPayload(global::System.ReadOnlyMemory<byte> payload)",
+            projection,
+            StringComparison.Ordinal);
         Assert.Contains(".Create(), handler, ", projection, StringComparison.Ordinal);
-        Assert.Contains(".ReadProjected)", projection, StringComparison.Ordinal);
+        Assert.Contains(".ReadProjectedPayload)", projection, StringComparison.Ordinal);
 
         // Whole-event chain (the event record itself): the generated reader reconstructs the DTO via its real
         // constructor, so even the whole-event decode is reflection-free.
@@ -244,13 +248,17 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
             "ReadProjected(global::DotBoxD.Plugins.KernelRpcValue value)",
             wholeEvent,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "ReadProjectedPayload(global::System.ReadOnlyMemory<byte> payload)",
+            wholeEvent,
+            StringComparison.Ordinal);
         Assert.Contains(".Create(), handler, ", wholeEvent, StringComparison.Ordinal);
     }
 
     private static byte[] EncodeString(string value)
     {
         var sandboxValue = KernelRpcMarshaller.ToSandboxValue(value, typeof(string));
-        return KernelRpcBinaryCodec.EncodeValue(KernelRpcValueConverter.FromSandboxValue(sandboxValue));
+        return KernelRpcBinaryCodec.EncodeValue(sandboxValue);
     }
 
     private static PluginPackage LowerToPackage(string source)

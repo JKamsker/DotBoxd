@@ -105,7 +105,8 @@ internal sealed partial class RawI32ExpressionPlan
 
     private static bool TryGetMathKind(string id, out ExpressionKind kind)
     {
-        kind = id switch {
+        kind = id switch
+        {
             "math.abs" => ExpressionKind.Abs,
             "math.min" => ExpressionKind.Min,
             "math.max" => ExpressionKind.Max,
@@ -116,7 +117,8 @@ internal sealed partial class RawI32ExpressionPlan
     }
 
     private static int MathArgumentCount(ExpressionKind kind)
-        => kind switch {
+        => kind switch
+        {
             ExpressionKind.Abs => 1,
             ExpressionKind.Min or ExpressionKind.Max => 2,
             ExpressionKind.Clamp => 3,
@@ -124,7 +126,8 @@ internal sealed partial class RawI32ExpressionPlan
         };
 
     private static string BoxedMethod(ExpressionKind kind)
-        => kind switch {
+        => kind switch
+        {
             ExpressionKind.Abs => nameof(CompiledRuntime.AbsI32),
             ExpressionKind.Min => nameof(CompiledRuntime.MinI32),
             ExpressionKind.Max => nameof(CompiledRuntime.MaxI32),

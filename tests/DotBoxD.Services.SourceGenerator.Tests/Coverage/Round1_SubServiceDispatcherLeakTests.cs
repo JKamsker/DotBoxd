@@ -130,11 +130,13 @@ public sealed class Round1_SubServiceDispatcherLeakTests
         {
             if (targetMethod?.Name == "Dispose")
             {
-                if (Sink is not null) Sink.Disposed = true;
+                if (Sink is not null)
+                    Sink.Disposed = true;
                 return null;
             }
 
-            if (targetMethod?.Name == "CountAsync") return Task.FromResult(0);
+            if (targetMethod?.Name == "CountAsync")
+                return Task.FromResult(0);
             throw new InvalidOperationException("unexpected " + targetMethod?.Name);
         }
     }

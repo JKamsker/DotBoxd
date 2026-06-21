@@ -151,9 +151,8 @@ internal static class HookChainModelFactory
 
         // An anonymous type CAN be the terminal (pushed) projection — it has a real metadata identity Roslyn can
         // infer as a type ARGUMENT — but it has no C#-source-nameable name. The interceptor handles it by binding
-        // the projection slot as a generic type PARAMETER (see Interception), and NO reflection-free decoder is
-        // emitted (a ReadProjected method cannot declare an anonymous return type); the chain falls back to the
-        // reflective registration, which reconstructs the anonymous type via its public positional constructor.
+        // the projection slot as a generic type PARAMETER. The local decoder is generic too and creates a matching
+        // anonymous-object literal, so it still avoids the reflective registration path.
         var projectionIsUnnameable = projectedTypeSymbol is INamedTypeSymbol { IsAnonymousType: true };
 
         var handleReturnType = installKind == HookChainInterceptorInstallKind.LocalCallback
@@ -161,9 +160,9 @@ internal static class HookChainModelFactory
             : DotBoxDGenerationNames.TypeNames.GlobalSandboxType + ".Unit";
 
         // The reflection-free decoder for the pushed value's projected type (final Select element, or the whole
-        // event when there is no Select). Null for a non-local chain, an un-nameable (anonymous) projection, or a
-        // type that is not wire-eligible — those keep the reflective 2-arg registration so they do not regress.
-        var localDecoderSource = installKind == HookChainInterceptorInstallKind.LocalCallback && !projectionIsUnnameable
+        // event when there is no Select). Null for a non-local chain or a type that is not wire-eligible — those
+        // keep the reflective 2-arg registration so they do not regress.
+        var localDecoderSource = installKind == HookChainInterceptorInstallKind.LocalCallback
             ? BuildLocalDecoderSource(projectedTypeSymbol)
             : null;
 
@@ -376,7 +375,7 @@ internal static class HookChainModelFactory
             // becomes a type parameter (reusing the receiver's own parameter names), and the receiver/handler/
             // return types reference those parameters. Roslyn infers them — including the anonymous one — at the
             // call site, so the emitted source never names the anonymous type.
-            if (projectedTypeSymbol is INamedTypeSymbol { IsAnonymousType: true } &&
+            if (projectedTypeSymbol is INamedTypeSymbol { IsAnonymousType: true } anonymousProjection &&
                 method.Parameters[0].Type is INamedTypeSymbol handlerType)
             {
                 var typeParameters = receiverType.ConstructedFrom.TypeParameters;
@@ -394,6 +393,9 @@ internal static class HookChainModelFactory
                     packageFullName,
                     installKind,
                     hasLocalDecoder,
+                    hasLocalDecoder && substitution.TryGetValue(anonymousProjection, out var decoderTypeArgument)
+                        ? decoderTypeArgument
+                        : null,
                     string.Join(", ", typeParameters.Select(parameter => parameter.Name)));
             }
 

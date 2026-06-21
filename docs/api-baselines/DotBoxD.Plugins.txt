@@ -22,6 +22,7 @@ public bool IndexCoversPredicate { get; init; }
 public bool IsRevoked => Volatile.Read(ref _revoked) != 0
 public bool LocalTerminal { get; init; }
 public bool Owns(string pluginId)
+public bool ReadBool()
 public bool Register<TEvent>( IPluginEventAdapter<TEvent> adapter, InstalledKernel kernel, IReadOnlyList<IndexedPredicate> predicates, bool indexCoversPredicate)
 public bool TryGet(string pluginId, [MaybeNullWhen(false)] out InstalledKernel kernel)
 public bool Uninstall(string pluginId)
@@ -31,6 +32,7 @@ public const string CapabilityId = "host.message.write"
 public const string SendBindingId = "host.message.send"
 public delegate ValueTask RemoteLocalPush(string subscriptionId, ReadOnlyMemory<byte> projectedValue, CancellationToken cancellationToken)
 public double DoubleValue
+public double ReadDouble()
 public enum IndexPredicateOperator
 public enum IndexPredicateOperator.Equals
 public enum IndexPredicateOperator.GreaterThan
@@ -60,9 +62,13 @@ public enum PluginDiagnosticPhase.LiveSetting
 public enum PluginDiagnosticPhase.PackageValidation
 public enum PluginDiagnosticPhase.PreparedPackageValidation
 public enum PluginDiagnosticPhase.RuntimeEntrypoint
+public enum SubscriptionDeliveryStage
+public enum SubscriptionDeliveryStage.Filter
+public enum SubscriptionDeliveryStage.Handler
 public EventIndexStats Stats => new(
 public Exception? LastAsyncUpdateError => _pendingLiveUpdates.LastError
 public Exception? LastAsyncUpdateError => Kernel.LastAsyncUpdateError
+public Guid ReadGuid()
 public HookPipeline<TEvent> InvokeHostHandler(Action<TEvent, HookContext> handler)
 public HookPipeline<TEvent> InvokeHostHandler(Action<TEvent> handler)
 public HookPipeline<TEvent> InvokeHostHandler(Func<TEvent, HookContext, ValueTask> handler)
@@ -101,12 +107,17 @@ public HookStage<TEvent, TNext> Select<TNext>(Func<TCurrent, TNext> projection)
 public HookStage<TEvent, TNext> Select<TNext>(Func<TEvent, HookContext, TNext> projection)
 public HookStage<TEvent, TNext> Select<TNext>(Func<TEvent, TNext> projection)
 public IDisposable Register<TProjected>( string subscriptionId, Func<TProjected, HookContext, ValueTask> handler, Func<KernelRpcValue, TProjected> decoder)
+public IDisposable Register<TProjected>( string subscriptionId, Func<TProjected, HookContext, ValueTask> handler, Func<ReadOnlyMemory<byte>, TProjected> decoder)
 public IDisposable Register<TProjected>( string subscriptionId, Func<TProjected, HookContext, ValueTask> handler)
 public IEnumerator<InstalledKernel> GetEnumerator() => Snapshot().GetEnumerator()
 public InstalledKernel Get(string pluginId)
 public InstalledKernel Kernel { get; }
 public int Int32Value
 public int ItemCount => (_items ?? EmptyItems).Length
+public int ReadInt32()
+public int ReadListHeader()
+public int ReadMapHeader()
+public int ReadRecordHeader()
 public interface ILiveSetting
 public interface IServerExtensionClientRegistry :
 public interface IServerExtensionWireClient : DotBoxD.Abstractions.IServerExtensionWireClient
@@ -122,6 +133,7 @@ public IReadOnlyList<string> Effects { get => _effects; init => _effects = Plugi
 public IReadOnlyList<string> GetRequiredCapabilities(PluginPackage package)
 public IReadOnlyList<string> RequiredCapabilities
 public KernelRegistry Kernels { get; }
+public KernelRpcPayloadReader(ReadOnlySpan<byte> payload)
 public KernelRpcValue GetItem(int index) => (_items ?? EmptyItems)[index]
 public KernelRpcValue[] Items => CopyItems(_items ?? EmptyItems)
 public KernelRpcValueKind Kind { get; }
@@ -134,6 +146,7 @@ public LiveUpdateMode UpdateMode
 public LiveValue(string name, T value)
 public LiveValue<T> BindValue<T>(string name, T initialValue)
 public long Int64Value
+public long ReadInt64()
 public object? CurrentValue => Value
 public object? GetObject(string name)
 public object? OwnerId => _ownerId
@@ -144,7 +157,9 @@ public PluginPackage Package { get; }
 public PluginServer RegisterEventAdapter<TEvent>(IPluginEventAdapter<TEvent> adapter)
 public PluginSession CreateSession()
 public readonly record struct EventIndexStats(long Considered, long Prefiltered, long Dispatched)
+public readonly record struct SubscriptionDeliveryFault( Type EventType, SubscriptionDeliveryStage Stage, Exception Exception)
 public readonly struct KernelRpcValue
+public ref struct KernelRpcPayloadReader
 public RemoteHookPipeline<TEvent> On<TEvent>() => new(_install, _localHandlers)
 public RemoteHookPipeline<TEvent> Run(Action<TCurrent, HookContext> handler)
 public RemoteHookPipeline<TEvent> Run(Action<TCurrent> handler)
@@ -165,20 +180,28 @@ public RemoteHookPipeline<TEvent> RunLocal(Func<TEvent, ValueTask> handler)
 public RemoteHookPipeline<TEvent> Use<TKernel>() where TKernel : class
 public RemoteHookPipeline<TEvent> UseGeneratedChain(PluginPackage package)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TCurrent, HookContext> handler, Func<KernelRpcValue, TCurrent> decoder)
+public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TCurrent, HookContext> handler, Func<ReadOnlyMemory<byte>, TCurrent> decoder)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TCurrent, HookContext> handler)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TCurrent> handler, Func<KernelRpcValue, TCurrent> decoder)
+public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TCurrent> handler, Func<ReadOnlyMemory<byte>, TCurrent> decoder)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TCurrent> handler)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TEvent, HookContext> handler, Func<KernelRpcValue, TEvent> decoder)
+public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TEvent, HookContext> handler, Func<ReadOnlyMemory<byte>, TEvent> decoder)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TEvent, HookContext> handler)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TEvent> handler, Func<KernelRpcValue, TEvent> decoder)
+public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TEvent> handler, Func<ReadOnlyMemory<byte>, TEvent> decoder)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TEvent> handler)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TCurrent, HookContext, ValueTask> handler, Func<KernelRpcValue, TCurrent> decoder)
+public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TCurrent, HookContext, ValueTask> handler, Func<ReadOnlyMemory<byte>, TCurrent> decoder)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TCurrent, HookContext, ValueTask> handler)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TCurrent, ValueTask> handler, Func<KernelRpcValue, TCurrent> decoder)
+public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TCurrent, ValueTask> handler, Func<ReadOnlyMemory<byte>, TCurrent> decoder)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TCurrent, ValueTask> handler)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, HookContext, ValueTask> handler, Func<KernelRpcValue, TEvent> decoder)
+public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, HookContext, ValueTask> handler, Func<ReadOnlyMemory<byte>, TEvent> decoder)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, HookContext, ValueTask> handler)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, ValueTask> handler, Func<KernelRpcValue, TEvent> decoder)
+public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, ValueTask> handler, Func<ReadOnlyMemory<byte>, TEvent> decoder)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, ValueTask> handler)
 public RemoteHookPipeline<TEvent> Where(Func<TEvent, bool> filter)
 public RemoteHookPipeline<TEvent> Where(Func<TEvent, HookContext, bool> filter)
@@ -209,20 +232,28 @@ public RemoteSubscriptionPipeline<TEvent> RunLocal(Func<TEvent, ValueTask> handl
 public RemoteSubscriptionPipeline<TEvent> Use<TKernel>() where TKernel : class
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedChain(PluginPackage package)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TCurrent, HookContext> handler, Func<KernelRpcValue, TCurrent> decoder)
+public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TCurrent, HookContext> handler, Func<ReadOnlyMemory<byte>, TCurrent> decoder)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TCurrent, HookContext> handler)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TCurrent> handler, Func<KernelRpcValue, TCurrent> decoder)
+public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TCurrent> handler, Func<ReadOnlyMemory<byte>, TCurrent> decoder)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TCurrent> handler)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TEvent, HookContext> handler, Func<KernelRpcValue, TEvent> decoder)
+public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TEvent, HookContext> handler, Func<ReadOnlyMemory<byte>, TEvent> decoder)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TEvent, HookContext> handler)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TEvent> handler, Func<KernelRpcValue, TEvent> decoder)
+public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TEvent> handler, Func<ReadOnlyMemory<byte>, TEvent> decoder)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Action<TEvent> handler)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TCurrent, HookContext, ValueTask> handler, Func<KernelRpcValue, TCurrent> decoder)
+public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TCurrent, HookContext, ValueTask> handler, Func<ReadOnlyMemory<byte>, TCurrent> decoder)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TCurrent, HookContext, ValueTask> handler)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TCurrent, ValueTask> handler, Func<KernelRpcValue, TCurrent> decoder)
+public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TCurrent, ValueTask> handler, Func<ReadOnlyMemory<byte>, TCurrent> decoder)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TCurrent, ValueTask> handler)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, HookContext, ValueTask> handler, Func<KernelRpcValue, TEvent> decoder)
+public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, HookContext, ValueTask> handler, Func<ReadOnlyMemory<byte>, TEvent> decoder)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, HookContext, ValueTask> handler)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, ValueTask> handler, Func<KernelRpcValue, TEvent> decoder)
+public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, ValueTask> handler, Func<ReadOnlyMemory<byte>, TEvent> decoder)
 public RemoteSubscriptionPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, ValueTask> handler)
 public RemoteSubscriptionPipeline<TEvent> Where(Func<TEvent, bool> filter)
 public RemoteSubscriptionPipeline<TEvent> Where(Func<TEvent, HookContext, bool> filter)
@@ -272,10 +303,10 @@ public static BindingDescriptor CreateSend(IPluginMessageSink sink)
 public static bool TryGetReference(string code, out PluginDiagnosticReference reference)
 public static byte[] EncodeArguments(IReadOnlyList<KernelRpcValue> arguments)
 public static byte[] EncodeValue(KernelRpcValue value)
+public static byte[] EncodeValue(SandboxValue value)
 public static class HostMessagePolicyBuilderExtensions
 public static class HostServiceBindingExtensions
 public static class KernelPackageRegistry
-public static class KernelRpcBinaryCodec
 public static class KernelRpcValueConverter
 public static class PluginDiagnosticCodes
 public static class PluginMessageBindings
@@ -298,13 +329,14 @@ public static KernelRpcValue String(string value)
 public static KernelRpcValue Unit()
 public static KernelRpcValue[] DecodeArguments(ReadOnlyMemory<byte> payload)
 public static object? FromSandboxValue(SandboxValue value, Type type)
+public static partial class KernelRpcBinaryCodec
 public static partial class KernelRpcMarshaller
 public static partial class PluginPackageJsonSerializer
 public static PluginPackage Create( PluginManifest manifest, SandboxModule module, KernelEntrypoints? entrypoints = null)
 public static PluginPackage Import(string json)
 public static PluginPackage Resolve(Type kernelType)
 public static PluginPackage Resolve<TKernel>() where TKernel : class => Resolve(typeof(TKernel))
-public static PluginServer Create( IPluginMessageSink? messages = null, Action<SandboxHostBuilder>? configureHost = null, SandboxPolicy? defaultPolicy = null, ExecutionMode executionMode = ExecutionMode.Auto)
+public static PluginServer Create( IPluginMessageSink? messages = null, Action<SandboxHostBuilder>? configureHost = null, SandboxPolicy? defaultPolicy = null, ExecutionMode executionMode = ExecutionMode.Auto, Action<SubscriptionDeliveryFault>? onSubscriptionFault = null)
 public static SandboxHostBuilder AddBindingsFrom<TService>( this SandboxHostBuilder builder, TService implementation) where TService : class
 public static SandboxHostBuilder AddPluginMessageBindings( this SandboxHostBuilder builder, IPluginMessageSink sink)
 public static SandboxPolicyBuilder GrantHostMessageWrite( this SandboxPolicyBuilder builder, IEnumerable<string>? allowedTargets = null, IEnumerable<string>? targetPrefixes = null, int? maxMessageLength = null)
@@ -320,9 +352,11 @@ public static ValueTask<InstalledKernel> InstallJsonAsync( this PluginServer ser
 public static ValueTask<InstalledKernel> InstallJsonAsync( this PluginSession session, string json, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public static void EncodeArguments(IReadOnlyList<KernelRpcValue> arguments, IBufferWriter<byte> writer)
 public static void EncodeValue(KernelRpcValue value, IBufferWriter<byte> writer)
+public static void EncodeValue(SandboxValue value, IBufferWriter<byte> writer)
 public static void Register(Type kernelType, Func<PluginPackage> factory)
 public string Name { get; }
 public string Name => Definition.Name
+public string ReadString()
 public string TextValue
 public string? ProjectedType { get; init; }
 public string? RpcEntrypoint { get; init; }
@@ -379,8 +413,10 @@ public ValueTask<InstalledKernel> InstallAsync( PluginPackage package, SandboxPo
 public ValueTask<InstalledKernel> InstallServerExtensionAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public void Clear() => _handlers.Clear()
 public void Dispose()
+public void EnsureConsumed()
 public void Publish<TEvent>(TEvent e, CancellationToken cancellationToken = default)
 public void Publish<TEvent>(TEvent value, CancellationToken cancellationToken = default)
+public void ReadUnit() => ReadKind(KernelRpcValueKind.Unit)
 public void Register<TEvent>(IPluginEventAdapter<TEvent> adapter)
 public void RequireKind(KernelRpcValueKind expected)
 public void Revoke()

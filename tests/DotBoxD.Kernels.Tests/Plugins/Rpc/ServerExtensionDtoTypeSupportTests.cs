@@ -131,6 +131,70 @@ public sealed class ServerExtensionDtoTypeSupportTests
     }
 
     [Fact]
+    public void Marshaller_round_trips_a_record_with_a_computed_get_only_property()
+    {
+        // A derived/get-only member (`Sum => X + Y`) is read into the wire shape like any other property, but it
+        // has no set accessor and no constructor parameter. Decoding must reconstruct through the positional
+        // constructor and let the derived member recompute itself — not try (and fail) to assign it. Before the
+        // fix this threw "Property set method not found", because no constructor matched the field count and the
+        // fallback path assigned every member by setter.
+        var encoded = KernelRpcMarshaller.ToSandboxValue(new MarshalLocation(3, 4), typeof(MarshalLocation));
+        Assert.Equal(
+            SandboxValue.FromRecord(
+                [SandboxValue.FromInt32(3), SandboxValue.FromInt32(4), SandboxValue.FromInt32(7)]),
+            encoded);
+
+        var decoded = Assert.IsType<MarshalLocation>(
+            KernelRpcMarshaller.FromSandboxValue(encoded, typeof(MarshalLocation)));
+        Assert.Equal(3, decoded.X);
+        Assert.Equal(4, decoded.Y);
+        Assert.Equal(7, decoded.Sum);
+    }
+
+    [Fact]
+    public void Kernel_rpc_decode_reconstructs_a_record_with_a_computed_get_only_property()
+    {
+        // The exact production failure: a projected event carries a nested record with a derived member, and the
+        // kernel-RPC decode path (RecordShape.Construct(KernelRpcValue) -> ConstructFromArguments) threw
+        // "Property set method not found" trying to assign the get-only member. Drive that path directly.
+        var decode = typeof(KernelRpcMarshaller).GetMethod(
+            "FromKernelRpcValue",
+            BindingFlags.NonPublic | BindingFlags.Static,
+            null,
+            [typeof(KernelRpcValue), typeof(Type)],
+            null)!;
+
+        var decoded = Assert.IsType<MarshalLocation>(decode.Invoke(
+            null,
+            [
+                KernelRpcValue.Record(
+                [
+                    KernelRpcValue.Int32(3),
+                    KernelRpcValue.Int32(4),
+                    KernelRpcValue.Int32(7)
+                ]),
+                typeof(MarshalLocation)
+            ]));
+
+        Assert.Equal(3, decoded.X);
+        Assert.Equal(4, decoded.Y);
+        Assert.Equal(7, decoded.Sum);
+    }
+
+    [Fact]
+    public void Marshaller_reconstructs_a_settable_dto_without_matching_constructor()
+    {
+        var sandbox = SandboxValue.FromRecord(
+            [SandboxValue.FromInt32(7), SandboxValue.FromString("hero")]);
+
+        var profile = Assert.IsType<MarshalProfile>(
+            KernelRpcMarshaller.FromSandboxValue(sandbox, typeof(MarshalProfile)));
+
+        Assert.Equal(7, profile.Id);
+        Assert.Equal("hero", profile.Name);
+    }
+
+    [Fact]
     public void Direct_extension_round_trips_an_enum_parameter_and_return()
     {
         var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly(EnumEchoSource);
@@ -187,6 +251,20 @@ public sealed class ServerExtensionDtoTypeSupportTests
         var controlType = assembly.GetType("Sample.RemoteWorldControl", throwOnError: true)!;
         registry = new RecordingRegistry(response);
         return Activator.CreateInstance(controlType, [registry])!;
+    }
+
+    private sealed class MarshalProfile
+    {
+        public int Id { get; set; }
+
+        public string Name { get; init; } = string.Empty;
+    }
+
+    // Mirrors the production shape that broke decoding: a positional record whose constructor sets a subset of
+    // its wire members, with a computed get-only property (`Sum`) derived from the rest.
+    private readonly record struct MarshalLocation(int X, int Y)
+    {
+        public int Sum => X + Y;
     }
 
     private sealed class RecordingRegistry(byte[] response) : DotBoxD.Plugins.IServerExtensionClientRegistry
