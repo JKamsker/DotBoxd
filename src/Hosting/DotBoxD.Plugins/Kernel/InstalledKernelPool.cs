@@ -65,19 +65,6 @@ public sealed class InstalledKernelPool
         CancellationToken cancellationToken)
         => SelectForDispatch().InvokeAsync(adapter, e, cancellationToken);
 
-    internal bool Contains(InstalledKernel kernel)
-    {
-        for (var i = 0; i < _kernels.Length; i++)
-        {
-            if (ReferenceEquals(_kernels[i], kernel))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private InstalledKernel SelectForDispatch()
     {
         var next = unchecked((uint)Interlocked.Increment(ref _next));

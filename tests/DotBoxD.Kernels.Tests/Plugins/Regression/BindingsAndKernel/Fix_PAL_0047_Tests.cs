@@ -2,6 +2,7 @@ using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.PluginIpc.Server.Abstractions;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Tests._TestSupport;
+using DotBoxD.Plugins.Runtime;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Regression.BindingsAndKernel;
 
@@ -33,6 +34,12 @@ public sealed class Fix_PAL_0047_Tests
 
         Assert.Equal(2, pool.DegreeOfParallelism);
         Assert.Equal(2, messages.Messages.Count);
+        // Both events carry distinct per-event payloads through the shared ExecutionPlan; assert the
+        // outputs are not swapped or duplicated, proving each child kernel marshalled its own event
+        // rather than racing on plan-attached state.
+        Assert.Equal(
+            new[] { "player-1", "player-2" },
+            messages.Messages.Select(m => m.TargetId).OrderBy(id => id, StringComparer.Ordinal));
         Assert.All(pool.Kernels, kernel => Assert.Equal(2, kernel.ExecutionObservations.Count));
     }
 
@@ -82,6 +89,40 @@ public sealed class Fix_PAL_0047_Tests
         Assert.Empty(messages.Messages);
     }
 
+    [Fact]
+    public async Task Removing_a_kernel_that_is_only_a_pool_member_does_not_detach_the_whole_pool()
+    {
+        var messages = new BlockingCountingSink();
+        messages.ReleaseAll();
+        using var server = PluginAddendumTestPolicies.CreateServer(messages);
+        var pool = await server.InstallPoolAsync(
+            FireDamagePluginPackage.Create(),
+            degreeOfParallelism: 2);
+        var pipeline = server.Hooks.On<DamageEvent>().Use(pool);
+
+        // A pool member was never registered as an individual kernel handler, so removing it must be
+        // a no-op. The ContainingPool fallback wrongly treats it as a request to detach the entire pool.
+        ((IKernelHandlerPipeline)pipeline).RemoveKernel(pool.Kernels[0]);
+
+        await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"))
+            .AsTask()
+            .WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Single(messages.Messages);
+    }
+
+    [Fact]
+    public async Task WaitForStartedCount_fails_fast_when_target_is_unreachable()
+    {
+        var sink = new BlockingCountingSink();
+
+        // No SendAsync is ever invoked, so the started count can never reach 1. The handshake helper
+        // must surface a bounded TimeoutException rather than looping forever, so a future dispatch
+        // regression fails the test fast instead of hanging until the CI job times out.
+        await Assert.ThrowsAsync<TimeoutException>(
+            () => sink.WaitForStartedCountAsync(1, TimeSpan.FromMilliseconds(200)));
+    }
+
     private sealed class BlockingCountingSink : IPluginMessageSink
     {
         private readonly object _gate = new();
@@ -116,11 +157,20 @@ public sealed class Fix_PAL_0047_Tests
             }
         }
 
-        public async Task WaitForStartedCountAsync(int expected)
+        public async Task WaitForStartedCountAsync(int expected, TimeSpan? timeout = null)
         {
+            using var cts = new CancellationTokenSource(timeout ?? TimeSpan.FromSeconds(5));
             while (Volatile.Read(ref _startedCount) < expected)
             {
-                await _started.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+                try
+                {
+                    await _started.WaitAsync(cts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw new TimeoutException(
+                        $"Only {Volatile.Read(ref _startedCount)} of {expected} plugin sends started before the timeout elapsed.");
+                }
             }
         }
 

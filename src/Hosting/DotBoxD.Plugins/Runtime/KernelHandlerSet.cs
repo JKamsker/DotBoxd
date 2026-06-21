@@ -53,16 +53,12 @@ internal sealed class KernelHandlerSet<TEvent>
     {
         lock (_gate)
         {
+            // Only individually-registered kernels (via Add(kernel, ...)) are removable here. A kernel
+            // that is merely a pool member was never added on its own, so removal is a no-op; pools are
+            // detached as a unit through Remove(InstalledKernelPool).
             if (_kernelHandlers.Remove(kernel, out var handlers))
             {
                 _handlers = RemoveHandlers(_handlers, handlers);
-                return;
-            }
-
-            var pool = ContainingPool(kernel);
-            if (pool is not null)
-            {
-                RemoveCore(pool);
             }
         }
     }
@@ -84,19 +80,6 @@ internal sealed class KernelHandlerSet<TEvent>
         {
             _handlers = RemoveHandlers(_handlers, handlers);
         }
-    }
-
-    private InstalledKernelPool? ContainingPool(InstalledKernel kernel)
-    {
-        foreach (var pool in _poolHandlers.Keys)
-        {
-            if (pool.Contains(kernel))
-            {
-                return pool;
-            }
-        }
-
-        return null;
     }
 
     private static Func<TEvent, HookContext, ValueTask>[] RemoveHandlers(
