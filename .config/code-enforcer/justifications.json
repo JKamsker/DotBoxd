@@ -144,10 +144,6 @@
   ],
   "folders": [
     {
-      "path": "src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/Rpc",
-      "justification": "Server-extension RPC analysis is split into focused emitters, validators, seeders, and model readers. Keep listed until client, kernel, and DTO analysis move into subfolders."
-    },
-    {
       "path": "tests/DotBoxD.Kernels.Tests/PluginAnalyzer/Generated",
       "justification": "Pre-existing generated-analyzer regression folder groups related generator tests. Keep listed until tests are split by generator feature area."
     },
