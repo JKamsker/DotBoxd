@@ -18,10 +18,6 @@
       "justification": "Pre-existing interpreter dispatch file surfaced after correcting the line guard root. Keep listed until expression families are split into focused evaluators."
     },
     {
-      "path": "src/Kernels/DotBoxD.Kernels.Verifier/Diagnostics/VerifierDiagnosticCodes.cs",
-      "justification": "Public verifier diagnostic-code reference (API-0018): an intentionally exhaustive, flat catalog of V-* codes with doc comments. Kept as one reference file by design."
-    },
-    {
       "path": "src/Kernels/DotBoxD.Kernels.Validation/FunctionAnalyzer.cs",
       "justification": "Legacy validation analyzer over the soft limit. Do not grow it; split during the next validation refactor."
     },
