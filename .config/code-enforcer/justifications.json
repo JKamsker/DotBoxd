@@ -22,10 +22,6 @@
       "justification": "Legacy validation analyzer over the soft limit. Do not grow it; split during the next validation refactor."
     },
     {
-      "path": "src/Services/DotBoxD.Services/Peer/RpcPeer.cs",
-      "justification": "Pre-existing peer orchestration file surfaced after correcting the line guard root. Keep listed until connection lifecycle and dispatch are split."
-    },
-    {
       "path": "src/Services/DotBoxD.Services/Server/RpcHost.cs",
       "justification": "Pre-existing host orchestration file surfaced after correcting the line guard root. Keep listed until listener and peer lifecycle code are split."
     },
