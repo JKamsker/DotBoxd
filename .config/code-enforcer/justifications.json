@@ -52,10 +52,6 @@
     {
       "path": "src/Services/DotBoxD.Services/Streaming/Core/RpcStreamManager.cs",
       "justification": "Pre-existing large streaming coordinator surfaced after correcting the line guard root. Keep listed until stream lifecycle and flow-control code are split."
-    },
-    {
-      "path": "tests/DotBoxD.Services.Tests/Streaming/Core/StreamingProtocolRegressionTests.cs",
-      "justification": "Pre-existing streaming protocol regression fixture surfaced after correcting the line guard root. Keep listed until streaming cases are split."
     }
   ],
   "folders": [
