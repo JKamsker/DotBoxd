@@ -83,11 +83,11 @@ internal static class DotBoxDRecordCreationExpressionLowerer
                 throw new System.NotSupportedException();
             }
 
-            var lowered = lowerExpression(arguments[argumentIndex].Expression);
-            if (!string.Equals(lowered.Type, SandboxTypeSourceEmitter.ManifestTag(fields[fieldIndex].Type), StringComparison.Ordinal))
-            {
-                throw new System.NotSupportedException();
-            }
+            var lowered = LowerFieldValue(
+                arguments[argumentIndex].Expression,
+                fields[fieldIndex].Type,
+                context,
+                lowerExpression);
 
             fieldSources[fieldIndex] = lowered.Source;
             allocates |= lowered.Allocates;
@@ -131,17 +131,7 @@ internal static class DotBoxDRecordCreationExpressionLowerer
                 throw new System.NotSupportedException();
             }
 
-            var rhsType = context.SemanticModel.GetTypeInfo(assignment.Right, context.CancellationToken).Type;
-            if (rhsType is null || !SymbolEqualityComparer.Default.Equals(rhsType, fields[index].Type))
-            {
-                throw new System.NotSupportedException();
-            }
-
-            var lowered = lowerExpression(assignment.Right);
-            if (!string.Equals(lowered.Type, SandboxTypeSourceEmitter.ManifestTag(fields[index].Type), StringComparison.Ordinal))
-            {
-                throw new System.NotSupportedException();
-            }
+            var lowered = LowerFieldValue(assignment.Right, fields[index].Type, context, lowerExpression);
 
             fieldSources[index] = lowered.Source;
             allocates |= lowered.Allocates;
@@ -163,6 +153,47 @@ internal static class DotBoxDRecordCreationExpressionLowerer
     // The manifest-tag zero literal for an omitted field. Only scalar fields can be defaulted; a non-scalar
     // (Guid/list/map/record) omission fails safe because there is no single-expression zero for it.
     internal static string ZeroSource(ITypeSymbol fieldType)
+    {
+        if (DotBoxDNullableScalarType.IsNullableValueType(fieldType))
+        {
+            return DotBoxDNullableScalarExpressionLowerer.NullSource(fieldType);
+        }
+
+        return NonNullableZeroSource(fieldType);
+    }
+
+    private static DotBoxDExpressionModel LowerFieldValue(
+        ExpressionSyntax expression,
+        ITypeSymbol fieldType,
+        DotBoxDExpressionLoweringContext context,
+        System.Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression)
+    {
+        if (DotBoxDNullableScalarExpressionLowerer.TryLower(
+                expression,
+                fieldType,
+                context,
+                lowerExpression,
+                out var nullable))
+        {
+            return nullable;
+        }
+
+        var rhsType = context.SemanticModel.GetTypeInfo(expression, context.CancellationToken).Type;
+        if (rhsType is null || !SymbolEqualityComparer.Default.Equals(rhsType, fieldType))
+        {
+            throw new System.NotSupportedException();
+        }
+
+        var lowered = lowerExpression(expression);
+        if (!string.Equals(lowered.Type, SandboxTypeSourceEmitter.ManifestTag(fieldType), StringComparison.Ordinal))
+        {
+            throw new System.NotSupportedException();
+        }
+
+        return lowered;
+    }
+
+    private static string NonNullableZeroSource(ITypeSymbol fieldType)
         => SandboxTypeSourceEmitter.ManifestTag(fieldType) switch
         {
             ManifestTypes.Bool => $"{Helpers.Bool}({DotBoxDGenerationNames.CSharpLiterals.False})",

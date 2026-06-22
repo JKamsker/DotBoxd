@@ -18,9 +18,12 @@ public static partial class KernelRpcMarshaller
     public static SandboxValue ToSandboxValue(object? value, Type type)
     {
         ArgumentNullException.ThrowIfNull(type);
-        ArgumentNullException.ThrowIfNull(value);
-        RejectNullableValueType(type);
+        if (TryNullableToSandboxValue(value, type, out var nullable))
+        {
+            return nullable;
+        }
 
+        ArgumentNullException.ThrowIfNull(value);
         if (TryScalarToSandbox(value, type) is { } scalar)
         {
             return scalar;
@@ -114,7 +117,7 @@ public static partial class KernelRpcMarshaller
     // than the bare ArgumentNullException ToSandboxValue would otherwise throw with only the parameter name.
     private static SandboxValue MarshalChild(object? value, Type type, string context)
     {
-        if (value is null)
+        if (value is null && Nullable.GetUnderlyingType(type) is null)
         {
             throw new NotSupportedException(
                 $"{context} of type '{type}' was null; the sandbox value model has no null.");
@@ -126,7 +129,10 @@ public static partial class KernelRpcMarshaller
     public static object? FromSandboxValue(SandboxValue value, Type type)
     {
         ArgumentNullException.ThrowIfNull(type);
-        RejectNullableValueType(type);
+        if (TryNullableFromSandboxValue(value, type, out var nullable))
+        {
+            return nullable;
+        }
 
         if (TryScalarFromSandbox(value, type, out var scalar))
         {
@@ -201,7 +207,10 @@ public static partial class KernelRpcMarshaller
 
     private static SandboxType SandboxTypeOf(Type type, int depth)
     {
-        RejectNullableValueType(type);
+        if (TryNullableSandboxType(type, depth, out var nullable))
+        {
+            return nullable;
+        }
 
         if (type == typeof(bool))
             return SandboxType.Bool;
@@ -286,17 +295,6 @@ public static partial class KernelRpcMarshaller
             _ => null
         };
         return result is not null;
-    }
-
-    private static void RejectNullableValueType(Type type)
-    {
-        if (Nullable.GetUnderlyingType(type) is null)
-        {
-            return;
-        }
-
-        throw new NotSupportedException(
-            $"Kernel RPC service nullable type '{type}' is not supported.");
     }
 
     private static Array ToArray(IReadOnlyList<SandboxValue> values, Type elementType)

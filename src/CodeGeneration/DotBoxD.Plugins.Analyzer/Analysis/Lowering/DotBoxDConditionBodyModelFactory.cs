@@ -40,7 +40,7 @@ internal static partial class DotBoxDConditionBodyModelFactory
             ConditionalExpressionSyntax conditional =>
                 LowerConditional(conditional, whenTrue, whenFalse, context),
             PrefixUnaryExpressionSyntax unary when unary.Kind() == SyntaxKind.LogicalNotExpression =>
-                LowerCondition(unary.Operand, whenFalse, whenTrue, context),
+                LowerNot(unary, whenTrue, whenFalse, context),
             BinaryExpressionSyntax binary when binary.Kind() == SyntaxKind.LogicalAndExpression =>
                 LowerAnd(binary, whenTrue, whenFalse, context),
             BinaryExpressionSyntax binary when binary.Kind() == SyntaxKind.LogicalOrExpression =>
@@ -63,9 +63,25 @@ internal static partial class DotBoxDConditionBodyModelFactory
         DotBoxDStatementBodyModel whenFalse,
         DotBoxDExpressionLoweringContext context)
     {
-        if (DotBoxDPatternExpressionLowerer.ContainsDeclarationPattern(conditional))
+        if (DotBoxDPatternExpressionLowerer.TryLowerDeclarationPattern(
+                conditional.Condition,
+                context,
+                part => DotBoxDExpressionModelFactory.Create(part, context),
+                out var condition,
+                out var captureName,
+                out var capture))
         {
-            throw new NotSupportedException($"Unsupported declaration-pattern composition '{conditional}'.");
+            var trueContext = context.WithPatternCapture(captureName, capture);
+            return If(
+                condition.Source,
+                LowerCondition(conditional.WhenTrue, whenTrue, whenFalse, trueContext),
+                LowerCondition(conditional.WhenFalse, whenTrue, whenFalse, context),
+                condition.Allocates);
+        }
+
+        if (DotBoxDPatternExpressionLowerer.ContainsDeclarationPattern(conditional.Condition))
+        {
+            throw new NotSupportedException($"Unsupported declaration-pattern composition '{conditional.Condition}'.");
         }
 
         return LowerCondition(
@@ -73,6 +89,20 @@ internal static partial class DotBoxDConditionBodyModelFactory
             LowerCondition(conditional.WhenTrue, whenTrue, whenFalse, context),
             LowerCondition(conditional.WhenFalse, whenTrue, whenFalse, context),
             context);
+    }
+
+    private static DotBoxDStatementBodyModel LowerNot(
+        PrefixUnaryExpressionSyntax unary,
+        DotBoxDStatementBodyModel whenTrue,
+        DotBoxDStatementBodyModel whenFalse,
+        DotBoxDExpressionLoweringContext context)
+    {
+        if (DotBoxDPatternExpressionLowerer.ContainsDeclarationPattern(unary.Operand))
+        {
+            throw new NotSupportedException($"Unsupported declaration-pattern composition '{unary}'.");
+        }
+
+        return LowerCondition(unary.Operand, whenFalse, whenTrue, context);
     }
 
     private static DotBoxDStatementBodyModel LowerEagerAnd(

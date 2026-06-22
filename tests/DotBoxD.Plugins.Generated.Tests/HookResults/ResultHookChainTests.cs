@@ -15,6 +15,12 @@ public sealed record CombatDamageContext(CombatRelation Relation, int Damage);
 [HookResult]
 public readonly partial record struct CombatDamageResult(bool Success, string? Reason, int Damage);
 
+[Hook("combat.optional-damage", typeof(OptionalDamageResult))]
+public sealed record OptionalDamageContext(int Damage, bool CanDie);
+
+[HookResult]
+public readonly partial record struct OptionalDamageResult(bool Success, string? Reason, int? Damage, bool? CanDie);
+
 /// <summary>
 /// End-to-end coverage for result-hook lowering: the <c>On&lt;TContext&gt;().Where(...).Register/RegisterLocal</c>
 /// chains are authored as ordinary code, lowered by the DotBoxD generator loaded as a real build-time analyzer,
@@ -52,6 +58,40 @@ public sealed class ResultHookChainTests
 
         Assert.True(result!.Value.Success);
         Assert.Equal(50, result.Value.Damage);
+    }
+
+    [Fact]
+    public async Task Register_round_trips_nullable_scalar_result_fields()
+    {
+        using var server = PluginServer.Create(defaultPolicy: TestPolicies.Chain());
+        server.Hooks.On<OptionalDamageContext>()
+            .Register(
+                ctx => OptionalDamageResult.Ok()
+                    .WithDamage(ctx.Damage)
+                    .WithCanDie(null),
+                priority: 10);
+
+        var result = await server.Hooks.FireAsync<OptionalDamageContext, OptionalDamageResult>(
+            new OptionalDamageContext(15, true));
+
+        Assert.True(result!.Value.Success);
+        Assert.Equal(15, result.Value.Damage);
+        Assert.Null(result.Value.CanDie);
+    }
+
+    [Fact]
+    public async Task Register_defaults_omitted_nullable_scalar_result_fields_to_null()
+    {
+        using var server = PluginServer.Create(defaultPolicy: TestPolicies.Chain());
+        server.Hooks.On<OptionalDamageContext>()
+            .Register(ctx => new OptionalDamageResult { Success = true }, priority: 10);
+
+        var result = await server.Hooks.FireAsync<OptionalDamageContext, OptionalDamageResult>(
+            new OptionalDamageContext(15, true));
+
+        Assert.True(result!.Value.Success);
+        Assert.Null(result.Value.Damage);
+        Assert.Null(result.Value.CanDie);
     }
 
     [Fact]

@@ -11,31 +11,31 @@ internal static partial class DotBoxDConditionBodyModelFactory
         DotBoxDStatementBodyModel whenFalse,
         DotBoxDExpressionLoweringContext context)
     {
-        if (DotBoxDPatternExpressionLowerer.TryLowerDeclarationPattern(
-                binary.Left,
-                context,
-                part => DotBoxDExpressionModelFactory.Create(part, context),
-                out var left,
-                out var captureName,
-                out var capture))
+        var operands = FlattenAnd(binary);
+        var contexts = new DotBoxDExpressionLoweringContext[operands.Count];
+        var runningContext = context;
+        for (var i = 0; i < operands.Count; i++)
         {
-            if (DotBoxDPatternExpressionLowerer.ContainsDeclarationPattern(binary.Right))
+            contexts[i] = runningContext;
+            if (DotBoxDPatternExpressionLowerer.TryLowerDeclarationPattern(
+                    operands[i],
+                    runningContext,
+                    part => DotBoxDExpressionModelFactory.Create(part, runningContext),
+                    out _,
+                    out var captureName,
+                    out var capture))
             {
-                throw new NotSupportedException($"Unsupported declaration-pattern composition '{binary}'.");
+                runningContext = runningContext.WithPatternCapture(captureName, capture);
             }
-
-            var rightContext = context.WithPatternCapture(captureName, capture);
-            var right = LowerCondition(binary.Right, whenTrue, whenFalse, rightContext);
-            return If(left.Source, right, whenFalse, left.Allocates);
         }
 
-        if (DotBoxDPatternExpressionLowerer.ContainsDeclarationPattern(binary))
+        var next = whenTrue;
+        for (var i = operands.Count - 1; i >= 0; i--)
         {
-            throw new NotSupportedException($"Unsupported declaration-pattern composition '{binary}'.");
+            next = LowerCondition(operands[i], next, whenFalse, contexts[i]);
         }
 
-        var whenLeftTrue = LowerCondition(binary.Right, whenTrue, whenFalse, context);
-        return LowerCondition(binary.Left, whenLeftTrue, whenFalse, context);
+        return next;
     }
 
     private static DotBoxDStatementBodyModel LowerOr(
@@ -44,12 +44,32 @@ internal static partial class DotBoxDConditionBodyModelFactory
         DotBoxDStatementBodyModel whenFalse,
         DotBoxDExpressionLoweringContext context)
     {
-        if (DotBoxDPatternExpressionLowerer.ContainsDeclarationPattern(binary))
-        {
-            throw new NotSupportedException($"Unsupported declaration-pattern composition '{binary}'.");
-        }
-
         var whenLeftFalse = LowerCondition(binary.Right, whenTrue, whenFalse, context);
         return LowerCondition(binary.Left, whenTrue, whenLeftFalse, context);
+    }
+
+    private static IReadOnlyList<ExpressionSyntax> FlattenAnd(ExpressionSyntax expression)
+    {
+        var operands = new List<ExpressionSyntax>();
+        AddAndOperand(expression, operands);
+        return operands;
+    }
+
+    private static void AddAndOperand(ExpressionSyntax expression, ICollection<ExpressionSyntax> operands)
+    {
+        if (expression is ParenthesizedExpressionSyntax parenthesized)
+        {
+            AddAndOperand(parenthesized.Expression, operands);
+            return;
+        }
+
+        if (expression is BinaryExpressionSyntax binary && binary.Kind() == Microsoft.CodeAnalysis.CSharp.SyntaxKind.LogicalAndExpression)
+        {
+            AddAndOperand(binary.Left, operands);
+            AddAndOperand(binary.Right, operands);
+            return;
+        }
+
+        operands.Add(expression);
     }
 }

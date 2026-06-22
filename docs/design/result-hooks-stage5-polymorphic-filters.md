@@ -5,8 +5,10 @@
 > builder generator, object-initializer and fluent-builder lowering, runtime dispatch) and the game-server
 > combat sample shipped first; this document specced Stage 5 and the **v1 scope it describes is what landed** —
 > the `[PolymorphicHandle]`/`[HandleSubtype]` attributes, the analyzer declaration-pattern lowering, the runtime
-> metadata readers, and end-to-end tests (`CombatPolymorphicSampleTests`) all exist. Pattern shapes beyond the
-> v1 subset still fail safe; broadening them is tracked in issue #79.
+> metadata readers, and end-to-end tests (`CombatPolymorphicSampleTests`) all exist. Follow-up issue #79 broadened
+> the original v1 subset to support declaration captures in `||` branches, conditional true branches, key-property
+> recursive patterns such as `{ Id: > 0 }`, and multiple declaration captures in one `&&` filter while keeping
+> unsupported capture escapes fail-safe.
 
 ## Goal
 
@@ -34,12 +36,13 @@ public sealed record PlayerCombatant(long Id) : Combatant(Id)
 }
 ```
 
-**v1 scope (keep narrow, fail safe otherwise):** support exactly `expr is T local` and `expr is T local && rhs`,
-where `expr` is a `[PolymorphicHandle]` event property (or another handle), `T` is a declared `[HandleSubtype]`,
-and `rhs` may reference `local` only through instance `[HostBinding]` calls (`local.Method(args)`) and ordinary
-scalar comparisons. Anything richer (nested patterns, `or`/`not` over declarations, capturing in `Select`, using
-`local` outside the `&&`) fails safe — the chain does not lower and the existing un-lowered diagnostic
-(DBXK110/111/113) fires. This already happens today: the pattern lowerer has no declaration-pattern arm.
+**Current scope (keep bounded, fail safe otherwise):** support `expr is T local`, chained `&&` filters with one or
+more declaration captures, declaration captures inside either branch of `||`, key-member recursive patterns
+(`expr is T { Id: > 0 } local`), and a simple declaration-pattern condition whose `?:` true branch uses the capture.
+The captured local may be used only while the C# pattern scope is definitely guarded, and only as the receiver for
+instance `[HostBinding]` calls (`local.Method(args)`) or as the carried key. Capture escapes into later lambdas,
+unguarded branches, or unsupported pattern forms still fail safe — the chain does not lower and the existing
+un-lowered diagnostic (DBXK110/111/113) fires.
 
 ## Why this was a from-scratch subsystem
 

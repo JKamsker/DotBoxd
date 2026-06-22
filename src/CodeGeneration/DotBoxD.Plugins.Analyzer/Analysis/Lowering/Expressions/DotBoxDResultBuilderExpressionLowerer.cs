@@ -169,7 +169,14 @@ internal static class DotBoxDResultBuilderExpressionLowerer
                 return false;
             }
 
-            var argument = lowerExpression(arguments[0].Expression);
+            var argument = DotBoxDNullableScalarExpressionLowerer.TryLower(
+                arguments[0].Expression,
+                fields[index].Type,
+                context,
+                lowerExpression,
+                out var nullable)
+                ? nullable
+                : lowerExpression(arguments[0].Expression);
             if (!string.Equals(argument.Type, SandboxTypeSourceEmitter.ManifestTag(fields[index].Type), StringComparison.Ordinal))
             {
                 return false;

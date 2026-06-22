@@ -17,7 +17,7 @@ internal static class DotBoxDRpcTypeMapper
     public static string JsonType(ITypeSymbol type)
     {
         type = DotBoxDTypeNameReader.UnwrapTaskLike(type);
-        if (IsNullableValueType(type))
+        if (DotBoxDNullableScalarType.IsNullableValueType(type))
         {
             throw new NotSupportedException($"Server extension nullable type '{type.ToDisplayString()}' is not supported.");
         }
@@ -187,7 +187,7 @@ internal static class DotBoxDRpcTypeMapper
     public static bool IsRecordDto(INamedTypeSymbol type)
         => type.TypeKind is TypeKind.Class or TypeKind.Struct &&
            !IsScalar(type) &&
-           !IsNullableValueType(type) &&
+           !DotBoxDNullableScalarType.IsNullableValueType(type) &&
            MapTypes(type) is null &&
            RecordFields(type).Count > 0;
 
@@ -305,9 +305,6 @@ internal static class DotBoxDRpcTypeMapper
 
     private static string Scalar(string name) => "\"" + name + "\"";
 
-    private static bool IsNullableValueType(ITypeSymbol type)
-        => type is INamedTypeSymbol named &&
-           named.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T;
 }
 
 /// <summary>

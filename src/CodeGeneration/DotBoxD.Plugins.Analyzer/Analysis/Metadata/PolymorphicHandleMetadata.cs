@@ -6,6 +6,7 @@ namespace DotBoxD.Plugins.Analyzer.Analysis;
 
 internal sealed record PolymorphicHandleMetadata(
     INamedTypeSymbol HandleType,
+    string KeyMember,
     ITypeSymbol KeyType,
     string KeyManifestTag,
     string KeySandboxTypeSource)
@@ -77,7 +78,7 @@ internal static class PolymorphicHandleMetadataReader
                     throw InvalidHandleMetadata(current);
                 }
 
-                metadata = new PolymorphicHandleMetadata(current, keyType, tag, sandboxTypeSource);
+                metadata = new PolymorphicHandleMetadata(current, keyMember, keyType, tag, sandboxTypeSource);
                 return true;
             }
         }
