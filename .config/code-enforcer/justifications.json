@@ -54,10 +54,6 @@
       "justification": "Pre-existing large streaming coordinator surfaced after correcting the line guard root. Keep listed until stream lifecycle and flow-control code are split."
     },
     {
-      "path": "tests/DotBoxD.Services.Tests/Coverage/Core/SerializationCoverageTests.cs",
-      "justification": "Pre-existing serialization coverage fixture surfaced after correcting the line guard root. Keep listed until serialization cases are split."
-    },
-    {
       "path": "tests/DotBoxD.Services.Tests/Coverage/Peer/PeerInboundQueueCoverageTests.cs",
       "justification": "Pre-existing peer inbound queue coverage surfaced after correcting the line guard root. Keep listed until queue scenarios are split."
     },
