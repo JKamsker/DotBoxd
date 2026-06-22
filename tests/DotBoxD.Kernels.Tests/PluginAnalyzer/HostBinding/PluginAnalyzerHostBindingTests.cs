@@ -244,4 +244,5 @@ public sealed class PluginAnalyzerHostBindingTests
         Assert.Contains("event.read.health", package.Manifest.RequiredCapabilities);
         Assert.Contains("host.message.write", package.Manifest.RequiredCapabilities);
     }
+
 }

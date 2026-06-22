@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 
-internal static class DotBoxDPatternExpressionLowerer
+internal static partial class DotBoxDPatternExpressionLowerer
 {
     public static DotBoxDExpressionModel Lower(
         IsPatternExpressionSyntax expression,
@@ -27,12 +27,23 @@ internal static class DotBoxDPatternExpressionLowerer
         var unwrapped = Unwrap(expression);
         if (unwrapped is IsPatternExpressionSyntax
             {
-                Pattern: DeclarationPatternSyntax declaration
-            } pattern &&
-            declaration.Designation is SingleVariableDesignationSyntax)
+                Pattern: DeclarationPatternSyntax { Designation: SingleVariableDesignationSyntax } declaration
+            } pattern)
         {
             var value = lowerExpression(pattern.Expression);
             lowered = LowerDeclaration(value, pattern.Expression, declaration, context, out var name, out var binding);
+            captureName = name!;
+            capture = binding!;
+            return true;
+        }
+
+        if (unwrapped is IsPatternExpressionSyntax
+            {
+                Pattern: RecursivePatternSyntax { Designation: SingleVariableDesignationSyntax } recursive
+            } recursivePattern)
+        {
+            var value = lowerExpression(recursivePattern.Expression);
+            lowered = LowerRecursive(value, recursivePattern.Expression, recursive, context, lowerExpression, out var name, out var binding);
             captureName = name!;
             capture = binding!;
             return true;
@@ -71,6 +82,8 @@ internal static class DotBoxDPatternExpressionLowerer
                 LowerPattern(value, valueSyntax, parenthesized.Pattern, context, lowerExpression),
             DeclarationPatternSyntax declaration =>
                 LowerDeclaration(value, valueSyntax, declaration, context, out _, out _),
+            RecursivePatternSyntax recursive =>
+                LowerRecursive(value, valueSyntax, recursive, context, lowerExpression, out _, out _),
             TypePatternSyntax type =>
                 LowerSubtypeTest(value, valueSyntax, type.Type, type, context, out _),
             ConstantPatternSyntax constant =>
@@ -232,10 +245,16 @@ internal static class DotBoxDPatternExpressionLowerer
         => throw new NotSupportedException($"Unsupported plugin pattern '{pattern}'.");
 
     public static bool ContainsDeclarationPattern(ExpressionSyntax expression)
-        => expression.DescendantNodesAndSelf().Any(static node => node is DeclarationPatternSyntax);
+        => expression.DescendantNodesAndSelf().Any(static node => node is DeclarationPatternSyntax or RecursivePatternSyntax
+        {
+            Designation: not null and not DiscardDesignationSyntax
+        });
 
     private static bool ContainsDeclarationPattern(PatternSyntax pattern)
-        => pattern.DescendantNodesAndSelf().Any(static node => node is DeclarationPatternSyntax);
+        => pattern.DescendantNodesAndSelf().Any(static node => node is DeclarationPatternSyntax or RecursivePatternSyntax
+        {
+            Designation: not null and not DiscardDesignationSyntax
+        });
 
     private static ExpressionSyntax Unwrap(ExpressionSyntax expression)
     {

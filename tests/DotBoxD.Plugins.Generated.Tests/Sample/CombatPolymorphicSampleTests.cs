@@ -125,6 +125,47 @@ public sealed class CombatPolymorphicSampleTests
     }
 
     [Fact]
+    public async Task Polymorphic_or_filter_supports_right_branch_capture_and_left_branch_pass()
+    {
+        var bindings = new CombatPolymorphicBindings();
+        using var server = PluginServer.Create(
+            configureHost: bindings.AddBindings,
+            defaultPolicy: CombatPolymorphicBindings.Policy());
+        server.Hooks.On<CombatDamageContext>()
+            .Where(ctx => ctx.Damage > 1000 ||
+                          (ctx.Attacker is PlayerCombatant attacker &&
+                           attacker.HasEquippedItem(CombatPolymorphicBindings.DivineSwordItemRuntimeId)))
+            .Register(ctx => CombatDamageResult.Ok().WithDamage(ctx.Damage * 2), priority: 100);
+
+        var swordPlayer = Player(61, hp: 100, sword: true);
+        var monsterAttacker = Monster(62, hp: 100);
+        var victim = Monster(63, hp: 500);
+        bindings.Track(swordPlayer, monsterAttacker, victim);
+
+        var rightBranch = await server.Hooks.FireAsync<CombatDamageContext, CombatDamageResult>(
+            new CombatDamageContext(
+                new PlayerCombatant(swordPlayer.Id),
+                new MonsterCombatant(victim.Id),
+                CombatRelation.Pve,
+                Damage: 50,
+                AttackerHasDivineSword: false,
+                VictimIsBoss: false,
+                VictimHp: victim.Hp));
+        var leftBranch = await server.Hooks.FireAsync<CombatDamageContext, CombatDamageResult>(
+            new CombatDamageContext(
+                new MonsterCombatant(monsterAttacker.Id),
+                new MonsterCombatant(victim.Id),
+                CombatRelation.Pve,
+                Damage: 1001,
+                AttackerHasDivineSword: false,
+                VictimIsBoss: false,
+                VictimHp: victim.Hp));
+
+        Assert.Equal(100, rightBranch!.Value.Damage);
+        Assert.Equal(2002, leftBranch!.Value.Damage);
+    }
+
+    [Fact]
     public async Task Polymorphic_BossShield_skips_non_boss_monsters()
     {
         var bindings = new CombatPolymorphicBindings();

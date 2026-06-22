@@ -1,8 +1,6 @@
-using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using ManifestTypes = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.ManifestTypes;
 using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.TypeNames;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
@@ -29,12 +27,10 @@ internal static partial class DotBoxDHostBindingExpressionLowerer
                 $"Pattern capture host call '{invocation}' must target an instance [HostBinding] on the captured subtype.");
         }
 
-        var returnType = SandboxTypeSourceEmitter.ManifestTag(DotBoxDTypeNameReader.UnwrapTaskLike(method.ReturnType));
-        if (string.Equals(returnType, ManifestTypes.Unsupported, StringComparison.Ordinal))
-        {
-            throw new NotSupportedException(
-                $"Host binding '{binding.BindingId}' must return a marshaller-eligible type.");
-        }
+        var returnType = HostBindingManifestTag(
+            DotBoxDTypeNameReader.UnwrapTaskLike(method.ReturnType),
+            binding.BindingId,
+            "return");
 
         var arguments = invocation.ArgumentList.Arguments;
         if (arguments.Count != method.Parameters.Length)
@@ -55,8 +51,8 @@ internal static partial class DotBoxDHostBindingExpressionLowerer
                     $"Host binding '{binding.BindingId}' arguments must be positional value arguments.");
             }
 
+            var expected = HostBindingManifestTag(method.Parameters[i].Type, binding.BindingId, $"argument {i}");
             var lowered = lowerExpression(arguments[i].Expression);
-            var expected = SandboxTypeSourceEmitter.ManifestTag(method.Parameters[i].Type);
             if (!string.Equals(lowered.Type, expected, StringComparison.Ordinal))
             {
                 throw new NotSupportedException(

@@ -99,6 +99,17 @@ public sealed class PluginAnalyzerPropertyShapeTests
     }
 
     [Fact]
+    public void Convention_adapter_encodes_null_nullable_scalar_event_properties()
+    {
+        var adapter = new PluginEventAdapterRegistry().Resolve<NullableScalarEvent>();
+
+        var value = Assert.Single(adapter.ToSandboxValues(new NullableScalarEvent(null)));
+        var record = Assert.IsType<RecordValue>(value);
+
+        Assert.Equal([SandboxValue.FromBool(false), SandboxValue.FromInt32(0)], record.Fields);
+    }
+
+    [Fact]
     public void Generator_rejects_live_setting_indexers()
     {
         var result = RunGenerator("""
@@ -238,4 +249,6 @@ public sealed class PluginAnalyzerPropertyShapeTests
 
         public string targetId { get; } = "player-2";
     }
+
+    private sealed record NullableScalarEvent(int? Damage);
 }

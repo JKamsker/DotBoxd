@@ -6,6 +6,8 @@ namespace DotBoxD.Plugins.Analyzer.Analysis;
 
 internal sealed record PolymorphicHandleMetadata(
     INamedTypeSymbol HandleType,
+    string KeyMember,
+    ISymbol KeyMemberSymbol,
     ITypeSymbol KeyType,
     string KeyManifestTag,
     string KeySandboxTypeSource)
@@ -71,13 +73,19 @@ internal static class PolymorphicHandleMetadataReader
                     throw InvalidHandleMetadata(current);
                 }
 
-                if (KeyType(current, keyMember) is not { } keyType ||
-                    !IsSupportedKey(keyType, out var tag, out var sandboxTypeSource))
+                if (KeyMemberSymbol(current, keyMember) is not { } keyMemberSymbol ||
+                    !IsSupportedKey(KeyType(keyMemberSymbol), out var tag, out var sandboxTypeSource))
                 {
                     throw InvalidHandleMetadata(current);
                 }
 
-                metadata = new PolymorphicHandleMetadata(current, keyType, tag, sandboxTypeSource);
+                metadata = new PolymorphicHandleMetadata(
+                    current,
+                    keyMember,
+                    keyMemberSymbol,
+                    KeyType(keyMemberSymbol),
+                    tag,
+                    sandboxTypeSource);
                 return true;
             }
         }
@@ -86,7 +94,7 @@ internal static class PolymorphicHandleMetadataReader
         return false;
     }
 
-    private static ITypeSymbol? KeyType(INamedTypeSymbol handleType, string keyMember)
+    private static ISymbol? KeyMemberSymbol(INamedTypeSymbol handleType, string keyMember)
     {
         for (var current = handleType; current is not null; current = current.BaseType)
         {
@@ -100,7 +108,7 @@ internal static class PolymorphicHandleMetadataReader
                         GetMethod.DeclaredAccessibility: Accessibility.Public
                     } property)
                 {
-                    return property.Type;
+                    return property;
                 }
 
                 if (member is IFieldSymbol
@@ -109,13 +117,21 @@ internal static class PolymorphicHandleMetadataReader
                         IsStatic: false
                     } field)
                 {
-                    return field.Type;
+                    return field;
                 }
             }
         }
 
         return null;
     }
+
+    private static ITypeSymbol KeyType(ISymbol keyMember)
+        => keyMember switch
+        {
+            IPropertySymbol property => property.Type,
+            IFieldSymbol field => field.Type,
+            _ => throw new NotSupportedException()
+        };
 
     private static bool IsSupportedKey(ITypeSymbol keyType, out string tag, out string sandboxTypeSource)
     {

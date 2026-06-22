@@ -15,13 +15,19 @@ public sealed record CombatDamageContext(CombatRelation Relation, int Damage);
 [HookResult]
 public readonly partial record struct CombatDamageResult(bool Success, string? Reason, int Damage);
 
+[Hook("combat.optional-damage", typeof(OptionalDamageResult))]
+public sealed record OptionalDamageContext(int Damage, bool CanDie);
+
+[HookResult]
+public readonly partial record struct OptionalDamageResult(bool Success, string? Reason, int? Damage, bool? CanDie);
+
 /// <summary>
 /// End-to-end coverage for result-hook lowering: the <c>On&lt;TContext&gt;().Where(...).Register/RegisterLocal</c>
 /// chains are authored as ordinary code, lowered by the DotBoxD generator loaded as a real build-time analyzer,
 /// and intercepted into the live server. A passing FireAsync also proves interception ran — un-lowered, the
 /// Register/RegisterLocal terminals throw.
 /// </summary>
-public sealed class ResultHookChainTests
+public sealed partial class ResultHookChainTests
 {
     [Fact]
     public async Task Register_lowers_the_handler_and_returns_the_constructed_result()

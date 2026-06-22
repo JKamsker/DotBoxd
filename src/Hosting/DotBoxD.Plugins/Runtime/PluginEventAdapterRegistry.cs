@@ -274,6 +274,11 @@ internal readonly record struct ConventionEventProperty<TEvent>(
         // marshaller's bare ArgumentNullException.
         if (value is null)
         {
+            if (Nullable.GetUnderlyingType(ValueType) is not null)
+            {
+                return KernelRpcMarshaller.ToSandboxValue(null, ValueType);
+            }
+
             return CoerceNullStringToEmpty && ValueType == typeof(string)
                 ? SandboxValue.FromString(string.Empty)
                 : throw new NotSupportedException(
