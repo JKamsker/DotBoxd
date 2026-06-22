@@ -171,15 +171,17 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
 public sealed class RpcDiagnosticErrorEventArgs : EventArgs
 public sealed class RpcDisconnectedEventArgs : EventArgs
 public sealed class RpcDispatchErrorEventArgs : EventArgs
-public sealed class RpcHost : IAsyncDisposable
 public sealed class RpcHostErrorEventArgs : EventArgs
-public sealed class RpcPeer : IAsyncDisposable, IRpcInvoker
 public sealed class RpcPeerEventArgs : EventArgs
 public sealed class RpcPeerOptions
 public sealed class RpcPeerSession : IAsyncDisposable
 public sealed class RpcProtocolErrorEventArgs : EventArgs
 public sealed class RpcReadErrorEventArgs : EventArgs
 public sealed class RpcStreamingContext : IRpcStreamingContext
+public sealed partial class RpcHost
+public sealed partial class RpcHost : IAsyncDisposable
+public sealed partial class RpcPeer
+public sealed partial class RpcPeer : IAsyncDisposable, IRpcInvoker
 public sealed class SingleConnectionServerTransport : IServerTransport
 public sealed class SingleConnectionTransport : ITransport
 public sealed class StreamConnection : IRpcFrameChannel
