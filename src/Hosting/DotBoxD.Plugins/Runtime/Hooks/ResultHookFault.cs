@@ -2,7 +2,7 @@ namespace DotBoxD.Plugins.Runtime;
 
 /// <summary>
 /// A fault caught while dispatching a result-returning hook (<c>.Register(...)</c> / <c>.RegisterLocal(...)</c>)
-/// for one hook context type. <see cref="HookRegistry.FireAsync{TContext, TResult}"/> isolates a faulting
+/// for one hook context type. <c>HookRegistry.FireAsync</c> isolates a faulting
 /// handler — it abstains and falls through to the next registration so one bad handler cannot break the hook
 /// point — but that isolation is otherwise silent, which would let a veto-bearing handler (a successful result
 /// carrying e.g. <c>CanDie = false</c>) that throws fail open to the host default with no trace. The host

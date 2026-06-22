@@ -106,6 +106,50 @@ internal static class GeneratedRemoteHookChainFallback
             hasLocalDecoder);
     }
 
+    public static HookChainInterception CreateResultInterception(
+        string attributeSyntax,
+        string eventTypeFullName,
+        bool receiverIsStage,
+        string resultTypeFullName,
+        string packageFullName,
+        HookChainInterceptorInstallKind installKind,
+        GeneratedRemoteHookChainKind kind,
+        bool isAsyncLocal)
+    {
+        if (kind != GeneratedRemoteHookChainKind.Hook)
+        {
+            throw new NotSupportedException("Result hooks are only supported on generated remote hook registries.");
+        }
+
+        var pipelineType = DotBoxDGenerationNames.TypeNames.GlobalPrefix +
+            "DotBoxD.Plugins.Runtime.RemoteHookPipeline<" + eventTypeFullName + ">";
+        var receiverType = receiverIsStage
+            ? DotBoxDGenerationNames.TypeNames.GlobalPrefix +
+              "DotBoxD.Plugins.Runtime.Hooks.RemoteHookStage<" +
+              eventTypeFullName + ", " + eventTypeFullName + ">"
+            : pipelineType;
+        var handlerType = installKind == HookChainInterceptorInstallKind.ResultChain
+            ? DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" + eventTypeFullName + ", " + resultTypeFullName + ">"
+            : isAsyncLocal
+            ? DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" +
+              eventTypeFullName + ", " + DotBoxDGenerationNames.TypeNames.GlobalHookContext + ", " +
+              DotBoxDGenerationNames.TypeNames.GlobalCancellationToken + ", " +
+              DotBoxDGenerationNames.TypeNames.GlobalValueTask + "<" + resultTypeFullName + ">>"
+            : DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" +
+              eventTypeFullName + ", " + DotBoxDGenerationNames.TypeNames.GlobalHookContext + ", " +
+              resultTypeFullName + ">";
+
+        return new HookChainInterception(
+            attributeSyntax,
+            receiverType,
+            handlerType,
+            pipelineType,
+            packageFullName,
+            installKind,
+            ResultTypeFullName: resultTypeFullName,
+            IsAsyncLocalResult: isAsyncLocal);
+    }
+
     public static string TypeFullName(
         ExpressionSyntax expression,
         SemanticModel model,

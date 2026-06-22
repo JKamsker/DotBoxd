@@ -454,6 +454,77 @@ public sealed class PluginAnalyzerHookChainTests
     }
 
     [Fact]
+    public void Lowers_a_remote_Register_result_chain_to_a_remote_result_install()
+    {
+        var result = RunGenerator("""
+            using DotBoxD.Plugins;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            [Hook("combat.damage", typeof(DamageResult))]
+            public sealed record DamageCtx(int Damage);
+
+            [HookResult]
+            public readonly partial record struct DamageResult(bool Success, string? Reason, int Damage);
+
+            public static class Usage
+            {
+                public static void Configure(RemoteHookRegistry hooks)
+                    => hooks.On<DamageCtx>()
+                        .Where(ctx => ctx.Damage > 0)
+                        .Register(ctx => new DamageResult { Success = true, Damage = ctx.Damage }, 25);
+            }
+            """);
+
+        var generated = string.Join(
+            Environment.NewLine,
+            result.GeneratedTrees.Select(tree => tree.GetText().ToString()));
+
+        Assert.DoesNotContain(result.Diagnostics, d => d.Id == "DBXK113");
+        Assert.Contains("UseGeneratedResultChain<global::Sample.DamageResult>", generated, StringComparison.Ordinal);
+        Assert.Contains("ResultType = \"global::Sample.DamageResult\"", generated, StringComparison.Ordinal);
+        Assert.DoesNotContain("                LocalTerminal = true", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Lowers_a_remote_RegisterLocal_result_chain_to_a_remote_local_result_install()
+    {
+        var result = RunGenerator("""
+            using DotBoxD.Plugins;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            [Hook("combat.damage", typeof(DamageResult))]
+            public sealed record DamageCtx(int Damage);
+
+            [HookResult]
+            public readonly partial record struct DamageResult(bool Success, string? Reason, int Damage);
+
+            public static class Usage
+            {
+                public static void Configure(RemoteHookRegistry hooks)
+                    => hooks.On<DamageCtx>()
+                        .Where(ctx => ctx.Damage > 0)
+                        .RegisterLocal((ctx, hookContext) => new DamageResult { Success = true, Damage = ctx.Damage }, 25);
+            }
+            """);
+
+        var generated = string.Join(
+            Environment.NewLine,
+            result.GeneratedTrees.Select(tree => tree.GetText().ToString()));
+
+        Assert.DoesNotContain(result.Diagnostics, d => d.Id == "DBXK113");
+        Assert.Contains("UseGeneratedLocalResultChain<global::Sample.DamageResult>", generated, StringComparison.Ordinal);
+        Assert.Contains("ResultType = \"global::Sample.DamageResult\"", generated, StringComparison.Ordinal);
+        Assert.Contains("ResultLocalTerminal = true", generated, StringComparison.Ordinal);
+        Assert.DoesNotContain("                LocalTerminal = true", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Lowers_a_cancellation_aware_RegisterLocal_result_chain_to_a_local_result_install()
     {
         var result = RunGenerator("""

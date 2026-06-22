@@ -37,6 +37,18 @@ internal sealed record PluginKernelModel(
     public string? ProjectedType { get; init; }
 
     /// <summary>
+    /// Fully-qualified hook result type for a lowered <c>Register</c>/<c>RegisterLocal</c> chain, or
+    /// <c>null</c> for ordinary notification chains.
+    /// </summary>
+    public string? ResultType { get; init; }
+
+    /// <summary>
+    /// True for a lowered result <c>RegisterLocal</c> chain. The package contains only the sandbox filter; the
+    /// result itself is produced by the plugin process through a request/response callback.
+    /// </summary>
+    public bool ResultLocalTerminal { get; init; }
+
+    /// <summary>
     /// The generated reflection-free <c>ReadProjected(KernelRpcValue) -&gt; TProjected</c> reader (plus its
     /// conversion helpers) for a <see cref="LocalTerminal"/> chain whose projected type is wire-eligible, or
     /// <c>null</c> when there is no decoder (not a local chain, or the type falls back to the reflective decode

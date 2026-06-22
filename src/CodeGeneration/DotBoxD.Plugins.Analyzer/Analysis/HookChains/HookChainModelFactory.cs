@@ -70,8 +70,8 @@ internal static class HookChainModelFactory
         return null;
     }
 
-    // True when the call site is an in-process Register/RegisterLocal terminal on a known local hook pipeline —
-    // the surface whose native terminal throws when the generator does not intercept it.
+    // True when the call site is a Register/RegisterLocal terminal on a known hook pipeline — the surface whose
+    // native terminal throws when the generator does not intercept it.
     private static bool TryResultChainLocation(
         InvocationExpressionSyntax invocation,
         SemanticModel model,
@@ -83,10 +83,20 @@ internal static class HookChainModelFactory
         isLocalTerminal = false;
         if (invocation.Expression is not MemberAccessExpressionSyntax terminalAccess ||
             (!string.Equals(terminalAccess.Name.Identifier.ValueText, RegisterMethod, StringComparison.Ordinal) &&
-             !string.Equals(terminalAccess.Name.Identifier.ValueText, RegisterLocalMethod, StringComparison.Ordinal)) ||
-            ReceiverKind(model, terminalAccess.Expression, cancellationToken) != HookChainReceiverKind.Local)
+             !string.Equals(terminalAccess.Name.Identifier.ValueText, RegisterLocalMethod, StringComparison.Ordinal)))
         {
             return false;
+        }
+
+        var receiverKind = ReceiverKind(model, terminalAccess.Expression, cancellationToken);
+        if (receiverKind is not (HookChainReceiverKind.Local or HookChainReceiverKind.Remote))
+        {
+            var stages = new List<HookChainStage>();
+            var seed = WalkToSeed(terminalAccess.Expression, stages);
+            if (seed is null || GeneratedRemoteHookChainFallback.CandidateKind(seed) != GeneratedRemoteHookChainKind.Hook)
+            {
+                return false;
+            }
         }
 
         isLocalTerminal = string.Equals(terminalAccess.Name.Identifier.ValueText, RegisterLocalMethod, StringComparison.Ordinal);
@@ -201,7 +211,8 @@ internal static class HookChainModelFactory
                 terminalElementParam,
                 terminalContextParam,
                 terminalCancellationParam is not null,
-                installKind == HookChainInterceptorInstallKind.LocalResultChain);
+                installKind == HookChainInterceptorInstallKind.LocalResultChain,
+                generatedRemoteKind);
         }
 
         // Collectors for the whole chain: every Where/Select/terminal-Send deposits the capabilities its
@@ -374,11 +385,13 @@ internal static class HookChainModelFactory
             RunMethod => HookChainInterceptorInstallKind.GeneratedChain,
             RunLocalMethod when receiverKind == HookChainReceiverKind.Remote || generatedRemoteKind is not null =>
                 HookChainInterceptorInstallKind.LocalCallback,
-            // Result hooks lower only for the in-process (Local) Hooks surface in v1; the remote authoring
-            // surface has no Register/RegisterLocal yet, so a remote receiver is not recognized here.
-            RegisterMethod when receiverKind == HookChainReceiverKind.Local =>
+            RegisterMethod when receiverKind is HookChainReceiverKind.Local or HookChainReceiverKind.Remote =>
                 HookChainInterceptorInstallKind.ResultChain,
-            RegisterLocalMethod when receiverKind == HookChainReceiverKind.Local =>
+            RegisterMethod when generatedRemoteKind == GeneratedRemoteHookChainKind.Hook =>
+                HookChainInterceptorInstallKind.ResultChain,
+            RegisterLocalMethod when receiverKind is HookChainReceiverKind.Local or HookChainReceiverKind.Remote =>
+                HookChainInterceptorInstallKind.LocalResultChain,
+            RegisterLocalMethod when generatedRemoteKind == GeneratedRemoteHookChainKind.Hook =>
                 HookChainInterceptorInstallKind.LocalResultChain,
             _ => null
         };

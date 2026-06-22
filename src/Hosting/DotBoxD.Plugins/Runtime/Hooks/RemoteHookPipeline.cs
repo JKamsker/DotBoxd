@@ -3,7 +3,7 @@ using DotBoxD.Plugins.Runtime.Hooks;
 
 namespace DotBoxD.Plugins.Runtime;
 
-public sealed class RemoteHookPipeline<TEvent>
+public sealed partial class RemoteHookPipeline<TEvent>
 {
     private readonly Func<PluginPackage, ValueTask<string>> _install;
     private readonly RemoteLocalHandlerRegistry? _localHandlers;
@@ -238,10 +238,29 @@ public sealed class RemoteHookPipeline<TEvent>
         // Manifests now carry the fully-qualified event name; compare against typeof(TEvent).FullName but
         // accept the legacy simple-name form via EventNameMatch for back-compat.
         var expected = typeof(TEvent).FullName ?? typeof(TEvent).Name;
-        if (!EventNameMatch.Matches(actual, expected))
+        if (EventNameMatch.Matches(actual, expected) || ResultHookNameMatches(package, actual))
         {
-            throw new InvalidOperationException(
-                $"Hook package '{package.Manifest.PluginId}' subscribes to '{actual ?? "<none>"}', not '{expected}'.");
+            return;
         }
+
+        throw new InvalidOperationException(
+            $"Hook package '{package.Manifest.PluginId}' subscribes to '{actual ?? "<none>"}', not '{expected}'.");
     }
+
+    private static bool ResultHookNameMatches(PluginPackage package, string? actual)
+    {
+        if (package.Manifest.Subscriptions.Count == 0 ||
+            package.Manifest.Subscriptions[0].ResultType is null ||
+            string.IsNullOrEmpty(actual))
+        {
+            return false;
+        }
+
+        var hook = (HookAttribute?)Attribute.GetCustomAttribute(
+            typeof(TEvent),
+            typeof(HookAttribute),
+            inherit: false);
+        return hook is not null && string.Equals(hook.Name, actual, StringComparison.Ordinal);
+    }
+
 }

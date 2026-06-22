@@ -162,24 +162,6 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
             .Where(static result => result.Interception is not null)
             .Select(static (result, _) => result.Interception!)
             .Collect();
-        var needsInterceptorAttribute = interceptions
-            .Select(static (items, _) => !items.IsDefaultOrEmpty)
-            .Combine(invokeAsyncInterceptions.Select(static (items, _) => !items.IsDefaultOrEmpty))
-            .Select(static (pair, _) => pair.Left || pair.Right);
-        var needsInterceptsLocationAttribute = needsInterceptorAttribute
-            .Combine(context.CompilationProvider.Select(static (compilation, _) =>
-                compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.InterceptsLocationAttribute") is { } type &&
-                SymbolEqualityComparer.Default.Equals(type.ContainingAssembly, compilation.Assembly)))
-            .Select(static (pair, _) => pair.Left && !pair.Right);
-        context.RegisterSourceOutput(
-            needsInterceptsLocationAttribute,
-            static (sourceContext, needsAttribute) =>
-            {
-                if (needsAttribute)
-                {
-                    InterceptsLocationAttributeEmitter.Emit(sourceContext);
-                }
-            });
         context.RegisterSourceOutput(
             interceptions,
             static (sourceContext, items) => DotBoxDHookChainInterceptorEmitter.Emit(sourceContext, items));
@@ -214,6 +196,18 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
                         Microsoft.CodeAnalysis.Text.SourceText.From(source.Source, System.Text.Encoding.UTF8));
                 }
             });
+
+        var hookFireAsyncModels = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                DotBoxDMetadataNames.HookAttribute,
+                static (node, _) => node is TypeDeclarationSyntax,
+                static (ctx, ct) => HookFireAsyncModelFactory.Create(ctx, ct))
+            .Where(static model => model is not null)
+            .Select(static (model, _) => model!)
+            .Collect();
+        context.RegisterSourceOutput(
+            hookFireAsyncModels,
+            static (sourceContext, models) => HookFireAsyncExtensionEmitter.Emit(sourceContext, models));
     }
 
     private static bool IsHookChainTerminal(SyntaxNode node)

@@ -11,6 +11,7 @@ public async ValueTask ModifySettingsAsync( IReadOnlyDictionary<string, object?>
 public async ValueTask PublishAsync<TEvent>(TEvent e, CancellationToken cancellationToken = default)
 public async ValueTask UpdateSettingsAsync( string pluginId, IReadOnlyDictionary<string, object?> values, bool atomic = false, CancellationToken cancellationToken = default)
 public async ValueTask<bool> ShouldHandleAsync<TEvent>( IPluginEventAdapter<TEvent> adapter, TEvent e, CancellationToken cancellationToken = default)
+public async ValueTask<byte[]> DispatchResultAsync( string subscriptionId, ReadOnlyMemory<byte> contextValue, HookContext context, CancellationToken cancellationToken = default)
 public async ValueTask<InstalledKernel> InstallAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public async ValueTask<InstalledKernel> InstallServerExtensionAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public async ValueTask<SandboxValue> InvokeServerExtensionAsync( IReadOnlyList<SandboxValue> arguments, CancellationToken cancellationToken = default)
@@ -25,6 +26,7 @@ public bool LocalTerminal { get; init; }
 public bool Owns(string pluginId)
 public bool ReadBool()
 public bool Register<TEvent>( IPluginEventAdapter<TEvent> adapter, InstalledKernel kernel, IReadOnlyList<IndexedPredicate> predicates, bool indexCoversPredicate)
+public bool ResultLocalTerminal { get; init; }
 public bool TryGet(string pluginId, [MaybeNullWhen(false)] out InstalledKernel kernel)
 public bool Uninstall(string pluginId)
 public bool UninstallPool(InstalledKernelPool pool)
@@ -33,6 +35,7 @@ public class ServerExtensionProxy : DispatchProxy
 public const string CapabilityId = "host.message.write"
 public const string SendBindingId = "host.message.send"
 public delegate ValueTask RemoteLocalPush(string subscriptionId, ReadOnlyMemory<byte> projectedValue, CancellationToken cancellationToken)
+public delegate ValueTask<byte[]> RemoteLocalResultRequest( string subscriptionId, ReadOnlyMemory<byte> contextValue, CancellationToken cancellationToken)
 public double DoubleValue
 public double ReadDouble()
 public enum IndexPredicateOperator
@@ -77,9 +80,9 @@ public HookPipeline<TEvent> InvokeHostHandler(Func<TEvent, HookContext, ValueTas
 public HookPipeline<TEvent> InvokeHostHandler(Func<TEvent, ValueTask> handler)
 public HookPipeline<TEvent> On<TEvent>()
 public HookPipeline<TEvent> On<TEvent>(IPluginEventAdapter<TEvent> adapter)
-public HookPipeline<TEvent> Register<TResult>(Func<TEvent, TResult> handler, int priority = 0) where TResult : struct
-public HookPipeline<TEvent> RegisterLocal<TResult>( Func<TEvent, HookContext, CancellationToken, ValueTask<TResult>> handler, int priority = 0) where TResult : struct
-public HookPipeline<TEvent> RegisterLocal<TResult>(Func<TEvent, HookContext, TResult> handler, int priority = 0) where TResult : struct
+public HookPipeline<TEvent> Register<TResult>(Func<TEvent, TResult> handler, int priority = 0) where TResult : struct, IHookResult
+public HookPipeline<TEvent> RegisterLocal<TResult>( Func<TEvent, HookContext, CancellationToken, ValueTask<TResult>> handler, int priority = 0) where TResult : struct, IHookResult
+public HookPipeline<TEvent> RegisterLocal<TResult>(Func<TEvent, HookContext, TResult> handler, int priority = 0) where TResult : struct, IHookResult
 public HookPipeline<TEvent> Run(Action<TCurrent, HookContext> handler)
 public HookPipeline<TEvent> Run(Action<TCurrent> handler)
 public HookPipeline<TEvent> Run(Action<TEvent, HookContext> handler)
@@ -104,6 +107,9 @@ public HookPipeline<TEvent> UseGeneratedLocalResultChain<TResult>( PluginPackage
 public HookPipeline<TEvent> UseGeneratedLocalResultChain<TResult>( PluginPackage package, Func<TEvent, HookContext, TResult> handler, int priority = 0) where TResult : struct, IHookResult
 public HookPipeline<TEvent> UseGeneratedResultChain<TResult>(PluginPackage package, int priority = 0) where TResult : struct, IHookResult
 public HookPipeline<TEvent> UseProjecting(InstalledKernel kernel, string subscriptionId, RemoteLocalPush push)
+public HookPipeline<TEvent> UseProjectingResult( InstalledKernel filterKernel, string subscriptionId, Type resultType, RemoteLocalResultRequest request, int priority = 0)
+public HookPipeline<TEvent> UseProjectingResult<TResult>( InstalledKernel filterKernel, string subscriptionId, RemoteLocalResultRequest request, int priority = 0) where TResult : struct, IHookResult
+public HookPipeline<TEvent> UseResult(InstalledKernel kernel, Type resultType, int priority = 0)
 public HookPipeline<TEvent> Where(Func<TEvent, bool> filter)
 public HookPipeline<TEvent> Where(Func<TEvent, HookContext, bool> filter)
 public HookPipeline<TEvent> Where(Func<TEvent, HookContext, ValueTask<bool>> filter)
@@ -118,12 +124,15 @@ public HookStage<TEvent, TNext> Select<TNext>(Func<TEvent, TNext> projection)
 public IDisposable Register<TProjected>( string subscriptionId, Func<TProjected, HookContext, ValueTask> handler, Func<KernelRpcValue, TProjected> decoder)
 public IDisposable Register<TProjected>( string subscriptionId, Func<TProjected, HookContext, ValueTask> handler, Func<ReadOnlyMemory<byte>, TProjected> decoder)
 public IDisposable Register<TProjected>( string subscriptionId, Func<TProjected, HookContext, ValueTask> handler)
+public IDisposable RegisterResult<TContext, TResult>( string subscriptionId, Func<TContext, HookContext, CancellationToken, ValueTask<TResult>> handler) where TResult : struct, IHookResult
+public IDisposable RegisterResult<TContext, TResult>( string subscriptionId, Func<TContext, HookContext, TResult> handler) where TResult : struct, IHookResult
 public IEnumerator<InstalledKernel> GetEnumerator() => Snapshot().GetEnumerator()
 public InstalledKernel Get(string pluginId)
 public InstalledKernel Kernel { get; }
 public int DegreeOfParallelism => _kernels.Length
 public int Int32Value
 public int ItemCount => (_items ?? EmptyItems).Length
+public int Priority { get; init; }
 public int ReadInt32()
 public int ReadListHeader()
 public int ReadMapHeader()
@@ -173,6 +182,12 @@ public readonly record struct SubscriptionDeliveryFault( Type EventType, Subscri
 public readonly struct KernelRpcValue
 public ref struct KernelRpcPayloadReader
 public RemoteHookPipeline<TEvent> On<TEvent>() => new(_install, _localHandlers)
+public RemoteHookPipeline<TEvent> Register<TResult>(Func<TCurrent, TResult> handler, int priority = 0) where TResult : struct, IHookResult
+public RemoteHookPipeline<TEvent> Register<TResult>(Func<TEvent, TResult> handler, int priority = 0) where TResult : struct, IHookResult
+public RemoteHookPipeline<TEvent> RegisterLocal<TResult>( Func<TCurrent, HookContext, CancellationToken, ValueTask<TResult>> handler, int priority = 0) where TResult : struct, IHookResult
+public RemoteHookPipeline<TEvent> RegisterLocal<TResult>( Func<TCurrent, HookContext, TResult> handler, int priority = 0) where TResult : struct, IHookResult
+public RemoteHookPipeline<TEvent> RegisterLocal<TResult>( Func<TEvent, HookContext, CancellationToken, ValueTask<TResult>> handler, int priority = 0) where TResult : struct, IHookResult
+public RemoteHookPipeline<TEvent> RegisterLocal<TResult>( Func<TEvent, HookContext, TResult> handler, int priority = 0) where TResult : struct, IHookResult
 public RemoteHookPipeline<TEvent> Run(Action<TCurrent, HookContext> handler)
 public RemoteHookPipeline<TEvent> Run(Action<TCurrent> handler)
 public RemoteHookPipeline<TEvent> Run(Action<TEvent, HookContext> handler)
@@ -215,6 +230,9 @@ public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, 
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, ValueTask> handler, Func<KernelRpcValue, TEvent> decoder)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, ValueTask> handler, Func<ReadOnlyMemory<byte>, TEvent> decoder)
 public RemoteHookPipeline<TEvent> UseGeneratedLocalChain(PluginPackage package, Func<TEvent, ValueTask> handler)
+public RemoteHookPipeline<TEvent> UseGeneratedLocalResultChain<TResult>( PluginPackage package, Func<TEvent, HookContext, CancellationToken, ValueTask<TResult>> handler, int priority = 0) where TResult : struct, IHookResult
+public RemoteHookPipeline<TEvent> UseGeneratedLocalResultChain<TResult>( PluginPackage package, Func<TEvent, HookContext, TResult> handler, int priority = 0) where TResult : struct, IHookResult
+public RemoteHookPipeline<TEvent> UseGeneratedResultChain<TResult>(PluginPackage package, int priority = 0) where TResult : struct, IHookResult
 public RemoteHookPipeline<TEvent> Where(Func<TEvent, bool> filter)
 public RemoteHookPipeline<TEvent> Where(Func<TEvent, HookContext, bool> filter)
 public RemoteHookRegistry( Func<PluginPackage, ValueTask<string>> install, RemoteLocalHandlerRegistry? localHandlers = null)
@@ -289,13 +307,13 @@ public sealed class LiveSettingStore
 public sealed class LiveValue<T> : ICoercibleLiveSetting
 public sealed class PluginEventAdapterRegistry
 public sealed class PluginSession : IDisposable, IAsyncDisposable
-public sealed class RemoteHookPipeline<TEvent>
 public sealed class RemoteHookRegistry
 public sealed class RemoteHookStage<TEvent, TCurrent>
 public sealed class RemoteLocalHandlerRegistry
 public sealed class RemoteSubscriptionPipeline<TEvent>
 public sealed class RemoteSubscriptionRegistry
 public sealed class RemoteSubscriptionStage<TEvent, TCurrent>
+public sealed class ResultHookDispatchOptions<TResult> where TResult : struct, IHookResult
 public sealed class SubscriptionPipeline<TEvent> : IKernelHandlerPipeline
 public sealed class SubscriptionRegistry
 public sealed class SubscriptionStage<TEvent, TCurrent>
@@ -305,6 +323,7 @@ public sealed partial class HookPipeline<TEvent> : IKernelHandlerPipeline
 public sealed partial class InstalledKernel
 public sealed partial class PluginServer
 public sealed partial class PluginServer : IDisposable
+public sealed partial class RemoteHookPipeline<TEvent>
 public sealed record HookSubscriptionManifest(string Event, string Kernel)
 public sealed record IndexedPredicate( string Path, IndexPredicateOperator Operator, object? Value, string ValueType)
 public sealed record KernelEntrypoints(string ShouldHandle, string Handle)
@@ -351,6 +370,8 @@ public static PluginPackage Import(string json)
 public static PluginPackage Resolve(Type kernelType)
 public static PluginPackage Resolve<TKernel>() where TKernel : class => Resolve(typeof(TKernel))
 public static PluginServer Create( IPluginMessageSink? messages = null, Action<SandboxHostBuilder>? configureHost = null, SandboxPolicy? defaultPolicy = null, ExecutionMode executionMode = ExecutionMode.Auto, Action<SubscriptionDeliveryFault>? onSubscriptionFault = null, Action<ResultHookFault>? onResultHookFault = null)
+public static ResultHookDispatchOptions<TResult> Default { get; } = new()
+public static ResultHookDispatchOptions<TResult> FailClosedAfter(TimeSpan timeout, TResult result)
 public static SandboxHostBuilder AddBindingsFrom<TService>( this SandboxHostBuilder builder, TService implementation) where TService : class
 public static SandboxHostBuilder AddPluginMessageBindings( this SandboxHostBuilder builder, IPluginMessageSink sink)
 public static SandboxPolicyBuilder GrantHostMessageWrite( this SandboxPolicyBuilder builder, IEnumerable<string>? allowedTargets = null, IEnumerable<string>? targetPrefixes = null, int? maxMessageLength = null)
@@ -374,6 +395,7 @@ public string PluginId { get; }
 public string ReadString()
 public string TextValue
 public string? ProjectedType { get; init; }
+public string? ResultType { get; init; }
 public string? RpcEntrypoint { get; init; }
 public SubscriptionPipeline<TEvent> InvokeHostHandler(Action<TEvent, HookContext> handler)
 public SubscriptionPipeline<TEvent> InvokeHostHandler(Action<TEvent> handler)
@@ -418,6 +440,8 @@ public T As<T>() where T : class => LiveContextProxy<T>.Create(this)
 public T Get<T>(string name)
 public T Value
 public T Value { get; }
+public TimeSpan RemoteHandlerTimeout { get; init; } = Timeout.InfiniteTimeSpan
+public TResult? RemoteTimeoutResult { get; init; }
 public TService ServerExtension<TService>() where TService : class
 public TSettings Value { get; }
 public TypedInstalledKernel<TState> Get<TState>(string pluginId) where TState : class
@@ -427,10 +451,12 @@ public ValueTask ModifyAsync( Action<TSettings> modify, bool atomic = false, Can
 public ValueTask PublishAsync<TEvent>(TEvent e, CancellationToken cancellationToken = default)
 public ValueTask<InstalledKernel> InstallAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public ValueTask<InstalledKernel> InstallServerExtensionAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
-public ValueTask<TResult?> FireAsync<TContext, TResult>(TContext context, CancellationToken cancellationToken = default) where TResult : struct, IHookResult
-public ValueTask<TResult?> FireResultAsync<TResult>(TEvent e, CancellationToken cancellationToken = default) where TResult : struct, IHookResult
 public ValueTask<InstalledKernelPool> InstallPoolAsync( PluginPackage package, int degreeOfParallelism, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
-public void Clear() => _handlers.Clear()
+public ValueTask<TResult?> FireAsync<TContext, TResult>( TContext context, ResultHookDispatchOptions<TResult> options, CancellationToken cancellationToken = default) where TResult : struct, IHookResult
+public ValueTask<TResult?> FireAsync<TContext, TResult>(TContext context, CancellationToken cancellationToken = default) where TResult : struct, IHookResult
+public ValueTask<TResult?> FireResultAsync<TResult>( TEvent e, ResultHookDispatchOptions<TResult> options, CancellationToken cancellationToken = default) where TResult : struct, IHookResult
+public ValueTask<TResult?> FireResultAsync<TResult>(TEvent e, CancellationToken cancellationToken = default) where TResult : struct, IHookResult
+public void Clear()
 public void Dispose()
 public void EnsureConsumed()
 public void Publish<TEvent>(TEvent e, CancellationToken cancellationToken = default)

@@ -139,6 +139,21 @@ public static partial class PluginPackageJsonSerializer
                 writer.WriteString("projectedType", projectedType);
             }
 
+            if (subscription.Priority != 0)
+            {
+                writer.WriteNumber("priority", subscription.Priority);
+            }
+
+            if (subscription.ResultType is { } resultType)
+            {
+                writer.WriteString("resultType", resultType);
+            }
+
+            if (subscription.ResultLocalTerminal)
+            {
+                writer.WriteBoolean("resultLocalTerminal", subscription.ResultLocalTerminal);
+            }
+
             writer.WriteEndObject();
         }
 

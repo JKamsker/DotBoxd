@@ -114,7 +114,7 @@ public sealed class Fix_CMP_0012_Tests
     [InlineData(PackageSchemaRelative, SerializerRelative, "plugin package", new[] { "manifest", "module", "entrypoints" })]
     [InlineData(PackageSchemaRelative, SerializerRelative, "plugin manifest", new[] { "pluginId", "contract", "mode", "effects", "liveSettings", "subscriptions", "requiredCapabilities", "rpcEntrypoint" })]
     [InlineData(PackageSchemaRelative, SerializerRelative, "live setting", new[] { "name", "type", "defaultValue", "min", "max" })]
-    [InlineData(PackageSchemaRelative, SerializerRelative, "hook subscription", new[] { "event", "kernel", "indexedPredicates", "indexCoversPredicate", "localTerminal", "projectedType" })]
+    [InlineData(PackageSchemaRelative, SerializerRelative, "hook subscription", new[] { "event", "kernel", "indexedPredicates", "indexCoversPredicate", "localTerminal", "projectedType", "priority", "resultType", "resultLocalTerminal" })]
     [InlineData(PackageSchemaRelative, SerializerRelative, "indexed predicate", new[] { "path", "operator", "value", "valueType" })]
     [InlineData(PackageSchemaRelative, SerializerRelative, "kernel entrypoints", new[] { "shouldHandle", "handle" })]
     public void Schema_allowed_properties_stay_synchronized_with_importer_strict_shape(

@@ -105,6 +105,20 @@ internal static class LocalCallbackProjection
         await push(subscriptionId, writer.WrittenMemory, context.CancellationToken).ConfigureAwait(false);
     }
 
+    public static async ValueTask<byte[]> RequestResultAsync<TEvent>(
+        IPluginEventAdapter<TEvent> adapter,
+        TEvent e,
+        HookContext context,
+        string subscriptionId,
+        RemoteLocalResultRequest request,
+        CancellationToken cancellationToken)
+    {
+        EnsureWholeEventSupported(adapter);
+        using var writer = PooledRpcBufferWriter.Rent();
+        KernelRpcBinaryCodec.EncodeValue(BuildEventRecord(adapter, e), writer);
+        return await request(subscriptionId, writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+    }
+
     // The event record's field order is the adapter's value-writer order, which the convention adapter derives
     // from the event record's constructor/declaration order — the same order KernelRpcMarshaller uses to
     // reconstruct the DTO on the client, so the round-trip preserves field identity.

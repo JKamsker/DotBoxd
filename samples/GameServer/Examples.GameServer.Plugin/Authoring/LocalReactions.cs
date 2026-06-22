@@ -36,4 +36,15 @@ public static class LocalReactions
             .Where(e => e.Distance <= 4)
             .RunLocal(aggro => onAggro(aggro));
     }
+
+    public static void ConfigureDamageDecision(RemoteHookRegistry hooks)
+    {
+        ArgumentNullException.ThrowIfNull(hooks);
+
+        hooks.On<RemoteDamageDecisionEvent>()
+            .Where(e => e.Damage > 10)
+            .RegisterLocal(
+                (e, _) => new RemoteDamageDecisionResult(true, "remote", e.Damage * 2),
+                priority: 7);
+    }
 }

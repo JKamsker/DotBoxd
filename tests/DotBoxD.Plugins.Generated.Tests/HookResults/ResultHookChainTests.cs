@@ -61,6 +61,19 @@ public sealed partial class ResultHookChainTests
     }
 
     [Fact]
+    public async Task FireAsync_infers_the_result_type_from_the_hook_context()
+    {
+        using var server = PluginServer.Create(defaultPolicy: TestPolicies.Chain());
+        server.Hooks.On<CombatDamageContext>()
+            .Register(ctx => CombatDamageResult.Ok().WithDamage(ctx.Damage * 3), priority: 10);
+
+        var result = await server.Hooks.FireAsync(new CombatDamageContext(CombatRelation.Pve, 11));
+
+        Assert.True(result!.Value.Success);
+        Assert.Equal(33, result.Value.Damage);
+    }
+
+    [Fact]
     public async Task Register_reject_builder_abstains_to_the_next_handler()
     {
         using var server = PluginServer.Create(defaultPolicy: TestPolicies.Chain());

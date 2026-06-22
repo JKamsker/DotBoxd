@@ -32,27 +32,25 @@ internal static class KernelEntrypointValidator
         ValidateFunction(plan, entrypoints.ShouldHandle, SandboxType.Bool, requireNonUnit: false, expected);
 
         // Handle return contract by chain shape:
-        //  - ordinary chain (performs a host send) and whole-event RunLocal (no Select): Handle returns Unit.
-        //  - projection RunLocal (with Select): the Handle RETURNS the projected value, so it must be non-Unit.
-        //    The projected type may be non-scalar (record/list/enum) and is not round-trippable through the
-        //    scalar converter; the exact type is enforced end-to-end when the plugin decodes the pushed value,
-        //    so here we require only non-Unit.
-        var handleReturnsProjection = ReturnsProjectedValue(manifest);
+        //  - ordinary chain, whole-event RunLocal, and result RegisterLocal return Unit.
+        //  - projection RunLocal and sandbox result Register return a non-Unit value.
+        //    Projection exact type is enforced by the push decoder; result exact type is enforced when FireAsync
+        //    decodes to the hook's declared TResult.
+        var handleReturnsValue = ReturnsValue(manifest);
         ValidateFunction(
             plan,
             entrypoints.Handle,
-            handleReturnsProjection ? null : SandboxType.Unit,
-            requireNonUnit: handleReturnsProjection,
+            handleReturnsValue ? null : SandboxType.Unit,
+            requireNonUnit: handleReturnsValue,
             expected);
     }
 
-    // True only for a projection RunLocal chain (LocalTerminal with a declared ProjectedType). A whole-event
-    // RunLocal (LocalTerminal, no ProjectedType) and an ordinary chain both keep the Unit-returning Handle.
-    private static bool ReturnsProjectedValue(PluginManifest manifest)
+    private static bool ReturnsValue(PluginManifest manifest)
     {
         foreach (var subscription in manifest.Subscriptions)
         {
-            if (subscription.LocalTerminal && subscription.ProjectedType is not null)
+            if ((subscription.LocalTerminal && subscription.ProjectedType is not null) ||
+                (subscription.ResultType is not null && !subscription.ResultLocalTerminal))
             {
                 return true;
             }

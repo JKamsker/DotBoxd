@@ -133,9 +133,10 @@ internal static class DotBoxDPackageSourceEmitter
         var head = $"            [new {TypeNames.GlobalHookSubscriptionManifest}(" +
             $"{LiteralReader.StringLiteral(model.EventName)}, {LiteralReader.StringLiteral(model.KernelName)})";
         var hasPredicates = model.IndexPredicates.Count > 0;
+        var hasResultMetadata = model.ResultType is not null || model.ResultLocalTerminal;
         // No index metadata and not a local-terminal chain → emit the pre-feature two-argument form so
         // ordinary (incl. .Run) chains generate byte-for-byte the same source.
-        if (!hasPredicates && !model.LocalTerminal)
+        if (!hasPredicates && !model.LocalTerminal && !hasResultMetadata)
         {
             builder.Append(head).AppendLine("])");
             return;
@@ -183,6 +184,18 @@ internal static class DotBoxDPackageSourceEmitter
             }
         }
 
+        if (model.ResultType is not null)
+        {
+            builder.Append("                ").Append(ResultTypeProperty).Append(" = ")
+                .Append(LiteralReader.StringLiteral(model.ResultType)).AppendLine(",");
+        }
+
+        if (model.ResultLocalTerminal)
+        {
+            builder.Append("                ").Append(ResultLocalTerminalProperty).Append(" = ")
+                .Append(DotBoxDGenerationNames.CSharpLiterals.True).AppendLine(",");
+        }
+
         builder.AppendLine("            }])");
     }
 
@@ -190,6 +203,8 @@ internal static class DotBoxDPackageSourceEmitter
     private const string IndexCoversPredicateProperty = "IndexCoversPredicate";
     private const string LocalTerminalProperty = "LocalTerminal";
     private const string ProjectedTypeProperty = "ProjectedType";
+    private const string ResultTypeProperty = "ResultType";
+    private const string ResultLocalTerminalProperty = "ResultLocalTerminal";
 
     private static void EmitRequiredCapabilities(StringBuilder builder, EquatableArray<string> capabilities)
     {

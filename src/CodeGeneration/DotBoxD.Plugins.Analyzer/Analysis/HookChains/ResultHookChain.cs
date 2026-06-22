@@ -33,7 +33,8 @@ internal static class ResultHookChain
         string terminalElementParam,
         string? terminalContextParam,
         bool terminalHasCancellationToken,
-        bool isLocal)
+        bool isLocal,
+        GeneratedRemoteHookChainKind? generatedRemoteKind)
     {
         // A Select before the result terminal would re-type the flowing element; v1 supports only Where filters.
         foreach (var stage in stages)
@@ -67,7 +68,6 @@ internal static class ResultHookChain
 
         DotBoxDStatementBodyModel handleBody;
         string handleReturnType;
-        string? projectedType;
         if (isLocal)
         {
             ResultHookLocalHandlerValidator.EnsureReturnsHookResult(
@@ -77,17 +77,15 @@ internal static class ResultHookChain
                 cancellationToken);
 
             // RegisterLocal: only the filter is verified IR; the Handle returns Unit and the plugin delegate
-            // produces the result. Whole-event shape (LocalTerminal, no ProjectedType).
+            // produces the result through the generated local result installation path.
             handleBody = DotBoxDHandleBodyModelFactory.ReturnUnit();
             handleReturnType = TypeNames.GlobalSandboxType + ".Unit";
-            projectedType = null;
         }
         else
         {
             handleBody = LowerResultHandle(terminalLambda, terminalElementParam, resultType, eventProperties, model, cancellationToken, capabilities, effects);
             handleReturnType = SandboxTypeSourceEmitter.TryEmit(resultType)
                 ?? throw new NotSupportedException();
-            projectedType = DotBoxDGenerationNames.ManifestTypes.Record;
         }
 
         var (indexPredicates, indexCoversPredicate) = HookChainIndexPredicateExtractor.Extract(
@@ -115,8 +113,8 @@ internal static class ResultHookChain
             IndexPredicates: indexPredicates,
             IndexCoversPredicate: indexCoversPredicate)
         {
-            LocalTerminal = true,
-            ProjectedType = projectedType,
+            ResultType = resultType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+            ResultLocalTerminal = isLocal,
         };
 
         return new HookChainResult(kernelModel, Interception(
@@ -128,6 +126,8 @@ internal static class ResultHookChain
             resultType,
             isLocal,
             terminalHasCancellationToken,
+            stages.Count > 0,
+            generatedRemoteKind,
             cancellationToken));
     }
 
@@ -192,6 +192,8 @@ internal static class ResultHookChain
         INamedTypeSymbol resultType,
         bool isLocal,
         bool isAsyncLocal,
+        bool receiverIsStage,
+        GeneratedRemoteHookChainKind? generatedRemoteKind,
         CancellationToken cancellationToken)
     {
         // The interceptor's receiver/handler/return types are built from the context and [Hook] result type
@@ -199,8 +201,7 @@ internal static class ResultHookChain
         // unresolved here, but both the pipeline receiver type and the result type are known. Roslyn binds the
         // (now type-resolvable, post-generation) call site to the emitted interceptor.
         var location = model.GetInterceptableLocation(invocation, cancellationToken);
-        if (location is null ||
-            model.GetTypeInfo(receiver, cancellationToken).Type is not INamedTypeSymbol receiverType)
+        if (location is null)
         {
             return null;
         }
@@ -209,7 +210,6 @@ internal static class ResultHookChain
             ? TypeNames.GlobalPrefix + kernelModel.PackageName
             : TypeNames.GlobalPrefix + kernelModel.Namespace + "." + kernelModel.PackageName;
 
-        var receiverFullName = receiverType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var contextFullName = contextType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var resultFullName = resultType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var handlerFullName = isLocal && isAsyncLocal
@@ -220,6 +220,22 @@ internal static class ResultHookChain
             ? $"{TypeNames.GlobalFunc}<{contextFullName}, {TypeNames.GlobalHookContext}, {resultFullName}>"
             : $"{TypeNames.GlobalFunc}<{contextFullName}, {resultFullName}>";
 
+        if (model.GetTypeInfo(receiver, cancellationToken).Type is not INamedTypeSymbol receiverType)
+        {
+            return generatedRemoteKind is null
+                ? null
+                : GeneratedRemoteHookChainFallback.CreateResultInterception(
+                    location.GetInterceptsLocationAttributeSyntax(),
+                    contextFullName,
+                    receiverIsStage,
+                    resultFullName,
+                    packageFullName,
+                    isLocal ? HookChainInterceptorInstallKind.LocalResultChain : HookChainInterceptorInstallKind.ResultChain,
+                    generatedRemoteKind.Value,
+                    isAsyncLocal);
+        }
+
+        var receiverFullName = receiverType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         return new HookChainInterception(
             location.GetInterceptsLocationAttributeSyntax(),
             receiverFullName,

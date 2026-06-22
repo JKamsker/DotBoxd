@@ -55,6 +55,7 @@ internal static class DotBoxDConstantExpressionLowerer
             DotBoxDGenerationNames.ManifestTypes.Long when value is long number => Int64(number),
             DotBoxDGenerationNames.ManifestTypes.Double when value is int number => Float64(number),
             DotBoxDGenerationNames.ManifestTypes.Double when value is long number => Float64(number),
+            DotBoxDGenerationNames.ManifestTypes.Double when value is float number && IsFinite(number) => Float64(number),
             DotBoxDGenerationNames.ManifestTypes.Double when value is double number && IsFinite(number) => Float64(number),
             DotBoxDGenerationNames.ManifestTypes.String when value is string text => String(text),
             _ => throw new NotSupportedException($"Unsupported plugin constant expression '{expression}'.")

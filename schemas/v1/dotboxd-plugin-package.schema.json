@@ -144,6 +144,20 @@
         "projectedType": {
           "type": "string",
           "description": "The manifest type of the Select projection a local-terminal chain returns (bool/int/long/double/string). Optional; present only when localTerminal is true."
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Dispatch priority for a lowered result-returning hook chain. Higher values run first. Optional; defaults to 0."
+        },
+        "resultType": {
+          "type": "string",
+          "description": "Fully qualified hook result type for a lowered Register/RegisterLocal result hook chain. Optional; omitted for notification hooks."
+        },
+        "resultLocalTerminal": {
+          "type": "boolean",
+          "description": "True for a remote RegisterLocal result hook whose result is produced by the plugin process through request/response callback. Optional; defaults to false."
         }
       }
     },

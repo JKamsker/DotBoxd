@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.CodeAnalysis;
 using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.TypeNames;
 
@@ -12,11 +13,14 @@ internal static class InterceptsLocationAttributeEmitter
         "namespace System.Runtime.CompilerServices\n" +
         "{\n" +
         "    [" + TypeNames.GlobalAttributeUsage + "(" + TypeNames.GlobalAttributeTargets + ".Method, AllowMultiple = true)]\n" +
-        "    internal sealed class InterceptsLocationAttribute : " + TypeNames.GlobalAttribute + "\n" +
+        "    file sealed class InterceptsLocationAttribute : " + TypeNames.GlobalAttribute + "\n" +
         "    {\n" +
         "        public InterceptsLocationAttribute(int version, string data) { _ = version; _ = data; }\n" +
         "    }\n" +
         "}\n";
+
+    public static void Append(StringBuilder builder)
+        => builder.Append(Source).AppendLine();
 
     public static void Emit(SourceProductionContext context)
         => context.AddSource(HintName, Source);

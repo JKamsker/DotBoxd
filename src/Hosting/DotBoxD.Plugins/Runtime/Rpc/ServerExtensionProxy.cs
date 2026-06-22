@@ -81,7 +81,7 @@ public class ServerExtensionProxy : DispatchProxy
 
     private static void ValidateServiceContract(Type serviceType)
     {
-        foreach (var method in serviceType.GetMethods())
+        foreach (var method in ContractMethods(serviceType))
         {
             foreach (var parameter in method.GetParameters())
             {
@@ -91,6 +91,29 @@ public class ServerExtensionProxy : DispatchProxy
             if (UnwrapReturnType(method.ReturnType) is { } payloadType)
             {
                 KernelRpcMarshaller.RejectNullableValueTypesForServerExtension(payloadType);
+            }
+        }
+    }
+
+    private static IEnumerable<MethodInfo> ContractMethods(Type serviceType)
+    {
+        var seen = new HashSet<MethodInfo>();
+        foreach (var method in serviceType.GetMethods())
+        {
+            if (seen.Add(method))
+            {
+                yield return method;
+            }
+        }
+
+        foreach (var inherited in serviceType.GetInterfaces())
+        {
+            foreach (var method in inherited.GetMethods())
+            {
+                if (seen.Add(method))
+                {
+                    yield return method;
+                }
             }
         }
     }

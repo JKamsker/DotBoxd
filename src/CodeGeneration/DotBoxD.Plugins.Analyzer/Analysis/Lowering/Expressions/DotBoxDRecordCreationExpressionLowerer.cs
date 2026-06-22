@@ -105,8 +105,9 @@ internal static class DotBoxDRecordCreationExpressionLowerer
             $"[{string.Join(", ", fieldSources)}], {recordTypeSource}, Span)";
 
     // Lowers an object-initializer construction to record.new: each `Field = value` assignment lowers the value
-    // with the field's expected type (same exact-type + manifest-tag guards as positional), and every omitted
-    // field is filled with its manifest-tag zero so the constructed record always has all declared fields.
+    // with the field's expected type. When Roslyn has a real RHS type, require an exact CLR match; generated
+    // remote fallback chains can have unresolved lambda parameters on the first pass, so those rely on the
+    // contextual lowerer's manifest-tag check. Omitted fields are filled with their manifest-tag zero.
     private static DotBoxDExpressionModel LowerInitializer(
         IReadOnlyList<RecordMember> fields,
         string recordTypeSource,
@@ -178,13 +179,14 @@ internal static class DotBoxDRecordCreationExpressionLowerer
             return nullable;
         }
 
+        var lowered = lowerExpression(expression);
         var rhsType = context.SemanticModel.GetTypeInfo(expression, context.CancellationToken).Type;
-        if (rhsType is null || !SymbolEqualityComparer.Default.Equals(rhsType, fieldType))
+        if (rhsType is { TypeKind: not TypeKind.Error } &&
+            !SymbolEqualityComparer.Default.Equals(rhsType, fieldType))
         {
             throw new System.NotSupportedException();
         }
 
-        var lowered = lowerExpression(expression);
         if (!string.Equals(lowered.Type, SandboxTypeSourceEmitter.ManifestTag(fieldType), StringComparison.Ordinal))
         {
             throw new System.NotSupportedException();
