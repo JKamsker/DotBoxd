@@ -2,7 +2,6 @@ using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
-using SandboxHost = DotBoxD.Hosting.Execution.SandboxHost;
 
 namespace DotBoxD.Kernels.Tests.Compiled.SideEffectParity;
 
@@ -52,11 +51,11 @@ public sealed class CompiledTimeBindingParityTests
         // Deterministic clock pins the timestamp so both runs see the same I64 return value.
         var logicalNow = DateTimeOffset.Parse("2026-01-01T00:00:00Z");
 
-        var interp = await TimeParityRunAsync(
+        var interp = await TimeParityTestSupport.RunAsync(
             "parity-time-value-interp",
             logicalNow,
             ExecutionMode.Interpreted);
-        var comp = await TimeParityRunAsync(
+        var comp = await TimeParityTestSupport.RunAsync(
             "parity-time-value-comp",
             logicalNow,
             ExecutionMode.Compiled);
@@ -86,11 +85,11 @@ public sealed class CompiledTimeBindingParityTests
     {
         var logicalNow = DateTimeOffset.Parse("2026-06-15T08:00:00Z");
 
-        var interp = await TimeParityRunAsync(
+        var interp = await TimeParityTestSupport.RunAsync(
             "parity-time-audit-fields-interp",
             logicalNow,
             ExecutionMode.Interpreted);
-        var comp = await TimeParityRunAsync(
+        var comp = await TimeParityTestSupport.RunAsync(
             "parity-time-audit-fields-comp",
             logicalNow,
             ExecutionMode.Compiled);
@@ -139,11 +138,11 @@ public sealed class CompiledTimeBindingParityTests
     {
         var logicalNow = DateTimeOffset.Parse("2025-12-31T23:59:59Z");
 
-        var interp = await TimeParityRunAsync(
+        var interp = await TimeParityTestSupport.RunAsync(
             "parity-time-hostcalls-interp",
             logicalNow,
             ExecutionMode.Interpreted);
-        var comp = await TimeParityRunAsync(
+        var comp = await TimeParityTestSupport.RunAsync(
             "parity-time-hostcalls-comp",
             logicalNow,
             ExecutionMode.Compiled);
@@ -165,11 +164,11 @@ public sealed class CompiledTimeBindingParityTests
     {
         var logicalNow = DateTimeOffset.Parse("2026-03-10T12:00:00Z");
 
-        var interp = await TimeParityRunAsync(
+        var interp = await TimeParityTestSupport.RunAsync(
             "parity-time-success-interp",
             logicalNow,
             ExecutionMode.Interpreted);
-        var comp = await TimeParityRunAsync(
+        var comp = await TimeParityTestSupport.RunAsync(
             "parity-time-success-comp",
             logicalNow,
             ExecutionMode.Compiled);
@@ -194,10 +193,10 @@ public sealed class CompiledTimeBindingParityTests
         // Run with nondeterministic (live) clock to prove the binding works in
         // the common deployment case.  We do NOT compare the clock values across
         // the two runs because they are inherently different wall-clock readings.
-        var interp = await TimeParityNondeterministicRunAsync(
+        var interp = await TimeParityTestSupport.NondeterministicRunAsync(
             "parity-time-nondeterministic-interp",
             ExecutionMode.Interpreted);
-        var comp = await TimeParityNondeterministicRunAsync(
+        var comp = await TimeParityTestSupport.NondeterministicRunAsync(
             "parity-time-nondeterministic-comp",
             ExecutionMode.Compiled);
 
@@ -235,8 +234,8 @@ public sealed class CompiledTimeBindingParityTests
     [Fact]
     public async Task Time_nowUnixMillis_prepare_without_capability_grant_throws_validation_exception()
     {
-        using var host = TimeParityBuildHost();
-        var module = await host.ImportJsonAsync(TimeParityModuleJson("parity-time-no-cap"));
+        using var host = TimeParityTestSupport.BuildHost();
+        var module = await host.ImportJsonAsync(TimeParityTestSupport.ModuleJson("parity-time-no-cap"));
 
         var ex = await Assert.ThrowsAsync<SandboxValidationException>(
             async () => await host.PrepareAsync(
@@ -256,11 +255,11 @@ public sealed class CompiledTimeBindingParityTests
     {
         var logicalNow = DateTimeOffset.Parse("2026-01-15T10:00:00Z");
 
-        var interp = await TimeParityDoubleCallRunAsync(
+        var interp = await TimeParityTestSupport.DoubleCallRunAsync(
             "parity-time-double-interp",
             logicalNow,
             ExecutionMode.Interpreted);
-        var comp = await TimeParityDoubleCallRunAsync(
+        var comp = await TimeParityTestSupport.DoubleCallRunAsync(
             "parity-time-double-comp",
             logicalNow,
             ExecutionMode.Compiled);
@@ -298,143 +297,4 @@ public sealed class CompiledTimeBindingParityTests
         Assert.Equal(2, comp.ResourceUsage.HostCalls);
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Private helpers (all prefixed "TimeParity" to avoid name collisions)
-    // ──────────────────────────────────────────────────────────────────────────
-
-    private static SandboxHost TimeParityBuildHost()
-        => SandboxHost.Create(builder =>
-        {
-            builder.AddDefaultPureBindings();
-            builder.AddTimeBindings();
-            builder.UseInterpreter();
-            builder.UseCompilerIfAvailable();
-        });
-
-    /// <summary>
-    /// Runs the single-call <c>time.nowUnixMillis</c> module with a deterministic clock.
-    /// The random seed is set to 0 — it is required by the API but ignored because the
-    /// module does not use any random bindings.
-    /// </summary>
-    private static async Task<SandboxExecutionResult> TimeParityRunAsync(
-        string moduleId,
-        DateTimeOffset logicalNow,
-        ExecutionMode mode)
-    {
-        using var host = TimeParityBuildHost();
-        var module = await host.ImportJsonAsync(TimeParityModuleJson(moduleId));
-        var policy = SandboxPolicyBuilder.Create()
-            .GrantTimeNow()
-            .Deterministic(logicalNow, randomSeed: 0)
-            .WithFuel(10_000)
-            .Build();
-        var plan = await host.PrepareAsync(module, policy);
-        return await host.ExecuteAsync(
-            plan,
-            "main",
-            SandboxValue.Unit,
-            new SandboxExecutionOptions { Mode = mode, AllowFallbackToInterpreter = false });
-    }
-
-    /// <summary>
-    /// Runs the single-call module with a LIVE (nondeterministic) clock.
-    /// Caller must NOT compare returned timestamp values between the two runs.
-    /// </summary>
-    private static async Task<SandboxExecutionResult> TimeParityNondeterministicRunAsync(
-        string moduleId,
-        ExecutionMode mode)
-    {
-        using var host = TimeParityBuildHost();
-        var module = await host.ImportJsonAsync(TimeParityModuleJson(moduleId));
-        var policy = SandboxPolicyBuilder.Create()
-            .GrantTimeNow()
-            .WithFuel(10_000)
-            .Build();
-        var plan = await host.PrepareAsync(module, policy);
-        return await host.ExecuteAsync(
-            plan,
-            "main",
-            SandboxValue.Unit,
-            new SandboxExecutionOptions { Mode = mode, AllowFallbackToInterpreter = false });
-    }
-
-    /// <summary>
-    /// Runs the double-call module with a deterministic clock so both audit timestamps equal
-    /// <paramref name="logicalNow"/> and HostCalls == 2 can be asserted.
-    /// </summary>
-    private static async Task<SandboxExecutionResult> TimeParityDoubleCallRunAsync(
-        string moduleId,
-        DateTimeOffset logicalNow,
-        ExecutionMode mode)
-    {
-        using var host = TimeParityBuildHost();
-        var module = await host.ImportJsonAsync(TimeParityDoubleCallModuleJson(moduleId));
-        var policy = SandboxPolicyBuilder.Create()
-            .GrantTimeNow()
-            .Deterministic(logicalNow, randomSeed: 0)
-            .WithFuel(10_000)
-            .Build();
-        var plan = await host.PrepareAsync(module, policy);
-        return await host.ExecuteAsync(
-            plan,
-            "main",
-            SandboxValue.Unit,
-            new SandboxExecutionOptions { Mode = mode, AllowFallbackToInterpreter = false });
-    }
-
-    /// <summary>Single <c>time.nowUnixMillis</c> call returning the I64 timestamp.</summary>
-    private static string TimeParityModuleJson(string id)
-        => $$"""
-        {
-          "id": "{{id}}",
-          "version": "1.0.0",
-          "capabilityRequests": [{ "id": "time.now" }],
-          "functions": [
-            {
-              "id": "main",
-              "visibility": "entrypoint",
-              "parameters": [],
-              "returnType": "I64",
-              "body": [
-                {
-                  "op": "return",
-                  "value": { "call": "time.nowUnixMillis", "args": [] }
-                }
-              ]
-            }
-          ]
-        }
-        """;
-
-    /// <summary>
-    /// Two sequential <c>time.nowUnixMillis</c> calls; the first is discarded and the
-    /// second is returned so both audit events are emitted.
-    /// </summary>
-    private static string TimeParityDoubleCallModuleJson(string id)
-        => $$"""
-        {
-          "id": "{{id}}",
-          "version": "1.0.0",
-          "capabilityRequests": [{ "id": "time.now" }],
-          "functions": [
-            {
-              "id": "main",
-              "visibility": "entrypoint",
-              "parameters": [],
-              "returnType": "I64",
-              "body": [
-                {
-                  "op": "set",
-                  "name": "first",
-                  "value": { "call": "time.nowUnixMillis", "args": [] }
-                },
-                {
-                  "op": "return",
-                  "value": { "call": "time.nowUnixMillis", "args": [] }
-                }
-              ]
-            }
-          ]
-        }
-        """;
 }

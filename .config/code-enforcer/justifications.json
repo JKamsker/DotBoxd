@@ -66,10 +66,6 @@
       "justification": "Pre-existing quota parity fixture surfaced after correcting the line guard root. Keep listed until shared quota fixtures are extracted."
     },
     {
-      "path": "tests/DotBoxD.Kernels.Tests/Compiled/SideEffectParity/CompiledTimeBindingParityTests.cs",
-      "justification": "Pre-existing time-binding parity fixture surfaced after correcting the line guard root. Keep listed until shared setup is extracted."
-    },
-    {
       "path": "tests/DotBoxD.Kernels.Tests/Workers/WorkerAuditValidationTests.cs",
       "justification": "Pre-existing worker-audit validation fixture surfaced after correcting the line guard root. Keep listed until audit event families are split."
     },
