@@ -424,14 +424,14 @@ jobs:
           Write-Host "Resolved package version: $version"
 
       - name: Restore
-        run: dotnet restore DotBoxD.slnx
+        run: dotnet restore DotBoxD.Packages.slnx
 
       - name: Build
-        run: dotnet build DotBoxD.slnx -c $CONFIGURATION --no-restore -p:Version=${{ steps.version.outputs.version }}
+        run: dotnet build DotBoxD.Packages.slnx -c $CONFIGURATION --no-restore -p:Version=${{ steps.version.outputs.version }}
 
       - name: Pack
         run: >-
-          dotnet pack DotBoxD.slnx -c $CONFIGURATION --no-build
+          dotnet pack DotBoxD.Packages.slnx -c $CONFIGURATION --no-build
           -o artifacts/packages
           -p:Version=${{ steps.version.outputs.version }}
 

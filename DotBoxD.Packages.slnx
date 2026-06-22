@@ -1,0 +1,51 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="README.md" />
+  </Folder>
+
+  <Folder Name="/src/Services/">
+    <Project Path="src/Services/DotBoxD.Services/DotBoxD.Services.csproj" />
+  </Folder>
+
+  <Folder Name="/src/Meta/">
+    <Project Path="src/Meta/DotBoxD/DotBoxD.csproj" />
+    <Project Path="src/Meta/DotBoxD.Services.All/DotBoxD.Services.All.csproj" />
+  </Folder>
+  <Folder Name="/src/" />
+
+  <Folder Name="/src/Channels/">
+    <Project Path="src/Channels/DotBoxD.Transports.Tcp/DotBoxD.Transports.Tcp.csproj" />
+    <Project Path="src/Channels/DotBoxD.Transports.NamedPipes/DotBoxD.Transports.NamedPipes.csproj" />
+    <Project Path="src/Channels/DotBoxD.Codecs.MessagePack/DotBoxD.Codecs.MessagePack.csproj" />
+  </Folder>
+
+  <Folder Name="/src/Kernels/">
+    <Project Path="src/Kernels/DotBoxD.Kernels/DotBoxD.Kernels.csproj" />
+    <Project Path="src/Kernels/DotBoxD.Kernels.Validation/DotBoxD.Kernels.Validation.csproj" />
+    <Project Path="src/Kernels/DotBoxD.Kernels.Runtime/DotBoxD.Kernels.Runtime.csproj" />
+    <Project Path="src/Kernels/DotBoxD.Kernels.Interpreter/DotBoxD.Kernels.Interpreter.csproj" />
+    <Project Path="src/Kernels/DotBoxD.Kernels.Compiler/DotBoxD.Kernels.Compiler.csproj" />
+    <Project Path="src/Kernels/DotBoxD.Kernels.Verifier/DotBoxD.Kernels.Verifier.csproj" />
+    <Project Path="src/Kernels/DotBoxD.Kernels.Serialization.Json/DotBoxD.Kernels.Serialization.Json.csproj" />
+  </Folder>
+
+  <Folder Name="/src/Hosting/">
+    <Project Path="src/Hosting/DotBoxD.Hosting/DotBoxD.Hosting.csproj" />
+    <Project Path="src/Hosting/DotBoxD.Abstractions/DotBoxD.Abstractions.csproj" />
+    <Project Path="src/Hosting/DotBoxD.Plugins/DotBoxD.Plugins.csproj" />
+    <Project Path="src/Hosting/DotBoxD.Hosting.Http/DotBoxD.Hosting.Http.csproj" />
+  </Folder>
+
+  <Folder Name="/src/Pushdown/">
+    <Project Path="src/Pushdown/DotBoxD.Pushdown.Services/DotBoxD.Pushdown.Services.csproj" />
+  </Folder>
+
+  <Folder Name="/src/CodeGeneration/">
+    <Project Path="src/CodeGeneration/DotBoxD.Services.SourceGenerator/DotBoxD.Services.SourceGenerator.csproj" />
+    <Project Path="src/CodeGeneration/DotBoxD.Plugins.Analyzer/DotBoxD.Plugins.Analyzer.csproj" />
+    <Project Path="src/CodeGeneration/DotBoxD.Plugins.Fody/DotBoxD.Plugins.Fody.csproj" />
+  </Folder>
+</Solution>
