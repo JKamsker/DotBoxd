@@ -26,10 +26,6 @@
       "justification": "Pre-existing service outbound pipeline file surfaced after correcting the line guard root. Keep listed until send, timeout, and response handling are split."
     },
     {
-      "path": "src/Services/DotBoxD.Services/Peer/Inbound/RpcPeerInboundRequestQueue.cs",
-      "justification": "Pre-existing inbound queue implementation surfaced after correcting the line guard root. Keep listed until admission, completion, and drain paths are split."
-    },
-    {
       "path": "src/Services/DotBoxD.Services/Peer/RpcPeer.cs",
       "justification": "Pre-existing peer orchestration file surfaced after correcting the line guard root. Keep listed until connection lifecycle and dispatch are split."
     },

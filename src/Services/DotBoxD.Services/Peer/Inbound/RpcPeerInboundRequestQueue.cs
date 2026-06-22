@@ -27,14 +27,10 @@ internal sealed class RpcPeerInboundRequestQueue
     private readonly bool _dropIncomingWhenFull;
     private readonly bool _dispatchSerially;
     private readonly SemaphoreSlim? _slots;
-    private readonly long _maxInboundBytes;
-    private readonly object _byteGate = new();
-    private long _inFlightBytes;
-    private TaskCompletionSource<bool>? _byteAvailable;
+    private readonly RpcPeerInboundByteBudget _byteBudget;
+    private readonly RpcPeerInboundInFlightTracker _inFlight = new();
     private CancellationTokenSource? _cts;
     private Task? _dispatchWorker;
-    private TaskCompletionSource<bool>? _inFlightDrained;
-    private int _inFlightCount;
 
     public RpcPeerInboundRequestQueue(
         int capacity,
@@ -50,7 +46,7 @@ internal sealed class RpcPeerInboundRequestQueue
         _dispatchSerially = maxConcurrency == 1;
         // long.MaxValue == byte bound disabled (count-only). Otherwise total in-flight inbound frame
         // bytes are capped at maxInboundBytes, independent of the capacity (count) bound.
-        _maxInboundBytes = maxInboundBytes ?? long.MaxValue;
+        _byteBudget = new RpcPeerInboundByteBudget(maxInboundBytes);
         // maxConcurrency == 1 keeps dispatch strictly serial; > 1 admits that many concurrent
         // dispatches. Total in-flight inbound work is bounded by capacity + maxConcurrency.
         _slots = _dispatchSerially ? null : new SemaphoreSlim(maxConcurrency, maxConcurrency);
@@ -78,14 +74,14 @@ internal sealed class RpcPeerInboundRequestQueue
             // resources but leave frame disposal to the read loop, which disposes on the Dropped
             // return. Disposing here too would double-return the pooled buffer (benign only while
             // Payload.Dispose stays idempotent).
-            if (TryAdmitBytes(bytes))
+            if (_byteBudget.TryAdmit(bytes))
             {
                 if (_queue.Writer.TryWrite(inbound))
                 {
                     return InboundEnqueueResult.Accepted;
                 }
 
-                ReleaseBytes(bytes);
+                _byteBudget.Release(bytes);
             }
 
             _release(inbound);
@@ -96,7 +92,7 @@ internal sealed class RpcPeerInboundRequestQueue
         {
             // Wait for byte-budget headroom before committing the frame to the queue, so peak
             // in-flight inbound memory stays bounded regardless of how many large frames a peer sends.
-            await AdmitBytesAsync(bytes, ct).ConfigureAwait(false);
+            await _byteBudget.AdmitAsync(bytes, ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -138,78 +134,10 @@ internal sealed class RpcPeerInboundRequestQueue
             // disposes it.
             if (!committed)
             {
-                ReleaseBytes(bytes);
+                _byteBudget.Release(bytes);
                 _release(inbound);
             }
         }
-    }
-
-    private bool TryAdmitBytes(long bytes)
-    {
-        if (_maxInboundBytes == long.MaxValue)
-        {
-            return true;
-        }
-
-        lock (_byteGate)
-        {
-            // Admit when it fits, or when nothing is in flight so a single frame larger than the
-            // whole budget still makes progress instead of deadlocking.
-            if (_inFlightBytes == 0 || _inFlightBytes + bytes <= _maxInboundBytes)
-            {
-                _inFlightBytes += bytes;
-                return true;
-            }
-
-            return false;
-        }
-    }
-
-    private async ValueTask AdmitBytesAsync(long bytes, CancellationToken ct)
-    {
-        if (_maxInboundBytes == long.MaxValue)
-        {
-            return;
-        }
-
-        // Single writer (the peer read loop) calls this, so at most one waiter exists at a time.
-        while (true)
-        {
-            Task wait;
-            lock (_byteGate)
-            {
-                if (_inFlightBytes == 0 || _inFlightBytes + bytes <= _maxInboundBytes)
-                {
-                    _inFlightBytes += bytes;
-                    return;
-                }
-
-                _byteAvailable ??= new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-                wait = _byteAvailable.Task;
-            }
-
-            // netstandard2.1 has no Task.WaitAsync(ct); RpcTaskWaiter throws OperationCanceledException
-            // on cancellation (peer shutdown) while leaving the shared signal intact for the next admit.
-            await RpcTaskWaiter.WaitAsync(wait, ct).ConfigureAwait(false);
-        }
-    }
-
-    private void ReleaseBytes(long bytes)
-    {
-        if (_maxInboundBytes == long.MaxValue)
-        {
-            return;
-        }
-
-        TaskCompletionSource<bool>? signal;
-        lock (_byteGate)
-        {
-            _inFlightBytes -= bytes;
-            signal = _byteAvailable;
-            _byteAvailable = null;
-        }
-
-        signal?.TrySetResult(true);
     }
 
     public async Task StopAsync()
@@ -222,7 +150,7 @@ internal sealed class RpcPeerInboundRequestQueue
             await ObserveShutdownAsync(_dispatchWorker).ConfigureAwait(false);
         }
 
-        await WaitForInFlightAsync().ConfigureAwait(false);
+        await _inFlight.WaitAsync().ConfigureAwait(false);
 
         Drain();
         _slots?.Dispose();
@@ -273,7 +201,7 @@ internal sealed class RpcPeerInboundRequestQueue
             {
                 while (_queue.Reader.TryRead(out var inbound))
                 {
-                    Interlocked.Increment(ref _inFlightCount);
+                    _inFlight.Add();
                     var bytes = inbound.Frame.Length;
                     try
                     {
@@ -285,8 +213,8 @@ internal sealed class RpcPeerInboundRequestQueue
                     }
                     finally
                     {
-                        ReleaseBytes(bytes);
-                        CompleteInFlight();
+                        _byteBudget.Release(bytes);
+                        _inFlight.Complete();
                     }
                 }
             }
@@ -299,7 +227,7 @@ internal sealed class RpcPeerInboundRequestQueue
 
     private void StartProcessing(RpcPeerInboundRequest inbound, SemaphoreSlim slots)
     {
-        Interlocked.Increment(ref _inFlightCount);
+        _inFlight.Add();
         _ = ProcessOneAsync(inbound, slots);
     }
 
@@ -318,7 +246,7 @@ internal sealed class RpcPeerInboundRequestQueue
         }
         finally
         {
-            ReleaseBytes(bytes);
+            _byteBudget.Release(bytes);
             try
             {
                 slots.Release();
@@ -328,37 +256,7 @@ internal sealed class RpcPeerInboundRequestQueue
                 // StopAsync disposed the slot semaphore after the dispatch worker stopped.
             }
 
-            CompleteInFlight();
-        }
-    }
-
-    private Task WaitForInFlightAsync()
-    {
-        if (Volatile.Read(ref _inFlightCount) == 0)
-        {
-            return Task.CompletedTask;
-        }
-
-        var signal = Volatile.Read(ref _inFlightDrained);
-        if (signal is null)
-        {
-            var created = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            signal = Interlocked.CompareExchange(ref _inFlightDrained, created, null) ?? created;
-        }
-
-        if (Volatile.Read(ref _inFlightCount) == 0)
-        {
-            signal.TrySetResult(true);
-        }
-
-        return signal.Task;
-    }
-
-    private void CompleteInFlight()
-    {
-        if (Interlocked.Decrement(ref _inFlightCount) == 0)
-        {
-            Volatile.Read(ref _inFlightDrained)?.TrySetResult(true);
+            _inFlight.Complete();
         }
     }
 
@@ -366,7 +264,7 @@ internal sealed class RpcPeerInboundRequestQueue
     {
         while (_queue.Reader.TryRead(out var inbound))
         {
-            ReleaseBytes(inbound.Frame.Length);
+            _byteBudget.Release(inbound.Frame.Length);
             inbound.Frame.Dispose();
             _release(inbound);
         }
