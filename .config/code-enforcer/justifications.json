@@ -144,10 +144,6 @@
   ],
   "folders": [
     {
-      "path": "tests/DotBoxD.Kernels.Tests/PluginAnalyzer/Generated",
-      "justification": "Pre-existing generated-analyzer regression folder groups related generator tests. Keep listed until tests are split by generator feature area."
-    },
-    {
       "path": "tests/DotBoxD.Kernels.Tests/Plugins/Rpc",
       "justification": "Pre-existing RPC plugin regression folder groups service, generator, runtime, and IPC tests. Keep listed until RPC tests are split into subfolders."
     }
