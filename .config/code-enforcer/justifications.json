@@ -14,10 +14,6 @@
       "justification": "Pre-existing source-generator model factory surfaced after correcting the line guard root. Keep listed until parsing and validation are split."
     },
     {
-      "path": "src/Kernels/DotBoxD.Kernels.Interpreter/ExpressionEvaluator.cs",
-      "justification": "Pre-existing interpreter dispatch file surfaced after correcting the line guard root. Keep listed until expression families are split into focused evaluators."
-    },
-    {
       "path": "src/Services/DotBoxD.Services/Server/RpcPeerInboundDispatcher.cs",
       "justification": "Pre-existing large dispatcher surfaced after correcting the line guard root. Keep listed until routing, invocation, and error handling are split."
     },
