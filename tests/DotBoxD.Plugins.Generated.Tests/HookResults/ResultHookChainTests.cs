@@ -218,8 +218,47 @@ public sealed class ResultHookChainTests
         Assert.Null(inProcess.Value.Reason);
     }
 
+    [Fact]
+    public async Task Uninstalling_a_lowered_Register_chain_prunes_the_result_slot()
+    {
+        using var server = PluginServer.Create(defaultPolicy: TestPolicies.Chain());
+        server.Hooks.On<CombatDamageContext>()
+            .Where(ctx => ctx.Relation == CombatRelation.Pve)
+            .Register(ctx => new CombatDamageResult { Success = true, Damage = ctx.Damage * 2 }, priority: 100);
+
+        var ctx = new CombatDamageContext(CombatRelation.Pve, 50);
+        var pipeline = server.Hooks.On<CombatDamageContext>(); // the same cached pipeline the chain installed into
+
+        var before = await server.Hooks.FireAsync<CombatDamageContext, CombatDamageResult>(ctx);
+        Assert.Equal(100, before!.Value.Damage);
+        Assert.Equal(1, ResultEntryCount(pipeline));
+
+        // Uninstalling the lowered chain must prune ResultHookSlot via HookPipeline.RemoveKernel. The behavioral
+        // null after revocation is fail-safe regardless (a revoked kernel projects NotMatched and abstains), so the
+        // entry-count assertion is the real guard against a regression that dropped _resultHooks.RemoveKernel.
+        var installed = Assert.Single(server.Kernels);
+        Assert.True(server.Uninstall(installed.Manifest.PluginId));
+
+        Assert.Equal(0, ResultEntryCount(pipeline));
+        var after = await server.Hooks.FireAsync<CombatDamageContext, CombatDamageResult>(ctx);
+        Assert.Null(after);
+    }
+
     private static bool IsDelegateParameter(System.Reflection.ParameterInfo parameter)
         => typeof(Delegate).IsAssignableFrom(parameter.ParameterType)
             || parameter.ParameterType.Name.StartsWith("Func", StringComparison.Ordinal)
             || parameter.ParameterType.Name.StartsWith("Action", StringComparison.Ordinal);
+
+    private static int ResultEntryCount<TEvent>(HookPipeline<TEvent> pipeline)
+    {
+        const System.Reflection.BindingFlags flags =
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        var slotField = typeof(HookPipeline<TEvent>).GetField("_resultHooks", flags);
+        Assert.NotNull(slotField);
+        var slot = slotField!.GetValue(pipeline)!;
+        var entriesField = slot.GetType().GetField("_entries", flags);
+        Assert.NotNull(entriesField);
+        var entries = (Array)entriesField!.GetValue(slot)!;
+        return entries.Length;
+    }
 }

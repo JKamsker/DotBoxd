@@ -153,10 +153,7 @@ public sealed class HookRegistry
     private static void ValidateResultType<TContext, TResult>()
         where TResult : struct, IHookResult
     {
-        var hook = (HookAttribute?)Attribute.GetCustomAttribute(
-            typeof(TContext),
-            typeof(HookAttribute),
-            inherit: false);
+        var hook = ResultTypeCache<TContext>.Attr;
         if (hook is null || hook.ResultType == typeof(TResult))
         {
             return;
@@ -168,5 +165,14 @@ public sealed class HookRegistry
                 $"Hook context '{typeof(TContext).Name}' declares result type '{hook.ResultType.Name}', " +
                 $"but FireAsync was called with '{typeof(TResult).Name}'.")
         ]);
+    }
+
+    // The [Hook] attribute on a context type is fixed at compile time; cache the lookup per closed TContext so
+    // FireAsync stays allocation-free on the hot path — including the no-handler fast path it guards, which
+    // would otherwise pay a reflection lookup + allocation before the pipeline-null early return.
+    private static class ResultTypeCache<TContext>
+    {
+        internal static readonly HookAttribute? Attr =
+            (HookAttribute?)Attribute.GetCustomAttribute(typeof(TContext), typeof(HookAttribute), inherit: false);
     }
 }

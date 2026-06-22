@@ -1,9 +1,12 @@
 # Follow-up: Stage 5 — polymorphic combatant filters for result hooks
 
-> Status: **design / not yet implemented.** Stages 0–4 of the result-returning hooks plan
-> (`Hooks.On<TContext>()` with `Register`/`RegisterLocal`, the `[HookResult]` builder generator,
-> object-initializer and fluent-builder lowering, runtime dispatch) and the game-server combat sample are
-> implemented and shipped. This document specs the remaining Stage 5 so it can be picked up cold.
+> Status: **shipped / implemented** in this PR (commits `6b74df20`, `85424c2b`). Stages 0–4 of the
+> result-returning hooks plan (`Hooks.On<TContext>()` with `Register`/`RegisterLocal`, the `[HookResult]`
+> builder generator, object-initializer and fluent-builder lowering, runtime dispatch) and the game-server
+> combat sample shipped first; this document specced Stage 5 and the **v1 scope it describes is what landed** —
+> the `[PolymorphicHandle]`/`[HandleSubtype]` attributes, the analyzer declaration-pattern lowering, the runtime
+> metadata readers, and end-to-end tests (`CombatPolymorphicSampleTests`) all exist. Pattern shapes beyond the
+> v1 subset still fail safe; broadening them is tracked in issue #79.
 
 ## Goal
 
@@ -38,9 +41,9 @@ scalar comparisons. Anything richer (nested patterns, `or`/`not` over declaratio
 `local` outside the `&&`) fails safe — the chain does not lower and the existing un-lowered diagnostic
 (DBXK110/111/113) fires. This already happens today: the pattern lowerer has no declaration-pattern arm.
 
-## Why this is a from-scratch subsystem
+## Why this was a from-scratch subsystem
 
-As of this branch there is **no** supporting infrastructure (verified by grep across `src/`):
+When this document was written there was **no** supporting infrastructure (all of the following were since added by this PR):
 
 - no `[PolymorphicHandle]` / `[HandleSubtype]` attributes;
 - no notion of an event property that is a **handle** (a host-resolved key) rather than a marshalled value —

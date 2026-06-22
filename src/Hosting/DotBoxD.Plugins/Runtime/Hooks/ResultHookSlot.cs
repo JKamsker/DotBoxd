@@ -165,5 +165,8 @@ internal sealed class ResultHookSlot<TEvent>
 
     internal static Func<SandboxValue, IHookResult> Decoder<TResult>()
         where TResult : struct, IHookResult
-        => value => (TResult)KernelRpcMarshaller.FromSandboxValue(value, typeof(TResult))!;
+        // FromSandboxValue already boxes the constructed record struct; reinterpret that single box as
+        // IHookResult (a reference conversion) rather than unboxing to TResult and re-boxing on return.
+        // FireAsync does the one unbox to TResult when a result wins.
+        => value => (IHookResult)KernelRpcMarshaller.FromSandboxValue(value, typeof(TResult))!;
 }
