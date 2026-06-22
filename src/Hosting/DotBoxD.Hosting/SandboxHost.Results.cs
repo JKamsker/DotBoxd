@@ -1,11 +1,8 @@
 using DotBoxD.Kernels.Bindings;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
-
 namespace DotBoxD.Hosting.Execution;
-
 using DotBoxD.Kernels;
-
 public sealed partial class SandboxHost
 {
     private static SandboxAuditEvent FallbackAudit(ExecutionPlan plan, SandboxRunId runId, SandboxError reason)
@@ -17,7 +14,6 @@ public sealed partial class SandboxHost
             ResourceId: $"module:{plan.ModuleHash}",
             ErrorCode: reason.Code,
             Message: $"compiled execution fell back to interpreted mode: {reason.SafeMessage}");
-
     private static SandboxExecutionResult CompilerUnavailableResult(
         ExecutionPlan plan,
         SandboxExecutionOptions options,
@@ -37,7 +33,6 @@ public sealed partial class SandboxHost
             ErrorCode: error.Code,
             Message: error.SafeMessage));
         WriteFailedRunSummary(audit, runId, startedAt, plan, budget, ExecutionMode.Compiled, error, false);
-
         return new SandboxExecutionResult
         {
             Succeeded = false,
@@ -51,7 +46,6 @@ public sealed partial class SandboxHost
             PolicyHash = plan.PolicyHash
         };
     }
-
     private static SandboxExecutionResult InvalidExecutionOptionsResult(
         ExecutionPlan plan,
         SandboxExecutionOptions options,
@@ -71,7 +65,6 @@ public sealed partial class SandboxHost
             ErrorCode: error.Code,
             Message: error.SafeMessage));
         WriteFailedRunSummary(audit, runId, startedAt, plan, budget, options.Mode, error, false);
-
         return new SandboxExecutionResult
         {
             Succeeded = false,
@@ -85,7 +78,6 @@ public sealed partial class SandboxHost
             PolicyHash = plan.PolicyHash
         };
     }
-
     private static SandboxExecutionResult CompiledFailureResult(
         ExecutionPlan plan,
         SandboxExecutionOptions options,
@@ -107,9 +99,7 @@ public sealed partial class SandboxHost
         {
             audit.Write(VerifierFailureAudit(plan, runId, error));
         }
-
         WriteFailedRunSummary(audit, runId, startedAt, plan, budget, ExecutionMode.Compiled, error, false);
-
         return new SandboxExecutionResult
         {
             Succeeded = false,
@@ -123,7 +113,6 @@ public sealed partial class SandboxHost
             PolicyHash = plan.PolicyHash
         };
     }
-
     private static SandboxExecutionResult DeterminismRequiredResult(ExecutionPlan plan, SandboxExecutionOptions options)
     {
         var runId = options.RunId ?? SandboxRunId.New();
@@ -140,7 +129,6 @@ public sealed partial class SandboxHost
             ErrorCode: error.Code,
             Message: error.SafeMessage));
         WriteFailedRunSummary(audit, runId, startedAt, plan, budget, options.Mode, error, false);
-
         return new SandboxExecutionResult
         {
             Succeeded = false,
@@ -154,7 +142,6 @@ public sealed partial class SandboxHost
             PolicyHash = plan.PolicyHash
         };
     }
-
     private static SandboxExecutionResult CapabilityRevokedResult(
         ExecutionPlan plan,
         SandboxExecutionOptions options,
@@ -183,7 +170,6 @@ public sealed partial class SandboxHost
                 ["revokedAt"] = revoked.RevokedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture)
             }));
         WriteFailedRunSummary(audit, runId, startedAt, plan, budget, options.Mode, error, false);
-
         return new SandboxExecutionResult
         {
             Succeeded = false,
@@ -197,7 +183,6 @@ public sealed partial class SandboxHost
             PolicyHash = plan.PolicyHash
         };
     }
-
     internal static SandboxExecutionResult WorkerIsolationUnavailableResult(
         ExecutionPlan plan,
         SandboxExecutionOptions options,
@@ -222,7 +207,6 @@ public sealed partial class SandboxHost
             Message: error.SafeMessage,
             Fields: profile?.ToAuditFields()));
         WriteFailedRunSummary(audit, runId, startedAt, plan, budget, options.Mode, error, false);
-
         return new SandboxExecutionResult
         {
             Succeeded = false,
@@ -236,7 +220,6 @@ public sealed partial class SandboxHost
             PolicyHash = plan.PolicyHash
         };
     }
-
     internal static SandboxExecutionResult WorkerIsolationFailedResult(
         ExecutionPlan plan,
         SandboxExecutionOptions options,
@@ -255,7 +238,6 @@ public sealed partial class SandboxHost
             ErrorCode: error.Code,
             Message: error.SafeMessage));
         WriteFailedRunSummary(audit, runId, startedAt, plan, budget, options.Mode, error, false);
-
         return new SandboxExecutionResult
         {
             Succeeded = false,
@@ -269,7 +251,6 @@ public sealed partial class SandboxHost
             PolicyHash = plan.PolicyHash
         };
     }
-
     private static SandboxAuditEvent VerifierFailureAudit(
         ExecutionPlan plan,
         SandboxRunId runId,
@@ -282,7 +263,6 @@ public sealed partial class SandboxHost
             ResourceId: $"module:{plan.ModuleHash}",
             ErrorCode: error.Code,
             Message: error.SafeMessage);
-
     private static void WriteFailedRunSummary(
         InMemoryAuditSink audit,
         SandboxRunId runId,

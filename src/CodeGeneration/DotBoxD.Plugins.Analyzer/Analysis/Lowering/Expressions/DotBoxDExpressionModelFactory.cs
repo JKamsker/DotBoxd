@@ -1,15 +1,12 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
-
 internal static partial class DotBoxDExpressionModelFactory
 {
     public static DotBoxDExpressionModel Create(
         ExpressionSyntax expression,
         DotBoxDExpressionLoweringContext context)
         => Lower(expression, context);
-
     private static DotBoxDExpressionModel Lower(
         ExpressionSyntax expression,
         DotBoxDExpressionLoweringContext context)
@@ -22,7 +19,6 @@ internal static partial class DotBoxDExpressionModelFactory
         {
             return constant;
         }
-
         return expression switch
         {
             ParenthesizedExpressionSyntax parenthesized => Lower(parenthesized.Expression, context),
@@ -48,7 +44,6 @@ internal static partial class DotBoxDExpressionModelFactory
             _ => Unsupported(expression)
         };
     }
-
     private static DotBoxDExpressionModel LowerUnary(
         PrefixUnaryExpressionSyntax unary,
         DotBoxDExpressionLoweringContext context)
@@ -57,7 +52,6 @@ internal static partial class DotBoxDExpressionModelFactory
         {
             return literal;
         }
-
         var operand = Lower(unary.Operand, context);
         return unary.Kind() switch
         {
@@ -74,7 +68,6 @@ internal static partial class DotBoxDExpressionModelFactory
             _ => Unsupported(unary)
         };
     }
-
     private static DotBoxDExpressionModel Unary(
         string helper,
         string symbol,
@@ -85,7 +78,6 @@ internal static partial class DotBoxDExpressionModelFactory
         RequireType(operand, expected, $"Unary operator '{symbol}'");
         return new DotBoxDExpressionModel($"{helper}({operand.Source})", resultType, operand.Allocates);
     }
-
     private static DotBoxDExpressionModel LowerBinary(
         BinaryExpressionSyntax binary,
         DotBoxDExpressionLoweringContext context)
@@ -94,12 +86,10 @@ internal static partial class DotBoxDExpressionModelFactory
         {
             return patternCapture;
         }
-
         var left = Lower(binary.Left, context);
         var right = Lower(binary.Right, context);
         DotBoxDNumericConstantPromoter.Promote(binary, context, ref left, ref right);
         var allocates = left.Allocates || right.Allocates;
-
         return binary.Kind() switch
         {
             SyntaxKind.EqualsExpression => DotBoxDEqualityExpressionLowerer.Lower(

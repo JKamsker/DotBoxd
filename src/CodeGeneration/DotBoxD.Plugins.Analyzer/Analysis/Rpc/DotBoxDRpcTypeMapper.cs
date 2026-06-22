@@ -1,9 +1,7 @@
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using Microsoft.CodeAnalysis;
 using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.TypeNames;
-
 namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
-
 /// <summary>
 /// Maps C# types used by a <c>[ServerExtension]</c> batch method onto DotBoxD.Kernels JSON IR types: scalars to
 /// their sandbox names, <c>List&lt;T&gt;</c>/<c>IEnumerable&lt;T&gt;</c>/<c>T[]</c> to <c>List</c>, and a
@@ -21,7 +19,6 @@ internal static class DotBoxDRpcTypeMapper
         {
             throw new NotSupportedException($"Server extension nullable type '{type.ToDisplayString()}' is not supported.");
         }
-
         switch (type.SpecialType)
         {
             case SpecialType.System_Boolean:
@@ -37,22 +34,18 @@ internal static class DotBoxDRpcTypeMapper
             case SpecialType.System_String:
                 return Scalar("String");
         }
-
         if (IsGuid(type))
         {
             return Scalar("Guid");
         }
-
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return Scalar(EnumUsesI64(enumType) ? "I64" : "I32");
         }
-
         if (ListElementType(type) is { } elementType)
         {
             return $"{{\"name\":\"List\",\"arguments\":[{JsonType(elementType)}]}}";
         }
-
         if (MapTypes(type) is { } map)
         {
             if (!IsSupportedMapKey(map.Key))
@@ -61,10 +54,8 @@ internal static class DotBoxDRpcTypeMapper
                     $"Server extension map key type '{map.Key.ToDisplayString()}' is not supported; " +
                     "map keys must be bool, int, long, string, or an enum.");
             }
-
             return $"{{\"name\":\"Map\",\"arguments\":[{JsonType(map.Key)},{JsonType(map.Value)}]}}";
         }
-
         if (type is INamedTypeSymbol named && IsRecordDto(named))
         {
             RejectInheritedDtoProperties(named);
@@ -74,13 +65,10 @@ internal static class DotBoxDRpcTypeMapper
             {
                 fieldTypes.Add(JsonType(field.Type));
             }
-
             return $"{{\"name\":\"Record\",\"arguments\":[{string.Join(",", fieldTypes)}]}}";
         }
-
         throw new NotSupportedException($"Server extension type '{type.ToDisplayString()}' is not supported.");
     }
-
     /// <summary>
     /// True when <paramref name="member"/> can be written through an object initializer: a property with an
     /// accessible <c>set</c>/<c>init</c>, or a non-readonly public field. Used for the parameterless-construct
@@ -97,12 +85,10 @@ internal static class DotBoxDRpcTypeMapper
             IFieldSymbol { IsReadOnly: false, IsConst: false } => true,
             _ => false
         };
-
     public static bool IsScalar(ITypeSymbol type)
         => type.SpecialType is SpecialType.System_Boolean or SpecialType.System_Int32
             or SpecialType.System_Int64 or SpecialType.System_Double or SpecialType.System_Single
             or SpecialType.System_String;
-
     /// <summary><see cref="System.Guid"/> is a first-class 16-byte scalar (sandbox <c>Guid</c> kind), distinct
     /// from <c>string</c>. Detected structurally so it is robust to display-format differences.</summary>
     public static bool IsGuid(ITypeSymbol type)

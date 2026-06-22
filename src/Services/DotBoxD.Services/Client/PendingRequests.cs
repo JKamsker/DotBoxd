@@ -1,7 +1,5 @@
 using System.Diagnostics;
-
 namespace DotBoxD.Services.Client;
-
 internal sealed class PendingRequests : IDisposable
 {
     private readonly object _requestsGate = new();

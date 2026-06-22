@@ -1,9 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
-
 /// <summary>
 /// Lowers a <c>[ServerExtension]</c> batch method body to DotBoxD.Kernels JSON IR (statements + expressions),
 /// the same JSON the host imports at install. Supports the canonical batch shape: local declarations, a
@@ -27,10 +25,8 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     private IReadOnlyList<string> _returnRecordFields = [];
     private string? _returnRecordType;
     private int _tempCounter;
-
     /// <summary>True once the body builds a list or record, so the manifest declares the Alloc effect.</summary>
     public bool Allocates { get; private set; }
-
     public DotBoxDRpcJsonLowerer(
         SemanticModel model,
         ICollection<string> capabilities,
@@ -42,12 +38,9 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         _effects = effects;
         _cancellationToken = cancellationToken;
     }
-
     public string LowerBody(BlockSyntax block) => LowerBody(block, [], [], returnRecordType: null, assignmentOverride: null);
-
     internal void AddServiceHandleLocal(string name, string handleIdJson)
         => _serviceHandleLocals[name] = handleIdJson;
-
     internal string LowerBody(
         BlockSyntax block,
         IReadOnlyList<(string Name, ExpressionSyntax Value)> leadingLocals,
@@ -66,7 +59,6 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             {
                 parts.Add(SetStatement(leadingLocals[i].Name, LowerExpression(leadingLocals[i].Value)));
             }
-
             LowerStatements(block.Statements, parts);
             return "[" + string.Join(",", parts) + "]";
         }
@@ -77,9 +69,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             _returnRecordType = null;
         }
     }
-
     internal static string SetGeneratedLocal(string name, string value) => SetStatement(name, value);
-
     private void LowerStatements(IEnumerable<StatementSyntax> statements, List<string> parts)
     {
         foreach (var statement in statements)

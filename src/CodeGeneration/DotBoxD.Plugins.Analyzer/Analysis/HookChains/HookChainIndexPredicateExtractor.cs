@@ -3,9 +3,7 @@ using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
-
 /// <summary>
 /// Mines host-readable index metadata from the <c>.Where(...)</c> stages of a lowered hook chain — issue
 /// #47. It extracts every leaf of the form <c>event-property &lt;comparison&gt; compile-time-constant</c>
@@ -28,7 +26,6 @@ internal static class HookChainIndexPredicateExtractor
         var predicates = new List<IndexPredicateModel>();
         var fullyCovered = true;
         var sawSelect = false;
-
         foreach (var stage in stages)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -39,28 +36,23 @@ internal static class HookChainIndexPredicateExtractor
                 sawSelect = true;
                 continue;
             }
-
             if (sawSelect)
             {
                 fullyCovered = false;
                 continue;
             }
-
             var (elementParam, _) = LambdaParameters(stage.Lambda);
             if (elementParam is null || stage.Lambda.ExpressionBody is not { } body)
             {
                 fullyCovered = false;
                 continue;
             }
-
             CollectConjunction(body, elementParam, eventProperties, model, cancellationToken, predicates, ref fullyCovered);
         }
-
         return predicates.Count == 0
             ? (default, false)
             : (EquatableArray<IndexPredicateModel>.FromOwned([.. predicates]), fullyCovered);
     }
-
     /// <summary>
     /// Mines the same index metadata from a kernel-class <c>ShouldHandle</c> body (issue #51, candidate 1):
     /// an expression-bodied predicate or a single <c>return &lt;expr&gt;;</c> is treated exactly like a
@@ -81,17 +73,14 @@ internal static class HookChainIndexPredicateExtractor
         {
             return (default, false);
         }
-
         var predicates = new List<IndexPredicateModel>();
         var fullyCovered = true;
         CollectConjunction(
             predicateExpression, elementParam, eventProperties, model, cancellationToken, predicates, ref fullyCovered);
-
         return predicates.Count == 0
             ? (default, false)
             : (EquatableArray<IndexPredicateModel>.FromOwned([.. predicates]), fullyCovered);
     }
-
     // The single boolean predicate a ShouldHandle reduces to, or null for any shape we won't mine: an
     // expression body (=> expr) or a block whose only statement is `return expr;`. A multi-statement body
     // is deliberately left non-indexed.
@@ -101,13 +90,11 @@ internal static class HookChainIndexPredicateExtractor
         {
             return expression;
         }
-
         return method.Body is { Statements.Count: 1 } block &&
                block.Statements[0] is ReturnStatementSyntax { Expression: { } returned }
             ? returned
             : null;
     }
-
     private static void CollectConjunction(
         ExpressionSyntax expression,
         string elementParam,
@@ -124,19 +111,16 @@ internal static class HookChainIndexPredicateExtractor
             CollectConjunction(and.Right, elementParam, eventProperties, model, cancellationToken, predicates, ref fullyCovered);
             return;
         }
-
         if (TryExtractComparison(node, elementParam, eventProperties, model, cancellationToken, out var predicate))
         {
             predicates.Add(predicate);
             return;
         }
-
         // A leaf we cannot turn into an index check (OR, NOT, non-constant, projected value, two
         // properties, unsupported type). It stays a necessary part of the verified IR, so the index is
         // only a partial cover.
         fullyCovered = false;
     }
-
     private static bool TryExtractComparison(
         ExpressionSyntax expression,
         string elementParam,
@@ -150,7 +134,6 @@ internal static class HookChainIndexPredicateExtractor
         {
             return false;
         }
-
         var left = Unwrap(binary.Left);
         var right = Unwrap(binary.Right);
 

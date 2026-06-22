@@ -4,9 +4,7 @@ using DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
-
 /// <summary>
 /// Expression lowering and JSON emission for <see cref="DotBoxDRpcJsonLowerer"/>: constants, identifiers,
 /// operators, host-binding calls, <c>list.*</c>/<c>record.*</c> intrinsics, DTO construction, and the
@@ -23,10 +21,8 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             {
                 Allocates = true;
             }
-
             return LiteralJson(expression, constant.Value);
         }
-
         var lowered = expression switch
         {
             ParenthesizedExpressionSyntax parenthesized => LowerExpression(parenthesized.Expression),
@@ -45,7 +41,6 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         };
         return ApplyNumericConversion(expression, lowered);
     }
-
     private string LowerUnary(PrefixUnaryExpressionSyntax unary)
         => unary.Kind() switch
         {
@@ -53,7 +48,6 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             SyntaxKind.UnaryMinusExpression => Obj(("unary", Str("-")), ("operand", LowerExpression(unary.Operand))),
             _ => throw new NotSupportedException($"Server extension unary '{unary.Kind()}' is not supported.")
         };
-
     private string LiteralJson(ExpressionSyntax expression, object? value)
     {
         var converted = _model.GetTypeInfo(expression, _cancellationToken).ConvertedType;
@@ -61,61 +55,50 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             return LiteralJson((long)i);
         }
-
         if (converted?.SpecialType == SpecialType.System_Double && value is IConvertible convertible)
         {
             return LiteralJson(convertible.ToDouble(CultureInfo.InvariantCulture));
         }
-
         return LiteralJson(value);
     }
-
     private string LowerInvocation(InvocationExpressionSyntax invocation)
     {
         if (TryLowerServiceHandleInvocation(invocation) is { } serviceHandleCall)
         {
             return serviceHandleCall;
         }
-
         if (TryLowerMapMethod(invocation) is { } mapCall)
         {
             return mapCall;
         }
-
         if (_model.GetSymbolInfo(invocation, _cancellationToken).Symbol is IMethodSymbol method &&
             DotBoxDHostBindingExpressionLowerer.HostBinding(method) is { } binding)
         {
             AddBindingMetadata(binding);
-
             var args = LowerArgumentsInParameterOrder(
                 invocation.ArgumentList.Arguments,
                 method.Parameters,
                 $"Host binding '{binding.BindingId}'");
             return Call(binding.BindingId, null, args);
         }
-
         throw new NotSupportedException($"Server extension call '{invocation}' is not a host binding.");
     }
-
     private void AddBindingMetadata((string BindingId, string? Capability, IReadOnlyList<string> Effects, bool IsAsync) binding)
     {
         if (binding.Capability is { Length: > 0 } capability)
         {
             _capabilities.Add(capability);
         }
-
         foreach (var effect in binding.Effects)
         {
             _effects.Add(effect);
         }
-
         if (binding.IsAsync || binding.Effects.Contains(DotBoxDGenerationNames.Effects.Concurrency))
         {
             _effects.Add(DotBoxDGenerationNames.Effects.Concurrency);
             _capabilities.Add(DotBoxDGenerationNames.Capabilities.RuntimeAsync);
         }
     }
-
     private string LowerMemberAccess(MemberAccessExpressionSyntax member)
     {
         var receiverType = TypeOf(member.Expression);
@@ -124,7 +107,6 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             return Call("list.count", null, LowerExpression(member.Expression));
         }
-
         if (receiverType is INamedTypeSymbol named && DotBoxDRpcTypeMapper.IsRecordDto(named))
         {
             var fields = DotBoxDRpcTypeMapper.RecordFields(named);
@@ -136,10 +118,8 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 }
             }
         }
-
         throw new NotSupportedException($"Server extension member access '{member}' is not supported.");
     }
-
     private string LowerElementAccess(ElementAccessExpressionSyntax element)
     {
         var receiverType = TypeOf(element.Expression);
@@ -148,11 +128,9 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             return Call("list.get", null, LowerExpression(element.Expression), LowerExpression(element.ArgumentList.Arguments[0].Expression));
         }
-
         return TryLowerMapElementGet(element, receiverType)
             ?? throw new NotSupportedException($"Server extension indexing '{element}' is not supported.");
     }
-
     private string LowerRecordCreation(ObjectCreationExpressionSyntax creation)
     {
         var created = TypeOf(creation);
@@ -164,17 +142,14 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             Allocates = true;
             return Call("list.empty", DotBoxDRpcTypeMapper.JsonType(elementType));
         }
-
         if (TryLowerEmptyMapCreation(creation, created) is { } emptyMap)
         {
             return emptyMap;
         }
-
         if (created is not INamedTypeSymbol named || !DotBoxDRpcTypeMapper.IsRecordDto(named))
         {
             throw new NotSupportedException($"Server extension 'new {creation.Type}' must construct a supported DTO or empty list.");
         }
-
         Allocates = true;
         var fields = DotBoxDRpcTypeMapper.RecordFields(named);
         var args = new string[fields.Count];
@@ -183,7 +158,6 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             throw new NotSupportedException(
                 $"Server extension 'new {named.Name}' cannot combine constructor arguments and object initializers.");
         }
-
         if (creation.ArgumentList is { Arguments.Count: > 0 } argumentList)
         {
             // A record's constructor sets only its declared members; derived/get-only members (e.g. `Sum => X + Y`)
@@ -195,7 +169,6 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             {
                 throw new NotSupportedException($"Server extension constructor for '{named.Name}' must pass one argument per constructor parameter, and the constructor must not have more parameters than the record has fields.");
             }
-
             var lowered = LowerArgumentsInParameterOrder(
                 argumentList.Arguments,
                 constructor.Parameters,
@@ -209,11 +182,9 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                     throw new NotSupportedException(
                         $"Server extension constructor for '{named.Name}' must map one argument per field.");
                 }
-
                 args[fieldIndex] = lowered[i];
                 assigned[fieldIndex] = true;
             }
-
             // Each remaining field has no constructor parameter — it is a derived/get-only member. Build its wire
             // slot by lowering its getter over the constructor-bound members, so the constructed record carries
             // the same derived value the member would compute (and an in-sandbox read of it stays correct).
@@ -233,10 +204,8 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             throw new NotSupportedException($"Server extension 'new {named.Name}' must use constructor arguments or an object initializer.");
         }
-
         return Call("record.new", DotBoxDRpcTypeMapper.JsonType(named), args);
     }
-
     private void BindInitializer(
         InitializerExpressionSyntax initializer,
         IReadOnlyList<RecordMember> fields,
@@ -250,12 +219,10 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             {
                 throw new NotSupportedException($"Server extension initializer for '{named.Name}' must assign named fields.");
             }
-
             var index = IndexOfField(fields, fieldName.Identifier.ValueText, named);
             args[index] = LowerExpression(assignment.Right);
             assigned[index] = true;
         }
-
         for (var i = 0; i < assigned.Length; i++)
         {
             if (!assigned[i])
@@ -264,7 +231,6 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             }
         }
     }
-
     private static int IndexOfField(IReadOnlyList<RecordMember> fields, string name, INamedTypeSymbol named)
     {
         for (var i = 0; i < fields.Count; i++)

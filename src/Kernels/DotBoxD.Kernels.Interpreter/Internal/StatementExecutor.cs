@@ -2,11 +2,8 @@ using DotBoxD.Kernels.Interpreter.Frame;
 using DotBoxD.Kernels.Interpreter.Internal.Loops;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
-
 namespace DotBoxD.Kernels.Interpreter.Internal;
-
 using DotBoxD.Kernels;
-
 /// <summary>
 /// Walks and executes statements, blocks, and loops for a single interpreter.
 /// Mirrors <see cref="ExpressionEvaluator"/>: each entry point stays on a
@@ -20,7 +17,6 @@ internal sealed class StatementExecutor
     private readonly I32CallEvaluator _calls;
     private readonly SandboxExecutionOptions _options;
     private readonly string _moduleHash;
-
     public StatementExecutor(
         SandboxContext context,
         ExpressionEvaluator expressions,
@@ -34,7 +30,6 @@ internal sealed class StatementExecutor
         _options = options;
         _moduleHash = moduleHash;
     }
-
     public ValueTask<SandboxValue?> ExecuteStatementAsync(Statement statement, InterpreterFrame frame)
     {
         _context.ChargeFuel(1);
@@ -68,7 +63,6 @@ internal sealed class StatementExecutor
                 throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "unsupported statement"));
         }
     }
-
     public ValueTask<SandboxValue?> ExecuteBlockAsync(IReadOnlyList<Statement> statements, InterpreterFrame frame)
     {
         for (var i = 0; i < statements.Count; i++)
@@ -78,17 +72,14 @@ internal sealed class StatementExecutor
             {
                 return AwaitBlock(statements, statementTask, i + 1, frame);
             }
-
             var value = statementTask.Result;
             if (value is not null)
             {
                 return new ValueTask<SandboxValue?>(value);
             }
         }
-
         return default;
     }
-
     private ValueTask<SandboxValue?> ExecuteAssignment(AssignmentStatement assignment, InterpreterFrame frame)
     {
         if (_expressions.TryEvaluateInt32(assignment.Value, frame, out var i32Value))
@@ -96,17 +87,14 @@ internal sealed class StatementExecutor
             frame.WriteInt32(assignment.Name, i32Value);
             return default;
         }
-
         var valueTask = EvaluateAsync(assignment.Value, frame);
         if (valueTask.IsCompletedSuccessfully)
         {
             frame.Write(assignment.Name, valueTask.Result);
             return default;
         }
-
         return AwaitAssignment(assignment, valueTask, frame);
     }
-
     private async ValueTask<SandboxValue?> AwaitAssignment(
         AssignmentStatement assignment,
         ValueTask<SandboxValue> valueTask,
@@ -115,15 +103,12 @@ internal sealed class StatementExecutor
         frame.Write(assignment.Name, await valueTask.ConfigureAwait(false));
         return null;
     }
-
     private static ValueTask<SandboxValue?> AsNullable(ValueTask<SandboxValue> task)
         => task.IsCompletedSuccessfully
             ? new ValueTask<SandboxValue?>(task.Result)
             : AwaitNullable(task);
-
     private static async ValueTask<SandboxValue?> AwaitNullable(ValueTask<SandboxValue> task)
         => await task.ConfigureAwait(false);
-
     private static ValueTask<SandboxValue?> DiscardResult(ValueTask<SandboxValue> task)
     {
         if (task.IsCompletedSuccessfully)
@@ -131,16 +116,13 @@ internal sealed class StatementExecutor
             _ = task.Result;
             return default;
         }
-
         return AwaitDiscard(task);
     }
-
     private static async ValueTask<SandboxValue?> AwaitDiscard(ValueTask<SandboxValue> task)
     {
         _ = await task.ConfigureAwait(false);
         return null;
     }
-
     private ValueTask<SandboxValue?> ExecuteIfAsync(IfStatement statement, InterpreterFrame frame)
     {
         var conditionTask = EvaluateAsync(statement.Condition, frame);
@@ -148,11 +130,9 @@ internal sealed class StatementExecutor
         {
             return AwaitIf(statement, conditionTask, frame);
         }
-
         var branch = ((BoolValue)conditionTask.Result).Value ? statement.Then : statement.Else;
         return ExecuteBlockAsync(branch, frame);
     }
-
     private async ValueTask<SandboxValue?> AwaitIf(
         IfStatement statement,
         ValueTask<SandboxValue> conditionTask,
@@ -161,17 +141,14 @@ internal sealed class StatementExecutor
         var condition = (BoolValue)await conditionTask.ConfigureAwait(false);
         return await ExecuteBlockAsync(condition.Value ? statement.Then : statement.Else, frame).ConfigureAwait(false);
     }
-
     private ValueTask<SandboxValue?> ExecuteWhileAsync(WhileStatement statement, InterpreterFrame frame)
     {
         if (WhileI32ForLoopRunner.TryRun(statement, frame, _context, _options, _calls))
         {
             return default;
         }
-
         return ExecuteWhileBoxedAsync(statement, frame);
     }
-
     private async ValueTask<SandboxValue?> ExecuteWhileBoxedAsync(WhileStatement statement, InterpreterFrame frame)
     {
         while (((BoolValue)await EvaluateAsync(statement.Condition, frame).ConfigureAwait(false)).Value)
@@ -183,10 +160,8 @@ internal sealed class StatementExecutor
                 return LoopSignal.IsBreak(value) ? null : value;
             }
         }
-
         return null;
     }
-
     private ValueTask<SandboxValue?> ExecuteForAsync(ForRangeStatement statement, InterpreterFrame frame)
     {
         if (_expressions.TryEvaluateInt32(statement.Start, frame, out var start))
@@ -195,22 +170,18 @@ internal sealed class StatementExecutor
                 ? RunForLoop(statement, start, end, frame)
                 : RunForLoopFromAsyncEnd(statement, start, frame);
         }
-
         var startTask = EvaluateAsync(statement.Start, frame);
         if (!startTask.IsCompletedSuccessfully)
         {
             return AwaitForBounds(statement, startTask, frame);
         }
-
         var endTask = EvaluateAsync(statement.End, frame);
         if (!endTask.IsCompletedSuccessfully)
         {
             return AwaitForEnd(statement, ((I32Value)startTask.Result).Value, endTask, frame);
         }
-
         return RunForLoop(statement, ((I32Value)startTask.Result).Value, ((I32Value)endTask.Result).Value, frame);
     }
-
     private async ValueTask<SandboxValue?> RunForLoopFromAsyncEnd(
         ForRangeStatement statement,
         int start,
@@ -219,7 +190,6 @@ internal sealed class StatementExecutor
         var end = ((I32Value)await EvaluateAsync(statement.End, frame).ConfigureAwait(false)).Value;
         return await RunForLoop(statement, start, end, frame).ConfigureAwait(false);
     }
-
     private async ValueTask<SandboxValue?> AwaitForBounds(
         ForRangeStatement statement,
         ValueTask<SandboxValue> startTask,
@@ -229,7 +199,6 @@ internal sealed class StatementExecutor
         var end = ((I32Value)await EvaluateAsync(statement.End, frame).ConfigureAwait(false)).Value;
         return await RunForLoop(statement, start, end, frame).ConfigureAwait(false);
     }
-
     private async ValueTask<SandboxValue?> AwaitForEnd(
         ForRangeStatement statement,
         int start,
@@ -239,7 +208,6 @@ internal sealed class StatementExecutor
         var end = ((I32Value)await endTask.ConfigureAwait(false)).Value;
         return await RunForLoop(statement, start, end, frame).ConfigureAwait(false);
     }
-
     private ValueTask<SandboxValue?> RunForLoop(ForRangeStatement statement, int start, int end, InterpreterFrame frame)
     {
         // Try each unboxed loop fast-path in order; `||` short-circuits so the first match runs and wins.
@@ -255,7 +223,6 @@ internal sealed class StatementExecutor
         {
             return default;
         }
-
         for (var i = start; i < end; i++)
         {
             _context.ChargeLoopIteration(5);
@@ -265,7 +232,6 @@ internal sealed class StatementExecutor
             {
                 return AwaitForIteration(statement, bodyTask, i + 1, end, frame);
             }
-
             var value = bodyTask.Result;
             if (value is not null && !LoopSignal.IsContinue(value))
             {

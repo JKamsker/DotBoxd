@@ -3,14 +3,11 @@ using DotBoxD.Kernels.Compiler.Emitters.Loops;
 using DotBoxD.Kernels.Compiler.Emitters.Returns;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
-
 namespace DotBoxD.Kernels.Compiler.Emitters;
-
 using System.Reflection;
 using System.Reflection.Emit;
 using DotBoxD.Kernels;
 using static DotBoxD.Kernels.Compiler.IlEmitterPrimitives;
-
 internal sealed class MethodEmitter
 {
     private readonly ILGenerator _il;
@@ -19,14 +16,12 @@ internal sealed class MethodEmitter
     private readonly IBindingCatalog _bindings;
     private readonly Dictionary<string, (LocalBuilder Local, StackKind Kind)> _locals = new(StringComparer.Ordinal);
     private readonly HashSet<string> _nonNegativeF64Locals = new(StringComparer.Ordinal);
-
     // Branch targets for the innermost enclosing generic loop: `continue` re-enters the loop (the
     // forRange increment / while condition recheck), `break` exits it. The assignment-only loop fast
     // paths reject loop-control bodies, so continue/break only flow through the generic paths below.
     private readonly Stack<(Label Continue, Label Break)> _loops = new();
     private readonly LocalStackKindPlanner _stackPlan;
     private readonly ExpressionEmitter _expressions;
-
     public MethodEmitter(
         ILGenerator il,
         SandboxFunction function,
@@ -42,14 +37,12 @@ internal sealed class MethodEmitter
         _stackPlan = new LocalStackKindPlanner(function, bindings, functionAnalysis);
         _expressions = new ExpressionEmitter(il, functions, bindings, functionAnalysis, _locals, _stackPlan);
     }
-
     public void Emit()
     {
         CompiledMeterEmitter.EnterCall(_il);
         CompiledMeterEmitter.Fuel(_il, 1);
         EmitParameters();
         var returned = EmitBlock(_function.Body);
-
         if (!returned)
         {
             CompiledMeterEmitter.ExitCall(_il);
@@ -57,7 +50,6 @@ internal sealed class MethodEmitter
             _il.Emit(OpCodes.Ret);
         }
     }
-
     private void EmitParameters()
     {
         for (var i = 0; i < _function.Parameters.Count; i++)
@@ -68,7 +60,6 @@ internal sealed class MethodEmitter
             _il.Emit(OpCodes.Stloc, local);
         }
     }
-
     private bool EmitBlock(IReadOnlyList<Statement> statements)
     {
         foreach (var statement in statements)
@@ -78,10 +69,8 @@ internal sealed class MethodEmitter
                 return true;
             }
         }
-
         return false;
     }
-
     private bool EmitStatement(Statement statement)
     {
         CompiledMeterEmitter.Fuel(_il, 1);
@@ -100,7 +89,6 @@ internal sealed class MethodEmitter
                     EmitReturnValue();
                     return true;
                 }
-
                 _expressions.EmitAs(ret.Value, StackKind.Boxed);
                 EmitReturnValue();
                 return true;
@@ -126,7 +114,6 @@ internal sealed class MethodEmitter
                 throw Unsupported("statement not supported");
         }
     }
-
     private bool EmitIf(IfStatement branch)
     {
         _nonNegativeF64Locals.Clear();
@@ -139,18 +126,15 @@ internal sealed class MethodEmitter
         {
             _il.Emit(OpCodes.Br, endLabel);
         }
-
         _il.MarkLabel(elseLabel);
         var elseReturns = EmitBlock(branch.Else);
         if (!thenReturns || !elseReturns)
         {
             _il.MarkLabel(endLabel);
         }
-
         _nonNegativeF64Locals.Clear();
         return thenReturns && elseReturns;
     }
-
     private void EmitForRange(ForRangeStatement range)
     {
         if (F64LoopFastPathEmitter.TryEmit(
@@ -167,10 +151,8 @@ internal sealed class MethodEmitter
             {
                 _nonNegativeF64Locals.Add(nonNegativeTarget);
             }
-
             return;
         }
-
         if (BranchedF64LoopFastPathEmitter.TryEmit(
             range,
             _il,
@@ -184,7 +166,6 @@ internal sealed class MethodEmitter
             _nonNegativeF64Locals.Clear();
             return;
         }
-
         if (MapGetI32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, Declare) ||
             ListGetI32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, Declare) ||
             ListCountLoopFastPathEmitter.TryEmit(range, _il, _stackPlan, Declare) ||

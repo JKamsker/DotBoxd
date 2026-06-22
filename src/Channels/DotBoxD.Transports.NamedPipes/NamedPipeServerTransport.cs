@@ -2,9 +2,7 @@ using System.IO.Pipes;
 using System.Net.Sockets;
 using DotBoxD.Services.Protocol;
 using DotBoxD.Services.Transport;
-
 namespace DotBoxD.Transports.NamedPipes;
-
 /// <summary>
 /// Server transport for accepting DotBoxD connections over a named pipe.
 /// </summary>
@@ -16,9 +14,7 @@ public sealed class NamedPipeServerTransport : IServerTransport
     /// connections get the same finite slow-loris defense the TCP transport applies by default.
     /// </summary>
     public static readonly TimeSpan DefaultFrameReadIdleTimeout = TimeSpan.FromSeconds(30);
-
     private const int MaxSpecificServerInstances = 254;
-
     private readonly object _sync = new();
     private readonly string _pipeName;
     private readonly int _maxAllowedServerInstances;
@@ -27,7 +23,6 @@ public sealed class NamedPipeServerTransport : IServerTransport
     private NamedPipeServerStream? _pendingStream;
     private int _started;
     private int _disposed;
-
     public NamedPipeServerTransport(
         string pipeName,
         int maxAllowedServerInstances = NamedPipeServerStream.MaxAllowedServerInstances,
@@ -37,19 +32,16 @@ public sealed class NamedPipeServerTransport : IServerTransport
         _maxAllowedServerInstances = ValidateMaxAllowedServerInstances(maxAllowedServerInstances);
         _maxMessageSize = ValidateMaxMessageSize(maxMessageSize);
     }
-
     /// <summary>
     /// Inter-read idle timeout applied to accepted connections' in-progress frame body reads (slow-loris
     /// defense). <see langword="null"/> uses <see cref="DefaultFrameReadIdleTimeout"/>;
     /// <see cref="Timeout.InfiniteTimeSpan"/> disables it. See <see cref="StreamConnection"/>.
     /// </summary>
     public TimeSpan? FrameReadIdleTimeout { get; init; }
-
     public Task StartAsync(CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
         ThrowIfDisposed();
-
         // Publish _stopCts BEFORE marking the server started, both under _sync (the same lock StopAsync
         // and AcceptAsync read these under). This closes the partial-initialization window: a concurrent
         // StopAsync can never observe _started == 1 with _stopCts == null (which leaked the CTS), and a
@@ -62,11 +54,9 @@ public sealed class NamedPipeServerTransport : IServerTransport
                 stopCts.Dispose();
                 throw new InvalidOperationException("Server already started.");
             }
-
             _stopCts = stopCts;
             Volatile.Write(ref _started, 1);
         }
-
         // Test seam (null/no-op in production): fires after the atomic publish so a test can race
         // StopAsync against a fully-initialized transport. Never set in production.
         var transitionHook = _onStartTransitionForTest;
@@ -74,27 +64,21 @@ public sealed class NamedPipeServerTransport : IServerTransport
         {
             return transitionHook();
         }
-
         return Task.CompletedTask;
     }
-
     /// <summary>Test-only seam: invoked inside <see cref="StartAsync"/> between marking the server started
     /// and assigning <c>_stopCts</c>. Never set in production.</summary>
     internal Func<Task>? _onStartTransitionForTest;
-
     /// <summary>Test accessor: current started flag.</summary>
     internal int StartedForTest => Volatile.Read(ref _started);
-
     /// <summary>Test accessor: current stop source (read under the lock for a consistent view).</summary>
     internal CancellationTokenSource? StopCtsForTest
     {
         get { lock (_sync) { return _stopCts; } }
     }
-
     public async Task<IRpcChannel> AcceptAsync(CancellationToken ct = default)
     {
         ThrowIfDisposed();
-
         var stream = CreateStream();
         CancellationTokenSource linkedCts;
         try
@@ -109,12 +93,10 @@ public sealed class NamedPipeServerTransport : IServerTransport
                 {
                     throw new InvalidOperationException("Server not started.");
                 }
-
                 if (_pendingStream is not null)
                 {
                     throw new InvalidOperationException("Only one pending named-pipe accept is supported per transport.");
                 }
-
                 _pendingStream = stream;
                 linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, _stopCts.Token);
             }
@@ -124,13 +106,11 @@ public sealed class NamedPipeServerTransport : IServerTransport
             stream.Dispose();
             throw;
         }
-
         try
         {
             using (linkedCts)
             {
                 await WaitForConnectionAsync(stream, linkedCts.Token).ConfigureAwait(false);
-
                 // Test seam (null/no-op in production): lets a test deterministically interleave StopAsync
                 // (which disposes _pendingStream) between WaitForConnectionAsync returning and the
                 // StreamConnection construction below. Never set in production.
@@ -139,7 +119,6 @@ public sealed class NamedPipeServerTransport : IServerTransport
                 {
                     await connectedHook().ConfigureAwait(false);
                 }
-
                 // Re-check after the wait (and the test seam) returns: a StopAsync that raced in here
                 // disposed _pendingStream and cancelled the linked token, so constructing a channel now
                 // would hand back a connection over an already-disposed pipe. Surface the stop as
@@ -148,7 +127,6 @@ public sealed class NamedPipeServerTransport : IServerTransport
                 {
                     throw new OperationCanceledException(linkedCts.Token);
                 }
-
                 return new StreamConnection(
                     stream,
                     $"pipe://./{_pipeName}",
@@ -167,14 +145,12 @@ public sealed class NamedPipeServerTransport : IServerTransport
             ClearPendingStream(stream);
         }
     }
-
     /// <summary>
     /// Test-only seam invoked once after <c>WaitForConnectionAsync</c> returns and before the
     /// <see cref="StreamConnection"/> is constructed, so a test can deterministically interleave
     /// <see cref="StopAsync"/> (which disposes the pending stream) there. Never set in production.
     /// </summary>
     internal Func<Task>? _onConnectionEstablishedForTest;
-
     public Task StopAsync(CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
@@ -182,7 +158,6 @@ public sealed class NamedPipeServerTransport : IServerTransport
         {
             return Task.CompletedTask;
         }
-
         // Null and capture _stopCts under _sync (the same lock AcceptAsync reads it under) and dispose
         // the pending stream, then cancel+dispose the captured source outside the lock. AcceptAsync
         // that runs after this sees _stopCts == null and fails fast with "not started"; one already
@@ -192,7 +167,6 @@ public sealed class NamedPipeServerTransport : IServerTransport
         {
             stopCts = _stopCts;
             _stopCts = null;
-
             // Cancel BEFORE disposing the pending stream. Disposing the stream wakes a blocked
             // WaitForConnectionAsync with ObjectDisposedException, IOException, or SocketException
             // depending on platform/runtime, and its catch filters convert that to OperationCanceledException
@@ -205,7 +179,6 @@ public sealed class NamedPipeServerTransport : IServerTransport
             _pendingStream?.Dispose();
             _pendingStream = null;
         }
-
         // Test seam (null/no-op in production): fires OUTSIDE the lock so a blocked AcceptAsync can run
         // its finally (which takes _sync) and complete. A test parks here until the woken accept has
         // unwound, confirming it surfaced cancellation rather than the disposed stream. Never set in
@@ -215,34 +188,28 @@ public sealed class NamedPipeServerTransport : IServerTransport
         {
             return CompleteStopAsync(afterStopHook, stopCts);
         }
-
         stopCts?.Dispose();
         return Task.CompletedTask;
     }
-
     /// <summary>
     /// Test-only seam invoked inside <see cref="StopAsync"/> after the stop source has been cancelled and
     /// the pending stream disposed (outside <c>_sync</c>). Lets a test park until a woken <c>AcceptAsync</c>
     /// has fully unwound, to assert it surfaced cancellation. Never set in production.
     /// </summary>
     internal Func<Task>? _beforeStopCancelForTest;
-
     private static async Task CompleteStopAsync(Func<Task> hook, CancellationTokenSource? stopCts)
     {
         await hook().ConfigureAwait(false);
         stopCts?.Dispose();
     }
-
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
             return;
         }
-
         await StopAsync().ConfigureAwait(false);
     }
-
     private NamedPipeServerStream CreateStream() =>
         new(
             _pipeName,
@@ -250,7 +217,6 @@ public sealed class NamedPipeServerTransport : IServerTransport
             _maxAllowedServerInstances,
             PipeTransmissionMode.Byte,
             PipeOptions.Asynchronous);
-
     private void ClearPendingStream(NamedPipeServerStream stream)
     {
         lock (_sync)
@@ -261,7 +227,6 @@ public sealed class NamedPipeServerTransport : IServerTransport
             }
         }
     }
-
     private void ThrowIfDisposed()
     {
         if (Volatile.Read(ref _disposed) != 0)
@@ -269,7 +234,6 @@ public sealed class NamedPipeServerTransport : IServerTransport
             throw new ObjectDisposedException(nameof(NamedPipeServerTransport));
         }
     }
-
     private static async Task WaitForConnectionAsync(NamedPipeServerStream stream, CancellationToken ct)
     {
         try

@@ -3,14 +3,10 @@ using DotBoxD.Kernels.Runtime.Internal;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Sandbox.Values;
 using SandboxContext = DotBoxD.Kernels.Sandbox.SandboxContext;
-
 namespace DotBoxD.Kernels.Runtime;
-
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-
 using static System.Runtime.CompilerServices.MethodImplOptions;
-
 /// <summary>
 /// Generated-code ABI surface for DotBoxD.Kernels-compiled assemblies. This facade is owned by the
 /// DotBoxD.Kernels compiler and verifier (see <c>VerifierTypeNames.CompiledRuntimeName</c>,
@@ -32,7 +28,6 @@ public static partial class CompiledRuntime
 {
     [MethodImpl(AggressiveInlining)] public static void ChargeFuel(SandboxContext context, int amount) => context.ChargeFuel(amount);
     [MethodImpl(AggressiveInlining)] public static void ChargeLoopIteration(SandboxContext context, int fuelAmount) => context.ChargeLoopIteration(fuelAmount);
-
     /// <summary>
     /// Closed-form replacement for a loop of the form <c>for i in [0,iterations): total = total + inv</c>.
     /// Reproduces the equivalent checked-arithmetic loop EXACTLY: it charges <paramref name="iterations"/>
@@ -53,13 +48,11 @@ public static partial class CompiledRuntime
         {
             return total;
         }
-
         if (inv == 0)
         {
             context.ChargeLoopIterations(iterations, fuelPerIteration);
             return total;
         }
-
         long start = total;
         long step = inv;
         // First 1-based iteration k at which (total + inv*k) leaves the Int32 range. The running sum is
@@ -68,7 +61,6 @@ public static partial class CompiledRuntime
         long firstOverflow = inv > 0
             ? (int.MaxValue - start) / step + 1
             : (start - int.MinValue) / -step + 1;
-
         if (firstOverflow <= iterations)
         {
             // The overflowing iteration charges its loop meter before the add throws, so charge exactly that
@@ -76,7 +68,6 @@ public static partial class CompiledRuntime
             context.ChargeLoopIterations((int)firstOverflow, fuelPerIteration);
             throw InvalidInput("integer overflow");
         }
-
         context.ChargeLoopIterations(iterations, fuelPerIteration);
         return (int)(start + step * iterations);
     }
@@ -85,66 +76,51 @@ public static partial class CompiledRuntime
     public static void ExitCall(SandboxContext context) => context.ExitCall();
     [MethodImpl(AggressiveInlining)] public static void EnterInlineCall(SandboxContext context) => context.EnterCall();
     [MethodImpl(AggressiveInlining)] public static void ExitInlineCall(SandboxContext context) => context.ExitCall();
-
     public static void ValidateEntrypointInput(SandboxValue input, int parameterCount)
         => EntrypointBinder.ValidateInputShape(input, parameterCount);
-
     public static SandboxValue GetInputArgument(SandboxValue input, int index, int parameterCount, SandboxType expectedType)
         => EntrypointBinder.GetArgument(input, index, parameterCount, expectedType);
-
     public static SandboxValue RequireValueType(SandboxValue value, SandboxType expectedType)
     {
         EntrypointBinder.RequireType(value, expectedType, "function return type mismatch");
         return value;
     }
-
     public static SandboxValue Unit() => SandboxValue.Unit;
     [MethodImpl(AggressiveInlining)] public static SandboxValue I32(int value) => SandboxValue.FromInt32(value);
     public static SandboxValue I64(long value) => SandboxValue.FromInt64(value);
     public static SandboxValue F64(double value)
         => double.IsFinite(value) ? SandboxValue.FromDouble(value) : throw InvalidInput("f64 value must be finite");
     [MethodImpl(AggressiveInlining)] public static SandboxValue Bool(bool value) => SandboxValue.FromBool(value);
-
     private static SandboxValue String(string value) => SandboxValue.FromString(value);
-
     public static SandboxValue StringConst(SandboxContext context, string value)
     {
         context.ChargeString(value);
         return SandboxValue.FromString(value);
     }
-
     public static SandboxValue OpaqueIdConst(SandboxContext context, string typeName, string value)
     {
         context.ChargeString(value);
         return SandboxValue.FromOpaqueId(typeName, value);
     }
-
     public static SandboxValue PathConst(SandboxContext context, string value)
     {
         context.ChargeString(value);
         return SandboxValue.FromPath(value);
     }
-
     public static SandboxValue UriConst(SandboxContext context, string value)
     {
         context.ChargeString(value);
         return SandboxValue.FromUri(value);
     }
-
     public static SandboxValue StringLiteralValue(string value) => SandboxValue.FromString(value);
-
     public static SandboxValue OpaqueIdLiteralValue(string typeName, string value)
         => SandboxValue.FromOpaqueId(typeName, value);
-
     public static SandboxValue PathLiteralValue(string value) => SandboxValue.FromPath(value);
-
     public static SandboxValue UriLiteralValue(string value) => SandboxValue.FromUri(value);
-
     [MethodImpl(AggressiveInlining)] public static int AsI32(SandboxValue value) => ((I32Value)value).Value;
     public static long AsI64(SandboxValue value) => ((I64Value)value).Value;
     [MethodImpl(AggressiveInlining)] public static bool AsBool(SandboxValue value) => ((BoolValue)value).Value;
     public static double AsF64(SandboxValue value) => ((F64Value)value).Value;
-
     public static SandboxValue AddI32(SandboxValue left, SandboxValue right) => I32(SandboxInt32Math.Add(AsI32(left), AsI32(right)));
     public static SandboxValue SubI32(SandboxValue left, SandboxValue right) => I32(SandboxInt32Math.Subtract(AsI32(left), AsI32(right)));
     public static SandboxValue MulI32(SandboxValue left, SandboxValue right) => I32(SandboxInt32Math.Multiply(AsI32(left), AsI32(right)));
@@ -157,9 +133,7 @@ public static partial class CompiledRuntime
     public static SandboxValue Mul(SandboxValue left, SandboxValue right) => SandboxNumericOperations.Multiply(left, right);
     public static SandboxValue Div(SandboxValue left, SandboxValue right) => SandboxNumericOperations.Divide(left, right);
     public static SandboxValue Rem(SandboxValue left, SandboxValue right) => SandboxNumericOperations.Remainder(left, right);
-
     public static SandboxValue NotBool(SandboxValue value) => Bool(!AsBool(value));
-
     public static SandboxValue Eq(SandboxValue left, SandboxValue right) => Bool(Equals(left, right));
 
     public static SandboxValue Ne(SandboxValue left, SandboxValue right) => Bool(!Equals(left, right));

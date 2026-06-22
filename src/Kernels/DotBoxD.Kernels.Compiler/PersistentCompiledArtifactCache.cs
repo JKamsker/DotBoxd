@@ -1,38 +1,31 @@
 using DotBoxD.Kernels.Compiler.Internal.CacheIntegrity;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Verifier.Generated;
-
 namespace DotBoxD.Kernels.Compiler;
-
 using System.Collections.Concurrent;
 using System.Text.Json;
 using DotBoxD.Kernels;
 using DotBoxD.Kernels.Verifier;
-
 public sealed partial class PersistentCompiledArtifactCache
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
     };
-
     private readonly string _rootDirectory;
     private readonly ConcurrentDictionary<string, EntryLock> _entryLocks = new(StringComparer.Ordinal);
-
     public PersistentCompiledArtifactCache(string rootDirectory)
     {
         _rootDirectory = Path.GetFullPath(rootDirectory);
         Directory.CreateDirectory(_rootDirectory);
         PersistentCompiledArtifactCacheRootGuard.Validate(_rootDirectory);
     }
-
     public bool EntryExists(string cacheKey)
     {
         var entryPath = EntryPath(cacheKey);
         PersistentCompiledArtifactCachePathGuard.ValidateEntryPath(_rootDirectory, entryPath);
         return Directory.Exists(entryPath);
     }
-
     public async ValueTask<CompiledCacheLookup> TryReadAsync(
         string cacheKey,
         ExecutionPlan plan,
@@ -48,7 +41,6 @@ public sealed partial class PersistentCompiledArtifactCache
                 cancellationToken)
             .ConfigureAwait(false);
     }
-
     public async ValueTask WriteAsync(
         string cacheKey,
         ExecutionPlan plan,
@@ -66,13 +58,11 @@ public sealed partial class PersistentCompiledArtifactCache
                 cancellationToken)
             .ConfigureAwait(false);
     }
-
     public string EntryPath(string cacheKey)
     {
         PersistentCompiledArtifactCacheValidator.ValidateCacheKey(cacheKey);
         return Path.Combine(_rootDirectory, cacheKey[..2], cacheKey[2..4], cacheKey);
     }
-
     private async ValueTask<CompiledCacheLookup> TryReadCoreAsync(
         string cacheKey,
         ExecutionPlan plan,
@@ -90,12 +80,10 @@ public sealed partial class PersistentCompiledArtifactCache
         {
             return new CompiledCacheLookup(CompiledCacheStatus.Invalid, null, CacheInvalidReason(ex));
         }
-
         if (!Directory.Exists(entryPath))
         {
             return new CompiledCacheLookup(CompiledCacheStatus.Miss, null);
         }
-
         try
         {
             var manifest = await ReadJsonAsync<ArtifactManifest>(Path.Combine(entryPath, "manifest.json"), cancellationToken)
@@ -118,7 +106,6 @@ public sealed partial class PersistentCompiledArtifactCache
                     assemblyBytes,
                     cancellationToken)
                 .ConfigureAwait(false);
-
             // The cached verification record is the artifact's verification proof on the read
             // path: the manifest identity, the cached verification result, and the host-bound
             // origin proof have all been validated above, and the origin proof is an HMAC over
@@ -128,7 +115,6 @@ public sealed partial class PersistentCompiledArtifactCache
             // before loading the assembly. The verifier parameter is retained for the contract and
             // remains the gate on the write path.
             _ = verifier;
-
             return new CompiledCacheLookup(CompiledCacheStatus.Hit, new CompiledArtifact(
                 assemblyBytes,
                 cachedVerification.AssemblyHash,
@@ -144,7 +130,6 @@ public sealed partial class PersistentCompiledArtifactCache
             return new CompiledCacheLookup(CompiledCacheStatus.Invalid, null, CacheInvalidReason(ex));
         }
     }
-
     private async ValueTask WriteCoreAsync(
         string cacheKey,
         ExecutionPlan plan,

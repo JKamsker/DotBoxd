@@ -2,27 +2,22 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Sandbox.Values;
-
 namespace DotBoxD.Kernels.Model;
-
 public sealed partial class ResourceMeter
 {
     private const int FuelDeadlineCheckInterval = 64;
     private const int LoopDeadlineCheckInterval = 4096;
-
     private Dictionary<string, int>? _callsByBinding;
     private string? _lastLimitedBindingId;
     private int _lastLimitedBindingCalls;
     private long _deadline;
     private int _chargesSinceDeadlineCheck;
-
     public ResourceMeter(ResourceLimits limits)
     {
         ResourceLimitValidation.Validate(limits);
         Limits = limits;
         _deadline = CreateDeadline(limits);
     }
-
     public ResourceLimits Limits { get; }
     public long FuelUsed { get; private set; }
     public long LoopIterations { get; private set; }
@@ -35,7 +30,6 @@ public sealed partial class ResourceMeter
     public int LogEvents { get; private set; }
     public long CollectionElements { get; private set; }
     public long StringBytes { get; private set; }
-
     public SandboxResourceUsage Snapshot()
         => new(
             FuelUsed,
@@ -50,11 +44,9 @@ public sealed partial class ResourceMeter
             LogEvents,
             CollectionElements,
             StringBytes);
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ChargeFuel(long amount)
         => ChargeFuel(amount, FuelDeadlineCheckInterval);
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void ChargeFuel(long amount, int deadlineCheckInterval)
     {
@@ -62,35 +54,29 @@ public sealed partial class ResourceMeter
         {
             throw new ArgumentOutOfRangeException(nameof(amount));
         }
-
         FuelUsed = AddNonNegativeChecked(FuelUsed, amount, "fuel exhausted");
         if (FuelUsed > Limits.MaxFuel)
         {
             throw Quota("fuel exhausted");
         }
-
         if (++_chargesSinceDeadlineCheck >= deadlineCheckInterval)
         {
             _chargesSinceDeadlineCheck = 0;
             CheckDeadline();
         }
     }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void ChargeLoopIteration(long fuelAmount)
     {
         if (fuelAmount <= 0)
         { throw new ArgumentOutOfRangeException(nameof(fuelAmount)); }
-
         LoopIterations = AddNonNegativeChecked(LoopIterations, 1, "loop iteration budget exhausted");
         if (LoopIterations > Limits.MaxLoopIterations)
         {
             throw Quota("loop iteration budget exhausted");
         }
-
         ChargeFuel(fuelAmount, LoopDeadlineCheckInterval);
     }
-
     public void ChargeAllocation(long bytes)
     {
         ThrowIfNegative(bytes, nameof(bytes));
@@ -100,12 +86,9 @@ public sealed partial class ResourceMeter
             throw Quota("allocation budget exhausted");
         }
     }
-
     public void ChargeCollection(SandboxValue value) => ChargeCollection(value, CancellationToken.None);
-
     public void ChargeCollection(SandboxValue value, CancellationToken cancellationToken)
         => ChargeMeasuredShape(SandboxValueShapeMeter.Measure(value, Limits, cancellationToken, this));
-
     public void ChargeValue(SandboxValue value) => ChargeValue(value, CancellationToken.None);
 
     public void ChargeValue(SandboxValue value, CancellationToken cancellationToken)
