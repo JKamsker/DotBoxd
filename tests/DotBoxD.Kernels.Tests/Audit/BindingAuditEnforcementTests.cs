@@ -5,7 +5,6 @@ using DotBoxD.Kernels.Runtime;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
 using SandboxHost = DotBoxD.Hosting.Execution.SandboxHost;
-
 namespace DotBoxD.Kernels.Tests.Audit;
 
 public sealed class BindingAuditEnforcementTests

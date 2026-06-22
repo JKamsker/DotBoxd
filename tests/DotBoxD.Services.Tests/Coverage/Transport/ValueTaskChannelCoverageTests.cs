@@ -7,13 +7,10 @@ using DotBoxD.Services.Protocol;
 using DotBoxD.Services.Streaming.Core;
 using DotBoxD.Services.Transport;
 using Xunit;
-
 namespace DotBoxD.Services.Tests.Coverage.Transport;
-
 public sealed class ValueTaskChannelCoverageTests
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
-
     [Fact]
     public async Task RpcPeer_UsesValueTaskChannelMethods_WhenAvailable()
     {
@@ -24,36 +21,28 @@ public sealed class ValueTaskChannelCoverageTests
                 new MessagePackRpcSerializer(),
                 new RpcPeerOptions { RequestTimeout = TimeSpan.FromMilliseconds(100) })
             .Start();
-
         await channel.ReceiveCalled.Task.WaitAsync(Timeout);
-
         var call = peer.InvokeAsync<int>("Svc", "Op");
         await channel.SendCalled.Task.WaitAsync(Timeout);
-
         Assert.Equal(1, channel.SendValueCalls);
         Assert.Equal(0, channel.SendTaskCalls);
         Assert.Equal(1, channel.ReceiveValueCalls);
         Assert.Equal(0, channel.ReceiveTaskCalls);
-
         await peer.DisposeAsync();
         var completed = await Task.WhenAny(call, Task.Delay(Timeout));
         Assert.Same(call, completed);
         await Assert.ThrowsAnyAsync<Exception>(async () => await call);
     }
-
     [Fact]
     public async Task InvokeValueAsync_UsesTaskBackedResponsePath_ByDefault()
     {
         await using var harness = new ValueTaskInvokerHarness(
             new RpcPeerOptions { RequestTimeout = System.Threading.Timeout.InfiniteTimeSpan });
-
         var call = harness.Invoker.InvokeValueAsync<int, string>("Svc", "Op", 42);
-
         Assert.Equal(0, harness.SendTaskCalls);
         Assert.Equal(1, harness.SendFrameCalls);
         await AssertFaultedPendingCallAsync(call, harness);
     }
-
     [Fact]
     public async Task InvokeValueAsync_UsesFrameValueTaskPath_WhenExplicitlyEnabled()
     {
@@ -63,40 +52,31 @@ public sealed class ValueTaskChannelCoverageTests
                 EnableLowAllocationValueTaskInvocations = true,
                 RequestTimeout = System.Threading.Timeout.InfiniteTimeSpan,
             });
-
         var call = harness.Invoker.InvokeValueAsync<int, string>("Svc", "Op", 42);
-
         Assert.Equal(0, harness.SendTaskCalls);
         Assert.Equal(1, harness.SendFrameCalls);
         await AssertFaultedPendingCallAsync(call, harness);
     }
-
     [Fact]
     public async Task InvokeAsync_TaskResult_UsesFrameSender_WhenAvailable()
     {
         await using var harness = new ValueTaskInvokerHarness(
             new RpcPeerOptions { RequestTimeout = System.Threading.Timeout.InfiniteTimeSpan });
-
         var call = harness.Invoker.InvokeAsync<int, string>("Svc", "Op", 42);
-
         Assert.Equal(0, harness.SendTaskCalls);
         Assert.Equal(1, harness.SendFrameCalls);
         await AssertFaultedPendingCallAsync(call, harness);
     }
-
     [Fact]
     public async Task InvokeAsync_TaskNoResult_UsesFrameSender_WhenAvailable()
     {
         await using var harness = new ValueTaskInvokerHarness(
             new RpcPeerOptions { RequestTimeout = System.Threading.Timeout.InfiniteTimeSpan });
-
         var call = harness.Invoker.InvokeAsync<int>("Svc", "Op", 42);
-
         Assert.Equal(0, harness.SendTaskCalls);
         Assert.Equal(1, harness.SendFrameCalls);
         await AssertFaultedPendingCallAsync(call, harness);
     }
-
     [Fact]
     public async Task InvokeValueAsync_NoResult_UsesFrameValueTaskPath_WhenExplicitlyEnabled()
     {
@@ -106,7 +86,6 @@ public sealed class ValueTaskChannelCoverageTests
                 EnableLowAllocationValueTaskInvocations = true,
                 RequestTimeout = System.Threading.Timeout.InfiniteTimeSpan,
             });
-
         var call = harness.Invoker.InvokeValueAsync<int>("Svc", "Op", 42);
 
         Assert.Equal(0, harness.SendTaskCalls);

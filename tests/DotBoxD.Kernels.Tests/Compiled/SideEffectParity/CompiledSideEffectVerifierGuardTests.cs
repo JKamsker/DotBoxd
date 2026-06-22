@@ -7,9 +7,7 @@ using DotBoxD.Kernels.Serialization.Json.Hosting;
 using DotBoxD.Plugins.Policies;
 using DotBoxD.Plugins.Runtime;
 using SandboxHost = DotBoxD.Hosting.Execution.SandboxHost;
-
 namespace DotBoxD.Kernels.Tests.Compiled.SideEffectParity;
-
 /// <summary>
 /// Verifier-negative dimension: asserts that the system's gates prevent side-effecting bindings
 /// from bypassing policy or taking paths that are reserved for pure bindings.
@@ -27,17 +25,14 @@ public sealed class CompiledSideEffectVerifierGuardTests
         var sink = new InMemoryPluginMessageSink();
         var host = VerifierGuard_CreatePluginHost(sink);
         var module = await host.ImportJsonAsync(VerifierGuard_MessageSendJson("guard-no-grant"));
-
         // Policy grants NO capability for host.message.write
         var ex = await Assert.ThrowsAsync<SandboxValidationException>(
             async () => await host.PrepareAsync(
                 module,
                 SandboxPolicyBuilder.Create().WithFuel(10_000).Build()));
-
         Assert.Contains(ex.Diagnostics, d =>
             d.Code is "E-POLICY-CAP" or "E-POLICY-EFFECT");
     }
-
     // -------------------------------------------------------------------------
     // (Former Guard 2 deleted.) Under PR #27 the compiler no longer rejects
     // side-effecting modules — compiling side effects is the whole point. The
@@ -47,7 +42,6 @@ public sealed class CompiledSideEffectVerifierGuardTests
     // Prepare_rejects_module_calling_side_effecting_binding_without_capability_grant
     // above, so no replacement is added here.
     // -------------------------------------------------------------------------
-
     // -------------------------------------------------------------------------
     // Guard 3: Auto mode falls back to Interpreted when the module has
     // side-effecting bindings — it MUST NOT silently attempt compiled execution.
@@ -65,13 +59,11 @@ public sealed class CompiledSideEffectVerifierGuardTests
                 .GrantHostMessageWrite()
                 .WithFuel(10_000)
                 .Build());
-
         var result = await host.ExecuteAsync(
             plan,
             "main",
             SandboxValue.Unit,
             new SandboxExecutionOptions { Mode = ExecutionMode.Auto });
-
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
         // Must have fallen back — the module carries side effects.
         Assert.Equal(ExecutionMode.Interpreted, result.ActualMode);
@@ -79,7 +71,6 @@ public sealed class CompiledSideEffectVerifierGuardTests
         var msg = Assert.Single(sink.Messages);
         Assert.Equal("player-1", msg.TargetId);
     }
-
     // -------------------------------------------------------------------------
     // Guard 4: BindingRegistryValidator must reject a capability-gated binding
     // that points to a DIRECT runtime method (i.e. not "CallBinding").
@@ -98,10 +89,8 @@ public sealed class CompiledSideEffectVerifierGuardTests
             builder.AddBinding(VerifierGuard_CapabilityGatedDirectMethodBinding());
             builder.UseInterpreter();
         }));
-
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-BINDING-COMPILED");
     }
-
     // -------------------------------------------------------------------------
     // Guard 5: BindingRegistryValidator must reject a binding that declares only
     // Cpu effects (no side effects) but still requires a capability.
@@ -117,10 +106,8 @@ public sealed class CompiledSideEffectVerifierGuardTests
             builder.AddBinding(VerifierGuard_CapabilityGatedCpuOnlyBinding());
             builder.UseInterpreter();
         }));
-
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-BINDING-EFFECT");
     }
-
     // -------------------------------------------------------------------------
     // Guard 6: A revoked capability must block a side-effecting binding even when
     // the execution mode is Compiled. The revocation check happens before the
@@ -138,10 +125,8 @@ public sealed class CompiledSideEffectVerifierGuardTests
                 .GrantHostMessageWrite()
                 .WithFuel(10_000)
                 .Build());
-
         // Revoke before any execution.
         host.RevokeCapability(PluginMessageBindings.CapabilityId, "test-revocation-guard");
-
         // Even with Compiled mode requested, the revocation check happens first;
         // the system will either refuse at the policy gate (returning PolicyDenied)
         // or fall back to interpreted and then deny at runtime. Either way the
@@ -151,14 +136,12 @@ public sealed class CompiledSideEffectVerifierGuardTests
             "main",
             SandboxValue.Unit,
             new SandboxExecutionOptions { Mode = ExecutionMode.Auto });
-
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.PolicyDenied, result.Error!.Code);
         Assert.Empty(sink.Messages);
         // The audit trail must include a CapabilityRevoked event.
         Assert.Contains(result.AuditEvents, e => e.Kind == "CapabilityRevoked");
     }
-
     // -------------------------------------------------------------------------
     // Guard 7: Interpreted parity baseline — log.info (SideEffectingExternal,
     // capability "log.write") must produce exactly one SandboxLog audit event.
@@ -182,13 +165,11 @@ public sealed class CompiledSideEffectVerifierGuardTests
                 .GrantLogging()
                 .WithFuel(10_000)
                 .Build());
-
         var result = await host.ExecuteAsync(
             plan,
             "main",
             SandboxValue.Unit,
             new SandboxExecutionOptions { Mode = ExecutionMode.Interpreted });
-
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
         Assert.Equal(ExecutionMode.Interpreted, result.ActualMode);
         // Exactly one SandboxLog audit event for the log.info call.
@@ -197,7 +178,6 @@ public sealed class CompiledSideEffectVerifierGuardTests
         Assert.Equal("log.write", logEvent.CapabilityId);
         Assert.Equal(1, result.ResourceUsage.HostCalls);
     }
-
     // -------------------------------------------------------------------------
     // (Former Guard 8 deleted.) It asserted the compiler refuses host.message.send
     // with ValidationError — an invalid premise under PR #27, which executes that
@@ -207,12 +187,10 @@ public sealed class CompiledSideEffectVerifierGuardTests
     // invariant is covered by
     // Prepare_rejects_module_calling_side_effecting_binding_without_capability_grant.
     // -------------------------------------------------------------------------
-
     // =========================================================================
     // Private helpers (prefixed VerifierGuard_ to avoid collisions when files
     // are combined in the same test assembly).
     // =========================================================================
-
     private static SandboxHost VerifierGuard_CreatePluginHost(InMemoryPluginMessageSink sink)
         => SandboxHost.Create(builder =>
         {
@@ -222,7 +200,6 @@ public sealed class CompiledSideEffectVerifierGuardTests
             builder.UseInterpreter();
             builder.UseCompilerIfAvailable();
         });
-
     private static string VerifierGuard_MessageSendJson(string id)
         => $$"""
         {
@@ -251,7 +228,6 @@ public sealed class CompiledSideEffectVerifierGuardTests
           ]
         }
         """;
-
     private static string VerifierGuard_LogInfoJson(string id)
         => $$"""
         {
@@ -277,7 +253,6 @@ public sealed class CompiledSideEffectVerifierGuardTests
           ]
         }
         """;
-
     /// <summary>
     /// A binding that:
     /// - requires "host.message.write" capability (capability-gated)
@@ -302,7 +277,6 @@ public sealed class CompiledSideEffectVerifierGuardTests
             // This is the configuration that must be rejected.
             CompiledBinding.RuntimeStub(typeof(CompiledRuntime).FullName!, nameof(Kernels.Runtime.CompiledRuntime.AbsI32)),
             (grant, diagnostics) => { });
-
     /// <summary>
     /// A binding that:
     /// - requires "host.message.write" capability (capability-gated)

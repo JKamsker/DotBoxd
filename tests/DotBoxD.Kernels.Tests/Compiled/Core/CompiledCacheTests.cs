@@ -10,16 +10,13 @@ using DotBoxD.Kernels.Tests._TestSupport;
 using DotBoxD.Kernels.Verifier;
 using DotBoxD.Kernels.Verifier.Generated;
 using SandboxHost = DotBoxD.Hosting.Execution.SandboxHost;
-
 namespace DotBoxD.Kernels.Tests.Compiled.Core;
-
 public sealed class CompiledCacheTests
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
     };
-
     [Fact]
     public async Task Compiled_artifact_is_persisted_and_reused()
     {
@@ -28,10 +25,8 @@ public sealed class CompiledCacheTests
         var module = await host.ImportJsonAsync(SandboxTestHost.PureScoreJson());
         var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
         var input = SandboxValue.FromList([SandboxValue.FromInt32(2), SandboxValue.FromInt32(1)]);
-
         var first = await ExecuteCompiled(host, plan, input);
         var second = await ExecuteCompiled(host, plan, input);
-
         Assert.True(first.Succeeded);
         Assert.True(second.Succeeded);
         Assert.Contains(first.AuditEvents, e => e.Message?.Contains("cacheStatus=Miss", StringComparison.Ordinal) == true);
@@ -40,7 +35,6 @@ public sealed class CompiledCacheTests
         Assert.True(File.Exists(Path.Combine(CacheEntry(temp.Path, plan), "manifest.json")));
         Assert.True(File.Exists(Path.Combine(CacheEntry(temp.Path, plan), "verification.json")));
     }
-
     [Fact]
     public async Task Policy_hash_change_uses_a_different_cache_key()
     {
@@ -50,10 +44,8 @@ public sealed class CompiledCacheTests
         var firstPlan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
         var secondPlan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(2_000).Build());
         var input = SandboxValue.FromList([SandboxValue.FromInt32(2), SandboxValue.FromInt32(1)]);
-
         _ = await ExecuteCompiled(host, firstPlan, input);
         _ = await ExecuteCompiled(host, secondPlan, input);
-
         Assert.NotEqual(CacheKey(firstPlan), CacheKey(secondPlan));
         Assert.True(Directory.Exists(CacheEntry(temp.Path, firstPlan)));
         Assert.True(Directory.Exists(CacheEntry(temp.Path, secondPlan)));

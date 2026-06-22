@@ -9,25 +9,20 @@ using DotBoxD.Services.Server;
 using DotBoxD.Services.Tests.Support;
 using DotBoxD.Services.Transport;
 using Xunit;
-
 namespace DotBoxD.Services.Tests.Peer;
-
 public sealed class RpcPeerInboundQueueBoundTests
 {
     private static MessagePackRpcSerializer NewSerializer() => new();
-
     [Fact]
     public async Task WaitQueue_DoesNotReadPastConfiguredCapacity()
     {
         var serializer = NewSerializer();
         await using var connection = new ScriptedConnection();
         var dispatcher = new BlockingDispatcher();
-
         for (var id = 1; id <= 4; id++)
         {
             connection.Enqueue(CreateRequestFrame(serializer, id));
         }
-
         await using var peer = RpcPeer
             .Over(
                 connection,
@@ -40,21 +35,17 @@ public sealed class RpcPeerInboundQueueBoundTests
                 })
             .Provide((IServiceDispatcher)dispatcher)
             .Start();
-
         await dispatcher.FirstEntered.WaitAsync(TimeSpan.FromSeconds(1));
         await connection.WaitForReceiveCountAsync(3, TimeSpan.FromSeconds(1));
-
         // The read loop is parked enqueuing the 3rd frame into the full (capacity-1) queue, so it
         // never makes a 4th receive attempt. Assert the absence deterministically: the wait fails
         // fast if a regression let the loop read past capacity, instead of always sleeping a fixed delay.
         await Assert.ThrowsAsync<TimeoutException>(
             () => connection.WaitForReceiveAttemptAsync(4, TimeSpan.FromMilliseconds(200)));
         Assert.Equal(3, connection.ReceiveCount);
-
         dispatcher.Release();
         await connection.WaitForReceiveCountAsync(4, TimeSpan.FromSeconds(1));
     }
-
     [Fact]
     public async Task DropIncoming_ReleasesDroppedFrame()
     {
@@ -67,7 +58,6 @@ public sealed class RpcPeerInboundQueueBoundTests
         connection.Enqueue(first);
         connection.Enqueue(second);
         connection.Enqueue(third);
-
         await using var peer = RpcPeer
             .Over(
                 connection,
@@ -80,11 +70,9 @@ public sealed class RpcPeerInboundQueueBoundTests
                 })
             .Provide((IServiceDispatcher)dispatcher)
             .Start();
-
         await dispatcher.FirstEntered.WaitAsync(TimeSpan.FromSeconds(1));
         await connection.WaitForReceiveCountAsync(3, TimeSpan.FromSeconds(1));
         await connection.WaitForReceiveAttemptAsync(4, TimeSpan.FromSeconds(1));
-
         // At least one of the two trailing frames overflowed the capacity-1 queue and was released
         // (disposed) on drop. We assert "at least one" rather than "exactly one": whether one or both
         // drop depends on whether the dispatch worker has drained the queued frame yet, so an
@@ -92,22 +80,18 @@ public sealed class RpcPeerInboundQueueBoundTests
         // while the handler still holds it.
         Assert.True(IsDisposed(second) || IsDisposed(third));
         Assert.False(IsDisposed(first));
-
         dispatcher.Release();
     }
-
     [Fact]
     public async Task WaitQueue_DispatchesConcurrently_UpToMaxConcurrentInboundDispatch()
     {
         var serializer = NewSerializer();
         await using var connection = new ScriptedConnection();
         var dispatcher = new ConcurrencyTrackingDispatcher(maxExpected: 3);
-
         for (var id = 1; id <= 5; id++)
         {
             connection.Enqueue(CreateRequestFrame(serializer, id, ConcurrencyTrackingDispatcher.Service, "Run"));
         }
-
         await using var peer = RpcPeer
             .Over(
                 connection,
@@ -121,28 +105,23 @@ public sealed class RpcPeerInboundQueueBoundTests
                 })
             .Provide((IServiceDispatcher)dispatcher)
             .Start();
-
         // Exactly maxConcurrency=3 dispatches run at once: the 3rd entering proves concurrency is
         // applied (with serial dispatch this wait would time out), and the 4th cannot enter because
         // all dispatch slots are held — asserted deterministically, not via a delay.
         await dispatcher.TargetReached.WaitAsync(TimeSpan.FromSeconds(1));
         Assert.False(dispatcher.OverflowEntered.IsCompleted);
-
         dispatcher.Release();
     }
-
     [Fact]
     public async Task ByteBudget_ParksReadLoop_WhenInFlightBytesWouldExceedBudget()
     {
         var serializer = NewSerializer();
         await using var connection = new ScriptedConnection();
         var dispatcher = new BlockingDispatcher();
-
         for (var id = 1; id <= 3; id++)
         {
             connection.Enqueue(CreateRequestFrame(serializer, id));
         }
-
         // Count cap is generous (100) so it never binds; the 1-byte byte budget binds instead. The
         // first frame is admitted under the "nothing in flight" rule (so a frame larger than the whole
         // budget never deadlocks), and the second frame parks the read loop in the byte gate.
@@ -159,21 +138,17 @@ public sealed class RpcPeerInboundQueueBoundTests
                 })
             .Provide((IServiceDispatcher)dispatcher)
             .Start();
-
         await dispatcher.FirstEntered.WaitAsync(TimeSpan.FromSeconds(1));
         await connection.WaitForReceiveCountAsync(2, TimeSpan.FromSeconds(1));
-
         // The read loop is parked admitting frame 2's bytes, so it never reads the 3rd frame. Assert
         // the absence deterministically rather than by sleeping.
         await Assert.ThrowsAsync<TimeoutException>(
             () => connection.WaitForReceiveAttemptAsync(3, TimeSpan.FromMilliseconds(200)));
         Assert.Equal(2, connection.ReceiveCount);
-
         // Releasing frame 1 frees its bytes, so frame 2 admits and the loop reads the 3rd frame.
         dispatcher.Release();
         await connection.WaitForReceiveCountAsync(3, TimeSpan.FromSeconds(1));
     }
-
     [Fact]
     public async Task RejectInboundCalls_ReturnsExplicitErrorResponse()
     {

@@ -10,13 +10,10 @@ using DotBoxD.Services.Streaming.Core;
 using DotBoxD.Services.Streaming.Frames;
 using DotBoxD.Services.Streaming.Remote;
 using Xunit;
-
 namespace DotBoxD.Services.Tests.Streaming.Waves;
-
 public sealed class StreamingWave4RegressionTests
 {
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(5);
-
     [Fact]
     public async Task ReceiverCancel_DoesNotWaitForCancelFrameSend()
     {
@@ -33,20 +30,16 @@ public sealed class StreamingWave4RegressionTests
                     cancelSendStarted.TrySetResult();
                     return neverComplete.Task;
                 }
-
                 return Task.CompletedTask;
             },
             exceptionTransformer: null);
         var receiver = streams.RegisterInboundResponse(
             new RpcStreamHandle(602, RpcStreamKind.Binary),
             CancellationToken.None);
-
         await receiver.CancelAsync().AsTask().WaitAsync(TestTimeout);
-
         await cancelSendStarted.Task.WaitAsync(TestTimeout);
         Assert.Equal(0, streams.InboundReceiverCount);
     }
-
     [Fact]
     public async Task RegisteredOutboundSet_DisposedBeforeStart_DisposesOwnedSources()
     {
@@ -63,15 +56,12 @@ public sealed class StreamingWave4RegressionTests
                 RpcStreamAttachment.FromPipe(pipeHandle, pipe, completeReader: true),
             },
             CancellationToken.None);
-
         await outbound.DisposeAsync().AsTask().WaitAsync(TestTimeout);
-
         Assert.True(source.Disposed);
         await Assert.ThrowsAsync<InvalidOperationException>(
             async () => await pipe.Reader.ReadAsync().AsTask().WaitAsync(TestTimeout));
         Assert.Equal(0, streams.OutboundSenderCount);
     }
-
     [Fact]
     public async Task RegisteredOutboundSet_DisposedBeforeStart_RemovesSenderWhenSourceDisposeThrows()
     {
@@ -82,13 +72,10 @@ public sealed class StreamingWave4RegressionTests
         var outbound = streams.RegisterOutbound(
             new[] { RpcStreamAttachment.FromStream(handle, source, leaveOpen: false) },
             CancellationToken.None);
-
         await outbound.DisposeAsync().AsTask().WaitAsync(TestTimeout);
-
         Assert.True(source.DisposeAttempted);
         Assert.Equal(0, streams.OutboundSenderCount);
     }
-
     [Fact]
     public async Task StartedOutboundSet_DisposeCancelsStalledStreamCompleteSend()
     {
@@ -105,7 +92,6 @@ public sealed class StreamingWave4RegressionTests
                     completeSendStarted.TrySetResult();
                     return neverComplete.Task;
                 }
-
                 return Task.CompletedTask;
             },
             exceptionTransformer: null);
@@ -115,12 +101,9 @@ public sealed class StreamingWave4RegressionTests
             CancellationToken.None);
         outbound.Start();
         await completeSendStarted.Task.WaitAsync(TestTimeout);
-
         await outbound.DisposeAsync().AsTask().WaitAsync(TestTimeout);
-
         Assert.Equal(0, streams.OutboundSenderCount);
     }
-
     [Fact]
     public async Task InitialCreditSendFailure_ReportsAndRemovesReceiver()
     {
@@ -136,7 +119,6 @@ public sealed class StreamingWave4RegressionTests
                 diagnostics.TrySetResult(args);
             }
         }
-
         RpcDiagnostics.Error += OnDiagnostic;
         try
         {
@@ -149,13 +131,10 @@ public sealed class StreamingWave4RegressionTests
                     {
                         throw failure;
                     }
-
                     return Task.CompletedTask;
                 },
                 exceptionTransformer: null);
-
             streams.RegisterInboundResponse(new RpcStreamHandle(603, RpcStreamKind.Binary), CancellationToken.None);
-
             var diagnostic = await diagnostics.Task.WaitAsync(TestTimeout);
             Assert.Same(failure, diagnostic.Error);
             await WaitUntilAsync(() => streams.InboundReceiverCount == 0);
@@ -165,7 +144,6 @@ public sealed class StreamingWave4RegressionTests
             RpcDiagnostics.Error -= OnDiagnostic;
         }
     }
-
     [Fact]
     public async Task UndeclaredPayloadStreamHandle_ReturnsProtocolErrorWithoutReceiver()
     {

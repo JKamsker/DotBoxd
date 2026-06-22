@@ -7,9 +7,7 @@ using DotBoxD.Services.Server;
 using DotBoxD.Services.Tests.Support;
 using Shared;
 using Xunit;
-
 namespace DotBoxD.Services.Tests.Coverage.Core;
-
 /// <summary>
 /// Round-2 deterministic coverage for the public <see cref="RpcPeer"/> guard/validation/metadata
 /// surface that the round-1 suites left uncovered: the static <c>Over</c> argument guards, the
@@ -22,13 +20,9 @@ namespace DotBoxD.Services.Tests.Coverage.Core;
 public sealed class RpcPeerPublicGuardCoverageTests
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
-
     private static MessagePackRpcSerializer NewSerializer() => new();
-
     private static RpcPeerOptions Options() => new() { RequestTimeout = Timeout };
-
     // ----- Over(...) argument guards (RpcPeer 57-58, 62-63) -----
-
     [Fact]
     public void Over_NullChannel_ThrowsArgumentNullException()
     {

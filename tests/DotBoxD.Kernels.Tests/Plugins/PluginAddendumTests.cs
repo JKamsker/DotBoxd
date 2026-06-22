@@ -3,9 +3,7 @@ using DotBoxD.Kernels.PluginIpc.Server.Abstractions;
 using DotBoxD.Kernels.Tests._TestSupport;
 using DotBoxD.Plugins;
 using DotBoxD.Plugins.Runtime.Lifecycle;
-
 namespace DotBoxD.Kernels.Tests.Plugins;
-
 public sealed class PluginAddendumTests
 {
     [Fact]
@@ -15,7 +13,6 @@ public sealed class PluginAddendumTests
         Assert.Equal("DotBoxD.Kernels.TestFixtures.PluginLocal", typeof(FireDamageKernel).Assembly.GetName().Name);
         Assert.Same(typeof(FireDamageKernel).Assembly, typeof(FireDamagePluginPackage).Assembly);
     }
-
     [Fact]
     public async Task Kernel_live_settings_affect_future_hook_runs()
     {
@@ -23,20 +20,16 @@ public sealed class PluginAddendumTests
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         await server.InstallAsync(FireDamagePluginPackage.Create());
         server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
-
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
         kernel.Value.MinDamage = 250;
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
-
         kernel.Value.DamageType = "ice";
         await server.Hooks.PublishAsync(new DamageEvent("ice", 300, "player-2"));
-
         Assert.Equal(2, messages.Messages.Count);
         Assert.Equal("player-1", messages.Messages[0].TargetId);
         Assert.Equal("player-2", messages.Messages[1].TargetId);
     }
-
     [Fact]
     public async Task Runtime_configuration_example_settings_are_declared_by_fire_damage_package()
     {
@@ -52,14 +45,11 @@ public sealed class PluginAddendumTests
         var messages = new InMemoryPluginMessageSink();
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         var installed = await server.InstallAsync(package);
-
         Assert.All(settings.Keys, key => Assert.Contains(key, declared));
         await installed.ModifySettingsAsync(settings);
-
         Assert.Equal((string?)"ice", (string?)installed.Value.Get<string>("DamageType"));
         Assert.Equal(250, installed.Value.Get<int>("MinDamage"));
     }
-
     [Fact]
     public async Task Direct_kernel_value_updates_are_full_sync_by_default()
     {
@@ -68,15 +58,12 @@ public sealed class PluginAddendumTests
         await server.InstallAsync(FireDamagePluginPackage.Create());
         server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
-
         Assert.Equal(LiveUpdateMode.Sync, kernel.UpdateMode);
         kernel.Value.MinDamage = 250;
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
-
         Assert.Empty(messages.Messages);
         Assert.Equal(250, kernel.Kernel.Value.Get<int>("MinDamage"));
     }
-
     [Fact]
     public async Task AsyncSet_direct_kernel_value_updates_do_not_wait_for_server_ack()
     {
@@ -85,18 +72,15 @@ public sealed class PluginAddendumTests
         await server.InstallAsync(FireDamagePluginPackage.Create());
         server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
-
         kernel.UpdateMode = LiveUpdateMode.AsyncSet;
         kernel.Value.MinDamage = 250;
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
         await kernel.FlushUpdatesAsync();
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-2"));
-
         var message = Assert.Single(messages.Messages);
         Assert.Equal("player-1", message.TargetId);
         Assert.Equal(250, kernel.Kernel.Value.Get<int>("MinDamage"));
     }
-
     [Fact]
     public async Task AsyncSet_flush_pushes_direct_kernel_value_updates_before_next_run()
     {
@@ -105,12 +89,10 @@ public sealed class PluginAddendumTests
         await server.InstallAsync(FireDamagePluginPackage.Create());
         server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
         var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
-
         kernel.UpdateMode = LiveUpdateMode.AsyncSet;
         kernel.Value.MinDamage = 250;
         await kernel.FlushUpdatesAsync();
         await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
-
         Assert.Empty(messages.Messages);
         Assert.Equal(250, kernel.Kernel.Value.Get<int>("MinDamage"));
     }

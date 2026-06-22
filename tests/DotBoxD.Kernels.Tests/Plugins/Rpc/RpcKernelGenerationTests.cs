@@ -5,9 +5,7 @@ using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Sandbox.Values;
 using DotBoxD.Kernels.Tests.PluginAnalyzer.Core;
 using DotBoxD.Plugins;
-
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
-
 /// <summary>
 /// End-to-end proof of the server extension authoring path (Followup #2.3): a plain-C# batch class
 /// with <c>[ServerExtension]</c> — locals, a <c>foreach</c> over a list, a host binding per element, and
@@ -24,17 +22,13 @@ public sealed class RpcKernelGenerationTests
         using DotBoxD.Plugins;
         using DotBoxD.Plugins.Runtime;
         using DotBoxD.Abstractions;
-
         namespace Sample;
-
         public interface IGameWorld
         {
             [HostBinding("host.world.kill", "game.world.monster.write.kill", SandboxEffect.Cpu | SandboxEffect.HostStateWrite)]
             bool Kill(int id);
         }
-
         public readonly record struct KillResult(int MonsterId, bool Success);
-
         [ServerExtension("monster-killer")]
         public sealed partial class MonsterKillerKernel
         {
@@ -46,36 +40,28 @@ public sealed class RpcKernelGenerationTests
                     var ok = ctx.Host<IGameWorld>().Kill(id);
                     results.Add(new KillResult(id, ok));
                 }
-
                 return results;
             }
         }
         """;
-
     private const string InjectedMonsterKillerSource = """
         using System.Collections.Generic;
         using DotBoxD.Kernels;
         using DotBoxD.Kernels.Sandbox;
         using DotBoxD.Plugins;
         using DotBoxD.Abstractions;
-
         namespace Sample;
-
         public interface IGameWorld
         {
             [HostBinding("host.world.kill", "game.world.monster.write.kill", SandboxEffect.Cpu | SandboxEffect.HostStateWrite)]
             bool Kill(int id);
         }
-
         public readonly record struct KillResult(int MonsterId, bool Success);
-
         [ServerExtension("monster-killer")]
         public sealed partial class MonsterKillerKernel
         {
             private readonly IGameWorld _world;
-
             public MonsterKillerKernel(IGameWorld world) => _world = world;
-
             public List<KillResult> KillMonsters(List<int> monsterIds, HookContext ctx)
             {
                 var results = new List<KillResult>();
@@ -84,27 +70,22 @@ public sealed class RpcKernelGenerationTests
                     var ok = _world.Kill(id);
                     results.Add(new KillResult(id, ok));
                 }
-
                 return results;
             }
         }
         """;
-
     private const string AsyncHostBindingSource = """
         using System.Collections.Generic;
         using DotBoxD.Kernels;
         using DotBoxD.Kernels.Sandbox;
         using DotBoxD.Plugins;
         using DotBoxD.Abstractions;
-
         namespace Sample;
-
         public interface IGameWorld
         {
             [HostBinding("host.world.getLevel", "game.world.monster.read.level", SandboxEffect.Cpu | SandboxEffect.HostStateRead, IsAsync = true)]
             int GetLevel(int id);
         }
-
         [ServerExtension("async-level")]
         public sealed partial class AsyncLevelKernel
         {
@@ -115,18 +96,14 @@ public sealed class RpcKernelGenerationTests
                 {
                     total += ctx.Host<IGameWorld>().GetLevel(id);
                 }
-
                 return total;
             }
         }
         """;
-
     private const string ControlStringSource = """
         using DotBoxD.Plugins;
         using DotBoxD.Abstractions;
-
         namespace Sample;
-
         [ServerExtension("control-string")]
         public sealed partial class ControlStringKernel
         {
@@ -136,18 +113,14 @@ public sealed class RpcKernelGenerationTests
             }
         }
         """;
-
     private const string RecordParameterSource = """
         using DotBoxD.Kernels;
         using DotBoxD.Kernels.Sandbox;
         using DotBoxD.Plugins;
         using DotBoxD.Abstractions;
-
         namespace Sample;
-
         public readonly record struct WorldPoint(int Position);
         public readonly record struct WorldRangeQuery(WorldPoint Center, int Radius, int MaxResults);
-
         [ServerExtension("range-query")]
         public sealed partial class RangeQueryKernel
         {
@@ -157,42 +130,33 @@ public sealed class RpcKernelGenerationTests
             }
         }
         """;
-
     [Fact]
     public async Task A_generated_batch_kernel_reads_a_nested_record_parameter_server_side()
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create(RecordParameterSource, "Sample.RangeQueryPluginPackage");
         Assert.Equal("CountInRange", package.Manifest.RpcEntrypoint);
-
         using var server = PluginServer.Create(defaultPolicy: PurePolicy());
         var kernel = await server.InstallServerExtensionAsync(package);
-
         var query = SandboxValue.FromRecord(
         [
             SandboxValue.FromRecord([SandboxValue.FromInt32(5)]),
             SandboxValue.FromInt32(6),
             SandboxValue.FromInt32(7)
         ]);
-
         var result = await kernel.InvokeServerExtensionAsync([query]);
-
         Assert.Equal(18, Assert.IsType<I32Value>(result).Value);
     }
-
     [Fact]
     public async Task A_generated_batch_kernel_installs_and_returns_a_list_of_dtos_in_one_roundtrip()
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create(MonsterKillerSource, "Sample.MonsterKillerPluginPackage");
         Assert.Equal("KillMonsters", package.Manifest.RpcEntrypoint);
         Assert.Contains("game.world.monster.write.kill", package.Manifest.RequiredCapabilities);
-
         using var server = DotBoxD.Plugins.PluginServer.Create(configureHost: AddKillBinding, defaultPolicy: KillPolicy());
         var kernel = await server.InstallServerExtensionAsync(package);
-
         var ids = SandboxValue.FromList(
             [SandboxValue.FromInt32(10), SandboxValue.FromInt32(11), SandboxValue.FromInt32(12)],
             SandboxType.I32);
-
         var result = await kernel.InvokeServerExtensionAsync([ids]);
 
         var list = Assert.IsType<ListValue>(result);

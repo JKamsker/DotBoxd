@@ -5,9 +5,7 @@ using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
 using DotBoxD.Kernels.Tests._TestSupport;
 using static DotBoxD.Kernels.Tests._TestSupport.NetworkTestFixtures;
-
 namespace DotBoxD.Kernels.Tests.Runtime.Network;
-
 public sealed class SafeNetworkTests
 {
     [Fact]
@@ -15,13 +13,10 @@ public sealed class SafeNetworkTests
     {
         var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("ok"));
         var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
-
         var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () =>
             await host.PrepareAsync(module, NetworkPolicyBuilder().Build()));
-
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-POLICY-CAP");
     }
-
     [Fact]
     public async Task Http_get_allows_configured_https_host_and_audits_sanitized_url()
     {
@@ -32,9 +27,7 @@ public sealed class SafeNetworkTests
             .WithFuel(5_000)
             .Build();
         var plan = await host.PrepareAsync(module, policy);
-
         var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
-
         Assert.True(result.Succeeded);
         Assert.Equal("remote-config", ((StringValue)result.Value!).Value);
         Assert.Contains(result.AuditEvents, e =>
@@ -42,7 +35,6 @@ public sealed class SafeNetworkTests
             e.ResourceId == "https://api.example.com/config" &&
             e.Success);
     }
-
     [Fact]
     public async Task Http_get_denies_hosts_outside_allowlist()
     {
@@ -52,11 +44,9 @@ public sealed class SafeNetworkTests
                 .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
                 .WithFuel(5_000)
                 .Build());
-
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
     }
-
     [Fact]
     public async Task Http_get_denies_non_default_port_without_authority_allowlist()
     {
@@ -66,11 +56,9 @@ public sealed class SafeNetworkTests
                 .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
                 .WithFuel(5_000)
                 .Build());
-
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
     }
-
     [Fact]
     public async Task Http_get_allows_explicit_authority_and_audits_port()
     {
@@ -81,16 +69,13 @@ public sealed class SafeNetworkTests
             .WithFuel(5_000)
             .Build();
         var plan = await host.PrepareAsync(module, policy);
-
         var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
-
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
         Assert.Contains(result.AuditEvents, e =>
             e.BindingId == "net.http.get" &&
             e.ResourceId == "https://api.example.com:8443/config" &&
             e.Success);
     }
-
     [Fact]
     public async Task Http_get_denies_ip_literals_by_default()
     {
@@ -100,11 +85,9 @@ public sealed class SafeNetworkTests
                 .GrantHttpGet(["127.0.0.1"], maxResponseBytes: 1024)
                 .WithFuel(5_000)
                 .Build());
-
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
     }
-
     [Fact]
     public async Task Http_get_denies_private_ip_literals_unless_explicitly_allowed()
     {
@@ -114,11 +97,9 @@ public sealed class SafeNetworkTests
                 .GrantHttpGet(["192.168.1.20"], 1024, allowIpLiterals: true)
                 .WithFuel(5_000)
                 .Build());
-
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
     }
-
     [Theory]
     [InlineData("0.0.0.0")]
     [InlineData("100.64.0.1")]
@@ -132,11 +113,9 @@ public sealed class SafeNetworkTests
                 .GrantHttpGet([address], 1024, allowIpLiterals: true)
                 .WithFuel(5_000)
                 .Build());
-
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
     }
-
     [Fact]
     public async Task Http_get_denies_allowed_hostname_that_resolves_to_private_network()
     {
@@ -149,13 +128,10 @@ public sealed class SafeNetworkTests
             .WithFuel(5_000)
             .Build();
         var plan = await host.PrepareAsync(module, policy);
-
         var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
-
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
     }
-
     [Fact]
     public async Task Http_get_denies_allowed_hostname_with_empty_dns_result()
     {
@@ -168,13 +144,10 @@ public sealed class SafeNetworkTests
             .WithFuel(5_000)
             .Build();
         var plan = await host.PrepareAsync(module, policy);
-
         var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
-
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
     }
-
     [Fact]
     public async Task Http_get_allows_private_dns_only_when_explicitly_granted()
     {
@@ -187,13 +160,10 @@ public sealed class SafeNetworkTests
             .WithFuel(5_000)
             .Build();
         var plan = await host.PrepareAsync(module, policy);
-
         var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
-
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
         Assert.Equal("private", ((StringValue)result.Value!).Value);
     }
-
     [Fact]
     public async Task Http_get_denies_redirect_responses()
     {
@@ -207,14 +177,11 @@ public sealed class SafeNetworkTests
             .WithFuel(5_000)
             .Build();
         var plan = await host.PrepareAsync(module, policy);
-
         var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
-
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
         Assert.Contains(result.AuditEvents, e => e.BindingId == "net.http.get" && e.Bytes > 0);
     }
-
     [Fact]
     public async Task Http_get_charges_failed_response_metadata_before_status_failure()
     {
@@ -225,15 +192,12 @@ public sealed class SafeNetworkTests
             .WithFuel(5_000)
             .Build();
         var plan = await host.PrepareAsync(module, policy);
-
         var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
-
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
         Assert.True(result.ResourceUsage.NetworkBytesRead > 0);
         Assert.Contains(result.AuditEvents, e => e.BindingId == "net.http.get" && e.Bytes > 0);
     }
-
     [Fact]
     public async Task Http_get_enforces_failed_response_metadata_byte_limit()
     {
@@ -244,15 +208,12 @@ public sealed class SafeNetworkTests
             .WithFuel(5_000)
             .Build();
         var plan = await host.PrepareAsync(module, policy);
-
         var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
-
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.QuotaExceeded, result.Error!.Code);
         Assert.True(result.ResourceUsage.NetworkBytesRead > 0);
         Assert.Contains(result.AuditEvents, e => e.BindingId == "net.http.get" && e.Bytes > 0);
     }
-
     [Fact]
     public async Task Http_get_denies_invoker_that_already_followed_redirect()
     {
@@ -263,13 +224,10 @@ public sealed class SafeNetworkTests
             .WithFuel(5_000)
             .Build();
         var plan = await host.PrepareAsync(module, policy);
-
         var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
-
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
     }
-
     [Fact]
     public async Task Direct_policy_negative_http_timeout_is_rejected_at_prepare()
     {
@@ -288,13 +246,10 @@ public sealed class SafeNetworkTests
                     })
             ],
             new ResourceLimits(MaxFuel: 5_000, MaxNetworkBytesRead: 1024));
-
         var ex = await Assert.ThrowsAsync<SandboxValidationException>(async () =>
             await host.PrepareAsync(module, policy));
-
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-POLICY-GRANT-PARAM");
     }
-
     [Fact]
     public async Task Http_get_enforces_response_byte_limit()
     {

@@ -5,9 +5,7 @@ using DotBoxD.Plugins.Analyzer.Analysis;
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-
 namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime;
-
 public sealed class InvokeAsyncRuntimeTests
 {
     [Fact]
@@ -19,18 +17,14 @@ public sealed class InvokeAsyncRuntimeTests
         var control = Activator.CreateInstance(controlType, [wire, null])!;
         var run = assembly.GetType("Sample.Usage", throwOnError: true)!
             .GetMethod("Run", BindingFlags.Public | BindingFlags.Static)!;
-
         var result = await AwaitValueTaskResult<int>(run.Invoke(null, [control])!);
-
         Assert.Equal(42, result);
         Assert.Equal(1, (int)wire.GetType().GetProperty("InstallCount")!.GetValue(wire)!);
         Assert.Equal(0, (int)wire.GetType().GetProperty("ArgumentCount")!.GetValue(wire)!);
-
         var package = Assert.IsType<PluginPackage>(wire.GetType().GetProperty("LastPackage")!.GetValue(wire));
         Assert.StartsWith("$anon:", package.Manifest.PluginId, StringComparison.Ordinal);
         Assert.Contains("game.world.monster.read.health", package.Manifest.RequiredCapabilities);
     }
-
     [Fact]
     public async Task Generated_interceptor_package_lowers_snapshot_member_access_to_record_get()
     {
@@ -40,26 +34,21 @@ public sealed class InvokeAsyncRuntimeTests
         var control = Activator.CreateInstance(controlType, [wire, null])!;
         var run = assembly.GetType("Sample.Usage", throwOnError: true)!
             .GetMethod("Run", BindingFlags.Public | BindingFlags.Static)!;
-
         var result = await AwaitValueTaskResult<int>(run.Invoke(null, [control])!);
-
         Assert.Equal(80, result);
         var package = Assert.IsType<PluginPackage>(wire.GetType().GetProperty("LastPackage")!.GetValue(wire));
         Assert.Contains("game.world.monster.read.snapshot", package.Manifest.RequiredCapabilities);
         Assert.Equal(SandboxType.I32, Assert.Single(package.Module.Functions).ReturnType);
-
         var function = Assert.Single(package.Module.Functions);
         var assignment = Assert.IsType<AssignmentStatement>(function.Body[0]);
         Assert.Equal("monster", assignment.Name);
         Assert.Equal("host.world.getMonster", Assert.IsType<CallExpression>(assignment.Value).Name);
-
         var returned = Assert.IsType<ReturnStatement>(function.Body[1]);
         var recordGet = Assert.IsType<CallExpression>(returned.Value);
         Assert.Equal("record.get", recordGet.Name);
         Assert.Equal("monster", Assert.IsType<VariableExpression>(recordGet.Arguments[0]).Name);
         Assert.Equal(2, Assert.IsType<I32Value>(Assert.IsType<LiteralExpression>(recordGet.Arguments[1]).Value).Value);
     }
-
     private const string Source = """
         using System;
         using System.Threading;
@@ -71,7 +60,6 @@ public sealed class InvokeAsyncRuntimeTests
         using DotBoxD.Kernels.Game.Plugin.Client;
         using DotBoxD.Kernels.Game.Server.Abstractions;
         using DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
-
         namespace DotBoxD.Kernels.Game.Server.Abstractions
         {
             [DotBoxDService]
@@ -81,7 +69,6 @@ public sealed class InvokeAsyncRuntimeTests
                 int GetHealth(string entityId);
             }
         }
-
         namespace DotBoxD.Services.Generated
         {
             public static class DotBoxDGeneratedExtensions
@@ -90,11 +77,9 @@ public sealed class InvokeAsyncRuntimeTests
                     => throw new InvalidOperationException("not used");
             }
         }
-
         namespace DotBoxD.Kernels.Game.Server.Abstractions.Ipc
         {
             public readonly record struct LiveSettingUpdate(string Name, string Value);
-
             public interface IGamePluginControlService : DotBoxD.Plugins.IServerExtensionWireClient
             {
                 ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default);
@@ -108,13 +93,11 @@ public sealed class InvokeAsyncRuntimeTests
                 ValueTask HoldUntilShutdownAsync(CancellationToken ct = default);
             }
         }
-
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
             [GeneratePluginServer]
             public partial class RemotePluginServer : IGameWorldAccess;
         }
-
         namespace Sample
         {
             public static class Usage
@@ -126,32 +109,25 @@ public sealed class InvokeAsyncRuntimeTests
                         return hp;
                     });
             }
-
             public sealed class RecordingControlService : IGamePluginControlService
             {
                 public int InstallCount { get; private set; }
                 public int ArgumentCount { get; private set; }
                 public PluginPackage? LastPackage { get; private set; }
-
                 public ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default)
                     => InstallPackageAsync(packageJson);
-
                 public ValueTask<string> InstallSubscriptionAsync(string packageJson, CancellationToken ct = default)
                     => InstallPackageAsync(packageJson);
-
                 public ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default)
                     => InstallPackageAsync(packageJson);
-
                 public ValueTask UpdateSettingsAsync(
                     string pluginId,
                     LiveSettingUpdate[] updates,
                     bool atomic = false,
                     CancellationToken ct = default)
                     => default;
-
                 public ValueTask HoldUntilShutdownAsync(CancellationToken ct = default)
                     => default;
-
                 public ValueTask<byte[]> InvokeServerExtensionAsync(
                     string pluginId,
                     byte[] arguments,
@@ -160,7 +136,6 @@ public sealed class InvokeAsyncRuntimeTests
                     ArgumentCount = KernelRpcBinaryCodec.DecodeArguments(arguments).Length;
                     return ValueTask.FromResult(KernelRpcBinaryCodec.EncodeValue(KernelRpcValue.Int32(42)));
                 }
-
                 private ValueTask<string> InstallPackageAsync(string packageJson)
                 {
                     InstallCount++;
@@ -170,7 +145,6 @@ public sealed class InvokeAsyncRuntimeTests
             }
         }
         """;
-
     private const string ObjectSurfaceSource = """
         using System;
         using System.Threading;
@@ -182,11 +156,9 @@ public sealed class InvokeAsyncRuntimeTests
         using DotBoxD.Kernels.Game.Plugin.Client;
         using DotBoxD.Kernels.Game.Server.Abstractions;
         using DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
-
         namespace DotBoxD.Kernels.Game.Server.Abstractions
         {
             public sealed record MonsterSnapshot(string Id, string Name, int Health, int Level, int Position);
-
             [DotBoxDService]
             public interface IGameWorldAccess
             {
@@ -194,7 +166,6 @@ public sealed class InvokeAsyncRuntimeTests
                 MonsterSnapshot GetMonster(string entityId);
             }
         }
-
         namespace DotBoxD.Services.Generated
         {
             public static class DotBoxDGeneratedExtensions
@@ -203,11 +174,9 @@ public sealed class InvokeAsyncRuntimeTests
                     => throw new InvalidOperationException("not used");
             }
         }
-
         namespace DotBoxD.Kernels.Game.Server.Abstractions.Ipc
         {
             public readonly record struct LiveSettingUpdate(string Name, string Value);
-
             public interface IGamePluginControlService : DotBoxD.Plugins.IServerExtensionWireClient
             {
                 ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default);
@@ -221,7 +190,6 @@ public sealed class InvokeAsyncRuntimeTests
                 ValueTask HoldUntilShutdownAsync(CancellationToken ct = default);
             }
         }
-
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
             [GeneratePluginServer]

@@ -5,9 +5,7 @@ using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Tests._TestSupport;
 using DotBoxD.Plugins;
 using DotBoxD.Plugins.Runtime;
-
 namespace DotBoxD.Kernels.Tests.Plugins;
-
 public sealed class PluginHookSignatureTests
 {
     [Fact]
@@ -15,41 +13,32 @@ public sealed class PluginHookSignatureTests
     {
         var server = PluginAddendumTestPolicies.CreateServer();
         await server.InstallAsync(FireDamagePluginPackage.Create());
-
         var ex = Assert.Throws<SandboxValidationException>(
             () => server.Hooks.On(new MismatchedDamageEventAdapter()).Use<FireDamageKernel>());
-
         Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK033");
     }
-
     [Fact]
     public void UseGeneratedChain_rolls_back_when_adapter_signature_fails()
     {
         var server = PluginAddendumTestPolicies.CreateServer();
-
         var ex = Assert.Throws<SandboxValidationException>(
             () => server.Hooks.On(new MismatchedDamageEventAdapter())
                 .UseGeneratedChain(FireDamagePluginPackage.Create()));
-
         Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK033");
         Assert.False(server.Kernels.TryGet("fire-damage", out _));
     }
-
     [Fact]
     public async Task Convention_adapter_uses_generated_event_parameter_names()
     {
         var messages = new InMemoryPluginMessageSink();
         var server = PluginAddendumTestPolicies.CreateServer(messages);
         var kernel = await server.InstallAsync(ConventionPackage());
-
         server.Hooks.On<ConventionDamageEvent>().Use(kernel);
         await server.Hooks.PublishAsync(new ConventionDamageEvent("fire", 120, "player-1"));
-
         var message = Assert.Single(messages.Messages);
         Assert.Equal("player-1", message.TargetId);
         Assert.Equal("matched", message.Message);
     }
-
     [Fact]
     public async Task Convention_adapter_uses_record_constructor_property_order()
     {

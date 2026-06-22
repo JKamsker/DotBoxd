@@ -2,9 +2,7 @@ using System.Buffers.Binary;
 using DotBoxD.Codecs.MessagePack;
 using DotBoxD.Services.Protocol;
 using Xunit;
-
 namespace DotBoxD.Services.Tests.Protocol;
-
 public class MessageFramerTests
 {
     [Fact]
@@ -14,29 +12,22 @@ public class MessageFramerTests
         var messageId = 42;
         var type = MessageType.Request;
         var payload = new byte[] { 1, 2, 3, 4, 5 };
-
         // Act
         using var frame = MessageFramer.FrameToPayload(messageId, type, payload);
         var span = frame.Span;
-
         // Assert
         Assert.Equal(MessageFramer.HeaderSize + payload.Length, frame.Length);
-
         // Check total length (first 4 bytes)
         var totalLength = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(0, 4));
         Assert.Equal(frame.Length, totalLength);
-
         // Check message ID (next 4 bytes)
         var extractedMessageId = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(4, 4));
         Assert.Equal(messageId, extractedMessageId);
-
         // Check message type (next 1 byte)
         Assert.Equal((byte)type, span[8]);
-
         // Check payload
         Assert.Equal(payload, frame.Memory.Slice(MessageFramer.HeaderSize).ToArray());
     }
-
     [Fact]
     public void Frame_WithEmptyPayload_ShouldCreateValidFrame()
     {
@@ -44,14 +35,11 @@ public class MessageFramerTests
         var messageId = 1;
         var type = MessageType.Response;
         var payload = Array.Empty<byte>();
-
         // Act
         using var frame = MessageFramer.FrameToPayload(messageId, type, payload);
-
         // Assert
         Assert.Equal(MessageFramer.HeaderSize, frame.Length);
     }
-
     [Fact]
     public void TryReadFrame_ShouldRoundTripEnvelopeAndPayload()
     {
@@ -67,7 +55,6 @@ public class MessageFramerTests
         };
         var payload = new byte[] { 9, 8, 7, 6 };
         using var frame = MessageFramer.FrameMessage(serializer, messageId, type, request, payload);
-
         // Act
         var ok = MessageFramer.TryReadFrame(
             frame.Memory,
@@ -75,19 +62,16 @@ public class MessageFramerTests
             out var extractedType,
             out var extractedEnvelope,
             out var extractedPayload);
-
         // Assert
         Assert.True(ok);
         Assert.Equal(messageId, extractedId);
         Assert.Equal(type, extractedType);
         Assert.Equal(payload, extractedPayload.ToArray());
-
         var roundTripped = serializer.Deserialize<RpcRequest>(extractedEnvelope);
         Assert.Equal(request.MessageId, roundTripped.MessageId);
         Assert.Equal(request.ServiceName, roundTripped.ServiceName);
         Assert.Equal(request.MethodName, roundTripped.MethodName);
     }
-
     [Fact]
     public void TryReadFrame_WithEmptyPayload_ShouldRoundTrip()
     {
@@ -95,7 +79,6 @@ public class MessageFramerTests
         var serializer = new MessagePackRpcSerializer();
         var request = new RpcRequest { MessageId = 3, ServiceName = "S", MethodName = "M" };
         using var frame = MessageFramer.FrameMessage(serializer, 3, MessageType.Request, request, ReadOnlySpan<byte>.Empty);
-
         // Act
         var ok = MessageFramer.TryReadFrame(
             frame.Memory,
@@ -103,14 +86,12 @@ public class MessageFramerTests
             out _,
             out var extractedEnvelope,
             out var extractedPayload);
-
         // Assert
         Assert.True(ok);
         Assert.Equal(3, extractedId);
         Assert.True(extractedPayload.IsEmpty);
         Assert.False(extractedEnvelope.IsEmpty);
     }
-
     [Fact]
     public void TryReadFrame_ParsingCost_DoesNotScaleWithPayloadSize()
     {
@@ -119,20 +100,15 @@ public class MessageFramerTests
         // copy regressed back in, parsing the large frame would allocate measurably more than the small.
         var serializer = new MessagePackRpcSerializer();
         var request = new RpcRequest { MessageId = 1, ServiceName = "S", MethodName = "M" };
-
         using var smallFrame = MessageFramer.FrameMessage(serializer, 1, MessageType.Request, request, new byte[16]);
         using var largeFrame = MessageFramer.FrameMessage(serializer, 1, MessageType.Request, request, new byte[256 * 1024]);
-
         var smallAllocated = MeasureParseAllocations(smallFrame.Memory);
         var largeAllocated = MeasureParseAllocations(largeFrame.Memory);
-
         Assert.Equal(smallAllocated, largeAllocated);
     }
-
     private static long MeasureParseAllocations(ReadOnlyMemory<byte> frame)
     {
         const int iterations = 1000;
-
         // Warm up so tiered JIT compilation does not allocate inside the measured window.
         long sink = 0;
         for (var i = 0; i < iterations; i++)
@@ -140,7 +116,6 @@ public class MessageFramerTests
             MessageFramer.TryReadFrame(frame, out _, out _, out var envelope, out var payload);
             sink += envelope.Length + payload.Length;
         }
-
         var before = GC.GetAllocatedBytesForCurrentThread();
         for (var i = 0; i < iterations; i++)
         {
@@ -148,7 +123,6 @@ public class MessageFramerTests
             sink += envelope.Length + payload.Length;
         }
         var after = GC.GetAllocatedBytesForCurrentThread();
-
         // Keep `sink` observable so the calls cannot be optimized away.
         Assert.True(sink >= 0);
         return after - before;

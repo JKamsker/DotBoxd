@@ -3,46 +3,35 @@ using DotBoxD.Plugins.Analyzer.Analysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using DiagnosticSeverity = DotBoxD.Kernels.Model.DiagnosticSeverity;
-
 namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Core;
-
 public sealed class PluginAnalyzerCompletenessTests
 {
     private static readonly CSharpParseOptions ParseOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview);
-
     [Fact]
     public void Generator_lowers_supported_bool_int_and_string_expression_subset()
     {
         var (result, outputCompilation, diagnostics) = RunGenerator("""
             using DotBoxD.Plugins;
             using DotBoxD.Abstractions;
-
             namespace Sample;
-
             public sealed record DamageEvent(string TargetId, string Message, int Amount);
-
             [Plugin("complete-expression")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 [LiveSetting]
                 public bool Disabled { get; set; } = false;
-
                 [LiveSetting]
                 public int Offset { get; set; } = -1;
-
                 [LiveSetting]
                 public int MinDamage { get; set; } = 100;
-
                 public bool ShouldHandle(DamageEvent e, HookContext ctx)
                     => !this.Disabled &&
                        (e.Amount + Offset >= MinDamage - 1) &&
                        e.Message != "";
-
                 public void Handle(DamageEvent e, HookContext ctx)
                     => ctx.Messages.Send(e.TargetId, e.Message);
             }
             """);
-
         Assert.Empty(diagnostics.Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
         Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
         var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
@@ -52,46 +41,36 @@ public sealed class PluginAnalyzerCompletenessTests
         Assert.Contains("Not(StringEquals(Var(\"e_Message\"), Str(\"\")))", generated);
         Assert.Contains("[\"Cpu\", \"Alloc\", \"HostStateWrite\", \"Concurrency\", \"Audit\"]", generated);
     }
-
     [Fact]
     public void Generator_omits_alloc_effect_when_lowered_ir_has_no_allocating_literals()
     {
         var (result, outputCompilation, diagnostics) = RunGenerator("""
             using DotBoxD.Plugins;
             using DotBoxD.Abstractions;
-
             namespace Sample;
-
             public sealed record DamageEvent(string TargetId, string Message);
-
             [Plugin("no-alloc")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
-
                 public void Handle(DamageEvent e, HookContext ctx)
                     => ctx.Messages.Send(e.TargetId, e.Message);
             }
             """);
-
         Assert.Empty(diagnostics.Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
         Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity.Equals(DiagnosticSeverity.Error)));
         var generated = Assert.Single(result.GeneratedTrees).GetText().ToString();
         Assert.Contains("[\"Cpu\", \"HostStateWrite\", \"Concurrency\", \"Audit\"]", generated);
         Assert.DoesNotContain("\"Alloc\"", generated);
     }
-
     [Fact]
     public void Generator_emits_direct_parameter_array_construction_without_linq()
     {
         var (result, outputCompilation, diagnostics) = RunGenerator("""
             using DotBoxD.Plugins;
             using DotBoxD.Abstractions;
-
             namespace Sample;
-
             public sealed record DamageEvent(string TargetId, string Message);
-
             [Plugin("direct-parameters")]
             public sealed partial class DamageKernel : IEventKernel<DamageEvent>
             {
