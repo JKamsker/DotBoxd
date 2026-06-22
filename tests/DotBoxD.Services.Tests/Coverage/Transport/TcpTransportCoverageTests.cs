@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using DotBoxD.Services.Buffers;
 using DotBoxD.Services.Protocol;
 using DotBoxD.Transports.Tcp;
+using static DotBoxD.Services.Tests.Coverage.Transport.TcpTransportCoverageTestHelpers;
 using Xunit;
 
 namespace DotBoxD.Services.Tests.Coverage.Transport;
@@ -336,38 +337,4 @@ public sealed class TcpTransportCoverageTests
         Assert.False(serverConn.IsConnected);
     }
 
-    // ---- Helpers ---------------------------------------------------------------------------
-
-    private static int RequirePort(TcpServerTransport server) =>
-        server.LocalEndpoint?.Port ?? throw new InvalidOperationException("no bound port");
-
-    private static int ReserveThenReleasePort()
-    {
-        var probe = new TcpListener(IPAddress.Loopback, 0);
-        probe.Start();
-        var port = ((IPEndPoint)probe.LocalEndpoint).Port;
-        probe.Stop();
-        return port;
-    }
-
-    /// <summary>
-    /// Builds a wire frame whose 4-byte little-endian length prefix matches the buffer length, so it
-    /// passes <see cref="MessageFramer.ValidateOutgoingFrame"/> on the send path. Layout mirrors a real
-    /// DotBoxD frame header (length, messageId, type) followed by arbitrary body bytes.
-    /// </summary>
-    private static Payload BuildFrame(int messageId, byte type, int bodyLength)
-    {
-        var total = MessageFramer.HeaderSize + bodyLength;
-        var payload = Payload.Rent(total);
-        var span = payload.Memory.Span;
-        BinaryPrimitives.WriteInt32LittleEndian(span.Slice(0, 4), total);
-        BinaryPrimitives.WriteInt32LittleEndian(span.Slice(4, 4), messageId);
-        span[8] = type;
-        for (var i = MessageFramer.HeaderSize; i < total; i++)
-        {
-            span[i] = (byte)(i & 0xFF);
-        }
-
-        return payload;
-    }
 }
