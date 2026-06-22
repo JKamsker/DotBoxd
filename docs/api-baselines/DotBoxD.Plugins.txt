@@ -19,6 +19,7 @@ public bool BoolValue
 public bool CouldMatch(TEvent value)
 public bool HasIndex => _checks.Count > 0
 public bool IndexCoversPredicate { get; init; }
+public bool IsRevoked
 public bool IsRevoked => Volatile.Read(ref _revoked) != 0
 public bool LocalTerminal { get; init; }
 public bool Owns(string pluginId)
@@ -26,6 +27,7 @@ public bool ReadBool()
 public bool Register<TEvent>( IPluginEventAdapter<TEvent> adapter, InstalledKernel kernel, IReadOnlyList<IndexedPredicate> predicates, bool indexCoversPredicate)
 public bool TryGet(string pluginId, [MaybeNullWhen(false)] out InstalledKernel kernel)
 public bool Uninstall(string pluginId)
+public bool UninstallPool(InstalledKernelPool pool)
 public bool Unregister(string subscriptionId)
 public class ServerExtensionProxy : DispatchProxy
 public const string CapabilityId = "host.message.write"
@@ -95,6 +97,7 @@ public HookPipeline<TEvent> RunLocal(Func<TCurrent, ValueTask> handler)
 public HookPipeline<TEvent> RunLocal(Func<TEvent, HookContext, ValueTask> handler)
 public HookPipeline<TEvent> RunLocal(Func<TEvent, ValueTask> handler)
 public HookPipeline<TEvent> Use(InstalledKernel kernel)
+public HookPipeline<TEvent> Use(InstalledKernelPool pool)
 public HookPipeline<TEvent> Use<TKernel>() where TKernel : class
 public HookPipeline<TEvent> UseGeneratedChain(PluginPackage package)
 public HookPipeline<TEvent> UseGeneratedLocalResultChain<TResult>( PluginPackage package, Func<TEvent, HookContext, CancellationToken, ValueTask<TResult>> handler, int priority = 0) where TResult : struct, IHookResult
@@ -118,6 +121,7 @@ public IDisposable Register<TProjected>( string subscriptionId, Func<TProjected,
 public IEnumerator<InstalledKernel> GetEnumerator() => Snapshot().GetEnumerator()
 public InstalledKernel Get(string pluginId)
 public InstalledKernel Kernel { get; }
+public int DegreeOfParallelism => _kernels.Length
 public int Int32Value
 public int ItemCount => (_items ?? EmptyItems).Length
 public int ReadInt32()
@@ -131,6 +135,7 @@ public IPluginEventAdapter<TEvent> Resolve<TEvent>()
 public IReadOnlyList<HookSubscriptionManifest> Subscriptions { get => _subscriptions; init => _subscriptions = PluginModelCopy.List(value); }
 public IReadOnlyList<IndexedPredicate> HonoredPredicates { get; }
 public IReadOnlyList<IndexedPredicate> IndexedPredicates
+public IReadOnlyList<InstalledKernel> Kernels { get; }
 public IReadOnlyList<InstalledKernel> Snapshot()
 public IReadOnlyList<LiveSettingDefinition> Definitions
 public IReadOnlyList<LiveSettingDefinition> LiveSettings { get => _liveSettings; init => _liveSettings = PluginModelCopy.List(value); }
@@ -277,6 +282,7 @@ public sealed class EventIndexMatcher<TEvent>
 public sealed class EventIndexRegistry
 public sealed class HookRegistry
 public sealed class HookStage<TEvent, TCurrent>
+public sealed class InstalledKernelPool
 public sealed class KernelRegistry : IEnumerable<InstalledKernel>
 public sealed class LiveContext<T> where T : class
 public sealed class LiveSettingStore
@@ -364,6 +370,7 @@ public static void EncodeValue(SandboxValue value, IBufferWriter<byte> writer)
 public static void Register(Type kernelType, Func<PluginPackage> factory)
 public string Name { get; }
 public string Name => Definition.Name
+public string PluginId { get; }
 public string ReadString()
 public string TextValue
 public string? ProjectedType { get; init; }
@@ -391,6 +398,7 @@ public SubscriptionPipeline<TEvent> RunLocal(Func<TCurrent, ValueTask> handler)
 public SubscriptionPipeline<TEvent> RunLocal(Func<TEvent, HookContext, ValueTask> handler)
 public SubscriptionPipeline<TEvent> RunLocal(Func<TEvent, ValueTask> handler)
 public SubscriptionPipeline<TEvent> Use(InstalledKernel kernel)
+public SubscriptionPipeline<TEvent> Use(InstalledKernelPool pool)
 public SubscriptionPipeline<TEvent> Use<TKernel>() where TKernel : class
 public SubscriptionPipeline<TEvent> UseGeneratedChain(PluginPackage package)
 public SubscriptionPipeline<TEvent> UseProjecting(InstalledKernel kernel, string subscriptionId, Hooks.RemoteLocalPush push)
@@ -421,6 +429,7 @@ public ValueTask<InstalledKernel> InstallAsync( PluginPackage package, SandboxPo
 public ValueTask<InstalledKernel> InstallServerExtensionAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public ValueTask<TResult?> FireAsync<TContext, TResult>(TContext context, CancellationToken cancellationToken = default) where TResult : struct, IHookResult
 public ValueTask<TResult?> FireResultAsync<TResult>(TEvent e, CancellationToken cancellationToken = default) where TResult : struct, IHookResult
+public ValueTask<InstalledKernelPool> InstallPoolAsync( PluginPackage package, int degreeOfParallelism, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public void Clear() => _handlers.Clear()
 public void Dispose()
 public void EnsureConsumed()

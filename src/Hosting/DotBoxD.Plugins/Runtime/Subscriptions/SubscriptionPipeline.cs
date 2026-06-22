@@ -8,14 +8,13 @@ public sealed class SubscriptionPipeline<TEvent> : IKernelHandlerPipeline
 {
     private readonly object _gate = new();
     private volatile Func<TEvent, HookContext, ValueTask<bool>>[] _filters = [];
-    private volatile Func<TEvent, HookContext, ValueTask>[] _handlers = [];
-    private readonly Dictionary<InstalledKernel, List<Func<TEvent, HookContext, ValueTask>>> _kernelHandlers = [];
     private readonly IPluginEventAdapter<TEvent> _adapter;
     private readonly IPluginMessageSink _messages;
     private readonly HookContext _defaultContext;
     private readonly KernelRegistry _kernels;
     private readonly Func<PluginPackage, InstalledKernel>? _installer;
     private readonly Action<SubscriptionDeliveryFault>? _onFault;
+    private readonly KernelHandlerSet<TEvent> _handlerSet = new();
 
     internal SubscriptionPipeline(
         IPluginEventAdapter<TEvent> adapter,
@@ -83,11 +82,7 @@ public sealed class SubscriptionPipeline<TEvent> : IKernelHandlerPipeline
 
     public SubscriptionPipeline<TEvent> InvokeHostHandler(Func<TEvent, HookContext, ValueTask> handler)
     {
-        lock (_gate)
-        {
-            _handlers = [.. _handlers, handler];
-        }
-
+        _handlerSet.Add(handler);
         return this;
     }
 
@@ -151,7 +146,15 @@ public sealed class SubscriptionPipeline<TEvent> : IKernelHandlerPipeline
     public SubscriptionPipeline<TEvent> Use(InstalledKernel kernel)
     {
         kernel.ValidateFor(_adapter);
-        AddKernelHandler(kernel, (e, context) => kernel.InvokeAsync(_adapter, e, context.CancellationToken));
+        _handlerSet.Add(kernel, (e, context) => kernel.InvokeAsync(_adapter, e, context.CancellationToken));
+        return this;
+    }
+
+    public SubscriptionPipeline<TEvent> Use(InstalledKernelPool pool)
+    {
+        ArgumentNullException.ThrowIfNull(pool);
+        pool.ValidateFor(_adapter);
+        _handlerSet.Add(pool, (e, context) => pool.InvokeAsync(_adapter, e, context.CancellationToken));
         return this;
     }
 
@@ -176,66 +179,25 @@ public sealed class SubscriptionPipeline<TEvent> : IKernelHandlerPipeline
             Hooks.LocalCallbackProjection.EnsureWholeEventSupported(_adapter);
         }
 
-        AddKernelHandler(kernel, (e, context) =>
+        _handlerSet.Add(kernel, (e, context) =>
             Hooks.LocalCallbackProjection.PushAsync(kernel, _adapter, e, context, wholeEvent, subscriptionId, push));
 
         return this;
-    }
-
-    private void AddKernelHandler(InstalledKernel kernel, Func<TEvent, HookContext, ValueTask> handler)
-    {
-        lock (_gate)
-        {
-            _handlers = [.. _handlers, handler];
-            if (!_kernelHandlers.TryGetValue(kernel, out var handlers))
-            {
-                handlers = [];
-                _kernelHandlers[kernel] = handlers;
-            }
-
-            handlers.Add(handler);
-        }
     }
 
     internal bool UsesAdapter(IPluginEventAdapter<TEvent> adapter)
         => ReferenceEquals(_adapter, adapter);
 
     void IKernelHandlerPipeline.RemoveKernel(InstalledKernel kernel)
-        => RemoveKernel(kernel);
+        => _handlerSet.Remove(kernel);
 
-    private void RemoveKernel(InstalledKernel kernel)
-    {
-        lock (_gate)
-        {
-            if (!_kernelHandlers.Remove(kernel, out var handlers))
-            {
-                return;
-            }
-
-            _handlers = RemoveHandlers(_handlers, handlers);
-        }
-    }
-
-    private static Func<TEvent, HookContext, ValueTask>[] RemoveHandlers(
-        Func<TEvent, HookContext, ValueTask>[] current,
-        List<Func<TEvent, HookContext, ValueTask>> removed)
-    {
-        var next = new List<Func<TEvent, HookContext, ValueTask>>(current.Length);
-        foreach (var handler in current)
-        {
-            if (!removed.Contains(handler))
-            {
-                next.Add(handler);
-            }
-        }
-
-        return next.Count == current.Length ? current : [.. next];
-    }
+    void IKernelHandlerPipeline.RemoveKernelPool(InstalledKernelPool pool)
+        => _handlerSet.Remove(pool);
 
     internal void Publish(TEvent e, CancellationToken cancellationToken)
     {
         var filters = _filters;
-        var handlers = _handlers;
+        var handlers = _handlerSet.Snapshot;
         if (filters.Length == 0 && handlers.Length == 0)
         {
             return;

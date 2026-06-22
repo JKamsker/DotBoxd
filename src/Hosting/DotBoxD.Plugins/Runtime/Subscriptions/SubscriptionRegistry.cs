@@ -90,6 +90,20 @@ public sealed class SubscriptionRegistry
         }
     }
 
+    internal void RemoveKernelPool(InstalledKernelPool pool)
+    {
+        object[] pipelines;
+        lock (_gate)
+        {
+            pipelines = [.. _pipelines.Values];
+        }
+
+        foreach (var pipeline in pipelines)
+        {
+            ((IKernelHandlerPipeline)pipeline).RemoveKernelPool(pool);
+        }
+    }
+
     public void Publish<TEvent>(TEvent e, CancellationToken cancellationToken = default)
     {
         object? pipeline;
