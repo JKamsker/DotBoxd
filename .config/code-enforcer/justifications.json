@@ -82,10 +82,6 @@
       "justification": "Pre-existing time-binding parity fixture surfaced after correcting the line guard root. Keep listed until shared setup is extracted."
     },
     {
-      "path": "tests/DotBoxD.Kernels.Tests/PluginAnalyzer/Runtime/HookChainRuntimeTests.cs",
-      "justification": "Hook-chain runtime coverage shares interceptor compilation and publish helpers across local, projected, and remote chains. Keep listed until runtime scenarios are split by chain type."
-    },
-    {
       "path": "tests/DotBoxD.Kernels.Tests/Runtime/File/SafeFileSystemTests.cs",
       "justification": "Pre-existing file-system runtime fixture surfaced after correcting the line guard root. Keep listed until read/write/path safety scenarios are split."
     },
