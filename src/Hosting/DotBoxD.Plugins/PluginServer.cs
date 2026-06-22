@@ -13,6 +13,8 @@ public sealed partial class PluginServer : IDisposable
     private readonly Hosting.Execution.SandboxHost _host;
     private readonly SandboxPolicy _defaultPolicy;
     private readonly ExecutionMode _executionMode;
+    private readonly object _poolGate = new();
+    private readonly List<InstalledKernelPool> _kernelPools = [];
     private int _disposed;
 
     private PluginServer(
@@ -106,6 +108,13 @@ public sealed partial class PluginServer : IDisposable
         CancellationToken cancellationToken = default)
         => InstallCoreAsync(package, policy, owner: null, cancellationToken);
 
+    public ValueTask<InstalledKernelPool> InstallPoolAsync(
+        PluginPackage package,
+        int degreeOfParallelism,
+        SandboxPolicy? policy = null,
+        CancellationToken cancellationToken = default)
+        => InstallPoolCoreAsync(package, degreeOfParallelism, policy, cancellationToken);
+
     /// <summary>
     /// Installs a <b>server extension</b> package: a kernel invoked request/response (via
     /// <see cref="InstalledKernel.InvokeServerExtensionAsync"/>) rather than wired to an event. It is
@@ -140,6 +149,23 @@ public sealed partial class PluginServer : IDisposable
         }
 
         return removed is not null;
+    }
+
+    public bool UninstallPool(InstalledKernelPool pool)
+    {
+        ArgumentNullException.ThrowIfNull(pool);
+        ThrowIfDisposed();
+        lock (_poolGate)
+        {
+            if (!_kernelPools.Remove(pool))
+            {
+                return false;
+            }
+        }
+
+        pool.Revoke();
+        RemovePoolReferences(pool);
+        return true;
     }
 
     internal ValueTask<InstalledKernel> InstallOwnedAsync(
@@ -196,6 +222,40 @@ public sealed partial class PluginServer : IDisposable
         return kernel;
     }
 
+    private async ValueTask<InstalledKernelPool> InstallPoolCoreAsync(
+        PluginPackage package,
+        int degreeOfParallelism,
+        SandboxPolicy? policy,
+        CancellationToken cancellationToken)
+    {
+        if (degreeOfParallelism <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(degreeOfParallelism),
+                degreeOfParallelism,
+                "kernel pool degree of parallelism must be positive.");
+        }
+
+        ThrowIfDisposed();
+        PluginPackageValidator.Validate(package);
+        var plan = await _host.PrepareAsync(package.Module, policy ?? _defaultPolicy, cancellationToken)
+            .ConfigureAwait(false);
+        PluginPackageValidator.ValidatePrepared(package, plan, Events);
+        var kernels = new InstalledKernel[degreeOfParallelism];
+        for (var i = 0; i < kernels.Length; i++)
+        {
+            kernels[i] = new InstalledKernel(_host, plan, package, _executionMode);
+        }
+
+        var pool = new InstalledKernelPool(kernels);
+        lock (_poolGate)
+        {
+            _kernelPools.Add(pool);
+        }
+
+        return pool;
+    }
+
     private async ValueTask<InstalledKernel> InstallServerExtensionCoreAsync(
         PluginPackage package,
         SandboxPolicy? policy,
@@ -226,6 +286,12 @@ public sealed partial class PluginServer : IDisposable
         Subscriptions.RemoveKernel(kernel);
     }
 
+    private void RemovePoolReferences(InstalledKernelPool pool)
+    {
+        Hooks.RemoveKernelPool(pool);
+        Subscriptions.RemoveKernelPool(pool);
+    }
+
     /// <summary>
     /// Releases the owned <see cref="Hosting.Execution.SandboxHost"/> (compiled executable cache, generated load
     /// contexts, hotness state, and other host-owned execution resources) so a host that retires a
@@ -245,7 +311,20 @@ public sealed partial class PluginServer : IDisposable
                 kernel.Revoke();
             }
 
+            foreach (var pool in KernelPoolSnapshot())
+            {
+                pool.Revoke();
+            }
+
             _host.Dispose();
+        }
+    }
+
+    private InstalledKernelPool[] KernelPoolSnapshot()
+    {
+        lock (_poolGate)
+        {
+            return [.. _kernelPools];
         }
     }
 

@@ -6,6 +6,7 @@ namespace DotBoxD.Plugins.Runtime;
 internal interface IKernelHandlerPipeline
 {
     void RemoveKernel(InstalledKernel kernel);
+    void RemoveKernelPool(InstalledKernelPool pool);
 }
 
 public sealed class HookRegistry
@@ -89,6 +90,20 @@ public sealed class HookRegistry
         foreach (var pipeline in pipelines)
         {
             ((IKernelHandlerPipeline)pipeline).RemoveKernel(kernel);
+        }
+    }
+
+    internal void RemoveKernelPool(InstalledKernelPool pool)
+    {
+        object[] pipelines;
+        lock (_gate)
+        {
+            pipelines = [.. _pipelines.Values];
+        }
+
+        foreach (var pipeline in pipelines)
+        {
+            ((IKernelHandlerPipeline)pipeline).RemoveKernelPool(pool);
         }
     }
 
