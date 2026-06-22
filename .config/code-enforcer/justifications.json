@@ -54,10 +54,6 @@
       "justification": "Pre-existing large streaming coordinator surfaced after correcting the line guard root. Keep listed until stream lifecycle and flow-control code are split."
     },
     {
-      "path": "tests/DotBoxD.Services.Tests/Peer/PeerTests.cs",
-      "justification": "Pre-existing peer behavior fixture surfaced after correcting the line guard root. Keep listed until peer lifecycle scenarios are split."
-    },
-    {
       "path": "tests/DotBoxD.Services.Tests/Streaming/Core/StreamingProtocolRegressionTests.cs",
       "justification": "Pre-existing streaming protocol regression fixture surfaced after correcting the line guard root. Keep listed until streaming cases are split."
     }
