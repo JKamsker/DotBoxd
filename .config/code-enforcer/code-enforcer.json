@@ -4,5 +4,5 @@
   "maxFilesPerRootDir": 5,
   "maxLinesSoft": 350,
   "maxLinesHard": 500,
-  "maxSoftLimitViolations": 26
+  "maxSoftLimitViolations": 25
 }

@@ -1,13 +1,10 @@
-using System.IO.Pipelines;
 using DotBoxD.Services.Buffers;
-using DotBoxD.Services.Exceptions;
 using DotBoxD.Services.Peer;
 using DotBoxD.Services.Protocol;
 using DotBoxD.Services.Serialization;
 using DotBoxD.Services.Server;
 using DotBoxD.Services.Streaming.Core;
 using DotBoxD.Services.Streaming.Frames;
-using DotBoxD.Services.Transport;
 
 namespace DotBoxD.Services.Client;
 
@@ -114,146 +111,12 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         EnsureNonStreamingResponse(received);
     }
 
-    public Task<Stream> InvokeStreamAsync(
-        string service,
-        string method,
-        CancellationToken ct = default) =>
-        _streamingCalls.ReadStreamAsync(SendRequestAsync(service, method, instanceId: null, ct));
-
-    public Task<Stream> InvokeStreamAsync<TRequest>(
-        string service,
-        string method,
-        TRequest request,
-        RpcStreamAttachment[]? streams = null,
-        CancellationToken ct = default) =>
-        _streamingCalls.ReadStreamAsync(SendRequestAsync(service, method, request, instanceId: null, streams, ct));
-
-    public Task<Pipe> InvokePipeAsync(
-        string service,
-        string method,
-        CancellationToken ct = default) =>
-        _streamingCalls.ReadPipeAsync(SendRequestAsync(service, method, instanceId: null, ct));
-
-    public Task<Pipe> InvokePipeAsync<TRequest>(
-        string service,
-        string method,
-        TRequest request,
-        RpcStreamAttachment[]? streams = null,
-        CancellationToken ct = default) =>
-        _streamingCalls.ReadPipeAsync(SendRequestAsync(service, method, request, instanceId: null, streams, ct));
-
-    public IAsyncEnumerable<T> InvokeAsyncEnumerable<T>(
-        string service,
-        string method,
-        CancellationToken ct = default) =>
-        _streamingCalls.EnumerateAsync<T>(
-            invokeCt => SendRequestAsync(service, method, instanceId: null, invokeCt),
-            ct);
-
-    public IAsyncEnumerable<T> InvokeAsyncEnumerable<TRequest, T>(
-        string service,
-        string method,
-        TRequest request,
-        RpcStreamAttachment[]? streams = null,
-        CancellationToken ct = default) =>
-        _streamingCalls.EnumerateAsync<T>(
-            invokeCt => SendRequestAsync(service, method, request, instanceId: null, streams, invokeCt),
-            ct);
-
-    public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableAsync<T>(
-        string service,
-        string method,
-        CancellationToken ct = default) =>
-        _streamingCalls.ReadAsyncEnumerableAsync<T>(SendRequestAsync(service, method, instanceId: null, ct));
-
-    public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableAsync<TRequest, T>(
-        string service,
-        string method,
-        TRequest request,
-        RpcStreamAttachment[]? streams = null,
-        CancellationToken ct = default) =>
-        _streamingCalls.ReadAsyncEnumerableAsync<T>(
-            SendRequestAsync(service, method, request, instanceId: null, streams, ct));
-
-    public bool TryCompleteResponse(int messageId, RpcFrame frame)
-    {
-        if (!MessageFramer.TryReadFrame(frame.Memory, out _, out var messageType, out var envelope, out var payload))
-        {
-            _pending.TryFail(
-                messageId,
-                new ServiceProtocolException("Malformed response frame."));
-            return false;
-        }
-
-        RpcResponse response;
-        try
-        {
-            response = _serializer.Deserialize<RpcResponse>(envelope);
-        }
-        catch
-        {
-            _pending.TryFail(
-                messageId,
-                new ServiceProtocolException("Malformed response envelope."));
-            return false;
-        }
-
-        if (messageType == MessageType.Error && response.IsSuccess)
-        {
-            _pending.TryFail(
-                messageId,
-                new ServiceProtocolException("Malformed error response frame."));
-            return false;
-        }
-
-        if (!_pending.TryTake(messageId, out var completion))
-        {
-            return false;
-        }
-
-        RpcStreamReceiver? stream = null;
-        try
-        {
-            if (response.Stream is { } handle &&
-                completion.RegistersStreamingResponse)
-            {
-                stream = _streams.RegisterInboundResponse(handle, CancellationToken.None);
-            }
-
-            return completion.TrySetResponse(response, payload, frame, stream, _serializer);
-        }
-        catch (Exception ex)
-        {
-            stream?.Cancel();
-            completion.SetError(ex);
-            return false;
-        }
-    }
-
-    public bool TryCompleteResponse(int messageId, Payload frame) =>
-        TryCompleteResponse(messageId, new RpcFrame(frame));
-
     public void FailPending(Exception error) => _pending.FailAll(error);
 
     public Task StopCancelFramesAsync()
     {
         _pending.Dispose();
         return _cancelFrames.StopAsync();
-    }
-
-    private TResponse DeserializeNonStreamingResponse<TResponse>(ReceivedResponse received)
-    {
-        EnsureNonStreamingResponse(received);
-        return _serializer.Deserialize<TResponse>(received.Payload);
-    }
-
-    private static void EnsureNonStreamingResponse(ReceivedResponse received)
-    {
-        if (received.Response.Stream is not null)
-        {
-            throw new ServiceProtocolException(
-                "Response opened a stream for a non-streaming invocation.");
-        }
     }
 
     private Task<ReceivedResponse> SendRequestAsync<TRequest>(
@@ -356,84 +219,6 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
             _pending.Remove(pending.MessageId, pending, consumed: true);
             ReleasePendingSlot();
             throw;
-        }
-    }
-
-    private async Task<ReceivedResponse> SendFrameAndAwaitAsync(
-        int messageId,
-        PendingReceivedResponse pending,
-        PooledBufferWriter frame,
-        string service,
-        string method,
-        RpcOutboundStreamSet outboundStreams,
-        CancellationToken ct)
-    {
-        var consumed = false;
-        var requestSent = false;
-        try
-        {
-            await SendOwnedFrameAsync(frame, ct).ConfigureAwait(false);
-            requestSent = true;
-            outboundStreams.Start();
-
-            ReceivedResponse received;
-            // Cancel through the pending-request table rather than the TCS directly, so the timeout and
-            // an incoming response race on a single atomic removal: whichever removes the entry first
-            // wins and the loser is a guaranteed no-op. Cancelling the TCS directly could win the race
-            // against TryComplete and discard an already-delivered response as a spurious timeout.
-            var callerCancellation = ct.CanBeCanceled
-                ? ct.Register(static state => ((IPendingResponse)state!).CancelByCaller(), pending)
-                : default;
-            using (callerCancellation)
-            {
-                _pending.StartTimeout(pending, _timeout);
-                try
-                {
-                    received = await pending.Task.ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (pending.CancellationKind == PendingCancellationKind.Timeout)
-                {
-                    if (requestSent)
-                    {
-                        _cancelFrames.TrySend(messageId);
-                    }
-
-                    ct.ThrowIfCancellationRequested();
-                    throw new ServiceTimeoutException($"Request to {service}.{method} timed out.");
-                }
-                catch (OperationCanceledException) when (pending.CancellationKind == PendingCancellationKind.Caller)
-                {
-                    if (requestSent)
-                    {
-                        _cancelFrames.TrySend(messageId);
-                    }
-
-                    ct.ThrowIfCancellationRequested();
-                    throw;
-                }
-            }
-
-            if (!received.Response.IsSuccess)
-            {
-                var error = new RemoteServiceException(
-                    received.Response.ErrorMessage ?? "Unknown error",
-                    received.Response.ErrorType ?? "Unknown");
-                received.Dispose();
-                throw error;
-            }
-
-            received.AttachOutboundStreams(outboundStreams);
-            consumed = true;
-            return received;
-        }
-        finally
-        {
-            _pending.Remove(messageId, pending, consumed);
-            ReleasePendingSlot();
-            if (!consumed)
-            {
-                await outboundStreams.DisposeAsync().ConfigureAwait(false);
-            }
         }
     }
 
