@@ -3,7 +3,7 @@ using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
 using DotBoxD.Plugins.Policies;
 using DotBoxD.Plugins.Runtime;
-using SandboxHost = DotBoxD.Hosting.Execution.SandboxHost;
+using static DotBoxD.Kernels.Tests.Compiled.SideEffectParity.FailureAuditParityTestSupport;
 
 namespace DotBoxD.Kernels.Tests.Compiled.SideEffectParity;
 
@@ -225,43 +225,10 @@ public sealed class CompiledSideEffectFailureAuditParityTests
     [Fact]
     public async Task Max_host_calls_exceeded_fails_with_QuotaExceeded_and_equal_sink_state_in_both_modes()
     {
-        const string moduleJson = """
-            {
-              "id": "audit-failure-max-host-calls",
-              "version": "1.0.0",
-              "capabilityRequests": [{ "id": "host.message.write" }],
-              "functions": [
-                {
-                  "id": "main",
-                  "visibility": "entrypoint",
-                  "parameters": [],
-                  "returnType": "Unit",
-                  "body": [
-                    {
-                      "op": "set",
-                      "name": "_unused",
-                      "value": {
-                        "call": "host.message.send",
-                        "args": [{ "string": "player-1" }, { "string": "msg1" }]
-                      }
-                    },
-                    {
-                      "op": "return",
-                      "value": {
-                        "call": "host.message.send",
-                        "args": [{ "string": "player-1" }, { "string": "msg2" }]
-                      }
-                    }
-                  ]
-                }
-              ]
-            }
-            """;
-
         // Interpreted run
         var sinkI = new InMemoryPluginMessageSink();
         var hostI = BuildHost(sinkI);
-        var modI = await hostI.ImportJsonAsync(moduleJson);
+        var modI = await hostI.ImportJsonAsync(TwoSendModuleJson());
         var planI = await hostI.PrepareAsync(modI, SandboxPolicyBuilder.Create()
             .GrantHostMessageWrite()
             .WithFuel(10_000)
@@ -276,7 +243,7 @@ public sealed class CompiledSideEffectFailureAuditParityTests
         // side-effecting bindings.
         var sinkC = new InMemoryPluginMessageSink();
         var hostC = BuildHost(sinkC);
-        var modC = await hostC.ImportJsonAsync(moduleJson);
+        var modC = await hostC.ImportJsonAsync(TwoSendModuleJson());
         var planC = await hostC.PrepareAsync(modC, SandboxPolicyBuilder.Create()
             .GrantHostMessageWrite()
             .WithFuel(10_000)
@@ -373,66 +340,4 @@ public sealed class CompiledSideEffectFailureAuditParityTests
         Assert.Equal(auditI.CapabilityId, auditC.CapabilityId);
     }
 
-    // ---------------------------------------------------------------------------
-    // Helpers
-    // ---------------------------------------------------------------------------
-
-    private static SandboxHost BuildHost(InMemoryPluginMessageSink sink)
-        => SandboxHost.Create(builder =>
-        {
-            builder.AddDefaultPureBindings();
-            builder.AddPluginMessageBindings(sink);
-            builder.UseInterpreter();
-            builder.UseCompilerIfAvailable();
-        });
-
-    private static async ValueTask<ExecutionPlan> PrepareMessagePlanAsync(
-        SandboxHost host,
-        string targetId,
-        string message,
-        IEnumerable<string>? allowedTargets = null,
-        int? maxMessageLength = null)
-    {
-        var module = await host.ImportJsonAsync(MessageModuleJson(targetId, message));
-        return await host.PrepareAsync(module, SandboxPolicyBuilder.Create()
-            .GrantHostMessageWrite(allowedTargets: allowedTargets, maxMessageLength: maxMessageLength)
-            .WithFuel(10_000)
-            .Build());
-    }
-
-    private static string MessageModuleJson(string targetId, string message)
-        => $$"""
-        {
-          "id": "audit-failure-parity-send",
-          "version": "1.0.0",
-          "capabilityRequests": [{ "id": "host.message.write" }],
-          "functions": [
-            {
-              "id": "main",
-              "visibility": "entrypoint",
-              "parameters": [],
-              "returnType": "Unit",
-              "body": [
-                {
-                  "op": "return",
-                  "value": {
-                    "call": "host.message.send",
-                    "args": [
-                      { "string": "{{targetId}}" },
-                      { "string": "{{message}}" }
-                    ]
-                  }
-                }
-              ]
-            }
-          ]
-        }
-        """;
-
-    private static void AssertFailedRunSummary(SandboxExecutionResult result, SandboxErrorCode expectedCode)
-    {
-        var summary = Assert.Single(result.AuditEvents, e => e.Kind == "RunSummary");
-        Assert.False(summary.Success);
-        Assert.Equal(expectedCode, summary.ErrorCode);
-    }
 }
