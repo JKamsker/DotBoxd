@@ -62,6 +62,7 @@ internal static class PluginPackageValidator
 
             ValidateManifestText(subscription.Event, "hook subscription event", diagnostics);
             ValidateManifestText(subscription.Kernel, "hook subscription kernel", diagnostics);
+            ValidateResultMetadata(subscription, diagnostics);
             if (!string.IsNullOrWhiteSpace(metadataKernel) &&
                 !string.Equals(subscription.Kernel, metadataKernel, StringComparison.Ordinal))
             {
@@ -130,6 +131,31 @@ internal static class PluginPackageValidator
             diagnostics.Add(new SandboxDiagnostic(
                 "DBXK048",
                 "A hook subscription cannot claim full index coverage with no indexed predicates."));
+        }
+    }
+
+    private static void ValidateResultMetadata(
+        HookSubscriptionManifest subscription,
+        List<SandboxDiagnostic> diagnostics)
+    {
+        if (subscription.ResultType is null)
+        {
+            if (subscription.ResultLocalTerminal)
+            {
+                diagnostics.Add(new SandboxDiagnostic(
+                    "DBXK031",
+                    "A result-local hook subscription must declare resultType."));
+            }
+
+            return;
+        }
+
+        ValidateManifestText(subscription.ResultType, "hook result type", diagnostics);
+        if (subscription.LocalTerminal || subscription.ProjectedType is not null)
+        {
+            diagnostics.Add(new SandboxDiagnostic(
+                "DBXK031",
+                "A hook subscription cannot combine result hook metadata with RunLocal projection metadata."));
         }
     }
 

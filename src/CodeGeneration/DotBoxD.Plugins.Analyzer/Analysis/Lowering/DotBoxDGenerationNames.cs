@@ -32,6 +32,8 @@ internal static class DotBoxDGenerationNames
         public const string ServerExtensionClientAttribute = "DotBoxD.Abstractions.ServerExtensionClientAttribute";
         public const string ServerExtensionMethodAttribute = "DotBoxD.Abstractions.ServerExtensionMethodAttribute";
         public const string GeneratePluginServerAttribute = "DotBoxD.Abstractions.GeneratePluginServerAttribute";
+        public const string PolymorphicHandleAttribute = "DotBoxD.Abstractions.PolymorphicHandleAttribute";
+        public const string HandleSubtypeAttribute = "DotBoxD.Abstractions.HandleSubtypeAttribute";
         public const string DotBoxDServiceAttribute = "DotBoxD.Services.Attributes.DotBoxDServiceAttribute";
         public const string HookContext = "DotBoxD.Abstractions.HookContext";
         public const string ServerInvocationDelegateType = "DotBoxD.Abstractions.RemoteServerInvocation";
@@ -74,6 +76,7 @@ internal static class DotBoxDGenerationNames
         public const string GlobalInvalidOperationException = GlobalPrefix + "System.InvalidOperationException";
         public const string GlobalReadOnlyList = GlobalPrefix + "System.Collections.Generic.IReadOnlyList";
         public const string GlobalValueTask = GlobalPrefix + "System.Threading.Tasks.ValueTask";
+        public const string GlobalCancellationToken = GlobalPrefix + "System.Threading.CancellationToken";
 
         public const string GlobalHookContext = GlobalPrefix + HookContext;
         public const string GlobalPluginPackage = GlobalPrefix + "DotBoxD.Plugins.PluginPackage";
@@ -105,28 +108,6 @@ internal static class DotBoxDGenerationNames
         public const string GlobalSemVersion = GlobalPrefix + "DotBoxD.Kernels.Model.SemVersion";
         public const string GlobalSandboxType = GlobalPrefix + "DotBoxD.Kernels.Sandbox.SandboxType";
         public const string GlobalSandboxValue = GlobalPrefix + "DotBoxD.Kernels.Sandbox.SandboxValue";
-    }
-
-    public static class Metadata
-    {
-        public const string PluginAttribute = TypeNames.PluginAttribute;
-        public const string EventKernelAttribute = TypeNames.EventKernelAttribute;
-        public const string LiveSettingAttribute = TypeNames.LiveSettingAttribute;
-        public const string EventKernelInterface = TypeNames.EventKernelInterface;
-        public const string RangeAttribute = TypeNames.RangeAttribute;
-        public const string HostBindingAttribute = TypeNames.HostBindingAttribute;
-        public const string CapabilityAttribute = TypeNames.CapabilityAttribute;
-        public const string KernelMethodAttribute = TypeNames.KernelMethodAttribute;
-        public const string ServerExtensionAttribute = TypeNames.ServerExtensionAttribute;
-        public const string ServerExtensionClientAttribute = TypeNames.ServerExtensionClientAttribute;
-        public const string ServerExtensionMethodAttribute = TypeNames.ServerExtensionMethodAttribute;
-        public const string GeneratePluginServerAttribute = TypeNames.GeneratePluginServerAttribute;
-        public const string DotBoxDServiceAttribute = TypeNames.DotBoxDServiceAttribute;
-        public const string HookContextType = TypeNames.HookContext;
-        public const string ServerInvocationDelegateType = TypeNames.ServerInvocationDelegateType;
-        public const string ServerInvocationDelegateOriginal = TypeNames.ServerInvocationDelegateOriginal;
-        public const string GameWorldAccessType = TypeNames.GameWorldAccessType;
-        public const string GameWorldMonsterSnapshotType = TypeNames.GameWorldMonsterSnapshotType;
     }
 
     public static class Contracts

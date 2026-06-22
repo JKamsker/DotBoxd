@@ -46,14 +46,14 @@ internal static class RpcKernelClientExtensionModelFactory
     }
 
     public static bool HasExtensionAttribute(ISymbol symbol)
-        => HasAttribute(symbol, DotBoxDGenerationNames.Metadata.ServerExtensionClientAttribute) ||
-           HasAttribute(symbol, DotBoxDGenerationNames.Metadata.ServerExtensionMethodAttribute);
+        => HasAttribute(symbol, DotBoxDMetadataNames.ServerExtensionClientAttribute) ||
+           HasAttribute(symbol, DotBoxDMetadataNames.ServerExtensionMethodAttribute);
 
     private static RpcKernelClientPropertyExtension? ResolveClientProperty(INamedTypeSymbol kernelType)
     {
         foreach (var attribute in kernelType.GetAttributes())
         {
-            if (!AttributeMatches(attribute, DotBoxDGenerationNames.Metadata.ServerExtensionClientAttribute))
+            if (!AttributeMatches(attribute, DotBoxDMetadataNames.ServerExtensionClientAttribute))
             {
                 continue;
             }
@@ -71,7 +71,7 @@ internal static class RpcKernelClientExtensionModelFactory
     {
         foreach (var attribute in kernelMethod.GetAttributes())
         {
-            if (!AttributeMatches(attribute, DotBoxDGenerationNames.Metadata.ServerExtensionMethodAttribute))
+            if (!AttributeMatches(attribute, DotBoxDMetadataNames.ServerExtensionMethodAttribute))
             {
                 continue;
             }

@@ -27,6 +27,7 @@ public class ServerExtensionProxy : DispatchProxy
     public static TService Create<TService>(InstalledKernel kernel) where TService : class
     {
         ArgumentNullException.ThrowIfNull(kernel);
+        ValidateServiceContract(typeof(TService));
         var proxy = Create<TService, ServerExtensionProxy>();
         ((ServerExtensionProxy)(object)proxy!)._kernel = kernel;
         return proxy!;
@@ -76,6 +77,62 @@ public class ServerExtensionProxy : DispatchProxy
             var result = pending.AsTask().GetAwaiter().GetResult();
             return KernelRpcMarshaller.FromSandboxValue(result, returnType);
         };
+    }
+
+    private static void ValidateServiceContract(Type serviceType)
+    {
+        foreach (var method in ContractMethods(serviceType))
+        {
+            foreach (var parameter in method.GetParameters())
+            {
+                KernelRpcMarshaller.RejectNullableValueTypesForServerExtension(parameter.ParameterType);
+            }
+
+            if (UnwrapReturnType(method.ReturnType) is { } payloadType)
+            {
+                KernelRpcMarshaller.RejectNullableValueTypesForServerExtension(payloadType);
+            }
+        }
+    }
+
+    private static IEnumerable<MethodInfo> ContractMethods(Type serviceType)
+    {
+        var seen = new HashSet<MethodInfo>();
+        foreach (var method in serviceType.GetMethods())
+        {
+            if (seen.Add(method))
+            {
+                yield return method;
+            }
+        }
+
+        foreach (var inherited in serviceType.GetInterfaces())
+        {
+            foreach (var method in inherited.GetMethods())
+            {
+                if (seen.Add(method))
+                {
+                    yield return method;
+                }
+            }
+        }
+    }
+
+    private static Type? UnwrapReturnType(Type type)
+    {
+        if (type == typeof(void) || type == typeof(Task) || type == typeof(ValueTask))
+        {
+            return null;
+        }
+
+        if (type.IsGenericType &&
+            type.GetGenericTypeDefinition() is { } definition &&
+            (definition == typeof(Task<>) || definition == typeof(ValueTask<>)))
+        {
+            return type.GetGenericArguments()[0];
+        }
+
+        return type;
     }
 
     private static object BoxTaskAsync<T>(ValueTask<SandboxValue> pending)

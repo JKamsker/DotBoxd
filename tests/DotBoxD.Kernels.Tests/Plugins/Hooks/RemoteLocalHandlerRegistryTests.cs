@@ -97,6 +97,86 @@ public sealed class RemoteLocalHandlerRegistryTests
     }
 
     [Fact]
+    public async Task DispatchResultAsync_decodes_context_invokes_delegate_and_returns_encoded_result()
+    {
+        var registry = new RemoteLocalHandlerRegistry();
+        DamageCtx? observed = null;
+        registry.RegisterResult<DamageCtx, DamageResult>("sub-result", (ctx, _) =>
+        {
+            observed = ctx;
+            return new DamageResult(true, "ok", ctx.Damage * 2);
+        });
+
+        var response = await registry.DispatchResultAsync(
+            "sub-result",
+            EncodeProjected(new DamageCtx(21)),
+            Context());
+
+        Assert.Equal(new DamageCtx(21), observed);
+        var result = KernelRpcBinaryCodec.DecodeValue(response);
+        Assert.Equal(KernelRpcValueKind.Record, result.Kind);
+        Assert.True(result.Items[0].BoolValue);
+        Assert.Equal("ok", result.Items[1].TextValue);
+        Assert.Equal(42, result.Items[2].Int32Value);
+    }
+
+    [Fact]
+    public async Task DispatchResultAsync_encodes_null_reason_as_empty_string()
+    {
+        var registry = new RemoteLocalHandlerRegistry();
+        registry.RegisterResult<DamageCtx, TextResult>(
+            "sub-result",
+            (ctx, _) => new TextResult(true, null, "label-" + ctx.Damage.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+
+        var response = await registry.DispatchResultAsync(
+            "sub-result",
+            EncodeProjected(new DamageCtx(3)),
+            Context());
+
+        var result = KernelRpcBinaryCodec.DecodeValue(response);
+        Assert.Equal(string.Empty, result.Items[1].TextValue);
+        Assert.Equal("label-3", result.Items[2].TextValue);
+    }
+
+    [Fact]
+    public async Task DispatchResultAsync_rejects_null_domain_string_fields()
+    {
+        var registry = new RemoteLocalHandlerRegistry();
+        registry.RegisterResult<DamageCtx, TextResult>(
+            "sub-result",
+            (_, _) => new TextResult(true, null, null));
+
+        await Assert.ThrowsAsync<NotSupportedException>(
+            async () => await registry.DispatchResultAsync(
+                "sub-result",
+                EncodeProjected(new DamageCtx(3)),
+                Context()));
+    }
+
+    [Fact]
+    public async Task DispatchResultAsync_threads_cancellation_to_the_delegate()
+    {
+        var registry = new RemoteLocalHandlerRegistry();
+        CancellationToken observed = default;
+        registry.RegisterResult<DamageCtx, DamageResult>(
+            "sub-result",
+            (ctx, _, cancellationToken) =>
+            {
+                observed = cancellationToken;
+                return new ValueTask<DamageResult>(new DamageResult(true, "ok", ctx.Damage));
+            });
+        using var cts = new CancellationTokenSource();
+
+        _ = await registry.DispatchResultAsync(
+            "sub-result",
+            EncodeProjected(new DamageCtx(5)),
+            Context(),
+            cts.Token);
+
+        Assert.Equal(cts.Token, observed);
+    }
+
+    [Fact]
     public async Task DispatchAsync_passes_the_supplied_context_to_the_delegate()
     {
         var registry = new RemoteLocalHandlerRegistry();
@@ -185,4 +265,10 @@ public sealed class RemoteLocalHandlerRegistryTests
     }
 
     private sealed record Hit(string AttackerId, int Damage);
+
+    private sealed record DamageCtx(int Damage);
+
+    private readonly record struct DamageResult(bool Success, string? Reason, int Damage) : IHookResult;
+
+    private readonly record struct TextResult(bool Success, string? Reason, string? Label) : IHookResult;
 }

@@ -54,6 +54,7 @@ public sealed class PluginServerRemoteLocalWiringTests
                 public interface IPluginEventCallback
                 {
                     ValueTask OnEventAsync(string subscriptionId, System.ReadOnlyMemory<byte> projectedValue, CancellationToken ct = default);
+                    ValueTask<byte[]> OnResultAsync(string subscriptionId, System.ReadOnlyMemory<byte> contextValue, CancellationToken ct = default);
                 }
             }
 
@@ -217,6 +218,7 @@ public sealed class PluginServerRemoteLocalWiringTests
                 public interface IPluginEventCallback
                 {
                     Task OnEventAsync(string subscriptionId, System.ReadOnlyMemory<byte> projectedValue, CancellationToken ct = default);
+                    ValueTask<byte[]> OnResultAsync(string subscriptionId, System.ReadOnlyMemory<byte> contextValue, CancellationToken ct = default);
                 }
             }
 

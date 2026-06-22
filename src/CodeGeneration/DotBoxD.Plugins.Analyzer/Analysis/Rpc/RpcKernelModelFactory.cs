@@ -100,7 +100,7 @@ internal static partial class RpcKernelModelFactory
                 method.Parameters.Length > 0 &&
                 string.Equals(
                     method.Parameters[method.Parameters.Length - 1].Type.ToDisplayString(),
-                    DotBoxDGenerationNames.Metadata.HookContextType,
+                    DotBoxDMetadataNames.HookContextType,
                     StringComparison.Ordinal))
             {
                 if (found is not null)

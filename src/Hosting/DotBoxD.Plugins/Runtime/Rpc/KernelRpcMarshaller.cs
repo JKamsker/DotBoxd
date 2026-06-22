@@ -18,9 +18,12 @@ public static partial class KernelRpcMarshaller
     public static SandboxValue ToSandboxValue(object? value, Type type)
     {
         ArgumentNullException.ThrowIfNull(type);
-        ArgumentNullException.ThrowIfNull(value);
-        RejectNullableValueType(type);
+        if (TryNullableToSandboxValue(value, type, out var nullable))
+        {
+            return nullable;
+        }
 
+        ArgumentNullException.ThrowIfNull(value);
         if (TryScalarToSandbox(value, type) is { } scalar)
         {
             return scalar;
@@ -114,7 +117,7 @@ public static partial class KernelRpcMarshaller
     // than the bare ArgumentNullException ToSandboxValue would otherwise throw with only the parameter name.
     private static SandboxValue MarshalChild(object? value, Type type, string context)
     {
-        if (value is null)
+        if (value is null && Nullable.GetUnderlyingType(type) is null)
         {
             throw new NotSupportedException(
                 $"{context} of type '{type}' was null; the sandbox value model has no null.");
@@ -126,7 +129,10 @@ public static partial class KernelRpcMarshaller
     public static object? FromSandboxValue(SandboxValue value, Type type)
     {
         ArgumentNullException.ThrowIfNull(type);
-        RejectNullableValueType(type);
+        if (TryNullableFromSandboxValue(value, type, out var nullable))
+        {
+            return nullable;
+        }
 
         if (TryScalarFromSandbox(value, type, out var scalar))
         {
@@ -201,7 +207,10 @@ public static partial class KernelRpcMarshaller
 
     private static SandboxType SandboxTypeOf(Type type, int depth)
     {
-        RejectNullableValueType(type);
+        if (TryNullableSandboxType(type, depth, out var nullable))
+        {
+            return nullable;
+        }
 
         if (type == typeof(bool))
             return SandboxType.Bool;
@@ -258,69 +267,4 @@ public static partial class KernelRpcMarshaller
 
         throw new NotSupportedException($"Server extension has no sandbox type for '{type}'.");
     }
-
-    private static SandboxValue? TryScalarToSandbox(object? value, Type type)
-        => type switch
-        {
-            var t when t == typeof(bool) => SandboxValue.FromBool((bool)value!),
-            var t when t == typeof(int) => SandboxValue.FromInt32((int)value!),
-            var t when t == typeof(long) => SandboxValue.FromInt64((long)value!),
-            var t when t == typeof(double) => SandboxValue.FromDouble((double)value!),
-            var t when t == typeof(float) => SandboxValue.FromDouble((float)value!),
-            var t when t == typeof(string) => SandboxValue.FromString((string)value!),
-            var t when t == typeof(Guid) => SandboxValue.FromGuid((Guid)value!),
-            _ => null
-        };
-
-    private static bool TryScalarFromSandbox(SandboxValue value, Type type, out object? result)
-    {
-        result = (type, value) switch
-        {
-            (var t, BoolValue b) when t == typeof(bool) => b.Value,
-            (var t, I32Value i) when t == typeof(int) => i.Value,
-            (var t, I64Value l) when t == typeof(long) => l.Value,
-            (var t, F64Value d) when t == typeof(double) => d.Value,
-            (var t, F64Value d) when t == typeof(float) => (float)d.Value,
-            (var t, StringValue s) when t == typeof(string) => s.Value,
-            (var t, GuidValue g) when t == typeof(Guid) => g.Value,
-            _ => null
-        };
-        return result is not null;
-    }
-
-    private static void RejectNullableValueType(Type type)
-    {
-        if (Nullable.GetUnderlyingType(type) is null)
-        {
-            return;
-        }
-
-        throw new NotSupportedException(
-            $"Kernel RPC service nullable type '{type}' is not supported.");
-    }
-
-    private static Array ToArray(IReadOnlyList<SandboxValue> values, Type elementType)
-    {
-        var array = Array.CreateInstance(elementType, values.Count);
-        for (var i = 0; i < values.Count; i++)
-        {
-            array.SetValue(FromSandboxValue(values[i], elementType), i);
-        }
-
-        return array;
-    }
-
-    // An enum marshals through its underlying integer; widths that overflow I32 (uint/long/ulong) use I64.
-    private static bool EnumUsesI64(Type type)
-    {
-        var underlying = Enum.GetUnderlyingType(type);
-        return underlying == typeof(uint) || underlying == typeof(long) || underlying == typeof(ulong);
-    }
-
-    // A ulong-backed enum value above long.MaxValue overflows a range-checked Convert.ToInt64; reinterpret its
-    // bits instead so the value carries losslessly (decode uses Enum.ToObject, which is also bit-preserving).
-    private static long EnumToInt64(object value, Type type)
-        => Enum.GetUnderlyingType(type) == typeof(ulong)
-            ? unchecked((long)Convert.ToUInt64(value, System.Globalization.CultureInfo.InvariantCulture))
-            : Convert.ToInt64(value, System.Globalization.CultureInfo.InvariantCulture);
 }

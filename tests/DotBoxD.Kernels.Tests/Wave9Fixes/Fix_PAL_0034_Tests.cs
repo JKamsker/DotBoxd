@@ -55,11 +55,12 @@ public sealed class Fix_PAL_0034_Tests
     //   single host (K=1)          : event-count * (24 + 8)
     // so the marginal cost is event-count * 8 * (ManyObservers - 1) bytes/run, which is at
     // least 8 * (ManyObservers - 1) bytes/run even for a single audit event. The threshold is
-    // set to a small fraction of that single-event lower bound so the buggy regime fails for
-    // any event count >= 1, while leaving generous headroom above the ~0 fixed-path marginal
-    // and any measurement noise that survives the single-vs-many comparison.
+    // kept below that single-event lower bound so the buggy regime fails for any event count
+    // >= 1, while leaving headroom for instrumentation overhead in coverage runs. Coverlet can
+    // add a small marginal allocation to the many-observer path because it records many more
+    // observer invocations; that is not the per-event invocation-list allocation this test guards.
     private const long SingleEventBuggyMarginalLowerBound = 8 * (ManyObservers - 1);
-    private const long MaxMarginalBytesPerRun = SingleEventBuggyMarginalLowerBound / 2;
+    private const long MaxMarginalBytesPerRun = SingleEventBuggyMarginalLowerBound * 3 / 4;
 
     [Fact]
     public async Task Observer_forwarding_preserves_per_event_delivery_to_every_observer()

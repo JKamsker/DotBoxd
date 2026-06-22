@@ -1,6 +1,8 @@
 using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Helpers = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.Helpers;
 using ManifestTypes = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.ManifestTypes;
 using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.TypeNames;
 
@@ -37,10 +39,24 @@ internal static class DotBoxDRecordCreationExpressionLowerer
 
         var fields = DotBoxDRpcTypeMapper.RecordFields(recordType);
         var arguments = creation.ArgumentList?.Arguments ?? default;
+
+        // Object-initializer construction (e.g. `new() { Success = true, Damage = x }`) is how the generated
+        // hook-result builders and explicit `new Result { ... }` produce a value: lower each assigned field and
+        // fill the omitted ones with their manifest-tag zero. Mixed positional + initializer is rejected.
+        if (creation.Initializer is { } initializer)
+        {
+            if (arguments.Count > 0)
+            {
+                throw new System.NotSupportedException();
+            }
+
+            return LowerInitializer(fields, recordTypeSource, initializer, context, lowerExpression);
+        }
+
         if (arguments.Count != fields.Count || constructor.Parameters.Length != fields.Count)
         {
-            // Only a full positional construction (one argument per field) lowers; object initializers and
-            // partial constructions are not expressible as a single record.new.
+            // Only a full positional construction (one argument per field) lowers; partial positional
+            // constructions are not expressible as a single record.new.
             throw new System.NotSupportedException();
         }
 
@@ -67,11 +83,11 @@ internal static class DotBoxDRecordCreationExpressionLowerer
                 throw new System.NotSupportedException();
             }
 
-            var lowered = lowerExpression(arguments[argumentIndex].Expression);
-            if (!string.Equals(lowered.Type, SandboxTypeSourceEmitter.ManifestTag(fields[fieldIndex].Type), StringComparison.Ordinal))
-            {
-                throw new System.NotSupportedException();
-            }
+            var lowered = LowerFieldValue(
+                arguments[argumentIndex].Expression,
+                fields[fieldIndex].Type,
+                context,
+                lowerExpression);
 
             fieldSources[fieldIndex] = lowered.Source;
             allocates |= lowered.Allocates;
@@ -79,10 +95,128 @@ internal static class DotBoxDRecordCreationExpressionLowerer
 
         context.Effects?.Add(DotBoxDGenerationNames.Effects.Alloc);
 
-        var source =
-            $"new {TypeNames.GlobalCallExpression}(\"record.new\", " +
+        return new DotBoxDExpressionModel(RecordNew(fieldSources, recordTypeSource), ManifestTypes.Record, allocates);
+    }
+
+    // The record.new IR-construction source for the given (declaration-ordered) field sources. Shared by the
+    // positional, object-initializer, and fluent result-builder lowering paths.
+    internal static string RecordNew(IReadOnlyList<string> fieldSources, string recordTypeSource)
+        => $"new {TypeNames.GlobalCallExpression}(\"record.new\", " +
             $"[{string.Join(", ", fieldSources)}], {recordTypeSource}, Span)";
-        return new DotBoxDExpressionModel(source, ManifestTypes.Record, allocates);
+
+    // Lowers an object-initializer construction to record.new: each `Field = value` assignment lowers the value
+    // with the field's expected type. When Roslyn has a real RHS type, require an exact CLR match; generated
+    // remote fallback chains can have unresolved lambda parameters on the first pass, so those rely on the
+    // contextual lowerer's manifest-tag check. Omitted fields are filled with their manifest-tag zero.
+    private static DotBoxDExpressionModel LowerInitializer(
+        IReadOnlyList<RecordMember> fields,
+        string recordTypeSource,
+        InitializerExpressionSyntax initializer,
+        DotBoxDExpressionLoweringContext context,
+        System.Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression)
+    {
+        var fieldSources = new string?[fields.Count];
+        var allocates = true;
+        foreach (var expression in initializer.Expressions)
+        {
+            if (expression is not AssignmentExpressionSyntax assignment ||
+                assignment.Kind() != SyntaxKind.SimpleAssignmentExpression ||
+                assignment.Left is not IdentifierNameSyntax fieldName)
+            {
+                throw new System.NotSupportedException();
+            }
+
+            var index = FieldIndex(fields, fieldName.Identifier.ValueText);
+            if (index < 0 || fieldSources[index] is not null)
+            {
+                throw new System.NotSupportedException();
+            }
+
+            var lowered = LowerFieldValue(assignment.Right, fields[index].Type, context, lowerExpression);
+
+            fieldSources[index] = lowered.Source;
+            allocates |= lowered.Allocates;
+        }
+
+        for (var i = 0; i < fields.Count; i++)
+        {
+            fieldSources[i] ??= ZeroSource(fields[i].Type);
+        }
+
+        context.Effects?.Add(DotBoxDGenerationNames.Effects.Alloc);
+
+        return new DotBoxDExpressionModel(
+            RecordNew(System.Array.ConvertAll(fieldSources, static s => s!), recordTypeSource),
+            ManifestTypes.Record,
+            allocates);
+    }
+
+    // The manifest-tag zero literal for an omitted field. Only scalar fields can be defaulted; a non-scalar
+    // (Guid/list/map/record) omission fails safe because there is no single-expression zero for it.
+    internal static string ZeroSource(ITypeSymbol fieldType)
+    {
+        if (DotBoxDNullableScalarType.IsNullableValueType(fieldType))
+        {
+            return DotBoxDNullableScalarExpressionLowerer.NullSource(fieldType);
+        }
+
+        return NonNullableZeroSource(fieldType);
+    }
+
+    private static DotBoxDExpressionModel LowerFieldValue(
+        ExpressionSyntax expression,
+        ITypeSymbol fieldType,
+        DotBoxDExpressionLoweringContext context,
+        System.Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression)
+    {
+        if (DotBoxDNullableScalarExpressionLowerer.TryLower(
+                expression,
+                fieldType,
+                context,
+                lowerExpression,
+                out var nullable))
+        {
+            return nullable;
+        }
+
+        var lowered = lowerExpression(expression);
+        var rhsType = context.SemanticModel.GetTypeInfo(expression, context.CancellationToken).Type;
+        if (rhsType is { TypeKind: not TypeKind.Error } &&
+            !SymbolEqualityComparer.Default.Equals(rhsType, fieldType))
+        {
+            throw new System.NotSupportedException();
+        }
+
+        if (!string.Equals(lowered.Type, SandboxTypeSourceEmitter.ManifestTag(fieldType), StringComparison.Ordinal))
+        {
+            throw new System.NotSupportedException();
+        }
+
+        return lowered;
+    }
+
+    private static string NonNullableZeroSource(ITypeSymbol fieldType)
+        => SandboxTypeSourceEmitter.ManifestTag(fieldType) switch
+        {
+            ManifestTypes.Bool => $"{Helpers.Bool}({DotBoxDGenerationNames.CSharpLiterals.False})",
+            ManifestTypes.Int => $"{Helpers.I32}({DotBoxDGenerationNames.CSharpLiterals.Int32Default})",
+            ManifestTypes.Long => $"{Helpers.I64}({DotBoxDGenerationNames.CSharpLiterals.Int64Default})",
+            ManifestTypes.Double => $"{Helpers.F64}({DotBoxDGenerationNames.CSharpLiterals.DoubleDefault})",
+            ManifestTypes.String => $"{Helpers.Str}({DotBoxDGenerationNames.CSharpLiterals.StringDefault})",
+            _ => throw new System.NotSupportedException(),
+        };
+
+    private static int FieldIndex(IReadOnlyList<RecordMember> fields, string name)
+    {
+        for (var i = 0; i < fields.Count; i++)
+        {
+            if (string.Equals(fields[i].Name, name, StringComparison.Ordinal))
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     // The positional argument that fills the field named <paramref name="fieldName"/>: the argument whose

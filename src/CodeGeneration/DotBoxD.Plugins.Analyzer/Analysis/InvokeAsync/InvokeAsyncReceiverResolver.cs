@@ -197,10 +197,10 @@ internal static class InvokeAsyncReceiverResolver
     }
 
     private static bool HasGeneratePluginServerAttribute(INamedTypeSymbol type)
-        => HasAttribute(type, DotBoxDGenerationNames.Metadata.GeneratePluginServerAttribute);
+        => HasAttribute(type, DotBoxDMetadataNames.GeneratePluginServerAttribute);
 
     private static bool HasDotBoxDServiceAttribute(INamedTypeSymbol type)
-        => HasAttribute(type, DotBoxDGenerationNames.Metadata.DotBoxDServiceAttribute);
+        => HasAttribute(type, DotBoxDMetadataNames.DotBoxDServiceAttribute);
 
     private static bool HasAttribute(INamedTypeSymbol type, string metadataName)
     {

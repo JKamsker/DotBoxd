@@ -16,9 +16,9 @@ internal static class HostServiceBindingFactory
     {
         var payloadType = UnwrapReturnType(interfaceMethod.ReturnType);
         var parameters = interfaceMethod.GetParameters()
-            .Select(parameter => KernelRpcMarshaller.SandboxTypeOf(parameter.ParameterType))
+            .Select(parameter => ServerExtensionSandboxTypeOf(parameter.ParameterType))
             .ToArray();
-        var returnType = payloadType is null ? SandboxType.Unit : KernelRpcMarshaller.SandboxTypeOf(payloadType);
+        var returnType = payloadType is null ? SandboxType.Unit : ServerExtensionSandboxTypeOf(payloadType);
         var effects = InferEffects(interfaceMethod, returnType, capability);
         var id = HostBindingRoute(interfaceMethod.DeclaringType!, interfaceMethod);
         var callTarget = new HostServiceCallTarget(targetMethod);
@@ -44,9 +44,9 @@ internal static class HostServiceBindingFactory
         var payloadType = UnwrapReturnType(handleInterfaceMethod.ReturnType);
         var parameters = factoryInterfaceMethod.GetParameters()
             .Concat(handleInterfaceMethod.GetParameters())
-            .Select(parameter => KernelRpcMarshaller.SandboxTypeOf(parameter.ParameterType))
+            .Select(parameter => ServerExtensionSandboxTypeOf(parameter.ParameterType))
             .ToArray();
-        var returnType = payloadType is null ? SandboxType.Unit : KernelRpcMarshaller.SandboxTypeOf(payloadType);
+        var returnType = payloadType is null ? SandboxType.Unit : ServerExtensionSandboxTypeOf(payloadType);
         var effects = InferEffects(handleInterfaceMethod, returnType, capability);
         var id = HostBindingRoute(handleInterfaceMethod.DeclaringType!, handleInterfaceMethod);
         var factoryCallTarget = new HostServiceCallTarget(factoryTargetMethod);
@@ -76,6 +76,12 @@ internal static class HostServiceBindingFactory
 
     public static Type? UnwrapReturnType(Type type)
         => HostServiceCallTarget.UnwrapReturnType(type);
+
+    private static SandboxType ServerExtensionSandboxTypeOf(Type type)
+    {
+        KernelRpcMarshaller.RejectNullableValueTypesForServerExtension(type);
+        return KernelRpcMarshaller.SandboxTypeOf(type);
+    }
 
     private static BindingDescriptor CreateDescriptor(
         string id,

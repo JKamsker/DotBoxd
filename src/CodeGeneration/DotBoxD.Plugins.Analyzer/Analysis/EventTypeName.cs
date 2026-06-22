@@ -1,3 +1,4 @@
+using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using Microsoft.CodeAnalysis;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis;
@@ -20,4 +21,20 @@ internal static class EventTypeName
         => eventType.ContainingNamespace.IsGlobalNamespace
             ? eventType.MetadataName
             : eventType.ContainingNamespace.ToDisplayString() + "." + eventType.MetadataName;
+
+    public static string HookOrQualified(INamedTypeSymbol eventType)
+    {
+        foreach (var attribute in eventType.GetAttributes())
+        {
+            if (string.Equals(attribute.AttributeClass?.ToDisplayString(), DotBoxDMetadataNames.HookAttribute, StringComparison.Ordinal) &&
+                attribute.ConstructorArguments.Length > 0 &&
+                attribute.ConstructorArguments[0].Value is string declaredName &&
+                !string.IsNullOrWhiteSpace(declaredName))
+            {
+                return declaredName;
+            }
+        }
+
+        return Qualified(eventType);
+    }
 }

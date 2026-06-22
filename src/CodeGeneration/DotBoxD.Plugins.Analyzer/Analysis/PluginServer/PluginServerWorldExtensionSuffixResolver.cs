@@ -114,7 +114,7 @@ internal static class PluginServerWorldExtensionSuffixResolver
         {
             if (!string.Equals(
                     attribute.AttributeClass?.ToDisplayString(),
-                    DotBoxDGenerationNames.Metadata.DotBoxDServiceAttribute,
+                    DotBoxDMetadataNames.DotBoxDServiceAttribute,
                     StringComparison.Ordinal))
             {
                 continue;
@@ -139,7 +139,7 @@ internal static class PluginServerWorldExtensionSuffixResolver
         {
             if (string.Equals(
                     attribute.AttributeClass?.ToDisplayString(),
-                    DotBoxDGenerationNames.Metadata.DotBoxDServiceAttribute,
+                    DotBoxDMetadataNames.DotBoxDServiceAttribute,
                     StringComparison.Ordinal))
             {
                 return true;

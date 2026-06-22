@@ -229,10 +229,22 @@ public sealed class RemoteSubscriptionPipeline<TEvent>
         // Manifests now carry the fully-qualified event name; compare against typeof(TEvent).FullName but
         // accept the legacy simple-name form via EventNameMatch for back-compat.
         var expected = typeof(TEvent).FullName ?? typeof(TEvent).Name;
-        if (!EventNameMatch.Matches(actual, expected))
+        if (!EventNameMatch.Matches(actual, expected) && !HookNameMatches(actual))
         {
             throw new InvalidOperationException(
                 $"Subscription package '{package.Manifest.PluginId}' subscribes to '{actual ?? "<none>"}', not '{expected}'.");
         }
+    }
+
+    private static bool HookNameMatches(string? actual)
+    {
+        var hook = (HookAttribute?)Attribute.GetCustomAttribute(
+            typeof(TEvent),
+            typeof(HookAttribute),
+            inherit: false);
+
+        return hook is not null &&
+            !string.IsNullOrEmpty(actual) &&
+            string.Equals(hook.Name, actual, StringComparison.Ordinal);
     }
 }

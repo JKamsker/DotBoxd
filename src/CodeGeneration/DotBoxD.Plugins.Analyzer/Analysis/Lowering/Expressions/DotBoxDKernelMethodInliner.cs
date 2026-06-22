@@ -134,7 +134,7 @@ internal static class DotBoxDKernelMethodInliner
         {
             if (string.Equals(
                     attribute.AttributeClass?.ToDisplayString(),
-                    DotBoxDGenerationNames.Metadata.KernelMethodAttribute,
+                    DotBoxDMetadataNames.KernelMethodAttribute,
                     StringComparison.Ordinal))
             {
                 return true;

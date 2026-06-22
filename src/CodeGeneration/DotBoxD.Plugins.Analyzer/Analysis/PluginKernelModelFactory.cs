@@ -122,7 +122,7 @@ internal static class PluginKernelModelFactory
                 Namespace: type.ContainingNamespace.IsGlobalNamespace ? "" : type.ContainingNamespace.ToDisplayString(),
                 KernelName: type.Name,
                 PackageName: PackageName(type.Name),
-                EventName: EventTypeName.Qualified(eventType),
+                EventName: EventTypeName.HookOrQualified(eventType),
                 EventParameterName: eventParameterName,
                 ContextParameterName: contextParameterName,
                 HandleEventParameterName: handleEventParameterName,
@@ -210,7 +210,7 @@ internal static class PluginKernelModelFactory
         {
             if (!string.Equals(
                     @interface.OriginalDefinition.ToDisplayString(),
-                    DotBoxDGenerationNames.Metadata.EventKernelInterface,
+                    DotBoxDMetadataNames.EventKernelInterface,
                     StringComparison.Ordinal))
             {
                 continue;

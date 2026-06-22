@@ -1,4 +1,5 @@
 using DotBoxD.Plugins.Analyzer.Analysis.HookChains;
+using DotBoxD.Plugins.Analyzer.Analysis.HookResults;
 using DotBoxD.Plugins.Analyzer.Analysis.InvokeAsync;
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using DotBoxD.Plugins.Analyzer.Analysis.PluginServer;
@@ -16,14 +17,14 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
     {
         var pluginAttributeResults = context.SyntaxProvider
             .ForAttributeWithMetadataName(
-                DotBoxDGenerationNames.Metadata.PluginAttribute,
+                DotBoxDMetadataNames.PluginAttribute,
                 static (node, _) => node is ClassDeclarationSyntax,
                 static (ctx, ct) => PluginKernelModelFactory.Create(ctx, ct))
             .Where(static result => result is not null)
             .Select(static (result, _) => result!);
         var eventKernelAttributeResults = context.SyntaxProvider
             .ForAttributeWithMetadataName(
-                DotBoxDGenerationNames.Metadata.EventKernelAttribute,
+                DotBoxDMetadataNames.EventKernelAttribute,
                 static (node, _) => node is ClassDeclarationSyntax,
                 static (ctx, ct) => PluginKernelModelFactory.Create(ctx, ct))
             .Where(static result => result is not null)
@@ -80,7 +81,7 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
         // whose Create() imports the JSON. Unsupported shapes emit a diagnostic and no package.
         var rpcResults = context.SyntaxProvider
             .ForAttributeWithMetadataName(
-                DotBoxDGenerationNames.Metadata.ServerExtensionAttribute,
+                DotBoxDMetadataNames.ServerExtensionAttribute,
                 static (node, _) => node is ClassDeclarationSyntax,
                 static (ctx, ct) => RpcKernelModelFactory.Create(ctx, ct))
             .Where(static result => result is not null)
@@ -110,7 +111,7 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
 
         var pluginServerResults = context.SyntaxProvider
             .ForAttributeWithMetadataName(
-                DotBoxDGenerationNames.Metadata.GeneratePluginServerAttribute,
+                DotBoxDMetadataNames.GeneratePluginServerAttribute,
                 static (node, _) => node is ClassDeclarationSyntax,
                 static (ctx, ct) => PluginServerFacadeModelFactory.Create(ctx, ct))
             .Where(static result => result is not null)
@@ -161,24 +162,6 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
             .Where(static result => result.Interception is not null)
             .Select(static (result, _) => result.Interception!)
             .Collect();
-        var needsInterceptorAttribute = interceptions
-            .Select(static (items, _) => !items.IsDefaultOrEmpty)
-            .Combine(invokeAsyncInterceptions.Select(static (items, _) => !items.IsDefaultOrEmpty))
-            .Select(static (pair, _) => pair.Left || pair.Right);
-        var needsInterceptsLocationAttribute = needsInterceptorAttribute
-            .Combine(context.CompilationProvider.Select(static (compilation, _) =>
-                compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.InterceptsLocationAttribute") is { } type &&
-                SymbolEqualityComparer.Default.Equals(type.ContainingAssembly, compilation.Assembly)))
-            .Select(static (pair, _) => pair.Left && !pair.Right);
-        context.RegisterSourceOutput(
-            needsInterceptsLocationAttribute,
-            static (sourceContext, needsAttribute) =>
-            {
-                if (needsAttribute)
-                {
-                    InterceptsLocationAttributeEmitter.Emit(sourceContext);
-                }
-            });
         context.RegisterSourceOutput(
             interceptions,
             static (sourceContext, items) => DotBoxDHookChainInterceptorEmitter.Emit(sourceContext, items));
@@ -188,6 +171,43 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
 
         RegistrationAccumulatorGenerator.Register(context);
 
+        // [HookResult] builder surface: Ok()/Reject()/With<Field>() for each annotated result record, plus the
+        // DBXK112 diagnostic when the Success/Reason contract is missing.
+        var hookResultModels = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                DotBoxDMetadataNames.HookResultAttribute,
+                static (node, _) => node is TypeDeclarationSyntax,
+                static (ctx, ct) => HookResultModelFactory.Create(ctx, ct))
+            .Where(static model => model is not null)
+            .Select(static (model, _) => model!);
+        context.RegisterSourceOutput(
+            hookResultModels
+                .Where(static model => model.Diagnostic is not null)
+                .Select(static (model, _) => model.Diagnostic!),
+            static (sourceContext, diagnostic) => sourceContext.ReportDiagnostic(diagnostic.ToDiagnostic()));
+        context.RegisterSourceOutput(
+            hookResultModels.Select(static (model, _) => HookResultBuilderEmitter.Emit(model)),
+            static (sourceContext, source) =>
+            {
+                if (source is not null)
+                {
+                    sourceContext.AddSource(
+                        source.HintName,
+                        Microsoft.CodeAnalysis.Text.SourceText.From(source.Source, System.Text.Encoding.UTF8));
+                }
+            });
+
+        var hookFireAsyncModels = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                DotBoxDMetadataNames.HookAttribute,
+                static (node, _) => node is TypeDeclarationSyntax,
+                static (ctx, ct) => HookFireAsyncModelFactory.Create(ctx, ct))
+            .Where(static model => model is not null)
+            .Select(static (model, _) => model!)
+            .Collect();
+        context.RegisterSourceOutput(
+            hookFireAsyncModels,
+            static (sourceContext, models) => HookFireAsyncExtensionEmitter.Emit(sourceContext, models));
     }
 
     private static bool IsHookChainTerminal(SyntaxNode node)
@@ -195,7 +215,7 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
         {
             Expression: MemberAccessExpressionSyntax
             {
-                Name.Identifier.ValueText: "Run" or "RunLocal"
+                Name.Identifier.ValueText: "Run" or "RunLocal" or "Register" or "RegisterLocal"
             }
         };
 

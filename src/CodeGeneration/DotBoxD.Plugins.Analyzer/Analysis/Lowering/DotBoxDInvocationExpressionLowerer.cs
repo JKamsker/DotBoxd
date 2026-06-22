@@ -32,6 +32,11 @@ internal static class DotBoxDInvocationExpressionLowerer
             return hostCall;
         }
 
+        if (DotBoxDResultBuilderExpressionLowerer.TryLower(invocation, context, lowerExpression) is { } resultBuilder)
+        {
+            return resultBuilder;
+        }
+
         if (DotBoxDKernelMethodInliner.TryInline(invocation, context, lowerExpression) is { } inlined)
         {
             return inlined;

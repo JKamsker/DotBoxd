@@ -4,12 +4,16 @@
 
 protected static NotSupportedException ControlPlaneOnly()
 public bool IsAsync { get; set; }
+public bool Success { get; }
 public CancellationToken CancellationToken { get; }
 public delegate ValueTask<TReturn> RemoteServerInvocation<TWorld, TCaptures, TReturn>( TWorld world, TCaptures captures)
+public HandleSubtypeAttribute( Type subtype, string discriminator, string bindingPrefix, string capability)
+public HookAttribute(string name, Type resultType)
 public HookContext(IPluginMessageSink messages, CancellationToken cancellationToken)
 public InMemoryPluginMessageSink()
 public interface IEventKernel<TEvent>
 public interface IExtensibleControl
+public interface IHookResult
 public interface ILiveSettingsHandle<TKernel> where TKernel : class, new()
 public interface IPluginEventAdapter<in TEvent>
 public interface IPluginEventValueWriter<in TEvent> : IPluginEventAdapter<TEvent>
@@ -22,19 +26,24 @@ public interface IServiceControl : IExtensibleControl
 public IPluginMessageSink Messages { get; }
 public IReadOnlyList<PluginMessage> Messages => _readOnlyMessages
 public PluginAttribute(string id) => Id = id
+public PolymorphicHandleAttribute(string keyMember)
 public SandboxEffect Effects { get; } = effects
 public sealed class CapabilityAttribute(string id) : Attribute
 public sealed class EventKernelAttribute(string? id = null) : Attribute
 public sealed class GeneratePluginRegistrationAccumulatorAttribute( string accumulatorName, string methodName) : Attribute
 public sealed class GeneratePluginRegistrationRootAccumulatorAttribute(string accumulatorName) : Attribute
 public sealed class GeneratePluginServerAttribute : Attribute
+public sealed class HandleSubtypeAttribute : Attribute
+public sealed class HookAttribute : Attribute
 public sealed class HookContext
+public sealed class HookResultAttribute : Attribute
 public sealed class HostBindingAttribute(string bindingId, string capability, SandboxEffect effects) : Attribute
 public sealed class HostCapabilityAttribute(string capability) : Attribute
 public sealed class InMemoryPluginMessageSink : IPluginMessageSink
 public sealed class KernelMethodAttribute : Attribute
 public sealed class LiveSettingAttribute : Attribute
 public sealed class PluginAttribute : Attribute
+public sealed class PolymorphicHandleAttribute : Attribute
 public sealed class ServerExtensionAttribute : Attribute
 public sealed class ServerExtensionClientAttribute(Type receiverType, string? name = null) : Attribute
 public sealed class ServerExtensionMethodAttribute(Type? receiverType = null, string? name = null) : Attribute
@@ -44,15 +53,22 @@ public ServerExtensionAttribute(string id) => Id = id
 public ServerExtensionAttribute(Type grafts, string? id = null)
 public string AccumulatorName { get; } = accumulatorName
 public string BindingId { get; } = bindingId
+public string BindingPrefix { get; }
+public string Capability { get; }
 public string Capability { get; } = capability
+public string Discriminator { get; }
 public string Id { get; }
 public string Id { get; } = id
+public string KeyMember { get; }
 public string MethodName { get; } = methodName
+public string Name { get; }
 public string? Id { get; }
 public string? Id { get; } = id
 public string? Name { get; } = name
 public THost Host<THost>() where THost : class
 public Type ReceiverType { get; } = receiverType
+public Type ResultType { get; }
+public Type Subtype { get; }
 public Type? Grafts { get; }
 public Type? ReceiverType { get; } = receiverType
 public Type? ServiceType { get; }

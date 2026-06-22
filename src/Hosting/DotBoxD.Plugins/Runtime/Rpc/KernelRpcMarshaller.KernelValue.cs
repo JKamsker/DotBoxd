@@ -7,7 +7,10 @@ public static partial class KernelRpcMarshaller
     internal static object? FromKernelRpcValue(KernelRpcValue value, Type type)
     {
         ArgumentNullException.ThrowIfNull(type);
-        RejectNullableValueType(type);
+        if (TryNullableFromKernelRpcValue(value, type, out var nullable))
+        {
+            return nullable;
+        }
 
         if (TryScalarFromKernel(value, type, out var scalar))
         {

@@ -1,12 +1,11 @@
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
-using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.TypeNames;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 
-internal static class DotBoxDConditionBodyModelFactory
+internal static partial class DotBoxDConditionBodyModelFactory
 {
     public static DotBoxDStatementBodyModel Create(
         ExpressionSyntax expression,
@@ -40,7 +39,7 @@ internal static class DotBoxDConditionBodyModelFactory
             ConditionalExpressionSyntax conditional =>
                 LowerConditional(conditional, whenTrue, whenFalse, context),
             PrefixUnaryExpressionSyntax unary when unary.Kind() == SyntaxKind.LogicalNotExpression =>
-                LowerCondition(unary.Operand, whenFalse, whenTrue, context),
+                LowerNot(unary, whenTrue, whenFalse, context),
             BinaryExpressionSyntax binary when binary.Kind() == SyntaxKind.LogicalAndExpression =>
                 LowerAnd(binary, whenTrue, whenFalse, context),
             BinaryExpressionSyntax binary when binary.Kind() == SyntaxKind.LogicalOrExpression =>
@@ -57,113 +56,53 @@ internal static class DotBoxDConditionBodyModelFactory
         };
     }
 
-    private static DotBoxDStatementBodyModel LowerAnd(
-        BinaryExpressionSyntax binary,
-        DotBoxDStatementBodyModel whenTrue,
-        DotBoxDStatementBodyModel whenFalse,
-        DotBoxDExpressionLoweringContext context)
-        => LowerCondition(
-            binary.Left,
-            LowerCondition(binary.Right, whenTrue, whenFalse, context),
-            whenFalse,
-            context);
-
-    private static DotBoxDStatementBodyModel LowerOr(
-        BinaryExpressionSyntax binary,
-        DotBoxDStatementBodyModel whenTrue,
-        DotBoxDStatementBodyModel whenFalse,
-        DotBoxDExpressionLoweringContext context)
-        => LowerCondition(
-            binary.Left,
-            whenTrue,
-            LowerCondition(binary.Right, whenTrue, whenFalse, context),
-            context);
-
     private static DotBoxDStatementBodyModel LowerConditional(
         ConditionalExpressionSyntax conditional,
         DotBoxDStatementBodyModel whenTrue,
         DotBoxDStatementBodyModel whenFalse,
         DotBoxDExpressionLoweringContext context)
-        => LowerCondition(
+    {
+        if (DotBoxDPatternExpressionLowerer.TryLowerDeclarationPattern(
+                conditional.Condition,
+                context,
+                part => DotBoxDExpressionModelFactory.Create(part, context),
+                out var condition,
+                out var captureName,
+                out var capture))
+        {
+            var trueContext = context.WithPatternCapture(captureName, capture);
+            return If(
+                condition.Source,
+                LowerCondition(conditional.WhenTrue, whenTrue, whenFalse, trueContext),
+                LowerCondition(conditional.WhenFalse, whenTrue, whenFalse, context),
+                condition.Allocates);
+        }
+
+        if (DotBoxDPatternExpressionLowerer.ContainsDeclarationPattern(conditional.Condition))
+        {
+            throw new NotSupportedException($"Unsupported declaration-pattern composition '{conditional.Condition}'.");
+        }
+
+        return LowerCondition(
             conditional.Condition,
             LowerCondition(conditional.WhenTrue, whenTrue, whenFalse, context),
             LowerCondition(conditional.WhenFalse, whenTrue, whenFalse, context),
             context);
+    }
 
-    private static DotBoxDStatementBodyModel LowerEagerAnd(
-        BinaryExpressionSyntax binary,
-        DotBoxDStatementBodyModel whenTrue,
-        DotBoxDStatementBodyModel whenFalse,
-        DotBoxDExpressionLoweringContext context)
-        => LowerEagerBoolBinary(
-            binary,
-            DotBoxDGenerationNames.Helpers.And,
-            whenTrue,
-            whenFalse,
-            context);
-
-    private static DotBoxDStatementBodyModel LowerEagerOr(
-        BinaryExpressionSyntax binary,
-        DotBoxDStatementBodyModel whenTrue,
-        DotBoxDStatementBodyModel whenFalse,
-        DotBoxDExpressionLoweringContext context)
-        => LowerEagerBoolBinary(
-            binary,
-            DotBoxDGenerationNames.Helpers.Or,
-            whenTrue,
-            whenFalse,
-            context);
-
-    private static DotBoxDStatementBodyModel LowerBoolXor(
-        BinaryExpressionSyntax binary,
-        DotBoxDStatementBodyModel whenTrue,
-        DotBoxDStatementBodyModel whenFalse,
-        DotBoxDExpressionLoweringContext context)
-        => LowerEagerBoolBinary(
-            binary,
-            DotBoxDGenerationNames.Helpers.Ne,
-            whenTrue,
-            whenFalse,
-            context);
-
-    private static DotBoxDStatementBodyModel LowerBoolEquality(
-        BinaryExpressionSyntax binary,
+    private static DotBoxDStatementBodyModel LowerNot(
+        PrefixUnaryExpressionSyntax unary,
         DotBoxDStatementBodyModel whenTrue,
         DotBoxDStatementBodyModel whenFalse,
         DotBoxDExpressionLoweringContext context)
     {
-        var helper = binary.Kind() == SyntaxKind.NotEqualsExpression
-            ? DotBoxDGenerationNames.Helpers.Ne
-            : DotBoxDGenerationNames.Helpers.Eq;
-        return LowerEagerBoolBinary(binary, helper, whenTrue, whenFalse, context);
+        if (DotBoxDPatternExpressionLowerer.ContainsDeclarationPattern(unary.Operand))
+        {
+            throw new NotSupportedException($"Unsupported declaration-pattern composition '{unary}'.");
+        }
+
+        return LowerCondition(unary.Operand, whenFalse, whenTrue, context);
     }
-
-    private static DotBoxDStatementBodyModel LowerEagerBoolBinary(
-        BinaryExpressionSyntax binary,
-        string helper,
-        DotBoxDStatementBodyModel whenTrue,
-        DotBoxDStatementBodyModel whenFalse,
-        DotBoxDExpressionLoweringContext context)
-    {
-        var leftName = ConditionTemp(binary.Left);
-        var rightName = ConditionTemp(binary.Right);
-        var leftLowered = LowerConditionValue(binary.Left, leftName, context);
-        var rightLowered = LowerConditionValue(binary.Right, rightName, context);
-        var result = new DotBoxDExpressionModel(
-            $"{helper}({Var(leftName)}, {Var(rightName)})",
-            DotBoxDGenerationNames.ManifestTypes.Bool,
-            false);
-
-        return Concat(leftLowered, Concat(rightLowered, If(result.Source, whenTrue, whenFalse, false)));
-    }
-
-    private static DotBoxDStatementBodyModel LowerConditionValue(
-        ExpressionSyntax expression,
-        string name,
-        DotBoxDExpressionLoweringContext context)
-        => Concat(
-            AssignBool(name, value: false),
-            LowerCondition(expression, AssignBool(name, value: true), AssignBool(name, value: false), context));
 
     private static DotBoxDStatementBodyModel LowerLeafCondition(
         ExpressionSyntax expression,
@@ -237,43 +176,6 @@ internal static class DotBoxDConditionBodyModelFactory
         => value
             ? DotBoxDGenerationNames.CSharpLiterals.True
             : DotBoxDGenerationNames.CSharpLiterals.False;
-
-    private static bool IsBoolEquality(
-        BinaryExpressionSyntax binary,
-        DotBoxDExpressionLoweringContext context)
-    {
-        if (binary.Kind() is not (SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression))
-        {
-            return false;
-        }
-
-        return IsBool(binary.Left, context) && IsBool(binary.Right, context);
-    }
-
-    private static bool IsEagerAnd(
-        BinaryExpressionSyntax binary,
-        DotBoxDExpressionLoweringContext context)
-        => binary.Kind() == SyntaxKind.BitwiseAndExpression && IsBoolOperands(binary, context);
-
-    private static bool IsEagerOr(
-        BinaryExpressionSyntax binary,
-        DotBoxDExpressionLoweringContext context)
-        => binary.Kind() == SyntaxKind.BitwiseOrExpression && IsBoolOperands(binary, context);
-
-    private static bool IsBoolXor(
-        BinaryExpressionSyntax binary,
-        DotBoxDExpressionLoweringContext context)
-        => binary.Kind() == SyntaxKind.ExclusiveOrExpression && IsBoolOperands(binary, context);
-
-    private static bool IsBoolOperands(
-        BinaryExpressionSyntax binary,
-        DotBoxDExpressionLoweringContext context)
-        => IsBool(binary.Left, context) && IsBool(binary.Right, context);
-
-    private static bool IsBool(ExpressionSyntax expression, DotBoxDExpressionLoweringContext context)
-        => context.SemanticModel
-            .GetTypeInfo(expression, context.CancellationToken)
-            .ConvertedType?.SpecialType == SpecialType.System_Boolean;
 
     private static bool ContainsOrderedBooleanOperator(ExpressionSyntax expression)
     {

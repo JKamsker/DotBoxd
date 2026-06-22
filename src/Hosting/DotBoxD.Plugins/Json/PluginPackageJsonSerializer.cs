@@ -214,7 +214,17 @@ public static partial class PluginPackageJsonSerializer
         RequireAllowedProperties(
             element,
             "hook subscription",
-            ["event", "kernel", "indexedPredicates", "indexCoversPredicate", "localTerminal", "projectedType"]);
+            [
+                "event",
+                "kernel",
+                "indexedPredicates",
+                "indexCoversPredicate",
+                "localTerminal",
+                "projectedType",
+                "priority",
+                "resultType",
+                "resultLocalTerminal"
+            ]);
         return new HookSubscriptionManifest(
             RequiredString(element, "event"),
             RequiredString(element, "kernel"))
@@ -230,7 +240,15 @@ public static partial class PluginPackageJsonSerializer
                 ReadBoolValue(localTerminal, "localTerminal"),
             ProjectedType = element.TryGetProperty("projectedType", out var projectedType)
                 ? ReadStringValue(projectedType, "projectedType")
-                : null
+                : null,
+            Priority = element.TryGetProperty("priority", out var priority)
+                ? ReadInt32Value(priority, "priority")
+                : 0,
+            ResultType = element.TryGetProperty("resultType", out var resultType)
+                ? ReadStringValue(resultType, "resultType")
+                : null,
+            ResultLocalTerminal = element.TryGetProperty("resultLocalTerminal", out var resultLocalTerminal) &&
+                ReadBoolValue(resultLocalTerminal, "resultLocalTerminal")
         };
     }
 

@@ -46,6 +46,7 @@ internal static class DotBoxDShouldHandleBodyModelFactory
             statements[start] is IfStatementSyntax branch &&
             branch.Else is null)
         {
+            RejectDeclarationPatternBranch(branch);
             var whenTrue = LowerStatement(branch.Statement, context);
             var whenFalse = LowerStatements(statements, start + 1, context);
             return DotBoxDConditionBodyModelFactory.CreateBranch(
@@ -76,6 +77,7 @@ internal static class DotBoxDShouldHandleBodyModelFactory
         IfStatementSyntax branch,
         DotBoxDExpressionLoweringContext context)
     {
+        RejectDeclarationPatternBranch(branch);
         var whenTrue = LowerStatement(branch.Statement, context);
         var whenFalse = LowerStatement(branch.Else!.Statement, context);
         return DotBoxDConditionBodyModelFactory.CreateBranch(
@@ -83,5 +85,13 @@ internal static class DotBoxDShouldHandleBodyModelFactory
             whenTrue,
             whenFalse,
             context);
+    }
+
+    private static void RejectDeclarationPatternBranch(IfStatementSyntax branch)
+    {
+        if (DotBoxDPatternExpressionLowerer.ContainsDeclarationPattern(branch.Condition))
+        {
+            throw new NotSupportedException($"Unsupported declaration-pattern composition '{branch.Condition}'.");
+        }
     }
 }

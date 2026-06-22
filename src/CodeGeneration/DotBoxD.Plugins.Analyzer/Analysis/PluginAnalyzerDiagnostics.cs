@@ -36,4 +36,35 @@ internal static class PluginAnalyzerDiagnostics
         description: "A recognized remote RunLocal hook chain whose Where/Select stages cannot be lowered is skipped "
             + "by the generator; without interception its native terminal throws at runtime.",
         helpLinkUri: UnshippedRulesHelpLinkBase + "DBXK111");
+
+    // A [HookResult] record must declare the control fields the generated builders (and the runtime
+    // abstain/fallthrough contract) depend on. Without them the builders cannot be emitted, so surface the
+    // missing contract instead of leaving Ok()/Reject() undefined.
+    public static readonly DiagnosticDescriptor HookResultContractRule = new(
+        "DBXK112",
+        "Hook result type does not satisfy the result contract",
+        "{0}",
+        "DotBoxD.Kernels.Generation",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "A [HookResult] type must be a top-level readonly record struct that declares a 'bool Success' "
+            + "field and a 'string? Reason' field, so the generated Ok()/Reject() builders and the runtime "
+            + "abstain/fallthrough contract are well-defined.",
+        helpLinkUri: UnshippedRulesHelpLinkBase + "DBXK112");
+
+    // A result-returning hook chain (On<TContext>().…​.Register/RegisterLocal) is only intercepted when its
+    // context carries [Hook], its handler returns the associated result type, and its filter/handler lower to
+    // verified IR. When any of those fail the generator emits no interceptor and the runtime terminal throws,
+    // so surface the cause at build time rather than leaving a silent skip.
+    public static readonly DiagnosticDescriptor ResultHookNotLoweredRule = new(
+        "DBXK113",
+        "Result hook chain is not lowered and will throw at runtime",
+        "{0}",
+        "DotBoxD.Kernels.Generation",
+        DiagnosticSeverity.Info,
+        isEnabledByDefault: true,
+        description: "A recognized result-returning hook chain whose context lacks [Hook], whose handler returns the "
+            + "wrong result type, or whose filter/handler cannot be lowered is skipped by the generator; without "
+            + "interception its native Register/RegisterLocal terminal throws at runtime.",
+        helpLinkUri: UnshippedRulesHelpLinkBase + "DBXK113");
 }

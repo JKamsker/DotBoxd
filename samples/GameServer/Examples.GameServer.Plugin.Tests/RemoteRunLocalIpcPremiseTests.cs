@@ -33,7 +33,9 @@ public sealed class RemoteRunLocalIpcPremiseTests
     private sealed class CallbackSink(RemoteLocalHandlerRegistry registry) : IPluginEventCallback
     {
         private int _pushCount;
+        private int _resultRequestCount;
         public int PushCount => Volatile.Read(ref _pushCount);
+        public int ResultRequestCount => Volatile.Read(ref _resultRequestCount);
 
         public async ValueTask OnEventAsync(string subscriptionId, ReadOnlyMemory<byte> projectedValue, CancellationToken ct = default)
         {
@@ -41,6 +43,19 @@ public sealed class RemoteRunLocalIpcPremiseTests
             await registry.DispatchAsync(
                 subscriptionId,
                 projectedValue,
+                new HookContext(new InMemoryPluginMessageSink(), ct),
+                ct);
+        }
+
+        public ValueTask<byte[]> OnResultAsync(
+            string subscriptionId,
+            ReadOnlyMemory<byte> contextValue,
+            CancellationToken ct = default)
+        {
+            Interlocked.Increment(ref _resultRequestCount);
+            return registry.DispatchResultAsync(
+                subscriptionId,
+                contextValue,
                 new HookContext(new InMemoryPluginMessageSink(), ct),
                 ct);
         }
@@ -176,6 +191,65 @@ public sealed class RemoteRunLocalIpcPremiseTests
         Assert.Equal([matching], aggroOnPluginSide);
         // PREMISE 3: whole-event push performs no host send.
         Assert.Empty(serverMessages.Messages);
+    }
+
+    [Fact]
+    public async Task RegisterLocal_result_chain_filters_server_side_and_returns_result_over_ipc()
+    {
+        var localHandlers = new RemoteLocalHandlerRegistry();
+        PluginPackage? lowered = null;
+        string? subscriptionId = null;
+        var hooks = new RemoteHookRegistry(
+            package =>
+            {
+                lowered = package;
+                subscriptionId = package.Manifest.PluginId;
+                return ValueTask.FromResult(package.Manifest.PluginId);
+            },
+            localHandlers);
+
+        LocalReactions.ConfigureDamageDecision(hooks);
+
+        Assert.NotNull(lowered);
+        Assert.NotNull(subscriptionId);
+        var subscription = Assert.Single(lowered!.Manifest.Subscriptions);
+        Assert.True(subscription.ResultLocalTerminal);
+        Assert.False(subscription.LocalTerminal);
+        Assert.Equal(7, subscription.Priority);
+        Assert.Equal(
+            "global::DotBoxD.Kernels.Game.Server.Abstractions.Events.RemoteDamageDecisionResult",
+            subscription.ResultType);
+
+        var pipeName = "dotboxd-result-e2e-" + Guid.NewGuid().ToString("N");
+        var serverPeerReady = new TaskCompletionSource<RpcPeer>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var ipcHost = RpcMessagePackIpc.ListenNamedPipe(pipeName, peer => serverPeerReady.TrySetResult(peer));
+        await ipcHost.StartAsync();
+
+        var callbackSink = new CallbackSink(localHandlers);
+        await using var clientSession = await RpcMessagePackIpc.ConnectAsync(
+            new NamedPipeClientTransport(".", pipeName),
+            peer => peer.ProvidePluginEventCallback(callbackSink));
+
+        var serverPeer = await serverPeerReady.Task;
+        var pushProxy = serverPeer.GetPluginEventCallback();
+
+        using var server = PluginServer.Create(defaultPolicy: ProjectionPolicy());
+        var kernel = await server.InstallAsync(lowered!);
+        RemoteLocalResultRequest request = (subId, payload, ct) => pushProxy.OnResultAsync(subId, payload, ct);
+        server.Hooks.On<RemoteDamageDecisionEvent>()
+            .UseProjectingResult(kernel, subscriptionId!, typeof(RemoteDamageDecisionResult), request, subscription.Priority);
+
+        var miss = await server.Hooks.FireAsync<RemoteDamageDecisionEvent, RemoteDamageDecisionResult>(
+            new RemoteDamageDecisionEvent("monster-1", 5));
+        Assert.Null(miss);
+        Assert.Equal(0, callbackSink.ResultRequestCount);
+
+        var hit = await server.Hooks.FireAsync<RemoteDamageDecisionEvent, RemoteDamageDecisionResult>(
+            new RemoteDamageDecisionEvent("monster-1", 12));
+        Assert.True(hit!.Value.Success);
+        Assert.Equal("remote", hit.Value.Reason);
+        Assert.Equal(24, hit.Value.Damage);
+        Assert.Equal(1, callbackSink.ResultRequestCount);
     }
 
     private static SandboxPolicy ProjectionPolicy()

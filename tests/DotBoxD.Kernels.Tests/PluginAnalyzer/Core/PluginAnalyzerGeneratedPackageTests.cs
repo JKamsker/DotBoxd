@@ -11,6 +11,36 @@ namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Core;
 public sealed class PluginAnalyzerGeneratedPackageTests
 {
     [Fact]
+    public void Generated_kernel_manifest_uses_declared_hook_name_for_hook_context()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create("""
+            using DotBoxD.Plugins;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            [Hook("combat.damage", typeof(DamageResult))]
+            public sealed record DamageEvent(string TargetId, string Message);
+
+            [HookResult]
+            public readonly partial record struct DamageResult(bool Success, string? Reason, int Damage);
+
+            [Plugin("hook-named-kernel")]
+            public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+            {
+                public bool ShouldHandle(DamageEvent e, HookContext ctx) => true;
+
+                public void Handle(DamageEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, e.Message);
+            }
+            """);
+
+        var subscription = Assert.Single(package.Manifest.Subscriptions);
+        Assert.Equal("combat.damage", subscription.Event);
+        Assert.Equal("IEventKernel<combat.damage>", package.Manifest.Contract);
+    }
+
+    [Fact]
     public async Task Generated_package_installs_and_executes_lowered_ir()
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""

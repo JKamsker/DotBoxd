@@ -31,7 +31,7 @@ internal static partial class DotBoxDExpressionModelFactory
             InvocationExpressionSyntax invocation =>
                 DotBoxDInvocationExpressionLowerer.Lower(invocation, context, part => Lower(part, context)),
             IsPatternExpressionSyntax pattern => DotBoxDPatternExpressionLowerer.Lower(pattern, context, part => Lower(part, context)),
-            IdentifierNameSyntax identifier => LowerIdentifier(identifier.Identifier.ValueText, context),
+            IdentifierNameSyntax identifier => DotBoxDIdentifierExpressionLowerer.Lower(identifier.Identifier.ValueText, context),
             MemberAccessExpressionSyntax member
                 when DotBoxDStringExpressionLowerer.TryLowerMember(member, context, part => Lower(part, context)) is { } lowered =>
                 lowered,
@@ -90,6 +90,11 @@ internal static partial class DotBoxDExpressionModelFactory
         BinaryExpressionSyntax binary,
         DotBoxDExpressionLoweringContext context)
     {
+        if (DotBoxDPatternCaptureExpressionLowerer.TryLower(binary, context, Lower) is { } patternCapture)
+        {
+            return patternCapture;
+        }
+
         var left = Lower(binary.Left, context);
         var right = Lower(binary.Right, context);
         DotBoxDNumericConstantPromoter.Promote(binary, context, ref left, ref right);
@@ -232,43 +237,6 @@ internal static partial class DotBoxDExpressionModelFactory
             allocates);
     }
 
-    private static DotBoxDExpressionModel LowerIdentifier(
-        string name,
-        DotBoxDExpressionLoweringContext context)
-    {
-        // Inside an inlined [KernelMethod] body: a reference to one of the method's parameters resolves to
-        // the already-lowered IR of the call-site argument. Checked first so a parameter shadows any
-        // same-named live setting (correct C# scoping).
-        if (context.InlinedBindings is { } bindings &&
-            bindings.TryGetValue(name, out var bound))
-        {
-            return bound;
-        }
-
-        // A Select-projected element: inline its already-lowered IR wherever the downstream lambda
-        // names it (compile-time substitution; the projection's event-property refs ride along).
-        if (context.ProjectedElementName is { } projectedName &&
-            string.Equals(projectedName, name, StringComparison.Ordinal))
-        {
-            return context.ProjectedElement!;
-        }
-
-        var liveSettings = context.LiveSettings;
-        for (var i = 0; i < liveSettings.Count; i++)
-        {
-            var setting = liveSettings[i];
-            if (string.Equals(setting.Name, name, StringComparison.Ordinal))
-            {
-                return new DotBoxDExpressionModel(
-                    $"{DotBoxDGenerationNames.Helpers.Var}({LiteralReader.StringLiteral(name)})",
-                    setting.Type,
-                    false);
-            }
-        }
-
-        throw new NotSupportedException($"Unsupported plugin identifier '{name}'.");
-    }
-
     private static DotBoxDExpressionModel LowerMemberAccess(
         MemberAccessExpressionSyntax member,
         DotBoxDExpressionLoweringContext context)
@@ -309,7 +277,7 @@ internal static partial class DotBoxDExpressionModelFactory
 
         if (member.Expression is ThisExpressionSyntax)
         {
-            return LowerIdentifier(memberName, context);
+            return LowerThisMemberAccess(member, memberName, context);
         }
 
         // General member chain: a `.Count`/`.Length` read on a list-shaped receiver, or a field read on a record

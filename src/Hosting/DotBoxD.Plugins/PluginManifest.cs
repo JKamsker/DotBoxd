@@ -90,6 +90,25 @@ public sealed record HookSubscriptionManifest(string Event, string Kernel)
     /// pushes to the plugin. <c>null</c> for ordinary chains. Additive; defaults to <c>null</c>.
     /// </summary>
     public string? ProjectedType { get; init; }
+
+    /// <summary>
+    /// The host dispatch priority for a lowered result-returning hook chain. Higher values run first, with
+    /// install order preserving ties. Optional; defaults to zero.
+    /// </summary>
+    public int Priority { get; init; }
+
+    /// <summary>
+    /// The fully qualified result type declared by the hook context's <see cref="HookAttribute"/> for a lowered
+    /// <c>Register</c>/<c>RegisterLocal</c> chain. <c>null</c> for ordinary notification hooks.
+    /// </summary>
+    public string? ResultType { get; init; }
+
+    /// <summary>
+    /// <c>true</c> for a remote <c>RegisterLocal</c> result hook: the server evaluates the lowered filter and
+    /// requests the result from the plugin process. <c>false</c> for sandbox <c>Register</c>, where the sandbox
+    /// <c>Handle</c> entrypoint returns the result directly.
+    /// </summary>
+    public bool ResultLocalTerminal { get; init; }
 }
 
 /// <summary>

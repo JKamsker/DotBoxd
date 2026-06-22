@@ -30,8 +30,13 @@ internal static class EventNameMatch
             return false;
         }
 
-        return string.Equals(SimpleName(left!), SimpleName(right!), StringComparison.Ordinal);
+        var leftQualified = IsQualified(left);
+        var rightQualified = IsQualified(right);
+        return leftQualified != rightQualified &&
+            string.Equals(SimpleName(left!), SimpleName(right!), StringComparison.Ordinal);
     }
+
+    private static bool IsQualified(string name) => name.Contains('.', StringComparison.Ordinal);
 
     private static string SimpleName(string name)
     {

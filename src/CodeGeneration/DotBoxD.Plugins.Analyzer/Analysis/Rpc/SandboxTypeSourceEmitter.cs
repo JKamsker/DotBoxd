@@ -110,6 +110,16 @@ internal static class SandboxTypeSourceEmitter
             return SandboxType + ".Guid";
         }
 
+        if (DotBoxDNullableScalarType.TryGetSupportedUnderlying(type, out var nullableUnderlying))
+        {
+            if (depth >= MaxDepth)
+            {
+                throw new NotSupportedException();
+            }
+
+            return $"{SandboxType}.Record(new {SandboxType}[] {{ {SandboxType}.Bool, {Emit(nullableUnderlying, depth + 1)} }})";
+        }
+
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return DotBoxDRpcTypeMapper.EnumUsesI64(enumType) ? SandboxType + ".I64" : SandboxType + ".I32";

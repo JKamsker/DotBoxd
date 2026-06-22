@@ -4,7 +4,7 @@ using DotBoxD.Plugins.Runtime.Hooks;
 
 namespace DotBoxD.Plugins.Runtime;
 
-public sealed class HookPipeline<TEvent> : IKernelHandlerPipeline
+public sealed partial class HookPipeline<TEvent> : IKernelHandlerPipeline
 {
     private readonly object _gate = new();
 
@@ -24,13 +24,15 @@ public sealed class HookPipeline<TEvent> : IKernelHandlerPipeline
         IPluginEventAdapter<TEvent> adapter,
         IPluginMessageSink messages,
         KernelRegistry kernels,
-        Func<PluginPackage, InstalledKernel>? installer = null)
+        Func<PluginPackage, InstalledKernel>? installer = null,
+        Action<ResultHookFault>? onFault = null)
     {
         _adapter = adapter;
         _messages = messages;
         _defaultContext = new HookContext(messages, CancellationToken.None);
         _kernels = kernels;
         _installer = installer;
+        _resultHooks = new ResultHookSlot<TEvent>(adapter, onFault);
     }
 
     /// <summary>
@@ -205,7 +207,10 @@ public sealed class HookPipeline<TEvent> : IKernelHandlerPipeline
         => ReferenceEquals(_adapter, adapter);
 
     void IKernelHandlerPipeline.RemoveKernel(InstalledKernel kernel)
-        => _handlerSet.Remove(kernel);
+    {
+        _resultHooks.RemoveKernel(kernel);
+        _handlerSet.Remove(kernel);
+    }
 
     void IKernelHandlerPipeline.RemoveKernelPool(InstalledKernelPool pool)
         => _handlerSet.Remove(pool);

@@ -21,6 +21,8 @@ internal static class HookChainModelFactory
 {
     private const string RunMethod = "Run";
     private const string RunLocalMethod = "RunLocal";
+    private const string RegisterMethod = "Register";
+    private const string RegisterLocalMethod = "RegisterLocal";
     private const string WhereMethod = "Where";
     private const string SelectMethod = "Select";
     private const string OnMethod = "On";
@@ -56,7 +58,50 @@ internal static class HookChainModelFactory
             return new HookChainCreateResult(null, new HookChainNotLoweredDiagnostic(location));
         }
 
+        // A recognized in-process result hook (On<TContext>().Register/RegisterLocal) that produced no package
+        // leaves its native terminal to throw at runtime; surface DBXK113 so the cause shows at build time.
+        if (TryResultChainLocation(invocation, context.SemanticModel, cancellationToken, out var resultLocation, out var isLocalTerminal))
+        {
+            return new HookChainCreateResult(
+                null,
+                new HookChainNotLoweredDiagnostic(resultLocation, ResultChain: true, LocalResultTerminal: isLocalTerminal));
+        }
+
         return null;
+    }
+
+    // True when the call site is a Register/RegisterLocal terminal on a known hook pipeline — the surface whose
+    // native terminal throws when the generator does not intercept it.
+    private static bool TryResultChainLocation(
+        InvocationExpressionSyntax invocation,
+        SemanticModel model,
+        CancellationToken cancellationToken,
+        out PluginDiagnosticLocation location,
+        out bool isLocalTerminal)
+    {
+        location = default;
+        isLocalTerminal = false;
+        if (invocation.Expression is not MemberAccessExpressionSyntax terminalAccess ||
+            (!string.Equals(terminalAccess.Name.Identifier.ValueText, RegisterMethod, StringComparison.Ordinal) &&
+             !string.Equals(terminalAccess.Name.Identifier.ValueText, RegisterLocalMethod, StringComparison.Ordinal)))
+        {
+            return false;
+        }
+
+        var receiverKind = ReceiverKind(model, terminalAccess.Expression, cancellationToken);
+        if (receiverKind is not (HookChainReceiverKind.Local or HookChainReceiverKind.Remote))
+        {
+            var stages = new List<HookChainStage>();
+            var seed = WalkToSeed(terminalAccess.Expression, stages);
+            if (seed is null || GeneratedRemoteHookChainFallback.CandidateKind(seed) != GeneratedRemoteHookChainKind.Hook)
+            {
+                return false;
+            }
+        }
+
+        isLocalTerminal = string.Equals(terminalAccess.Name.Identifier.ValueText, RegisterLocalMethod, StringComparison.Ordinal);
+        location = PluginDiagnosticLocation.From(terminalAccess.Name.GetLocation());
+        return true;
     }
 
     // True when the call site is a remote RunLocal terminal: RunLocal whose receiver's static type is one of the
@@ -115,13 +160,23 @@ internal static class HookChainModelFactory
             return null;
         }
 
-        if (!TryLambda(invocation, out var terminalLambda))
+        // Run/RunLocal take a single lambda; Register/RegisterLocal take (lambda, priority) — accept the leading
+        // lambda for the result terminals so the trailing priority argument does not reject the chain.
+        var isResultTerminal = installKind is HookChainInterceptorInstallKind.ResultChain
+            or HookChainInterceptorInstallKind.LocalResultChain;
+        if (!(isResultTerminal ? TryLeadingLambda(invocation, out var terminalLambda) : TryLambda(invocation, out terminalLambda)))
         {
             return null;
         }
 
-        var (terminalElementParam, terminalContextParam) = LambdaParameters(terminalLambda);
+        var (terminalElementParam, terminalContextParam, terminalCancellationParam) = LambdaParameters(terminalLambda);
         if (terminalElementParam is null)
+        {
+            return null;
+        }
+
+        if (terminalCancellationParam is not null &&
+            installKind != HookChainInterceptorInstallKind.LocalResultChain)
         {
             return null;
         }
@@ -137,6 +192,27 @@ internal static class HookChainModelFactory
         if (ContainsUnsupported(eventProperties))
         {
             return null;
+        }
+
+        // Result-returning hooks (Register/RegisterLocal) lower the filter the same way, but the Handle returns
+        // the result record (Register) or Unit with an in-process delegate (RegisterLocal); they install via the
+        // result-chain entrypoints. Delegated to keep the Send-terminal path below focused.
+        if (installKind is HookChainInterceptorInstallKind.ResultChain or HookChainInterceptorInstallKind.LocalResultChain)
+        {
+            return ResultHookChain.Build(
+                invocation,
+                terminalAccess.Expression,
+                model,
+                cancellationToken,
+                stages,
+                eventType,
+                eventProperties,
+                terminalLambda,
+                terminalElementParam,
+                terminalContextParam,
+                terminalCancellationParam is not null,
+                installKind == HookChainInterceptorInstallKind.LocalResultChain,
+                generatedRemoteKind);
         }
 
         // Collectors for the whole chain: every Where/Select/terminal-Send deposits the capabilities its
@@ -216,7 +292,7 @@ internal static class HookChainModelFactory
             Namespace: HookChainIdentity.Namespace(invocation),
             KernelName: kernelName,
             PackageName: kernelName + "PluginPackage",
-            EventName: EventTypeName.Qualified(eventType),
+            EventName: EventTypeName.HookOrQualified(eventType),
             EventParameterName: DotBoxDGenerationNames.DefaultEventParameterName,
             ContextParameterName: terminalContextParam ?? DotBoxDGenerationNames.DefaultContextParameterName,
             HandleEventParameterName: terminalElementParam,
@@ -309,6 +385,14 @@ internal static class HookChainModelFactory
             RunMethod => HookChainInterceptorInstallKind.GeneratedChain,
             RunLocalMethod when receiverKind == HookChainReceiverKind.Remote || generatedRemoteKind is not null =>
                 HookChainInterceptorInstallKind.LocalCallback,
+            RegisterMethod when receiverKind is HookChainReceiverKind.Local or HookChainReceiverKind.Remote =>
+                HookChainInterceptorInstallKind.ResultChain,
+            RegisterMethod when generatedRemoteKind == GeneratedRemoteHookChainKind.Hook =>
+                HookChainInterceptorInstallKind.ResultChain,
+            RegisterLocalMethod when receiverKind is HookChainReceiverKind.Local or HookChainReceiverKind.Remote =>
+                HookChainInterceptorInstallKind.LocalResultChain,
+            RegisterLocalMethod when generatedRemoteKind == GeneratedRemoteHookChainKind.Hook =>
+                HookChainInterceptorInstallKind.LocalResultChain,
             _ => null
         };
 
@@ -516,7 +600,7 @@ internal static class HookChainModelFactory
                 continue;
             }
 
-            var (elementParam, _) = LambdaParameters(stage.Lambda);
+            var (elementParam, _, _) = LambdaParameters(stage.Lambda);
             if (elementParam is null || stage.Lambda.ExpressionBody is not { } body)
             {
                 throw new NotSupportedException();
@@ -639,26 +723,67 @@ internal static class HookChainModelFactory
         return true;
     }
 
-    // Element-only lambdas (e =>, (e) =>) yield (element, null); element+context lambdas ((e, ctx) =>)
-    // yield (element, context). A null element means an unsupported shape (zero or 3+ parameters) — the
-    // caller fails safe. The context being null is fine for Where/Select (they never reference ctx); the
-    // terminal Send separately requires a non-null context, so an element-only terminal won't lower.
-    private static (string? ElementParam, string? ContextParam) LambdaParameters(LambdaExpressionSyntax lambda)
+    // The handler lambda of a result terminal — Register(lambda, priority) / RegisterLocal(lambda, priority) —
+    // allowing a named/reordered handler argument such as Register(priority: 10, handler: ctx => ...).
+    private static bool TryLeadingLambda(InvocationExpressionSyntax invocation, out LambdaExpressionSyntax lambda)
+    {
+        lambda = null!;
+        var arguments = invocation.ArgumentList.Arguments;
+        LambdaExpressionSyntax? firstUnnamedLambda = null;
+        foreach (var argument in arguments)
+        {
+            if (argument.NameColon is { Name.Identifier.ValueText: "handler" })
+            {
+                if (argument.Expression is not LambdaExpressionSyntax namedHandler)
+                {
+                    return false;
+                }
+
+                lambda = namedHandler;
+                return true;
+            }
+
+            if (argument.NameColon is null &&
+                firstUnnamedLambda is null &&
+                argument.Expression is LambdaExpressionSyntax unnamedHandler)
+            {
+                firstUnnamedLambda = unnamedHandler;
+            }
+        }
+
+        if (firstUnnamedLambda is null)
+        {
+            return false;
+        }
+
+        lambda = firstUnnamedLambda;
+        return true;
+    }
+
+    // Element-only lambdas (e =>, (e) =>) yield (element, null, null); element+context lambdas ((e, ctx) =>)
+    // yield (element, context, null). A cancellation parameter is accepted for RegisterLocal result terminals
+    // and rejected by ResultHookChain for other result shapes.
+    private static (string? ElementParam, string? ContextParam, string? CancellationParam) LambdaParameters(
+        LambdaExpressionSyntax lambda)
     {
         switch (lambda)
         {
             case SimpleLambdaExpressionSyntax simple:
-                return (simple.Parameter.Identifier.ValueText, null);
+                return (simple.Parameter.Identifier.ValueText, null, null);
             case ParenthesizedLambdaExpressionSyntax parenthesized:
                 var parameters = parenthesized.ParameterList.Parameters;
                 return parameters.Count switch
                 {
-                    1 => (parameters[0].Identifier.ValueText, null),
-                    2 => (parameters[0].Identifier.ValueText, parameters[1].Identifier.ValueText),
-                    _ => (null, null),
+                    1 => (parameters[0].Identifier.ValueText, null, null),
+                    2 => (parameters[0].Identifier.ValueText, parameters[1].Identifier.ValueText, null),
+                    3 => (
+                        parameters[0].Identifier.ValueText,
+                        parameters[1].Identifier.ValueText,
+                        parameters[2].Identifier.ValueText),
+                    _ => (null, null, null),
                 };
             default:
-                return (null, null);
+                return (null, null, null);
         }
     }
 

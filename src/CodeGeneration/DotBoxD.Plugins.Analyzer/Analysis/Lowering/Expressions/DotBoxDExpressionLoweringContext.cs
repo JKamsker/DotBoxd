@@ -18,6 +18,7 @@ internal sealed class DotBoxDExpressionLoweringContext
         ICollection<string>? capabilities = null,
         ICollection<string>? effects = null,
         IReadOnlyDictionary<string, DotBoxDExpressionModel>? inlinedBindings = null,
+        IReadOnlyDictionary<string, PatternCaptureBinding>? patternCaptures = null,
         IReadOnlyCollection<string>? inlineStack = null)
     {
         EventParameterName = eventParameterName;
@@ -31,6 +32,7 @@ internal sealed class DotBoxDExpressionLoweringContext
         Capabilities = capabilities;
         Effects = effects;
         InlinedBindings = inlinedBindings;
+        PatternCaptures = patternCaptures;
         _inlineStack = inlineStack;
     }
 
@@ -83,6 +85,23 @@ internal sealed class DotBoxDExpressionLoweringContext
     /// </summary>
     public IReadOnlyDictionary<string, DotBoxDExpressionModel>? InlinedBindings { get; }
 
+    /// <summary>
+    /// Pattern variables introduced by the supported <c>handle is T local &amp;&amp; rhs</c> shape. Each variable is
+    /// the already-lowered handle key plus the subtype whose instance host bindings are valid on that key.
+    /// </summary>
+    public IReadOnlyDictionary<string, PatternCaptureBinding>? PatternCaptures { get; }
+
+    public bool TryGetPatternCapture(string name, out PatternCaptureBinding binding)
+    {
+        if (PatternCaptures is not null && PatternCaptures.TryGetValue(name, out binding!))
+        {
+            return true;
+        }
+
+        binding = null!;
+        return false;
+    }
+
     /// <summary>True while <paramref name="methodKey"/> is already being inlined further up the stack
     /// (used to reject recursive <c>[KernelMethod]</c> chains rather than inlining forever).</summary>
     public bool IsInlining(string methodKey)
@@ -123,4 +142,36 @@ internal sealed class DotBoxDExpressionLoweringContext
             inlinedBindings: bindings,
             inlineStack: stack);
     }
+
+    public DotBoxDExpressionLoweringContext WithPatternCapture(string name, PatternCaptureBinding binding)
+    {
+        var captures = new Dictionary<string, PatternCaptureBinding>(StringComparer.Ordinal);
+        if (PatternCaptures is not null)
+        {
+            foreach (var entry in PatternCaptures)
+            {
+                captures.Add(entry.Key, entry.Value);
+            }
+        }
+
+        captures.Add(name, binding);
+        return new DotBoxDExpressionLoweringContext(
+            EventParameterName,
+            EventProperties,
+            LiveSettings,
+            SemanticModel,
+            CancellationToken,
+            ProjectedElementName,
+            ProjectedElement,
+            ProjectedElementType,
+            Capabilities,
+            Effects,
+            InlinedBindings,
+            captures,
+            _inlineStack);
+    }
 }
+
+internal sealed record PatternCaptureBinding(
+    DotBoxDExpressionModel Key,
+    Microsoft.CodeAnalysis.INamedTypeSymbol Subtype);

@@ -99,7 +99,9 @@ internal static partial class DotBoxDExpressionModelFactory
     // the trap where IsRecordDto alone is true for a List/collection (which exposes public Count/Capacity
     // properties) and a field read would be emitted as record.get on a List value.
     private static bool IsRecordShaped(ITypeSymbol type)
-        => string.Equals(
+        => type is INamedTypeSymbol named &&
+           DotBoxDRpcTypeMapper.IsRecordDto(named) &&
+           string.Equals(
             SandboxTypeSourceEmitter.ManifestTag(type),
             DotBoxDGenerationNames.ManifestTypes.Record,
             StringComparison.Ordinal);
@@ -154,7 +156,7 @@ internal static partial class DotBoxDExpressionModelFactory
         {
             if (string.Equals(
                     attribute.AttributeClass?.ToDisplayString(),
-                    DotBoxDGenerationNames.Metadata.CapabilityAttribute,
+                    DotBoxDMetadataNames.CapabilityAttribute,
                     StringComparison.Ordinal) &&
                 attribute.ConstructorArguments.Length == 1 &&
                 attribute.ConstructorArguments[0].Value is string id &&

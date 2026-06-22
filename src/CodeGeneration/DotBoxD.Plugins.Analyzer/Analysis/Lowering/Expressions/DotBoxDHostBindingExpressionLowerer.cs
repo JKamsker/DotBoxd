@@ -1,5 +1,6 @@
 using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ManifestTypes = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.ManifestTypes;
 using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.TypeNames;
@@ -15,7 +16,7 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 /// <c>RequiredCapability</c> the policy must grant). Arguments are positional and both argument and
 /// return types must be supported scalars; anything else fails safe via <see cref="NotSupportedException"/>.
 /// </summary>
-internal static class DotBoxDHostBindingExpressionLowerer
+internal static partial class DotBoxDHostBindingExpressionLowerer
 {
     private const string HostCapabilityAttribute = "DotBoxD.Abstractions.HostCapabilityAttribute";
 
@@ -31,17 +32,31 @@ internal static class DotBoxDHostBindingExpressionLowerer
             return null;
         }
 
-        var (bindingId, capability, effects, _) = binding;
-        // The return (and arguments) may be any marshaller-eligible type — scalar, Guid, enum, list, map, or a
-        // DTO record — not just a scalar. The kernel verifier and runtime binding dispatch already accept these
-        // return shapes; the analyzer's manifest tag drives the downstream chain's type tracking (so e.g.
-        // GetInRange(...).Count lowers the list result to list.count). Anything not wire-eligible fails safe.
-        var returnType = SandboxTypeSourceEmitter.ManifestTag(DotBoxDTypeNameReader.UnwrapTaskLike(method.ReturnType));
-        if (string.Equals(returnType, ManifestTypes.Unsupported, StringComparison.Ordinal))
+        var (bindingId, capability, effects, isAsync) = binding;
+        if (TryLowerPatternCaptureInvocation(
+                invocation,
+                method,
+                binding,
+                context,
+                lowerExpression) is { } patternCaptureCall)
+        {
+            return patternCaptureCall;
+        }
+
+        if (!method.IsStatic &&
+            PolymorphicHandleMetadataReader.TryResolve(method.ContainingType, out _))
         {
             throw new NotSupportedException(
-                $"Host binding '{bindingId}' must return a marshaller-eligible type.");
+                $"Polymorphic handle binding '{bindingId}' must be called on a pattern-captured subtype.");
         }
+
+        // The return (and arguments) may be any host-binding-eligible marshaller type: scalar, Guid, enum,
+        // list, map, or DTO record. Nullable value types are deliberately excluded here even though result-hook
+        // fields use the same RPC marshaller support; HostServiceBindingFactory rejects them before registration.
+        var returnType = HostBindingManifestTag(
+            DotBoxDTypeNameReader.UnwrapTaskLike(method.ReturnType),
+            bindingId,
+            "return");
 
         var arguments = invocation.ArgumentList.Arguments;
         if (arguments.Count != method.Parameters.Length)
@@ -54,14 +69,16 @@ internal static class DotBoxDHostBindingExpressionLowerer
         var allocates = IsAllocatingTag(returnType);
         for (var i = 0; i < arguments.Count; i++)
         {
-            if (arguments[i].NameColon is not null)
+            if (arguments[i].NameColon is not null ||
+                !arguments[i].RefKindKeyword.IsKind(SyntaxKind.None) ||
+                method.Parameters[i].RefKind != RefKind.None)
             {
                 throw new NotSupportedException(
-                    $"Host binding '{bindingId}' arguments must be positional.");
+                    $"Host binding '{bindingId}' arguments must be positional value arguments.");
             }
 
+            var expected = HostBindingManifestTag(method.Parameters[i].Type, bindingId, $"argument {i}");
             var lowered = lowerExpression(arguments[i].Expression);
-            var expected = SandboxTypeSourceEmitter.ManifestTag(method.Parameters[i].Type);
             if (!string.Equals(lowered.Type, expected, StringComparison.Ordinal))
             {
                 throw new NotSupportedException(
@@ -72,18 +89,7 @@ internal static class DotBoxDHostBindingExpressionLowerer
             allocates |= lowered.Allocates;
         }
 
-        if (capability is { Length: > 0 } requiredCapability)
-        {
-            context.Capabilities?.Add(requiredCapability);
-        }
-
-        if (context.Effects is { } effectSink)
-        {
-            foreach (var effect in effects)
-            {
-                effectSink.Add(effect);
-            }
-        }
+        AddBindingRequirements(context, capability, effects, isAsync);
 
         var source =
             $"new {TypeNames.GlobalCallExpression}({LiteralReader.StringLiteral(bindingId)}, " +
@@ -109,7 +115,7 @@ internal static class DotBoxDHostBindingExpressionLowerer
         {
             if (!string.Equals(
                     attribute.AttributeClass?.ToDisplayString(),
-                    DotBoxDGenerationNames.Metadata.HostBindingAttribute,
+                    DotBoxDMetadataNames.HostBindingAttribute,
                     StringComparison.Ordinal) ||
                 attribute.ConstructorArguments.Length != 3)
             {
@@ -153,7 +159,7 @@ internal static class DotBoxDHostBindingExpressionLowerer
         {
             if (string.Equals(
                     attribute.AttributeClass?.ToDisplayString(),
-                    DotBoxDGenerationNames.Metadata.DotBoxDServiceAttribute,
+                    DotBoxDMetadataNames.DotBoxDServiceAttribute,
                     StringComparison.Ordinal))
             {
                 return true;
@@ -278,4 +284,5 @@ internal static class DotBoxDHostBindingExpressionLowerer
 
         return names;
     }
+
 }

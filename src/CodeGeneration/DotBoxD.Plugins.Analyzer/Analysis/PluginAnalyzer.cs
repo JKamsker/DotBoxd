@@ -98,7 +98,7 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeProperty(SymbolAnalysisContext context)
     {
         var property = (IPropertySymbol)context.Symbol;
-        if (!HasAttribute(property, DotBoxDGenerationNames.Metadata.LiveSettingAttribute))
+        if (!HasAttribute(property, DotBoxDMetadataNames.LiveSettingAttribute))
         {
             return;
         }
@@ -242,7 +242,7 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
     internal static bool IsEventKernel(INamedTypeSymbol? type)
         => type?.AllInterfaces.Any(i => string.Equals(
             i.OriginalDefinition.ToDisplayString(),
-            DotBoxDGenerationNames.Metadata.EventKernelInterface,
+            DotBoxDMetadataNames.EventKernelInterface,
             StringComparison.Ordinal)) == true;
 
     private static bool IsAllowedLiveSettingType(ITypeSymbol type)

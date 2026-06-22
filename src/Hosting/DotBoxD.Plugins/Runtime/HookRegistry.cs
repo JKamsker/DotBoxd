@@ -17,17 +17,20 @@ public sealed class HookRegistry
     private readonly PluginEventAdapterRegistry _events;
     private readonly KernelRegistry _kernels;
     private readonly Func<PluginPackage, InstalledKernel>? _installer;
+    private readonly Action<ResultHookFault>? _onFault;
 
     internal HookRegistry(
         IPluginMessageSink messages,
         PluginEventAdapterRegistry events,
         KernelRegistry kernels,
-        Func<PluginPackage, InstalledKernel>? installer = null)
+        Func<PluginPackage, InstalledKernel>? installer = null,
+        Action<ResultHookFault>? onFault = null)
     {
         _messages = messages;
         _events = events;
         _kernels = kernels;
         _installer = installer;
+        _onFault = onFault;
     }
 
     public HookPipeline<TEvent> On<TEvent>()
@@ -55,7 +58,7 @@ public sealed class HookRegistry
                 return pipeline;
             }
 
-            var created = new HookPipeline<TEvent>(adapter, _messages, _kernels, _installer);
+            var created = new HookPipeline<TEvent>(adapter, _messages, _kernels, _installer, _onFault);
             _pipelines[typeof(TEvent)] = created;
             return created;
         }
@@ -119,5 +122,69 @@ public sealed class HookRegistry
         {
             await ((HookPipeline<TEvent>)pipeline).PublishAsync(e, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Dispatches the result-returning hooks (<c>.Register(...)</c> / <c>.RegisterLocal(...)</c>) installed for
+    /// <typeparamref name="TContext"/> in descending priority order, returning the first successful
+    /// <typeparamref name="TResult"/> or <see langword="null"/> when none is registered or none succeeds. The
+    /// host applies the returned result to its live state. The result type is named explicitly here because the
+    /// host — unlike the plugin authoring side, where it is inferred from the <c>[Hook]</c> context — already
+    /// knows the type it will apply.
+    /// </summary>
+    public ValueTask<TResult?> FireAsync<TContext, TResult>(TContext context, CancellationToken cancellationToken = default)
+        where TResult : struct, IHookResult
+        => FireAsync<TContext, TResult>(
+            context,
+            ResultHookDispatchOptions<TResult>.Default,
+            cancellationToken);
+
+    public ValueTask<TResult?> FireAsync<TContext, TResult>(
+        TContext context,
+        ResultHookDispatchOptions<TResult> options,
+        CancellationToken cancellationToken = default)
+        where TResult : struct, IHookResult
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        options.Validate();
+        object? pipeline;
+        lock (_gate)
+        {
+            _pipelines.TryGetValue(typeof(TContext), out pipeline);
+        }
+
+        ValidateResultType<TContext, TResult>();
+        if (pipeline is null)
+        {
+            return new ValueTask<TResult?>((TResult?)null);
+        }
+
+        return ((HookPipeline<TContext>)pipeline).FireResultAsync(context, options, cancellationToken);
+    }
+
+    private static void ValidateResultType<TContext, TResult>()
+        where TResult : struct, IHookResult
+    {
+        var hook = ResultTypeCache<TContext>.Attr;
+        if (hook is null || hook.ResultType == typeof(TResult))
+        {
+            return;
+        }
+
+        throw new SandboxValidationException([
+            new SandboxDiagnostic(
+                "DBXK066",
+                $"Hook context '{typeof(TContext).Name}' declares result type '{hook.ResultType.Name}', " +
+                $"but FireAsync was called with '{typeof(TResult).Name}'.")
+        ]);
+    }
+
+    // The [Hook] attribute on a context type is fixed at compile time; cache the lookup per closed TContext so
+    // FireAsync stays allocation-free on the hot path — including the no-handler fast path it guards, which
+    // would otherwise pay a reflection lookup + allocation before the pipeline-null early return.
+    private static class ResultTypeCache<TContext>
+    {
+        internal static readonly HookAttribute? Attr =
+            (HookAttribute?)Attribute.GetCustomAttribute(typeof(TContext), typeof(HookAttribute), inherit: false);
     }
 }

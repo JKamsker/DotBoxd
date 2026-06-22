@@ -57,6 +57,15 @@ public sealed class HostServiceBindingInheritanceTests
         Assert.Contains("probe.read.value", kernel.Manifest.RequiredCapabilities);
     }
 
+    [Fact]
+    public void AddBindingsFrom_rejects_nullable_value_types_in_service_contracts()
+    {
+        var builder = new SandboxHostBuilder();
+
+        Assert.Throws<NotSupportedException>(
+            () => builder.AddBindingsFrom<INullableProbeWorld>(new NullableProbeWorld()));
+    }
+
     private static void AddInheritedProbeBindings(SandboxHostBuilder builder)
         => builder.AddBindingsFrom<IDerivedProbeWorld>(new DerivedProbeWorld());
 
@@ -82,5 +91,17 @@ public sealed class HostServiceBindingInheritanceTests
     {
         [HostCapability("probe.read.value")]
         public int GetValue(string id) => 42;
+    }
+
+    private interface INullableProbeWorld
+    {
+        [HostBinding("host.probe.echo", "probe.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
+        int Echo(int? value);
+    }
+
+    private sealed class NullableProbeWorld : INullableProbeWorld
+    {
+        [HostCapability("probe.read.value")]
+        public int Echo(int? value) => value.GetValueOrDefault();
     }
 }

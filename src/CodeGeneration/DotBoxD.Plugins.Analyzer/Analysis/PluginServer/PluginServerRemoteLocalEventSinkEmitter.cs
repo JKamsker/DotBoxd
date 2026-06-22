@@ -16,6 +16,7 @@ internal static class PluginServerRemoteLocalEventSinkEmitter
         builder.AppendLine("        private readonly global::DotBoxD.Plugins.Runtime.Hooks.RemoteLocalHandlerRegistry _localHandlers;");
         builder.AppendLine("        public RemoteLocalEventSink(global::DotBoxD.Plugins.Runtime.Hooks.RemoteLocalHandlerRegistry localHandlers) => _localHandlers = localHandlers;");
         AppendOnEventAsync(builder, model);
+        AppendOnResultAsync(builder);
         AppendDispatchAsync(builder);
         builder.AppendLine("    }");
     }
@@ -37,6 +38,12 @@ internal static class PluginServerRemoteLocalEventSinkEmitter
         builder.AppendLine("            await DispatchAsync(subscriptionId, projectedValue, ct).ConfigureAwait(false);");
         builder.AppendLine("            return default!;");
         builder.AppendLine("        }");
+    }
+
+    private static void AppendOnResultAsync(StringBuilder builder)
+    {
+        builder.AppendLine("        public global::System.Threading.Tasks.ValueTask<byte[]> OnResultAsync(string subscriptionId, global::System.ReadOnlyMemory<byte> contextValue, global::System.Threading.CancellationToken ct = default)");
+        builder.AppendLine("            => _localHandlers.DispatchResultAsync(subscriptionId, contextValue, new global::DotBoxD.Abstractions.HookContext(new global::DotBoxD.Abstractions.InMemoryPluginMessageSink(), ct), ct);");
     }
 
     private static void AppendDispatchAsync(StringBuilder builder)

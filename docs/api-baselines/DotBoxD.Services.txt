@@ -260,8 +260,6 @@ public string? InstanceId { get; }
 public string? InstanceId { get; set; }
 public string? Name { get; set; }
 public struct RpcFrame : IDisposable
-public Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default) =>
-public Task<Payload> ReceiveAsync(CancellationToken ct = default) =>
 public struct RpcRequest
 public struct RpcResponse
 public struct RpcStreamHandle
@@ -273,12 +271,14 @@ public Task InvokeAsync<TRequest>(string service, string method, TRequest reques
 public Task InvokeOnInstanceAsync(string service, string instanceId, string method, CancellationToken ct = default) =>
 public Task InvokeOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, CancellationToken ct = default) =>
 public Task InvokeOnInstanceAsync<TRequest>(string service, string instanceId, string method, TRequest request, RpcStreamAttachment[] streams, CancellationToken ct = default) =>
+public Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default) =>
 public Task StartAsync(CancellationToken ct = default)
 public Task StopAsync(CancellationToken ct = default)
 public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableAsync<T>(string service, string method, CancellationToken ct = default) =>
 public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableAsync<TRequest, T>(string service, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
 public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableOnInstanceAsync<T>(string service, string instanceId, string method, CancellationToken ct = default) =>
 public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableOnInstanceAsync<TRequest, T>(string service, string instanceId, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
+public Task<Payload> ReceiveAsync(CancellationToken ct = default) =>
 public Task<Pipe> InvokePipeAsync(string service, string method, CancellationToken ct = default) =>
 public Task<Pipe> InvokePipeAsync<TRequest>(string service, string method, TRequest request, RpcStreamAttachment[]? streams = null, CancellationToken ct = default) =>
 public Task<Pipe> InvokePipeOnInstanceAsync(string service, string instanceId, string method, CancellationToken ct = default) =>

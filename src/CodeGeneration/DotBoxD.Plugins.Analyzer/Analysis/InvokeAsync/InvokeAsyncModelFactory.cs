@@ -175,7 +175,7 @@ internal static class InvokeAsyncModelFactory
         var captureType = shape.CaptureType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var captureDelegateType = shape.CaptureType is null
             ? null
-            : DotBoxDGenerationNames.TypeNames.GlobalPrefix + DotBoxDGenerationNames.Metadata.ServerInvocationDelegateType +
+            : DotBoxDGenerationNames.TypeNames.GlobalPrefix + DotBoxDMetadataNames.ServerInvocationDelegateType +
               "<" + shape.WorldType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) +
               ", " + captureType +
               ", " + shape.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) + ">";

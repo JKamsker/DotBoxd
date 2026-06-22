@@ -74,7 +74,7 @@ internal static class PluginServerFacadeModelFactory
     {
         foreach (var candidate in type.Interfaces)
         {
-            if (HasAttribute(candidate, DotBoxDGenerationNames.Metadata.DotBoxDServiceAttribute))
+            if (HasAttribute(candidate, DotBoxDMetadataNames.DotBoxDServiceAttribute))
             {
                 return candidate;
             }
@@ -107,7 +107,7 @@ internal static class PluginServerFacadeModelFactory
                     SetMethod: null,
                     Type: INamedTypeSymbol propertyType
                 } property ||
-                !HasAttribute(propertyType, DotBoxDGenerationNames.Metadata.DotBoxDServiceAttribute) ||
+                !HasAttribute(propertyType, DotBoxDMetadataNames.DotBoxDServiceAttribute) ||
                 !seenProperties.Add(property.Name))
             {
                 continue;
@@ -222,7 +222,7 @@ internal static class PluginServerFacadeModelFactory
         }
 
         if (serviceType is not INamedTypeSymbol namedServiceType ||
-            !HasAttribute(namedServiceType, DotBoxDGenerationNames.Metadata.DotBoxDServiceAttribute))
+            !HasAttribute(namedServiceType, DotBoxDMetadataNames.DotBoxDServiceAttribute))
         {
             return (null, PluginServerReturnWrapperKind.None);
         }

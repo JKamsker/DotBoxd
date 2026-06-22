@@ -66,6 +66,18 @@ internal static class PluginAnalyzerGeneratedPackageFactory
             .ToArray();
     }
 
+    public static GeneratorDriverRunResult RunGenerator(
+        string source,
+        params Type[] additionalReferenceTypes)
+    {
+        var compilation = CreateCompilation(source, additionalReferenceTypes);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            [new PluginPackageGenerator().AsSourceGenerator()],
+            parseOptions: ParseOptions);
+        driver = driver.RunGenerators(compilation);
+        return driver.GetRunResult();
+    }
+
     public static IReadOnlyList<Diagnostic> Diagnostics(string source, params Type[] additionalReferenceTypes)
     {
         var compilation = CreateCompilation(source, additionalReferenceTypes);

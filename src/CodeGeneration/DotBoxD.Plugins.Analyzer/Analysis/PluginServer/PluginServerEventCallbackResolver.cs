@@ -45,7 +45,7 @@ internal static class PluginServerEventCallbackResolver
         }
 
         var method = ResolveEventCallbackMethod(callback);
-        return method is null ? null : (callback, method);
+        return method is null || !HasResultCallbackMethod(callback) ? null : (callback, method);
     }
 
     private static IMethodSymbol? ResolveEventCallbackMethod(INamedTypeSymbol callback)
@@ -66,6 +66,26 @@ internal static class PluginServerEventCallbackResolver
         }
 
         return null;
+    }
+
+    private static bool HasResultCallbackMethod(INamedTypeSymbol callback)
+    {
+        foreach (var member in callback.GetMembers("OnResultAsync"))
+        {
+            if (member is IMethodSymbol { Parameters.Length: 3 } method &&
+                IsByteArrayValueTask(method.ReturnType) &&
+                method.Parameters[0].Type.SpecialType == SpecialType.System_String &&
+                IsReadOnlyByteMemory(method.Parameters[1].Type) &&
+                string.Equals(
+                    method.Parameters[2].Type.ToDisplayString(),
+                    "System.Threading.CancellationToken",
+                    StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // The pushed payload crosses the wire as ReadOnlyMemory<byte> (the pooled encode hands its written span
@@ -90,6 +110,17 @@ internal static class PluginServerEventCallbackResolver
         } named &&
         string.Equals(ns.ToDisplayString(), "System.Threading.Tasks", StringComparison.Ordinal) &&
         (!named.IsGenericType || named.TypeArguments.Length == 1);
+
+    private static bool IsByteArrayValueTask(ITypeSymbol type)
+        => type is INamedTypeSymbol
+        {
+            Name: "ValueTask",
+            IsGenericType: true,
+            TypeArguments.Length: 1,
+            ContainingNamespace: { } ns
+        } named &&
+        string.Equals(ns.ToDisplayString(), "System.Threading.Tasks", StringComparison.Ordinal) &&
+        named.TypeArguments[0] is IArrayTypeSymbol { ElementType.SpecialType: SpecialType.System_Byte };
 
     private static bool ReturnHasValue(ITypeSymbol type)
         => type is INamedTypeSymbol { IsGenericType: true };
@@ -137,7 +168,7 @@ internal static class PluginServerEventCallbackResolver
         {
             if (string.Equals(
                     attribute.AttributeClass?.ToDisplayString(),
-                    DotBoxDGenerationNames.Metadata.DotBoxDServiceAttribute,
+                    DotBoxDMetadataNames.DotBoxDServiceAttribute,
                     StringComparison.Ordinal))
             {
                 return true;

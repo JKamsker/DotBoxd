@@ -26,7 +26,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             if (string.Equals(
                     attribute.AttributeClass?.ToDisplayString(),
-                    DotBoxDGenerationNames.Metadata.LiveSettingAttribute,
+                    DotBoxDMetadataNames.LiveSettingAttribute,
                     StringComparison.Ordinal))
             {
                 return true;

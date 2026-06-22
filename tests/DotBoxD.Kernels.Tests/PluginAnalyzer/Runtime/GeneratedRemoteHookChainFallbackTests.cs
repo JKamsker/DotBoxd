@@ -41,6 +41,52 @@ public sealed class GeneratedRemoteHookChainFallbackTests
         }
         """;
 
+    private const string ResultSource = """
+        using DotBoxD.Abstractions;
+        using DotBoxD.Plugins.Runtime;
+
+        namespace ChainSample;
+
+        [Hook("chain.damage", typeof(ChainDamageResult))]
+        public sealed record ChainDamageContext(int Damage);
+
+        [HookResult]
+        public readonly partial record struct ChainDamageResult(bool Success, string? Reason, int Damage);
+
+        public static class RemoteServerUsage
+        {
+            public static void Configure(IGeneratedWorldServer server)
+            {
+                server.Hooks.On<ChainDamageContext>()
+                    .Where(e => e.Damage > 10)
+                    .Register(e => new ChainDamageResult { Success = true, Damage = e.Damage }, 5);
+            }
+        }
+        """;
+
+    private const string LocalResultSource = """
+        using DotBoxD.Abstractions;
+        using DotBoxD.Plugins.Runtime;
+
+        namespace ChainSample;
+
+        [Hook("chain.damage", typeof(ChainDamageResult))]
+        public sealed record ChainDamageContext(int Damage);
+
+        [HookResult]
+        public readonly partial record struct ChainDamageResult(bool Success, string? Reason, int Damage);
+
+        public static class RemoteServerUsage
+        {
+            public static void Configure(IGeneratedWorldServer server)
+            {
+                server.Hooks.On<ChainDamageContext>()
+                    .Where(e => e.Damage > 10)
+                    .RegisterLocal((e, ctx) => new ChainDamageResult { Success = true, Damage = e.Damage }, 5);
+            }
+        }
+        """;
+
     [Fact]
     public void Fallback_lowers_remote_hook_chains_when_the_server_type_is_generated_later()
         => AssertFallbackLowers(Source, "DotBoxDGeneratedRemoteHookFallbackTest");
@@ -49,7 +95,27 @@ public sealed class GeneratedRemoteHookChainFallbackTests
     public void Fallback_lowers_remote_subscription_chains_when_the_server_type_is_generated_later()
         => AssertFallbackLowers(SubscriptionSource, "DotBoxDGeneratedRemoteSubscriptionFallbackTest");
 
-    private static void AssertFallbackLowers(string source, string assemblyName)
+    [Fact]
+    public void Fallback_lowers_remote_Register_result_chains_when_the_server_type_is_generated_later()
+        => AssertFallbackLowers(
+            ResultSource,
+            "DotBoxDGeneratedRemoteResultFallbackTest",
+            "UseGeneratedResultChain",
+            "RemoteHookPipeline<global::ChainSample.ChainDamageContext>");
+
+    [Fact]
+    public void Fallback_lowers_remote_RegisterLocal_result_chains_when_the_server_type_is_generated_later()
+        => AssertFallbackLowers(
+            LocalResultSource,
+            "DotBoxDGeneratedRemoteLocalResultFallbackTest",
+            "UseGeneratedLocalResultChain",
+            "RemoteHookPipeline<global::ChainSample.ChainDamageContext>");
+
+    private static void AssertFallbackLowers(
+        string source,
+        string assemblyName,
+        string? expectedInstall = null,
+        string? expectedReceiver = null)
     {
         var parseOptions = CSharpParseOptions.Default
             .WithLanguageVersion(LanguageVersion.Preview)
@@ -74,6 +140,22 @@ public sealed class GeneratedRemoteHookChainFallbackTests
         var generatedSources = result.GeneratedTrees.Select(tree => tree.GetText().ToString()).ToArray();
         Assert.Contains(generatedSources, source => source.Contains("HookChain_", StringComparison.Ordinal));
         Assert.Contains(generatedSources, source => source.Contains("HookChainInterceptors", StringComparison.Ordinal));
+        if (expectedInstall is not null)
+        {
+            Assert.Contains(generatedSources, source => source.Contains(expectedInstall, StringComparison.Ordinal));
+        }
+
+        if (expectedReceiver is not null)
+        {
+            var interceptorSource = Assert.Single(
+                generatedSources,
+                source => source.Contains("HookChainInterceptors", StringComparison.Ordinal));
+            Assert.Contains(expectedReceiver, interceptorSource, StringComparison.Ordinal);
+            Assert.DoesNotContain(
+                "RemoteHookStage<global::ChainSample.ChainDamageContext",
+                interceptorSource,
+                StringComparison.Ordinal);
+        }
     }
 
     private static IEnumerable<MetadataReference> TrustedPlatformReferences()

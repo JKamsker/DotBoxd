@@ -12,6 +12,7 @@ using DotBoxD.Plugins.Runtime.Hooks;
 using DotBoxD.Plugins.Runtime.Subscriptions;
 using DotBoxD.Services.Attributes;
 using GameServerAbstractions::DotBoxD.Kernels.Game.Server.Abstractions;
+using HookContractNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDHookContractNames;
 using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.TypeNames;
 
 namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Contracts;
@@ -34,6 +35,13 @@ public sealed class PluginAnalyzerTypeNameContractTests
         }
     }
 
+    [Fact]
+    public void Hook_contract_name_constants_match_referenced_contracts()
+    {
+        Assert.Equal(HookContractNames.HookAttribute, TypeName(typeof(HookAttribute)));
+        Assert.Equal(HookContractNames.HookResultAttribute, TypeName(typeof(HookResultAttribute)));
+    }
+
     private static Dictionary<string, string> ExpectedTypeNames()
         => new(StringComparer.Ordinal)
         {
@@ -52,6 +60,8 @@ public sealed class PluginAnalyzerTypeNameContractTests
             [nameof(TypeNames.ServerExtensionClientAttribute)] = TypeName(typeof(ServerExtensionClientAttribute)),
             [nameof(TypeNames.ServerExtensionMethodAttribute)] = TypeName(typeof(ServerExtensionMethodAttribute)),
             [nameof(TypeNames.GeneratePluginServerAttribute)] = TypeName(typeof(GeneratePluginServerAttribute)),
+            [nameof(TypeNames.PolymorphicHandleAttribute)] = TypeName(typeof(PolymorphicHandleAttribute)),
+            [nameof(TypeNames.HandleSubtypeAttribute)] = TypeName(typeof(HandleSubtypeAttribute)),
             [nameof(TypeNames.DotBoxDServiceAttribute)] = TypeName(typeof(DotBoxDServiceAttribute)),
             [nameof(TypeNames.HookContext)] = TypeName(typeof(HookContext)),
             [nameof(TypeNames.ServerInvocationDelegateType)] = RemoteServerInvocationTypeName(),
@@ -94,6 +104,7 @@ public sealed class PluginAnalyzerTypeNameContractTests
             [nameof(TypeNames.GlobalInvalidOperationException)] = GlobalTypeName(typeof(InvalidOperationException)),
             [nameof(TypeNames.GlobalReadOnlyList)] = GlobalTypeName(typeof(IReadOnlyList<>)),
             [nameof(TypeNames.GlobalValueTask)] = GlobalTypeName(typeof(ValueTask)),
+            [nameof(TypeNames.GlobalCancellationToken)] = GlobalTypeName(typeof(CancellationToken)),
 
             [nameof(TypeNames.GlobalHookContext)] = GlobalTypeName(typeof(HookContext)),
             [nameof(TypeNames.GlobalPluginPackage)] = GlobalTypeName(typeof(PluginPackage)),

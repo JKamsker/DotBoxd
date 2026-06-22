@@ -34,6 +34,24 @@ public sealed class RemoteHookStage<TEvent, TCurrent>
     public RemoteHookPipeline<TEvent> UseGeneratedChain(PluginPackage package)
         => _root.UseGeneratedChain(package);
 
+    public RemoteHookPipeline<TEvent> UseGeneratedResultChain<TResult>(PluginPackage package, int priority = 0)
+        where TResult : struct, IHookResult
+        => _root.UseGeneratedResultChain<TResult>(package, priority);
+
+    public RemoteHookPipeline<TEvent> UseGeneratedLocalResultChain<TResult>(
+        PluginPackage package,
+        Func<TEvent, HookContext, TResult> handler,
+        int priority = 0)
+        where TResult : struct, IHookResult
+        => _root.UseGeneratedLocalResultChain(package, handler, priority);
+
+    public RemoteHookPipeline<TEvent> UseGeneratedLocalResultChain<TResult>(
+        PluginPackage package,
+        Func<TEvent, HookContext, CancellationToken, ValueTask<TResult>> handler,
+        int priority = 0)
+        where TResult : struct, IHookResult
+        => _root.UseGeneratedLocalResultChain(package, handler, priority);
+
     /// <summary>
     /// Installs a lowered <c>RunLocal</c> chain whose projected type is <typeparamref name="TCurrent"/> (the
     /// type produced by the preceding <c>Select</c>). The lowered filter+projection installs server-side and
@@ -152,9 +170,31 @@ public sealed class RemoteHookStage<TEvent, TCurrent>
     public RemoteHookPipeline<TEvent> RunLocal(Action<TCurrent> handler)
         => throw LocalHandlersNotSupported();
 
+    public RemoteHookPipeline<TEvent> Register<TResult>(Func<TCurrent, TResult> handler, int priority = 0)
+        where TResult : struct, IHookResult
+        => throw ResultNotLowered();
+
+    public RemoteHookPipeline<TEvent> RegisterLocal<TResult>(
+        Func<TCurrent, HookContext, TResult> handler,
+        int priority = 0)
+        where TResult : struct, IHookResult
+        => throw ResultLocalHandlersNotSupported();
+
+    public RemoteHookPipeline<TEvent> RegisterLocal<TResult>(
+        Func<TCurrent, HookContext, CancellationToken, ValueTask<TResult>> handler,
+        int priority = 0)
+        where TResult : struct, IHookResult
+        => throw ResultLocalHandlersNotSupported();
+
     private static InvalidOperationException NotLowered()
         => new("Remote hook Run(lambda) calls must be intercepted by the DotBoxD plugin generator.");
 
+    private static InvalidOperationException ResultNotLowered()
+        => new("Remote hook Register(lambda) calls must be intercepted by the DotBoxD plugin generator.");
+
     private static NotSupportedException LocalHandlersNotSupported()
         => new("Remote hook RunLocal requires an event callback transport; use PluginServer.Hooks for local handlers.");
+
+    private static NotSupportedException ResultLocalHandlersNotSupported()
+        => new("Remote hook RegisterLocal requires a result callback transport; use PluginServer.Hooks for local result handlers.");
 }

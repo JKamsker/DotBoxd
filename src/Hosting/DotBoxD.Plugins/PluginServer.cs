@@ -22,14 +22,15 @@ public sealed partial class PluginServer : IDisposable
         SandboxPolicy defaultPolicy,
         IPluginMessageSink messages,
         ExecutionMode executionMode,
-        Action<SubscriptionDeliveryFault>? onSubscriptionFault)
+        Action<SubscriptionDeliveryFault>? onSubscriptionFault,
+        Action<ResultHookFault>? onResultHookFault)
     {
         _host = host;
         _defaultPolicy = defaultPolicy;
         _executionMode = executionMode;
         Events = new PluginEventAdapterRegistry();
         Kernels = new KernelRegistry();
-        Hooks = new HookRegistry(messages, Events, Kernels, InstallChainPackage);
+        Hooks = new HookRegistry(messages, Events, Kernels, InstallChainPackage, onResultHookFault);
         Subscriptions = new SubscriptionRegistry(messages, Events, Kernels, InstallChainPackage, onSubscriptionFault);
     }
 
@@ -51,7 +52,8 @@ public sealed partial class PluginServer : IDisposable
         Action<SandboxHostBuilder>? configureHost = null,
         SandboxPolicy? defaultPolicy = null,
         ExecutionMode executionMode = ExecutionMode.Auto,
-        Action<SubscriptionDeliveryFault>? onSubscriptionFault = null)
+        Action<SubscriptionDeliveryFault>? onSubscriptionFault = null,
+        Action<ResultHookFault>? onResultHookFault = null)
     {
         if (!Enum.IsDefined(executionMode))
         {
@@ -73,7 +75,7 @@ public sealed partial class PluginServer : IDisposable
             .WithFuel(100_000)
             .WithMaxHostCalls(1_000)
             .Build();
-        return new PluginServer(host, defaultPolicy, messages, executionMode, onSubscriptionFault);
+        return new PluginServer(host, defaultPolicy, messages, executionMode, onSubscriptionFault, onResultHookFault);
     }
 
     /// <summary>

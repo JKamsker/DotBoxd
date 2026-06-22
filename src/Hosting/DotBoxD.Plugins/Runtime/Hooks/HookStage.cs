@@ -122,4 +122,12 @@ internal static class HookLowering
                 "DBXK062",
                 "Run(lambda) must be lowered to verified IR by DotBoxD.Plugins.Analyzer and cannot run as host code.")
         ]);
+
+    public static SandboxValidationException ResultNotLowered()
+        => new([
+            new SandboxDiagnostic(
+                "DBXK062",
+                "Register(lambda)/RegisterLocal(lambda) must be lowered to verified IR by DotBoxD.Plugins.Analyzer "
+                + "and cannot run as host code.")
+        ]);
 }
