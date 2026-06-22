@@ -14,10 +14,6 @@
       "justification": "Pre-existing source-generator model factory surfaced after correcting the line guard root. Keep listed until parsing and validation are split."
     },
     {
-      "path": "src/Services/DotBoxD.Services/Server/RpcPeerInboundDispatcher.cs",
-      "justification": "Pre-existing large dispatcher surfaced after correcting the line guard root. Keep listed until routing, invocation, and error handling are split."
-    },
-    {
       "path": "src/Services/DotBoxD.Services/Streaming/Core/RpcStreamManager.cs",
       "justification": "Pre-existing large streaming coordinator surfaced after correcting the line guard root. Keep listed until stream lifecycle and flow-control code are split."
     }
