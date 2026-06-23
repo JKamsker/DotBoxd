@@ -31,7 +31,7 @@ public sealed class LiveSettingAttribute : Attribute;
 /// effect validation gate the call. Set <see cref="IsAsync"/> when that registered binding declares
 /// asynchronous host work.
 /// </summary>
-[AttributeUsage(AttributeTargets.Method)]
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Property)]
 public sealed class HostBindingAttribute(string bindingId, string capability, SandboxEffect effects) : Attribute
 {
     /// <summary>The sandbox binding id the call lowers to (e.g. <c>host.world.getHealth</c>).</summary>

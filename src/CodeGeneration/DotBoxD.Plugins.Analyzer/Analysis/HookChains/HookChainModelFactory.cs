@@ -169,7 +169,10 @@ internal static partial class HookChainModelFactory
             eventProperties,
             eventType,
             model,
-                cancellationToken);
+            cancellationToken);
+        var terminalContextType = terminalContextParam is null
+            ? null
+            : LambdaParameterType(terminalLambda, terminalContextParam, model, cancellationToken);
         var shouldHandle = HookChainStageLowerer.CreateShouldHandle(
             stages,
             eventProperties,
@@ -188,11 +191,12 @@ internal static partial class HookChainModelFactory
             : null;
         var handleBody = installKind == HookChainInterceptorInstallKind.LocalCallback
             ? LocalCallbackHandleBody(localCallbackProjection)
-            : LowerSendHandle(
+            : LowerRunHandle(
                 stages,
                 terminalLambda,
                 terminalElementParam,
                 terminalContextParam,
+                terminalContextType,
                 eventProperties,
                 model,
                 cancellationToken,

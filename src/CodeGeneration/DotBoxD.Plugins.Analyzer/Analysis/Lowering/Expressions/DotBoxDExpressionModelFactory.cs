@@ -234,10 +234,7 @@ internal static partial class DotBoxDExpressionModelFactory
         var memberName = member.Name.Identifier.ValueText;
         if (member.Expression is IdentifierNameSyntax identifier)
         {
-            // After a Select, the downstream lambda's parameter is the PROJECTED element. A field access on it
-            // (dto.X) reads the projection's field by name via record.get — checked BEFORE the event-property
-            // branch so a field that shares a name with an event property is never silently misread as it. If it
-            // is not a record field (e.g. .Count on a projected list), fall through to the general member chain.
+            // Projected record fields win over same-named event properties.
             if (context.ProjectedElementName is { } projectedName &&
                 string.Equals(identifier.Identifier.ValueText, projectedName, StringComparison.Ordinal))
             {
@@ -270,10 +267,12 @@ internal static partial class DotBoxDExpressionModelFactory
             return LowerThisMemberAccess(member, memberName, context);
         }
 
-        // General member chain: a `.Count`/`.Length` read on a list-shaped receiver, or a field read on a record
-        // receiver. The receiver may itself be a projected element, an event property, a host-call result, or a
-        // further chain hop — it is lowered recursively and dispatched on its sandbox shape, so e.g.
-        // `ctx...GetInRange(id, 4).Count` or `dto.Inner.Field` lower. Anything else fails safe.
+        if (TryLowerContextMember(member, memberName, context) is { } contextMember)
+        {
+            return contextMember;
+        }
+
+        // General chains handle list counts/lengths and record fields on recursively lowered receivers.
         if (TryLowerMemberChain(member, memberName, context) is { } chained)
         {
             return chained;

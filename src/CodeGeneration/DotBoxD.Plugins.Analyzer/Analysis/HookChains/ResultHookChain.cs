@@ -69,6 +69,9 @@ internal static partial class ResultHookChain
 
         DotBoxDStatementBodyModel handleBody;
         string handleReturnType;
+        var terminalServerContextType = terminalContextParam is null
+            ? null
+            : LambdaParameterType(terminalLambda, terminalContextParam, model, cancellationToken);
         if (isLocal)
         {
             ResultHookLocalHandlerValidator.EnsureReturnsHookResult(
@@ -84,7 +87,17 @@ internal static partial class ResultHookChain
         }
         else
         {
-            handleBody = LowerResultHandle(terminalLambda, terminalElementParam, resultType, eventProperties, model, cancellationToken, capabilities, effects);
+            handleBody = LowerResultHandle(
+                terminalLambda,
+                terminalElementParam,
+                terminalContextParam,
+                terminalServerContextType,
+                resultType,
+                eventProperties,
+                model,
+                cancellationToken,
+                capabilities,
+                effects);
             handleReturnType = SandboxTypeSourceEmitter.TryEmit(resultType)
                 ?? throw new NotSupportedException();
         }
@@ -140,6 +153,8 @@ internal static partial class ResultHookChain
     private static DotBoxDStatementBodyModel LowerResultHandle(
         LambdaExpressionSyntax terminalLambda,
         string terminalElementParam,
+        string? terminalContextParam,
+        ITypeSymbol? terminalContextType,
         INamedTypeSymbol resultType,
         EquatableArray<EventPropertyModel> eventProperties,
         SemanticModel model,
@@ -175,6 +190,8 @@ internal static partial class ResultHookChain
 
         var context = new DotBoxDExpressionLoweringContext(
             terminalElementParam, eventProperties, default, model, cancellationToken,
+            serverContextParameterName: terminalContextParam,
+            serverContextType: terminalContextType,
             capabilities: capabilities, effects: effects);
         var lowered = DotBoxDExpressionModelFactory.Create(body, context);
         if (!string.Equals(lowered.Type, DotBoxDGenerationNames.ManifestTypes.Record, StringComparison.Ordinal))
@@ -207,6 +224,28 @@ internal static partial class ResultHookChain
         }
 
         return false;
+    }
+
+    private static ITypeSymbol? LambdaParameterType(
+        LambdaExpressionSyntax lambda,
+        string parameterName,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        if (lambda is not ParenthesizedLambdaExpressionSyntax parenthesized)
+        {
+            return null;
+        }
+
+        foreach (var parameter in parenthesized.ParameterList.Parameters)
+        {
+            if (string.Equals(parameter.Identifier.ValueText, parameterName, StringComparison.Ordinal))
+            {
+                return (model.GetDeclaredSymbol(parameter, cancellationToken) as IParameterSymbol)?.Type;
+            }
+        }
+
+        return null;
     }
 
 }

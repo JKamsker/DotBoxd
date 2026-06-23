@@ -12,6 +12,27 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 /// </summary>
 internal static partial class DotBoxDExpressionModelFactory
 {
+    private static DotBoxDExpressionModel? TryLowerContextMember(
+        MemberAccessExpressionSyntax member,
+        string memberName,
+        DotBoxDExpressionLoweringContext context)
+    {
+        if (context.ServerContextParameterName is null ||
+            member.Expression is not IdentifierNameSyntax receiver ||
+            !string.Equals(receiver.Identifier.ValueText, context.ServerContextParameterName, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return context.SemanticModel.GetSymbolInfo(member, context.CancellationToken).Symbol switch
+        {
+            IPropertySymbol property => DotBoxDHostBindingExpressionLowerer.TryLowerProperty(property, context)
+                ?? throw new NotSupportedException(
+                    $"Unsupported server context property '{memberName}'. Mark sandbox-readable context properties with [HostBinding]."),
+            _ => null
+        };
+    }
+
     // Reads a field of the projected record (after a Select) as record.get(projection, index). The field is
     // matched by name against the projected DTO's declared fields — the same positional order record.new emitted
     // and the kernel parameter / decoder use — so dto.Field crosses to exactly that field's value and type.

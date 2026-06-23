@@ -91,6 +91,7 @@ internal static partial class HookChainModelFactory
         LambdaExpressionSyntax terminalLambda,
         string terminalElementParam,
         string? terminalContextParam,
+        ITypeSymbol? terminalContextType,
         EquatableArray<EventPropertyModel> eventProperties,
         SemanticModel model,
         CancellationToken cancellationToken,
@@ -107,6 +108,8 @@ internal static partial class HookChainModelFactory
         var handle = HookChainStageLowerer.CreateHandle(
             stages,
             terminalElementParam,
+            terminalContextParam,
+            terminalContextType,
             sendInvocation,
             eventProperties,
             model,
@@ -114,6 +117,69 @@ internal static partial class HookChainModelFactory
             capabilities,
             effects);
         return DotBoxDHandleBodyModelFactory.FromSend(handle);
+    }
+
+    private static DotBoxDStatementBodyModel LowerRunHandle(
+        IReadOnlyList<HookChainStage> stages,
+        LambdaExpressionSyntax terminalLambda,
+        string terminalElementParam,
+        string? terminalContextParam,
+        ITypeSymbol? terminalContextType,
+        EquatableArray<EventPropertyModel> eventProperties,
+        SemanticModel model,
+        CancellationToken cancellationToken,
+        ICollection<string> capabilities,
+        ICollection<string> effects)
+    {
+        if (terminalContextParam is not null &&
+            terminalLambda.ExpressionBody is InvocationExpressionSyntax sendInvocation &&
+            DotBoxDHandleModelFactory.IsContextSend(sendInvocation.Expression, terminalContextParam))
+        {
+            return LowerSendHandle(
+                stages,
+                terminalLambda,
+                terminalElementParam,
+                terminalContextParam,
+                terminalContextType,
+                eventProperties,
+                model,
+                cancellationToken,
+                capabilities,
+                effects);
+        }
+
+        if (terminalLambda.ExpressionBody is not { } body)
+        {
+            throw new NotSupportedException();
+        }
+
+        var projection = HookChainStageLowerer.CreateProjection(
+            stages,
+            eventProperties,
+            model,
+            cancellationToken,
+            capabilities,
+            effects);
+        var context = new DotBoxDExpressionLoweringContext(
+            terminalElementParam,
+            eventProperties,
+            default,
+            model,
+            cancellationToken,
+            projectedElementName: projection is null ? null : terminalElementParam,
+            projectedElement: projection?.Value,
+            projectedElementType: projection?.ValueType,
+            serverContextParameterName: terminalContextParam,
+            serverContextType: terminalContextType,
+            capabilities: capabilities,
+            effects: effects);
+        var expression = DotBoxDExpressionModelFactory.Create(body, context);
+        if (!string.Equals(expression.Type, DotBoxDGenerationNames.ManifestTypes.Unit, StringComparison.Ordinal))
+        {
+            throw new NotSupportedException();
+        }
+
+        return DotBoxDHandleBodyModelFactory.ReturnExpression(expression, projection?.Prefix);
     }
 
     private static string TerminalElementTypeFullName(
@@ -133,7 +199,7 @@ internal static partial class HookChainModelFactory
                 continue;
             }
 
-            var (elementParam, _, _) = LambdaParameters(stage.Lambda);
+            var (elementParam, contextParam, _) = LambdaParameters(stage.Lambda);
             if (elementParam is null || stage.Lambda.ExpressionBody is not { } body)
             {
                 throw new NotSupportedException();
@@ -143,7 +209,17 @@ internal static partial class HookChainModelFactory
             var scratchEffects = new SortedSet<string>(StringComparer.Ordinal);
             projected = DotBoxDExpressionModelFactory.Create(
                 body,
-                Context(elementParam, eventProperties, projected, projectedType, model, cancellationToken, scratchCapabilities, scratchEffects));
+                Context(
+                    elementParam,
+                    contextParam,
+                    contextParam is null ? null : LambdaParameterType(stage.Lambda, contextParam, model, cancellationToken),
+                    eventProperties,
+                    projected,
+                    projectedType,
+                    model,
+                    cancellationToken,
+                    scratchCapabilities,
+                    scratchEffects));
             var bodyTypeInfo = model.GetTypeInfo(body, cancellationToken);
             projectedType = bodyTypeInfo.ConvertedType ?? bodyTypeInfo.Type;
             terminalElementTypeFullName = GeneratedRemoteHookChainFallback.TypeFullName(
@@ -158,6 +234,8 @@ internal static partial class HookChainModelFactory
 
     private static DotBoxDExpressionLoweringContext Context(
         string elementParam,
+        string? contextParam,
+        ITypeSymbol? contextType,
         EquatableArray<EventPropertyModel> eventProperties,
         DotBoxDExpressionModel? projected,
         ITypeSymbol? projectedType,
@@ -168,12 +246,38 @@ internal static partial class HookChainModelFactory
         => projected is null
             ? new DotBoxDExpressionLoweringContext(
                 elementParam, eventProperties, default, model, cancellationToken,
+                serverContextParameterName: contextParam,
+                serverContextType: contextType,
                 capabilities: capabilities, effects: effects)
             : new DotBoxDExpressionLoweringContext(
                 elementParam, eventProperties, default, model, cancellationToken,
                 projectedElementName: elementParam,
                 projectedElement: projected,
                 projectedElementType: projectedType,
+                serverContextParameterName: contextParam,
+                serverContextType: contextType,
                 capabilities: capabilities,
                 effects: effects);
+
+    private static ITypeSymbol? LambdaParameterType(
+        LambdaExpressionSyntax lambda,
+        string parameterName,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        if (lambda is not ParenthesizedLambdaExpressionSyntax parenthesized)
+        {
+            return null;
+        }
+
+        foreach (var parameter in parenthesized.ParameterList.Parameters)
+        {
+            if (string.Equals(parameter.Identifier.ValueText, parameterName, StringComparison.Ordinal))
+            {
+                return (model.GetDeclaredSymbol(parameter, cancellationToken) as IParameterSymbol)?.Type;
+            }
+        }
+
+        return null;
+    }
 }

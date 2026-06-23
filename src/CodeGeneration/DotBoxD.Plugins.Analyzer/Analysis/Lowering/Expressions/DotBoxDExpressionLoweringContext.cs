@@ -15,6 +15,8 @@ internal sealed class DotBoxDExpressionLoweringContext
         string? projectedElementName = null,
         DotBoxDExpressionModel? projectedElement = null,
         ITypeSymbol? projectedElementType = null,
+        string? serverContextParameterName = null,
+        ITypeSymbol? serverContextType = null,
         ICollection<string>? capabilities = null,
         ICollection<string>? effects = null,
         IReadOnlyDictionary<string, DotBoxDExpressionModel>? inlinedBindings = null,
@@ -29,6 +31,8 @@ internal sealed class DotBoxDExpressionLoweringContext
         ProjectedElementName = projectedElementName;
         ProjectedElement = projectedElement;
         ProjectedElementType = projectedElementType;
+        ServerContextParameterName = serverContextParameterName;
+        ServerContextType = serverContextType;
         Capabilities = capabilities;
         Effects = effects;
         InlinedBindings = inlinedBindings;
@@ -61,6 +65,10 @@ internal sealed class DotBoxDExpressionLoweringContext
     /// than being misread as a same-named event property. Null in event mode or for a non-record projection.
     /// </summary>
     public ITypeSymbol? ProjectedElementType { get; }
+
+    public string? ServerContextParameterName { get; }
+
+    public ITypeSymbol? ServerContextType { get; }
 
     /// <summary>
     /// Sink for capabilities the lowered IR requires (a <c>ctx.Messages.Send</c>, a
@@ -137,6 +145,8 @@ internal sealed class DotBoxDExpressionLoweringContext
             CancellationToken,
             projectedElementName: null,
             projectedElement: null,
+            serverContextParameterName: ServerContextParameterName,
+            serverContextType: ServerContextType,
             capabilities: Capabilities,
             effects: Effects,
             inlinedBindings: bindings,
@@ -164,6 +174,8 @@ internal sealed class DotBoxDExpressionLoweringContext
             ProjectedElementName,
             ProjectedElement,
             ProjectedElementType,
+            ServerContextParameterName,
+            ServerContextType,
             Capabilities,
             Effects,
             InlinedBindings,

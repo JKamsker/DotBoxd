@@ -15,33 +15,19 @@ internal static class DotBoxDManifestEffectModel
             DotBoxDGenerationNames.Effects.Alloc
         });
 
-    private static readonly EquatableArray<string> NonAllocatingEffects =
-        EquatableArray<string>.FromOwned(new[] {
-            DotBoxDGenerationNames.Effects.Cpu,
-            DotBoxDGenerationNames.Effects.HostStateWrite,
-            DotBoxDGenerationNames.Effects.Concurrency,
-            DotBoxDGenerationNames.Effects.Audit
-        });
-
-    private static readonly EquatableArray<string> AllocatingEffects =
-        EquatableArray<string>.FromOwned(new[] {
-            DotBoxDGenerationNames.Effects.Cpu,
-            DotBoxDGenerationNames.Effects.Alloc,
-            DotBoxDGenerationNames.Effects.HostStateWrite,
-            DotBoxDGenerationNames.Effects.Concurrency,
-            DotBoxDGenerationNames.Effects.Audit
-        });
+    private static readonly string[] CanonicalExtraEffects =
+    [
+        DotBoxDGenerationNames.Effects.HostStateRead,
+        DotBoxDGenerationNames.Effects.HostStateWrite,
+        DotBoxDGenerationNames.Effects.Concurrency,
+        DotBoxDGenerationNames.Effects.Audit
+    ];
 
     public static EquatableArray<string> Create(
         DotBoxDStatementBodyModel shouldHandle,
         DotBoxDStatementBodyModel handleBody,
         ICollection<string>? extraEffects = null)
-    {
-        var baseEffects = shouldHandle.Allocates || handleBody.Allocates
-            ? AllocatingEffects
-            : NonAllocatingEffects;
-        return Merge(baseEffects, extraEffects);
-    }
+        => CreateLocalCallback(shouldHandle, handleBody, extraEffects);
 
     public static EquatableArray<string> CreateLocalCallback(
         DotBoxDStatementBodyModel shouldHandle,
@@ -75,7 +61,15 @@ internal static class DotBoxDManifestEffectModel
             }
         }
 
-        foreach (var effect in extraEffects)
+        foreach (var effect in CanonicalExtraEffects)
+        {
+            if (extraEffects.Contains(effect) && seen.Add(effect))
+            {
+                result.Add(effect);
+            }
+        }
+
+        foreach (var effect in extraEffects.OrderBy(static effect => effect, StringComparer.Ordinal))
         {
             if (seen.Add(effect))
             {

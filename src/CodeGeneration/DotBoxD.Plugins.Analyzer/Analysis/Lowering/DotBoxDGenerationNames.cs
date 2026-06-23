@@ -156,6 +156,7 @@ internal static class DotBoxDGenerationNames
 
     public static class ManifestTypes
     {
+        public const string Unit = "unit";
         public const string Bool = "bool";
         public const string Int = "int";
         public const string Long = "long";

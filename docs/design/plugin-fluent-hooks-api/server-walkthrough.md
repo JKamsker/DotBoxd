@@ -205,9 +205,48 @@ public sealed class HookPipeline<TEvent, TServerContext>
 }
 ```
 
-Sandbox-lowered terminals such as `Run` and `Register` can only use context members the analyzer
-knows how to lower into verified IR. Use `RunLocal` / `RegisterLocal` when the handler needs
-arbitrary in-process services from the server context.
+Sandbox-lowered stages and terminals such as `Where`, `Select`, `Run`, and `Register` can only use
+context members the analyzer knows how to lower into verified IR. The supported contract is explicit:
+mark pure helper methods with `[KernelMethod]` so their bodies inline into the chain, and mark
+server-owned binding properties or methods with `[HostBinding]` so the analyzer emits a sandbox host
+call and records the required capability/effects. Use `RunLocal` / `RegisterLocal` when the handler
+needs arbitrary in-process services from the server context.
+
+For example, a server context can expose native-only members for local terminals and lowering markers
+for sandbox terminals:
+
+```csharp
+public sealed class CombatHookContext
+{
+    public CombatHookContext(HookContext raw, IGameWorld world)
+    {
+        Raw = raw;
+        World = world;
+    }
+
+    public HookContext Raw { get; }
+
+    public IGameWorld World { get; }              // native-only; use from RunLocal/RegisterLocal
+
+    [KernelMethod]
+    public bool CanInspect(int distance) => distance <= 4;
+
+    [HostBinding(
+        "game.damage.adjustment",
+        "game.damage.read.adjustment",
+        SandboxEffect.Cpu | SandboxEffect.HostStateRead | SandboxEffect.Audit)]
+    public int DamageAdjustment
+        => throw new NotSupportedException("Lowering marker; implemented by a host binding.");
+}
+
+server.Hooks.On<DamageContext, CombatHookContext>(raw => new CombatHookContext(raw, world))
+    .Where((damage, ctx) => ctx.CanInspect(damage.Distance))
+    .Register((damage, ctx) => new DamageResult
+    {
+        Success = true,
+        Damage = damage.Amount + ctx.DamageAdjustment,
+    });
+```
 
 The default shorthand remains:
 
