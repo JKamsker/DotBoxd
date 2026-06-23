@@ -47,11 +47,56 @@ There are **two independent problems**; this doc keeps them apart on purpose.
 
 One-line direction: **fix P1.1–P1.4 first; make the context surface declarable only after answering §3.1;
 fix chain/context identity by ownership (§3.3); single-source the host-capability derivation rule without
-removing the host's independent install-time recomputation (§3.4).**
+removing the host's independent install-time recomputation (§3.4).** Throughout, the **audience split** is
+load-bearing: the server author ships an SDK; the plugin dev consumes it and **safely extends** it with
+`[ServerExtension]` — see [The two audiences](#the-two-audiences-and-the-plugin-dev-extension-surface).
 
 ---
 
-## Part 1 — Where we already are (the good news)
+## The two audiences (and the plugin-dev extension surface)
+
+Two roles, one SDK boundary:
+
+- **Server author** ships an **SDK** (one package): DotBoxD runtime/abstractions + the domain contracts
+  (`[DotBoxDService] IGameWorldAccess` and its handle/control types `IMonster`, `IMonsterControl`, …), the
+  event types, the host capabilities (`[HostCapability]`), and the generated client facade
+  (`server.Hooks`/`Subscriptions`, the context, the builder).
+- **Plugin dev** references that one package and writes against ready-made types — never seeing DotBoxD
+  primitives, IPC, lowering, or binding ids.
+
+The plugin dev's **safe extension surface** — how they add operations to the API *for their own use case*,
+server-side, with **no authority escalation**:
+
+| Mechanism | What it does | Safety |
+|---|---|---|
+| `[ServerExtension(typeof(T))]` + `[ServerExtensionMethod]` | grafts a whole server-side operation onto an existing server-owned type `T` (handle/control/world) as an **extension method in the plugin dev's own namespace** — e.g. `world.Monsters.Get(id).BlinkBehindAsync(player)` | verified sandboxed IR; capability set = union of the host bindings the body calls, **policy-gated at install** (`DBXK044`/deny); cannot exceed granted authority |
+| `[KernelMethod]` | a pure scalar **inline helper** (predicate / derived value) used inside a lowered `Where`/`Select`/`Run` | scalar-only; calls only granted host bindings |
+
+`[ServerExtension]` is the primary lever and is reachable both in-process and over IPC (Part 2). The
+reference example is `BlinkKernel`
+([Kernels/BlinkKernel.cs](../../../samples/GameServer/Examples.GameServer.Plugin/Kernels/BlinkKernel.cs)):
+`[ServerExtension(typeof(IMonster))]` injects the addressed monster + the root world, and
+`[ServerExtensionMethod] BlinkBehindAsync(string playerId, HookContext ctx)` does a root-world read + a
+scoped read, computes, then performs a host write (`TeleportToAsync`). Its capabilities —
+`game.world.combat.threat`, `game.world.entity.read.position`, `game.world.monster.write.position` — are
+exactly the host bindings it touches, gated at install, so the plugin extends the API **only within its
+granted authority**. The generated extension lands in the author's namespace
+(`…Kernels.BlinkKernelDirectServerExtensionClientExtensions.BlinkBehindAsync`), discoverable on any
+`IMonster` with no convention name to know. `MonsterKillerKernel` is the collection variant (grafted onto a
+control for batch/list aggregation).
+
+**Hard requirement — this must work from a real plugin assembly.** A plugin is an assembly that references a
+**prebuilt** SDK and contains **no** `[GeneratePluginServer]` of its own. The sample collapses facade
+generation and plugin authoring into one assembly (`Examples.GameServer.Plugin` holds both `GamePluginServer`
+*and* `BlinkKernel`), so the cross-assembly case is **unverified**. For it to hold, the plugin dev's build
+must run the DotBoxD generator (flowed transitively from the SDK package) to lower the `[ServerExtension]`
+body and emit its package + the grafted extension against the server-owned `T` it references. This is the
+**same** cross-assembly requirement that breaks the context's source-scan identity (§3.3) — both must be
+proven against a *referenced* SDK, not the single-assembly sample.
+
+---
+
+## Part 1 — The server-author surface (the good news)
 
 The "server declares the contract; the client writes one line; codegen fills the rest" model **already
 exists and is interface-driven** for the RPC-forwarding surface:
@@ -249,6 +294,11 @@ A context member runs in exactly one of three places. The current signal — an 
 | Inlined pure helper | `[KernelMethod]` on the context | server-side sandbox (verified IR) | scalars; other `[KernelMethod]` members; re-exposed host-service calls; **no** native services | "pure computation over event fields" |
 | Host capability | a re-exposed `[DotBoxDService]` member (`ctx.World.X()`; auto-lowers) — **not** a `[HostBinding]` on the context | server-side host | the host call, gated by its `[HostCapability]` | "reads/writes host/game state" |
 | Native | **explicit local marker (proposed; today it is the absence of a marker)** | plugin process, post-IPC | arbitrary in-process code | "calls your plugin's own services" |
+
+This table is about **context members** used inside a chain. A whole grafted operation is the separate (and
+primary) plugin-extension mechanism — `[ServerExtension]`/`[ServerExtensionMethod]`, see
+[The two audiences](#the-two-audiences-and-the-plugin-dev-extension-surface). `[KernelMethod]` here is only
+the pure inline helper, not the main way to extend the API.
 
 Two precise corrections:
 
@@ -497,6 +547,11 @@ Acceptance gates, not afterthoughts. Existing homes: `ResultHookSlotTests`, `Typ
 - **Deterministic `BlinkBehindAsync` (P1.4).** A local, non-flaky test exercising the real
   `[ServerExtension]` dispatch the smoke run covers, asserting install succeeds (no `DBXK041`) and the
   result is correct.
+- **`[ServerExtension]` graft from a real plugin assembly.** A plugin project that references a *prebuilt*
+  SDK (no `[GeneratePluginServer]` of its own) authors a `[ServerExtension(typeof(IMonster))]` +
+  `[ServerExtensionMethod]`, and it lowers, emits the grafted extension in the plugin's own namespace,
+  installs under policy, and invokes — in-process **and** over IPC. (The single-assembly sample does not
+  cover this.)
 - **Context extension is locally discoverable.** Assert the author reaches the context's extension point
   from something they wrote — an author-declared context type attached via
   `[GeneratePluginServer(Context = typeof(...))]`, or a generated extension in the author's namespace — with
