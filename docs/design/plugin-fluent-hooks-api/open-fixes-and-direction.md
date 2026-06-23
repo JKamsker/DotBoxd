@@ -97,14 +97,8 @@ for the hook chains (the §3.3 return-type resolution works across the boundary)
 graft fires on `IMonster` with the correct capability set. No cross-assembly blocker in the normal case.
 (P2.5's whole-compilation scan remains the known weak spot for the *multi-server* / fallback case — §3.3.)
 
-**SDK packaging — one gap to close.** The analyzer ships correctly as a Roslyn analyzer
-(`analyzers/dotnet/cs`), but it carries **no `build/*.props`**, so a single `PackageReference` cannot
-auto-enable C# interception — the consumer must set `InterceptorsNamespaces` (incl.
-`DotBoxD.Plugins.Generated`) **by hand**, exactly as `Examples.GameServer.Plugin.csproj` does today
-([PluginPackageGenerator.cs:165-167](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginPackageGenerator.cs)
-emits into that namespace). To make "reference one package → chains and extensions just lower" true, the SDK
-package must include a `build/<id>.props` that sets `InterceptorsNamespaces`. Also: no CI smoke exercises a
-hook chain or `[ServerExtension]` *through the package* (only in-repo project references) — add one.
+**SDK packaging** — flowing `InterceptorsNamespaces` so a single `PackageReference` enables interception is
+tracked separately in [#89](https://github.com/JKamsker/DotBoxD/issues/89).
 
 ---
 
