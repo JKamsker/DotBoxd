@@ -1,8 +1,5 @@
-using DotBoxD.Kernels.Model;
-using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
-using SandboxHost = DotBoxD.Hosting.Execution.SandboxHost;
 
 namespace DotBoxD.Kernels.Tests.Compiled.SideEffectParity;
 
@@ -28,105 +25,6 @@ namespace DotBoxD.Kernels.Tests.Compiled.SideEffectParity;
 public sealed class CompiledRandomBindingParityTests
 {
     // ─────────────────────────────────────────────────────────────────────────
-    // Helpers: module JSON and host factory
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private static SandboxHost RandomParity_CreateHost()
-        => SandboxHost.Create(builder =>
-        {
-            builder.AddDefaultPureBindings();
-            builder.AddRandomBindings();
-            builder.UseInterpreter();
-            builder.UseCompilerIfAvailable();
-        });
-
-    private static string RandomParity_SingleCallModuleJson(string id)
-        => $$"""
-        {
-          "id": "{{id}}",
-          "version": "1.0.0",
-          "capabilityRequests": [{ "id": "random" }],
-          "functions": [
-            {
-              "id": "main",
-              "visibility": "entrypoint",
-              "parameters": [],
-              "returnType": "I32",
-              "body": [
-                {
-                  "op": "return",
-                  "value": {
-                    "call": "random.nextI32",
-                    "args": [{ "i32": 0 }, { "i32": 100 }]
-                  }
-                }
-              ]
-            }
-          ]
-        }
-        """;
-
-    private static string RandomParity_TwoCallModuleJson(string id)
-        => $$"""
-        {
-          "id": "{{id}}",
-          "version": "1.0.0",
-          "capabilityRequests": [{ "id": "random" }],
-          "functions": [
-            {
-              "id": "main",
-              "visibility": "entrypoint",
-              "parameters": [],
-              "returnType": "I32",
-              "body": [
-                {
-                  "op": "set",
-                  "name": "first",
-                  "value": {
-                    "call": "random.nextI32",
-                    "args": [{ "i32": 0 }, { "i32": 500 }]
-                  }
-                },
-                {
-                  "op": "set",
-                  "name": "second",
-                  "value": {
-                    "call": "random.nextI32",
-                    "args": [{ "i32": 0 }, { "i32": 500 }]
-                  }
-                },
-                {
-                  "op": "return",
-                  "value": { "op": "add", "left": { "var": "first" }, "right": { "var": "second" } }
-                }
-              ]
-            }
-          ]
-        }
-        """;
-
-    private static SandboxPolicy RandomParity_DeterministicPolicy()
-        => SandboxPolicyBuilder.Create()
-            .GrantRandom()
-            .Deterministic(DateTimeOffset.UnixEpoch, randomSeed: 42UL)
-            .WithFuel(10_000)
-            .Build();
-
-    private static async Task<SandboxExecutionResult> RandomParity_ExecuteAsync(
-        SandboxHost host,
-        ExecutionPlan plan,
-        ExecutionMode mode)
-        => await host.ExecuteAsync(
-            plan,
-            "main",
-            SandboxValue.Unit,
-            new SandboxExecutionOptions
-            {
-                Mode = mode,
-                AllowFallbackToInterpreter = false,
-            });
-
-    // ─────────────────────────────────────────────────────────────────────────
     // (1) Compiled mode runs and returns a value in the requested range
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -134,12 +32,12 @@ public sealed class CompiledRandomBindingParityTests
     public async Task RandomNextI32_compiled_succeeds_and_value_is_within_requested_range()
     {
         // Arrange
-        var host = RandomParity_CreateHost();
-        var module = await host.ImportJsonAsync(RandomParity_SingleCallModuleJson("rand-parity-range"));
-        var plan = await host.PrepareAsync(module, RandomParity_DeterministicPolicy());
+        var host = RandomParityTestSupport.CreateHost();
+        var module = await host.ImportJsonAsync(RandomParityTestSupport.SingleCallModuleJson("rand-parity-range"));
+        var plan = await host.PrepareAsync(module, RandomParityTestSupport.DeterministicPolicy());
 
         // Act
-        var result = await RandomParity_ExecuteAsync(host, plan, ExecutionMode.Compiled);
+        var result = await RandomParityTestSupport.ExecuteAsync(host, plan, ExecutionMode.Compiled);
 
         // Assert
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
@@ -156,12 +54,12 @@ public sealed class CompiledRandomBindingParityTests
     public async Task RandomNextI32_interpreted_run_has_ActualMode_Interpreted()
     {
         // Arrange
-        var host = RandomParity_CreateHost();
-        var module = await host.ImportJsonAsync(RandomParity_SingleCallModuleJson("rand-parity-mode-interp"));
-        var plan = await host.PrepareAsync(module, RandomParity_DeterministicPolicy());
+        var host = RandomParityTestSupport.CreateHost();
+        var module = await host.ImportJsonAsync(RandomParityTestSupport.SingleCallModuleJson("rand-parity-mode-interp"));
+        var plan = await host.PrepareAsync(module, RandomParityTestSupport.DeterministicPolicy());
 
         // Act
-        var result = await RandomParity_ExecuteAsync(host, plan, ExecutionMode.Interpreted);
+        var result = await RandomParityTestSupport.ExecuteAsync(host, plan, ExecutionMode.Interpreted);
 
         // Assert
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
@@ -172,12 +70,12 @@ public sealed class CompiledRandomBindingParityTests
     public async Task RandomNextI32_compiled_run_has_ActualMode_Compiled()
     {
         // Arrange
-        var host = RandomParity_CreateHost();
-        var module = await host.ImportJsonAsync(RandomParity_SingleCallModuleJson("rand-parity-mode-comp"));
-        var plan = await host.PrepareAsync(module, RandomParity_DeterministicPolicy());
+        var host = RandomParityTestSupport.CreateHost();
+        var module = await host.ImportJsonAsync(RandomParityTestSupport.SingleCallModuleJson("rand-parity-mode-comp"));
+        var plan = await host.PrepareAsync(module, RandomParityTestSupport.DeterministicPolicy());
 
         // Act
-        var result = await RandomParity_ExecuteAsync(host, plan, ExecutionMode.Compiled);
+        var result = await RandomParityTestSupport.ExecuteAsync(host, plan, ExecutionMode.Compiled);
 
         // Assert
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
@@ -193,17 +91,17 @@ public sealed class CompiledRandomBindingParityTests
     {
         // With the same deterministic policy seed, both modes must produce the identical
         // pseudo-random value.  This is the key differential assertion for random.nextI32.
-        var host = RandomParity_CreateHost();
-        var moduleInterp = await host.ImportJsonAsync(RandomParity_SingleCallModuleJson("rand-parity-value-interp"));
-        var moduleComp = await host.ImportJsonAsync(RandomParity_SingleCallModuleJson("rand-parity-value-comp"));
+        var host = RandomParityTestSupport.CreateHost();
+        var moduleInterp = await host.ImportJsonAsync(RandomParityTestSupport.SingleCallModuleJson("rand-parity-value-interp"));
+        var moduleComp = await host.ImportJsonAsync(RandomParityTestSupport.SingleCallModuleJson("rand-parity-value-comp"));
 
-        var policy = RandomParity_DeterministicPolicy();
+        var policy = RandomParityTestSupport.DeterministicPolicy();
         var planInterp = await host.PrepareAsync(moduleInterp, policy);
         var planComp = await host.PrepareAsync(moduleComp, policy);
 
         // Act
-        var interp = await RandomParity_ExecuteAsync(host, planInterp, ExecutionMode.Interpreted);
-        var comp = await RandomParity_ExecuteAsync(host, planComp, ExecutionMode.Compiled);
+        var interp = await RandomParityTestSupport.ExecuteAsync(host, planInterp, ExecutionMode.Interpreted);
+        var comp = await RandomParityTestSupport.ExecuteAsync(host, planComp, ExecutionMode.Compiled);
 
         // Assert
         Assert.True(interp.Succeeded, interp.Error?.SafeMessage);
@@ -231,16 +129,16 @@ public sealed class CompiledRandomBindingParityTests
         // Kind, BindingId, CapabilityId, Effect, ResourceId, Success.
         // Timestamp is set to DateTimeOffset.UnixEpoch by the deterministic clock,
         // so it too is comparable across runs.
-        var host = RandomParity_CreateHost();
-        var moduleInterp = await host.ImportJsonAsync(RandomParity_SingleCallModuleJson("rand-parity-audit-interp"));
-        var moduleComp = await host.ImportJsonAsync(RandomParity_SingleCallModuleJson("rand-parity-audit-comp"));
+        var host = RandomParityTestSupport.CreateHost();
+        var moduleInterp = await host.ImportJsonAsync(RandomParityTestSupport.SingleCallModuleJson("rand-parity-audit-interp"));
+        var moduleComp = await host.ImportJsonAsync(RandomParityTestSupport.SingleCallModuleJson("rand-parity-audit-comp"));
 
-        var policy = RandomParity_DeterministicPolicy();
+        var policy = RandomParityTestSupport.DeterministicPolicy();
         var planInterp = await host.PrepareAsync(moduleInterp, policy);
         var planComp = await host.PrepareAsync(moduleComp, policy);
 
-        var interp = await RandomParity_ExecuteAsync(host, planInterp, ExecutionMode.Interpreted);
-        var comp = await RandomParity_ExecuteAsync(host, planComp, ExecutionMode.Compiled);
+        var interp = await RandomParityTestSupport.ExecuteAsync(host, planInterp, ExecutionMode.Interpreted);
+        var comp = await RandomParityTestSupport.ExecuteAsync(host, planComp, ExecutionMode.Compiled);
 
         Assert.True(interp.Succeeded, interp.Error?.SafeMessage);
         Assert.True(comp.Succeeded, comp.Error?.SafeMessage);
@@ -280,16 +178,16 @@ public sealed class CompiledRandomBindingParityTests
     [Fact]
     public async Task RandomNextI32_compiled_ResourceUsage_HostCalls_matches_interpreted()
     {
-        var host = RandomParity_CreateHost();
-        var moduleInterp = await host.ImportJsonAsync(RandomParity_SingleCallModuleJson("rand-parity-hcalls-interp"));
-        var moduleComp = await host.ImportJsonAsync(RandomParity_SingleCallModuleJson("rand-parity-hcalls-comp"));
+        var host = RandomParityTestSupport.CreateHost();
+        var moduleInterp = await host.ImportJsonAsync(RandomParityTestSupport.SingleCallModuleJson("rand-parity-hcalls-interp"));
+        var moduleComp = await host.ImportJsonAsync(RandomParityTestSupport.SingleCallModuleJson("rand-parity-hcalls-comp"));
 
-        var policy = RandomParity_DeterministicPolicy();
+        var policy = RandomParityTestSupport.DeterministicPolicy();
         var planInterp = await host.PrepareAsync(moduleInterp, policy);
         var planComp = await host.PrepareAsync(moduleComp, policy);
 
-        var interp = await RandomParity_ExecuteAsync(host, planInterp, ExecutionMode.Interpreted);
-        var comp = await RandomParity_ExecuteAsync(host, planComp, ExecutionMode.Compiled);
+        var interp = await RandomParityTestSupport.ExecuteAsync(host, planInterp, ExecutionMode.Interpreted);
+        var comp = await RandomParityTestSupport.ExecuteAsync(host, planComp, ExecutionMode.Compiled);
 
         Assert.True(interp.Succeeded, interp.Error?.SafeMessage);
         Assert.True(comp.Succeeded, comp.Error?.SafeMessage);
@@ -308,16 +206,16 @@ public sealed class CompiledRandomBindingParityTests
     [Fact]
     public async Task RandomNextI32_two_calls_compiled_each_emit_audit_event_matching_interpreted()
     {
-        var host = RandomParity_CreateHost();
-        var moduleInterp = await host.ImportJsonAsync(RandomParity_TwoCallModuleJson("rand-parity-twocall-interp"));
-        var moduleComp = await host.ImportJsonAsync(RandomParity_TwoCallModuleJson("rand-parity-twocall-comp"));
+        var host = RandomParityTestSupport.CreateHost();
+        var moduleInterp = await host.ImportJsonAsync(RandomParityTestSupport.TwoCallModuleJson("rand-parity-twocall-interp"));
+        var moduleComp = await host.ImportJsonAsync(RandomParityTestSupport.TwoCallModuleJson("rand-parity-twocall-comp"));
 
-        var policy = RandomParity_DeterministicPolicy();
+        var policy = RandomParityTestSupport.DeterministicPolicy();
         var planInterp = await host.PrepareAsync(moduleInterp, policy);
         var planComp = await host.PrepareAsync(moduleComp, policy);
 
-        var interp = await RandomParity_ExecuteAsync(host, planInterp, ExecutionMode.Interpreted);
-        var comp = await RandomParity_ExecuteAsync(host, planComp, ExecutionMode.Compiled);
+        var interp = await RandomParityTestSupport.ExecuteAsync(host, planInterp, ExecutionMode.Interpreted);
+        var comp = await RandomParityTestSupport.ExecuteAsync(host, planComp, ExecutionMode.Compiled);
 
         Assert.True(interp.Succeeded, interp.Error?.SafeMessage);
         Assert.True(comp.Succeeded, comp.Error?.SafeMessage);
@@ -349,61 +247,4 @@ public sealed class CompiledRandomBindingParityTests
         Assert.Equal(interpSum, compSum);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // (7) Capability enforcement: preparing without GrantRandom() throws
-    // ─────────────────────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task RandomNextI32_prepare_without_capability_grant_throws_validation_exception()
-    {
-        // Both modes share the same prepare step; this ensures capability enforcement
-        // is not bypassed by the compiled path.
-        var host = RandomParity_CreateHost();
-        var module = await host.ImportJsonAsync(RandomParity_SingleCallModuleJson("rand-parity-no-cap"));
-
-        // No GrantRandom() in the policy — must fail at prepare time.
-        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
-            async () => await host.PrepareAsync(
-                module,
-                SandboxPolicyBuilder.Create().WithFuel(10_000).Build()));
-
-        Assert.Contains(ex.Diagnostics, d => d.Code is "E-POLICY-CAP" or "E-POLICY-EFFECT");
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // (8) Non-deterministic path: value is within range (no seed comparison)
-    //     This test does not compare values between modes — it only asserts
-    //     range, Succeeded, ActualMode, and that an audit event was emitted.
-    // ─────────────────────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task RandomNextI32_compiled_non_deterministic_value_is_within_range_and_audit_emitted()
-    {
-        // Uses a non-deterministic policy (no .Deterministic(...)) so the value cannot
-        // be compared across runs. Asserts only the stable observables: success, mode,
-        // range, and that a BindingCall audit event is present.
-        var host = RandomParity_CreateHost();
-        var module = await host.ImportJsonAsync(RandomParity_SingleCallModuleJson("rand-parity-nondeterministic"));
-        var plan = await host.PrepareAsync(module,
-            SandboxPolicyBuilder.Create()
-                .GrantRandom()
-                .WithFuel(10_000)
-                .Build());
-
-        var result = await RandomParity_ExecuteAsync(host, plan, ExecutionMode.Compiled);
-
-        Assert.True(result.Succeeded, result.Error?.SafeMessage);
-        Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
-
-        var value = ((I32Value)result.Value!).Value;
-        Assert.InRange(value, 0, 99); // nextI32(0, 100) → [0, 100)
-
-        var audit = Assert.Single(
-            result.AuditEvents,
-            e => e.Kind == "BindingCall" && e.BindingId == "random.nextI32");
-        Assert.True(audit.Success);
-        Assert.Equal("random", audit.CapabilityId);
-        Assert.Equal(SandboxEffect.Random, audit.Effect);
-        Assert.Equal("random:i32", audit.ResourceId);
-    }
 }

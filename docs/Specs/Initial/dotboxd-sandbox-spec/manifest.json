@@ -144,8 +144,8 @@
     },
     {
       "path": "spec/15-testing-red-team.md",
-      "sha256": "f4f1888e2ed92965ef21b73b05aba5c1bf29d89fdd10eb834d1674ebec719137",
-      "bytes": 7769
+      "sha256": "96fd3b9ede7af8616921230d6182cb7ad98ce76dc150b0e2af86af4ca7288851",
+      "bytes": 7797
     },
     {
       "path": "spec/16-public-api.md",

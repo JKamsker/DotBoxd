@@ -36,6 +36,7 @@
     <Project Path="src/Hosting/DotBoxD.Hosting/DotBoxD.Hosting.csproj" />
     <Project Path="src/Hosting/DotBoxD.Abstractions/DotBoxD.Abstractions.csproj" />
     <Project Path="src/Hosting/DotBoxD.Plugins/DotBoxD.Plugins.csproj" />
+    <Project Path="src/Hosting/DotBoxD.Queryable/DotBoxD.Queryable.csproj" />
     <Project Path="src/Hosting/DotBoxD.Hosting.Http/DotBoxD.Hosting.Http.csproj" />
   </Folder>
 

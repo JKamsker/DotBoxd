@@ -241,24 +241,7 @@ public static class MessageFramer
     /// differ by transport). Throws <see cref="InvalidDataException"/> on a bad frame.
     /// </summary>
     public static void ValidateOutgoingFrame(ReadOnlySpan<byte> frame, int maxMessageSize = MaxMessageSize)
-    {
-        if (frame.Length < HeaderSize)
-        {
-            throw new InvalidDataException($"DotBoxD frame is too small: {frame.Length} bytes.");
-        }
-
-        var declaredLength = BinaryPrimitives.ReadInt32LittleEndian(frame.Slice(0, 4));
-        if (declaredLength != frame.Length)
-        {
-            throw new InvalidDataException(
-                $"DotBoxD frame length prefix {declaredLength} does not match buffer length {frame.Length}.");
-        }
-
-        if (declaredLength > maxMessageSize)
-        {
-            throw new InvalidDataException($"Invalid DotBoxD frame length: {declaredLength}.");
-        }
-    }
+        => MessageFrameReader.ValidateOutgoingFrame(frame, maxMessageSize);
 
     /// <summary>
     /// Parses an un-nested RPC frame out of an in-memory buffer without copying. Both
@@ -271,42 +254,7 @@ public static class MessageFramer
         out MessageType type,
         out ReadOnlyMemory<byte> envelope,
         out ReadOnlyMemory<byte> payload)
-    {
-        messageId = 0;
-        type = default;
-        envelope = ReadOnlyMemory<byte>.Empty;
-        payload = ReadOnlyMemory<byte>.Empty;
-
-        if (source.Length < HeaderSize + EnvelopeLengthSize)
-        {
-            return false;
-        }
-
-        var span = source.Span;
-        var totalLength = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(0, 4));
-        // The buffer must contain exactly one frame: too short means the frame is incomplete, while
-        // trailing bytes beyond the declared length indicate a malformed buffer (every transport
-        // hands ReceiveAsync exactly one frame). Reject both rather than silently ignoring a tail.
-        if (totalLength < HeaderSize + EnvelopeLengthSize || totalLength != source.Length)
-        {
-            return false;
-        }
-
-        messageId = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(4, 4));
-        type = (MessageType)span[8];
-
-        var envelopeLength = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(HeaderSize, EnvelopeLengthSize));
-        var envelopeStart = HeaderSize + EnvelopeLengthSize;
-        if (envelopeLength < 0 || (long)envelopeStart + envelopeLength > totalLength)
-        {
-            return false;
-        }
-
-        envelope = source.Slice(envelopeStart, envelopeLength);
-        var payloadStart = envelopeStart + envelopeLength;
-        payload = source.Slice(payloadStart, totalLength - payloadStart);
-        return true;
-    }
+        => MessageFrameReader.TryReadFrame(source, out messageId, out type, out envelope, out payload);
 
     /// <summary>
     /// Parses just the DotBoxD frame header. This supports envelope-less control frames
@@ -316,28 +264,7 @@ public static class MessageFramer
         ReadOnlyMemory<byte> source,
         out int messageId,
         out MessageType type)
-    {
-        messageId = 0;
-        type = default;
-
-        if (source.Length < HeaderSize)
-        {
-            return false;
-        }
-
-        var span = source.Span;
-        var totalLength = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(0, 4));
-        // As in TryReadFrame, the buffer must hold exactly one frame — reject both an incomplete
-        // frame and one with trailing bytes beyond the declared length.
-        if (totalLength < HeaderSize || totalLength != source.Length)
-        {
-            return false;
-        }
-
-        messageId = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(4, 4));
-        type = (MessageType)span[8];
-        return true;
-    }
+        => MessageFrameReader.TryReadFrameHeader(source, out messageId, out type);
 
     /// <summary>
     /// Reads a framed message from a stream. Returns <c>null</c> when the connection is closed.
@@ -346,56 +273,7 @@ public static class MessageFramer
     public static async Task<FramedMessage?> ReadMessageAsync(
         Stream stream,
         CancellationToken ct = default)
-    {
-        var headerBuffer = ArrayPool<byte>.Shared.Rent(HeaderSize);
-        try
-        {
-            var bytesRead = await ReadExactAsync(stream, headerBuffer.AsMemory(0, HeaderSize), ct).ConfigureAwait(false);
-            if (bytesRead < HeaderSize)
-            {
-                return null; // Connection closed
-            }
-
-            var totalLength = BinaryPrimitives.ReadInt32LittleEndian(headerBuffer.AsSpan(0, 4));
-            if (totalLength < HeaderSize || totalLength > MaxMessageSize)
-            {
-                // InvalidDataException for a malformed inbound length, consistent with StreamConnection
-                // and TcpConnection so every transport surfaces the same exception type.
-                throw new InvalidDataException($"Invalid DotBoxD frame length: {totalLength}.");
-            }
-
-            var messageId = BinaryPrimitives.ReadInt32LittleEndian(headerBuffer.AsSpan(4, 4));
-            var messageType = (MessageType)headerBuffer[8];
-
-            var payloadLength = totalLength - HeaderSize;
-            var payload = Payload.Rent(payloadLength);
-
-            if (payloadLength > 0)
-            {
-                try
-                {
-                    bytesRead = await ReadExactAsync(stream, payload.Memory, ct).ConfigureAwait(false);
-                    if (bytesRead < payloadLength)
-                    {
-                        payload.Dispose();
-                        throw new InvalidDataException(
-                            $"Connection closed after {bytesRead} of {payloadLength} payload bytes.");
-                    }
-                }
-                catch
-                {
-                    payload.Dispose();
-                    throw;
-                }
-            }
-
-            return new FramedMessage(messageId, messageType, payload);
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(headerBuffer);
-        }
-    }
+        => await MessageStreamFramer.ReadMessageAsync(stream, ct).ConfigureAwait(false);
 
     /// <summary>
     /// Writes a framed message to a stream.
@@ -406,25 +284,5 @@ public static class MessageFramer
         MessageType type,
         ReadOnlyMemory<byte> payload,
         CancellationToken ct = default)
-    {
-        using var writer = PooledBufferWriter.Rent(HeaderSize + payload.Length);
-        WriteFrame(writer, messageId, type, payload.Span);
-        await stream.WriteAsync(writer.WrittenMemory, ct).ConfigureAwait(false);
-        await stream.FlushAsync(ct).ConfigureAwait(false);
-    }
-
-    private static async Task<int> ReadExactAsync(Stream stream, Memory<byte> buffer, CancellationToken ct)
-    {
-        var totalRead = 0;
-        while (totalRead < buffer.Length)
-        {
-            var read = await stream.ReadAsync(buffer.Slice(totalRead), ct).ConfigureAwait(false);
-            if (read == 0)
-            {
-                return totalRead; // Connection closed
-            }
-            totalRead += read;
-        }
-        return totalRead;
-    }
+        => await MessageStreamFramer.WriteMessageAsync(stream, messageId, type, payload, ct).ConfigureAwait(false);
 }

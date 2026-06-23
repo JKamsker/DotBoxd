@@ -1,9 +1,9 @@
-using System.Diagnostics;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
 using DotBoxD.Kernels.Tests._TestSupport;
 using DotBoxD.Kernels.Tests.Interpreter;
+using static DotBoxD.Kernels.Tests.Runtime.File.ReparsePointTestLinks;
 using SafeFileSystem = DotBoxD.Kernels.Runtime.Bindings.FileSystem.SafeFileSystem;
 
 namespace DotBoxD.Kernels.Tests.Runtime.File;
@@ -236,121 +236,4 @@ public sealed class SafeFileSystemReparsePointTests
             .AllowRuntimeAsync()
             .WithWallTime(TimeSpan.FromSeconds(2));
 
-    private static bool TryCreateDirectoryLink(string link, string target)
-    {
-        try
-        {
-            Directory.CreateSymbolicLink(link, target);
-            return true;
-        }
-        catch (IOException)
-        {
-            return TryCreateDirectoryJunction(link, target);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return TryCreateDirectoryJunction(link, target);
-        }
-        catch (PlatformNotSupportedException)
-        {
-            return TryCreateDirectoryJunction(link, target);
-        }
-    }
-
-    private static bool TryCreateFileLink(string link, string target)
-    {
-        try
-        {
-            System.IO.File.CreateSymbolicLink(link, target);
-            return true;
-        }
-        catch (IOException)
-        {
-            return false;
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return false;
-        }
-        catch (PlatformNotSupportedException)
-        {
-            return false;
-        }
-    }
-
-    private static bool TryCreateDirectoryJunction(string link, string target)
-    {
-        if (!OperatingSystem.IsWindows())
-        {
-            return false;
-        }
-
-        using var process = Process.Start(new ProcessStartInfo(
-            "cmd.exe",
-            $"/c mklink /J \"{link}\" \"{target}\"")
-        {
-            CreateNoWindow = true,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
-            UseShellExecute = false
-        });
-        process?.WaitForExit();
-        return process?.ExitCode == 0 && Directory.Exists(link);
-    }
-
-    private static void TryDeleteDirectoryLink(string link)
-    {
-        try
-        {
-            if (Directory.Exists(link))
-            {
-                Directory.Delete(link);
-            }
-        }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
-    }
-
-    private static void TryDeleteFileLink(string link)
-    {
-        try
-        {
-            if (System.IO.File.Exists(link))
-            {
-                System.IO.File.Delete(link);
-            }
-        }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
-    }
-
-    private sealed class TempDirectory : IDisposable
-    {
-        private TempDirectory(string path) => Path = path;
-
-        public string Path { get; }
-
-        public static TempDirectory Create()
-        {
-            var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "dotboxd-" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(path);
-            return new TempDirectory(path);
-        }
-
-        public void Dispose()
-        {
-            if (Directory.Exists(Path))
-            {
-                Directory.Delete(Path, recursive: true);
-            }
-        }
-    }
 }

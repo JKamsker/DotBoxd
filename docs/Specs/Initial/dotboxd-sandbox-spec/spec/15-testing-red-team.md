@@ -319,7 +319,7 @@ Expected:
 | Scenario | Primary test artifacts |
 |---|---|
 | API escape | `HostValueBoundaryTests`, `BindingRegistryHardeningTests`, `VerifierAttackMatrixTests`, `VerifierDocumentedAttackMatrixTests` |
-| File escape | `SafeFileSystemTests`, `SafeFileSystemReparsePointTests`, `FileExtensionPolicyTests`, `PathUriLiteralValidationTests` |
+| File escape | `SafeFileSystemTests`, `SafeFileSystemWriteTests`, `SafeFileSystemReparsePointTests`, `FileExtensionPolicyTests`, `PathUriLiteralValidationTests` |
 | Cache confusion | `CompiledCacheTests`, `CompiledCacheMetadataTests`, `CompiledCacheRootGuardTests`, `CacheKeyIdentityTests`, `CapabilityRevocationTests` |
 | Interpreter/compiler mismatch | `DifferentialFuzzTests`, `DifferentialFeatureCoverageTests`, `CompiledArtifactGuardTests`, `CompilerTests` |
 | Resource DoS | `InterpreterAndPolicyTests`, `ResourceMeterTests`, `ResourceScanCancellationTests`, `CollectionQuotaTests`, `CollectionFuelAccountingTests`, `WorkerIsolationTests` |

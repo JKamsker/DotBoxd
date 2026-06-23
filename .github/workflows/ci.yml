@@ -305,6 +305,7 @@ jobs:
             -NoBuild `
             -RequiredFullyQualifiedNameContains @(
               "SafeFileSystemTests",
+              "SafeFileSystemWriteTests",
               "SafeFileSystemReparsePointTests",
               "FileExtensionPolicyTests",
               "PathUriLiteralValidationTests",

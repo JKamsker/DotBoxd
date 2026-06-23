@@ -29,7 +29,8 @@ if ($requiredNames.Count -eq 0) {
 }
 
 $defaultMinimums = @{
-    SafeFileSystemTests = 13
+    SafeFileSystemTests = 8
+    SafeFileSystemWriteTests = 11
     SafeFileSystemReparsePointTests = 4
     FileExtensionPolicyTests = 2
     PathUriLiteralValidationTests = 29

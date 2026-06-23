@@ -1,8 +1,4 @@
 using System.Collections.Concurrent;
-using System.Net;
-using System.Threading.Channels;
-using DotBoxD.Codecs.MessagePack;
-using DotBoxD.Services.Buffers;
 using DotBoxD.Services.Exceptions;
 using DotBoxD.Services.Peer;
 using DotBoxD.Services.Server;
@@ -10,6 +6,7 @@ using DotBoxD.Services.Tests.Support;
 using DotBoxD.Services.Transport;
 using Shared;
 using Xunit;
+using static DotBoxD.Services.Tests.Peer.PeerTestSupport;
 
 namespace DotBoxD.Services.Tests.Peer;
 
@@ -20,8 +17,6 @@ namespace DotBoxD.Services.Tests.Peer;
 /// </summary>
 public sealed class PeerTests
 {
-    private static MessagePackRpcSerializer NewSerializer() => new();
-
     [Fact]
     public async Task OneDirectional_GetOnlyPeer_CallsProviderAndGetsData()
     {
@@ -229,217 +224,4 @@ public sealed class PeerTests
         }
     }
 
-    [Fact]
-    public async Task RpcPeer_OverTcp_RoundTrips()
-    {
-        Exception? clientReadError = null;
-        Exception? serverReadError = null;
-        var serverTransport = new DotBoxD.Transports.Tcp.TcpServerTransport(IPAddress.Loopback, 0);
-
-        await using var host = RpcHost
-            .Listen(serverTransport, NewSerializer())
-            .ForEachPeer(peer =>
-            {
-                peer.Provide<IGameService>(new TestGameService());
-                peer.ReadError += (_, args) => serverReadError = args.Error;
-            });
-        await host.StartAsync();
-        var port = serverTransport.LocalEndpoint?.Port ??
-            throw new InvalidOperationException("TCP test server did not expose a bound port.");
-
-        var transport = new DotBoxD.Transports.Tcp.TcpTransport("127.0.0.1", port);
-        await transport.ConnectAsync();
-        await using var client = RpcPeer.Over(transport.Connection!, NewSerializer(),
-            new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) });
-        client.ReadError += (_, args) => clientReadError = args.Error;
-        client.Start();
-
-        var game = client.GetGameService();
-        try
-        {
-            var status = await game.GetServerStatusAsync();
-            Assert.NotNull(status);
-        }
-        catch (Exception ex)
-        {
-            throw new Xunit.Sdk.XunitException(
-                $"call failed: {ex.Message}; clientReadError={clientReadError}; serverReadError={serverReadError}");
-        }
-    }
-
-    [Fact]
-    public async Task RpcPeer_OverTcp_Bidirectional_LikeSample()
-    {
-        var greeted = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var serverTransport = new DotBoxD.Transports.Tcp.TcpServerTransport(IPAddress.Loopback, 0);
-
-        // Exercise the generated Provide/Get extension methods (the shape the sample uses).
-        await using var host = RpcHost
-            .Listen(serverTransport, NewSerializer())
-            .ForEachPeer(peer => peer.ProvideGameService(new TestGameService()));
-        host.PeerConnected += (_, args) => _ = GreetAsync(args.Peer, greeted);
-        await host.StartAsync();
-        var port = serverTransport.LocalEndpoint?.Port ??
-            throw new InvalidOperationException("TCP test server did not expose a bound port.");
-
-        var transport = new DotBoxD.Transports.Tcp.TcpTransport("127.0.0.1", port);
-        await transport.ConnectAsync();
-        await using var client = RpcPeer.Over(transport.Connection!, NewSerializer(),
-                new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) })
-            .ProvidePlayerNotifications(new RecordingNotifications("sample-client"))
-            .Start();
-
-        var game = client.GetGameService();
-        var status = await game.GetServerStatusAsync();
-        Assert.NotNull(status);
-
-        var who = await greeted.Task.WaitAsync(TimeSpan.FromSeconds(30));
-        Assert.Equal("sample-client", who);
-
-        static async Task GreetAsync(RpcPeer peer, TaskCompletionSource<string> done)
-        {
-            try
-            {
-                var notifications = peer.GetPlayerNotifications();
-                var who = await notifications.WhoAmIAsync();
-                await notifications.NotifyAsync($"Welcome, {who}!");
-                done.TrySetResult(who);
-            }
-            catch (Exception ex)
-            {
-                done.TrySetException(ex);
-            }
-        }
-    }
-
-    private sealed class RecordingNotifications : IPlayerNotifications
-    {
-        private readonly string _identity;
-        public ConcurrentQueue<string> Messages { get; } = new();
-
-        public RecordingNotifications(string identity) => _identity = identity;
-
-        public Task NotifyAsync(string message, CancellationToken ct = default)
-        {
-            Messages.Enqueue(message);
-            return Task.CompletedTask;
-        }
-
-        public Task<string> WhoAmIAsync(CancellationToken ct = default) => Task.FromResult(_identity);
-    }
-
-    /// <summary>An in-process, full-duplex <see cref="IRpcChannel"/> pair backed by two channels.</summary>
-    private sealed class InMemoryChannel : IRpcChannel
-    {
-        private readonly ChannelReader<byte[]> _inbound;
-        private readonly ChannelWriter<byte[]> _outbound;
-        private readonly string _name;
-        private int _disposed;
-
-        private InMemoryChannel(ChannelReader<byte[]> inbound, ChannelWriter<byte[]> outbound, string name)
-        {
-            _inbound = inbound;
-            _outbound = outbound;
-            _name = name;
-        }
-
-        public static (IRpcChannel A, IRpcChannel B) CreatePair()
-        {
-            var ab = System.Threading.Channels.Channel.CreateUnbounded<byte[]>();
-            var ba = System.Threading.Channels.Channel.CreateUnbounded<byte[]>();
-            var a = new InMemoryChannel(ba.Reader, ab.Writer, "peer-a");
-            var b = new InMemoryChannel(ab.Reader, ba.Writer, "peer-b");
-            return (a, b);
-        }
-
-        public bool IsConnected => Volatile.Read(ref _disposed) == 0;
-
-        public string RemoteEndpoint => _name;
-
-        public Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
-        {
-            _outbound.TryWrite(data.ToArray());
-            return Task.CompletedTask;
-        }
-
-        public async Task<Payload> ReceiveAsync(CancellationToken ct = default)
-        {
-            try
-            {
-                var bytes = await _inbound.ReadAsync(ct).ConfigureAwait(false);
-                var payload = Payload.Rent(bytes.Length);
-                bytes.CopyTo(payload.Memory);
-                return payload;
-            }
-            catch (ChannelClosedException)
-            {
-                return Payload.Empty;
-            }
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            if (Interlocked.Exchange(ref _disposed, 1) == 0)
-            {
-                _outbound.TryComplete();
-            }
-
-            return default;
-        }
-    }
-
-    /// <summary>
-    /// Server transport that yields a fixed set of pre-established connections one per accept, then
-    /// blocks like a listener with no further clients until stopped or cancelled.
-    /// </summary>
-    private sealed class MultiConnectionServerTransport : IServerTransport
-    {
-        private readonly Queue<IRpcChannel> _connections;
-        private readonly TaskCompletionSource<bool> _stopped =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-        private readonly object _gate = new();
-        private int _disposed;
-
-        public MultiConnectionServerTransport(IEnumerable<IRpcChannel> connections) =>
-            _connections = new Queue<IRpcChannel>(connections);
-
-        public Task StartAsync(CancellationToken ct = default) => Task.CompletedTask;
-
-        public async Task<IRpcChannel> AcceptAsync(CancellationToken ct = default)
-        {
-            if (Volatile.Read(ref _disposed) != 0)
-            {
-                throw new ObjectDisposedException(nameof(MultiConnectionServerTransport));
-            }
-
-            lock (_gate)
-            {
-                if (_connections.Count > 0)
-                {
-                    return _connections.Dequeue();
-                }
-            }
-
-            using (ct.Register(static state => ((TaskCompletionSource<bool>)state!).TrySetResult(true), _stopped))
-            {
-                await _stopped.Task.ConfigureAwait(false);
-            }
-
-            ct.ThrowIfCancellationRequested();
-            throw new OperationCanceledException();
-        }
-
-        public Task StopAsync(CancellationToken ct = default)
-        {
-            _stopped.TrySetResult(true);
-            return Task.CompletedTask;
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            Interlocked.Exchange(ref _disposed, 1);
-            _stopped.TrySetResult(true);
-            return default;
-        }
-    }
 }
