@@ -21,12 +21,12 @@ internal static class PluginServerFacadeSurfaceEmitter
             builder,
             "    ",
             "Remote hook registration surface. Hooks plug plugin logic into server decisions and are awaited by the server when matching events are published.");
-        builder.AppendLine("    public global::DotBoxD.Plugins.Runtime.RemoteHookRegistry Hooks => _started && _hooks is not null ? _hooks : throw new global::System.InvalidOperationException(NotStartedMessage);");
+        builder.Append("    public ").Append(model.HookRegistryName).AppendLine(" Hooks => _started && _hooks is not null ? _hooks : throw new global::System.InvalidOperationException(NotStartedMessage);");
         PluginServerXmlDocumentation.AppendSummary(
             builder,
             "    ",
             "Remote fire-and-forget subscription registration surface. Subscriptions are notifications: the server calls matching handlers when an event is published but does not wait for them.");
-        builder.AppendLine("    public global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry Subscriptions => _started && _subscriptions is not null ? _subscriptions : throw new global::System.InvalidOperationException(NotStartedMessage);");
+        builder.Append("    public ").Append(model.SubscriptionRegistryName).AppendLine(" Subscriptions => _started && _subscriptions is not null ? _subscriptions : throw new global::System.InvalidOperationException(NotStartedMessage);");
         foreach (var control in model.Controls)
         {
             PluginServerXmlDocumentation.Append(builder, "    ", control.Documentation);
@@ -65,12 +65,12 @@ internal static class PluginServerFacadeSurfaceEmitter
             builder,
             "    ",
             "Remote hook registration surface. Hooks plug plugin logic into server decisions and are awaited by the server when matching events are published.");
-        builder.AppendLine("    global::DotBoxD.Plugins.Runtime.RemoteHookRegistry Hooks { get; }");
+        builder.Append("    ").Append(model.HookRegistryName).AppendLine(" Hooks { get; }");
         PluginServerXmlDocumentation.AppendSummary(
             builder,
             "    ",
             "Remote fire-and-forget subscription registration surface. Subscriptions are notifications: the server calls matching handlers when an event is published but does not wait for them.");
-        builder.AppendLine("    global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry Subscriptions { get; }");
+        builder.Append("    ").Append(model.SubscriptionRegistryName).AppendLine(" Subscriptions { get; }");
         PluginServerXmlDocumentation.AppendSummary(
             builder,
             "    ",

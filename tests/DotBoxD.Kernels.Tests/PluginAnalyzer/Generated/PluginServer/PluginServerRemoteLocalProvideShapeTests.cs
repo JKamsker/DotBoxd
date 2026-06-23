@@ -79,7 +79,7 @@ public sealed class PluginServerRemoteLocalProvideShapeTests
         Assert.Empty(outputCompilation.GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error));
         Assert.Contains(
-            "new global::DotBoxD.Plugins.Runtime.RemoteHookRegistry(package => InstallPluginPackageAsync(package));",
+            "new RemotePluginHookRegistry(package => InstallPluginPackageAsync(package));",
             generated,
             StringComparison.Ordinal);
         Assert.DoesNotContain("_localHandlers", generated, StringComparison.Ordinal);
@@ -155,7 +155,7 @@ public sealed class PluginServerRemoteLocalProvideShapeTests
         Assert.Empty(outputCompilation.GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error));
         Assert.Contains(
-            "new global::DotBoxD.Plugins.Runtime.RemoteHookRegistry(package => InstallPluginPackageAsync(package));",
+            "new RemotePluginHookRegistry(package => InstallPluginPackageAsync(package));",
             generated,
             StringComparison.Ordinal);
         Assert.DoesNotContain("_localHandlers", generated, StringComparison.Ordinal);

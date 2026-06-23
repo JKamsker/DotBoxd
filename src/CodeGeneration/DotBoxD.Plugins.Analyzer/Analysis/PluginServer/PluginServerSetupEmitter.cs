@@ -86,12 +86,12 @@ internal static class PluginServerSetupEmitter
             builder,
             "    ",
             "Setup-time hook registration surface. Recorded hooks plug plugin logic into server decisions and are awaited by the server.");
-        builder.AppendLine("    global::DotBoxD.Plugins.Runtime.RemoteHookRegistry Hooks { get; }");
+        builder.Append("    ").Append(model.HookRegistryName).AppendLine(" Hooks { get; }");
         PluginServerXmlDocumentation.AppendSummary(
             builder,
             "    ",
             "Setup-time fire-and-forget subscription registration surface. Recorded subscriptions are notifications and the server does not wait for them.");
-        builder.AppendLine("    global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry Subscriptions { get; }");
+        builder.Append("    ").Append(model.SubscriptionRegistryName).AppendLine(" Subscriptions { get; }");
         foreach (var control in model.Controls)
         {
             PluginServerXmlDocumentation.Append(builder, "    ", control.Documentation);
@@ -190,8 +190,8 @@ internal static class PluginServerSetupEmitter
         builder.Append("    private sealed class SetupRecorder : ").Append(model.SetupInterfaceName).AppendLine();
         builder.AppendLine("    {");
         builder.AppendLine("        private readonly global::System.Collections.Generic.List<RecordedInstall> _installs;");
-        builder.AppendLine("        private readonly global::DotBoxD.Plugins.Runtime.RemoteHookRegistry _hooks;");
-        builder.AppendLine("        private readonly global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry _subscriptions;");
+        builder.Append("        private readonly ").Append(model.HookRegistryName).AppendLine(" _hooks;");
+        builder.Append("        private readonly ").Append(model.SubscriptionRegistryName).AppendLine(" _subscriptions;");
         foreach (var control in model.Controls)
         {
             builder.Append("        private readonly ").Append(control.AccumulatorInterfaceName).Append(' ')
@@ -203,16 +203,16 @@ internal static class PluginServerSetupEmitter
         builder.AppendLine("            global::DotBoxD.Plugins.Runtime.Hooks.RemoteLocalHandlerRegistry? localHandlers)");
         builder.AppendLine("        {");
         builder.AppendLine("            _installs = installs;");
-        builder.AppendLine("            _hooks = new global::DotBoxD.Plugins.Runtime.RemoteHookRegistry(package =>");
+        builder.Append("            _hooks = new ").Append(model.HookRegistryName).AppendLine("(package =>");
         builder.AppendLine("            {");
         builder.AppendLine("                _installs.Add(RecordedInstall.Plugin(package));");
         builder.AppendLine("                return global::System.Threading.Tasks.ValueTask.FromResult(package.Manifest.PluginId);");
         builder.AppendLine("            }, localHandlers);");
-        builder.AppendLine("            _subscriptions = new global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry(package =>");
+        builder.Append("            _subscriptions = new ").Append(model.SubscriptionRegistryName).AppendLine("(package =>");
         builder.AppendLine("            {");
         builder.AppendLine("                _installs.Add(RecordedInstall.Subscription(package));");
         builder.AppendLine("                return global::System.Threading.Tasks.ValueTask.FromResult(package.Manifest.PluginId);");
-        builder.AppendLine("            });");
+        builder.AppendLine("            }, localHandlers);");
         foreach (var control in model.Controls)
         {
             builder.Append("            ").Append(FieldName(control.Name)).Append(" = new ")
@@ -235,12 +235,12 @@ internal static class PluginServerSetupEmitter
             builder,
             "        ",
             "Setup-time hook registration surface. Recorded hooks plug plugin logic into server decisions and are awaited by the server.");
-        builder.AppendLine("        public global::DotBoxD.Plugins.Runtime.RemoteHookRegistry Hooks => _hooks;");
+        builder.Append("        public ").Append(model.HookRegistryName).AppendLine(" Hooks => _hooks;");
         PluginServerXmlDocumentation.AppendSummary(
             builder,
             "        ",
             "Setup-time fire-and-forget subscription registration surface. Recorded subscriptions are notifications and the server does not wait for them.");
-        builder.AppendLine("        public global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry Subscriptions => _subscriptions;");
+        builder.Append("        public ").Append(model.SubscriptionRegistryName).AppendLine(" Subscriptions => _subscriptions;");
 
         builder.AppendLine("    }");
         builder.AppendLine();

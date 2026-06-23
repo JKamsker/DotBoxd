@@ -19,6 +19,7 @@ internal static partial class HookChainModelFactory
         HookChainInterceptorInstallKind installKind,
         string? generatedRemoteServerContextTypeFullName,
         bool terminalHasServerContext,
+        bool terminalReturnsVoid,
         bool hasLocalDecoder,
         ITypeSymbol? projectedTypeSymbol,
         CancellationToken cancellationToken)
@@ -100,6 +101,7 @@ internal static partial class HookChainModelFactory
             terminalElementTypeFullName,
             generatedRemoteServerContextTypeFullName,
             terminalHasServerContext,
+            terminalReturnsVoid,
             packageFullName,
             installKind,
             generatedRemoteKind.Value,

@@ -10,24 +10,51 @@ internal enum GeneratedRemoteHookChainKind
     Subscription
 }
 
-internal static class GeneratedRemoteHookChainFallback
+internal static partial class GeneratedRemoteHookChainFallback
 {
     public static GeneratedRemoteHookChainKind? CandidateKind(InvocationExpressionSyntax seed)
+        => CandidateKind(seed, model: null, cancellationToken: default);
+
+    public static GeneratedRemoteHookChainKind? CandidateKind(
+        InvocationExpressionSyntax seed,
+        SemanticModel? model,
+        CancellationToken cancellationToken)
     {
         if (seed.Expression is not MemberAccessExpressionSyntax onAccess ||
-            !string.Equals(onAccess.Name.Identifier.ValueText, "On", StringComparison.Ordinal) ||
-            onAccess.Expression is not MemberAccessExpressionSyntax registryAccess)
+            !string.Equals(onAccess.Name.Identifier.ValueText, "On", StringComparison.Ordinal))
         {
             return null;
         }
 
-        return registryAccess.Name.Identifier.ValueText switch
+        if (onAccess.Expression is MemberAccessExpressionSyntax registryAccess)
         {
-            "Hooks" => GeneratedRemoteHookChainKind.Hook,
-            "Subscriptions" => GeneratedRemoteHookChainKind.Subscription,
+            return registryAccess.Name.Identifier.ValueText switch
+            {
+                "Hooks" => GeneratedRemoteHookChainKind.Hook,
+                "Subscriptions" => GeneratedRemoteHookChainKind.Subscription,
+                _ => null
+            };
+        }
+
+        return model is null ? null : RegistryKind(RegistryTypeName(onAccess.Expression, model, cancellationToken));
+    }
+
+    private static GeneratedRemoteHookChainKind? RegistryKind(string? registryTypeName)
+        => registryTypeName switch
+        {
+            { } name when name.EndsWith("HookRegistry", StringComparison.Ordinal) => GeneratedRemoteHookChainKind.Hook,
+            { } name when name.EndsWith("SubscriptionRegistry", StringComparison.Ordinal) =>
+                GeneratedRemoteHookChainKind.Subscription,
             _ => null
         };
-    }
+
+    private static string? RegistryTypeName(
+        ExpressionSyntax expression,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+        => model.GetTypeInfo(expression, cancellationToken).Type is INamedTypeSymbol { Name.Length: > 0 } type
+            ? type.Name
+            : null;
 
     private static INamedTypeSymbol? EventTypeFromSeed(
         InvocationExpressionSyntax seed,
@@ -72,15 +99,15 @@ internal static class GeneratedRemoteHookChainFallback
         InvocationExpressionSyntax seed,
         CancellationToken cancellationToken)
     {
-        if (seed.Expression is not MemberAccessExpressionSyntax { Name: GenericNameSyntax onName } ||
-            onName.TypeArgumentList.Arguments.Count < 2)
+        if (seed.Expression is MemberAccessExpressionSyntax { Name: GenericNameSyntax onName } &&
+            onName.TypeArgumentList.Arguments.Count >= 2)
         {
-            return null;
+            return model.GetTypeInfo(onName.TypeArgumentList.Arguments[1], cancellationToken)
+                .Type?
+                .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         }
 
-        return model.GetTypeInfo(onName.TypeArgumentList.Arguments[1], cancellationToken)
-            .Type?
-            .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        return InferredGeneratedContextTypeFullName(model.Compilation, cancellationToken);
     }
 
     public static HookChainInterception CreateInterception(
@@ -90,6 +117,7 @@ internal static class GeneratedRemoteHookChainFallback
         string terminalElementTypeFullName,
         string? serverContextTypeFullName,
         bool terminalHasServerContext,
+        bool terminalReturnsVoid,
         string packageFullName,
         HookChainInterceptorInstallKind installKind,
         GeneratedRemoteHookChainKind kind,
@@ -117,6 +145,7 @@ internal static class GeneratedRemoteHookChainFallback
             terminalHasServerContext
                 ? serverContextTypeFullName ?? DotBoxDGenerationNames.TypeNames.GlobalHookContext
                 : null,
+            terminalReturnsVoid,
             installKind);
 
         return new HookChainInterception(
@@ -132,17 +161,21 @@ internal static class GeneratedRemoteHookChainFallback
     private static string HandlerType(
         string terminalElementTypeFullName,
         string? serverContextTypeFullName,
+        bool terminalReturnsVoid,
         HookChainInterceptorInstallKind installKind)
     {
         var hasServerContext = !string.IsNullOrEmpty(serverContextTypeFullName);
         if (installKind == HookChainInterceptorInstallKind.LocalCallback)
         {
+            var delegateName = terminalReturnsVoid
+                ? DotBoxDGenerationNames.TypeNames.GlobalAction
+                : DotBoxDGenerationNames.TypeNames.GlobalFunc;
+            var suffix = terminalReturnsVoid
+                ? string.Empty
+                : ", " + DotBoxDGenerationNames.TypeNames.GlobalValueTask;
             return hasServerContext
-                ? DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" +
-                  terminalElementTypeFullName + ", " + serverContextTypeFullName + ", " +
-                  DotBoxDGenerationNames.TypeNames.GlobalValueTask + ">"
-                : DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" +
-                  terminalElementTypeFullName + ", " + DotBoxDGenerationNames.TypeNames.GlobalValueTask + ">";
+                ? delegateName + "<" + terminalElementTypeFullName + ", " + serverContextTypeFullName + suffix + ">"
+                : delegateName + "<" + terminalElementTypeFullName + suffix + ">";
         }
 
         return hasServerContext
@@ -156,6 +189,8 @@ internal static class GeneratedRemoteHookChainFallback
         string eventTypeFullName,
         bool receiverIsStage,
         string resultTypeFullName,
+        string? serverContextTypeFullName,
+        bool terminalHasServerContext,
         string packageFullName,
         HookChainInterceptorInstallKind installKind,
         GeneratedRemoteHookChainKind kind,
@@ -166,23 +201,22 @@ internal static class GeneratedRemoteHookChainFallback
             throw new NotSupportedException("Result hooks are only supported on generated remote hook registries.");
         }
 
+        var hasServerContextType = !string.IsNullOrEmpty(serverContextTypeFullName);
+        var pipelineArguments = hasServerContextType
+            ? eventTypeFullName + ", " + serverContextTypeFullName
+            : eventTypeFullName;
         var pipelineType = DotBoxDGenerationNames.TypeNames.GlobalPrefix +
-            "DotBoxD.Plugins.Runtime.RemoteHookPipeline<" + eventTypeFullName + ">";
+            "DotBoxD.Plugins.Runtime.RemoteHookPipeline<" + pipelineArguments + ">";
         var receiverType = receiverIsStage
             ? DotBoxDGenerationNames.TypeNames.GlobalPrefix +
               "DotBoxD.Plugins.Runtime.Hooks.RemoteHookStage<" +
-              eventTypeFullName + ", " + eventTypeFullName + ">"
+              eventTypeFullName + ", " + eventTypeFullName +
+              (hasServerContextType ? ", " + serverContextTypeFullName : string.Empty) + ">"
             : pipelineType;
-        var handlerType = installKind == HookChainInterceptorInstallKind.ResultChain
-            ? DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" + eventTypeFullName + ", " + resultTypeFullName + ">"
-            : isAsyncLocal
-            ? DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" +
-              eventTypeFullName + ", " + DotBoxDGenerationNames.TypeNames.GlobalHookContext + ", " +
-              DotBoxDGenerationNames.TypeNames.GlobalCancellationToken + ", " +
-              DotBoxDGenerationNames.TypeNames.GlobalValueTask + "<" + resultTypeFullName + ">>"
-            : DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" +
-              eventTypeFullName + ", " + DotBoxDGenerationNames.TypeNames.GlobalHookContext + ", " +
-              resultTypeFullName + ">";
+        var handlerContextType = terminalHasServerContext
+            ? serverContextTypeFullName ?? DotBoxDGenerationNames.TypeNames.GlobalHookContext
+            : null;
+        var handlerType = ResultHandlerType(eventTypeFullName, handlerContextType, resultTypeFullName, isAsyncLocal);
 
         return new HookChainInterception(
             attributeSyntax,
@@ -193,6 +227,28 @@ internal static class GeneratedRemoteHookChainFallback
             installKind,
             ResultTypeFullName: resultTypeFullName,
             IsAsyncLocalResult: isAsyncLocal);
+    }
+
+    private static string ResultHandlerType(
+        string eventTypeFullName,
+        string? serverContextTypeFullName,
+        string resultTypeFullName,
+        bool isAsyncLocal)
+    {
+        if (serverContextTypeFullName is null)
+        {
+            return DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" + eventTypeFullName + ", " +
+                resultTypeFullName + ">";
+        }
+
+        return isAsyncLocal
+            ? DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" +
+              eventTypeFullName + ", " + serverContextTypeFullName + ", " +
+              DotBoxDGenerationNames.TypeNames.GlobalCancellationToken + ", " +
+              DotBoxDGenerationNames.TypeNames.GlobalValueTask + "<" + resultTypeFullName + ">>"
+            : DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" +
+              eventTypeFullName + ", " + serverContextTypeFullName + ", " +
+              resultTypeFullName + ">";
     }
 
     public static string TypeFullName(

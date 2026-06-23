@@ -1,5 +1,4 @@
 using DotBoxD.Kernels.Game.Server.Abstractions.Events;
-using DotBoxD.Plugins.Runtime;
 
 namespace DotBoxD.Kernels.Game.Plugin.Authoring;
 
@@ -11,7 +10,7 @@ namespace DotBoxD.Kernels.Game.Plugin.Authoring;
 /// </summary>
 public static class LocalReactions
 {
-    public static void ConfigureCalmReaction(RemoteHookRegistry hooks, Action<string> onCalmedMonster)
+    public static void ConfigureCalmReaction(GamePluginHookRegistry hooks, Action<string> onCalmedMonster)
     {
         ArgumentNullException.ThrowIfNull(hooks);
         ArgumentNullException.ThrowIfNull(onCalmedMonster);
@@ -23,13 +22,13 @@ public static class LocalReactions
     }
 
     public static void ConfigureServerContextReaction(
-        RemoteHookRegistry hooks,
+        GamePluginHookRegistry hooks,
         Action<string, bool> onCalmedMonster)
     {
         ArgumentNullException.ThrowIfNull(hooks);
         ArgumentNullException.ThrowIfNull(onCalmedMonster);
 
-        hooks.On<MonsterAggroEvent, GamePluginContext>(GamePluginContext.FromHookContext)
+        hooks.On<MonsterAggroEvent>()
             .Where((e, _) => e.Distance <= 4)
             .Select((e, _) => e.MonsterId)
             .RunLocal((monsterId, context) =>
@@ -41,7 +40,7 @@ public static class LocalReactions
     /// to server-side verified IR; for each matching event the WHOLE event record crosses the IPC boundary and
     /// the native delegate runs in the plugin process with the full event.
     /// </summary>
-    public static void ConfigureWholeEventReaction(RemoteHookRegistry hooks, Action<MonsterAggroEvent> onAggro)
+    public static void ConfigureWholeEventReaction(GamePluginHookRegistry hooks, Action<MonsterAggroEvent> onAggro)
     {
         ArgumentNullException.ThrowIfNull(hooks);
         ArgumentNullException.ThrowIfNull(onAggro);
@@ -51,11 +50,11 @@ public static class LocalReactions
             .RunLocal(aggro => onAggro(aggro));
     }
 
-    public static void ConfigureDamageDecision(RemoteHookRegistry hooks)
+    public static void ConfigureDamageDecision(GamePluginHookRegistry hooks)
     {
         ArgumentNullException.ThrowIfNull(hooks);
 
-        hooks.On<RemoteDamageDecisionEvent, GamePluginContext>(GamePluginContext.FromHookContext)
+        hooks.On<RemoteDamageDecisionEvent>()
             .Where((e, _) => e.Damage > 10)
             .RegisterLocal(
                 (e, context) => new RemoteDamageDecisionResult(

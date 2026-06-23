@@ -159,11 +159,12 @@ internal static class Program
 
 ## 3. The server-side fluent API is the *same shape* the plugin uses
 
-The plugin's shim mirrors what the server itself exposes via `server.Hooks` /
-`server.Subscriptions`. On the server, `On<TEvent>()` returns a default
-`HookPipeline<TEvent>` whose context parameter is `HookContext`. A host that wants a richer
-context shape uses `On<TEvent, TServerContext>(raw => ...)`; hooks and subscriptions choose their
-server-context type independently.
+The plugin's generated facade mirrors what the server itself exposes via `server.Hooks` /
+`server.Subscriptions`, but it owns a plugin-side partial context type by convention. For
+`GamePluginServer`, the generator emits `GamePluginContext`, `GamePluginHookRegistry`, and
+`GamePluginSubscriptionRegistry`; parameterless `server.Hooks.On<TEvent>()` and
+`server.Subscriptions.On<TEvent>()` use `GamePluginContext` automatically. The lower-level runtime
+still exposes `On<TEvent, TServerContext>(raw => ...)` as an escape hatch for explicit contexts.
 
 ```csharp
 // Inside the simulation (server side), publishing an event runs the installed pipeline:
@@ -207,27 +208,17 @@ public sealed class HookPipeline<TEvent, TServerContext>
 
 Sandbox-lowered stages and terminals such as `Where`, `Select`, `Run`, and `Register` can only use
 context members the analyzer knows how to lower into verified IR. The supported contract is explicit:
-mark pure helper methods with `[KernelMethod]` so their bodies inline into the chain, and mark
-server-owned binding properties or methods with `[HostBinding]` so the analyzer emits a sandbox host
-call and records the required capability/effects. Use `RunLocal` / `RegisterLocal` when the handler
-needs arbitrary in-process services from the server context.
+extend the generated partial context with pure helper methods marked `[KernelMethod]` so their bodies
+inline into the chain, and mark host-backed context properties or methods with `[HostBinding]` so the
+analyzer emits a sandbox host call and records the required capability/effects. Use `RunLocal` /
+`RegisterLocal` when the handler needs arbitrary in-process services from the plugin-owned context.
 
-For example, a server context can expose native-only members for local terminals and lowering markers
-for sandbox terminals:
+For example, the generated context supplies the raw hook plumbing, while the plugin adds domain
+members in a partial:
 
 ```csharp
-public sealed class CombatHookContext
+public sealed partial class GamePluginContext
 {
-    public CombatHookContext(HookContext raw, IGameWorld world)
-    {
-        Raw = raw;
-        World = world;
-    }
-
-    public HookContext Raw { get; }
-
-    public IGameWorld World { get; }              // native-only; use from RunLocal/RegisterLocal
-
     [KernelMethod]
     public bool CanInspect(int distance) => distance <= 4;
 
@@ -239,7 +230,7 @@ public sealed class CombatHookContext
         => throw new NotSupportedException("Lowering marker; implemented by a host binding.");
 }
 
-server.Hooks.On<DamageContext, CombatHookContext>(raw => new CombatHookContext(raw, world))
+server.Hooks.On<DamageContext>()
     .Where((damage, ctx) => ctx.CanInspect(damage.Distance))
     .Register((damage, ctx) => new DamageResult
     {
@@ -248,7 +239,7 @@ server.Hooks.On<DamageContext, CombatHookContext>(raw => new CombatHookContext(r
     });
 ```
 
-The default shorthand remains:
+The generated default context also preserves the `HookContext` conveniences:
 
 ```csharp
 server.Hooks.On<MonsterAggroEvent>()
@@ -256,8 +247,7 @@ server.Hooks.On<MonsterAggroEvent>()
     .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "calm"));
 ```
 
-A host-defined server context wraps the raw `HookContext` when it needs domain services or a
-narrower facade:
+A non-default context can still be selected explicitly when a chain needs a different facade:
 
 ```csharp
 server.Hooks.On<MonsterAggroEvent, CombatHookContext>(ctx => new CombatHookContext(ctx, world))

@@ -35,7 +35,8 @@ internal static partial class ResultHookChain
         string? terminalContextParam,
         bool terminalHasCancellationToken,
         bool isLocal,
-        GeneratedRemoteHookChainKind? generatedRemoteKind)
+        GeneratedRemoteHookChainKind? generatedRemoteKind,
+        string? generatedRemoteServerContextTypeFullName)
     {
         // A Select before the result terminal would re-type the flowing element; v1 supports only Where filters.
         foreach (var stage in stages)
@@ -143,6 +144,7 @@ internal static partial class ResultHookChain
             terminalContextParam is not null,
             receiverIsStage: false,
             generatedRemoteKind,
+            generatedRemoteServerContextTypeFullName,
             cancellationToken));
     }
 

@@ -49,6 +49,9 @@ internal static class PluginServerFacadeModelFactory
             type.Name,
             ServerInterfaceName(worldType),
             SetupInterfaceName(type.Name),
+            ContextName(type.Name),
+            HookRegistryName(type.Name),
+            SubscriptionRegistryName(type.Name),
             TypeName(worldType),
             PluginServerWorldExtensionSuffixResolver.Resolve(compilation, worldType, cancellationToken),
             PluginServerXmlDocumentation.FromSymbol(
@@ -251,7 +254,6 @@ internal static class PluginServerFacadeModelFactory
 
         return parameters;
     }
-
     private static bool HasAttribute(INamedTypeSymbol type, string metadataName)
     {
         foreach (var attribute in type.GetAttributes())
@@ -264,14 +266,12 @@ internal static class PluginServerFacadeModelFactory
 
         return false;
     }
-
     private static bool IsControlPlaneMember(INamedTypeSymbol type)
     {
         var name = type.ToDisplayString();
         return string.Equals(name, ServiceControlType, StringComparison.Ordinal) ||
                string.Equals(name, ExtensibleControlType, StringComparison.Ordinal);
     }
-
     private static IEnumerable<ISymbol> MembersIncludingInherited(INamedTypeSymbol type)
     {
         foreach (var inherited in type.AllInterfaces.Reverse())
@@ -287,7 +287,6 @@ internal static class PluginServerFacadeModelFactory
             yield return member;
         }
     }
-
     private sealed class ServiceWrapperBuilder(string type, string wrapperName, string documentation)
     {
         public string Type { get; } = type;
@@ -296,5 +295,4 @@ internal static class PluginServerFacadeModelFactory
         public List<PluginServerForwardedProperty> Properties { get; } = [];
         public List<PluginServerForwardedMethod> Methods { get; } = [];
     }
-
 }

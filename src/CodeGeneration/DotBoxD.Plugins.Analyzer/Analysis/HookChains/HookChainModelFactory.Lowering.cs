@@ -83,8 +83,24 @@ internal static partial class HookChainModelFactory
             return source;
         }
 
+        if (ScalarSandboxTypeSource(projection.Value.Type) is { } scalarSource)
+        {
+            return scalarSource;
+        }
+
         throw new NotSupportedException();
     }
+
+    private static string? ScalarSandboxTypeSource(string manifestTag)
+        => manifestTag switch
+        {
+            DotBoxDGenerationNames.ManifestTypes.Bool => DotBoxDGenerationNames.TypeNames.GlobalSandboxType + ".Bool",
+            DotBoxDGenerationNames.ManifestTypes.Int => DotBoxDGenerationNames.TypeNames.GlobalSandboxType + ".I32",
+            DotBoxDGenerationNames.ManifestTypes.Long => DotBoxDGenerationNames.TypeNames.GlobalSandboxType + ".I64",
+            DotBoxDGenerationNames.ManifestTypes.Double => DotBoxDGenerationNames.TypeNames.GlobalSandboxType + ".F64",
+            DotBoxDGenerationNames.ManifestTypes.String => DotBoxDGenerationNames.TypeNames.GlobalSandboxType + ".String",
+            _ => null
+        };
 
     private static DotBoxDStatementBodyModel LowerSendHandle(
         IReadOnlyList<HookChainStage> stages,

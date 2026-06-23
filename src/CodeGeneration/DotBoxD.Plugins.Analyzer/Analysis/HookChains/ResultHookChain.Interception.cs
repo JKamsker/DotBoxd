@@ -20,6 +20,7 @@ internal static partial class ResultHookChain
         bool hasServerContextParameter,
         bool receiverIsStage,
         GeneratedRemoteHookChainKind? generatedRemoteKind,
+        string? generatedRemoteServerContextTypeFullName,
         CancellationToken cancellationToken)
     {
         var location = model.GetInterceptableLocation(invocation, cancellationToken);
@@ -34,7 +35,11 @@ internal static partial class ResultHookChain
 
         var contextFullName = contextType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var resultFullName = resultType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        var serverContextFullName = ServerContextFullName(receiver, model, cancellationToken);
+        var serverContextFullName = ServerContextFullName(
+            receiver,
+            model,
+            cancellationToken,
+            generatedRemoteServerContextTypeFullName);
         var handlerFullName = ResultHandlerFullName(
             contextFullName,
             serverContextFullName,
@@ -69,6 +74,8 @@ internal static partial class ResultHookChain
                     contextFullName,
                     receiverIsStage,
                     resultFullName,
+                    generatedRemoteServerContextTypeFullName,
+                    hasServerContextParameter,
                     packageFullName,
                     isLocal ? HookChainInterceptorInstallKind.LocalResultChain : HookChainInterceptorInstallKind.ResultChain,
                     generatedRemoteKind.Value,
@@ -114,11 +121,12 @@ internal static partial class ResultHookChain
     private static string ServerContextFullName(
         ExpressionSyntax receiver,
         SemanticModel model,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? generatedRemoteServerContextTypeFullName)
     {
         if (model.GetTypeInfo(receiver, cancellationToken).Type is not INamedTypeSymbol receiverType)
         {
-            return TypeNames.GlobalHookContext;
+            return generatedRemoteServerContextTypeFullName ?? TypeNames.GlobalHookContext;
         }
 
         var original = receiverType.OriginalDefinition.ToDisplayString();

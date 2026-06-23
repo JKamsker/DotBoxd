@@ -21,6 +21,8 @@ internal static class PluginServerFacadeEmitter
         builder.AppendLine();
         PluginServerFacadeSurfaceEmitter.AppendServerInterface(builder, model);
         builder.AppendLine();
+        PluginServerContextSurfaceEmitter.AppendContextAndRegistries(builder, model);
+        builder.AppendLine();
         PluginServerSetupEmitter.AppendBuilder(builder, model);
         PluginServerSetupEmitter.AppendSetupInterfaces(builder, model);
         return new GeneratedPluginPackage(HintName(model), builder.ToString(), model.Namespace, model.ClassName);
@@ -42,8 +44,8 @@ internal static class PluginServerFacadeEmitter
         builder.AppendLine("    private readonly global::System.Collections.Generic.List<RecordedInstall> _setupInstalls;");
         builder.Append("    private ").Append(model.ControlServiceType).AppendLine("? _control;");
         builder.Append("    private ").Append(model.WorldType).AppendLine("? _world;");
-        builder.AppendLine("    private global::DotBoxD.Plugins.Runtime.RemoteHookRegistry? _hooks;");
-        builder.AppendLine("    private global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry? _subscriptions;");
+        builder.Append("    private ").Append(model.HookRegistryName).AppendLine("? _hooks;");
+        builder.Append("    private ").Append(model.SubscriptionRegistryName).AppendLine("? _subscriptions;");
         if (model.EventCallbackType is not null)
         {
             // Owns the native RunLocal terminals; the server pushes filtered+projected values back to it via the
@@ -189,8 +191,8 @@ internal static class PluginServerFacadeEmitter
         builder.AppendLine("        _control = control;");
         builder.AppendLine("        _world = world;");
         var localHandlersArg = model.EventCallbackType is not null ? ", _localHandlers" : string.Empty;
-        builder.AppendLine("        _hooks = new global::DotBoxD.Plugins.Runtime.RemoteHookRegistry(package => InstallPluginPackageAsync(package)" + localHandlersArg + ");");
-        builder.AppendLine("        _subscriptions = new global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry(package => InstallSubscriptionPackageAsync(package)" + localHandlersArg + ");");
+        builder.AppendLine("        _hooks = new " + model.HookRegistryName + "(package => InstallPluginPackageAsync(package)" + localHandlersArg + ");");
+        builder.AppendLine("        _subscriptions = new " + model.SubscriptionRegistryName + "(package => InstallSubscriptionPackageAsync(package)" + localHandlersArg + ");");
         foreach (var control in model.Controls)
         {
             builder.Append("        _").Append(FieldName(control.Name)).Append(" = world is null ? null : new ")

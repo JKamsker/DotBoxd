@@ -4,7 +4,6 @@ using DotBoxD.Kernels.Game.Server.Abstractions.Events;
 using DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Plugins;
-using DotBoxD.Plugins.Runtime;
 using DotBoxD.Plugins.Runtime.Hooks;
 using DotBoxD.Pushdown.Services;
 using DotBoxD.Services.Generated;
@@ -70,7 +69,7 @@ public sealed class RemoteRunLocalIpcPremiseTests
         var localHandlers = new RemoteLocalHandlerRegistry();
         PluginPackage? lowered = null;
         string? subscriptionId = null;
-        var hooks = new RemoteHookRegistry(
+        var hooks = new GamePluginHookRegistry(
             package =>
             {
                 lowered = package;
@@ -137,7 +136,7 @@ public sealed class RemoteRunLocalIpcPremiseTests
         var localHandlers = new RemoteLocalHandlerRegistry();
         PluginPackage? lowered = null;
         string? subscriptionId = null;
-        var hooks = new RemoteHookRegistry(
+        var hooks = new GamePluginHookRegistry(
             package =>
             {
                 lowered = package;
@@ -199,7 +198,7 @@ public sealed class RemoteRunLocalIpcPremiseTests
         var localHandlers = new RemoteLocalHandlerRegistry();
         PluginPackage? lowered = null;
         string? subscriptionId = null;
-        var hooks = new RemoteHookRegistry(
+        var hooks = new GamePluginHookRegistry(
             package =>
             {
                 lowered = package;

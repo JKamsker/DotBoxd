@@ -1,7 +1,6 @@
 using DotBoxD.Abstractions;
 using DotBoxD.Kernels.Game.Plugin.Authoring;
 using DotBoxD.Plugins;
-using DotBoxD.Plugins.Runtime;
 using DotBoxD.Plugins.Runtime.Hooks;
 using DotBoxD.Plugins.Runtime.Rpc;
 
@@ -16,7 +15,7 @@ public sealed class RemoteServerContextTests
         var localHandlers = new RemoteLocalHandlerRegistry();
         PluginPackage? lowered = null;
         string? subscriptionId = null;
-        var hooks = new RemoteHookRegistry(
+        var hooks = new GamePluginHookRegistry(
             package =>
             {
                 lowered = package;

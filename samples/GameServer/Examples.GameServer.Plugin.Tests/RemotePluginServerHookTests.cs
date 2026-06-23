@@ -79,8 +79,8 @@ public sealed class RemotePluginServerHookTests
 
         Program.ConfigureRuntimeHooks(server);
 
-        // One inline hook chain (MonsterAggroEvent calm) using GamePluginContext from the sample's
-        // server-owned abstractions assembly, then two inline subscription chains on AttackEvent:
+        // One inline hook chain (MonsterAggroEvent calm) using the generated plugin-owned GamePluginContext,
+        // then two inline subscription chains on AttackEvent:
         // the original taunt and the indexed taunt that ships index metadata (issue #47).
         Assert.Collection(
             control.Calls,

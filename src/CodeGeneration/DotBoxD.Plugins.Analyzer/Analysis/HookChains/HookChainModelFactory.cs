@@ -90,7 +90,7 @@ internal static partial class HookChainModelFactory
         var receiverIsKnownHookChain = receiverKind is not null;
         var generatedRemoteCandidate = receiverIsKnownHookChain
             ? null
-            : GeneratedRemoteHookChainFallback.CandidateKind(seed);
+            : GeneratedRemoteHookChainFallback.CandidateKind(seed, model, cancellationToken);
         if (!receiverIsKnownHookChain && generatedRemoteCandidate is null)
         {
             return null;
@@ -155,7 +155,10 @@ internal static partial class HookChainModelFactory
                 terminalContextParam,
                 terminalCancellationParam is not null,
                 installKind == HookChainInterceptorInstallKind.LocalResultChain,
-                generatedRemoteKind);
+                generatedRemoteKind,
+                generatedRemoteKind is null
+                    ? null
+                    : GeneratedRemoteHookChainFallback.ServerContextTypeFullName(model, seed, cancellationToken));
         }
 
         // Collectors for the whole chain: every Where/Select/terminal-Send deposits the capabilities its
@@ -278,6 +281,7 @@ internal static partial class HookChainModelFactory
                     ? null
                     : GeneratedRemoteHookChainFallback.ServerContextTypeFullName(model, seed, cancellationToken),
                 terminalContextParam is not null,
+                TerminalReturnsVoid(terminalLambda, model, cancellationToken),
                 localDecoderSource is not null,
                 projectedTypeSymbol,
                 cancellationToken));

@@ -18,6 +18,15 @@ internal static class PluginServerFacadeNameFormatter
         return "I" + name + "Setup";
     }
 
+    internal static string ContextName(string className)
+        => FacadeRootName(className) + "Context";
+
+    internal static string HookRegistryName(string className)
+        => FacadeRootName(className) + "HookRegistry";
+
+    internal static string SubscriptionRegistryName(string className)
+        => FacadeRootName(className) + "SubscriptionRegistry";
+
     internal static string ServerInterfaceName(INamedTypeSymbol worldType)
     {
         var name = StripInterfacePrefix(worldType.Name);
@@ -49,4 +58,9 @@ internal static class PluginServerFacadeNameFormatter
 
         return name;
     }
+
+    private static string FacadeRootName(string className)
+        => className.EndsWith("Server", StringComparison.Ordinal)
+            ? className.Substring(0, className.Length - "Server".Length)
+            : className;
 }
