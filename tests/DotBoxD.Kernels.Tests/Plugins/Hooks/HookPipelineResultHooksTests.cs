@@ -3,6 +3,7 @@ using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Tests._TestSupport;
 using DotBoxD.Kernels.Tests.PluginAnalyzer.Core;
 using DotBoxD.Plugins;
+using DotBoxD.Plugins.Runtime;
 using DotBoxD.Plugins.Runtime.Hooks;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Hooks;
@@ -64,7 +65,13 @@ public sealed class HookPipelineResultHooksTests
         var pipeline = server.Hooks.On<DamageCtx>(new StubAdapter());
 
         Assert.Throws<SandboxValidationException>(
-            () => pipeline.RegisterLocal<DamageResult>((c, ctx) => default, priority: 0));
+            () => pipeline.RegisterLocal<DamageResult>(
+                (DamageCtx c, HookContext ctx) => default(DamageResult),
+                priority: 0));
+        Assert.Throws<SandboxValidationException>(
+            () => pipeline.RegisterLocal<DamageResult>(
+                (DamageCtx c, CancellationToken ct) => new ValueTask<DamageResult>(default(DamageResult)),
+                priority: 0));
     }
 
     [Fact]
@@ -78,7 +85,33 @@ public sealed class HookPipelineResultHooksTests
         Assert.Throws<SandboxValidationException>(
             () => pipeline.Register<DamageResult>((c, ctx) => default, priority: 0));
         Assert.Throws<SandboxValidationException>(
-            () => pipeline.RegisterLocal<DamageResult>((c, ctx) => default, priority: 0));
+            () => pipeline.RegisterLocal<DamageResult>(
+                (DamageCtx c, DamageServerContext ctx) => default(DamageResult),
+                priority: 0));
+        Assert.Throws<SandboxValidationException>(
+            () => pipeline.RegisterLocal<DamageResult>(
+                (DamageCtx c, DamageServerContext ctx, CancellationToken ct) =>
+                    new ValueTask<DamageResult>(default(DamageResult)),
+                priority: 0));
+    }
+
+    [Fact]
+    public void Typed_remote_stage_result_terminals_throw_until_lowered()
+    {
+        var hooks = new RemoteHookRegistry(_ => ValueTask.FromResult("unused"));
+        var stage = hooks.On<DamageCtx, DamageServerContext>(ctx => new DamageServerContext(ctx))
+            .Select((c, _) => c.Damage);
+
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            stage.Register<DamageResult>(damage => default, priority: 0);
+        });
+        Assert.Throws<NotSupportedException>(() =>
+        {
+            stage.RegisterLocal<DamageResult>(
+                (int damage, DamageServerContext ctx) => default(DamageResult),
+                priority: 0);
+        });
     }
 
     [Fact]

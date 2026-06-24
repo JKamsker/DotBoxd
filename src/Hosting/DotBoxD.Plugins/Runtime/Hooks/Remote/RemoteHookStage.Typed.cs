@@ -1,6 +1,6 @@
 namespace DotBoxD.Plugins.Runtime.Hooks;
 
-public sealed class RemoteHookStage<TEvent, TCurrent, TContext>
+public sealed partial class RemoteHookStage<TEvent, TCurrent, TContext>
 {
     private readonly RemoteHookPipeline<TEvent, TContext> _root;
 

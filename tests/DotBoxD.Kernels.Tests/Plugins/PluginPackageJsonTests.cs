@@ -152,7 +152,7 @@ public sealed class PluginPackageJsonTests
     [Fact]
     public async Task InstallJsonAsync_rejects_module_metadata_loader_descriptors()
     {
-        var server = DotBoxD.Plugins.PluginServer.Create();
+        var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
         var json = JsonDamagePackage().Replace(
             "\"metadata\": { \"pluginId\": \"json-fire-damage\", \"kernel\": \"JsonDamageKernel\" }",
             "\"metadata\": { \"pluginId\": \"json-fire-damage\", \"kernel\": \"JsonDamageKernel\", \"rawIlBase64\": \"AAAA\" }",
@@ -170,7 +170,7 @@ public sealed class PluginPackageJsonTests
     [InlineData("plugin.dll", "loader")]
     public async Task InstallJsonAsync_rejects_module_metadata_dll_loader_hints(string key, string value)
     {
-        var server = DotBoxD.Plugins.PluginServer.Create();
+        var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
         var json = JsonDamagePackage().Replace(
             "\"metadata\": { \"pluginId\": \"json-fire-damage\", \"kernel\": \"JsonDamageKernel\" }",
             $"\"metadata\": {{ \"pluginId\": \"json-fire-damage\", \"kernel\": \"JsonDamageKernel\", \"{key}\": \"{value}\" }}",

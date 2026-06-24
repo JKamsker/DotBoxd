@@ -34,6 +34,8 @@ internal static partial class ResultHookChain
         string terminalElementParam,
         string? terminalContextParam,
         bool isLocal,
+        bool isAsyncLocal,
+        bool hasCancellationToken,
         GeneratedRemoteHookChainKind? generatedRemoteKind,
         string? generatedRemoteServerContextTypeFullName)
     {
@@ -135,6 +137,8 @@ internal static partial class ResultHookChain
             resultType,
             isLocal,
             terminalContextParam is not null,
+            isAsyncLocal,
+            hasCancellationToken,
             receiverIsStage: false,
             generatedRemoteKind,
             generatedRemoteServerContextTypeFullName,

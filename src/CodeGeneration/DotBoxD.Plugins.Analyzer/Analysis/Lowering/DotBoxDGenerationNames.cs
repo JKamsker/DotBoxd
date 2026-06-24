@@ -82,6 +82,7 @@ internal static class DotBoxDGenerationNames
         public const string GlobalFunc = GlobalPrefix + "System.Func";
         public const string GlobalInvalidOperationException = GlobalPrefix + "System.InvalidOperationException";
         public const string GlobalReadOnlyList = GlobalPrefix + "System.Collections.Generic.IReadOnlyList";
+        public const string GlobalCancellationToken = GlobalPrefix + "System.Threading.CancellationToken";
         public const string GlobalValueTask = GlobalPrefix + "System.Threading.Tasks.ValueTask";
 
         public const string GlobalHookContext = GlobalPrefix + HookContext;

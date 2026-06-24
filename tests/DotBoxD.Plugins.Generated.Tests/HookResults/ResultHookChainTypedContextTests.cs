@@ -70,4 +70,36 @@ public sealed partial class ResultHookChainTests
         Assert.True(result!.Value.Success);
         Assert.Equal(22, result.Value.Damage);
     }
+
+    [Fact]
+    public async Task RegisterLocal_cancellation_token_overload_lowers_and_receives_dispatch_token()
+    {
+        using var server = PluginServer.Create(defaultPolicy: TestPolicies.Chain());
+        using var dispatch = new CancellationTokenSource();
+        CancellationToken observed = default;
+        var observedBonus = 0;
+
+        server.Hooks.On<CombatDamageContext, ResultServerContext>(
+                raw => new ResultServerContext(raw, Bonus: 9))
+            .Where((ctx, _) => ctx.Relation == CombatRelation.Pve)
+            .RegisterLocal((ctx, serverContext, ct) =>
+            {
+                observed = ct;
+                observedBonus = serverContext.Bonus;
+                return new ValueTask<CombatDamageResult>(new CombatDamageResult
+                {
+                    Success = true,
+                    Damage = ctx.Damage + serverContext.Bonus
+                });
+            }, priority: 12);
+
+        var result = await server.Hooks.FireAsync<CombatDamageContext, CombatDamageResult>(
+            new CombatDamageContext(CombatRelation.Pve, 21),
+            dispatch.Token);
+
+        Assert.True(result!.Value.Success);
+        Assert.Equal(30, result.Value.Damage);
+        Assert.Equal(9, observedBonus);
+        Assert.Equal(dispatch.Token, observed);
+    }
 }

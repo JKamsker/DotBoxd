@@ -17,6 +17,8 @@ internal static partial class ResultHookChain
         INamedTypeSymbol resultType,
         bool isLocal,
         bool hasServerContextParameter,
+        bool isAsyncLocal,
+        bool hasCancellationToken,
         bool receiverIsStage,
         GeneratedRemoteHookChainKind? generatedRemoteKind,
         string? generatedRemoteServerContextTypeFullName,
@@ -43,7 +45,9 @@ internal static partial class ResultHookChain
             contextFullName,
             serverContextFullName,
             resultFullName,
-            hasServerContextParameter);
+            hasServerContextParameter,
+            isAsyncLocal,
+            hasCancellationToken);
 
         if (model.GetSymbolInfo(invocation, cancellationToken).Symbol is IMethodSymbol method &&
             method.Parameters.Length >= 1 &&
@@ -73,6 +77,8 @@ internal static partial class ResultHookChain
                     resultFullName,
                     generatedRemoteServerContextTypeFullName,
                     hasServerContextParameter,
+                    isAsyncLocal,
+                    hasCancellationToken,
                     packageFullName,
                     isLocal ? HookChainInterceptorInstallKind.LocalResultChain : HookChainInterceptorInstallKind.ResultChain,
                     generatedRemoteKind.Value);
@@ -98,8 +104,29 @@ internal static partial class ResultHookChain
         string eventFullName,
         string serverContextFullName,
         string resultFullName,
-        bool hasServerContextParameter)
+        bool hasServerContextParameter,
+        bool isAsyncLocal,
+        bool hasCancellationToken)
     {
+        if (isAsyncLocal)
+        {
+            var token = TypeNames.GlobalCancellationToken;
+            var result = TypeNames.GlobalValueTask + "<" + resultFullName + ">";
+            if (hasServerContextParameter && hasCancellationToken)
+            {
+                return $"{TypeNames.GlobalFunc}<{eventFullName}, {serverContextFullName}, {token}, {result}>";
+            }
+
+            if (hasServerContextParameter)
+            {
+                return $"{TypeNames.GlobalFunc}<{eventFullName}, {serverContextFullName}, {result}>";
+            }
+
+            return hasCancellationToken
+                ? $"{TypeNames.GlobalFunc}<{eventFullName}, {token}, {result}>"
+                : $"{TypeNames.GlobalFunc}<{eventFullName}, {result}>";
+        }
+
         if (!hasServerContextParameter)
         {
             return $"{TypeNames.GlobalFunc}<{eventFullName}, {resultFullName}>";

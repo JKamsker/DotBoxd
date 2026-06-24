@@ -69,6 +69,16 @@ public static class HostServiceBindingExtensions
                 continue;
             }
 
+            if (TryAddPropertyBinding(builder, serviceType, implementation, property, registeredBindings))
+            {
+                continue;
+            }
+
+            if (!HasDotBoxDServiceAttribute(property.PropertyType))
+            {
+                continue;
+            }
+
             var child = ReadPropertyValue(serviceType, implementation, property);
             if (child is null)
             {
@@ -120,6 +130,30 @@ public static class HostServiceBindingExtensions
                     capability));
         }
 
+        return true;
+    }
+
+    private static bool TryAddPropertyBinding(
+        SandboxHostBuilder builder,
+        Type serviceType,
+        object implementation,
+        PropertyInfo property,
+        HashSet<string> registeredBindings)
+    {
+        var binding = property.GetCustomAttribute<HostBindingAttribute>();
+        if (binding is null)
+        {
+            return false;
+        }
+
+        var getter = property.GetMethod
+            ?? throw new InvalidOperationException($"Host service property '{property.Name}' must have a getter.");
+        var declaringType = getter.DeclaringType ?? serviceType;
+        var targetGetter = ResolveTargetMethod(declaringType, implementation.GetType(), getter);
+        AddBinding(
+            builder,
+            registeredBindings,
+            HostServiceBindingFactory.CreatePropertyBinding(property, targetGetter, implementation, binding));
         return true;
     }
 
@@ -191,10 +225,12 @@ public static class HostServiceBindingExtensions
             string.Equals(t.FullName, ServiceControlType, StringComparison.Ordinal));
 
     private static bool HasDotBoxDServiceAttribute(Type type)
+        => HasDirectDotBoxDServiceAttribute(type) || type.GetInterfaces().Any(HasDirectDotBoxDServiceAttribute);
+
+    private static bool HasDirectDotBoxDServiceAttribute(Type type)
         => type.GetCustomAttributes(inherit: false)
             .Any(attribute => string.Equals(
                 attribute.GetType().FullName,
                 DotBoxDServiceAttributeType,
                 StringComparison.Ordinal));
-
 }

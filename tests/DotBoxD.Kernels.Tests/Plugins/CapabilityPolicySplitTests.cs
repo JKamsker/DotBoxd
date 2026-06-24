@@ -1,3 +1,4 @@
+using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Tests._TestSupport;
 using DotBoxD.Plugins;
@@ -58,6 +59,27 @@ public sealed class CapabilityPolicySplitTests
         var kernel = await server.InstallAsync(package, policy);
 
         Assert.Equal(package.Manifest.PluginId, kernel.Manifest.PluginId);
+    }
+
+    [Fact]
+    public async Task Install_denies_ungranted_plugin_requests_even_when_host_requirements_are_granted()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
+        var package = WithPluginRequest(FireDamagePluginPackage.Create(), "file.write");
+        var policy = SandboxPolicyBuilder.Create()
+            .GrantLogging()
+            .GrantHostMessageWrite()
+            .WithFuel(100_000)
+            .WithMaxHostCalls(1_000)
+            .WithWallTime(TimeSpan.FromSeconds(10))
+            .Build();
+
+        var exception = await Assert.ThrowsAsync<SandboxValidationException>(
+            () => server.InstallAsync(package, policy).AsTask());
+
+        Assert.Contains(exception.Diagnostics, diagnostic =>
+            diagnostic.Code == "E-POLICY-CAP" &&
+            diagnostic.Message.Contains("file.write", StringComparison.Ordinal));
     }
 
     private static PluginPackage WithPluginRequest(PluginPackage package, string capabilityId)

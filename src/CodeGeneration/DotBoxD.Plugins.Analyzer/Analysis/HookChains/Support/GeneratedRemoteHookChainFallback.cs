@@ -135,6 +135,8 @@ internal static partial class GeneratedRemoteHookChainFallback
         string resultTypeFullName,
         string? serverContextTypeFullName,
         bool terminalHasServerContext,
+        bool isAsyncLocal,
+        bool hasCancellationToken,
         string packageFullName,
         HookChainInterceptorInstallKind installKind,
         GeneratedRemoteHookChainKind kind)
@@ -159,7 +161,12 @@ internal static partial class GeneratedRemoteHookChainFallback
         var handlerContextType = terminalHasServerContext
             ? serverContextTypeFullName ?? DotBoxDGenerationNames.TypeNames.GlobalHookContext
             : null;
-        var handlerType = ResultHandlerType(eventTypeFullName, handlerContextType, resultTypeFullName);
+        var handlerType = ResultHandlerType(
+            eventTypeFullName,
+            handlerContextType,
+            resultTypeFullName,
+            isAsyncLocal,
+            hasCancellationToken);
 
         return new HookChainInterception(
             attributeSyntax,
@@ -174,8 +181,34 @@ internal static partial class GeneratedRemoteHookChainFallback
     private static string ResultHandlerType(
         string eventTypeFullName,
         string? serverContextTypeFullName,
-        string resultTypeFullName)
+        string resultTypeFullName,
+        bool isAsyncLocal,
+        bool hasCancellationToken)
     {
+        if (isAsyncLocal)
+        {
+            var result = DotBoxDGenerationNames.TypeNames.GlobalValueTask + "<" + resultTypeFullName + ">";
+            if (serverContextTypeFullName is not null && hasCancellationToken)
+            {
+                return DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" +
+                    eventTypeFullName + ", " + serverContextTypeFullName + ", " +
+                    DotBoxDGenerationNames.TypeNames.GlobalCancellationToken + ", " + result + ">";
+            }
+
+            if (serverContextTypeFullName is not null)
+            {
+                return DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" +
+                    eventTypeFullName + ", " + serverContextTypeFullName + ", " + result + ">";
+            }
+
+            return hasCancellationToken
+                ? DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" +
+                  eventTypeFullName + ", " +
+                  DotBoxDGenerationNames.TypeNames.GlobalCancellationToken + ", " + result + ">"
+                : DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" +
+                  eventTypeFullName + ", " + result + ">";
+        }
+
         if (serverContextTypeFullName is null)
         {
             return DotBoxDGenerationNames.TypeNames.GlobalFunc + "<" + eventTypeFullName + ", " +

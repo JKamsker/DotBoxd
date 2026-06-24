@@ -100,7 +100,10 @@ internal static partial class HookChainModelFactory
             return null;
         }
 
-        var (terminalElementParam, terminalContextParam) = LambdaParameters(terminalLambda);
+        var (terminalElementParam, terminalContextParam, terminalIsAsyncLocal, terminalHasCancellationToken) =
+            installKind == HookChainInterceptorInstallKind.LocalResultChain
+                ? ResultLocalLambdaParameters(invocation, terminalLambda, model, cancellationToken)
+                : ResultLocalTerminalShape.From(LambdaParameters(terminalLambda));
         if (terminalElementParam is null)
         {
             return null;
@@ -136,6 +139,8 @@ internal static partial class HookChainModelFactory
                 terminalElementParam,
                 terminalContextParam,
                 installKind == HookChainInterceptorInstallKind.LocalResultChain,
+                terminalIsAsyncLocal,
+                terminalHasCancellationToken,
                 generatedRemoteKind,
                 generatedRemoteServerContextTypeFullName);
         }

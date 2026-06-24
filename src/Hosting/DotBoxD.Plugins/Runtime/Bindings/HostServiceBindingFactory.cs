@@ -7,7 +7,7 @@ using DotBoxD.Shared.HostBindings;
 
 namespace DotBoxD.Hosting.Execution;
 
-internal static class HostServiceBindingFactory
+internal static partial class HostServiceBindingFactory
 {
     public static BindingDescriptor CreateBinding(
         MethodInfo interfaceMethod,
@@ -72,7 +72,7 @@ internal static class HostServiceBindingFactory
                     factoryCallTarget,
                     factoryTarget,
                     handleCallTarget,
-                    payloadType));
+                payloadType));
     }
 
     public static Type? UnwrapReturnType(Type type)
