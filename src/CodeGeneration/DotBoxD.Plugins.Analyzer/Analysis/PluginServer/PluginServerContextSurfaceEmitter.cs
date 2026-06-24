@@ -48,6 +48,7 @@ internal static class PluginServerContextSurfaceEmitter
             builder,
             string.Empty,
             "Generated hook registry whose parameterless On<TEvent>() uses the plugin-owned server context by default.");
+        AppendRegistryAttribute(builder, model, "Hook");
         builder.Append(model.Accessibility).Append(" sealed class ").Append(model.HookRegistryName).AppendLine();
         builder.AppendLine("{");
         builder.AppendLine("    private readonly global::DotBoxD.Plugins.Runtime.RemoteHookRegistry _inner;");
@@ -71,6 +72,7 @@ internal static class PluginServerContextSurfaceEmitter
             builder,
             string.Empty,
             "Generated subscription registry whose parameterless On<TEvent>() uses the plugin-owned server context by default.");
+        AppendRegistryAttribute(builder, model, "Subscription");
         builder.Append(model.Accessibility).Append(" sealed class ").Append(model.SubscriptionRegistryName).AppendLine();
         builder.AppendLine("{");
         builder.AppendLine("    private readonly global::DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry _inner;");
@@ -87,6 +89,23 @@ internal static class PluginServerContextSurfaceEmitter
         builder.AppendLine("        => _inner.On<TEvent, TContext>(createContext);");
         builder.AppendLine("}");
     }
+
+    private static void AppendRegistryAttribute(StringBuilder builder, PluginServerFacadeModel model, string kind)
+    {
+        builder.Append("[global::DotBoxD.Abstractions.GeneratedPluginServerRegistry(")
+            .Append("global::DotBoxD.Abstractions.GeneratedPluginServerRegistryKind.")
+            .Append(kind)
+            .Append(", typeof(")
+            .Append(TypeReference(model, model.ClassName))
+            .Append("), typeof(")
+            .Append(TypeReference(model, model.ContextName))
+            .AppendLine("))]");
+    }
+
+    private static string TypeReference(PluginServerFacadeModel model, string typeName)
+        => string.IsNullOrEmpty(model.Namespace)
+            ? "global::" + typeName
+            : "global::" + model.Namespace + "." + typeName;
 
     private static void AppendRegistryConstructor(
         StringBuilder builder,

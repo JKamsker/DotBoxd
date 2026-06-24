@@ -7,43 +7,44 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 
 internal static partial class GeneratedRemoteHookChainFallback
 {
-    private static string? InferredGeneratedContextTypeFullName(
-        Compilation compilation,
+    public static string ServerContextTypeFullName(
+        SemanticModel model,
+        InvocationExpressionSyntax seed,
+        GeneratedRemoteHookChainTarget target,
         CancellationToken cancellationToken)
     {
-        string? match = null;
-        foreach (var tree in compilation.SyntaxTrees)
+        if (seed.Expression is MemberAccessExpressionSyntax { Name: GenericNameSyntax onName } &&
+            onName.TypeArgumentList.Arguments.Count >= 2)
         {
-            var root = tree.GetRoot(cancellationToken);
-            var model = compilation.GetSemanticModel(tree);
-            foreach (var declaration in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (declaration.AttributeLists.Count == 0 ||
-                    model.GetDeclaredSymbol(declaration, cancellationToken) is not INamedTypeSymbol type ||
-                    !HasGeneratePluginServerAttribute(type))
-                {
-                    continue;
-                }
-
-                var contextName = PluginServerFacadeNameFormatter.ContextName(type.Name);
-                var candidate = type.ContainingNamespace.IsGlobalNamespace
-                    ? DotBoxDGenerationNames.TypeNames.GlobalPrefix + contextName
-                    : DotBoxDGenerationNames.TypeNames.GlobalPrefix +
-                      type.ContainingNamespace.ToDisplayString() + "." + contextName;
-                if (match is not null && !string.Equals(match, candidate, StringComparison.Ordinal))
-                {
-                    return null;
-                }
-
-                match = candidate;
-            }
+            return model.GetTypeInfo(onName.TypeArgumentList.Arguments[1], cancellationToken)
+                .Type?
+                .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? target.ServerContextTypeFullName;
         }
 
-        return match;
+        return target.ServerContextTypeFullName;
     }
 
+    private static string GeneratedContextTypeFullName(INamedTypeSymbol serverType)
+        => ExplicitContextTypeFullName(serverType) ?? ConventionContextTypeFullName(serverType);
+
+    private static string ConventionContextTypeFullName(INamedTypeSymbol serverType)
+        => serverType.ContainingNamespace.IsGlobalNamespace
+            ? "global::" + PluginServerFacadeNameFormatter.ContextName(serverType.Name)
+            : "global::" + serverType.ContainingNamespace.ToDisplayString() + "." +
+              PluginServerFacadeNameFormatter.ContextName(serverType.Name);
+
+    private static string? ExplicitContextTypeFullName(INamedTypeSymbol serverType)
+        => GeneratePluginServerAttribute(serverType)?
+            .NamedArguments
+            .FirstOrDefault(static argument => string.Equals(argument.Key, "Context", StringComparison.Ordinal))
+            .Value.Value is INamedTypeSymbol contextType
+            ? contextType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+            : null;
+
     private static bool HasGeneratePluginServerAttribute(INamedTypeSymbol type)
+        => GeneratePluginServerAttribute(type) is not null;
+
+    private static AttributeData? GeneratePluginServerAttribute(INamedTypeSymbol type)
     {
         foreach (var attribute in type.GetAttributes())
         {
@@ -52,10 +53,10 @@ internal static partial class GeneratedRemoteHookChainFallback
                     DotBoxDGenerationNames.TypeNames.GeneratePluginServerAttribute,
                     StringComparison.Ordinal))
             {
-                return true;
+                return attribute;
             }
         }
 
-        return false;
+        return null;
     }
 }

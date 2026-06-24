@@ -88,15 +88,18 @@ internal static partial class HookChainModelFactory
 
         var receiverKind = ReceiverKind(model, terminalAccess.Expression, cancellationToken);
         var receiverIsKnownHookChain = receiverKind is not null;
-        var generatedRemoteCandidate = receiverIsKnownHookChain
+        var generatedRemoteTarget = receiverIsKnownHookChain
             ? null
-            : GeneratedRemoteHookChainFallback.CandidateKind(seed, model, cancellationToken);
-        if (!receiverIsKnownHookChain && generatedRemoteCandidate is null)
+            : GeneratedRemoteHookChainFallback.Candidate(seed, model, cancellationToken);
+        if (!receiverIsKnownHookChain && generatedRemoteTarget is null)
         {
             return null;
         }
 
-        var generatedRemoteKind = receiverIsKnownHookChain ? null : generatedRemoteCandidate;
+        var generatedRemoteKind = receiverIsKnownHookChain ? null : generatedRemoteTarget?.Kind;
+        var generatedRemoteServerContextTypeFullName = generatedRemoteTarget is { } target
+            ? GeneratedRemoteHookChainFallback.ServerContextTypeFullName(model, seed, target, cancellationToken)
+            : null;
         var installKind = InstallKind(terminalMethod, receiverKind, generatedRemoteKind);
         if (installKind is null)
         {
@@ -156,9 +159,7 @@ internal static partial class HookChainModelFactory
                 terminalCancellationParam is not null,
                 installKind == HookChainInterceptorInstallKind.LocalResultChain,
                 generatedRemoteKind,
-                generatedRemoteKind is null
-                    ? null
-                    : GeneratedRemoteHookChainFallback.ServerContextTypeFullName(model, seed, cancellationToken));
+                generatedRemoteServerContextTypeFullName);
         }
 
         // Collectors for the whole chain: every Where/Select/terminal-Send deposits the capabilities its
@@ -277,9 +278,7 @@ internal static partial class HookChainModelFactory
                 terminalElementTypeFullName,
                 generatedRemoteKind,
                 installKind.Value,
-                generatedRemoteKind is null
-                    ? null
-                    : GeneratedRemoteHookChainFallback.ServerContextTypeFullName(model, seed, cancellationToken),
+                generatedRemoteServerContextTypeFullName,
                 terminalContextParam is not null,
                 TerminalReturnsVoid(terminalLambda, model, cancellationToken),
                 localDecoderSource is not null,

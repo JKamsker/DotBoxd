@@ -7,6 +7,10 @@ public bool IsAsync { get; set; }
 public bool Success { get; }
 public CancellationToken CancellationToken { get; }
 public delegate ValueTask<TReturn> RemoteServerInvocation<TWorld, TCaptures, TReturn>( TWorld world, TCaptures captures)
+public enum GeneratedPluginServerRegistryKind
+public enum GeneratedPluginServerRegistryKind.Hook
+public enum GeneratedPluginServerRegistryKind.Subscription
+public GeneratedPluginServerRegistryKind Kind { get; } = kind
 public HandleSubtypeAttribute( Type subtype, string discriminator, string bindingPrefix, string capability)
 public HookAttribute(string name, Type resultType)
 public HookContext(IPluginMessageSink messages, CancellationToken cancellationToken)
@@ -30,6 +34,7 @@ public PolymorphicHandleAttribute(string keyMember)
 public SandboxEffect Effects { get; } = effects
 public sealed class CapabilityAttribute(string id) : Attribute
 public sealed class EventKernelAttribute(string? id = null) : Attribute
+public sealed class GeneratedPluginServerRegistryAttribute( GeneratedPluginServerRegistryKind kind, Type serverType, Type contextType)
 public sealed class GeneratePluginRegistrationAccumulatorAttribute( string accumulatorName, string methodName) : Attribute
 public sealed class GeneratePluginRegistrationRootAccumulatorAttribute(string accumulatorName) : Attribute
 public sealed class GeneratePluginServerAttribute : Attribute
@@ -66,8 +71,10 @@ public string? Id { get; }
 public string? Id { get; } = id
 public string? Name { get; } = name
 public THost Host<THost>() where THost : class
+public Type ContextType { get; } = contextType
 public Type ReceiverType { get; } = receiverType
 public Type ResultType { get; }
+public Type ServerType { get; } = serverType
 public Type Subtype { get; }
 public Type? Grafts { get; }
 public Type? ReceiverType { get; } = receiverType

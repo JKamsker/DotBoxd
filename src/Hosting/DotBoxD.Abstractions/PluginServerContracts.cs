@@ -75,6 +75,30 @@ public interface ILiveSettingsHandle<TKernel>
 public sealed class GeneratePluginServerAttribute : Attribute;
 
 /// <summary>
+/// Identifies a generated plugin-server hook or subscription registry and the context type its parameterless
+/// <c>On&lt;TEvent&gt;</c> method uses.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class GeneratedPluginServerRegistryAttribute(
+    GeneratedPluginServerRegistryKind kind,
+    Type serverType,
+    Type contextType)
+    : Attribute
+{
+    public GeneratedPluginServerRegistryKind Kind { get; } = kind;
+
+    public Type ServerType { get; } = serverType;
+
+    public Type ContextType { get; } = contextType;
+}
+
+public enum GeneratedPluginServerRegistryKind
+{
+    Hook,
+    Subscription,
+}
+
+/// <summary>
 /// Declares the capability required by an implementation-backed host binding.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, Inherited = false)]

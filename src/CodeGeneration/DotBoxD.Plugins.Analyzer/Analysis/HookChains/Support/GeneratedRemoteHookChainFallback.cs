@@ -10,52 +10,12 @@ internal enum GeneratedRemoteHookChainKind
     Subscription
 }
 
+internal readonly record struct GeneratedRemoteHookChainTarget(
+    GeneratedRemoteHookChainKind Kind,
+    string ServerContextTypeFullName);
+
 internal static partial class GeneratedRemoteHookChainFallback
 {
-    public static GeneratedRemoteHookChainKind? CandidateKind(InvocationExpressionSyntax seed)
-        => CandidateKind(seed, model: null, cancellationToken: default);
-
-    public static GeneratedRemoteHookChainKind? CandidateKind(
-        InvocationExpressionSyntax seed,
-        SemanticModel? model,
-        CancellationToken cancellationToken)
-    {
-        if (seed.Expression is not MemberAccessExpressionSyntax onAccess ||
-            !string.Equals(onAccess.Name.Identifier.ValueText, "On", StringComparison.Ordinal))
-        {
-            return null;
-        }
-
-        if (onAccess.Expression is MemberAccessExpressionSyntax registryAccess)
-        {
-            return registryAccess.Name.Identifier.ValueText switch
-            {
-                "Hooks" => GeneratedRemoteHookChainKind.Hook,
-                "Subscriptions" => GeneratedRemoteHookChainKind.Subscription,
-                _ => null
-            };
-        }
-
-        return model is null ? null : RegistryKind(RegistryTypeName(onAccess.Expression, model, cancellationToken));
-    }
-
-    private static GeneratedRemoteHookChainKind? RegistryKind(string? registryTypeName)
-        => registryTypeName switch
-        {
-            { } name when name.EndsWith("HookRegistry", StringComparison.Ordinal) => GeneratedRemoteHookChainKind.Hook,
-            { } name when name.EndsWith("SubscriptionRegistry", StringComparison.Ordinal) =>
-                GeneratedRemoteHookChainKind.Subscription,
-            _ => null
-        };
-
-    private static string? RegistryTypeName(
-        ExpressionSyntax expression,
-        SemanticModel model,
-        CancellationToken cancellationToken)
-        => model.GetTypeInfo(expression, cancellationToken).Type is INamedTypeSymbol { Name.Length: > 0 } type
-            ? type.Name
-            : null;
-
     private static INamedTypeSymbol? EventTypeFromSeed(
         InvocationExpressionSyntax seed,
         SemanticModel model,
@@ -92,22 +52,6 @@ internal static partial class GeneratedRemoteHookChainFallback
 
         eventType = null!;
         return false;
-    }
-
-    public static string? ServerContextTypeFullName(
-        SemanticModel model,
-        InvocationExpressionSyntax seed,
-        CancellationToken cancellationToken)
-    {
-        if (seed.Expression is MemberAccessExpressionSyntax { Name: GenericNameSyntax onName } &&
-            onName.TypeArgumentList.Arguments.Count >= 2)
-        {
-            return model.GetTypeInfo(onName.TypeArgumentList.Arguments[1], cancellationToken)
-                .Type?
-                .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        }
-
-        return InferredGeneratedContextTypeFullName(model.Compilation, cancellationToken);
     }
 
     public static HookChainInterception CreateInterception(

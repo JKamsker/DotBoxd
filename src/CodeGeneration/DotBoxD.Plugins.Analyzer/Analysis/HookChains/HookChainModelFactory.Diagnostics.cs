@@ -28,7 +28,9 @@ internal static partial class HookChainModelFactory
         {
             var stages = new List<HookChainStage>();
             var seed = WalkToSeed(terminalAccess.Expression, stages);
-            if (seed is null || GeneratedRemoteHookChainFallback.CandidateKind(seed) != GeneratedRemoteHookChainKind.Hook)
+            if (seed is null ||
+                GeneratedRemoteHookChainFallback.Candidate(seed, model, cancellationToken)?.Kind !=
+                GeneratedRemoteHookChainKind.Hook)
             {
                 return false;
             }
