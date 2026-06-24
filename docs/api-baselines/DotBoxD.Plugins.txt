@@ -584,11 +584,14 @@ public static void EncodeArguments(IReadOnlyList<KernelRpcValue> arguments, IBuf
 public static void EncodeValue(KernelRpcValue value, IBufferWriter<byte> writer)
 public static void EncodeValue(SandboxValue value, IBufferWriter<byte> writer)
 public static void Register(Type kernelType, Func<PluginPackage> factory)
+public string InstallId { get; }
 public string Name { get; }
 public string Name => Definition.Name
 public string PluginId { get; }
 public string ReadString()
 public string TextValue
+public string? CallbackSubscriptionId => LocalTerminalIdentity.CallbackSubscriptionId(this)
+public string? CallbackSubscriptionId => Package.CallbackSubscriptionId
 public string? ProjectedType { get; init; }
 public string? ResultType { get; init; }
 public string? RpcEntrypoint { get; init; }
