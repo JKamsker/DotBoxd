@@ -76,6 +76,33 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
         Assert.Contains("typeof(global::ChainSample.Plugin.AlphaPluginContext)", generated, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Throw_only_RunLocal_block_uses_converted_non_void_handler_shape()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public static class ThrowOnlyUsage
+            {
+                public static void Configure(AlphaPluginServer server)
+                    => server.Hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                        .RunLocal(global::System.Threading.Tasks.ValueTask (e, ctx) =>
+                        {
+                            throw new global::System.InvalidOperationException("boom");
+                        });
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains(
+            "global::System.Func<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent, " +
+            "global::ChainSample.Plugin.AlphaPluginContext, global::System.Threading.Tasks.ValueTask>",
+            generated,
+            StringComparison.Ordinal);
+    }
+
     private static GeneratorDriverRunResult RunGenerator(
         string source,
         params MetadataReference[] additionalReferences)
