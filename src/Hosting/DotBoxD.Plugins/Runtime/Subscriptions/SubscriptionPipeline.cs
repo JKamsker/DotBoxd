@@ -208,6 +208,11 @@ public class SubscriptionPipeline<TEvent, TContext> : ISubscriptionPipeline<TEve
 
     internal void Publish(TEvent e, CancellationToken cancellationToken)
     {
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
         var filters = _filters;
         var handlers = _handlerSet.Snapshot;
         if (filters.Length == 0 && handlers.Length == 0)

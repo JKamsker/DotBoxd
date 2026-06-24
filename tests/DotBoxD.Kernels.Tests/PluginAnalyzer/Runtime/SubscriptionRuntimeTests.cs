@@ -101,6 +101,70 @@ public sealed class SubscriptionRuntimeTests
     }
 
     [Fact]
+    public async Task Pre_canceled_publish_does_not_run_subscription_handlers()
+    {
+        var ran = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: ChainPolicy());
+        server.Subscriptions.On<ChainAggroEvent>().RunLocal(_ => ran.SetResult());
+
+        server.Subscriptions.Publish(new ChainAggroEvent("monster-1", 3), cancellation.Token);
+
+        await AssertNoFaultAsync(ran.Task);
+    }
+
+    [Fact]
+    public async Task Handler_caller_cancellation_is_not_reported_to_the_fault_observer()
+    {
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reported = new TaskCompletionSource<SubscriptionDeliveryFault>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cancellation = new CancellationTokenSource();
+        using var server = DotBoxD.Plugins.PluginServer.Create(
+            defaultPolicy: ChainPolicy(),
+            onSubscriptionFault: fault => reported.TrySetResult(fault));
+        server.Subscriptions.On<ChainAggroEvent>().RunLocal((_, ctx) =>
+        {
+            started.SetResult();
+            cancellation.Cancel();
+            ctx.CancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.CompletedTask;
+        });
+
+        server.Subscriptions.Publish(new ChainAggroEvent("monster-1", 3), cancellation.Token);
+
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await AssertNoFaultAsync(reported.Task);
+    }
+
+    [Fact]
+    public async Task Filter_caller_cancellation_is_not_reported_to_the_fault_observer()
+    {
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reported = new TaskCompletionSource<SubscriptionDeliveryFault>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cancellation = new CancellationTokenSource();
+        using var server = DotBoxD.Plugins.PluginServer.Create(
+            defaultPolicy: ChainPolicy(),
+            onSubscriptionFault: fault => reported.TrySetResult(fault));
+        server.Subscriptions.On<ChainAggroEvent>()
+            .Where((ChainAggroEvent _, HookContext ctx) =>
+            {
+                started.SetResult();
+                cancellation.Cancel();
+                ctx.CancellationToken.ThrowIfCancellationRequested();
+                return true;
+            })
+            .RunLocal(_ => { });
+
+        server.Subscriptions.Publish(new ChainAggroEvent("monster-1", 3), cancellation.Token);
+
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await AssertNoFaultAsync(reported.Task);
+    }
+
+    [Fact]
     public async Task The_generated_interceptor_installs_a_local_subscription_chain_at_the_Run_call_site()
     {
         var assembly = Compile(LoweredChainSource);
@@ -155,6 +219,12 @@ public sealed class SubscriptionRuntimeTests
             .WithMaxHostCalls(1_000)
             .WithWallTime(TimeSpan.FromSeconds(10))
             .Build();
+
+    private static async Task AssertNoFaultAsync(Task task)
+    {
+        var completed = await Task.WhenAny(task, Task.Delay(TimeSpan.FromMilliseconds(150)));
+        Assert.NotSame(task, completed);
+    }
 
     private static IEnumerable<MetadataReference> TrustedPlatformReferences()
     {

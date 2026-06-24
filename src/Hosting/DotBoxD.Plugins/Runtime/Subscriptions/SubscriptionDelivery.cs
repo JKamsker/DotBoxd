@@ -15,6 +15,11 @@ internal static class SubscriptionDelivery
         TContext context,
         Action<SubscriptionDeliveryFault>? onFault)
     {
+        if (rawContext.CancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
         try
         {
             for (var i = 0; i < filters.Length; i++)
@@ -25,6 +30,10 @@ internal static class SubscriptionDelivery
                 }
             }
         }
+        catch (OperationCanceledException) when (rawContext.CancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
         catch (Exception ex)
         {
             Report<TEvent>(onFault, ex, SubscriptionDeliveryStage.Filter);
@@ -33,9 +42,18 @@ internal static class SubscriptionDelivery
 
         for (var i = 0; i < handlers.Length; i++)
         {
+            if (rawContext.CancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
             try
             {
                 await handlers[i](e, rawContext, context).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (rawContext.CancellationToken.IsCancellationRequested)
+            {
+                return;
             }
             catch (Exception ex)
             {

@@ -72,6 +72,7 @@ public enum PluginDiagnosticPhase.RuntimeEntrypoint
 public enum SubscriptionDeliveryStage
 public enum SubscriptionDeliveryStage.Filter
 public enum SubscriptionDeliveryStage.Handler
+public EventIndexRegistry(Action<SubscriptionDeliveryFault>? onFault = null)
 public EventIndexStats Stats => new(
 public Exception? LastAsyncUpdateError => _pendingLiveUpdates.LastError
 public Exception? LastAsyncUpdateError => Kernel.LastAsyncUpdateError

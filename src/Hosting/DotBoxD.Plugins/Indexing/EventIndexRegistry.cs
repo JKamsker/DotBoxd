@@ -1,4 +1,5 @@
 using DotBoxD.Plugins.Kernel;
+using DotBoxD.Plugins.Runtime;
 
 namespace DotBoxD.Plugins.Indexing;
 
@@ -19,11 +20,15 @@ namespace DotBoxD.Plugins.Indexing;
 public sealed class EventIndexRegistry
 {
     private readonly object _gate = new();
+    private readonly Action<SubscriptionDeliveryFault>? _onFault;
     private readonly Dictionary<Type, IEventIndexChannel> _channels = [];
     private readonly List<Task> _inFlight = [];
     private long _considered;
     private long _prefiltered;
     private long _dispatched;
+
+    public EventIndexRegistry(Action<SubscriptionDeliveryFault>? onFault = null)
+        => _onFault = onFault;
 
     /// <summary>Aggregate prefilter diagnostics across every published event and registered subscription.</summary>
     public EventIndexStats Stats => new(
@@ -80,6 +85,11 @@ public sealed class EventIndexRegistry
     /// </summary>
     public void Publish<TEvent>(TEvent value, CancellationToken cancellationToken = default)
     {
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
         EventIndexChannel<TEvent>? channel;
         lock (_gate)
         {
@@ -116,7 +126,7 @@ public sealed class EventIndexRegistry
             }
 
             Interlocked.Increment(ref _dispatched);
-            Track(Task.Run(() => DispatchAsync(channel.Adapter, entry, value, cancellationToken)));
+            Track(Task.Run(() => DispatchAsync(channel.Adapter, entry, value, cancellationToken, _onFault)));
         }
     }
 
@@ -157,20 +167,65 @@ public sealed class EventIndexRegistry
         IPluginEventAdapter<TEvent> adapter,
         EventIndexEntry<TEvent> entry,
         TEvent value,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<SubscriptionDeliveryFault>? onFault)
     {
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        bool shouldHandle;
         try
         {
             // The verified IR predicate remains the authority; manifest coverage claims are not trusted.
-            if (entry.FullyCovered || await entry.Kernel.ShouldHandleAsync(adapter, value, cancellationToken).ConfigureAwait(false))
-            {
-                await entry.Kernel.HandleAsync(adapter, value, cancellationToken).ConfigureAwait(false);
-            }
+            shouldHandle = entry.FullyCovered ||
+                await entry.Kernel.ShouldHandleAsync(adapter, value, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            Report<TEvent>(onFault, ex, SubscriptionDeliveryStage.Filter);
+            return;
+        }
+
+        if (!shouldHandle || cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        try
+        {
+            await entry.Kernel.HandleAsync(adapter, value, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            Report<TEvent>(onFault, ex, SubscriptionDeliveryStage.Handler);
+        }
+    }
+
+    private static void Report<TEvent>(
+        Action<SubscriptionDeliveryFault>? onFault,
+        Exception exception,
+        SubscriptionDeliveryStage stage)
+    {
+        if (onFault is null)
+        {
+            return;
+        }
+
+        try
+        {
+            onFault(new SubscriptionDeliveryFault(typeof(TEvent), stage, exception));
         }
         catch
         {
-            // Fire-and-forget dispatch mirrors the broad subscription pipeline: a faulting kernel cannot
-            // take down the host's publish loop.
         }
     }
 
