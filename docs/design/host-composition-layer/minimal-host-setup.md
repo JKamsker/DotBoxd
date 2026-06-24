@@ -15,6 +15,19 @@ All four pieces shipped as **library** code. Notable deltas:
 
 Result: `GamePluginKernelWiring` 256 → ~130 (host policy), `GamePluginServerExtensionInvoker` (68) deleted, the install/rollback helper (35) deleted, `GamePluginHost` 73 → ~36 (thin factory). New public surface in `docs/api-baselines/DotBoxD.Plugins.txt` + `DotBoxD.Pushdown.Services.txt`. All trust-boundary tests + the GameServer docs-smoke e2e are green.
 
+## Composition & escape hatches
+
+Per [`rules/design-guidelines.md`](../../../rules/design-guidelines.md), every helper here is **opt-in sugar over public primitives** — you can always drop a helper and hand-write the same thing with public API (the code this PR deleted is the proof; it used only public API). Each helper sits in a layered, independently usable surface:
+
+| Helper | Customize it | Hand-write the equivalent (all public) |
+|---|---|---|
+| `PluginServer.WireHook` / `WireSubscription` | `WireOptions.ClassifyOverride`; resolve via `PluginEventAdapterRegistry.TryResolveErased` and wire your own way | `server.Hooks.On<TEvent>().Use/UseProjecting/…(kernel)` + your own event-name → type dispatch |
+| `PluginSession.InstallAndWireAsync` | pass any `wire` action / `policy` / `validate` | `session.InstallAsync` + wire + `session.Uninstall` on failure |
+| `InstalledKernel.InvokeServerExtensionRpcAsync` | — | `kernel.InvokeServerExtensionAsync` + `KernelRpcBinaryCodec` / `KernelRpcValueConverter` |
+| `PluginConnectionHost<T>` | `StartAsync(server, IServerTransport, …)` for any transport; `RpcPeerOptions` | `RpcMessagePackIpc.Listen` + `server.CreateSession` + `peer.Provide*` + `peer.Disconnected` |
+
+No helper is all-or-nothing, none gates access to a lower layer, and a future `[GeneratePluginServerHost]` generator must follow the same rule (granular per-facet opt-out; a generate-vs-hand-write parity test).
+
 ## 1. Problem
 
 The **plugin** author already hits the target shape:

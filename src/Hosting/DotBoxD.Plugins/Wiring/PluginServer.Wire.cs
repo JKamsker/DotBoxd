@@ -14,6 +14,12 @@ public sealed partial class PluginServer
     /// host used to hand-write. The event is resolved by name from the registered adapters, so the host stays
     /// agnostic of plugin ids and event types. Throws when the subscribed event has no registered adapter.
     /// </summary>
+    /// <remarks>
+    /// Opt-in convenience over public API: customize the routing decision via
+    /// <see cref="WireOptions.ClassifyOverride"/>, build a custom by-name router on
+    /// <see cref="PluginEventAdapterRegistry.TryResolveErased"/>, or hand-write the equivalent directly with
+    /// typed <c>server.Hooks.On&lt;TEvent&gt;().Use(kernel)</c> plus your own event-name → type dispatch.
+    /// </remarks>
     public void WireHook(InstalledKernel kernel, WireOptions? options = null)
     {
         var opts = options ?? DefaultWireOptions;
@@ -28,6 +34,8 @@ public sealed partial class PluginServer
     /// falling back to the broad pipeline; a projecting terminal pushes to the plugin's native delegate. Result
     /// terminals are rejected — subscriptions have no result channel.
     /// </summary>
+    /// <remarks>Opt-in convenience; see <see cref="WireHook"/> for the customization seams and the
+    /// hand-written equivalent (<c>server.Subscriptions.On&lt;TEvent&gt;().Use(kernel)</c>).</remarks>
     public void WireSubscription(InstalledKernel kernel, WireOptions? options = null)
     {
         var opts = options ?? DefaultWireOptions;

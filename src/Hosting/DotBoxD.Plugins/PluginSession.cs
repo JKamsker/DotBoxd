@@ -80,6 +80,8 @@ public sealed class PluginSession : IDisposable, IAsyncDisposable
     /// kernel is uninstalled by its exact install id — so a same-id incumbent is never disturbed — and the
     /// original exception is rethrown.
     /// </summary>
+    /// <remarks>Opt-in convenience: hand-write the equivalent with <see cref="InstallAsync"/> + your wire
+    /// action + <see cref="Uninstall"/> on failure if this shape doesn't fit — all public.</remarks>
     public async ValueTask<InstalledKernel> InstallAndWireAsync(
         PluginPackage package,
         Action<InstalledKernel> wire,
