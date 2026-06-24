@@ -18,9 +18,6 @@ internal static class PluginServerFacadeNameFormatter
         return "I" + name + "Setup";
     }
 
-    internal static string ContextName(string className)
-        => FacadeRootName(className) + "Context";
-
     internal static string HookRegistryName(string className)
         => FacadeRootName(className) + "HookRegistry";
 

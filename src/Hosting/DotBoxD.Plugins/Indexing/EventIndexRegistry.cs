@@ -41,9 +41,12 @@ public sealed partial class EventIndexRegistry
 
     /// <summary>
     /// Registers <paramref name="kernel"/> as an indexed subscription for <typeparamref name="TEvent"/>.
-    /// Returns <c>false</c> (registering nothing) when none of <paramref name="predicates"/> map onto an
-    /// <see cref="EventIndexKeyAttribute"/> field — the caller should keep such a subscription on its broad
-    /// pipeline. Returns <c>true</c> when the subscription is now served from the index.
+    /// The matching predicates are recomputed from the kernel's verified <c>ShouldHandle</c> IR; the
+    /// <paramref name="predicates"/> and <paramref name="indexCoversPredicate"/> arguments are the package's
+    /// untrusted manifest claims and are intentionally <b>not</b> read here. Returns <c>false</c> (registering
+    /// nothing) when none of the recomputed predicates map onto an <see cref="EventIndexKeyAttribute"/> field
+    /// — the caller should keep such a subscription on its broad pipeline. Returns <c>true</c> when the
+    /// subscription is now served from the index.
     /// </summary>
     public bool Register<TEvent>(
         IPluginEventAdapter<TEvent> adapter,
