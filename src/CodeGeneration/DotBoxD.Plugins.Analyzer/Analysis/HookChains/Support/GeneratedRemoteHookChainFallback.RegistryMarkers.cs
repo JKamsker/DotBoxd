@@ -1,18 +1,22 @@
+using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using Microsoft.CodeAnalysis;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 
 internal static partial class GeneratedRemoteHookChainFallback
 {
-    private static GeneratedRemoteHookChainTarget? TargetFromRegistryMarker(INamedTypeSymbol registryType)
+    private static GeneratedRemoteHookChainTarget? TargetFromRegistryMarker(
+        INamedTypeSymbol registryType,
+        Compilation compilation)
     {
-        var marker = SingleRegistryMarker(registryType);
+        var marker = SingleRegistryMarker(registryType, compilation);
         if (marker is null ||
             marker.ConstructorArguments.Length != 3 ||
             marker.ConstructorArguments[1].Value is not INamedTypeSymbol serverType ||
             marker.ConstructorArguments[2].Value is not INamedTypeSymbol contextType ||
             RegistryKind(marker) is not { } kind ||
-            !MarkerOwnershipMatches(registryType, serverType, contextType, kind))
+            !MarkerOwnershipMatches(registryType, serverType, contextType, kind, compilation) ||
+            !RegistryOnShapeMatches(registryType, contextType, kind))
         {
             return null;
         }
@@ -22,12 +26,12 @@ internal static partial class GeneratedRemoteHookChainFallback
             contextType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
     }
 
-    private static AttributeData? SingleRegistryMarker(INamedTypeSymbol registryType)
+    private static AttributeData? SingleRegistryMarker(INamedTypeSymbol registryType, Compilation compilation)
     {
         AttributeData? marker = null;
         foreach (var attribute in registryType.GetAttributes())
         {
-            if (!string.Equals(attribute.AttributeClass?.ToDisplayString(), RegistryAttributeName, StringComparison.Ordinal))
+            if (!IsDotBoxDAttribute(attribute, compilation, RegistryAttributeName, out _))
             {
                 continue;
             }
@@ -55,10 +59,11 @@ internal static partial class GeneratedRemoteHookChainFallback
         INamedTypeSymbol registryType,
         INamedTypeSymbol serverType,
         INamedTypeSymbol contextType,
-        GeneratedRemoteHookChainKind kind)
+        GeneratedRemoteHookChainKind kind,
+        Compilation compilation)
     {
         if (serverType.TypeKind != TypeKind.Class ||
-            !ContextMatchesGeneratedServer(serverType, contextType))
+            !ContextMatchesGeneratedServer(serverType, contextType, compilation))
         {
             return false;
         }
@@ -77,10 +82,41 @@ internal static partial class GeneratedRemoteHookChainFallback
         return false;
     }
 
-    private static bool ContextMatchesGeneratedServer(INamedTypeSymbol serverType, INamedTypeSymbol contextType)
-        => GeneratePluginServerAttribute(serverType)?
+    private static bool ContextMatchesGeneratedServer(
+        INamedTypeSymbol serverType,
+        INamedTypeSymbol contextType,
+        Compilation compilation)
+        => GeneratePluginServerAttribute(serverType, compilation)?
             .NamedArguments
             .FirstOrDefault(static argument => string.Equals(argument.Key, "Context", StringComparison.Ordinal))
             .Value.Value is INamedTypeSymbol declaredContext &&
             SymbolEqualityComparer.Default.Equals(declaredContext, contextType);
+
+    private static bool RegistryOnShapeMatches(
+        INamedTypeSymbol registryType,
+        INamedTypeSymbol contextType,
+        GeneratedRemoteHookChainKind kind)
+    {
+        var expectedOriginal = kind == GeneratedRemoteHookChainKind.Hook
+            ? DotBoxDGenerationNames.TypeNames.RemoteHookPipelineWithContextOriginal
+            : DotBoxDGenerationNames.TypeNames.RemoteSubscriptionPipelineWithContextOriginal;
+        foreach (var member in registryType.GetMembers("On").OfType<IMethodSymbol>())
+        {
+            if (member.Arity != 1 ||
+                !SymbolEqualityComparer.Default.Equals(member.ContainingType, registryType) ||
+                member.Parameters.Length != 0 ||
+                member.ReturnType is not INamedTypeSymbol returnType ||
+                !string.Equals(returnType.OriginalDefinition.ToDisplayString(), expectedOriginal, StringComparison.Ordinal) ||
+                returnType.TypeArguments.Length != 2 ||
+                !SymbolEqualityComparer.Default.Equals(returnType.TypeArguments[0], member.TypeParameters[0]) ||
+                !SymbolEqualityComparer.Default.Equals(returnType.TypeArguments[1], contextType))
+            {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
 }

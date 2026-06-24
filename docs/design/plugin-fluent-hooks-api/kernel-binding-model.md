@@ -4,7 +4,7 @@ Companion to [plan.md](plan.md), [ownership-auth-and-policy.md](ownership-auth-a
 [plugin-walkthrough.md](plugin-walkthrough.md), [server-walkthrough.md](server-walkthrough.md).
 
 This round revisits **how a kernel is bound**. Round 1 bound kernels *inside* a hook chain
-(`Hooks.On<MonsterAggroEvent>().UseKernel<GuardianKernel>()`). The feedback: a kernel is better
+(`Hooks.On<MonsterAggroEvent>().Use<GuardianKernel>()`). The feedback: a kernel is better
 modelled as the implementation of a **server-published service contract**, registered by type — while
 the hook chain stays for inline lambda logic.
 
@@ -35,7 +35,7 @@ the hook chain stays for inline lambda logic.
 | Native escape | n/a | `RunLocal` |
 | Best for | reusable, named, settings-bearing behavior | ad-hoc filtering/projection, one-off handlers |
 
-`UseKernel<TKernel>()` is a generated setup/registry operation, not a hook-chain terminal. `Use(InstalledKernel)`
+`Use<TKernel>()` is a generated setup/registry operation, not a hook-chain terminal. `Use(InstalledKernel)`
 survives as the **internal wiring primitive** that host-side wiring uses. The hook chain keeps exactly:
 `Where | Select | Run | RunLocal`.
 
@@ -121,14 +121,14 @@ native.
 
 ## 4. Wiring becomes generic (the `switch` dies)
 
-Round-1 wiring hardcoded the event→adapter mapping:
+Round-1 wiring hardcoded the event-to-adapter mapping:
 
 ```csharp
-// GamePluginControlService.WireHook (today) — hand-maintained per event.
-switch (subscription) {
-    case "MonsterAggroEvent": _server.Hooks.On(MonsterAggroEventAdapter.Instance).UseKernel(kernel); break;
-    case "AttackEvent":       _server.Hooks.On(AttackEventAdapter.Instance).UseKernel(kernel); break;
-    …
+// Old shape: hand-maintained adapter instances per event.
+switch (subscription)
+{
+    case "MonsterAggroEvent": _server.Hooks.On(MonsterAggroEventAdapter.Instance).Use(kernel); break;
+    case "AttackEvent":       _server.Hooks.On(AttackEventAdapter.Instance).Use(kernel); break;
 }
 ```
 
@@ -222,7 +222,7 @@ server.Hooks.On<AttackEvent>()
     .Run((attackerId, ctx) => ctx.Messages.Send(attackerId, "taunt"));  // lowered terminal
 
 server.Subscriptions.On<AttackEvent>()
-    .RunLocal((e, ctx) => { Telemetry.Count("attack"); return ValueTask.CompletedTask; }); // native
+    .RunLocal(e => { Telemetry.Count("attack:" + e.AttackerId); return ValueTask.CompletedTask; }); // native
 ```
 
 ---

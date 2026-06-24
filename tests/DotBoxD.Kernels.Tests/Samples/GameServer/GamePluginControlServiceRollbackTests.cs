@@ -46,6 +46,22 @@ public sealed class GamePluginControlServiceRollbackTests
         }
     }
 
+    [Fact]
+    public async Task InstallPluginAsync_rolls_back_kernel_when_hook_wiring_fails_after_install()
+    {
+        var (server, session, service) = CreateControlService();
+        using (server)
+        {
+            var package = ResultHookOnNonResultEventPackage("post-wire-fail");
+
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await InstallPluginAsync(service, PluginPackageJsonSerializer.Export(package)));
+
+            Assert.False(session.Owns("post-wire-fail"));
+            Assert.DoesNotContain(server.Kernels.Snapshot(), kernel => kernel.Manifest.PluginId == "post-wire-fail");
+        }
+    }
+
     private static (PluginServer Server, PluginSession Session, object Service) CreateControlService()
     {
         var gameServer = Assembly.LoadFrom(GameServerAssemblyPath());
@@ -100,6 +116,36 @@ public sealed class GamePluginControlServiceRollbackTests
         return PluginPackage.Create(manifest, module, new KernelEntrypoints("ShouldHandle", "Handle"));
     }
 
+    private static PluginPackage ResultHookOnNonResultEventPackage(string pluginId)
+    {
+        var manifest = new PluginManifest(
+            pluginId,
+            "IEventKernel<DotBoxD.Kernels.Game.Server.Abstractions.Events.AttackEvent>",
+            ExecutionMode.Auto,
+            ["Cpu"],
+            [],
+            [
+                new HookSubscriptionManifest(
+                    "DotBoxD.Kernels.Game.Server.Abstractions.Events.AttackEvent",
+                    pluginId)
+                {
+                    ResultType = "DotBoxD.Kernels.Game.Server.Abstractions.Events.RemoteDamageDecisionResult"
+                }
+            ]);
+        var module = new SandboxModule(
+            pluginId,
+            SemVersion.One,
+            SemVersion.One,
+            [],
+            [AttackShouldHandle(), AttackResultHandle()],
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["kernel"] = pluginId,
+                ["pluginId"] = pluginId
+            });
+        return PluginPackage.Create(manifest, module, new KernelEntrypoints("ShouldHandle", "Handle"));
+    }
+
     private static SandboxFunction ShouldHandle(SourceSpan span)
         => new(
             "ShouldHandle",
@@ -116,6 +162,22 @@ public sealed class GamePluginControlServiceRollbackTests
             SandboxType.String,
             [new ReturnStatement(new LiteralExpression(SandboxValue.FromString("monster-1"), span), span)]);
 
+    private static SandboxFunction AttackShouldHandle()
+        => new(
+            "ShouldHandle",
+            IsEntrypoint: true,
+            AttackEventParameters(),
+            SandboxType.Bool,
+            [new ReturnStatement(new LiteralExpression(SandboxValue.FromBool(true), new SourceSpan(1, 1)), new SourceSpan(1, 1))]);
+
+    private static SandboxFunction AttackResultHandle()
+        => new(
+            "Handle",
+            IsEntrypoint: true,
+            AttackEventParameters(),
+            SandboxType.Bool,
+            [new ReturnStatement(new LiteralExpression(SandboxValue.FromBool(true), new SourceSpan(1, 1)), new SourceSpan(1, 1))]);
+
     private static Parameter[] EventParameters()
         =>
         [
@@ -124,6 +186,15 @@ public sealed class GamePluginControlServiceRollbackTests
             new("e_Distance", SandboxType.I32),
             new("e_MonsterLevel", SandboxType.I32),
             new("e_PlayerLevel", SandboxType.I32)
+        ];
+
+    private static Parameter[] AttackEventParameters()
+        =>
+        [
+            new("e_AttackerId", SandboxType.String),
+            new("e_TargetId", SandboxType.String),
+            new("e_Damage", SandboxType.I32),
+            new("e_AttackerLevel", SandboxType.I32)
         ];
 
     private static object Create(Assembly assembly, string typeName, params object[] args)

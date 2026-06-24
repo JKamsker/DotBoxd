@@ -77,9 +77,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         var package = PluginPackageJsonSerializer.Import(packageJson);
         _kernelWiring.ValidateRoute(package);
         Console.WriteLine($"[server] installing plugin kernel '{package.Manifest.PluginId}'...");
-        var policy = ServerPolicy.ForKernel(_server.GetRequiredCapabilities(package));
-        var kernel = await _session.InstallAsync(package, policy, ct).ConfigureAwait(false);
-        _kernelWiring.WireHook(kernel);
+        var kernel = await InstallAndWireAsync(package, _kernelWiring.WireHook, ct).ConfigureAwait(false);
         Console.WriteLine($"[server] installed plugin kernel '{kernel.Manifest.PluginId}'.");
         return InstallRouteId(kernel);
     }
@@ -91,9 +89,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         var package = PluginPackageJsonSerializer.Import(packageJson);
         _kernelWiring.ValidateRoute(package);
         Console.WriteLine($"[server] installing subscription kernel '{package.Manifest.PluginId}'...");
-        var policy = ServerPolicy.ForKernel(_server.GetRequiredCapabilities(package));
-        var kernel = await _session.InstallAsync(package, policy, ct).ConfigureAwait(false);
-        _kernelWiring.WireSubscription(kernel);
+        var kernel = await InstallAndWireAsync(package, _kernelWiring.WireSubscription, ct).ConfigureAwait(false);
         EventIndexDiagnostics.Report(kernel);
         Console.WriteLine($"[server] installed subscription kernel '{kernel.Manifest.PluginId}'.");
         return InstallRouteId(kernel);
@@ -164,6 +160,43 @@ internal sealed class GamePluginControlService : IGamePluginControlService
 
     private static string InstallRouteId(InstalledKernel kernel)
         => kernel.CallbackSubscriptionId ?? kernel.Manifest.PluginId;
+
+    private async ValueTask<InstalledKernel> InstallAndWireAsync(
+        PluginPackage package,
+        Action<InstalledKernel> wire,
+        CancellationToken ct)
+    {
+        var policy = ServerPolicy.ForKernel(_server.GetRequiredCapabilities(package));
+        InstalledKernel? kernel = null;
+        try
+        {
+            kernel = await _session.InstallAsync(package, policy, ct).ConfigureAwait(false);
+            wire(kernel);
+            return kernel;
+        }
+        catch
+        {
+            if (kernel is not null)
+            {
+                RollBackInstalledKernel(kernel);
+            }
+
+            throw;
+        }
+    }
+
+    private void RollBackInstalledKernel(InstalledKernel kernel)
+    {
+        try
+        {
+            _session.Uninstall(kernel.Manifest.PluginId);
+        }
+        catch (Exception rollbackError)
+        {
+            Console.Error.WriteLine(
+                $"[server] rollback failed for plugin kernel '{kernel.Manifest.PluginId}': {rollbackError}");
+        }
+    }
 
     // The per-entity domain calls (KillMonster / IsMonster / GetEntity*) moved to GameWorldAccess, which
     // implements IGameWorldAccess directly. This control service is now control-plane only. (GetWorldAsync

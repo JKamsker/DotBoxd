@@ -19,13 +19,13 @@ internal static partial class GeneratedRemoteHookChainFallback
                 cancellationToken.ThrowIfCancellationRequested();
                 if (declaration.AttributeLists.Count == 0 ||
                     model.GetDeclaredSymbol(declaration, cancellationToken) is not INamedTypeSymbol serverType ||
-                    !HasGeneratePluginServerAttribute(serverType) ||
+                    !HasGeneratePluginServerAttribute(serverType, compilation) ||
                     ResolveWorldType(serverType) is not { } worldType)
                 {
                     continue;
                 }
 
-                if (OwnedGeneratedSurface.Create(serverType, worldType) is { } surface)
+                if (OwnedGeneratedSurface.Create(serverType, worldType, compilation) is { } surface)
                 {
                     yield return surface;
                 }
@@ -68,9 +68,12 @@ internal static partial class GeneratedRemoteHookChainFallback
         string SubscriptionRegistryFullName,
         string ContextFullName)
     {
-        public static OwnedGeneratedSurface? Create(INamedTypeSymbol serverType, INamedTypeSymbol worldType)
+        public static OwnedGeneratedSurface? Create(
+            INamedTypeSymbol serverType,
+            INamedTypeSymbol worldType,
+            Compilation compilation)
         {
-            var contextFullName = GeneratedContextTypeFullName(serverType);
+            var contextFullName = GeneratedContextTypeFullName(serverType, compilation);
             if (contextFullName is null)
             {
                 return null;

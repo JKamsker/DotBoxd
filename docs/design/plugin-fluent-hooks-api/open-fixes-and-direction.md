@@ -18,6 +18,16 @@ augmentation targets the author-declared partial class, convention `{Root}Contex
 context `[HostBinding]` members are rejected, `[Local]` is explicit and diagnosed when used from lowered IR, and
 prebuilt SDK context `[KernelMethod]` helpers emit/consume `GeneratedKernelMethodDescriptorAttribute` metadata.
 
+**Recheck update (2026-06-24):** P1.1-P1.8, P2.4-P2.14, and P3.15-P3.19 have been re-audited against the
+branch implementation. This pass added the remaining trust-boundary and lifecycle hardening found by the
+audit: generated remote fallback now requires exact DotBoxD marker symbols plus server-property/context
+ownership proof; event-index predicates are recomputed from verified IR at registration instead of trusting
+manifest predicates; indexed cancellation follows the same caller-cancelled semantics as non-indexed
+dispatch; host-derived capability policy no longer accepts module self-asserted capability metadata;
+native-terminal routing rejects host-write local-terminal relabeling at install; and GameServer plugin
+install rolls back the installed kernel if post-install hook/subscription wiring fails. Regression coverage
+now includes direct and JSON tamper cases where relevant.
+
 Design guide this doc is measured against: **Simple · Obvious · Discoverable · Consistent · Minimal ·
 Composable** — plus **Explicit · Stable · Testable** as working corollaries.
 
@@ -579,6 +589,9 @@ Every item verified against head `41ec9172`.
    direct in-memory `PluginPackage` installs are just as untrusted as JSON imports. Add tampered-manifest
    regression tests for both exported JSON import and direct in-memory packages. If a new trusted
    expected-metadata source is added, forge/mutate it too and prove it is authenticated or cross-checked.
+   **Implemented:** indexed predicates are recomputed from verified `ShouldHandle` IR during registration,
+   manifest predicates are ignored for trust decisions, and direct/JSON tamper regressions prove forged
+   manifest coverage cannot drop a verified match.
 
 **P1.6 — Capability-request policy mixing weakens the install gate.** The plan describes `DBXK044` as parity for
    host-derived entrypoint capabilities, but current required-capability helpers also include plugin-declared
@@ -588,6 +601,8 @@ Every item verified against head `41ec9172`.
    grants. This is a generator/model split too: stop mirroring host-derived `RequiredCapabilities` into module
    `CapabilityRequests`; generated hook/chain modules should have empty requests unless the plugin explicitly
    declares a separate request.
+   **Implemented:** host-derived install policy now comes only from host binding analysis, while plugin-declared
+   module capability requests are rejected unless independently allowed.
 
 **P1.7 — Native-terminal routing is manifest-authoritative.** `RunLocal`/`RegisterLocal` are the trust-boundary
    exit, but manifest flags such as `LocalTerminal`, `ProjectedType`, `ResultType`, and `ResultLocalTerminal`
@@ -597,6 +612,8 @@ Every item verified against head `41ec9172`.
    metadata cross-checked outside the package's mutable manifest/module metadata) for terminal kind,
    projection type, result type, and result-localness before routing. Add tamper tests for all four fields and
    for any new trusted metadata source.
+   **Implemented:** install validation rejects whole-event `RunLocal` relabeling when the verified handle has
+   host-write effects, and generated-result local tamper tests are pinned in the required CI security gate.
 
 **P1.8 — Indexed subscriptions are not unregistered on disconnect/reinstall.** Indexed subscriptions can be
    registered into the event index, but normal session/kernel cleanup removes only hook/subscription registry
@@ -818,7 +835,11 @@ Acceptance gates, not afterthoughts. Existing homes: `ResultHookSlotTests`, `Typ
   `Regression/` subfolder so the test project root stays under the code-enforcer file budget. It does
   **not** cover the generated graft client or IPC transport path — those are separate gates below.
 
-**Still required**
+**Acceptance matrix after implementation audit**
+
+The items below were the original acceptance gates. As of the 2026-06-24 recheck, the P1/P2/P3 implementation
+items are covered on this branch unless a bullet explicitly says "Remaining hardening" or names a future smoke
+scope.
 
 - **Cross-context result priority (P1.2).** Register a priority-`0` result handler in an earlier-created
   context pipeline and a priority-`100` handler in a later one for the same event; assert the `100` handler

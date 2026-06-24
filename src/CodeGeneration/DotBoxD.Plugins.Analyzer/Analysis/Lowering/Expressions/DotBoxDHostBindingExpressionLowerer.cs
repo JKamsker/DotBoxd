@@ -3,7 +3,6 @@ using DotBoxD.Shared.HostBindings;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using ManifestTypes = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.ManifestTypes;
 using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.TypeNames;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
@@ -61,7 +60,7 @@ internal static partial class DotBoxDHostBindingExpressionLowerer
         }
 
         var loweredSources = new List<string>(arguments.Count);
-        var allocates = IsAllocatingTag(returnType);
+        var allocates = HostBindingMetadataRules.ReturnAllocatesManifestTag(returnType);
         for (var i = 0; i < arguments.Count; i++)
         {
             if (arguments[i].NameColon is not null ||
@@ -106,16 +105,11 @@ internal static partial class DotBoxDHostBindingExpressionLowerer
         var source =
             $"new {TypeNames.GlobalCallExpression}({LiteralReader.StringLiteral(binding.BindingId)}, " +
             "[], null, Span)";
-        return new DotBoxDExpressionModel(source, returnType, IsAllocatingTag(returnType));
+        return new DotBoxDExpressionModel(source, returnType, HostBindingMetadataRules.ReturnAllocatesManifestTag(returnType));
     }
 
-    // Must match HostServiceBindingFactory.ReturnAllocates.
     private static bool IsAllocatingTag(string tag)
-        => string.Equals(tag, ManifestTypes.String, StringComparison.Ordinal) ||
-           string.Equals(tag, ManifestTypes.Guid, StringComparison.Ordinal) ||
-           string.Equals(tag, ManifestTypes.List, StringComparison.Ordinal) ||
-           string.Equals(tag, ManifestTypes.Map, StringComparison.Ordinal) ||
-           string.Equals(tag, ManifestTypes.Record, StringComparison.Ordinal);
+        => HostBindingMetadataRules.ReturnAllocatesManifestTag(tag);
 
     internal static (string BindingId, string? Capability, IReadOnlyList<string> Effects, bool IsAsync)? HostBinding(
         IMethodSymbol method)
@@ -220,7 +214,8 @@ internal static partial class DotBoxDHostBindingExpressionLowerer
 
     // Keep auto-binding Alloc classification in sync with runtime binding registration.
     private static bool ReturnAllocates(ITypeSymbol type)
-        => !IsUnitTaskLike(type) && IsAllocatingTag(SandboxTypeSourceEmitter.ManifestTag(type));
+        => !IsUnitTaskLike(type) &&
+           HostBindingMetadataRules.ReturnAllocatesManifestTag(SandboxTypeSourceEmitter.ManifestTag(type));
 
     private static bool IsUnitTaskLike(ITypeSymbol type)
         => type is INamedTypeSymbol

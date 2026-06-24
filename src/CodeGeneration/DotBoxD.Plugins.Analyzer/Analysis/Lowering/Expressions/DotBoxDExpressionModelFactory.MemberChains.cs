@@ -30,7 +30,7 @@ internal static partial class DotBoxDExpressionModelFactory
                 "[Local] context members cannot be used in lowered server-side IR."),
             IPropertySymbol property => DotBoxDHostBindingExpressionLowerer.TryLowerProperty(property, context)
                 ?? throw new NotSupportedException(
-                    $"Unsupported server context property '{memberName}'. Mark sandbox-readable context properties with [HostBinding]."),
+                    $"Unsupported server context property '{memberName}'. Use generated context surfaces or [KernelMethod] helpers for server-side IR."),
             _ => null
         };
     }

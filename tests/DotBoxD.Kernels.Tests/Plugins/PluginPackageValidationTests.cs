@@ -7,7 +7,7 @@ using DotBoxD.Plugins;
 
 namespace DotBoxD.Kernels.Tests.Plugins;
 
-public sealed class PluginPackageValidationTests
+public sealed partial class PluginPackageValidationTests
 {
     [Fact]
     public async Task Install_rejects_manifest_plugin_id_that_does_not_match_module()

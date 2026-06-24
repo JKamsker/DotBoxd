@@ -224,11 +224,7 @@ internal static class HostServiceBindingFactory
     }
 
     private static bool ReturnAllocates(SandboxType type)
-        => type != SandboxType.Unit &&
-           type != SandboxType.Bool &&
-           type != SandboxType.I32 &&
-           type != SandboxType.I64 &&
-           type != SandboxType.F64;
+        => HostBindingMetadataRules.ReturnAllocatesSandboxTypeName(type.Name);
 
     private static long BaseFuel(SandboxType returnType) => ReturnAllocates(returnType) ? 3 : 2;
 

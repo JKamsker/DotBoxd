@@ -338,6 +338,16 @@ jobs:
               "PinnedHttpTransportTests",
               "DifferentialFuzzTests"
             )
+          ./eng/scripts/run-required-tests.ps1 `
+            -Project tests/DotBoxD.Plugins.Generated.Tests/DotBoxD.Plugins.Generated.Tests.csproj `
+            -Configuration Release `
+            -NoBuild `
+            -RequiredFullyQualifiedNameContains @(
+              "Remote_RegisterLocal_rejects_json_result"
+            ) `
+            -MinimumExecutedTestsByGroup @{
+              Remote_RegisterLocal_rejects_json_result = 2
+            }
 
       - name: Docs & examples smoke
         shell: pwsh

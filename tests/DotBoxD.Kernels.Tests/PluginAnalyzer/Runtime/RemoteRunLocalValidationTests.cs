@@ -59,6 +59,18 @@ public sealed class RemoteRunLocalValidationTests
         }
         """;
 
+    private const string OrdinaryRunSource = """
+        using DotBoxD.Plugins.Runtime;
+        namespace ChainSample;
+        public static class OrdinaryRunUsage
+        {
+            public static void Configure(RemoteHookRegistry hooks)
+                => hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                    .Where(e => e.Distance <= 4)
+                    .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "calm"));
+        }
+        """;
+
     // An event carrying a genuinely unmarshallable property (object has no wire representation) must STILL fail
     // safe: no verified-IR package is produced and the un-intercepted RunLocal call site stays a throwing stub.
     private const string UnmarshallableEventSource = """
@@ -117,6 +129,30 @@ public sealed class RemoteRunLocalValidationTests
 
         using var server = PluginServer.Create(new InMemoryPluginMessageSink(), defaultPolicy: Policy());
         await server.InstallAsync(package);
+    }
+
+    [Fact]
+    public async Task Ordinary_Run_package_tampered_to_whole_event_RunLocal_is_rejected_at_install()
+    {
+        var package = LowerToPackage(OrdinaryRunSource);
+        var subscription = Assert.Single(package.Manifest.Subscriptions);
+        var metadata = new Dictionary<string, string>(package.Module.Metadata, StringComparer.Ordinal)
+        {
+            ["callbackSubscriptionId"] = "callback-tamper"
+        };
+        var tampered = package with
+        {
+            Manifest = package.Manifest with
+            {
+                Subscriptions = [subscription with { LocalTerminal = true }]
+            },
+            Module = package.Module with { Metadata = metadata }
+        };
+
+        using var server = PluginServer.Create(new InMemoryPluginMessageSink(), defaultPolicy: Policy());
+        var ex = await Assert.ThrowsAsync<DotBoxD.Kernels.Model.SandboxValidationException>(
+            async () => await server.InstallAsync(tampered).AsTask());
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK031");
     }
 
     // A genuinely unmarshallable property (object has no sandbox/wire representation) must STILL fail safe: no

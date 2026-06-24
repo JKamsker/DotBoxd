@@ -185,7 +185,7 @@ server.Hooks.On<MonsterAggroEvent>()
 
 // RunLocal = trusted native host code, NOT sandboxed (use sparingly).
 server.Hooks.On<AttackEvent>()
-    .RunLocal((e, ctx) => { Console.WriteLine($"observed {e.AttackerId}"); return ValueTask.CompletedTask; });
+    .RunLocal(e => { Console.WriteLine($"observed {e.AttackerId}"); return ValueTask.CompletedTask; });
 ```
 
 `server.Subscriptions` is the notification mirror of `server.Hooks`. Same `Where`/`Select`/`Run`/
@@ -204,7 +204,7 @@ server.Hooks.On<MonsterAggroEvent>()
 
 // Subscriptions: the plugin just wants to know it happened.
 server.Subscriptions.On<AttackEvent>()
-    .RunLocal((e, ctx) => { Telemetry.Count("attack"); return ValueTask.CompletedTask; });
+    .RunLocal(e => { Telemetry.Count("attack:" + e.AttackerId); return ValueTask.CompletedTask; });
 ```
 
 ## 4. The generated facade

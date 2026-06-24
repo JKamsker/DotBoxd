@@ -95,6 +95,19 @@ public sealed class HostServiceBindingInheritanceTests
             () => builder.AddBindingsFrom<INullableProbeWorld>(new NullableProbeWorld()));
     }
 
+    [Theory]
+    [MemberData(nameof(InvalidHostCapabilityCases))]
+    public void AddBindingsFrom_rejects_invalid_host_capability_effects(
+        Action<SandboxHostBuilder> configure,
+        string expectedMessage)
+    {
+        var builder = new SandboxHostBuilder();
+
+        var ex = Assert.Throws<InvalidOperationException>(() => configure(builder));
+
+        Assert.Contains(expectedMessage, ex.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Auto_binding_effects_come_from_interface_metadata_not_method_name_or_implementation()
     {
@@ -174,5 +187,70 @@ public sealed class HostServiceBindingInheritanceTests
     {
         [HostCapability("probe.action.patch", HostBindingEffect.HostStateRead)]
         public int PatchValue(string id) => 1;
+    }
+
+    public static TheoryData<Action<SandboxHostBuilder>, string> InvalidHostCapabilityCases()
+        => new()
+        {
+            {
+                builder => builder.AddBindingsFrom<INoAccessProbeWorld>(new NoAccessProbeWorld()),
+                "must declare exactly one of HostStateRead or HostStateWrite"
+            },
+            {
+                builder => builder.AddBindingsFrom<IBothAccessProbeWorld>(new BothAccessProbeWorld()),
+                "must declare exactly one of HostStateRead or HostStateWrite"
+            },
+            {
+                builder => builder.AddBindingsFrom<IMissingAllocProbeWorld>(new MissingAllocProbeWorld()),
+                "must declare Allocates because its return shape allocates"
+            },
+            {
+                builder => builder.AddBindingsFrom<IExtraAllocProbeWorld>(new ExtraAllocProbeWorld()),
+                "must not declare Allocates because its return shape does not allocate"
+            }
+        };
+
+    private interface INoAccessProbeWorld
+    {
+        [HostCapability("probe.bad.none", HostBindingEffect.None)]
+        int Read();
+    }
+
+    private sealed class NoAccessProbeWorld : INoAccessProbeWorld
+    {
+        public int Read() => 1;
+    }
+
+    private interface IBothAccessProbeWorld
+    {
+        [HostCapability("probe.bad.both", HostBindingEffect.HostStateRead | HostBindingEffect.HostStateWrite)]
+        int Read();
+    }
+
+    private sealed class BothAccessProbeWorld : IBothAccessProbeWorld
+    {
+        public int Read() => 1;
+    }
+
+    private interface IMissingAllocProbeWorld
+    {
+        [HostCapability("probe.bad.missing-alloc", HostBindingEffect.HostStateRead)]
+        string ReadName();
+    }
+
+    private sealed class MissingAllocProbeWorld : IMissingAllocProbeWorld
+    {
+        public string ReadName() => "name";
+    }
+
+    private interface IExtraAllocProbeWorld
+    {
+        [HostCapability("probe.bad.extra-alloc", HostBindingEffect.HostStateRead | HostBindingEffect.Allocates)]
+        int Read();
+    }
+
+    private sealed class ExtraAllocProbeWorld : IExtraAllocProbeWorld
+    {
+        public int Read() => 1;
     }
 }

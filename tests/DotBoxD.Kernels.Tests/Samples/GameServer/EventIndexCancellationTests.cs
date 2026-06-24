@@ -17,7 +17,7 @@ using SandboxValidationException = DotBoxD.Kernels.Model.SandboxValidationExcept
 
 namespace DotBoxD.Kernels.Tests.Samples.GameServer;
 
-public sealed class EventIndexCancellationTests
+public sealed partial class EventIndexCancellationTests
 {
     [Fact]
     public async Task Index_registry_skips_pre_canceled_publish()
@@ -66,6 +66,38 @@ public sealed class EventIndexCancellationTests
         Assert.Equal(typeof(AttackEvent), fault.EventType);
         var ex = Assert.IsType<SandboxValidationException>(fault.Exception);
         Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK033");
+    }
+
+    [Theory]
+    [InlineData(true, SubscriptionDeliveryStage.Filter)]
+    [InlineData(false, SubscriptionDeliveryStage.Handler)]
+    public async Task Index_registry_does_not_report_sandbox_caller_cancellation(
+        bool cancelInFilter,
+        SubscriptionDeliveryStage stage)
+    {
+        var reported = new TaskCompletionSource<SubscriptionDeliveryFault>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cancellation = new CancellationTokenSource();
+        using var server = DotBoxD.Plugins.PluginServer.Create(
+            configureHost: builder => builder.AddBinding(CancelBinding(cancellation.Cancel)),
+            defaultPolicy: ChainPolicy(),
+            onSubscriptionFault: fault => reported.TrySetResult(fault));
+        var package = CancellationPackage(cancelInFilter);
+        var kernel = await server.InstallAsync(package, ChainPolicy());
+        var subscription = Assert.Single(package.Manifest.Subscriptions);
+        var registry = new EventIndexRegistry(fault => reported.TrySetResult(fault));
+        Assert.True(registry.Register(
+            server.Events.Resolve<AttackEvent>(),
+            kernel,
+            subscription.IndexedPredicates,
+            subscription.IndexCoversPredicate));
+
+        registry.Publish(new AttackEvent("player-1", "player-2", 7, 8), cancellation.Token);
+        await registry.DrainAsync();
+
+        Assert.True(cancellation.IsCancellationRequested);
+        await AssertNoFaultAsync(reported.Task);
+        Assert.False(reported.Task.IsCompleted, $"caller cancellation during {stage} was reported as a fault");
     }
 
     private static PluginPackage GeneratedAttackPackage()

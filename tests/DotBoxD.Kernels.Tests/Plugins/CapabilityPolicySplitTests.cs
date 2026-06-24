@@ -30,6 +30,18 @@ public sealed class CapabilityPolicySplitTests
     }
 
     [Fact]
+    public void Server_required_capability_analysis_excludes_module_required_capability_metadata()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
+        var package = WithRequiredCapabilityMetadata(FireDamagePluginPackage.Create(), "file.write");
+
+        var required = server.GetRequiredCapabilities(package);
+
+        Assert.Contains(PluginMessageBindings.CapabilityId, required);
+        Assert.DoesNotContain("file.write", required);
+    }
+
+    [Fact]
     public async Task Manifest_parity_ignores_independently_granted_plugin_requests()
     {
         using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
@@ -56,4 +68,13 @@ public sealed class CapabilityPolicySplitTests
                 CapabilityRequests = [new CapabilityRequest(capabilityId, "requested by plugin")]
             }
         };
+
+    private static PluginPackage WithRequiredCapabilityMetadata(PluginPackage package, string capabilityId)
+    {
+        var metadata = new Dictionary<string, string>(package.Module.Metadata, StringComparer.Ordinal)
+        {
+            ["requiredCapabilities"] = capabilityId
+        };
+        return package with { Module = package.Module with { Metadata = metadata } };
+    }
 }

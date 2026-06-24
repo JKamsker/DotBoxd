@@ -125,21 +125,22 @@ public sealed class EventIndexFanoutTests
     [Fact]
     public async Task Index_registry_declines_subscriptions_with_no_indexed_field()
     {
-        // AttackerLevel is not an [EventIndexKey], so a predicate over it alone cannot be served from the
-        // index; the registry declines registration and the host keeps it on the broad pipeline.
-        var package = GeneratedAttackPackage();
+        // AttackerLevel is not an [EventIndexKey], so a verified predicate over it alone cannot be served
+        // from the index; the registry declines registration and the host keeps it on the broad pipeline.
+        var package = GeneratedAttackerLevelPackage();
         var sink = new RecordingMessageSink();
         using var server = DotBoxD.Plugins.PluginServer.Create(sink, defaultPolicy: ChainPolicy());
         var adapter = server.Events.Resolve<AttackEvent>();
         var kernel = await server.InstallAsync(package, ChainPolicy());
 
         var registry = new EventIndexRegistry();
-        var predicates = new[]
-        {
-            new IndexedPredicate("AttackerLevel", IndexPredicateOperator.GreaterThanOrEqual, 9, "int"),
-        };
+        var subscription = Assert.Single(package.Manifest.Subscriptions);
 
-        Assert.False(registry.Register(adapter, kernel, predicates, indexCoversPredicate: false));
+        Assert.False(registry.Register(
+            adapter,
+            kernel,
+            subscription.IndexedPredicates,
+            subscription.IndexCoversPredicate));
 
         registry.Publish(new AttackEvent("monster-1", "player-2", 9, 12));
         Assert.Equal(0, registry.Stats.Considered);
@@ -163,6 +164,23 @@ public sealed class EventIndexFanoutTests
                 .Run((targetId, ctx) => ctx.Messages.Send(targetId, "indexed-taunt:inline"));
             """;
 
+        return GeneratedPackage(chain);
+    }
+
+    private static PluginPackage GeneratedAttackerLevelPackage()
+    {
+        const string chain = """
+            subscriptions.On<global::DotBoxD.Kernels.Game.Server.Abstractions.Events.AttackEvent>()
+                .Where(e => e.AttackerLevel >= 9)
+                .Select(e => e.TargetId)
+                .Run((targetId, ctx) => ctx.Messages.Send(targetId, "indexed-taunt:inline"));
+            """;
+
+        return GeneratedPackage(chain);
+    }
+
+    private static PluginPackage GeneratedPackage(string chain)
+    {
         var source = $$"""
             using DotBoxD.Plugins.Runtime;
 

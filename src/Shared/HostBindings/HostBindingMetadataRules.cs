@@ -39,6 +39,12 @@ internal static class HostBindingMetadataRules
         return declaredEffects;
     }
 
+    public static bool ReturnAllocatesManifestTag(string tag)
+        => tag is "string" or "guid" or "list" or "map" or "record";
+
+    public static bool ReturnAllocatesSandboxTypeName(string name)
+        => name is not "Unit" and not "Bool" and not "I32" and not "I64" and not "F64";
+
     public static IEnumerable<string> EffectNames(long declaredEffects)
     {
         yield return CpuEffect;

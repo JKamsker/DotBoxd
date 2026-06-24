@@ -35,6 +35,17 @@ public sealed class EventIndexTrustBoundaryTests
     }
 
     [Fact]
+    public async Task Direct_package_index_predicate_tamper_cannot_prefilter_verified_match()
+        => await AssertTamperedIndexPredicatesCannotDropVerifiedMatchAsync(
+            TamperIndexPredicates(GeneratedAttackPackage()));
+
+    [Fact]
+    public async Task Json_imported_index_predicate_tamper_cannot_prefilter_verified_match()
+        => await AssertTamperedIndexPredicatesCannotDropVerifiedMatchAsync(
+            PluginPackageJsonSerializer.Import(
+                PluginPackageJsonSerializer.Export(TamperIndexPredicates(GeneratedAttackPackage()))));
+
+    [Fact]
     public async Task Session_dispose_unregisters_indexed_subscription()
     {
         var package = GeneratedAttackPackage();
@@ -76,8 +87,27 @@ public sealed class EventIndexTrustBoundaryTests
 
         await registry.DrainAsync();
         Assert.Equal(1, registry.Stats.Considered);
-        Assert.Equal(1, registry.Stats.Dispatched);
+        Assert.Equal(1, registry.Stats.Prefiltered);
+        Assert.Equal(0, registry.Stats.Dispatched);
         Assert.Empty(sink.Messages);
+    }
+
+    private static async Task AssertTamperedIndexPredicatesCannotDropVerifiedMatchAsync(PluginPackage package)
+    {
+        var sink = new RecordingMessageSink();
+        using var server = PluginServer.Create(sink, defaultPolicy: ChainPolicy());
+        var kernel = await server.InstallAsync(package, ChainPolicy());
+
+        var registry = RegisterAttackIndex(server, kernel);
+        registry.Publish(new AttackEvent("player-1", "player-2", Damage: 7, AttackerLevel: 8));
+
+        await registry.DrainAsync();
+        Assert.Equal(1, registry.Stats.Considered);
+        Assert.Equal(1, registry.Stats.Dispatched);
+        Assert.Equal(0, registry.Stats.Prefiltered);
+        var message = Assert.Single(sink.Messages);
+        Assert.Equal("player-2", message.TargetId);
+        Assert.Equal("indexed-taunt:inline", message.Message);
     }
 
     private static EventIndexRegistry RegisterAttackIndex(PluginServer server, InstalledKernel kernel)
@@ -105,6 +135,32 @@ public sealed class EventIndexTrustBoundaryTests
                     subscription with
                     {
                         IndexedPredicates = [attackerPredicate],
+                        IndexCoversPredicate = true
+                    }
+                ]
+            }
+        };
+    }
+
+    private static PluginPackage TamperIndexPredicates(PluginPackage package)
+    {
+        var subscription = Assert.Single(package.Manifest.Subscriptions);
+        return package with
+        {
+            Manifest = package.Manifest with
+            {
+                Subscriptions =
+                [
+                    subscription with
+                    {
+                        IndexedPredicates =
+                        [
+                            new IndexedPredicate(
+                                nameof(AttackEvent.Damage),
+                                IndexPredicateOperator.GreaterThanOrEqual,
+                                999,
+                                "int")
+                        ],
                         IndexCoversPredicate = true
                     }
                 ]

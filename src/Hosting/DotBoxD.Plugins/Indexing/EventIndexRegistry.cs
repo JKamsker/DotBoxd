@@ -1,3 +1,5 @@
+using DotBoxD.Kernels.Model;
+using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Plugins.Kernel;
 using DotBoxD.Plugins.Runtime;
 
@@ -5,7 +7,8 @@ namespace DotBoxD.Plugins.Indexing;
 
 /// <summary>
 /// A first-class, reusable host dispatch index (issue #50). A host registers a subscription kernel together
-/// with its manifest <see cref="IndexedPredicate"/>s; the registry compiles them into an
+/// with its generated <see cref="IndexedPredicate"/>s; the registry recomputes them from verified IR and
+/// compiles them into an
 /// <see cref="EventIndexMatcher{TEvent}"/> (precompiled getters, no per-event reflection) and, when the host
 /// publishes an event, runs the cheap index check <i>before</i> entering the sandbox. Events the index
 /// rejects never reach the verified IR; survivors are dispatched to <see cref="InstalledKernel"/> as the
@@ -17,7 +20,7 @@ namespace DotBoxD.Plugins.Indexing;
 /// (returns <c>false</c>) so the host can leave them on its broad pipeline.
 /// </para>
 /// </summary>
-public sealed class EventIndexRegistry
+public sealed partial class EventIndexRegistry
 {
     private readonly object _gate = new();
     private readonly Action<SubscriptionDeliveryFault>? _onFault;
@@ -52,16 +55,18 @@ public sealed class EventIndexRegistry
         ArgumentNullException.ThrowIfNull(kernel);
         ArgumentNullException.ThrowIfNull(predicates);
 
-        var matcher = EventIndexMatcher<TEvent>.Create(predicates);
+        _ = predicates;
+        var trustedPredicates = TrustedIndexPredicateExtractor.Extract(kernel.Package, adapter.Parameters);
+        var matcher = EventIndexMatcher<TEvent>.Create(trustedPredicates);
         if (!matcher.HasIndex)
         {
             return false;
         }
 
         _ = indexCoversPredicate;
-        // Index metadata travels in the mutable package manifest, so coverage claims are prefilter hints only.
-        // The verified ShouldHandle entrypoint remains the authority until coverage is recomputed or
-        // authenticated for this install path.
+        // Index metadata travels in the mutable package manifest, so neither predicates nor coverage claims
+        // are trusted. The runtime recomputes necessary predicates from verified ShouldHandle IR and always
+        // runs the verified predicate after an index survivor.
         const bool fullyCovered = false;
         lock (_gate)
         {
@@ -186,6 +191,10 @@ public sealed class EventIndexRegistry
         {
             return;
         }
+        catch (SandboxRuntimeException ex) when (WasCallerCancelled(ex, cancellationToken))
+        {
+            return;
+        }
         catch (Exception ex)
         {
             Report<TEvent>(onFault, ex, SubscriptionDeliveryStage.Filter);
@@ -204,11 +213,17 @@ public sealed class EventIndexRegistry
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
         }
+        catch (SandboxRuntimeException ex) when (WasCallerCancelled(ex, cancellationToken))
+        {
+        }
         catch (Exception ex)
         {
             Report<TEvent>(onFault, ex, SubscriptionDeliveryStage.Handler);
         }
     }
+
+    private static bool WasCallerCancelled(SandboxRuntimeException exception, CancellationToken cancellationToken)
+        => cancellationToken.IsCancellationRequested && exception.Error.Code == SandboxErrorCode.Cancelled;
 
     private static void Report<TEvent>(
         Action<SubscriptionDeliveryFault>? onFault,
@@ -249,43 +264,6 @@ public sealed class EventIndexRegistry
             TaskScheduler.Default);
     }
 
-    private interface IEventIndexChannel
-    {
-        void Remove(InstalledKernel kernel);
-    }
-
-    private sealed class EventIndexChannel<TEvent>(IPluginEventAdapter<TEvent> adapter) : IEventIndexChannel
-    {
-        private readonly object _gate = new();
-
-        // Copy-on-write under _gate; volatile so Publish reads the latest snapshot without locking.
-        private volatile EventIndexEntry<TEvent>[] _entries = [];
-
-        public IPluginEventAdapter<TEvent> Adapter { get; } = adapter;
-
-        public void Add(EventIndexEntry<TEvent> entry)
-        {
-            lock (_gate)
-            {
-                _entries = [.. _entries, entry];
-            }
-        }
-
-        public void Remove(InstalledKernel kernel)
-        {
-            lock (_gate)
-            {
-                _entries = [.. _entries.Where(entry => !ReferenceEquals(entry.Kernel, kernel))];
-            }
-        }
-
-        public EventIndexEntry<TEvent>[] Snapshot() => _entries;
-    }
-
-    private sealed record EventIndexEntry<TEvent>(
-        EventIndexMatcher<TEvent> Matcher,
-        InstalledKernel Kernel,
-        bool FullyCovered);
 }
 
 /// <summary>

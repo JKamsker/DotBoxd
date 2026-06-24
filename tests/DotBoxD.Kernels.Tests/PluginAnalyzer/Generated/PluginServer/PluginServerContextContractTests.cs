@@ -8,7 +8,7 @@ using RuntimePluginAnalyzer = DotBoxD.Plugins.Analyzer.Analysis.PluginAnalyzer;
 
 namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Generated;
 
-public sealed class PluginServerContextContractTests
+public sealed partial class PluginServerContextContractTests
 {
     private static readonly CSharpParseOptions ParseOptions =
         CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview);
@@ -144,6 +144,29 @@ public sealed class PluginServerContextContractTests
                     => hooks.On<Ping, GameContext>(raw => new GameContext(raw))
                         .Where((e, ctx) => ctx.NativeName == "local")
                         .Run(e => { });
+            }
+            """));
+
+        Assert.Contains(diagnostics, d => d.Id == "DBXK116");
+    }
+
+    [Fact]
+    public async Task Local_context_member_used_in_server_extension_method_reports_DBXK116()
+    {
+        var diagnostics = await AnalyzerDiagnosticsAsync(MinimalServer("""
+            [GeneratePluginServer(Context = typeof(GameContext))]
+            public partial class RemotePluginServer : Sample.Game.IGameWorld;
+
+            public sealed partial class GameContext
+            {
+                [Local]
+                public string NativeName => "local";
+            }
+
+            public static class ExtensionMethods
+            {
+                [ServerExtensionMethod]
+                public static int Read(GameContext ctx) => ctx.NativeName.Length;
             }
             """));
 

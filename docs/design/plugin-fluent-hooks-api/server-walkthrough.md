@@ -258,20 +258,22 @@ A non-default context can still be selected explicitly when a chain needs a diff
 ```csharp
 server.Hooks.On<MonsterAggroEvent, CombatHookContext>(ctx => new CombatHookContext(ctx, world))
     .Where((e, ctx) => ctx.CanReact(e.MonsterId))
-    .RunLocal((e, ctx) => ctx.Telemetry.Count("aggro"));
+    .Select(e => "aggro")
+    .RunLocal(key => Telemetry.Count(key));
 
 server.Subscriptions.On<MonsterAggroEvent, TelemetrySubscriptionContext>(
         ctx => new TelemetrySubscriptionContext(ctx, metrics))
-    .RunLocal((e, ctx) => ctx.Record(e.MonsterId));
+    .Select(e => e.MonsterId)
+    .RunLocal(id => Metrics.Record(id));
 ```
 
 Binding a kernel **class** is no longer a hook-chain terminal: the generated facade records it in
 `Setup(s => s.Hooks.On<TEvent>().Use<TKernel>())` or
 `Setup(s => s.Subscriptions.On<TEvent>().Use<TKernel>())`, and the host wires the installed package with
 `server.Hooks.On<TEvent>().Use(kernel)` / `server.Subscriptions.On<TEvent>().Use(kernel)`. The host
-resolves the adapter through `server.Events.Resolve<TEvent>()` instead of the old hardcoded `WireHook` switch
+resolves the adapter through `server.Events.Resolve<TEvent>()` instead of the old hardcoded adapter-instance switch
 ([GamePluginControlService.cs](../../../samples/GameServer/Examples.GameServer.Server/Ipc/GamePluginControlService.cs)
-is deleted). See [kernel-binding-model.md](kernel-binding-model.md) §4.
+keeps the control-plane install methods). See [kernel-binding-model.md](kernel-binding-model.md) §4.
 
 `server.Subscriptions` is the notification mirror of `server.Hooks` (same chain surface; isolates handler
 exceptions and does not await decisions). See the plugin walkthrough for the Hooks-vs-Subscriptions

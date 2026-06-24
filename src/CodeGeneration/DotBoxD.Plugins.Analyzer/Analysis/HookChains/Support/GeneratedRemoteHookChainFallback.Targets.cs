@@ -34,7 +34,7 @@ internal static partial class GeneratedRemoteHookChainFallback
         }
 
         if (model.GetTypeInfo(expression, cancellationToken).Type is INamedTypeSymbol registryType &&
-            TargetFromRegistryMarker(registryType) is { } marked)
+            TargetFromRegistryMarker(registryType, model.Compilation) is { } marked)
         {
             return marked;
         }
@@ -67,9 +67,23 @@ internal static partial class GeneratedRemoteHookChainFallback
 
         string? context = null;
         if (model.GetTypeInfo(registryAccess.Expression, cancellationToken).Type is INamedTypeSymbol serverType &&
-            HasGeneratePluginServerAttribute(serverType))
+            HasGeneratePluginServerAttribute(serverType, model.Compilation))
         {
-            context = GeneratedContextTypeFullName(serverType);
+            context = GeneratedContextTypeFullName(serverType, model.Compilation);
+            if (context is null)
+            {
+                return null;
+            }
+
+            if (model.GetSymbolInfo(registryAccess, cancellationToken).Symbol is IPropertySymbol property &&
+                property.Type is INamedTypeSymbol registryType)
+            {
+                return TargetFromRegistryMarker(registryType, model.Compilation) is { } marked &&
+                    marked.Kind == kind.Value &&
+                    string.Equals(marked.ServerContextTypeFullName, context, StringComparison.Ordinal)
+                    ? marked
+                    : null;
+            }
         }
 
         context ??= ContextFromOwnedGeneratedServerExpression(registryAccess.Expression, model, cancellationToken);

@@ -9,7 +9,7 @@ internal delegate SandboxEffect ManifestEffectsValidator(
     PluginManifest manifest,
     List<SandboxDiagnostic> diagnostics);
 
-internal static class PluginPreparedPackageValidator
+internal static partial class PluginPreparedPackageValidator
 {
     public static void Validate(
         PluginPackage package,
@@ -156,6 +156,7 @@ internal static class PluginPreparedPackageValidator
         }
 
         ValidateReturnTypes(plan, shouldHandle, handle, handleReturnsValue, diagnostics);
+        ValidateLocalTerminalEffects(package.Manifest.Subscriptions, plan, handle.Id, diagnostics);
         if (!ParametersMatch(shouldHandle.Parameters, handle.Parameters))
         {
             diagnostics.Add(new SandboxDiagnostic("DBXK034", "Kernel entrypoints must use the same parameter shape."));

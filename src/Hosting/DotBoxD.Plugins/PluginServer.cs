@@ -3,7 +3,6 @@ using DotBoxD.Kernels.Policies;
 using DotBoxD.Plugins.Kernel;
 using DotBoxD.Plugins.Runtime;
 using DotBoxD.Plugins.Runtime.Rpc;
-using DotBoxD.Plugins.Runtime.Validation;
 
 namespace DotBoxD.Plugins;
 
@@ -96,11 +95,7 @@ public sealed partial class PluginServer : IDisposable
     {
         ArgumentNullException.ThrowIfNull(package);
         ThrowIfDisposed();
-        return _host.GetRequiredCapabilities(package.Module)
-            .Concat(PluginRequiredCapabilityMetadata.Read(package.Module))
-            .Distinct(StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
+        return _host.GetRequiredCapabilities(package.Module);
     }
 
     public LiveValue<T> BindValue<T>(string name, T initialValue)
@@ -225,9 +220,10 @@ public sealed partial class PluginServer : IDisposable
         ThrowIfDisposed();
         PluginPackageValidator.Validate(package);
         var installPolicy = policy ?? _defaultPolicy;
+        var (sandboxModule, sandboxPolicy) = PrepareSandboxInputs(package, installPolicy);
         var plan = await _host.PrepareAsync(
-                package.Module,
-                PreparePolicyForModule(package, installPolicy),
+                sandboxModule,
+                sandboxPolicy,
                 cancellationToken)
             .ConfigureAwait(false);
         PluginPackageValidator.ValidatePrepared(package, plan, Events, installPolicy);
