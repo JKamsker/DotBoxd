@@ -37,6 +37,19 @@ internal sealed class GamePluginKernelWiring
             $"Plugin '{package.Manifest.PluginId}' subscribes to unsupported event '{subscription}'.");
     }
 
+    public void ValidateRoute(PluginPackage package)
+    {
+        ValidateSupportedEvent(package);
+        if (!RequiresLocalCallback(package.Manifest) || _eventCallback is not null)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Plugin '{package.Manifest.PluginId}' requires remote local-terminal callback routing, but the connected "
+            + "plugin did not provide an IPluginEventCallback.");
+    }
+
     public void WireHook(InstalledKernel kernel)
     {
         // Map by the kernel's declared event so the server stays agnostic of plugin ids. Manifests now
@@ -174,6 +187,10 @@ internal sealed class GamePluginKernelWiring
         => kernel.CallbackSubscriptionId is not null &&
            kernel.Manifest.Subscriptions.Count > 0 &&
            kernel.Manifest.Subscriptions[0].LocalTerminal;
+
+    private static bool RequiresLocalCallback(PluginManifest manifest)
+        => manifest.Subscriptions.Count > 0 &&
+           (manifest.Subscriptions[0].LocalTerminal || manifest.Subscriptions[0].ResultLocalTerminal);
 
     private static string CallbackSubscriptionId(InstalledKernel kernel)
         => kernel.CallbackSubscriptionId ?? throw new InvalidOperationException(

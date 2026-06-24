@@ -75,7 +75,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         ArgumentNullException.ThrowIfNull(packageJson);
 
         var package = PluginPackageJsonSerializer.Import(packageJson);
-        _kernelWiring.ValidateSupportedEvent(package);
+        _kernelWiring.ValidateRoute(package);
         Console.WriteLine($"[server] installing plugin kernel '{package.Manifest.PluginId}'...");
         var policy = ServerPolicy.ForKernel(_server.GetRequiredCapabilities(package));
         var kernel = await _session.InstallAsync(package, policy, ct).ConfigureAwait(false);
@@ -89,7 +89,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         ArgumentNullException.ThrowIfNull(packageJson);
 
         var package = PluginPackageJsonSerializer.Import(packageJson);
-        _kernelWiring.ValidateSupportedEvent(package);
+        _kernelWiring.ValidateRoute(package);
         Console.WriteLine($"[server] installing subscription kernel '{package.Manifest.PluginId}'...");
         var policy = ServerPolicy.ForKernel(_server.GetRequiredCapabilities(package));
         var kernel = await _session.InstallAsync(package, policy, ct).ConfigureAwait(false);
