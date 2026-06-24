@@ -7,11 +7,24 @@ using PluginServer = DotBoxD.Plugins.PluginServer;
 
 namespace DotBoxD.Kernels.Game.Server.Ipc;
 
+/// <summary>
+/// The host's wiring <b>policy</b> for one plugin connection. It declares which events this server supports
+/// (registering their adapters so the framework router can resolve a kernel's subscribed event by name),
+/// validates a package's route, and hands installed kernels to <see cref="PluginServer.WireHook"/> /
+/// <see cref="PluginServer.WireSubscription"/> with host-specific <see cref="WireOptions"/>: the remote-local
+/// callbacks derived from the connection's <see cref="IPluginEventCallback"/>, and the world-owned event index.
+/// <para>
+/// All the per-event / per-terminal routing that used to live here (the event switch, terminal classification,
+/// projection-push wrappers, and index routing) now lives in the framework router — this file is host policy,
+/// not plumbing.
+/// </para>
+/// </summary>
 internal sealed class GamePluginKernelWiring
 {
     private readonly PluginServer _server;
-    private readonly GameWorld _world;
     private readonly IPluginEventCallback? _eventCallback;
+    private readonly WireOptions _hookOptions;
+    private readonly WireOptions _subscriptionOptions;
 
     public GamePluginKernelWiring(
         PluginServer server,
@@ -19,8 +32,29 @@ internal sealed class GamePluginKernelWiring
         IPluginEventCallback? eventCallback)
     {
         _server = server;
-        _world = world;
         _eventCallback = eventCallback;
+
+        // Declare the events this host supports by registering their adapters, so the framework router can
+        // resolve a kernel's subscribed event BY NAME at wire time. The router does not auto-register — this is
+        // the host's explicit event surface, and exactly the set ValidateSupportedEvent allows below.
+        server.Events.Resolve<MonsterAggroEvent>();
+        server.Events.Resolve<AttackEvent>();
+        server.Events.Resolve<RemoteDamageDecisionEvent>();
+
+        RemoteLocalPush? push = eventCallback is null
+            ? null
+            : (subscriptionId, projectedValue, ct) => eventCallback.OnEventAsync(subscriptionId, projectedValue, ct);
+        RemoteLocalResultRequest? result = eventCallback is null
+            ? null
+            : (subscriptionId, contextValue, ct) => eventCallback.OnResultAsync(subscriptionId, contextValue, ct);
+
+        _hookOptions = new WireOptions { LocalPush = push, LocalResult = result };
+        _subscriptionOptions = new WireOptions
+        {
+            LocalPush = push,
+            LocalResult = result,
+            IndexRegistry = world.IndexRegistry
+        };
     }
 
     public void ValidateSupportedEvent(PluginPackage package)
@@ -50,172 +84,15 @@ internal sealed class GamePluginKernelWiring
             + "plugin did not provide an IPluginEventCallback.");
     }
 
-    public void WireHook(InstalledKernel kernel)
-    {
-        // Map by the kernel's declared event so the server stays agnostic of plugin ids. Manifests now
-        // carry the fully-qualified event name; match on the simple-name tail so qualified and legacy
-        // simple-name manifests both wire correctly.
-        var subscription = SubscribedEvent(kernel.Manifest);
-        if (MatchesEvent<MonsterAggroEvent>(subscription))
-        {
-            WireHookFor<MonsterAggroEvent>(kernel);
-            return;
-        }
+    // The framework router classifies the verified terminal and selects Use / UseProjecting / UseResult /
+    // UseProjectingResult; the host only supplies the callbacks and (for subscriptions) the world index.
+    public void WireHook(InstalledKernel kernel) => _server.WireHook(kernel, _hookOptions);
 
-        if (MatchesEvent<AttackEvent>(subscription))
-        {
-            WireHookFor<AttackEvent>(kernel);
-            return;
-        }
-
-        if (MatchesEvent<RemoteDamageDecisionEvent>(subscription))
-        {
-            WireHookFor<RemoteDamageDecisionEvent>(kernel);
-            return;
-        }
-
-        throw new InvalidOperationException(
-            $"Plugin '{kernel.Manifest.PluginId}' subscribes to unsupported event '{subscription}'.");
-    }
-
-    public void WireSubscription(InstalledKernel kernel)
-    {
-        var subscription = SubscribedEvent(kernel.Manifest);
-        if (MatchesEvent<MonsterAggroEvent>(subscription))
-        {
-            WireSubscriptionFor<MonsterAggroEvent>(kernel);
-            return;
-        }
-
-        if (MatchesEvent<AttackEvent>(subscription))
-        {
-            WireSubscriptionFor<AttackEvent>(kernel);
-            return;
-        }
-
-        throw new InvalidOperationException(
-            $"Plugin '{kernel.Manifest.PluginId}' subscribes to unsupported event '{subscription}'.");
-    }
-
-    // A local-terminal (RunLocal) chain projects server-side and pushes the projected value back to the
-    // plugin's native delegate; an ordinary chain runs entirely server-side via Use(kernel).
-    private void WireHookFor<TEvent>(InstalledKernel kernel)
-    {
-        var pipeline = _server.Hooks.On<TEvent>();
-        if (IsResultHook(kernel.Manifest))
-        {
-            var priority = Priority(kernel.Manifest);
-            var resultType = HookResultTypeFor<TEvent>(kernel.Manifest);
-            if (IsResultLocalTerminal(kernel))
-            {
-                pipeline.UseProjectingResult(
-                    kernel,
-                    CallbackSubscriptionId(kernel),
-                    resultType,
-                    LocalResultRequest(),
-                    priority);
-            }
-            else
-            {
-                pipeline.UseResult(kernel, resultType, priority);
-            }
-        }
-        else if (IsLocalTerminal(kernel))
-        {
-            pipeline.UseProjecting(kernel, CallbackSubscriptionId(kernel), LocalPush());
-        }
-        else
-        {
-            pipeline.Use(kernel);
-        }
-    }
-
-    private void WireSubscriptionFor<TEvent>(InstalledKernel kernel)
-    {
-        // A local-terminal (RunLocal) chain must keep the projection on the broad pipeline so the host can
-        // capture the projected value and push it back; index routing would run the kernel and discard it.
-        if (IsLocalTerminal(kernel))
-        {
-            _server.Subscriptions.On<TEvent>().UseProjecting(kernel, CallbackSubscriptionId(kernel), LocalPush());
-            return;
-        }
-
-        if (!TryRouteThroughIndex<TEvent>(kernel))
-        {
-            _server.Subscriptions.On<TEvent>().Use(kernel);
-        }
-    }
-
-    private RemoteLocalPush LocalPush()
-    {
-        var callback = _eventCallback ?? throw new InvalidOperationException(
-            "the connected plugin did not provide an IPluginEventCallback; a remote RunLocal chain requires it.");
-        return (subscriptionId, projectedValue, ct) => callback.OnEventAsync(subscriptionId, projectedValue, ct);
-    }
-
-    private RemoteLocalResultRequest LocalResultRequest()
-    {
-        var callback = _eventCallback ?? throw new InvalidOperationException(
-            "the connected plugin did not provide an IPluginEventCallback; a remote RegisterLocal chain requires it.");
-        return (subscriptionId, contextValue, ct) => callback.OnResultAsync(subscriptionId, contextValue, ct);
-    }
-
-    // Issue #49: indexed subscriptions are dispatched through the world's EventIndexRegistry so events are
-    // prefiltered before verified IR runs. Returns false when no usable index metadata is present.
-    private bool TryRouteThroughIndex<TEvent>(InstalledKernel kernel)
-    {
-        if (kernel.Manifest.Subscriptions.Count == 0)
-        {
-            return false;
-        }
-
-        var subscription = kernel.Manifest.Subscriptions[0];
-        if (subscription.IndexedPredicates.Count == 0)
-        {
-            return false;
-        }
-
-        var adapter = _server.Events.Resolve<TEvent>();
-        return _world.IndexRegistry.Register(
-            adapter,
-            kernel,
-            subscription.IndexedPredicates,
-            subscription.IndexCoversPredicate);
-    }
-
-    private static bool IsLocalTerminal(InstalledKernel kernel)
-        => kernel.CallbackSubscriptionId is not null &&
-           kernel.Manifest.Subscriptions.Count > 0 &&
-           kernel.Manifest.Subscriptions[0].LocalTerminal;
+    public void WireSubscription(InstalledKernel kernel) => _server.WireSubscription(kernel, _subscriptionOptions);
 
     private static bool RequiresLocalCallback(PluginManifest manifest)
         => manifest.Subscriptions.Count > 0 &&
            (manifest.Subscriptions[0].LocalTerminal || manifest.Subscriptions[0].ResultLocalTerminal);
-
-    private static string CallbackSubscriptionId(InstalledKernel kernel)
-        => kernel.CallbackSubscriptionId ?? throw new InvalidOperationException(
-            $"Plugin '{kernel.Manifest.PluginId}' requested local-terminal routing without a callback route id.");
-
-    private static bool IsResultHook(PluginManifest manifest)
-        => manifest.Subscriptions.Count > 0 && manifest.Subscriptions[0].ResultType is not null;
-
-    private static bool IsResultLocalTerminal(InstalledKernel kernel)
-        => kernel.CallbackSubscriptionId is not null &&
-           kernel.Manifest.Subscriptions.Count > 0 &&
-           kernel.Manifest.Subscriptions[0].ResultLocalTerminal;
-
-    private static int Priority(PluginManifest manifest)
-        => manifest.Subscriptions.Count > 0 ? manifest.Subscriptions[0].Priority : 0;
-
-    private static Type HookResultTypeFor<TEvent>(PluginManifest manifest)
-    {
-        var hook = (DotBoxD.Abstractions.HookAttribute?)Attribute.GetCustomAttribute(
-            typeof(TEvent),
-            typeof(DotBoxD.Abstractions.HookAttribute),
-            inherit: false);
-        return hook?.ResultType ?? throw new InvalidOperationException(
-            $"Plugin '{manifest.PluginId}' installed a result hook for '{typeof(TEvent).FullName}', but the event type has no [Hook] result declaration.");
-    }
 
     private static string? SubscribedEvent(PluginManifest manifest)
         => manifest.Subscriptions.Count > 0 ? manifest.Subscriptions[0].Event : null;
@@ -233,9 +110,9 @@ internal sealed class GamePluginKernelWiring
             return true;
         }
 
-        var hook = (DotBoxD.Abstractions.HookAttribute?)Attribute.GetCustomAttribute(
+        var hook = (HookAttribute?)Attribute.GetCustomAttribute(
             typeof(TEvent),
-            typeof(DotBoxD.Abstractions.HookAttribute),
+            typeof(HookAttribute),
             inherit: false);
         return hook is not null &&
             string.Equals(eventName, hook.Name, StringComparison.Ordinal);

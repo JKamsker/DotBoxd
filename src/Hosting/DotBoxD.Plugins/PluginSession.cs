@@ -71,6 +71,68 @@ public sealed class PluginSession : IDisposable, IAsyncDisposable
     }
 
     /// <summary>
+    /// Installs an event-kernel <paramref name="package"/> owned by this session and wires it in one step,
+    /// rolling the install back if validation or wiring fails — the install ceremony every host used to
+    /// hand-write. <paramref name="validate"/> runs <b>before</b> install for host route checks;
+    /// <paramref name="policy"/> overrides the default install policy; <paramref name="wire"/> is the host's
+    /// routing choice (typically <see cref="PluginServer.WireHook"/> or
+    /// <see cref="PluginServer.WireSubscription"/> with host wire options). On any failure the just-installed
+    /// kernel is uninstalled by its exact install id — so a same-id incumbent is never disturbed — and the
+    /// original exception is rethrown.
+    /// </summary>
+    public async ValueTask<InstalledKernel> InstallAndWireAsync(
+        PluginPackage package,
+        Action<InstalledKernel> wire,
+        Func<PluginPackage, SandboxPolicy>? policy = null,
+        Action<PluginPackage>? validate = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(package);
+        ArgumentNullException.ThrowIfNull(wire);
+
+        validate?.Invoke(package);
+
+        InstalledKernel? kernel = null;
+        try
+        {
+            kernel = await InstallAsync(package, policy?.Invoke(package), cancellationToken).ConfigureAwait(false);
+            wire(kernel);
+            return kernel;
+        }
+        catch
+        {
+            if (kernel is not null)
+            {
+                RollBack(kernel);
+            }
+
+            throw;
+        }
+    }
+
+    private void RollBack(InstalledKernel kernel)
+    {
+        try
+        {
+            _gate.Wait();
+            try
+            {
+                _ownedInstallIds.Remove(kernel.InstallId);
+            }
+            finally
+            {
+                _gate.Release();
+            }
+
+            _server.UninstallOwned(this, kernel.InstallId);
+        }
+        catch
+        {
+            // Best-effort rollback: the original install/wire failure is the actionable error and is rethrown.
+        }
+    }
+
+    /// <summary>
     /// Updates live settings for a kernel this session owns. Rejects ids the session does not own so
     /// one plugin cannot tune another plugin's kernel.
     /// </summary>

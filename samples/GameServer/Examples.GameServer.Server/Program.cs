@@ -1,6 +1,7 @@
 using DotBoxD.Kernels.Game.Server.Abstractions.Events;
 using DotBoxD.Kernels.Game.Server.Ipc;
 using DotBoxD.Kernels.Game.Server.Simulation;
+using DotBoxD.Pushdown.Services;
 using PluginServer = DotBoxD.Plugins.PluginServer;
 
 namespace DotBoxD.Kernels.Game.Server;
@@ -165,14 +166,14 @@ internal static class Program
         return 0;
     }
 
-    private static async Task<int> FailAsync(GamePluginHost host, string message)
+    private static async Task<int> FailAsync(PluginConnectionHost<GamePluginControlService> host, string message)
     {
         await Console.Error.WriteLineAsync($"[server] {message}").ConfigureAwait(false);
         await host.StopAsync().ConfigureAwait(false);
         return 1;
     }
 
-    private static async Task<int> FailPluginAsync(GamePluginHost host, Process pluginProcess, string message)
+    private static async Task<int> FailPluginAsync(PluginConnectionHost<GamePluginControlService> host, Process pluginProcess, string message)
     {
         KillProcessTree(pluginProcess);
         return await FailAsync(host, message).ConfigureAwait(false);

@@ -11,6 +11,8 @@ public async ValueTask ModifySettingsAsync( IReadOnlyDictionary<string, object?>
 public async ValueTask UpdateSettingsAsync( string pluginId, IReadOnlyDictionary<string, object?> values, bool atomic = false, CancellationToken cancellationToken = default)
 public async ValueTask<bool> ShouldHandleAsync<TEvent>( IPluginEventAdapter<TEvent> adapter, TEvent e, CancellationToken cancellationToken = default)
 public async ValueTask<byte[]> DispatchResultAsync( string subscriptionId, ReadOnlyMemory<byte> contextValue, HookContext context, CancellationToken cancellationToken = default)
+public async ValueTask<byte[]> InvokeServerExtensionRpcAsync( byte[] arguments, CancellationToken cancellationToken = default)
+public async ValueTask<InstalledKernel> InstallAndWireAsync( PluginPackage package, Action<InstalledKernel> wire, Func<PluginPackage, SandboxPolicy>? policy = null, Action<PluginPackage>? validate = null, CancellationToken cancellationToken = default)
 public async ValueTask<InstalledKernel> InstallAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public async ValueTask<InstalledKernel> InstallServerExtensionAsync( PluginPackage package, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)
 public async ValueTask<SandboxValue> InvokeServerExtensionAsync( IReadOnlyList<SandboxValue> arguments, CancellationToken cancellationToken = default)
@@ -27,9 +29,11 @@ public bool ReadBool()
 public bool Register<TEvent>( IPluginEventAdapter<TEvent> adapter, InstalledKernel kernel, IReadOnlyList<IndexedPredicate> predicates, bool indexCoversPredicate)
 public bool ResultLocalTerminal { get; init; }
 public bool TryGet(string pluginId, [MaybeNullWhen(false)] out InstalledKernel kernel)
+public bool TryResolveErased(string eventName, out IErasedPluginEventAdapter adapter)
 public bool Uninstall(string pluginId)
 public bool UninstallPool(InstalledKernelPool pool)
 public bool Unregister(string subscriptionId)
+public bool UseIndex { get; init; } = true
 public class HookStage<TEvent, TCurrent, TContext>
 public class ServerExtensionProxy : DispatchProxy
 public class SubscriptionPipeline<TEvent, TContext> : ISubscriptionPipeline<TEvent>
@@ -58,6 +62,11 @@ public enum KernelRpcValueKind.Map = 8
 public enum KernelRpcValueKind.Record = 7
 public enum KernelRpcValueKind.String = 5
 public enum KernelRpcValueKind.Unit = 0
+public enum KernelWireKind
+public enum KernelWireKind.Plain
+public enum KernelWireKind.Projecting
+public enum KernelWireKind.ProjectingResult
+public enum KernelWireKind.Result
 public enum LiveUpdateMode
 public enum LiveUpdateMode.AsyncSet = 1
 public enum LiveUpdateMode.Sync = 0
@@ -72,10 +81,12 @@ public enum PluginDiagnosticPhase.RuntimeEntrypoint
 public enum SubscriptionDeliveryStage
 public enum SubscriptionDeliveryStage.Filter
 public enum SubscriptionDeliveryStage.Handler
+public EventIndexRegistry? IndexRegistry { get; init; }
 public EventIndexRegistry(Action<SubscriptionDeliveryFault>? onFault = null)
 public EventIndexStats Stats => new(
 public Exception? LastAsyncUpdateError => _pendingLiveUpdates.LastError
 public Exception? LastAsyncUpdateError => Kernel.LastAsyncUpdateError
+public Func<KernelWireTerminal, KernelWireTerminal>? ClassifyOverride { get; init; }
 public Guid ReadGuid()
 public HookPipeline<TEvent, HookContext> On<TEvent>()
 public HookPipeline<TEvent, HookContext> On<TEvent>(IPluginEventAdapter<TEvent> adapter)
@@ -152,6 +163,7 @@ public int ReadInt32()
 public int ReadListHeader()
 public int ReadMapHeader()
 public int ReadRecordHeader()
+public interface IErasedPluginEventAdapter
 public interface ILiveSetting
 public interface IServerExtensionClientRegistry :
 public interface IServerExtensionWireClient : DotBoxD.Abstractions.IServerExtensionWireClient
@@ -194,8 +206,10 @@ public PluginPackage Package { get; }
 public PluginServer RegisterEventAdapter<TEvent>(IPluginEventAdapter<TEvent> adapter)
 public PluginSession CreateSession()
 public readonly record struct EventIndexStats(long Considered, long Prefiltered, long Dispatched)
+public readonly record struct KernelWireTerminal( KernelWireKind Kind, string? CallbackSubscriptionId, Type? ResultType, int Priority)
 public readonly record struct ResultHookFault(Type EventType, Exception Exception)
 public readonly record struct SubscriptionDeliveryFault( Type EventType, SubscriptionDeliveryStage Stage, Exception Exception)
+public readonly record struct WireCallbacks(RemoteLocalPush? LocalPush, RemoteLocalResultRequest? LocalResult)
 public readonly struct KernelRpcValue
 public ref struct KernelRpcPayloadReader
 public RemoteHookPipeline<TEvent, TContext> On<TEvent, TContext>(Func<HookContext, TContext> createContext)
@@ -351,6 +365,8 @@ public RemoteHookStage<TEvent, TNext> Select<TNext>(Func<TCurrent, HookContext, 
 public RemoteHookStage<TEvent, TNext> Select<TNext>(Func<TCurrent, TNext> projection)
 public RemoteHookStage<TEvent, TNext> Select<TNext>(Func<TEvent, HookContext, TNext> projection)
 public RemoteHookStage<TEvent, TNext> Select<TNext>(Func<TEvent, TNext> projection)
+public RemoteLocalPush? LocalPush { get; init; }
+public RemoteLocalResultRequest? LocalResult { get; init; }
 public RemoteSubscriptionPipeline<TEvent, TContext> On<TEvent, TContext>( Func<HookContext, TContext> createContext)
 public RemoteSubscriptionPipeline<TEvent, TContext> Run(Action<TCurrent, TContext> handler)
 public RemoteSubscriptionPipeline<TEvent, TContext> Run(Action<TCurrent> handler)
@@ -491,6 +507,7 @@ public sealed record PluginDiagnosticReference( string Code, PluginDiagnosticPha
 public sealed record PluginExecutionObservation( string Entrypoint, ExecutionMode RequestedMode, ExecutionMode ActualMode, bool Succeeded, SandboxErrorCode? ErrorCode, SandboxErrorCode? FallbackReason, string CacheStatus, string? RuntimeForm, string? CacheKey, string? ArtifactHash, string? MaterializationStatus)
 public sealed record PluginManifest( string PluginId, string Contract, ExecutionMode Mode, IReadOnlyList<string> Effects, IReadOnlyList<LiveSettingDefinition> LiveSettings, IReadOnlyList<HookSubscriptionManifest> Subscriptions)
 public sealed record PluginPackage( PluginManifest Manifest, SandboxModule Module, KernelEntrypoints Entrypoints)
+public sealed record WireOptions
 public static BindingDescriptor CreateSend(IPluginMessageSink sink)
 public static bool TryGetReference(string code, out PluginDiagnosticReference reference)
 public static byte[] EncodeArguments(IReadOnlyList<KernelRpcValue> arguments)
@@ -635,3 +652,5 @@ public void SetMany(IReadOnlyDictionary<string, object?> values)
 public void SetObject(object? value)
 public void SetObject(string name, object? value)
 public void Unregister(InstalledKernel kernel)
+public void WireHook(InstalledKernel kernel, WireOptions? options = null)
+public void WireSubscription(InstalledKernel kernel, WireOptions? options = null)

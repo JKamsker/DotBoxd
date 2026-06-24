@@ -3,28 +3,29 @@ namespace DotBoxD.Kernels.Tests.Samples.GameServer;
 public sealed class GamePluginControlServiceSourceTests
 {
     [Fact]
-    public void InvokeServerExtensionAsync_uses_owner_checked_kernel_snapshot()
+    public void InvokeServerExtensionAsync_is_owner_checked_before_dispatch()
     {
-        var source = File.ReadAllText(GamePluginServerExtensionInvokerPath());
-        var method = ExtractInvokeAsync(source);
+        var source = File.ReadAllText(GamePluginControlServicePath());
+        var method = ExtractInvokeServerExtensionAsync(source);
 
+        // The host must gate on session ownership, never reach for the kernel by id without an owner check.
         Assert.DoesNotContain("_server.Kernels.Get(pluginId)", method, StringComparison.Ordinal);
-        Assert.Contains("ReferenceEquals(kernel.OwnerId, _session)", method, StringComparison.Ordinal);
+        Assert.Contains("_session.Owns(pluginId)", method, StringComparison.Ordinal);
     }
 
-    private static string ExtractInvokeAsync(string source)
+    private static string ExtractInvokeServerExtensionAsync(string source)
     {
-        const string startMarker = "public async ValueTask<byte[]> InvokeAsync";
-        const string endMarker = "private static SandboxFunction RpcEntrypoint";
+        const string startMarker = "ValueTask<byte[]> InvokeServerExtensionAsync";
+        const string endMarker = "public ValueTask UpdateSettingsAsync";
         var start = source.IndexOf(startMarker, StringComparison.Ordinal);
         var end = source.IndexOf(endMarker, start, StringComparison.Ordinal);
 
-        Assert.True(start >= 0, "InvokeAsync method was not found.");
-        Assert.True(end > start, "RpcEntrypoint method marker was not found.");
+        Assert.True(start >= 0, "InvokeServerExtensionAsync method was not found.");
+        Assert.True(end > start, "UpdateSettingsAsync method marker was not found.");
         return source[start..end];
     }
 
-    private static string GamePluginServerExtensionInvokerPath()
+    private static string GamePluginControlServicePath()
         => Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
@@ -36,5 +37,5 @@ public sealed class GamePluginControlServiceSourceTests
             "GameServer",
             "Examples.GameServer.Server",
             "Ipc",
-            "GamePluginServerExtensionInvoker.cs"));
+            "GamePluginControlService.cs"));
 }

@@ -2,7 +2,9 @@
 # Package: DotBoxD.Pushdown.Services
 # Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
 
+public sealed class PluginConnectionHost<TConnection> : IAsyncDisposable
 public sealed record NamedPipeTransportOptions(bool AllowUnsafeLowEntropyName = false)
+public static async Task<PluginConnectionHost<TConnection>> StartAsync( PluginServer server, string pipeName, Func<RpcPeer, PluginSession, TConnection> configure, RpcPeerOptions? options = null)
 public static class RpcMessagePackIpc
 public static NamedPipeTransportOptions Default { get; } = new()
 public static NamedPipeTransportOptions UnsafeDevelopment { get; } = new(AllowUnsafeLowEntropyName: true)
@@ -16,3 +18,8 @@ public static Task<RpcPeerSession> ConnectNamedPipeAsync( string pipeName, Named
 public static Task<RpcPeerSession> ConnectNamedPipeAsync( string pipeName, RpcPeerOptions? options = null, CancellationToken cancellationToken = default)
 public static Task<RpcPeerSession> ConnectNamedPipeAsync( string serverName, string pipeName, NamedPipeTransportOptions namedPipeOptions, RpcPeerOptions? options = null, CancellationToken cancellationToken = default)
 public static Task<RpcPeerSession> ConnectNamedPipeAsync( string serverName, string pipeName, RpcPeerOptions? options = null, CancellationToken cancellationToken = default)
+public string PipeName { get; }
+public Task Disconnected => _disconnected.Task
+public Task StopAsync() => _host.StopAsync()
+public Task<TConnection> Connected => _connected.Task
+public ValueTask DisposeAsync() => _host.DisposeAsync()
