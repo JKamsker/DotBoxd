@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Operations;
 namespace DotBoxD.Plugins.Analyzer.Analysis;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class PluginAnalyzer : DiagnosticAnalyzer
+public sealed partial class PluginAnalyzer : DiagnosticAnalyzer
 {
     public static readonly DiagnosticDescriptor ForbiddenHostApiRule = new(
         "DBXK001",
@@ -31,12 +31,16 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
         helpLinkUri: PluginAnalyzerDiagnostics.ShippedRulesHelpLinkBase + "DBXK020");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
-        => ImmutableArray.Create(ForbiddenHostApiRule, LiveSettingTypeRule);
+        => ImmutableArray.Create(
+            ForbiddenHostApiRule,
+            LiveSettingTypeRule,
+            PluginAnalyzerDiagnostics.LocalContextMemberRule);
 
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
+        context.RegisterSymbolAction(AnalyzeMethod, SymbolKind.Method);
         context.RegisterSymbolAction(AnalyzeProperty, SymbolKind.Property);
         context.RegisterCompilationStartAction(startContext =>
         {
@@ -50,9 +54,25 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
         });
     }
 
+    private static void AnalyzeMethod(SymbolAnalysisContext context)
+    {
+        var method = (IMethodSymbol)context.Symbol;
+        if (!HasAttribute(method, DotBoxDMetadataNames.LocalAttribute))
+        {
+            return;
+        }
+
+        ValidateLocalMember(context, method, method);
+    }
+
     private static void AnalyzeProperty(SymbolAnalysisContext context)
     {
         var property = (IPropertySymbol)context.Symbol;
+        if (HasAttribute(property, DotBoxDMetadataNames.LocalAttribute))
+        {
+            ValidateLocalMember(context, property, property);
+        }
+
         if (!HasAttribute(property, DotBoxDMetadataNames.LiveSettingAttribute))
         {
             return;
@@ -77,6 +97,7 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
 
         ReportAndRecordIfForbidden(context, helperGraph, method, invocation.TargetMethod.ContainingType);
         helperGraph.RecordCall(method, invocation.TargetMethod, context.Operation.Syntax.GetLocation());
+        ReportLocalUseIfInvalid(context, invocation.TargetMethod);
     }
 
     private static void AnalyzeObjectCreation(OperationAnalysisContext context, ForbiddenHelperCallGraph helperGraph)
@@ -97,6 +118,7 @@ public sealed class PluginAnalyzer : DiagnosticAnalyzer
         }
 
         ReportAndRecordIfForbidden(context, helperGraph, method, ((IPropertyReferenceOperation)context.Operation).Property.ContainingType);
+        ReportLocalUseIfInvalid(context, ((IPropertyReferenceOperation)context.Operation).Property);
     }
 
     private static void AnalyzeFieldReference(OperationAnalysisContext context, ForbiddenHelperCallGraph helperGraph)

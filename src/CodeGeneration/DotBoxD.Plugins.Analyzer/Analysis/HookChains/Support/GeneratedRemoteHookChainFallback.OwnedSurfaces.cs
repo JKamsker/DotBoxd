@@ -25,7 +25,10 @@ internal static partial class GeneratedRemoteHookChainFallback
                     continue;
                 }
 
-                yield return OwnedGeneratedSurface.Create(serverType, worldType);
+                if (OwnedGeneratedSurface.Create(serverType, worldType) is { } surface)
+                {
+                    yield return surface;
+                }
             }
         }
     }
@@ -65,8 +68,14 @@ internal static partial class GeneratedRemoteHookChainFallback
         string SubscriptionRegistryFullName,
         string ContextFullName)
     {
-        public static OwnedGeneratedSurface Create(INamedTypeSymbol serverType, INamedTypeSymbol worldType)
+        public static OwnedGeneratedSurface? Create(INamedTypeSymbol serverType, INamedTypeSymbol worldType)
         {
+            var contextFullName = GeneratedContextTypeFullName(serverType);
+            if (contextFullName is null)
+            {
+                return null;
+            }
+
             var ns = serverType.ContainingNamespace.IsGlobalNamespace
                 ? string.Empty
                 : serverType.ContainingNamespace.ToDisplayString();
@@ -81,7 +90,7 @@ internal static partial class GeneratedRemoteHookChainFallback
                 prefix + hookRegistryName,
                 subscriptionRegistryName,
                 prefix + subscriptionRegistryName,
-                GeneratedContextTypeFullName(serverType));
+                contextFullName);
         }
     }
 }

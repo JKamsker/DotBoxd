@@ -1,5 +1,4 @@
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
-using DotBoxD.Plugins.Analyzer.Analysis.PluginServer;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -24,14 +23,8 @@ internal static partial class GeneratedRemoteHookChainFallback
         return target.ServerContextTypeFullName;
     }
 
-    private static string GeneratedContextTypeFullName(INamedTypeSymbol serverType)
-        => ExplicitContextTypeFullName(serverType) ?? ConventionContextTypeFullName(serverType);
-
-    private static string ConventionContextTypeFullName(INamedTypeSymbol serverType)
-        => serverType.ContainingNamespace.IsGlobalNamespace
-            ? "global::" + PluginServerFacadeNameFormatter.ContextName(serverType.Name)
-            : "global::" + serverType.ContainingNamespace.ToDisplayString() + "." +
-              PluginServerFacadeNameFormatter.ContextName(serverType.Name);
+    private static string? GeneratedContextTypeFullName(INamedTypeSymbol serverType)
+        => ExplicitContextTypeFullName(serverType);
 
     private static string? ExplicitContextTypeFullName(INamedTypeSymbol serverType)
         => GeneratePluginServerAttribute(serverType)?

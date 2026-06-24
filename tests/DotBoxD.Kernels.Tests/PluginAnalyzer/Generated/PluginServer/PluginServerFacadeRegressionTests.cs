@@ -78,15 +78,17 @@ public sealed class PluginServerFacadeRegressionTests
                 using DotBoxD.Abstractions;
                 using Regression.Game;
 
-                [GeneratePluginServer]
+                [GeneratePluginServer(Context = typeof(RemotePluginContext))]
                 public partial class RemotePluginServer : IGameWorldAccess;
+
+                public sealed partial class RemotePluginContext;
             }
             """);
         var generated = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
 
         Assert.Empty(outputCompilation.GetDiagnostics()
             .Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error));
-        Assert.Contains("public sealed partial class RemotePluginContext", generated, StringComparison.Ordinal);
+        Assert.Contains("public partial class RemotePluginContext", generated, StringComparison.Ordinal);
         Assert.Contains("RemotePluginHookRegistry Hooks { get; }", generated, StringComparison.Ordinal);
         Assert.Contains("RemotePluginSubscriptionRegistry Subscriptions { get; }", generated, StringComparison.Ordinal);
         Assert.Contains("public global::Regression.Game.IMonsterControl Monsters", generated, StringComparison.Ordinal);
@@ -149,8 +151,10 @@ public sealed class PluginServerFacadeRegressionTests
                 using DotBoxD.Abstractions;
                 using Collision.Two;
 
-                [GeneratePluginServer]
+                [GeneratePluginServer(Context = typeof(RemotePluginContext))]
                 public partial class RemotePluginServer : IGameWorldAccess;
+
+                public sealed partial class RemotePluginContext;
             }
             """);
         var generated = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));

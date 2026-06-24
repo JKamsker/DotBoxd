@@ -1,5 +1,4 @@
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
-using DotBoxD.Plugins.Analyzer.Analysis.PluginServer;
 using Microsoft.CodeAnalysis;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
@@ -25,7 +24,7 @@ internal static class RpcKernelContextParameter
         }
 
         return SymbolEqualityComparer.Default.Equals(named.ContainingAssembly, compilation.Assembly)
-            ? IsSameCompilationConventionContext(named, compilation)
+            ? IsSameCompilationGeneratedContext(named, compilation)
             : IsMarkedGeneratedContext(named);
     }
 
@@ -116,14 +115,13 @@ internal static class RpcKernelContextParameter
         return false;
     }
 
-    private static bool IsSameCompilationConventionContext(INamedTypeSymbol type, Compilation compilation)
+    private static bool IsSameCompilationGeneratedContext(INamedTypeSymbol type, Compilation compilation)
     {
-        var contextName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         foreach (var symbol in compilation.GetSymbolsWithName(static _ => true, SymbolFilter.Type))
         {
             if (symbol is INamedTypeSymbol server &&
-                HasGeneratePluginServerAttribute(server) &&
-                string.Equals(ConventionContextTypeFullName(server), contextName, StringComparison.Ordinal))
+                GeneratedContextType(server) is { } generatedContext &&
+                SymbolEqualityComparer.Default.Equals(generatedContext, type))
             {
                 return true;
             }
@@ -132,27 +130,28 @@ internal static class RpcKernelContextParameter
         return false;
     }
 
-    private static bool HasGeneratePluginServerAttribute(INamedTypeSymbol type)
+    private static INamedTypeSymbol? GeneratedContextType(INamedTypeSymbol type)
     {
         foreach (var attribute in type.GetAttributes())
         {
-            if (string.Equals(
-                attribute.AttributeClass?.ToDisplayString(),
-                DotBoxDMetadataNames.GeneratePluginServerAttribute,
-                StringComparison.Ordinal))
+            if (!string.Equals(
+                    attribute.AttributeClass?.ToDisplayString(),
+                    DotBoxDMetadataNames.GeneratePluginServerAttribute,
+                    StringComparison.Ordinal))
             {
-                return true;
+                continue;
+            }
+
+            foreach (var argument in attribute.NamedArguments)
+            {
+                if (string.Equals(argument.Key, "Context", StringComparison.Ordinal) &&
+                    argument.Value.Value is INamedTypeSymbol contextType)
+                {
+                    return contextType;
+                }
             }
         }
 
-        return false;
-    }
-
-    private static string ConventionContextTypeFullName(INamedTypeSymbol server)
-    {
-        var typeName = PluginServerFacadeNameFormatter.ContextName(server.Name);
-        return server.ContainingNamespace.IsGlobalNamespace
-            ? "global::" + typeName
-            : "global::" + server.ContainingNamespace.ToDisplayString() + "." + typeName;
+        return null;
     }
 }

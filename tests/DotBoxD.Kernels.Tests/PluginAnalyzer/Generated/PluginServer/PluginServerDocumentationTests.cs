@@ -86,8 +86,10 @@ public sealed class PluginServerDocumentationTests
                 using DotBoxD.Abstractions;
                 using DotBoxD.Kernels.Game.Server.Abstractions;
 
-                [GeneratePluginServer]
+                [GeneratePluginServer(Context = typeof(RemotePluginContext))]
                 public partial class RemotePluginServer : IGameWorldAccess;
+
+                public sealed partial class RemotePluginContext;
             }
             """);
         var generated = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));

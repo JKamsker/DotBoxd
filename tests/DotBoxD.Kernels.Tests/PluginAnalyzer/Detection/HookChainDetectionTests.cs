@@ -3,8 +3,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using PluginPackageGenerator = DotBoxD.Plugins.Analyzer.Analysis.PluginPackageGenerator;
-using RuntimePluginAnalyzer = DotBoxD.Plugins.Analyzer.Analysis.PluginAnalyzer;
 using PluginServer = DotBoxD.Plugins.PluginServer;
+using RuntimePluginAnalyzer = DotBoxD.Plugins.Analyzer.Analysis.PluginAnalyzer;
 
 namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Detection;
 

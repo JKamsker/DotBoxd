@@ -8,7 +8,8 @@ internal static partial class HookChainModelFactory
     private static HookChainCreateResult? NotLoweredDiagnostic(
         InvocationExpressionSyntax invocation,
         SemanticModel model,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? detail = null)
     {
         if (TryRemoteRunLocalLocation(invocation, model, cancellationToken, out var location))
         {
@@ -29,7 +30,10 @@ internal static partial class HookChainModelFactory
         {
             return new HookChainCreateResult(
                 null,
-                new HookChainNotLoweredDiagnostic(runLocation, HookChainNotLoweredKind.RunChain));
+                new HookChainNotLoweredDiagnostic(
+                    runLocation,
+                    HookChainNotLoweredKind.RunChain,
+                    Detail: detail ?? string.Empty));
         }
 
         return null;

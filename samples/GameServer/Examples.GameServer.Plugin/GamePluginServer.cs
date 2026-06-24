@@ -9,7 +9,7 @@ namespace DotBoxD.Kernels.Game.Plugin;
 /// settings (<c>Get</c>), <c>IGameWorldServer</c>, and <c>GamePluginServerBuilder</c>. See
 /// interface-driven-plugin-server.md §7.</para>
 /// </summary>
-[GeneratePluginServer]
+[GeneratePluginServer(Context = typeof(GamePluginContext))]
 public partial class GamePluginServer : IGameWorldAccess;
 
 // Optional custom wiring — uncomment to run after the controls connect (inside StartAsync):

@@ -49,39 +49,6 @@ internal static partial class GeneratedRemoteHookChainFallback
             TargetFromLocalAlias(expression, model, cancellationToken, depth);
     }
 
-    private static GeneratedRemoteHookChainTarget? TargetFromRegistryMarker(INamedTypeSymbol registryType)
-    {
-        foreach (var attribute in registryType.GetAttributes())
-        {
-            if (!string.Equals(
-                    attribute.AttributeClass?.ToDisplayString(),
-                    RegistryAttributeName,
-                    StringComparison.Ordinal) ||
-                attribute.ConstructorArguments.Length != 3 ||
-                attribute.ConstructorArguments[2].Value is not INamedTypeSymbol contextType)
-            {
-                continue;
-            }
-
-            var kind = attribute.ConstructorArguments[0].Value switch
-            {
-                0 => GeneratedRemoteHookChainKind.Hook,
-                1 => GeneratedRemoteHookChainKind.Subscription,
-                _ => (GeneratedRemoteHookChainKind?)null
-            };
-            if (kind is not { } registryKind)
-            {
-                continue;
-            }
-
-            return new GeneratedRemoteHookChainTarget(
-                registryKind,
-                contextType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
-        }
-
-        return null;
-    }
-
     private static GeneratedRemoteHookChainTarget? TargetFromGeneratedServerMember(
         MemberAccessExpressionSyntax registryAccess,
         SemanticModel model,

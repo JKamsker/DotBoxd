@@ -70,8 +70,10 @@ public sealed class PluginServerRemoteLocalProvideShapeTests
                 using DotBoxD.Abstractions;
                 using MissingResult.Game;
 
-                [GeneratePluginServer]
+                [GeneratePluginServer(Context = typeof(RemotePluginContext))]
                 public partial class RemotePluginServer : IGameWorldAccess;
+
+                public sealed partial class RemotePluginContext;
             }
             """);
         var generated = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
@@ -146,8 +148,10 @@ public sealed class PluginServerRemoteLocalProvideShapeTests
                 using DotBoxD.Abstractions;
                 using WrongProvide.Game;
 
-                [GeneratePluginServer]
+                [GeneratePluginServer(Context = typeof(RemotePluginContext))]
                 public partial class RemotePluginServer : IGameWorldAccess;
+
+                public sealed partial class RemotePluginContext;
             }
             """);
         var generated = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));

@@ -1,4 +1,5 @@
 using System.Text;
+using DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.PluginServer;
 
@@ -11,21 +12,66 @@ internal static class PluginServerFacadeEmitter
         builder.AppendLine("#nullable enable");
         builder.AppendLine("using System.Linq;");
         builder.AppendLine();
-        if (!string.IsNullOrEmpty(model.Namespace))
+        AppendKernelMethodDescriptors(builder, model);
+
+        AppendNamespace(builder, model.Namespace, () =>
         {
-            builder.Append("namespace ").Append(model.Namespace).AppendLine(";");
+            AppendFacade(builder, model);
             builder.AppendLine();
+            PluginServerFacadeSurfaceEmitter.AppendServerInterface(builder, model);
+            builder.AppendLine();
+            if (string.Equals(model.ContextNamespace, model.Namespace, StringComparison.Ordinal))
+            {
+                PluginServerContextSurfaceEmitter.AppendContext(builder, model);
+                builder.AppendLine();
+            }
+
+            PluginServerContextSurfaceEmitter.AppendRegistries(builder, model);
+            builder.AppendLine();
+            PluginServerSetupEmitter.AppendBuilder(builder, model);
+            PluginServerSetupEmitter.AppendSetupInterfaces(builder, model);
+        });
+        if (!string.Equals(model.ContextNamespace, model.Namespace, StringComparison.Ordinal))
+        {
+            builder.AppendLine();
+            AppendNamespace(builder, model.ContextNamespace, () =>
+                PluginServerContextSurfaceEmitter.AppendContext(builder, model));
         }
 
-        AppendFacade(builder, model);
-        builder.AppendLine();
-        PluginServerFacadeSurfaceEmitter.AppendServerInterface(builder, model);
-        builder.AppendLine();
-        PluginServerContextSurfaceEmitter.AppendContextAndRegistries(builder, model);
-        builder.AppendLine();
-        PluginServerSetupEmitter.AppendBuilder(builder, model);
-        PluginServerSetupEmitter.AppendSetupInterfaces(builder, model);
         return new GeneratedPluginPackage(HintName(model), builder.ToString(), model.Namespace, model.ClassName);
+    }
+
+    private static void AppendNamespace(StringBuilder builder, string ns, Action append)
+    {
+        if (string.IsNullOrEmpty(ns))
+        {
+            append();
+            return;
+        }
+
+        builder.Append("namespace ").Append(ns).AppendLine();
+        builder.AppendLine("{");
+        append();
+        builder.AppendLine("}");
+    }
+
+    private static void AppendKernelMethodDescriptors(StringBuilder builder, PluginServerFacadeModel model)
+    {
+        foreach (var descriptor in model.KernelMethodDescriptors)
+        {
+            builder.Append("[assembly: global::DotBoxD.Abstractions.GeneratedKernelMethodDescriptorAttribute(")
+                .Append(KernelMethodDescriptorPayload.CurrentVersion.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                .Append(", typeof(").Append(descriptor.ContextType).Append("), ")
+                .Append(LiteralReader.StringLiteral(descriptor.MethodMetadataName)).Append(", ")
+                .Append(LiteralReader.StringLiteral(descriptor.NormalizedSignature)).Append(", ")
+                .Append(LiteralReader.StringLiteral(descriptor.DescriptorHash)).Append(", ")
+                .Append(LiteralReader.StringLiteral(descriptor.DescriptorPayload)).AppendLine(")]");
+        }
+
+        if (model.KernelMethodDescriptors.Count > 0)
+        {
+            builder.AppendLine();
+        }
     }
 
     private static void AppendFacade(StringBuilder builder, PluginServerFacadeModel model)

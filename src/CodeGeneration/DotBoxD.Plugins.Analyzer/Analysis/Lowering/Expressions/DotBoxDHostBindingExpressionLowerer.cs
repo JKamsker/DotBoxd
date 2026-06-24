@@ -26,13 +26,12 @@ internal static partial class DotBoxDHostBindingExpressionLowerer
         DotBoxDExpressionLoweringContext context,
         Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression)
     {
-        if (context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken).Symbol
-                is not IMethodSymbol method ||
-            HostBinding(method) is not { } binding)
+        if (ResolveHostBindingInvocation(invocation, context) is not { } resolved)
         {
             return null;
         }
 
+        var (method, binding) = resolved;
         var (bindingId, capability, effects, isAsync) = binding;
         if (TryLowerPatternCaptureInvocation(
                 invocation,

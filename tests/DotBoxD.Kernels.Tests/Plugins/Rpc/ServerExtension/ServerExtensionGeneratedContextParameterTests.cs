@@ -118,7 +118,7 @@ public sealed class ServerExtensionGeneratedContextParameterTests
                 int Read();
             }
 
-            [GeneratePluginServer]
+            [GeneratePluginServer(Context = typeof(GamePluginContext))]
             public partial class GamePluginServer : IGameWorld;
 
             public sealed partial class GamePluginContext;
@@ -184,8 +184,10 @@ public sealed class ServerExtensionGeneratedContextParameterTests
                 int Read();
             }
 
-            [GeneratePluginServer]
+            [GeneratePluginServer(Context = typeof(GamePluginContext))]
             public partial class GamePluginServer : IGameWorld;
+
+            public sealed partial class GamePluginContext;
         }
 
         namespace Sdk.Ipc

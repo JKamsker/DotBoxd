@@ -4,7 +4,8 @@
 
 public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
 public override void Initialize(AnalysisContext context)
-public sealed class PluginAnalyzer : DiagnosticAnalyzer
+public sealed partial class PluginAnalyzer
+public sealed partial class PluginAnalyzer : DiagnosticAnalyzer
 public sealed class PluginPackageGenerator : IIncrementalGenerator
 public static readonly DiagnosticDescriptor ForbiddenHostApiRule = new( "DBXK001", "Forbidden host API is not allowed in plugin kernels", "Forbidden host API '{0}' is not allowed in this plugin contract", "DotBoxD.Kernels.Security", DiagnosticSeverity.Error, isEnabledByDefault: true, description: "Hook filters and kernel handlers must use approved safe facades instead of host APIs.", helpLinkUri: PluginAnalyzerDiagnostics.ShippedRulesHelpLinkBase + "DBXK001", customTags: [WellKnownDiagnosticTags.CompilationEnd])
 public static readonly DiagnosticDescriptor LiveSettingTypeRule = new( "DBXK020", "Live setting type is not supported", "Live setting type '{0}' is not supported", "DotBoxD.Kernels.Security", DiagnosticSeverity.Error, isEnabledByDefault: true, description: "Live settings must use supported scalar types.", helpLinkUri: PluginAnalyzerDiagnostics.ShippedRulesHelpLinkBase + "DBXK020")

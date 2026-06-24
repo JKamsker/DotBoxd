@@ -160,11 +160,21 @@ internal static class Program
 ## 3. The server-side fluent API is the *same shape* the plugin uses
 
 The plugin's generated facade mirrors what the server itself exposes via `server.Hooks` /
-`server.Subscriptions`, but it owns a plugin-side partial context type by convention. For
-`GamePluginServer`, the generator emits `GamePluginContext`, `GamePluginHookRegistry`, and
-`GamePluginSubscriptionRegistry`; parameterless `server.Hooks.On<TEvent>()` and
-`server.Subscriptions.On<TEvent>()` use `GamePluginContext` automatically. The lower-level runtime
-still exposes `On<TEvent, TServerContext>(raw => ...)` as an escape hatch for explicit contexts.
+`server.Subscriptions`, but the server author names and attaches the plugin-side partial context
+explicitly:
+
+```csharp
+[GeneratePluginServer(Context = typeof(GamePluginContext))]
+public partial class GamePluginServer : IGameWorldAccess;
+
+public sealed partial class GamePluginContext;
+```
+
+For `GamePluginServer`, the generator augments `GamePluginContext` and emits
+`GamePluginHookRegistry` plus `GamePluginSubscriptionRegistry`; parameterless
+`server.Hooks.On<TEvent>()` and `server.Subscriptions.On<TEvent>()` use `GamePluginContext`
+automatically. The lower-level runtime still exposes `On<TEvent, TServerContext>(raw => ...)` as an
+escape hatch for explicit contexts.
 
 ```csharp
 // Inside the simulation (server side), publishing an event runs the installed pipeline:
@@ -208,7 +218,7 @@ public sealed class HookPipeline<TEvent, TServerContext>
 
 Sandbox-lowered stages and terminals such as `Where`, `Select`, `Run`, and `Register` can only use
 members the analyzer knows how to lower into verified IR. The supported contract is explicit:
-extend the generated partial context with pure helper methods marked `[KernelMethod]` so their bodies
+extend the declared partial context with pure helper methods marked `[KernelMethod]` so their bodies
 inline into the chain. Host calls flow through analyzer-visible host-service contracts annotated with
 `[HostCapability]`; use `RunLocal` / `RegisterLocal` when the handler needs arbitrary in-process
 services from the generated server context.
@@ -235,7 +245,7 @@ server.Hooks.On<DamageContext>()
     });
 ```
 
-The generated default context also preserves the `HookContext` conveniences:
+The generated context augmentation also preserves the `HookContext` conveniences:
 
 ```csharp
 server.Hooks.On<MonsterAggroEvent>()

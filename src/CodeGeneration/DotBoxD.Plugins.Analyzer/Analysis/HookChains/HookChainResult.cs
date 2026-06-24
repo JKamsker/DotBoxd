@@ -25,7 +25,8 @@ internal sealed record HookChainCreateResult(HookChainResult? Chain, HookChainNo
 internal sealed record HookChainNotLoweredDiagnostic(
     PluginDiagnosticLocation? Location,
     HookChainNotLoweredKind Kind = HookChainNotLoweredKind.RemoteRunLocal,
-    bool LocalResultTerminal = false)
+    bool LocalResultTerminal = false,
+    string Detail = "")
 {
     private const string ResultMessage =
         "this On<TContext>().Register/RegisterLocal chain could not be lowered to verified IR (the "
@@ -40,7 +41,8 @@ internal sealed record HookChainNotLoweredDiagnostic(
                 Location?.ToLocation() ?? Microsoft.CodeAnalysis.Location.None),
             HookChainNotLoweredKind.RunChain => Diagnostic.Create(
                 PluginAnalyzerDiagnostics.RunChainNotLoweredRule,
-                Location?.ToLocation() ?? Microsoft.CodeAnalysis.Location.None),
+                Location?.ToLocation() ?? Microsoft.CodeAnalysis.Location.None,
+                string.IsNullOrEmpty(Detail) ? string.Empty : " (" + Detail + ")"),
             HookChainNotLoweredKind.ResultChain => ResultDiagnostic(),
             _ => throw new InvalidOperationException($"Unsupported not-lowered diagnostic kind '{Kind}'.")
         };

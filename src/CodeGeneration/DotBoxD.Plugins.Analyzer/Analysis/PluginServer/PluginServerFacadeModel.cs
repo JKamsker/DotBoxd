@@ -6,7 +6,12 @@ internal sealed record PluginServerFacadeModel(
     string ClassName,
     string ServerInterfaceName,
     string SetupInterfaceName,
+    string ContextNamespace,
+    string ContextAccessibility,
     string ContextName,
+    string ContextFullName,
+    string? ContextFactoryMethodName,
+    EquatableArray<GeneratedKernelMethodDescriptorModel> KernelMethodDescriptors,
     string HookRegistryName,
     string SubscriptionRegistryName,
     string WorldType,
@@ -53,6 +58,13 @@ internal sealed record PluginServerServiceWrapper(
     EquatableArray<PluginServerForwardedMethod> Methods);
 
 internal sealed record PluginServerParameter(string Name, string Type);
+
+internal sealed record GeneratedKernelMethodDescriptorModel(
+    string ContextType,
+    string MethodMetadataName,
+    string NormalizedSignature,
+    string DescriptorHash,
+    string DescriptorPayload);
 
 internal sealed record PluginServerFacadeResult(
     GeneratedPluginPackage? Source,

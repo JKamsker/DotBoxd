@@ -10,10 +10,13 @@ internal static class DotBoxDMetadataNames
     public const string HostBindingAttribute = DotBoxDGenerationNames.TypeNames.HostBindingAttribute;
     public const string CapabilityAttribute = DotBoxDGenerationNames.TypeNames.CapabilityAttribute;
     public const string KernelMethodAttribute = DotBoxDGenerationNames.TypeNames.KernelMethodAttribute;
+    public const string LocalAttribute = DotBoxDGenerationNames.TypeNames.LocalAttribute;
     public const string ServerExtensionAttribute = DotBoxDGenerationNames.TypeNames.ServerExtensionAttribute;
     public const string ServerExtensionClientAttribute = DotBoxDGenerationNames.TypeNames.ServerExtensionClientAttribute;
     public const string ServerExtensionMethodAttribute = DotBoxDGenerationNames.TypeNames.ServerExtensionMethodAttribute;
     public const string GeneratePluginServerAttribute = DotBoxDGenerationNames.TypeNames.GeneratePluginServerAttribute;
+    public const string GeneratedKernelMethodDescriptorAttribute =
+        DotBoxDGenerationNames.TypeNames.GeneratedKernelMethodDescriptorAttribute;
     public const string HookAttribute = DotBoxDHookContractNames.HookAttribute;
     public const string HookResultAttribute = DotBoxDHookContractNames.HookResultAttribute;
     public const string PolymorphicHandleAttribute = DotBoxDGenerationNames.TypeNames.PolymorphicHandleAttribute;

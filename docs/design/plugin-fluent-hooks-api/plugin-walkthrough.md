@@ -209,7 +209,8 @@ server.Subscriptions.On<AttackEvent>()
 
 ## 4. The generated facade
 
-The plugin author writes a `[GeneratePluginServer]` shell and consumes the generated facade:
+The plugin author writes a `[GeneratePluginServer(Context = typeof(GamePluginContext))]` shell with
+an author-declared partial context, then consumes the generated facade:
 `GamePluginServerBuilder.FromPipeName(...).Setup(...).Build()`. `Setup` records hook, subscription, and
 server-extension installs; `StartAsync()` opens the IPC connection, ships the generated packages, and wires
 the recorded registrations. `server.Get<TKernel>().Set(...).ApplyAsync(...)` updates live settings through

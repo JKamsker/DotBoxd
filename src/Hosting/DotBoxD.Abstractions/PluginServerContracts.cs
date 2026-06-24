@@ -72,7 +72,45 @@ public interface ILiveSettingsHandle<TKernel>
 /// Requests a generated plugin facade and builder for the annotated partial class.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
-public sealed class GeneratePluginServerAttribute : Attribute;
+public sealed class GeneratePluginServerAttribute : Attribute
+{
+    /// <summary>The server-authored context type augmented by the generator and used by parameterless hooks.</summary>
+    public Type? Context { get; set; }
+
+    /// <summary>
+    /// Optional static factory method name on <see cref="Context"/> with signature
+    /// <c>TContext Factory(HookContext raw)</c>.
+    /// </summary>
+    public string? ContextFactory { get; set; }
+}
+
+/// <summary>Marks a server-authored context helper as native-only and unavailable to lowered IR.</summary>
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, Inherited = false)]
+public sealed class LocalAttribute : Attribute;
+
+/// <summary>Analyzer-visible generated IR for server-authored SDK context <c>[KernelMethod]</c> helpers.</summary>
+[AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
+public sealed class GeneratedKernelMethodDescriptorAttribute(
+    int version,
+    Type contextType,
+    string methodMetadataName,
+    string normalizedSignature,
+    string descriptorHash,
+    string descriptorPayload)
+    : Attribute
+{
+    public int Version { get; } = version;
+
+    public Type ContextType { get; } = contextType;
+
+    public string MethodMetadataName { get; } = methodMetadataName;
+
+    public string NormalizedSignature { get; } = normalizedSignature;
+
+    public string DescriptorHash { get; } = descriptorHash;
+
+    public string DescriptorPayload { get; } = descriptorPayload;
+}
 
 /// <summary>
 /// Identifies a generated plugin-server hook or subscription registry and the context type its parameterless

@@ -34,13 +34,15 @@ internal static partial class HookChainModelFactory
         }
 
         HookChainResult? chain;
+        string? notLoweredDetail = null;
         try
         {
             chain = TryCreate(invocation, context.SemanticModel, cancellationToken);
         }
-        catch (NotSupportedException)
+        catch (NotSupportedException ex)
         {
             chain = null;
+            notLoweredDetail = ex.Message;
         }
 
         if (chain is not null)
@@ -48,7 +50,7 @@ internal static partial class HookChainModelFactory
             return new HookChainCreateResult(chain, null);
         }
 
-        return NotLoweredDiagnostic(invocation, context.SemanticModel, cancellationToken);
+        return NotLoweredDiagnostic(invocation, context.SemanticModel, cancellationToken, notLoweredDetail);
     }
 
     private static HookChainResult? TryCreate(

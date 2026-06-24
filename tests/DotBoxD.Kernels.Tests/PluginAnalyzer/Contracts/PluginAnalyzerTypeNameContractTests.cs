@@ -56,10 +56,13 @@ public sealed class PluginAnalyzerTypeNameContractTests
             [nameof(TypeNames.HostBindingAttribute)] = TypeName(typeof(HostBindingAttribute)),
             [nameof(TypeNames.CapabilityAttribute)] = TypeName(typeof(CapabilityAttribute)),
             [nameof(TypeNames.KernelMethodAttribute)] = TypeName(typeof(KernelMethodAttribute)),
+            [nameof(TypeNames.LocalAttribute)] = TypeName(typeof(LocalAttribute)),
             [nameof(TypeNames.ServerExtensionAttribute)] = TypeName(typeof(ServerExtensionAttribute)),
             [nameof(TypeNames.ServerExtensionClientAttribute)] = TypeName(typeof(ServerExtensionClientAttribute)),
             [nameof(TypeNames.ServerExtensionMethodAttribute)] = TypeName(typeof(ServerExtensionMethodAttribute)),
             [nameof(TypeNames.GeneratePluginServerAttribute)] = TypeName(typeof(GeneratePluginServerAttribute)),
+            [nameof(TypeNames.GeneratedKernelMethodDescriptorAttribute)] =
+                TypeName(typeof(GeneratedKernelMethodDescriptorAttribute)),
             [nameof(TypeNames.PolymorphicHandleAttribute)] = TypeName(typeof(PolymorphicHandleAttribute)),
             [nameof(TypeNames.HandleSubtypeAttribute)] = TypeName(typeof(HandleSubtypeAttribute)),
             [nameof(TypeNames.DotBoxDServiceAttribute)] = TypeName(typeof(DotBoxDServiceAttribute)),

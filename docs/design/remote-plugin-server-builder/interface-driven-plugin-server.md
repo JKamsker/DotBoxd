@@ -158,11 +158,13 @@ host still recomputes the binding metadata from its own registered services at i
 The dev writes a shell; the generator fills it in and emits a builder:
 
 ```csharp
-[GeneratePluginServer]
+[GeneratePluginServer(Context = typeof(GamePluginContext))]
 public partial class GamePluginServer : IGameWorldAccess   // generator adds : IGameWorldServer
 {
     partial void OnConfigured() => Console.WriteLine("[plugin] custom wiring ran.");   // optional hook
 }
+
+public sealed partial class GamePluginContext;
 ```
 
 Lifecycle honors the locked decisions: `Build()` is synchronous and does no I/O; setup actions only resolve

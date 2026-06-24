@@ -4,22 +4,13 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.PluginServer;
 
 internal static class PluginServerContextSurfaceEmitter
 {
-    public static void AppendContextAndRegistries(StringBuilder builder, PluginServerFacadeModel model)
-    {
-        AppendContext(builder, model);
-        builder.AppendLine();
-        AppendHookRegistry(builder, model);
-        builder.AppendLine();
-        AppendSubscriptionRegistry(builder, model);
-    }
-
-    private static void AppendContext(StringBuilder builder, PluginServerFacadeModel model)
+    public static void AppendContext(StringBuilder builder, PluginServerFacadeModel model)
     {
         PluginServerXmlDocumentation.AppendSummary(
             builder,
             string.Empty,
             "Generated server hook context. Extend this partial type with helper members; [KernelMethod] instance members can be consumed by lowered hook chains.");
-        builder.Append(model.Accessibility).Append(" sealed partial class ").Append(model.ContextName).AppendLine();
+        builder.Append(model.ContextAccessibility).Append(" partial class ").Append(model.ContextName).AppendLine();
         builder.AppendLine("{");
         builder.AppendLine("    private readonly global::DotBoxD.Abstractions.HookContext _raw;");
         builder.AppendLine();
@@ -31,15 +22,25 @@ internal static class PluginServerContextSurfaceEmitter
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.AppendLine("    public global::DotBoxD.Abstractions.HookContext Raw => _raw;");
+        builder.Append("    public ").Append(model.WorldType).Append(" World => _raw.Host<")
+            .Append(model.WorldType).AppendLine(">();");
         builder.AppendLine("    public global::DotBoxD.Abstractions.IPluginMessageSink Messages => _raw.Messages;");
         builder.AppendLine("    public global::System.Threading.CancellationToken CancellationToken => _raw.CancellationToken;");
         builder.AppendLine("    public bool HasCancelableDispatch => _raw.CancellationToken.CanBeCanceled;");
         builder.AppendLine();
         builder.Append("    public static ").Append(model.ContextName)
-            .AppendLine(" FromHookContext(global::DotBoxD.Abstractions.HookContext raw) => new(raw);");
+            .Append(" FromHookContext(global::DotBoxD.Abstractions.HookContext raw) => ")
+            .Append(model.ContextFactoryMethodName ?? "new").AppendLine("(raw);");
         builder.AppendLine();
         builder.AppendLine("    partial void OnCreated(global::DotBoxD.Abstractions.HookContext raw);");
         builder.AppendLine("}");
+    }
+
+    public static void AppendRegistries(StringBuilder builder, PluginServerFacadeModel model)
+    {
+        AppendHookRegistry(builder, model);
+        builder.AppendLine();
+        AppendSubscriptionRegistry(builder, model);
     }
 
     private static void AppendHookRegistry(StringBuilder builder, PluginServerFacadeModel model)
@@ -56,9 +57,9 @@ internal static class PluginServerContextSurfaceEmitter
         AppendRegistryConstructor(builder, model.HookRegistryName, "RemoteHookRegistry");
         builder.AppendLine();
         builder.Append("    public global::DotBoxD.Plugins.Runtime.RemoteHookPipeline<TEvent, ")
-            .Append(model.ContextName).AppendLine("> On<TEvent>()");
-        builder.Append("        => _inner.On<TEvent, ").Append(model.ContextName)
-            .Append(">(").Append(model.ContextName).AppendLine(".FromHookContext);");
+            .Append(model.ContextFullName).AppendLine("> On<TEvent>()");
+        builder.Append("        => _inner.On<TEvent, ").Append(model.ContextFullName)
+            .Append(">(").Append(model.ContextFullName).AppendLine(".FromHookContext);");
         builder.AppendLine();
         builder.AppendLine("    public global::DotBoxD.Plugins.Runtime.RemoteHookPipeline<TEvent, TContext> On<TEvent, TContext>(");
         builder.AppendLine("        global::System.Func<global::DotBoxD.Abstractions.HookContext, TContext> createContext)");
@@ -80,9 +81,9 @@ internal static class PluginServerContextSurfaceEmitter
         AppendRegistryConstructor(builder, model.SubscriptionRegistryName, "RemoteSubscriptionRegistry");
         builder.AppendLine();
         builder.Append("    public global::DotBoxD.Plugins.Runtime.RemoteSubscriptionPipeline<TEvent, ")
-            .Append(model.ContextName).AppendLine("> On<TEvent>()");
-        builder.Append("        => _inner.On<TEvent, ").Append(model.ContextName)
-            .Append(">(").Append(model.ContextName).AppendLine(".FromHookContext);");
+            .Append(model.ContextFullName).AppendLine("> On<TEvent>()");
+        builder.Append("        => _inner.On<TEvent, ").Append(model.ContextFullName)
+            .Append(">(").Append(model.ContextFullName).AppendLine(".FromHookContext);");
         builder.AppendLine();
         builder.AppendLine("    public global::DotBoxD.Plugins.Runtime.RemoteSubscriptionPipeline<TEvent, TContext> On<TEvent, TContext>(");
         builder.AppendLine("        global::System.Func<global::DotBoxD.Abstractions.HookContext, TContext> createContext)");
@@ -98,7 +99,7 @@ internal static class PluginServerContextSurfaceEmitter
             .Append(", typeof(")
             .Append(TypeReference(model, model.ClassName))
             .Append("), typeof(")
-            .Append(TypeReference(model, model.ContextName))
+            .Append(model.ContextFullName)
             .AppendLine("))]");
     }
 

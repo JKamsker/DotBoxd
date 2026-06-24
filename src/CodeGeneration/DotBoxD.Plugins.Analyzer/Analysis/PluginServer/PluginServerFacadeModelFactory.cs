@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static DotBoxD.Plugins.Analyzer.Analysis.PluginServer.PluginServerFacadeNameFormatter;
 namespace DotBoxD.Plugins.Analyzer.Analysis.PluginServer;
 
-internal static class PluginServerFacadeModelFactory
+internal static partial class PluginServerFacadeModelFactory
 {
     private const string ServiceControlType = "DotBoxD.Abstractions.IServiceControl";
     private const string ExtensibleControlType = "DotBoxD.Abstractions.IExtensibleControl";
@@ -43,13 +43,20 @@ internal static class PluginServerFacadeModelFactory
         var ns = type.ContainingNamespace.IsGlobalNamespace ? string.Empty : type.ContainingNamespace.ToDisplayString();
         var controlNs = controlServiceType.ContainingNamespace.ToDisplayString();
         var eventCallback = PluginServerEventCallbackResolver.Resolve(compilation, worldType, cancellationToken);
+        var context = ResolveContext(type, compilation, cancellationToken);
         return new PluginServerFacadeModel(
             ns,
             AccessibilityText(type.DeclaredAccessibility),
             type.Name,
             ServerInterfaceName(worldType),
             SetupInterfaceName(type.Name),
-            ContextName(type.Name),
+            context.Namespace,
+            AccessibilityText(context.Type.DeclaredAccessibility),
+            context.Type.Name,
+            TypeName(context.Type),
+            context.FactoryMethodName,
+            new EquatableArray<GeneratedKernelMethodDescriptorModel>(
+                GeneratedKernelMethodDescriptorFactory.Create(context.Type, worldType, compilation, cancellationToken)),
             HookRegistryName(type.Name),
             SubscriptionRegistryName(type.Name),
             TypeName(worldType),
@@ -67,24 +74,6 @@ internal static class PluginServerFacadeModelFactory
             eventCallback?.ProvideSuffix,
             eventCallback is null ? null : TypeName(eventCallback.Value.ReturnType),
             eventCallback?.ReturnHasValue ?? false);
-    }
-    private static INamedTypeSymbol? ResolveWorldType(INamedTypeSymbol type)
-    {
-        foreach (var candidate in type.Interfaces)
-        {
-            if (HasAttribute(candidate, DotBoxDMetadataNames.DotBoxDServiceAttribute))
-            {
-                return candidate;
-            }
-        }
-        return null;
-    }
-    private static INamedTypeSymbol? ResolveControlService(
-        Compilation compilation,
-        INamedTypeSymbol worldType)
-    {
-        var worldNamespace = worldType.ContainingNamespace.ToDisplayString();
-        return compilation.GetTypeByMetadataName(worldNamespace + ".Ipc.IGamePluginControlService");
     }
     private static PluginServerControlProperty[] ResolveControls(
         INamedTypeSymbol worldType,

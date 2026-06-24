@@ -17,6 +17,7 @@ internal sealed class DotBoxDExpressionLoweringContext
         ITypeSymbol? projectedElementType = null,
         string? serverContextParameterName = null,
         ITypeSymbol? serverContextType = null,
+        ITypeSymbol? contextWorldType = null,
         ICollection<string>? capabilities = null,
         ICollection<string>? effects = null,
         IReadOnlyDictionary<string, DotBoxDExpressionModel>? inlinedBindings = null,
@@ -33,6 +34,7 @@ internal sealed class DotBoxDExpressionLoweringContext
         ProjectedElementType = projectedElementType;
         ServerContextParameterName = serverContextParameterName;
         ServerContextType = serverContextType;
+        ContextWorldType = contextWorldType ?? ResolveGeneratedContextWorldType(serverContextType, semanticModel.Compilation);
         Capabilities = capabilities;
         Effects = effects;
         InlinedBindings = inlinedBindings;
@@ -69,6 +71,67 @@ internal sealed class DotBoxDExpressionLoweringContext
     public string? ServerContextParameterName { get; }
 
     public ITypeSymbol? ServerContextType { get; }
+
+    public ITypeSymbol? ContextWorldType { get; }
+
+    private static ITypeSymbol? ResolveGeneratedContextWorldType(ITypeSymbol? contextType, Compilation compilation)
+    {
+        if (contextType is null)
+        {
+            return null;
+        }
+
+        foreach (var symbol in compilation.GetSymbolsWithName(static _ => true, SymbolFilter.Type))
+        {
+            if (symbol is not INamedTypeSymbol candidate ||
+                !GeneratedContextMatches(candidate, contextType))
+            {
+                continue;
+            }
+
+            foreach (var iface in candidate.Interfaces)
+            {
+                if (HasAttribute(iface, DotBoxDMetadataNames.DotBoxDServiceAttribute))
+                {
+                    return iface;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static bool GeneratedContextMatches(INamedTypeSymbol serverType, ITypeSymbol contextType)
+    {
+        foreach (var attribute in serverType.GetAttributes())
+        {
+            if (!string.Equals(
+                    attribute.AttributeClass?.ToDisplayString(),
+                    DotBoxDMetadataNames.GeneratePluginServerAttribute,
+                    StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            foreach (var argument in attribute.NamedArguments)
+            {
+                if (string.Equals(argument.Key, "Context", StringComparison.Ordinal) &&
+                    argument.Value.Value is ITypeSymbol declaredContext &&
+                    SymbolEqualityComparer.Default.Equals(declaredContext, contextType))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool HasAttribute(INamedTypeSymbol type, string metadataName)
+        => type.GetAttributes().Any(attribute => string.Equals(
+            attribute.AttributeClass?.ToDisplayString(),
+            metadataName,
+            StringComparison.Ordinal));
 
     /// <summary>
     /// Sink for capabilities the lowered IR requires (a <c>ctx.Messages.Send</c>, a
@@ -147,6 +210,7 @@ internal sealed class DotBoxDExpressionLoweringContext
             projectedElement: null,
             serverContextParameterName: ServerContextParameterName,
             serverContextType: ServerContextType,
+            contextWorldType: ContextWorldType,
             capabilities: Capabilities,
             effects: Effects,
             inlinedBindings: bindings,
@@ -176,6 +240,7 @@ internal sealed class DotBoxDExpressionLoweringContext
             ProjectedElementType,
             ServerContextParameterName,
             ServerContextType,
+            ContextWorldType,
             Capabilities,
             Effects,
             InlinedBindings,

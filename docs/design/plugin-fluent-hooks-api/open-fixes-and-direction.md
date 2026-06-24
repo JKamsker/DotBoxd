@@ -12,6 +12,12 @@ implementation guidance.
 revised after a multi-lens review (see [How this doc was reviewed](#how-this-doc-was-reviewed)).
 **Date:** 2026-06-23. **Observed PR head:** `41ec9172`.
 
+**Implementation update (2026-06-24):** this branch now implements the §3.1/§3.2 explicit context contract:
+`GeneratePluginServerAttribute.Context` is required, `ContextFactory` is supported, the generated context
+augmentation targets the author-declared partial class, convention `{Root}Context` fallback has been removed,
+context `[HostBinding]` members are rejected, `[Local]` is explicit and diagnosed when used from lowered IR, and
+prebuilt SDK context `[KernelMethod]` helpers emit/consume `GeneratedKernelMethodDescriptorAttribute` metadata.
+
 Design guide this doc is measured against: **Simple · Obvious · Discoverable · Consistent · Minimal ·
 Composable** — plus **Explicit · Stable · Testable** as working corollaries.
 
@@ -41,13 +47,11 @@ There are **two independent problems**; this doc keeps them apart on purpose.
 
 2. **Shape — a separate, larger thesis.** The generated plugin context
    ([PluginServerContextSurfaceEmitter.cs:16](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer/PluginServerContextSurfaceEmitter.cs))
-   is the **only generated type the author extends by hand at a name they must already know** —
-   `{Root}Context`, derived from the server class name, with nothing they wrote pointing to it
-   ([GamePluginContext.cs:3-10](../../../samples/GameServer/Examples.GameServer.Plugin/GamePluginContext.cs)).
-   The fix is to make the context **author-declared** (you name the type; you extend the type you named —
-   §3.1), removing the convention-named partial. One hard constraint: `[KernelMethod]` cannot live on an
-   interface (its body must be inlined), so the declared context is a `partial` **class** (§3.1). Lands as
-   its own PR(s) after §3.1's contract details are settled.
+   used to be the **only generated type the author extended by hand at a name they had to infer** —
+   `{Root}Context`, derived from the server class name. The implemented fix makes the context
+   **author-declared** (you name the type; you extend the type you named — §3.1), removing the
+   convention-named partial. One hard constraint remains: `[KernelMethod]` cannot live on an interface (its
+   body must be inlined), so the declared context is a `partial` **class** (§3.1).
 
 One-line direction: **fix P1.1–P1.8 first; make the context surface declarable only after §3.1's contract
 details are explicit; fix chain/context identity with semantic generated metadata (§3.3); single-source the
@@ -117,8 +121,10 @@ The "server declares the contract; the client writes one line; codegen fills the
 exists and is interface-driven** for the RPC-forwarding surface:
 
 ```csharp
-[GeneratePluginServer]
+[GeneratePluginServer(Context = typeof(GamePluginContext))]
 public partial class GamePluginServer : IGameWorldAccess;
+
+public sealed partial class GamePluginContext;
 ```
 
 From the `[DotBoxDService]` interface graph the generator **enumerates members** and emits the RPC proxy
@@ -130,7 +136,7 @@ forwarders, the `IPluginServer<IGameWorldAccess>` lifecycle, the `Setup` accumul
 | World resolution | the directly-implemented interface carrying `[DotBoxDService]` (not the class name) | [PluginServerFacadeModelFactory.cs:71](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer/PluginServerFacadeModelFactory.cs) `ResolveWorldType` |
 | Controls / forwarders / scoped clients | walking the interface's members + nested `[DotBoxDService]` returns | same file: `ResolveControls` :89, `ResolveMethods` :125, `ResolveReturnWrapper` :196 |
 | `I{World}Server`, lifecycle, builder | the world **type symbol** | [PluginServerFacadeEmitter.cs:20](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer/PluginServerFacadeEmitter.cs); `ServerInterfaceName` at [PluginServerFacadeNameFormatter.cs:30](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer/PluginServerFacadeNameFormatter.cs) |
-| **Context + hook/sub registries** | **the class-name string** `FacadeRootName(name) + "Context"` | [PluginServerContextSurfaceEmitter.cs:16](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer/PluginServerContextSurfaceEmitter.cs); `ContextName` at [PluginServerFacadeNameFormatter.cs:21](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer/PluginServerFacadeNameFormatter.cs) |
+| **Context + hook/sub registries** | explicit `[GeneratePluginServer(Context = typeof(TContext))]`; registries still use generated names but expose the declared context | [PluginServerFacadeModelFactory.Context.cs](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer/PluginServerFacadeModelFactory.Context.cs); [PluginServerContextSurfaceEmitter.cs](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer/PluginServerContextSurfaceEmitter.cs) |
 
 **Precise framing of the gap.** The context is **not** the only string-derived generated *name*:
 `SetupInterfaceName` ([:13](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer/PluginServerFacadeNameFormatter.cs)),
@@ -142,15 +148,10 @@ inside `ResolveControlService` declared at :82) — a baked-in convention litera
 contract-driven. The distinction that actually matters is **discoverability of where you write code**, not whether a name is
 string-derived. `server.Hooks` (a member on `server`) and the `ctx` lambda parameter (a type IntelliSense
 shows you) are *locally discoverable* — fine. The registries and `Setup` are string-**named** but their
-member surfaces are **fully generated shells the author never edits**, so the name is never typed by hand —
-also fine. The context is the **one** place this breaks: to extend it the author must hand-write
-`partial class {Root}Context`
-([GamePluginContext.cs:5,7,9](../../../samples/GameServer/Examples.GameServer.Plugin/GamePluginContext.cs)
-add `DamageDecisionReason`, `FormatCalmTarget`, `ScaleDamageDecision`), which requires *knowing* the
-convention-derived type name with **nothing they wrote pointing to it**. That "separate symbol whose name
-you must already know" is the discoverability anti-pattern; a generated member on a type the author
-declared, or an extension generated into the author's namespace, would not be. §3.1 fixes it by making the
-context author-declared.
+   member surfaces are **fully generated shells the author never edits**, so the name is never typed by hand —
+   also fine. The context was the **one** place this broke: extending it required hand-writing
+   `partial class {Root}Context`. §3.1 fixes that by making the context author-declared and explicit on the
+   generator attribute.
 
 ---
 
@@ -756,11 +757,10 @@ Every item verified against head `41ec9172`.
   failure proves effect/capability drift.
 
 **Step 2 — de-risk identity (§3.3).** Replace whole-compilation context inference with semantic paths:
-same-compilation receiver server symbol (using `Context` when present, otherwise the current convention
-context until §3.1 lands), same-compilation alias tracing from `server.Hooks`/`Subscriptions`, and prebuilt
-SDK return type/public registry-marker metadata. Gate `CandidateKind` on generated metadata or server symbol
-ownership, not member names or suffixes. The convention-named context stays until Step 4; only *identity
-resolution* changes. Because prebuilt SDK / stored-registry support depends on the marker, Step 2 includes
+same-compilation receiver server symbol using explicit `Context`, same-compilation alias tracing from
+`server.Hooks`/`Subscriptions`, and prebuilt SDK return type/public registry-marker metadata. Gate
+`CandidateKind` on generated metadata or server symbol ownership, not member names or suffixes. Because
+prebuilt SDK / stored-registry support depends on the marker, Step 2 includes
 `GeneratedPluginServerRegistryAttribute` / `GeneratedPluginServerRegistryKind`, generated registry emission,
 and the matching `DotBoxD.Abstractions` API-baseline update.
 
@@ -772,20 +772,18 @@ shared receiver-id metadata, and add wiring prevalidation/rollback. Step 2 alrea
 covers P2.6 and P2.12 with §3.1/§3.4. Update API baselines and package schema/smoke expectations for any
 metadata/signature changes these hazards require.
 
-**Step 4 — the larger moves, as their own PRs.** §3.1 (author-declared context surface — only after the
-attribute/factory/namespace/accessibility contract above is settled) and §3.4 (single-sourced
-host-capability rule). Not bolted onto #88. The §3.1 PR also owns analyzer-visible SDK helper descriptors for
-prebuilt context `[KernelMethod]` bodies; without that descriptor, metadata-only context helpers are rejected.
-These PRs carry their own `DotBoxD.Abstractions` public API baseline updates for
+**Step 4 — the larger moves.** §3.1 (author-declared context surface) has landed in this branch; §3.4
+(single-sourced host-capability rule) remains separate. The §3.1 implementation owns analyzer-visible SDK
+helper descriptors for prebuilt context `[KernelMethod]` bodies; without a matching descriptor,
+metadata-only context helpers are rejected. These changes carry their own `DotBoxD.Abstractions` public API
+baseline updates for
 `GeneratePluginServerAttribute.Context`, `ContextFactory`, `LocalAttribute`, `HostBindingEffect` /
 `HostCapabilityAttribute` effect metadata, `GeneratedKernelMethodDescriptorAttribute`, and `[KernelMethod]`
 XML docs, plus package metadata expectations for the generated descriptor attributes in packed SDKs.
 
-> **Half-state note.** Merging #88 + Step 2 without Step 3 leaves the context still convention-named (its
-> extension surface still undiscoverable) but with correct ownership-based identity. There is **no
-> compatibility debt** — nothing ships to external users — so the only cost is the discoverability gap
-> staying open until Step 4 lands. Acceptable as an interim state; just don't call the context "done" until
-> the author-declared form (§3.1) replaces the convention partial.
+> **Half-state note (resolved for §3.1):** this branch no longer keeps the convention-named context as an
+> interim surface. Remaining checklist items below are hardening, smoke, and separate security/host-capability
+> work rather than the old discoverability gap.
 
 **Step 5 — polish + docs smoke** (P3.15–19), ideally alongside the §3.4 duplication collapse so the
 hook/subscription axis cannot drift again. No final API/package signoff after Step 3 happens until these
@@ -896,7 +894,10 @@ Acceptance gates, not afterthoughts. Existing homes: `ResultHookSlotTests`, `Typ
   indexed subscription dispatch.
 - **Context contract diagnostics (§3.1).** Missing `Context`, non-partial/generic/nested context types, wrong
   namespace emission, context accessibility below the generated surface, invalid `ContextFactory`, and
-  duplicate generated context augmentation produce clear diagnostics.
+  duplicate generated context augmentation produce clear diagnostics. **Implemented coverage:** missing
+  `Context`, cross-namespace emission, context `[HostBinding]`, duplicate context use, and `[Local]`
+  placement/use diagnostics are covered; add narrower fixtures for every remaining shape variant as the
+  contract hardens.
 - **Context `[HostBinding]` rejection (§3.1/§3.2).** A plugin-declared `[HostBinding]` member on the context is
   rejected; host access goes through re-exposed `[DotBoxDService]` selectors only.
 - **`[Local]` and service-selector misuse (§3.2).** `[Local]` outside the declared context, `[Local]` members
@@ -913,11 +914,13 @@ Acceptance gates, not afterthoughts. Existing homes: `ResultHookSlotTests`, `Typ
   package carries the descriptor's transitive capabilities/effects and installs without `DBXK041`/`DBXK044`.
   Cover `this.World...` and implicit `World...` receiver rebinding in same-compilation descriptor generation
   and prebuilt SDK consumption. A metadata-only helper with no descriptor fails with the planned diagnostic.
-  Emit and consume two helper descriptors from one SDK assembly so `AllowMultiple = true` is proved. Tamper /
+  Emit and consume two helper descriptors from one SDK assembly so `AllowMultiple = true` is proved.
+  **Implemented coverage:** descriptor emission for two helpers, prebuilt SDK consumption, selector capability
+  propagation, install/runtime execution, and no-descriptor rejection. **Remaining hardening:** tamper /
   negative cases: plugin-forged descriptors, stale descriptor hashes, mismatched signatures or context types,
-  descriptor IR with local/native escapes, descriptors that inject host calls outside the server-owned
-  selector contract, and descriptors whose verified IR calls a host selector while the serialized
-  capability/effect metadata omits or weakens that requirement are rejected.
+  descriptor IR with local/native escapes, descriptors that inject host calls outside the server-owned selector
+  contract, and descriptors whose verified IR calls a host selector while the serialized capability/effect
+  metadata omits or weakens that requirement are rejected.
 - **Generated graft collision (P2.11).** Two `[ServerExtension]` kernels grafting the same method
   name/signature onto the same receiver in the same namespace produce a diagnostic.
 - **Server-extension receiver contract (P2.13).** Plugin-owned receiver grafts are rejected for the safe

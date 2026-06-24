@@ -21,6 +21,7 @@ public HookAttribute(string name, Type resultType)
 public HookContext(IPluginMessageSink messages, CancellationToken cancellationToken)
 public HostBindingEffect Effects { get; } = effects
 public InMemoryPluginMessageSink()
+public int Version { get; } = version
 public interface IEventKernel<TEvent>
 public interface IExtensibleControl
 public interface IHookResult
@@ -40,6 +41,7 @@ public PolymorphicHandleAttribute(string keyMember)
 public SandboxEffect Effects { get; } = effects
 public sealed class CapabilityAttribute(string id) : Attribute
 public sealed class EventKernelAttribute(string? id = null) : Attribute
+public sealed class GeneratedKernelMethodDescriptorAttribute( int version, Type contextType, string methodMetadataName, string normalizedSignature, string descriptorHash, string descriptorPayload)
 public sealed class GeneratedPluginServerRegistryAttribute( GeneratedPluginServerRegistryKind kind, Type serverType, Type contextType)
 public sealed class GeneratePluginRegistrationAccumulatorAttribute( string accumulatorName, string methodName) : Attribute
 public sealed class GeneratePluginRegistrationRootAccumulatorAttribute(string accumulatorName) : Attribute
@@ -53,6 +55,7 @@ public sealed class HostCapabilityAttribute(string capability, HostBindingEffect
 public sealed class InMemoryPluginMessageSink : IPluginMessageSink
 public sealed class KernelMethodAttribute : Attribute
 public sealed class LiveSettingAttribute : Attribute
+public sealed class LocalAttribute : Attribute
 public sealed class PluginAttribute : Attribute
 public sealed class PolymorphicHandleAttribute : Attribute
 public sealed class ServerExtensionAttribute : Attribute
@@ -67,17 +70,23 @@ public string BindingId { get; } = bindingId
 public string BindingPrefix { get; }
 public string Capability { get; }
 public string Capability { get; } = capability
+public string? ContextFactory { get; set; }
+public string DescriptorHash { get; } = descriptorHash
+public string DescriptorPayload { get; } = descriptorPayload
 public string Discriminator { get; }
 public string Id { get; }
 public string Id { get; } = id
 public string KeyMember { get; }
 public string MethodName { get; } = methodName
+public string MethodMetadataName { get; } = methodMetadataName
 public string Name { get; }
+public string NormalizedSignature { get; } = normalizedSignature
 public string? Id { get; }
 public string? Id { get; } = id
 public string? Name { get; } = name
 public THost Host<THost>() where THost : class
 public Type ContextType { get; } = contextType
+public Type? Context { get; set; }
 public Type ReceiverType { get; } = receiverType
 public Type ResultType { get; }
 public Type ServerType { get; } = serverType

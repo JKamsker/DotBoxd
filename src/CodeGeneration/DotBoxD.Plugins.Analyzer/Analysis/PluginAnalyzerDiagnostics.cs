@@ -45,7 +45,7 @@ internal static class PluginAnalyzerDiagnostics
         "Run chain is not lowered and will throw at runtime",
         "This Run chain could not be lowered to verified IR (an unsupported Where/Select projection, predicate, "
             + "or terminal body), so the generator does not intercept it and the runtime terminal throws DBXK062; "
-            + "use a supported hook-chain shape or bind a kernel class with Use/Register",
+            + "use a supported hook-chain shape or bind a kernel class with Use/Register{0}",
         "DotBoxD.Kernels.Generation",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
@@ -64,6 +64,17 @@ internal static class PluginAnalyzerDiagnostics
         description: "Generated server-extension grafts must have unique receiver, name, parameter-type, and "
             + "namespace combinations so extension lookup is unambiguous.",
         helpLinkUri: UnshippedRulesHelpLinkBase + "DBXK115");
+
+    public static readonly DiagnosticDescriptor LocalContextMemberRule = new(
+        "DBXK116",
+        "Local context helper is not valid in server-side IR",
+        "{0}",
+        "DotBoxD.Kernels.Generation",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "[Local] marks server-authored context helpers that may only run natively; they cannot be "
+            + "used in lowered hook chains or server-extension bodies.",
+        helpLinkUri: UnshippedRulesHelpLinkBase + "DBXK116");
 
     // A [HookResult] record must declare the control fields the generated builders (and the runtime
     // abstain/fallthrough contract) depend on. Without them the builders cannot be emitted, so surface the

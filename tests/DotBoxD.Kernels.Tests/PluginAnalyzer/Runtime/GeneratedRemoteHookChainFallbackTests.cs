@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime;
 
-public sealed class GeneratedRemoteHookChainFallbackTests
+public sealed partial class GeneratedRemoteHookChainFallbackTests
 {
     private static readonly CSharpParseOptions ParseOptions = CSharpParseOptions.Default
         .WithLanguageVersion(LanguageVersion.Preview)
@@ -170,11 +170,15 @@ public sealed class GeneratedRemoteHookChainFallbackTests
             [HookResult]
             public readonly partial record struct ChainDamageResult(bool Success, string? Reason, int Damage);
 
-            [GeneratePluginServer]
+            [GeneratePluginServer(Context = typeof(AlphaPluginContext))]
             public partial class AlphaPluginServer : ChainSample.Game.IAlphaWorld;
 
-            [GeneratePluginServer]
+            public sealed partial class AlphaPluginContext;
+
+            [GeneratePluginServer(Context = typeof(BetaPluginContext))]
             public partial class BetaPluginServer : ChainSample.Game.IBetaWorld;
+
+            public sealed partial class BetaPluginContext;
 
             public static class RemoteServerUsage
             {
@@ -211,7 +215,12 @@ public sealed class GeneratedRemoteHookChainFallbackTests
             public static SdkContext FromHookContext(HookContext raw) => new(raw);
         }
 
-        public sealed class SdkServer;
+        [GeneratePluginServer(Context = typeof(SdkContext))]
+        public sealed class SdkServer
+        {
+            public SdkHookRegistry Hooks
+                => throw new System.InvalidOperationException("not used");
+        }
 
         [GeneratedPluginServerRegistry(
             GeneratedPluginServerRegistryKind.Hook,
@@ -223,10 +232,6 @@ public sealed class GeneratedRemoteHookChainFallbackTests
                 => throw new System.InvalidOperationException("not used");
         }
 
-        public interface ISdkServer
-        {
-            SdkHookRegistry Hooks { get; }
-        }
         """;
 
     private const string PrebuiltSdkUsageSource = """
@@ -234,7 +239,7 @@ public sealed class GeneratedRemoteHookChainFallbackTests
 
         public static class RemoteServerUsage
         {
-            public static void Configure(global::SdkSample.ISdkServer server)
+            public static void Configure(global::SdkSample.SdkServer server)
             {
                 var hooks = server.Hooks;
                 hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()

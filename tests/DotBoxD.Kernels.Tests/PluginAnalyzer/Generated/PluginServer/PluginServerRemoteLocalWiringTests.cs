@@ -72,8 +72,10 @@ public sealed class PluginServerRemoteLocalWiringTests
                 using DotBoxD.Abstractions;
                 using Reactive.Game;
 
-                [GeneratePluginServer]
+                [GeneratePluginServer(Context = typeof(RemotePluginContext))]
                 public partial class RemotePluginServer : IGameWorldAccess;
+
+                public sealed partial class RemotePluginContext;
             }
             """);
         var generated = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
@@ -89,11 +91,11 @@ public sealed class PluginServerRemoteLocalWiringTests
             generated,
             StringComparison.Ordinal);
         Assert.Contains(
-            "public global::DotBoxD.Plugins.Runtime.RemoteHookPipeline<TEvent, RemotePluginContext> On<TEvent>()",
+            "public global::DotBoxD.Plugins.Runtime.RemoteHookPipeline<TEvent, global::Reactive.Plugin.RemotePluginContext> On<TEvent>()",
             generated,
             StringComparison.Ordinal);
         Assert.Contains(
-            "=> _inner.On<TEvent, RemotePluginContext>(RemotePluginContext.FromHookContext);",
+            "=> _inner.On<TEvent, global::Reactive.Plugin.RemotePluginContext>(global::Reactive.Plugin.RemotePluginContext.FromHookContext);",
             generated,
             StringComparison.Ordinal);
         Assert.Contains("setup(new SetupRecorder(installs, _localHandlers));", generated, StringComparison.Ordinal);
@@ -174,8 +176,10 @@ public sealed class PluginServerRemoteLocalWiringTests
                 using DotBoxD.Abstractions;
                 using Plain.Game;
 
-                [GeneratePluginServer]
+                [GeneratePluginServer(Context = typeof(RemotePluginContext))]
                 public partial class RemotePluginServer : IGameWorldAccess;
+
+                public sealed partial class RemotePluginContext;
             }
             """);
         var generated = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
@@ -251,8 +255,10 @@ public sealed class PluginServerRemoteLocalWiringTests
                 using DotBoxD.Abstractions;
                 using WrongCallback.Game;
 
-                [GeneratePluginServer]
+                [GeneratePluginServer(Context = typeof(RemotePluginContext))]
                 public partial class RemotePluginServer : IGameWorldAccess;
+
+                public sealed partial class RemotePluginContext;
             }
             """);
         var generated = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
@@ -288,9 +294,7 @@ public sealed class PluginServerRemoteLocalWiringTests
     }
 
     private static IEnumerable<MetadataReference> TrustedPlatformReferences()
-    {
-        var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries) ?? [];
-        return references.Select(reference => MetadataReference.CreateFromFile(reference));
-    }
+        => (((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries) ?? [])
+            .Select(reference => MetadataReference.CreateFromFile(reference));
 }

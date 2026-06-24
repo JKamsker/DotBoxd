@@ -1,4 +1,5 @@
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering;
@@ -27,6 +28,12 @@ internal static class DotBoxDInvocationExpressionLowerer
         Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression)
     {
         context.CancellationToken.ThrowIfCancellationRequested();
+        if (context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken).Symbol is IMethodSymbol method &&
+            HasLocalAttribute(method))
+        {
+            throw new NotSupportedException("[Local] context members cannot be used in lowered server-side IR.");
+        }
+
         if (DotBoxDHostBindingExpressionLowerer.TryLower(invocation, context, lowerExpression) is { } hostCall)
         {
             return hostCall;
@@ -56,6 +63,12 @@ internal static class DotBoxDInvocationExpressionLowerer
 
         throw new NotSupportedException($"Unsupported plugin invocation '{invocation}'.");
     }
+
+    private static bool HasLocalAttribute(IMethodSymbol method)
+        => method.GetAttributes().Any(attribute => string.Equals(
+            attribute.AttributeClass?.ToDisplayString(),
+            DotBoxDMetadataNames.LocalAttribute,
+            StringComparison.Ordinal));
 
     private static DotBoxDExpressionModel LowerEquals(
         InvocationExpressionSyntax invocation,

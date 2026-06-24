@@ -19,7 +19,7 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 /// miscompiled package.
 /// </para>
 /// </summary>
-internal static class DotBoxDKernelMethodInliner
+internal static partial class DotBoxDKernelMethodInliner
 {
     public static DotBoxDExpressionModel? TryInline(
         InvocationExpressionSyntax invocation,
@@ -54,17 +54,21 @@ internal static class DotBoxDKernelMethodInliner
         }
 
         var bindings = BindArguments(invocation, method, lowerExpression);
-        var body = KernelMethodBody(method, context.CancellationToken);
-        var bodySemanticModel = context.SemanticModel.Compilation.GetSemanticModel(body.SyntaxTree);
-        var inlineContext = context.ForInlinedMethod(bodySemanticModel, bindings, methodKey);
-        var result = DotBoxDExpressionModelFactory.Create(body, inlineContext);
-        if (!string.Equals(result.Type, returnType, StringComparison.Ordinal))
+        if (TryKernelMethodBody(method, context.CancellationToken) is { } body)
         {
-            throw new NotSupportedException(
-                $"[KernelMethod] '{method.Name}' body lowered to {result.Type} but its return type is {returnType}.");
+            var bodySemanticModel = context.SemanticModel.Compilation.GetSemanticModel(body.SyntaxTree);
+            var inlineContext = context.ForInlinedMethod(bodySemanticModel, bindings, methodKey);
+            var result = DotBoxDExpressionModelFactory.Create(body, inlineContext);
+            if (!string.Equals(result.Type, returnType, StringComparison.Ordinal))
+            {
+                throw new NotSupportedException(
+                    $"[KernelMethod] '{method.Name}' body lowered to {result.Type} but its return type is {returnType}.");
+            }
+
+            return result;
         }
 
-        return result;
+        return InlineMetadataDescriptor(method, context, bindings, returnType);
     }
 
     private static bool IsServerContextReceiver(
@@ -127,7 +131,7 @@ internal static class DotBoxDKernelMethodInliner
         return bindings;
     }
 
-    private static ExpressionSyntax KernelMethodBody(IMethodSymbol method, CancellationToken cancellationToken)
+    private static ExpressionSyntax? TryKernelMethodBody(IMethodSymbol method, CancellationToken cancellationToken)
     {
         foreach (var reference in method.DeclaringSyntaxReferences)
         {
@@ -152,7 +156,7 @@ internal static class DotBoxDKernelMethodInliner
                 $"[KernelMethod] '{method.Name}' must have an expression body or a single return statement.");
         }
 
-        throw new NotSupportedException($"[KernelMethod] '{method.Name}' must be declared in source.");
+        return null;
     }
 
     private static bool HasKernelMethodAttribute(IMethodSymbol method)

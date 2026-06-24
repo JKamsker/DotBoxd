@@ -96,8 +96,10 @@ public sealed class InvokeAsyncRuntimeTests
         }
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
-            [GeneratePluginServer]
+            [GeneratePluginServer(Context = typeof(RemotePluginContext))]
             public partial class RemotePluginServer : IGameWorldAccess;
+
+            public sealed partial class RemotePluginContext;
         }
         namespace Sample
         {
@@ -193,8 +195,10 @@ public sealed class InvokeAsyncRuntimeTests
         }
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
-            [GeneratePluginServer]
+            [GeneratePluginServer(Context = typeof(RemotePluginContext))]
             public partial class RemotePluginServer : IGameWorldAccess;
+
+            public sealed partial class RemotePluginContext;
         }
         namespace Sample
         {
@@ -251,12 +255,10 @@ public sealed class InvokeAsyncRuntimeTests
         var parseOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview);
         if (enableInterceptors)
         {
-            parseOptions = parseOptions.WithFeatures(
-                [
-                    new KeyValuePair<string, string>(
-                        "InterceptorsNamespaces",
-                        DotBoxDGenerationNames.TypeNames.GeneratedInterceptorsNamespace)
-                ]);
+            parseOptions = parseOptions.WithFeatures([
+                new KeyValuePair<string, string>(
+                    "InterceptorsNamespaces",
+                    DotBoxDGenerationNames.TypeNames.GeneratedInterceptorsNamespace)]);
         }
 
         var compilation = CSharpCompilation.Create(
@@ -292,9 +294,7 @@ public sealed class InvokeAsyncRuntimeTests
     }
 
     private static IEnumerable<MetadataReference> TrustedPlatformReferences()
-    {
-        var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries) ?? [];
-        return references.Select(reference => MetadataReference.CreateFromFile(reference));
-    }
+        => (((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries) ?? [])
+            .Select(reference => MetadataReference.CreateFromFile(reference));
 }

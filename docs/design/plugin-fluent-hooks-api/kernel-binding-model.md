@@ -84,8 +84,10 @@ Why this is better than binding a bare kernel into a hook:
 ## 3. Generated setup with an optional lowered gate
 
 ```csharp
-[GeneratePluginServer]
+[GeneratePluginServer(Context = typeof(GamePluginContext))]
 public partial class GamePluginServer : IGameWorldAccess;
+
+public sealed partial class GamePluginContext;
 ```
 
 Usage — plain, and with the optional per-event gate ("for which user does it apply?"):

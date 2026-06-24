@@ -26,6 +26,8 @@ internal static partial class DotBoxDExpressionModelFactory
 
         return context.SemanticModel.GetSymbolInfo(member, context.CancellationToken).Symbol switch
         {
+            IPropertySymbol property when HasLocalAttribute(property) => throw new NotSupportedException(
+                "[Local] context members cannot be used in lowered server-side IR."),
             IPropertySymbol property => DotBoxDHostBindingExpressionLowerer.TryLowerProperty(property, context)
                 ?? throw new NotSupportedException(
                     $"Unsupported server context property '{memberName}'. Mark sandbox-readable context properties with [HostBinding]."),
@@ -157,6 +159,12 @@ internal static partial class DotBoxDExpressionModelFactory
             return false;
         }
     }
+
+    private static bool HasLocalAttribute(IPropertySymbol property)
+        => property.GetAttributes().Any(attribute => string.Equals(
+            attribute.AttributeClass?.ToDisplayString(),
+            DotBoxDMetadataNames.LocalAttribute,
+            StringComparison.Ordinal));
 
     /// <summary>
     /// Records the capability gating a <c>[Capability]</c>-annotated event property so reading it

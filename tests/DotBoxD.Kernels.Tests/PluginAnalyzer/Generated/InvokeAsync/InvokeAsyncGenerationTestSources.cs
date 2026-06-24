@@ -51,8 +51,10 @@ internal static class InvokeAsyncGenerationTestSources
 
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
-            [GeneratePluginServer]
+            [GeneratePluginServer(Context = typeof(RemotePluginContext))]
             public partial class RemotePluginServer : IGameWorldAccess;
+
+            public sealed partial class RemotePluginContext;
         }
 
         namespace Sample
@@ -112,8 +114,10 @@ internal static class InvokeAsyncGenerationTestSources
 
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
-            [GeneratePluginServer]
+            [GeneratePluginServer(Context = typeof(RemotePluginContext))]
             public partial class RemotePluginServer : IGameWorldAccess;
+
+            public sealed partial class RemotePluginContext;
         }
 
         namespace Sample
@@ -180,8 +184,10 @@ internal static class InvokeAsyncGenerationTestSources
 
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
-            [GeneratePluginServer]
+            [GeneratePluginServer(Context = typeof(RemotePluginContext))]
             public partial class RemotePluginServer : IGameWorldAccess;
+
+            public sealed partial class RemotePluginContext;
         }
 
         namespace Sample
@@ -240,8 +246,10 @@ internal static class InvokeAsyncGenerationTestSources
 
         namespace DotBoxD.Kernels.Game.Plugin.Client
         {
-            [GeneratePluginServer]
+            [GeneratePluginServer(Context = typeof(RemotePluginContext))]
             public partial class RemotePluginServer : IGameWorldAccess;
+
+            public sealed partial class RemotePluginContext;
         }
 
         namespace Sample
