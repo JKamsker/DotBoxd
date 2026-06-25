@@ -87,6 +87,7 @@ public string? Name { get; } = name
 public THost Host<THost>() where THost : class
 public Type ContextType { get; } = contextType
 public Type? Context { get; set; }
+public Type? ControlService { get; set; }
 public Type ReceiverType { get; } = receiverType
 public Type ResultType { get; }
 public Type ServerType { get; } = serverType

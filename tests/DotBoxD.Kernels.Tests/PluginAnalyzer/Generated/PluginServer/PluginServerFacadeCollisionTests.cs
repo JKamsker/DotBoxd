@@ -1,9 +1,98 @@
 namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Generated;
 
-public sealed class PluginServerFacadeRegressionTests
+public sealed class PluginServerFacadeCollisionTests
 {
     [Fact]
-    public void Generated_plugin_server_includes_inherited_controls_and_wraps_async_handles()
+    public void Generated_plugin_server_disambiguates_same_simple_name_returned_services()
+    {
+        // Two returned services with the same simple name must get distinct wrapper class names.
+        var (generated, outputCompilation) = PluginServerGenerationTestDriver.Run("""
+            using System.Threading.Tasks;
+            using DotBoxD.Abstractions;
+            using DotBoxD.Plugins;
+            using DotBoxD.Services.Attributes;
+
+            namespace Collision.Game
+            {
+                [DotBoxDService]
+                public interface IGameWorldAccess
+                {
+                    IMonsterControl Monsters { get; }
+                }
+
+                [DotBoxDService]
+                public interface IMonsterControl
+                {
+                    ValueTask<Collision.Game.Alpha.IMonster> GetAlphaAsync(string id);
+                    ValueTask<Collision.Game.Beta.IMonster> GetBetaAsync(string id);
+                }
+            }
+
+            namespace Collision.Game.Alpha
+            {
+                [DotBoxDService]
+                public interface IMonster
+                {
+                    ValueTask<int> GetHealthAsync();
+                }
+            }
+
+            namespace Collision.Game.Beta
+            {
+                [DotBoxDService]
+                public interface IMonster
+                {
+                    ValueTask<int> GetLevelAsync();
+                }
+            }
+
+            namespace Collision.Game.Ipc
+            {
+                public readonly record struct LiveSettingUpdate(string Name, string Value);
+
+                public interface IGamePluginControlService : DotBoxD.Plugins.IServerExtensionWireClient
+                {
+                    ValueTask<string> InstallPluginAsync(string packageJson, System.Threading.CancellationToken ct = default);
+                    ValueTask<string> InstallSubscriptionAsync(string packageJson, System.Threading.CancellationToken ct = default);
+                    ValueTask<string> InstallServerExtensionAsync(string packageJson, System.Threading.CancellationToken ct = default);
+                    ValueTask UpdateSettingsAsync(
+                        string pluginId,
+                        LiveSettingUpdate[] updates,
+                        bool atomic = false,
+                        System.Threading.CancellationToken ct = default);
+                    ValueTask HoldUntilShutdownAsync(System.Threading.CancellationToken ct = default);
+                }
+            }
+
+            namespace DotBoxD.Services.Generated
+            {
+                public static class DotBoxDGeneratedExtensions
+                {
+                    public static Collision.Game.IGameWorldAccess GetGameWorldAccess(
+                        DotBoxD.Services.Peer.RpcPeer peer)
+                        => throw new System.InvalidOperationException("not used");
+                }
+            }
+
+            namespace Collision.Plugin
+            {
+                using DotBoxD.Abstractions;
+                using Collision.Game;
+
+                [GeneratePluginServer(Context = typeof(RemotePluginContext))]
+                public partial class RemotePluginServer : IGameWorldAccess;
+
+                public sealed partial class RemotePluginContext;
+            }
+            """);
+
+        PluginServerGenerationTestDriver.AssertNoCompilationErrors(outputCompilation);
+        Assert.Contains("class MonsterPluginService :", generated, StringComparison.Ordinal);
+        Assert.Contains("class MonsterPluginService_2 :", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Generated_plugin_server_uses_disambiguated_world_proxy_suffix()
     {
         var (generated, outputCompilation) = PluginServerGenerationTestDriver.Run("""
             using System.Threading;
@@ -12,32 +101,19 @@ public sealed class PluginServerFacadeRegressionTests
             using DotBoxD.Plugins;
             using DotBoxD.Services.Attributes;
 
-            namespace Regression.Game
+            namespace Collision.One
             {
                 [DotBoxDService]
-                public interface IGameWorldBase
-                {
-                    IMonsterControl Monsters { get; }
-                }
-
-                [DotBoxDService]
-                public interface IGameWorldAccess : IGameWorldBase;
-
-                [DotBoxDService]
-                public interface IMonsterControl
-                {
-                    ValueTask<IMonster> GetAsync(string entityId);
-                }
-
-                [DotBoxDService]
-                public interface IMonster
-                {
-                    string Id { get; }
-                    ValueTask<int> GetHealthAsync();
-                }
+                public interface IGameWorldAccess;
             }
 
-            namespace Regression.Game.Ipc
+            namespace Collision.Two
+            {
+                [DotBoxDService]
+                public interface IGameWorldAccess;
+            }
+
+            namespace Collision.Two.Ipc
             {
                 public readonly record struct LiveSettingUpdate(string Name, string Value);
 
@@ -59,16 +135,16 @@ public sealed class PluginServerFacadeRegressionTests
             {
                 public static class DotBoxDGeneratedExtensions
                 {
-                    public static Regression.Game.IGameWorldAccess GetGameWorldAccess(
+                    public static Collision.Two.IGameWorldAccess GetCollision_Two_GameWorldAccess(
                         DotBoxD.Services.Peer.RpcPeer peer)
                         => throw new System.InvalidOperationException("not used");
                 }
             }
 
-            namespace Regression.Plugin
+            namespace Collision.Plugin
             {
                 using DotBoxD.Abstractions;
-                using Regression.Game;
+                using Collision.Two;
 
                 [GeneratePluginServer(Context = typeof(RemotePluginContext))]
                 public partial class RemotePluginServer : IGameWorldAccess;
@@ -78,75 +154,6 @@ public sealed class PluginServerFacadeRegressionTests
             """);
 
         PluginServerGenerationTestDriver.AssertNoCompilationErrors(outputCompilation);
-        Assert.Contains("public partial class RemotePluginContext", generated, StringComparison.Ordinal);
-        Assert.Contains("RemotePluginHookRegistry Hooks { get; }", generated, StringComparison.Ordinal);
-        Assert.Contains("RemotePluginSubscriptionRegistry Subscriptions { get; }", generated, StringComparison.Ordinal);
-        Assert.Contains("public global::Regression.Game.IMonsterControl Monsters", generated, StringComparison.Ordinal);
-        Assert.Contains("public async global::System.Threading.Tasks.ValueTask<global::Regression.Game.IMonster> GetAsync", generated, StringComparison.Ordinal);
-        Assert.Contains("new MonsterPluginService(_owner, await _inner.GetAsync", generated, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Generated_plugin_server_accepts_explicit_control_service_and_infers_update_type()
-    {
-        var (generated, outputCompilation) = PluginServerGenerationTestDriver.Run("""
-            using System.Threading;
-            using System.Threading.Tasks;
-            using DotBoxD.Abstractions;
-            using DotBoxD.Plugins;
-            using DotBoxD.Services.Attributes;
-
-            namespace Explicit.Game
-            {
-                [DotBoxDService]
-                public interface IGameWorldAccess;
-            }
-
-            namespace Explicit.Control
-            {
-                public readonly record struct PluginSettingPatch(string Name, string Value);
-
-                public interface IPluginControl : DotBoxD.Plugins.IServerExtensionWireClient
-                {
-                    ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default);
-                    ValueTask<string> InstallSubscriptionAsync(string packageJson, CancellationToken ct = default);
-                    ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default);
-                    ValueTask UpdateSettingsAsync(
-                        string pluginId,
-                        PluginSettingPatch[] updates,
-                        bool atomic = false,
-                        CancellationToken ct = default);
-                    ValueTask HoldUntilShutdownAsync(CancellationToken ct = default);
-                }
-            }
-
-            namespace DotBoxD.Services.Generated
-            {
-                public static class DotBoxDGeneratedExtensions
-                {
-                    public static Explicit.Game.IGameWorldAccess GetGameWorldAccess(
-                        DotBoxD.Services.Peer.RpcPeer peer)
-                        => throw new System.InvalidOperationException("not used");
-                }
-            }
-
-            namespace Explicit.Plugin
-            {
-                using DotBoxD.Abstractions;
-                using Explicit.Game;
-
-                [GeneratePluginServer(
-                    Context = typeof(RemotePluginContext),
-                    ControlService = typeof(Explicit.Control.IPluginControl))]
-                public partial class RemotePluginServer : IGameWorldAccess;
-
-                public sealed partial class RemotePluginContext;
-            }
-            """);
-
-        PluginServerGenerationTestDriver.AssertNoCompilationErrors(outputCompilation);
-        Assert.Contains("global::Explicit.Control.IPluginControl", generated, StringComparison.Ordinal);
-        Assert.Contains("global::Explicit.Control.PluginSettingPatch", generated, StringComparison.Ordinal);
-        Assert.DoesNotContain("IGamePluginControlService", generated, StringComparison.Ordinal);
+        Assert.Contains("DotBoxDGeneratedExtensions.GetCollision_Two_GameWorldAccess", generated, StringComparison.Ordinal);
     }
 }

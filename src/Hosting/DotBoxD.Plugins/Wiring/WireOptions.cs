@@ -12,6 +12,15 @@ namespace DotBoxD.Plugins;
 public readonly record struct WireCallbacks(RemoteLocalPush? LocalPush, RemoteLocalResultRequest? LocalResult);
 
 /// <summary>
+/// The resolved event adapter and terminal used when an installed kernel is wired through
+/// <see cref="PluginServer.WireHook"/> or <see cref="PluginServer.WireSubscription"/>.
+/// </summary>
+/// <param name="EventType">The CLR event type selected from the server's registered event adapters.</param>
+/// <param name="EventName">The adapter event name that matched the package manifest.</param>
+/// <param name="Terminal">The trusted terminal classification used for routing.</param>
+public readonly record struct WireResult(Type EventType, string EventName, KernelWireTerminal Terminal);
+
+/// <summary>
 /// The host's wiring seam for <see cref="PluginServer.WireHook"/> / <see cref="PluginServer.WireSubscription"/>.
 /// Everything mechanical (terminal selection, by-name event resolution, the trusted recompute) is owned by the
 /// router; this carries only the genuinely host-specific bits: the remote-local callbacks, the world-owned

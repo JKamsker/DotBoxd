@@ -222,11 +222,17 @@ The server ends up reading like the plugin already does.
 
 - `PluginEventAdapterRegistry.TryResolveErased(string, out IErasedPluginEventAdapter)`
 - `IErasedPluginEventAdapter` (EventType + captured generic wire dispatch) + `WireCallbacks`
-- `PluginServer.WireHook(InstalledKernel, WireOptions?)` / `WireSubscription(...)` + `WireOptions`
+- `GeneratePluginServerAttribute.ControlService` for explicit control-plane contracts when the legacy `{World}.Ipc.IGamePluginControlService` convention does not apply
+- `PluginServer.WireHook(InstalledKernel, WireOptions?)` / `WireSubscription(...)` return `WireResult` and accept `WireOptions`
 - `KernelWireKind` / `KernelWireTerminal` (trusted classification)
 - `PluginSession.InstallAndWireAsync(PluginPackage, Action<InstalledKernel> wire, ...)` and `PluginSession.TryGetOwned(...)`
 - `InstalledKernel.InvokeServerExtensionRpcAsync(byte[], CancellationToken)`
 - `PluginConnectionHost<TConnection>` in `DotBoxD.Pushdown.Services` — the runtime connection host (Piece 2 shipped as a helper, not a source generator)
+
+Versioning note: `ControlService` is an intentional additive API for explicit control-plane contracts. Returning
+`WireResult` is an intentional public API change for the host-composition router; it lets hosts inspect the trusted
+event/terminal route selected by the framework router. Callers that ignored the old `void` return can keep the same
+source shape, but binaries compiled against the old signature must rebuild.
 
 ## 7. Sequencing & risk
 

@@ -212,6 +212,7 @@ public readonly record struct KernelWireTerminal( KernelWireKind Kind, string? C
 public readonly record struct ResultHookFault(Type EventType, Exception Exception)
 public readonly record struct SubscriptionDeliveryFault( Type EventType, SubscriptionDeliveryStage Stage, Exception Exception)
 public readonly record struct WireCallbacks(RemoteLocalPush? LocalPush, RemoteLocalResultRequest? LocalResult)
+public readonly record struct WireResult(Type EventType, string EventName, KernelWireTerminal Terminal)
 public readonly struct KernelRpcValue
 public ref struct KernelRpcPayloadReader
 public RemoteHookPipeline<TEvent, TContext> On<TEvent, TContext>(Func<HookContext, TContext> createContext)
@@ -656,5 +657,5 @@ public void SetMany(IReadOnlyDictionary<string, object?> values)
 public void SetObject(object? value)
 public void SetObject(string name, object? value)
 public void Unregister(InstalledKernel kernel)
-public void WireHook(InstalledKernel kernel, WireOptions? options = null)
-public void WireSubscription(InstalledKernel kernel, WireOptions? options = null)
+public WireResult WireHook(InstalledKernel kernel, WireOptions? options = null)
+public WireResult WireSubscription(InstalledKernel kernel, WireOptions? options = null)

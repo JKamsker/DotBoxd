@@ -25,37 +25,12 @@ public sealed record KernelMethodAggroEvent(string MonsterId, int Distance, int 
 /// </summary>
 public sealed class PluginAnalyzerKernelMethodTests
 {
-    private const string InlinedGateSource = """
-        using DotBoxD.Plugins;
-        using DotBoxD.Plugins.Runtime;
-        using DotBoxD.Abstractions;
-
-        namespace Sample;
-
-        public sealed record AggroEvent(
-            string MonsterId, string Message, int MonsterLevel, int PlayerLevel, int Distance);
-
-        [Plugin("inlined-gate")]
-        public sealed partial class InlinedGateKernel : IEventKernel<AggroEvent>
-        {
-            public bool ShouldHandle(AggroEvent e, HookContext ctx)
-                => IsBullying(e.MonsterLevel, e.PlayerLevel) && IsClose(e.Distance);
-
-            public void Handle(AggroEvent e, HookContext ctx)
-                => ctx.Messages.Send(e.MonsterId, e.Message);
-
-            [KernelMethod]
-            public static bool IsBullying(int monsterLevel, int playerLevel) => monsterLevel - playerLevel >= 3;
-
-            [KernelMethod]
-            public static bool IsClose(int distance) => distance <= 5;
-        }
-        """;
-
     [Fact]
     public async Task KernelMethod_inlined_into_ShouldHandle_gates_like_the_inline_expression()
     {
-        var package = PluginAnalyzerGeneratedPackageFactory.Create(InlinedGateSource, "Sample.InlinedGatePluginPackage");
+        var package = PluginAnalyzerGeneratedPackageFactory.Create(
+            PluginAnalyzerKernelMethodTestSources.InlinedGate,
+            "Sample.InlinedGatePluginPackage");
         using var server = DotBoxD.Plugins.PluginServer.Create(new InMemoryPluginMessageSink(), defaultPolicy: SandboxedPolicy());
         var kernel = await server.InstallAsync(package);
         var adapter = new AggroAdapter();
@@ -68,44 +43,14 @@ public sealed class PluginAnalyzerKernelMethodTests
         Assert.False((bool)await kernel.ShouldHandleAsync(adapter, new AggroSample("m", "calm", 10, 5, 9)));
     }
 
-    private const string InlinedHostBindingSource = """
-        using DotBoxD.Kernels;
-        using DotBoxD.Kernels.Sandbox;
-        using DotBoxD.Plugins;
-        using DotBoxD.Plugins.Runtime;
-        using DotBoxD.Abstractions;
-
-        namespace Sample;
-
-        public interface IProbeWorld
-        {
-            [HostBinding("host.probe.getValue", "probe.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
-            int GetValue(string id);
-        }
-
-        public sealed record ProbeEvent(string TargetId, string Message, int Threshold);
-
-        [Plugin("inlined-host-binding")]
-        public sealed partial class InlinedHostBindingKernel : IEventKernel<ProbeEvent>
-        {
-            public bool ShouldHandle(ProbeEvent e, HookContext ctx)
-                => IsAtLeast(ctx.Host<IProbeWorld>().GetValue(e.TargetId), e.Threshold);
-
-            public void Handle(ProbeEvent e, HookContext ctx)
-                => ctx.Messages.Send(e.TargetId, e.Message);
-
-            [KernelMethod]
-            public static bool IsAtLeast(int value, int threshold) => value >= threshold;
-        }
-        """;
-
     [Fact]
     public void KernelMethod_collects_capabilities_of_a_host_binding_argument()
     {
         // The host-binding call is an argument to the inlined [KernelMethod]; it lowers in the call-site
         // context so its capability still lands in the manifest.
         var package = PluginAnalyzerGeneratedPackageFactory.Create(
-            InlinedHostBindingSource, "Sample.InlinedHostBindingPluginPackage");
+            PluginAnalyzerKernelMethodTestSources.InlinedHostBinding,
+            "Sample.InlinedHostBindingPluginPackage");
 
         Assert.Contains("probe.read.value", package.Manifest.RequiredCapabilities);
         Assert.Contains("host.message.write", package.Manifest.RequiredCapabilities);
@@ -115,7 +60,8 @@ public sealed class PluginAnalyzerKernelMethodTests
     public async Task KernelMethod_with_a_host_binding_argument_installs_and_runs_under_a_wildcard_grant()
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create(
-            InlinedHostBindingSource, "Sample.InlinedHostBindingPluginPackage");
+            PluginAnalyzerKernelMethodTestSources.InlinedHostBinding,
+            "Sample.InlinedHostBindingPluginPackage");
         using var server = DotBoxD.Plugins.PluginServer.Create(
             new InMemoryPluginMessageSink(),
             configureHost: AddProbeBindings,
@@ -129,30 +75,10 @@ public sealed class PluginAnalyzerKernelMethodTests
         Assert.False((bool)await kernel.ShouldHandleAsync(adapter, new ProbeSample("p", "hi", 50)));
     }
 
-    private const string ChainSource = """
-        using DotBoxD.Plugins;
-        using DotBoxD.Plugins.Runtime;
-        using DotBoxD.Abstractions;
-
-        namespace ChainSample;
-
-        public static class Usage
-        {
-            public static void Configure(HookRegistry hooks)
-                => hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.KernelMethod.KernelMethodAggroEvent>()
-                    .Where((e, ctx) => IsBullyingAndClose(e.MonsterLevel, e.PlayerLevel, e.Distance))
-                    .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "calm"));
-
-            [KernelMethod]
-            public static bool IsBullyingAndClose(int monsterLevel, int playerLevel, int distance)
-                => monsterLevel - playerLevel >= 3 && distance <= 5;
-        }
-        """;
-
     [Fact]
     public async Task KernelMethod_inlined_into_an_inline_Where_chain_runs_only_when_its_condition_holds()
     {
-        var assembly = Compile(ChainSource, enableInterceptors: true);
+        var assembly = Compile(PluginAnalyzerKernelMethodTestSources.Chain, enableInterceptors: true);
         var package = HookChainPackage(assembly);
 
         var messages = new InMemoryPluginMessageSink();
@@ -171,34 +97,10 @@ public sealed class PluginAnalyzerKernelMethodTests
         Assert.Equal("calm", message.Message);
     }
 
-    private const string MultiStatementSource = """
-        using DotBoxD.Plugins;
-        using DotBoxD.Plugins.Runtime;
-        using DotBoxD.Abstractions;
-
-        namespace ChainSample;
-
-        public static class Usage
-        {
-            public static void Configure(HookRegistry hooks)
-                => hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.KernelMethod.KernelMethodAggroEvent>()
-                    .Where((e, ctx) => Unsupported(e.Distance))
-                    .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "calm"));
-
-            // A multi-statement body is not inlineable → the whole chain fails safe (no package).
-            [KernelMethod]
-            public static bool Unsupported(int distance)
-            {
-                var doubled = distance * 2;
-                return doubled <= 10;
-            }
-        }
-        """;
-
     [Fact]
     public void A_KernelMethod_with_a_multi_statement_body_fails_safe_with_no_generated_chain_package()
     {
-        var assembly = Compile(MultiStatementSource, enableInterceptors: true);
+        var assembly = Compile(PluginAnalyzerKernelMethodTestSources.MultiStatement, enableInterceptors: true);
 
         var hasChainPackage = assembly.GetTypes().Any(type =>
             type.Name.StartsWith("HookChain_", StringComparison.Ordinal) &&

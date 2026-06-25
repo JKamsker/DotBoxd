@@ -20,11 +20,12 @@ public sealed partial class PluginServer
     /// <see cref="PluginEventAdapterRegistry.TryResolveErased"/>, or hand-write the equivalent directly with
     /// typed <c>server.Hooks.On&lt;TEvent&gt;().Use(kernel)</c> plus your own event-name → type dispatch.
     /// </remarks>
-    public void WireHook(InstalledKernel kernel, WireOptions? options = null)
+    public WireResult WireHook(InstalledKernel kernel, WireOptions? options = null)
     {
         var opts = options ?? DefaultWireOptions;
         var (erased, terminal, callbacks) = Prepare(kernel, opts);
         erased.WireHook(Hooks, kernel, terminal, callbacks);
+        return new WireResult(erased.EventType, erased.EventName, terminal);
     }
 
     /// <summary>
@@ -36,12 +37,13 @@ public sealed partial class PluginServer
     /// </summary>
     /// <remarks>Opt-in convenience; see <see cref="WireHook"/> for the customization seams and the
     /// hand-written equivalent (<c>server.Subscriptions.On&lt;TEvent&gt;().Use(kernel)</c>).</remarks>
-    public void WireSubscription(InstalledKernel kernel, WireOptions? options = null)
+    public WireResult WireSubscription(InstalledKernel kernel, WireOptions? options = null)
     {
         var opts = options ?? DefaultWireOptions;
         var (erased, terminal, callbacks) = Prepare(kernel, opts);
         var indexRegistry = opts.UseIndex ? opts.IndexRegistry : null;
         erased.WireSubscription(Subscriptions, kernel, terminal, callbacks, indexRegistry);
+        return new WireResult(erased.EventType, erased.EventName, terminal);
     }
 
     private (IErasedPluginEventAdapter Erased, KernelWireTerminal Terminal, WireCallbacks Callbacks) Prepare(

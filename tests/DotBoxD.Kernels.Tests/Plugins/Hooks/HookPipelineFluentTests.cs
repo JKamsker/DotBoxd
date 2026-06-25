@@ -1,4 +1,7 @@
 using DotBoxD.Kernels.Model;
+using DotBoxD.Kernels.PluginIpc.Server.Abstractions;
+using DotBoxD.Kernels.Tests._TestSupport;
+using DotBoxD.Plugins;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Hooks;
 
@@ -48,7 +51,7 @@ public sealed class HookPipelineFluentTests
     public async Task Staged_Where_short_circuits_the_terminal()
     {
         var messages = new InMemoryPluginMessageSink();
-        using var server = DotBoxD.Plugins.PluginServer.Create(messages);
+        using var server = PluginAddendumTestPolicies.CreateServer(messages);
         server.Hooks.On<Ping>()
             .Select((p, ctx) => p.Value)
             .Where((value, ctx) => value >= 100)
@@ -71,6 +74,31 @@ public sealed class HookPipelineFluentTests
         await server.Hooks.PublishAsync(new Ping("monster-1", 21), cts.Token);
 
         Assert.Equal(cts.Token, observed);
+    }
+
+    [Fact]
+    public async Task Native_wire_methods_return_the_resolved_event_and_terminal()
+    {
+        var messages = new InMemoryPluginMessageSink();
+        using var server = PluginAddendumTestPolicies.CreateServer(messages);
+        server.Events.Resolve<DamageEvent>();
+        var kernel = await server.InstallAsync(
+            FireDamagePluginPackage.Create(),
+            PluginAddendumTestPolicies.LongWall());
+
+        var hook = server.WireHook(kernel);
+        var subscription = server.WireSubscription(kernel);
+
+        Assert.Equal(typeof(DamageEvent), hook.EventType);
+        Assert.Equal(nameof(DamageEvent), hook.EventName);
+        Assert.Equal(KernelWireKind.Plain, hook.Terminal.Kind);
+        Assert.Equal(hook, subscription);
+
+        await server.Hooks.PublishAsync(new DamageEvent("fire", 150, "target-1"));
+
+        var message = Assert.Single(messages.Messages);
+        Assert.Equal("target-1", message.TargetId);
+        Assert.Equal("Ouch, fire.", message.Message);
     }
 
     [Fact]
