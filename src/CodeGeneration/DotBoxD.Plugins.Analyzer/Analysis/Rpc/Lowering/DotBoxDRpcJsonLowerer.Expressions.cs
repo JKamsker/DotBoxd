@@ -1,5 +1,4 @@
 using System.Globalization;
-using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -71,6 +70,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             return mapCall;
         }
+
         if (_model.GetSymbolInfo(invocation, _cancellationToken).Symbol is IMethodSymbol method &&
             DotBoxDHostBindingExpressionLowerer.HostBinding(method, _model.Compilation) is { } binding)
         {
@@ -81,23 +81,12 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 $"Host binding '{binding.BindingId}'");
             return Call(binding.BindingId, null, args);
         }
+        if (TryLowerKernelMethodInvocation(invocation) is { } kernelMethod)
+        {
+            return kernelMethod;
+        }
+
         throw new NotSupportedException($"Server extension call '{invocation}' is not a host binding.");
-    }
-    private void AddBindingMetadata((string BindingId, string? Capability, IReadOnlyList<string> Effects, bool IsAsync) binding)
-    {
-        if (binding.Capability is { Length: > 0 } capability)
-        {
-            _capabilities.Add(capability);
-        }
-        foreach (var effect in binding.Effects)
-        {
-            _effects.Add(effect);
-        }
-        if (binding.IsAsync || binding.Effects.Contains(DotBoxDGenerationNames.Effects.Concurrency))
-        {
-            _effects.Add(DotBoxDGenerationNames.Effects.Concurrency);
-            _capabilities.Add(DotBoxDGenerationNames.Capabilities.RuntimeAsync);
-        }
     }
     private string LowerMemberAccess(MemberAccessExpressionSyntax member)
     {

@@ -31,16 +31,37 @@ public sealed class InvokeAsyncGenerationTests
     }
 
     [Fact]
-    public void Expression_body_lambda_is_ignored()
+    public void Expression_body_lambda_reports_InvokeAsync_diagnostic()
     {
         var result = RunGenerator(UsageSource("""
             public static ValueTask<int> Run(RemotePluginServer kernels)
                 => kernels.InvokeAsync((IGameWorldAccess world) => new ValueTask<int>(world.GetHealth("monster-1")));
             """));
 
-        Assert.DoesNotContain(
-            result.GeneratedTrees,
-            tree => tree.ToString().Contains("InvokeAsync_", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains("InvokeAsync", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void KernelMethod_helper_inside_InvokeAsync_generates_anonymous_package()
+    {
+        var result = RunGenerator(UsageSource("""
+            public static ValueTask<int> Run(RemotePluginServer kernels)
+                => kernels.InvokeAsync(async (IGameWorldAccess world) =>
+                {
+                    return AddOne(world.GetHealth("monster-1"));
+                });
+
+            [KernelMethod]
+            public static int AddOne(int value) => value + 1;
+            """));
+        var source = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.Contains("InvokeAsync_", source, StringComparison.Ordinal);
+        Assert.Contains("host.world.getHealth", source, StringComparison.Ordinal);
+        Assert.Contains("\\\"op\\\":\\\"add\\\"", source, StringComparison.Ordinal);
     }
 
     [Fact]

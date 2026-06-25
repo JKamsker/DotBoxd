@@ -67,6 +67,58 @@ public sealed partial class PluginAnalyzerHookChainTests
         Assert.Equal(DiagnosticSeverity.Info, diagnostic.Severity);
     }
 
+    [Fact]
+    public void Remote_staged_Use_reports_DBXK100_error_instead_of_installing_unfiltered_package()
+    {
+        var result = RunGenerator("""
+            using DotBoxD.Plugins.Runtime;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId);
+            public sealed class DamageKernel;
+
+            public static class Usage
+            {
+                public static void Configure(RemoteHookRegistry hooks)
+                    => hooks.On<DamageEvent>()
+                        .Where(e => e.TargetId == "monster-1")
+                        .Use<DamageKernel>();
+            }
+            """);
+
+        var diagnostic = Assert.Single(result.Diagnostics.Where(d => d.Id == "DBXK100"));
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Contains("Where/Select", diagnostic.GetMessage(), StringComparison.Ordinal);
+        Assert.Contains("Use", diagnostic.GetMessage(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Remote_subscription_staged_Use_reports_DBXK100_error()
+    {
+        var result = RunGenerator("""
+            using DotBoxD.Plugins.Runtime;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId);
+            public sealed class DamageKernel;
+
+            public static class Usage
+            {
+                public static void Configure(RemoteSubscriptionRegistry subscriptions)
+                    => subscriptions.On<DamageEvent>()
+                        .Where(e => e.TargetId == "monster-1")
+                        .Use<DamageKernel>();
+            }
+            """);
+
+        var diagnostic = Assert.Single(result.Diagnostics.Where(d => d.Id == "DBXK100"));
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.Contains("Where/Select", diagnostic.GetMessage(), StringComparison.Ordinal);
+        Assert.Contains("Use", diagnostic.GetMessage(), StringComparison.Ordinal);
+    }
+
     private static GeneratorDriverRunResult RunGenerator(string source)
         => RunGeneratorCore(source).Result;
 

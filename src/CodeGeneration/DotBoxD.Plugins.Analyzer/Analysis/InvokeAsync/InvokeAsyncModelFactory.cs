@@ -24,9 +24,14 @@ internal static class InvokeAsyncModelFactory
         {
             return TryCreate(invocation, context.SemanticModel, cancellationToken);
         }
-        catch (NotSupportedException)
+        catch (NotSupportedException ex)
         {
-            return null;
+            return new InvokeAsyncResult(
+                null,
+                null,
+                new PluginKernelDiagnostic(
+                    "InvokeAsync call could not be lowered: " + ex.Message,
+                    PluginDiagnosticLocation.From(invocation.GetLocation())));
         }
     }
 
@@ -54,7 +59,8 @@ internal static class InvokeAsyncModelFactory
         shape ??= InvokeAsyncCallShape.Create(invocation, worldType, model, cancellationToken);
         if (shape is null)
         {
-            return null;
+            throw new NotSupportedException(
+                "lambda must use a supported block body and capture shape.");
         }
 
         var capabilities = new SortedSet<string>(StringComparer.Ordinal);
@@ -82,7 +88,7 @@ internal static class InvokeAsyncModelFactory
             pluginId,
             shape,
             cancellationToken);
-        return new InvokeAsyncResult(package, interception);
+        return new InvokeAsyncResult(package, interception, null);
     }
 
     private static bool TryServerInvocationSurface(

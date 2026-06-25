@@ -1,3 +1,4 @@
+using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering;
@@ -20,6 +21,9 @@ internal static class DotBoxDTypeNameReader
             SandboxTypeName(type),
             DotBoxDGenerationNames.ManifestTypes.Unsupported,
             StringComparison.Ordinal);
+
+    public static string KernelMethodTypeName(ITypeSymbol type)
+        => SandboxTypeSourceEmitter.ManifestTag(UnwrapTaskLike(type));
 
     public static ITypeSymbol UnwrapTaskLike(ITypeSymbol type)
         => TryUnwrapTaskLike(type, out var inner) ? inner : type;

@@ -12,7 +12,8 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 /// the flowing element and downstream lambdas substitute that projection at compile time (via the
 /// lowering context's projected-element binding); the <c>Run</c> terminal's single
 /// <c>ctx.Messages.Send(targetId, message)</c> becomes <c>Handle</c>. Supported subset: expression-body
-/// lambdas and a single Send terminal. Any other shape fails safe (returns <c>null</c>, no package),
+/// lambdas and a direct Send terminal or static <c>[KernelMethod]</c> Send helper. Any other shape fails safe
+/// (returns <c>null</c>, no package),
 /// leaving the runtime terminal to throw DBXK062 / the generator to report DBXK114.
 /// </summary>
 internal static partial class HookChainModelFactory

@@ -19,25 +19,18 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     private readonly ICollection<string> _capabilities;
     private readonly ICollection<string> _effects;
     private readonly CancellationToken _cancellationToken;
+    private readonly IReadOnlyDictionary<string, RpcInlinedBinding>? _inlinedBindings;
+    private readonly IReadOnlyCollection<string>? _inlineStack;
     private readonly Dictionary<string, string> _serviceHandleLocals = new(StringComparer.Ordinal);
     private readonly HashSet<string> _reservedNames = new(StringComparer.Ordinal);
     private Func<AssignmentExpressionSyntax, Func<ExpressionSyntax, string>, string?>? _assignmentOverride;
     private IReadOnlyList<string> _returnRecordFields = [];
     private string? _returnRecordType;
     private int _tempCounter;
+
     /// <summary>True once the body builds a list or record, so the manifest declares the Alloc effect.</summary>
     public bool Allocates { get; private set; }
-    public DotBoxDRpcJsonLowerer(
-        SemanticModel model,
-        ICollection<string> capabilities,
-        ICollection<string> effects,
-        CancellationToken cancellationToken)
-    {
-        _model = model;
-        _capabilities = capabilities;
-        _effects = effects;
-        _cancellationToken = cancellationToken;
-    }
+
     public string LowerBody(BlockSyntax block) => LowerBody(block, [], [], returnRecordType: null, assignmentOverride: null);
     internal void AddServiceHandleLocal(string name, string handleIdJson)
         => _serviceHandleLocals[name] = handleIdJson;

@@ -147,6 +147,17 @@ internal static partial class HookChainModelFactory
             serverContextType: terminalContextType,
             capabilities: capabilities,
             effects: effects);
+        if (terminalContextParam is not null &&
+            body is InvocationExpressionSyntax helperInvocation &&
+            DotBoxDKernelMethodInliner.TryInlineSendHandle(
+                helperInvocation,
+                terminalContextParam,
+                context,
+                part => DotBoxDExpressionModelFactory.Create(part, context)) is { } helperHandle)
+        {
+            return DotBoxDHandleBodyModelFactory.FromSend(helperHandle with { Prefix = projection?.Prefix });
+        }
+
         var expression = DotBoxDExpressionModelFactory.Create(body, context);
         if (!string.Equals(expression.Type, DotBoxDGenerationNames.ManifestTypes.Unit, StringComparison.Ordinal))
         {

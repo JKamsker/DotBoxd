@@ -1,8 +1,9 @@
 namespace DotBoxD.Plugins.Analyzer.Analysis.InvokeAsync;
 
 internal sealed record InvokeAsyncResult(
-    GeneratedPluginPackage Package,
-    InvokeAsyncInterception? Interception);
+    GeneratedPluginPackage? Package,
+    InvokeAsyncInterception? Interception,
+    PluginKernelDiagnostic? Diagnostic);
 
 internal sealed record InvokeAsyncInterception(
     string AttributeSyntax,

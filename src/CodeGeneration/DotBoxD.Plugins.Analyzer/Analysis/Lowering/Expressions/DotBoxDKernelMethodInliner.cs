@@ -13,7 +13,7 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 /// <para>
 /// A method without <c>[KernelMethod]</c> returns <see langword="null"/> so the caller can try the next
 /// handler. Once the attribute is seen this lowerer owns the call: any unsupported shape (non-static except
-/// for the configured server context receiver, non-scalar signature, multi-statement body, recursion,
+/// for the configured server context receiver, unsupported sandbox signature, multi-statement body, recursion,
 /// named/mismatched arguments) throws
 /// <see cref="NotSupportedException"/>, which fails the whole chain/kernel safely rather than emitting a
 /// miscompiled package.
@@ -39,11 +39,11 @@ internal static partial class DotBoxDKernelMethodInliner
                 $"[KernelMethod] '{method.Name}' must be static or called on the server context parameter.");
         }
 
-        var returnType = DotBoxDTypeNameReader.SandboxTypeName(method.ReturnType);
+        var returnType = DotBoxDTypeNameReader.KernelMethodTypeName(method.ReturnType);
         if (string.Equals(returnType, DotBoxDGenerationNames.ManifestTypes.Unsupported, StringComparison.Ordinal))
         {
             throw new NotSupportedException(
-                $"[KernelMethod] '{method.Name}' must return a supported scalar type.");
+                $"[KernelMethod] '{method.Name}' must return a supported sandbox type.");
         }
 
         var methodKey = method.OriginalDefinition.ToDisplayString();
@@ -111,14 +111,15 @@ internal static partial class DotBoxDKernelMethodInliner
         var bindings = new Dictionary<string, DotBoxDExpressionModel>(StringComparer.Ordinal);
         for (var i = 0; i < arguments.Count; i++)
         {
-            if (arguments[i].NameColon is not null)
+            if (arguments[i].NameColon is not null ||
+                !arguments[i].RefKindKeyword.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.None))
             {
                 throw new NotSupportedException(
-                    $"[KernelMethod] '{method.Name}' arguments must be positional.");
+                    $"[KernelMethod] '{method.Name}' arguments must be positional value arguments.");
             }
 
             var lowered = lowerExpression(arguments[i].Expression);
-            var expected = DotBoxDTypeNameReader.SandboxTypeName(method.Parameters[i].Type);
+            var expected = DotBoxDTypeNameReader.KernelMethodTypeName(method.Parameters[i].Type);
             if (!string.Equals(lowered.Type, expected, StringComparison.Ordinal))
             {
                 throw new NotSupportedException(

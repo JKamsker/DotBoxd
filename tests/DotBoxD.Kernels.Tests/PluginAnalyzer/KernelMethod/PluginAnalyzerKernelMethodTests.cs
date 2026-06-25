@@ -98,6 +98,59 @@ public sealed class PluginAnalyzerKernelMethodTests
     }
 
     [Fact]
+    public async Task KernelMethod_accepts_record_projection_parameters_in_inline_chains()
+    {
+        var assembly = Compile(PluginAnalyzerKernelMethodTestSources.RichRecordHelperChain, enableInterceptors: true);
+        var package = HookChainPackage(assembly);
+
+        var messages = new InMemoryPluginMessageSink();
+        using var server = DotBoxD.Plugins.PluginServer.Create(messages, defaultPolicy: SandboxedPolicy());
+        server.Hooks.On<KernelMethodAggroEvent>().UseGeneratedChain(package);
+
+        await server.Hooks.PublishAsync(new KernelMethodAggroEvent("monster-1", 3, 10, 5));
+        await server.Hooks.PublishAsync(new KernelMethodAggroEvent("monster-2", 9, 10, 5));
+
+        var message = Assert.Single(messages.Messages);
+        Assert.Equal("monster-1", message.TargetId);
+        Assert.Equal("calm", message.Message);
+    }
+
+    [Fact]
+    public async Task KernelMethod_send_helper_inlined_into_Run_terminal_sends_message()
+    {
+        var assembly = Compile(PluginAnalyzerKernelMethodTestSources.RunSendHelperChain, enableInterceptors: true);
+        var package = HookChainPackage(assembly);
+
+        var messages = new InMemoryPluginMessageSink();
+        using var server = DotBoxD.Plugins.PluginServer.Create(messages, defaultPolicy: SandboxedPolicy());
+        server.Hooks.On<KernelMethodAggroEvent>().UseGeneratedChain(package);
+
+        await server.Hooks.PublishAsync(new KernelMethodAggroEvent("monster-1", 3, 10, 5));
+        await server.Hooks.PublishAsync(new KernelMethodAggroEvent("monster-2", 9, 10, 5));
+
+        var message = Assert.Single(messages.Messages);
+        Assert.Equal("monster-1", message.TargetId);
+        Assert.Equal("calm", message.Message);
+    }
+
+    [Fact]
+    public async Task KernelMethod_send_helper_inlined_into_kernel_Handle_sends_message()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create(
+            PluginAnalyzerKernelMethodTestSources.HandleSendHelper,
+            "Sample.InlinedHandleHelperPluginPackage");
+        var messages = new InMemoryPluginMessageSink();
+        using var server = DotBoxD.Plugins.PluginServer.Create(messages, defaultPolicy: SandboxedPolicy());
+
+        var kernel = await server.InstallAsync(package);
+        await kernel.HandleAsync(new AggroAdapter(), new AggroSample("monster-1", "ignored", 10, 5, 3));
+
+        var message = Assert.Single(messages.Messages);
+        Assert.Equal("monster-1", message.TargetId);
+        Assert.Equal("calm", message.Message);
+    }
+
+    [Fact]
     public void A_KernelMethod_with_a_multi_statement_body_fails_safe_with_no_generated_chain_package()
     {
         var assembly = Compile(PluginAnalyzerKernelMethodTestSources.MultiStatement, enableInterceptors: true);

@@ -24,15 +24,12 @@ internal static class DotBoxDHandleModelFactory
         CancellationToken cancellationToken,
         ICollection<string>? capabilities = null,
         ICollection<string>? effects = null)
-        => CreateFromSend(
-            SingleSendInvocation(method, contextParameterName),
-            eventParameterName,
-            eventProperties,
-            liveSettings,
-            semanticModel,
-            cancellationToken,
-            capabilities,
-            effects);
+    {
+        var context = new DotBoxDExpressionLoweringContext(
+            eventParameterName, eventProperties, liveSettings, semanticModel, cancellationToken,
+            capabilities: capabilities, effects: effects);
+        return Create(method, contextParameterName, context);
+    }
 
     /// <summary>
     /// Lowers a single <c>ctx.Messages.Send(targetId, message)</c> invocation to a handle model. Shared
@@ -155,9 +152,31 @@ internal static class DotBoxDHandleModelFactory
         slot = expression;
     }
 
-    private static InvocationExpressionSyntax SingleSendInvocation(
+    private static DotBoxDHandleModel Create(
         MethodDeclarationSyntax method,
-        string contextParameterName)
+        string contextParameterName,
+        DotBoxDExpressionLoweringContext context)
+    {
+        var expression = SingleHandleExpression(method);
+        if (expression is not InvocationExpressionSyntax invocation)
+        {
+            throw new NotSupportedException(SendCallMessage);
+        }
+
+        if (IsContextMessageSend(invocation.Expression, contextParameterName))
+        {
+            return CreateFromSend(invocation, context);
+        }
+
+        var helper = DotBoxDKernelMethodInliner.TryInlineSendHandle(
+            invocation,
+            contextParameterName,
+            context,
+            part => DotBoxDExpressionModelFactory.Create(part, context));
+        return helper ?? throw new NotSupportedException(SendCallMessage);
+    }
+
+    private static ExpressionSyntax SingleHandleExpression(MethodDeclarationSyntax method)
     {
         var expression = method.ExpressionBody?.Expression;
         if (expression is null)
@@ -169,13 +188,7 @@ internal static class DotBoxDHandleModelFactory
             }
         }
 
-        if (expression is not InvocationExpressionSyntax invocation ||
-            !IsContextMessageSend(invocation.Expression, contextParameterName))
-        {
-            throw new NotSupportedException(SendCallMessage);
-        }
-
-        return invocation;
+        return expression ?? throw new NotSupportedException(SingleSendBodyMessage);
     }
 
     private static bool TryBodySendExpression(BlockSyntax body, out ExpressionSyntax? expression)

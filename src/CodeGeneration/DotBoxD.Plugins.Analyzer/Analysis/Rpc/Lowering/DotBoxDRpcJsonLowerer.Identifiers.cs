@@ -9,6 +9,12 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     private string LowerIdentifier(IdentifierNameSyntax identifier)
     {
         var name = identifier.Identifier.ValueText;
+        if (_inlinedBindings is not null &&
+            _inlinedBindings.TryGetValue(name, out var binding))
+        {
+            return binding.Source;
+        }
+
         var symbol = _model.GetSymbolInfo(identifier, _cancellationToken).Symbol;
         if (symbol is ILocalSymbol or IParameterSymbol ||
             symbol is IPropertySymbol property && IsLiveSetting(property))

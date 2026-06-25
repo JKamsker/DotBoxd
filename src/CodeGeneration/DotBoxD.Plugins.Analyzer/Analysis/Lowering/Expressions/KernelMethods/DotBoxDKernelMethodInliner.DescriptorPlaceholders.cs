@@ -31,7 +31,7 @@ internal static partial class DotBoxDKernelMethodInliner
 
         for (var i = 0; i < method.Parameters.Length; i++)
         {
-            var expectedType = DotBoxDTypeNameReader.SandboxTypeName(method.Parameters[i].Type);
+            var expectedType = DotBoxDTypeNameReader.KernelMethodTypeName(method.Parameters[i].Type);
             var expectedPlaceholder = DescriptorPlaceholder(i);
             var actual = descriptor.Parameters[i];
             if (!string.Equals(actual.Placeholder, expectedPlaceholder, StringComparison.Ordinal) ||
