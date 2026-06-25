@@ -60,17 +60,25 @@ public sealed class PluginEventAdapterRegistry
     /// </summary>
     public bool TryResolveErased(string eventName, out IErasedPluginEventAdapter adapter)
     {
+        // Prefer an exact (ordinal) name match over a qualified-vs-simple suffix match, so a precisely-named
+        // event always resolves to its own adapter and never to one that merely suffix-collides with it.
+        IErasedPluginEventAdapter? suffixMatch = null;
         foreach (var registered in _adapters.Values)
         {
-            if (EventNameMatch.Matches(registered.Shape.EventName, eventName))
+            if (string.Equals(registered.Shape.EventName, eventName, StringComparison.Ordinal))
             {
                 adapter = registered.Erased;
                 return true;
             }
+
+            if (suffixMatch is null && EventNameMatch.Matches(registered.Shape.EventName, eventName))
+            {
+                suffixMatch = registered.Erased;
+            }
         }
 
-        adapter = default!;
-        return false;
+        adapter = suffixMatch!;
+        return suffixMatch is not null;
     }
 
     private static IPluginEventAdapter<TEvent>? TryDiscoverAdapter<TEvent>()

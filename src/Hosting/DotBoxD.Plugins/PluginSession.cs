@@ -99,6 +99,16 @@ public sealed class PluginSession : IDisposable, IAsyncDisposable
         try
         {
             kernel = await InstallAsync(package, policy?.Invoke(package), cancellationToken).ConfigureAwait(false);
+
+            // The session can be disposed (e.g. the peer disconnected) between InstallAsync releasing its gate
+            // and this wire step; Dispose then revokes + unregisters the just-installed kernel. Don't wire into a
+            // torn-down session — that would leave a dead handler in the pipeline that nothing later removes.
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                throw new InvalidOperationException(
+                    $"Plugin session was disposed while installing '{package.Manifest.PluginId}'.");
+            }
+
             wire(kernel);
             return kernel;
         }
