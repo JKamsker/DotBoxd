@@ -44,6 +44,41 @@ public sealed partial class InstalledKernel
         }
     }
 
+    /// <summary>
+    /// Invokes this server extension over the RPC wire codec in one step: decodes the caller arguments from
+    /// <paramref name="arguments"/>, converts each to a sandbox value against the verified entrypoint's
+    /// parameter types, runs <see cref="InvokeServerExtensionAsync(IReadOnlyList{SandboxValue}, CancellationToken)"/>,
+    /// and encodes the result back to bytes. This is the marshalling ceremony every host used to hand-write; the
+    /// host keeps only the ownership/authz check (e.g. <see cref="PluginSession.Owns"/>) before calling it. The
+    /// result is encoded through the same <see cref="KernelRpcValue"/> path the wire uses, so the bytes are
+    /// identical to a hand-rolled invoker.
+    /// </summary>
+    public async ValueTask<byte[]> InvokeServerExtensionRpcAsync(
+        byte[] arguments,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        var function = _rpcEntrypointFunction ?? throw new InvalidOperationException(
+            $"Kernel '{Manifest.PluginId}' is not a server extension (no rpcEntrypoint).");
+
+        var rpcArguments = KernelRpcBinaryCodec.DecodeArguments(arguments);
+        var callerCount = _rpcCallerArgumentCount;
+        if (callerCount < 0 || rpcArguments.Length != callerCount)
+        {
+            throw new InvalidOperationException(
+                $"Server extension '{Manifest.PluginId}' expects {callerCount} argument(s) but received {rpcArguments.Length}.");
+        }
+
+        var sandboxArguments = new SandboxValue[rpcArguments.Length];
+        for (var i = 0; i < rpcArguments.Length; i++)
+        {
+            sandboxArguments[i] = KernelRpcValueConverter.ToSandboxValue(rpcArguments[i], function.Parameters[i].Type);
+        }
+
+        var result = await InvokeServerExtensionAsync(sandboxArguments, cancellationToken).ConfigureAwait(false);
+        return KernelRpcBinaryCodec.EncodeValue(KernelRpcValueConverter.FromSandboxValue(result));
+    }
+
     private SandboxValue BuildRpcInput(string entrypoint, IReadOnlyList<SandboxValue> arguments)
     {
         lock (_lifecycleGate)

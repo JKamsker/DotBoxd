@@ -10,6 +10,15 @@
 - Do not broaden public API without explaining why.
 - Run relevant validation before handoff.
 
+## Design Rules
+
+Binding design rules live in [`rules/design-guidelines.md`](rules/design-guidelines.md). The primary
+rule: **public abstractions and source generators are opt-in sugar over public primitives, never
+lock-in.** A consumer must always be able to hand-write the same thing with public API — *"can you
+delete the attribute and hand-write it?"* If ever no, it is lock-in; redesign it. Do not ship
+all-or-nothing abstractions, generators that call `internal` members, or baked-in assumptions that
+preclude a usage we did not foresee.
+
 ## C# Size Guard
 
 - Non-generated C# files should stay under 300 lines where practical.

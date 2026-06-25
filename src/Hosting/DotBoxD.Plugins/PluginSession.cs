@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Plugins.Kernel;
 
@@ -71,6 +72,80 @@ public sealed class PluginSession : IDisposable, IAsyncDisposable
     }
 
     /// <summary>
+    /// Installs an event-kernel <paramref name="package"/> owned by this session and wires it in one step,
+    /// rolling the install back if validation or wiring fails — the install ceremony every host used to
+    /// hand-write. <paramref name="validate"/> runs <b>before</b> install for host route checks;
+    /// <paramref name="policy"/> overrides the default install policy; <paramref name="wire"/> is the host's
+    /// routing choice (typically <see cref="PluginServer.WireHook"/> or
+    /// <see cref="PluginServer.WireSubscription"/> with host wire options). On any failure the just-installed
+    /// kernel is uninstalled by its exact install id — so a same-id incumbent is never disturbed — and the
+    /// original exception is rethrown.
+    /// </summary>
+    /// <remarks>Opt-in convenience: hand-write the equivalent with <see cref="InstallAsync"/> + your wire
+    /// action + <see cref="Uninstall"/> on failure if this shape doesn't fit — all public.</remarks>
+    public async ValueTask<InstalledKernel> InstallAndWireAsync(
+        PluginPackage package,
+        Action<InstalledKernel> wire,
+        Func<PluginPackage, SandboxPolicy>? policy = null,
+        Action<PluginPackage>? validate = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(package);
+        ArgumentNullException.ThrowIfNull(wire);
+
+        validate?.Invoke(package);
+
+        InstalledKernel? kernel = null;
+        try
+        {
+            kernel = await InstallAsync(package, policy?.Invoke(package), cancellationToken).ConfigureAwait(false);
+
+            // The session can be disposed (e.g. the peer disconnected) between InstallAsync releasing its gate
+            // and this wire step; Dispose then revokes + unregisters the just-installed kernel. Don't wire into a
+            // torn-down session — that would leave a dead handler in the pipeline that nothing later removes.
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                throw new InvalidOperationException(
+                    $"Plugin session was disposed while installing '{package.Manifest.PluginId}'.");
+            }
+
+            wire(kernel);
+            return kernel;
+        }
+        catch
+        {
+            if (kernel is not null)
+            {
+                RollBack(kernel);
+            }
+
+            throw;
+        }
+    }
+
+    private void RollBack(InstalledKernel kernel)
+    {
+        try
+        {
+            _gate.Wait();
+            try
+            {
+                _ownedInstallIds.Remove(kernel.InstallId);
+            }
+            finally
+            {
+                _gate.Release();
+            }
+
+            _server.UninstallOwned(this, kernel.InstallId);
+        }
+        catch
+        {
+            // Best-effort rollback: the original install/wire failure is the actionable error and is rethrown.
+        }
+    }
+
+    /// <summary>
     /// Updates live settings for a kernel this session owns. Rejects ids the session does not own so
     /// one plugin cannot tune another plugin's kernel.
     /// </summary>
@@ -124,6 +199,36 @@ public sealed class PluginSession : IDisposable, IAsyncDisposable
             }
 
             return _ownedInstallIds.Contains(kernel.InstallId);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Atomically fetches the kernel currently registered under <paramref name="pluginId"/> AND verifies this
+    /// session owns it, returning that exact instance. Use this instead of a separate <see cref="Owns"/> + registry
+    /// lookup so authorization binds to the kernel actually returned — there is no window in which a same-id
+    /// hot-replace could swap a different kernel in between the check and the fetch.
+    /// </summary>
+    public bool TryGetOwned(string pluginId, [MaybeNullWhen(false)] out InstalledKernel kernel)
+    {
+        ArgumentNullException.ThrowIfNull(pluginId);
+        _gate.Wait();
+        try
+        {
+            if (Volatile.Read(ref _disposed) == 0 &&
+                _server.Kernels.TryGet(pluginId, out var owned) &&
+                ReferenceEquals(owned.OwnerId, this) &&
+                _ownedInstallIds.Contains(owned.InstallId))
+            {
+                kernel = owned;
+                return true;
+            }
+
+            kernel = null;
+            return false;
         }
         finally
         {

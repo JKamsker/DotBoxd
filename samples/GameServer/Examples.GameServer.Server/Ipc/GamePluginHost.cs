@@ -1,57 +1,32 @@
 using DotBoxD.Kernels.Game.Server.Simulation;
 using DotBoxD.Pushdown.Services;
-using DotBoxD.Services.Server;
 using PluginServer = DotBoxD.Plugins.PluginServer;
 
 namespace DotBoxD.Kernels.Game.Server.Ipc;
 
 /// <summary>
-/// Wraps the per-connection IPC ceremony for accepting ONE plugin: listen on a high-entropy pipe, mint an
-/// ownership session per peer, provide BOTH services (the control-plane and the domain
-/// <see cref="GameWorldAccess"/>), and unload the peer's kernels on disconnect. Collapses what used to be a
-/// pipe-name + two TaskCompletionSources + session + provision + disconnect block in Program.cs, so the
-/// sample reads as phases, not plumbing.
+/// Builds the game's plugin connection. The per-connection IPC ceremony — listen on a high-entropy pipe, mint a
+/// session per peer, dispose it on disconnect, surface connected/disconnected — now lives in the framework's
+/// <see cref="PluginConnectionHost{TConnection}"/>. This factory keeps only the genuinely connection-specific
+/// work: choosing which services to provide for the peer (the reverse event-callback proxy plus the two
+/// generated <c>[DotBoxDService]</c> impls — the control plane and the world surface).
 /// </summary>
-internal sealed class GamePluginHost : IAsyncDisposable
+internal static class GamePluginHost
 {
-    private readonly TaskCompletionSource<GamePluginControlService> _connected =
-        new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-    private readonly TaskCompletionSource _disconnected =
-        new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-    private RpcHost _host = null!;
-
-    private GamePluginHost(string pipeName) => PipeName = pipeName;
-
-    /// <summary>The high-entropy pipe name the plugin child process should dial.</summary>
-    public string PipeName { get; }
-
-    /// <summary>Completes when a plugin connects, yielding its control-plane service.</summary>
-    public Task<GamePluginControlService> Connected => _connected.Task;
-
-    /// <summary>Completes when the connected plugin drops (after its kernels are unloaded).</summary>
-    public Task Disconnected => _disconnected.Task;
-
-    public static async Task<GamePluginHost> StartAsync(PluginServer server, GameCommandSink sink, GameWorld world)
-    {
-        var self = new GamePluginHost("dotboxd-game-" + Guid.NewGuid().ToString("N"));
-        self._host = RpcMessagePackIpc.ListenNamedPipe(
-            self.PipeName,
-            peer =>
+    public static Task<PluginConnectionHost<GamePluginControlService>> StartAsync(
+        PluginServer server,
+        GameCommandSink sink,
+        GameWorld world)
+        => PluginConnectionHost<GamePluginControlService>.StartAsync(
+            server,
+            "dotboxd-game-" + Guid.NewGuid().ToString("N"),
+            (peer, session) =>
             {
-                var session = server.CreateSession();
-
                 // Reverse-direction proxy: the plugin PROVIDES IPluginEventCallback, the server GETS it to push
                 // filtered+projected values back for remote RunLocal chains over the same bidirectional pipe.
                 var eventCallback =
                     global::DotBoxD.Services.Generated.DotBoxDGeneratedExtensions.GetPluginEventCallback(peer);
                 var service = new GamePluginControlService(server, session, sink, world, eventCallback);
-                peer.Disconnected += (_, _) =>
-                {
-                    session.Dispose();                  // revoke + unregister the kernels this peer owned
-                    self._disconnected.TrySetResult();
-                };
 
                 // Two services per connection: the control-plane (install IR, settings, hold) and the domain
                 // world surface. ProvideGameWorldAccess is generated from [DotBoxDService] on the interface.
@@ -61,13 +36,6 @@ internal sealed class GamePluginHost : IAsyncDisposable
                 global::DotBoxD.Services.Generated.DotBoxDGeneratedExtensions.ProvideGameWorldAccess(
                     peer,
                     new GameWorldAccess(world));
-                self._connected.TrySetResult(service);
+                return service;
             });
-        await self._host.StartAsync().ConfigureAwait(false);
-        return self;
-    }
-
-    public Task StopAsync() => _host.StopAsync();
-
-    public ValueTask DisposeAsync() => _host.DisposeAsync();
 }

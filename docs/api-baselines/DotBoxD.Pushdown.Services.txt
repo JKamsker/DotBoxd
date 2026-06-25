@@ -2,6 +2,9 @@
 # Package: DotBoxD.Pushdown.Services
 # Update intentionally with scripts/check-api-compat-baseline.ps1 -Update when approving public API changes.
 
+public async Task StopAsync()
+public async ValueTask DisposeAsync()
+public sealed class PluginConnectionHost<TConnection> : IAsyncDisposable
 public sealed record NamedPipeTransportOptions(bool AllowUnsafeLowEntropyName = false)
 public static class RpcMessagePackIpc
 public static NamedPipeTransportOptions Default { get; } = new()
@@ -9,6 +12,8 @@ public static NamedPipeTransportOptions UnsafeDevelopment { get; } = new(AllowUn
 public static RpcHost Listen( IServerTransport transport, Action<RpcPeer> configurePeer, RpcPeerOptions? options = null)
 public static RpcHost ListenNamedPipe( string pipeName, Action<RpcPeer> configurePeer, NamedPipeTransportOptions namedPipeOptions, RpcPeerOptions? options = null)
 public static RpcHost ListenNamedPipe( string pipeName, Action<RpcPeer> configurePeer, RpcPeerOptions? options = null)
+public static Task<PluginConnectionHost<TConnection>> StartAsync( PluginServer server, IServerTransport transport, Func<RpcPeer, PluginSession, TConnection> configure, RpcPeerOptions? options = null)
+public static Task<PluginConnectionHost<TConnection>> StartAsync( PluginServer server, string pipeName, Func<RpcPeer, PluginSession, TConnection> configure, RpcPeerOptions? options = null)
 public static Task<RpcPeerSession> ConnectAsync( ITransport transport, Action<RpcPeer> configurePeer, RpcPeerOptions? options = null, CancellationToken cancellationToken = default)
 public static Task<RpcPeerSession> ConnectAsync( ITransport transport, RpcPeerOptions? options = null, CancellationToken cancellationToken = default)
 public static Task<RpcPeerSession> ConnectNamedPipeAsync( string pipeName, Action<RpcPeer>? configurePeer, NamedPipeTransportOptions? namedPipeOptions = null, RpcPeerOptions? options = null, CancellationToken cancellationToken = default)
@@ -16,3 +21,6 @@ public static Task<RpcPeerSession> ConnectNamedPipeAsync( string pipeName, Named
 public static Task<RpcPeerSession> ConnectNamedPipeAsync( string pipeName, RpcPeerOptions? options = null, CancellationToken cancellationToken = default)
 public static Task<RpcPeerSession> ConnectNamedPipeAsync( string serverName, string pipeName, NamedPipeTransportOptions namedPipeOptions, RpcPeerOptions? options = null, CancellationToken cancellationToken = default)
 public static Task<RpcPeerSession> ConnectNamedPipeAsync( string serverName, string pipeName, RpcPeerOptions? options = null, CancellationToken cancellationToken = default)
+public string PipeName { get; }
+public Task Disconnected => _disconnected.Task
+public Task<TConnection> Connected => _connected.Task

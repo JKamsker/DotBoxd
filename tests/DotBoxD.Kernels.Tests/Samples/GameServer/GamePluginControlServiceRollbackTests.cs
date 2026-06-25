@@ -62,6 +62,27 @@ public sealed class GamePluginControlServiceRollbackTests
         }
     }
 
+    [Fact]
+    public async Task Wire_classifies_a_sandbox_result_hook_with_no_callback_as_the_Result_terminal()
+    {
+        // A result hook with no callback id and no ResultLocalTerminal is a sandbox Register: the verified
+        // Handle returns the result in-process. The router must classify it KernelWireKind.Result (-> UseResult).
+        // This is the one terminal kind no sample plugin exercises end-to-end (none use a non-local Register),
+        // so it is pinned directly on the trusted classifier to complete the Plain/Projecting/Result/
+        // ProjectingResult matrix (the other three are covered by RouterParityTests + the docs-smoke e2e).
+        var (server, session, _) = CreateControlService();
+        using (server)
+        {
+            var kernel = await session.InstallAsync(ResultHookOnNonResultEventPackage("sandbox-result"));
+
+            var terminal = KernelWireTerminal.Classify(kernel, typeof(int));
+
+            Assert.Equal(KernelWireKind.Result, terminal.Kind);
+            Assert.Null(terminal.CallbackSubscriptionId);
+            Assert.Equal(typeof(int), terminal.ResultType);
+        }
+    }
+
     private static (PluginServer Server, PluginSession Session, object Service) CreateControlService()
     {
         var gameServer = Assembly.LoadFrom(GameServerAssemblyPath());
