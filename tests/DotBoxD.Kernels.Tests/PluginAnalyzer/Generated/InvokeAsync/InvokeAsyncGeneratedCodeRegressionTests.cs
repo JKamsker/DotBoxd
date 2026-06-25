@@ -111,6 +111,45 @@ public sealed class InvokeAsyncGeneratedCodeRegressionTests
     }
 
     [Fact]
+    public void Constructor_and_settable_return_dto_generates_compilable_reader()
+    {
+        var result = RunGeneratorAndAssertCompiles(UsageSource("""
+            public sealed class Profile
+            {
+                public Profile()
+                {
+                }
+
+                public Profile(int Health) => this.Health = Health;
+
+                public Profile(int Health, int Rank)
+                {
+                    this.Health = Health;
+                    this.Rank = Rank;
+                }
+
+                public int Health { get; set; }
+                public int Rank { get; set; }
+                public string Name { get; set; } = "";
+            }
+
+            public static ValueTask<Profile> Run(RemotePluginServer kernels)
+                => kernels.InvokeAsync(async (IGameWorldAccess world) =>
+                {
+                    return new Profile { Health = world.GetHealth("monster-1"), Rank = 9, Name = "hero" };
+                });
+            """));
+        var source = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
+        Assert.Contains(
+            "new global::Sample.Usage.Profile(value.GetItem(0).Int32Value, value.GetItem(1).Int32Value)",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains("@Name =", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Keyword_capture_member_generates_compilable_writer_and_sync_out()
     {
         var result = RunGeneratorAndAssertCompiles(UsageSource("""

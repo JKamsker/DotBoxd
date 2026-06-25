@@ -114,30 +114,8 @@ internal static class RemoteStagedUseDiagnosticFactory
             return true;
         }
 
-        while (expression is ParenthesizedExpressionSyntax parenthesized)
-        {
-            expression = parenthesized.Expression;
-        }
-
-        if (expression is not IdentifierNameSyntax identifier ||
-            model.GetSymbolInfo(identifier, cancellationToken).Symbol is not ILocalSymbol local)
-        {
-            return false;
-        }
-
-        foreach (var reference in local.DeclaringSyntaxReferences)
-        {
-            if (reference.GetSyntax(cancellationToken) is VariableDeclaratorSyntax
-                {
-                    Initializer.Value: { } initializer
-                } &&
-                ContainsStageInvocation(initializer))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return HookChainAliasResolver.Initializer(expression, model, cancellationToken) is { } initializer &&
+            ContainsStageInvocation(initializer);
     }
 
     private static bool IsGeneratedRemoteChain(
@@ -160,7 +138,7 @@ internal static class RemoteStagedUseDiagnosticFactory
             expression = parenthesized.Expression;
         }
 
-        if (AliasInitializer(expression, model, cancellationToken) is { } initializer)
+        if (HookChainAliasResolver.Initializer(expression, model, cancellationToken) is { } initializer)
         {
             return WalkToSeed(initializer, model, cancellationToken);
         }
@@ -182,36 +160,6 @@ internal static class RemoteStagedUseDiagnosticFactory
             }
 
             return null;
-        }
-
-        return null;
-    }
-
-    private static ExpressionSyntax? AliasInitializer(
-        ExpressionSyntax expression,
-        SemanticModel model,
-        CancellationToken cancellationToken)
-    {
-        while (expression is ParenthesizedExpressionSyntax parenthesized)
-        {
-            expression = parenthesized.Expression;
-        }
-
-        if (expression is not IdentifierNameSyntax identifier ||
-            model.GetSymbolInfo(identifier, cancellationToken).Symbol is not ILocalSymbol local)
-        {
-            return null;
-        }
-
-        foreach (var reference in local.DeclaringSyntaxReferences)
-        {
-            if (reference.GetSyntax(cancellationToken) is VariableDeclaratorSyntax
-                {
-                    Initializer.Value: { } initializer
-                })
-            {
-                return initializer;
-            }
         }
 
         return null;

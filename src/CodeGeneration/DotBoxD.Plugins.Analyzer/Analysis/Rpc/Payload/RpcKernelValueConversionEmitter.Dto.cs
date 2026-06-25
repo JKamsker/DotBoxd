@@ -79,23 +79,19 @@ internal sealed partial class RpcKernelValueConversionEmitter
     {
         if (TryResolveConstructor(type, fields) is { } constructor)
         {
-            return "        return new " + TypeName(type) + "(" +
-                string.Join(", ", DtoConstructorArguments(fields, constructor)) + ");";
+            var construction = "new " + TypeName(type) + "(" +
+                string.Join(", ", DtoConstructorArguments(fields, constructor.Symbol)) + ")";
+            if (!HasWritableUnassignedField(fields, constructor.Assigned))
+            {
+                return "        return " + construction + ";";
+            }
+
+            return BuildDtoInitializer("        return " + construction, fields, constructor.Assigned);
         }
 
         if (CanUseObjectInitializer(type, fields))
         {
-            var initializer = new StringBuilder();
-            initializer.Append("        return new ").Append(TypeName(type)).AppendLine();
-            initializer.AppendLine("        {");
-            for (var i = 0; i < fields.Count; i++)
-            {
-                initializer.Append("            ").Append(Identifier(fields[i].Name)).Append(" = ")
-                    .Append(ReadExpression(fields[i].Type, "value.GetItem(" + i + ")")).AppendLine(",");
-            }
-
-            initializer.Append("        };");
-            return initializer.ToString();
+            return BuildDtoInitializer("        return new " + TypeName(type), fields, assigned: null);
         }
 
         throw new NotSupportedException(
@@ -115,6 +111,26 @@ internal sealed partial class RpcKernelValueConversionEmitter
         return expressions;
     }
 
+    private string BuildDtoInitializer(string construction, IReadOnlyList<RecordMember> fields, bool[]? assigned)
+    {
+        var initializer = new StringBuilder();
+        initializer.Append(construction).AppendLine();
+        initializer.AppendLine("        {");
+        for (var i = 0; i < fields.Count; i++)
+        {
+            if (assigned is not null && (assigned[i] || !DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i])))
+            {
+                continue;
+            }
+
+            initializer.Append("            ").Append(Identifier(fields[i].Name)).Append(" = ")
+                .Append(ReadExpression(fields[i].Type, "value.GetItem(" + i + ")")).AppendLine(",");
+        }
+
+        initializer.Append("        };");
+        return initializer.ToString();
+    }
+
     private List<string> DtoConstructorArguments(
         IReadOnlyList<RecordMember> fields,
         IMethodSymbol constructor)
@@ -129,8 +145,9 @@ internal sealed partial class RpcKernelValueConversionEmitter
         return arguments;
     }
 
-    private static IMethodSymbol? TryResolveConstructor(INamedTypeSymbol type, IReadOnlyList<RecordMember> fields)
+    private static ResolvedDtoConstructor? TryResolveConstructor(INamedTypeSymbol type, IReadOnlyList<RecordMember> fields)
     {
+        ResolvedDtoConstructor? partial = null;
         foreach (var constructor in type.InstanceConstructors)
         {
             if (constructor.DeclaredAccessibility is not (
@@ -157,11 +174,21 @@ internal sealed partial class RpcKernelValueConversionEmitter
 
             if (matched)
             {
-                return constructor;
+                var assignedCount = AssignedCount(assigned);
+                var resolved = new ResolvedDtoConstructor(constructor, assigned, assignedCount);
+                if (assignedCount == fields.Count)
+                {
+                    return resolved;
+                }
+
+                if (partial is null || assignedCount > partial.AssignedCount)
+                {
+                    partial = resolved;
+                }
             }
         }
 
-        return null;
+        return partial;
     }
 
     /// <summary>
@@ -206,4 +233,12 @@ internal sealed partial class RpcKernelValueConversionEmitter
 
         return false;
     }
+
+    private static bool HasWritableUnassignedField(IReadOnlyList<RecordMember> fields, bool[] assigned)
+        => fields.Where((_, index) => !assigned[index]).Any(DotBoxDRpcTypeMapper.IsObjectInitializerWritable);
+
+    private static int AssignedCount(bool[] assigned)
+        => assigned.Count(static item => item);
+
+    private sealed record ResolvedDtoConstructor(IMethodSymbol Symbol, bool[] Assigned, int AssignedCount);
 }

@@ -127,7 +127,22 @@ internal static class PluginServerFacadeSurfaceEmitter
             "    ",
             "Installs the package produced by the factory at most once and returns the installed plugin id.");
         builder.AppendLine("    public global::System.Threading.Tasks.Task<string> EnsureAnonymousKernelAsync(string pluginId, global::System.Func<global::DotBoxD.Plugins.PluginPackage> factory)");
-        builder.AppendLine("        => _anonymousKernels.GetOrAdd(pluginId, id => new global::System.Lazy<global::System.Threading.Tasks.Task<string>>(() => InstallServerExtensionPackageAsync(factory()).AsTask())).Value;");
+        builder.AppendLine("    {");
+        builder.AppendLine("        var install = _anonymousKernels.GetOrAdd(pluginId, id => new global::System.Lazy<global::System.Threading.Tasks.Task<string>>(() => InstallServerExtensionPackageAsync(factory()).AsTask()));");
+        builder.AppendLine("        return AwaitAnonymousKernelAsync(pluginId, install);");
+        builder.AppendLine("    }");
+        builder.AppendLine("    private async global::System.Threading.Tasks.Task<string> AwaitAnonymousKernelAsync(string pluginId, global::System.Lazy<global::System.Threading.Tasks.Task<string>> install)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        try");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return await install.Value.ConfigureAwait(false);");
+        builder.AppendLine("        }");
+        builder.AppendLine("        catch");
+        builder.AppendLine("        {");
+        builder.AppendLine("            ((global::System.Collections.Generic.ICollection<global::System.Collections.Generic.KeyValuePair<string, global::System.Lazy<global::System.Threading.Tasks.Task<string>>>>)_anonymousKernels).Remove(new global::System.Collections.Generic.KeyValuePair<string, global::System.Lazy<global::System.Threading.Tasks.Task<string>>>(pluginId, install));");
+        builder.AppendLine("            throw;");
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
         builder.AppendLine("    private global::System.Threading.Tasks.ValueTask<string> InstallPluginPackageAsync(global::DotBoxD.Plugins.PluginPackage package, global::System.Threading.CancellationToken cancellationToken = default)");
         builder.AppendLine("        => RequireControl().InstallPluginAsync(global::DotBoxD.Plugins.Json.PluginPackageJsonSerializer.Export(package), cancellationToken);");
         builder.AppendLine("    private global::System.Threading.Tasks.ValueTask<string> InstallSubscriptionPackageAsync(global::DotBoxD.Plugins.PluginPackage package, global::System.Threading.CancellationToken cancellationToken = default)");

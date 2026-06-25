@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.InvokeAsync;
 
-internal sealed class InvokeAsyncResultReaderSource
+internal sealed partial class InvokeAsyncResultReaderSource
 {
     private readonly Dictionary<string, string> _readers = new(StringComparer.Ordinal);
     private readonly StringBuilder _helpers = new();
@@ -179,108 +179,6 @@ internal sealed class InvokeAsyncResultReaderSource
         _helpers.AppendLine();
         return method;
     }
-
-    private string BuildDtoReconstruction(INamedTypeSymbol type, IReadOnlyList<RecordMember> fields)
-    {
-        if (TryResolveConstructor(type, fields) is { } constructor)
-        {
-            return "            return new " + TypeName(type) + "(" +
-                string.Join(", ", DtoConstructorArguments(fields, constructor)) + ");";
-        }
-
-        if (CanUseObjectInitializer(type, fields))
-        {
-            var initializer = new StringBuilder();
-            initializer.Append("            return new ").Append(TypeName(type)).AppendLine();
-            initializer.AppendLine("            {");
-            for (var i = 0; i < fields.Count; i++)
-            {
-                initializer.Append("                ").Append(Identifier(fields[i].Name)).Append(" = ")
-                    .Append(ReadExpression(fields[i].Type, "value.GetItem(" + i + ")")).AppendLine(",");
-            }
-
-            initializer.Append("            };");
-            return initializer.ToString();
-        }
-
-        throw new NotSupportedException(
-            $"InvokeAsync DTO '{type.ToDisplayString()}' must expose either a constructor matching its " +
-            "public fields or a parameterless constructor with settable properties.");
-    }
-
-    private List<string> DtoConstructorArguments(IReadOnlyList<RecordMember> fields, IMethodSymbol constructor)
-    {
-        var arguments = new List<string>(constructor.Parameters.Length);
-        foreach (var parameter in constructor.Parameters)
-        {
-            var fieldIndex = RpcDtoFieldMatcher.FieldIndex(fields, parameter);
-            arguments.Add(ReadExpression(fields[fieldIndex].Type, "value.GetItem(" + fieldIndex + ")"));
-        }
-
-        return arguments;
-    }
-
-    private static IMethodSymbol? TryResolveConstructor(INamedTypeSymbol type, IReadOnlyList<RecordMember> fields)
-    {
-        foreach (var constructor in type.InstanceConstructors)
-        {
-            if (constructor.DeclaredAccessibility is not (
-                    Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal) ||
-                constructor.Parameters.Length > fields.Count ||
-                constructor.Parameters.Length == 0)
-            {
-                continue;
-            }
-
-            var matched = true;
-            var assigned = new bool[fields.Count];
-            foreach (var parameter in constructor.Parameters)
-            {
-                var fieldIndex = RpcDtoFieldMatcher.FieldIndex(fields, parameter);
-                if (fieldIndex < 0 || assigned[fieldIndex])
-                {
-                    matched = false;
-                    break;
-                }
-
-                assigned[fieldIndex] = true;
-            }
-
-            if (matched)
-            {
-                return constructor;
-            }
-        }
-
-        return null;
-    }
-
-    private static bool CanUseObjectInitializer(INamedTypeSymbol type, IReadOnlyList<RecordMember> fields)
-    {
-        if (fields.Count == 0 || (!type.IsValueType && !HasAccessibleParameterlessConstructor(type)))
-        {
-            return false;
-        }
-
-        foreach (var field in fields)
-        {
-            if (!DotBoxDRpcTypeMapper.IsObjectInitializerWritable(field))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static bool HasAccessibleParameterlessConstructor(INamedTypeSymbol type)
-        => type.InstanceConstructors.Any(static constructor =>
-            constructor.Parameters.Length == 0 &&
-            constructor.DeclaredAccessibility is
-                Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal);
-
-    private static string Identifier(string name)
-        => "@" + name;
 
     private string NextHelperName() => _helperPrefix + _nextHelper++;
 

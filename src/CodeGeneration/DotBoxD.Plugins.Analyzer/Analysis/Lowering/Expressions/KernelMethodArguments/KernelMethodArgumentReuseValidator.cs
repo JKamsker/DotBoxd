@@ -9,12 +9,14 @@ internal static class KernelMethodArgumentReuseValidator
     public static void Validate(
         IMethodSymbol method,
         ExpressionSyntax body,
-        BoundKernelMethodCall call)
+        SemanticModel bodySemanticModel,
+        BoundKernelMethodCall call,
+        CancellationToken cancellationToken)
     {
-        var usageCounts = ParameterUsageCounts(method, body);
+        var usageCounts = ParameterUsageCounts(method, body, bodySemanticModel, cancellationToken);
         foreach (var argument in call.Arguments)
         {
-            if (usageCounts.TryGetValue(argument.Parameter.Name, out var count) &&
+            if (usageCounts.TryGetValue(argument.Parameter, out var count) &&
                 count > 1 &&
                 argument.Expression is { } expression &&
                 !IsRepeatableArgument(expression))
@@ -26,21 +28,23 @@ internal static class KernelMethodArgumentReuseValidator
         }
     }
 
-    private static Dictionary<string, int> ParameterUsageCounts(IMethodSymbol method, ExpressionSyntax body)
+    private static Dictionary<IParameterSymbol, int> ParameterUsageCounts(
+        IMethodSymbol method,
+        ExpressionSyntax body,
+        SemanticModel bodySemanticModel,
+        CancellationToken cancellationToken)
     {
-        var parameterNames = new HashSet<string>(
-            method.Parameters.Select(static parameter => parameter.Name),
-            StringComparer.Ordinal);
-        var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        var counts = new Dictionary<IParameterSymbol, int>(SymbolEqualityComparer.Default);
         foreach (var identifier in body.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())
         {
-            var name = identifier.Identifier.ValueText;
-            if (!parameterNames.Contains(name))
+            cancellationToken.ThrowIfCancellationRequested();
+            if (bodySemanticModel.GetSymbolInfo(identifier, cancellationToken).Symbol is not IParameterSymbol parameter ||
+                !method.Parameters.Any(candidate => SymbolEqualityComparer.Default.Equals(candidate, parameter)))
             {
                 continue;
             }
 
-            counts[name] = counts.TryGetValue(name, out var count) ? count + 1 : 1;
+            counts[parameter] = counts.TryGetValue(parameter, out var count) ? count + 1 : 1;
         }
 
         return counts;

@@ -51,7 +51,7 @@ internal static partial class HookChainModelFactory
             receiver = parenthesized.Expression;
         }
 
-        if (AliasInitializer(receiver, model, cancellationToken) is { } initializer)
+        if (HookChainAliasResolver.Initializer(receiver, model, cancellationToken) is { } initializer)
         {
             return WalkToSeed(initializer, stages, model, cancellationToken, depth + 1);
         }
@@ -66,7 +66,7 @@ internal static partial class HookChainModelFactory
                 return invocation;
             }
 
-            if (AliasInitializer(access.Expression, model, cancellationToken) is { } stageInitializer)
+            if (HookChainAliasResolver.Initializer(access.Expression, model, cancellationToken) is { } stageInitializer)
             {
                 current = SyntaxFactory.InvocationExpression(
                     SyntaxFactory.MemberAccessExpression(
@@ -87,36 +87,6 @@ internal static partial class HookChainModelFactory
             }
 
             return null;
-        }
-
-        return null;
-    }
-
-    private static ExpressionSyntax? AliasInitializer(
-        ExpressionSyntax expression,
-        SemanticModel model,
-        CancellationToken cancellationToken)
-    {
-        while (expression is ParenthesizedExpressionSyntax parenthesized)
-        {
-            expression = parenthesized.Expression;
-        }
-
-        if (expression is not IdentifierNameSyntax identifier ||
-            model.GetSymbolInfo(identifier, cancellationToken).Symbol is not ILocalSymbol local)
-        {
-            return null;
-        }
-
-        foreach (var reference in local.DeclaringSyntaxReferences)
-        {
-            if (reference.GetSyntax(cancellationToken) is VariableDeclaratorSyntax
-                {
-                    Initializer.Value: { } initializer
-                })
-            {
-                return initializer;
-            }
         }
 
         return null;

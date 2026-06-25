@@ -61,9 +61,9 @@ internal static partial class DotBoxDKernelMethodInliner
 
         if (TryKernelMethodBody(method, context.CancellationToken) is { } body)
         {
-            KernelMethodArgumentReuseValidator.Validate(method, body, call);
-            var bindings = BindArguments(call, context, lowerExpression);
             var bodySemanticModel = context.SemanticModel.Compilation.GetSemanticModel(body.SyntaxTree);
+            KernelMethodArgumentReuseValidator.Validate(method, body, bodySemanticModel, call, context.CancellationToken);
+            var bindings = BindArguments(call, context, lowerExpression);
             var inlineContext = context.ForInlinedMethod(bodySemanticModel, bindings, methodKey);
             var result = DotBoxDExpressionModelFactory.Create(body, inlineContext);
             if (!string.Equals(result.Type, returnType, StringComparison.Ordinal))
