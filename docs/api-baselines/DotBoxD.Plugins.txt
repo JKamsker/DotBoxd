@@ -481,7 +481,6 @@ public sealed class LiveContext<T> where T : class
 public sealed class LiveSettingStore
 public sealed class LiveValue<T> : ICoercibleLiveSetting
 public sealed class PluginEventAdapterRegistry
-public sealed class PluginSession : IDisposable, IAsyncDisposable
 public sealed class RemoteHookRegistry
 public sealed class RemoteHookStage<TEvent, TCurrent>
 public sealed class RemoteLocalHandlerRegistry
@@ -498,6 +497,8 @@ public sealed partial class HookRegistry
 public sealed partial class InstalledKernel
 public sealed partial class PluginServer
 public sealed partial class PluginServer : IDisposable
+public sealed partial class PluginSession
+public sealed partial class PluginSession : IDisposable, IAsyncDisposable
 public sealed partial class RemoteHookPipeline<TEvent, TContext>
 public sealed partial class RemoteHookPipeline<TEvent>
 public sealed partial class RemoteHookStage<TEvent, TCurrent, TContext>

@@ -34,30 +34,9 @@ public sealed class PluginEventAdapterRegistry
 
     internal bool TryResolveShape(string eventName, out PluginEventShape shape)
     {
-        // Prefer the fully-qualified type-name match (the dictionary key) so a package targeting one of two
-        // same-simple-name events in different namespaces is validated against THAT event's shape, not the first
-        // suffix collision. Otherwise fall back to the by-name match (exact, or the qualified-vs-simple bridge).
-        // The fallback stays safe even when more than one adapter matches: the DBXK034 registration check forbids
-        // two same-name adapters with different parameter shapes, so any same-name match yields the same shape.
-        PluginEventShape? fallback = null;
-        foreach (var entry in _adapters)
+        if (TryResolveRegistered(eventName, out var registered))
         {
-            var current = entry.Value.Shape;
-            if (string.Equals(entry.Key.FullName, eventName, StringComparison.Ordinal))
-            {
-                shape = current;
-                return true;
-            }
-
-            if (fallback is null && EventNameMatch.Matches(current.EventName, eventName))
-            {
-                fallback = current;
-            }
-        }
-
-        if (fallback is not null)
-        {
-            shape = fallback.Value;
+            shape = registered.Shape;
             return true;
         }
 
@@ -68,25 +47,42 @@ public sealed class PluginEventAdapterRegistry
     /// <summary>
     /// Resolves the type-erased, wire-capable adapter for <paramref name="eventName"/> (a manifest event name,
     /// possibly fully qualified) so the host-side router can wire an installed kernel to the right typed
-    /// pipeline terminal with no reflection. Mirrors <see cref="TryResolveShape"/>'s by-name matching. Returns
-    /// <c>false</c> when no registered adapter matches. Public as a composability seam — build custom by-name
-    /// wiring on top of it when <see cref="PluginServer.WireHook"/>/<see cref="PluginServer.WireSubscription"/>
-    /// don't fit; the adapter must be registered first (the router does not auto-register by name).
+    /// pipeline terminal with no reflection. Uses the same precedence as <see cref="TryResolveShape"/>, so a
+    /// package is validated against the SAME adapter it is wired to. Returns <c>false</c> when no registered
+    /// adapter matches (or the match is ambiguous). Public as a composability seam — build custom by-name wiring
+    /// on top of it when <see cref="PluginServer.WireHook"/>/<see cref="PluginServer.WireSubscription"/> don't
+    /// fit; the adapter must be registered first (the router does not auto-register by name).
     /// </summary>
     public bool TryResolveErased(string eventName, out IErasedPluginEventAdapter adapter)
     {
-        // Resolution prefers the most precise match and refuses to guess when two events collide:
-        //   1. Exact (ordinal) match on the adapter's reported name — but if two adapters report the same name
-        //      it is genuinely ambiguous, so reject rather than silently pick the first.
-        //   2. Fully-qualified match on the event TYPE's name (the dictionary key). Convention/hand-written
-        //      adapters report only the simple name, so two same-simple-name events in different namespaces are
-        //      indistinguishable by name (1) and by suffix (3); the manifest records the FQN precisely, and the
-        //      event type's FullName is unique, so this is what disambiguates them.
-        //   3. Qualified-vs-simple suffix bridge — only when it resolves to a single adapter.
-        IErasedPluginEventAdapter? exactMatch = null;
+        if (TryResolveRegistered(eventName, out var registered))
+        {
+            adapter = registered.Erased;
+            return true;
+        }
+
+        adapter = null!;
+        return false;
+    }
+
+    /// <summary>
+    /// Single by-name resolution shared by wiring (<see cref="TryResolveErased"/>) and shape validation
+    /// (<see cref="TryResolveShape"/>) so a package can never be validated against one event and wired to another.
+    /// Precedence, refusing to guess on a collision:
+    ///   1. An unambiguous exact (ordinal) match on the adapter's reported name; two adapters reporting the same
+    ///      name is genuinely ambiguous, so reject rather than pick the first.
+    ///   2. A fully-qualified match on the event TYPE's name (the dictionary key). Convention/hand-written
+    ///      adapters report only the simple name, so two same-simple-name events in different namespaces are
+    ///      indistinguishable by (1) and (3); the manifest records the FQN and the type's FullName is unique.
+    ///   3. A qualified-vs-simple suffix bridge — only when it resolves to a single adapter.
+    /// </summary>
+    private bool TryResolveRegistered(string eventName, out RegisteredPluginEventAdapter resolved)
+    {
+        RegisteredPluginEventAdapter exactMatch = default;
         var exactCount = 0;
-        IErasedPluginEventAdapter? typeNameMatch = null;
-        IErasedPluginEventAdapter? suffixMatch = null;
+        RegisteredPluginEventAdapter typeNameMatch = default;
+        var hasTypeNameMatch = false;
+        RegisteredPluginEventAdapter suffixMatch = default;
         var suffixCount = 0;
 
         foreach (var entry in _adapters)
@@ -94,43 +90,48 @@ public sealed class PluginEventAdapterRegistry
             var registered = entry.Value;
             if (string.Equals(registered.Shape.EventName, eventName, StringComparison.Ordinal))
             {
-                exactMatch = registered.Erased;
+                exactMatch = registered;
                 exactCount++;
                 continue;
             }
 
-            if (typeNameMatch is null && string.Equals(entry.Key.FullName, eventName, StringComparison.Ordinal))
+            if (!hasTypeNameMatch && string.Equals(entry.Key.FullName, eventName, StringComparison.Ordinal))
             {
-                typeNameMatch = registered.Erased;
+                typeNameMatch = registered;
+                hasTypeNameMatch = true;
             }
 
             if (EventNameMatch.Matches(registered.Shape.EventName, eventName))
             {
-                suffixMatch ??= registered.Erased;
+                if (suffixCount == 0)
+                {
+                    suffixMatch = registered;
+                }
+
                 suffixCount++;
             }
         }
 
         if (exactCount == 1)
         {
-            adapter = exactMatch!;
+            resolved = exactMatch;
             return true;
         }
 
-        if (exactCount == 0 && typeNameMatch is not null)
+        if (exactCount == 0 && hasTypeNameMatch)
         {
-            adapter = typeNameMatch;
+            resolved = typeNameMatch;
             return true;
         }
 
-        if (exactCount == 0 && typeNameMatch is null && suffixCount == 1)
+        if (exactCount == 0 && !hasTypeNameMatch && suffixCount == 1)
         {
-            adapter = suffixMatch!;
+            resolved = suffixMatch;
             return true;
         }
 
         // Zero matches, or an ambiguous collision we refuse to resolve by registration order.
-        adapter = null!;
+        resolved = default;
         return false;
     }
 

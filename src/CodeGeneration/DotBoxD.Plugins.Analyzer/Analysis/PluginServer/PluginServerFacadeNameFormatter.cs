@@ -10,6 +10,31 @@ internal static class PluginServerFacadeNameFormatter
         return name + "PluginService";
     }
 
+    /// <summary>
+    /// Returns a wrapper-class name for <paramref name="serviceType"/> that does not collide with any name in
+    /// <paramref name="existingNames"/>. Wrapper classes are nested siblings named from the service's SIMPLE name
+    /// while the model dedups by FULL name, so two services with the same simple name in different namespaces would
+    /// otherwise emit duplicate nested classes (CS0102); a deterministic numeric suffix disambiguates the collision.
+    /// </summary>
+    internal static string UniqueServiceWrapperName(INamedTypeSymbol serviceType, IEnumerable<string> existingNames)
+    {
+        var baseName = ServiceWrapperName(serviceType);
+        var used = new HashSet<string>(existingNames, StringComparer.Ordinal);
+        if (!used.Contains(baseName))
+        {
+            return baseName;
+        }
+
+        for (var suffix = 2; ; suffix++)
+        {
+            var candidate = baseName + "_" + suffix.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (!used.Contains(candidate))
+            {
+                return candidate;
+            }
+        }
+    }
+
     internal static string SetupInterfaceName(string className)
     {
         var name = className.EndsWith("Server", StringComparison.Ordinal)

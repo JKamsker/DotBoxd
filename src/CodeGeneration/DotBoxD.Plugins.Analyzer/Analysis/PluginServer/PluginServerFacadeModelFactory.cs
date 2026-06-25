@@ -173,7 +173,7 @@ internal static partial class PluginServerFacadeModelFactory
         }
         var wrapper = new ServiceWrapperBuilder(
             typeName,
-            UniqueWrapperName(ServiceWrapperName(serviceType), serviceWrappers),
+            UniqueServiceWrapperName(serviceType, serviceWrappers.Values.Select(w => w.WrapperName)),
             PluginServerXmlDocumentation.FromSymbol(
                 serviceType,
                 "Generated scoped client for the remote " + serviceType.Name + " domain service.",
@@ -181,43 +181,6 @@ internal static partial class PluginServerFacadeModelFactory
         serviceWrappers.Add(typeName, wrapper);
         PopulateServiceWrapper(serviceType, wrapper, serviceWrappers, cancellationToken);
         return wrapper.WrapperName;
-    }
-
-    // Wrapper classes are nested siblings inside one control wrapper and named from the service's SIMPLE name,
-    // while the dedup key is the FULL name — so two services with the same simple name in different namespaces
-    // would otherwise emit duplicate nested classes (CS0102). Append a deterministic numeric suffix on collision.
-    private static string UniqueWrapperName(
-        string baseName,
-        Dictionary<string, ServiceWrapperBuilder> serviceWrappers)
-    {
-        if (!WrapperNameInUse(baseName, serviceWrappers))
-        {
-            return baseName;
-        }
-
-        for (var suffix = 2; ; suffix++)
-        {
-            var candidate = baseName + "_" + suffix.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            if (!WrapperNameInUse(candidate, serviceWrappers))
-            {
-                return candidate;
-            }
-        }
-    }
-
-    private static bool WrapperNameInUse(
-        string name,
-        Dictionary<string, ServiceWrapperBuilder> serviceWrappers)
-    {
-        foreach (var wrapper in serviceWrappers.Values)
-        {
-            if (string.Equals(wrapper.WrapperName, name, StringComparison.Ordinal))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
     private static (string? Name, PluginServerReturnWrapperKind Kind) ResolveReturnWrapper(
         ITypeSymbol returnType,
