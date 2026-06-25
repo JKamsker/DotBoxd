@@ -56,6 +56,23 @@ namespace DotBoxD.Kernels.Tests.Plugins.AdapterFqn
             Assert.False(registry.TryResolveErased("DamageEvent", out _));
         }
 
+        [Fact]
+        public void TryResolveShape_rejects_ambiguous_suffix_with_differing_shapes()
+        {
+            // Two adapters whose exact names only share a simple-name tail ("DamageEvent") are NOT constrained by
+            // DBXK034 (which compares exact names), so their shapes may differ. A simple-name manifest must NOT be
+            // validated against an arbitrary one chosen by registration order — resolution returns false (and
+            // wiring rejects it too), rather than relaxing the way an exact same-name collision does.
+            var registry = new PluginEventAdapterRegistry();
+            registry.Register(new QualifiedNameAdapter<First.DamageEvent>(
+                "Game.A.DamageEvent", [new("e_a", SandboxType.I32)]));
+            registry.Register(new QualifiedNameAdapter<Second.DamageEvent>(
+                "Game.B.DamageEvent", [new("e_a", SandboxType.I32), new("e_b", SandboxType.I32)]));
+
+            Assert.False(registry.TryResolveShape("DamageEvent", out _));
+            Assert.False(registry.TryResolveErased("DamageEvent", out _));
+        }
+
         // Reports only the SIMPLE event name (the convention default), reproducing the collision scenario.
         private sealed class SimpleNameDamageAdapter<TEvent> : IPluginEventAdapter<TEvent>
         {
@@ -64,6 +81,18 @@ namespace DotBoxD.Kernels.Tests.Plugins.AdapterFqn
             public IReadOnlyList<Parameter> Parameters => [new("e_Amount", SandboxType.I32)];
 
             public IReadOnlyList<SandboxValue> ToSandboxValues(TEvent e) => [SandboxValue.FromInt32(0)];
+        }
+
+        // Reports a fully-qualified event name with a caller-supplied shape, to build a suffix-tail collision whose
+        // shapes differ (which DBXK034 does not forbid, since the exact names differ).
+        private sealed class QualifiedNameAdapter<TEvent>(string eventName, IReadOnlyList<Parameter> parameters)
+            : IPluginEventAdapter<TEvent>
+        {
+            public string EventName { get; } = eventName;
+
+            public IReadOnlyList<Parameter> Parameters { get; } = parameters;
+
+            public IReadOnlyList<SandboxValue> ToSandboxValues(TEvent e) => [];
         }
     }
 }

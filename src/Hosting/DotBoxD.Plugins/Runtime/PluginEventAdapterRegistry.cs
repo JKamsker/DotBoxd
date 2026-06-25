@@ -79,9 +79,12 @@ public sealed class PluginEventAdapterRegistry
     ///      adapters report only the simple name, so two same-simple-name events in different namespaces are
     ///      indistinguishable by (1) and (3); the manifest records the FQN and the type's FullName is unique.
     ///   3. A qualified-vs-simple suffix bridge.
-    /// When a tier has more than one match it is ambiguous: <paramref name="rejectAmbiguous"/> wiring refuses it
-    /// (so a kernel is never wired to the wrong event's pipeline), while validation accepts the first match (every
-    /// same-name match shares a shape by the DBXK034 rule, so the validated shape is well-defined).
+    /// Ambiguity handling differs only at the EXACT tier: when several adapters report the same exact name,
+    /// <paramref name="rejectAmbiguous"/> wiring refuses it (so a kernel is never wired to the wrong event's
+    /// pipeline), while validation accepts the first match — DBXK034 forbids same-exact-name adapters from having
+    /// different shapes, so the validated shape is well-defined. The FQN and suffix tiers require a UNIQUE match
+    /// for both callers: DBXK034 does not constrain adapters whose exact names merely share a simple-name tail, so
+    /// their shapes may differ and there is no well-defined shape to validate against.
     /// </summary>
     private bool TryResolveRegistered(string eventName, bool rejectAmbiguous, out RegisteredPluginEventAdapter resolved)
     {
@@ -135,13 +138,16 @@ public sealed class PluginEventAdapterRegistry
             return true;
         }
 
-        if (exactCount == 0 && !hasTypeNameMatch && (suffixCount == 1 || (suffixCount > 1 && !rejectAmbiguous)))
+        // Suffix matches require uniqueness for BOTH callers: adapters that merely share a simple-name tail can
+        // have different shapes (DBXK034 only compares exact names), so there is no well-defined shape to validate
+        // against and no unambiguous adapter to wire — picking by registration order would be wrong either way.
+        if (exactCount == 0 && !hasTypeNameMatch && suffixCount == 1)
         {
             resolved = suffixMatch;
             return true;
         }
 
-        // No match, or an ambiguous tier that wiring refuses to resolve by registration order.
+        // No match, or an ambiguous tier we refuse to resolve by registration order.
         resolved = default;
         return false;
     }
