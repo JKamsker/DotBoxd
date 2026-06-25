@@ -69,6 +69,68 @@ internal static class PluginAnalyzerKernelMethodDescriptorTestSources
         }
         """;
 
+    public const string InheritedSdk = """
+        using System.Threading;
+        using System.Threading.Tasks;
+        using DotBoxD.Abstractions;
+        using DotBoxD.Services.Attributes;
+
+        namespace Sdk
+        {
+            [DotBoxDService]
+            public interface IGameWorld;
+
+            [GeneratePluginServer(Context = typeof(GamePluginContext))]
+            public partial class GamePluginServer : IGameWorld;
+
+            public abstract partial class BaseGamePluginContext
+            {
+                [KernelMethod]
+                public bool IsClose(int distance) => distance <= 5;
+            }
+
+            public sealed partial class GamePluginContext : BaseGamePluginContext;
+        }
+
+        namespace Sdk.Ipc
+        {
+            public readonly record struct LiveSettingUpdate(string Name, string Value);
+
+            public interface IGamePluginControlService : DotBoxD.Plugins.IServerExtensionWireClient
+            {
+                ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default);
+                ValueTask<string> InstallSubscriptionAsync(string packageJson, CancellationToken ct = default);
+                ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default);
+                ValueTask UpdateSettingsAsync(string pluginId, LiveSettingUpdate[] updates, bool atomic = false, CancellationToken ct = default);
+                ValueTask HoldUntilShutdownAsync(CancellationToken ct = default);
+            }
+        }
+
+        namespace DotBoxD.Services.Generated
+        {
+            public static class DotBoxDGeneratedExtensions
+            {
+                public static Sdk.IGameWorld GetGameWorld(DotBoxD.Services.Peer.RpcPeer peer)
+                    => throw new System.InvalidOperationException("not used");
+            }
+        }
+        """;
+
+    public const string InheritedConsumer = """
+        using DotBoxD.Plugins;
+        using Sdk;
+
+        namespace Consumer;
+
+        public static class Usage
+        {
+            public static void Configure(GamePluginServer server)
+                => server.Hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.KernelMethod.KernelMethodAggroEvent>()
+                    .Where((e, ctx) => ctx.IsClose(e.Distance))
+                    .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "calm"));
+        }
+        """;
+
     public const string DescriptorlessSdk = """
         using DotBoxD.Abstractions;
 

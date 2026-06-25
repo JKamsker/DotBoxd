@@ -1,3 +1,4 @@
+using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -27,12 +28,17 @@ internal static partial class DotBoxDKernelMethodInliner
         Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression)
     {
         if (context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken).Symbol
-                is not IMethodSymbol method ||
-            !HasKernelMethodAttribute(method, context.SemanticModel.Compilation))
+                is not IMethodSymbol resolvedMethod ||
+            !HasKernelMethodAttribute(resolvedMethod, context.SemanticModel.Compilation))
         {
             return null;
         }
 
+        var call = KernelMethodArgumentBinder.Bind(
+            invocation,
+            resolvedMethod,
+            $"[KernelMethod] '{KernelMethodArgumentBinder.Definition(resolvedMethod).Name}'");
+        var method = call.Method;
         if (!method.IsStatic && !IsServerContextReceiver(invocation, method, context))
         {
             throw new NotSupportedException(
@@ -53,7 +59,7 @@ internal static partial class DotBoxDKernelMethodInliner
                 $"[KernelMethod] '{method.Name}' is recursive; recursive kernel methods cannot be inlined.");
         }
 
-        var bindings = BindArguments(invocation, method, lowerExpression);
+        var bindings = BindArguments(call, context, lowerExpression);
         if (TryKernelMethodBody(method, context.CancellationToken) is { } body)
         {
             var bodySemanticModel = context.SemanticModel.Compilation.GetSemanticModel(body.SyntaxTree);
@@ -97,40 +103,107 @@ internal static partial class DotBoxDKernelMethodInliner
     }
 
     private static IReadOnlyDictionary<string, DotBoxDExpressionModel> BindArguments(
-        InvocationExpressionSyntax invocation,
-        IMethodSymbol method,
+        BoundKernelMethodCall call,
+        DotBoxDExpressionLoweringContext context,
         Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression)
     {
-        var arguments = invocation.ArgumentList.Arguments;
-        if (arguments.Count != method.Parameters.Length)
-        {
-            throw new NotSupportedException(
-                $"[KernelMethod] '{method.Name}' call must pass {method.Parameters.Length} positional argument(s).");
-        }
-
         var bindings = new Dictionary<string, DotBoxDExpressionModel>(StringComparer.Ordinal);
-        for (var i = 0; i < arguments.Count; i++)
+        for (var i = 0; i < call.Arguments.Count; i++)
         {
-            if (arguments[i].NameColon is not null ||
-                !arguments[i].RefKindKeyword.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.None))
-            {
-                throw new NotSupportedException(
-                    $"[KernelMethod] '{method.Name}' arguments must be positional value arguments.");
-            }
-
-            var lowered = lowerExpression(arguments[i].Expression);
-            var expected = DotBoxDTypeNameReader.KernelMethodTypeName(method.Parameters[i].Type);
+            var argument = call.Arguments[i];
+            var lowered = LowerArgument(argument, context, lowerExpression);
+            var expected = DotBoxDTypeNameReader.KernelMethodTypeName(argument.Parameter.Type);
             if (!string.Equals(lowered.Type, expected, StringComparison.Ordinal))
             {
                 throw new NotSupportedException(
-                    $"[KernelMethod] '{method.Name}' argument {i} must lower to {expected}.");
+                    $"[KernelMethod] '{call.Method.Name}' argument {i} must lower to {expected}.");
             }
 
-            bindings[method.Parameters[i].Name] = lowered;
+            bindings[argument.Parameter.Name] = lowered;
         }
 
         return bindings;
     }
+
+    private static DotBoxDExpressionModel LowerArgument(
+        BoundKernelMethodArgument argument,
+        DotBoxDExpressionLoweringContext context,
+        Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression)
+    {
+        if (argument.Expression is { } expression)
+        {
+            if (DotBoxDKernelMethodArgumentLowerer.TryLowerWholeEvent(argument.Parameter, expression, context)
+                is { } wholeEvent)
+            {
+                return wholeEvent;
+            }
+
+            return DotBoxDNullableScalarExpressionLowerer.TryLower(
+                expression,
+                argument.Parameter.Type,
+                context,
+                lowerExpression,
+                out var nullable)
+                ? nullable
+                : lowerExpression(expression);
+        }
+
+        return LowerDefaultArgument(argument.Parameter, argument.DefaultValue);
+    }
+
+    private static DotBoxDExpressionModel LowerDefaultArgument(IParameterSymbol parameter, object? value)
+    {
+        var type = DotBoxDTypeNameReader.KernelMethodTypeName(parameter.Type);
+        return type switch
+        {
+            DotBoxDGenerationNames.ManifestTypes.Bool when value is bool boolean => new(
+                $"{DotBoxDGenerationNames.Helpers.Bool}({LiteralReader.ObjectLiteral(boolean)})",
+                DotBoxDGenerationNames.ManifestTypes.Bool,
+                false),
+            DotBoxDGenerationNames.ManifestTypes.Int when value is int number => new(
+                $"{DotBoxDGenerationNames.Helpers.I32}({LiteralReader.ObjectLiteral(number)})",
+                DotBoxDGenerationNames.ManifestTypes.Int,
+                false),
+            DotBoxDGenerationNames.ManifestTypes.Long when value is int number => new(
+                $"{DotBoxDGenerationNames.Helpers.I64}({LiteralReader.ObjectLiteral((long)number)})",
+                DotBoxDGenerationNames.ManifestTypes.Long,
+                false),
+            DotBoxDGenerationNames.ManifestTypes.Long when value is long number => new(
+                $"{DotBoxDGenerationNames.Helpers.I64}({LiteralReader.ObjectLiteral(number)})",
+                DotBoxDGenerationNames.ManifestTypes.Long,
+                false),
+            DotBoxDGenerationNames.ManifestTypes.Double when value is int number => new(
+                $"{DotBoxDGenerationNames.Helpers.F64}({LiteralReader.ObjectLiteral((double)number)})",
+                DotBoxDGenerationNames.ManifestTypes.Double,
+                false),
+            DotBoxDGenerationNames.ManifestTypes.Double when value is long number => new(
+                $"{DotBoxDGenerationNames.Helpers.F64}({LiteralReader.ObjectLiteral((double)number)})",
+                DotBoxDGenerationNames.ManifestTypes.Double,
+                false),
+            DotBoxDGenerationNames.ManifestTypes.Double when value is float number && IsFinite(number) => new(
+                $"{DotBoxDGenerationNames.Helpers.F64}({LiteralReader.ObjectLiteral((double)number)})",
+                DotBoxDGenerationNames.ManifestTypes.Double,
+                false),
+            DotBoxDGenerationNames.ManifestTypes.Double when value is double number && IsFinite(number) => new(
+                $"{DotBoxDGenerationNames.Helpers.F64}({LiteralReader.ObjectLiteral(number)})",
+                DotBoxDGenerationNames.ManifestTypes.Double,
+                false),
+            DotBoxDGenerationNames.ManifestTypes.String when value is string text => new(
+                $"{DotBoxDGenerationNames.Helpers.Str}({LiteralReader.StringLiteral(text)})",
+                DotBoxDGenerationNames.ManifestTypes.String,
+                true),
+            DotBoxDGenerationNames.ManifestTypes.Record when value is null &&
+                DotBoxDNullableScalarType.IsNullableValueType(parameter.Type) => new(
+                    DotBoxDNullableScalarExpressionLowerer.NullSource(parameter.Type),
+                    DotBoxDGenerationNames.ManifestTypes.Record,
+                    true),
+            _ => throw new NotSupportedException(
+                $"[KernelMethod] '{parameter.ContainingSymbol.Name}' optional parameter '{parameter.Name}' has an unsupported default value.")
+        };
+    }
+
+    private static bool IsFinite(double value)
+        => !double.IsNaN(value) && !double.IsInfinity(value);
 
     private static ExpressionSyntax? TryKernelMethodBody(IMethodSymbol method, CancellationToken cancellationToken)
     {
@@ -162,7 +235,8 @@ internal static partial class DotBoxDKernelMethodInliner
 
     private static bool HasKernelMethodAttribute(IMethodSymbol method, Compilation compilation)
     {
-        foreach (var attribute in method.GetAttributes())
+        var definition = KernelMethodArgumentBinder.Definition(method);
+        foreach (var attribute in definition.GetAttributes())
         {
             if (IsDotBoxDAttribute(attribute, compilation, DotBoxDMetadataNames.KernelMethodAttribute))
             {

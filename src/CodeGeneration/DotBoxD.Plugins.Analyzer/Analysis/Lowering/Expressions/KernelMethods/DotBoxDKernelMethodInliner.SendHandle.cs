@@ -13,12 +13,17 @@ internal static partial class DotBoxDKernelMethodInliner
         Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression)
     {
         if (context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken).Symbol
-                is not IMethodSymbol method ||
-            !HasKernelMethodAttribute(method, context.SemanticModel.Compilation))
+                is not IMethodSymbol resolvedMethod ||
+            !HasKernelMethodAttribute(resolvedMethod, context.SemanticModel.Compilation))
         {
             return null;
         }
 
+        var call = KernelMethodArgumentBinder.Bind(
+            invocation,
+            resolvedMethod,
+            $"[KernelMethod] send helper '{KernelMethodArgumentBinder.Definition(resolvedMethod).Name}'");
+        var method = call.Method;
         if (!method.IsStatic || !method.ReturnsVoid)
         {
             throw new NotSupportedException(
@@ -33,9 +38,9 @@ internal static partial class DotBoxDKernelMethodInliner
         }
 
         var bindings = BindSendHelperArguments(
-            invocation,
-            method,
+            call,
             contextParameterName,
+            context,
             lowerExpression,
             out var helperContextParameterName);
         var sendInvocation = SendHelperInvocation(method, helperContextParameterName, context.CancellationToken);
@@ -45,60 +50,68 @@ internal static partial class DotBoxDKernelMethodInliner
     }
 
     private static IReadOnlyDictionary<string, DotBoxDExpressionModel> BindSendHelperArguments(
-        InvocationExpressionSyntax invocation,
-        IMethodSymbol method,
+        BoundKernelMethodCall call,
         string contextParameterName,
+        DotBoxDExpressionLoweringContext context,
         Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression,
         out string helperContextParameterName)
     {
         helperContextParameterName = string.Empty;
-        var arguments = invocation.ArgumentList.Arguments;
-        if (arguments.Count != method.Parameters.Length)
-        {
-            throw new NotSupportedException(
-                $"[KernelMethod] '{method.Name}' call must pass {method.Parameters.Length} positional argument(s).");
-        }
-
         var bindings = new Dictionary<string, DotBoxDExpressionModel>(StringComparer.Ordinal);
-        for (var i = 0; i < arguments.Count; i++)
+        for (var i = 0; i < call.Arguments.Count; i++)
         {
-            if (arguments[i].NameColon is not null ||
-                !arguments[i].RefKindKeyword.IsKind(SyntaxKind.None))
-            {
-                throw new NotSupportedException(
-                    $"[KernelMethod] '{method.Name}' arguments must be positional value arguments.");
-            }
-
-            if (IsContextArgument(arguments[i].Expression, contextParameterName))
+            var argument = call.Arguments[i];
+            if (argument.Expression is { } expression &&
+                IsContextArgument(expression, contextParameterName))
             {
                 if (helperContextParameterName.Length != 0)
                 {
                     throw new NotSupportedException(
-                        $"[KernelMethod] send helper '{method.Name}' must receive the hook context parameter exactly once.");
+                        $"[KernelMethod] send helper '{call.Method.Name}' must receive the hook context parameter exactly once.");
                 }
 
-                helperContextParameterName = method.Parameters[i].Name;
+                helperContextParameterName = argument.Parameter.Name;
                 continue;
             }
 
-            var lowered = lowerExpression(arguments[i].Expression);
-            var expected = DotBoxDTypeNameReader.KernelMethodTypeName(method.Parameters[i].Type);
+            var lowered = LowerSendArgument(argument, context, lowerExpression);
+            var expected = DotBoxDTypeNameReader.KernelMethodTypeName(argument.Parameter.Type);
             if (!string.Equals(lowered.Type, expected, StringComparison.Ordinal))
             {
                 throw new NotSupportedException(
-                    $"[KernelMethod] '{method.Name}' argument {i} must lower to {expected}.");
+                    $"[KernelMethod] '{call.Method.Name}' argument {i} must lower to {expected}.");
             }
 
-            bindings[method.Parameters[i].Name] = lowered;
+            bindings[argument.Parameter.Name] = lowered;
         }
 
         if (helperContextParameterName.Length == 0)
         {
             throw new NotSupportedException(
-                $"[KernelMethod] send helper '{method.Name}' must receive the hook context parameter.");
+                $"[KernelMethod] send helper '{call.Method.Name}' must receive the hook context parameter.");
         }
 
         return bindings;
+    }
+
+    private static DotBoxDExpressionModel LowerSendArgument(
+        BoundKernelMethodArgument argument,
+        DotBoxDExpressionLoweringContext context,
+        Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression)
+    {
+        if (argument.Expression is not { } expression)
+        {
+            return LowerDefaultArgument(argument.Parameter, argument.DefaultValue);
+        }
+
+        return DotBoxDNullableScalarExpressionLowerer.TryLower(
+            expression,
+            argument.Parameter.Type,
+            context,
+            lowerExpression,
+            out var nullable)
+            ? nullable
+            : lowerExpression(expression);
     }
 
     private static InvocationExpressionSyntax SendHelperInvocation(

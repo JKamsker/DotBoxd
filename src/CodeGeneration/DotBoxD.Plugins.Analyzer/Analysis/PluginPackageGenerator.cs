@@ -100,6 +100,17 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
             rpcResults.Where(static result => result.Diagnostic is not null).Select(static (result, _) => result.Diagnostic!),
             static (sourceContext, diagnostic) => sourceContext.ReportDiagnostic(diagnostic.ToDiagnostic()));
 
+        var serverExtensionMethodDiagnostics = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                DotBoxDMetadataNames.ServerExtensionMethodAttribute,
+                static (node, _) => node is MethodDeclarationSyntax,
+                static (ctx, ct) => ServerExtensionMethodDiagnosticFactory.Create(ctx, ct))
+            .Where(static diagnostic => diagnostic is not null)
+            .Select(static (diagnostic, _) => diagnostic!);
+        context.RegisterSourceOutput(
+            serverExtensionMethodDiagnostics,
+            static (sourceContext, diagnostic) => sourceContext.ReportDiagnostic(diagnostic.ToDiagnostic()));
+
         var rpcPackages = rpcResults
             .Where(static result => result.Package is not null)
             .Select(static (result, _) => result.Package!)
@@ -110,6 +121,7 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
                 static (node, _) => node is InvocationExpressionSyntax
                 {
                     Expression: MemberAccessExpressionSyntax { Name.Identifier.ValueText: "InvokeAsync" }
+                        or IdentifierNameSyntax { Identifier.ValueText: "InvokeAsync" }
                 },
                 static (syntaxContext, ct) => InvokeAsyncModelFactory.Create(syntaxContext, ct))
             .Where(static result => result is not null)

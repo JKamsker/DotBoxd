@@ -10,7 +10,9 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         ICollection<string> effects,
         CancellationToken cancellationToken,
         IReadOnlyDictionary<string, RpcInlinedBinding>? inlinedBindings = null,
-        IReadOnlyCollection<string>? inlineStack = null)
+        IReadOnlyCollection<string>? inlineStack = null,
+        string? serverContextParameterName = null,
+        ITypeSymbol? serverContextType = null)
     {
         _model = model;
         _capabilities = capabilities;
@@ -18,5 +20,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         _cancellationToken = cancellationToken;
         _inlinedBindings = inlinedBindings;
         _inlineStack = inlineStack;
+        _serverContextParameterName = serverContextParameterName;
+        _serverContextType = serverContextType;
     }
 }

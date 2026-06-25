@@ -14,7 +14,7 @@ internal static class GeneratedKernelMethodDescriptorFactory
         CancellationToken cancellationToken)
     {
         var descriptors = new List<GeneratedKernelMethodDescriptorModel>();
-        foreach (var method in contextType.GetMembers().OfType<IMethodSymbol>())
+        foreach (var method in KernelMethods(contextType))
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!HasKernelMethodAttribute(method, compilation))
@@ -43,11 +43,12 @@ internal static class GeneratedKernelMethodDescriptorFactory
                 $"Context [KernelMethod] helper '{method.Name}' must be a non-generic instance method.");
         }
 
-        var returnType = DotBoxDTypeNameReader.SandboxTypeName(method.ReturnType);
+        var descriptorContextType = method.ContainingType;
+        var returnType = DotBoxDTypeNameReader.KernelMethodTypeName(method.ReturnType);
         if (string.Equals(returnType, DotBoxDGenerationNames.ManifestTypes.Unsupported, StringComparison.Ordinal))
         {
             throw new NotSupportedException(
-                $"Context [KernelMethod] helper '{method.Name}' must return a supported scalar type.");
+                $"Context [KernelMethod] helper '{method.Name}' must return a supported sandbox type.");
         }
 
         var bindings = BindParameters(method);
@@ -61,7 +62,7 @@ internal static class GeneratedKernelMethodDescriptorFactory
             liveSettings: default,
             bodyModel,
             cancellationToken,
-            serverContextType: contextType,
+            serverContextType: descriptorContextType,
             contextWorldType: worldType,
             capabilities: capabilities,
             effects: effects,
@@ -75,7 +76,7 @@ internal static class GeneratedKernelMethodDescriptorFactory
 
         var payload = new KernelMethodDescriptorPayload(
             KernelMethodDescriptorPayload.CurrentVersion,
-            TypeName(contextType),
+            TypeName(descriptorContextType),
             method.MetadataName,
             KernelMethodSignature.Create(method),
             returnType,
@@ -85,15 +86,31 @@ internal static class GeneratedKernelMethodDescriptorFactory
             new EquatableArray<KernelMethodDescriptorParameter>(
                 method.Parameters.Select(static (parameter, index) => new KernelMethodDescriptorParameter(
                     Placeholder(index),
-                    DotBoxDTypeNameReader.SandboxTypeName(parameter.Type))).ToArray()),
+                    DotBoxDTypeNameReader.KernelMethodTypeName(parameter.Type))).ToArray()),
             lowered.Source);
         var json = payload.ToJson();
         return new GeneratedKernelMethodDescriptorModel(
-            TypeName(contextType),
+            TypeName(descriptorContextType),
             method.MetadataName,
             KernelMethodSignature.Create(method),
             KernelMethodDescriptorPayload.Hash(json),
             json);
+    }
+
+    private static IEnumerable<IMethodSymbol> KernelMethods(INamedTypeSymbol contextType)
+    {
+        for (var current = contextType; current is not null; current = current.BaseType)
+        {
+            if (current.SpecialType is SpecialType.System_Object or SpecialType.System_ValueType)
+            {
+                continue;
+            }
+
+            foreach (var method in current.GetMembers().OfType<IMethodSymbol>())
+            {
+                yield return method;
+            }
+        }
     }
 
     private static IReadOnlyDictionary<string, DotBoxDExpressionModel> BindParameters(IMethodSymbol method)
@@ -108,11 +125,11 @@ internal static class GeneratedKernelMethodDescriptorFactory
                     $"Context [KernelMethod] helper '{method.Name}' parameters must be value parameters.");
             }
 
-            var type = DotBoxDTypeNameReader.SandboxTypeName(parameter.Type);
+            var type = DotBoxDTypeNameReader.KernelMethodTypeName(parameter.Type);
             if (string.Equals(type, DotBoxDGenerationNames.ManifestTypes.Unsupported, StringComparison.Ordinal))
             {
                 throw new NotSupportedException(
-                    $"Context [KernelMethod] helper '{method.Name}' parameters must use supported scalar types.");
+                    $"Context [KernelMethod] helper '{method.Name}' parameters must use supported sandbox types.");
             }
 
             bindings[parameter.Name] = new DotBoxDExpressionModel(Placeholder(i), type, Allocates: false);

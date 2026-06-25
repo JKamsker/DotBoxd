@@ -55,6 +55,41 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
     }
 
     [Fact]
+    public void Same_compilation_generated_server_fields_and_properties_use_the_owning_server_context()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public sealed class FieldUsage
+            {
+                private AlphaPluginServer _server = null!;
+
+                public void Configure()
+                    => _server.Hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                        .Where(e => e.Distance <= 5)
+                        .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "field"));
+            }
+
+            public sealed class PropertyUsage
+            {
+                public AlphaPluginServer Server { get; init; } = null!;
+
+                public void Configure()
+                    => Server.Hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                        .Where(e => e.Distance <= 5)
+                        .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "property"));
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+        const string Pipeline = "RemoteHookPipeline<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent, " +
+                                "global::ChainSample.Plugin.AlphaPluginContext>";
+
+        Assert.True(Count(generated, Pipeline) >= 3, generated);
+    }
+
+    [Fact]
     public void Same_simple_name_foreign_registry_alias_is_not_intercepted()
     {
         var result = RunGenerator(SameSimpleNameForeignRegistrySource);
@@ -146,6 +181,19 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
 
     private static string[] GeneratedSources(GeneratorDriverRunResult result)
         => result.GeneratedTrees.Select(tree => tree.GetText().ToString()).ToArray();
+
+    private static int Count(string value, string needle)
+    {
+        var count = 0;
+        var index = 0;
+        while ((index = value.IndexOf(needle, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += needle.Length;
+        }
+
+        return count;
+    }
 
     private static IEnumerable<MetadataReference> TrustedPlatformReferences()
     {

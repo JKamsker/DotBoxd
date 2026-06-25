@@ -119,6 +119,65 @@ public sealed partial class PluginAnalyzerHookChainTests
         Assert.Contains("Use", diagnostic.GetMessage(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Generated_server_remote_staged_Use_reports_DBXK100_error()
+    {
+        var result = RunGenerator("""
+            using System.Threading;
+            using System.Threading.Tasks;
+            using DotBoxD.Abstractions;
+            using DotBoxD.Services.Attributes;
+
+            namespace Sample.Game
+            {
+                [DotBoxDService]
+                public interface IGameWorld;
+            }
+
+            namespace Sample.Game.Ipc
+            {
+                public readonly record struct LiveSettingUpdate(string Name, string Value);
+
+                public interface IGamePluginControlService : DotBoxD.Plugins.IServerExtensionWireClient
+                {
+                    ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default);
+                    ValueTask<string> InstallSubscriptionAsync(string packageJson, CancellationToken ct = default);
+                    ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default);
+                    ValueTask UpdateSettingsAsync(
+                        string pluginId,
+                        LiveSettingUpdate[] updates,
+                        bool atomic = false,
+                        CancellationToken ct = default);
+                    ValueTask HoldUntilShutdownAsync(CancellationToken ct = default);
+                }
+            }
+
+            namespace Sample.Plugin
+            {
+                [GeneratePluginServer(Context = typeof(RemotePluginContext))]
+                public partial class RemotePluginServer : Sample.Game.IGameWorld;
+
+                public sealed partial class RemotePluginContext;
+                public sealed record DamageEvent(string TargetId);
+                public sealed class DamageKernel;
+
+                public static class Usage
+                {
+                    public static void Configure(RemotePluginServer server)
+                        => server.Hooks.On<DamageEvent>()
+                            .Where(e => e.TargetId == "monster-1")
+                            .Use<DamageKernel>();
+                }
+            }
+            """);
+
+        Assert.Contains(
+            result.Diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains("Where/Select", StringComparison.Ordinal) &&
+                          diagnostic.GetMessage().Contains("Use", StringComparison.Ordinal));
+    }
+
     private static GeneratorDriverRunResult RunGenerator(string source)
         => RunGeneratorCore(source).Result;
 
@@ -133,7 +192,9 @@ public sealed partial class PluginAnalyzerHookChainTests
             TrustedPlatformReferences()
                 .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location))
-                .Append(MetadataReference.CreateFromFile(typeof(PluginServer).Assembly.Location)),
+                .Append(MetadataReference.CreateFromFile(typeof(PluginServer).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(
+                    typeof(DotBoxD.Services.Attributes.DotBoxDServiceAttribute).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             [new PluginPackageGenerator().AsSourceGenerator()],

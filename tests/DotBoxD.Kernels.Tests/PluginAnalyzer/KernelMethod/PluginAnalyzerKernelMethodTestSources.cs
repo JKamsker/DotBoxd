@@ -122,6 +122,34 @@ internal static class PluginAnalyzerKernelMethodTestSources
         }
         """;
 
+    public const string ExtensionNamedDefaultChain = """
+        using DotBoxD.Plugins;
+        using DotBoxD.Plugins.Runtime;
+        using DotBoxD.Abstractions;
+
+        namespace ChainSample;
+
+        public static class Usage
+        {
+            public static void Configure(HookRegistry hooks)
+                => hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.KernelMethod.KernelMethodAggroEvent>()
+                    .Where(e => e.IsBullyingAndClose(playerLevel: e.PlayerLevel, monsterLevel: e.MonsterLevel))
+                    .Run((e, ctx) => SendCalm(monsterId: e.MonsterId, ctx: ctx));
+
+            [KernelMethod]
+            public static bool IsBullyingAndClose(
+                this global::DotBoxD.Kernels.Tests.PluginAnalyzer.KernelMethod.KernelMethodAggroEvent e,
+                int monsterLevel,
+                int playerLevel,
+                int maxDistance = 5)
+                => monsterLevel - playerLevel >= 3 && e.Distance <= maxDistance;
+
+            [KernelMethod]
+            public static void SendCalm(HookContext ctx, string monsterId, string message = "calm")
+                => ctx.Messages.Send(monsterId, message);
+        }
+        """;
+
     public const string HandleSendHelper = """
         using DotBoxD.Plugins;
         using DotBoxD.Plugins.Runtime;

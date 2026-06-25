@@ -56,7 +56,14 @@ internal static partial class RpcKernelModelFactory
             var body = MethodBody(method, cancellationToken);
             var capabilities = new SortedSet<string>(StringComparer.Ordinal);
             var effects = new SortedSet<string>(StringComparer.Ordinal);
-            var lowerer = new DotBoxDRpcJsonLowerer(context.SemanticModel, capabilities, effects, cancellationToken);
+            var contextParameter = method.Parameters[method.Parameters.Length - 1];
+            var lowerer = new DotBoxDRpcJsonLowerer(
+                context.SemanticModel,
+                capabilities,
+                effects,
+                cancellationToken,
+                serverContextParameterName: contextParameter.Name,
+                serverContextType: contextParameter.Type);
             var hasReceiverId = RpcKernelReceiverHandleSeeder.TrySeed(lowerer, graft);
             var bodyJson = lowerer.LowerBody(body);
 

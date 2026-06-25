@@ -83,10 +83,16 @@ public sealed class CapabilityAttribute(string id) : Attribute
 /// already-lowered argument IR, and any <c>[HostBinding]</c> calls or <c>[Capability]</c>-gated reads
 /// inside the body contribute their capabilities to the calling kernel's manifest.
 /// <para>
+/// Static helpers may be called through ordinary static-call syntax or extension-method syntax, and
+/// named arguments plus supported optional parameter defaults are bound before lowering.
+/// </para>
+/// <para>
 /// Constraints (verified at generation time; a violation fails the chain/kernel safely rather than
 /// miscompiling): the method must be static or called on the server-context parameter, have an expression body
-/// or a single <c>return</c> statement, and use only the supported scalar types (<c>bool</c>, <c>int</c>,
-/// <c>long</c>, <c>double</c>, <c>string</c>) for its parameters and return. Recursion is not allowed.
+/// or a single <c>return</c> statement, and use types the kernel marshaller can represent in the current
+/// lowering surface (scalars, supported nullable scalars, enums, GUIDs, records/DTOs, lists, and maps where
+/// that surface supports them). Recursion, generic helpers, <c>ref</c>/<c>out</c>/<c>in</c> parameters, and
+/// <c>params</c> arrays are not allowed.
 /// </para>
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, Inherited = false)]

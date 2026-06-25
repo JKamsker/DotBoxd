@@ -40,9 +40,24 @@ internal static class InvokeAsyncModelFactory
         SemanticModel model,
         CancellationToken cancellationToken)
     {
+        if (invocation.Expression is IdentifierNameSyntax { Identifier.ValueText: InvokeAsyncMethod })
+        {
+            if (IsDotBoxDInvokeAsync(model, invocation, cancellationToken))
+            {
+                throw new NotSupportedException(
+                    "implicit InvokeAsync calls are not supported; call InvokeAsync on the generated plugin server receiver.");
+            }
+
+            return null;
+        }
+
         if (invocation.Expression is not MemberAccessExpressionSyntax access ||
-            !string.Equals(access.Name.Identifier.ValueText, InvokeAsyncMethod, StringComparison.Ordinal) ||
-            !TryServerInvocationSurface(
+            !string.Equals(access.Name.Identifier.ValueText, InvokeAsyncMethod, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        if (!TryServerInvocationSurface(
                 model,
                 access.Expression,
                 cancellationToken,
@@ -50,6 +65,12 @@ internal static class InvokeAsyncModelFactory
                 out var serverAccessType,
                 out var worldType))
         {
+            if (IsDotBoxDInvokeAsync(model, invocation, cancellationToken))
+            {
+                throw new NotSupportedException(
+                    "receiver must be a generated plugin server facade or generated server interface, not the erased IPluginServer<TWorld> surface.");
+            }
+
             return null;
         }
 
@@ -77,7 +98,6 @@ internal static class InvokeAsyncModelFactory
         var pluginId = "$anon:" + id;
         var packageName = "InvokeAsync_" + id + DotBoxDGenerationNames.PluginPackageSuffix;
         var ns = HookChainIdentity.Namespace(invocation);
-        var package = EmitPackage(ns, packageName, pluginId, shape, bodyJson, effects, capabilities);
         var interception = Interception(
             invocation,
             model,
@@ -88,7 +108,38 @@ internal static class InvokeAsyncModelFactory
             pluginId,
             shape,
             cancellationToken);
+        if (interception is null)
+        {
+            throw new NotSupportedException("call site is not interceptable by the C# compiler.");
+        }
+
+        var package = EmitPackage(ns, packageName, pluginId, shape, bodyJson, effects, capabilities);
         return new InvokeAsyncResult(package, interception, null);
+    }
+
+    private static bool IsDotBoxDInvokeAsync(
+        SemanticModel model,
+        InvocationExpressionSyntax invocation,
+        CancellationToken cancellationToken)
+    {
+        if (model.GetSymbolInfo(invocation, cancellationToken).Symbol is not IMethodSymbol method ||
+            !string.Equals(method.Name, InvokeAsyncMethod, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return IsPluginServerType(method.ContainingType);
+    }
+
+    private static bool IsPluginServerType(ITypeSymbol? type)
+    {
+        if (type is not INamedTypeSymbol named)
+        {
+            return false;
+        }
+
+        var original = named.OriginalDefinition.ToDisplayString();
+        return string.Equals(original, "DotBoxD.Abstractions.IPluginServer<TWorld>", StringComparison.Ordinal);
     }
 
     private static bool TryServerInvocationSurface(

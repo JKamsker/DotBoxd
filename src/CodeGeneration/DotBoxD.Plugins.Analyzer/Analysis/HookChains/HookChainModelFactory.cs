@@ -251,25 +251,37 @@ internal static partial class HookChainModelFactory
             LocalDecoderSource = localDecoderSource,
         };
 
-        return new HookChainResult(
+        var interception = Interception(
+            invocation,
+            model,
             modelResult,
-            Interception(
-                invocation,
-                model,
-                modelResult,
-                terminalAccess.Expression,
-                eventType,
-                stages,
-                terminalElementTypeFullName,
-                generatedRemoteKind,
-                installKind.Value,
-                generatedRemoteServerContextTypeFullName,
-                terminalContextParam is not null,
-                TerminalReturnsVoid(terminalLambda, model, cancellationToken),
-                localDecoderSource is not null,
-                projectedTypeSymbol,
-                cancellationToken));
+            terminalAccess.Expression,
+            eventType,
+            stages,
+            terminalElementTypeFullName,
+            generatedRemoteKind,
+            installKind.Value,
+            generatedRemoteServerContextTypeFullName,
+            terminalContextParam is not null,
+            TerminalReturnsVoid(terminalLambda, model, cancellationToken),
+            localDecoderSource is not null,
+            projectedTypeSymbol,
+            cancellationToken);
+        if (interception is null)
+        {
+            throw new NotSupportedException(InterceptionFailureDetail(generatedRemoteKind, projectedTypeSymbol));
+        }
+
+        return new HookChainResult(modelResult, interception);
     }
+
+    private static string InterceptionFailureDetail(
+        GeneratedRemoteHookChainKind? generatedRemoteKind,
+        ITypeSymbol? projectedTypeSymbol)
+        => generatedRemoteKind is not null &&
+           projectedTypeSymbol is INamedTypeSymbol { IsAnonymousType: true }
+            ? "anonymous terminal projections on generated-server chains require a named record projection"
+            : "the call site is not interceptable";
 
 }
 

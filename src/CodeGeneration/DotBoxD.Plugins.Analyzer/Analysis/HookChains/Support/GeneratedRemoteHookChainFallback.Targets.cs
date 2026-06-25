@@ -151,6 +151,8 @@ internal static partial class GeneratedRemoteHookChainFallback
         {
             IParameterSymbol parameter => ParameterTypeSyntax(parameter, cancellationToken),
             ILocalSymbol local => LocalTypeSyntax(local, cancellationToken),
+            IFieldSymbol field => FieldTypeSyntax(field, cancellationToken),
+            IPropertySymbol property => PropertyTypeSyntax(property, cancellationToken),
             _ => null
         };
     }
@@ -160,6 +162,39 @@ internal static partial class GeneratedRemoteHookChainFallback
         foreach (var reference in parameter.DeclaringSyntaxReferences)
         {
             if (reference.GetSyntax(cancellationToken) is ParameterSyntax { Type: { } typeSyntax })
+            {
+                return typeSyntax;
+            }
+        }
+
+        return null;
+    }
+
+    private static TypeSyntax? FieldTypeSyntax(IFieldSymbol field, CancellationToken cancellationToken)
+    {
+        foreach (var reference in field.DeclaringSyntaxReferences)
+        {
+            if (reference.GetSyntax(cancellationToken) is VariableDeclaratorSyntax
+                {
+                    Parent: VariableDeclarationSyntax
+                    {
+                        Type: { } typeSyntax,
+                        Parent: FieldDeclarationSyntax
+                    }
+                })
+            {
+                return typeSyntax;
+            }
+        }
+
+        return null;
+    }
+
+    private static TypeSyntax? PropertyTypeSyntax(IPropertySymbol property, CancellationToken cancellationToken)
+    {
+        foreach (var reference in property.DeclaringSyntaxReferences)
+        {
+            if (reference.GetSyntax(cancellationToken) is PropertyDeclarationSyntax { Type: { } typeSyntax })
             {
                 return typeSyntax;
             }

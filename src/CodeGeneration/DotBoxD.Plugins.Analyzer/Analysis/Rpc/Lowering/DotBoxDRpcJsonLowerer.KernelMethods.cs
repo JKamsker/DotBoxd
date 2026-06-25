@@ -1,4 +1,5 @@
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
+using DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -8,16 +9,21 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 {
     private string? TryLowerKernelMethodInvocation(InvocationExpressionSyntax invocation)
     {
-        if (_model.GetSymbolInfo(invocation, _cancellationToken).Symbol is not IMethodSymbol method ||
-            !HasKernelMethodAttribute(method, _model.Compilation))
+        if (_model.GetSymbolInfo(invocation, _cancellationToken).Symbol is not IMethodSymbol resolvedMethod ||
+            !HasKernelMethodAttribute(resolvedMethod, _model.Compilation))
         {
             return null;
         }
 
-        if (!method.IsStatic)
+        var call = KernelMethodArgumentBinder.Bind(
+            invocation,
+            resolvedMethod,
+            $"[KernelMethod] '{KernelMethodArgumentBinder.Definition(resolvedMethod).Name}'");
+        var method = call.Method;
+        if (!method.IsStatic && !IsServerContextReceiver(invocation, method))
         {
             throw new NotSupportedException(
-                $"[KernelMethod] '{method.Name}' used in InvokeAsync/server-extension IR must be static.");
+                $"[KernelMethod] '{method.Name}' used in InvokeAsync/server-extension IR must be static or called on the server context parameter.");
         }
 
         var returnType = DotBoxDTypeNameReader.KernelMethodTypeName(method.ReturnType);
@@ -34,7 +40,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 $"[KernelMethod] '{method.Name}' is recursive; recursive kernel methods cannot be inlined.");
         }
 
-        var bindings = BindKernelMethodArguments(invocation, method);
+        var bindings = BindKernelMethodArguments(call);
         var body = KernelMethodBody(method);
         var bodyModel = _model.Compilation.GetSemanticModel(body.SyntaxTree);
         var lowerer = new DotBoxDRpcJsonLowerer(
@@ -43,7 +49,9 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             _effects,
             _cancellationToken,
             bindings,
-            InlineStack(methodKey));
+            InlineStack(methodKey),
+            _serverContextParameterName,
+            _serverContextType);
         var lowered = lowerer.LowerExpression(body);
         Allocates |= lowerer.Allocates;
 
@@ -57,40 +65,56 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     }
 
     private IReadOnlyDictionary<string, RpcInlinedBinding> BindKernelMethodArguments(
-        InvocationExpressionSyntax invocation,
-        IMethodSymbol method)
+        BoundKernelMethodCall call)
     {
-        var arguments = invocation.ArgumentList.Arguments;
-        if (arguments.Count != method.Parameters.Length)
-        {
-            throw new NotSupportedException(
-                $"[KernelMethod] '{method.Name}' call must pass {method.Parameters.Length} positional argument(s).");
-        }
-
         var bindings = new Dictionary<string, RpcInlinedBinding>(StringComparer.Ordinal);
-        for (var i = 0; i < arguments.Count; i++)
+        for (var i = 0; i < call.Arguments.Count; i++)
         {
-            if (arguments[i].NameColon is not null ||
-                !arguments[i].RefKindKeyword.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.None))
-            {
-                throw new NotSupportedException(
-                    $"[KernelMethod] '{method.Name}' arguments must be positional value arguments.");
-            }
-
-            var expected = DotBoxDTypeNameReader.KernelMethodTypeName(method.Parameters[i].Type);
-            var actual = ExpressionTypeTag(arguments[i].Expression, _model);
+            var argument = call.Arguments[i];
+            var expected = DotBoxDTypeNameReader.KernelMethodTypeName(argument.Parameter.Type);
+            var actual = argument.Expression is { } expression
+                ? ExpressionTypeTag(expression, _model)
+                : expected;
             if (!string.Equals(actual, expected, StringComparison.Ordinal))
             {
                 throw new NotSupportedException(
-                    $"[KernelMethod] '{method.Name}' argument {i} must lower to {expected}.");
+                    $"[KernelMethod] '{call.Method.Name}' argument {i} must lower to {expected}.");
             }
 
-            bindings[method.Parameters[i].Name] = new RpcInlinedBinding(
-                LowerExpression(arguments[i].Expression),
+            bindings[argument.Parameter.Name] = new RpcInlinedBinding(
+                LowerArgument(argument),
                 expected);
         }
 
         return bindings;
+    }
+
+    private string LowerArgument(BoundKernelMethodArgument argument)
+        => argument.Expression is { } expression
+            ? LowerExpression(expression)
+            : LiteralJson(argument.Parameter, argument.DefaultValue);
+
+    private string LiteralJson(IParameterSymbol parameter, object? value)
+    {
+        var converted = DotBoxDTypeNameReader.UnwrapTaskLike(parameter.Type);
+        if (converted.SpecialType == SpecialType.System_Int64 && value is int i)
+        {
+            return LiteralJson((long)i);
+        }
+
+        if (converted.SpecialType is SpecialType.System_Double or SpecialType.System_Single &&
+            value is IConvertible convertible)
+        {
+            return LiteralJson(convertible.ToDouble(System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        if (value is null && DotBoxDNullableScalarType.IsNullableValueType(converted))
+        {
+            throw new NotSupportedException(
+                $"[KernelMethod] '{parameter.ContainingSymbol.Name}' optional nullable parameter '{parameter.Name}' is not supported in InvokeAsync/server-extension IR.");
+        }
+
+        return LiteralJson(value);
     }
 
     private ExpressionSyntax KernelMethodBody(IMethodSymbol method)
@@ -133,6 +157,28 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         return DotBoxDTypeNameReader.KernelMethodTypeName(type);
     }
 
+    private bool IsServerContextReceiver(InvocationExpressionSyntax invocation, IMethodSymbol method)
+    {
+        if (_serverContextParameterName is null ||
+            _serverContextType is null ||
+            invocation.Expression is not MemberAccessExpressionSyntax member ||
+            member.Expression is not IdentifierNameSyntax receiver ||
+            !string.Equals(receiver.Identifier.ValueText, _serverContextParameterName, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        for (var current = _serverContextType; current is not null; current = current.BaseType)
+        {
+            if (SymbolEqualityComparer.Default.Equals(method.ContainingType, current))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private IReadOnlyCollection<string> InlineStack(string methodKey)
     {
         var stack = new HashSet<string>(StringComparer.Ordinal);
@@ -150,7 +196,8 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
     private static bool HasKernelMethodAttribute(IMethodSymbol method, Compilation compilation)
     {
-        foreach (var attribute in method.GetAttributes())
+        var definition = KernelMethodArgumentBinder.Definition(method);
+        foreach (var attribute in definition.GetAttributes())
         {
             if (compilation.GetTypeByMetadataName(DotBoxDMetadataNames.KernelMethodAttribute) is { } expected &&
                 SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, expected))

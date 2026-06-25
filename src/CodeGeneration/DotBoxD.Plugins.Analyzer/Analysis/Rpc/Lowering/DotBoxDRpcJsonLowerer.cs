@@ -21,6 +21,8 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     private readonly CancellationToken _cancellationToken;
     private readonly IReadOnlyDictionary<string, RpcInlinedBinding>? _inlinedBindings;
     private readonly IReadOnlyCollection<string>? _inlineStack;
+    private readonly string? _serverContextParameterName;
+    private readonly ITypeSymbol? _serverContextType;
     private readonly Dictionary<string, string> _serviceHandleLocals = new(StringComparer.Ordinal);
     private readonly HashSet<string> _reservedNames = new(StringComparer.Ordinal);
     private Func<AssignmentExpressionSyntax, Func<ExpressionSyntax, string>, string?>? _assignmentOverride;

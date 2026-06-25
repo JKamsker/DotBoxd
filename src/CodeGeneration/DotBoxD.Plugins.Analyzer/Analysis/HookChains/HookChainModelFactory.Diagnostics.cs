@@ -86,8 +86,21 @@ internal static partial class HookChainModelFactory
     {
         location = default;
         if (invocation.Expression is not MemberAccessExpressionSyntax terminalAccess ||
-            !string.Equals(terminalAccess.Name.Identifier.ValueText, RunLocalMethod, StringComparison.Ordinal) ||
-            ReceiverKind(model, terminalAccess.Expression, cancellationToken) != HookChainReceiverKind.Remote)
+            !string.Equals(terminalAccess.Name.Identifier.ValueText, RunLocalMethod, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (ReceiverKind(model, terminalAccess.Expression, cancellationToken) == HookChainReceiverKind.Remote)
+        {
+            location = PluginDiagnosticLocation.From(terminalAccess.Name.GetLocation());
+            return true;
+        }
+
+        var stages = new List<HookChainStage>();
+        var seed = WalkToSeed(terminalAccess.Expression, stages);
+        if (seed is null ||
+            GeneratedRemoteHookChainFallback.Candidate(seed, model, cancellationToken) is null)
         {
             return false;
         }

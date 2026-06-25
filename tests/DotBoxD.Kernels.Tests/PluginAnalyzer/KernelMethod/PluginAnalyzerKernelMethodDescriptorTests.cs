@@ -53,6 +53,33 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
     }
 
     [Fact]
+    public async Task Prebuilt_sdk_inherited_context_kernel_method_descriptor_lowers_and_runs()
+    {
+        var (result, sdkReference) = CompileSdk(PluginAnalyzerKernelMethodDescriptorTestSources.InheritedSdk);
+        var generated = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.Equal(1, Count(generated, "GeneratedKernelMethodDescriptorAttribute"));
+        Assert.Contains("global::Sdk.BaseGamePluginContext", generated, StringComparison.Ordinal);
+
+        var assembly = CompileGeneratedAssembly(
+            PluginAnalyzerKernelMethodDescriptorTestSources.InheritedConsumer,
+            sdkReference);
+        var package = HookChainPackage(assembly);
+
+        Assert.Contains("host.message.write", package.Manifest.RequiredCapabilities);
+
+        var messages = new InMemoryPluginMessageSink();
+        using var server = DotBoxD.Plugins.PluginServer.Create(messages, defaultPolicy: ReadPolicy());
+        server.Hooks.On<KernelMethodAggroEvent>().UseGeneratedChain(package);
+
+        await server.Hooks.PublishAsync(new KernelMethodAggroEvent("monster-1", 3, 10, 5));
+        await server.Hooks.PublishAsync(new KernelMethodAggroEvent("monster-2", 9, 10, 5));
+
+        var message = Assert.Single(messages.Messages);
+        Assert.Equal("monster-1", message.TargetId);
+    }
+
+    [Fact]
     public void Metadata_only_context_kernel_method_without_descriptor_is_rejected()
     {
         var sdkReference = CompilePlainReference(

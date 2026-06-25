@@ -38,9 +38,26 @@ internal sealed class InvokeAsyncResultReaderSource
 
     private string ReadComplexExpression(ITypeSymbol type, string expression)
     {
+        if (DotBoxDRpcTypeMapper.IsGuid(type))
+        {
+            return $"{expression}.GuidValue";
+        }
+
+        if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
+        {
+            return DotBoxDRpcTypeMapper.EnumUsesI64(enumType)
+                ? $"unchecked(({TypeName(type)}){expression}.Int64Value)"
+                : $"unchecked(({TypeName(type)}){expression}.Int32Value)";
+        }
+
         if (DotBoxDRpcTypeMapper.ListElementType(type) is not null)
         {
             return $"{EnsureListReader(type)}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.MapTypes(type) is not null)
+        {
+            return $"{EnsureMapReader(type)}({expression})";
         }
 
         if (type is INamedTypeSymbol named && DotBoxDRpcTypeMapper.IsRecordDto(named))
@@ -72,6 +89,43 @@ internal sealed class InvokeAsyncResultReaderSource
         _helpers.AppendLine("            value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.List);");
         _helpers.AppendLine("            var __count = value.ItemCount;");
         AppendListReaderBody(elementName, itemExpression, returnsArray);
+        _helpers.AppendLine();
+        _helpers.AppendLine("            return __result;");
+        _helpers.AppendLine("        }");
+        _helpers.AppendLine();
+        return method;
+    }
+
+    private string EnsureMapReader(ITypeSymbol type)
+    {
+        var key = TypeName(type);
+        if (_readers.TryGetValue(key, out var existing))
+        {
+            return existing;
+        }
+
+        var map = DotBoxDRpcTypeMapper.MapTypes(type)
+                  ?? throw new NotSupportedException($"InvokeAsync map return type '{type.ToDisplayString()}' is not supported.");
+        var method = NextHelperName();
+        _readers[key] = method;
+        var keyName = TypeName(map.Key);
+        var valueName = TypeName(map.Value);
+        var keyExpression = ReadExpression(map.Key, "value.GetItem(i)");
+        var valueExpression = ReadExpression(map.Value, "value.GetItem(i + 1)");
+        _helpers.Append("        private static ").Append(TypeName(type)).Append(' ').Append(method)
+            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+        _helpers.AppendLine("        {");
+        _helpers.AppendLine("            value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Map);");
+        _helpers.AppendLine("            if ((value.ItemCount & 1) != 0)");
+        _helpers.AppendLine("            {");
+        _helpers.AppendLine("                throw new global::System.NotSupportedException(\"InvokeAsync map result had an odd key/value entry count.\");");
+        _helpers.AppendLine("            }");
+        _helpers.Append("            var __result = new global::System.Collections.Generic.Dictionary<")
+            .Append(keyName).Append(", ").Append(valueName).AppendLine(">(value.ItemCount / 2);");
+        _helpers.AppendLine("            for (var i = 0; i < value.ItemCount; i += 2)");
+        _helpers.AppendLine("            {");
+        _helpers.Append("                __result[").Append(keyExpression).Append("] = ").Append(valueExpression).AppendLine(";");
+        _helpers.AppendLine("            }");
         _helpers.AppendLine();
         _helpers.AppendLine("            return __result;");
         _helpers.AppendLine("        }");

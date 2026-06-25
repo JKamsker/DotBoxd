@@ -61,21 +61,23 @@ internal sealed partial class InvokeAsyncCallShape
         CancellationToken cancellationToken)
     {
         var arguments = invocation.ArgumentList.Arguments;
-        if (arguments.Count == 1 && method.TypeArguments.Length == 1 &&
-            InvokeAsyncLambdaShape.TryLambda(arguments[0].Expression, out var lambda) &&
+        if (method.TypeArguments.Length == 1 &&
+            TrySingleLambdaArgument(arguments, out var lambdaExpression) &&
+            InvokeAsyncLambdaShape.TryLambda(lambdaExpression, out var lambda) &&
             lambda.Body is BlockSyntax block &&
             InvokeAsyncLambdaShape.TryWorldParameter(lambda, model, cancellationToken, out var worldType))
         {
             return LambdaOnly(lambda, block, worldType, method.TypeArguments[0], model);
         }
 
-        if (arguments.Count == 2 && method.TypeArguments.Length == 2 &&
-            InvokeAsyncLambdaShape.TryLambda(arguments[1].Expression, out lambda) &&
+        if (method.TypeArguments.Length == 2 &&
+            TryCaptureArguments(arguments, out var capturesExpression, out lambdaExpression) &&
+            InvokeAsyncLambdaShape.TryLambda(lambdaExpression, out lambda) &&
             lambda.Body is BlockSyntax captureBlock &&
             InvokeAsyncLambdaShape.TryCaptureParameter(
                 lambda,
                 model,
-                arguments[0].Expression,
+                capturesExpression,
                 cancellationToken,
                 out var captureParameter,
                 out worldType) &&
@@ -94,8 +96,8 @@ internal sealed partial class InvokeAsyncCallShape
         CancellationToken cancellationToken)
     {
         var arguments = invocation.ArgumentList.Arguments;
-        if (arguments.Count == 1 &&
-            InvokeAsyncLambdaShape.TryLambda(arguments[0].Expression, out var lambda) &&
+        if (TrySingleLambdaArgument(arguments, out var lambdaExpression) &&
+            InvokeAsyncLambdaShape.TryLambda(lambdaExpression, out var lambda) &&
             lambda.Body is BlockSyntax block &&
             InvokeAsyncLambdaShape.TryWorldParameter(lambda, model, cancellationToken, generatedWorldType, out var worldType) &&
             InvokeAsyncLambdaShape.TryReturnType(block, model, cancellationToken, out var returnType))
@@ -103,13 +105,13 @@ internal sealed partial class InvokeAsyncCallShape
             return LambdaOnly(lambda, block, worldType, returnType, model);
         }
 
-        if (arguments.Count == 2 &&
-            InvokeAsyncLambdaShape.TryLambda(arguments[1].Expression, out lambda) &&
+        if (TryCaptureArguments(arguments, out var capturesExpression, out lambdaExpression) &&
+            InvokeAsyncLambdaShape.TryLambda(lambdaExpression, out lambda) &&
             lambda.Body is BlockSyntax captureBlock &&
             InvokeAsyncLambdaShape.TryCaptureParameter(
                 lambda,
                 model,
-                arguments[0].Expression,
+                capturesExpression,
                 cancellationToken,
                 generatedWorldType,
                 out var captureParameter,
@@ -121,6 +123,74 @@ internal sealed partial class InvokeAsyncCallShape
         }
 
         return null;
+    }
+
+    private static bool TrySingleLambdaArgument(
+        SeparatedSyntaxList<ArgumentSyntax> arguments,
+        out ExpressionSyntax lambda)
+    {
+        lambda = null!;
+        if (arguments.Count != 1 ||
+            arguments[0].NameColon is { Name.Identifier.ValueText: not "lambda" })
+        {
+            return false;
+        }
+
+        lambda = arguments[0].Expression;
+        return true;
+    }
+
+    private static bool TryCaptureArguments(
+        SeparatedSyntaxList<ArgumentSyntax> arguments,
+        out ExpressionSyntax captures,
+        out ExpressionSyntax lambda)
+    {
+        captures = null!;
+        lambda = null!;
+        if (arguments.Count != 2)
+        {
+            return false;
+        }
+
+        var assignedCaptures = false;
+        var assignedLambda = false;
+        for (var i = 0; i < arguments.Count; i++)
+        {
+            var argument = arguments[i];
+            var name = argument.NameColon?.Name.Identifier.ValueText;
+            if (name is null)
+            {
+                name = i == 0 ? "captures" : "lambda";
+            }
+
+            if (string.Equals(name, "captures", StringComparison.Ordinal))
+            {
+                if (assignedCaptures)
+                {
+                    return false;
+                }
+
+                captures = argument.Expression;
+                assignedCaptures = true;
+                continue;
+            }
+
+            if (string.Equals(name, "lambda", StringComparison.Ordinal))
+            {
+                if (assignedLambda)
+                {
+                    return false;
+                }
+
+                lambda = argument.Expression;
+                assignedLambda = true;
+                continue;
+            }
+
+            return false;
+        }
+
+        return assignedCaptures && assignedLambda;
     }
 
     public string LowerBody(DotBoxDRpcJsonLowerer lowerer, BlockSyntax block)

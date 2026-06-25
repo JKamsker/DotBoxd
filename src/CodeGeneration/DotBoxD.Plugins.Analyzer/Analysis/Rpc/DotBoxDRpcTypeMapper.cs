@@ -173,6 +173,7 @@ internal static class DotBoxDRpcTypeMapper
     public static bool IsRecordDto(INamedTypeSymbol type)
         => type.TypeKind is TypeKind.Class or TypeKind.Struct &&
            !IsScalar(type) &&
+           !IsUnsupportedFrameworkStruct(type) &&
            !DotBoxDNullableScalarType.IsNullableValueType(type) &&
            MapTypes(type) is null &&
            RecordFields(type).Count > 0;
@@ -291,10 +292,7 @@ internal static class DotBoxDRpcTypeMapper
 
     private static string Scalar(string name) => "\"" + name + "\"";
 
+    private static bool IsUnsupportedFrameworkStruct(INamedTypeSymbol type)
+        => type.ContainingNamespace.ToDisplayString() == "System" &&
+           type.Name is "DateTime" or "DateTimeOffset" or "TimeSpan";
 }
-
-/// <summary>
-/// A DTO/record field for marshalling: a public property, or (for a field-only value type) a public field.
-/// <see cref="Symbol"/> is the underlying property/field symbol for callers that need more than name and type.
-/// </summary>
-internal readonly record struct RecordMember(string Name, ITypeSymbol Type, ISymbol Symbol);

@@ -22,10 +22,11 @@ internal sealed partial class InvokeAsyncCallShape
 
             if (assignment.Kind() != SyntaxKind.SimpleAssignmentExpression ||
                 property.SetMethod is null ||
-                property.SetMethod.IsInitOnly)
+                property.SetMethod.IsInitOnly ||
+                !IsAccessibleFromGeneratedCode(property.SetMethod))
             {
                 throw new NotSupportedException(
-                    $"InvokeAsync capture property '{property.Name}' must be assigned with a public set accessor.");
+                    $"InvokeAsync capture property '{property.Name}' must be assigned with an accessible set accessor.");
             }
 
             if (syncOuts.Any(item => string.Equals(item.TargetName, property.Name, StringComparison.Ordinal)))
@@ -62,6 +63,11 @@ internal sealed partial class InvokeAsyncCallShape
         property = foundProperty;
         return true;
     }
+
+    private static bool IsAccessibleFromGeneratedCode(IMethodSymbol setMethod)
+        => setMethod.DeclaredAccessibility is Accessibility.Public
+            or Accessibility.Internal
+            or Accessibility.ProtectedOrInternal;
 
     private static IReadOnlyList<(string Name, ExpressionSyntax Value)> CreateLeadingLocals(
         IReadOnlyList<InvokeAsyncSyncOut> syncOuts)
