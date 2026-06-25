@@ -84,6 +84,10 @@ ceremony. The two goals do not conflict.
 
 ### Piece 1 — Kernel router: `server.Wire(kernel)` (deletes `GamePluginKernelWiring`, ~256 lines)
 
+> **Shipped as `PluginServer.WireHook` / `PluginServer.WireSubscription`** (two methods, not a single `Wire`) —
+> see the [As-built](#as-built-deltas-from-the-design-below) note. The sketch below writes `Wire`/`server.Wire`;
+> read it as those two methods.
+
 Two framework additions plus one composition method.
 
 **(a) Type-erased, wire-capable adapter resolution.** When `RegisterEventAdapter<TEvent>` runs, `TEvent` is
@@ -176,6 +180,15 @@ it is an authz decision — but gets a one-line helper.
 
 ### Piece 4 — `session.InstallAndWireAsync(...)` (collapses the 3 install methods + rollback)
 
+> **Shipped signature** (see the [As-built](#as-built-deltas-from-the-design-below) note): it takes a parsed
+> `PluginPackage` and an explicit `wire` action (the host's `WireHook`/`WireSubscription` choice), not the
+> string/`WireOptions` sketch below:
+> ```csharp
+> public ValueTask<InstalledKernel> InstallAndWireAsync(
+>     PluginPackage package, Action<InstalledKernel> wire, Func<PluginPackage, SandboxPolicy>? policy = null,
+>     Action<PluginPackage>? validate = null, CancellationToken cancellationToken = default);
+> ```
+
 One framework method: import (or accept a `PluginPackage`), compute least-privilege policy via
 `GetRequiredCapabilities`, install through the session, `Wire`, and roll back (`Uninstall(installId)`) on any
 failure:
@@ -205,15 +218,15 @@ The server ends up reading like the plugin already does.
 - Ownership and policy stay host-owned (`OwnerId`, `GetRequiredCapabilities`, the `policy`/`validate` seams).
 - The helpers are the **single audited home** for these, replacing per-host copies — a net security gain.
 
-## 6. New public surface (summary)
+## 6. New public surface (summary — as shipped)
 
 - `PluginEventAdapterRegistry.TryResolveErased(string, out IErasedPluginEventAdapter)`
-- `IErasedPluginEventAdapter` (EventType + captured generic wire dispatch)
-- `PluginServer.Wire(InstalledKernel, WireOptions?)` + `WireOptions`
+- `IErasedPluginEventAdapter` (EventType + captured generic wire dispatch) + `WireCallbacks`
+- `PluginServer.WireHook(InstalledKernel, WireOptions?)` / `WireSubscription(...)` + `WireOptions`
 - `KernelWireKind` / `KernelWireTerminal` (trusted classification)
-- `PluginSession.InstallAndWireAsync(...)`
+- `PluginSession.InstallAndWireAsync(PluginPackage, Action<InstalledKernel> wire, ...)` and `PluginSession.TryGetOwned(...)`
 - `InstalledKernel.InvokeServerExtensionRpcAsync(byte[], CancellationToken)`
-- codegen: host-side connection-accept emission from `[GeneratePluginServer]` / `[DotBoxDService]`
+- `PluginConnectionHost<TConnection>` in `DotBoxD.Pushdown.Services` — the runtime connection host (Piece 2 shipped as a helper, not a source generator)
 
 ## 7. Sequencing & risk
 
