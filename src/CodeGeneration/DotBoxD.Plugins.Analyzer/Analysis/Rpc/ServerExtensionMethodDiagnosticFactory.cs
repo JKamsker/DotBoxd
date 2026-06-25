@@ -24,7 +24,7 @@ internal static class ServerExtensionMethodDiagnosticFactory
                 "[ServerExtensionMethod] must be placed on the selected batch method of a [ServerExtension] class.");
         }
 
-        var selected = SelectedBatchMethod(method.ContainingType, context.SemanticModel.Compilation);
+        var selected = RpcKernelModelFactory.TryResolveBatchMethod(method.ContainingType, context.SemanticModel.Compilation);
         if (selected is null || !SymbolEqualityComparer.Default.Equals(selected, method))
         {
             return PluginKernelDiagnostic.Create(
@@ -33,34 +33,6 @@ internal static class ServerExtensionMethodDiagnosticFactory
         }
 
         return null;
-    }
-
-    private static IMethodSymbol? SelectedBatchMethod(INamedTypeSymbol type, Compilation compilation)
-    {
-        IMethodSymbol? found = null;
-        foreach (var member in type.GetMembers())
-        {
-            if (member is not IMethodSymbol
-                {
-                    MethodKind: MethodKind.Ordinary,
-                    DeclaredAccessibility: Accessibility.Public,
-                    IsStatic: false
-                } method ||
-                method.Parameters.Length == 0 ||
-                !RpcKernelContextParameter.IsSupported(method.Parameters[method.Parameters.Length - 1], compilation))
-            {
-                continue;
-            }
-
-            if (found is not null)
-            {
-                return null;
-            }
-
-            found = method;
-        }
-
-        return found;
     }
 
     private static bool HasAttribute(INamedTypeSymbol type, Compilation compilation, string metadataName)

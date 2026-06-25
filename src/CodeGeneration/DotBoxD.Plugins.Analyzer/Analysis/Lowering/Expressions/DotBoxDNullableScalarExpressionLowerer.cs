@@ -64,6 +64,17 @@ internal static class DotBoxDNullableScalarExpressionLowerer
         return Null(nullableType, underlying).Source;
     }
 
+    public static string PresentSource(ITypeSymbol nullableType, DotBoxDExpressionModel value)
+    {
+        if (!DotBoxDNullableScalarType.TryGetSupportedUnderlying(nullableType, out var underlying))
+        {
+            throw new NotSupportedException();
+        }
+
+        RequireTag(value, SandboxTypeSourceEmitter.ManifestTag(underlying));
+        return Present(nullableType, underlying, value).Source;
+    }
+
     private static DotBoxDExpressionModel Null(ITypeSymbol nullableType, ITypeSymbol underlying)
         => new(RecordSource(nullableType, BoolSource(value: false), ZeroSource(underlying)), DotBoxDGenerationNames.ManifestTypes.Record, true);
 

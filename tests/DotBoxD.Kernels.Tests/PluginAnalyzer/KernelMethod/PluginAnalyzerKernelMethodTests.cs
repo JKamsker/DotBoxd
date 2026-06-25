@@ -153,6 +153,24 @@ public sealed class PluginAnalyzerKernelMethodTests
     }
 
     [Fact]
+    public async Task KernelMethod_nullable_default_argument_lowers_in_hook_chains()
+    {
+        var assembly = Compile(PluginAnalyzerKernelMethodTestSources.NullableDefaultChain, enableInterceptors: true);
+        var package = HookChainPackage(assembly);
+
+        var messages = new InMemoryPluginMessageSink();
+        using var server = DotBoxD.Plugins.PluginServer.Create(messages, defaultPolicy: SandboxedPolicy());
+        server.Hooks.On<KernelMethodAggroEvent>().UseGeneratedChain(package);
+
+        await server.Hooks.PublishAsync(new KernelMethodAggroEvent("monster-1", 5, 10, 5));
+        await server.Hooks.PublishAsync(new KernelMethodAggroEvent("monster-2", 6, 10, 5));
+
+        var message = Assert.Single(messages.Messages);
+        Assert.Equal("monster-1", message.TargetId);
+        Assert.Equal("nullable", message.Message);
+    }
+
+    [Fact]
     public async Task KernelMethod_send_helper_inlined_into_kernel_Handle_sends_message()
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create(

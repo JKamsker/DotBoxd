@@ -78,7 +78,10 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     /// map is immutable, the assignment becomes <c>dict = map.set(dict, key, value)</c> (the same
     /// rebind-the-local shape <c>list.add</c> uses). Returns null when the indexed target is not a map local.
     /// </summary>
-    private string? TryLowerMapIndexSet(ElementAccessExpressionSyntax element, ExpressionSyntax valueExpression)
+    private string? TryLowerMapIndexSet(
+        ElementAccessExpressionSyntax element,
+        ExpressionSyntax valueExpression,
+        List<string> output)
     {
         var receiverType = _model.GetTypeInfo(element.Expression, _cancellationToken).Type;
         if (element.Expression is not IdentifierNameSyntax mapLocal ||
@@ -90,8 +93,8 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         }
 
         var name = mapLocal.Identifier.ValueText;
-        var keyJson = LowerExpression(element.ArgumentList.Arguments[0].Expression);
-        var valueJson = LowerExpression(valueExpression);
+        var keyJson = LowerExpressionWithPrelude(element.ArgumentList.Arguments[0].Expression, output);
+        var valueJson = LowerExpressionWithPrelude(valueExpression, output);
         Allocates = true;
         return SetStatement(name, Call("map.set", null, Var(name), keyJson, valueJson));
     }

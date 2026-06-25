@@ -21,12 +21,14 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     private readonly CancellationToken _cancellationToken;
     private readonly IReadOnlyDictionary<string, RpcInlinedBinding>? _inlinedBindings;
     private readonly IReadOnlyCollection<string>? _inlineStack;
+    private readonly Func<string, string>? _reserveGeneratedName;
     private readonly string? _serverContextParameterName;
     private readonly ITypeSymbol? _serverContextType;
     private readonly Dictionary<string, string> _serviceHandleLocals = new(StringComparer.Ordinal);
     private readonly HashSet<string> _reservedNames = new(StringComparer.Ordinal);
     private Func<AssignmentExpressionSyntax, Func<ExpressionSyntax, string>, string?>? _assignmentOverride;
     private Func<ExpressionSyntax, string?>? _expressionOverride;
+    private List<string>? _expressionPrelude;
     private IReadOnlyList<string> _returnRecordFields = [];
     private string? _returnRecordType;
     private int _tempCounter;
@@ -55,7 +57,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             var parts = new List<string>();
             for (var i = 0; i < leadingLocals.Count; i++)
             {
-                parts.Add(SetStatement(leadingLocals[i].Name, LowerExpression(leadingLocals[i].Value)));
+                parts.Add(SetStatement(leadingLocals[i].Name, LowerExpressionWithPrelude(leadingLocals[i].Value, parts)));
             }
 
             _expressionOverride = expressionOverride;
@@ -88,16 +90,18 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 LowerLocalDeclaration(local, output);
                 break;
             case ExpressionStatementSyntax expression:
-                output.Add(LowerExpressionStatement(expression.Expression));
+                LowerExpressionStatement(expression.Expression, output);
                 break;
             case ForEachStatementSyntax loop:
                 LowerForEach(loop, output);
                 break;
             case IfStatementSyntax branch:
-                output.Add(LowerIf(branch));
+                LowerIf(branch, output);
                 break;
             case ReturnStatementSyntax { Expression: { } returned }:
-                output.Add(Obj(("op", Str("return")), ("value", ReturnValue(LowerExpression(returned)))));
+                output.Add(Obj(
+                    ("op", Str("return")),
+                    ("value", ReturnValue(LowerExpressionWithPrelude(returned, output)))));
                 break;
             case ReturnStatementSyntax:
                 output.Add(Obj(("op", Str("return")), ("value", Unit())));
@@ -135,42 +139,53 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 continue;
             }
 
-            output.Add(SetStatement(localName, LowerExpression(initializer.Value)));
+            output.Add(SetStatement(localName, LowerExpressionWithPrelude(initializer.Value, output)));
         }
     }
 
-    private string LowerExpressionStatement(ExpressionSyntax expression)
+    private void LowerExpressionStatement(ExpressionSyntax expression, List<string> output)
     {
         switch (expression)
         {
             case AssignmentExpressionSyntax { Left: IdentifierNameSyntax target } assignment:
                 var value = assignment.Kind() == SyntaxKind.SimpleAssignmentExpression
-                    ? LowerExpression(assignment.Right)
-                    : LowerCompound(assignment, target);
-                return SetStatement(target.Identifier.ValueText, value);
+                    ? LowerExpressionWithPrelude(assignment.Right, output)
+                    : LowerCompound(assignment, target, output);
+                output.Add(SetStatement(target.Identifier.ValueText, value));
+                return;
             case AssignmentExpressionSyntax { Left: ElementAccessExpressionSyntax element } assignment
                 when assignment.Kind() == SyntaxKind.SimpleAssignmentExpression &&
-                     TryLowerMapIndexSet(element, assignment.Right) is { } mapSet:
-                return mapSet;
+                     TryLowerMapIndexSet(element, assignment.Right, output) is { } mapSet:
+                output.Add(mapSet);
+                return;
             case AssignmentExpressionSyntax assignment
-                when _assignmentOverride?.Invoke(assignment, LowerExpression) is { } lowered:
-                return lowered;
+                when _assignmentOverride?.Invoke(assignment, expression => LowerExpressionWithPrelude(expression, output)) is { } lowered:
+                output.Add(lowered);
+                return;
             case PostfixUnaryExpressionSyntax { Operand: IdentifierNameSyntax inc } postfix
                 when postfix.Kind() is SyntaxKind.PostIncrementExpression or SyntaxKind.PostDecrementExpression:
                 var op = postfix.Kind() == SyntaxKind.PostIncrementExpression ? "add" : "sub";
-                return SetStatement(inc.Identifier.ValueText, BinaryJson(op, Var(inc.Identifier.ValueText), I32(1)));
-            case InvocationExpressionSyntax invocation when TryLowerListAdd(invocation) is { } listAdd:
-                return listAdd;
+                output.Add(SetStatement(inc.Identifier.ValueText, BinaryJson(op, Var(inc.Identifier.ValueText), I32(1))));
+                return;
+            case InvocationExpressionSyntax invocation when TryLowerListAdd(invocation, output) is { } listAdd:
+                output.Add(listAdd);
+                return;
             case InvocationExpressionSyntax invocation:
-                return SetStatement("__sir_discard" + _tempCounter++, LowerExpression(invocation));
+                output.Add(SetStatement(
+                    "__sir_discard" + _tempCounter++,
+                    LowerExpressionWithPrelude(invocation, output)));
+                return;
             case AwaitExpressionSyntax { Expression: InvocationExpressionSyntax invocation }:
-                return SetStatement("__sir_discard" + _tempCounter++, LowerExpression(invocation));
+                output.Add(SetStatement(
+                    "__sir_discard" + _tempCounter++,
+                    LowerExpressionWithPrelude(invocation, output)));
+                return;
             default:
                 throw new NotSupportedException($"Server extension statement expression '{expression}' is not supported.");
         }
     }
 
-    private string LowerCompound(AssignmentExpressionSyntax assignment, IdentifierNameSyntax target)
+    private string LowerCompound(AssignmentExpressionSyntax assignment, IdentifierNameSyntax target, List<string> output)
     {
         var op = assignment.Kind() switch
         {
@@ -181,10 +196,10 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             SyntaxKind.ModuloAssignmentExpression => "rem",
             _ => throw new NotSupportedException($"Server extension assignment '{assignment.Kind()}' is not supported.")
         };
-        return BinaryJson(op, Var(target.Identifier.ValueText), LowerExpression(assignment.Right));
+        return BinaryJson(op, Var(target.Identifier.ValueText), LowerExpressionWithPrelude(assignment.Right, output));
     }
 
-    private string? TryLowerListAdd(InvocationExpressionSyntax invocation)
+    private string? TryLowerListAdd(InvocationExpressionSyntax invocation, List<string> output)
     {
         if (invocation.Expression is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Add" } member ||
             member.Expression is not IdentifierNameSyntax list ||
@@ -194,7 +209,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             return null;
         }
 
-        var item = LowerExpression(invocation.ArgumentList.Arguments[0].Expression);
+        var item = LowerExpressionWithPrelude(invocation.ArgumentList.Arguments[0].Expression, output);
         var listName = list.Identifier.ValueText;
         Allocates = true;
         return SetStatement(listName, Call("list.add", null, Var(listName), item));
@@ -211,7 +226,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         var suffix = NextLoopTempSuffix();
         var source = "__sir_src" + suffix;
         var index = "__sir_i" + suffix;
-        output.Add(SetStatement(source, LowerExpression(loop.Expression)));
+        output.Add(SetStatement(source, LowerExpressionWithPrelude(loop.Expression, output)));
 
         var body = new List<string>
         {
@@ -240,7 +255,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         return ApplyNumericConversion(elementType, local.Type, item);
     }
 
-    private string LowerIf(IfStatementSyntax branch)
+    private void LowerIf(IfStatementSyntax branch, List<string> output)
     {
         var then = new List<string>();
         LowerStatement(branch.Statement, then);
@@ -250,11 +265,11 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             LowerStatement(elseClause.Statement, @else);
         }
 
-        return Obj(
+        output.Add(Obj(
             ("op", Str("if")),
-            ("condition", LowerExpression(branch.Condition)),
+            ("condition", LowerExpressionWithPrelude(branch.Condition, output)),
             ("then", "[" + string.Join(",", then) + "]"),
-            ("else", "[" + string.Join(",", @else) + "]"));
+            ("else", "[" + string.Join(",", @else) + "]")));
     }
 
     private string ReturnValue(string userReturn)

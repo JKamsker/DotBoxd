@@ -34,7 +34,7 @@ internal sealed partial class InvokeAsyncCallShape
                     $"InvokeAsync capture member '{recordMember.Name}' must use a simple assignment.");
             }
 
-            ValidateWritableCapture(recordMember);
+            ValidateWritableCapture(recordMember, model.Compilation);
             if (syncOuts.Any(item => string.Equals(item.TargetName, recordMember.Name, StringComparison.Ordinal)))
             {
                 continue;
@@ -50,14 +50,14 @@ internal sealed partial class InvokeAsyncCallShape
         return syncOuts;
     }
 
-    private static void ValidateWritableCapture(RecordMember member)
+    private static void ValidateWritableCapture(RecordMember member, Compilation compilation)
     {
         switch (member.Symbol)
         {
             case IPropertySymbol property
                 when property.SetMethod is not null &&
                      !property.SetMethod.IsInitOnly &&
-                     IsAccessibleFromGeneratedCode(property.SetMethod.DeclaredAccessibility):
+                     IsAccessibleFromGeneratedCode(property.SetMethod, compilation):
                 return;
             case IPropertySymbol property:
                 throw new NotSupportedException(
@@ -65,7 +65,7 @@ internal sealed partial class InvokeAsyncCallShape
             case IFieldSymbol field
                 when !field.IsReadOnly &&
                      !field.IsConst &&
-                     IsAccessibleFromGeneratedCode(field.DeclaredAccessibility):
+                     IsAccessibleFromGeneratedCode(field, compilation):
                 return;
             case IFieldSymbol field:
                 throw new NotSupportedException(
@@ -110,10 +110,8 @@ internal sealed partial class InvokeAsyncCallShape
         return true;
     }
 
-    private static bool IsAccessibleFromGeneratedCode(Accessibility accessibility)
-        => accessibility is Accessibility.Public
-            or Accessibility.Internal
-            or Accessibility.ProtectedOrInternal;
+    private static bool IsAccessibleFromGeneratedCode(ISymbol symbol, Compilation compilation)
+        => compilation.IsSymbolAccessibleWithin(symbol, compilation.Assembly);
 
     private static IReadOnlyList<(string Name, ExpressionSyntax Value)> CreateLeadingLocals(
         IReadOnlyList<InvokeAsyncSyncOut> syncOuts)

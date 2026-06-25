@@ -7,7 +7,40 @@ internal static partial class RpcKernelModelFactory
 {
     private static IMethodSymbol ResolveBatchMethod(INamedTypeSymbol type, Compilation compilation)
     {
+        var count = 0;
         IMethodSymbol? found = null;
+        foreach (var method in BatchMethods(type, compilation))
+        {
+            count++;
+            if (count > 1)
+            {
+                throw new NotSupportedException("A server extension must declare exactly one batch method (a public method whose last parameter is HookContext or a generated plugin context).");
+            }
+
+            found = method;
+        }
+
+        return found ?? throw new NotSupportedException("A server extension must declare one public batch method whose last parameter is HookContext or a generated plugin context.");
+    }
+
+    internal static IMethodSymbol? TryResolveBatchMethod(INamedTypeSymbol type, Compilation compilation)
+    {
+        IMethodSymbol? found = null;
+        foreach (var method in BatchMethods(type, compilation))
+        {
+            if (found is not null)
+            {
+                return null;
+            }
+
+            found = method;
+        }
+
+        return found;
+    }
+
+    private static IEnumerable<IMethodSymbol> BatchMethods(INamedTypeSymbol type, Compilation compilation)
+    {
         foreach (var member in type.GetMembers())
         {
             if (member is IMethodSymbol
@@ -19,16 +52,9 @@ internal static partial class RpcKernelModelFactory
                 method.Parameters.Length > 0 &&
                 RpcKernelContextParameter.IsSupported(method.Parameters[method.Parameters.Length - 1], compilation))
             {
-                if (found is not null)
-                {
-                    throw new NotSupportedException("A server extension must declare exactly one batch method (a public method whose last parameter is HookContext or a generated plugin context).");
-                }
-
-                found = method;
+                yield return method;
             }
         }
-
-        return found ?? throw new NotSupportedException("A server extension must declare one public batch method whose last parameter is HookContext or a generated plugin context.");
     }
 
     private static void ValidateBatchMethodParameters(IMethodSymbol method)

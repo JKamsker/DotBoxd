@@ -66,7 +66,7 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
                 private AlphaPluginServer _server = null!;
 
                 public void Configure()
-                    => _server.Hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                    => this._server.Hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
                         .Where(e => e.Distance <= 5)
                         .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "field"));
             }
@@ -76,7 +76,7 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
                 public AlphaPluginServer Server { get; init; } = null!;
 
                 public void Configure()
-                    => Server.Hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                    => this.Server.Hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
                         .Where(e => e.Distance <= 5)
                         .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "property"));
             }

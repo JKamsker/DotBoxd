@@ -161,10 +161,12 @@ public sealed partial class PluginAnalyzerHookChainTests
                 public sealed record DamageEvent(string TargetId);
                 public sealed class DamageKernel;
 
-                public static class Usage
+                public sealed class Usage
                 {
-                    public static void Configure(RemotePluginServer server)
-                        => server.Hooks.On<DamageEvent>()
+                    public RemotePluginServer Server { get; init; } = null!;
+
+                    public void Configure()
+                        => this.Server.Hooks.On<DamageEvent>()
                             .Where(e => e.TargetId == "monster-1")
                             .Use<DamageKernel>();
                 }

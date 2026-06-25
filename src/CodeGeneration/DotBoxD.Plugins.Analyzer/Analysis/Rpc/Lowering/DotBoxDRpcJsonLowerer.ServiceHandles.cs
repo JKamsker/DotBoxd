@@ -40,7 +40,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     private bool TryLowerServiceHandleLocal(string localName, ExpressionSyntax value, List<string> output)
     {
         if (value is not InvocationExpressionSyntax invocation ||
-            !TryGetServiceHandleAccessor(invocation, out var handleId))
+            !TryGetServiceHandleAccessor(invocation, out var handleId, output))
         {
             return false;
         }
@@ -77,7 +77,10 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     /// declaration path (<see cref="TryLowerServiceHandleLocal"/>) and the inline receiver path so both capture
     /// the scope key identically.
     /// </summary>
-    private bool TryGetServiceHandleAccessor(InvocationExpressionSyntax invocation, out string handleId)
+    private bool TryGetServiceHandleAccessor(
+        InvocationExpressionSyntax invocation,
+        out string handleId,
+        List<string>? output = null)
     {
         if (_model.GetSymbolInfo(invocation, _cancellationToken).Symbol is not IMethodSymbol method ||
             !HasDotBoxDServiceAttribute(method.ReturnType) ||
@@ -87,7 +90,9 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             return false;
         }
 
-        handleId = LowerExpression(invocation.ArgumentList.Arguments[0].Expression);
+        handleId = output is null
+            ? LowerExpression(invocation.ArgumentList.Arguments[0].Expression)
+            : LowerExpressionWithPrelude(invocation.ArgumentList.Arguments[0].Expression, output);
         return true;
     }
 }

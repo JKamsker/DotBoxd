@@ -11,6 +11,8 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         CancellationToken cancellationToken,
         IReadOnlyDictionary<string, RpcInlinedBinding>? inlinedBindings = null,
         IReadOnlyCollection<string>? inlineStack = null,
+        List<string>? expressionPrelude = null,
+        Func<string, string>? reserveGeneratedName = null,
         string? serverContextParameterName = null,
         ITypeSymbol? serverContextType = null)
     {
@@ -20,6 +22,8 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         _cancellationToken = cancellationToken;
         _inlinedBindings = inlinedBindings;
         _inlineStack = inlineStack;
+        _expressionPrelude = expressionPrelude;
+        _reserveGeneratedName = reserveGeneratedName;
         _serverContextParameterName = serverContextParameterName;
         _serverContextType = serverContextType;
     }

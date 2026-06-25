@@ -153,7 +153,40 @@ internal static partial class DotBoxDKernelMethodInliner
 
     private static DotBoxDExpressionModel LowerDefaultArgument(IParameterSymbol parameter, object? value)
     {
-        var type = DotBoxDTypeNameReader.KernelMethodTypeName(parameter.Type);
+        if (DotBoxDNullableScalarType.TryGetSupportedUnderlying(parameter.Type, out _))
+        {
+            return LowerNullableDefaultArgument(parameter, value);
+        }
+
+        return LowerScalarDefaultArgument(parameter.Type, value, parameter);
+    }
+
+    private static DotBoxDExpressionModel LowerNullableDefaultArgument(IParameterSymbol parameter, object? value)
+    {
+        if (value is null)
+        {
+            return new(
+                DotBoxDNullableScalarExpressionLowerer.NullSource(parameter.Type),
+                DotBoxDGenerationNames.ManifestTypes.Record,
+                true);
+        }
+
+        var scalar = LowerScalarDefaultArgument(
+            ((INamedTypeSymbol)parameter.Type).TypeArguments[0],
+            value,
+            parameter);
+        return new(
+            DotBoxDNullableScalarExpressionLowerer.PresentSource(parameter.Type, scalar),
+            DotBoxDGenerationNames.ManifestTypes.Record,
+            true);
+    }
+
+    private static DotBoxDExpressionModel LowerScalarDefaultArgument(
+        ITypeSymbol parameterType,
+        object? value,
+        IParameterSymbol parameter)
+    {
+        var type = DotBoxDTypeNameReader.KernelMethodTypeName(parameterType);
         return type switch
         {
             DotBoxDGenerationNames.ManifestTypes.Bool when value is bool boolean => new(
@@ -192,11 +225,6 @@ internal static partial class DotBoxDKernelMethodInliner
                 $"{DotBoxDGenerationNames.Helpers.Str}({LiteralReader.StringLiteral(text)})",
                 DotBoxDGenerationNames.ManifestTypes.String,
                 true),
-            DotBoxDGenerationNames.ManifestTypes.Record when value is null &&
-                DotBoxDNullableScalarType.IsNullableValueType(parameter.Type) => new(
-                    DotBoxDNullableScalarExpressionLowerer.NullSource(parameter.Type),
-                    DotBoxDGenerationNames.ManifestTypes.Record,
-                    true),
             _ => throw new NotSupportedException(
                 $"[KernelMethod] '{parameter.ContainingSymbol.Name}' optional parameter '{parameter.Name}' has an unsupported default value.")
         };

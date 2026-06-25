@@ -142,12 +142,14 @@ internal static partial class GeneratedRemoteHookChainFallback
         SemanticModel model,
         CancellationToken cancellationToken)
     {
-        if (expression is not IdentifierNameSyntax identifier)
+        var symbol = model.GetSymbolInfo(expression, cancellationToken).Symbol;
+        if (symbol is null &&
+            expression is MemberAccessExpressionSyntax { Name: SimpleNameSyntax name })
         {
-            return null;
+            symbol = model.GetSymbolInfo(name, cancellationToken).Symbol;
         }
 
-        return model.GetSymbolInfo(identifier, cancellationToken).Symbol switch
+        return symbol switch
         {
             IParameterSymbol parameter => ParameterTypeSyntax(parameter, cancellationToken),
             ILocalSymbol local => LocalTypeSyntax(local, cancellationToken),

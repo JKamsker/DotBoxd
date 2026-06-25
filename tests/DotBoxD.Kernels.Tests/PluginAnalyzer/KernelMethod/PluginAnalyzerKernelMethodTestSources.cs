@@ -172,6 +172,26 @@ internal static class PluginAnalyzerKernelMethodTestSources
         }
         """;
 
+    public const string NullableDefaultChain = """
+        using DotBoxD.Plugins;
+        using DotBoxD.Plugins.Runtime;
+        using DotBoxD.Abstractions;
+
+        namespace ChainSample;
+
+        public static class Usage
+        {
+            public static void Configure(HookRegistry hooks)
+                => hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.KernelMethod.KernelMethodAggroEvent>()
+                    .Where(e => IsClose(e.Distance))
+                    .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "nullable"));
+
+            [KernelMethod]
+            public static bool IsClose(int distance, int? maxDistance = 5)
+                => distance <= 5;
+        }
+        """;
+
     public const string HandleSendHelper = """
         using DotBoxD.Plugins;
         using DotBoxD.Plugins.Runtime;

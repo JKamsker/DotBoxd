@@ -40,7 +40,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 $"[KernelMethod] '{method.Name}' is recursive; recursive kernel methods cannot be inlined.");
         }
 
-        var bindings = BindKernelMethodArguments(call);
+        var bindings = BindKernelMethodArguments(invocation, call);
         var body = KernelMethodBody(method);
         var bodyModel = _model.Compilation.GetSemanticModel(body.SyntaxTree);
         var lowerer = new DotBoxDRpcJsonLowerer(
@@ -50,6 +50,8 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             _cancellationToken,
             bindings,
             InlineStack(methodKey),
+            _expressionPrelude,
+            ReserveGeneratedLocal,
             _serverContextParameterName,
             _serverContextType);
         var lowered = lowerer.LowerExpression(body);
@@ -65,29 +67,112 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     }
 
     private IReadOnlyDictionary<string, RpcInlinedBinding> BindKernelMethodArguments(
+        InvocationExpressionSyntax invocation,
         BoundKernelMethodCall call)
     {
         var bindings = new Dictionary<string, RpcInlinedBinding>(StringComparer.Ordinal);
-        for (var i = 0; i < call.Arguments.Count; i++)
+        var invocationId = StableHash(
+            call.Method.OriginalDefinition.ToDisplayString() + ":" +
+            invocation.GetLocation().GetLineSpan().Path + ":" +
+            invocation.SpanStart.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        var parameterOrdinals = ParameterOrdinals(call.Method.Parameters);
+        foreach (var argument in ArgumentsInEvaluationOrder(invocation, call))
         {
-            var argument = call.Arguments[i];
+            var ordinal = parameterOrdinals[argument.Parameter.Name];
             var expected = DotBoxDTypeNameReader.KernelMethodTypeName(argument.Parameter.Type);
+            if (string.Equals(expected, DotBoxDGenerationNames.ManifestTypes.Unsupported, StringComparison.Ordinal))
+            {
+                throw new NotSupportedException(
+                    $"[KernelMethod] '{call.Method.Name}' parameter '{argument.Parameter.Name}' must use a supported sandbox type.");
+            }
+
             var actual = argument.Expression is { } expression
                 ? ExpressionTypeTag(expression, _model)
                 : expected;
+            if (string.Equals(actual, DotBoxDGenerationNames.ManifestTypes.Unsupported, StringComparison.Ordinal))
+            {
+                throw new NotSupportedException(
+                    $"[KernelMethod] '{call.Method.Name}' argument {ordinal} must lower to a supported sandbox type.");
+            }
+
             if (!string.Equals(actual, expected, StringComparison.Ordinal))
             {
                 throw new NotSupportedException(
-                    $"[KernelMethod] '{call.Method.Name}' argument {i} must lower to {expected}.");
+                    $"[KernelMethod] '{call.Method.Name}' argument {ordinal} must lower to {expected}.");
             }
 
+            var localName = ReserveGeneratedLocal(
+                "__sir_km_" + invocationId + "_" + ordinal.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            AddExpressionPrelude(SetStatement(localName, LowerArgument(argument)));
             bindings[argument.Parameter.Name] = new RpcInlinedBinding(
-                LowerArgument(argument),
+                Var(localName),
                 expected);
         }
 
         return bindings;
     }
+
+    private static Dictionary<string, int> ParameterOrdinals(IReadOnlyList<IParameterSymbol> parameters)
+    {
+        var ordinals = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (var i = 0; i < parameters.Count; i++)
+            ordinals.Add(parameters[i].Name, i);
+
+        return ordinals;
+    }
+
+    private static IEnumerable<BoundKernelMethodArgument> ArgumentsInEvaluationOrder(
+        InvocationExpressionSyntax invocation,
+        BoundKernelMethodCall call)
+    {
+        var yielded = new HashSet<string>(StringComparer.Ordinal);
+        if (invocation.Expression is MemberAccessExpressionSyntax member &&
+            call.Arguments.Count > 0 &&
+            call.Arguments[0].Expression is { } receiver &&
+            SameSyntax(receiver, member.Expression))
+        {
+            yield return call.Arguments[0];
+            yielded.Add(call.Arguments[0].Parameter.Name);
+        }
+
+        foreach (var syntaxArgument in invocation.ArgumentList.Arguments)
+        {
+            var bound = BoundArgumentForExpression(call, syntaxArgument.Expression)
+                ?? throw new NotSupportedException(
+                    $"[KernelMethod] '{call.Method.Name}' call argument could not be bound.");
+
+            if (yielded.Add(bound.Parameter.Name))
+            {
+                yield return bound;
+            }
+        }
+
+        foreach (var argument in call.Arguments)
+        {
+            if (yielded.Add(argument.Parameter.Name))
+            {
+                yield return argument;
+            }
+        }
+    }
+
+    private static BoundKernelMethodArgument? BoundArgumentForExpression(
+        BoundKernelMethodCall call,
+        ExpressionSyntax expression)
+    {
+        foreach (var argument in call.Arguments)
+        {
+            if (argument.Expression is { } candidate && SameSyntax(candidate, expression))
+            {
+                return argument;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool SameSyntax(ExpressionSyntax left, ExpressionSyntax right)
+        => left.SyntaxTree == right.SyntaxTree && left.Span == right.Span;
 
     private string LowerArgument(BoundKernelMethodArgument argument)
         => argument.Expression is { } expression
@@ -108,7 +193,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             return LiteralJson(convertible.ToDouble(System.Globalization.CultureInfo.InvariantCulture));
         }
 
-        if (value is null && DotBoxDNullableScalarType.IsNullableValueType(converted))
+        if (DotBoxDNullableScalarType.IsNullableValueType(converted))
         {
             throw new NotSupportedException(
                 $"[KernelMethod] '{parameter.ContainingSymbol.Name}' optional nullable parameter '{parameter.Name}' is not supported in InvokeAsync/server-extension IR.");
