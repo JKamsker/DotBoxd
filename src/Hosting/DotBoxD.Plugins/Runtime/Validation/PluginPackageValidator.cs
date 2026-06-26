@@ -52,6 +52,12 @@ internal static class PluginPackageValidator
         {
             diagnostics.Add(new SandboxDiagnostic("DBXK030", "At least one hook subscription is required."));
         }
+        else if (package.Manifest.Subscriptions.Count > 1)
+        {
+            diagnostics.Add(new SandboxDiagnostic(
+                "DBXK031",
+                "A plugin package must declare exactly one hook subscription."));
+        }
 
         foreach (var subscription in package.Manifest.Subscriptions)
         {
