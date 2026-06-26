@@ -104,6 +104,31 @@ public sealed class PluginServerMemberShapeRegressionTests
     }
 
     [Fact]
+    public void Generated_plugin_server_preserves_char_and_decimal_default_parameters()
+    {
+        var (generated, outputCompilation) = PluginServerGenerationTestDriver.Run(ServerSource("""
+                    ValueTask<int> ReadAsync(char marker = 'x', decimal weight = 1.5m);
+            """));
+
+        PluginServerGenerationTestDriver.AssertNoCompilationErrors(outputCompilation);
+        Assert.Contains("ReadAsync(char @marker = 'x', decimal @weight = 1.5m)", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Generated_plugin_server_reports_unsupported_event_members()
+    {
+        var diagnostics = PluginServerGenerationTestDriver.Diagnostics(ServerSource("""
+                    event global::System.Action Changed;
+            """));
+
+        Assert.Contains(
+            diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.Severity == DiagnosticSeverity.Error &&
+                          diagnostic.GetMessage().Contains("event", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Generated_plugin_server_deduplicates_compatible_inherited_methods()
     {
         var (generated, outputCompilation) = PluginServerGenerationTestDriver.Run("""
