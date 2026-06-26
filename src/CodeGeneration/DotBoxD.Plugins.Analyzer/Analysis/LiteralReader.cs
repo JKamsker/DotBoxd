@@ -100,6 +100,8 @@ internal static class LiteralReader
                     System.Globalization.CultureInfo.InvariantCulture) +
                 DotBoxDGenerationNames.CSharpLiterals.DoubleSuffix,
             double => throw new NotSupportedException("Double literal values must be finite."),
+            decimal number => number.ToString(System.Globalization.CultureInfo.InvariantCulture) + "m",
+            char character => SymbolDisplay.FormatLiteral(character, quote: true),
             string text => SymbolDisplay.FormatLiteral(text, quote: true),
             _ => Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ??
                 DotBoxDGenerationNames.CSharpLiterals.Null

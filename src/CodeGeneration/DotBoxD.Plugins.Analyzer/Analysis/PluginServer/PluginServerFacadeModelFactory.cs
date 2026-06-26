@@ -102,8 +102,19 @@ internal static partial class PluginServerFacadeModelFactory
         foreach (var member in MembersIncludingInherited(controlType))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (member is IMethodSymbol { MethodKind: MethodKind.Ordinary } method &&
-                !IsControlPlaneMember(method.ContainingType))
+            if (member.ContainingType is not null &&
+                IsControlPlaneMember(member.ContainingType))
+            {
+                continue;
+            }
+
+            if (member is IEventSymbol eventSymbol)
+            {
+                throw new NotSupportedException(
+                    $"Generated plugin server member '{eventSymbol.ToDisplayString()}' is an event; events are not supported on generated plugin server facades.");
+            }
+
+            if (member is IMethodSymbol { MethodKind: MethodKind.Ordinary } method)
             {
                 ValidateForwardedMethod(method);
                 var (returnWrapperName, returnWrapperKind) = ResolveReturnWrapper(
