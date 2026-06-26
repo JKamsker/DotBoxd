@@ -105,6 +105,25 @@ public sealed class KernelRpcMarshallerSurpriseTests
     }
 
     [Fact]
+    public void FromKernelRpcValue_rejects_duplicate_map_keys()
+    {
+        var wire = KernelRpcValue.Map(
+        [
+            KernelRpcValue.String("same"),
+            KernelRpcValue.Int32(1),
+            KernelRpcValue.String("same"),
+            KernelRpcValue.Int32(2)
+        ]);
+
+        var ex = Assert.Throws<FormatException>(
+            () => KernelRpcMarshaller.FromKernelRpcValue(
+                wire,
+                typeof(Dictionary<string, int>)));
+
+        Assert.Contains("duplicate", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void FromSandboxValue_rejects_narrow_enum_values_outside_underlying_range()
     {
         Assert.Throws<NotSupportedException>(

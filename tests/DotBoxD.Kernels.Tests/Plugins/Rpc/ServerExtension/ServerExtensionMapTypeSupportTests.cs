@@ -152,6 +152,30 @@ public sealed class ServerExtensionMapTypeSupportTests
     }
 
     [Fact]
+    public void Direct_extension_rejects_duplicate_map_keys_in_response()
+    {
+        var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly(DirectMapReturnSource);
+        var control = CreateControl(
+            assembly,
+            KernelRpcBinaryCodec.EncodeValue(KernelRpcValue.Map(
+            [
+                KernelRpcValue.String("same"),
+                KernelRpcValue.Int32(1),
+                KernelRpcValue.String("same"),
+                KernelRpcValue.Int32(2)
+            ])),
+            out _);
+
+        var ex = Assert.Throws<TargetInvocationException>(
+            () => assembly.GetType("Sample.Probe", throwOnError: true)!
+                .GetMethod("Snapshot", BindingFlags.Public | BindingFlags.Static)!
+                .Invoke(null, [control]));
+
+        Assert.IsType<FormatException>(ex.InnerException);
+        Assert.Contains("duplicate", ex.InnerException.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Direct_extension_record_return_with_map_field_round_trips()
     {
         var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly(DirectRecordReturnWithMapFieldSource);
