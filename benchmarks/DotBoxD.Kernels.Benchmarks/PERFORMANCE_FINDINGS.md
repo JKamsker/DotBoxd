@@ -36,6 +36,7 @@ as targeted before/after evidence, not BenchmarkDotNet statistical reports.
 | Generated plugin RPC readers cloned defensive `KernelRpcValue.Items` arrays while materializing list and record results. | `--probe-kernel-rpc-value-items` | 1,000,000 reads of a 4-field RPC record | 38.6 ms | 38.6 | 184,000,040 B | 184.0 | 3.2 ms | 3.2 | 40 B | ~0 | Public `Items` still returns a copy; generated readers use `ItemCount` and `GetItem(index)`. |
 | Generated plugin RPC list writers used a temporary `List<KernelRpcValue>` plus `ToArray()` for counted list arguments. | `--probe-kernel-rpc-value-list-writer` | 1,000,000 writes of a 4-item `List<int>` argument | 77.1 ms | 77.1 | 584,000,040 B | 584.0 | 43.4 ms | 43.4 | 368,000,040 B | 368.0 | Counted arrays/lists fill a `KernelRpcValue[]` directly; `IEnumerable<T>` keeps the foreach fallback. |
 | Remote result-hook response encoding boxed the result struct, reflected each member, and built an intermediate `SandboxValue[]` record. | `--probe-remote-result-hook` | 300,000 public `DispatchResultAsync` calls for a 3-field result | 397.4 ms | 1,324.7 | 112,800,040 B | 376.0 | 354.2 ms | 1,180.7 | 52,800,040 B | 176.0 | Allocation-only claim: isolated after-runs ranged `205.4-354.2 ms`, so elapsed time is treated as noisy; scalar result fields now write directly to the binary payload, with complex fields still using the marshaller fallback. |
+| Remote `RunLocal` fallback int projection boxed the decoded value through the object marshaller. | `--probe-runlocal-push` | 200,000 `Int32` fallback decode+invoke calls | 29.8 ms | 149.0 | 4,800,000 B | 24.0 | 28.2 ms | 141.0 | 40 B | ~0 | Allocation-only claim: the scalar fast path is limited to `int`, the probe-covered stable signal. Other projection shapes are unchanged and unclaimed. |
 
 ## Probe Commands
 
@@ -64,4 +65,5 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-kernel-rpc-value-items
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-kernel-rpc-value-list-writer
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-remote-result-hook
+dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-runlocal-push
 ```
