@@ -121,6 +121,15 @@ internal static partial class InvokeAsyncModelFactory
         shape ??= InvokeAsyncCallShape.Create(invocation, worldType, model, cancellationToken);
         if (shape is null)
         {
+            if (HasImplicitlyTypedWorldParameter(invocation))
+            {
+                throw new NotSupportedException(
+                    "InvokeAsync requires an explicitly typed world parameter; write '(" +
+                    worldType.Name + " world) => { ... }' instead of an implicitly typed lambda " +
+                    "parameter. The world type cannot be inferred while the generated plugin server " +
+                    "facade is being produced, so the lambda body cannot be lowered.");
+            }
+
             throw new NotSupportedException(
                 "lambda must use a supported block body and capture shape.");
         }
@@ -158,6 +167,26 @@ internal static partial class InvokeAsyncModelFactory
 
         var package = EmitPackage(ns, packageName, pluginId, shape, bodyJson, effects, capabilities);
         return new InvokeAsyncResult(package, interception, null);
+    }
+
+    private static bool HasImplicitlyTypedWorldParameter(InvocationExpressionSyntax invocation)
+    {
+        foreach (var argument in invocation.ArgumentList.Arguments)
+        {
+            if (argument.Expression is SimpleLambdaExpressionSyntax)
+            {
+                return true;
+            }
+
+            if (argument.Expression is ParenthesizedLambdaExpressionSyntax parenthesized &&
+                parenthesized.ParameterList.Parameters.Count > 0 &&
+                parenthesized.ParameterList.Parameters[0].Type is null)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool IsUnqualifiedInvokeAsyncExpression(ExpressionSyntax expression)
