@@ -105,6 +105,22 @@ public sealed partial class InvokeAsyncGeneratedReceiverSurpriseTests
     }
 
     [Fact]
+    public void Generated_receiver_lowers_simple_block_lambda_InvokeAsync()
+    {
+        var result = RunGeneratorAndAssertCompiles(UsageSource("""
+            public static ValueTask<int> Run(RemotePluginServer kernels)
+                => kernels.InvokeAsync(async world =>
+                {
+                    return world.GetHealth("monster-1");
+                });
+            """));
+        var source = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
+        Assert.Contains("AnonymousInvokeAsync", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Actual_unrelated_server_interface_is_not_treated_as_generated_receiver()
     {
         var result = RunGeneratorAndAssertCompiles(GeneratedFacadeBodySource("""
