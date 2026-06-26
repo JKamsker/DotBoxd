@@ -144,12 +144,12 @@ public static partial class KernelRpcMarshaller
             if (EnumUsesI64(type))
             {
                 return value is I64Value longValue
-                    ? Enum.ToObject(type, longValue.Value)
+                    ? EnumFromInt64(type, longValue.Value)
                     : throw CannotMarshalEnum(value, type, SandboxType.I64);
             }
 
             return value is I32Value intValue
-                ? Enum.ToObject(type, intValue.Value)
+                ? EnumFromInt32(type, intValue.Value)
                 : throw CannotMarshalEnum(value, type, SandboxType.I32);
         }
 

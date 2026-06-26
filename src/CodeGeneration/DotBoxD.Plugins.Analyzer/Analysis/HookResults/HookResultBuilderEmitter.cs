@@ -115,8 +115,26 @@ internal static class HookResultBuilderEmitter
     }
 
     private static string HintName(HookResultModel model)
-        => (model.Namespace is null ? model.TypeName : model.Namespace.Replace('.', '_') + "_" + model.TypeName)
+        => (model.Namespace is null ? model.TypeName : NamespaceHint(model.Namespace) + "_" + model.TypeName)
             + ".HookResultBuilders.g.cs";
+
+    private static string NamespaceHint(string @namespace)
+    {
+        var builder = new StringBuilder();
+        foreach (var segment in @namespace.Split('.'))
+        {
+            if (builder.Length > 0)
+            {
+                builder.Append("__");
+            }
+
+            builder.Append(segment.Length.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                .Append('_')
+                .Append(segment);
+        }
+
+        return builder.ToString();
+    }
 }
 
 internal sealed record HookResultBuilderSource(string HintName, string Source);

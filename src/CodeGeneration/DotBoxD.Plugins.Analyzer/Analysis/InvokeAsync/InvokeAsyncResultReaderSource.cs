@@ -168,6 +168,12 @@ internal sealed partial class InvokeAsyncResultReaderSource
         var method = NextHelperName();
         _readers[key] = method;
         var fields = DotBoxDRpcTypeMapper.RecordFields(type);
+        var fieldReads = new string[fields.Count];
+        for (var i = 0; i < fields.Count; i++)
+        {
+            fieldReads[i] = ReadExpression(fields[i].Type, "value.GetItem(" + i + ")");
+        }
+
         var body = BuildDtoReconstruction(type, fields);
         _helpers.Append("        private static ").Append(TypeName(type)).Append(' ').Append(method)
             .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
@@ -177,6 +183,13 @@ internal sealed partial class InvokeAsyncResultReaderSource
         _helpers.AppendLine("            {");
         _helpers.AppendLine("                throw new global::System.NotSupportedException(\"Server extension record field count did not match the generated DTO shape.\");");
         _helpers.AppendLine("            }");
+        _helpers.AppendLine();
+        for (var i = 0; i < fields.Count; i++)
+        {
+            _helpers.Append("            var ").Append(FieldLocal(i)).Append(" = ")
+                .Append(fieldReads[i]).AppendLine(";");
+        }
+
         _helpers.AppendLine();
         _helpers.AppendLine(body);
         _helpers.AppendLine("        }");
@@ -188,4 +201,7 @@ internal sealed partial class InvokeAsyncResultReaderSource
 
     private static string TypeName(ITypeSymbol type)
         => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+    private static string FieldLocal(int index)
+        => "__field" + index.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }

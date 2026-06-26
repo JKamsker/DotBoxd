@@ -25,13 +25,13 @@ internal sealed partial class InvokeAsyncResultReaderSource
                     "does not assign every public field and the remaining fields are not settable.");
             }
 
-            return BuildDtoInitializer("            return " + construction, fields, constructor.Assigned, constructor.Symbol);
+            return BuildDtoInitializer(construction, fields, constructor.Assigned, constructor.Symbol);
         }
 
         if (DotBoxDRpcTypeMapper.CanReconstructWithObjectInitializer(type, fields, _compilation))
         {
             return BuildDtoInitializer(
-                "            return new " + TypeName(type),
+                "new " + TypeName(type),
                 fields,
                 assigned: new bool[fields.Count],
                 constructor: null);
@@ -49,8 +49,37 @@ internal sealed partial class InvokeAsyncResultReaderSource
         IMethodSymbol? constructor)
     {
         var initializer = new StringBuilder();
-        initializer.Append(construction).AppendLine();
-        initializer.AppendLine("            {");
+        var initialized = InitializerFieldIndexes(fields, assigned, constructor);
+        initializer.Append("            var __result = ").Append(construction);
+        if (initialized.Count == 0)
+        {
+            initializer.AppendLine(";");
+        }
+        else
+        {
+            initializer.AppendLine();
+            initializer.AppendLine("            {");
+            foreach (var i in initialized)
+            {
+                initializer.Append("                ").Append(Identifier(fields[i].Name)).Append(" = ")
+                    .Append(FieldLocal(i)).AppendLine(",");
+            }
+
+            initializer.AppendLine("            };");
+        }
+
+        AppendReadOnlyFieldVerifications(initializer, fields, assigned);
+        initializer.AppendLine();
+        initializer.Append("            return __result;");
+        return initializer.ToString();
+    }
+
+    private List<int> InitializerFieldIndexes(
+        IReadOnlyList<RecordMember> fields,
+        bool[]? assigned,
+        IMethodSymbol? constructor)
+    {
+        var initialized = new List<int>();
         for (var i = 0; i < fields.Count; i++)
         {
             if (assigned is not null &&
@@ -60,12 +89,35 @@ internal sealed partial class InvokeAsyncResultReaderSource
                 continue;
             }
 
-            initializer.Append("                ").Append(Identifier(fields[i].Name)).Append(" = ")
-                .Append(ReadExpression(fields[i].Type, "value.GetItem(" + i + ")")).AppendLine(",");
+            initialized.Add(i);
         }
 
-        initializer.Append("            };");
-        return initializer.ToString();
+        return initialized;
+    }
+
+    private void AppendReadOnlyFieldVerifications(
+        StringBuilder builder,
+        IReadOnlyList<RecordMember> fields,
+        bool[]? assigned)
+    {
+        for (var i = 0; i < fields.Count; i++)
+        {
+            if (assigned is not null &&
+                (assigned[i] || DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i], _compilation)))
+            {
+                continue;
+            }
+
+            builder.Append("            if (!global::System.Collections.Generic.EqualityComparer<")
+                .Append(TypeName(fields[i].Type)).Append(">.Default.Equals(__result.")
+                .Append(Identifier(fields[i].Name)).Append(", ")
+                .Append(FieldLocal(i)).AppendLine("))");
+            builder.AppendLine("            {");
+            builder.Append("                throw new global::System.NotSupportedException(\"InvokeAsync DTO field '")
+                .Append(fields[i].Name)
+                .AppendLine("' is private or read-only and could not be reconstructed.\");");
+            builder.AppendLine("            }");
+        }
     }
 
     private List<string> DtoConstructorArguments(IReadOnlyList<RecordMember> fields, IMethodSymbol constructor)
@@ -73,8 +125,7 @@ internal sealed partial class InvokeAsyncResultReaderSource
         var arguments = new List<string>(constructor.Parameters.Length);
         foreach (var parameter in constructor.Parameters)
         {
-            var fieldIndex = RpcDtoFieldMatcher.FieldIndex(fields, parameter);
-            arguments.Add(ReadExpression(fields[fieldIndex].Type, "value.GetItem(" + fieldIndex + ")"));
+            arguments.Add(FieldLocal(RpcDtoFieldMatcher.FieldIndex(fields, parameter)));
         }
 
         return arguments;

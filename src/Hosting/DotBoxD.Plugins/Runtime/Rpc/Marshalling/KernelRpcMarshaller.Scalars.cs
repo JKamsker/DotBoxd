@@ -25,7 +25,7 @@ public static partial class KernelRpcMarshaller
             (var t, I32Value i) when t == typeof(int) => i.Value,
             (var t, I64Value l) when t == typeof(long) => l.Value,
             (var t, F64Value d) when t == typeof(double) => d.Value,
-            (var t, F64Value d) when t == typeof(float) => (float)d.Value,
+            (var t, F64Value d) when t == typeof(float) => DoubleToSingle(d.Value),
             (var t, StringValue s) when t == typeof(string) => s.Value,
             (var t, GuidValue g) when t == typeof(Guid) => g.Value,
             _ => null

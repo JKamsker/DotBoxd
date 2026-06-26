@@ -19,9 +19,9 @@ public static partial class KernelRpcMarshaller
 
         if (type.IsEnum)
         {
-            return Enum.ToObject(
-                type,
-                EnumUsesI64(type) ? value.Int64Value : value.Int32Value);
+            return EnumUsesI64(type)
+                ? EnumFromInt64(type, value.Int64Value)
+                : EnumFromInt32(type, value.Int32Value);
         }
 
         if (value.Kind == KernelRpcValueKind.Record && DtoShape(type) is { } shape)
@@ -59,7 +59,7 @@ public static partial class KernelRpcMarshaller
             var t when t == typeof(bool) => value.BoolValue,
             var t when t == typeof(int) => value.Int32Value,
             var t when t == typeof(long) => value.Int64Value,
-            var t when t == typeof(float) => (float)value.DoubleValue,
+            var t when t == typeof(float) => DoubleToSingle(value.DoubleValue),
             var t when t == typeof(double) => value.DoubleValue,
             var t when t == typeof(string) => value.TextValue,
             var t when t == typeof(Guid) => value.GuidValue,

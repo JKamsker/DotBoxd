@@ -169,7 +169,7 @@ public sealed class InvokeAsyncGeneratedCodeRegressionTests
 
         Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
         Assert.Contains(
-            "new global::Sample.Usage.Profile(value.GetItem(0).Int32Value, value.GetItem(1).Int32Value)",
+            "new global::Sample.Usage.Profile(__field0, __field1)",
             source,
             StringComparison.Ordinal);
         Assert.Contains("@Name =", source, StringComparison.Ordinal);

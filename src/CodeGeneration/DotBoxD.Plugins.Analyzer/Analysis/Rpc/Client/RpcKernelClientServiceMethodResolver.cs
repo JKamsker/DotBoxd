@@ -64,6 +64,7 @@ internal static class RpcKernelClientServiceMethodResolver
             var kernelParameter = kernelMethod.Parameters[i];
             RejectRefLikeParameter(serviceParameter, "service");
             RejectRefLikeParameter(kernelParameter, "kernel");
+            RejectNullReferenceDefault(serviceParameter);
             ValidateParameterType(serviceParameter, kernelParameter);
             ValidateParameterModifiers(serviceParameter, kernelParameter);
         }
@@ -145,6 +146,17 @@ internal static class RpcKernelClientServiceMethodResolver
 
         throw new NotSupportedException(
             $"Server extension {owner} parameter '{parameter.Name}' cannot use ref, in, or out modifiers.");
+    }
+
+    private static void RejectNullReferenceDefault(IParameterSymbol parameter)
+    {
+        if (parameter.HasExplicitDefaultValue &&
+            parameter.ExplicitDefaultValue is null &&
+            parameter.Type.IsReferenceType)
+        {
+            throw new NotSupportedException(
+                $"Server extension service parameter '{parameter.Name}' cannot default to null because kernel RPC does not encode null reference values.");
+        }
     }
 
     private static string DescribeParameterModifiers(IParameterSymbol parameter)

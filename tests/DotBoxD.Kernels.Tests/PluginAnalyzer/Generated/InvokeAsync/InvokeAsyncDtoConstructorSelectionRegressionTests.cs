@@ -29,9 +29,11 @@ public sealed class InvokeAsyncDtoConstructorSelectionRegressionTests
 
         Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
         Assert.Contains(
-            "new global::Sample.Usage.Profile(value.GetItem(0).Int32Value)",
+            "new global::Sample.Usage.Profile(__field0)",
             source,
             StringComparison.Ordinal);
         Assert.Contains("@Rank =", source, StringComparison.Ordinal);
+        Assert.Contains("__result.@Score", source, StringComparison.Ordinal);
+        Assert.Contains("__field2", source, StringComparison.Ordinal);
     }
 }
