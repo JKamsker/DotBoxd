@@ -92,12 +92,89 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 $"Host binding '{binding.BindingId}'");
             return Call(binding.BindingId, null, args);
         }
+        if (TryLowerServerContextHostBinding(invocation) is { } serverContextCall)
+        {
+            return serverContextCall;
+        }
         if (TryLowerKernelMethodInvocation(invocation) is { } kernelMethod)
         {
             return kernelMethod;
         }
 
         throw new NotSupportedException($"Server extension call '{invocation}' is not a host binding.");
+    }
+
+    private string? TryLowerServerContextHostBinding(InvocationExpressionSyntax invocation)
+    {
+        if (invocation.Expression is not MemberAccessExpressionSyntax member ||
+            !IsServerContextExpression(member.Expression) ||
+            ServerContextHostBindingCandidates(member.Name.Identifier.ValueText, invocation.ArgumentList.Arguments) is not { Count: > 0 } candidates)
+        {
+            return null;
+        }
+
+        if (candidates.Count != 1)
+        {
+            throw new NotSupportedException(
+                $"Server extension call '{invocation}' is ambiguous on server context type '{_serverContextType}'.");
+        }
+
+        var (method, binding) = candidates[0];
+        AddBindingMetadata(binding);
+        var args = LowerArgumentsInParameterOrder(
+            invocation.ArgumentList.Arguments,
+            method.Parameters,
+            $"Host binding '{binding.BindingId}'");
+        return Call(binding.BindingId, null, args);
+    }
+
+    private List<(IMethodSymbol Method, (string BindingId, string? Capability, IReadOnlyList<string> Effects, bool IsAsync) Binding)>
+        ServerContextHostBindingCandidates(string methodName, SeparatedSyntaxList<ArgumentSyntax> arguments)
+    {
+        var candidates = new List<(IMethodSymbol Method, (string BindingId, string? Capability, IReadOnlyList<string> Effects, bool IsAsync) Binding)>();
+        if (_serverContextType is null)
+        {
+            return candidates;
+        }
+
+        foreach (var method in ServerContextMethods(methodName))
+        {
+            if (!CanBindArgumentsInParameterOrder(arguments, method.Parameters))
+            {
+                continue;
+            }
+
+            if (DotBoxDHostBindingExpressionLowerer.HostBinding(method, _model.Compilation) is { } binding)
+            {
+                candidates.Add((method, binding));
+            }
+        }
+
+        return candidates;
+    }
+
+    private IEnumerable<IMethodSymbol> ServerContextMethods(string methodName)
+    {
+        if (_serverContextType is not INamedTypeSymbol named)
+        {
+            yield break;
+        }
+
+        for (INamedTypeSymbol? current = named; current is not null; current = current.BaseType)
+        {
+            foreach (var method in current.GetMembers(methodName).OfType<IMethodSymbol>())
+            {
+                yield return method;
+            }
+        }
+
+        foreach (var @interface in named.AllInterfaces)
+        {
+            foreach (var method in @interface.GetMembers(methodName).OfType<IMethodSymbol>())
+            {
+                yield return method;
+            }
+        }
     }
     private string LowerMemberAccess(MemberAccessExpressionSyntax member)
     {
@@ -136,8 +213,27 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             ?? throw new NotSupportedException($"Server extension indexing '{element}' is not supported.");
     }
     private ITypeSymbol TypeOf(ExpressionSyntax expression)
-        => _model.GetTypeInfo(expression, _cancellationToken).Type
-           ?? throw new NotSupportedException($"Server extension could not resolve the type of '{expression}'.");
+    {
+        if (IsServerContextExpression(expression) && _serverContextType is { } serverContextType)
+        {
+            return serverContextType;
+        }
+
+        return _model.GetTypeInfo(expression, _cancellationToken).Type
+               ?? throw new NotSupportedException($"Server extension could not resolve the type of '{expression}'.");
+    }
+
+    private bool IsServerContextExpression(ExpressionSyntax expression)
+        => expression switch
+        {
+            ParenthesizedExpressionSyntax parenthesized => IsServerContextExpression(parenthesized.Expression),
+            ThisExpressionSyntax => _serverContextType is not null && string.IsNullOrEmpty(_serverContextParameterName),
+            IdentifierNameSyntax identifier => string.Equals(
+                identifier.Identifier.ValueText,
+                _serverContextParameterName,
+                StringComparison.Ordinal),
+            _ => false
+        };
 
     private static bool HasDotBoxDServiceAttribute(ITypeSymbol type)
     {

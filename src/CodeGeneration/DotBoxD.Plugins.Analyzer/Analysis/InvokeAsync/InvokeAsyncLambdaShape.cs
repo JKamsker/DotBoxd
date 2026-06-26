@@ -36,10 +36,24 @@ internal static class InvokeAsyncLambdaShape
         worldType = null!;
         if (LambdaParameterTypes(lambda, model, cancellationToken) is not { Count: 1 } parameterTypes)
         {
-            return false;
+            if (expectedWorldType is null || LambdaParameterCount(lambda) != 1)
+            {
+                return false;
+            }
+
+            worldType = expectedWorldType;
+            return true;
         }
 
         worldType = parameterTypes[0];
+        if (worldType.TypeKind == TypeKind.Error &&
+            expectedWorldType is not null &&
+            HasImplicitSingleParameter(lambda))
+        {
+            worldType = expectedWorldType;
+            return true;
+        }
+
         return MatchesExpectedWorld(worldType, expectedWorldType);
     }
 
@@ -105,6 +119,15 @@ internal static class InvokeAsyncLambdaShape
         return true;
     }
 
+    internal static string WorldParameterName(LambdaExpressionSyntax lambda)
+        => lambda switch
+        {
+            SimpleLambdaExpressionSyntax simple => simple.Parameter.Identifier.ValueText,
+            ParenthesizedLambdaExpressionSyntax { ParameterList.Parameters.Count: > 0 } parenthesized =>
+                parenthesized.ParameterList.Parameters[0].Identifier.ValueText,
+            _ => string.Empty
+        };
+
     private static ITypeSymbol? CaptureType(
         SemanticModel model,
         ExpressionSyntax captureArgument,
@@ -130,7 +153,7 @@ internal static class InvokeAsyncLambdaShape
         foreach (var statement in block.DescendantNodes().OfType<ReturnStatementSyntax>())
         {
             if (statement.Expression is null ||
-                model.GetTypeInfo(statement.Expression, cancellationToken).Type is not { } current)
+                model.GetTypeInfo(statement.Expression, cancellationToken).Type is not { TypeKind: not TypeKind.Error } current)
             {
                 return false;
             }
@@ -166,6 +189,23 @@ internal static class InvokeAsyncLambdaShape
         return ExplicitLambdaParameterTypes(lambda, model, cancellationToken);
     }
 
+    private static int LambdaParameterCount(LambdaExpressionSyntax lambda)
+        => lambda switch
+        {
+            ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized.ParameterList.Parameters.Count,
+            SimpleLambdaExpressionSyntax => 1,
+            _ => 0
+        };
+
+    private static bool HasImplicitSingleParameter(LambdaExpressionSyntax lambda)
+        => lambda switch
+        {
+            SimpleLambdaExpressionSyntax { Parameter.Type: null } => true,
+            ParenthesizedLambdaExpressionSyntax { ParameterList.Parameters.Count: 1 } parenthesized =>
+                parenthesized.ParameterList.Parameters[0].Type is null,
+            _ => false
+        };
+
     private static IReadOnlyList<ITypeSymbol>? ExplicitLambdaParameterTypes(
         LambdaExpressionSyntax lambda,
         SemanticModel model,
@@ -174,9 +214,9 @@ internal static class InvokeAsyncLambdaShape
         var parameterTypes = lambda switch
         {
             ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized.ParameterList.Parameters
-                .Select(parameter => parameter.Type is null ? null : model.GetTypeInfo(parameter.Type, cancellationToken).Type)
+                .Select(parameter => ParameterType(parameter, model, cancellationToken))
                 .ToArray(),
-            SimpleLambdaExpressionSyntax { Parameter.Type: { } type } => [model.GetTypeInfo(type, cancellationToken).Type],
+            SimpleLambdaExpressionSyntax simple => [ParameterType(simple.Parameter, model, cancellationToken)],
             _ => []
         };
         if (parameterTypes.Length == 0)
@@ -197,6 +237,14 @@ internal static class InvokeAsyncLambdaShape
 
         return resolved;
     }
+
+    private static ITypeSymbol? ParameterType(
+        ParameterSyntax parameter,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+        => parameter.Type is { } type
+            ? model.GetTypeInfo(type, cancellationToken).Type
+            : (model.GetDeclaredSymbol(parameter, cancellationToken) as IParameterSymbol)?.Type;
 
     private static bool MatchesExpectedWorld(ITypeSymbol worldType, ITypeSymbol? expectedWorldType)
         => expectedWorldType is null ||

@@ -19,13 +19,14 @@ internal sealed partial class InvokeAsyncCallShape
         }
 
         return captures.HasExternalCaptures
-            ? FromImplicitCaptures(block, worldType, returnType, captures)
-            : NoCapture(block, worldType, returnType);
+            ? FromImplicitCaptures(block, worldType, InvokeAsyncLambdaShape.WorldParameterName(lambda), returnType, captures)
+            : NoCapture(block, worldType, InvokeAsyncLambdaShape.WorldParameterName(lambda), returnType);
     }
 
     private static InvokeAsyncCallShape FromImplicitCaptures(
         BlockSyntax block,
         ITypeSymbol worldType,
+        string worldParameterName,
         ITypeSymbol returnType,
         ImplicitCaptureSet captures)
     {
@@ -35,6 +36,7 @@ internal sealed partial class InvokeAsyncCallShape
         return new InvokeAsyncCallShape(
             block,
             worldType,
+            worldParameterName,
             returnType,
             captureType: null,
             usesReflectionCaptures: true,
@@ -86,16 +88,12 @@ internal sealed partial class InvokeAsyncCallShape
         public static ImplicitCaptureSet? Create(LambdaExpressionSyntax lambda, SemanticModel model)
         {
             if (lambda.Body is not BlockSyntax block ||
-                lambda is not ParenthesizedLambdaExpressionSyntax parenthesized ||
                 model.AnalyzeDataFlow(block) is not { Succeeded: true } flow)
             {
                 return null;
             }
 
-            var lambdaParameters = parenthesized.ParameterList.Parameters
-                .Select(parameter => model.GetDeclaredSymbol(parameter))
-                .Where(static symbol => symbol is not null)
-                .ToArray();
+            var lambdaParameters = LambdaParameters(lambda, model);
             var declaredInside = flow.VariablesDeclared;
             var all = new List<ImplicitCapture>();
             var syncOuts = new List<ImplicitCapture>();
@@ -117,6 +115,17 @@ internal sealed partial class InvokeAsyncCallShape
             ValidateImplicitCaptureMutations(block, all, model);
             return new ImplicitCaptureSet(all, syncOuts);
         }
+
+        private static ISymbol?[] LambdaParameters(LambdaExpressionSyntax lambda, SemanticModel model)
+            => lambda switch
+            {
+                ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized.ParameterList.Parameters
+                    .Select(parameter => model.GetDeclaredSymbol(parameter))
+                    .Where(static symbol => symbol is not null)
+                    .ToArray(),
+                SimpleLambdaExpressionSyntax simple => [model.GetDeclaredSymbol(simple.Parameter)],
+                _ => []
+            };
 
         private static ImplicitCapture? AddCapture(
             ICollection<ImplicitCapture> captures,

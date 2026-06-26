@@ -9,6 +9,7 @@ internal sealed partial class InvokeAsyncCallShape
     private InvokeAsyncCallShape(
         BlockSyntax block,
         ITypeSymbol worldType,
+        string worldParameterName,
         ITypeSymbol returnType,
         ITypeSymbol? captureType,
         bool usesReflectionCaptures,
@@ -23,6 +24,7 @@ internal sealed partial class InvokeAsyncCallShape
     {
         Block = block;
         WorldType = worldType;
+        WorldParameterName = worldParameterName;
         ReturnType = returnType;
         CaptureType = captureType;
         UsesReflectionCaptures = usesReflectionCaptures;
@@ -39,6 +41,8 @@ internal sealed partial class InvokeAsyncCallShape
     public BlockSyntax Block { get; }
 
     public ITypeSymbol WorldType { get; }
+
+    public string WorldParameterName { get; }
 
     public ITypeSymbol ReturnType { get; }
 
@@ -93,7 +97,13 @@ internal sealed partial class InvokeAsyncCallShape
                 out worldType) &&
             !HasExternalCaptures(lambda, model))
         {
-            return CaptureBag(method.TypeArguments[1], captureParameter, captureBlock, model, worldType);
+            return CaptureBag(
+                method.TypeArguments[1],
+                captureParameter,
+                captureBlock,
+                model,
+                worldType,
+                InvokeAsyncLambdaShape.WorldParameterName(lambda));
         }
 
         return null;
@@ -130,7 +140,13 @@ internal sealed partial class InvokeAsyncCallShape
             TryGeneratedReceiverReturnType(invocation, captureBlock, model, cancellationToken, expectedTypeArgumentCount: 2, typeArgumentIndex: 1, out returnType) &&
             !HasExternalCaptures(lambda, model))
         {
-            return CaptureBag(returnType, captureParameter, captureBlock, model, worldType);
+            return CaptureBag(
+                returnType,
+                captureParameter,
+                captureBlock,
+                model,
+                worldType,
+                InvokeAsyncLambdaShape.WorldParameterName(lambda));
         }
 
         return null;
@@ -150,64 +166,6 @@ internal sealed partial class InvokeAsyncCallShape
             ? captureType
             : null;
 
-    private static bool TryGeneratedReceiverReturnType(
-        InvocationExpressionSyntax invocation,
-        BlockSyntax block,
-        SemanticModel model,
-        CancellationToken cancellationToken,
-        int expectedTypeArgumentCount,
-        int typeArgumentIndex,
-        out ITypeSymbol returnType)
-    {
-        if (TryExplicitGenericTypeArgument(
-                invocation,
-                model,
-                cancellationToken,
-                expectedTypeArgumentCount,
-                typeArgumentIndex,
-                out returnType))
-        {
-            return true;
-        }
-
-        return InvokeAsyncLambdaShape.TryReturnType(block, model, cancellationToken, out returnType);
-    }
-
-    private static bool TryExplicitGenericTypeArgument(
-        InvocationExpressionSyntax invocation,
-        SemanticModel model,
-        CancellationToken cancellationToken,
-        int expectedTypeArgumentCount,
-        int typeArgumentIndex,
-        out ITypeSymbol type)
-    {
-        type = null!;
-        if (GenericInvokeAsyncName(invocation.Expression) is not { } generic ||
-            generic.TypeArgumentList.Arguments.Count != expectedTypeArgumentCount)
-        {
-            return false;
-        }
-
-        var candidate = model.GetTypeInfo(
-            generic.TypeArgumentList.Arguments[typeArgumentIndex],
-            cancellationToken).Type;
-        if (candidate is null || candidate.TypeKind == TypeKind.Error)
-        {
-            return false;
-        }
-
-        type = candidate;
-        return true;
-    }
-
-    private static GenericNameSyntax? GenericInvokeAsyncName(ExpressionSyntax expression)
-        => expression switch
-        {
-            GenericNameSyntax { Identifier.ValueText: "InvokeAsync" } generic => generic,
-            MemberAccessExpressionSyntax { Name: GenericNameSyntax { Identifier.ValueText: "InvokeAsync" } generic } => generic,
-            _ => null,
-        };
-
     public string LowerBody(DotBoxDRpcJsonLowerer lowerer, BlockSyntax block)
         => lowerer.LowerBody(
             block,
@@ -217,10 +175,15 @@ internal sealed partial class InvokeAsyncCallShape
             AssignmentOverride,
             ExpressionOverride);
 
-    private static InvokeAsyncCallShape NoCapture(BlockSyntax block, ITypeSymbol worldType, ITypeSymbol returnType)
+    private static InvokeAsyncCallShape NoCapture(
+        BlockSyntax block,
+        ITypeSymbol worldType,
+        string worldParameterName,
+        ITypeSymbol returnType)
         => new(
             block,
             worldType,
+            worldParameterName,
             returnType,
             captureType: null,
             usesReflectionCaptures: false,
@@ -238,7 +201,8 @@ internal sealed partial class InvokeAsyncCallShape
         InvokeAsyncCaptureParameter captureParameter,
         BlockSyntax block,
         SemanticModel model,
-        ITypeSymbol worldType)
+        ITypeSymbol worldType,
+        string worldParameterName)
     {
         var captureAliases = CaptureBagAliases(block, captureParameter.Name);
         var syncOuts = FindSyncOuts(block, captureParameter, model, captureAliases);
@@ -246,6 +210,7 @@ internal sealed partial class InvokeAsyncCallShape
         return new InvokeAsyncCallShape(
             block,
             worldType,
+            worldParameterName,
             returnType,
             captureParameter.Type,
             usesReflectionCaptures: false,

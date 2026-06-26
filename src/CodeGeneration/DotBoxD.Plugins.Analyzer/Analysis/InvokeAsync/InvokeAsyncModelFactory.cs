@@ -129,7 +129,13 @@ internal static partial class InvokeAsyncModelFactory
 
         var capabilities = new SortedSet<string>(StringComparer.Ordinal);
         var effects = new SortedSet<string>(StringComparer.Ordinal);
-        var lowerer = new DotBoxDRpcJsonLowerer(model, capabilities, effects, cancellationToken);
+        var lowerer = new DotBoxDRpcJsonLowerer(
+            model,
+            capabilities,
+            effects,
+            cancellationToken,
+            serverContextParameterName: shape.WorldParameterName,
+            serverContextType: shape.WorldType);
         var bodyJson = shape.LowerBody(lowerer, shape.Block);
         effects.Add(DotBoxDGenerationNames.Effects.Cpu);
         if (lowerer.Allocates)
