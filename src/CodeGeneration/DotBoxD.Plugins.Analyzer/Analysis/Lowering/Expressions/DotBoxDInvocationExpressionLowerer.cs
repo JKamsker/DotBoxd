@@ -17,8 +17,6 @@ internal static class DotBoxDInvocationExpressionLowerer
     private const string LengthArgumentName = "length";
     private const string EqualsArgumentCountMessage =
         "Instance Equals calls must have exactly one argument.";
-    private const string EqualsOperandTypeMessage =
-        "Instance Equals calls require operands with the same supported type.";
     private const string SubstringArgumentCountMessage =
         "Substring calls must have startIndex and length arguments.";
 
@@ -83,14 +81,14 @@ internal static class DotBoxDInvocationExpressionLowerer
 
         var receiver = lowerExpression(member.Expression);
         var value = lowerExpression(arguments[EqualsValueArgumentIndex].Expression);
-        if (!string.Equals(receiver.Type, value.Type, StringComparison.Ordinal))
-        {
-            throw new NotSupportedException(EqualsOperandTypeMessage);
-        }
 
-        return new DotBoxDExpressionModel(
-            $"{EqualsHelper(receiver)}({receiver.Source}, {value.Source})",
-            DotBoxDGenerationNames.ManifestTypes.Bool,
+        // Reuse the `==` lowering so instance Equals enforces the SAME scalar-only guard: a list/map/record/array
+        // operand compares by STRUCTURE in the sandbox but by REFERENCE in C#, so it must fail safe rather than
+        // silently lower to a structural comparison. Scalars (and string Equals) lower exactly as `==` does.
+        return DotBoxDEqualityExpressionLowerer.Lower(
+            receiver,
+            value,
+            negate: false,
             receiver.Allocates || value.Allocates);
     }
 
@@ -191,11 +189,6 @@ internal static class DotBoxDInvocationExpressionLowerer
 
         slot = expression;
     }
-
-    private static string EqualsHelper(DotBoxDExpressionModel receiver)
-        => string.Equals(receiver.Type, DotBoxDGenerationNames.ManifestTypes.String, StringComparison.Ordinal)
-            ? DotBoxDGenerationNames.Helpers.StringEquals
-            : DotBoxDGenerationNames.Helpers.Eq;
 
     private static void RequireType(DotBoxDExpressionModel expression, string expected, string context)
     {

@@ -1,5 +1,6 @@
 using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Helpers = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.Helpers;
 using ManifestTypes = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.ManifestTypes;
 
@@ -102,6 +103,8 @@ internal static partial class DotBoxDRecordCreationExpressionLowerer
                 false);
         }
 
+        RejectRepeatedSideEffectfulReferences(body, bindings);
+
         var bodyModel = context.SemanticModel.Compilation.GetSemanticModel(body.SyntaxTree);
         var bodyContext = new DotBoxDExpressionLoweringContext(
             eventParameterName: string.Empty,
@@ -118,6 +121,41 @@ internal static partial class DotBoxDRecordCreationExpressionLowerer
 
         return lowered;
     }
+
+    // A derived getter inlines each referenced stored field's lowered IR verbatim at every reference site
+    // (DotBoxDIdentifierExpressionLowerer emits the bound Source with no caching/let-binding). If a referenced
+    // field's value is a sandbox CallExpression — a [HostBinding] host call or a record.new construction — then
+    // re-emitting it per reference would evaluate it more than once: duplicate host calls, doubled host-call budget,
+    // and non-determinism for a host read. There is no let-binding in the lowered IR to evaluate it exactly once, so
+    // a derived getter that references such a field more than once fails safe (the chain is skipped). A field
+    // referenced at most once, or a pure scalar/string field (no CallExpression in its source), lowers normally.
+    private static void RejectRepeatedSideEffectfulReferences(
+        ExpressionSyntax body,
+        IReadOnlyDictionary<string, DotBoxDExpressionModel> bindings)
+    {
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var identifier in body.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())
+        {
+            var name = identifier.Identifier.ValueText;
+            if (bindings.ContainsKey(name))
+            {
+                counts[name] = counts.TryGetValue(name, out var count) ? count + 1 : 1;
+            }
+        }
+
+        foreach (var pair in counts)
+        {
+            if (pair.Value > 1 && IsSideEffectfulSource(bindings[pair.Key].Source))
+            {
+                throw new NotSupportedException(
+                    $"Derived field references '{pair.Key}' more than once, but its value is a host call or " +
+                    "constructed record that cannot be evaluated repeatedly without duplicating the effect.");
+            }
+        }
+    }
+
+    private static bool IsSideEffectfulSource(string source)
+        => source.IndexOf(DotBoxDGenerationNames.TypeNames.GlobalCallExpression, StringComparison.Ordinal) >= 0;
 
     private static bool IsComputedProperty(RecordMember field)
         => field.Symbol is IPropertySymbol { SetMethod: null };
