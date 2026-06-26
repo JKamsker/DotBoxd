@@ -156,27 +156,32 @@ public sealed class KernelRpcMarshallerDtoOrderTests
     }
 
     [Fact]
-    public void ToSandboxValue_ignores_inherited_dto_properties()
+    public void ToSandboxValue_includes_inherited_dto_properties_base_first()
     {
         var dto = new DerivedDto(10, true);
 
         var sandbox = KernelRpcMarshaller.ToSandboxValue(dto, typeof(DerivedDto));
 
+        // The convention event adapter walks the hierarchy base-first, so the inherited BaseId (99) leads the
+        // declared MonsterId/Success. The decode-side record shape must match that exact field set and order.
         var record = Assert.IsType<RecordValue>(sandbox);
         Assert.Equal(
-            [SandboxValue.FromInt32(10), SandboxValue.FromBool(true)],
+            [SandboxValue.FromInt32(99), SandboxValue.FromInt32(10), SandboxValue.FromBool(true)],
             record.Fields);
     }
 
     [Fact]
-    public void FromSandboxValue_uses_declared_dto_properties_only()
+    public void FromSandboxValue_includes_inherited_dto_properties()
     {
         var sandbox = SandboxValue.FromRecord(
-            [SandboxValue.FromInt32(11), SandboxValue.FromBool(false)]);
+            [SandboxValue.FromInt32(99), SandboxValue.FromInt32(11), SandboxValue.FromBool(false)]);
 
         var dto = Assert.IsType<DerivedDto>(
             KernelRpcMarshaller.FromSandboxValue(sandbox, typeof(DerivedDto)));
 
+        // BaseId is a computed get-only member with no constructor parameter, so it recomputes (99) rather than
+        // being assigned from the wire; the declared members reconstruct through the positional constructor.
+        Assert.Equal(99, dto.BaseId);
         Assert.Equal(11, dto.MonsterId);
         Assert.False(dto.Success);
     }

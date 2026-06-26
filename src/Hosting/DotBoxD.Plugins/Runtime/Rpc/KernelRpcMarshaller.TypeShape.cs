@@ -98,20 +98,14 @@ public static partial class KernelRpcMarshaller
         return (IDictionary)Activator.CreateInstance(dictionaryType)!;
     }
 
+    private const BindingFlags DeclaredInstanceFlags =
+        BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+
     private static RecordShape GetRecordShape(Type type)
         => RecordShapeCache.GetOrAdd(type, static candidate =>
         {
             var members = new List<RecordMember>();
-            const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
-            foreach (var property in candidate.GetProperties(flags))
-            {
-                if (property.CanRead && property.GetIndexParameters().Length == 0 &&
-                    !string.Equals(property.Name, "EqualityContract", StringComparison.Ordinal) &&
-                    !IsIgnoredMember(property))
-                {
-                    members.Add(RecordMember.FromProperty(property));
-                }
-            }
+            CollectReadableProperties(candidate, members);
 
             // A value type that carries its data in public fields rather than properties (e.g. a math vector
             // like System.Numerics.Vector3, whose X/Y/Z are float fields) has no readable properties; fall back
@@ -119,18 +113,67 @@ public static partial class KernelRpcMarshaller
             // are no properties, so property-based DTOs are unaffected and this stays strictly additive.
             if (members.Count == 0)
             {
-                foreach (var field in candidate.GetFields(flags))
-                {
-                    if (!IsIgnoredMember(field))
-                    {
-                        members.Add(RecordMember.FromField(field));
-                    }
-                }
+                CollectPublicFields(candidate, members);
             }
 
-            members.Sort(static (left, right) => left.Member.MetadataToken.CompareTo(right.Member.MetadataToken));
             return new RecordShape(candidate, members.ToArray());
         });
+
+    // The wire field set AND order must match the encoder exactly: the convention event adapter
+    // (ConventionEventAdapter) and the analyzer (PluginEventPropertyReader) both walk the type hierarchy
+    // base-first and, within each level, take public-getter instance properties in declaration (MetadataToken)
+    // order. An inherited public property is therefore a real wire field — enumerating only the leaf type's
+    // declared members would expect fewer fields than the encoder emits and throw on decode.
+    private static void CollectReadableProperties(Type type, List<RecordMember> members)
+    {
+        foreach (var level in HierarchyBaseFirst(type))
+        {
+            var properties = level.GetProperties(DeclaredInstanceFlags);
+            Array.Sort(properties, static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
+            foreach (var property in properties)
+            {
+                // Require a public getter (not merely CanRead): a property with a public setter/init but a
+                // non-public getter is excluded by the analyzer and the convention adapter, so the decode shape
+                // must skip it too — otherwise the field count is larger than the encoder produced.
+                if (property.GetMethod is { IsPublic: true } &&
+                    property.GetIndexParameters().Length == 0 &&
+                    !string.Equals(property.Name, "EqualityContract", StringComparison.Ordinal) &&
+                    !IsIgnoredMember(property))
+                {
+                    members.Add(RecordMember.FromProperty(property));
+                }
+            }
+        }
+    }
+
+    private static void CollectPublicFields(Type type, List<RecordMember> members)
+    {
+        foreach (var level in HierarchyBaseFirst(type))
+        {
+            var fields = level.GetFields(DeclaredInstanceFlags);
+            Array.Sort(fields, static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
+            foreach (var field in fields)
+            {
+                if (!IsIgnoredMember(field))
+                {
+                    members.Add(RecordMember.FromField(field));
+                }
+            }
+        }
+    }
+
+    // Base-first (most-derived last) so an inherited member precedes a declared one, matching the encoder order.
+    private static List<Type> HierarchyBaseFirst(Type type)
+    {
+        var hierarchy = new List<Type>();
+        for (var current = type; current is not null && current != typeof(object); current = current.BaseType)
+        {
+            hierarchy.Add(current);
+        }
+
+        hierarchy.Reverse();
+        return hierarchy;
+    }
 
     // A member marked [IgnoreDataMember] (System.Runtime.Serialization) is non-wire — a lazily-resolved or
     // computed member, not serialized data — so it is excluded from the marshalled record shape, matching the
