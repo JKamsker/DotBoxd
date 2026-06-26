@@ -151,6 +151,60 @@ public sealed class KernelRpcBinaryCodecTests
     }
 
     [Fact]
+    public void EncodeArguments_rejects_excessive_argument_count()
+    {
+        var arguments = new KernelRpcValue[MaxDecodeItems + 1];
+        Array.Fill(arguments, KernelRpcValue.Unit());
+
+        var ex = Assert.Throws<ArgumentException>(() => KernelRpcBinaryCodec.EncodeArguments(arguments));
+
+        Assert.Contains("too many items", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EncodeValue_rejects_kernel_value_past_maximum_depth()
+    {
+        var value = NestedKernelList(MaxDecodeDepth + 1);
+
+        var ex = Assert.Throws<ArgumentException>(() => KernelRpcBinaryCodec.EncodeValue(value));
+
+        Assert.Contains("nesting depth", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EncodeValue_rejects_kernel_value_with_excessive_nested_item_count()
+    {
+        var items = new KernelRpcValue[MaxDecodeItems + 1];
+        Array.Fill(items, KernelRpcValue.Unit());
+
+        var ex = Assert.Throws<ArgumentException>(() => KernelRpcBinaryCodec.EncodeValue(KernelRpcValue.List(items)));
+
+        Assert.Contains("too many items", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EncodeValue_rejects_direct_sandbox_value_past_maximum_depth()
+    {
+        var value = NestedSandboxList(MaxDecodeDepth + 1);
+
+        var ex = Assert.Throws<ArgumentException>(() => KernelRpcBinaryCodec.EncodeValue(value));
+
+        Assert.Contains("nesting depth", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EncodeValue_rejects_direct_sandbox_value_with_excessive_nested_item_count()
+    {
+        var items = new SandboxValue[MaxDecodeItems + 1];
+        Array.Fill(items, SandboxValue.Unit);
+        var value = SandboxValue.FromList(items, SandboxType.Unit);
+
+        var ex = Assert.Throws<ArgumentException>(() => KernelRpcBinaryCodec.EncodeValue(value));
+
+        Assert.Contains("too many items", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void DecodeValue_rejects_bool_byte_other_than_zero_or_one()
     {
         var payload = new byte[] { (byte)KernelRpcValueKind.Bool, 2 };
@@ -214,6 +268,28 @@ public sealed class KernelRpcBinaryCodecTests
 
         bytes.Add((byte)KernelRpcValueKind.Unit);
         return bytes.ToArray();
+    }
+
+    private static KernelRpcValue NestedKernelList(int depth)
+    {
+        var value = KernelRpcValue.Unit();
+        for (var i = 0; i < depth; i++)
+        {
+            value = KernelRpcValue.List([value]);
+        }
+
+        return value;
+    }
+
+    private static SandboxValue NestedSandboxList(int depth)
+    {
+        var value = SandboxValue.Unit;
+        for (var i = 0; i < depth; i++)
+        {
+            value = SandboxValue.FromList([value], value.Type);
+        }
+
+        return value;
     }
 
     private static byte[] LengthPrefix(int value)
