@@ -62,6 +62,12 @@ if (args.Contains("--probe-http-metadata", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+if (args.Contains("--probe-http-request-bytes", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Http.HttpRequestByteAccountingProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-value-shape-cache", StringComparer.OrdinalIgnoreCase))
 {
     DotBoxD.Kernels.Benchmarks.Runtime.ValueShapeCacheProbe.Run();

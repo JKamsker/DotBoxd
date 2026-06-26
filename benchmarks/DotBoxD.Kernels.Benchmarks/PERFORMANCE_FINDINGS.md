@@ -10,6 +10,7 @@ as targeted before/after evidence, not BenchmarkDotNet statistical reports.
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | Scalar `ValueShapeCache` used the generic shape walker for every append. | `--probe-value-shape-cache` | 10,000 scalar `ListAdd` calls | 12.1 ms | 1,210 | 10,099,752 B | 1,010.0 | 12.3 ms | 1,230 | 8,259,752 B | 826.0 | Same fuel and collection-element accounting; allocation reduction is the stable signal. |
 | HTTP response metadata was measured once for quota checking and again for charging. | `--probe-http-metadata` | 100,000 responses with 24 headers | 615.4 ms | 6,154 | 354,700,000 B | 3,547.0 | 99.8 ms | 998 | 176,800,040 B | 1,768.0 | Same `55,300,000` charged network bytes. |
+| HTTP request byte accounting allocated a concatenated `"GET " + AbsoluteUri` string. | `--probe-http-request-bytes` | 1,000,000 byte counts for a representative GET URI | 32.9 ms | 32.9 | 136,000,040 B | 136.0 | 22.6 ms | 22.6 | 40 B | ~0 | Same `57,000,000` counted request bytes; production now sums method-prefix bytes and URI bytes directly. |
 | Scalar binding returns opened string-credit scope and ran the recursive validated shape meter. | `--probe-binding-return-credit` | 500,000 I32 binding returns | 127.0 ms | 254 | 124,000,152 B | 248.0 | 101.9 ms | 204 | 68,000,040 B | 136.0 | String returns still use credit tracking; scalar returns now avoid it. |
 | `BindingRegistry.TryGet` copied signatures and `Signatures` rebuilt the sorted array. | `--probe-binding-registry` | 1,000 bindings; 200,000 lookups; 5,000 signature reads | 20.6 ms / 544.2 ms | 103.0 / 108,840 | 38,400,040 B / 1,000,240,040 B | 192.0 / 200,048.0 | 5.6 ms / 0.0 ms | 28.0 / 0.0 | 40 B / 40 B | 0.0 / 0.0 | Probe now uses precomputed IDs and an in-process legacy simulation for clean before/after numbers. |
 | `BindingRegistryBuilder.Build` validated descriptors, then `BindingRegistry` validated the same frozen descriptors again. | `--probe-binding-registry` | 200 builds of 1,000 bindings | 1,200.1 ms | 6,000,500 | 1,459,970,704 B | 7,299,854 | 964.1 ms | 4,820,500 | 1,446,376,080 B | 7,231,880 | Public `new BindingRegistry(...)` still validates; the builder uses an internal validated handoff after its existing validation pass. |
@@ -47,6 +48,7 @@ as targeted before/after evidence, not BenchmarkDotNet statistical reports.
 ```powershell
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-value-shape-cache
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-http-metadata
+dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-http-request-bytes
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-binding-return-credit
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-binding-registry
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-map-remove

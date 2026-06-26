@@ -123,7 +123,7 @@ public static class SafeHttpClient
 
     private static long ChargeRequestBytes(SandboxContext context, SafeHttpRequest request)
     {
-        var bytes = Encoding.UTF8.GetByteCount("GET " + request.Uri.AbsoluteUri);
+        var bytes = MeasureGetRequestBytes(request.Uri);
         if (bytes > request.MaxRequestBytes)
         {
             throw Error(SandboxErrorCode.QuotaExceeded, "net.http.get denied: request exceeds byte limit");
@@ -132,6 +132,9 @@ public static class SafeHttpClient
         context.Budget.ChargeNetworkWrite(bytes);
         return bytes;
     }
+
+    private static long MeasureGetRequestBytes(Uri uri)
+        => 4L + Encoding.UTF8.GetByteCount(uri.AbsoluteUri);
 
     private static async ValueTask<LimitedText> ReadLimitedTextAsync(
         SandboxContext context,
