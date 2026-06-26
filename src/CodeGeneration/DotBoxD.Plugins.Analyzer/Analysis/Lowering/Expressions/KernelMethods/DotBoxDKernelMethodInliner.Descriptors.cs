@@ -13,7 +13,15 @@ internal static partial class DotBoxDKernelMethodInliner
     {
         if (method.IsStatic)
         {
-            throw new NotSupportedException($"[KernelMethod] '{method.Name}' must be declared in source.");
+            // A static helper reaching the metadata path has no syntax in this compilation, i.e. it lives in a
+            // referenced assembly. Only instance helpers on a generated server context emit a descriptor that
+            // crosses assemblies; static helpers do not, so fail closed with an actionable message instead of the
+            // misleading "must be declared in source" (it IS in source — just in another assembly).
+            throw new NotSupportedException(
+                $"[KernelMethod] '{method.Name}' is a static helper in referenced assembly "
+                + $"'{method.ContainingAssembly.Name}'; static [KernelMethod] helpers cannot be inlined across "
+                + "assemblies. Move the helper into this project, or expose it as an instance helper on a generated "
+                + "server context (which emits a descriptor that crosses assemblies).");
         }
 
         var signature = KernelMethodSignature.Create(method);

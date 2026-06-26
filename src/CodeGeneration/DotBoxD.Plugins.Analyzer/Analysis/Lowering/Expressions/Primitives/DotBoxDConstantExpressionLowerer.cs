@@ -43,8 +43,17 @@ internal static class DotBoxDConstantExpressionLowerer
                 : Int32(Convert.ToInt32(constant.Value, System.Globalization.CultureInfo.InvariantCulture));
         }
 
-        return Lower(expression, constant.Value, targetType ?? DotBoxDTypeNameReader.SandboxTypeName(type));
+        return Lower(expression, constant.Value, targetType ?? ScalarManifestType(type));
     }
+
+    // The [KernelMethod] signature gate treats System.Single as Double end-to-end (see
+    // SandboxTypeSourceEmitter.ManifestTag), so a float literal/arithmetic constant in an inlined body must
+    // lower as F64 to agree with the gate. The shared SandboxTypeName classifier deliberately omits Single
+    // elsewhere, so widen it here rather than failing the body with "Unsupported plugin constant expression".
+    private static string ScalarManifestType(ITypeSymbol type)
+        => type.SpecialType == SpecialType.System_Single
+            ? DotBoxDGenerationNames.ManifestTypes.Double
+            : DotBoxDTypeNameReader.SandboxTypeName(type);
 
     private static DotBoxDExpressionModel Lower(ExpressionSyntax expression, object? value, string type)
         => type switch
