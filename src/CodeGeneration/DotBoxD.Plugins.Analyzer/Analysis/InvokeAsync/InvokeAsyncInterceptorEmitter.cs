@@ -110,13 +110,19 @@ internal static class InvokeAsyncInterceptorEmitter
             builder.AppendLine("            {");
             builder.AppendLine("                throw new global::System.NotSupportedException(\"InvokeAsync response field count did not match the generated capture shape.\");");
             builder.AppendLine("            }");
+            builder.Append("            var __returnValue = ").Append(interception.ResultExpression).AppendLine(";");
             for (var i = 0; i < interception.SyncOutAssignments.Count; i++)
             {
                 builder.Append("            ").Append(interception.SyncOutAssignments[i]).AppendLine(";");
             }
+
+            builder.AppendLine("            return __returnValue;");
+        }
+        else
+        {
+            builder.Append("            return ").Append(interception.ResultExpression).AppendLine(";");
         }
 
-        builder.Append("            return ").Append(interception.ResultExpression).AppendLine(";");
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.Append(interception.Helpers);

@@ -71,6 +71,7 @@ $defaultMinimums = @{
     InvokeAsyncGeneratedCodeRegressionTests = 7
     InvokeAsyncArrayRegressionTests = 1
     InvokeAsyncScalarDecodeRuntimeTests = 4
+    InvokeAsyncCaptureBagRuntimeTests = 2
     PluginAnalyzerKernelMethodTests = 10
     PluginAnalyzerKernelMethodProjectionRegressionTests = 1
     PluginAnalyzerKernelMethodSurpriseRegressionTests = 7
