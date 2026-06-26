@@ -55,7 +55,9 @@ public sealed partial class ServerExtensionSurpriseRegressionTests
             NoPayloadSource(returnType, modifier, includeProbe: true));
         var controlType = assembly.GetType("Sample.RemoteMonsterControl", throwOnError: true)!;
         var probeType = assembly.GetType("Sample.Probe", throwOnError: true)!;
-        var registry = new RecordingServerExtensionsRegistry("ping", []);
+        var registry = new RecordingServerExtensionsRegistry(
+            "ping",
+            KernelRpcBinaryCodec.EncodeValue(KernelRpcValue.Unit()));
         var control = Activator.CreateInstance(controlType, [registry])!;
 
         var result = probeType.GetMethod("Ping", BindingFlags.Public | BindingFlags.Static)!

@@ -48,6 +48,43 @@ public sealed class KernelRpcMarshallerSurpriseTests
         Assert.Equal(SandboxValue.FromInt32(2), map.Values[SandboxValue.FromString("b")]);
     }
 
+    [Fact]
+    public void SandboxTypeOf_ignores_public_setter_private_getter_properties()
+        => Assert.Equal(
+            SandboxType.Record([SandboxType.I32]),
+            KernelRpcMarshaller.SandboxTypeOf(typeof(PublicSetterPrivateGetterDto)));
+
+    [Fact]
+    public void ToSandboxValue_ignores_public_setter_private_getter_properties()
+    {
+        var sandbox = KernelRpcMarshaller.ToSandboxValue(
+            new PublicSetterPrivateGetterDto(8, "hidden"),
+            typeof(PublicSetterPrivateGetterDto));
+
+        var record = Assert.IsType<RecordValue>(sandbox);
+        Assert.Equal([SandboxValue.FromInt32(8)], record.Fields);
+    }
+
+    [Fact]
+    public void FromSandboxValue_rejects_private_setter_dto_properties()
+    {
+        var sandbox = SandboxValue.FromRecord([SandboxValue.FromInt32(9)]);
+
+        var ex = Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.FromSandboxValue(sandbox, typeof(PrivateSetterDto)));
+
+        Assert.Contains("private", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void FromSandboxValue_rejects_enum_values_with_wrong_integer_width()
+    {
+        Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.FromSandboxValue(SandboxValue.FromInt64(1), typeof(IntBackedEnum)));
+        Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.FromSandboxValue(SandboxValue.FromInt32(1), typeof(LongBackedEnum)));
+    }
+
     private sealed class GetOnlyTailDto
     {
         public int Id { get; set; }
@@ -82,5 +119,27 @@ public sealed class KernelRpcMarshallerSurpriseTests
         public bool TryGetValue(string key, out int value) => inner.TryGetValue(key, out value);
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    private sealed class PublicSetterPrivateGetterDto(int id, string secret)
+    {
+        public int Id { get; set; } = id;
+
+        public string Secret { private get; set; } = secret;
+    }
+
+    private sealed class PrivateSetterDto
+    {
+        public int Id { get; private set; }
+    }
+
+    private enum IntBackedEnum
+    {
+        One = 1
+    }
+
+    private enum LongBackedEnum : long
+    {
+        One = 1
     }
 }

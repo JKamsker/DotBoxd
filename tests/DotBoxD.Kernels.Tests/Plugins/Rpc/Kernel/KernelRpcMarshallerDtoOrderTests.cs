@@ -156,29 +156,26 @@ public sealed class KernelRpcMarshallerDtoOrderTests
     }
 
     [Fact]
-    public void ToSandboxValue_ignores_inherited_dto_properties()
+    public void ToSandboxValue_rejects_inherited_dto_properties()
     {
         var dto = new DerivedDto(10, true);
 
-        var sandbox = KernelRpcMarshaller.ToSandboxValue(dto, typeof(DerivedDto));
+        var ex = Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.ToSandboxValue(dto, typeof(DerivedDto)));
 
-        var record = Assert.IsType<RecordValue>(sandbox);
-        Assert.Equal(
-            [SandboxValue.FromInt32(10), SandboxValue.FromBool(true)],
-            record.Fields);
+        Assert.Contains("inherits public", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void FromSandboxValue_uses_declared_dto_properties_only()
+    public void FromSandboxValue_rejects_inherited_dto_properties()
     {
         var sandbox = SandboxValue.FromRecord(
             [SandboxValue.FromInt32(11), SandboxValue.FromBool(false)]);
 
-        var dto = Assert.IsType<DerivedDto>(
-            KernelRpcMarshaller.FromSandboxValue(sandbox, typeof(DerivedDto)));
+        var ex = Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.FromSandboxValue(sandbox, typeof(DerivedDto)));
 
-        Assert.Equal(11, dto.MonsterId);
-        Assert.False(dto.Success);
+        Assert.Contains("inherits public", ex.Message, StringComparison.Ordinal);
     }
 
     private sealed class ReorderedDto
