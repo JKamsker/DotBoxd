@@ -2,7 +2,7 @@ using DotBoxD.Plugins.Analyzer.Analysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Core;
+namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Generation;
 
 public sealed class GeneratorGuardTests
 {
