@@ -60,7 +60,7 @@ internal static class RpcKernelClientExtensionEmitter
         RpcKernelClientPropertyExtension? property,
         RpcKernelClientMethodExtension? method)
     {
-        const string receiver = "value";
+        var receiver = ReceiverParameterName(serviceMethod);
 
         builder.Append("    extension(").Append(TypeName(receiverType)).Append(' ').Append(receiver).AppendLine(")");
         builder.AppendLine("    {");
@@ -178,4 +178,25 @@ internal static class RpcKernelClientExtensionEmitter
         => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
     private static string Identifier(string name) => "@" + name;
+
+    private static string ReceiverParameterName(IMethodSymbol serviceMethod)
+    {
+        const string seed = "__receiver";
+        if (!HasParameter(serviceMethod, seed))
+        {
+            return seed;
+        }
+
+        for (var suffix = 0; ; suffix++)
+        {
+            var candidate = seed + "_" + suffix.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (!HasParameter(serviceMethod, candidate))
+            {
+                return candidate;
+            }
+        }
+    }
+
+    private static bool HasParameter(IMethodSymbol method, string name)
+        => method.Parameters.Any(parameter => string.Equals(parameter.Name, name, StringComparison.Ordinal));
 }

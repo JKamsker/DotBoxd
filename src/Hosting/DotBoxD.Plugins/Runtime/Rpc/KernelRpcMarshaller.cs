@@ -69,7 +69,7 @@ public static partial class KernelRpcMarshaller
 
         if (MapTypes(type) is { } mapTypes)
         {
-            if (value is not IDictionary dictionary)
+            if (value is not IEnumerable enumerable)
             {
                 throw new ArgumentException(
                     $"Kernel RPC service expected '{type}' to be a dictionary.",
@@ -87,8 +87,8 @@ public static partial class KernelRpcMarshaller
             }
 
             var valueType = SandboxTypeOf(mapTypes.Value);
-            var entries = new Dictionary<SandboxValue, SandboxValue>(dictionary.Count);
-            foreach (DictionaryEntry entry in dictionary)
+            var entries = new Dictionary<SandboxValue, SandboxValue>();
+            foreach (var entry in MapEntries(enumerable, mapTypes.Key, mapTypes.Value))
             {
                 var key = MarshalChild(entry.Key, mapTypes.Key, "Map key");
                 entries[key] = MarshalChild(entry.Value, mapTypes.Value, "Map value");

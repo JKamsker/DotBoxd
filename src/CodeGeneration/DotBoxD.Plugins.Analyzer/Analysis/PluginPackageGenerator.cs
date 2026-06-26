@@ -127,6 +127,7 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
                 {
                     Expression: MemberAccessExpressionSyntax { Name.Identifier.ValueText: "InvokeAsync" }
                         or IdentifierNameSyntax { Identifier.ValueText: "InvokeAsync" }
+                        or GenericNameSyntax { Identifier.ValueText: "InvokeAsync" }
                 },
                 static (syntaxContext, ct) => InvokeAsyncModelFactory.Create(syntaxContext, ct))
             .Where(static result => result is not null)

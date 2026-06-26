@@ -7,15 +7,24 @@ internal static partial class PluginServerFacadeModelFactory
 {
     private static INamedTypeSymbol? ResolveWorldType(INamedTypeSymbol type)
     {
+        INamedTypeSymbol? worldType = null;
         foreach (var candidate in type.Interfaces)
         {
-            if (HasAttribute(candidate, DotBoxDMetadataNames.DotBoxDServiceAttribute))
+            if (!HasAttribute(candidate, DotBoxDMetadataNames.DotBoxDServiceAttribute))
             {
-                return candidate;
+                continue;
             }
+
+            if (worldType is not null)
+            {
+                throw new NotSupportedException(
+                    $"Generated plugin server '{type.Name}' must directly implement one [DotBoxDService] world interface.");
+            }
+
+            worldType = candidate;
         }
 
-        return null;
+        return worldType;
     }
 
     private static INamedTypeSymbol? ResolveControlService(

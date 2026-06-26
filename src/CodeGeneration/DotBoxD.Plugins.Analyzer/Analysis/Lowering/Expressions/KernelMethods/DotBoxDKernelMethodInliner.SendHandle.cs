@@ -45,7 +45,13 @@ internal static partial class DotBoxDKernelMethodInliner
             out var helperContextParameterName);
         var sendInvocation = SendHelperInvocation(method, helperContextParameterName, context.CancellationToken);
         var bodySemanticModel = context.SemanticModel.Compilation.GetSemanticModel(sendInvocation.SyntaxTree);
-        KernelMethodArgumentReuseValidator.Validate(method, sendInvocation, bodySemanticModel, call, context.CancellationToken);
+        KernelMethodArgumentReuseValidator.Validate(
+            method,
+            sendInvocation,
+            bodySemanticModel,
+            call,
+            context.SemanticModel,
+            context.CancellationToken);
         var inlineContext = context.ForInlinedMethod(bodySemanticModel, bindings, methodKey);
         return DotBoxDHandleModelFactory.CreateFromSend(sendInvocation, inlineContext);
     }

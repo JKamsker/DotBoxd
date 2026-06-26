@@ -19,6 +19,7 @@ internal sealed record PluginServerFacadeModel(
     string WorldDocumentation,
     string ControlServiceType,
     string LiveSettingUpdateType,
+    EquatableArray<PluginServerForwardedProperty> WorldProperties,
     EquatableArray<PluginServerForwardedMethod> WorldMethods,
     EquatableArray<PluginServerControlProperty> Controls,
     // Reverse server->plugin event-callback contract for remote RunLocal chains, discovered by the
@@ -38,6 +39,7 @@ internal sealed record PluginServerControlProperty(
     string Documentation,
     string WrapperName,
     string AccumulatorInterfaceName,
+    EquatableArray<PluginServerForwardedProperty> Properties,
     EquatableArray<PluginServerForwardedMethod> Methods,
     EquatableArray<PluginServerServiceWrapper> ServiceWrappers);
 
@@ -49,7 +51,11 @@ internal sealed record PluginServerForwardedMethod(
     PluginServerReturnWrapperKind ReturnWrapperKind,
     EquatableArray<PluginServerParameter> Parameters);
 
-internal sealed record PluginServerForwardedProperty(string Name, string Type, string Documentation);
+internal sealed record PluginServerForwardedProperty(
+    string Name,
+    string Type,
+    string Documentation,
+    string? ReturnWrapperName = null);
 
 internal sealed record PluginServerServiceWrapper(
     string Type,

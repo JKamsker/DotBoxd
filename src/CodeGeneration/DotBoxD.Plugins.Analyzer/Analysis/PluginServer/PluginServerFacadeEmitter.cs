@@ -257,6 +257,15 @@ internal static class PluginServerFacadeEmitter
 
     private static void AppendWorldForwarders(StringBuilder builder, PluginServerFacadeModel model)
     {
+        foreach (var property in model.WorldProperties)
+        {
+            PluginServerXmlDocumentation.Append(builder, "    ", property.Documentation);
+            builder.Append("    public ").Append(property.Type).Append(' ')
+                .Append(PluginServerIdentifier.Escape(property.Name))
+                .Append(" => RequireWorld().")
+                .Append(PluginServerIdentifier.Escape(property.Name)).AppendLine(";");
+        }
+
         foreach (var method in model.WorldMethods)
         {
             PluginServerXmlDocumentation.Append(builder, "    ", method.Documentation);
@@ -267,7 +276,7 @@ internal static class PluginServerFacadeEmitter
                 .Append(ArgumentList(method)).AppendLine(");");
         }
 
-        if (model.WorldMethods.Count > 0)
+        if (model.WorldProperties.Count > 0 || model.WorldMethods.Count > 0)
         {
             builder.AppendLine();
         }

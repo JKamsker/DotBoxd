@@ -45,7 +45,7 @@ internal sealed class RpcKernelPayloadReadEmitter
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             var read = DotBoxDRpcTypeMapper.EnumUsesI64(enumType) ? "ReadInt64()" : "ReadInt32()";
-            return $"({TypeName(type)}){reader}.{read}";
+            return $"unchecked(({TypeName(type)}){reader}.{read})";
         }
 
         if (DotBoxDRpcTypeMapper.ListElementType(type) is not null)

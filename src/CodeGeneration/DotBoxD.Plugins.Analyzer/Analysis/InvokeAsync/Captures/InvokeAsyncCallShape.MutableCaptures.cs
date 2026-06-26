@@ -90,19 +90,48 @@ internal sealed partial class InvokeAsyncCallShape
         Func<ExpressionSyntax, string?> capturedName)
     {
         var aliases = new Dictionary<ISymbol, string>(SymbolEqualityComparer.Default);
-        foreach (var declarator in block.DescendantNodes().OfType<VariableDeclaratorSyntax>())
+        var changed = true;
+        while (changed)
         {
-            if (declarator.Initializer?.Value is not { } initializer ||
-                capturedName(initializer) is not { } name ||
-                model.GetDeclaredSymbol(declarator) is not ILocalSymbol local)
+            changed = false;
+            foreach (var declarator in block.DescendantNodes().OfType<VariableDeclaratorSyntax>())
             {
-                continue;
+                if (declarator.Initializer?.Value is not { } initializer ||
+                    MutableCaptureName(initializer, model, capturedName, aliases) is not { } name ||
+                    model.GetDeclaredSymbol(declarator) is not ILocalSymbol local)
+                {
+                    continue;
+                }
+
+                changed |= AddAlias(aliases, local, name);
             }
 
-            aliases[local] = name;
+            foreach (var assignment in block.DescendantNodes().OfType<AssignmentExpressionSyntax>())
+            {
+                if (assignment.Kind() != SyntaxKind.SimpleAssignmentExpression ||
+                    assignment.Left is not IdentifierNameSyntax left ||
+                    MutableCaptureName(assignment.Right, model, capturedName, aliases) is not { } name ||
+                    model.GetSymbolInfo(left).Symbol is not ILocalSymbol local)
+                {
+                    continue;
+                }
+
+                changed |= AddAlias(aliases, local, name);
+            }
         }
 
         return aliases;
+    }
+
+    private static bool AddAlias(Dictionary<ISymbol, string> aliases, ISymbol local, string name)
+    {
+        if (aliases.ContainsKey(local))
+        {
+            return false;
+        }
+
+        aliases.Add(local, name);
+        return true;
     }
 
     private static string? MutableCaptureName(

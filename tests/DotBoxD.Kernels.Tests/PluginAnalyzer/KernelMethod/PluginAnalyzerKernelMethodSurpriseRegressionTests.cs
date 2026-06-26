@@ -23,6 +23,46 @@ public sealed class PluginAnalyzerKernelMethodSurpriseRegressionTests
     }
 
     [Fact]
+    public void KernelMethod_rejects_repeated_non_repeatable_host_binding_property_argument()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
+            using DotBoxD.Kernels;
+            using DotBoxD.Kernels.Sandbox;
+            using DotBoxD.Plugins;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public interface IProbeWorld
+            {
+                [HostBinding("host.probe.value", "probe.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
+                int Value { get; }
+            }
+
+            public sealed record ProbeEvent(int Threshold, string TargetId, string Message);
+
+            [Plugin("host-property-kernel-method")]
+            public sealed partial class HostPropertyKernel : IEventKernel<ProbeEvent>
+            {
+                public bool ShouldHandle(ProbeEvent e, HookContext ctx)
+                    => Matches(ctx.Host<IProbeWorld>().Value, e.Threshold);
+
+                public void Handle(ProbeEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, e.Message);
+
+                [KernelMethod]
+                public static bool Matches(int value, int threshold) => value + value >= threshold;
+            }
+            """);
+
+        Assert.Contains(
+            diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains("used more than once", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void KernelMethod_argument_reuse_counts_parameter_symbols_not_matching_member_names()
     {
         var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""

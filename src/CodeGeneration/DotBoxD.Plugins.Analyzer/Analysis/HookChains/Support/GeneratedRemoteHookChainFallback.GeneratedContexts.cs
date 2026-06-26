@@ -23,6 +23,63 @@ internal static partial class GeneratedRemoteHookChainFallback
         return target.ServerContextTypeFullName;
     }
 
+    public static ITypeSymbol? ServerContextTypeForLambda(
+        LambdaExpressionSyntax lambda,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        foreach (var invocation in lambda.Ancestors().OfType<InvocationExpressionSyntax>())
+        {
+            if (invocation.Expression is not MemberAccessExpressionSyntax access ||
+                SeedInvocation(access.Expression) is not { } seed ||
+                Candidate(seed, model, cancellationToken) is not { } target)
+            {
+                continue;
+            }
+
+            return ServerContextType(model, seed, target, cancellationToken);
+        }
+
+        return null;
+    }
+
+    public static INamedTypeSymbol? ServerContextType(
+        SemanticModel model,
+        InvocationExpressionSyntax seed,
+        GeneratedRemoteHookChainTarget target,
+        CancellationToken cancellationToken)
+    {
+        if (seed.Expression is MemberAccessExpressionSyntax { Name: GenericNameSyntax onName } &&
+            onName.TypeArgumentList.Arguments.Count >= 2 &&
+            model.GetTypeInfo(onName.TypeArgumentList.Arguments[1], cancellationToken).Type is INamedTypeSymbol declared)
+        {
+            return declared;
+        }
+
+        var metadataName = target.ServerContextTypeFullName.StartsWith("global::", StringComparison.Ordinal)
+            ? target.ServerContextTypeFullName.Substring("global::".Length)
+            : target.ServerContextTypeFullName;
+        return model.Compilation.GetTypeByMetadataName(metadataName);
+    }
+
+    private static InvocationExpressionSyntax? SeedInvocation(ExpressionSyntax expression)
+    {
+        for (var current = expression; current is InvocationExpressionSyntax invocation; current = NextReceiver(invocation))
+        {
+            if (invocation.Expression is MemberAccessExpressionSyntax { Name.Identifier.ValueText: "On" })
+            {
+                return invocation;
+            }
+        }
+
+        return null;
+    }
+
+    private static ExpressionSyntax? NextReceiver(InvocationExpressionSyntax invocation)
+        => invocation.Expression is MemberAccessExpressionSyntax member
+            ? member.Expression
+            : null;
+
     private static string? GeneratedContextTypeFullName(INamedTypeSymbol serverType, Compilation compilation)
         => ExplicitContextTypeFullName(serverType, compilation);
 

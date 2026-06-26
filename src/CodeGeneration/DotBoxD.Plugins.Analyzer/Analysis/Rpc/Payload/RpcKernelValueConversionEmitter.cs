@@ -66,8 +66,8 @@ internal sealed partial class RpcKernelValueConversionEmitter
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return DotBoxDRpcTypeMapper.EnumUsesI64(enumType)
-                ? $"global::DotBoxD.Plugins.KernelRpcValue.Int64((long){expression})"
-                : $"global::DotBoxD.Plugins.KernelRpcValue.Int32((int){expression})";
+                ? $"global::DotBoxD.Plugins.KernelRpcValue.Int64(unchecked((long){expression}))"
+                : $"global::DotBoxD.Plugins.KernelRpcValue.Int32(unchecked((int){expression}))";
         }
 
         if (DotBoxDRpcTypeMapper.ListElementType(type) is not null)
@@ -98,7 +98,7 @@ internal sealed partial class RpcKernelValueConversionEmitter
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             var accessor = DotBoxDRpcTypeMapper.EnumUsesI64(enumType) ? "Int64Value" : "Int32Value";
-            return $"({TypeName(type)})({expression}.{accessor})";
+            return $"unchecked(({TypeName(type)}){expression}.{accessor})";
         }
 
         if (DotBoxDRpcTypeMapper.ListElementType(type) is not null)

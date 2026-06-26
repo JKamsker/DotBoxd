@@ -97,7 +97,9 @@ internal static partial class DotBoxDKernelMethodInliner
     private static void ValidateDescriptorArgumentUses(
         IMethodSymbol method,
         IReadOnlyList<DescriptorPlaceholderOccurrence> occurrences,
-        BoundKernelMethodCall call)
+        BoundKernelMethodCall call,
+        SemanticModel callSiteSemanticModel,
+        CancellationToken cancellationToken)
     {
         var usageCounts = new Dictionary<IParameterSymbol, int>(SymbolEqualityComparer.Default);
         var firstUseOrder = new List<IParameterSymbol>();
@@ -111,7 +113,13 @@ internal static partial class DotBoxDKernelMethodInliner
             }
         }
 
-        KernelMethodArgumentReuseValidator.Validate(method, usageCounts, firstUseOrder, call);
+        KernelMethodArgumentReuseValidator.Validate(
+            method,
+            usageCounts,
+            firstUseOrder,
+            call,
+            callSiteSemanticModel,
+            cancellationToken);
     }
 
     private static string DescriptorPlaceholder(int index)

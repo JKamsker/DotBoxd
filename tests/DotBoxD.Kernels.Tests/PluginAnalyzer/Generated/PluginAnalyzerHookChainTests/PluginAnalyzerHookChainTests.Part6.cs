@@ -193,4 +193,71 @@ public sealed partial class PluginAnalyzerHookChainTests
             d => d.Id == "DBXK100" &&
                  d.GetMessage().Contains("call-site evaluation order", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Generated_context_KernelMethod_can_call_sibling_context_KernelMethod()
+    {
+        var result = RunGenerator("""
+            using System.Threading;
+            using System.Threading.Tasks;
+            using DotBoxD.Abstractions;
+            using DotBoxD.Services.Attributes;
+
+            namespace Sample.Game
+            {
+                [DotBoxDService]
+                public interface IGameWorld;
+            }
+
+            namespace Sample.Game.Ipc
+            {
+                public readonly record struct LiveSettingUpdate(string Name, string Value);
+
+                public interface IGamePluginControlService : DotBoxD.Plugins.IServerExtensionWireClient
+                {
+                    ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default);
+                    ValueTask<string> InstallSubscriptionAsync(string packageJson, CancellationToken ct = default);
+                    ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default);
+                    ValueTask UpdateSettingsAsync(
+                        string pluginId,
+                        LiveSettingUpdate[] updates,
+                        bool atomic = false,
+                        CancellationToken ct = default);
+                    ValueTask HoldUntilShutdownAsync(CancellationToken ct = default);
+                }
+            }
+
+            namespace Sample.Plugin
+            {
+                [GeneratePluginServer(Context = typeof(RemotePluginContext))]
+                public partial class RemotePluginServer : Sample.Game.IGameWorld;
+
+                public sealed partial class RemotePluginContext
+                {
+                    [KernelMethod]
+                    public bool IsTarget(string id) => this.IsMonster(id);
+
+                    [KernelMethod]
+                    public bool IsMonster(string id) => id == "monster-1";
+                }
+
+                public sealed record DamageEvent(string TargetId);
+
+                public sealed class Usage
+                {
+                    public RemotePluginServer Server { get; init; } = null!;
+
+                    public void Configure()
+                    {
+                        this.Server.Hooks.On<DamageEvent>()
+                            .Where((e, ctx) => ctx.IsTarget(e.TargetId))
+                            .Run((e, ctx) => ctx.Messages.Send(e.TargetId, "hit"));
+                    }
+                }
+            }
+            """);
+
+        Assert.DoesNotContain(result.Diagnostics, d => d.Id is "DBXK100" or "DBXK114");
+        Assert.Contains(result.GeneratedTrees, tree => tree.ToString().Contains("UseGeneratedChain", StringComparison.Ordinal));
+    }
 }

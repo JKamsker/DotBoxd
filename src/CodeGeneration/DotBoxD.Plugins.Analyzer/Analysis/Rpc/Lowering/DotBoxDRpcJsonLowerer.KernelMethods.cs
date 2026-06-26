@@ -188,16 +188,25 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
     private bool IsServerContextReceiver(InvocationExpressionSyntax invocation, IMethodSymbol method)
     {
-        if (_serverContextParameterName is null ||
-            _serverContextType is null ||
-            invocation.Expression is not MemberAccessExpressionSyntax member ||
-            member.Expression is not IdentifierNameSyntax receiver ||
-            !string.Equals(receiver.Identifier.ValueText, _serverContextParameterName, StringComparison.Ordinal))
+        if (_serverContextType is null ||
+            !IsServerContextMethod(method, _serverContextType))
         {
             return false;
         }
 
-        for (var current = _serverContextType; current is not null; current = current.BaseType)
+        return invocation.Expression switch
+        {
+            IdentifierNameSyntax => true,
+            MemberAccessExpressionSyntax { Expression: ThisExpressionSyntax } => true,
+            MemberAccessExpressionSyntax { Expression: IdentifierNameSyntax receiver } =>
+                string.Equals(receiver.Identifier.ValueText, _serverContextParameterName, StringComparison.Ordinal),
+            _ => false
+        };
+    }
+
+    private static bool IsServerContextMethod(IMethodSymbol method, ITypeSymbol serverContextType)
+    {
+        for (var current = serverContextType; current is not null; current = current.BaseType)
         {
             if (SymbolEqualityComparer.Default.Equals(method.ContainingType, current))
             {

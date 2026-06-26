@@ -8,7 +8,7 @@ using static DotBoxD.Plugins.Analyzer.Analysis.Rpc.DotBoxDRpcJsonLowerer;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.InvokeAsync;
 
-internal static class InvokeAsyncModelFactory
+internal static partial class InvokeAsyncModelFactory
 {
     private const string InvokeAsyncMethod = "InvokeAsync";
 
@@ -40,8 +40,28 @@ internal static class InvokeAsyncModelFactory
         SemanticModel model,
         CancellationToken cancellationToken)
     {
-        if (invocation.Expression is IdentifierNameSyntax { Identifier.ValueText: InvokeAsyncMethod })
+        string receiverType;
+        string? serverAccessType;
+        INamedTypeSymbol worldType;
+        if (IsUnqualifiedInvokeAsyncExpression(invocation.Expression))
         {
+            if (TryImplicitGeneratedFacadeSurface(
+                    model,
+                    invocation,
+                    cancellationToken,
+                    out receiverType,
+                    out serverAccessType,
+                    out worldType))
+            {
+                return CreateForSurface(
+                    invocation,
+                    model,
+                    cancellationToken,
+                    receiverType,
+                    serverAccessType,
+                    worldType);
+            }
+
             if (IsDotBoxDInvokeAsync(model, invocation, cancellationToken))
             {
                 throw new NotSupportedException(
@@ -61,9 +81,9 @@ internal static class InvokeAsyncModelFactory
                 model,
                 access.Expression,
                 cancellationToken,
-                out var receiverType,
-                out var serverAccessType,
-                out var worldType))
+                out receiverType,
+                out serverAccessType,
+                out worldType))
         {
             if (IsDotBoxDInvokeAsync(model, invocation, cancellationToken))
             {
@@ -74,6 +94,23 @@ internal static class InvokeAsyncModelFactory
             return null;
         }
 
+        return CreateForSurface(
+            invocation,
+            model,
+            cancellationToken,
+            receiverType,
+            serverAccessType,
+            worldType);
+    }
+
+    private static InvokeAsyncResult CreateForSurface(
+        InvocationExpressionSyntax invocation,
+        SemanticModel model,
+        CancellationToken cancellationToken,
+        string receiverType,
+        string? serverAccessType,
+        INamedTypeSymbol worldType)
+    {
         var shape = model.GetSymbolInfo(invocation, cancellationToken).Symbol is IMethodSymbol method
             ? InvokeAsyncCallShape.Create(invocation, method, model, cancellationToken)
             : null;
@@ -119,6 +156,30 @@ internal static class InvokeAsyncModelFactory
         return new InvokeAsyncResult(package, interception, null);
     }
 
+    private static bool IsUnqualifiedInvokeAsyncExpression(ExpressionSyntax expression)
+        => expression is IdentifierNameSyntax { Identifier.ValueText: InvokeAsyncMethod } or
+            GenericNameSyntax { Identifier.ValueText: InvokeAsyncMethod };
+
+    private static bool TryImplicitGeneratedFacadeSurface(
+        SemanticModel model,
+        InvocationExpressionSyntax invocation,
+        CancellationToken cancellationToken,
+        out string receiverType,
+        out string? serverAccessType,
+        out INamedTypeSymbol worldType)
+    {
+        receiverType = string.Empty;
+        serverAccessType = null;
+        worldType = null!;
+        var containingType = model.GetEnclosingSymbol(invocation.SpanStart, cancellationToken)?.ContainingType;
+        return containingType is not null &&
+               InvokeAsyncReceiverResolver.TryResolveGeneratedFacadeType(
+                   containingType,
+                   out receiverType,
+                   out serverAccessType,
+                   out worldType);
+    }
+
     private static bool IsDotBoxDInvokeAsync(
         SemanticModel model,
         InvocationExpressionSyntax invocation,
@@ -158,44 +219,6 @@ internal static class InvokeAsyncModelFactory
             out receiverType,
             out serverAccessType,
             out worldType);
-
-    private static GeneratedPluginPackage EmitPackage(
-        string ns,
-        string packageName,
-        string pluginId,
-        InvokeAsyncCallShape shape,
-        string bodyJson,
-        IEnumerable<string> effects,
-        IEnumerable<string> capabilities)
-    {
-        var json =
-            "{" +
-            "\"manifest\":{" +
-            $"\"pluginId\":{Str(pluginId)}," +
-            "\"contract\":\"AnonymousInvokeAsync\"," +
-            "\"mode\":\"Auto\"," +
-            $"\"effects\":[{JoinStrings(effects)}]," +
-            "\"liveSettings\":[]," +
-            "\"subscriptions\":[]," +
-            $"\"requiredCapabilities\":[{JoinStrings(capabilities)}]," +
-            "\"rpcEntrypoint\":\"Invoke\"}," +
-            "\"entrypoints\":{\"shouldHandle\":\"Invoke\",\"handle\":\"Invoke\"}," +
-            "\"module\":{" +
-            $"\"id\":{Str(pluginId)},\"version\":\"1.0.0\",\"targetSandboxVersion\":\"1.0.0\"," +
-            "\"capabilityRequests\":[]," +
-            $"\"metadata\":{{\"kernel\":\"AnonymousInvokeAsync\",\"pluginId\":{Str(pluginId)}}}," +
-            "\"functions\":[{" +
-            "\"id\":\"Invoke\",\"visibility\":\"entrypoint\"," +
-            $"\"parameters\":{shape.ParametersJson}," +
-            $"\"returnType\":{shape.ReturnTypeJson}," +
-            $"\"body\":{bodyJson}}}]}}}}";
-
-        return new GeneratedPluginPackage(
-            HintName(ns, packageName),
-            BuildSource(ns, packageName, json),
-            ns,
-            packageName);
-    }
 
     private static InvokeAsyncInterception? Interception(
         InvocationExpressionSyntax invocation,
@@ -256,42 +279,6 @@ internal static class InvokeAsyncModelFactory
             new EquatableArray<string>(syncOutAssignments),
             shape.UsesReflectionCaptures,
             reader.Helpers);
-    }
-
-    private static string BuildSource(string ns, string packageName, string json)
-    {
-        var builder = new System.Text.StringBuilder();
-        builder.AppendLine("// <auto-generated/>");
-        builder.AppendLine("#nullable enable");
-        if (!string.IsNullOrEmpty(ns))
-        {
-            builder.Append("namespace ").Append(ns).AppendLine(";");
-            builder.AppendLine();
-        }
-
-        builder.Append("public static class ").AppendLine(packageName);
-        builder.AppendLine("{");
-        builder.Append("    public static ").Append(DotBoxDGenerationNames.TypeNames.GlobalPluginPackage).AppendLine(" Create()");
-        builder.Append("        => ").Append(DotBoxDGenerationNames.TypeNames.GlobalPluginPackageJsonSerializer)
-            .Append(".Import(\"").Append(json.Replace("\\", "\\\\").Replace("\"", "\\\"")).AppendLine("\");");
-        builder.AppendLine("}");
-        return builder.ToString();
-    }
-
-    private static string HintName(string ns, string packageName)
-        => string.IsNullOrWhiteSpace(ns)
-            ? packageName + ".g.cs"
-            : ns.Replace("@", string.Empty) + "." + packageName + ".g.cs";
-
-    private static string JoinStrings(IEnumerable<string> values)
-    {
-        var parts = new List<string>();
-        foreach (var value in values)
-        {
-            parts.Add(Str(value));
-        }
-
-        return string.Join(",", parts);
     }
 
 }

@@ -20,6 +20,11 @@ internal static class PluginServerWrapperEmitter
             "Creates a generated wrapper around the remote domain control and the owning plugin server.");
         builder.AppendLine("        public " + control.WrapperName + "(" + PluginServerIdentifier.Escape(model.ClassName) + " owner, " + control.Type + " inner) { _owner = owner; _inner = inner; }");
         AppendAccessorSurface(builder, "        ");
+        foreach (var property in control.Properties)
+        {
+            AppendProperty(builder, property, "        ");
+        }
+
         foreach (var method in control.Methods)
         {
             AppendMethod(builder, method, "        ");
@@ -47,10 +52,7 @@ internal static class PluginServerWrapperEmitter
         AppendAccessorSurface(builder, "            ");
         foreach (var property in wrapper.Properties)
         {
-            PluginServerXmlDocumentation.Append(builder, "            ", property.Documentation);
-            builder.Append("            public ").Append(property.Type).Append(' ')
-                .Append(PluginServerIdentifier.Escape(property.Name))
-                .Append(" => _inner.").Append(PluginServerIdentifier.Escape(property.Name)).AppendLine(";");
+            AppendProperty(builder, property, "            ");
         }
 
         foreach (var method in wrapper.Methods)
@@ -68,6 +70,21 @@ internal static class PluginServerWrapperEmitter
             indent,
             "Registry for server extension clients installed through setup, Extend, or EnsureAnonymousKernelAsync.");
         builder.Append(indent).AppendLine("public global::DotBoxD.Abstractions.IServerExtensionClientRegistry ServerExtensions => _owner;");
+    }
+
+    private static void AppendProperty(StringBuilder builder, PluginServerForwardedProperty property, string indent)
+    {
+        PluginServerXmlDocumentation.Append(builder, indent, property.Documentation);
+        builder.Append(indent).Append("public ").Append(property.Type).Append(' ')
+            .Append(PluginServerIdentifier.Escape(property.Name)).Append(" => ");
+        if (property.ReturnWrapperName is null)
+        {
+            builder.Append("_inner.").Append(PluginServerIdentifier.Escape(property.Name)).AppendLine(";");
+            return;
+        }
+
+        builder.Append("new ").Append(property.ReturnWrapperName).Append("(_owner, _inner.")
+            .Append(PluginServerIdentifier.Escape(property.Name)).AppendLine(");");
     }
 
     private static void AppendMethod(StringBuilder builder, PluginServerForwardedMethod method, string indent)

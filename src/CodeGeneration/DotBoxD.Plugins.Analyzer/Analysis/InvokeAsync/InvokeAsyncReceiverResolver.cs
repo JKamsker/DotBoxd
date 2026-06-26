@@ -21,9 +21,8 @@ internal static class InvokeAsyncReceiverResolver
         worldType = null!;
 
         var semanticType = model.GetTypeInfo(receiver, cancellationToken).Type as INamedTypeSymbol;
-        if (semanticType is not null && TryResolveWorld(semanticType, out worldType))
+        if (semanticType is not null && TryResolveGeneratedFacadeType(semanticType, out receiverType, out serverAccessType, out worldType))
         {
-            receiverType = TypeName(semanticType);
             return true;
         }
 
@@ -51,14 +50,39 @@ internal static class InvokeAsyncReceiverResolver
         return false;
     }
 
+    internal static bool TryResolveGeneratedFacadeType(
+        INamedTypeSymbol type,
+        out string receiverType,
+        out string? serverAccessType,
+        out INamedTypeSymbol worldType)
+    {
+        receiverType = string.Empty;
+        serverAccessType = null;
+        worldType = null!;
+        if (!TryResolveWorld(type, out worldType))
+        {
+            return false;
+        }
+
+        receiverType = TypeName(type);
+        return true;
+    }
+
     internal static bool IsGeneratedServerInterfaceNameCandidate(string name)
         => name.Length > "IServer".Length &&
            name.StartsWith("I", StringComparison.Ordinal) &&
            name.EndsWith("Server", StringComparison.Ordinal);
 
     private static bool IsGeneratedServerInterfaceCandidate(INamedTypeSymbol type)
-        => type.TypeKind is TypeKind.Interface or TypeKind.Error &&
-           IsGeneratedServerInterfaceNameCandidate(type.Name);
+        => IsGeneratedServerInterfaceNameCandidate(type.Name) &&
+           (type.TypeKind == TypeKind.Error ||
+            (type.TypeKind == TypeKind.Interface && InheritsPluginServerInterface(type)));
+
+    private static bool InheritsPluginServerInterface(INamedTypeSymbol type)
+        => type.AllInterfaces.Any(static candidate => string.Equals(
+            candidate.OriginalDefinition.ToDisplayString(),
+            "DotBoxD.Abstractions.IPluginServer<TWorld>",
+            StringComparison.Ordinal));
 
     private static bool TryResolveGeneratedBuilderLocal(
         SemanticModel model,
@@ -184,16 +208,23 @@ internal static class InvokeAsyncReceiverResolver
             return false;
         }
 
+        var found = false;
         foreach (var candidate in type.Interfaces)
         {
             if (HasDotBoxDServiceAttribute(candidate))
             {
+                if (found)
+                {
+                    worldType = null!;
+                    return false;
+                }
+
                 worldType = candidate;
-                return true;
+                found = true;
             }
         }
 
-        return false;
+        return found;
     }
 
     private static bool HasGeneratePluginServerAttribute(INamedTypeSymbol type)

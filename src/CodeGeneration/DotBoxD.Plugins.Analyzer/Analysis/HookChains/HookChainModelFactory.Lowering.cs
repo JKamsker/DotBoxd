@@ -250,19 +250,20 @@ internal static partial class HookChainModelFactory
         SemanticModel model,
         CancellationToken cancellationToken)
     {
-        if (lambda is not ParenthesizedLambdaExpressionSyntax parenthesized)
+        if (lambda is ParenthesizedLambdaExpressionSyntax parenthesized)
         {
-            return null;
-        }
-
-        foreach (var parameter in parenthesized.ParameterList.Parameters)
-        {
-            if (string.Equals(parameter.Identifier.ValueText, parameterName, StringComparison.Ordinal))
+            foreach (var parameter in parenthesized.ParameterList.Parameters)
             {
-                return (model.GetDeclaredSymbol(parameter, cancellationToken) as IParameterSymbol)?.Type;
+                if (string.Equals(parameter.Identifier.ValueText, parameterName, StringComparison.Ordinal))
+                {
+                    var type = (model.GetDeclaredSymbol(parameter, cancellationToken) as IParameterSymbol)?.Type;
+                    return type is { TypeKind: not TypeKind.Error }
+                        ? type
+                        : GeneratedRemoteHookChainFallback.ServerContextTypeForLambda(lambda, model, cancellationToken);
+                }
             }
         }
 
-        return null;
+        return GeneratedRemoteHookChainFallback.ServerContextTypeForLambda(lambda, model, cancellationToken);
     }
 }

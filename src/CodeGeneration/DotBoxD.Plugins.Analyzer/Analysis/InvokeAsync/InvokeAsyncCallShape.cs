@@ -108,7 +108,7 @@ internal sealed partial class InvokeAsyncCallShape
             InvokeAsyncLambdaShape.TryLambda(lambdaExpression, out var lambda) &&
             lambda.Body is BlockSyntax block &&
             InvokeAsyncLambdaShape.TryWorldParameter(lambda, model, cancellationToken, generatedWorldType, out var worldType) &&
-            InvokeAsyncLambdaShape.TryReturnType(block, model, cancellationToken, out var returnType))
+            TryGeneratedReceiverReturnType(invocation, block, model, cancellationToken, expectedTypeArgumentCount: 1, typeArgumentIndex: 0, out var returnType))
         {
             return LambdaOnly(lambda, block, worldType, returnType, model);
         }
@@ -124,7 +124,7 @@ internal sealed partial class InvokeAsyncCallShape
                 generatedWorldType,
                 out var captureParameter,
                 out worldType) &&
-            InvokeAsyncLambdaShape.TryReturnType(captureBlock, model, cancellationToken, out returnType) &&
+            TryGeneratedReceiverReturnType(invocation, captureBlock, model, cancellationToken, expectedTypeArgumentCount: 2, typeArgumentIndex: 1, out returnType) &&
             !HasExternalCaptures(lambda, model))
         {
             return CaptureBag(returnType, captureParameter, captureBlock, model, worldType);
@@ -132,6 +132,64 @@ internal sealed partial class InvokeAsyncCallShape
 
         return null;
     }
+
+    private static bool TryGeneratedReceiverReturnType(
+        InvocationExpressionSyntax invocation,
+        BlockSyntax block,
+        SemanticModel model,
+        CancellationToken cancellationToken,
+        int expectedTypeArgumentCount,
+        int typeArgumentIndex,
+        out ITypeSymbol returnType)
+    {
+        if (TryExplicitGenericTypeArgument(
+                invocation,
+                model,
+                cancellationToken,
+                expectedTypeArgumentCount,
+                typeArgumentIndex,
+                out returnType))
+        {
+            return true;
+        }
+
+        return InvokeAsyncLambdaShape.TryReturnType(block, model, cancellationToken, out returnType);
+    }
+
+    private static bool TryExplicitGenericTypeArgument(
+        InvocationExpressionSyntax invocation,
+        SemanticModel model,
+        CancellationToken cancellationToken,
+        int expectedTypeArgumentCount,
+        int typeArgumentIndex,
+        out ITypeSymbol type)
+    {
+        type = null!;
+        if (GenericInvokeAsyncName(invocation.Expression) is not { } generic ||
+            generic.TypeArgumentList.Arguments.Count != expectedTypeArgumentCount)
+        {
+            return false;
+        }
+
+        var candidate = model.GetTypeInfo(
+            generic.TypeArgumentList.Arguments[typeArgumentIndex],
+            cancellationToken).Type;
+        if (candidate is null || candidate.TypeKind == TypeKind.Error)
+        {
+            return false;
+        }
+
+        type = candidate;
+        return true;
+    }
+
+    private static GenericNameSyntax? GenericInvokeAsyncName(ExpressionSyntax expression)
+        => expression switch
+        {
+            GenericNameSyntax { Identifier.ValueText: "InvokeAsync" } generic => generic,
+            MemberAccessExpressionSyntax { Name: GenericNameSyntax { Identifier.ValueText: "InvokeAsync" } generic } => generic,
+            _ => null,
+        };
 
     public string LowerBody(DotBoxDRpcJsonLowerer lowerer, BlockSyntax block)
         => lowerer.LowerBody(

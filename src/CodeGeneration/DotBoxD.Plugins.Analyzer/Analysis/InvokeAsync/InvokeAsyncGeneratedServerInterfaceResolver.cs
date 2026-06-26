@@ -125,16 +125,23 @@ internal static class InvokeAsyncGeneratedServerInterfaceResolver
             return false;
         }
 
+        var found = false;
         foreach (var candidate in type.Interfaces)
         {
             if (HasDotBoxDServiceAttribute(candidate))
             {
+                if (found)
+                {
+                    worldType = null!;
+                    return false;
+                }
+
                 worldType = candidate;
-                return true;
+                found = true;
             }
         }
 
-        return false;
+        return found;
     }
 
     private static bool HasGeneratePluginServerAttribute(INamedTypeSymbol type)

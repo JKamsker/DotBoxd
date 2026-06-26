@@ -98,23 +98,6 @@ public static partial class KernelRpcMarshaller
             return ConstructFromArguments(arguments);
         }
 
-        private object ConstructFromArguments(object?[] arguments)
-        {
-            var instance = Activator.CreateInstance(_type)
-                ?? throw new NotSupportedException($"Server extension could not construct '{_type}'.");
-            for (var i = 0; i < Fields.Count; i++)
-            {
-                // Skip derived/get-only members: they have no set accessor and are recomputed from the members
-                // that were assigned, so assigning them is both impossible and unnecessary.
-                if (Fields[i].IsSettable)
-                {
-                    Fields[i].SetValue(instance, arguments[i]);
-                }
-            }
-
-            return instance;
-        }
-
         private static Func<RecordValue, object>? CreateRecordFactory(
             ConstructorInfo? constructor,
             IReadOnlyList<int> constructorMap,

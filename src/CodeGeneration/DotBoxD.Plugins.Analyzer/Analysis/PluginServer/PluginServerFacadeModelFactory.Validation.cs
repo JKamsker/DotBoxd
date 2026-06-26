@@ -156,6 +156,7 @@ internal static partial class PluginServerFacadeModelFactory
 
     private static void ValidateGeneratedSurfaceCollisions(
         INamedTypeSymbol worldType,
+        IReadOnlyList<PluginServerForwardedProperty> properties,
         IReadOnlyList<PluginServerForwardedMethod> methods,
         IReadOnlyList<PluginServerControlProperty> controls)
     {
@@ -177,6 +178,15 @@ internal static partial class PluginServerFacadeModelFactory
             "InvokeServerExtensionAsync",
             "EnsureAnonymousKernelAsync",
         };
+
+        foreach (var property in properties)
+        {
+            if (reserved.Contains(property.Name))
+            {
+                throw new NotSupportedException(
+                    $"Generated plugin server world '{worldType.ToDisplayString()}' member '{property.Name}' collides with the generated facade surface.");
+            }
+        }
 
         foreach (var method in methods)
         {

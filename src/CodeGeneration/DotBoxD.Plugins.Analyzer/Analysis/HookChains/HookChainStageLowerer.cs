@@ -251,23 +251,17 @@ internal static class HookChainStageLowerer
         => "$dotboxd.select." + lambda.SpanStart.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     private static (string? ElementParam, string? ContextParam) LambdaParameters(LambdaExpressionSyntax lambda)
-    {
-        switch (lambda)
+        => lambda switch
         {
-            case SimpleLambdaExpressionSyntax simple:
-                return (simple.Parameter.Identifier.ValueText, null);
-            case ParenthesizedLambdaExpressionSyntax parenthesized:
-                var parameters = parenthesized.ParameterList.Parameters;
-                return parameters.Count switch
-                {
-                    1 => (parameters[0].Identifier.ValueText, null),
-                    2 => (parameters[0].Identifier.ValueText, parameters[1].Identifier.ValueText),
-                    _ => (null, null),
-                };
-            default:
-                return (null, null);
-        }
-    }
+            SimpleLambdaExpressionSyntax simple => (simple.Parameter.Identifier.ValueText, null),
+            ParenthesizedLambdaExpressionSyntax { ParameterList.Parameters: var parameters } => parameters.Count switch
+            {
+                1 => (parameters[0].Identifier.ValueText, null),
+                2 => (parameters[0].Identifier.ValueText, parameters[1].Identifier.ValueText),
+                _ => (null, null),
+            },
+            _ => (null, null)
+        };
 
     private static ITypeSymbol? LambdaParameterType(
         LambdaExpressionSyntax lambda,
@@ -275,21 +269,26 @@ internal static class HookChainStageLowerer
         SemanticModel model,
         CancellationToken cancellationToken)
     {
-        if (parameterName is null ||
-            lambda is not ParenthesizedLambdaExpressionSyntax { ParameterList.Parameters: var parameters })
+        if (parameterName is null)
         {
             return null;
         }
 
-        foreach (var parameter in parameters)
+        if (lambda is ParenthesizedLambdaExpressionSyntax { ParameterList.Parameters: var parameters })
         {
-            if (string.Equals(parameter.Identifier.ValueText, parameterName, StringComparison.Ordinal))
+            foreach (var parameter in parameters)
             {
-                return (model.GetDeclaredSymbol(parameter, cancellationToken) as IParameterSymbol)?.Type;
+                if (string.Equals(parameter.Identifier.ValueText, parameterName, StringComparison.Ordinal))
+                {
+                    var type = (model.GetDeclaredSymbol(parameter, cancellationToken) as IParameterSymbol)?.Type;
+                    return type is { TypeKind: not TypeKind.Error }
+                        ? type
+                        : GeneratedRemoteHookChainFallback.ServerContextTypeForLambda(lambda, model, cancellationToken);
+                }
             }
         }
 
-        return null;
+        return GeneratedRemoteHookChainFallback.ServerContextTypeForLambda(lambda, model, cancellationToken);
     }
 
     private sealed record Projection(DotBoxDStatementBodyModel Assignment, DotBoxDExpressionModel Current, ITypeSymbol? CurrentType);

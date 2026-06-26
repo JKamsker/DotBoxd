@@ -3,6 +3,39 @@ namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Generated;
 public sealed class PluginServerFacadeRegressionTests
 {
     [Fact]
+    public void Generated_plugin_server_rejects_multiple_direct_world_interfaces()
+    {
+        var diagnostics = PluginServerGenerationTestDriver.Diagnostics("""
+            using DotBoxD.Abstractions;
+            using DotBoxD.Services.Attributes;
+
+            namespace Regression.Game
+            {
+                [DotBoxDService]
+                public interface IAlphaWorld;
+
+                [DotBoxDService]
+                public interface IBetaWorld;
+            }
+
+            namespace Regression.Plugin
+            {
+                using DotBoxD.Abstractions;
+                using Regression.Game;
+
+                [GeneratePluginServer(Context = typeof(RemotePluginContext))]
+                public partial class RemotePluginServer : IAlphaWorld, IBetaWorld;
+
+                public sealed partial class RemotePluginContext;
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.GetMessage().Contains(
+            "must directly implement one [DotBoxDService] world interface",
+            StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Generated_plugin_server_includes_inherited_controls_and_wraps_async_handles()
     {
         var (generated, outputCompilation) = PluginServerGenerationTestDriver.Run("""

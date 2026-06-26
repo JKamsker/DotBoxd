@@ -27,8 +27,7 @@ internal static partial class DotBoxDKernelMethodInliner
         DotBoxDExpressionLoweringContext context,
         Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression)
     {
-        if (context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken).Symbol
-                is not IMethodSymbol resolvedMethod ||
+        if (ResolveKernelMethodInvocation(invocation, context) is not { } resolvedMethod ||
             !HasKernelMethodAttribute(resolvedMethod, context.SemanticModel.Compilation))
         {
             return null;
@@ -62,7 +61,13 @@ internal static partial class DotBoxDKernelMethodInliner
         if (TryKernelMethodBody(method, context.CancellationToken) is { } body)
         {
             var bodySemanticModel = context.SemanticModel.Compilation.GetSemanticModel(body.SyntaxTree);
-            KernelMethodArgumentReuseValidator.Validate(method, body, bodySemanticModel, call, context.CancellationToken);
+            KernelMethodArgumentReuseValidator.Validate(
+                method,
+                body,
+                bodySemanticModel,
+                call,
+                context.SemanticModel,
+                context.CancellationToken);
             var bindings = BindArguments(call, context, lowerExpression);
             var inlineContext = context.ForInlinedMethod(bodySemanticModel, bindings, methodKey);
             var result = DotBoxDExpressionModelFactory.Create(body, inlineContext);
@@ -77,31 +82,6 @@ internal static partial class DotBoxDKernelMethodInliner
 
         var descriptorBindings = BindArguments(call, context, lowerExpression);
         return InlineMetadataDescriptor(method, context, call, descriptorBindings, returnType);
-    }
-
-    private static bool IsServerContextReceiver(
-        InvocationExpressionSyntax invocation,
-        IMethodSymbol method,
-        DotBoxDExpressionLoweringContext context)
-    {
-        if (context.ServerContextParameterName is null ||
-            context.ServerContextType is null ||
-            invocation.Expression is not MemberAccessExpressionSyntax member ||
-            member.Expression is not IdentifierNameSyntax receiver ||
-            !string.Equals(receiver.Identifier.ValueText, context.ServerContextParameterName, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        for (var current = context.ServerContextType; current is not null; current = current.BaseType)
-        {
-            if (SymbolEqualityComparer.Default.Equals(method.ContainingType, current))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static IReadOnlyDictionary<string, DotBoxDExpressionModel> BindArguments(

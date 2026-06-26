@@ -51,7 +51,7 @@ internal static partial class DotBoxDKernelMethodInliner
         }
 
         var occurrences = ValidateDescriptorParameters(method, descriptor);
-        ValidateDescriptorArgumentUses(method, occurrences, call);
+        ValidateDescriptorArgumentUses(method, occurrences, call, context.SemanticModel, context.CancellationToken);
         var recomputed = RecomputeDescriptorRequirements(method, context, descriptor);
         var shape = RevalidateDescriptorShape(method, context, descriptor);
         var replacements = new List<DescriptorPlaceholderReplacement>();

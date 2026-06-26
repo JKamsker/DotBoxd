@@ -1,3 +1,4 @@
+using System.Globalization;
 using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -14,6 +15,7 @@ internal sealed partial class InvokeAsyncCallShape
     {
         ValidateExplicitCaptureMutations(block, captureParameter, model);
         var syncOuts = new List<InvokeAsyncSyncOut>();
+        var reservedLocalNames = ReservedLocalNames(block);
         foreach (var assignment in block.DescendantNodes().OfType<AssignmentExpressionSyntax>())
         {
             if (!TryCaptureMember(assignment.Left, captureParameter.Name, model, out var member, out var target))
@@ -44,11 +46,38 @@ internal sealed partial class InvokeAsyncCallShape
             syncOuts.Add(new InvokeAsyncSyncOut(
                 recordMember.Name,
                 recordMember.Type,
-                "__syncOut_" + recordMember.Name,
+                ReserveSyncOutLocal(recordMember.Name, reservedLocalNames),
                 member));
         }
 
         return syncOuts;
+    }
+
+    private static HashSet<string> ReservedLocalNames(BlockSyntax block)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var token in block.DescendantTokens())
+        {
+            if (token.IsKind(SyntaxKind.IdentifierToken))
+            {
+                names.Add(token.ValueText);
+            }
+        }
+
+        return names;
+    }
+
+    private static string ReserveSyncOutLocal(string memberName, ISet<string> reserved)
+    {
+        var seed = "__syncOut_" + memberName;
+        var name = seed;
+        for (var suffix = 0; reserved.Contains(name); suffix++)
+        {
+            name = seed + "_" + suffix.ToString(CultureInfo.InvariantCulture);
+        }
+
+        reserved.Add(name);
+        return name;
     }
 
     private static void ValidateWritableCapture(RecordMember member, Compilation compilation)

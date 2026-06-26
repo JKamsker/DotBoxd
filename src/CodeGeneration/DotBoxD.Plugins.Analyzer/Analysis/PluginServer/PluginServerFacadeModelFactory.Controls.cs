@@ -30,6 +30,7 @@ internal static partial class PluginServerFacadeModelFactory
                 continue;
             }
 
+            var serviceWrappers = new Dictionary<string, ServiceWrapperBuilder>(StringComparer.Ordinal);
             controls.Add(new PluginServerControlProperty(
                 property.Name,
                 UniqueFieldName(property.Name, fieldNames),
@@ -40,13 +41,26 @@ internal static partial class PluginServerFacadeModelFactory
                     cancellationToken),
                 property.Name + "PluginControl",
                 UniqueTypeName(property.Name + "Accumulator", accumulatorNames),
+                new EquatableArray<PluginServerForwardedProperty>(
+                    ResolveForwardedProperties(
+                        propertyType,
+                        serviceWrappers,
+                        skipServiceProperties: false,
+                        cancellationToken)),
                 new EquatableArray<PluginServerForwardedMethod>(
                     ResolveMethods(
                         propertyType,
-                        new Dictionary<string, ServiceWrapperBuilder>(StringComparer.Ordinal),
+                        serviceWrappers,
                         cancellationToken)),
                 new EquatableArray<PluginServerServiceWrapper>(
-                    ResolveServiceWrappers(propertyType, cancellationToken))));
+                    serviceWrappers.Values
+                        .Select(static wrapper => new PluginServerServiceWrapper(
+                            wrapper.Type,
+                            wrapper.WrapperName,
+                            wrapper.Documentation,
+                            new EquatableArray<PluginServerForwardedProperty>(wrapper.Properties.ToArray()),
+                            new EquatableArray<PluginServerForwardedMethod>(wrapper.Methods.ToArray())))
+                        .ToArray())));
         }
 
         return controls.ToArray();
