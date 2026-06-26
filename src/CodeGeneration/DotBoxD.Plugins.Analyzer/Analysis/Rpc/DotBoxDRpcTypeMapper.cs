@@ -5,8 +5,8 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 /// Maps C# types used by a <c>[ServerExtension]</c> batch method onto DotBoxD.Kernels JSON IR types: scalars to
 /// their sandbox names, <c>List&lt;T&gt;</c>/<c>IEnumerable&lt;T&gt;</c>/<c>T[]</c> to <c>List</c>, and a
 /// DTO (record/struct/class of supported fields) to a positional <c>Record</c>. A DTO's fields are its
-/// public instance properties in declaration order, which is also the order <c>record.new</c> arguments
-/// and <c>record.get</c> indices use. Anything unsupported throws <see cref="NotSupportedException"/> so
+/// public readable properties followed by public instance fields, which is also the order <c>record.new</c>
+/// arguments and <c>record.get</c> indices use. Anything unsupported throws <see cref="NotSupportedException"/> so
 /// the whole kernel fails generation safely.
 /// </summary>
 internal static partial class DotBoxDRpcTypeMapper
@@ -202,11 +202,9 @@ internal static partial class DotBoxDRpcTypeMapper
            RecordFields(type).Count > 0;
 
     /// <summary>
-    /// The DTO's positional fields, in declaration order (for a positional record this is its primary-constructor
-    /// parameter order): its public instance properties with a getter, or — for a value type that carries its
-    /// data in public fields rather than properties (e.g. <c>System.Numerics.Vector3</c>, whose <c>X/Y/Z</c> are
-    /// <c>float</c> fields) — its public instance fields. The field fallback only runs when there are no readable
-    /// properties, so a property-based DTO is unaffected and the change is strictly additive.
+    /// The DTO's positional fields: public readable properties first, then public instance fields. That order
+    /// mirrors the runtime reflection shape, keeps existing property DTOs stable, and lets a DTO that mixes
+    /// properties with fields marshal every public wire member instead of silently dropping fields.
     /// </summary>
     public static IReadOnlyList<RecordMember> RecordFields(INamedTypeSymbol type)
     {
@@ -228,21 +226,18 @@ internal static partial class DotBoxDRpcTypeMapper
             }
         }
 
-        if (members.Count == 0)
+        foreach (var member in type.GetMembers())
         {
-            foreach (var member in type.GetMembers())
-            {
-                if (member is IFieldSymbol
-                    {
-                        DeclaredAccessibility: Accessibility.Public,
-                        IsStatic: false,
-                        IsConst: false
-                    } field &&
-                    !field.IsImplicitlyDeclared &&
-                    !IsIgnoredDataMember(field))
+            if (member is IFieldSymbol
                 {
-                    members.Add(new RecordMember(field.Name, field.Type, field));
-                }
+                    DeclaredAccessibility: Accessibility.Public,
+                    IsStatic: false,
+                    IsConst: false
+                } field &&
+                !field.IsImplicitlyDeclared &&
+                !IsIgnoredDataMember(field))
+            {
+                members.Add(new RecordMember(field.Name, field.Type, field));
             }
         }
 

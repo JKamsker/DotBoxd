@@ -15,7 +15,7 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
 
         var record = Assert.IsType<RecordValue>(sandbox);
         Assert.Equal(
-            [SandboxValue.FromInt32(3), SandboxValue.FromInt32(9), SandboxValue.FromInt32(12)],
+            [SandboxValue.FromInt32(3), SandboxValue.FromInt32(12), SandboxValue.FromInt32(9)],
             record.Fields);
 
         var fromKernel = Assert.IsType<MixedPropertyFieldDto>(
@@ -23,8 +23,8 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
                 KernelRpcValue.Record(
                 [
                     KernelRpcValue.Int32(4),
-                    KernelRpcValue.Int32(8),
-                    KernelRpcValue.Int32(12)
+                    KernelRpcValue.Int32(12),
+                    KernelRpcValue.Int32(8)
                 ]),
                 typeof(MixedPropertyFieldDto)));
 

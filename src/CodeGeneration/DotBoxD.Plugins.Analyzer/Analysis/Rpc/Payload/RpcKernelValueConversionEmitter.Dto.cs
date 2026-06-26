@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis;
 
 /// <summary>
 /// DTO marshalling for <see cref="RpcKernelValueConversionEmitter"/>: a DTO is written as a positional
-/// <c>Record</c> of its public instance properties (declaration order) and read back through a constructor
+/// <c>Record</c> of its public readable properties and fields, then read back through a constructor
 /// whose parameters match those fields by name and type. All field expressions are computed before the
 /// owning helper method is appended, so nested list/DTO helpers never interleave with the body being built.
 /// </summary>

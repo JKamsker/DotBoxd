@@ -10,18 +10,19 @@ public static partial class KernelRpcMarshaller
             var instance = ConstructInstance(arguments, assigned);
             for (var i = 0; i < Fields.Count; i++)
             {
-                if (assigned[i])
-                {
-                    continue;
-                }
-
-                if (Fields[i].IsSettable)
+                if (!assigned[i] && Fields[i].IsSettable)
                 {
                     Fields[i].SetValue(instance, arguments[i]);
-                    continue;
+                    assigned[i] = true;
                 }
+            }
 
-                VerifyReadOnlyField(instance, Fields[i], arguments[i]);
+            for (var i = 0; i < Fields.Count; i++)
+            {
+                if (!assigned[i])
+                {
+                    VerifyReadOnlyField(instance, Fields[i], arguments[i]);
+                }
             }
 
             return instance;

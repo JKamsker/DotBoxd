@@ -105,7 +105,9 @@ public static partial class KernelRpcMarshaller
 
             var members = new List<RecordMember>();
             const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
-            foreach (var property in candidate.GetProperties(flags))
+            var properties = candidate.GetProperties(flags);
+            Array.Sort(properties, static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
+            foreach (var property in properties)
             {
                 if (property.GetMethod is { IsPublic: true } &&
                     property.GetIndexParameters().Length == 0 &&
@@ -116,22 +118,19 @@ public static partial class KernelRpcMarshaller
                 }
             }
 
-            // A value type that carries its data in public fields rather than properties (e.g. a math vector
-            // like System.Numerics.Vector3, whose X/Y/Z are float fields) has no readable properties; fall back
-            // to its public instance fields so it still marshals as a record. The fallback only runs when there
-            // are no properties, so property-based DTOs are unaffected and this stays strictly additive.
-            if (members.Count == 0)
+            // Reflection reports declared properties and fields separately, so the wire shape is readable
+            // properties first, then public fields. That keeps existing property-only DTOs stable while mixed
+            // DTOs still marshal every public data member.
+            var fields = candidate.GetFields(flags);
+            Array.Sort(fields, static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
+            foreach (var field in fields)
             {
-                foreach (var field in candidate.GetFields(flags))
+                if (!IsIgnoredMember(field))
                 {
-                    if (!IsIgnoredMember(field))
-                    {
-                        members.Add(RecordMember.FromField(field));
-                    }
+                    members.Add(RecordMember.FromField(field));
                 }
             }
 
-            members.Sort(static (left, right) => left.Member.MetadataToken.CompareTo(right.Member.MetadataToken));
             return new RecordShape(candidate, members.ToArray());
         });
 

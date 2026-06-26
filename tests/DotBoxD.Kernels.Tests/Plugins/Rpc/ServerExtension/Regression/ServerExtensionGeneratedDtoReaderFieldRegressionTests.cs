@@ -62,8 +62,8 @@ public sealed partial class ServerExtensionGeneratedDtoReaderRegressionTests
             KernelRpcBinaryCodec.EncodeValue(KernelRpcValue.Record(
             [
                 KernelRpcValue.Int32(3),
-                KernelRpcValue.Int32(9),
-                KernelRpcValue.Int32(12)
+                KernelRpcValue.Int32(12),
+                KernelRpcValue.Int32(9)
             ])));
 
         var profile = assembly.GetType("Sample.Probe", throwOnError: true)!
