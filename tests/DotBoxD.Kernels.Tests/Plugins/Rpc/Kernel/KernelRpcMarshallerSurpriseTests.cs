@@ -6,7 +6,7 @@ using DotBoxD.Plugins.Runtime.Rpc;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
 
-public sealed class KernelRpcMarshallerSurpriseTests
+public sealed partial class KernelRpcMarshallerSurpriseTests
 {
     [Fact]
     public void FromSandboxValue_rejects_unreconstructable_get_only_wire_field()
