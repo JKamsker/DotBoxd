@@ -38,6 +38,27 @@ public sealed class InvokeAsyncCaptureBagRuntimeTests
         Assert.Equal(SandboxType.Record([SandboxType.String, SandboxType.I32]), function.ReturnType);
     }
 
+    [Fact]
+    public async Task Generated_interceptor_does_not_sync_out_when_main_result_decode_fails()
+    {
+        var assembly = Compile(Source);
+        var wire = Activator.CreateInstance(assembly.GetType("Sample.RecordingControlService", throwOnError: true)!)!;
+        wire.GetType().GetProperty("ReturnInvalidMainResult")!.SetValue(wire, true);
+        var controlType = assembly.GetType("DotBoxD.Kernels.Game.Plugin.Client.RemotePluginServer", throwOnError: true)!;
+        var control = Activator.CreateInstance(controlType, [wire, null])!;
+        var captureType = assembly.GetType("Sample.MonsterCapture", throwOnError: true)!;
+        var captures = Activator.CreateInstance(captureType)!;
+        captureType.GetProperty("MonsterId")!.SetValue(captures, "monster-2");
+        captureType.GetProperty("LastHealth")!.SetValue(captures, 12);
+
+        var run = assembly.GetType("Sample.Usage", throwOnError: true)!
+            .GetMethod("RunHealth", BindingFlags.Public | BindingFlags.Static)!;
+        await Assert.ThrowsAsync<NotSupportedException>(async () =>
+            await AwaitValueTaskResult<int>(run.Invoke(null, [control, captures])!));
+
+        Assert.Equal(12, captureType.GetProperty("LastHealth")!.GetValue(captures));
+    }
+
     private const string Source = """
         using System;
         using System.Threading;
@@ -116,6 +137,16 @@ public sealed class InvokeAsyncCaptureBagRuntimeTests
                         bag.LastHealth = monster.Health;
                         return monster.Name;
                     });
+
+                public static async ValueTask<int> RunHealth(
+                    RemotePluginServer kernels,
+                    MonsterCapture captures)
+                    => await kernels.InvokeAsync(captures, async (IGameWorldAccess world, MonsterCapture bag) =>
+                    {
+                        var monster = world.GetMonster(bag.MonsterId);
+                        bag.LastHealth = monster.Health;
+                        return monster.Health;
+                    });
             }
 
             public sealed class RecordingControlService : IGamePluginControlService
@@ -123,6 +154,7 @@ public sealed class InvokeAsyncCaptureBagRuntimeTests
                 public string CapturedMonsterId { get; private set; } = "";
                 public int CapturedLastHealth { get; private set; }
                 public PluginPackage? LastPackage { get; private set; }
+                public bool ReturnInvalidMainResult { get; set; }
 
                 public ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default)
                     => InstallPackageAsync(packageJson);
@@ -152,9 +184,12 @@ public sealed class InvokeAsyncCaptureBagRuntimeTests
                     capture.RequireKind(KernelRpcValueKind.Record);
                     CapturedMonsterId = capture.Items[0].TextValue;
                     CapturedLastHealth = capture.Items[1].Int32Value;
+                    var mainResult = ReturnInvalidMainResult
+                        ? KernelRpcValue.String("bad-main-result")
+                        : KernelRpcValue.String("monster-2");
                     return ValueTask.FromResult(KernelRpcBinaryCodec.EncodeValue(KernelRpcValue.Record(
                     [
-                        KernelRpcValue.String("monster-2"),
+                        mainResult,
                         KernelRpcValue.Int32(80)
                     ])));
                 }
