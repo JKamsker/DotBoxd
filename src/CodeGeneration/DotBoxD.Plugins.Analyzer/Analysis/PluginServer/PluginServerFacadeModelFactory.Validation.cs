@@ -163,6 +163,7 @@ internal static partial class PluginServerFacadeModelFactory
     {
         var reserved = new HashSet<string>(StringComparer.Ordinal)
         {
+            // Public facade surface.
             "Services",
             "ServerExtensions",
             "Hooks",
@@ -178,39 +179,84 @@ internal static partial class PluginServerFacadeModelFactory
             "PluginId",
             "InvokeServerExtensionAsync",
             "EnsureAnonymousKernelAsync",
+            // Generated private helpers, consts, and nested types. A forwarded world member named like one of
+            // these otherwise emits alongside the generated member as a raw CS0111/CS0102 instead of DBXK100.
+            "NotStartedMessage",
+            "NoWorldProxyMessage",
+            "Initialize",
+            "RequireControl",
+            "RequireWorld",
+            "ThrowIfDisposed",
+            "RecordSetup",
+            "ReplaySetupAsync",
+            "AwaitAnonymousKernelAsync",
+            "RemoveAnonymousKernel",
+            "InstallPluginPackageAsync",
+            "InstallSubscriptionPackageAsync",
+            "InstallServerExtensionPackageAsync",
+            "RecordedInstall",
+            "RecordedInstallKind",
+            "SetupRecorder",
+            "LiveSettingsHandle",
+            "RemoteLocalEventSink",
         };
         var generatedMembers = new HashSet<string>(reserved, StringComparer.Ordinal);
 
         foreach (var property in properties)
         {
-            generatedMembers.Add(property.Name);
             if (reserved.Contains(property.Name))
             {
                 throw new NotSupportedException(
                     $"Generated plugin server world '{worldType.ToDisplayString()}' member '{property.Name}' collides with the generated facade surface.");
             }
+
+            EnsureSingleFacadeCategory(generatedMembers, worldType, property.Name);
         }
 
         foreach (var method in methods)
         {
-            generatedMembers.Add(method.Name);
             if (reserved.Contains(method.Name))
             {
                 throw new NotSupportedException(
                     $"Generated plugin server world '{worldType.ToDisplayString()}' member '{method.Name}' collides with the generated facade surface.");
             }
+
+            EnsureSingleFacadeCategory(generatedMembers, worldType, method.Name);
         }
 
         foreach (var control in controls)
         {
-            generatedMembers.Add(control.Name);
             if (reserved.Contains(control.Name))
             {
                 throw new NotSupportedException(
                 $"Generated plugin server control '{control.Name}' collides with the generated facade surface.");
             }
+
+            EnsureSingleFacadeCategory(generatedMembers, worldType, control.Name);
         }
 
+        ValidateUserPartialCollisions(serverType, generatedMembers);
+    }
+
+    // Each forwarded category dedupes within itself, but a name shared across categories (e.g. a forwarded
+    // property and a control both named the same, inherited from different interfaces) would emit twice as
+    // CS0102. Surface the cross-category clash as the designed DBXK100 instead.
+    private static void EnsureSingleFacadeCategory(
+        HashSet<string> generatedMembers,
+        INamedTypeSymbol worldType,
+        string name)
+    {
+        if (!generatedMembers.Add(name))
+        {
+            throw new NotSupportedException(
+                $"Generated plugin server world '{worldType.ToDisplayString()}' member '{name}' is generated in more than one facade category (forwarded property, method, or control).");
+        }
+    }
+
+    private static void ValidateUserPartialCollisions(
+        INamedTypeSymbol serverType,
+        HashSet<string> generatedMembers)
+    {
         foreach (var member in serverType.GetMembers())
         {
             if (member.IsImplicitlyDeclared ||

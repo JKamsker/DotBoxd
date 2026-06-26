@@ -8,7 +8,8 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.PluginServer;
 /// the same <c>{worldNs}.Ipc</c> convention the factory uses for the control service. Optional: a world with no
 /// such contract keeps the original facade (no local handlers). Two guards keep the emitted facade compilable:
 /// a shape guard requires the <c>[DotBoxDService]</c> interface to carry the expected
-/// <c>OnEventAsync(string, ReadOnlyMemory&lt;byte&gt;, CancellationToken) -&gt; ValueTask</c>/<c>ValueTask&lt;T&gt;</c> method, and a transport guard requires
+/// <c>OnEventAsync(string, ReadOnlyMemory&lt;byte&gt;, CancellationToken) -&gt; ValueTask</c> method (a value-returning
+/// <c>ValueTask&lt;T&gt;</c> OnEventAsync is rejected with DBXK100; results flow through <c>OnResultAsync</c>), and a transport guard requires
 /// the compilation to actually expose the generated <c>DotBoxDGeneratedExtensions.Provide{suffix}</c> extension
 /// (absent or ambiguous — e.g. a test stub — falls back to the original wiring instead of a dangling call).
 /// </summary>
@@ -52,14 +53,27 @@ internal static class PluginServerEventCallbackResolver
     {
         foreach (var member in callback.GetMembers("OnEventAsync"))
         {
-            if (member is IMethodSymbol { Parameters.Length: 3 } method &&
-                IsValueTask(method.ReturnType) &&
-                method.Parameters[0].Type.SpecialType == SpecialType.System_String &&
-                IsReadOnlyByteMemory(method.Parameters[1].Type) &&
-                string.Equals(
+            if (member is not IMethodSymbol { Parameters.Length: 3 } method ||
+                method.Parameters[0].Type.SpecialType != SpecialType.System_String ||
+                !IsReadOnlyByteMemory(method.Parameters[1].Type) ||
+                !string.Equals(
                     method.Parameters[2].Type.ToDisplayString(),
                     "System.Threading.CancellationToken",
                     StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            // A value-returning OnEventAsync (ValueTask<T>) looks intentional but the event delegate must be the
+            // non-generic ValueTask — pushed event results flow back through OnResultAsync, never OnEventAsync.
+            // Reject it with DBXK100 instead of silently emitting a `return default!` stub.
+            if (IsValueTaskOfT(method.ReturnType))
+            {
+                throw new NotSupportedException(
+                    $"Generated plugin server event-callback contract '{callback.ToDisplayString()}' method 'OnEventAsync' must return non-generic ValueTask; a value-returning OnEventAsync is not supported because pushed event results flow through OnResultAsync.");
+            }
+
+            if (IsValueTask(method.ReturnType))
             {
                 return method;
             }
@@ -110,6 +124,16 @@ internal static class PluginServerEventCallbackResolver
         } named &&
         string.Equals(ns.ToDisplayString(), "System.Threading.Tasks", StringComparison.Ordinal) &&
         (!named.IsGenericType || named.TypeArguments.Length == 1);
+
+    private static bool IsValueTaskOfT(ITypeSymbol type)
+        => type is INamedTypeSymbol
+        {
+            Name: "ValueTask",
+            IsGenericType: true,
+            TypeArguments.Length: 1,
+            ContainingNamespace: { } ns
+        } &&
+        string.Equals(ns.ToDisplayString(), "System.Threading.Tasks", StringComparison.Ordinal);
 
     private static bool IsByteArrayValueTask(ITypeSymbol type)
         => type is INamedTypeSymbol

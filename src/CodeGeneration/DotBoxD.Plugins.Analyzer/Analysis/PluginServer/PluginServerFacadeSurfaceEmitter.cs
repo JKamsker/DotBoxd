@@ -30,11 +30,13 @@ internal static class PluginServerFacadeSurfaceEmitter
         foreach (var control in model.Controls)
         {
             PluginServerXmlDocumentation.Append(builder, "    ", control.Documentation);
+            // A null control field after the server is started means it was constructed with no world proxy
+            // (eager ctor, world: null), not that StartAsync still needs calling — report that accurately.
             builder.Append("    public ").Append(control.Type).Append(' ')
                 .Append(PluginServerIdentifier.Escape(control.Name))
-                .Append(" => _started && ").Append(control.FieldName)
+                .Append(" => ").Append(control.FieldName)
                 .Append(" is not null ? ").Append(control.FieldName)
-                .AppendLine(" : throw new global::System.InvalidOperationException(NotStartedMessage);");
+                .AppendLine(" : throw new global::System.InvalidOperationException(_started ? NoWorldProxyMessage : NotStartedMessage);");
         }
 
         PluginServerXmlDocumentation.AppendSummary(
@@ -130,7 +132,11 @@ internal static class PluginServerFacadeSurfaceEmitter
             "Installs the package produced by the factory at most once and returns the installed plugin id.");
         builder.AppendLine("    public global::System.Threading.Tasks.Task<string> EnsureAnonymousKernelAsync(string pluginId, global::System.Func<global::DotBoxD.Plugins.PluginPackage> factory, global::System.Threading.CancellationToken cancellationToken = default)");
         builder.AppendLine("    {");
-        builder.AppendLine("        var install = _anonymousKernels.GetOrAdd(pluginId, id => new global::System.Lazy<global::System.Threading.Tasks.Task<string>>(() => InstallServerExtensionPackageAsync(factory(), cancellationToken).AsTask()));");
+        // The memoized install is shared across concurrent callers, so it must not run under any single caller's
+        // token: each caller cancels only its own wait below via WaitAsync(cancellationToken). Running the install
+        // under the first caller's token would let that caller's cancellation fault the shared task and surface a
+        // cancellation to other (uncancelled) callers.
+        builder.AppendLine("        var install = _anonymousKernels.GetOrAdd(pluginId, id => new global::System.Lazy<global::System.Threading.Tasks.Task<string>>(() => InstallServerExtensionPackageAsync(factory(), global::System.Threading.CancellationToken.None).AsTask()));");
         builder.AppendLine("        return AwaitAnonymousKernelAsync(pluginId, install, cancellationToken);");
         builder.AppendLine("    }");
         builder.AppendLine("    private async global::System.Threading.Tasks.Task<string> AwaitAnonymousKernelAsync(string pluginId, global::System.Lazy<global::System.Threading.Tasks.Task<string>> install, global::System.Threading.CancellationToken cancellationToken)");

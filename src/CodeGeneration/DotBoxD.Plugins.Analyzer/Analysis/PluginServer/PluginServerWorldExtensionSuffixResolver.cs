@@ -10,6 +10,16 @@ internal static class PluginServerWorldExtensionSuffixResolver
         INamedTypeSymbol worldType,
         CancellationToken cancellationToken)
     {
+        // Prefer the suffix that the services source generator already emitted into
+        // DotBoxDGeneratedExtensions. When the [DotBoxDService] interfaces live in a referenced assembly the
+        // in-source collision count sees none of them and would fall back to Get{ShortName} — but the referenced
+        // assembly emitted a disambiguated Get{Combat_Access}. Mirror the Provide{suffix} resolver and bind to
+        // the Get extension that actually exists so the facade never references a dangling method.
+        if (TryResolveFromGeneratedExtensions(compilation, worldType) is { } generatedSuffix)
+        {
+            return generatedSuffix;
+        }
+
         var services = CollectServices(compilation, cancellationToken);
         var targetKey = ServiceKey(
             NamespaceName(worldType.ContainingNamespace),
@@ -19,6 +29,52 @@ internal static class PluginServerWorldExtensionSuffixResolver
         return BuildExtensionSuffixes(services, cancellationToken).TryGetValue(targetKey, out var suffix)
             ? suffix
             : StripInterfacePrefix(worldType.Name);
+    }
+
+    // The Get{suffix} extension is generated into DotBoxDGeneratedExtensions by the services source generator in
+    // the assembly that declares the world interface. GetTypeByMetadataName returns null when that type is absent
+    // (same-assembly: still being generated) or ambiguous, in which case the caller falls back to the in-source
+    // suffix computation. When present, the single static Get* method that returns the world type names the suffix.
+    private static string? TryResolveFromGeneratedExtensions(
+        Compilation compilation,
+        INamedTypeSymbol worldType)
+    {
+        var extensions = compilation.GetTypeByMetadataName("DotBoxD.Services.Generated.DotBoxDGeneratedExtensions");
+        var rpcPeerType = compilation.GetTypeByMetadataName("DotBoxD.Services.Peer.RpcPeer");
+        if (extensions is null || rpcPeerType is null)
+        {
+            return null;
+        }
+
+        string? resolved = null;
+        foreach (var member in extensions.GetMembers())
+        {
+            if (member is not IMethodSymbol
+                {
+                    IsStatic: true,
+                    IsGenericMethod: false,
+                    Parameters.Length: 1,
+                    Name.Length: > 3
+                } method ||
+                !method.Name.StartsWith("Get", StringComparison.Ordinal) ||
+                !SymbolEqualityComparer.Default.Equals(method.ReturnType, worldType) ||
+                !SymbolEqualityComparer.Default.Equals(method.Parameters[0].Type, rpcPeerType))
+            {
+                continue;
+            }
+
+            var candidate = method.Name.Substring(3);
+            if (resolved is not null && !string.Equals(resolved, candidate, StringComparison.Ordinal))
+            {
+                // Genuinely ambiguous (two Get extensions return the same world type): fall back rather than
+                // guessing, so the in-source computation or the disambiguated suffix wins deterministically.
+                return null;
+            }
+
+            resolved = candidate;
+        }
+
+        return resolved;
     }
 
     private static List<ServiceExtensionCandidate> CollectServices(

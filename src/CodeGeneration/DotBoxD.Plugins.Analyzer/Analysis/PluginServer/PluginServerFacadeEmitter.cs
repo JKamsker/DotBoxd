@@ -85,6 +85,10 @@ internal static class PluginServerFacadeEmitter
             .Append(" : ").AppendLine(model.ServerInterfaceName);
         builder.AppendLine("{");
         builder.AppendLine("    private const string NotStartedMessage = \"Call StartAsync() before using the server.\";");
+        if (model.Controls.Count > 0)
+        {
+            builder.AppendLine("    private const string NoWorldProxyMessage = \"The server was constructed without a world proxy, so its domain controls are unavailable.\";");
+        }
         builder.AppendLine("    private readonly global::System.Func<global::System.Action<global::DotBoxD.Services.Peer.RpcPeer>?, global::System.Threading.CancellationToken, global::System.Threading.Tasks.ValueTask<global::DotBoxD.Services.Peer.RpcPeerSession>>? _connectionFactory;");
         builder.AppendLine("    private readonly global::System.Collections.Concurrent.ConcurrentDictionary<string, global::System.Lazy<global::System.Threading.Tasks.Task<string>>> _anonymousKernels = new();");
         builder.AppendLine("    private readonly global::System.Collections.Generic.Dictionary<global::System.Type, string> _serverExtensions = new();");
