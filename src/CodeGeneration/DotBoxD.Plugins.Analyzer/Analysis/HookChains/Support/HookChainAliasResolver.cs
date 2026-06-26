@@ -33,12 +33,36 @@ internal static class HookChainAliasResolver
             if (reference.GetSyntax(cancellationToken) is VariableDeclaratorSyntax
                 {
                     Initializer.Value: { } initializer
-                })
+                } declarator &&
+                !IsAssignedAfterDeclaration(local, declarator, model, cancellationToken))
             {
                 return initializer;
             }
         }
 
         return null;
+    }
+
+    private static bool IsAssignedAfterDeclaration(
+        ILocalSymbol local,
+        VariableDeclaratorSyntax declarator,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        var root = declarator.SyntaxTree.GetRoot(cancellationToken);
+        foreach (var assignment in root.DescendantNodes().OfType<AssignmentExpressionSyntax>())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (assignment.SpanStart <= declarator.SpanStart ||
+                model.GetSymbolInfo(assignment.Left, cancellationToken).Symbol is not ILocalSymbol assigned ||
+                !SymbolEqualityComparer.Default.Equals(local, assigned))
+            {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
     }
 }

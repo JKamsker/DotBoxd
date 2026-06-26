@@ -12,7 +12,7 @@ internal static partial class PluginServerFacadeModelFactory
     {
         var controls = new List<PluginServerControlProperty>();
         var seenProperties = new HashSet<string>(StringComparer.Ordinal);
-        var fieldNames = new HashSet<string>(StringComparer.Ordinal);
+        var fieldNames = new HashSet<string>(ReservedFacadeFieldNames(), StringComparer.Ordinal);
         var accumulatorNames = new HashSet<string>(StringComparer.Ordinal);
         foreach (var member in MembersIncludingInherited(worldType))
         {
@@ -51,6 +51,26 @@ internal static partial class PluginServerFacadeModelFactory
 
         return controls.ToArray();
     }
+
+    private static string[] ReservedFacadeFieldNames()
+        =>
+        [
+            "_connectionFactory",
+            "_anonymousKernels",
+            "_serverExtensions",
+            "_setupInstalls",
+            "_control",
+            "_world",
+            "_hooks",
+            "_subscriptions",
+            "_localHandlers",
+            "_session",
+            "_started",
+            "_setupReplayed",
+            "_setupReplayIndex",
+            "_configured",
+            "_disposed",
+        ];
 
     private static string UniqueFieldName(string propertyName, HashSet<string> used)
     {

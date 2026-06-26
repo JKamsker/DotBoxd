@@ -76,7 +76,7 @@ internal static partial class DotBoxDKernelMethodInliner
         }
 
         var descriptorBindings = BindArguments(call, context, lowerExpression);
-        return InlineMetadataDescriptor(method, context, descriptorBindings, returnType);
+        return InlineMetadataDescriptor(method, context, call, descriptorBindings, returnType);
     }
 
     private static bool IsServerContextReceiver(

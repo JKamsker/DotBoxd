@@ -37,10 +37,20 @@ internal sealed record RpcServerExtensionGraft(
     {
         foreach (var member in kernelType.GetMembers())
         {
-            if (member is IFieldSymbol field &&
+            if (member is IFieldSymbol { IsStatic: false } field &&
                 CanStoreReceiver(field.Type, receiverType))
             {
                 yield return field.Name;
+            }
+            else if (member is IPropertySymbol
+            {
+                IsStatic: false,
+                GetMethod: not null,
+                SetMethod: null
+            } property &&
+                CanStoreReceiver(property.Type, receiverType))
+            {
+                yield return property.Name;
             }
         }
     }

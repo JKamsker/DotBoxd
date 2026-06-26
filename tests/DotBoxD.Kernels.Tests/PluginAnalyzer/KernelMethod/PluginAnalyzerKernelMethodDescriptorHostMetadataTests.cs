@@ -212,4 +212,5 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
             }
             """;
     }
+
 }

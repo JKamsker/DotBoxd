@@ -2,7 +2,6 @@ using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Helpers = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.Helpers;
 using ManifestTypes = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.ManifestTypes;
 using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.TypeNames;
 
@@ -14,10 +13,9 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 /// intrinsic, so a handler can build a rich projected DTO server-side and have it pushed in one IPC frame
 /// rather than calling back into the server per field. The constructed value's positional fields are emitted in
 /// the DTO's declared field order (the same order <see cref="SandboxTypeSourceEmitter"/> uses for the record
-/// type and the runtime marshaller uses to reconstruct it), so the round-trip preserves field identity. Only a
-/// positional construction of a marshaller-eligible DTO lowers; anything else fails safe.
+/// type and the runtime marshaller uses to reconstruct it), so the round-trip preserves field identity.
 /// </summary>
-internal static class DotBoxDRecordCreationExpressionLowerer
+internal static partial class DotBoxDRecordCreationExpressionLowerer
 {
     public static DotBoxDExpressionModel? TryLower(
         BaseObjectCreationExpressionSyntax creation,
@@ -49,11 +47,13 @@ internal static class DotBoxDRecordCreationExpressionLowerer
             if (arguments.Count > 0)
             {
                 var fieldSources = new string?[fields.Count];
+                var assigned = new bool[fields.Count];
                 var allocates = LowerConstructorArguments(
                     constructor,
                     arguments,
                     fields,
                     fieldSources,
+                    assigned,
                     context,
                     lowerExpression);
                 return LowerInitializer(
@@ -63,6 +63,7 @@ internal static class DotBoxDRecordCreationExpressionLowerer
                     context,
                     lowerExpression,
                     fieldSources,
+                    assigned,
                     allocates);
             }
 
@@ -73,13 +74,15 @@ internal static class DotBoxDRecordCreationExpressionLowerer
                 context,
                 lowerExpression,
                 fieldSources: null,
+                assigned: null,
                 allocates: true);
         }
 
-        if (arguments.Count != fields.Count || constructor.Parameters.Length != fields.Count)
+        if (arguments.Count != constructor.Parameters.Length || constructor.Parameters.Length > fields.Count)
         {
-            // Only a full positional construction (one argument per field) lowers; partial positional
-            // constructions are not expressible as a single record.new.
+            // Constructor arguments must bind one argument per declared constructor parameter, and the constructor
+            // cannot expose more fields than the DTO has. Missing DTO fields are filled below from derived getters
+            // or manifest zeros where that is faithful to an omitted stored field.
             throw new System.NotSupportedException();
         }
 
@@ -87,13 +90,22 @@ internal static class DotBoxDRecordCreationExpressionLowerer
         // constructor argument that fills it (positional records line up 1:1; named/reordered constructors are
         // resolved by parameter name) and lower that argument with the field's expected type.
         var positionalSources = new string?[fields.Count];
+        var positionalAssigned = new bool[fields.Count];
         var positionalAllocates = LowerConstructorArguments(
             constructor,
             arguments,
             fields,
             positionalSources,
+            positionalAssigned,
             context,
             lowerExpression);
+        positionalAllocates = FillOmittedFields(
+            fields,
+            positionalSources,
+            positionalAssigned,
+            context,
+            allowStoredZero: true,
+            allocates: positionalAllocates);
 
         context.Effects?.Add(DotBoxDGenerationNames.Effects.Alloc);
 
@@ -108,6 +120,7 @@ internal static class DotBoxDRecordCreationExpressionLowerer
         SeparatedSyntaxList<ArgumentSyntax> arguments,
         IReadOnlyList<RecordMember> fields,
         string?[] fieldSources,
+        bool[] assigned,
         DotBoxDExpressionLoweringContext context,
         System.Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression)
     {
@@ -116,19 +129,20 @@ internal static class DotBoxDRecordCreationExpressionLowerer
             throw new System.NotSupportedException();
         }
 
+        var allocates = true;
+        var assignedParameters = new bool[constructor.Parameters.Length];
         for (var i = 0; i < arguments.Count; i++)
         {
-            if (arguments[i].NameColon is not null)
+            var parameterIndex = ParameterIndex(constructor, arguments[i], i);
+            if (parameterIndex < 0 || assignedParameters[parameterIndex])
             {
                 throw new System.NotSupportedException();
             }
-        }
 
-        var allocates = true;
-        for (var i = 0; i < constructor.Parameters.Length; i++)
-        {
-            var fieldIndex = RpcDtoFieldMatcher.FieldIndex(fields, constructor.Parameters[i]);
-            if (fieldIndex < 0 || fieldSources[fieldIndex] is not null)
+            assignedParameters[parameterIndex] = true;
+            var parameter = constructor.Parameters[parameterIndex];
+            var fieldIndex = RpcDtoFieldMatcher.FieldIndex(fields, parameter);
+            if (fieldIndex < 0 || assigned[fieldIndex])
             {
                 throw new System.NotSupportedException();
             }
@@ -145,10 +159,30 @@ internal static class DotBoxDRecordCreationExpressionLowerer
                 lowerExpression);
 
             fieldSources[fieldIndex] = lowered.Source;
+            assigned[fieldIndex] = true;
             allocates |= lowered.Allocates;
         }
 
         return allocates;
+    }
+
+    private static int ParameterIndex(IMethodSymbol constructor, ArgumentSyntax argument, int ordinal)
+    {
+        if (argument.NameColon is null)
+        {
+            return ordinal < constructor.Parameters.Length ? ordinal : -1;
+        }
+
+        var name = argument.NameColon.Name.Identifier.ValueText;
+        for (var i = 0; i < constructor.Parameters.Length; i++)
+        {
+            if (string.Equals(constructor.Parameters[i].Name, name, StringComparison.Ordinal))
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     // The record.new IR-construction source for the given (declaration-ordered) field sources. Shared by the
@@ -168,9 +202,11 @@ internal static class DotBoxDRecordCreationExpressionLowerer
         DotBoxDExpressionLoweringContext context,
         System.Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression,
         string?[]? fieldSources,
+        bool[]? assigned,
         bool allocates)
     {
         fieldSources ??= new string?[fields.Count];
+        assigned ??= new bool[fields.Count];
         foreach (var expression in initializer.Expressions)
         {
             if (expression is not AssignmentExpressionSyntax assignment ||
@@ -189,13 +225,17 @@ internal static class DotBoxDRecordCreationExpressionLowerer
             var lowered = LowerFieldValue(assignment.Right, fields[index].Type, context, lowerExpression);
 
             fieldSources[index] = lowered.Source;
+            assigned[index] = true;
             allocates |= lowered.Allocates;
         }
 
-        for (var i = 0; i < fields.Count; i++)
-        {
-            fieldSources[i] ??= ZeroSource(fields[i].Type);
-        }
+        allocates = FillOmittedFields(
+            fields,
+            fieldSources,
+            assigned,
+            context,
+            allowStoredZero: true,
+            allocates: allocates);
 
         context.Effects?.Add(DotBoxDGenerationNames.Effects.Alloc);
 
@@ -203,18 +243,6 @@ internal static class DotBoxDRecordCreationExpressionLowerer
             RecordNew(System.Array.ConvertAll(fieldSources, static s => s!), recordTypeSource),
             ManifestTypes.Record,
             allocates);
-    }
-
-    // The manifest-tag zero literal for an omitted field. Only scalar fields can be defaulted; a non-scalar
-    // (Guid/list/map/record) omission fails safe because there is no single-expression zero for it.
-    internal static string ZeroSource(ITypeSymbol fieldType)
-    {
-        if (DotBoxDNullableScalarType.IsNullableValueType(fieldType))
-        {
-            return DotBoxDNullableScalarExpressionLowerer.NullSource(fieldType);
-        }
-
-        return NonNullableZeroSource(fieldType);
     }
 
     private static DotBoxDExpressionModel LowerFieldValue(
@@ -248,29 +276,4 @@ internal static class DotBoxDRecordCreationExpressionLowerer
 
         return lowered;
     }
-
-    private static string NonNullableZeroSource(ITypeSymbol fieldType)
-        => SandboxTypeSourceEmitter.ManifestTag(fieldType) switch
-        {
-            ManifestTypes.Bool => $"{Helpers.Bool}({DotBoxDGenerationNames.CSharpLiterals.False})",
-            ManifestTypes.Int => $"{Helpers.I32}({DotBoxDGenerationNames.CSharpLiterals.Int32Default})",
-            ManifestTypes.Long => $"{Helpers.I64}({DotBoxDGenerationNames.CSharpLiterals.Int64Default})",
-            ManifestTypes.Double => $"{Helpers.F64}({DotBoxDGenerationNames.CSharpLiterals.DoubleDefault})",
-            ManifestTypes.String => $"{Helpers.Str}({DotBoxDGenerationNames.CSharpLiterals.StringDefault})",
-            _ => throw new System.NotSupportedException(),
-        };
-
-    private static int FieldIndex(IReadOnlyList<RecordMember> fields, string name)
-    {
-        for (var i = 0; i < fields.Count; i++)
-        {
-            if (string.Equals(fields[i].Name, name, StringComparison.Ordinal))
-            {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
 }

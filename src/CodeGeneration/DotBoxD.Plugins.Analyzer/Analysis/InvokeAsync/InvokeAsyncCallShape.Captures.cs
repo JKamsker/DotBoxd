@@ -12,6 +12,7 @@ internal sealed partial class InvokeAsyncCallShape
         InvokeAsyncCaptureParameter captureParameter,
         SemanticModel model)
     {
+        ValidateExplicitCaptureMutations(block, captureParameter, model);
         var syncOuts = new List<InvokeAsyncSyncOut>();
         foreach (var assignment in block.DescendantNodes().OfType<AssignmentExpressionSyntax>())
         {

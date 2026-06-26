@@ -4,7 +4,7 @@ using DotBoxD.Plugins;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
 
-public sealed class ServerExtensionGeneratedDtoReaderRegressionTests
+public sealed partial class ServerExtensionGeneratedDtoReaderRegressionTests
 {
     private const string ComputedDtoSource = """
         using DotBoxD.Kernels;
@@ -103,21 +103,12 @@ public sealed class ServerExtensionGeneratedDtoReaderRegressionTests
 
         public sealed class Profile
         {
-            public Profile()
-            {
-            }
-
             public Profile(int Health) => this.Health = Health;
 
-            public Profile(int Health, int Rank)
-            {
-                this.Health = Health;
-                this.Rank = Rank;
-            }
-
-            public int Health { get; set; }
+            public int Health { get; }
             public int Rank { get; set; }
             public string Name { get; set; } = "";
+            public int Score => Health + Rank;
         }
 
         [ServerExtension(typeof(IRemoteWorldControl), "profile")]
@@ -126,7 +117,7 @@ public sealed class ServerExtensionGeneratedDtoReaderRegressionTests
             [ServerExtensionMethod(typeof(IRemoteWorldControl))]
             public Profile Read(int x, HookContext ctx)
             {
-                return new Profile { Health = x, Rank = 9, Name = "hero" };
+                return new Profile(x) { Rank = 9, Name = "hero" };
             }
         }
 
@@ -142,6 +133,7 @@ public sealed class ServerExtensionGeneratedDtoReaderRegressionTests
         var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly(ComputedDtoSource);
         var control = CreateControl(
             assembly,
+            "point",
             KernelRpcBinaryCodec.EncodeValue(KernelRpcValue.Record(
             [
                 KernelRpcValue.Int32(3),
@@ -165,11 +157,13 @@ public sealed class ServerExtensionGeneratedDtoReaderRegressionTests
         var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly(ConstructorAndInitializerDtoSource);
         var control = CreateControl(
             assembly,
+            "profile",
             KernelRpcBinaryCodec.EncodeValue(KernelRpcValue.Record(
             [
                 KernelRpcValue.Int32(3),
                 KernelRpcValue.Int32(9),
-                KernelRpcValue.String("hero")
+                KernelRpcValue.String("hero"),
+                KernelRpcValue.Int32(12)
             ])));
 
         var profile = assembly.GetType("Sample.Probe", throwOnError: true)!
@@ -180,6 +174,7 @@ public sealed class ServerExtensionGeneratedDtoReaderRegressionTests
         Assert.Equal(3, type.GetProperty("Health")!.GetValue(profile));
         Assert.Equal(9, type.GetProperty("Rank")!.GetValue(profile));
         Assert.Equal("hero", type.GetProperty("Name")!.GetValue(profile));
+        Assert.Equal(12, type.GetProperty("Score")!.GetValue(profile));
     }
 
     [Fact]
@@ -239,26 +234,28 @@ public sealed class ServerExtensionGeneratedDtoReaderRegressionTests
         Assert.Contains(
             diagnostics,
             d => d.Id == "DBXK100" &&
-                 d.GetMessage().Contains("remaining fields are not settable", StringComparison.Ordinal));
+                 d.GetMessage().Contains("must expose either a constructor", StringComparison.Ordinal));
     }
 
-    private static object CreateControl(Assembly assembly, byte[] response)
+    private static object CreateControl(Assembly assembly, string expectedPluginId, byte[] response)
     {
         var controlType = assembly.GetType("Sample.RemoteWorldControl", throwOnError: true)!;
-        return Activator.CreateInstance(controlType, [new RecordingRegistry(response)])!;
+        return Activator.CreateInstance(controlType, [new RecordingRegistry(expectedPluginId, response)])!;
     }
 
-    private sealed class RecordingRegistry(byte[] response) : DotBoxD.Plugins.IServerExtensionClientRegistry
+    private sealed class RecordingRegistry(string expectedPluginId, byte[] response)
+        : DotBoxD.Plugins.IServerExtensionClientRegistry
     {
         public string PluginId<TService>()
             where TService : class
-            => "point";
+            => expectedPluginId;
 
         public ValueTask<byte[]> InvokeServerExtensionAsync(
             string pluginId,
             byte[] arguments,
             CancellationToken cancellationToken = default)
         {
+            Assert.Equal(expectedPluginId, pluginId);
             cancellationToken.ThrowIfCancellationRequested();
             return ValueTask.FromResult(response);
         }

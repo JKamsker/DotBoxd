@@ -78,6 +78,10 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             {
                 BindInitializer(initializer, fields, named, args, assigned, requireAllFields: false);
             }
+            while (TryLowerDerivedField(fields, assigned, args, named))
+            {
+            }
+
             for (var i = 0; i < fields.Count; i++)
             {
                 if (!assigned[i])
@@ -119,6 +123,10 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         if (!requireAllFields)
         {
             return;
+        }
+
+        while (TryLowerDerivedField(fields, assigned, args, named))
+        {
         }
 
         for (var i = 0; i < assigned.Length; i++)

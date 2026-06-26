@@ -47,6 +47,21 @@ internal static class RpcKernelClientParameterSource
 
         if (parameter.Type.SpecialType == SpecialType.System_Single && value is float number)
         {
+            if (float.IsNaN(number))
+            {
+                return "global::System.Single.NaN";
+            }
+
+            if (float.IsPositiveInfinity(number))
+            {
+                return "global::System.Single.PositiveInfinity";
+            }
+
+            if (float.IsNegativeInfinity(number))
+            {
+                return "global::System.Single.NegativeInfinity";
+            }
+
             return number.ToString(
                 DotBoxDGenerationNames.CSharpLiterals.DoubleRoundTripFormat,
                 System.Globalization.CultureInfo.InvariantCulture) + "f";

@@ -114,6 +114,7 @@ internal sealed partial class InvokeAsyncCallShape
                 }
             }
 
+            ValidateImplicitCaptureMutations(block, all, model);
             return new ImplicitCaptureSet(all, syncOuts);
         }
 

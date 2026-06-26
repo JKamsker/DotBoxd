@@ -1,4 +1,6 @@
 using DotBoxD.Kernels.Tests.PluginAnalyzer.Core;
+using DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace DotBoxD.Kernels.Tests.PluginAnalyzer.KernelMethod;
 
@@ -122,6 +124,53 @@ public sealed class PluginAnalyzerKernelMethodSurpriseRegressionTests
             """);
 
         Assert.Contains(
+            diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains("used more than once", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void KernelMethod_reuse_validator_treats_typed_default_as_repeatable()
+    {
+        var expression = SyntaxFactory.ParseExpression("default(int)");
+
+        Assert.True(KernelMethodArgumentReuseValidator.IsRepeatableArgument(expression));
+    }
+
+    [Fact]
+    public void KernelMethod_reuse_validator_ignores_nameof_parameter_mentions()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
+            using DotBoxD.Kernels;
+            using DotBoxD.Kernels.Sandbox;
+            using DotBoxD.Plugins;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public interface IProbeWorld
+            {
+                [HostBinding("host.probe.getValue", "probe.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
+                int GetValue(string id);
+            }
+
+            public sealed record ProbeEvent(string TargetId);
+
+            [Plugin("nameof-kernel-method")]
+            public sealed partial class NameofKernel : IEventKernel<ProbeEvent>
+            {
+                public bool ShouldHandle(ProbeEvent e, HookContext ctx)
+                    => Matches(ctx.Host<IProbeWorld>().GetValue(e.TargetId));
+
+                public void Handle(ProbeEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, "ok");
+
+                [KernelMethod]
+                public static bool Matches(int value) => value >= 0 && nameof(value) == "value";
+            }
+            """);
+
+        Assert.DoesNotContain(
             diagnostics,
             diagnostic => diagnostic.Id == "DBXK100" &&
                           diagnostic.GetMessage().Contains("used more than once", StringComparison.Ordinal));

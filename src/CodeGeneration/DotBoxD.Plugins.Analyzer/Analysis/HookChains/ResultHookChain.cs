@@ -128,7 +128,7 @@ internal static partial class ResultHookChain
             ResultLocalTerminal = isLocal,
         };
 
-        return new HookChainResult(kernelModel, Interception(
+        var interception = Interception(
             invocation,
             receiver,
             model,
@@ -142,7 +142,9 @@ internal static partial class ResultHookChain
             receiverIsStage: false,
             generatedRemoteKind,
             generatedRemoteServerContextTypeFullName,
-            cancellationToken));
+            cancellationToken) ?? throw new NotSupportedException("the call site is not interceptable");
+
+        return new HookChainResult(kernelModel, interception);
     }
 
     public static bool IsResultTerminal(string terminalMethod)

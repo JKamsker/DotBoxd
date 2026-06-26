@@ -58,6 +58,58 @@ public sealed class ServerExtensionReceiverAuthorityTests
         }
         """;
 
+    private const string ScopedReceiverPropertySource = """
+        using DotBoxD.Abstractions;
+        using DotBoxD.Plugins;
+        using DotBoxD.Plugins.Runtime;
+        using DotBoxD.Services.Attributes;
+
+        namespace Sample;
+
+        [DotBoxDService]
+        public interface IRemoteMonster
+        {
+            string Id { get; }
+
+            [HostCapability("game.world.monster.read.threat", HostBindingEffect.HostStateRead)]
+            int Threat();
+        }
+
+        public sealed class RemoteMonster : IRemoteMonster, IServerExtensionClientAccessor
+        {
+            public RemoteMonster(DotBoxD.Abstractions.IServerExtensionClientRegistry serverExtensions, string id)
+            {
+                ServerExtensions = serverExtensions;
+                Id = id;
+            }
+
+            public DotBoxD.Abstractions.IServerExtensionClientRegistry ServerExtensions { get; }
+
+            public string Id { get; }
+
+            public int Threat() => throw new System.NotSupportedException();
+        }
+
+        [ServerExtension(typeof(IRemoteMonster), "threat")]
+        public sealed partial class ThreatKernel
+        {
+            private IRemoteMonster Monster { get; }
+
+            public ThreatKernel(IRemoteMonster monster) => Monster = monster;
+
+            [ServerExtensionMethod]
+            public int ReadThreat(HookContext ctx)
+            {
+                return Monster.Threat();
+            }
+        }
+
+        public static class Probe
+        {
+            public static int ReadThreat(RemoteMonster monster) => monster.ReadThreat();
+        }
+        """;
+
     private const string UnusedReceiverIdSource = """
         using DotBoxD.Abstractions;
         using DotBoxD.Plugins;
@@ -141,6 +193,19 @@ public sealed class ServerExtensionReceiverAuthorityTests
 
         var argument = Assert.Single(KernelRpcBinaryCodec.DecodeArguments(registry.LastArguments));
         Assert.Equal("monster-7", argument.StringValue);
+    }
+
+    [Fact]
+    public void Scoped_receiver_property_uses_one_shared_receiver_id_argument()
+    {
+        var package = Package(ScopedReceiverPropertySource, "Sample.ThreatPluginPackage");
+        var parameter = Assert.Single(package.Module.Functions.Single().Parameters);
+        Assert.Equal("__receiverId", parameter.Name);
+
+        var registry = Invoke(ScopedReceiverPropertySource, "ReadThreat", "monster-8", response: KernelRpcValue.Int32(13));
+
+        var argument = Assert.Single(KernelRpcBinaryCodec.DecodeArguments(registry.LastArguments));
+        Assert.Equal("monster-8", argument.StringValue);
     }
 
     [Fact]

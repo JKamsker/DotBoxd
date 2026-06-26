@@ -81,24 +81,29 @@ internal sealed partial class RpcKernelValueConversionEmitter
         {
             var construction = "new " + TypeName(type) + "(" +
                 string.Join(", ", DtoConstructorArguments(fields, constructor.Symbol)) + ")";
-            if (constructor.AssignedCount == fields.Count)
+            if (constructor.AssignedCount == fields.Count &&
+                !RequiresRequiredMemberInitializer(fields, constructor.Symbol))
             {
                 return "        return " + construction + ";";
             }
 
-            if (!CanReconstructAllUnassignedFields(fields, constructor.Assigned))
+            if (!DotBoxDRpcTypeMapper.CanReconstructFromAssignedFields(fields, constructor.Assigned, _compilation))
             {
                 throw new NotSupportedException(
                     $"Server extension DTO '{type.ToDisplayString()}' constructor '{constructor.Symbol.ToDisplayString()}' " +
                     "does not assign every public field and the remaining fields are not settable.");
             }
 
-            return BuildDtoInitializer("        return " + construction, fields, constructor.Assigned);
+            return BuildDtoInitializer("        return " + construction, fields, constructor.Assigned, constructor.Symbol);
         }
 
-        if (CanUseObjectInitializer(type, fields))
+        if (DotBoxDRpcTypeMapper.CanReconstructWithObjectInitializer(type, fields, _compilation))
         {
-            return BuildDtoInitializer("        return new " + TypeName(type), fields, assigned: null);
+            return BuildDtoInitializer(
+                "        return new " + TypeName(type),
+                fields,
+                assigned: new bool[fields.Count],
+                constructor: null);
         }
 
         throw new NotSupportedException(
@@ -118,14 +123,20 @@ internal sealed partial class RpcKernelValueConversionEmitter
         return expressions;
     }
 
-    private string BuildDtoInitializer(string construction, IReadOnlyList<RecordMember> fields, bool[]? assigned)
+    private string BuildDtoInitializer(
+        string construction,
+        IReadOnlyList<RecordMember> fields,
+        bool[]? assigned,
+        IMethodSymbol? constructor)
     {
         var initializer = new StringBuilder();
         initializer.Append(construction).AppendLine();
         initializer.AppendLine("        {");
         for (var i = 0; i < fields.Count; i++)
         {
-            if (assigned is not null && (assigned[i] || !DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i])))
+            if (assigned is not null &&
+                ((assigned[i] && !MustInitializeRequiredMember(fields[i], constructor)) ||
+                 (!assigned[i] && !DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i], _compilation))))
             {
                 continue;
             }
@@ -187,7 +198,8 @@ internal sealed partial class RpcKernelValueConversionEmitter
                     return resolved;
                 }
 
-                if (partial is null || assignedCount > partial.AssignedCount)
+                if (DotBoxDRpcTypeMapper.CanReconstructFromAssignedFields(fields, assigned, _compilation) &&
+                    (partial is null || assignedCount > partial.AssignedCount))
                 {
                     partial = resolved;
                 }
@@ -197,53 +209,30 @@ internal sealed partial class RpcKernelValueConversionEmitter
         return partial;
     }
 
-    /// <summary>
-    /// A DTO can be reconstructed with an object initializer when every field has an accessible setter
-    /// (<c>set</c> or <c>init</c>) and the type is a value type or exposes an accessible parameterless
-    /// constructor — the same fallback the runtime marshaller uses.
-    /// </summary>
-    private bool CanUseObjectInitializer(INamedTypeSymbol type, IReadOnlyList<RecordMember> fields)
-    {
-        if (fields.Count == 0)
+    private bool RequiresRequiredMemberInitializer(IReadOnlyList<RecordMember> fields, IMethodSymbol constructor)
+        => !HasSetsRequiredMembers(constructor) &&
+           fields.Any(field => IsRequiredMember(field) &&
+                               DotBoxDRpcTypeMapper.IsObjectInitializerWritable(field, _compilation));
+
+    private bool MustInitializeRequiredMember(RecordMember field, IMethodSymbol? constructor)
+        => constructor is not null &&
+           !HasSetsRequiredMembers(constructor) &&
+           IsRequiredMember(field) &&
+           DotBoxDRpcTypeMapper.IsObjectInitializerWritable(field, _compilation);
+
+    private static bool IsRequiredMember(RecordMember field)
+        => field.Symbol switch
         {
-            return false;
-        }
+            IPropertySymbol property => property.IsRequired,
+            IFieldSymbol fieldSymbol => fieldSymbol.IsRequired,
+            _ => false,
+        };
 
-        if (!type.IsValueType && !HasAccessibleParameterlessConstructor(type))
-        {
-            return false;
-        }
-
-        foreach (var field in fields)
-        {
-            if (!DotBoxDRpcTypeMapper.IsObjectInitializerWritable(field, _compilation))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private bool HasAccessibleParameterlessConstructor(INamedTypeSymbol type)
-    {
-        foreach (var constructor in type.InstanceConstructors)
-        {
-            if (constructor.Parameters.Length == 0 &&
-                DotBoxDRpcTypeMapper.IsAccessibleFromGeneratedCode(constructor, _compilation))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private bool CanReconstructAllUnassignedFields(IReadOnlyList<RecordMember> fields, bool[] assigned)
-        => fields.Where((_, index) => !assigned[index])
-            .All(field =>
-                DotBoxDRpcTypeMapper.IsObjectInitializerWritable(field, _compilation) ||
-                DotBoxDRpcTypeMapper.IsDerivedFromAssignedFields(field, fields, assigned));
+    private static bool HasSetsRequiredMembers(IMethodSymbol constructor)
+        => constructor.GetAttributes().Any(attribute => string.Equals(
+            attribute.AttributeClass?.ToDisplayString(),
+            "System.Diagnostics.CodeAnalysis.SetsRequiredMembersAttribute",
+            StringComparison.Ordinal));
 
     private static int AssignedCount(bool[] assigned)
         => assigned.Count(static item => item);

@@ -111,6 +111,32 @@ public sealed class InvokeAsyncGeneratedCodeRegressionTests
     }
 
     [Fact]
+    public void Settable_return_dto_with_computed_get_only_member_generates_compilable_reader()
+    {
+        var result = RunGeneratorAndAssertCompiles(UsageSource("""
+            public sealed class Profile
+            {
+                public int Health { get; init; }
+                public int Rank { get; init; }
+                public int Score => this.Health + this.Rank;
+            }
+
+            public static ValueTask<Profile> Run(RemotePluginServer kernels)
+                => kernels.InvokeAsync(async (IGameWorldAccess world) =>
+                {
+                    return new Profile { Health = world.GetHealth("monster-1"), Rank = 9 };
+                });
+            """));
+        var source = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
+        Assert.Contains("new global::Sample.Usage.Profile", source, StringComparison.Ordinal);
+        Assert.Contains("@Health =", source, StringComparison.Ordinal);
+        Assert.Contains("@Rank =", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("@Score =", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Constructor_and_settable_return_dto_generates_compilable_reader()
     {
         var result = RunGeneratorAndAssertCompiles(UsageSource("""
@@ -147,6 +173,29 @@ public sealed class InvokeAsyncGeneratedCodeRegressionTests
             source,
             StringComparison.Ordinal);
         Assert.Contains("@Name =", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Required_constructor_return_dto_generates_compilable_reader()
+    {
+        var result = RunGeneratorAndAssertCompiles(UsageSource("""
+            public sealed class Profile
+            {
+                public Profile(int Health) => this.Health = Health;
+
+                public required int Health { get; init; }
+            }
+
+            public static ValueTask<Profile> Run(RemotePluginServer kernels)
+                => kernels.InvokeAsync(async (IGameWorldAccess world) =>
+                {
+                    return new Profile(world.GetHealth("monster-1")) { Health = world.GetHealth("monster-1") };
+                });
+            """));
+        var source = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
+        Assert.Contains("@Health =", source, StringComparison.Ordinal);
     }
 
     [Fact]

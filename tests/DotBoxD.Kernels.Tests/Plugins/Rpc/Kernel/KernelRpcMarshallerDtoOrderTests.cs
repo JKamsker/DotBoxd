@@ -1,4 +1,5 @@
 using DotBoxD.Kernels.Sandbox;
+using DotBoxD.Plugins;
 using DotBoxD.Plugins.Runtime.Rpc;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
@@ -126,6 +127,35 @@ public sealed class KernelRpcMarshallerDtoOrderTests
     }
 
     [Fact]
+    public void FromSandboxValue_assigns_settable_tail_after_partial_constructor()
+    {
+        var sandbox = SandboxValue.FromRecord(
+            [SandboxValue.FromInt32(12), SandboxValue.FromString("hero")]);
+
+        var dto = Assert.IsType<PartialConstructorDto>(
+            KernelRpcMarshaller.FromSandboxValue(sandbox, typeof(PartialConstructorDto)));
+
+        Assert.Equal(12, dto.MonsterId);
+        Assert.Equal("hero", dto.Name);
+    }
+
+    [Fact]
+    public void FromKernelRpcValue_assigns_settable_tail_after_partial_constructor()
+    {
+        var value = KernelRpcValue.Record(
+        [
+            KernelRpcValue.Int32(13),
+            KernelRpcValue.String("mage")
+        ]);
+
+        var dto = Assert.IsType<PartialConstructorDto>(
+            KernelRpcMarshaller.FromKernelRpcValue(value, typeof(PartialConstructorDto)));
+
+        Assert.Equal(13, dto.MonsterId);
+        Assert.Equal("mage", dto.Name);
+    }
+
+    [Fact]
     public void ToSandboxValue_ignores_inherited_dto_properties()
     {
         var dto = new DerivedDto(10, true);
@@ -181,6 +211,13 @@ public sealed class KernelRpcMarshallerDtoOrderTests
         public int MonsterId { get; }
 
         public bool Success { get; }
+    }
+
+    private sealed class PartialConstructorDto(int monsterId)
+    {
+        public int MonsterId { get; } = monsterId;
+
+        public string Name { get; set; } = string.Empty;
     }
 
     private abstract class BaseDto

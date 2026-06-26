@@ -42,6 +42,7 @@ internal static partial class PluginServerFacadeModelFactory
         var liveSettingUpdateType = ResolveLiveSettingUpdateType(controlServiceType, cancellationToken)
             ?? throw new NotSupportedException(
                 $"Generated plugin server '{type.Name}' control-plane contract '{controlServiceType.ToDisplayString()}' must declare UpdateSettingsAsync with a typed array parameter carrying the live-setting updates.");
+        ValidateControlServiceContract(type, compilation, controlServiceType, liveSettingUpdateType);
         ValidatePublicFacadeSignatureTypes(type, worldType, controlServiceType, liveSettingUpdateType);
         var controls = ResolveControls(worldType, cancellationToken);
         var worldMethods = ResolveMethods(

@@ -142,6 +142,69 @@ public sealed class InvokeAsyncSurpriseGenerationTests
     }
 
     [Fact]
+    public void Implicit_captured_list_mutation_reports_InvokeAsync_diagnostic()
+    {
+        var result = RunGenerator(UsageSource("""
+            public static ValueTask<int> Run(RemotePluginServer kernels, System.Collections.Generic.List<int> values)
+                => kernels.InvokeAsync(async (IGameWorldAccess world) =>
+                {
+                    values.Add(world.GetHealth("monster-1"));
+                    return values.Count;
+                });
+            """));
+
+        Assert.Contains(
+            result.Diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains("captured collection 'values'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Implicit_captured_map_index_mutation_reports_InvokeAsync_diagnostic()
+    {
+        var result = RunGenerator(UsageSource("""
+            public static ValueTask<int> Run(RemotePluginServer kernels, System.Collections.Generic.Dictionary<string, int> scores)
+                => kernels.InvokeAsync(async (IGameWorldAccess world) =>
+                {
+                    scores["monster-1"] = world.GetHealth("monster-1");
+                    return scores.Count;
+                });
+            """));
+
+        Assert.Contains(
+            result.Diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains("captured map 'scores'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Explicit_capture_bag_collection_alias_mutation_reports_InvokeAsync_diagnostic()
+    {
+        var result = RunGenerator(CaptureBagSource("""
+            public sealed class MonsterCapture
+            {
+                public System.Collections.Generic.List<int> Values { get; set; } = [];
+            }
+
+            public static class Usage
+            {
+                public static ValueTask<int> Run(RemotePluginServer kernels, MonsterCapture captures)
+                    => kernels.InvokeAsync(captures, async (IGameWorldAccess world, MonsterCapture bag) =>
+                    {
+                        var values = bag.Values;
+                        values.Add(world.GetHealth("monster-1"));
+                        return values.Count;
+                    });
+            }
+            """));
+
+        Assert.Contains(
+            result.Diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains("captured collection 'Values'", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Erased_IPluginServer_receiver_reports_InvokeAsync_diagnostic()
     {
         var result = RunGenerator(UsageSource("""

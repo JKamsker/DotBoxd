@@ -15,24 +15,30 @@ internal static class RpcKernelPayloadDtoReaderBuilder
         {
             var construction = "new " + TypeName(type) + "(" +
                 string.Join(", ", DtoConstructorArguments(fields, constructor.Symbol)) + ")";
-            if (constructor.AssignedCount == fields.Count)
+            if (constructor.AssignedCount == fields.Count &&
+                !RequiresRequiredMemberInitializer(fields, constructor.Symbol, compilation))
             {
                 return "        return " + construction + ";";
             }
 
-            if (!CanReconstructAllUnassignedFields(fields, constructor.Assigned, compilation))
+            if (!DotBoxDRpcTypeMapper.CanReconstructFromAssignedFields(fields, constructor.Assigned, compilation))
             {
                 throw new NotSupportedException(
                     $"Server extension DTO '{type.ToDisplayString()}' constructor '{constructor.Symbol.ToDisplayString()}' " +
                     "does not assign every public field and the remaining fields are not settable.");
             }
 
-            return BuildInitializer("        return " + construction, fields, constructor.Assigned);
+            return BuildInitializer("        return " + construction, fields, constructor.Assigned, constructor.Symbol, compilation);
         }
 
-        if (CanUseObjectInitializer(type, fields, compilation))
+        if (DotBoxDRpcTypeMapper.CanReconstructWithObjectInitializer(type, fields, compilation))
         {
-            return BuildInitializer("        return new " + TypeName(type), fields, assigned: null);
+            return BuildInitializer(
+                "        return new " + TypeName(type),
+                fields,
+                assigned: new bool[fields.Count],
+                constructor: null,
+                compilation);
         }
 
         throw new NotSupportedException(
@@ -54,14 +60,21 @@ internal static class RpcKernelPayloadDtoReaderBuilder
         return arguments;
     }
 
-    private static string BuildInitializer(string construction, IReadOnlyList<RecordMember> fields, bool[]? assigned)
+    private static string BuildInitializer(
+        string construction,
+        IReadOnlyList<RecordMember> fields,
+        bool[]? assigned,
+        IMethodSymbol? constructor,
+        Compilation? compilation)
     {
         var initializer = new StringBuilder();
         initializer.Append(construction).AppendLine();
         initializer.AppendLine("        {");
         for (var i = 0; i < fields.Count; i++)
         {
-            if (assigned is not null && (assigned[i] || !DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i])))
+            if (assigned is not null &&
+                ((assigned[i] && !MustInitializeRequiredMember(fields[i], constructor, compilation)) ||
+                 (!assigned[i] && !DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i], compilation))))
             {
                 continue;
             }
@@ -112,7 +125,8 @@ internal static class RpcKernelPayloadDtoReaderBuilder
                     return resolved;
                 }
 
-                if (partial is null || assignedCount > partial.AssignedCount)
+                if (DotBoxDRpcTypeMapper.CanReconstructFromAssignedFields(fields, assigned, compilation) &&
+                    (partial is null || assignedCount > partial.AssignedCount))
                 {
                     partial = resolved;
                 }
@@ -122,40 +136,36 @@ internal static class RpcKernelPayloadDtoReaderBuilder
         return partial;
     }
 
-    private static bool CanReconstructAllUnassignedFields(
+    private static bool RequiresRequiredMemberInitializer(
         IReadOnlyList<RecordMember> fields,
-        bool[] assigned,
+        IMethodSymbol constructor,
         Compilation? compilation)
-        => fields.Where((_, index) => !assigned[index])
-            .All(field =>
-                DotBoxDRpcTypeMapper.IsObjectInitializerWritable(field, compilation) ||
-                DotBoxDRpcTypeMapper.IsDerivedFromAssignedFields(field, fields, assigned));
+        => !HasSetsRequiredMembers(constructor) &&
+           fields.Any(field => IsRequiredMember(field) &&
+                               DotBoxDRpcTypeMapper.IsObjectInitializerWritable(field, compilation));
 
-    private static bool CanUseObjectInitializer(
-        INamedTypeSymbol type,
-        IReadOnlyList<RecordMember> fields,
+    private static bool MustInitializeRequiredMember(
+        RecordMember field,
+        IMethodSymbol? constructor,
         Compilation? compilation)
-    {
-        if (fields.Count == 0 || (!type.IsValueType && !HasAccessibleParameterlessConstructor(type, compilation)))
+        => constructor is not null &&
+           !HasSetsRequiredMembers(constructor) &&
+           IsRequiredMember(field) &&
+           DotBoxDRpcTypeMapper.IsObjectInitializerWritable(field, compilation);
+
+    private static bool IsRequiredMember(RecordMember field)
+        => field.Symbol switch
         {
-            return false;
-        }
+            IPropertySymbol property => property.IsRequired,
+            IFieldSymbol fieldSymbol => fieldSymbol.IsRequired,
+            _ => false,
+        };
 
-        foreach (var field in fields)
-        {
-            if (!DotBoxDRpcTypeMapper.IsObjectInitializerWritable(field, compilation))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static bool HasAccessibleParameterlessConstructor(INamedTypeSymbol type, Compilation? compilation)
-        => type.InstanceConstructors.Any(constructor =>
-            constructor.Parameters.Length == 0 &&
-            DotBoxDRpcTypeMapper.IsAccessibleFromGeneratedCode(constructor, compilation));
+    private static bool HasSetsRequiredMembers(IMethodSymbol constructor)
+        => constructor.GetAttributes().Any(attribute => string.Equals(
+            attribute.AttributeClass?.ToDisplayString(),
+            "System.Diagnostics.CodeAnalysis.SetsRequiredMembersAttribute",
+            StringComparison.Ordinal));
 
     private static string FieldLocal(int index)
         => "__field" + index.ToString(System.Globalization.CultureInfo.InvariantCulture);

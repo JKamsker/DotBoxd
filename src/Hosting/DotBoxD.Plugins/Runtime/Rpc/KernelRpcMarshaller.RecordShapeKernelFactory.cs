@@ -35,9 +35,27 @@ public static partial class KernelRpcMarshaller
                     parameters[i].ParameterType);
             }
 
-            var body = LinqExpression.Convert(LinqExpression.New(constructor, arguments), typeof(object));
+            var created = LinqExpression.New(constructor, arguments);
+            if (RecordTailBindings(
+                    constructorMap,
+                    fields,
+                    fieldIndex => LinqExpression.Call(
+                        value,
+                        nameof(KernelRpcValue.GetItem),
+                        Type.EmptyTypes,
+                        LinqExpression.Constant(fieldIndex)),
+                    ReadKernelRecordField) is not { } bindings)
+            {
+                return null;
+            }
+
+            var initialized = bindings.Count == 0
+                ? (LinqExpression)created
+                : LinqExpression.MemberInit(created, bindings);
+            var body = LinqExpression.Convert(initialized, typeof(object));
             return LinqExpression.Lambda<Func<KernelRpcValue, object>>(body, value).Compile();
         }
+
     }
 
     private static class RecordShapeSetterFactory

@@ -151,4 +151,68 @@ public sealed class PluginServerControlServiceTests
         PluginServerGenerationTestDriver.AssertNoCompilationErrors(outputCompilation);
         Assert.Contains("global::Renamed.Control.SettingPatch", generated, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Explicit_control_service_without_wire_client_reports_diagnostic()
+    {
+        var diagnostics = PluginServerGenerationTestDriver.Diagnostics("""
+            using System.Threading;
+            using System.Threading.Tasks;
+            using DotBoxD.Abstractions;
+            using DotBoxD.Plugins;
+            using DotBoxD.Services.Attributes;
+
+            namespace MissingWire.Game
+            {
+                [DotBoxDService]
+                public interface IGameWorldAccess;
+            }
+
+            namespace MissingWire.Control
+            {
+                public readonly record struct SettingPatch(string Name, string Value);
+
+                public interface IPluginControl
+                {
+                    ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default);
+                    ValueTask<string> InstallSubscriptionAsync(string packageJson, CancellationToken ct = default);
+                    ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default);
+                    ValueTask UpdateSettingsAsync(
+                        string pluginId,
+                        SettingPatch[] updates,
+                        bool atomic = false,
+                        CancellationToken ct = default);
+                    ValueTask HoldUntilShutdownAsync(CancellationToken ct = default);
+                }
+            }
+
+            namespace DotBoxD.Services.Generated
+            {
+                public static class DotBoxDGeneratedExtensions
+                {
+                    public static MissingWire.Game.IGameWorldAccess GetGameWorldAccess(
+                        DotBoxD.Services.Peer.RpcPeer peer)
+                        => throw new System.InvalidOperationException("not used");
+                }
+            }
+
+            namespace MissingWire.Plugin
+            {
+                using DotBoxD.Abstractions;
+                using MissingWire.Game;
+
+                [GeneratePluginServer(
+                    Context = typeof(RemotePluginContext),
+                    ControlService = typeof(MissingWire.Control.IPluginControl))]
+                public partial class RemotePluginServer : IGameWorldAccess;
+
+                public sealed partial class RemotePluginContext;
+            }
+            """);
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("IServerExtensionWireClient", StringComparison.Ordinal));
+    }
 }

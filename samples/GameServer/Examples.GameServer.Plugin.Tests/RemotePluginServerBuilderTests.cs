@@ -241,6 +241,25 @@ public sealed partial class RemotePluginServerBuilderTests
         Assert.Equal(["extension:monster-killer"], control.Calls);
     }
 
+    [Fact]
+    public async Task Mismatched_anonymous_kernel_install_id_does_not_poison_plugin_id_cache()
+    {
+        var control = new RecordingGamePluginControlService();
+        using var server = new GamePluginServer(control, new FakeWorld());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            server.Services.EnsureAnonymousKernelAsync(
+                "wrong-id",
+                KernelPackageRegistry.Resolve<MonsterKillerKernel>));
+
+        var installedId = await server.Services.EnsureAnonymousKernelAsync(
+            "monster-killer",
+            KernelPackageRegistry.Resolve<MonsterKillerKernel>);
+
+        Assert.Equal("monster-killer", installedId);
+        Assert.Equal(["extension:monster-killer", "extension:monster-killer"], control.Calls);
+    }
+
     private static void ConfigureSampleKernels(IGamePluginSetup setup)
     {
         setup.Replace<IMonsterAggroService, GuardianKernel>();

@@ -6,6 +6,25 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 
 internal sealed partial class DotBoxDRpcJsonLowerer
 {
+    private bool TryLowerDerivedField(
+        IReadOnlyList<RecordMember> fields,
+        bool[] assigned,
+        string[] args,
+        INamedTypeSymbol named)
+    {
+        for (var i = 0; i < fields.Count; i++)
+        {
+            if (!assigned[i] && DotBoxDRpcTypeMapper.IsDerivedFromAssignedFields(fields[i], fields, assigned))
+            {
+                args[i] = LowerDerivedField(fields, assigned, args, named, fields[i]);
+                assigned[i] = true;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // Builds the wire slot for a record field that has no constructor parameter — a derived/get-only member such
     // as `public int Sum => X + Y;`. The member is recomputed by the runtime on decode, but the sandbox record
     // value still needs a slot for it, and an in-sandbox read of the member reads that slot, so it must hold the
@@ -21,7 +40,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         RecordMember derived)
     {
         if (derived.Symbol is not IPropertySymbol { GetMethod: not null } property ||
-            TryGetDerivedGetterExpression(property) is not { } body)
+            DotBoxDRpcTypeMapper.TryGetDerivedGetterExpression(property) is not { } body)
         {
             throw new System.NotSupportedException(
                 $"Server extension constructor for '{named.Name}' cannot reconstruct the derived member '{derived.Name}' " +
@@ -91,40 +110,4 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             $"Server extension constructor for '{named.Name}' cannot build the derived member '{derived.Name}' in the " +
             "sandbox: its getter is not a simple expression over the constructor's parameters. Pass the value as a " +
             $"constructor parameter, or construct '{named.Name}' where the value is available.");
-
-    private static ExpressionSyntax? TryGetDerivedGetterExpression(IPropertySymbol property)
-    {
-        foreach (var reference in property.DeclaringSyntaxReferences)
-        {
-            if (reference.GetSyntax() is not PropertyDeclarationSyntax declaration)
-            {
-                continue;
-            }
-
-            // `public int Sum => X + Y;`
-            if (declaration.ExpressionBody is { } arrow)
-            {
-                return arrow.Expression;
-            }
-
-            var getter = declaration.AccessorList?.Accessors
-                .FirstOrDefault(accessor => accessor.IsKind(SyntaxKind.GetAccessorDeclaration));
-
-            // `public int Sum { get => X + Y; }`
-            if (getter?.ExpressionBody is { } getterArrow)
-            {
-                return getterArrow.Expression;
-            }
-
-            // `public int Sum { get { return X + Y; } }`
-            if (getter?.Body is { } getterBody &&
-                getterBody.Statements.Count == 1 &&
-                getterBody.Statements[0] is ReturnStatementSyntax { Expression: { } returned })
-            {
-                return returned;
-            }
-        }
-
-        return null;
-    }
 }

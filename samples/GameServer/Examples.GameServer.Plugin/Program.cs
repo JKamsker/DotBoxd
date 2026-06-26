@@ -64,8 +64,6 @@ internal static class Program
         var killed = await server.Monsters.Get("monster-4").KillAsync();
         Console.WriteLine($"[plugin] Monsters.Get(monster-4).KillAsync() => {killed}.");
 
-        await server.Monsters.Get("monster-1").BlinkBehindAsync("player-1");
-
         // Tune a replaced kernel's live settings — strongly typed member setters, one atomic batch. Only
         // [LiveSetting] members are settable; ApplyAsync ships it (a chain without ApplyAsync warns).
         await server.Get<GuardianKernel>()

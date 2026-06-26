@@ -1,3 +1,4 @@
+using System.Reflection;
 using DotBoxD.Kernels.Tests.PluginAnalyzer.Core;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
@@ -115,7 +116,77 @@ public sealed partial class ServerExtensionSurpriseRegressionTests
             }
             """);
 
-        Assert.NotNull(assembly.GetType("Sample.Probe", throwOnError: true));
+        var amount = GeneratedExtensionDefault(assembly, "Echo");
+
+        Assert.Equal(7, amount.DefaultValue);
+    }
+
+    [Fact]
+    public void Generated_client_method_preserves_non_finite_float_default_parameters()
+    {
+        var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly("""
+            using System.Threading;
+            using System.Threading.Tasks;
+            using DotBoxD.Kernels;
+            using DotBoxD.Kernels.Sandbox;
+            using DotBoxD.Plugins;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Services.Attributes;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            [DotBoxDService]
+            public interface IRemoteControl;
+
+            public sealed class RemoteControl : IRemoteControl, IServerExtensionClientAccessor
+            {
+                public RemoteControl(DotBoxD.Abstractions.IServerExtensionClientRegistry serverExtensions)
+                    => ServerExtensions = serverExtensions;
+
+                public DotBoxD.Abstractions.IServerExtensionClientRegistry ServerExtensions { get; }
+            }
+
+            public interface INanService
+            {
+                float Nan(float amount = float.NaN);
+            }
+
+            public interface IPositiveService
+            {
+                float Positive(float amount = float.PositiveInfinity);
+            }
+
+            public interface INegativeService
+            {
+                float Negative(float amount = float.NegativeInfinity);
+            }
+
+            [ServerExtension("float-nan", typeof(INanService))]
+            public sealed partial class NanKernel
+            {
+                [ServerExtensionMethod(typeof(IRemoteControl))]
+                public float Nan(float amount, HookContext ctx) => amount;
+            }
+
+            [ServerExtension("float-positive", typeof(IPositiveService))]
+            public sealed partial class PositiveKernel
+            {
+                [ServerExtensionMethod(typeof(IRemoteControl))]
+                public float Positive(float amount, HookContext ctx) => amount;
+            }
+
+            [ServerExtension("float-negative", typeof(INegativeService))]
+            public sealed partial class NegativeKernel
+            {
+                [ServerExtensionMethod(typeof(IRemoteControl))]
+                public float Negative(float amount, HookContext ctx) => amount;
+            }
+            """);
+
+        Assert.True(float.IsNaN((float)GeneratedExtensionDefault(assembly, "Nan").DefaultValue!));
+        Assert.Equal(float.PositiveInfinity, GeneratedExtensionDefault(assembly, "Positive").DefaultValue);
+        Assert.Equal(float.NegativeInfinity, GeneratedExtensionDefault(assembly, "Negative").DefaultValue);
     }
 
     [Fact]
@@ -180,5 +251,23 @@ public sealed partial class ServerExtensionSurpriseRegressionTests
 
         var function = Assert.Single(package.Module.Functions);
         Assert.Contains(function.Parameters, parameter => parameter.Name == "__receiverId");
+    }
+
+    private static ParameterInfo GeneratedExtensionDefault(Assembly assembly, string methodName)
+    {
+        var receiver = assembly.GetType("Sample.RemoteControl", throwOnError: true)!;
+        var method = assembly.GetTypes()
+            .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            .Single(method =>
+            {
+                var parameters = method.GetParameters();
+                return string.Equals(method.Name, methodName, StringComparison.Ordinal) &&
+                       parameters.Length == 2 &&
+                       parameters[0].ParameterType.IsAssignableFrom(receiver);
+            });
+
+        var parameter = method.GetParameters()[1];
+        Assert.True(parameter.HasDefaultValue);
+        return parameter;
     }
 }

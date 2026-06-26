@@ -10,6 +10,12 @@ internal static partial class DotBoxDExpressionModelFactory
         string memberName,
         DotBoxDExpressionLoweringContext context)
     {
+        if (context.InlinedBindings is { } bindings &&
+            bindings.TryGetValue(memberName, out var bound))
+        {
+            return bound;
+        }
+
         if (context.SemanticModel.GetSymbolInfo(member, context.CancellationToken).Symbol
             is not IPropertySymbol property)
         {

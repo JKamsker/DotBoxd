@@ -94,6 +94,26 @@ internal static partial class DotBoxDKernelMethodInliner
         return builder.ToString();
     }
 
+    private static void ValidateDescriptorArgumentUses(
+        IMethodSymbol method,
+        IReadOnlyList<DescriptorPlaceholderOccurrence> occurrences,
+        BoundKernelMethodCall call)
+    {
+        var usageCounts = new Dictionary<IParameterSymbol, int>(SymbolEqualityComparer.Default);
+        var firstUseOrder = new List<IParameterSymbol>();
+        foreach (var occurrence in occurrences.OrderBy(static occurrence => occurrence.Span.Start))
+        {
+            var parameter = method.Parameters[occurrence.ParameterIndex];
+            usageCounts[parameter] = usageCounts.TryGetValue(parameter, out var count) ? count + 1 : 1;
+            if (!firstUseOrder.Any(candidate => SymbolEqualityComparer.Default.Equals(candidate, parameter)))
+            {
+                firstUseOrder.Add(parameter);
+            }
+        }
+
+        KernelMethodArgumentReuseValidator.Validate(method, usageCounts, firstUseOrder, call);
+    }
+
     private static string DescriptorPlaceholder(int index)
         => "__dotboxd_kernel_method_arg_" +
            index.ToString(System.Globalization.CultureInfo.InvariantCulture) +

@@ -117,6 +117,22 @@ public sealed class PluginServerSurpriseRegressionTests
     }
 
     [Fact]
+    public void Generated_plugin_server_disambiguates_reserved_control_backing_field_names()
+    {
+        var (generated, outputCompilation) = PluginServerGenerationTestDriver.Run(BaseServerSource(worldMembers: """
+                    IControl World { get; }
+            """, extraGameTypes: """
+
+                [DotBoxDService]
+                public interface IControl;
+            """));
+
+        PluginServerGenerationTestDriver.AssertNoCompilationErrors(outputCompilation);
+        Assert.Contains("private WorldPluginControl? _world_2;", generated, StringComparison.Ordinal);
+        Assert.DoesNotContain("private WorldPluginControl? _world;", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Generated_plugin_server_reports_generated_surface_collisions()
     {
         var diagnostics = PluginServerGenerationTestDriver.Diagnostics(BaseServerSource(worldMembers: """
@@ -138,7 +154,9 @@ public sealed class PluginServerSurpriseRegressionTests
         Assert.Contains("InvokeAsync<TReturn>", generated, StringComparison.Ordinal);
         Assert.Contains("CancellationToken cancellationToken = default", generated, StringComparison.Ordinal);
         Assert.Contains("_setupReplayIndex++", generated, StringComparison.Ordinal);
-        Assert.Contains("AwaitAnonymousKernelAsync(pluginId, install)", generated, StringComparison.Ordinal);
+        Assert.Contains("AwaitAnonymousKernelAsync(pluginId, install, cancellationToken)", generated, StringComparison.Ordinal);
+        Assert.Contains("installTask.WaitAsync(cancellationToken)", generated, StringComparison.Ordinal);
+        Assert.Contains("OperationCanceledException", generated, StringComparison.Ordinal);
         Assert.Contains("_anonymousKernels).Remove", generated, StringComparison.Ordinal);
     }
 

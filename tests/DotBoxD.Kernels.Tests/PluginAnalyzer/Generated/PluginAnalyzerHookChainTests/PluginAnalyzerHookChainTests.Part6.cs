@@ -85,4 +85,112 @@ public sealed partial class PluginAnalyzerHookChainTests
         Assert.DoesNotContain(result.Diagnostics, d => d.Id == "DBXK114");
         Assert.Contains(result.GeneratedTrees, tree => tree.ToString().Contains("UseGeneratedChain", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Remote_reassigned_staged_Run_alias_reports_DBXK114_instead_of_stale_lowering()
+    {
+        var result = RunGenerator("""
+            using DotBoxD.Plugins.Runtime;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId);
+
+            public static class Usage
+            {
+                public static void Configure(RemoteHookRegistry hooks)
+                {
+                    var staged = hooks.On<DamageEvent>()
+                        .Where(e => e.TargetId == "monster-1");
+                    staged = hooks.On<DamageEvent>()
+                        .Where(e => e.TargetId == "monster-2");
+                    staged.Run((e, ctx) => ctx.Messages.Send(e.TargetId, "hit"));
+                }
+            }
+            """);
+
+        Assert.Contains(result.Diagnostics, d => d.Id == "DBXK114");
+        Assert.DoesNotContain(result.GeneratedTrees, tree => tree.ToString().Contains("UseGeneratedChain", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void KernelMethod_reordered_nonrepeatable_arguments_report_DBXK114()
+    {
+        var result = RunGenerator("""
+            using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Services.Attributes;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId);
+
+            [DotBoxDService]
+            public interface IProbe
+            {
+                [HostBinding("probe.next", "probe.next", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
+                int Next(string id);
+            }
+
+            public static class Usage
+            {
+                public static void Configure(RemoteHookRegistry hooks)
+                    => hooks.On<DamageEvent>()
+                        .Where((e, ctx) => IsOrdered(
+                            right: ctx.Host<IProbe>().Next("B"),
+                            left: ctx.Host<IProbe>().Next("A")))
+                        .Run((e, ctx) => ctx.Messages.Send(e.TargetId, "hit"));
+
+                [KernelMethod]
+                public static bool IsOrdered(int left, int right) => left < right;
+            }
+            """);
+
+        Assert.Contains(
+            result.Diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("call-site evaluation order", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void KernelMethod_send_helper_reordered_nonrepeatable_arguments_report_DBXK114()
+    {
+        var result = RunGenerator("""
+            using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Services.Attributes;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId);
+
+            [DotBoxDService]
+            public interface IProbe
+            {
+                [HostBinding("probe.next", "probe.next", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
+                string Next(string id);
+            }
+
+            public static class Usage
+            {
+                public static void Configure(RemoteHookRegistry hooks)
+                    => hooks.On<DamageEvent>()
+                        .Run((e, ctx) => SendPair(
+                            ctx,
+                            message: ctx.Host<IProbe>().Next("B"),
+                            target: ctx.Host<IProbe>().Next("A")));
+
+                [KernelMethod]
+                public static void SendPair(HookContext ctx, string target, string message)
+                    => ctx.Messages.Send(target, message);
+            }
+            """);
+
+        Assert.Contains(
+            result.Diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("call-site evaluation order", StringComparison.Ordinal));
+    }
 }

@@ -221,9 +221,13 @@ internal static class RemoteStagedUseDiagnosticFactory
         {
             "DotBoxD.Plugins.Runtime" => name is
                 "RemoteHookPipeline" or
-                "RemoteSubscriptionPipeline",
-            "DotBoxD.Plugins.Runtime.Hooks" => name == "RemoteHookStage",
-            "DotBoxD.Plugins.Runtime.Subscriptions" => name == "RemoteSubscriptionStage",
+                "RemoteHookPipelineWithContext" or
+                "RemoteSubscriptionPipeline" or
+                "RemoteSubscriptionPipelineWithContext",
+            "DotBoxD.Plugins.Runtime.Hooks" => name is "RemoteHookStage" or "RemoteHookStageWithContext",
+            "DotBoxD.Plugins.Runtime.Subscriptions" => name is
+                "RemoteSubscriptionStage" or
+                "RemoteSubscriptionStageWithContext",
             _ => false
         };
     }
@@ -238,8 +242,10 @@ internal static class RemoteStagedUseDiagnosticFactory
         var ns = named.ContainingNamespace.ToDisplayString();
         return ns switch
         {
-            "DotBoxD.Plugins.Runtime.Hooks" => named.Name == "RemoteHookStage",
-            "DotBoxD.Plugins.Runtime.Subscriptions" => named.Name == "RemoteSubscriptionStage",
+            "DotBoxD.Plugins.Runtime.Hooks" => named.Name is "RemoteHookStage" or "RemoteHookStageWithContext",
+            "DotBoxD.Plugins.Runtime.Subscriptions" => named.Name is
+                "RemoteSubscriptionStage" or
+                "RemoteSubscriptionStageWithContext",
             _ => false
         };
     }

@@ -16,6 +16,7 @@ internal static class KernelMethodArgumentBinder
 
         var parameters = definition.Parameters;
         var bound = new BoundKernelMethodArgument[parameters.Length];
+        var evaluationOrder = new List<BoundKernelMethodArgument>(parameters.Length);
         var assigned = new bool[parameters.Length];
         var nextPositional = 0;
         if (method.ReducedFrom is not null)
@@ -26,6 +27,7 @@ internal static class KernelMethodArgumentBinder
             }
 
             bound[0] = new BoundKernelMethodArgument(parameters[0], extensionAccess.Expression, null, UsesDefault: false);
+            evaluationOrder.Add(bound[0]);
             assigned[0] = true;
             nextPositional = 1;
         }
@@ -46,6 +48,7 @@ internal static class KernelMethodArgumentBinder
             }
 
             bound[index] = new BoundKernelMethodArgument(parameters[index], argument.Expression, null, UsesDefault: false);
+            evaluationOrder.Add(bound[index]);
             assigned[index] = true;
             nextPositional = NextUnassigned(assigned, nextPositional);
         }
@@ -65,7 +68,7 @@ internal static class KernelMethodArgumentBinder
             bound[i] = new BoundKernelMethodArgument(parameters[i], null, parameters[i].ExplicitDefaultValue, UsesDefault: true);
         }
 
-        return new BoundKernelMethodCall(definition, bound);
+        return new BoundKernelMethodCall(definition, bound, evaluationOrder);
     }
 
     public static IMethodSymbol Definition(IMethodSymbol method)
@@ -118,7 +121,8 @@ internal static class KernelMethodArgumentBinder
 
 internal sealed record BoundKernelMethodCall(
     IMethodSymbol Method,
-    IReadOnlyList<BoundKernelMethodArgument> Arguments);
+    IReadOnlyList<BoundKernelMethodArgument> Arguments,
+    IReadOnlyList<BoundKernelMethodArgument> EvaluationOrder);
 
 internal sealed record BoundKernelMethodArgument(
     IParameterSymbol Parameter,

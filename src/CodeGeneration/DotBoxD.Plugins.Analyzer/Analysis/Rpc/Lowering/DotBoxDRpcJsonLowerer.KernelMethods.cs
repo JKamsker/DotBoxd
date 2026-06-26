@@ -76,7 +76,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             invocation.GetLocation().GetLineSpan().Path + ":" +
             invocation.SpanStart.ToString(System.Globalization.CultureInfo.InvariantCulture));
         var parameterOrdinals = ParameterOrdinals(call.Method.Parameters);
-        foreach (var argument in ArgumentsInEvaluationOrder(invocation, call))
+        foreach (var argument in ArgumentsInEvaluationOrder(call))
         {
             var ordinal = parameterOrdinals[argument.Parameter.Name];
             if (DotBoxDNullableScalarType.IsNullableValueType(argument.Parameter.Type))
