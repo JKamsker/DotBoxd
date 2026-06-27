@@ -51,23 +51,33 @@ internal static partial class RemoteStagedUseDiagnosticFactory
         foreach (var reference in method.DeclaringSyntaxReferences)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (reference.GetSyntax(cancellationToken) is not MethodDeclarationSyntax declaration)
+            var syntax = reference.GetSyntax(cancellationToken);
+            var expressionBody = syntax switch
             {
-                continue;
-            }
-
-            if (declaration.ExpressionBody is { Expression: { } expressionBody })
+                MethodDeclarationSyntax methodDeclaration => methodDeclaration.ExpressionBody?.Expression,
+                LocalFunctionStatementSyntax localFunction => localFunction.ExpressionBody?.Expression,
+                _ => null
+            };
+            if (expressionBody is not null)
             {
                 return expressionBody;
             }
 
-            if (declaration.Body is { } body)
+            var body = syntax switch
             {
-                var returns = body.DescendantNodes().OfType<ReturnStatementSyntax>().ToArray();
-                if (returns.Length == 1)
-                {
-                    return returns[0].Expression;
-                }
+                MethodDeclarationSyntax methodDeclaration => methodDeclaration.Body,
+                LocalFunctionStatementSyntax localFunction => localFunction.Body,
+                _ => null
+            };
+            if (body is null)
+            {
+                continue;
+            }
+
+            var returns = body.DescendantNodes().OfType<ReturnStatementSyntax>().ToArray();
+            if (returns.Length == 1)
+            {
+                return returns[0].Expression;
             }
         }
 

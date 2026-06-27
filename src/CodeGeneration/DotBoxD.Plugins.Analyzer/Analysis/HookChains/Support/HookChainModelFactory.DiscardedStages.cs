@@ -30,6 +30,7 @@ internal static partial class HookChainModelFactory
 
             if (invocation.Expression is not MemberAccessExpressionSyntax access ||
                 access.Name.Identifier.ValueText is not (WhereMethod or SelectMethod) ||
+                !IsHookStageInvocation(invocation, model, cancellationToken) ||
                 !ExpressionReferencesLocal(access.Expression, receiverLocal, model, cancellationToken, depth: 0))
             {
                 continue;
@@ -47,6 +48,13 @@ internal static partial class HookChainModelFactory
 
     private static bool IsDiscardedStage(InvocationExpressionSyntax invocation)
         => TransparentStageExpression(invocation).Parent is ExpressionStatementSyntax;
+
+    private static bool IsHookStageInvocation(
+        InvocationExpressionSyntax invocation,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+        => model.GetTypeInfo(invocation, cancellationToken).Type is INamedTypeSymbol type &&
+           ReceiverKind(type) is not null;
 
     private static bool IsAssignedBackToReceiver(
         InvocationExpressionSyntax invocation,

@@ -75,7 +75,7 @@ internal static partial class RemoteStagedUseDiagnosticFactory
             assignment.Right == transparentExpression &&
             assignment.Parent is ExpressionStatementSyntax)
         {
-            return CreateAssignedStageDiagnostic(access, model, cancellationToken);
+            return CreateAssignedStageDiagnostic(invocation, assignment, access, model, cancellationToken);
         }
 
         if (transparentExpression.Parent is EqualsValueClauseSyntax
@@ -139,6 +139,8 @@ internal static partial class RemoteStagedUseDiagnosticFactory
     }
 
     private static PluginKernelDiagnostic? CreateAssignedStageDiagnostic(
+        InvocationExpressionSyntax invocation,
+        AssignmentExpressionSyntax assignment,
         MemberAccessExpressionSyntax access,
         SemanticModel model,
         CancellationToken cancellationToken)
@@ -146,6 +148,12 @@ internal static partial class RemoteStagedUseDiagnosticFactory
         var receiverType = model.GetTypeInfo(access.Expression, cancellationToken).Type;
         if (!IsRemoteChainOrStageType(receiverType) &&
             !IsGeneratedRemoteChain(access.Expression, model, cancellationToken))
+        {
+            return null;
+        }
+
+        if (model.GetSymbolInfo(assignment.Left, cancellationToken).Symbol is not ILocalSymbol local ||
+            !LocalFlowsIntoTerminalOrUse(invocation, local, model, cancellationToken))
         {
             return null;
         }
