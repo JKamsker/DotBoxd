@@ -215,4 +215,68 @@ public sealed class PluginServerControlServiceTests
             d => d.Id == "DBXK100" &&
                  d.GetMessage().Contains("IServerExtensionWireClient", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Control_service_ref_cancellation_token_reports_diagnostic()
+    {
+        var diagnostics = PluginServerGenerationTestDriver.Diagnostics("""
+            using System.Threading;
+            using System.Threading.Tasks;
+            using DotBoxD.Abstractions;
+            using DotBoxD.Plugins;
+            using DotBoxD.Services.Attributes;
+
+            namespace RefControl.Game
+            {
+                [DotBoxDService]
+                public interface IGameWorldAccess;
+            }
+
+            namespace RefControl.Game.Ipc
+            {
+                public readonly record struct LiveSettingUpdate(string Name, string Value);
+
+                public interface IGamePluginControlService : DotBoxD.Plugins.IServerExtensionWireClient
+                {
+                    ValueTask<string> InstallPluginAsync(string packageJson, ref CancellationToken ct);
+                    ValueTask<string> InstallSubscriptionAsync(string packageJson, CancellationToken ct = default);
+                    ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default);
+                    ValueTask UpdateSettingsAsync(
+                        string pluginId,
+                        LiveSettingUpdate[] updates,
+                        bool atomic = false,
+                        CancellationToken ct = default);
+                    ValueTask HoldUntilShutdownAsync(CancellationToken ct = default);
+                }
+            }
+
+            namespace DotBoxD.Services.Generated
+            {
+                public static class DotBoxDGeneratedExtensions
+                {
+                    public static RefControl.Game.IGameWorldAccess GetGameWorldAccess(
+                        DotBoxD.Services.Peer.RpcPeer peer)
+                        => throw new System.InvalidOperationException("not used");
+                }
+            }
+
+            namespace RefControl.Plugin
+            {
+                using DotBoxD.Abstractions;
+                using RefControl.Game;
+
+                [GeneratePluginServer(Context = typeof(RemotePluginContext))]
+                public partial class RemotePluginServer : IGameWorldAccess;
+
+                public sealed partial class RemotePluginContext;
+            }
+            """);
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("InstallPluginAsync", StringComparison.Ordinal) &&
+                 d.GetMessage().Contains("generated facade signature", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics, d => d.Id == "CS1620");
+    }
 }

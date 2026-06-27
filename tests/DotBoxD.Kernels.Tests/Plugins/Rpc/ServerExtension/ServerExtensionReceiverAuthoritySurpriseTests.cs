@@ -78,6 +78,42 @@ public sealed class ServerExtensionReceiverAuthoritySurpriseTests
         AssertReceiverIdThreadedToHostCall(package);
     }
 
+    [Fact]
+    public void Cast_grafted_receiver_field_threads_receiver_id_to_host_call()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create("""
+            using DotBoxD.Abstractions;
+            using DotBoxD.Plugins;
+            using DotBoxD.Services.Attributes;
+
+            namespace Sample;
+
+            [DotBoxDService]
+            public interface IRemoteEntity
+            {
+                string Id { get; }
+
+                [HostCapability("game.world.entity.read.threat", HostBindingEffect.HostStateRead)]
+                int Threat();
+            }
+
+            [DotBoxDService]
+            public interface IRemoteMonster : IRemoteEntity;
+
+            [ServerExtension(typeof(IRemoteMonster), "cast-threat")]
+            public sealed partial class CastThreatKernel
+            {
+                private readonly IRemoteMonster _monster;
+
+                public CastThreatKernel(IRemoteMonster monster) => _monster = monster;
+
+                public int Read(HookContext ctx) => ((IRemoteEntity)_monster).Threat();
+            }
+            """, "Sample.CastThreatPluginPackage");
+
+        AssertReceiverIdThreadedToHostCall(package);
+    }
+
     private static void AssertReceiverIdThreadedToHostCall(PluginPackage package)
     {
         var function = Assert.Single(package.Module.Functions);

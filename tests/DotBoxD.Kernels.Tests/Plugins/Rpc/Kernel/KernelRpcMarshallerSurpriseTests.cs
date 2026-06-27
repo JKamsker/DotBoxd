@@ -200,6 +200,18 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
         Assert.DoesNotContain("nests beyond", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void FromKernelRpcValue_uses_constructor_with_unmatched_optional_parameter()
+    {
+        var value = KernelRpcValue.Record([KernelRpcValue.Int32(3), KernelRpcValue.Int32(9)]);
+
+        var dto = Assert.IsType<OptionalProfileDto>(
+            KernelRpcMarshaller.FromKernelRpcValue(value, typeof(OptionalProfileDto)));
+
+        Assert.Equal(3, dto.Health);
+        Assert.Equal(9, dto.Rank);
+    }
+
     private sealed class GetOnlyTailDto
     {
         public int Id { get; set; }
@@ -266,6 +278,18 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
     private sealed class SetterEnumDto
     {
         public ByteBackedEnum Value { get; set; }
+    }
+
+    private sealed class OptionalProfileDto
+    {
+        public OptionalProfileDto(int health, bool normalize = true)
+        {
+            Health = normalize ? health : -health;
+        }
+
+        public int Health { get; }
+
+        public int Rank { get; set; }
     }
 
     private enum IntBackedEnum

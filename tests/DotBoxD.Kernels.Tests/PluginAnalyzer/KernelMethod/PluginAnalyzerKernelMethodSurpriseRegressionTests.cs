@@ -215,4 +215,45 @@ public sealed class PluginAnalyzerKernelMethodSurpriseRegressionTests
             diagnostic => diagnostic.Id == "DBXK100" &&
                           diagnostic.GetMessage().Contains("used more than once", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Context_KernelMethod_this_property_does_not_bind_to_same_named_parameter()
+    {
+        var result = PluginAnalyzerGeneratedPackageFactory.RunGenerator("""
+            using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
+            using DotBoxD.Plugins;
+            using DotBoxD.Plugins.Runtime;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string TargetId);
+
+            public sealed class GameContext
+            {
+                public static GameContext FromHookContext(HookContext ctx)
+                    => throw new System.NotSupportedException();
+
+                public IPluginMessageSink Messages
+                    => throw new System.NotSupportedException();
+
+                [HostBinding("host.ctx.label", "ctx.read.label", SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateRead)]
+                public string Label => throw new System.NotSupportedException();
+
+                [KernelMethod]
+                public string Tag(string Label) => this.Label + ":" + Label;
+            }
+
+            public static class Usage
+            {
+                public static void Configure(RemoteHookRegistry hooks)
+                    => hooks.On<DamageEvent, GameContext>(GameContext.FromHookContext)
+                        .Run((e, ctx) => ctx.Messages.Send(e.TargetId, ctx.Tag("arg")));
+            }
+            """);
+        var generated = string.Join("\n", result.GeneratedTrees.Select(tree => tree.GetText().ToString()));
+
+        Assert.Contains("host.ctx.label", generated, StringComparison.Ordinal);
+        Assert.Contains("ctx.read.label", generated, StringComparison.Ordinal);
+    }
 }

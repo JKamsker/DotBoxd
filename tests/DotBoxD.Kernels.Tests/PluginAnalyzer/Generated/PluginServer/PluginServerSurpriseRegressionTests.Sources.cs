@@ -8,7 +8,8 @@ public sealed partial class PluginServerSurpriseRegressionTests
         string controlAccessibility = "public",
         string worldMembers = "",
         string serverMembers = "",
-        string extraGameTypes = "")
+        string extraGameTypes = "",
+        string extraPluginTypes = "")
         => $$"""
             using System.Threading;
             using System.Threading.Tasks;
@@ -66,6 +67,7 @@ public sealed partial class PluginServerSurpriseRegressionTests
                 }
 
                 {{contextAccessibility}} sealed partial class RemotePluginContext;
+            {{extraPluginTypes}}
             }
             """;
 }
