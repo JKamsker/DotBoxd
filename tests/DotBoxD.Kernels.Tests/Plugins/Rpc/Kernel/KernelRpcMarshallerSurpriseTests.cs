@@ -183,6 +183,18 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
                 KernelRpcValue.Record([KernelRpcValue.Int32(300)]),
                 typeof(SetterEnumDto)));
 
+    [Theory]
+    [InlineData(typeof(DateTime))]
+    [InlineData(typeof(DateTimeOffset))]
+    [InlineData(typeof(TimeSpan))]
+    public void SandboxTypeOf_rejects_unsupported_framework_structs_before_dto_reflection(Type type)
+    {
+        var ex = Assert.Throws<NotSupportedException>(() => KernelRpcMarshaller.SandboxTypeOf(type));
+
+        Assert.Contains("not supported", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("nests beyond", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private sealed class GetOnlyTailDto
     {
         public int Id { get; set; }
