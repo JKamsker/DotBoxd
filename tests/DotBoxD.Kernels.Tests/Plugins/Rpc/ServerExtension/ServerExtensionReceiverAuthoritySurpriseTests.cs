@@ -114,6 +114,46 @@ public sealed class ServerExtensionReceiverAuthoritySurpriseTests
         AssertReceiverIdThreadedToHostCall(package);
     }
 
+    [Fact]
+    public void Receiver_graft_rejects_payload_parameter_named_receiver_id()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
+            using DotBoxD.Abstractions;
+            using DotBoxD.Plugins;
+            using DotBoxD.Services.Attributes;
+
+            namespace Sample;
+
+            [DotBoxDService]
+            public interface IRemoteMonster
+            {
+                string Id { get; }
+
+                [HostCapability("game.world.monster.read.threat", HostBindingEffect.HostStateRead)]
+                int Threat();
+            }
+
+            [ServerExtension(typeof(IRemoteMonster), "receiver-name-collision")]
+            public sealed partial class CollisionKernel
+            {
+                private readonly IRemoteMonster _monster;
+
+                public CollisionKernel(IRemoteMonster monster) => _monster = monster;
+
+                [ServerExtensionMethod(typeof(IRemoteMonster))]
+                public int Read(string __receiverId, HookContext ctx) => _monster.Threat();
+            }
+            """);
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("__receiverId", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            diagnostics,
+            d => d.Id == "DBXK117" || d.Id.StartsWith("CS", StringComparison.Ordinal));
+    }
+
     private static void AssertReceiverIdThreadedToHostCall(PluginPackage package)
     {
         var function = Assert.Single(package.Module.Functions);
