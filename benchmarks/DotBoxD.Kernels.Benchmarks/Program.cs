@@ -240,6 +240,12 @@ if (args.Contains("--probe-subscription-dispatch", StringComparer.OrdinalIgnoreC
     return;
 }
 
+if (args.Contains("--probe-hook-dispatch", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Plugins.HookDispatchProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-event-query-dispatch", StringComparer.OrdinalIgnoreCase))
 {
     DotBoxD.Kernels.Benchmarks.Queryable.EventQueryDispatchProbe.Run();

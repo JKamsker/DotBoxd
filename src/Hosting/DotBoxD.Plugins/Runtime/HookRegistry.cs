@@ -27,6 +27,8 @@ public sealed partial class HookRegistry
 {
     private readonly object _gate = new();
     private readonly Dictionary<PipelineKey, object> _pipelines = [];
+    private readonly Dictionary<Type, (object? Single, object[]? Multiple)> _pipelineFanout = [];
+    private readonly HashSet<Type> _pipelineEventTypes = [];
     private readonly IPluginMessageSink _messages;
     private readonly PluginEventAdapterRegistry _events;
     private readonly KernelRegistry _kernels;
@@ -93,6 +95,7 @@ public sealed partial class HookRegistry
                 _onFault,
                 NextResultOrder);
             _pipelines[key] = created;
+            RegisterEventTypeLocked<TEvent>();
             return created;
         }
     }
@@ -121,6 +124,7 @@ public sealed partial class HookRegistry
                 _onFault,
                 NextResultOrder);
             _pipelines[key] = created;
+            RegisterEventTypeLocked<TEvent>();
             return created;
         }
     }

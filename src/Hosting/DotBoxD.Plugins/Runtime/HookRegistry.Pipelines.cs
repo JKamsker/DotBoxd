@@ -39,11 +39,22 @@ public sealed partial class HookRegistry
 
     private (object? Single, object[]? Multiple) PipelinesForEventLocked<TEvent>()
     {
+        var eventType = typeof(TEvent);
+        if (!_pipelineEventTypes.Contains(eventType))
+        {
+            return (null, null);
+        }
+
+        if (_pipelineFanout.TryGetValue(eventType, out var cached))
+        {
+            return cached;
+        }
+
         object? single = null;
         List<object>? multiple = null;
         foreach (var (key, pipeline) in _pipelines)
         {
-            if (key.EventType != typeof(TEvent))
+            if (key.EventType != eventType)
             {
                 continue;
             }
@@ -59,7 +70,18 @@ public sealed partial class HookRegistry
             multiple.Add(pipeline);
         }
 
-        return multiple is null ? (single, null) : (null, [.. multiple]);
+        (object? Single, object[]? Multiple) fanout = multiple is null
+            ? (single, null)
+            : (null, multiple.ToArray());
+        _pipelineFanout[eventType] = fanout;
+        return fanout;
+    }
+
+    private void RegisterEventTypeLocked<TEvent>()
+    {
+        var eventType = typeof(TEvent);
+        _pipelineEventTypes.Add(eventType);
+        _pipelineFanout.Remove(eventType);
     }
 
     private static async ValueTask PublishManyAsync<TEvent>(
