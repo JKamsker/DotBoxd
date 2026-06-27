@@ -110,6 +110,39 @@ public sealed partial class RpcKernelGenerationTests
         Assert.Equal("left:right", Assert.IsType<StringValue>(result).Value);
     }
 
+    [Fact]
+    public async Task Server_extension_lowers_string_add_assignment_to_budgeted_concat()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create("""
+            using DotBoxD.Abstractions;
+            using DotBoxD.Plugins;
+
+            namespace Sample;
+
+            [ServerExtension("string-add-assign")]
+            public sealed partial class StringAddAssignKernel
+            {
+                public string Combine(string left, string right, HookContext ctx)
+                {
+                    var combined = left;
+                    combined += ":";
+                    combined += right;
+                    return combined;
+                }
+            }
+            """, "Sample.StringAddAssignPluginPackage");
+
+        Assert.Contains("Alloc", package.Manifest.Effects);
+
+        using var server = PluginServer.Create(defaultPolicy: PurePolicy());
+        var kernel = await server.InstallServerExtensionAsync(package);
+
+        var result = await kernel.InvokeServerExtensionAsync(
+            [SandboxValue.FromString("left"), SandboxValue.FromString("right")]);
+
+        Assert.Equal("left:right", Assert.IsType<StringValue>(result).Value);
+    }
+
     [Theory]
     [InlineData("double.NaN")]
     [InlineData("double.PositiveInfinity")]
