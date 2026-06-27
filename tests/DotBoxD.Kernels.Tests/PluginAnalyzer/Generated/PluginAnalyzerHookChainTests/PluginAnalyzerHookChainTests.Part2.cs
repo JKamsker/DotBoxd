@@ -269,6 +269,47 @@ public sealed partial class PluginAnalyzerHookChainTests
     }
 
     [Fact]
+    public void RegisterLocal_async_handler_typed_ct_uses_cancellation_token_shape()
+    {
+        var result = RunGenerator("""
+            using System.Threading;
+            using System.Threading.Tasks;
+            using DotBoxD.Plugins;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            [Hook("combat.damage", typeof(DamageResult))]
+            public sealed record DamageCtx(int Damage);
+
+            [HookResult]
+            public readonly partial record struct DamageResult(bool Success, string? Reason, int Damage);
+
+            public static class Usage
+            {
+                public static void Configure(HookRegistry hooks)
+                    => hooks.On<DamageCtx>()
+                        .RegisterLocal(async (DamageCtx ctx, CancellationToken ct) =>
+                        {
+                            await Task.Yield();
+                            return DamageResult.Ok().WithDamage(ctx.Damage);
+                        }, 100);
+            }
+            """);
+        var generated = string.Join(
+            Environment.NewLine,
+            result.GeneratedTrees.Select(tree => tree.GetText().ToString()));
+
+        Assert.DoesNotContain(result.Diagnostics, d => d.Id == "DBXK113");
+        Assert.Contains("UseGeneratedLocalResultChain", generated, StringComparison.Ordinal);
+        Assert.Contains(
+            "global::System.Func<global::Sample.DamageCtx, global::System.Threading.CancellationToken",
+            generated,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Lowers_a_RegisterLocal_block_body_returning_a_result_builder_chain()
     {
         var result = RunGenerator("""
