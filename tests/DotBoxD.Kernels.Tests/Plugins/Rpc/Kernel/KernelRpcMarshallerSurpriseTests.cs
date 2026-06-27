@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Immutable;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Sandbox.Values;
 using DotBoxD.Plugins.Runtime.Rpc;
@@ -7,6 +8,21 @@ namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
 
 public sealed class KernelRpcMarshallerSurpriseTests
 {
+    // An IEnumerable<T> collection that is not a recognized list/map (e.g. ImmutableArray<T>) exposes only
+    // scalar getters (Length/IsEmpty/...) and would otherwise be mis-shaped as a metadata-only record that
+    // silently drops its elements. The runtime DTO-shape detection must fail closed (throw) on it, mirroring
+    // the analyzer's generic-enumerable exclusion, instead of marshalling it as a record.
+    [Fact]
+    public void ToSandboxValue_rejects_immutable_array_collection_instead_of_shaping_a_record()
+    {
+        var value = ImmutableArray.Create(1, 2, 3);
+
+        var ex = Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.ToSandboxValue(value, typeof(ImmutableArray<int>)));
+
+        Assert.Contains("ImmutableArray", ex.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void FromSandboxValue_rejects_unreconstructable_get_only_wire_field()
     {

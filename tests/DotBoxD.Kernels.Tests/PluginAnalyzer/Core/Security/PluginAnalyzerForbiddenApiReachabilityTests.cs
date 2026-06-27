@@ -124,6 +124,100 @@ public sealed class PluginAnalyzerForbiddenApiReachabilityTests
         Assert.Contains(diagnostics, d => d.Id == "DBXK001");
     }
 
+    // A field initializer that calls a helper whose body transitively reaches a forbidden host API. The
+    // initializer runs when the kernel is constructed in-host, so it must be a call-graph ROOT just like a
+    // method-body call; previously initializers only reported a DIRECT forbidden type, so this was fail-open.
+    [Fact]
+    public async Task Reports_forbidden_helper_reached_through_field_initializer()
+    {
+        var diagnostics = await AnalyzeAsync("""
+            namespace Sample
+            {
+                using DotBoxD.Plugins;
+                using DotBoxD.Abstractions;
+
+                public static class Helper
+                {
+                    public static int Danger() => System.IO.File.ReadAllText("/etc/passwd").Length;
+                }
+
+                [Plugin("init-helper-leak")]
+                public sealed class InitHelperKernel : IEventKernel<string>
+                {
+                    private static readonly int Leaked = Helper.Danger();
+
+                    public bool ShouldHandle(string e, HookContext context) => Leaked >= 0;
+
+                    public void Handle(string e, HookContext context) { }
+                }
+            }
+            """);
+
+        Assert.Contains(diagnostics, d => d.Id == "DBXK001");
+    }
+
+    // A property initializer that reads a helper property getter whose body transitively reaches a forbidden
+    // host API must also be reported (the getter accessor is the call-graph edge, mirroring the method-body path).
+    [Fact]
+    public async Task Reports_forbidden_helper_getter_reached_through_property_initializer()
+    {
+        var diagnostics = await AnalyzeAsync("""
+            namespace Sample
+            {
+                using DotBoxD.Plugins;
+                using DotBoxD.Abstractions;
+
+                public static class Helper
+                {
+                    public static int Danger => System.IO.File.ReadAllText("/x").Length;
+                }
+
+                [Plugin("prop-init-helper-leak")]
+                public sealed class PropInitHelperKernel : IEventKernel<string>
+                {
+                    private int Leaked { get; } = Helper.Danger;
+
+                    public bool ShouldHandle(string e, HookContext context) => Leaked >= 0;
+
+                    public void Handle(string e, HookContext context) { }
+                }
+            }
+            """);
+
+        Assert.Contains(diagnostics, d => d.Id == "DBXK001");
+    }
+
+    // A benign helper used in a field initializer (no forbidden API anywhere in its transitive body) must NOT
+    // be reported: modeling initializers as roots must not turn every helper call into a false positive.
+    [Fact]
+    public async Task Does_not_report_benign_helper_in_field_initializer()
+    {
+        var diagnostics = await AnalyzeAsync("""
+            namespace Sample
+            {
+                using DotBoxD.Plugins;
+                using DotBoxD.Abstractions;
+
+                public static class Helper
+                {
+                    public static int Compute() => 40 + 2;
+                }
+
+                [Plugin("init-benign")]
+                public sealed class BenignInitKernel : IEventKernel<string>
+                {
+                    private static readonly int Value = Helper.Compute();
+
+                    public bool ShouldHandle(string e, HookContext context) => Value >= 0;
+
+                    public void Handle(string e, HookContext context) { }
+                }
+            }
+            """);
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "DBXK001");
+    }
+
     private static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(string source)
     {
         var compilation = CreateCompilation(source);
