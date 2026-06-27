@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using DotBoxD.Kernels.Bindings;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
@@ -12,12 +13,15 @@ internal static class LiteralCollectionConstructionProbe
 {
     private const int Warmup = 20_000;
     private const int Iterations = 500_000;
+    private static readonly Func<SandboxType, SandboxContext, SandboxValue> InterpreterMapEmpty =
+        CreateInterpreterMapEmpty();
 
     public static void Run()
     {
         _ = MeasureListLiteral(Warmup, 8);
         _ = MeasureMapLiteral(Warmup, 8);
         _ = MeasureMapEmpty(Warmup);
+        _ = MeasureInterpreterMapEmpty(Warmup);
 
         Console.WriteLine($"iterations = {Iterations:N0}");
         Print("list literal arity 8", MeasureListLiteral(Iterations, 8));
@@ -25,6 +29,7 @@ internal static class LiteralCollectionConstructionProbe
         Print("map literal arity 8", MeasureMapLiteral(Iterations, 8));
         Print("map literal arity 32", MeasureMapLiteral(Iterations, 32));
         Print("map.empty", MeasureMapEmpty(Iterations));
+        Print("interpreter map.empty", MeasureInterpreterMapEmpty(Iterations));
     }
 
     private static Measurement MeasureListLiteral(int iterations, int arity)
@@ -56,6 +61,31 @@ internal static class LiteralCollectionConstructionProbe
         for (var i = 0; i < iterations; i++)
         {
             var value = CompiledRuntime.MapEmpty(context, SandboxType.I32, SandboxType.I32);
+            checksum += ((MapValue)value).Values.Count;
+        }
+
+        sw.Stop();
+        return Measurement.Create(
+            sw.Elapsed.TotalMilliseconds,
+            GC.GetAllocatedBytesForCurrentThread() - allocatedBefore,
+            checksum,
+            iterations);
+    }
+
+    private static Measurement MeasureInterpreterMapEmpty(int iterations)
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        var context = CreateContext();
+        var mapType = SandboxType.Map(SandboxType.I32, SandboxType.I32);
+        var checksum = 0;
+        var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        var sw = Stopwatch.StartNew();
+        for (var i = 0; i < iterations; i++)
+        {
+            var value = InterpreterMapEmpty(mapType, context);
             checksum += ((MapValue)value).Values.Count;
         }
 
@@ -128,6 +158,18 @@ internal static class LiteralCollectionConstructionProbe
             new BindingRegistryBuilder().Build(),
             new InMemoryAuditSink(),
             CancellationToken.None);
+    }
+
+    private static Func<SandboxType, SandboxContext, SandboxValue> CreateInterpreterMapEmpty()
+    {
+        var type = Type.GetType(
+            "DotBoxD.Kernels.Interpreter.Internal.CollectionOperations, DotBoxD.Kernels.Interpreter",
+            throwOnError: true)!;
+        var method = type.GetMethod("CreateMap", BindingFlags.Public | BindingFlags.Static)
+            ?? throw new MissingMethodException(type.FullName, "CreateMap");
+        return (Func<SandboxType, SandboxContext, SandboxValue>)Delegate.CreateDelegate(
+            typeof(Func<SandboxType, SandboxContext, SandboxValue>),
+            method);
     }
 
     private static void Print(string name, Measurement measurement)

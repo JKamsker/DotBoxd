@@ -110,7 +110,7 @@ internal static class CollectionOperations
         context.ChargeAllocation(16);
         return Charge(
             context,
-            SandboxValue.FromMap(new Dictionary<SandboxValue, SandboxValue>(), mapType.Arguments[0], mapType.Arguments[1]));
+            SandboxValue.FromOwnedMap(new Dictionary<SandboxValue, SandboxValue>(), mapType.Arguments[0], mapType.Arguments[1]));
     }
 
     public static SandboxValue ContainsMapKey(SandboxValue key, SandboxValue map, SandboxContext context)
