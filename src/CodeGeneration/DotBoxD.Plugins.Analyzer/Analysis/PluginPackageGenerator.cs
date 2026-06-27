@@ -191,30 +191,16 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
             rpcGraftCollisions.SelectMany(static (collisions, _) => RpcKernelGraftCollisionDetector.Diagnostics(collisions)),
             "server extension graft collision diagnostic output",
             static (context, diagnostic) => context.ReportDiagnostic(diagnostic));
-        var duplicateIdentities = GeneratorGuard.TransformValueOrDefault(
+        var blockedIdentities = PluginPackageCollisionProviders.RegisterBlockedIdentities(
             context,
-            pluginPackageIdentities
-                .Combine(eventKernelPackageIdentities)
-                .Combine(chainPackageIdentities)
-                .Combine(rpcPackageIdentities),
-            "plugin package duplicate detection",
-            static (pair, _) => PluginPackageDuplicateDetector.FindDuplicates(
-                pair.Left.Left.Left,
-                pair.Left.Left.Right,
-                pair.Left.Right,
-                pair.Right));
-        GeneratorGuard.RegisterOutput(
-            context,
-            duplicateIdentities.SelectMany(static (duplicates, _) => PluginPackageDuplicateDetector.Diagnostics(duplicates)),
-            "plugin package duplicate diagnostic output",
-            static (context, diagnostic) => context.ReportDiagnostic(Diagnostic.Create(
-                PluginAnalyzerDiagnostics.UnsupportedKernelShapeRule,
-                Location.None,
-                diagnostic.Message)));
-        PluginPackageGeneratorOutput.RegisterPackageSources(context, pluginPackages, duplicateIdentities);
-        PluginPackageGeneratorOutput.RegisterPackageSources(context, eventKernelPackages, duplicateIdentities);
-        PluginPackageGeneratorOutput.RegisterPackageSources(context, chainPackages, duplicateIdentities);
-        PluginPackageGeneratorOutput.RegisterPackageSources(context, rpcPackages, duplicateIdentities);
+            pluginPackageIdentities,
+            eventKernelPackageIdentities,
+            chainPackageIdentities,
+            rpcPackageIdentities);
+        PluginPackageGeneratorOutput.RegisterPackageSources(context, pluginPackages, blockedIdentities);
+        PluginPackageGeneratorOutput.RegisterPackageSources(context, eventKernelPackages, blockedIdentities);
+        PluginPackageGeneratorOutput.RegisterPackageSources(context, chainPackages, blockedIdentities);
+        PluginPackageGeneratorOutput.RegisterPackageSources(context, rpcPackages, blockedIdentities);
 
         // Emit a C# interceptor per lowered chain so the Run call site installs + wires its
         // generated package (UseGeneratedChain) instead of throwing DBXK062.
