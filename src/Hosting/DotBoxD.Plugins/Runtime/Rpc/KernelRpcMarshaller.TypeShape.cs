@@ -91,7 +91,8 @@ public static partial class KernelRpcMarshaller
             type == typeof(DateOnly) ||
             type == typeof(TimeOnly) ||
             type == typeof(Index) ||
-            type == typeof(Range))
+            type == typeof(Range) ||
+            type == typeof(CancellationToken))
         {
             throw new NotSupportedException(
                 $"Kernel RPC service type '{type}' is not supported; convert it to a supported scalar or DTO type.");

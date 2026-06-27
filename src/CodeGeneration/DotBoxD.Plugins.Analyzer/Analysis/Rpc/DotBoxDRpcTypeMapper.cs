@@ -278,7 +278,12 @@ internal static partial class DotBoxDRpcTypeMapper
     private static string Scalar(string name) => "\"" + name + "\"";
 
     private static bool IsUnsupportedFrameworkStruct(INamedTypeSymbol type)
-        => type.ContainingNamespace.ToDisplayString() == "System" &&
-           type.Name is "DateTime" or "DateTimeOffset" or "TimeSpan"
-               or "DateOnly" or "TimeOnly" or "Index" or "Range";
+    {
+        var ns = type.ContainingNamespace.ToDisplayString();
+        return (ns == "System" &&
+                type.Name is "DateTime" or "DateTimeOffset" or "TimeSpan"
+                    or "DateOnly" or "TimeOnly" or "Index" or "Range") ||
+               (ns == "System.Threading" &&
+                type.Name == "CancellationToken");
+    }
 }
