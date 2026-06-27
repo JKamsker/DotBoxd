@@ -301,6 +301,12 @@ internal static partial class PluginServerFacadeModelFactory
                 $"Generated plugin server '{serverType.ToDisplayString()}' must be non-nested.");
         }
 
+        if (serverType.IsAbstract)
+        {
+            throw new NotSupportedException(
+                $"Generated plugin server '{serverType.ToDisplayString()}' must be concrete.");
+        }
+
         if (!IsPartialClass(serverType, cancellationToken))
         {
             throw new NotSupportedException(
