@@ -1,6 +1,7 @@
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Tests._TestSupport;
+using DotBoxD.Kernels.Tests.PluginAnalyzer.Core;
 using DotBoxD.Plugins;
 using DotBoxD.Plugins.Policies;
 using DotBoxD.Plugins.Runtime;
@@ -43,6 +44,20 @@ public sealed class CapabilityPolicySplitTests
     }
 
     [Fact]
+    public void Server_required_capability_analysis_includes_gated_event_properties()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
+        var package = PluginAnalyzerGeneratedPackageFactory.Create(
+            GatedEventPropertyKernelSource,
+            "Sample.GatedPluginPackage");
+
+        var required = server.GetRequiredCapabilities(package);
+
+        Assert.Contains("event.read.health", required);
+        Assert.Contains(PluginMessageBindings.CapabilityId, required);
+    }
+
+    [Fact]
     public async Task Manifest_parity_ignores_independently_granted_plugin_requests()
     {
         using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
@@ -82,6 +97,29 @@ public sealed class CapabilityPolicySplitTests
             diagnostic.Message.Contains("file.write", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Server_extension_install_rejects_ungranted_event_property_manifest_capabilities()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
+        var package = PluginAnalyzerGeneratedPackageFactory.Create(
+            SimpleServerExtensionSource,
+            "Sample.EchoPluginPackage");
+        var invalid = package with
+        {
+            Manifest = package.Manifest with
+            {
+                RequiredCapabilities = [.. package.Manifest.RequiredCapabilities, "event.read.secret"]
+            }
+        };
+
+        var exception = await Assert.ThrowsAsync<SandboxValidationException>(
+            () => server.InstallServerExtensionAsync(invalid).AsTask());
+
+        Assert.Contains(exception.Diagnostics, diagnostic =>
+            diagnostic.Code == "E-POLICY-CAP" &&
+            diagnostic.Message.Contains("event.read.secret", StringComparison.Ordinal));
+    }
+
     private static PluginPackage WithPluginRequest(PluginPackage package, string capabilityId)
         => package with
         {
@@ -99,4 +137,39 @@ public sealed class CapabilityPolicySplitTests
         };
         return package with { Module = package.Module with { Metadata = metadata } };
     }
+
+    private const string GatedEventPropertyKernelSource = """
+        using DotBoxD.Plugins;
+        using DotBoxD.Plugins.Runtime;
+        using DotBoxD.Abstractions;
+
+        namespace Sample;
+
+        public sealed record GatedEvent(
+            string TargetId,
+            string Message,
+            [property: Capability("event.read.health")] int Health);
+
+        [Plugin("gated-property")]
+        public sealed partial class GatedKernel : IEventKernel<GatedEvent>
+        {
+            public bool ShouldHandle(GatedEvent e, HookContext ctx) => e.Health > 0;
+
+            public void Handle(GatedEvent e, HookContext ctx)
+                => ctx.Messages.Send(e.TargetId, e.Message);
+        }
+        """;
+
+    private const string SimpleServerExtensionSource = """
+        using DotBoxD.Abstractions;
+        using DotBoxD.Plugins;
+
+        namespace Sample;
+
+        [ServerExtension("echo")]
+        public sealed partial class EchoKernel
+        {
+            public int Echo(HookContext ctx) => 1;
+        }
+        """;
 }
