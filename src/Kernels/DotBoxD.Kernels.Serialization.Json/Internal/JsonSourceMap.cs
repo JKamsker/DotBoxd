@@ -14,11 +14,11 @@ internal sealed class JsonSourceMap
     public static JsonSourceMap Create(string json, JsonElement root)
     {
         var tokenSpans = JsonTokenSpans.Read(json);
-        // JsonElement is keyed by identity within this single parsed document: its default struct
-        // equality compares the backing document plus element index, which is exactly the lookup
-        // this source map needs. MA0066's general hash-unfriendliness warning does not apply here.
+        // JsonElement equality is document/index identity, which is exactly what this map needs.
+        // Its default hash is value-oriented and can walk large subtrees, so use a non-value hash
+        // and let the identity equality check disambiguate the small per-document span table.
 #pragma warning disable MA0066
-        var spansByElement = new Dictionary<JsonElement, SourceSpan>();
+        var spansByElement = new Dictionary<JsonElement, SourceSpan>(JsonElementIdentityComparer.Instance);
 #pragma warning restore MA0066
         var index = 0;
         Visit(root, tokenSpans, spansByElement, ref index);
@@ -34,11 +34,13 @@ internal sealed class JsonSourceMap
         Dictionary<JsonElement, SourceSpan> spansByElement,
         ref int index)
     {
-        spansByElement[element] = index < tokenSpans.Count ? tokenSpans[index++] : JsonImport.JsonSpan;
+        var span = index < tokenSpans.Count ? tokenSpans[index] : JsonImport.JsonSpan;
+        index++;
 
         switch (element.ValueKind)
         {
             case JsonValueKind.Object:
+                spansByElement[element] = span;
                 foreach (var property in element.EnumerateObject())
                 {
                     Visit(property.Value, tokenSpans, spansByElement, ref index);
@@ -46,12 +48,79 @@ internal sealed class JsonSourceMap
 
                 break;
             case JsonValueKind.Array:
+                spansByElement[element] = span;
                 foreach (var item in element.EnumerateArray())
                 {
                     Visit(item, tokenSpans, spansByElement, ref index);
                 }
 
                 break;
+        }
+    }
+
+    private sealed class JsonElementIdentityComparer : IEqualityComparer<JsonElement>
+    {
+        public static readonly JsonElementIdentityComparer Instance = new();
+
+        private JsonElementIdentityComparer()
+        {
+        }
+
+        public bool Equals(JsonElement x, JsonElement y)
+        {
+#pragma warning disable MA0065
+            return x.Equals(y);
+#pragma warning restore MA0065
+        }
+
+        public int GetHashCode(JsonElement obj)
+        {
+            var hash = new HashCode();
+            hash.Add(obj.ValueKind);
+            switch (obj.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    AddObjectHash(ref hash, obj);
+                    break;
+                case JsonValueKind.Array:
+                    hash.Add(obj.GetArrayLength());
+                    break;
+            }
+
+            return hash.ToHashCode();
+        }
+
+        private static void AddObjectHash(ref HashCode hash, JsonElement obj)
+        {
+            var count = 0;
+            foreach (var property in obj.EnumerateObject())
+            {
+                count++;
+                hash.Add(property.Name, StringComparer.Ordinal);
+                AddShallowValueHash(ref hash, property.Value);
+            }
+
+            hash.Add(count);
+        }
+
+        private static void AddShallowValueHash(ref HashCode hash, JsonElement value)
+        {
+            hash.Add(value.ValueKind);
+            switch (value.ValueKind)
+            {
+                case JsonValueKind.String:
+                    hash.Add(value.GetString(), StringComparer.Ordinal);
+                    break;
+                case JsonValueKind.Number when value.TryGetInt64(out var integer):
+                    hash.Add(integer);
+                    break;
+                case JsonValueKind.Number when value.TryGetDouble(out var number):
+                    hash.Add(number);
+                    break;
+                case JsonValueKind.Array:
+                    hash.Add(value.GetArrayLength());
+                    break;
+            }
         }
     }
 

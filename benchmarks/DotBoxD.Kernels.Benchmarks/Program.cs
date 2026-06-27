@@ -258,6 +258,12 @@ if (args.Contains("--probe-json-schema-resources", StringComparer.OrdinalIgnoreC
     return;
 }
 
+if (args.Contains("--probe-json-import-source-map", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Json.JsonImportSourceMapProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-literal-scalar-safety", StringComparer.OrdinalIgnoreCase))
 {
     DotBoxD.Kernels.Benchmarks.Validation.LiteralScalarSafetyProbe.Run();
