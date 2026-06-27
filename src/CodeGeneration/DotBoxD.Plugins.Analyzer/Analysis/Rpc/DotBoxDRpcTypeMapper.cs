@@ -52,6 +52,14 @@ internal static partial class DotBoxDRpcTypeMapper
         {
             return Scalar("Guid");
         }
+        if (IsDateTimeWireType(type))
+        {
+            return DateTimeWireJsonType();
+        }
+        if (IsTimeSpanWireType(type))
+        {
+            return Scalar("I64");
+        }
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return Scalar(EnumUsesI64(enumType) ? "I64" : "I32");
@@ -68,7 +76,7 @@ internal static partial class DotBoxDRpcTypeMapper
             {
                 throw new NotSupportedException(
                     $"Server extension map key type '{map.Key.ToDisplayString()}' is not supported; " +
-                    "map keys must be bool, int, long, string, or an enum.");
+                    "map keys must be bool, int, long, string, TimeSpan, or an enum.");
             }
             return $"{{\"name\":\"Map\",\"arguments\":[{JsonType(map.Key, depth + 1, visiting)},{JsonType(map.Value, depth + 1, visiting)}]}}";
         }
@@ -111,7 +119,8 @@ internal static partial class DotBoxDRpcTypeMapper
     public static bool IsScalar(ITypeSymbol type)
         => type.SpecialType is SpecialType.System_Boolean or SpecialType.System_Int32
             or SpecialType.System_Int64 or SpecialType.System_Double or SpecialType.System_Single
-            or SpecialType.System_String;
+            or SpecialType.System_String ||
+           IsTimeSpanWireType(type);
     /// <summary><see cref="System.Guid"/> is a first-class 16-byte scalar (sandbox <c>Guid</c> kind), distinct
     /// from <c>string</c>. Detected structurally so it is robust to display-format differences.</summary>
     public static bool IsGuid(ITypeSymbol type)
@@ -167,12 +176,13 @@ internal static partial class DotBoxDRpcTypeMapper
     }
 
     /// <summary>A map key must lower to a scalar the kernel verifier accepts as a key: <c>bool</c>,
-    /// <c>int</c>, <c>long</c>, <c>string</c>, or an enum (which lowers to <c>I32</c>/<c>I64</c>).
-    /// <c>double</c> and composite types are rejected.</summary>
+    /// <c>int</c>, <c>long</c>, <c>string</c>, <c>TimeSpan</c>, or an enum (which lowers to
+    /// <c>I32</c>/<c>I64</c>). <c>double</c> and composite types are rejected.</summary>
     public static bool IsSupportedMapKey(ITypeSymbol type)
         => type.SpecialType is SpecialType.System_Boolean or SpecialType.System_Int32
                or SpecialType.System_Int64 or SpecialType.System_String
-           || type.TypeKind == TypeKind.Enum;
+           || type.TypeKind == TypeKind.Enum
+           || IsTimeSpanWireType(type);
 
     public static bool SupportsIndexedListWrite(ITypeSymbol type)
     {
@@ -195,6 +205,7 @@ internal static partial class DotBoxDRpcTypeMapper
     public static bool IsRecordDto(INamedTypeSymbol type)
         => type.TypeKind is TypeKind.Class or TypeKind.Struct &&
            !IsScalar(type) &&
+           !IsDateTimeWireType(type) &&
            !IsUnsupportedFrameworkStruct(type) &&
            !DotBoxDNullableScalarType.IsNullableValueType(type) &&
            ListElementType(type) is null &&
@@ -281,8 +292,7 @@ internal static partial class DotBoxDRpcTypeMapper
     {
         var ns = type.ContainingNamespace.ToDisplayString();
         return (ns == "System" &&
-                type.Name is "DateTime" or "DateTimeOffset" or "TimeSpan"
-                    or "DateOnly" or "TimeOnly" or "Index" or "Range") ||
+                type.Name is "DateOnly" or "TimeOnly" or "Index" or "Range") ||
                (ns == "System.Threading" &&
                 type.Name == "CancellationToken");
     }

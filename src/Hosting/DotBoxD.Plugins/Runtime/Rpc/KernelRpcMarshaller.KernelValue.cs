@@ -17,6 +17,11 @@ public static partial class KernelRpcMarshaller
             return scalar;
         }
 
+        if (TryDateTimeFromKernelRpcValue(value, type, out var dateTime))
+        {
+            return dateTime;
+        }
+
         if (type.IsEnum)
         {
             return EnumUsesI64(type)
@@ -63,6 +68,7 @@ public static partial class KernelRpcMarshaller
             var t when t == typeof(double) => value.DoubleValue,
             var t when t == typeof(string) => value.TextValue,
             var t when t == typeof(Guid) => value.GuidValue,
+            var t when t == typeof(TimeSpan) => new TimeSpan(value.Int64Value),
             _ => null
         };
         return result is not null;

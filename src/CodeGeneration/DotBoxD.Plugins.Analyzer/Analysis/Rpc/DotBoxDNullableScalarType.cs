@@ -29,5 +29,6 @@ internal static class DotBoxDNullableScalarType
                or SpecialType.System_Double
                or SpecialType.System_Single
            || type.TypeKind == TypeKind.Enum
-           || DotBoxDRpcTypeMapper.IsGuid(type);
+           || DotBoxDRpcTypeMapper.IsGuid(type)
+           || DotBoxDRpcTypeMapper.IsTimeSpanWireType(type);
 }

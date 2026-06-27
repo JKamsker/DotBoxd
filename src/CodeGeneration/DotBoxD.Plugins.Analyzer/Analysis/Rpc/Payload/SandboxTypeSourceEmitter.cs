@@ -69,6 +69,16 @@ internal static class SandboxTypeSourceEmitter
             return ManifestTypes.Guid;
         }
 
+        if (DotBoxDRpcTypeMapper.IsDateTimeWireType(type))
+        {
+            return ManifestTypes.Record;
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
+        {
+            return ManifestTypes.Long;
+        }
+
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return DotBoxDRpcTypeMapper.EnumUsesI64(enumType) ? ManifestTypes.Long : ManifestTypes.Int;
@@ -108,6 +118,16 @@ internal static class SandboxTypeSourceEmitter
         if (DotBoxDRpcTypeMapper.IsGuid(type))
         {
             return SandboxType + ".Guid";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsDateTimeWireType(type))
+        {
+            return $"{SandboxType}.Record(new {SandboxType}[] {{ {SandboxType}.I64, {SandboxType}.I64 }})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
+        {
+            return SandboxType + ".I64";
         }
 
         if (DotBoxDNullableScalarType.TryGetSupportedUnderlying(type, out var nullableUnderlying))

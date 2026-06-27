@@ -69,7 +69,9 @@ public static partial class KernelRpcMarshaller
     private static RecordShape? FindDtoShape(Type type)
     {
         ThrowIfUnsupportedFrameworkStruct(type);
-        if (type == typeof(string) ||
+        if (IsDateTimeWireType(type) ||
+            type == typeof(TimeSpan) ||
+            type == typeof(string) ||
             type.IsPrimitive ||
             type.IsEnum ||
             ElementType(type) is not null ||
@@ -85,10 +87,7 @@ public static partial class KernelRpcMarshaller
 
     private static void ThrowIfUnsupportedFrameworkStruct(Type type)
     {
-        if (type == typeof(DateTime) ||
-            type == typeof(DateTimeOffset) ||
-            type == typeof(TimeSpan) ||
-            type == typeof(DateOnly) ||
+        if (type == typeof(DateOnly) ||
             type == typeof(TimeOnly) ||
             type == typeof(Index) ||
             type == typeof(Range) ||

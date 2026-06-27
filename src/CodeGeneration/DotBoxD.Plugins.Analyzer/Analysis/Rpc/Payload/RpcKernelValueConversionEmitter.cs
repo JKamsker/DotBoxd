@@ -63,6 +63,16 @@ internal sealed partial class RpcKernelValueConversionEmitter
             return $"global::DotBoxD.Plugins.KernelRpcValue.Guid({expression})";
         }
 
+        if (DotBoxDRpcTypeMapper.IsDateTimeWireType(type))
+        {
+            return $"{EnsureDateTimeValueWriter(type)}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
+        {
+            return $"global::DotBoxD.Plugins.KernelRpcValue.Int64({expression}.Ticks)";
+        }
+
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return DotBoxDRpcTypeMapper.EnumUsesI64(enumType)
@@ -93,6 +103,16 @@ internal sealed partial class RpcKernelValueConversionEmitter
         if (DotBoxDRpcTypeMapper.IsGuid(type))
         {
             return $"{expression}.GuidValue";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsDateTimeWireType(type))
+        {
+            return $"{EnsureDateTimeValueReader(type)}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
+        {
+            return $"new global::System.TimeSpan({expression}.Int64Value)";
         }
 
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)

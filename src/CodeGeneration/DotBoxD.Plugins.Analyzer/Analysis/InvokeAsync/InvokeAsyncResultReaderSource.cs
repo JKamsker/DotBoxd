@@ -47,6 +47,16 @@ internal sealed partial class InvokeAsyncResultReaderSource
             return $"{expression}.GuidValue";
         }
 
+        if (DotBoxDRpcTypeMapper.IsDateTimeWireType(type))
+        {
+            return $"{EnsureDateTimeValueReader(type)}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
+        {
+            return $"new global::System.TimeSpan({expression}.Int64Value)";
+        }
+
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return $"{EnsureEnumValueReader(enumType)}({expression})";

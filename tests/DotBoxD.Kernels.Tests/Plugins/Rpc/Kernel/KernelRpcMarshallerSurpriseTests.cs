@@ -184,9 +184,6 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
                 typeof(SetterEnumDto)));
 
     [Theory]
-    [InlineData(typeof(DateTime))]
-    [InlineData(typeof(DateTimeOffset))]
-    [InlineData(typeof(TimeSpan))]
     [InlineData(typeof(DateOnly))]
     [InlineData(typeof(TimeOnly))]
     [InlineData(typeof(Index))]

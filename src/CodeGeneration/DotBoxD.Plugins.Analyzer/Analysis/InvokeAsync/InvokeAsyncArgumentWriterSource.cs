@@ -24,6 +24,18 @@ internal static class InvokeAsyncArgumentWriterSource
             return $"global::DotBoxD.Plugins.KernelRpcValue.Guid({expression})";
         }
 
+        if (DotBoxDRpcTypeMapper.IsDateTimeWireType(type))
+        {
+            return IsDateTimeOffset(type)
+                ? WriteDateTimeOffsetExpression(expression)
+                : WriteDateTimeExpression(expression);
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
+        {
+            return $"global::DotBoxD.Plugins.KernelRpcValue.Int64({expression}.Ticks)";
+        }
+
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return DotBoxDRpcTypeMapper.EnumUsesI64(enumType)
@@ -77,5 +89,25 @@ internal static class InvokeAsyncArgumentWriterSource
            "new global::DotBoxD.Plugins.KernelRpcValue[] { " +
            WriteExpression(keyType, "__entry.Key") + ", " +
            WriteExpression(valueType, "__entry.Value") + " })))";
+
+    private static string WriteDateTimeOffsetExpression(string expression)
+        => "((global::System.Func<global::System.DateTimeOffset, global::DotBoxD.Plugins.KernelRpcValue>)(static __value => " +
+           DateTimeOffsetRecordExpression("__value") + "))(" + expression + ")";
+
+    private static string WriteDateTimeExpression(string expression)
+        => "((global::System.Func<global::System.DateTime, global::DotBoxD.Plugins.KernelRpcValue>)(static __value => " +
+           "{ var __offset = __value.Kind == global::System.DateTimeKind.Local ? " +
+           "new global::System.DateTimeOffset(__value) : " +
+           "new global::System.DateTimeOffset(global::System.DateTime.SpecifyKind(__value, global::System.DateTimeKind.Unspecified), global::System.TimeSpan.Zero); " +
+           "return " + DateTimeOffsetRecordExpression("__offset") + "; }))(" +
+           expression + ")";
+
+    private static string DateTimeOffsetRecordExpression(string value)
+        => "global::DotBoxD.Plugins.KernelRpcValue.Record(new global::DotBoxD.Plugins.KernelRpcValue[] { " +
+           "global::DotBoxD.Plugins.KernelRpcValue.Int64(" + value + ".UtcTicks), " +
+           "global::DotBoxD.Plugins.KernelRpcValue.Int64(" + value + ".Offset.Ticks) })";
+
+    private static bool IsDateTimeOffset(ITypeSymbol type)
+        => type is INamedTypeSymbol { Name: "DateTimeOffset" };
 
 }
