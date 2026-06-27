@@ -250,9 +250,9 @@ public static partial class SafeFileSystem
         foreach (var part in relative.Split(PathSeparators, StringSplitOptions.RemoveEmptyEntries))
         {
             current = Path.Combine(current, part);
-            if (Directory.Exists(current) || File.Exists(current))
+            if (SafeFilePathAttributes.IsReparsePointIfAccessible(current))
             {
-                CheckAttributes(current);
+                throw Error(SandboxErrorCode.PermissionDenied, "file access denied: reparse points are not allowed");
             }
         }
     }

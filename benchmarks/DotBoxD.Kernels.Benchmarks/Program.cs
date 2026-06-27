@@ -67,6 +67,12 @@ if (DotBoxD.Kernels.Benchmarks.Http.HttpProbeDispatcher.TryRun(args))
     return;
 }
 
+if (args.Contains("--probe-safe-file-path-safety", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.File.SafeFilePathSafetyProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-value-shape-cache", StringComparer.OrdinalIgnoreCase))
 {
     DotBoxD.Kernels.Benchmarks.Runtime.ValueShapeCacheProbe.Run();
