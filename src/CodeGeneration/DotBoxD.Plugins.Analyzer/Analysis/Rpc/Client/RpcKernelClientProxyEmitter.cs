@@ -144,6 +144,7 @@ internal static partial class RpcKernelClientProxyEmitter
             var request = locals.Next("__request");
             var response = locals.Next("__response");
             var result = locals.Next("__result");
+            var payloadParameterCount = RpcKernelClientParameters.PayloadParameterCount(_serviceMethod);
 
             builder.Append("    public ");
             if (_returnShape != ReturnShape.Direct)
@@ -156,8 +157,8 @@ internal static partial class RpcKernelClientProxyEmitter
                 .Append(ParameterList(_serviceMethod)).AppendLine(")");
             builder.AppendLine("    {");
             builder.Append("        var ").Append(arguments).Append(" = new global::DotBoxD.Plugins.KernelRpcValue[")
-                .Append(_serviceMethod.Parameters.Length).AppendLine("];");
-            for (var i = 0; i < _serviceMethod.Parameters.Length; i++)
+                .Append(payloadParameterCount).AppendLine("];");
+            for (var i = 0; i < payloadParameterCount; i++)
             {
                 var parameter = _serviceMethod.Parameters[i];
                 builder.Append("        ").Append(arguments).Append('[').Append(i).Append("] = ")
@@ -171,13 +172,17 @@ internal static partial class RpcKernelClientProxyEmitter
             {
                 builder.Append("        var ").Append(response)
                     .Append(" = _client.InvokeServerExtensionAsync(_pluginId, ")
-                    .Append(request).AppendLine(").AsTask().GetAwaiter().GetResult();");
+                    .Append(request).Append(", ")
+                    .Append(RpcKernelClientParameters.CancellationTokenArgument(_serviceMethod))
+                    .AppendLine(").AsTask().GetAwaiter().GetResult();");
             }
             else
             {
                 builder.Append("        var ").Append(response)
                     .Append(" = await _client.InvokeServerExtensionAsync(_pluginId, ")
-                    .Append(request).AppendLine(").ConfigureAwait(false);");
+                    .Append(request).Append(", ")
+                    .Append(RpcKernelClientParameters.CancellationTokenArgument(_serviceMethod))
+                    .AppendLine(").ConfigureAwait(false);");
             }
 
             if (_payloadReturnType is null)

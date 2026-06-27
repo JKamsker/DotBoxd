@@ -62,7 +62,8 @@ internal static class RpcKernelClientServiceMethodResolver
     private static void ValidateParameters(IMethodSymbol serviceMethod, IMethodSymbol kernelMethod)
     {
         var kernelParameterCount = kernelMethod.Parameters.Length - 1;
-        if (serviceMethod.Parameters.Length != kernelParameterCount)
+        var serviceParameterCount = RpcKernelClientParameters.PayloadParameterCount(serviceMethod);
+        if (serviceParameterCount != kernelParameterCount)
         {
             throw new NotSupportedException(
                 $"Server extension method '{serviceMethod.Name}' must declare {kernelParameterCount} parameter(s).");
@@ -77,6 +78,11 @@ internal static class RpcKernelClientServiceMethodResolver
             RejectNullReferenceDefault(serviceParameter);
             ValidateParameterType(serviceParameter, kernelParameter);
             ValidateParameterModifiers(serviceParameter, kernelParameter);
+        }
+
+        if (RpcKernelClientParameters.TryGetCancellationToken(serviceMethod, out var cancellationToken))
+        {
+            RejectRefLikeParameter(cancellationToken, "service");
         }
     }
 
