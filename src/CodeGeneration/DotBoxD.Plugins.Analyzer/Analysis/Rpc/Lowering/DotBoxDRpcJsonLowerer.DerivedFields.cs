@@ -94,6 +94,8 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                     SyntaxKind.UnaryMinusExpression => Obj(
                         ("unary", Str("-")),
                         ("operand", LowerDerivedExpression(unary.Operand, memberBindings, named, derived))),
+                    SyntaxKind.UnaryPlusExpression =>
+                        LowerDerivedExpression(unary.Operand, memberBindings, named, derived),
                     _ => throw DerivedNotSupported(named, derived),
                 },
 

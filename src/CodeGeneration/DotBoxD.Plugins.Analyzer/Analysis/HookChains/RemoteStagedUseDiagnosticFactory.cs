@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
@@ -69,14 +70,15 @@ internal static partial class RemoteStagedUseDiagnosticFactory
         SemanticModel model,
         CancellationToken cancellationToken)
     {
-        if (invocation.Parent is AssignmentExpressionSyntax assignment &&
-            assignment.Right == invocation &&
+        var transparentExpression = UnwrapTransparentParent(invocation);
+        if (transparentExpression.Parent is AssignmentExpressionSyntax assignment &&
+            assignment.Right == transparentExpression &&
             assignment.Parent is ExpressionStatementSyntax)
         {
             return CreateAssignedStageDiagnostic(access, model, cancellationToken);
         }
 
-        if (invocation.Parent is EqualsValueClauseSyntax
+        if (transparentExpression.Parent is EqualsValueClauseSyntax
             {
                 Parent: VariableDeclaratorSyntax declarator
             } &&
@@ -85,7 +87,7 @@ internal static partial class RemoteStagedUseDiagnosticFactory
             return CreateStagedLocalDiagnostic(invocation, access, model, local, cancellationToken);
         }
 
-        if (invocation.Parent is not ExpressionStatementSyntax)
+        if (transparentExpression.Parent is not ExpressionStatementSyntax)
         {
             return null;
         }
@@ -100,6 +102,20 @@ internal static partial class RemoteStagedUseDiagnosticFactory
         return new PluginKernelDiagnostic(
             DiscardedStageMessage,
             PluginDiagnosticLocation.From(access.Name.GetLocation()));
+    }
+
+    private static ExpressionSyntax UnwrapTransparentParent(ExpressionSyntax expression)
+    {
+        while (expression.Parent is ParenthesizedExpressionSyntax parenthesized &&
+               parenthesized.Expression == expression ||
+               expression.Parent is PostfixUnaryExpressionSyntax postfix &&
+               postfix.IsKind(SyntaxKind.SuppressNullableWarningExpression) &&
+               postfix.Operand == expression)
+        {
+            expression = (ExpressionSyntax)expression.Parent;
+        }
+
+        return expression;
     }
 
     private static PluginKernelDiagnostic? CreateStagedLocalDiagnostic(

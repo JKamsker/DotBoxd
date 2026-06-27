@@ -29,7 +29,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         _serverContextType = serverContextType;
     }
 
-    private string LowerRecordCreation(ObjectCreationExpressionSyntax creation)
+    private string LowerRecordCreation(BaseObjectCreationExpressionSyntax creation)
     {
         var created = TypeOf(creation);
         if (DotBoxDRpcTypeMapper.ListElementType(created) is { } elementType &&
@@ -39,13 +39,15 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             Allocates = true;
             return Call("list.empty", DotBoxDRpcTypeMapper.JsonType(elementType));
         }
-        if (TryLowerEmptyMapCreation(creation, created) is { } emptyMap)
+        if (creation is ObjectCreationExpressionSyntax explicitCreation &&
+            TryLowerEmptyMapCreation(explicitCreation, created) is { } emptyMap)
         {
             return emptyMap;
         }
         if (created is not INamedTypeSymbol named || !DotBoxDRpcTypeMapper.IsRecordDto(named))
         {
-            throw new NotSupportedException($"Server extension 'new {creation.Type}' must construct a supported DTO or empty list.");
+            throw new NotSupportedException(
+                $"Server extension '{CreationText(creation)}' must construct a supported DTO or empty list.");
         }
         Allocates = true;
         var fields = DotBoxDRpcTypeMapper.RecordFields(named);
@@ -99,6 +101,11 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         }
         return Call("record.new", DotBoxDRpcTypeMapper.JsonType(named), args);
     }
+
+    private static string CreationText(BaseObjectCreationExpressionSyntax creation)
+        => creation is ObjectCreationExpressionSyntax explicitCreation
+            ? "new " + explicitCreation.Type
+            : creation.ToString();
 
     private void BindInitializer(
         InitializerExpressionSyntax initializer,

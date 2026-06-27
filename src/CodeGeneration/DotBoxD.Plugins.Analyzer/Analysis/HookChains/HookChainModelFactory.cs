@@ -72,6 +72,11 @@ internal static partial class HookChainModelFactory
         }
 
         var terminalMethod = terminalAccess.Name.Identifier.ValueText;
+        if (HasPriorDiscardedStageOnReceiver(terminalAccess.Expression, invocation, model, cancellationToken))
+        {
+            return null;
+        }
+
         var stages = new List<HookChainStage>();
         var seed = WalkToSeed(terminalAccess.Expression, stages, model, cancellationToken);
         if (seed is null)

@@ -126,7 +126,11 @@ internal sealed partial class InvokeAsyncResultReaderSource
             .Append(keyName).Append(", ").Append(valueName).AppendLine(">(value.ItemCount / 2);");
         _helpers.AppendLine("            for (var i = 0; i < value.ItemCount; i += 2)");
         _helpers.AppendLine("            {");
-        _helpers.Append("                __result[").Append(keyExpression).Append("] = ").Append(valueExpression).AppendLine(";");
+        _helpers.Append("                if (!__result.TryAdd(").Append(keyExpression).Append(", ").Append(valueExpression)
+            .AppendLine("))");
+        _helpers.AppendLine("                {");
+        _helpers.AppendLine("                    throw new global::System.FormatException(\"InvokeAsync map result contains a duplicate key.\");");
+        _helpers.AppendLine("                }");
         _helpers.AppendLine("            }");
         _helpers.AppendLine();
         _helpers.AppendLine("            return __result;");

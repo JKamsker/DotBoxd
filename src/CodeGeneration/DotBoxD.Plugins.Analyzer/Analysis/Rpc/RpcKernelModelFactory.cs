@@ -31,6 +31,11 @@ internal static partial class RpcKernelModelFactory
             return Fail(declaration, "Server extension id must be a non-empty string.");
         }
 
+        if (type.IsGenericType || type.TypeParameters.Length > 0)
+        {
+            return Fail(declaration, $"Generated server extension '{type.Name}' cannot be generic.");
+        }
+
         var serviceType = ServiceType(context.Attributes);
         var graftType = GraftType(context.Attributes);
 

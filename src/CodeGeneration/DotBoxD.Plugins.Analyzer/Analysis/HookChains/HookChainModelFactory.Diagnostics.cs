@@ -11,6 +11,11 @@ internal static partial class HookChainModelFactory
         CancellationToken cancellationToken,
         string? detail = null)
     {
+        if (HasDiscardedStageReceiver(invocation, model, cancellationToken))
+        {
+            return null;
+        }
+
         if (TryRemoteRunLocalLocation(invocation, model, cancellationToken, out var location))
         {
             return new HookChainCreateResult(null, new HookChainNotLoweredDiagnostic(location));
@@ -38,6 +43,13 @@ internal static partial class HookChainModelFactory
 
         return null;
     }
+
+    private static bool HasDiscardedStageReceiver(
+        InvocationExpressionSyntax invocation,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+        => invocation.Expression is MemberAccessExpressionSyntax terminalAccess &&
+           HasPriorDiscardedStageOnReceiver(terminalAccess.Expression, invocation, model, cancellationToken);
 
     // True when the call site is a Register/RegisterLocal terminal on a known hook pipeline - the surface whose
     // native terminal throws when the generator does not intercept it.

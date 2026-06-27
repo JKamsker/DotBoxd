@@ -129,7 +129,7 @@ internal static partial class RpcKernelClientProxyEmitter
 
         private void AppendServiceMethod(StringBuilder builder)
         {
-            var locals = new GeneratedLocalNames(_serviceMethod);
+            var locals = new RpcGeneratedLocalNames(_serviceMethod);
             var arguments = locals.Next("__arguments");
             var request = locals.Next("__request");
             var response = locals.Next("__response");
@@ -235,30 +235,6 @@ internal static partial class RpcKernelClientProxyEmitter
             }
 
             return string.Join(", ", parts);
-        }
-
-        private sealed class GeneratedLocalNames
-        {
-            private readonly HashSet<string> _used = new(StringComparer.Ordinal);
-
-            public GeneratedLocalNames(IMethodSymbol serviceMethod)
-            {
-                foreach (var parameter in serviceMethod.Parameters)
-                {
-                    _used.Add(parameter.Name);
-                }
-            }
-
-            public string Next(string baseName)
-            {
-                var name = baseName;
-                for (var suffix = 0; !_used.Add(name); suffix++)
-                {
-                    name = baseName + suffix.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
-                }
-
-                return name;
-            }
         }
 
         private static string TypeName(ITypeSymbol type)

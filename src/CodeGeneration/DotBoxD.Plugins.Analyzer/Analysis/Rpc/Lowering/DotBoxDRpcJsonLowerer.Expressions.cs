@@ -33,9 +33,11 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             AwaitExpressionSyntax awaited => LowerExpression(awaited.Expression),
             IdentifierNameSyntax identifier => LowerIdentifier(identifier),
             PrefixUnaryExpressionSyntax unary => LowerUnary(unary),
+            CastExpressionSyntax cast => LowerCast(cast),
             BinaryExpressionSyntax binary => LowerBinary(binary),
             InvocationExpressionSyntax invocation => LowerInvocation(invocation),
             ObjectCreationExpressionSyntax creation => LowerRecordCreation(creation),
+            ImplicitObjectCreationExpressionSyntax creation => LowerRecordCreation(creation),
             ElementAccessExpressionSyntax element => LowerElementAccess(element),
             MemberAccessExpressionSyntax member => LowerMemberAccess(member),
             _ => throw new NotSupportedException($"Server extension expression '{expression}' is not supported.")
@@ -242,7 +244,9 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             return serverContextType;
         }
 
-        return _model.GetTypeInfo(expression, _cancellationToken).Type
+        var type = _model.GetTypeInfo(expression, _cancellationToken);
+        return type.Type
+               ?? type.ConvertedType
                ?? throw new NotSupportedException($"Server extension could not resolve the type of '{expression}'.");
     }
 
@@ -277,22 +281,4 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         return false;
     }
 
-    private string JsonBinaryOperator(BinaryExpressionSyntax binary)
-        => binary.Kind() switch
-        {
-            SyntaxKind.AddExpression => "add",
-            SyntaxKind.SubtractExpression => "sub",
-            SyntaxKind.MultiplyExpression => "mul",
-            SyntaxKind.DivideExpression => "div",
-            SyntaxKind.ModuloExpression => "rem",
-            SyntaxKind.EqualsExpression => "eq",
-            SyntaxKind.NotEqualsExpression => "ne",
-            SyntaxKind.LessThanExpression => "lt",
-            SyntaxKind.LessThanOrEqualExpression => "lte",
-            SyntaxKind.GreaterThanExpression => "gt",
-            SyntaxKind.GreaterThanOrEqualExpression => "gte",
-            SyntaxKind.LogicalAndExpression => "and",
-            SyntaxKind.LogicalOrExpression => "or",
-            _ => throw new NotSupportedException($"Server extension operator '{binary.OperatorToken.ValueText}' is not supported.")
-        };
 }
