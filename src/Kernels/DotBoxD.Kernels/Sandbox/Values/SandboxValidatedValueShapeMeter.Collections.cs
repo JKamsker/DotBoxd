@@ -91,7 +91,7 @@ internal static partial class SandboxValidatedValueShapeMeter
         var depth = parentDepth + 1;
         EnsureCollectionLimits(0, map.Values.Count, depth, limits);
         stack.Push(new Frame(map, expectedType, depth, Exit: true));
-        foreach (var pair in map.Values)
+        foreach (var pair in map.Entries)
         {
             stack.Push(new Frame(pair.Value, map.ValueType, depth, Exit: false));
             stack.Push(new Frame(pair.Key, map.KeyType, depth, Exit: false));

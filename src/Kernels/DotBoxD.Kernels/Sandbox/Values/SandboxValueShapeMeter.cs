@@ -172,7 +172,7 @@ internal static class SandboxValueShapeMeter
         var depth = parentDepth + 1;
         EnsureCollectionLimits(0, map.Values.Count, depth, limits);
         stack.Push(new Frame(map, depth, Exit: true));
-        foreach (var pair in map.Values)
+        foreach (var pair in map.Entries)
         {
             stack.Push(new Frame(pair.Value, depth, Exit: false));
             stack.Push(new Frame(pair.Key, depth, Exit: false));
