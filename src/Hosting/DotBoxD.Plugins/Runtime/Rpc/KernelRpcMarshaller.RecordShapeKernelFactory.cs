@@ -7,6 +7,14 @@ namespace DotBoxD.Plugins.Runtime.Rpc;
 
 public static partial class KernelRpcMarshaller
 {
+    private static object? DefaultParameterValue(ParameterInfo parameter)
+    {
+        var value = parameter.DefaultValue;
+        return value is DBNull or Missing
+            ? (parameter.ParameterType.IsValueType ? Activator.CreateInstance(parameter.ParameterType) : null)
+            : value;
+    }
+
     private static class RecordShapeKernelFactory
     {
         public static Func<KernelRpcValue, object>? Create(
@@ -25,6 +33,14 @@ public static partial class KernelRpcMarshaller
             for (var i = 0; i < parameters.Length; i++)
             {
                 var fieldIndex = constructorMap[i];
+                if (fieldIndex < 0)
+                {
+                    arguments[i] = LinqExpression.Constant(
+                        DefaultParameterValue(parameters[i]),
+                        parameters[i].ParameterType);
+                    continue;
+                }
+
                 var kernelField = LinqExpression.Call(
                     value,
                     nameof(KernelRpcValue.GetItem),

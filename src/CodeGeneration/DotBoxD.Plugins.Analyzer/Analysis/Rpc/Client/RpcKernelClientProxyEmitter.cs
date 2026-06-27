@@ -38,19 +38,9 @@ internal static partial class RpcKernelClientProxyEmitter
     }
 
     private static void EnsureAccessibleFromGeneratedClient(INamedTypeSymbol serviceType)
-    {
-        for (INamedTypeSymbol? current = serviceType; current is not null; current = current.ContainingType)
-        {
-            if (!IsAccessibleFromGeneratedClient(current.DeclaredAccessibility))
-            {
-                throw new NotSupportedException(
-                    $"Server extension interface '{serviceType.ToDisplayString()}' must be accessible from generated client code.");
-            }
-        }
-    }
-
-    private static bool IsAccessibleFromGeneratedClient(Accessibility accessibility)
-        => accessibility is Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal;
+        => RpcGeneratedClientAccessibility.EnsureAccessible(
+            serviceType,
+            $"Server extension interface '{serviceType.ToDisplayString()}'");
 
     private static bool IsGenericTask(ITypeSymbol type, out ITypeSymbol inner)
         => TryGenericTaskLike(type, "Task", out inner);

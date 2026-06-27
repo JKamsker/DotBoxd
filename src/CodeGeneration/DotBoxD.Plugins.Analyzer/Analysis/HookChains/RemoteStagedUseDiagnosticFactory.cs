@@ -169,10 +169,47 @@ internal static partial class RemoteStagedUseDiagnosticFactory
                 continue;
             }
 
+            if (IsAssignedBetween(local, invocation.SpanStart, terminal.SpanStart, model, cancellationToken))
+            {
+                continue;
+            }
+
             if (ExpressionReferencesLocal(access.Expression, local, model, cancellationToken, depth: 0))
             {
                 return true;
             }
+        }
+
+        return false;
+    }
+
+    private static bool IsAssignedBetween(
+        ILocalSymbol local,
+        int start,
+        int end,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        var block = local.DeclaringSyntaxReferences
+            .Select(reference => reference.GetSyntax(cancellationToken).FirstAncestorOrSelf<BlockSyntax>())
+            .FirstOrDefault(candidate => candidate is not null);
+        if (block is null)
+        {
+            return false;
+        }
+
+        foreach (var assignment in block.DescendantNodes().OfType<AssignmentExpressionSyntax>())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (assignment.SpanStart <= start ||
+                assignment.SpanStart >= end ||
+                model.GetSymbolInfo(assignment.Left, cancellationToken).Symbol is not ILocalSymbol assigned ||
+                !SymbolEqualityComparer.Default.Equals(local, assigned))
+            {
+                continue;
+            }
+
+            return true;
         }
 
         return false;

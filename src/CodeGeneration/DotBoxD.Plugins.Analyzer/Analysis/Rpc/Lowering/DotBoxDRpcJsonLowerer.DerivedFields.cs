@@ -57,7 +57,10 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             }
         }
 
-        return LowerDerivedExpression(body, memberBindings, named, derived);
+        return ApplyNumericConversion(
+            body,
+            property.Type,
+            LowerDerivedExpression(body, memberBindings, named, derived));
     }
 
     private string LowerDerivedExpression(

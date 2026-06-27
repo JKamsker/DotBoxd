@@ -32,6 +32,7 @@ internal static partial class PluginServerFacadeModelFactory
         }
 
         var valueTaskString = valueTaskOfT.Construct(stringType);
+        ValidateLiveSettingUpdateConstructor(serverType, liveSettingUpdateType, stringType);
         EnsureControlMethod(
             serverType,
             controlServiceType,
@@ -105,10 +106,46 @@ internal static partial class PluginServerFacadeModelFactory
             {
                 return false;
             }
+
+            if (actual[i].RefKind != RefKind.None)
+            {
+                return false;
+            }
         }
 
         return true;
     }
+
+    private static void ValidateLiveSettingUpdateConstructor(
+        INamedTypeSymbol serverType,
+        ITypeSymbol liveSettingUpdateType,
+        ITypeSymbol stringType)
+    {
+        if (liveSettingUpdateType is not INamedTypeSymbol named)
+        {
+            throw new NotSupportedException(
+                $"Generated plugin server '{serverType.Name}' live-setting update type '{liveSettingUpdateType.ToDisplayString()}' must be a named type.");
+        }
+
+        foreach (var constructor in named.InstanceConstructors)
+        {
+            if (constructor.Parameters.Length == 2 &&
+                constructor.Parameters[0].RefKind == RefKind.None &&
+                constructor.Parameters[1].RefKind == RefKind.None &&
+                SymbolEqualityComparer.Default.Equals(constructor.Parameters[0].Type, stringType) &&
+                SymbolEqualityComparer.Default.Equals(constructor.Parameters[1].Type, stringType) &&
+                IsAccessibleFromGeneratedServer(constructor.DeclaredAccessibility))
+            {
+                return;
+            }
+        }
+
+        throw new NotSupportedException(
+            $"Generated plugin server '{serverType.Name}' live-setting update type '{liveSettingUpdateType.ToDisplayString()}' must expose an accessible constructor '(string name, string value)'.");
+    }
+
+    private static bool IsAccessibleFromGeneratedServer(Accessibility accessibility)
+        => accessibility is Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal;
 
     private static void ValidatePublicFacadeSignatureTypes(
         INamedTypeSymbol serverType,
@@ -211,13 +248,26 @@ internal static partial class PluginServerFacadeModelFactory
             }
         }
 
+        ValidateGeneratedSiblingTypeCollisions(serverType, worldType);
+
         foreach (var member in serverType.GetMembers())
         {
             if (member.IsImplicitlyDeclared ||
                 member is IMethodSymbol { MethodKind: MethodKind.Constructor or MethodKind.StaticConstructor } ||
-                string.Equals(member.Name, "OnConfigured", StringComparison.Ordinal) ||
+                string.Equals(member.Name, "OnConfigured", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (member is IMethodSymbol invokeAsync &&
                 string.Equals(member.Name, "InvokeAsync", StringComparison.Ordinal))
             {
+                if (IsGeneratedInvokeAsyncSignature(invokeAsync, worldType))
+                {
+                    throw new NotSupportedException(
+                        $"Generated plugin server '{serverType.ToDisplayString()}' member '{member.Name}' collides with the generated facade surface.");
+                }
+
                 continue;
             }
 

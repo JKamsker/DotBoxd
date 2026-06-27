@@ -41,6 +41,12 @@ public static partial class KernelRpcMarshaller
             for (var i = 0; i < parameters.Length; i++)
             {
                 var fieldIndex = _constructorMap[i];
+                if (fieldIndex < 0)
+                {
+                    constructorArguments[i] = DefaultParameterValue(parameters[i]);
+                    continue;
+                }
+
                 constructorArguments[i] = arguments[fieldIndex];
                 assigned[fieldIndex] = true;
             }

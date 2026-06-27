@@ -15,7 +15,10 @@ public static partial class KernelRpcMarshaller
         var assigned = new bool[fields.Count];
         for (var i = 0; i < constructorMap.Count; i++)
         {
-            assigned[constructorMap[i]] = true;
+            if (constructorMap[i] >= 0)
+            {
+                assigned[constructorMap[i]] = true;
+            }
         }
 
         var bindings = new List<MemberBinding>();

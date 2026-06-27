@@ -53,6 +53,7 @@ internal static partial class RpcKernelModelFactory
             {
                 serviceMethod = RpcKernelClientProxyEmitter.ResolveServiceMethod(serviceType, method);
                 clientExtensions = RpcKernelClientExtensionModelFactory.Resolve(type, method);
+                ValidateGeneratedClientTypeCollisions(type, clientExtensions);
             }
             else if (graft is not null)
             {
@@ -63,6 +64,11 @@ internal static partial class RpcKernelModelFactory
                     throw new NotSupportedException(
                         $"Server extension client method receiver '{directClientMethod.ReceiverType.ToDisplayString()}' " +
                         $"must match the class receiver '{graft.ReceiverType.ToDisplayString()}'.");
+                }
+
+                if (directClientMethod is not null)
+                {
+                    ValidateGeneratedTypeCollision(type, type.Name + "DirectServerExtensionClientExtensions");
                 }
             }
             else if (RpcKernelClientExtensionModelFactory.HasReceiverExtensionAttribute(method))
@@ -278,6 +284,29 @@ internal static partial class RpcKernelModelFactory
 
     private static RpcKernelModelResult Fail(ClassDeclarationSyntax declaration, string message)
         => new(null, PluginKernelDiagnostic.Create(declaration.Identifier, message), default);
+
+    private static void ValidateGeneratedClientTypeCollisions(
+        INamedTypeSymbol type,
+        RpcKernelClientExtensions? clientExtensions)
+    {
+        ValidateGeneratedTypeCollision(type, type.Name + "ServerExtensionClient");
+        if (clientExtensions is { IsEmpty: false })
+        {
+            ValidateGeneratedTypeCollision(type, type.Name + "ServerExtensionClientExtensions");
+        }
+    }
+
+    private static void ValidateGeneratedTypeCollision(INamedTypeSymbol type, string generatedName)
+    {
+        foreach (var existing in type.ContainingNamespace.GetTypeMembers(generatedName))
+        {
+            if (!SymbolEqualityComparer.Default.Equals(existing, type))
+            {
+                throw new NotSupportedException(
+                    $"Generated server extension type '{generatedName}' collides with an existing type in namespace '{type.ContainingNamespace.ToDisplayString()}'.");
+            }
+        }
+    }
 }
 
 internal sealed record RpcKernelModelResult(

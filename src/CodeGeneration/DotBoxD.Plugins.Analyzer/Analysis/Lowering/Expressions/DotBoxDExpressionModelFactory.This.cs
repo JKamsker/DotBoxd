@@ -10,16 +10,21 @@ internal static partial class DotBoxDExpressionModelFactory
         string memberName,
         DotBoxDExpressionLoweringContext context)
     {
-        if (context.InlinedBindings is { } bindings &&
-            bindings.TryGetValue(memberName, out var bound))
-        {
-            return bound;
-        }
-
         if (context.SemanticModel.GetSymbolInfo(member, context.CancellationToken).Symbol
             is not IPropertySymbol property)
         {
+            if (context.InlinedBindings is { } bindings &&
+                bindings.TryGetValue(memberName, out var bound))
+            {
+                return bound;
+            }
+
             return Unsupported(member);
+        }
+
+        if (DotBoxDHostBindingExpressionLowerer.TryLowerProperty(property, context) is { } hostProperty)
+        {
+            return hostProperty;
         }
 
         var symbolKey = LiveSettingSymbolKey(property);
@@ -34,6 +39,12 @@ internal static partial class DotBoxDExpressionModelFactory
                     setting.Type,
                     false);
             }
+        }
+
+        if (context.InlinedBindings is { } fallbackBindings &&
+            fallbackBindings.TryGetValue(memberName, out var fallbackBound))
+        {
+            return fallbackBound;
         }
 
         return Unsupported(member);

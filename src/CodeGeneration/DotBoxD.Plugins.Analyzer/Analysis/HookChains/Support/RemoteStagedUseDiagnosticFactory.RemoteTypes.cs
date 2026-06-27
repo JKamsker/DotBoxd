@@ -27,8 +27,51 @@ internal static partial class RemoteStagedUseDiagnosticFactory
             return true;
         }
 
+        if (ReturnedExpression(expression, model, cancellationToken) is { } returned)
+        {
+            return ContainsStageInvocationOrAlias(returned, model, cancellationToken, depth + 1);
+        }
+
         return HookChainAliasResolver.Initializer(expression, model, cancellationToken) is { } initializer &&
             ContainsStageInvocationOrAlias(initializer, model, cancellationToken, depth + 1);
+    }
+
+    private static ExpressionSyntax? ReturnedExpression(
+        ExpressionSyntax expression,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        expression = HookChainAliasResolver.UnwrapTransparentExpression(expression);
+        if (expression is not InvocationExpressionSyntax invocation ||
+            model.GetSymbolInfo(invocation, cancellationToken).Symbol is not IMethodSymbol method)
+        {
+            return null;
+        }
+
+        foreach (var reference in method.DeclaringSyntaxReferences)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (reference.GetSyntax(cancellationToken) is not MethodDeclarationSyntax declaration)
+            {
+                continue;
+            }
+
+            if (declaration.ExpressionBody is { Expression: { } expressionBody })
+            {
+                return expressionBody;
+            }
+
+            if (declaration.Body is { } body)
+            {
+                var returns = body.DescendantNodes().OfType<ReturnStatementSyntax>().ToArray();
+                if (returns.Length == 1)
+                {
+                    return returns[0].Expression;
+                }
+            }
+        }
+
+        return null;
     }
 
     private static bool IsGeneratedRemoteChain(

@@ -60,13 +60,35 @@ internal static partial class InvokeAsyncReceiverResolver
         receiverType = string.Empty;
         serverAccessType = null;
         worldType = null!;
-        if (!TryResolveWorld(type, out worldType))
+        if (TryResolveWorld(type, out worldType))
+        {
+            receiverType = TypeName(type);
+            return true;
+        }
+
+        if (!TryResolveGeneratedFacadeBase(type, out worldType))
         {
             return false;
         }
 
         receiverType = TypeName(type);
         return true;
+    }
+
+    private static bool TryResolveGeneratedFacadeBase(
+        INamedTypeSymbol type,
+        out INamedTypeSymbol worldType)
+    {
+        for (var current = type.BaseType; current is not null; current = current.BaseType)
+        {
+            if (TryResolveWorld(current, out worldType))
+            {
+                return true;
+            }
+        }
+
+        worldType = null!;
+        return false;
     }
 
     internal static bool IsGeneratedServerInterfaceNameCandidate(string name)

@@ -115,6 +115,14 @@ public static partial class KernelRpcMarshaller
             for (var i = 0; i < parameters.Length; i++)
             {
                 var fieldIndex = constructorMap[i];
+                if (fieldIndex < 0)
+                {
+                    arguments[i] = LinqExpression.Constant(
+                        DefaultParameterValue(parameters[i]),
+                        parameters[i].ParameterType);
+                    continue;
+                }
+
                 var sandboxField = LinqExpression.Property(
                     recordFields,
                     "Item",
@@ -177,15 +185,15 @@ public static partial class KernelRpcMarshaller
             foreach (var constructor in type.GetConstructors())
             {
                 var parameters = constructor.GetParameters();
-                if (parameters.Length == 0 || parameters.Length > fields.Count)
+                if (parameters.Length == 0)
                 {
                     continue;
                 }
 
                 var map = new int[parameters.Length];
                 var assigned = new bool[fields.Count];
-                if (TryMapConstructor(parameters, fields, map, assigned) &&
-                    parameters.Length > (best?.GetParameters().Length ?? 0))
+                if (TryMapConstructor(parameters, fields, map, assigned, out var assignedCount) &&
+                    assignedCount > bestMap.Count(index => index >= 0))
                 {
                     best = constructor;
                     bestMap = map;
@@ -199,13 +207,25 @@ public static partial class KernelRpcMarshaller
             IReadOnlyList<ParameterInfo> parameters,
             IReadOnlyList<RecordMember> fields,
             int[] map,
-            bool[] assigned)
+            bool[] assigned,
+            out int assignedCount)
         {
+            assignedCount = 0;
             for (var i = 0; i < parameters.Count; i++)
             {
                 var fieldIndex = FieldIndex(fields, parameters[i].Name);
-                if (fieldIndex < 0 ||
-                    assigned[fieldIndex] ||
+                if (fieldIndex < 0)
+                {
+                    if (!parameters[i].HasDefaultValue)
+                    {
+                        return false;
+                    }
+
+                    map[i] = -1;
+                    continue;
+                }
+
+                if (assigned[fieldIndex] ||
                     parameters[i].ParameterType != fields[fieldIndex].Type)
                 {
                     return false;
@@ -213,6 +233,7 @@ public static partial class KernelRpcMarshaller
 
                 map[i] = fieldIndex;
                 assigned[fieldIndex] = true;
+                assignedCount++;
             }
 
             return true;

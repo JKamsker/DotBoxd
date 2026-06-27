@@ -179,46 +179,7 @@ internal static class RpcKernelClientExtensionModelFactory
     }
 
     private static void EnsureAccessibleFromGeneratedClient(ITypeSymbol type, string description)
-    {
-        if (!IsTypeAccessibleFromGeneratedClient(type))
-        {
-            throw new NotSupportedException($"{description} must be accessible from generated client code.");
-        }
-    }
-
-    private static bool IsTypeAccessibleFromGeneratedClient(ITypeSymbol type)
-        => type switch
-        {
-            INamedTypeSymbol named => IsNamedTypeAccessibleFromGeneratedClient(named),
-            IArrayTypeSymbol array => IsTypeAccessibleFromGeneratedClient(array.ElementType),
-            IPointerTypeSymbol pointer => IsTypeAccessibleFromGeneratedClient(pointer.PointedAtType),
-            ITypeParameterSymbol or IDynamicTypeSymbol => true,
-            _ => false
-        };
-
-    private static bool IsNamedTypeAccessibleFromGeneratedClient(INamedTypeSymbol type)
-    {
-        for (INamedTypeSymbol? current = type; current is not null; current = current.ContainingType)
-        {
-            if (!IsAccessibleFromGeneratedClient(current.DeclaredAccessibility))
-            {
-                return false;
-            }
-
-            foreach (var typeArgument in current.TypeArguments)
-            {
-                if (!IsTypeAccessibleFromGeneratedClient(typeArgument))
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    private static bool IsAccessibleFromGeneratedClient(Accessibility accessibility)
-        => accessibility is Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal;
+        => RpcGeneratedClientAccessibility.EnsureAccessible(type, description);
 
     private static bool HasAttribute(ISymbol symbol, string metadataName)
     {

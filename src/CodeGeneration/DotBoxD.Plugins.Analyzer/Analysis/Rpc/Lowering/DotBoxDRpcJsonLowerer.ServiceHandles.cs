@@ -63,6 +63,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         => receiver switch
         {
             ParenthesizedExpressionSyntax parenthesized => TryResolveScopeHandle(parenthesized.Expression),
+            CastExpressionSyntax cast => TryResolveScopeHandle(cast.Expression),
             IdentifierNameSyntax identifier
                 when _serviceHandleLocals.TryGetValue(identifier.Identifier.ValueText, out var localHandleId)
                 => localHandleId,

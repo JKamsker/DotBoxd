@@ -81,6 +81,11 @@ internal static partial class InvokeAsyncModelFactory
             return null;
         }
 
+        if (BindsToUserInvokeAsync(model, invocation, cancellationToken))
+        {
+            return null;
+        }
+
         if (!TryServerInvocationSurface(
                 model,
                 access.Expression,
