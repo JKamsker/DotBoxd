@@ -130,6 +130,23 @@ public sealed class ServerExtensionInlineScopedHandleTests
     }
 
     [Fact]
+    public void Scoped_handle_alias_keeps_the_captured_scope()
+    {
+        var source = LocalKernel.Replace(
+            "return await monster.KillAsync();",
+            """
+            var alias = monster;
+                            return await alias.KillAsync();
+            """,
+            StringComparison.Ordinal);
+
+        var call = HostCall(BuildPackage(source), "KillAsync");
+
+        var argument = Assert.IsType<VariableExpression>(Assert.Single(call.Arguments));
+        Assert.Equal("id", argument.Name);
+    }
+
+    [Fact]
     public void Scoped_handle_accessor_with_multiple_arguments_reports_DBXK100()
     {
         var source = InlineKernel
