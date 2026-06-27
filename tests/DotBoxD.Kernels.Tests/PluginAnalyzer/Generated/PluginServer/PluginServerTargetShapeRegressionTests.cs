@@ -22,6 +22,12 @@ public sealed class PluginServerTargetShapeRegressionTests
         "must be non-generic")]
     [InlineData(
         """
+        [GeneratePluginServer(Context = typeof(GameContext))]
+        public abstract partial class RemotePluginServer : Sample.Game.IGameWorld;
+        """,
+        "must be concrete")]
+    [InlineData(
+        """
         public partial class Outer
         {
             [GeneratePluginServer(Context = typeof(GameContext))]
@@ -40,6 +46,9 @@ public sealed class PluginServerTargetShapeRegressionTests
             diagnostic => diagnostic.Id == "DBXK100" &&
                           diagnostic.Severity == DiagnosticSeverity.Error &&
                           diagnostic.GetMessage().Contains(expectedMessage, StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            diagnostics,
+            diagnostic => diagnostic.Id.StartsWith("CS", StringComparison.Ordinal));
     }
 
     private static string MinimalServer(string serverSource)
