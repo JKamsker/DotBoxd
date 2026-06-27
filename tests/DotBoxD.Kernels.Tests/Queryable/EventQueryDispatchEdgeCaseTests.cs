@@ -123,6 +123,29 @@ public sealed class EventQueryDispatchEdgeCaseTests
     }
 
     [Fact]
+    public async Task Unreadable_routing_member_does_not_abort_dispatch_for_other_subscriptions()
+    {
+        var host = new EventQueryHost();
+        var idHits = 0;
+
+        await host.Query<IExplicitRoutingEvent>()
+            .Where(e => e.Hidden == "never")
+            .SubscribeAsync((_, _) => ValueTask.CompletedTask);
+        await host.Query<IExplicitRoutingEvent>()
+            .Where(e => e.Id == "x")
+            .SubscribeAsync((_, _) =>
+            {
+                idHits++;
+                return ValueTask.CompletedTask;
+            });
+
+        var context = NewContext();
+        await host.PublishAsync<IExplicitRoutingEvent>(new ExplicitRoutingEvent("x"), context);
+
+        Assert.Equal(1, idHits);
+    }
+
+    [Fact]
     public async Task Reentrant_publish_from_routing_getter_does_not_corrupt_outer_event_key()
     {
         var host = new EventQueryHost();
@@ -169,5 +192,19 @@ public sealed class EventQueryDispatchEdgeCaseTests
                 return "stable";
             }
         }
+    }
+
+    private interface IExplicitRoutingEvent
+    {
+        string Id { get; }
+
+        string Hidden { get; }
+    }
+
+    private sealed class ExplicitRoutingEvent(string id) : IExplicitRoutingEvent
+    {
+        public string Id { get; } = id;
+
+        string IExplicitRoutingEvent.Hidden => "never";
     }
 }

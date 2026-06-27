@@ -215,12 +215,9 @@ internal sealed class EventQueryDispatcher<TEvent>(MemberValueReader reader)
         public Snapshot Without(EventQuerySubscriptionEntry<TEvent> entry)
             => new(_all.Where(e => !ReferenceEquals(e, entry)).ToArray());
 
-        // Reused per thread on the hot TryEventKey path. A host event getter can synchronously re-publish
-        // the same event type, so nested calls allocate their own builder instead of clearing the outer key.
-        [ThreadStatic]
-        private static StringBuilder? _eventKeyBuilder;
-        [ThreadStatic]
-        private static bool _eventKeyBuilderInUse;
+        // Reused on the hot TryEventKey path; nested same-thread calls allocate their own builder.
+        [ThreadStatic] private static StringBuilder? _eventKeyBuilder;
+        [ThreadStatic] private static bool _eventKeyBuilderInUse;
 
         private static string CompositeKey(EventQuerySubscriptionEntry<TEvent> entry, string[] sortedPaths)
         {
@@ -261,6 +258,11 @@ internal sealed class EventQueryDispatcher<TEvent>(MemberValueReader reader)
 
                 key = builder.ToString();
                 return true;
+            }
+            catch (InvalidOperationException)
+            {
+                key = string.Empty;
+                return false;
             }
             finally
             {
