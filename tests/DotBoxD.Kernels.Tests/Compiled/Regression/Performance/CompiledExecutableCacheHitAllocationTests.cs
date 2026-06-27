@@ -45,8 +45,8 @@ public sealed class CompiledExecutableCacheHitAllocationTests
         Console.WriteLine($"CompiledExecutableCache hit allocation: {allocated:N0} B; {perHit:N1} B/hit.");
         Assert.Equal(1, materializeCalls);
         Assert.True(
-            perHit < 700D,
-            $"expected cache hits to stay below the pre-fix 960 B/hit baseline; observed {perHit:N1} B/hit.");
+            perHit < 128D,
+            $"expected same-artifact cache hits to stay near zero allocation; observed {perHit:N1} B/hit.");
         GC.KeepAlive(checksum);
     }
 

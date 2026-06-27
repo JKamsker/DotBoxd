@@ -36,8 +36,13 @@ internal sealed class CompiledExecutableCache : IDisposable
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        CompiledArtifactGuard.ValidateExecutableEnvelope(artifact, plan, entrypoint);
         var key = new CacheKey(artifact.Manifest.CacheKey, artifact.AssemblyHash);
+        if (TryGetSameArtifactHit(key, artifact, out var sameArtifact))
+        {
+            return await CreateExecutableAsync(sameArtifact, artifact, "Hit", cancellationToken).ConfigureAwait(false);
+        }
+
+        CompiledArtifactGuard.ValidateExecutableEnvelope(artifact, plan, entrypoint);
         Lazy<Task<MaterializedCompiledArtifact>> lazy;
         LinkedListNode<CacheEntry>? evicted;
         bool isMiss;
@@ -49,7 +54,15 @@ internal sealed class CompiledExecutableCache : IDisposable
 
         DisposeEntry(evicted);
         var status = isMiss ? "Miss" : "Hit";
+        return await CreateExecutableAsync(lazy, artifact, status, cancellationToken).ConfigureAwait(false);
+    }
 
+    private async ValueTask<CompiledExecutable> CreateExecutableAsync(
+        Lazy<Task<MaterializedCompiledArtifact>> lazy,
+        CompiledArtifact current,
+        string status,
+        CancellationToken cancellationToken)
+    {
         try
         {
             var materialized = await lazy.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -59,7 +72,7 @@ internal sealed class CompiledExecutableCache : IDisposable
                 throw new ObjectDisposedException(nameof(CompiledExecutableCache));
             }
 
-            return new CompiledExecutable(WithCurrentMetadata(materialized.Artifact, artifact), status);
+            return new CompiledExecutable(WithCurrentMetadata(materialized.Artifact, current), status);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -67,7 +80,7 @@ internal sealed class CompiledExecutableCache : IDisposable
         }
         catch
         {
-            RemoveIfCurrent(key, lazy);
+            RemoveIfCurrent(new CacheKey(current.Manifest.CacheKey, current.AssemblyHash), lazy);
             throw;
         }
     }
@@ -109,13 +122,14 @@ internal sealed class CompiledExecutableCache : IDisposable
         {
             _recency.Remove(existing);
             _recency.AddLast(existing);
+            existing.Value = existing.Value with { ValidatedArtifact = artifact };
             return (existing.Value.Lazy, false, null);
         }
 
         var candidate = new Lazy<Task<MaterializedCompiledArtifact>>(
             () => _materialize(artifact, plan, entrypoint, CancellationToken.None).AsTask(),
             LazyThreadSafetyMode.ExecutionAndPublication);
-        var node = _recency.AddLast(new CacheEntry(key, candidate));
+        var node = _recency.AddLast(new CacheEntry(key, candidate, artifact));
         _entries[key] = node;
 
         var evicted = _entries.Count > Capacity ? EvictOldest() : null;
@@ -136,11 +150,41 @@ internal sealed class CompiledExecutableCache : IDisposable
     }
 
     private static CompiledArtifact WithCurrentMetadata(CompiledArtifact materialized, CompiledArtifact current)
-        => materialized with
+    {
+        if (materialized.CacheStatus == current.CacheStatus &&
+            string.Equals(materialized.CacheInvalidReason, current.CacheInvalidReason, StringComparison.Ordinal))
+        {
+            return materialized;
+        }
+
+        return materialized with
         {
             CacheStatus = current.CacheStatus,
             CacheInvalidReason = current.CacheInvalidReason
         };
+    }
+
+    private bool TryGetSameArtifactHit(
+        CacheKey key,
+        CompiledArtifact artifact,
+        out Lazy<Task<MaterializedCompiledArtifact>> lazy)
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            if (_entries.TryGetValue(key, out var existing) &&
+                ReferenceEquals(existing.Value.ValidatedArtifact, artifact))
+            {
+                _recency.Remove(existing);
+                _recency.AddLast(existing);
+                lazy = existing.Value.Lazy;
+                return true;
+            }
+        }
+
+        lazy = null!;
+        return false;
+    }
 
     private void RemoveIfCurrent(CacheKey key, Lazy<Task<MaterializedCompiledArtifact>> lazy)
     {
@@ -191,5 +235,8 @@ internal sealed class CompiledExecutableCache : IDisposable
 
     private readonly record struct CacheKey(string ManifestCacheKey, string AssemblyHash);
 
-    private readonly record struct CacheEntry(CacheKey Key, Lazy<Task<MaterializedCompiledArtifact>> Lazy);
+    private readonly record struct CacheEntry(
+        CacheKey Key,
+        Lazy<Task<MaterializedCompiledArtifact>> Lazy,
+        CompiledArtifact ValidatedArtifact);
 }
