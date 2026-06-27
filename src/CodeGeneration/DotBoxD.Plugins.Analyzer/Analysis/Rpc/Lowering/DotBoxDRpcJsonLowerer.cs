@@ -99,6 +99,9 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             case ForEachStatementSyntax loop:
                 LowerForEach(loop, output);
                 break;
+            case WhileStatementSyntax loop:
+                LowerWhile(loop, output);
+                break;
             case IfStatementSyntax branch:
                 LowerIf(branch, output);
                 break;
@@ -138,7 +141,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             if (declarator.Initializer is not { } initializer)
             {
-                throw new NotSupportedException("Server extension locals must be initialized.");
+                continue;
             }
 
             var localName = declarator.Identifier.ValueText;
@@ -172,8 +175,11 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 return;
             case PostfixUnaryExpressionSyntax { Operand: IdentifierNameSyntax inc } postfix
                 when postfix.Kind() is SyntaxKind.PostIncrementExpression or SyntaxKind.PostDecrementExpression:
-                var op = postfix.Kind() == SyntaxKind.PostIncrementExpression ? "add" : "sub";
-                output.Add(SetStatement(inc.Identifier.ValueText, BinaryJson(op, Var(inc.Identifier.ValueText), I32(1))));
+                output.Add(IncrementStatement(inc, postfix.Kind()));
+                return;
+            case PrefixUnaryExpressionSyntax { Operand: IdentifierNameSyntax inc } prefix
+                when prefix.Kind() is SyntaxKind.PreIncrementExpression or SyntaxKind.PreDecrementExpression:
+                output.Add(IncrementStatement(inc, prefix.Kind()));
                 return;
             case InvocationExpressionSyntax invocation when TryLowerListAdd(invocation, output) is { } listAdd:
                 output.Add(listAdd);
