@@ -100,9 +100,16 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 $"Scoped service handle accessor '{method.Name}' must pass exactly one scope argument.");
         }
 
+        var scopeArgument = invocation.ArgumentList.Arguments[0];
+        if (scopeArgument.RefKindKeyword.ValueText.Length != 0)
+        {
+            throw new NotSupportedException(
+                $"Scoped service handle accessor '{method.Name}' cannot use ref, in, or out arguments.");
+        }
+
         handleId = output is null
-            ? LowerExpression(invocation.ArgumentList.Arguments[0].Expression)
-            : LowerExpressionWithPrelude(invocation.ArgumentList.Arguments[0].Expression, output);
+            ? LowerExpression(scopeArgument.Expression)
+            : LowerExpressionWithPrelude(scopeArgument.Expression, output);
         return true;
     }
 
