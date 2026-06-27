@@ -148,6 +148,11 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 $"[KernelMethod] '{parameter.ContainingSymbol.Name}' optional nullable parameter '{parameter.Name}' is not supported in InvokeAsync/server-extension IR.");
         }
 
+        if (converted.SpecialType == SpecialType.System_String && value is string)
+        {
+            Allocates = true;
+        }
+
         return LiteralJson(value);
     }
 
