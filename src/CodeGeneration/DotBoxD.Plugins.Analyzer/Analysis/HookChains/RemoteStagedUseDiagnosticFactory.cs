@@ -190,7 +190,7 @@ internal static partial class RemoteStagedUseDiagnosticFactory
             return false;
         }
 
-        expression = HookChainAliasResolver.UnwrapParentheses(expression);
+        expression = HookChainAliasResolver.UnwrapTransparentExpression(expression);
         if (expression is IdentifierNameSyntax identifier &&
             SymbolEqualityComparer.Default.Equals(model.GetSymbolInfo(identifier, cancellationToken).Symbol, local))
         {
@@ -217,7 +217,7 @@ internal static partial class RemoteStagedUseDiagnosticFactory
 
     private static bool ContainsStageInvocation(ExpressionSyntax expression)
     {
-        expression = HookChainAliasResolver.UnwrapParentheses(expression);
+        expression = HookChainAliasResolver.UnwrapTransparentExpression(expression);
 
         if (expression is InvocationExpressionSyntax
             {

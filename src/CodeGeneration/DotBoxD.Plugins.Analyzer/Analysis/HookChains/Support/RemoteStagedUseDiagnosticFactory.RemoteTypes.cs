@@ -46,7 +46,7 @@ internal static partial class RemoteStagedUseDiagnosticFactory
         SemanticModel model,
         CancellationToken cancellationToken)
     {
-        expression = HookChainAliasResolver.UnwrapParentheses(expression);
+        expression = HookChainAliasResolver.UnwrapTransparentExpression(expression);
 
         if (HookChainAliasResolver.Initializer(expression, model, cancellationToken) is { } initializer)
         {
@@ -56,7 +56,7 @@ internal static partial class RemoteStagedUseDiagnosticFactory
         var current = expression;
         while (true)
         {
-            current = HookChainAliasResolver.UnwrapParentheses(current);
+            current = HookChainAliasResolver.UnwrapTransparentExpression(current);
             if (HookChainAliasResolver.Initializer(current, model, cancellationToken) is { } currentInitializer)
             {
                 current = currentInitializer;

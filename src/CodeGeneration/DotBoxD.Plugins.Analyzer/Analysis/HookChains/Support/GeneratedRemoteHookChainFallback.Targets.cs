@@ -33,6 +33,7 @@ internal static partial class GeneratedRemoteHookChainFallback
             return null;
         }
 
+        expression = HookChainAliasResolver.UnwrapTransparentExpression(expression);
         if (model.GetTypeInfo(expression, cancellationToken).Type is INamedTypeSymbol registryType &&
             TargetFromRegistryMarker(registryType, model.Compilation) is { } marked)
         {
@@ -65,8 +66,9 @@ internal static partial class GeneratedRemoteHookChainFallback
             return null;
         }
 
+        var serverExpression = HookChainAliasResolver.UnwrapTransparentExpression(registryAccess.Expression);
         string? context = null;
-        if (model.GetTypeInfo(registryAccess.Expression, cancellationToken).Type is INamedTypeSymbol serverType &&
+        if (model.GetTypeInfo(serverExpression, cancellationToken).Type is INamedTypeSymbol serverType &&
             HasGeneratePluginServerAttribute(serverType, model.Compilation))
         {
             context = GeneratedContextTypeFullName(serverType, model.Compilation);
@@ -86,7 +88,7 @@ internal static partial class GeneratedRemoteHookChainFallback
             }
         }
 
-        context ??= ContextFromOwnedGeneratedServerExpression(registryAccess.Expression, model, cancellationToken);
+        context ??= ContextFromOwnedGeneratedServerExpression(serverExpression, model, cancellationToken);
         if (context is null)
         {
             return null;

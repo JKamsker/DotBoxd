@@ -45,7 +45,7 @@ internal static partial class HookChainModelFactory
             return null;
         }
 
-        receiver = HookChainAliasResolver.UnwrapParentheses(receiver);
+        receiver = HookChainAliasResolver.UnwrapTransparentExpression(receiver);
 
         if (HookChainAliasResolver.Initializer(receiver, model, cancellationToken) is { } initializer)
         {
@@ -55,7 +55,7 @@ internal static partial class HookChainModelFactory
         var current = receiver;
         while (true)
         {
-            current = HookChainAliasResolver.UnwrapParentheses(current);
+            current = HookChainAliasResolver.UnwrapTransparentExpression(current);
             if (HookChainAliasResolver.Initializer(current, model, cancellationToken) is { } currentInitializer)
             {
                 current = currentInitializer;
@@ -79,7 +79,7 @@ internal static partial class HookChainModelFactory
                 TryLambda(invocation, out var lambda))
             {
                 stages.Add(new HookChainStage(isSelect, lambda));
-                current = HookChainAliasResolver.UnwrapParentheses(access.Expression);
+                current = HookChainAliasResolver.UnwrapTransparentExpression(access.Expression);
                 continue;
             }
 

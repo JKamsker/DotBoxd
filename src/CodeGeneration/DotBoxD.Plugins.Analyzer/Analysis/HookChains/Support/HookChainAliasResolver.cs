@@ -1,18 +1,27 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 
 internal static class HookChainAliasResolver
 {
-    public static ExpressionSyntax UnwrapParentheses(ExpressionSyntax expression)
+    public static ExpressionSyntax UnwrapTransparentExpression(ExpressionSyntax expression)
     {
-        while (expression is ParenthesizedExpressionSyntax parenthesized)
+        while (true)
         {
-            expression = parenthesized.Expression;
+            switch (expression)
+            {
+                case ParenthesizedExpressionSyntax parenthesized:
+                    expression = parenthesized.Expression;
+                    continue;
+                case PostfixUnaryExpressionSyntax postfix when postfix.IsKind(SyntaxKind.SuppressNullableWarningExpression):
+                    expression = postfix.Operand;
+                    continue;
+                default:
+                    return expression;
+            }
         }
-
-        return expression;
     }
 
     public static ExpressionSyntax? Initializer(
@@ -20,7 +29,7 @@ internal static class HookChainAliasResolver
         SemanticModel model,
         CancellationToken cancellationToken)
     {
-        expression = UnwrapParentheses(expression);
+        expression = UnwrapTransparentExpression(expression);
 
         if (expression is not IdentifierNameSyntax identifier ||
             model.GetSymbolInfo(identifier, cancellationToken).Symbol is not ILocalSymbol local)
