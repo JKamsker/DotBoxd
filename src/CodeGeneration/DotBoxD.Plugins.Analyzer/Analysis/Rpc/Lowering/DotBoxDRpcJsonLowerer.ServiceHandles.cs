@@ -9,7 +9,8 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 /// scoped handle via <c>Get(key)</c> whose method bindings have lowered arity <c>scopeArgs + methodArgs</c> —
 /// the key captured by <c>Get(key)</c> becomes the leading host-call argument. Both the local-variable form
 /// (<c>var h = control.Get(key); h.Method(...)</c>) and the inline form (<c>control.Get(key).Method(...)</c>)
-/// capture the same key and lower identically.
+/// capture the same key and lower identically. A handle local can also be copied to another local; the alias
+/// remains a scoped handle over the original key.
 /// </summary>
 internal sealed partial class DotBoxDRpcJsonLowerer
 {
@@ -42,7 +43,12 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         if (value is not InvocationExpressionSyntax invocation ||
             !TryGetServiceHandleAccessor(invocation, out var handleId, output))
         {
-            return false;
+            if (TryResolveScopeHandleAlias(value) is not { } aliasHandleId)
+            {
+                return false;
+            }
+
+            handleId = aliasHandleId;
         }
 
         _serviceHandleLocals[localName] = handleId;
@@ -73,6 +79,21 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 => memberHandleId,
             InvocationExpressionSyntax accessor when TryGetServiceHandleAccessor(accessor, out var inlineHandleId)
                 => inlineHandleId,
+            _ => null
+        };
+
+    private string? TryResolveScopeHandleAlias(ExpressionSyntax value)
+        => value switch
+        {
+            ParenthesizedExpressionSyntax parenthesized => TryResolveScopeHandleAlias(parenthesized.Expression),
+            CastExpressionSyntax cast => TryResolveScopeHandleAlias(cast.Expression),
+            IdentifierNameSyntax identifier
+                when _serviceHandleLocals.TryGetValue(identifier.Identifier.ValueText, out var localHandleId)
+                => localHandleId,
+            MemberAccessExpressionSyntax member
+                when IsThisOrBaseExpression(member.Expression) &&
+                     _serviceHandleLocals.TryGetValue(member.Name.Identifier.ValueText, out var memberHandleId)
+                => memberHandleId,
             _ => null
         };
 
