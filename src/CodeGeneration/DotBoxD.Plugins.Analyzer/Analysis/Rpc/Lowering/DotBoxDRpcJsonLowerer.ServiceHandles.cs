@@ -66,6 +66,10 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             IdentifierNameSyntax identifier
                 when _serviceHandleLocals.TryGetValue(identifier.Identifier.ValueText, out var localHandleId)
                 => localHandleId,
+            MemberAccessExpressionSyntax member
+                when IsThisOrBaseExpression(member.Expression) &&
+                     _serviceHandleLocals.TryGetValue(member.Name.Identifier.ValueText, out var memberHandleId)
+                => memberHandleId,
             InvocationExpressionSyntax accessor when TryGetServiceHandleAccessor(accessor, out var inlineHandleId)
                 => inlineHandleId,
             _ => null
@@ -107,4 +111,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
            method.Arity == 1 &&
            method.ContainingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ==
            "global::DotBoxD.Abstractions.HookContext";
+
+    private static bool IsThisOrBaseExpression(ExpressionSyntax expression)
+        => expression is ThisExpressionSyntax or BaseExpressionSyntax;
 }
