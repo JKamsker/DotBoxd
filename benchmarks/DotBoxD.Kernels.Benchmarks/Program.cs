@@ -217,21 +217,8 @@ if (args.Contains("--probe-installed-rpc-input", StringComparer.OrdinalIgnoreCas
     return;
 }
 
-if (args.Contains("--probe-kernel-rpc-value-items", StringComparer.OrdinalIgnoreCase))
+if (DotBoxD.Kernels.Benchmarks.Runtime.KernelRpcProbeDispatcher.TryRun(args))
 {
-    DotBoxD.Kernels.Benchmarks.Runtime.KernelRpcValueItemsProbe.Run();
-    return;
-}
-
-if (args.Contains("--probe-kernel-rpc-value-list-writer", StringComparer.OrdinalIgnoreCase))
-{
-    DotBoxD.Kernels.Benchmarks.Runtime.KernelRpcValueListWriterProbe.Run();
-    return;
-}
-
-if (args.Contains("--probe-kernel-rpc-marshaller-dto", StringComparer.OrdinalIgnoreCase))
-{
-    DotBoxD.Kernels.Benchmarks.Runtime.KernelRpcMarshallerDtoProbe.Run();
     return;
 }
 

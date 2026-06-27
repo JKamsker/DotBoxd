@@ -94,7 +94,7 @@ public static partial class KernelRpcMarshaller
                 entries[key] = MarshalChild(entry.Value, mapTypes.Value, "Map value");
             }
 
-            return SandboxValue.FromMap(entries, keyType, valueType);
+            return SandboxValue.FromOwnedMap(entries, keyType, valueType);
         }
 
         if (DtoShape(type) is { } shape)

@@ -101,7 +101,7 @@ public static class KernelRpcValueConverter
                 entries[key] = ToSandboxValue(source[i + 1], valueType);
             }
 
-            return SandboxValue.FromMap(entries, keyType, valueType);
+            return SandboxValue.FromOwnedMap(entries, keyType, valueType);
         }
 
         if (expectedType.IsRecord)
