@@ -96,10 +96,7 @@ internal sealed partial class SandboxWorkerExecutor
 
             try
             {
-                EntrypointBinder.RequireType(result.Value, analysis.ReturnType, "worker result return type mismatch");
-                var meter = new ResourceMeter(plan.Budget);
-                meter.ChargeValue(result.Value);
-                resultShapeUsage = meter.Snapshot();
+                resultShapeUsage = WorkerResultShapeUsage.Measure(result.Value, analysis.ReturnType, plan.Budget);
             }
             catch (SandboxRuntimeException)
             {
