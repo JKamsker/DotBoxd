@@ -35,6 +35,7 @@ internal static class RegistrationAccumulatorModelFactory
             var methodName = RequiredStringArgument(attribute, 1, "method name");
             ValidateIdentifier(accumulatorName, "Accumulator");
             ValidateIdentifier(methodName, "Registration method");
+            ValidateGeneratedTypeName(type, accumulatorName);
 
             var method = ResolveRegistrationMethod(type, methodName);
             var typeParameters = TypeParameters(method);
@@ -69,6 +70,7 @@ internal static class RegistrationAccumulatorModelFactory
             EnsureTopLevel(type);
             var accumulatorName = RequiredStringArgument(context.Attributes[0], 0, "accumulator name");
             ValidateIdentifier(accumulatorName, "Accumulator");
+            ValidateGeneratedTypeName(type, accumulatorName);
             var model = new RegistrationRootAccumulatorModel(
                 Namespace(type),
                 TypeName(type),
@@ -229,4 +231,17 @@ internal static class RegistrationAccumulatorModelFactory
 
         return kind == SyntaxKind.None ? name : "@" + name;
     }
+
+    private static void ValidateGeneratedTypeName(INamedTypeSymbol receiverType, string generatedName)
+    {
+        foreach (var existing in receiverType.ContainingNamespace.GetTypeMembers(generatedName))
+        {
+            throw new NotSupportedException(
+                $"Generated registration accumulator type '{existing.Name}' collides with an existing type in namespace " +
+                $"'{NamespaceDisplay(receiverType.ContainingNamespace)}'.");
+        }
+    }
+
+    private static string NamespaceDisplay(INamespaceSymbol @namespace)
+        => @namespace.IsGlobalNamespace ? "<global namespace>" : @namespace.ToDisplayString();
 }
