@@ -87,6 +87,7 @@ $defaultMinimums = @{
     PluginServerControlServiceTests = 4
     PluginServerTargetShapeRegressionTests = 4
     ServerExtensionProxyAsyncTests = 4
+    ServerExtensionProxyCancellationTests = 1
     RpcKernelGenerationTests = 13
     RpcKernelLiveSettingRuntimeTests = 2
     RpcKernelMethodGenerationTests = 7
