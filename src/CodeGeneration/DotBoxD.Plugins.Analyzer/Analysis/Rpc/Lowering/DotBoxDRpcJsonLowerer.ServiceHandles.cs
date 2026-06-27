@@ -56,6 +56,26 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         return true;
     }
 
+    private void LowerServiceHandleScopedBlock(BlockSyntax block, List<string> output)
+    {
+        var previous = new Dictionary<string, string>(_serviceHandleLocals, StringComparer.Ordinal);
+        try
+        {
+            foreach (var inner in block.Statements)
+            {
+                LowerStatement(inner, output);
+            }
+        }
+        finally
+        {
+            _serviceHandleLocals.Clear();
+            foreach (var local in previous)
+            {
+                _serviceHandleLocals.Add(local.Key, local.Value);
+            }
+        }
+    }
+
     /// <summary>
     /// Resolves the scope key for a scoped-handle method receiver and threads it as the leading host-call
     /// argument. Both the local-variable form (<c>var h = control.Get(key); h.Method(...)</c>, where

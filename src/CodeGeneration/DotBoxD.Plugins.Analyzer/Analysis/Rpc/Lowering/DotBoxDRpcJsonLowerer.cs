@@ -124,11 +124,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 output.Add(Obj(("op", Str("break"))));
                 break;
             case BlockSyntax block:
-                foreach (var inner in block.Statements)
-                {
-                    LowerStatement(inner, output);
-                }
-
+                LowerServiceHandleScopedBlock(block, output);
                 break;
             default:
                 throw new NotSupportedException($"Server extension statement '{statement.Kind()}' is not supported.");
