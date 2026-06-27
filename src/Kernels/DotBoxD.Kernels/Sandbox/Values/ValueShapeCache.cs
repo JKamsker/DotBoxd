@@ -131,8 +131,9 @@ internal static class ValueShapeCache
     }
 
     /// <summary>
-    /// Charges removal from a map whose keys and values have zero scalar shape. Returns false for text,
-    /// opaque IDs, paths, URIs, and nested values because those removals can change maxima that are not
+    /// Charges map removal from the source shape. Missing-key removes reuse the source shape for every map
+    /// type because the result is unchanged. Present-key removes are limited to maps whose keys and values
+    /// have zero scalar shape; text, opaque IDs, paths, URIs, and nested values can change maxima that are not
     /// derivable from the aggregate source shape alone.
     /// </summary>
     public static bool TryChargeScalarMapRemove(
@@ -141,17 +142,17 @@ internal static class ValueShapeCache
         MapValue removed,
         bool keyWasPresent)
     {
-        if (!HasZeroShape(source.KeyType) || !HasZeroShape(source.ValueType))
-        {
-            return false;
-        }
-
         var sourceInfo = GetOrMeasure(source, context.CancellationToken);
         if (!keyWasPresent)
         {
             context.ChargeComposedValue(sourceInfo);
             Set(removed, sourceInfo);
             return true;
+        }
+
+        if (!HasZeroShape(source.KeyType) || !HasZeroShape(source.ValueType))
+        {
+            return false;
         }
 
         var newCount = source.Values.Count - 1;

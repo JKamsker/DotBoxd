@@ -144,6 +144,29 @@ public sealed class ValueShapeCacheTests
     }
 
     [Fact]
+    public void TryChargeScalarMapRemove_missing_key_reuses_shape_with_string_shape()
+    {
+        var source = (MapValue)SandboxValue.FromMap(
+            new Dictionary<SandboxValue, SandboxValue>
+            {
+                [SandboxValue.FromString("a")] = SandboxValue.FromString("alpha"),
+                [SandboxValue.FromString("b")] = SandboxValue.FromString("beta")
+            },
+            SandboxType.String,
+            SandboxType.String);
+        var removed = source.RemoveEntry(SandboxValue.FromString("missing"));
+        var optimizedContext = CreateContext();
+
+        Assert.True(ValueShapeCache.TryChargeScalarMapRemove(
+            optimizedContext,
+            source,
+            removed,
+            keyWasPresent: false));
+
+        AssertMatchesFullWalkCharge(optimizedContext, removed);
+    }
+
+    [Fact]
     public void TryChargeScalarMapReplace_rejects_values_with_string_shape()
     {
         var source = (MapValue)SandboxValue.FromMap(
