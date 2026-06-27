@@ -13,7 +13,7 @@ public sealed class PluginAnalyzerForbiddenApiConstructorReachabilityTests
     [Fact]
     public async Task Reports_forbidden_constructor_reached_through_field_initializer()
     {
-        var diagnostics = await AnalyzeAsync("""
+        const string source = """
             namespace Sample
             {
                 using DotBoxD.Plugins;
@@ -34,15 +34,16 @@ public sealed class PluginAnalyzerForbiddenApiConstructorReachabilityTests
                     public void Handle(string e, HookContext context) { }
                 }
             }
-            """);
+            """;
 
-        Assert.Contains(diagnostics, d => d.Id == "DBXK001");
+        var diagnostics = await AnalyzeAsync(source);
+        AssertSingleForbiddenDiagnosticAt(source, diagnostics, "private readonly Helper Helper = new Helper();");
     }
 
     [Fact]
     public async Task Reports_forbidden_constructor_reached_through_property_initializer()
     {
-        var diagnostics = await AnalyzeAsync("""
+        const string source = """
             namespace Sample
             {
                 using DotBoxD.Plugins;
@@ -63,15 +64,16 @@ public sealed class PluginAnalyzerForbiddenApiConstructorReachabilityTests
                     public void Handle(string e, HookContext context) { }
                 }
             }
-            """);
+            """;
 
-        Assert.Contains(diagnostics, d => d.Id == "DBXK001");
+        var diagnostics = await AnalyzeAsync(source);
+        AssertSingleForbiddenDiagnosticAt(source, diagnostics, "private Helper Helper { get; } = new Helper();");
     }
 
     [Fact]
     public async Task Reports_forbidden_constructor_reached_through_kernel_method_body()
     {
-        var diagnostics = await AnalyzeAsync("""
+        const string source = """
             namespace Sample
             {
                 using DotBoxD.Plugins;
@@ -90,9 +92,26 @@ public sealed class PluginAnalyzerForbiddenApiConstructorReachabilityTests
                     public void Handle(string e, HookContext context) { }
                 }
             }
-            """);
+            """;
 
-        Assert.Contains(diagnostics, d => d.Id == "DBXK001");
+        var diagnostics = await AnalyzeAsync(source);
+        AssertSingleForbiddenDiagnosticAt(
+            source,
+            diagnostics,
+            "public bool ShouldHandle(string e, HookContext context) => new Helper() is not null;");
+    }
+
+    private static void AssertSingleForbiddenDiagnosticAt(
+        string source,
+        ImmutableArray<Diagnostic> diagnostics,
+        string expectedLine)
+    {
+        var diagnostic = Assert.Single(diagnostics.Where(d => d.Id == "DBXK001"));
+        Assert.Contains("System.IO.File", diagnostic.GetMessage(), StringComparison.Ordinal);
+
+        var position = diagnostic.Location.GetLineSpan().StartLinePosition;
+        var actualLine = source.Split('\n')[position.Line].Trim();
+        Assert.Equal(expectedLine, actualLine);
     }
 
     private static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(string source)
