@@ -116,20 +116,6 @@ internal static partial class RemoteStagedUseDiagnosticFactory
             PluginDiagnosticLocation.From(access.Name.GetLocation()));
     }
 
-    private static ExpressionSyntax UnwrapTransparentParent(ExpressionSyntax expression)
-    {
-        while (expression.Parent is ParenthesizedExpressionSyntax parenthesized &&
-               parenthesized.Expression == expression ||
-               expression.Parent is PostfixUnaryExpressionSyntax postfix &&
-               postfix.IsKind(SyntaxKind.SuppressNullableWarningExpression) &&
-               postfix.Operand == expression)
-        {
-            expression = (ExpressionSyntax)expression.Parent;
-        }
-
-        return expression;
-    }
-
     private static PluginKernelDiagnostic? CreateStagedLocalDiagnostic(
         InvocationExpressionSyntax invocation,
         MemberAccessExpressionSyntax access,
@@ -305,5 +291,4 @@ internal static partial class RemoteStagedUseDiagnosticFactory
         return expression is MemberAccessExpressionSyntax access &&
             ContainsStageInvocation(access.Expression);
     }
-
 }
