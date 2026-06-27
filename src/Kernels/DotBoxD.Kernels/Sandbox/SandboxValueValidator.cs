@@ -34,39 +34,47 @@ public static class SandboxValueValidator
             throw Error(errorCode, message);
         }
 
-        var active = new HashSet<object>(ReferenceEqualityComparer.Instance);
-        var stack = new Stack<Frame>();
-        stack.Push(new Frame(value, expectedType, Exit: false));
-        while (stack.Count > 0)
+        var state = SandboxTraversalState<Frame>.Rent();
+        var active = state.Active;
+        var stack = state.Stack;
+        try
         {
-            var frame = stack.Pop();
-            if (frame.Exit)
+            stack.Push(new Frame(value, expectedType, Exit: false));
+            while (stack.Count > 0)
             {
-                active.Remove(frame.Value);
-                continue;
-            }
+                var frame = stack.Pop();
+                if (frame.Exit)
+                {
+                    active.Remove(frame.Value);
+                    continue;
+                }
 
-            if (!SandboxValueTypeMatcher.MatchesValidationFrame(frame.Value, frame.ExpectedType))
-            {
-                throw Error(errorCode, message);
-            }
+                if (!SandboxValueTypeMatcher.MatchesValidationFrame(frame.Value, frame.ExpectedType))
+                {
+                    throw Error(errorCode, message);
+                }
 
-            RequireScalarInvariants(frame.Value, errorCode, message);
-            switch (frame.Value)
-            {
-                case OpaqueIdValue id:
-                    RequireOpaqueId(id, errorCode, message);
-                    break;
-                case ListValue list:
-                    PushList(list, frame.ExpectedType, active, stack, errorCode, message);
-                    break;
-                case MapValue map:
-                    PushMap(map, frame.ExpectedType, active, stack, errorCode, message);
-                    break;
-                case RecordValue record:
-                    PushRecord(record, frame.ExpectedType, active, stack, errorCode, message);
-                    break;
+                RequireScalarInvariants(frame.Value, errorCode, message);
+                switch (frame.Value)
+                {
+                    case OpaqueIdValue id:
+                        RequireOpaqueId(id, errorCode, message);
+                        break;
+                    case ListValue list:
+                        PushList(list, frame.ExpectedType, active, stack, errorCode, message);
+                        break;
+                    case MapValue map:
+                        PushMap(map, frame.ExpectedType, active, stack, errorCode, message);
+                        break;
+                    case RecordValue record:
+                        PushRecord(record, frame.ExpectedType, active, stack, errorCode, message);
+                        break;
+                }
             }
+        }
+        finally
+        {
+            SandboxTraversalState<Frame>.Return(state);
         }
     }
 
