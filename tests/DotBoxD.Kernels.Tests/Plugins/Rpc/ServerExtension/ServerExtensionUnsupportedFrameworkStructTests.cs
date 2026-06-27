@@ -19,25 +19,25 @@ public sealed class ServerExtensionUnsupportedFrameworkStructTests
             [ServerExtension("date-value")]
             public sealed partial class DateValueKernel
             {
-                public int UseDate(DateOnly value, HookContext ctx) => value.Day;
+                public int UseDate(DateOnly value, HookContext ctx) => 0;
             }
 
             [ServerExtension("time-value")]
             public sealed partial class TimeValueKernel
             {
-                public int UseTime(TimeOnly value, HookContext ctx) => value.Hour;
+                public int UseTime(TimeOnly value, HookContext ctx) => 0;
             }
 
             [ServerExtension("index-value")]
             public sealed partial class IndexValueKernel
             {
-                public int UseIndex(Index value, HookContext ctx) => value.Value;
+                public int UseIndex(Index value, HookContext ctx) => 0;
             }
 
             [ServerExtension("range-value")]
             public sealed partial class RangeValueKernel
             {
-                public int UseRange(Range value, HookContext ctx) => value.Start.Value + value.End.Value;
+                public int UseRange(Range value, HookContext ctx) => 0;
             }
             """);
 

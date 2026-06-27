@@ -87,7 +87,11 @@ public static partial class KernelRpcMarshaller
     {
         if (type == typeof(DateTime) ||
             type == typeof(DateTimeOffset) ||
-            type == typeof(TimeSpan))
+            type == typeof(TimeSpan) ||
+            type == typeof(DateOnly) ||
+            type == typeof(TimeOnly) ||
+            type == typeof(Index) ||
+            type == typeof(Range))
         {
             throw new NotSupportedException(
                 $"Kernel RPC service type '{type}' is not supported; convert it to a supported scalar or DTO type.");

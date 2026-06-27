@@ -279,5 +279,6 @@ internal static partial class DotBoxDRpcTypeMapper
 
     private static bool IsUnsupportedFrameworkStruct(INamedTypeSymbol type)
         => type.ContainingNamespace.ToDisplayString() == "System" &&
-           type.Name is "DateTime" or "DateTimeOffset" or "TimeSpan";
+           type.Name is "DateTime" or "DateTimeOffset" or "TimeSpan"
+               or "DateOnly" or "TimeOnly" or "Index" or "Range";
 }

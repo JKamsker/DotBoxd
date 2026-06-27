@@ -372,6 +372,7 @@ jobs:
               "ServerExtensionClientDecodeSurpriseTests",
               "ServerExtensionClientProxySurpriseTests",
               "KernelRpcMarshallerSurpriseTests",
+              "ServerExtensionUnsupportedFrameworkStructTests",
               "KernelRpcMarshallerDtoOrderTests",
               "KernelRpcValueTests",
               "KernelRpcBinaryCodecTests",
