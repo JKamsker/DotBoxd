@@ -2,14 +2,16 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Reflection;
 
+using LinqExpression = System.Linq.Expressions.Expression;
+
 namespace DotBoxD.Plugins.Runtime.Rpc;
 
 public static partial class KernelRpcMarshaller
 {
     private static readonly ConcurrentDictionary<Type, OptionalType> ElementTypeCache = new();
     private static readonly ConcurrentDictionary<Type, OptionalMapTypes> MapTypeCache = new();
-    private static readonly ConcurrentDictionary<Type, Type> ListTypeCache = new();
-    private static readonly ConcurrentDictionary<(Type Key, Type Value), Type> DictionaryTypeCache = new();
+    private static readonly ConcurrentDictionary<Type, Func<int, IList>> ListFactoryCache = new();
+    private static readonly ConcurrentDictionary<(Type Key, Type Value), Func<int, IDictionary>> DictionaryFactoryCache = new();
     private static readonly ConcurrentDictionary<Type, RecordShape> RecordShapeCache = new();
     private static readonly ConcurrentDictionary<Type, OptionalRecordShape> DtoShapeCache = new();
 
@@ -82,20 +84,37 @@ public static partial class KernelRpcMarshaller
         return shape.Fields.Count > 0 ? shape : null;
     }
 
-    private static IList CreateList(Type elementType)
+    private static IList CreateList(Type elementType, int capacity)
+        => ListFactoryCache.GetOrAdd(elementType, CreateListFactory)(capacity);
+
+    private static IDictionary CreateDictionary(Type keyType, Type valueType, int capacity)
+        => DictionaryFactoryCache.GetOrAdd((keyType, valueType), CreateDictionaryFactory)(capacity);
+
+    private static Func<int, IList> CreateListFactory(Type elementType)
     {
-        var listType = ListTypeCache.GetOrAdd(
-            elementType,
-            static type => typeof(List<>).MakeGenericType(type));
-        return (IList)Activator.CreateInstance(listType)!;
+        var constructor = typeof(List<>)
+            .MakeGenericType(elementType)
+            .GetConstructor([typeof(int)])
+            ?? throw new MissingMethodException($"List<{elementType}>", ".ctor(int)");
+        return CompileCollectionFactory<IList>(constructor);
     }
 
-    private static IDictionary CreateDictionary(Type keyType, Type valueType)
+    private static Func<int, IDictionary> CreateDictionaryFactory((Type Key, Type Value) types)
     {
-        var dictionaryType = DictionaryTypeCache.GetOrAdd(
-            (keyType, valueType),
-            static pair => typeof(Dictionary<,>).MakeGenericType(pair.Key, pair.Value));
-        return (IDictionary)Activator.CreateInstance(dictionaryType)!;
+        var constructor = typeof(Dictionary<,>)
+            .MakeGenericType(types.Key, types.Value)
+            .GetConstructor([typeof(int)])
+            ?? throw new MissingMethodException($"Dictionary<{types.Key},{types.Value}>", ".ctor(int)");
+        return CompileCollectionFactory<IDictionary>(constructor);
+    }
+
+    private static Func<int, TCollection> CompileCollectionFactory<TCollection>(ConstructorInfo constructor)
+    {
+        var capacity = LinqExpression.Parameter(typeof(int), "capacity");
+        var created = LinqExpression.New(constructor, capacity);
+        return LinqExpression.Lambda<Func<int, TCollection>>(
+            LinqExpression.Convert(created, typeof(TCollection)),
+            capacity).Compile();
     }
 
     private static RecordShape GetRecordShape(Type type)

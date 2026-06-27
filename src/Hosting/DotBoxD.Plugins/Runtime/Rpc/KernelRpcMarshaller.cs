@@ -168,7 +168,7 @@ public static partial class KernelRpcMarshaller
                 return ToArray(list.Values, elementType);
             }
 
-            var resultList = CreateList(elementType);
+            var resultList = CreateList(elementType, list.Values.Count);
             foreach (var item in list.Values)
             {
                 resultList.Add(FromSandboxValue(item, elementType));
@@ -179,7 +179,7 @@ public static partial class KernelRpcMarshaller
 
         if (MapTypes(type) is { } mapTypes && value is MapValue map)
         {
-            var result = CreateDictionary(mapTypes.Key, mapTypes.Value);
+            var result = CreateDictionary(mapTypes.Key, mapTypes.Value, map.Values.Count);
             foreach (var pair in map.Entries)
             {
                 var key = FromSandboxValue(pair.Key, mapTypes.Key)
