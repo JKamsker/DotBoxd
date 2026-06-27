@@ -80,6 +80,12 @@ if (args.Contains("--probe-http-audit-path-sanitizer", StringComparer.OrdinalIgn
     return;
 }
 
+if (args.Contains("--probe-safe-ip-classifier", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Http.SafeIpClassifierProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-value-shape-cache", StringComparer.OrdinalIgnoreCase))
 {
     DotBoxD.Kernels.Benchmarks.Runtime.ValueShapeCacheProbe.Run();
