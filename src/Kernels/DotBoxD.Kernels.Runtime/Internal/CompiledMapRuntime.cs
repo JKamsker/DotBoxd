@@ -18,7 +18,7 @@ internal static class CompiledMapRuntime
     {
         context.ChargeFuel(SandboxCollectionFuel.Empty());
         context.ChargeAllocation(16);
-        return ChargeValue(context, SandboxValue.FromMap(new Dictionary<SandboxValue, SandboxValue>(), keyType, valueType));
+        return ChargeValue(context, SandboxValue.FromOwnedMap(new Dictionary<SandboxValue, SandboxValue>(), keyType, valueType));
     }
 
     internal static SandboxValue ContainsKey(SandboxContext context, SandboxValue map, SandboxValue key)

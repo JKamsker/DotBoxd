@@ -15,9 +15,24 @@ public sealed record MapValue(
             ? new EntryEnumerable(snapshot.Dictionary, null)
             : new EntryEnumerable(null, (ImmutableDictionary<SandboxValue, SandboxValue>)_values);
 
+    /// <summary>
+    /// Constructs a map value over a dictionary the caller has just allocated,
+    /// fully populated, and will not retain or mutate.
+    /// </summary>
+    internal static MapValue FromOwnedValues(
+        Dictionary<SandboxValue, SandboxValue> values,
+        SandboxType keyType,
+        SandboxType valueType)
+        => new(new DictionarySnapshot(values), keyType, valueType);
+
     private static IReadOnlyDictionary<SandboxValue, SandboxValue> Snapshot(IReadOnlyDictionary<SandboxValue, SandboxValue> values)
     {
         ArgumentNullException.ThrowIfNull(values);
+        if (values is DictionarySnapshot snapshot)
+        {
+            return snapshot;
+        }
+
         if (values is ImmutableDictionary<SandboxValue, SandboxValue> immutable)
         {
             return immutable;

@@ -176,6 +176,12 @@ if (args.Contains("--probe-collection-construction", StringComparer.OrdinalIgnor
     return;
 }
 
+if (args.Contains("--probe-literal-collection-construction", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Core.LiteralCollectionConstructionProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-host-call-accounting", StringComparer.OrdinalIgnoreCase))
 {
     DotBoxD.Kernels.Benchmarks.Runtime.HostCallAccountingProbe.Run();
