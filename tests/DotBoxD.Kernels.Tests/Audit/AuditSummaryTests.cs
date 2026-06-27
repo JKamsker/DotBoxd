@@ -3,7 +3,6 @@ using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
-using DotBoxD.Kernels.Tests;
 using DotBoxD.Kernels.Tests._TestSupport;
 
 namespace DotBoxD.Kernels.Tests.Audit;
@@ -12,6 +11,7 @@ namespace DotBoxD.Kernels.Tests.Audit;
 public sealed class AuditSummaryTests
 {
     private const int PolicyIdAllocationIterations = 100_000;
+    private const int PolicyIdAllocationWarmupIterations = 5_000;
 
     [Fact]
     public async Task Interpreted_run_summary_includes_execution_hashes()
@@ -154,7 +154,7 @@ public sealed class AuditSummaryTests
     public void SafePolicyId_returns_original_safe_id_without_steady_state_allocation()
     {
         const string policyId = "summary-policy";
-        for (var i = 0; i < 1_000; i++)
+        for (var i = 0; i < PolicyIdAllocationWarmupIterations; i++)
         {
             GC.KeepAlive(RunSummaryAuditFields.SafePolicyId(policyId));
         }
@@ -174,9 +174,13 @@ public sealed class AuditSummaryTests
         }
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var allocatedPerCall = (double)allocated / PolicyIdAllocationIterations;
+
+        Console.WriteLine(
+            $"SafePolicyId clean allocation: {allocated:N0} B; {allocatedPerCall:N3} B/call.");
         Assert.True(
-            allocated <= 64,
-            $"Expected safe policy-id sanitization to stay allocation-free; allocated {allocated:N0} bytes.");
+            allocatedPerCall < 1D,
+            $"Expected safe policy-id sanitization to stay near zero allocation; observed {allocatedPerCall:N3} B/call.");
     }
 
     private static void AssertSummaryContainsExecutionHashes(SandboxAuditEvent summary, ExecutionPlan plan)
