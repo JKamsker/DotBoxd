@@ -63,6 +63,7 @@ public sealed partial class InvokeAsyncGeneratedReceiverSurpriseTests
 
         Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
         Assert.Contains("\\\"returnType\\\":\\\"I64\\\"", source, StringComparison.Ordinal);
+        Assert.Contains("numeric.toI64", source, StringComparison.Ordinal);
     }
 
     [Fact]
