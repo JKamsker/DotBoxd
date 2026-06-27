@@ -115,6 +115,60 @@ public sealed class ServerExtensionReceiverAuthoritySurpriseTests
     }
 
     [Fact]
+    public void Block_local_shadowing_grafted_receiver_field_does_not_rebind_receiver_authority()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create("""
+            using DotBoxD.Abstractions;
+            using DotBoxD.Plugins;
+            using DotBoxD.Services.Attributes;
+
+            namespace Sample;
+
+            [DotBoxDService]
+            public interface IRemoteMonster
+            {
+                string Id { get; }
+
+                [HostCapability("game.world.monster.read.threat", HostBindingEffect.HostStateRead)]
+                int Threat();
+            }
+
+            [DotBoxDService]
+            public interface IMonsterDirectory
+            {
+                IRemoteMonster Get(string id);
+            }
+
+            [ServerExtension(typeof(IRemoteMonster), "shadow-threat")]
+            public sealed partial class ShadowThreatKernel
+            {
+                private readonly IRemoteMonster _monster;
+
+                public ShadowThreatKernel(IRemoteMonster monster) => _monster = monster;
+
+                public int Read(string otherId, HookContext ctx)
+                {
+                    if (true)
+                    {
+                        var _monster = ctx.Host<IMonsterDirectory>().Get(otherId);
+                        var ignored = _monster.Threat();
+                    }
+
+                    return _monster.Threat();
+                }
+            }
+        """, "Sample.ShadowThreatPluginPackage");
+
+        var function = Assert.Single(package.Module.Functions);
+        Assert.Equal(["__receiverId", "otherId"], function.Parameters.Select(parameter => parameter.Name));
+
+        var returned = Assert.IsType<ReturnStatement>(function.Body.Last());
+        var hostCall = Assert.IsType<CallExpression>(returned.Value);
+        var argument = Assert.IsType<VariableExpression>(Assert.Single(hostCall.Arguments));
+        Assert.Equal("__receiverId", argument.Name);
+    }
+
+    [Fact]
     public void Receiver_graft_rejects_payload_parameter_named_receiver_id()
     {
         var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
