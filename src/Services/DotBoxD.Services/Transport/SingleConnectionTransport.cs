@@ -91,13 +91,22 @@ public sealed class SingleConnectionServerTransport : IServerTransport
             return _connection;
         }
 
-        // Honour an already-cancelled token before registering on the shared one-shot _stopped TCS: a
-        // pre-cancelled token would otherwise fire ct.Register synchronously, completing _stopped and
-        // spuriously unblocking every other parked accept (bricking the transport). Mirrors TcpServerTransport.
         ct.ThrowIfCancellationRequested();
 
-        using (ct.Register(static state =>
-            ((TaskCompletionSource<bool>)state!).TrySetResult(true), _stopped))
+        if (ct.CanBeCanceled)
+        {
+            var cancelled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            using (ct.Register(static state =>
+                ((TaskCompletionSource<bool>)state!).TrySetResult(true), cancelled))
+            {
+                var completed = await Task.WhenAny(_stopped.Task, cancelled.Task).ConfigureAwait(false);
+                if (ReferenceEquals(completed, cancelled.Task))
+                {
+                    ct.ThrowIfCancellationRequested();
+                }
+            }
+        }
+        else
         {
             await _stopped.Task.ConfigureAwait(false);
         }

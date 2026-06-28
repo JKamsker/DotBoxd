@@ -73,6 +73,50 @@ public class UnsupportedShapeCoverageTests
     }
 
     [Fact]
+    public void NestedTaskAndValueTaskPayloads_ProduceDBXS002_AndCompilingProxyStubs()
+    {
+        const string source = """
+            using DotBoxD.Services.Attributes;
+            using System.Threading.Tasks;
+
+            namespace Regress.UnsupportedCoverage
+            {
+                [DotBoxDService]
+                public interface INestedAsyncPayloads
+                {
+                    Task<Task<int>> NestedReturnAsync();
+                    ValueTask<ValueTask<int>> NestedValueReturnAsync();
+                    Task TakesNestedAsync(Task<int> value);
+                }
+            }
+            """;
+
+        var (_, runResult) = Compile(source);
+
+        var diagnostics = runResult.Diagnostics
+            .Where(d => d.Id == "DBXS002" &&
+                d.GetMessage().Contains("Task and ValueTask are only supported as top-level return wrappers"))
+            .ToArray();
+        diagnostics.Should().HaveCount(3);
+
+        var generated = runResult.Results.Single().GeneratedSources;
+        var proxy = generated
+            .Single(g => g.HintName.EndsWith("INestedAsyncPayloads.DotBoxDRpcProxy.g.cs"))
+            .SourceText.ToString();
+        proxy.Should().Contain("NestedReturnAsync()");
+        proxy.Should().Contain("NestedValueReturnAsync()");
+        proxy.Should().Contain("TakesNestedAsync(global::System.Threading.Tasks.Task<int> value)");
+        proxy.Should().Contain("throw new global::System.NotSupportedException");
+
+        var dispatcher = generated
+            .Single(g => g.HintName.EndsWith("INestedAsyncPayloads.DotBoxDRpcDispatcher.g.cs"))
+            .SourceText.ToString();
+        dispatcher.Should().NotContain("case \"NestedReturnAsync\":");
+        dispatcher.Should().NotContain("case \"NestedValueReturnAsync\":");
+        dispatcher.Should().NotContain("case \"TakesNestedAsync\":");
+    }
+
+    [Fact]
     public void InParameter_ProducesDBXS002_AndPreservesProxyStubSignature()
     {
         const string source = """
@@ -136,6 +180,37 @@ public class UnsupportedShapeCoverageTests
             .Single(g => g.HintName.EndsWith("IRefReadonlyParameter.DotBoxDRpcDispatcher.g.cs"))
             .SourceText.ToString();
         dispatcher.Should().NotContain("case \"Inspect\":");
+    }
+
+    [Fact]
+    public void SubServiceIndexer_ProducesDBXS003_AndSkipsBrokenRootProxy()
+    {
+        const string source = """
+            using DotBoxD.Services.Attributes;
+
+            namespace Regress.UnsupportedCoverage
+            {
+                [DotBoxDService]
+                public interface IChildService
+                {
+                    void Ping();
+                }
+
+                [DotBoxDService]
+                public interface IRootService
+                {
+                    IChildService this[int id] { get; }
+                }
+            }
+            """;
+
+        var (_, runResult) = Compile(source);
+
+        runResult.Diagnostics.Should().Contain(d => d.Id == "DBXS003" &&
+            d.GetMessage().Contains("indexer") &&
+            d.GetMessage().Contains("not supported"));
+        runResult.Results.Single().GeneratedSources.Should().NotContain(
+            g => g.HintName.EndsWith("IRootService.DotBoxDRpcProxy.g.cs"));
     }
 
     private static (Compilation Compilation, GeneratorDriverRunResult RunResult) Compile(string source)

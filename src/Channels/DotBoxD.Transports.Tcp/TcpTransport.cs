@@ -108,6 +108,16 @@ public sealed class TcpTransport : ITransport
         {
             await connection.DisposeAsync().ConfigureAwait(false);
             client.Dispose();
+            if (ReferenceEquals(_connection, connection))
+            {
+                _connection = null;
+            }
+
+            if (ReferenceEquals(_client, client))
+            {
+                _client = null;
+            }
+
             throw new ObjectDisposedException(nameof(TcpTransport));
         }
     }
@@ -129,8 +139,10 @@ public sealed class TcpTransport : ITransport
         if (_connection != null)
         {
             await _connection.DisposeAsync().ConfigureAwait(false);
+            _connection = null;
         }
 
         _client?.Dispose();
+        _client = null;
     }
 }

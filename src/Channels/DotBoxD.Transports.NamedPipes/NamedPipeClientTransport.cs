@@ -118,7 +118,14 @@ public sealed class NamedPipeClientTransport : ITransport
         // transport. Mirrors TcpTransport.ConnectAsync.
         if (Volatile.Read(ref _disposed) != 0)
         {
-            await _connection.DisposeAsync().ConfigureAwait(false);
+            var connection = _connection;
+            if (connection is not null)
+            {
+                await connection.DisposeAsync().ConfigureAwait(false);
+            }
+
+            _connection = null;
+            _stream = null;
             throw new ObjectDisposedException(nameof(NamedPipeClientTransport));
         }
     }
@@ -146,14 +153,18 @@ public sealed class NamedPipeClientTransport : ITransport
             // ConnectAsync can finish and dispose the linked CTS while DisposeAsync is starting.
         }
 
-        if (_connection is not null)
+        var connection = _connection;
+        if (connection is not null)
         {
-            await _connection.DisposeAsync().ConfigureAwait(false);
+            await connection.DisposeAsync().ConfigureAwait(false);
+            _connection = null;
         }
         else
         {
             _stream?.Dispose();
         }
+
+        _stream = null;
     }
 
     private string RemoteEndpoint => $"pipe://{_serverName}/{_pipeName}";

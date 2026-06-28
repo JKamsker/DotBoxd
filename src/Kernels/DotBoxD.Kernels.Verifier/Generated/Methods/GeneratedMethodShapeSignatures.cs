@@ -101,6 +101,7 @@ internal static class GeneratedMethodShapeSignatures
         => calledMember.StartsWith(CompiledRuntimeName + ".CreateLiteralValueArray(", StringComparison.Ordinal) ||
            calledMember.StartsWith(CompiledRuntimeName + ".StringLiteralValue(", StringComparison.Ordinal) ||
            calledMember.StartsWith(CompiledRuntimeName + ".OpaqueIdLiteralValue(", StringComparison.Ordinal) ||
+           calledMember.StartsWith(CompiledRuntimeName + ".GuidLiteralValue(", StringComparison.Ordinal) ||
            calledMember.StartsWith(CompiledRuntimeName + ".PathLiteralValue(", StringComparison.Ordinal) ||
            calledMember.StartsWith(CompiledRuntimeName + ".UriLiteralValue(", StringComparison.Ordinal) ||
            calledMember.StartsWith(CompiledRuntimeName + ".ListLiteralValue(", StringComparison.Ordinal) ||

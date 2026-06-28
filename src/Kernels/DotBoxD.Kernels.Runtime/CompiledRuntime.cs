@@ -116,6 +116,8 @@ public static partial class CompiledRuntime
     public static SandboxValue StringLiteralValue(string value) => SandboxValue.FromString(value);
     public static SandboxValue OpaqueIdLiteralValue(string typeName, string value)
         => SandboxValue.FromOpaqueId(typeName, value);
+    public static SandboxValue GuidLiteralValue(string value)
+        => SandboxValue.FromGuid(System.Guid.ParseExact(value, "D"));
     public static SandboxValue PathLiteralValue(string value) => SandboxValue.FromPath(value);
     public static SandboxValue UriLiteralValue(string value) => SandboxValue.FromUri(value);
     [MethodImpl(AggressiveInlining)] public static int AsI32(SandboxValue value) => ((I32Value)value).Value;
@@ -254,12 +256,10 @@ public static partial class CompiledRuntime
     {
         ChargeValueArray(context, count);
 
-        // Zero-argument compiled binding calls do not need a fresh heap array:
-        // the emitter never stores into it (no Stelem_Ref is emitted for an empty
-        // argument list) and an empty array is immutable, so the shared singleton
-        // is safe to reuse even though it escapes into the BindingInvoker delegate.
-        // Fuel and allocation charges above are intentionally unchanged so the
-        // observable resource accounting stays identical to allocating the array.
+        // Zero-argument compiled binding calls do not need a fresh heap array: the emitter never stores into it
+        // (no Stelem_Ref is emitted for an empty argument list), and an empty array is immutable.
+        // Fuel/allocation charges above stay unchanged, so observable resource accounting stays identical
+        // to allocating the array.
         if (count == 0)
         {
             return Array.Empty<SandboxValue>();

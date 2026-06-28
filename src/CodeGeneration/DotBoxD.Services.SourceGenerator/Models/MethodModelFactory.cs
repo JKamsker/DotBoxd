@@ -59,7 +59,11 @@ internal static partial class MethodModelFactory
         SetUnsupported(
             ref unsupportedReason,
             ref unsupportedLocation,
-            RpcTypeValidator.GetUnsupportedTypeReason(returnType, "return type", ct),
+            RpcTypeValidator.GetUnsupportedTypeReason(
+                returnType,
+                "return type",
+                ct,
+                allowTopLevelAsyncWrapper: true),
             methodLocation);
         SetUnsupported(
             ref unsupportedReason,

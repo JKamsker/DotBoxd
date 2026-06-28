@@ -122,6 +122,13 @@ internal static class ServiceShapeValidator
 
     private static UnsupportedMemberDiagnostic? GetUnsupportedPropertyDiagnostic(IPropertySymbol property)
     {
+        if (property.IsIndexer || property.Parameters.Length != 0)
+        {
+            return CreateDiagnostic(
+                property,
+                $"interface indexer '{property.Name}' is not supported; DotBoxD service properties must be named public get-only sub-service controls");
+        }
+
         if (property.GetMethod is null ||
             property.GetMethod.DeclaredAccessibility != Accessibility.Public ||
             property.GetMethod.IsStatic ||

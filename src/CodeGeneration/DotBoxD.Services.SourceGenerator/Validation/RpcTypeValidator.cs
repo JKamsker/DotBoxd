@@ -7,7 +7,19 @@ namespace DotBoxD.Services.SourceGenerator.Validation;
 internal static class RpcTypeValidator
 {
     public static string? GetUnsupportedTypeReason(ITypeSymbol type, string role, CancellationToken ct)
+        => GetUnsupportedTypeReason(type, role, ct, allowTopLevelAsyncWrapper: false);
+
+    public static string? GetUnsupportedTypeReason(
+        ITypeSymbol type,
+        string role,
+        CancellationToken ct,
+        bool allowTopLevelAsyncWrapper)
     {
+        if (ContainsTaskLikePayloadType(type, ct, allowCurrent: allowTopLevelAsyncWrapper))
+        {
+            return $"{role} uses Task or ValueTask as an RPC payload type; Task and ValueTask are only supported as top-level return wrappers";
+        }
+
         if (ContainsRefLikeType(type, ct))
         {
             return $"{role} uses a ref-like type, which cannot be serialized as an RPC payload";
@@ -62,6 +74,60 @@ internal static class RpcTypeValidator
         cache is null
             ? SubServicePayloadInspector.ContainsDotBoxDServiceInterface(type, ct)
             : cache.ContainsDotBoxDServiceInterface(type, ct);
+
+    private static bool ContainsTaskLikePayloadType(
+        ITypeSymbol type,
+        CancellationToken ct,
+        bool allowCurrent)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        if (type is IArrayTypeSymbol array)
+        {
+            return ContainsTaskLikePayloadType(array.ElementType, ct, allowCurrent: false);
+        }
+
+        if (type is not INamedTypeSymbol named)
+        {
+            return false;
+        }
+
+        if (IsTaskLike(named))
+        {
+            if (!allowCurrent)
+            {
+                return true;
+            }
+
+            foreach (var arg in named.TypeArguments)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                if (ContainsTaskLikePayloadType(arg, ct, allowCurrent: false))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        foreach (var arg in named.TypeArguments)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (ContainsTaskLikePayloadType(arg, ct, allowCurrent: false))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsTaskLike(INamedTypeSymbol type) =>
+        (type.Name == "Task" || type.Name == "ValueTask") &&
+        type.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks";
 
     private static bool ContainsRefLikeType(ITypeSymbol type, CancellationToken ct)
     {

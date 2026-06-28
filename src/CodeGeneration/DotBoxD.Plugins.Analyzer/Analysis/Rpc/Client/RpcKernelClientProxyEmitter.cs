@@ -1,6 +1,5 @@
 namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 
-using System.Collections.Generic;
 using System.Text;
 using Microsoft.CodeAnalysis;
 
@@ -144,7 +143,7 @@ internal static partial class RpcKernelClientProxyEmitter
 
             builder.Append(TypeName(_serviceMethod.ReturnType)).Append(' ')
                 .Append(Identifier(_serviceMethod.Name)).Append('(')
-                .Append(ParameterList(_serviceMethod)).AppendLine(")");
+                .Append(RpcKernelClientParameterSource.ParameterList(_serviceMethod)).AppendLine(")");
             builder.AppendLine("    {");
             builder.Append("        var ").Append(arguments).Append(" = new global::DotBoxD.Plugins.KernelRpcValue[")
                 .Append(payloadParameterCount).AppendLine("];");
@@ -224,17 +223,6 @@ internal static partial class RpcKernelClientProxyEmitter
 
             payloadType = type;
             return ReturnShape.Direct;
-        }
-
-        private static string ParameterList(IMethodSymbol method)
-        {
-            var parts = new List<string>();
-            foreach (var parameter in method.Parameters)
-            {
-                parts.Add(TypeName(parameter.Type) + " " + Identifier(parameter.Name));
-            }
-
-            return string.Join(", ", parts);
         }
 
         private static string TypeName(ITypeSymbol type)

@@ -364,6 +364,7 @@ jobs:
               "PluginServerMemberShapeRegressionTests",
               "PluginServerSurpriseRegressionTests",
               "PluginServerControlServiceTests",
+              "PluginServerContextContractTests",
               "PluginServerTargetShapeRegressionTests",
               "PluginServerSurfaceCollisionRegressionTests",
               "ServerExtensionProxyAsyncTests",
@@ -402,6 +403,7 @@ jobs:
               "ServerExtensionEnumOverflowRegressionTests",
               "Computed_dto_projection_round_trips",
               "PluginRevocationTests",
+              "Fix_API_0027_Tests",
               "PinnedHttpTransportTests",
               "DifferentialFuzzTests"
             )
@@ -411,7 +413,8 @@ jobs:
             -NoBuild `
             -RequiredFullyQualifiedNameContains @(
               "RpcEnvelopeValidationTests",
-              "EnvelopeRoundTripTests"
+              "EnvelopeRoundTripTests",
+              "ClientTransportConnectionLifecycleTests"
             )
           ./eng/scripts/run-required-tests.ps1 `
             -Project tests/DotBoxD.Plugins.Generated.Tests/DotBoxD.Plugins.Generated.Tests.csproj `

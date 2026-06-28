@@ -39,6 +39,45 @@ internal sealed class FunctionScope
     // changes instead of copying every visible local.
     public FunctionScope Clone() => new(locals: null, parent: this);
 
+    public void MergeContinuingBranches(
+        FunctionScope thenScope,
+        bool thenReturns,
+        FunctionScope elseScope,
+        bool elseReturns,
+        List<SandboxDiagnostic> diagnostics,
+        SourceSpan span)
+    {
+        if (thenReturns && elseReturns)
+        {
+            return;
+        }
+
+        if (thenReturns)
+        {
+            MergeAll(elseScope, diagnostics, span);
+            return;
+        }
+
+        if (elseReturns)
+        {
+            MergeAll(thenScope, diagnostics, span);
+            return;
+        }
+
+        if (thenScope._locals is null || elseScope._locals is null)
+        {
+            return;
+        }
+
+        foreach (var (name, type) in thenScope._locals)
+        {
+            if (elseScope._locals.TryGetValue(name, out var elseType) && elseType == type)
+            {
+                Set(name, type, diagnostics, span);
+            }
+        }
+    }
+
     public SandboxType Get(string name, List<SandboxDiagnostic> diagnostics, SourceSpan span)
     {
         if (TryResolve(name, out var type))
@@ -59,6 +98,19 @@ internal sealed class FunctionScope
         }
 
         (_locals ??= new Dictionary<string, SandboxType>(StringComparer.Ordinal))[name] = type;
+    }
+
+    private void MergeAll(FunctionScope branchScope, List<SandboxDiagnostic> diagnostics, SourceSpan span)
+    {
+        if (branchScope._locals is null)
+        {
+            return;
+        }
+
+        foreach (var (name, type) in branchScope._locals)
+        {
+            Set(name, type, diagnostics, span);
+        }
     }
 
     private bool TryResolve(string name, [MaybeNullWhen(false)] out SandboxType type)

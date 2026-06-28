@@ -91,6 +91,7 @@ public sealed record VerificationPolicy(
                 RuntimeMember("UriConst", $"{SandboxContextName},{StringName}", SandboxValueName),
                 RuntimeMember("StringLiteralValue", StringName, SandboxValueName),
                 RuntimeMember("OpaqueIdLiteralValue", $"{StringName},{StringName}", SandboxValueName),
+                RuntimeMember("GuidLiteralValue", StringName, SandboxValueName),
                 RuntimeMember("PathLiteralValue", StringName, SandboxValueName),
                 RuntimeMember("UriLiteralValue", StringName, SandboxValueName),
                 RuntimeMember("AsI32", SandboxValueName, Int32Name),

@@ -6,9 +6,9 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 
 internal static partial class RemoteStagedUseDiagnosticFactory
 {
-    private const string Message =
+    private const string TerminalMessagePrefix =
         "Remote Where/Select stages only lower when the terminal is Run, RunLocal, Register, or RegisterLocal; " +
-        "calling Use/UseGeneratedChain after Where/Select would ignore those stages.";
+        "calling ";
     private const string DiscardedStageMessage =
         "Remote Where/Select stages must be chained into Run, RunLocal, Register, or RegisterLocal; " +
         "discarding the stage result would ignore the stage.";
@@ -60,9 +60,12 @@ internal static partial class RemoteStagedUseDiagnosticFactory
         }
 
         return new PluginKernelDiagnostic(
-            Message,
+            UnsupportedTerminalMessage(access.Name.Identifier.ValueText),
             PluginDiagnosticLocation.From(access.Name.GetLocation()));
     }
+
+    private static string UnsupportedTerminalMessage(string terminal)
+        => TerminalMessagePrefix + terminal + " after Where/Select would ignore those stages.";
 
     private static PluginKernelDiagnostic? CreateDiscardedStageDiagnostic(
         InvocationExpressionSyntax invocation,
@@ -178,14 +181,13 @@ internal static partial class RemoteStagedUseDiagnosticFactory
             .OfType<InvocationExpressionSyntax>())
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (terminal == invocation ||
-                terminal.SpanStart <= invocation.SpanStart ||
-                terminal.Expression is not MemberAccessExpressionSyntax access)
+            if (terminal == invocation || terminal.SpanStart <= invocation.SpanStart)
             {
                 continue;
             }
 
-            if (access.Name.Identifier.ValueText is not
+            if (!TryTerminalReceiver(terminal, out var terminalName, out var terminalReceiver) ||
+                terminalName is not
                 ("Run" or "RunLocal" or "Register" or "RegisterLocal" or
                  "Use" or "UseGeneratedChain" or "UseGeneratedLocalChain" or
                  "UseGeneratedResultChain" or "UseGeneratedLocalResultChain"))
@@ -198,7 +200,7 @@ internal static partial class RemoteStagedUseDiagnosticFactory
                 continue;
             }
 
-            if (ExpressionReferencesLocal(access.Expression, local, model, cancellationToken, depth: 0))
+            if (ExpressionReferencesLocal(terminalReceiver, local, model, cancellationToken, depth: 0))
             {
                 return true;
             }

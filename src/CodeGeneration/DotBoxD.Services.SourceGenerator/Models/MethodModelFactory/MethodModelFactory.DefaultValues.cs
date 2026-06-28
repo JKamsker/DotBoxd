@@ -63,12 +63,51 @@ internal static partial class MethodModelFactory
         uint v => v.ToString(CultureInfo.InvariantCulture) + "U",
         long v => v.ToString(CultureInfo.InvariantCulture) + "L",
         ulong v => v.ToString(CultureInfo.InvariantCulture) + "UL",
-        // NaN/Infinity have no literal form; fall back to "no default" rather than emit invalid code.
-        float v => float.IsNaN(v) || float.IsInfinity(v) ? null : v.ToString("R", CultureInfo.InvariantCulture) + "F",
-        double v => double.IsNaN(v) || double.IsInfinity(v) ? null : v.ToString("R", CultureInfo.InvariantCulture) + "D",
+        float v => FormatSingleLiteral(v),
+        double v => FormatDoubleLiteral(v),
         decimal v => v.ToString(CultureInfo.InvariantCulture) + "M",
         _ => null,
     };
+
+    private static string FormatSingleLiteral(float value)
+    {
+        if (float.IsNaN(value))
+        {
+            return "global::System.Single.NaN";
+        }
+
+        if (float.IsPositiveInfinity(value))
+        {
+            return "global::System.Single.PositiveInfinity";
+        }
+
+        if (float.IsNegativeInfinity(value))
+        {
+            return "global::System.Single.NegativeInfinity";
+        }
+
+        return value.ToString("R", CultureInfo.InvariantCulture) + "F";
+    }
+
+    private static string FormatDoubleLiteral(double value)
+    {
+        if (double.IsNaN(value))
+        {
+            return "global::System.Double.NaN";
+        }
+
+        if (double.IsPositiveInfinity(value))
+        {
+            return "global::System.Double.PositiveInfinity";
+        }
+
+        if (double.IsNegativeInfinity(value))
+        {
+            return "global::System.Double.NegativeInfinity";
+        }
+
+        return value.ToString("R", CultureInfo.InvariantCulture) + "D";
+    }
 
     private static string EscapeCharLiteral(char c) => c switch
     {

@@ -15,6 +15,7 @@ public sealed class CompiledLiteralCoverageTests
         {
             { "Unit", """{ "unit": true }""" },
             { "I64", """{ "i64": 9223372036854775807 }""" },
+            { "Guid", """{ "guid": "0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9" }""" },
             { "SandboxPath", """{ "path": "config/settings.json" }""" },
             { "SandboxUri", """{ "uri": "https://api.example.com/config" }""" },
             { "PlayerId", """{ "opaqueId": { "type": "PlayerId", "value": "player-1" } }""" }

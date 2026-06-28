@@ -87,7 +87,7 @@ internal static partial class HookChainModelFactory
         }
     }
 
-    private static HookChainReceiverKind? ReceiverKind(
+    internal static HookChainReceiverKind? ReceiverKind(
         SemanticModel model,
         ExpressionSyntax receiver,
         CancellationToken cancellationToken)
@@ -100,7 +100,7 @@ internal static partial class HookChainModelFactory
         return ReceiverKind(type);
     }
 
-    private static HookChainReceiverKind? ReceiverKind(INamedTypeSymbol type)
+    internal static HookChainReceiverKind? ReceiverKind(INamedTypeSymbol type)
     {
         var original = type.OriginalDefinition.ToDisplayString();
         if (string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteHookPipelineOriginal, StringComparison.Ordinal) ||
