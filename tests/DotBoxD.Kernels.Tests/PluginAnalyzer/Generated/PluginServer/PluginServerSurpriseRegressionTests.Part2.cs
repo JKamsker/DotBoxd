@@ -20,6 +20,46 @@ public sealed partial class PluginServerSurpriseRegressionTests
     }
 
     [Fact]
+    public void Generated_plugin_server_reports_existing_builder_type_collision()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics(BaseServerSource(extraPluginTypes: """
+
+                public sealed class RemotePluginServerBuilder
+                {
+                }
+            """));
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("RemotePluginServerBuilder", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics, d => d.Id == "CS0101");
+    }
+
+    [Fact]
+    public void Generated_plugin_server_reports_existing_control_accumulator_type_collision()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics(BaseServerSource(worldMembers: """
+                    ITools Tools { get; }
+            """, extraGameTypes: """
+
+                [DotBoxDService]
+                public interface ITools;
+            """, extraPluginTypes: """
+
+                public interface ToolsAccumulator
+                {
+                }
+            """));
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("ToolsAccumulator", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics, d => d.Id == "CS0101");
+    }
+
+    [Fact]
     public void Generated_plugin_server_reports_existing_control_wrapper_type_collision()
     {
         var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics(BaseServerSource(worldMembers: """

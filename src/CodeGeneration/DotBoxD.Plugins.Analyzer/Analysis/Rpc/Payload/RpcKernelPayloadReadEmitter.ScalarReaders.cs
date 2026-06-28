@@ -82,12 +82,11 @@ internal sealed partial class RpcKernelPayloadReadEmitter
     }
 
     private void AppendInt64EnumRangeGuard(INamedTypeSymbol enumType)
-    {
-        if (enumType.EnumUnderlyingType?.SpecialType == SpecialType.System_UInt32)
-        {
-            AppendEnumRangeGuard("uint.MinValue", "uint.MaxValue");
-        }
-    }
+        => RpcEnumRangeGuardSource.AppendInt64EnumRangeGuard(
+            _helpers,
+            enumType,
+            "        ",
+            "Server extension enum payload is outside the target enum underlying range.");
 
     private void AppendEnumRangeGuard(string minimum, string maximum)
     {

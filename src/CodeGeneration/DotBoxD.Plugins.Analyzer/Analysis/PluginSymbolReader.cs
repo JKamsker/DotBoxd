@@ -69,7 +69,8 @@ internal static class PluginSymbolReader
                 models[i] = new EventPropertyModel(
                     property.Name,
                     handle.KeyManifestTag,
-                    handle.KeySandboxTypeSource);
+                    handle.KeySandboxTypeSource,
+                    Capability(property));
                 continue;
             }
 
@@ -81,10 +82,29 @@ internal static class PluginSymbolReader
             models[i] = new EventPropertyModel(
                 property.Name,
                 SandboxTypeSourceEmitter.ManifestTag(property.Type),
-                source ?? string.Empty);
+                source ?? string.Empty,
+                Capability(property));
         }
 
         return EquatableArray<EventPropertyModel>.FromOwned(models);
+    }
+
+    private static string? Capability(IPropertySymbol property)
+    {
+        foreach (var attribute in property.GetAttributes())
+        {
+            if (string.Equals(
+                    attribute.AttributeClass?.ToDisplayString(),
+                    DotBoxDMetadataNames.CapabilityAttribute,
+                    StringComparison.Ordinal) &&
+                attribute.ConstructorArguments.Length == 1 &&
+                attribute.ConstructorArguments[0].Value is string { Length: > 0 } id)
+            {
+                return id;
+            }
+        }
+
+        return null;
     }
 
     public static EquatableArray<LiveSettingModel> LiveSettings(

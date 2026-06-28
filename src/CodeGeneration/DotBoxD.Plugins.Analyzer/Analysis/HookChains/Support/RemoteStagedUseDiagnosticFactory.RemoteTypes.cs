@@ -81,7 +81,10 @@ internal static partial class RemoteStagedUseDiagnosticFactory
                 continue;
             }
 
-            var returns = body.DescendantNodes().OfType<ReturnStatementSyntax>().ToArray();
+            var returns = body.DescendantNodes(static node =>
+                    node is not LambdaExpressionSyntax and not LocalFunctionStatementSyntax)
+                .OfType<ReturnStatementSyntax>()
+                .ToArray();
             if (returns.Length == 1)
             {
                 return returns[0].Expression;

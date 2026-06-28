@@ -1,5 +1,7 @@
 namespace DotBoxD.Plugins.Runtime.Rpc;
 
+using System.Globalization;
+
 public static partial class KernelRpcMarshaller
 {
     private static float DoubleToSingle(double value)
@@ -41,11 +43,49 @@ public static partial class KernelRpcMarshaller
             return Enum.ToObject(type, unchecked((uint)value));
         }
 
-        return underlying == typeof(ulong)
-            ? Enum.ToObject(type, unchecked((ulong)value))
-            : Enum.ToObject(type, value);
+        if (underlying == typeof(ulong))
+        {
+            return UInt64EnumFromInt64(type, value);
+        }
+
+        return Enum.ToObject(type, value);
     }
 
     private static NotSupportedException EnumOutOfRange(Type type, object value)
         => new($"Server extension enum value '{value}' is outside the underlying range for '{type}'.");
+
+    private static object UInt64EnumFromInt64(Type type, long value)
+    {
+        var bits = unchecked((ulong)value);
+        if (value < 0 && !NegativeBitsMatchUInt64Enum(type, bits))
+        {
+            throw EnumOutOfRange(type, value);
+        }
+
+        return Enum.ToObject(type, bits);
+    }
+
+    private static bool NegativeBitsMatchUInt64Enum(Type type, ulong bits)
+        => type.IsDefined(typeof(FlagsAttribute), inherit: false)
+            ? (bits & ~UInt64EnumDeclaredMask(type)) == 0UL
+            : UInt64EnumDeclaredValues(type).Contains(bits);
+
+    private static ulong UInt64EnumDeclaredMask(Type type)
+    {
+        ulong mask = 0;
+        foreach (var value in UInt64EnumDeclaredValues(type))
+        {
+            mask |= value;
+        }
+
+        return mask;
+    }
+
+    private static IEnumerable<ulong> UInt64EnumDeclaredValues(Type type)
+    {
+        foreach (var value in Enum.GetValues(type))
+        {
+            yield return Convert.ToUInt64(value, CultureInfo.InvariantCulture);
+        }
+    }
 }

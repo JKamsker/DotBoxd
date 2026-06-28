@@ -75,4 +75,25 @@ public sealed partial class ServerExtensionGeneratedDtoReaderRegressionTests
         Assert.Equal(9, type.GetField("Rank")!.GetValue(profile));
         Assert.Equal(12, type.GetProperty("Score")!.GetValue(profile));
     }
+
+    [Fact]
+    public void Direct_extension_rejects_mixed_property_field_dto_payloads_without_the_current_field_shape()
+    {
+        var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly(MixedPropertyFieldDtoSource);
+        var control = CreateControl(
+            assembly,
+            "profile-field",
+            KernelRpcBinaryCodec.EncodeValue(KernelRpcValue.Record(
+            [
+                KernelRpcValue.Int32(3),
+                KernelRpcValue.Int32(12)
+            ])));
+
+        var probe = assembly.GetType("Sample.Probe", throwOnError: true)!
+            .GetMethod("Read", BindingFlags.Public | BindingFlags.Static)!;
+
+        var ex = Assert.Throws<TargetInvocationException>(() => probe.Invoke(null, [control, 3]));
+
+        Assert.IsType<NotSupportedException>(ex.InnerException);
+    }
 }

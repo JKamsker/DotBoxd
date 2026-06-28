@@ -40,15 +40,21 @@ internal static partial class PluginServerFacadeModelFactory
 
     private static void ValidateGeneratedSiblingTypeCollisions(
         INamedTypeSymbol serverType,
-        INamedTypeSymbol worldType)
+        INamedTypeSymbol worldType,
+        IReadOnlyList<PluginServerControlProperty> controls)
     {
-        var generatedTypeNames = new[]
+        var generatedTypeNames = new List<string>
         {
+            serverType.Name + "Builder",
             ServerInterfaceName(worldType),
             SetupInterfaceName(serverType.Name),
             HookRegistryName(serverType.Name),
             SubscriptionRegistryName(serverType.Name)
         };
+        foreach (var control in controls)
+        {
+            generatedTypeNames.Add(control.AccumulatorInterfaceName);
+        }
 
         foreach (var generatedName in generatedTypeNames)
         {

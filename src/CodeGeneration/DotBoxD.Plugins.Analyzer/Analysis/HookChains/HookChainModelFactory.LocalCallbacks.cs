@@ -22,18 +22,24 @@ internal static partial class HookChainModelFactory
             cancellationToken,
             capabilities,
             effects);
-        return projection ?? WholeEventProjection(eventType, eventProperties, effects);
+        return projection ?? WholeEventProjection(eventType, eventProperties, capabilities, effects);
     }
 
     private static HookChainProjection WholeEventProjection(
         INamedTypeSymbol eventType,
         EquatableArray<EventPropertyModel> eventProperties,
+        ICollection<string> capabilities,
         ICollection<string> effects)
     {
         var sandboxType = Rpc.SandboxTypeSourceEmitter.TryEmit(eventType) ?? throw new NotSupportedException();
         var fields = new string[eventProperties.Count];
         for (var i = 0; i < eventProperties.Count; i++)
         {
+            if (eventProperties[i].Capability is { Length: > 0 } capability)
+            {
+                capabilities.Add(capability);
+            }
+
             fields[i] = DotBoxDGenerationNames.Helpers.Var + "(" +
                 LiteralReader.StringLiteral(DotBoxDExpressionModelFactory.EventVariable(eventProperties[i].Name)) + ")";
         }

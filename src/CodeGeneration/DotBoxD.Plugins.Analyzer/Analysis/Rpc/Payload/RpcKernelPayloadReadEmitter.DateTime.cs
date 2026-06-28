@@ -66,9 +66,9 @@ internal sealed partial class RpcKernelPayloadReadEmitter
             return existing;
         }
 
-        const string method = "DateTimeFromWireOffset";
+        const string method = "DateTimeFromPayloadWireOffset";
         _readers[key] = method;
-        _helpers.AppendLine("    private static global::System.DateTime DateTimeFromWireOffset(global::System.DateTimeOffset value)");
+        _helpers.AppendLine("    private static global::System.DateTime DateTimeFromPayloadWireOffset(global::System.DateTimeOffset value)");
         _helpers.AppendLine("    {");
         _helpers.AppendLine("        if (value.Offset != global::System.TimeSpan.Zero)");
         _helpers.AppendLine("        {");

@@ -24,8 +24,18 @@ public sealed class InvokeAsyncScalarDecodeRuntimeTests
     [Fact]
     public async Task Generated_InvokeAsync_rejects_negative_ulong_enum_result()
         => await AssertInvokeAsyncRejects(
-            "ReadHuge",
+            "ReadSparseHuge",
             KernelRpcValue.Int64(-1));
+
+    [Fact]
+    public async Task Generated_InvokeAsync_accepts_declared_high_bit_ulong_enum_result()
+    {
+        var result = await InvokeAsyncResult(
+            "ReadDefinedHuge",
+            KernelRpcValue.Int64(-1));
+
+        Assert.Equal("Top", result?.ToString());
+    }
 
     [Fact]
     public async Task Generated_InvokeAsync_rejects_float_overflow_inside_dto_result()
@@ -41,6 +51,11 @@ public sealed class InvokeAsyncScalarDecodeRuntimeTests
 
     private static async Task AssertInvokeAsyncRejects(string methodName, KernelRpcValue response)
     {
+        await Assert.ThrowsAsync<NotSupportedException>(() => InvokeAsyncResult(methodName, response));
+    }
+
+    private static async Task<object?> InvokeAsyncResult(string methodName, KernelRpcValue response)
+    {
         var assembly = Compile(Source, enableInterceptors: true);
         var wire = Activator.CreateInstance(
             assembly.GetType("Sample.RecordingControlService", throwOnError: true)!,
@@ -50,7 +65,7 @@ public sealed class InvokeAsyncScalarDecodeRuntimeTests
         var method = assembly.GetType("Sample.Usage", throwOnError: true)!
             .GetMethod(methodName, BindingFlags.Public | BindingFlags.Static)!;
 
-        await Assert.ThrowsAsync<NotSupportedException>(() => InvokeValueTask(method, control));
+        return await InvokeValueTask(method, control);
     }
 
     private const string Source = """
@@ -109,9 +124,15 @@ public sealed class InvokeAsyncScalarDecodeRuntimeTests
                 FortyFour = 44
             }
 
-            public enum Huge : ulong
+            public enum SparseHuge : ulong
             {
                 Zero = 0
+            }
+
+            public enum DefinedHuge : ulong
+            {
+                Zero = 0,
+                Top = ulong.MaxValue
             }
 
             public sealed record FloatDto(float Value);
@@ -126,8 +147,11 @@ public sealed class InvokeAsyncScalarDecodeRuntimeTests
                 public static async ValueTask<Small> ReadSmall(RemotePluginServer kernels)
                     => await kernels.InvokeAsync(async (IGameWorldAccess world) => { return Small.Zero; });
 
-                public static async ValueTask<Huge> ReadHuge(RemotePluginServer kernels)
-                    => await kernels.InvokeAsync(async (IGameWorldAccess world) => { return Huge.Zero; });
+                public static async ValueTask<SparseHuge> ReadSparseHuge(RemotePluginServer kernels)
+                    => await kernels.InvokeAsync(async (IGameWorldAccess world) => { return SparseHuge.Zero; });
+
+                public static async ValueTask<DefinedHuge> ReadDefinedHuge(RemotePluginServer kernels)
+                    => await kernels.InvokeAsync(async (IGameWorldAccess world) => { return DefinedHuge.Zero; });
 
                 public static async ValueTask<FloatDto> ReadFloatDto(RemotePluginServer kernels)
                     => await kernels.InvokeAsync(async (IGameWorldAccess world) => { return new FloatDto(1.5f); });
@@ -204,7 +228,7 @@ public sealed class InvokeAsyncScalarDecodeRuntimeTests
         return Assembly.Load(stream.ToArray());
     }
 
-    private static async Task InvokeValueTask(MethodInfo method, object control)
+    private static async Task<object?> InvokeValueTask(MethodInfo method, object control)
     {
         object valueTask;
         try
@@ -220,6 +244,7 @@ public sealed class InvokeAsyncScalarDecodeRuntimeTests
         var asTask = valueTask.GetType().GetMethod("AsTask", Type.EmptyTypes)!;
         var task = (Task)asTask.Invoke(valueTask, null)!;
         await task.ConfigureAwait(false);
+        return task.GetType().GetProperty("Result")?.GetValue(task);
     }
 
     private static IEnumerable<MetadataReference> TrustedPlatformReferences()

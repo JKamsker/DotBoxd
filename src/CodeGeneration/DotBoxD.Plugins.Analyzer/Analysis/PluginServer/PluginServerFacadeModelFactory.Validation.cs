@@ -261,7 +261,7 @@ internal static partial class PluginServerFacadeModelFactory
             EnsureSingleFacadeCategory(generatedMembers, worldType, control.Name);
         }
 
-        ValidateGeneratedSiblingTypeCollisions(serverType, worldType);
+        ValidateGeneratedSiblingTypeCollisions(serverType, worldType, controls);
 
         foreach (var member in serverType.GetMembers())
         {

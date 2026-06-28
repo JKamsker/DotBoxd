@@ -173,7 +173,9 @@ internal static partial class RemoteStagedUseDiagnosticFactory
             return false;
         }
 
-        foreach (var terminal in block.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        foreach (var terminal in block.DescendantNodes(static node =>
+                node is not LambdaExpressionSyntax and not LocalFunctionStatementSyntax)
+            .OfType<InvocationExpressionSyntax>())
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (terminal == invocation ||
@@ -220,7 +222,9 @@ internal static partial class RemoteStagedUseDiagnosticFactory
             return false;
         }
 
-        foreach (var assignment in block.DescendantNodes().OfType<AssignmentExpressionSyntax>())
+        foreach (var assignment in block.DescendantNodes(static node =>
+                node is not LambdaExpressionSyntax and not LocalFunctionStatementSyntax)
+            .OfType<AssignmentExpressionSyntax>())
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (assignment.SpanStart <= start ||

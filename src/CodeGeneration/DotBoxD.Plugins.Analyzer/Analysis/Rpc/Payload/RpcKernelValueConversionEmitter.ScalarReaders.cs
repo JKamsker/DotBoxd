@@ -82,18 +82,11 @@ internal sealed partial class RpcKernelValueConversionEmitter
     }
 
     private void AppendInt64EnumRangeGuard(INamedTypeSymbol enumType)
-    {
-        if (enumType.EnumUnderlyingType?.SpecialType == SpecialType.System_UInt32)
-        {
-            AppendEnumRangeGuard("uint.MinValue", "uint.MaxValue");
-            return;
-        }
-
-        if (enumType.EnumUnderlyingType?.SpecialType == SpecialType.System_UInt64)
-        {
-            AppendEnumRangeGuard("0L", "long.MaxValue");
-        }
-    }
+        => RpcEnumRangeGuardSource.AppendInt64EnumRangeGuard(
+            _helpers,
+            enumType,
+            "        ",
+            "Server extension enum result is outside the target enum underlying range.");
 
     private void AppendEnumRangeGuard(string minimum, string maximum)
     {

@@ -20,7 +20,9 @@ internal static partial class HookChainModelFactory
             return false;
         }
 
-        foreach (var invocation in block.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        foreach (var invocation in block.DescendantNodes(static node =>
+                node is not LambdaExpressionSyntax and not LocalFunctionStatementSyntax)
+            .OfType<InvocationExpressionSyntax>())
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (invocation.SpanStart >= terminal.SpanStart)
