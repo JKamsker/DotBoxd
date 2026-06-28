@@ -23,6 +23,33 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
         Assert.False(usage.Inherited);
     }
 
+    [Fact]
+    public void Same_compilation_generated_registry_conditional_alias_lowers_when_branches_match()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public static class ConditionalAliasUsage
+            {
+                public static void Configure(
+                    AlphaPluginServer primary,
+                    AlphaPluginServer fallback,
+                    bool usePrimary)
+                {
+                    var hooks = usePrimary ? primary.Hooks : fallback.Hooks;
+                    hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                        .Where(e => e.Distance <= 5)
+                        .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "conditional-alias"));
+                }
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("conditional-alias", generated, StringComparison.Ordinal);
+    }
+
     private const string WrongOnShapeMarkerSdkSource = """
         using DotBoxD.Abstractions;
 
