@@ -92,6 +92,34 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
     }
 
     [Fact]
+    public void Same_compilation_generated_registry_type_supports_using_alias()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            using AlphaHooks = ChainSample.Plugin.AlphaPluginHookRegistry;
+
+            public sealed class AliasTypedUsage
+            {
+                private readonly AlphaHooks _hooks;
+
+                public AliasTypedUsage(AlphaPluginServer server)
+                    => _hooks = server.Hooks;
+
+                public void Configure()
+                    => _hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                        .Where(e => e.Distance <= 5)
+                        .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "field-alias"));
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("field-alias", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Same_simple_name_foreign_registry_alias_is_not_intercepted()
     {
         var result = RunGenerator(SameSimpleNameForeignRegistrySource);

@@ -239,14 +239,24 @@ internal static partial class GeneratedRemoteHookChainFallback
 
         foreach (var surface in OwnedGeneratedSurfaces(model.Compilation, cancellationToken))
         {
-            if (TypeMatches(typeSyntax, surface.HookRegistryName, surface.HookRegistryFullName))
+            if (TypeMatches(
+                typeSyntax,
+                surface.HookRegistryName,
+                surface.HookRegistryFullName,
+                model,
+                cancellationToken))
             {
                 return new GeneratedRemoteHookChainTarget(
                     GeneratedRemoteHookChainKind.Hook,
                     surface.ContextFullName);
             }
 
-            if (TypeMatches(typeSyntax, surface.SubscriptionRegistryName, surface.SubscriptionRegistryFullName))
+            if (TypeMatches(
+                typeSyntax,
+                surface.SubscriptionRegistryName,
+                surface.SubscriptionRegistryFullName,
+                model,
+                cancellationToken))
             {
                 return new GeneratedRemoteHookChainTarget(
                     GeneratedRemoteHookChainKind.Subscription,
@@ -272,26 +282,18 @@ internal static partial class GeneratedRemoteHookChainFallback
 
         foreach (var surface in OwnedGeneratedSurfaces(model.Compilation, cancellationToken))
         {
-            if (TypeMatches(typeSyntax, surface.ServerInterfaceName, surface.ServerInterfaceFullName))
+            if (TypeMatches(
+                typeSyntax,
+                surface.ServerInterfaceName,
+                surface.ServerInterfaceFullName,
+                model,
+                cancellationToken))
             {
                 return surface.ContextFullName;
             }
         }
 
         return null;
-    }
-
-    private static bool TypeMatches(TypeSyntax typeSyntax, string simpleName, string fullName)
-    {
-        var text = typeSyntax.ToString();
-        const string globalPrefix = "global::";
-        if (text.StartsWith(globalPrefix, StringComparison.Ordinal))
-        {
-            text = text.Substring(globalPrefix.Length);
-        }
-
-        return string.Equals(text, simpleName, StringComparison.Ordinal) ||
-            string.Equals(text, fullName, StringComparison.Ordinal);
     }
 
 }
