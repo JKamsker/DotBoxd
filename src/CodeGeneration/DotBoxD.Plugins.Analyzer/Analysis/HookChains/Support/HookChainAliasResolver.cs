@@ -43,7 +43,7 @@ internal static class HookChainAliasResolver
                 {
                     Initializer.Value: { } initializer
                 } declarator &&
-                !IsAssignedBetweenDeclarationAndUse(local, declarator, expression.SpanStart, model, cancellationToken))
+                !IsMutatedBetweenDeclarationAndUse(local, declarator, expression.SpanStart, model, cancellationToken))
             {
                 return initializer;
             }
@@ -52,7 +52,41 @@ internal static class HookChainAliasResolver
         return null;
     }
 
-    private static bool IsAssignedBetweenDeclarationAndUse(
+    public static bool HasMutationBetween(
+        ILocalSymbol local,
+        int start,
+        int end,
+        SemanticModel model,
+        CancellationToken cancellationToken,
+        SyntaxNode? root = null,
+        bool descendIntoNestedFunctions = false)
+    {
+        root ??= LocalDeclarationBlock(local, cancellationToken);
+        if (root is null)
+        {
+            return false;
+        }
+
+        foreach (var node in root.DescendantNodes(node =>
+            descendIntoNestedFunctions ||
+            node is not LambdaExpressionSyntax and not LocalFunctionStatementSyntax))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (node.SpanStart <= start || node.SpanStart >= end)
+            {
+                continue;
+            }
+
+            if (IsMutationOfLocal(node, local, model, cancellationToken))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsMutatedBetweenDeclarationAndUse(
         ILocalSymbol local,
         VariableDeclaratorSyntax declarator,
         int useStart,
@@ -60,18 +94,71 @@ internal static class HookChainAliasResolver
         CancellationToken cancellationToken)
     {
         var root = declarator.SyntaxTree.GetRoot(cancellationToken);
-        foreach (var assignment in root.DescendantNodes().OfType<AssignmentExpressionSyntax>())
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (assignment.SpanStart <= declarator.SpanStart ||
-                assignment.SpanStart >= useStart ||
-                model.GetSymbolInfo(assignment.Left, cancellationToken).Symbol is not ILocalSymbol assigned ||
-                !SymbolEqualityComparer.Default.Equals(local, assigned))
-            {
-                continue;
-            }
+        return HasMutationBetween(
+            local,
+            declarator.SpanStart,
+            useStart,
+            model,
+            cancellationToken,
+            root,
+            descendIntoNestedFunctions: true);
+    }
 
+    private static SyntaxNode? LocalDeclarationBlock(ILocalSymbol local, CancellationToken cancellationToken)
+        => local.DeclaringSyntaxReferences
+            .Select(reference => reference.GetSyntax(cancellationToken).FirstAncestorOrSelf<BlockSyntax>())
+            .FirstOrDefault(candidate => candidate is not null);
+
+    private static bool IsMutationOfLocal(
+        SyntaxNode node,
+        ILocalSymbol local,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        switch (node)
+        {
+            case AssignmentExpressionSyntax assignment:
+                return ExpressionNamesLocal(assignment.Left, local, model, cancellationToken);
+            case ArgumentSyntax argument when IsWritableByRef(argument):
+                return ExpressionNamesLocal(argument.Expression, local, model, cancellationToken);
+            case PrefixUnaryExpressionSyntax prefix when prefix.IsKind(SyntaxKind.PreIncrementExpression) ||
+                prefix.IsKind(SyntaxKind.PreDecrementExpression):
+                return ExpressionNamesLocal(prefix.Operand, local, model, cancellationToken);
+            case PostfixUnaryExpressionSyntax postfix when postfix.IsKind(SyntaxKind.PostIncrementExpression) ||
+                postfix.IsKind(SyntaxKind.PostDecrementExpression):
+                return ExpressionNamesLocal(postfix.Operand, local, model, cancellationToken);
+            default:
+                return false;
+        }
+    }
+
+    private static bool IsWritableByRef(ArgumentSyntax argument)
+        => argument.RefKindKeyword.IsKind(SyntaxKind.RefKeyword) ||
+           argument.RefKindKeyword.IsKind(SyntaxKind.OutKeyword);
+
+    private static bool ExpressionNamesLocal(
+        ExpressionSyntax expression,
+        ILocalSymbol local,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        expression = UnwrapTransparentExpression(expression);
+        if (expression is IdentifierNameSyntax identifier &&
+            SymbolEqualityComparer.Default.Equals(model.GetSymbolInfo(identifier, cancellationToken).Symbol, local))
+        {
             return true;
+        }
+
+        if (expression is TupleExpressionSyntax tuple)
+        {
+            foreach (var argument in tuple.Arguments)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (ExpressionNamesLocal(argument.Expression, local, model, cancellationToken))
+                {
+                    return true;
+                }
+            }
         }
 
         return false;

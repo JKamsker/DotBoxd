@@ -195,7 +195,12 @@ internal static partial class RemoteStagedUseDiagnosticFactory
                 continue;
             }
 
-            if (IsAssignedBetween(local, invocation.SpanStart, terminal.SpanStart, model, cancellationToken))
+            if (HookChainAliasResolver.HasMutationBetween(
+                local,
+                invocation.SpanStart,
+                terminal.SpanStart,
+                model,
+                cancellationToken))
             {
                 continue;
             }
@@ -204,40 +209,6 @@ internal static partial class RemoteStagedUseDiagnosticFactory
             {
                 return true;
             }
-        }
-
-        return false;
-    }
-
-    private static bool IsAssignedBetween(
-        ILocalSymbol local,
-        int start,
-        int end,
-        SemanticModel model,
-        CancellationToken cancellationToken)
-    {
-        var block = local.DeclaringSyntaxReferences
-            .Select(reference => reference.GetSyntax(cancellationToken).FirstAncestorOrSelf<BlockSyntax>())
-            .FirstOrDefault(candidate => candidate is not null);
-        if (block is null)
-        {
-            return false;
-        }
-
-        foreach (var assignment in block.DescendantNodes(static node =>
-                node is not LambdaExpressionSyntax and not LocalFunctionStatementSyntax)
-            .OfType<AssignmentExpressionSyntax>())
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (assignment.SpanStart <= start ||
-                assignment.SpanStart >= end ||
-                model.GetSymbolInfo(assignment.Left, cancellationToken).Symbol is not ILocalSymbol assigned ||
-                !SymbolEqualityComparer.Default.Equals(local, assigned))
-            {
-                continue;
-            }
-
-            return true;
         }
 
         return false;
