@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Operations;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 
@@ -33,7 +34,7 @@ internal static partial class GeneratedRemoteHookChainFallback
         return symbol switch
         {
             IParameterSymbol parameter => ParameterTypeSyntax(parameter, cancellationToken),
-            ILocalSymbol local => LocalTypeSyntax(local, cancellationToken),
+            ILocalSymbol local => LocalTypeSyntax(local, model, cancellationToken),
             IFieldSymbol field => FieldTypeSyntax(field, cancellationToken),
             IPropertySymbol property => PropertyTypeSyntax(property, cancellationToken),
             IMethodSymbol method => MethodReturnTypeSyntax(method, cancellationToken),
@@ -106,7 +107,10 @@ internal static partial class GeneratedRemoteHookChainFallback
         return null;
     }
 
-    private static TypeSyntax? LocalTypeSyntax(ILocalSymbol local, CancellationToken cancellationToken)
+    private static TypeSyntax? LocalTypeSyntax(
+        ILocalSymbol local,
+        SemanticModel model,
+        CancellationToken cancellationToken)
     {
         foreach (var reference in local.DeclaringSyntaxReferences)
         {
@@ -127,9 +131,29 @@ internal static partial class GeneratedRemoteHookChainFallback
                     Parent: DeclarationExpressionSyntax { Type: { } typeSyntax }
                 } when !typeSyntax.IsVar:
                     return typeSyntax;
+                case SingleVariableDesignationSyntax
+                {
+                    Parent: DeclarationExpressionSyntax { Type: { } typeSyntax } declaration
+                } when typeSyntax.IsVar:
+                    return OutDeclarationParameterTypeSyntax(declaration, model, cancellationToken);
             }
         }
 
         return null;
+    }
+
+    private static TypeSyntax? OutDeclarationParameterTypeSyntax(
+        DeclarationExpressionSyntax declaration,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        if (declaration.Parent is not ArgumentSyntax argument ||
+            !argument.RefKindKeyword.IsKind(SyntaxKind.OutKeyword) ||
+            model.GetOperation(argument, cancellationToken) is not IArgumentOperation { Parameter: { } parameter })
+        {
+            return null;
+        }
+
+        return ParameterTypeSyntax(parameter, cancellationToken);
     }
 }

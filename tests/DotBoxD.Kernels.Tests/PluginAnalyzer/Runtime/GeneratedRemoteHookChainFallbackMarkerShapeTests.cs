@@ -185,6 +185,38 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
         Assert.Contains("out-alias", generated, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Same_compilation_generated_registry_out_var_alias_lowers()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public static class OutVarAliasUsage
+            {
+                private static bool TryHooks(AlphaPluginServer server, out AlphaPluginHookRegistry hooks)
+                {
+                    hooks = server.Hooks;
+                    return true;
+                }
+
+                public static void Configure(AlphaPluginServer server)
+                {
+                    if (TryHooks(server, out var hooks))
+                    {
+                        hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                            .Where(e => e.Distance <= 5)
+                            .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "out-var-alias"));
+                    }
+                }
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("out-var-alias", generated, StringComparison.Ordinal);
+    }
+
     private const string WrongOnShapeMarkerSdkSource = """
         using DotBoxD.Abstractions;
 
