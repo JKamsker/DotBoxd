@@ -103,6 +103,31 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
         Assert.Contains("indexer-alias", generated, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Same_compilation_generated_registry_cast_lowers()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public static class CastAliasUsage
+            {
+                public static void Configure(AlphaPluginServer server)
+                {
+                    object hooks = server.Hooks;
+                    ((AlphaPluginHookRegistry)hooks)
+                        .On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                        .Where(e => e.Distance <= 5)
+                        .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "cast-alias"));
+                }
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("cast-alias", generated, StringComparison.Ordinal);
+    }
+
     private const string WrongOnShapeMarkerSdkSource = """
         using DotBoxD.Abstractions;
 
