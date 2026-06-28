@@ -11,6 +11,7 @@ internal static class InheritedPropertyDeduplicator
     public static UnsupportedMemberDiagnostic? CollectUnique(
         IEnumerable<IPropertySymbol> properties,
         IEnumerable<IMethodSymbol> methods,
+        string proxyName,
         List<IPropertySymbol> uniqueProperties,
         CancellationToken ct)
     {
@@ -18,6 +19,12 @@ internal static class InheritedPropertyDeduplicator
         foreach (var property in properties)
         {
             ct.ThrowIfCancellationRequested();
+
+            var generatedCollision = GetGeneratedMemberCollision(property, proxyName);
+            if (generatedCollision is not null)
+            {
+                return generatedCollision;
+            }
 
             if (!seen.TryGetValue(property.Name, out var existing))
             {
@@ -55,5 +62,26 @@ internal static class InheritedPropertyDeduplicator
         }
 
         return null;
+    }
+
+    private static UnsupportedMemberDiagnostic? GetGeneratedMemberCollision(
+        IPropertySymbol property,
+        string proxyName)
+    {
+        var name = property.Name;
+        if (name != proxyName &&
+            name != "_invoker" &&
+            name != "_instanceId" &&
+            name != "Equals" &&
+            name != "GetHashCode" &&
+            name != "GetType" &&
+            name != "ToString")
+        {
+            return null;
+        }
+
+        return new UnsupportedMemberDiagnostic(
+            $"property '{name}' collides with generated proxy member '{name}'; rename the property because generated proxies cannot expose that member name",
+            DiagnosticLocationFactory.FromSymbol(property));
     }
 }

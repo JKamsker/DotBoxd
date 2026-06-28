@@ -171,6 +171,41 @@ public class SubServicePropertyInheritanceTests
             .Should().NotContain(g => g.HintName.Contains("IRoot."));
     }
 
+    [Theory]
+    [InlineData("RootProxy")]
+    [InlineData("_invoker")]
+    [InlineData("_instanceId")]
+    [InlineData("GetType")]
+    public void SubServicePropertyCollidingWithGeneratedProxyMember_RejectsService(string propertyName)
+    {
+        var source = $$"""
+            using DotBoxD.Services.Attributes;
+            using System.Threading.Tasks;
+
+            namespace Regress.SubServicePropertyInheritance
+            {
+                [DotBoxDService]
+                public interface ISub
+                {
+                    Task<int> CountAsync();
+                }
+
+                [DotBoxDService]
+                public interface IRoot
+                {
+                    ISub {{propertyName}} { get; }
+                }
+            }
+            """;
+
+        var (_, runResult) = Run(source);
+
+        runResult.Diagnostics.Should().Contain(d => d.Id == "DBXS003" &&
+            d.GetMessage().Contains($"property '{propertyName}' collides with generated proxy member"));
+        runResult.Results.Single().GeneratedSources
+            .Should().NotContain(g => g.HintName.Contains("IRoot."));
+    }
+
     private static string GetRootProxy(GeneratorDriverRunResult runResult) =>
         runResult.Results.Single().GeneratedSources
             .Single(g => g.HintName.EndsWith("IRoot.DotBoxDRpcProxy.g.cs"))

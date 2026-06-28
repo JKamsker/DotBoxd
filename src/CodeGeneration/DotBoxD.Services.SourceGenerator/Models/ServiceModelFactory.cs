@@ -97,6 +97,7 @@ internal static class ServiceModelFactory
         var duplicatePropertyDiagnostic = InheritedPropertyDeduplicator.CollectUnique(
             interfaceProperties,
             interfaceMethods,
+            NamingHelpers.StripInterfacePrefix(interfaceSymbol.Name) + "Proxy",
             effectiveProperties,
             ct);
         if (duplicatePropertyDiagnostic is not null)
