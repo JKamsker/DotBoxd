@@ -131,6 +131,46 @@ public class SubServicePropertyInheritanceTests
             .Should().NotContain(g => g.HintName.Contains("IRoot."));
     }
 
+    [Fact]
+    public void InheritedMethodAndSubServicePropertyWithSameName_RejectService()
+    {
+        const string source = """
+            using DotBoxD.Services.Attributes;
+            using System.Threading.Tasks;
+
+            namespace Regress.SubServicePropertyInheritance
+            {
+                [DotBoxDService]
+                public interface ISub
+                {
+                    Task<int> CountAsync();
+                }
+
+                public interface IProperties
+                {
+                    ISub Open { get; }
+                }
+
+                public interface IMethods
+                {
+                    int Open();
+                }
+
+                [DotBoxDService]
+                public interface IRoot : IProperties, IMethods
+                {
+                }
+            }
+            """;
+
+        var (_, runResult) = Run(source);
+
+        runResult.Diagnostics.Should().Contain(d => d.Id == "DBXS003" &&
+            d.GetMessage().Contains("method 'Open' has the same name as sub-service property 'Open'"));
+        runResult.Results.Single().GeneratedSources
+            .Should().NotContain(g => g.HintName.Contains("IRoot."));
+    }
+
     private static string GetRootProxy(GeneratorDriverRunResult runResult) =>
         runResult.Results.Single().GeneratedSources
             .Single(g => g.HintName.EndsWith("IRoot.DotBoxDRpcProxy.g.cs"))

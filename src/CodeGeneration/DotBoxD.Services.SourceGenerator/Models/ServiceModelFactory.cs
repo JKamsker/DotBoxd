@@ -96,6 +96,7 @@ internal static class ServiceModelFactory
         var effectiveProperties = new List<IPropertySymbol>();
         var duplicatePropertyDiagnostic = InheritedPropertyDeduplicator.CollectUnique(
             interfaceProperties,
+            interfaceMethods,
             effectiveProperties,
             ct);
         if (duplicatePropertyDiagnostic is not null)

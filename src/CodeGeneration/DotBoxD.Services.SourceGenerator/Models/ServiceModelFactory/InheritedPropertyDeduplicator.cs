@@ -10,6 +10,7 @@ internal static class InheritedPropertyDeduplicator
 {
     public static UnsupportedMemberDiagnostic? CollectUnique(
         IEnumerable<IPropertySymbol> properties,
+        IEnumerable<IMethodSymbol> methods,
         List<IPropertySymbol> uniqueProperties,
         CancellationToken ct)
     {
@@ -30,6 +31,26 @@ internal static class InheritedPropertyDeduplicator
                 return new UnsupportedMemberDiagnostic(
                     $"inherited property '{property.Name}' has the same name as another property but an incompatible return type",
                     DiagnosticLocationFactory.FromSymbol(property));
+            }
+        }
+
+        return FindPropertyMethodCollision(methods, seen, ct);
+    }
+
+    private static UnsupportedMemberDiagnostic? FindPropertyMethodCollision(
+        IEnumerable<IMethodSymbol> methods,
+        Dictionary<string, IPropertySymbol> properties,
+        CancellationToken ct)
+    {
+        foreach (var method in methods)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (properties.TryGetValue(method.Name, out var property))
+            {
+                return new UnsupportedMemberDiagnostic(
+                    $"method '{method.Name}' has the same name as sub-service property '{property.Name}'; rename one member because generated proxies cannot expose both names",
+                    DiagnosticLocationFactory.FromSymbol(method));
             }
         }
 
