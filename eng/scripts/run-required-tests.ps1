@@ -130,6 +130,7 @@ $defaultMinimums = @{
     InstanceRegistryTests = 8
     UnknownStreamComplete_ReportsProtocolError = 1
     UnknownStreamError_ReportsProtocolError = 1
+    ForwardedRemoteStreamError_PreservesOriginalRemoteType = 1
     ClientTransportConnectionLifecycleTests = 4
     SingleConnectionServerTransportLifecycleRegressionTests = 5
     NamedPipeServerTransportCancellationRegressionTests = 2

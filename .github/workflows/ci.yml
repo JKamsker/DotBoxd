@@ -422,6 +422,7 @@ jobs:
               "InstanceRegistryTests",
               "UnknownStreamComplete_ReportsProtocolError",
               "UnknownStreamError_ReportsProtocolError",
+              "ForwardedRemoteStreamError_PreservesOriginalRemoteType",
               "ClientTransportConnectionLifecycleTests",
               "SingleConnectionServerTransportLifecycleRegressionTests",
               "NamedPipeServerTransportCancellationRegressionTests"
