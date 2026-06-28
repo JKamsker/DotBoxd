@@ -34,6 +34,11 @@ public static partial class KernelRpcMarshaller
             return dateTime;
         }
 
+        if (TryFrameworkStructToSandboxValue(value, type, out var frameworkStruct))
+        {
+            return frameworkStruct;
+        }
+
         if (type.IsEnum)
         {
             return EnumUsesI64(type)
@@ -149,6 +154,11 @@ public static partial class KernelRpcMarshaller
             return dateTime;
         }
 
+        if (TryFrameworkStructFromSandboxValue(value, type, out var frameworkStruct))
+        {
+            return frameworkStruct;
+        }
+
         if (type.IsEnum)
         {
             if (EnumUsesI64(type))
@@ -246,10 +256,18 @@ public static partial class KernelRpcMarshaller
             return SandboxType.String;
         if (type == typeof(Guid))
             return SandboxType.Guid;
+        if (type == typeof(DateOnly))
+            return SandboxType.I32;
+        if (type == typeof(TimeOnly))
+            return SandboxType.I64;
         if (type == typeof(TimeSpan))
             return SandboxType.I64;
         if (IsDateTimeWireType(type))
             return DateTimeWireSandboxType();
+        if (type == typeof(Index))
+            return IndexWireSandboxType();
+        if (type == typeof(Range))
+            return RangeWireSandboxType();
         if (type.IsEnum)
             return EnumUsesI64(type) ? SandboxType.I64 : SandboxType.I32;
 

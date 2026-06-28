@@ -100,6 +100,10 @@ public static partial class KernelRpcMarshaller
             return SandboxValue.FromDouble(0D);
         if (underlying == typeof(Guid))
             return SandboxValue.FromGuid(Guid.Empty);
+        if (underlying == typeof(DateOnly))
+            return SandboxValue.FromInt32(0);
+        if (underlying == typeof(TimeOnly))
+            return SandboxValue.FromInt64(0L);
         if (underlying == typeof(TimeSpan))
             return SandboxValue.FromInt64(0L);
         if (underlying.IsEnum)
@@ -116,6 +120,8 @@ public static partial class KernelRpcMarshaller
             underlying == typeof(float) ||
             underlying == typeof(double) ||
             underlying == typeof(Guid) ||
+            underlying == typeof(DateOnly) ||
+            underlying == typeof(TimeOnly) ||
             underlying == typeof(TimeSpan) ||
             underlying.IsEnum)
         {

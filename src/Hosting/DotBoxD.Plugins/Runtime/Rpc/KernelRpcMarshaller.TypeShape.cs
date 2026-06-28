@@ -72,6 +72,7 @@ public static partial class KernelRpcMarshaller
     {
         ThrowIfUnsupportedFrameworkStruct(type);
         if (IsDateTimeWireType(type) ||
+            IsFrameworkStructWireType(type) ||
             type == typeof(TimeSpan) ||
             type == typeof(string) ||
             type.IsPrimitive ||
@@ -96,11 +97,7 @@ public static partial class KernelRpcMarshaller
 
     private static void ThrowIfUnsupportedFrameworkStruct(Type type)
     {
-        if (type == typeof(DateOnly) ||
-            type == typeof(TimeOnly) ||
-            type == typeof(Index) ||
-            type == typeof(Range) ||
-            type == typeof(CancellationToken))
+        if (type == typeof(CancellationToken))
         {
             throw new NotSupportedException(
                 $"Kernel RPC service type '{type}' is not supported; convert it to a supported scalar or DTO type.");

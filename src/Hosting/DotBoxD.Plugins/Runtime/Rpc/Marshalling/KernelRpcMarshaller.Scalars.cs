@@ -14,6 +14,8 @@ public static partial class KernelRpcMarshaller
             var t when t == typeof(float) => SandboxValue.FromDouble((float)value!),
             var t when t == typeof(string) => SandboxValue.FromString((string)value!),
             var t when t == typeof(Guid) => SandboxValue.FromGuid((Guid)value!),
+            var t when t == typeof(DateOnly) => SandboxValue.FromInt32(((DateOnly)value!).DayNumber),
+            var t when t == typeof(TimeOnly) => SandboxValue.FromInt64(((TimeOnly)value!).Ticks),
             var t when t == typeof(TimeSpan) => SandboxValue.FromInt64(((TimeSpan)value!).Ticks),
             _ => null
         };
@@ -29,6 +31,8 @@ public static partial class KernelRpcMarshaller
             (var t, F64Value d) when t == typeof(float) => DoubleToSingle(d.Value),
             (var t, StringValue s) when t == typeof(string) => s.Value,
             (var t, GuidValue g) when t == typeof(Guid) => g.Value,
+            (var t, I32Value i) when t == typeof(DateOnly) => DateOnlyFromDayNumber(i.Value),
+            (var t, I64Value l) when t == typeof(TimeOnly) => TimeOnlyFromTicks(l.Value),
             (var t, I64Value l) when t == typeof(TimeSpan) => new TimeSpan(l.Value),
             _ => null
         };

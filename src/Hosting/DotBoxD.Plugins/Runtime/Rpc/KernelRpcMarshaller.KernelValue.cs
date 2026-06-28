@@ -22,6 +22,11 @@ public static partial class KernelRpcMarshaller
             return dateTime;
         }
 
+        if (TryFrameworkStructFromKernelRpcValue(value, type, out var frameworkStruct))
+        {
+            return frameworkStruct;
+        }
+
         if (type.IsEnum)
         {
             return EnumUsesI64(type)
@@ -68,6 +73,8 @@ public static partial class KernelRpcMarshaller
             var t when t == typeof(double) => value.DoubleValue,
             var t when t == typeof(string) => value.TextValue,
             var t when t == typeof(Guid) => value.GuidValue,
+            var t when t == typeof(DateOnly) => DateOnlyFromDayNumber(value.Int32Value),
+            var t when t == typeof(TimeOnly) => TimeOnlyFromTicks(value.Int64Value),
             var t when t == typeof(TimeSpan) => new TimeSpan(value.Int64Value),
             _ => null
         };

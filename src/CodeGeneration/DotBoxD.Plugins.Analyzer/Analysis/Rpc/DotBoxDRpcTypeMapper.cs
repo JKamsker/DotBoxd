@@ -56,9 +56,25 @@ internal static partial class DotBoxDRpcTypeMapper
         {
             return DateTimeWireJsonType();
         }
+        if (IsDateOnlyWireType(type))
+        {
+            return Scalar("I32");
+        }
+        if (IsTimeOnlyWireType(type))
+        {
+            return Scalar("I64");
+        }
         if (IsTimeSpanWireType(type))
         {
             return Scalar("I64");
+        }
+        if (IsIndexWireType(type))
+        {
+            return IndexWireJsonType();
+        }
+        if (IsRangeWireType(type))
+        {
+            return RangeWireJsonType();
         }
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
@@ -76,7 +92,7 @@ internal static partial class DotBoxDRpcTypeMapper
             {
                 throw new NotSupportedException(
                     $"Server extension map key type '{map.Key.ToDisplayString()}' is not supported; " +
-                    "map keys must be bool, int, long, string, TimeSpan, or an enum.");
+                    "map keys must be bool, int, long, string, DateOnly, TimeOnly, TimeSpan, or an enum.");
             }
             return $"{{\"name\":\"Map\",\"arguments\":[{JsonType(map.Key, depth + 1, visiting)},{JsonType(map.Value, depth + 1, visiting)}]}}";
         }
@@ -116,16 +132,6 @@ internal static partial class DotBoxDRpcTypeMapper
                 $"Server extension type '{type.ToDisplayString()}' exceeds the supported RPC shape depth.");
         }
     }
-    public static bool IsScalar(ITypeSymbol type)
-        => type.SpecialType is SpecialType.System_Boolean or SpecialType.System_Int32
-            or SpecialType.System_Int64 or SpecialType.System_Double or SpecialType.System_Single
-            or SpecialType.System_String ||
-           IsTimeSpanWireType(type);
-    /// <summary><see cref="System.Guid"/> is a first-class 16-byte scalar (sandbox <c>Guid</c> kind), distinct
-    /// from <c>string</c>. Detected structurally so it is robust to display-format differences.</summary>
-    public static bool IsGuid(ITypeSymbol type)
-        => type is INamedTypeSymbol { Name: "Guid", ContainingNamespace: { Name: "System" } ns }
-           && ns.ContainingNamespace is { IsGlobalNamespace: true };
     /// <summary>The element type of a list-shaped parameter/return (<c>List&lt;T&gt;</c>,
     /// <c>IReadOnlyList&lt;T&gt;</c>, <c>IEnumerable&lt;T&gt;</c>, or <c>T[]</c>), else null.</summary>
     public static ITypeSymbol? ListElementType(ITypeSymbol type)
@@ -175,15 +181,6 @@ internal static partial class DotBoxDRpcTypeMapper
         return null;
     }
 
-    /// <summary>A map key must lower to a scalar the kernel verifier accepts as a key: <c>bool</c>,
-    /// <c>int</c>, <c>long</c>, <c>string</c>, <c>TimeSpan</c>, or an enum (which lowers to
-    /// <c>I32</c>/<c>I64</c>). <c>double</c> and composite types are rejected.</summary>
-    public static bool IsSupportedMapKey(ITypeSymbol type)
-        => type.SpecialType is SpecialType.System_Boolean or SpecialType.System_Int32
-               or SpecialType.System_Int64 or SpecialType.System_String
-           || type.TypeKind == TypeKind.Enum
-           || IsTimeSpanWireType(type);
-
     public static bool SupportsIndexedListWrite(ITypeSymbol type)
     {
         if (type is IArrayTypeSymbol)
@@ -205,7 +202,7 @@ internal static partial class DotBoxDRpcTypeMapper
     public static bool IsRecordDto(INamedTypeSymbol type)
         => type.TypeKind is TypeKind.Class or TypeKind.Struct &&
            !IsScalar(type) &&
-           !IsDateTimeWireType(type) &&
+           !IsFirstClassFrameworkWireStruct(type) &&
            !IsUnsupportedFrameworkStruct(type) &&
            !DotBoxDNullableScalarType.IsNullableValueType(type) &&
            ListElementType(type) is null &&
@@ -280,20 +277,11 @@ internal static partial class DotBoxDRpcTypeMapper
         return false;
     }
 
-    /// <summary>An enum marshals through its underlying integer; widths that overflow <c>I32</c>
-    /// (<c>uint</c>, <c>long</c>, <c>ulong</c>) use <c>I64</c>, everything else <c>I32</c>.</summary>
-    public static bool EnumUsesI64(INamedTypeSymbol enumType)
-        => enumType.EnumUnderlyingType?.SpecialType is
-            SpecialType.System_UInt32 or SpecialType.System_Int64 or SpecialType.System_UInt64;
-
     private static string Scalar(string name) => "\"" + name + "\"";
 
     private static bool IsUnsupportedFrameworkStruct(INamedTypeSymbol type)
     {
         var ns = type.ContainingNamespace.ToDisplayString();
-        return (ns == "System" &&
-                type.Name is "DateOnly" or "TimeOnly" or "Index" or "Range") ||
-               (ns == "System.Threading" &&
-                type.Name == "CancellationToken");
+        return ns == "System.Threading" && type.Name == "CancellationToken";
     }
 }

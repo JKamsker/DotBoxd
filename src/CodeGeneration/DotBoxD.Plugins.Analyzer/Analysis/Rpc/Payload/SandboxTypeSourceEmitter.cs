@@ -74,9 +74,25 @@ internal static class SandboxTypeSourceEmitter
             return ManifestTypes.Record;
         }
 
+        if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
+        {
+            return ManifestTypes.Int;
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeOnlyWireType(type))
+        {
+            return ManifestTypes.Long;
+        }
+
         if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
         {
             return ManifestTypes.Long;
+        }
+
+        if (DotBoxDRpcTypeMapper.IsIndexWireType(type) ||
+            DotBoxDRpcTypeMapper.IsRangeWireType(type))
+        {
+            return ManifestTypes.Record;
         }
 
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
@@ -125,10 +141,32 @@ internal static class SandboxTypeSourceEmitter
             return $"{SandboxType}.Record(new {SandboxType}[] {{ {SandboxType}.I64, {SandboxType}.I64 }})";
         }
 
+        if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
+        {
+            return SandboxType + ".I32";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeOnlyWireType(type))
+        {
+            return SandboxType + ".I64";
+        }
+
         if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
         {
             return SandboxType + ".I64";
         }
+
+        if (DotBoxDRpcTypeMapper.IsIndexWireType(type))
+        {
+            return $"{SandboxType}.Record(new {SandboxType}[] {{ {SandboxType}.I32, {SandboxType}.Bool }})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsRangeWireType(type))
+        {
+            var indexType = $"{SandboxType}.Record(new {SandboxType}[] {{ {SandboxType}.I32, {SandboxType}.Bool }})";
+            return $"{SandboxType}.Record(new {SandboxType}[] {{ {indexType}, {indexType} }})";
+        }
+
 
         if (DotBoxDNullableScalarType.TryGetSupportedUnderlying(type, out var nullableUnderlying))
         {

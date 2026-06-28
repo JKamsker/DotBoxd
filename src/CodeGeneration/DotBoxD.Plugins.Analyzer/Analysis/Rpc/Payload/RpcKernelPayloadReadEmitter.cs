@@ -47,9 +47,29 @@ internal sealed partial class RpcKernelPayloadReadEmitter
             return $"{EnsureDateTimePayloadReader(type)}(ref {reader})";
         }
 
+        if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
+        {
+            return $"{EnsureDateOnlyPayloadReader()}({reader}.ReadInt32())";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeOnlyWireType(type))
+        {
+            return $"{EnsureTimeOnlyPayloadReader()}({reader}.ReadInt64())";
+        }
+
         if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
         {
             return $"new global::System.TimeSpan({reader}.ReadInt64())";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsIndexWireType(type))
+        {
+            return $"{EnsureIndexPayloadReader()}(ref {reader})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsRangeWireType(type))
+        {
+            return $"{EnsureRangePayloadReader()}(ref {reader})";
         }
 
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)

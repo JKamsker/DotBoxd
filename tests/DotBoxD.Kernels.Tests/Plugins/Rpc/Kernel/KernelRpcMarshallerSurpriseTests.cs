@@ -199,15 +199,11 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
                 KernelRpcValue.Record([KernelRpcValue.Int32(300)]),
                 typeof(SetterEnumDto)));
 
-    [Theory]
-    [InlineData(typeof(DateOnly))]
-    [InlineData(typeof(TimeOnly))]
-    [InlineData(typeof(Index))]
-    [InlineData(typeof(Range))]
-    [InlineData(typeof(CancellationToken))]
-    public void SandboxTypeOf_rejects_unsupported_framework_structs_before_dto_reflection(Type type)
+    [Fact]
+    public void SandboxTypeOf_rejects_cancellation_token_before_dto_reflection()
     {
-        var ex = Assert.Throws<NotSupportedException>(() => KernelRpcMarshaller.SandboxTypeOf(type));
+        var ex = Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.SandboxTypeOf(typeof(CancellationToken)));
 
         Assert.Contains("not supported", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("nests beyond", ex.Message, StringComparison.OrdinalIgnoreCase);

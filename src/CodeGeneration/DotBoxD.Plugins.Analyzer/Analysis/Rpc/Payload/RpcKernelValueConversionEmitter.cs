@@ -68,9 +68,29 @@ internal sealed partial class RpcKernelValueConversionEmitter
             return $"{EnsureDateTimeValueWriter(type)}({expression})";
         }
 
+        if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
+        {
+            return $"global::DotBoxD.Plugins.KernelRpcValue.Int32({expression}.DayNumber)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeOnlyWireType(type))
+        {
+            return $"global::DotBoxD.Plugins.KernelRpcValue.Int64({expression}.Ticks)";
+        }
+
         if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
         {
             return $"global::DotBoxD.Plugins.KernelRpcValue.Int64({expression}.Ticks)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsIndexWireType(type))
+        {
+            return $"{EnsureIndexValueWriter()}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsRangeWireType(type))
+        {
+            return $"{EnsureRangeValueWriter()}({expression})";
         }
 
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
@@ -110,9 +130,29 @@ internal sealed partial class RpcKernelValueConversionEmitter
             return $"{EnsureDateTimeValueReader(type)}({expression})";
         }
 
+        if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
+        {
+            return $"{EnsureDateOnlyValueReader()}({expression}.Int32Value)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeOnlyWireType(type))
+        {
+            return $"{EnsureTimeOnlyValueReader()}({expression}.Int64Value)";
+        }
+
         if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
         {
             return $"new global::System.TimeSpan({expression}.Int64Value)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsIndexWireType(type))
+        {
+            return $"{EnsureIndexValueReader()}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsRangeWireType(type))
+        {
+            return $"{EnsureRangeValueReader()}({expression})";
         }
 
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
