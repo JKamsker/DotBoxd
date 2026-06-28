@@ -166,6 +166,39 @@ public class NullableSubServiceTests
         proxy.Should().NotContain("new global::Regress.NullableRejectedValueTaskSubService.SubProxy");
     }
 
+    [Fact]
+    public void NullableSubServiceProperty_RejectsService()
+    {
+        const string source = """
+            #nullable enable
+            using DotBoxD.Services.Attributes;
+            using System.Threading.Tasks;
+
+            namespace Regress.NullableSubServiceProperty
+            {
+                [DotBoxDService]
+                public interface ISub
+                {
+                    Task<int> CountAsync();
+                }
+
+                [DotBoxDService]
+                public interface IRoot
+                {
+                    ISub? Maybe { get; }
+                }
+            }
+            """;
+
+        var (final, runResult) = Run(source);
+        AssertCompiles(final);
+
+        runResult.Diagnostics.Should().Contain(d => d.Id == "DBXS003" &&
+            d.GetMessage().Contains("nullable sub-service property 'Maybe' is not supported"));
+        runResult.Results.Single().GeneratedSources
+            .Should().NotContain(g => g.HintName.Contains("IRoot."));
+    }
+
     private static (CSharpCompilation Final, GeneratorDriverRunResult RunResult) Run(string source)
     {
         var compilation = GeneratorTestHelper.CreateCompilation(source);

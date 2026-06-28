@@ -91,29 +91,34 @@ public class SubServicePropertyInheritanceTests
     }
 
     [Fact]
-    public void InheritedSubServicePropertiesWithDifferentNullableAnnotations_RejectService()
+    public void InheritedSubServicePropertiesWithDifferentReturnTypes_RejectService()
     {
         const string source = """
-            #nullable enable
             using DotBoxD.Services.Attributes;
             using System.Threading.Tasks;
 
             namespace Regress.SubServicePropertyInheritance
             {
                 [DotBoxDService]
-                public interface ISub
+                public interface ISubA
+                {
+                    Task<int> CountAsync();
+                }
+
+                [DotBoxDService]
+                public interface ISubB
                 {
                     Task<int> CountAsync();
                 }
 
                 public interface ILeft
                 {
-                    ISub Child { get; }
+                    ISubA Child { get; }
                 }
 
                 public interface IRight
                 {
-                    ISub? Child { get; }
+                    ISubB Child { get; }
                 }
 
                 [DotBoxDService]

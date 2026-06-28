@@ -427,6 +427,7 @@ jobs:
               "UnsupportedShapeCoverageTests",
               "SubServiceAvailabilityTests",
               "SubServicePropertyInheritanceTests",
+              "NullableSubServiceTests",
               "FloatingPointSpecialDefaults_ArePreservedInGeneratedSurface"
             )
           ./eng/scripts/run-required-tests.ps1 `

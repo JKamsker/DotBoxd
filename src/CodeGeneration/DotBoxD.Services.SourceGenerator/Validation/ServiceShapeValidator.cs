@@ -144,11 +144,18 @@ internal static class ServiceShapeValidator
             return null;
         }
 
-        if (!ReturnTypeClassifier.TryGetSubServiceInfo(property.Type, CancellationToken.None, out _))
+        if (!ReturnTypeClassifier.TryGetSubServiceInfo(property.Type, CancellationToken.None, out var subService))
         {
             return CreateDiagnostic(
                 property,
                 $"interface property '{property.Name}' is not supported; DotBoxD service properties must return a [DotBoxDService] interface or be the string Id of an instance handle");
+        }
+
+        if (subService.AllowsNull)
+        {
+            return CreateDiagnostic(
+                property,
+                $"nullable sub-service property '{property.Name}' is not supported; use a method returning a nullable sub-service when absence must be represented");
         }
 
         return null;
