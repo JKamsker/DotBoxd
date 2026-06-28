@@ -7,7 +7,11 @@ on:
 permissions:
   contents: read
 
-network: defaults
+network:
+  allowed:
+    - defaults
+    - github
+    - threat-detection
 
 engine: codex
 
