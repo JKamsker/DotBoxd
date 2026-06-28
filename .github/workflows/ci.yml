@@ -420,6 +420,8 @@ jobs:
               "RequestEnvelopeMessageIdMismatch_ReturnsProtocolError",
               "InvokeAsync_ResponseEnvelopeMessageIdMismatch_FaultsRequestWithProtocolException",
               "InstanceRegistryTests",
+              "UnknownStreamComplete_ReportsProtocolError",
+              "UnknownStreamError_ReportsProtocolError",
               "ClientTransportConnectionLifecycleTests",
               "SingleConnectionServerTransportLifecycleRegressionTests",
               "NamedPipeServerTransportCancellationRegressionTests"
