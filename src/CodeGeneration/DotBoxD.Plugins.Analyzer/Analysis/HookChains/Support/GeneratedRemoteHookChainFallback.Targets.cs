@@ -195,9 +195,12 @@ internal static partial class GeneratedRemoteHookChainFallback
     {
         foreach (var reference in property.DeclaringSyntaxReferences)
         {
-            if (reference.GetSyntax(cancellationToken) is PropertyDeclarationSyntax { Type: { } typeSyntax })
+            switch (reference.GetSyntax(cancellationToken))
             {
-                return typeSyntax;
+                case PropertyDeclarationSyntax { Type: { } typeSyntax }:
+                    return typeSyntax;
+                case IndexerDeclarationSyntax { Type: { } typeSyntax }:
+                    return typeSyntax;
             }
         }
 

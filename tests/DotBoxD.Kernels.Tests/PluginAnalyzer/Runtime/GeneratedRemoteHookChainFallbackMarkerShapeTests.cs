@@ -74,6 +74,35 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
         Assert.Contains("method-alias", generated, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Same_compilation_generated_registry_indexer_return_type_lowers()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public sealed class IndexerAliasUsage
+            {
+                private readonly AlphaPluginServer _server;
+
+                public IndexerAliasUsage(AlphaPluginServer server)
+                    => _server = server;
+
+                private AlphaPluginHookRegistry this[int _]
+                    => _server.Hooks;
+
+                public void Configure()
+                    => this[0].On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                        .Where(e => e.Distance <= 5)
+                        .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "indexer-alias"));
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("indexer-alias", generated, StringComparison.Ordinal);
+    }
+
     private const string WrongOnShapeMarkerSdkSource = """
         using DotBoxD.Abstractions;
 
