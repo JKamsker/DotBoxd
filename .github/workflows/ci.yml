@@ -323,6 +323,7 @@ jobs:
               "CacheKeyIdentityTests",
               "VerifierAttackMatrixTests",
               "VerifierDocumentedAttackMatrixTests",
+              "Verifier_rejects_starg_argument_mutation_opcode",
               "VerifierLoopMeteringTests",
               "VerifierManifestIdentityTests",
               "VerifierMemberSignatureTests",

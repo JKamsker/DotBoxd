@@ -48,6 +48,7 @@ $defaultMinimums = @{
     CacheKeyIdentityTests = 5
     VerifierAttackMatrixTests = 7
     VerifierDocumentedAttackMatrixTests = 6
+    Verifier_rejects_starg_argument_mutation_opcode = 1
     VerifierLoopMeteringTests = 1
     VerifierManifestIdentityTests = 16
     VerifierMemberSignatureTests = 5
