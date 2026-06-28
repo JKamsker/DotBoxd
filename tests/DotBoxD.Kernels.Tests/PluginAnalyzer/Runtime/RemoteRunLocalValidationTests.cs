@@ -17,7 +17,7 @@ namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime;
 /// Installing a package runs <c>PluginPreparedPackageValidator</c>; these tests assert install succeeds
 /// (no validation throw) and the manifest mark is correct.
 /// </summary>
-public sealed class RemoteRunLocalValidationTests
+public sealed partial class RemoteRunLocalValidationTests
 {
     private const string WholeEventSource = """
         using DotBoxD.Plugins.Runtime;
@@ -98,7 +98,7 @@ public sealed class RemoteRunLocalValidationTests
         using var server = PluginServer.Create(new InMemoryPluginMessageSink(), defaultPolicy: Policy());
         // Installing runs PluginPreparedPackageValidator over the value-returning Handle: a no-Select RunLocal
         // stays author-friendly while still being distinguishable from an ordinary Unit-returning Run.
-        var kernel = await server.InstallAsync(package);
+        var kernel = await server.InstallAsync(WithCallbackSubscriptionId(package));
         Assert.True(kernel.Manifest.Subscriptions[0].LocalTerminal);
     }
 
@@ -112,7 +112,7 @@ public sealed class RemoteRunLocalValidationTests
         Assert.Equal("string", subscription.ProjectedType);
 
         using var server = PluginServer.Create(new InMemoryPluginMessageSink(), defaultPolicy: Policy());
-        await server.InstallAsync(package);   // non-Unit Handle accepted for a projection chain
+        await server.InstallAsync(WithCallbackSubscriptionId(package));   // non-Unit Handle accepted for a projection chain
     }
 
     // A non-scalar PROJECTION (here a List-typed event property) now lowers: the Where/Select run server-side and
@@ -128,7 +128,7 @@ public sealed class RemoteRunLocalValidationTests
         Assert.Equal("list", subscription.ProjectedType);   // non-null => projection push
 
         using var server = PluginServer.Create(new InMemoryPluginMessageSink(), defaultPolicy: Policy());
-        await server.InstallAsync(package);
+        await server.InstallAsync(WithCallbackSubscriptionId(package));
     }
 
     [Fact]
@@ -238,6 +238,9 @@ public sealed class RemoteRunLocalValidationTests
             .GetMethod("Create", BindingFlags.Public | BindingFlags.Static)!
             .Invoke(null, null)!;
     }
+
+    private static PluginPackage WithCallbackSubscriptionId(PluginPackage package)
+        => LocalTerminalIdentity.WithCallbackSubscriptionId(package, LocalTerminalIdentity.CreateCallbackSubscriptionId());
 
     private static Assembly Compile(string source)
     {

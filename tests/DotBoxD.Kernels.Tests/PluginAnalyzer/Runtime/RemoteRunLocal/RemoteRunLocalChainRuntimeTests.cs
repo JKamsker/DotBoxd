@@ -264,9 +264,12 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
         var packageType = assembly.GetTypes().Single(type =>
             type.Name.StartsWith("HookChain_", StringComparison.Ordinal) &&
             type.Name.EndsWith("PluginPackage", StringComparison.Ordinal));
-        return (PluginPackage)packageType
+        var package = (PluginPackage)packageType
             .GetMethod("Create", BindingFlags.Public | BindingFlags.Static)!
             .Invoke(null, null)!;
+        return LocalTerminalIdentity.IsLocalTerminal(package.Manifest)
+            ? LocalTerminalIdentity.WithCallbackSubscriptionId(package, LocalTerminalIdentity.CreateCallbackSubscriptionId())
+            : package;
     }
 
     private static SandboxPolicy ChainPolicy()
