@@ -52,6 +52,12 @@ internal static partial class GeneratedRemoteHookChainFallback
             return conditionalTarget;
         }
 
+        if (expression is BinaryExpressionSyntax coalesce &&
+            TargetFromCoalesceRegistryExpression(coalesce, model, cancellationToken, depth) is { } coalesceTarget)
+        {
+            return coalesceTarget;
+        }
+
         return TargetFromDeclaredRegistryExpression(expression, model, cancellationToken) ??
             TargetFromLocalAlias(expression, model, cancellationToken, depth);
     }
