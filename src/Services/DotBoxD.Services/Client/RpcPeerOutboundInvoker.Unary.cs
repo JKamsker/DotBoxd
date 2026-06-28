@@ -119,7 +119,6 @@ internal sealed partial class RpcPeerOutboundInvoker
 
         if (!ct.CanBeCanceled && sendTask.IsCompletedSuccessfully)
         {
-            frame.Dispose();
             pending.EnableDirectCompletion(this);
             if (!pending.Task.IsCompleted)
             {

@@ -1,4 +1,5 @@
 using DotBoxD.Kernels.Bindings;
+using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
@@ -6,8 +7,12 @@ using DotBoxD.Kernels.Tests._TestSupport;
 
 namespace DotBoxD.Kernels.Tests.Audit;
 
+[Collection(AllocationMeasurementCollection.Name)]
 public sealed class AuditSummaryTests
 {
+    private const int PolicyIdAllocationIterations = 100_000;
+    private const int PolicyIdAllocationWarmupIterations = 5_000;
+
     [Fact]
     public async Task Interpreted_run_summary_includes_execution_hashes()
     {
@@ -122,6 +127,61 @@ public sealed class AuditSummaryTests
         Assert.DoesNotContain("abc123", summary.Message!, StringComparison.Ordinal);
         Assert.DoesNotContain(marker, summary.Message!, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain('\n', summary.Message!);
+    }
+
+    [Theory]
+    [InlineData("summary-policy", "summary-policy")]
+    [InlineData("  summary-policy\r\n", "summary-policy")]
+    [InlineData("\u0000summary-policy\u0000", "summary-policy")]
+    [InlineData("\u00a0summary-policy\u00a0", "summary-policy")]
+    public void SafePolicyId_trims_edge_whitespace_and_controls(string policyId, string expected)
+        => Assert.Equal(expected, RunSummaryAuditFields.SafePolicyId(policyId));
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("summary policy")]
+    [InlineData("summary/policy")]
+    [InlineData("summary\\policy")]
+    [InlineData("summary\u0000policy")]
+    [InlineData("tenant-TOKEN")]
+    [InlineData("tenant-client-key-abc123")]
+    [InlineData("client_secret")]
+    [InlineData("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+    public void SafePolicyId_redacts_unsafe_ids(string policyId)
+        => Assert.Equal("[redacted]", RunSummaryAuditFields.SafePolicyId(policyId));
+
+    [Fact]
+    public void SafePolicyId_returns_original_safe_id_without_steady_state_allocation()
+    {
+        const string policyId = "summary-policy";
+        for (var i = 0; i < PolicyIdAllocationWarmupIterations; i++)
+        {
+            GC.KeepAlive(RunSummaryAuditFields.SafePolicyId(policyId));
+        }
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < PolicyIdAllocationIterations; i++)
+        {
+            var sanitized = RunSummaryAuditFields.SafePolicyId(policyId);
+            if (!ReferenceEquals(policyId, sanitized))
+            {
+                throw new InvalidOperationException("Safe policy ids should return the original string instance.");
+            }
+        }
+
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var allocatedPerCall = (double)allocated / PolicyIdAllocationIterations;
+
+        Console.WriteLine(
+            $"SafePolicyId clean allocation: {allocated:N0} B; {allocatedPerCall:N3} B/call.");
+        Assert.True(
+            allocatedPerCall < 1D,
+            $"Expected safe policy-id sanitization to stay near zero allocation; observed {allocatedPerCall:N3} B/call.");
     }
 
     private static void AssertSummaryContainsExecutionHashes(SandboxAuditEvent summary, ExecutionPlan plan)

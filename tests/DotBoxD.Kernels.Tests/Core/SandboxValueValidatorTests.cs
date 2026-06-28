@@ -48,6 +48,37 @@ public sealed class SandboxValueValidatorTests
     }
 
     [Fact]
+    public void RequireType_rejects_empty_list_item_type_mismatch()
+    {
+        var value = SandboxValue.FromList([], SandboxType.I32);
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() =>
+            SandboxValueValidator.RequireType(
+                value,
+                SandboxType.List(SandboxType.String),
+                "bad input"));
+
+        Assert.Equal(SandboxErrorCode.InvalidInput, ex.Error.Code);
+    }
+
+    [Fact]
+    public void RequireType_rejects_empty_map_key_value_type_mismatch()
+    {
+        var value = SandboxValue.FromMap(
+            new Dictionary<SandboxValue, SandboxValue>(),
+            SandboxType.String,
+            SandboxType.I32);
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() =>
+            SandboxValueValidator.RequireType(
+                value,
+                SandboxType.Map(SandboxType.I32, SandboxType.String),
+                "bad input"));
+
+        Assert.Equal(SandboxErrorCode.InvalidInput, ex.Error.Code);
+    }
+
+    [Fact]
     public void Validated_shape_meter_rejects_nested_record_field_type_mismatch()
     {
         var value = SandboxValue.FromRecord([
@@ -60,5 +91,40 @@ public sealed class SandboxValueValidatorTests
                 "test.binding"));
 
         Assert.Equal(SandboxErrorCode.BindingFailure, ex.Error.Code);
+    }
+
+    [Fact]
+    public void Validated_shape_meter_counts_empty_list_depth()
+    {
+        var value = SandboxValue.FromList([], SandboxType.I32);
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() =>
+            SandboxValidatedValueShapeMeter.Measure(
+                value,
+                SandboxType.List(SandboxType.I32),
+                SandboxErrorCode.InvalidInput,
+                "bad input",
+                new ResourceLimits(MaxCollectionDepth: 0)));
+
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
+    }
+
+    [Fact]
+    public void Validated_shape_meter_counts_empty_map_depth()
+    {
+        var value = SandboxValue.FromMap(
+            new Dictionary<SandboxValue, SandboxValue>(),
+            SandboxType.String,
+            SandboxType.I32);
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() =>
+            SandboxValidatedValueShapeMeter.Measure(
+                value,
+                SandboxType.Map(SandboxType.String, SandboxType.I32),
+                SandboxErrorCode.InvalidInput,
+                "bad input",
+                new ResourceLimits(MaxCollectionDepth: 0)));
+
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
     }
 }

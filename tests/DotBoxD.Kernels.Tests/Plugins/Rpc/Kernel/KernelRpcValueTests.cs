@@ -114,12 +114,20 @@ public sealed class KernelRpcValueTests
     }
 
     [Fact]
-    public void Generated_list_writers_keep_foreach_fallback_for_enumerables()
+    public void Generated_list_writers_use_counted_branch_and_keep_foreach_fallback_for_enumerables()
     {
         var source = string.Join(
             "\n",
             PluginAnalyzerGeneratedPackageFactory.GeneratedSources(EnumerableServerExtensionSource));
 
+        Assert.Contains(
+            "global::System.Linq.Enumerable.TryGetNonEnumeratedCount(value, out var __count)",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "new global::DotBoxD.Plugins.KernelRpcValue[__count]",
+            source,
+            StringComparison.Ordinal);
         Assert.Contains(
             "new global::System.Collections.Generic.List<global::DotBoxD.Plugins.KernelRpcValue>()",
             source,

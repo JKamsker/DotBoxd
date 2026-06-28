@@ -14,6 +14,7 @@
     <ProjectReference Include="..\..\src\Hosting\DotBoxD.Hosting\DotBoxD.Hosting.csproj" />
     <ProjectReference Include="..\..\src\CodeGeneration\DotBoxD.Plugins.Analyzer\DotBoxD.Plugins.Analyzer.csproj" />
     <ProjectReference Include="..\..\src\Hosting\DotBoxD.Plugins\DotBoxD.Plugins.csproj" />
+    <ProjectReference Include="..\..\src\Hosting\DotBoxD.Queryable\DotBoxD.Queryable.csproj" />
     <ProjectReference Include="..\..\src\Kernels\DotBoxD.Kernels.Serialization.Json\DotBoxD.Kernels.Serialization.Json.csproj" />
     <ProjectReference Include="..\..\src\Kernels\DotBoxD.Kernels.Verifier\DotBoxD.Kernels.Verifier.csproj" />
   </ItemGroup>

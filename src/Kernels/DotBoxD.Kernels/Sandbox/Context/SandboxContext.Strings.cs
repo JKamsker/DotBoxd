@@ -56,8 +56,8 @@ public sealed partial class SandboxContext
     // unconditional scope never credited composites either). The host string-producing facades (file read,
     // budgeted string ops, HTTP read) pre-charge via ChargeString and declare String returns, so they still get a
     // scope and are not double-charged -- pinned by Precharged_string_binding_return_is_not_charged_twice.
-    internal IDisposable? BeginBindingReturnCreditScope(SandboxType returnType)
-        => ReferenceEquals(returnType, SandboxType.String) ? ReturnCredits.BeginScope() : null;
+    internal BindingReturnCreditTracker.Scope BeginBindingReturnCreditScope(SandboxType returnType)
+        => ReferenceEquals(returnType, SandboxType.String) ? ReturnCredits.BeginScope() : default;
 
     private BindingReturnCreditTracker ReturnCredits => _returnCredits ??= new();
 

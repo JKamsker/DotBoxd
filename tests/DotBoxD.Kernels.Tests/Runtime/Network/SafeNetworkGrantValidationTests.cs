@@ -35,6 +35,19 @@ public sealed class SafeNetworkGrantValidationTests
                 timeout: timeout));
     }
 
+    [Fact]
+    public async Task Http_get_allows_configured_host_case_insensitively()
+    {
+        var result = await ExecuteNetworkAsync(
+            "https://api.example.com/config",
+            NetworkPolicyBuilder()
+                .GrantHttpGet(["API.EXAMPLE.COM"], maxResponseBytes: 1024)
+                .WithFuel(5_000)
+                .Build());
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+    }
+
     [Theory]
     [InlineData("api.example.com,,evil.example", "https")]
     [InlineData("https://api.example.com", "https")]

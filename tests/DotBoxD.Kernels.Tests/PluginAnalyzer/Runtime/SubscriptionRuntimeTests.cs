@@ -63,6 +63,41 @@ public sealed class SubscriptionRuntimeTests
     }
 
     [Fact]
+    public async Task Publish_uses_pipeline_registered_after_an_earlier_miss_or_publish()
+    {
+        var firstRun = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstRunAgain = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondRun = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstRuns = 0;
+        using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: ChainPolicy());
+
+        server.Subscriptions.Publish(new ChainAggroEvent("monster-0", 3));
+
+        server.Subscriptions.On<ChainAggroEvent>().RunLocal(_ =>
+        {
+            if (Interlocked.Increment(ref firstRuns) == 1)
+            {
+                firstRun.SetResult();
+            }
+            else
+            {
+                firstRunAgain.SetResult();
+            }
+        });
+
+        server.Subscriptions.Publish(new ChainAggroEvent("monster-1", 3));
+        await firstRun.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        server.Subscriptions.On<ChainAggroEvent, AggroDispatchContext>(
+            ctx => new AggroDispatchContext(ctx)).RunLocal((_, _) => secondRun.SetResult());
+
+        server.Subscriptions.Publish(new ChainAggroEvent("monster-2", 3));
+
+        await firstRunAgain.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await secondRun.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public async Task A_throwing_handler_is_reported_to_the_fault_observer()
     {
         var reported = new TaskCompletionSource<SubscriptionDeliveryFault>(
@@ -278,4 +313,6 @@ public sealed class SubscriptionRuntimeTests
             return ValueTask.CompletedTask;
         }
     }
+
+    private sealed record AggroDispatchContext(HookContext Raw);
 }

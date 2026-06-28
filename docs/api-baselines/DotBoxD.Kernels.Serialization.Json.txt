@@ -8,6 +8,6 @@ public static class JsonSchemas
 public static class SandboxHostJsonExtensions
 public static SandboxModule Import(string json)
 public static string Export(SandboxModule module, bool indented = false)
-public static string ModuleEnvelope => ReadResource(ModuleResourceName)
+public static string ModuleEnvelope => ModuleEnvelopeResource.Value
 public static string SchemaVersion => "1.0.0"
 public static ValueTask<SandboxModule> ImportJsonAsync( this SandboxHost host, string jsonIr, CancellationToken cancellationToken = default)

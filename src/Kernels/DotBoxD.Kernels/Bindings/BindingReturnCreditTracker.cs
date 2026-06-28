@@ -4,62 +4,124 @@ namespace DotBoxD.Kernels.Bindings;
 
 internal sealed class BindingReturnCreditTracker
 {
-    private readonly Stack<Dictionary<string, int>> _stringCredits = new();
+    private readonly List<ScopeCredits> _scopes = [];
+    private int _nextScopeId;
 
-    public IDisposable BeginScope()
+    public Scope BeginScope()
     {
-        _stringCredits.Push(new Dictionary<string, int>(StringComparer.Ordinal));
-        return new Scope(this);
+        var id = unchecked(++_nextScopeId);
+        _scopes.Add(new ScopeCredits(id));
+        return new Scope(this, id);
     }
 
     public void RecordString(string value)
     {
-        if (_stringCredits.TryPeek(out var credits))
+        var index = _scopes.Count - 1;
+        if (index < 0)
         {
-            credits[value] = credits.TryGetValue(value, out var count) ? count + 1 : 1;
+            return;
         }
+
+        var credits = _scopes[index];
+        credits.Record(value);
+        _scopes[index] = credits;
     }
 
     public bool TryConsume(SandboxValue value)
     {
         if (value is not StringValue text ||
-            !_stringCredits.TryPeek(out var credits) ||
-            !credits.TryGetValue(text.Value, out var count))
+            _scopes.Count == 0)
         {
             return false;
         }
 
-        if (count == 1)
+        var index = _scopes.Count - 1;
+        var credits = _scopes[index];
+        if (!credits.TryConsume(text.Value))
         {
-            credits.Remove(text.Value);
-        }
-        else
-        {
-            credits[text.Value] = count - 1;
+            return false;
         }
 
+        _scopes[index] = credits;
         return true;
     }
 
-    private void EndScope()
+    private void EndScope(int id)
     {
-        if (_stringCredits.Count > 0)
+        for (var index = _scopes.Count - 1; index >= 0; index--)
         {
-            _stringCredits.Pop();
+            if (_scopes[index].Id == id)
+            {
+                _scopes.RemoveAt(index);
+                break;
+            }
         }
     }
 
-    private sealed class Scope(BindingReturnCreditTracker owner) : IDisposable
+    public readonly struct Scope(BindingReturnCreditTracker? owner, int id) : IDisposable
     {
-        private bool _disposed;
+        public void Dispose() => owner?.EndScope(id);
+    }
 
-        public void Dispose()
+    private struct ScopeCredits
+    {
+        private string? _singleValue;
+        private int _singleCount;
+        private Dictionary<string, int>? _additionalValues;
+
+        public ScopeCredits(int id)
+            => Id = id;
+
+        public int Id { get; }
+
+        public void Record(string value)
         {
-            if (!_disposed)
+            if (_singleCount == 0 && _additionalValues is null)
             {
-                owner.EndScope();
-                _disposed = true;
+                _singleValue = value;
+                _singleCount = 1;
+                return;
             }
+
+            if (_singleCount > 0 && string.Equals(_singleValue, value, StringComparison.Ordinal))
+            {
+                _singleCount++;
+                return;
+            }
+
+            _additionalValues ??= new Dictionary<string, int>(StringComparer.Ordinal);
+            _additionalValues[value] = _additionalValues.TryGetValue(value, out var count) ? count + 1 : 1;
+        }
+
+        public bool TryConsume(string value)
+        {
+            if (_singleCount > 0 && string.Equals(_singleValue, value, StringComparison.Ordinal))
+            {
+                _singleCount--;
+                if (_singleCount == 0)
+                {
+                    _singleValue = null;
+                }
+
+                return true;
+            }
+
+            if (_additionalValues is null ||
+                !_additionalValues.TryGetValue(value, out var count))
+            {
+                return false;
+            }
+
+            if (count == 1)
+            {
+                _additionalValues.Remove(value);
+            }
+            else
+            {
+                _additionalValues[value] = count - 1;
+            }
+
+            return true;
         }
     }
 }

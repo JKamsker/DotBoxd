@@ -20,6 +20,9 @@ public static class JsonSchemas
 
     private const string ModuleResourceName = ResourcePrefix + "dotboxd-kernel-module.schema.json";
 
+    private static readonly Lazy<string> ModuleEnvelopeResource =
+        new(static () => ReadResource(ModuleResourceName));
+
     /// <summary>
     /// Version of the JSON ingestion schema contract. Matches the <c>v1</c> directory segment and
     /// the <c>x-dotboxd-schema-version</c> field embedded in each schema document.
@@ -30,7 +33,7 @@ public static class JsonSchemas
     /// JSON Schema document for the Safe IR module envelope
     /// (<see cref="JsonImporter.Import(string)"/>).
     /// </summary>
-    public static string ModuleEnvelope => ReadResource(ModuleResourceName);
+    public static string ModuleEnvelope => ModuleEnvelopeResource.Value;
 
     private static string ReadResource(string resourceName)
     {

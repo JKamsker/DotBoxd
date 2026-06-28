@@ -92,14 +92,14 @@ public static partial class KernelRpcMarshaller
             }
 
             var valueType = SandboxTypeOf(mapTypes.Value);
-            var entries = new Dictionary<SandboxValue, SandboxValue>();
+            var entries = new MapValueBuilder(value is ICollection collection ? collection.Count : 0);
             foreach (var entry in MapEntries(enumerable, mapTypes.Key, mapTypes.Value))
             {
                 var key = MarshalChild(entry.Key, mapTypes.Key, "Map key");
-                entries[key] = MarshalChild(entry.Value, mapTypes.Value, "Map value");
+                entries.Set(key, MarshalChild(entry.Value, mapTypes.Value, "Map value"));
             }
 
-            return SandboxValue.FromMap(entries, keyType, valueType);
+            return SandboxValue.FromOwnedMap(entries, keyType, valueType);
         }
 
         if (DtoShape(type) is { } shape)
@@ -181,7 +181,7 @@ public static partial class KernelRpcMarshaller
                 return ToArray(list.Values, elementType);
             }
 
-            var resultList = CreateList(elementType);
+            var resultList = CreateList(elementType, list.Values.Count);
             foreach (var item in list.Values)
             {
                 resultList.Add(FromSandboxValue(item, elementType));
@@ -192,8 +192,8 @@ public static partial class KernelRpcMarshaller
 
         if (MapTypes(type) is { } mapTypes && value is MapValue map)
         {
-            var result = CreateDictionary(mapTypes.Key, mapTypes.Value);
-            foreach (var pair in map.Values)
+            var result = CreateDictionary(mapTypes.Key, mapTypes.Value, map.Values.Count);
+            foreach (var pair in map.Entries)
             {
                 var key = FromSandboxValue(pair.Key, mapTypes.Key)
                     ?? throw new NotSupportedException("Server extension cannot marshal a null map key.");

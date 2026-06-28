@@ -157,7 +157,7 @@ internal sealed partial class ExpressionEvaluator
 
     private bool TryEvaluateCollectionCall(
         CallExpression call,
-        IReadOnlyList<SandboxValue> args,
+        SandboxValue[] args,
         out SandboxValue value)
     {
         value = call.Name switch
@@ -186,8 +186,8 @@ internal sealed partial class ExpressionEvaluator
             or "numeric.toI64" or "numeric.toF64";
     }
 
-    private static SandboxValue Arg(IReadOnlyList<SandboxValue> args, int index)
-        => index < args.Count
+    private static SandboxValue Arg(SandboxValue[] args, int index)
+        => index < args.Length
             ? args[index]
             : throw new SandboxRuntimeException(new SandboxError(SandboxErrorCode.ValidationError, "call arity mismatch"));
 

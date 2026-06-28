@@ -23,7 +23,7 @@ public static class KernelRpcValueConverter
             GuidValue guid => KernelRpcValue.Guid(guid.Value),
             ListValue list => KernelRpcValue.ListFromOwnedItems(ConvertList(list.Values)),
             RecordValue record => KernelRpcValue.RecordFromOwnedFields(ConvertList(record.Fields)),
-            MapValue map => KernelRpcValue.MapFromOwnedEntries(ConvertMap(map.Values)),
+            MapValue map => KernelRpcValue.MapFromOwnedEntries(ConvertMap(map)),
             _ => throw new NotSupportedException(
                 $"Server extension IPC cannot marshal sandbox value '{value.GetType().Name}'.")
         };
@@ -143,11 +143,11 @@ public static class KernelRpcValueConverter
 
     // Maps marshal to a flat key/value sequence (key, value, key, value, …) to match
     // KernelRpcValue.Map's representation; the host reads it back into a Dictionary by pairs.
-    private static KernelRpcValue[] ConvertMap(IReadOnlyDictionary<SandboxValue, SandboxValue> values)
+    private static KernelRpcValue[] ConvertMap(MapValue values)
     {
-        var entries = new KernelRpcValue[values.Count * 2];
+        var entries = new KernelRpcValue[values.Values.Count * 2];
         var index = 0;
-        foreach (var pair in values)
+        foreach (var pair in values.Entries)
         {
             entries[index++] = FromSandboxValue(pair.Key);
             entries[index++] = FromSandboxValue(pair.Value);

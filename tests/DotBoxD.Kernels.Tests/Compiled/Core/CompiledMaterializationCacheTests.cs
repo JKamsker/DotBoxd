@@ -1,6 +1,7 @@
 using System.Runtime.Loader;
 using DotBoxD.Kernels.Bindings;
 using DotBoxD.Kernels.Compiler;
+using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
@@ -44,6 +45,32 @@ public sealed class CompiledMaterializationCacheTests
         Assert.False(second.Succeeded);
         Assert.Equal(SandboxErrorCode.ValidationError, second.Error!.Code);
         Assert.DoesNotContain(second.AuditEvents, e => e.Kind == "RunSummary" && e.Success);
+    }
+
+    [Fact]
+    public async Task Same_artifact_cache_hit_validates_current_execution_plan()
+    {
+        using var host = SandboxTestHost.Create(compiler: true);
+        var module = await host.ImportJsonAsync(SandboxTestHost.PureScoreJson());
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var otherPlan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(2_000).Build());
+        var artifact = CompiledArtifactTestFactory.LoadedAssembly(
+            plan,
+            CompiledArtifactTestFactory.BuildI32Assembly(parameterCount: 2, value: 123));
+        var materializeCalls = 0;
+        using var cache = new CompiledExecutableCache((candidate, _, _, _) =>
+        {
+            materializeCalls++;
+            return ValueTask.FromResult(new MaterializedCompiledArtifact(candidate, null));
+        });
+
+        var first = await cache.GetAsync(artifact, plan, "main", CancellationToken.None);
+        var ex = await Assert.ThrowsAsync<SandboxRuntimeException>(async () =>
+            await cache.GetAsync(artifact, otherPlan, "main", CancellationToken.None));
+
+        Assert.Equal("Miss", first.MaterializationStatus);
+        Assert.Equal(SandboxErrorCode.ValidationError, ex.Error.Code);
+        Assert.Equal(1, materializeCalls);
     }
 
     [Fact]

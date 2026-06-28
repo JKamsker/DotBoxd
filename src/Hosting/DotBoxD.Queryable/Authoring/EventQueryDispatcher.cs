@@ -54,34 +54,56 @@ internal sealed class EventQueryDispatcher<TEvent>(MemberValueReader reader)
             return;
         }
 
-        foreach (var entry in snapshot.Candidates(e, reader))
+        foreach (var entry in snapshot.Broad)
         {
-            entry.Handle.RecordFilterEvaluation();
-            if (!TryEvaluate(entry, e))
+            await DispatchCandidateAsync(entry, e, context).ConfigureAwait(false);
+        }
+
+        foreach (var group in snapshot.Groups)
+        {
+            if (!Snapshot.TryEventKey(group.Paths, e, reader, out var key) ||
+                !group.TryGet(key, out var bucket))
             {
                 continue;
             }
 
-            entry.Handle.RecordMatch();
-            if (!TryProject(entry, e, out var projected))
+            foreach (var entry in bucket)
             {
-                continue;
+                await DispatchCandidateAsync(entry, e, context).ConfigureAwait(false);
             }
+        }
+    }
 
-            try
-            {
-                await entry.Dispatch(projected, context).ConfigureAwait(false);
-                entry.Handle.RecordDispatch();
-            }
-            catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch
-            {
-                // Isolate one subscriber's handler failure so it cannot starve the other dynamic queries
-                // matching this event — they share a single forwarding host handler at the registry layer.
-            }
+    private async ValueTask DispatchCandidateAsync(
+        EventQuerySubscriptionEntry<TEvent> entry,
+        TEvent e,
+        HookContext context)
+    {
+        entry.Handle.RecordFilterEvaluation();
+        if (!TryEvaluate(entry, e))
+        {
+            return;
+        }
+
+        entry.Handle.RecordMatch();
+        if (!TryProject(entry, e, out var projected))
+        {
+            return;
+        }
+
+        try
+        {
+            await entry.Dispatch(projected, context).ConfigureAwait(false);
+            entry.Handle.RecordDispatch();
+        }
+        catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            // Isolate one subscriber's handler failure so it cannot starve the other dynamic queries
+            // matching this event — they share a single forwarding host handler at the registry layer.
         }
     }
 
@@ -184,35 +206,18 @@ internal sealed class EventQueryDispatcher<TEvent>(MemberValueReader reader)
 
         public bool IsEmpty => _all.Length == 0;
 
+        public EventQuerySubscriptionEntry<TEvent>[] Broad => _broad;
+
+        public RoutingGroup[] Groups => _groups;
+
         public Snapshot With(EventQuerySubscriptionEntry<TEvent> entry) => new([.. _all, entry]);
 
         public Snapshot Without(EventQuerySubscriptionEntry<TEvent> entry)
             => new(_all.Where(e => !ReferenceEquals(e, entry)).ToArray());
 
-        public IEnumerable<EventQuerySubscriptionEntry<TEvent>> Candidates(TEvent e, MemberValueReader reader)
-        {
-            // Lazily yield broad subscriptions then index-matched buckets — no per-event list allocation.
-            foreach (var entry in _broad)
-            {
-                yield return entry;
-            }
-
-            foreach (var group in _groups)
-            {
-                if (TryEventKey(group.Paths, e, reader, out var key) && group.TryGet(key, out var bucket))
-                {
-                    foreach (var entry in bucket)
-                    {
-                        yield return entry;
-                    }
-                }
-            }
-        }
-
-        // Reused per thread on the hot TryEventKey path: each call clears, fills, and ToString()s the builder
-        // synchronously before any iterator yield, so a single instance is safe even under reentrant publish.
-        [ThreadStatic]
-        private static StringBuilder? _eventKeyBuilder;
+        // Reused on the hot TryEventKey path; nested same-thread calls allocate their own builder.
+        [ThreadStatic] private static StringBuilder? _eventKeyBuilder;
+        [ThreadStatic] private static bool _eventKeyBuilderInUse;
 
         private static string CompositeKey(EventQuerySubscriptionEntry<TEvent> entry, string[] sortedPaths)
         {
@@ -227,24 +232,46 @@ internal sealed class EventQueryDispatcher<TEvent>(MemberValueReader reader)
             return builder.ToString();
         }
 
-        private static bool TryEventKey(string[] sortedPaths, TEvent e, MemberValueReader reader, out string key)
+        public static bool TryEventKey(string[] sortedPaths, TEvent e, MemberValueReader reader, out string key)
         {
-            var builder = _eventKeyBuilder ??= new StringBuilder();
-            builder.Clear();
-            foreach (var path in sortedPaths)
+            var reuseThreadBuilder = !_eventKeyBuilderInUse;
+            var builder = reuseThreadBuilder ? _eventKeyBuilder ??= new StringBuilder() : new StringBuilder();
+            if (reuseThreadBuilder)
             {
-                if (!EventQueryRoutingKey.TryFromRuntime(path, reader.Read(e!, path), out var runtimeKey))
-                {
-                    key = string.Empty;
-                    return false;
-                }
-
-                runtimeKey.AppendValueToken(builder);
-                builder.Append(Separator);
+                _eventKeyBuilderInUse = true;
             }
 
-            key = builder.ToString();
-            return true;
+            try
+            {
+                builder.Clear();
+                foreach (var path in sortedPaths)
+                {
+                    if (!EventQueryRoutingKey.TryFromRuntime(path, reader.Read(e!, path), out var runtimeKey))
+                    {
+                        key = string.Empty;
+                        return false;
+                    }
+
+                    runtimeKey.AppendValueToken(builder);
+                    builder.Append(Separator);
+                }
+
+                key = builder.ToString();
+                return true;
+            }
+            catch (InvalidOperationException)
+            {
+                key = string.Empty;
+                return false;
+            }
+            finally
+            {
+                if (reuseThreadBuilder)
+                {
+                    builder.Clear();
+                    _eventKeyBuilderInUse = false;
+                }
+            }
         }
     }
 

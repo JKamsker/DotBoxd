@@ -93,9 +93,10 @@ public class ServerExtensionProxy : DispatchProxy
 
         return pending =>
         {
-            // Synchronous return shape: block on the ValueTask directly. AsTask() here only allocated a
-            // throwaway Task<T> to await; ValueTask.GetAwaiter().GetResult() is valid for the single
-            // consumption this path performs and unwraps exceptions identically (no AggregateException).
+            // Synchronous return shape: block on the ValueTask directly. InvokeServerExtensionAsync uses
+            // the default non-pooled ValueTask shape here; AsTask() only allocated a throwaway Task<T>.
+            // Direct GetResult() is valid for this path's single consumption and unwraps exceptions
+            // identically (no AggregateException).
             var result = pending.GetAwaiter().GetResult();
             return KernelRpcMarshaller.FromSandboxValue(result, returnType);
         };

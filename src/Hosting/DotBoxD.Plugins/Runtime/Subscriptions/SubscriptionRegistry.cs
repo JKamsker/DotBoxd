@@ -13,6 +13,8 @@ public sealed class SubscriptionRegistry
 {
     private readonly object _gate = new();
     private readonly Dictionary<PipelineKey, object> _pipelines = [];
+    private readonly Dictionary<Type, CachedPipelineFanout> _pipelineFanout = [];
+    private readonly HashSet<Type> _pipelineEventTypes = [];
     private readonly IPluginMessageSink _messages;
     private readonly PluginEventAdapterRegistry _events;
     private readonly KernelRegistry _kernels;
@@ -79,6 +81,7 @@ public sealed class SubscriptionRegistry
                 _installer,
                 _onFault);
             _pipelines[key] = created;
+            RegisterEventTypeLocked<TEvent>();
             return created;
         }
     }
@@ -106,6 +109,7 @@ public sealed class SubscriptionRegistry
                 _installer,
                 _onFault);
             _pipelines[key] = created;
+            RegisterEventTypeLocked<TEvent>();
             return created;
         }
     }
@@ -148,7 +152,7 @@ public sealed class SubscriptionRegistry
 
     public void Publish<TEvent>(TEvent e, CancellationToken cancellationToken = default)
     {
-        object[] pipelines;
+        CachedPipelineFanout pipelines;
         lock (_gate)
         {
             pipelines = PipelinesForEventLocked<TEvent>();
@@ -199,18 +203,39 @@ public sealed class SubscriptionRegistry
         ]);
     }
 
-    private object[] PipelinesForEventLocked<TEvent>()
+    private CachedPipelineFanout PipelinesForEventLocked<TEvent>()
     {
-        var pipelines = new List<object>();
+        var eventType = typeof(TEvent);
+        if (!_pipelineEventTypes.Contains(eventType))
+        {
+            return CachedPipelineFanout.Empty;
+        }
+
+        if (_pipelineFanout.TryGetValue(eventType, out var cached))
+        {
+            return cached;
+        }
+
+        List<object>? pipelines = null;
         foreach (var (key, pipeline) in _pipelines)
         {
-            if (key.EventType == typeof(TEvent))
+            if (key.EventType == eventType)
             {
+                pipelines ??= [];
                 pipelines.Add(pipeline);
             }
         }
 
-        return [.. pipelines];
+        var fanout = CachedPipelineFanout.From(pipelines);
+        _pipelineFanout[eventType] = fanout;
+        return fanout;
+    }
+
+    private void RegisterEventTypeLocked<TEvent>()
+    {
+        var eventType = typeof(TEvent);
+        _pipelineEventTypes.Add(eventType);
+        _pipelineFanout.Remove(eventType);
     }
 
     private readonly record struct PipelineKey(Type EventType, Type ContextType);

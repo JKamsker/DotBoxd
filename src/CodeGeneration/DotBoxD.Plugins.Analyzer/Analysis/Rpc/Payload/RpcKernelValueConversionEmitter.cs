@@ -177,13 +177,36 @@ internal sealed partial class RpcKernelValueConversionEmitter
             return;
         }
 
-        _helpers.AppendLine("        var __items = new global::System.Collections.Generic.List<global::DotBoxD.Plugins.KernelRpcValue>();")
+        _helpers.AppendLine("        if (global::System.Linq.Enumerable.TryGetNonEnumeratedCount(value, out var __count))")
+            .AppendLine("        {")
+            .AppendLine("            var __items = new global::DotBoxD.Plugins.KernelRpcValue[__count];")
+            .AppendLine("            var __index = 0;")
+            .AppendLine("            foreach (var __item in value)")
+            .AppendLine("            {")
+            .AppendLine("                if (__index >= __items.Length)")
+            .AppendLine("                {")
+            .AppendLine("                    global::System.Array.Resize(ref __items, checked(__index + 1));")
+            .AppendLine("                }")
+            .AppendLine();
+        _helpers.Append("                __items[__index++] = ").Append(itemExpression).AppendLine(";");
+        _helpers.AppendLine("            }")
+            .AppendLine()
+            .AppendLine("            if (__index != __items.Length)")
+            .AppendLine("            {")
+            .AppendLine("                global::System.Array.Resize(ref __items, __index);")
+            .AppendLine("            }")
+            .AppendLine()
+            .AppendLine("            return global::DotBoxD.Plugins.KernelRpcValue.List(__items);")
+            .AppendLine("        }")
+            .AppendLine();
+
+        _helpers.AppendLine("        var __fallbackItems = new global::System.Collections.Generic.List<global::DotBoxD.Plugins.KernelRpcValue>();")
             .AppendLine("        foreach (var __item in value)")
             .AppendLine("        {");
-        _helpers.Append("            __items.Add(").Append(itemExpression).AppendLine(");");
+        _helpers.Append("            __fallbackItems.Add(").Append(itemExpression).AppendLine(");");
         _helpers.AppendLine("        }")
             .AppendLine()
-            .AppendLine("        return global::DotBoxD.Plugins.KernelRpcValue.List(__items.ToArray());");
+            .AppendLine("        return global::DotBoxD.Plugins.KernelRpcValue.List(__fallbackItems.ToArray());");
     }
 
     private string EnsureListReader(ITypeSymbol type)

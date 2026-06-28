@@ -1,3 +1,4 @@
+using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
@@ -117,6 +118,76 @@ public sealed class JsonSourceMapTests
         Assert.Equal(LineOf(json, "\"value\": { \"i32\": 1 }", occurrence: 2), second.Value.Span.Line);
     }
 
+    [Fact]
+    public void Scalar_type_errors_report_the_scalar_json_source_location()
+    {
+        var json = """
+        {
+          "id": "bad-scalar-source",
+          "version": "1.0.0",
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [],
+              "returnType": "I32",
+              "body": [
+                {
+                  "op": "return",
+                  "value": {
+                    "i32": "not-int"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+        """;
+
+        var ex = Assert.Throws<SandboxValidationException>(() => JsonImporter.Import(json));
+        var diagnostic = Assert.Single(ex.Diagnostics);
+        var span = Assert.IsType<SourceSpan>(diagnostic.Span);
+
+        Assert.Equal("E-JSON-TYPE", diagnostic.Code);
+        Assert.Equal(LineOf(json, "\"not-int\""), span.Line);
+        Assert.Equal(ColumnOf(json, "\"not-int\""), span.Column);
+    }
+
+    [Fact]
+    public void Scalar_value_errors_report_the_scalar_json_source_location()
+    {
+        var json = """
+        {
+          "id": "bad-path-source",
+          "version": "1.0.0",
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [],
+              "returnType": "Path",
+              "body": [
+                {
+                  "op": "return",
+                  "value": {
+                    "path": "../secret.txt"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+        """;
+
+        var ex = Assert.Throws<SandboxValidationException>(() => JsonImporter.Import(json));
+        var diagnostic = Assert.Single(ex.Diagnostics);
+        var span = Assert.IsType<SourceSpan>(diagnostic.Span);
+
+        Assert.Equal("E-JSON-PATH", diagnostic.Code);
+        Assert.Equal(LineOf(json, "\"../secret.txt\""), span.Line);
+        Assert.Equal(ColumnOf(json, "\"../secret.txt\""), span.Column);
+    }
+
     private static int LineOf(string text, string marker, int occurrence = 1)
     {
         var index = -1;
@@ -127,5 +198,18 @@ public sealed class JsonSourceMapTests
 
         Assert.True(index >= 0, $"marker '{marker}' not found");
         return text[..index].Count(c => c == '\n') + 1;
+    }
+
+    private static int ColumnOf(string text, string marker, int occurrence = 1)
+    {
+        var index = -1;
+        for (var i = 0; i < occurrence; i++)
+        {
+            index = text.IndexOf(marker, index + 1, StringComparison.Ordinal);
+        }
+
+        Assert.True(index >= 0, $"marker '{marker}' not found");
+        var lineStart = text.LastIndexOf('\n', index);
+        return index - lineStart;
     }
 }

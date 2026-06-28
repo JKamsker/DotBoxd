@@ -1,5 +1,6 @@
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
+using DotBoxD.Kernels.Runtime;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Sandbox.Values;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
@@ -84,6 +85,31 @@ public sealed class CompiledLiteralCoverageTests
         Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
         var map = Assert.IsType<MapValue>(result.Value);
         Assert.Equal(41, ((I32Value)map.Values[SandboxValue.FromString("alice")]).Value);
+    }
+
+    [Fact]
+    public void Compiled_list_literal_wraps_compiler_owned_value_array()
+    {
+        var values = new[] { SandboxValue.FromInt32(1), SandboxValue.FromInt32(2) };
+
+        var list = Assert.IsType<ListValue>(CompiledRuntime.ListLiteralValue(SandboxType.I32, values));
+
+        values[0] = SandboxValue.FromInt32(99);
+        Assert.Equal(SandboxValue.FromInt32(99), list.Values[0]);
+    }
+
+    [Fact]
+    public void Owned_map_consumes_runtime_owned_builder()
+    {
+        var key = SandboxValue.FromString("first");
+        var builder = new MapValueBuilder(1);
+        builder.Set(key, SandboxValue.FromInt32(1));
+
+        var map = Assert.IsType<MapValue>(
+            SandboxValue.FromOwnedMap(builder, SandboxType.String, SandboxType.I32));
+
+        Assert.Throws<InvalidOperationException>(() => builder.Set(key, SandboxValue.FromInt32(99)));
+        Assert.Equal(SandboxValue.FromInt32(1), map.Values[key]);
     }
 
     [Fact]

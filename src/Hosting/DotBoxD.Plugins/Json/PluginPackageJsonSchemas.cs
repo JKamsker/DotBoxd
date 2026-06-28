@@ -15,6 +15,9 @@ public static class PluginPackageJsonSchemas
     private const string PluginPackageResourceName =
         "DotBoxD.Plugins.schemas.v1.dotboxd-plugin-package.schema.json";
 
+    private static readonly Lazy<string> PackageEnvelopeResource =
+        new(static () => ReadResource(PluginPackageResourceName));
+
     /// <summary>
     /// Version of the JSON ingestion schema contract. Re-exposes
     /// <see cref="JsonSchemas.SchemaVersion"/> so the module and plugin-package schemas cannot drift.
@@ -25,7 +28,7 @@ public static class PluginPackageJsonSchemas
     /// JSON Schema document for the plugin package envelope
     /// (<see cref="PluginPackageJsonSerializer.Import(string)"/>).
     /// </summary>
-    public static string PackageEnvelope => ReadResource(PluginPackageResourceName);
+    public static string PackageEnvelope => PackageEnvelopeResource.Value;
 
     private static string ReadResource(string resourceName)
     {

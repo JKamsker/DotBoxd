@@ -164,18 +164,23 @@ public sealed partial class PeerInboundCoverageTests
                     InboundQueueCapacity = null, // immediate inline dispatch keeps id 7 active
                     RequestTimeout = ShortTimeout,
                 })
-            .Provide((IServiceDispatcher)dispatcher)
-            .Start();
+            .Provide((IServiceDispatcher)dispatcher);
         peer.ProtocolError += (_, args) => protocolError.TrySetResult(args);
+        peer.Start();
 
-        await dispatcher.FirstEntered.WaitAsync(ShortTimeout);
+        try
+        {
+            await dispatcher.FirstEntered.WaitAsync(ShortTimeout);
 
-        var args = await protocolError.Task.WaitAsync(ShortTimeout);
-        Assert.Equal(7, args.MessageId);
-        Assert.Equal(MessageType.Request, args.MessageType);
-        Assert.Contains("Duplicate request message id", args.Message);
-
-        dispatcher.Release();
+            var args = await protocolError.Task.WaitAsync(ShortTimeout);
+            Assert.Equal(7, args.MessageId);
+            Assert.Equal(MessageType.Request, args.MessageType);
+            Assert.Contains("Duplicate request message id", args.Message);
+        }
+        finally
+        {
+            dispatcher.Release();
+        }
     }
 
     // ---- RpcDispatchResponseBuilder: unknown service -> ServiceNotFound -----------------------

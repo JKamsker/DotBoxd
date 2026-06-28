@@ -561,7 +561,7 @@ public static SandboxType SandboxTypeOf(Type type)
 public static SandboxValue ToSandboxValue(KernelRpcValue value, SandboxType expectedType)
 public static SandboxValue ToSandboxValue(object? value, Type type)
 public static string Export(PluginPackage package, bool indented = false)
-public static string PackageEnvelope => ReadResource(PluginPackageResourceName)
+public static string PackageEnvelope => PackageEnvelopeResource.Value
 public static string SchemaVersion => JsonSchemas.SchemaVersion
 public static TService Create<TService>(InstalledKernel kernel) where TService : class
 public static ValueTask<InstalledKernel> InstallJsonAsync( this PluginServer server, string json, SandboxPolicy? policy = null, CancellationToken cancellationToken = default)

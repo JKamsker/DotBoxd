@@ -87,7 +87,7 @@ public static partial class KernelRpcMarshaller
 
     private static IList ToList(ReadOnlySpan<KernelRpcValue> values, Type elementType)
     {
-        var result = CreateList(elementType);
+        var result = CreateList(elementType, values.Length);
         for (var i = 0; i < values.Length; i++)
         {
             result.Add(FromKernelRpcValue(values[i], elementType));
@@ -103,7 +103,7 @@ public static partial class KernelRpcMarshaller
             throw new FormatException("Server extension map payload has an odd key/value entry count.");
         }
 
-        var result = CreateDictionary(keyType, valueType);
+        var result = CreateDictionary(keyType, valueType, values.Length / 2);
         for (var i = 0; i < values.Length; i += 2)
         {
             var key = FromKernelRpcValue(values[i], keyType)

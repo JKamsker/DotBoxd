@@ -1,3 +1,4 @@
+using System.Text;
 using DotBoxD.Hosting.Http.Policy;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
@@ -25,6 +26,33 @@ public sealed class NetworkRequestQuotaTests
             .Build();
 
         var deniedResult = await ExecuteNetworkAsync("https://api.example.com/config", denied);
+
+        Assert.False(deniedResult.Succeeded);
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, deniedResult.Error!.Code);
+    }
+
+    [Fact]
+    public async Task Http_get_request_byte_limit_matches_get_line_byte_count()
+    {
+        const string uri = "https://api.example.com/config?tenant=alpha&mode=full";
+        // 4 = "GET " request-line prefix.
+        var expectedBytes = 4 + Encoding.UTF8.GetByteCount(uri);
+        var allowed = NetworkPolicyBuilder()
+            .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024, maxRequestBytes: expectedBytes)
+            .WithFuel(5_000)
+            .Build();
+
+        var allowedResult = await ExecuteNetworkAsync(uri, allowed);
+
+        Assert.True(allowedResult.Succeeded, allowedResult.Error?.SafeMessage);
+        Assert.Equal(expectedBytes, allowedResult.ResourceUsage.NetworkBytesWritten);
+
+        var denied = NetworkPolicyBuilder()
+            .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024, maxRequestBytes: expectedBytes - 1)
+            .WithFuel(5_000)
+            .Build();
+
+        var deniedResult = await ExecuteNetworkAsync(uri, denied);
 
         Assert.False(deniedResult.Succeeded);
         Assert.Equal(SandboxErrorCode.QuotaExceeded, deniedResult.Error!.Code);

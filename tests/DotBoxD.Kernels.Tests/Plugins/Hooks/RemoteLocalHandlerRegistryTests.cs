@@ -56,6 +56,22 @@ public sealed class RemoteLocalHandlerRegistryTests
     }
 
     [Fact]
+    public async Task DispatchAsync_decodes_an_int_backed_enum_projection()
+    {
+        var registry = new RemoteLocalHandlerRegistry();
+        var observed = LocalReaction.Calm;
+        registry.Register<LocalReaction>("sub-enum", (value, _) =>
+        {
+            observed = value;
+            return ValueTask.CompletedTask;
+        });
+
+        await registry.DispatchAsync("sub-enum", EncodeProjected(LocalReaction.Alert), Context());
+
+        Assert.Equal(LocalReaction.Alert, observed);
+    }
+
+    [Fact]
     public async Task DispatchAsync_round_trips_a_dto_record_projection()
     {
         var registry = new RemoteLocalHandlerRegistry();
@@ -271,4 +287,10 @@ public sealed class RemoteLocalHandlerRegistryTests
     private readonly record struct DamageResult(bool Success, string? Reason, int Damage) : IHookResult;
 
     private readonly record struct TextResult(bool Success, string? Reason, string? Label) : IHookResult;
+
+    private enum LocalReaction
+    {
+        Calm,
+        Alert
+    }
 }

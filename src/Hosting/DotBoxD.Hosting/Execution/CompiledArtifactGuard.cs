@@ -76,6 +76,9 @@ internal static class CompiledArtifactGuard
         EnsureAssemblyBytesMatchHash(artifact);
     }
 
+    public static void ValidateCachedExecutableEnvelope(CompiledArtifact artifact, ExecutionPlan plan, string entrypoint)
+        => EnsureMatchesPlan(artifact, plan, entrypoint);
+
     private static void EnsureMatchesPlan(CompiledArtifact artifact, ExecutionPlan plan, string entrypoint)
     {
         var manifest = artifact.Manifest;
@@ -118,25 +121,25 @@ internal static class CompiledArtifactGuard
             throw Invalid("compiled artifact manifest does not match execution plan");
         }
 
-        var expectedFlags = ExpectedOptimizationFlags(manifest.CacheKey, plan, entrypoint);
-        if (manifest.OptimizationFlags is null ||
-            !manifest.OptimizationFlags.SequenceEqual(expectedFlags, StringComparer.Ordinal))
+        var expectedFlag = ExpectedOptimizationFlag(manifest.CacheKey, plan, entrypoint);
+        if (manifest.OptimizationFlags is not { Count: 1 } optimizationFlags ||
+            !StringComparer.Ordinal.Equals(optimizationFlags[0], expectedFlag))
         {
             throw Invalid("compiled artifact optimization flags do not match cache key");
         }
     }
 
-    private static string[] ExpectedOptimizationFlags(string cacheKey, ExecutionPlan plan, string entrypoint)
+    private static string ExpectedOptimizationFlag(string cacheKey, ExecutionPlan plan, string entrypoint)
     {
         var expected = ExpectedKeysFor(plan, entrypoint);
         if (cacheKey == expected.BoxedValues)
         {
-            return ["boxed-values"];
+            return "boxed-values";
         }
 
         if (cacheKey == expected.Optimized)
         {
-            return ["opt"];
+            return "opt";
         }
 
         throw Invalid("compiled artifact cache key does not match execution plan");

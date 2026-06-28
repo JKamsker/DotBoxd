@@ -1,5 +1,6 @@
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
+using DotBoxD.Kernels.Sandbox.Values;
 
 namespace DotBoxD.Kernels.Runtime;
 
@@ -14,7 +15,7 @@ internal static class CompiledLiteralRuntime
 
     internal static SandboxValue ListLiteralValue(SandboxType itemType, SandboxValue[] values)
     {
-        var list = SandboxValue.FromList(values, itemType);
+        var list = SandboxValue.FromOwnedList(values, itemType);
         SandboxValueValidator.RequireType(list, list.Type, "list literal item type mismatch");
         return list;
     }
@@ -42,13 +43,13 @@ internal static class CompiledLiteralRuntime
             throw InvalidInput("map literal key/value count mismatch");
         }
 
-        var entries = new Dictionary<SandboxValue, SandboxValue>(keys.Length);
+        var entries = new MapValueBuilder(keys.Length);
         for (var i = 0; i < keys.Length; i++)
         {
-            entries[keys[i]] = values[i];
+            entries.Set(keys[i], values[i]);
         }
 
-        var map = SandboxValue.FromMap(entries, keyType, valueType);
+        var map = SandboxValue.FromOwnedMap(entries, keyType, valueType);
         SandboxValueValidator.RequireType(map, map.Type, "map literal entry type mismatch");
         return map;
     }

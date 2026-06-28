@@ -6,15 +6,17 @@ namespace DotBoxD.Kernels.Runtime;
 
 // List and record collection entry points for the compiled runtime facade. Split out of CompiledRuntime.cs
 // to keep that file under the line cap; these are part of the same partial type and share its private
-// helpers (ChargeValue, AsListReadOnly, AsI32, I32, InvalidInput). Behaviour and resource accounting are
-// unchanged from the in-line definitions.
+// helpers (ChargeValue, AsListReadOnly, AsI32, I32, InvalidInput). These members are generated-code ABI:
+// collection builders receive arrays that the compiler/runtime has just allocated and may transfer them
+// through the internal owned-array construction path.
 public static partial class CompiledRuntime
 {
     public static SandboxValue ListOf(SandboxContext context, SandboxValue[] values)
     {
         context.ChargeFuel(SandboxCollectionFuel.Copy(values.Length));
         context.ChargeAllocation(SandboxCollectionFuel.AllocationBytes(values.Length, 16));
-        return ChargeValue(context, SandboxValue.FromList(values));
+        var itemType = values.Length == 0 ? SandboxType.Unit : values[0].Type;
+        return ChargeValue(context, SandboxValue.FromOwnedList(values, itemType));
     }
 
     public static SandboxValue ListLiteral(SandboxContext context, SandboxType itemType, SandboxValue[] values)
@@ -78,7 +80,7 @@ public static partial class CompiledRuntime
     {
         context.ChargeFuel(SandboxCollectionFuel.Copy(fields.Length));
         context.ChargeAllocation(SandboxCollectionFuel.AllocationBytes(fields.Length, 16));
-        return ChargeValue(context, SandboxValue.FromRecord(fields));
+        return ChargeValue(context, SandboxValue.FromOwnedRecord(fields));
     }
 
     public static SandboxValue RecordGet(SandboxContext context, SandboxValue record, SandboxValue index)
