@@ -48,7 +48,13 @@ internal static partial class InvokeAsyncReceiverResolver
             return true;
         }
 
-        return false;
+        return TryResolveGeneratedServicesReceiver(
+            model,
+            receiver,
+            cancellationToken,
+            out receiverType,
+            out serverAccessType,
+            out worldType);
     }
 
     internal static bool TryResolveGeneratedFacadeType(
