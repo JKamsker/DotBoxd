@@ -31,6 +31,13 @@ internal static class PluginPackageValidator
 
         var metadataKernel = ValidateModuleKernelMetadata(package, diagnostics);
         ValidateManifestMode(package.Manifest, diagnostics);
+        if (package.Manifest.RpcEntrypoint is not null)
+        {
+            diagnostics.Add(new SandboxDiagnostic(
+                "DBXK073",
+                "Hook kernel manifests must not declare rpcEntrypoint."));
+        }
+
         PluginManifestEffectValidator.Validate(package.Manifest, diagnostics);
         ValidateEntrypoints(package, PluginEntrypointIndex.Build(package), diagnostics);
         foreach (var group in package.Manifest.LiveSettings.GroupBy(s => s.Name, StringComparer.Ordinal))
