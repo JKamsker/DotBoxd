@@ -56,9 +56,10 @@ internal static class ExtensionsGenerator
                         continue;
                     }
 
+                    var propertyAccess = $"(({property.ImplementationType})implementation).{property.Name}";
                     if (servicesByType.TryGetValue(property.Type, out var propertyService))
                     {
-                        sb.AppendLine($"            peer.Provide{extensionSuffixes[ServiceKey(propertyService)]}(implementation.{property.Name});");
+                        sb.AppendLine($"            peer.Provide{extensionSuffixes[ServiceKey(propertyService)]}({propertyAccess});");
                     }
                     else
                     {
@@ -66,7 +67,7 @@ internal static class ExtensionsGenerator
                         var propertyDispatcher = proxyType.EndsWith("Proxy", StringComparison.Ordinal)
                             ? proxyType.Substring(0, proxyType.Length - "Proxy".Length) + "Dispatcher"
                             : proxyType + "Dispatcher";
-                        sb.AppendLine($"            peer.Provide(({ServicesGeneratorTypeNames.GlobalServiceDispatcher})new {propertyDispatcher}(implementation.{property.Name}));");
+                        sb.AppendLine($"            peer.Provide(({ServicesGeneratorTypeNames.GlobalServiceDispatcher})new {propertyDispatcher}({propertyAccess}));");
                     }
                 }
 

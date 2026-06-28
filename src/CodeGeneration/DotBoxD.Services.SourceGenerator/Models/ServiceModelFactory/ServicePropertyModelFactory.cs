@@ -27,6 +27,7 @@ internal static class ServicePropertyModelFactory
         {
             property = new ServicePropertyModel(
                 IdentifierHelpers.EscapeIdentifier(propertySymbol.Name),
+                GetImplementationType(propertySymbol),
                 propertySymbol.Type.ToDisplayString(s_qualifiedFormat),
                 ProxyType: null,
                 IsInstanceId: true,
@@ -46,12 +47,18 @@ internal static class ServicePropertyModelFactory
         var proxyName = NamingHelpers.StripInterfacePrefix(propertyType.Name) + "Proxy";
         property = new ServicePropertyModel(
             IdentifierHelpers.EscapeIdentifier(propertySymbol.Name),
+            GetImplementationType(propertySymbol),
             propertyType.ToDisplayString(s_qualifiedFormat),
             IdentifierHelpers.QualifyTypeName(propertyNamespace, proxyName),
             IsInstanceId: false,
             subService);
         return true;
     }
+
+    private static string GetImplementationType(IPropertySymbol propertySymbol) =>
+        IdentifierHelpers.QualifyTypeName(
+            GetNamespace(propertySymbol.ContainingType.ContainingNamespace),
+            propertySymbol.ContainingType.Name);
 
     private static string GetNamespace(INamespaceSymbol namespaceSymbol)
     {

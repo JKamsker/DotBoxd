@@ -74,6 +74,7 @@ internal sealed record ServiceModel(
 /// <summary>Immutable, value-equatable representation of a get-only sub-service property.</summary>
 internal sealed record ServicePropertyModel(
     string Name,
+    string ImplementationType,
     string Type,
     string? ProxyType,
     bool IsInstanceId,

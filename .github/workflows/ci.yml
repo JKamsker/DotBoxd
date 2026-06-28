@@ -426,6 +426,7 @@ jobs:
             -RequiredFullyQualifiedNameContains @(
               "UnsupportedShapeCoverageTests",
               "SubServiceAvailabilityTests",
+              "SubServicePropertyInheritanceTests",
               "FloatingPointSpecialDefaults_ArePreservedInGeneratedSurface"
             )
           ./eng/scripts/run-required-tests.ps1 `

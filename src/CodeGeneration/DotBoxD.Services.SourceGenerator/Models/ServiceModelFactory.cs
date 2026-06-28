@@ -93,6 +93,20 @@ internal static class ServiceModelFactory
                 qualifiedInterfaceName);
         }
 
+        var effectiveProperties = new List<IPropertySymbol>();
+        var duplicatePropertyDiagnostic = InheritedPropertyDeduplicator.CollectUnique(
+            interfaceProperties,
+            effectiveProperties,
+            ct);
+        if (duplicatePropertyDiagnostic is not null)
+        {
+            return RejectedService(
+                displayName,
+                duplicatePropertyDiagnostic.Value.Reason,
+                duplicatePropertyDiagnostic.Value.Location,
+                qualifiedInterfaceName);
+        }
+
         ct.ThrowIfCancellationRequested();
 
         var serviceName = GetConfiguredServiceName(context) ?? interfaceSymbol.Name;
@@ -200,7 +214,7 @@ internal static class ServiceModelFactory
             methodLocations.Add(methodLocation);
         }
 
-        foreach (var propertySymbol in interfaceProperties)
+        foreach (var propertySymbol in effectiveProperties)
         {
             if (!ServicePropertyModelFactory.TryBuild(propertySymbol, ct, out var property, out var propertyLocation))
             {
