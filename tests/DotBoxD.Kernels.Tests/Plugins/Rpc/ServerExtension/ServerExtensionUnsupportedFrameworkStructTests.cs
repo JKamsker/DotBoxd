@@ -2,7 +2,7 @@ using DotBoxD.Kernels.Tests.PluginAnalyzer.Core;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
 
-public sealed class ServerExtensionCancellationTokenDiagnosticsTests
+public sealed class ServerExtensionUnsupportedFrameworkStructTests
 {
     [Fact]
     public void Server_extension_accepts_cancellation_token_payload_parameters()
