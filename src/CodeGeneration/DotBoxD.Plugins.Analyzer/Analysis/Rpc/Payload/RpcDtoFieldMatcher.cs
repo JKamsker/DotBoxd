@@ -52,6 +52,9 @@ internal static class RpcDtoFieldMatcher
     }
 
     public static string DefaultConstructorArgument(IParameterSymbol parameter)
-        => "@" + parameter.Name + ": " +
-           LiteralReader.ObjectDefaultLiteral(parameter.Type, parameter.ExplicitDefaultValue);
+        => string.Concat(
+            "@",
+            parameter.Name,
+            ": ",
+            LiteralReader.ObjectDefaultLiteral(parameter.Type, parameter.ExplicitDefaultValue));
 }
