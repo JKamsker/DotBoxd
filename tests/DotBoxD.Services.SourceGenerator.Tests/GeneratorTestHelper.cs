@@ -71,11 +71,12 @@ internal static class GeneratorTestHelper
     /// <summary>
     /// Returns a fresh driver with incremental step tracking enabled.
     /// </summary>
-    public static GeneratorDriver CreateDriver()
+    public static GeneratorDriver CreateDriver(CSharpParseOptions? parseOptions = null)
     {
         var generator = new DotBoxDRpcGenerator().AsSourceGenerator();
         return CSharpGeneratorDriver.Create(
             generators: new[] { generator },
+            parseOptions: parseOptions,
             driverOptions: new GeneratorDriverOptions(default, trackIncrementalGeneratorSteps: true));
     }
 

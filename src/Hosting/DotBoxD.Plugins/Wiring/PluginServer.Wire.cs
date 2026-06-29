@@ -31,7 +31,7 @@ public sealed partial class PluginServer
     /// <summary>
     /// Wires an installed <paramref name="kernel"/> into the subscription (fire-and-forget) pipeline for the
     /// event it subscribes to. A plain terminal is routed through <see cref="WireOptions.IndexRegistry"/> first
-    /// (when supplied, <see cref="WireOptions.UseIndex"/> is set, and the subscription carries index metadata),
+    /// (when supplied, <see cref="WireOptions.UseIndex"/> is set, and verified IR maps to indexed fields),
     /// falling back to the broad pipeline; a projecting terminal pushes to the plugin's native delegate. Result
     /// terminals are rejected — subscriptions have no result channel.
     /// </summary>

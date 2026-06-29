@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.HookResults;
 
@@ -96,9 +97,20 @@ internal static class HookResultBuilderEmitter
 
         builder.Append(indent).Append("public ").Append(model.TypeName).Append(' ').Append(methodName)
             .Append('(').Append(field.TypeFullName).Append(' ').Append(field.ParameterName).AppendLine(")");
-        builder.Append(indent).Append("    => this with { ").Append(field.Name).Append(" = ")
+        builder.Append(indent).Append("    => this with { ").Append(EscapeIdentifier(field.Name)).Append(" = ")
             .Append(field.ParameterName).AppendLine(" };");
         builder.AppendLine();
+    }
+
+    private static string EscapeIdentifier(string name)
+    {
+        var kind = SyntaxFacts.GetKeywordKind(name);
+        if (kind == SyntaxKind.None)
+        {
+            kind = SyntaxFacts.GetContextualKeywordKind(name);
+        }
+
+        return kind == SyntaxKind.None ? name : "@" + name;
     }
 
     private static bool Contains(EquatableArray<string> members, string name)

@@ -48,9 +48,10 @@ public sealed class SingleConnectionTransport : ITransport
 /// </summary>
 public sealed class SingleConnectionServerTransport : IServerTransport
 {
+    private readonly object _sync = new();
     private readonly IRpcChannel _connection;
     private readonly bool _ownsConnection;
-    private readonly TaskCompletionSource<bool> _stopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private TaskCompletionSource<bool> _stopped = CreateStoppedSignal();
     private int _accepted;
     private int _started;
     private int _disposed;
@@ -65,12 +66,22 @@ public sealed class SingleConnectionServerTransport : IServerTransport
     {
         ct.ThrowIfCancellationRequested();
 
-        if (Volatile.Read(ref _disposed) != 0)
+        lock (_sync)
         {
-            throw new ObjectDisposedException(nameof(SingleConnectionServerTransport));
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                throw new ObjectDisposedException(nameof(SingleConnectionServerTransport));
+            }
+
+            if (_started != 0)
+            {
+                throw new InvalidOperationException("Transport already started.");
+            }
+
+            _stopped = CreateStoppedSignal();
+            _started = 1;
         }
 
-        Interlocked.Exchange(ref _started, 1);
         return Task.CompletedTask;
     }
 
@@ -81,25 +92,48 @@ public sealed class SingleConnectionServerTransport : IServerTransport
             throw new ObjectDisposedException(nameof(SingleConnectionServerTransport));
         }
 
-        if (Volatile.Read(ref _started) == 0)
+        Task stoppedTask;
+        lock (_sync)
         {
-            throw new InvalidOperationException("Transport has not been started.");
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                throw new ObjectDisposedException(nameof(SingleConnectionServerTransport));
+            }
+
+            if (_started == 0)
+            {
+                throw new InvalidOperationException("Transport has not been started.");
+            }
+
+            ct.ThrowIfCancellationRequested();
+
+            if (_accepted == 0)
+            {
+                _accepted = 1;
+                return _connection;
+            }
+
+            stoppedTask = _stopped.Task;
         }
 
-        if (Interlocked.Exchange(ref _accepted, 1) == 0)
-        {
-            return _connection;
-        }
-
-        // Honour an already-cancelled token before registering on the shared one-shot _stopped TCS: a
-        // pre-cancelled token would otherwise fire ct.Register synchronously, completing _stopped and
-        // spuriously unblocking every other parked accept (bricking the transport). Mirrors TcpServerTransport.
         ct.ThrowIfCancellationRequested();
 
-        using (ct.Register(static state =>
-            ((TaskCompletionSource<bool>)state!).TrySetResult(true), _stopped))
+        if (ct.CanBeCanceled)
         {
-            await _stopped.Task.ConfigureAwait(false);
+            var cancelled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            using (ct.Register(static state =>
+                ((TaskCompletionSource<bool>)state!).TrySetResult(true), cancelled))
+            {
+                var completed = await Task.WhenAny(stoppedTask, cancelled.Task).ConfigureAwait(false);
+                if (ReferenceEquals(completed, cancelled.Task))
+                {
+                    ct.ThrowIfCancellationRequested();
+                }
+            }
+        }
+        else
+        {
+            await stoppedTask.ConfigureAwait(false);
         }
 
         ct.ThrowIfCancellationRequested();
@@ -112,8 +146,19 @@ public sealed class SingleConnectionServerTransport : IServerTransport
     public Task StopAsync(CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        Interlocked.Exchange(ref _started, 0);
-        _stopped.TrySetResult(true);
+        TaskCompletionSource<bool> stopped;
+        lock (_sync)
+        {
+            if (_started == 0)
+            {
+                return Task.CompletedTask;
+            }
+
+            _started = 0;
+            stopped = _stopped;
+        }
+
+        stopped.TrySetResult(true);
         return Task.CompletedTask;
     }
 
@@ -124,11 +169,21 @@ public sealed class SingleConnectionServerTransport : IServerTransport
             return;
         }
 
-        _stopped.TrySetResult(true);
+        TaskCompletionSource<bool> stopped;
+        lock (_sync)
+        {
+            _started = 0;
+            stopped = _stopped;
+        }
+
+        stopped.TrySetResult(true);
 
         if (_ownsConnection)
         {
             await _connection.DisposeAsync().ConfigureAwait(false);
         }
     }
+
+    private static TaskCompletionSource<bool> CreateStoppedSignal()
+        => new(TaskCreationOptions.RunContinuationsAsynchronously);
 }

@@ -1,5 +1,10 @@
 # RemotePluginServerBuilder + InvokeAsync inline-kernel — Phased Implementation Plan
 
+> **Historical design note:** this plan is superseded by
+> [interface-driven-plugin-server.md](interface-driven-plugin-server.md) for the current generated server
+> surface. It intentionally preserves older pre-rename API names as design history; use the interface-driven
+> document and the GameServer sample for current server-extension APIs.
+
 > **Note (2026-06-16):** the hand-written-control approach below is partly superseded by
 > [interface-driven-plugin-server.md](interface-driven-plugin-server.md), which declares the surface as
 > interfaces and source-generates the controls/facade/builder, unifying the world-access and remote-control

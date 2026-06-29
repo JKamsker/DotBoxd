@@ -20,6 +20,47 @@ public sealed class InstanceRegistryTests
     }
 
     [Fact]
+    public void Register_InvalidServiceName_ThrowsArgumentException()
+    {
+        var registry = new InstanceRegistry();
+
+        foreach (var serviceName in InvalidKeys())
+        {
+            Assert.Throws<ArgumentException>(() => registry.Register(serviceName!, new object()));
+        }
+    }
+
+    [Fact]
+    public void TryGet_InvalidServiceOrInstanceId_ReturnsFalseAndNull()
+    {
+        var registry = new InstanceRegistry();
+
+        foreach (var key in InvalidKeys())
+        {
+            Assert.False(registry.TryGet(key!, "id", out var byService));
+            Assert.Null(byService);
+            Assert.False(registry.TryGet("svc", key!, out var byId));
+            Assert.Null(byId);
+        }
+    }
+
+    [Fact]
+    public async Task Release_InvalidServiceOrInstanceId_ThrowsArgumentException()
+    {
+        var registry = new InstanceRegistry();
+
+        foreach (var key in InvalidKeys())
+        {
+            Assert.Throws<ArgumentException>(() => registry.Release(key!, "id"));
+            Assert.Throws<ArgumentException>(() => registry.Release("svc", key!));
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => registry.ReleaseAsync(key!, "id").AsTask());
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => registry.ReleaseAsync("svc", key!).AsTask());
+        }
+    }
+
+    [Fact]
     public async Task Register_ConcurrentlyAtLimit_NeverExceedsMax()
     {
         const int max = 50;
@@ -91,6 +132,8 @@ public sealed class InstanceRegistryTests
         // Releasing freed the reserved slot, so a fresh registration succeeds against the limit of 1.
         registry.Register("svc", new object());
     }
+
+    private static string?[] InvalidKeys() => new string?[] { null, string.Empty, "   " };
 
     private sealed class TrackingDisposable : IDisposable
     {

@@ -31,6 +31,14 @@ internal sealed partial class RpcPeerOutboundInvoker
             return false;
         }
 
+        if (response.MessageId != messageId)
+        {
+            _pending.TryFail(
+                messageId,
+                new ServiceProtocolException("Response envelope message id does not match frame header."));
+            return false;
+        }
+
         if (messageType == MessageType.Error && response.IsSuccess)
         {
             _pending.TryFail(

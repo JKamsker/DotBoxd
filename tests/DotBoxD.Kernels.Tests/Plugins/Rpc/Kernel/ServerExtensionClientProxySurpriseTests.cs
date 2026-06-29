@@ -1,9 +1,82 @@
+using System.Reflection;
 using DotBoxD.Kernels.Tests.PluginAnalyzer.Core;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
 
 public sealed class ServerExtensionClientProxySurpriseTests
 {
+    [Fact]
+    public void Service_backed_generated_client_preserves_optional_parameter_defaults()
+    {
+        var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly("""
+            using System.Threading;
+            using System.Threading.Tasks;
+            using DotBoxD.Kernels;
+            using DotBoxD.Kernels.Sandbox;
+            using DotBoxD.Plugins;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public interface IEchoService
+            {
+                ValueTask<int> EchoAsync(int amount = 7, CancellationToken cancellationToken = default);
+            }
+
+            [ServerExtension("echo", typeof(IEchoService))]
+            public sealed partial class EchoKernel
+            {
+                public int Echo(int amount, HookContext ctx) => amount;
+            }
+            """);
+
+        var client = assembly.GetType("Sample.EchoKernelServerExtensionClient", throwOnError: true)!;
+        var method = client.GetMethod(
+            "EchoAsync",
+            BindingFlags.Public | BindingFlags.Instance,
+            [typeof(int), typeof(System.Threading.CancellationToken)])!;
+        var parameters = method.GetParameters();
+
+        Assert.True(parameters[0].HasDefaultValue);
+        Assert.Equal(7, parameters[0].DefaultValue);
+        Assert.True(parameters[1].HasDefaultValue);
+    }
+
+    [Fact]
+    public void Service_backed_generated_client_preserves_non_finite_double_defaults()
+    {
+        var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly("""
+            using System.Threading.Tasks;
+            using DotBoxD.Kernels;
+            using DotBoxD.Kernels.Sandbox;
+            using DotBoxD.Plugins;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public interface IEchoService
+            {
+                ValueTask<double> EchoAsync(
+                    double nan = double.NaN,
+                    double positive = double.PositiveInfinity,
+                    double negative = double.NegativeInfinity);
+            }
+
+            [ServerExtension("echo", typeof(IEchoService))]
+            public sealed partial class EchoKernel
+            {
+                public double Echo(double nan, double positive, double negative, HookContext ctx) => nan;
+            }
+            """);
+
+        var client = assembly.GetType("Sample.EchoKernelServerExtensionClient", throwOnError: true)!;
+        var defaults = DefaultValues<double>(client, "EchoAsync", 3);
+
+        Assert.True(double.IsNaN(defaults[0]));
+        Assert.Equal(double.PositiveInfinity, defaults[1]);
+        Assert.Equal(double.NegativeInfinity, defaults[2]);
+    }
+
     [Fact]
     public void Generated_client_rejects_service_null_reference_defaults()
     {
@@ -116,6 +189,17 @@ public sealed class ServerExtensionClientProxySurpriseTests
             d => d.Id == "DBXK100" &&
                  d.GetMessage().Contains("EchoPluginPackage", StringComparison.Ordinal));
         Assert.DoesNotContain(diagnostics, d => d.Id == "CS0101");
+    }
+
+    private static T[] DefaultValues<T>(Type clientType, string methodName, int parameterCount)
+    {
+        var method = clientType.GetMethod(
+            methodName,
+            BindingFlags.Public | BindingFlags.Instance,
+            Enumerable.Repeat(typeof(T), parameterCount).ToArray())!;
+        return method.GetParameters()
+            .Select(parameter => Assert.IsType<T>(parameter.DefaultValue))
+            .ToArray();
     }
 
 }

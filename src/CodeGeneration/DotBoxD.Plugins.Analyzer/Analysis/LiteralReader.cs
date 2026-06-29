@@ -53,6 +53,24 @@ internal static class LiteralReader
                 System.Globalization.CultureInfo.InvariantCulture) + "f";
         }
 
+        if (type.SpecialType == SpecialType.System_Double && value is double doubleNumber)
+        {
+            if (double.IsNaN(doubleNumber))
+            {
+                return "global::System.Double.NaN";
+            }
+
+            if (double.IsPositiveInfinity(doubleNumber))
+            {
+                return "global::System.Double.PositiveInfinity";
+            }
+
+            if (double.IsNegativeInfinity(doubleNumber))
+            {
+                return "global::System.Double.NegativeInfinity";
+            }
+        }
+
         return ObjectLiteral(value);
     }
 

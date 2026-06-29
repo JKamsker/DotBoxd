@@ -34,6 +34,8 @@ public sealed class InstanceRegistry : IInstanceRegistry
     /// <inheritdoc />
     public string Register(string serviceName, object instance)
     {
+        ThrowIfInvalidKey(serviceName, nameof(serviceName), "Service name");
+
         if (instance is null)
             throw new ArgumentNullException(nameof(instance));
 
@@ -55,6 +57,12 @@ public sealed class InstanceRegistry : IInstanceRegistry
     /// <inheritdoc />
     public bool TryGet(string serviceName, string instanceId, out object instance)
     {
+        if (IsInvalidKey(serviceName) || IsInvalidKey(instanceId))
+        {
+            instance = null!;
+            return false;
+        }
+
         if (_entries.TryGetValue((serviceName, instanceId), out var value))
         {
             instance = value;
@@ -67,6 +75,8 @@ public sealed class InstanceRegistry : IInstanceRegistry
     /// <inheritdoc />
     public void Release(string serviceName, string instanceId)
     {
+        ValidateKeys(serviceName, instanceId);
+
         if (_entries.TryRemove((serviceName, instanceId), out var instance))
         {
             Interlocked.Decrement(ref _count);
@@ -77,6 +87,8 @@ public sealed class InstanceRegistry : IInstanceRegistry
     /// <inheritdoc />
     public async ValueTask ReleaseAsync(string serviceName, string instanceId)
     {
+        ValidateKeys(serviceName, instanceId);
+
         if (_entries.TryRemove((serviceName, instanceId), out var instance))
         {
             Interlocked.Decrement(ref _count);
@@ -118,6 +130,22 @@ public sealed class InstanceRegistry : IInstanceRegistry
             }
         }
     }
+
+    private static void ValidateKeys(string serviceName, string instanceId)
+    {
+        ThrowIfInvalidKey(serviceName, nameof(serviceName), "Service name");
+        ThrowIfInvalidKey(instanceId, nameof(instanceId), "Instance id");
+    }
+
+    private static void ThrowIfInvalidKey(string value, string paramName, string label)
+    {
+        if (IsInvalidKey(value))
+        {
+            throw new ArgumentException(label + " must not be null, empty, or whitespace.", paramName);
+        }
+    }
+
+    private static bool IsInvalidKey(string? value) => string.IsNullOrWhiteSpace(value);
 
     // Sub-service instances are connection-scoped and owned by the registry (see IInstanceRegistry),
     // so they are disposed when released. Best-effort: a faulting dispose is reported via diagnostics

@@ -75,6 +75,7 @@ public static SandboxValue Gt(SandboxValue left, SandboxValue right) => SandboxN
 public static SandboxValue Gte(SandboxValue left, SandboxValue right) => SandboxNumericOperations.GreaterThanOrEqual(left, right)
 public static SandboxValue GteI32(SandboxValue left, SandboxValue right) => Bool(AsI32(left) >= AsI32(right))
 public static SandboxValue GtI32(SandboxValue left, SandboxValue right) => Bool(AsI32(left) > AsI32(right))
+public static SandboxValue GuidLiteralValue(string value)
 public static SandboxValue I64(long value) => SandboxValue.FromInt64(value)
 public static SandboxValue Int32ToStringInvariant(SandboxContext context, SandboxValue value)
 public static SandboxValue ListAdd(SandboxContext context, SandboxValue list, SandboxValue item)

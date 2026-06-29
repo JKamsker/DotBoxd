@@ -61,6 +61,19 @@ public sealed partial class PeerInboundCoverageTests
             new RpcRequest { MessageId = messageId, ServiceName = service, MethodName = method },
             ReadOnlySpan<byte>.Empty);
 
+    private static Payload CreateRequestFrame(
+        ISerializer serializer,
+        int frameMessageId,
+        int envelopeMessageId,
+        string service,
+        string method) =>
+        MessageFramer.FrameMessage(
+            serializer,
+            frameMessageId,
+            MessageType.Request,
+            new RpcRequest { MessageId = envelopeMessageId, ServiceName = service, MethodName = method },
+            ReadOnlySpan<byte>.Empty);
+
     private static Payload RentFrame(byte[] bytes)
     {
         var payload = Payload.Rent(bytes.Length);

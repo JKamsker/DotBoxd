@@ -129,13 +129,8 @@ internal sealed class ErasedPluginEventAdapter<TEvent> : IErasedPluginEventAdapt
         }
 
         var subscription = kernel.Manifest.Subscriptions[0];
-        if (subscription.IndexedPredicates.Count == 0)
-        {
-            return false;
-        }
-
-        // The registry recomputes the matching predicates from verified IR; the manifest predicates passed here
-        // are an untrusted hint that merely gates whether to attempt index routing at all.
+        // The registry recomputes matching predicates from verified IR; manifest predicates are untrusted
+        // compatibility hints and do not gate whether index routing is attempted.
         return indexRegistry.Register(_adapter, kernel, subscription.IndexedPredicates, subscription.IndexCoversPredicate);
     }
 

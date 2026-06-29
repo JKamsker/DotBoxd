@@ -46,6 +46,26 @@ public sealed class EventIndexTrustBoundaryTests
                 PluginPackageJsonSerializer.Export(TamperIndexPredicates(GeneratedAttackPackage()))));
 
     [Fact]
+    public async Task WireSubscription_recomputes_index_route_when_manifest_predicates_are_missing()
+    {
+        var sink = new RecordingMessageSink();
+        using var server = PluginServer.Create(sink, defaultPolicy: ChainPolicy());
+        _ = server.Events.Resolve<AttackEvent>();
+        var kernel = await server.InstallAsync(RemoveIndexPredicates(GeneratedAttackPackage()), ChainPolicy());
+        var registry = new EventIndexRegistry();
+
+        server.WireSubscription(kernel, new WireOptions { IndexRegistry = registry });
+        registry.Publish(new AttackEvent("player-1", "player-2", Damage: 7, AttackerLevel: 8));
+
+        await registry.DrainAsync();
+        Assert.Equal(1, registry.Stats.Considered);
+        Assert.Equal(1, registry.Stats.Dispatched);
+        var message = Assert.Single(sink.Messages);
+        Assert.Equal("player-2", message.TargetId);
+        Assert.Equal("indexed-taunt:inline", message.Message);
+    }
+
+    [Fact]
     public async Task Session_dispose_unregisters_indexed_subscription()
     {
         var package = GeneratedAttackPackage();
@@ -162,6 +182,25 @@ public sealed class EventIndexTrustBoundaryTests
                                 "int")
                         ],
                         IndexCoversPredicate = true
+                    }
+                ]
+            }
+        };
+    }
+
+    private static PluginPackage RemoveIndexPredicates(PluginPackage package)
+    {
+        var subscription = Assert.Single(package.Manifest.Subscriptions);
+        return package with
+        {
+            Manifest = package.Manifest with
+            {
+                Subscriptions =
+                [
+                    subscription with
+                    {
+                        IndexedPredicates = [],
+                        IndexCoversPredicate = false
                     }
                 ]
             }

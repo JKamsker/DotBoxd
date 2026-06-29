@@ -40,7 +40,7 @@ See the GameServer sample and [concepts/kernels.md](../concepts/kernels.md).
 
 Expose a contract method that composes host data and runs a validated kernel server-side, so the client
 submits work in one round-trip instead of N. The GameServer sample demonstrates this with the
-`MonsterKillerKernel` kernel RPC service. See [concepts/pushdown.md](../concepts/pushdown.md).
+`MonsterKillerKernel` server extension. See [concepts/pushdown.md](../concepts/pushdown.md).
 
 ## Run the maintained example
 
@@ -49,5 +49,5 @@ dotnet run -c Release --project samples/GameServer/Examples.GameServer.Server/Ex
 ```
 
 It demonstrates service IPC, event kernels, live settings, host bindings, policy-gated execution,
-kernel RPC, and unload-on-disconnect. Features no longer covered by maintained samples are listed in
+server extensions, and unload-on-disconnect. Features no longer covered by maintained samples are listed in
 [`docs/examples/coverage-gaps.md`](../examples/coverage-gaps.md).

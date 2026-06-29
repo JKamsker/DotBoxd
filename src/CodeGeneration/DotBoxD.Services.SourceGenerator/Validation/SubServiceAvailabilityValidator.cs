@@ -80,6 +80,30 @@ internal static class SubServiceAvailabilityValidator
             return result;
         }
 
+        for (var i = 0; i < result.Model.Properties.Count; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var property = result.Model.Properties[i];
+            if (property.SubService is not null &&
+                rejectedServices.Contains(property.SubService.QualifiedInterfaceName, ct))
+            {
+                var reason =
+                    $"sub-service property '{IdentifierHelpers.UnescapeIdentifier(property.Name)}' cannot be proxied because that service was not generated";
+                return result with
+                {
+                    Model = null,
+                    MethodDiagnostics = EquatableArray<MethodDiagnostic>.Empty,
+                    MethodLocations = EquatableArray<DiagnosticLocation>.Empty,
+                    PropertyLocations = EquatableArray<DiagnosticLocation>.Empty,
+                    ServiceDiagnostic = new ServiceDiagnostic(
+                        GetDisplayName(result.Model),
+                        reason,
+                        GetLocation(result.PropertyLocations, i)),
+                };
+            }
+        }
+
         var methods = new List<MethodModel>();
         var diagnostics = new List<MethodDiagnostic>(result.MethodDiagnostics.Array);
         var changed = false;

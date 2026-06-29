@@ -5,7 +5,7 @@ using DotBoxD.Plugins;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
 
-public sealed class ServerExtensionLoweringSurpriseTests
+public sealed partial class ServerExtensionLoweringSurpriseTests
 {
     [Fact]
     public void Server_extension_lowers_target_typed_dto_creation()
@@ -170,6 +170,47 @@ public sealed class ServerExtensionLoweringSurpriseTests
         var result = await kernel.InvokeServerExtensionAsync([]);
 
         Assert.Equal(1, Assert.IsType<I32Value>(result).Value);
+    }
+
+    [Fact]
+    public async Task Server_extension_preserves_definite_assignment_across_if_else()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create("""
+            using DotBoxD.Kernels;
+            using DotBoxD.Kernels.Sandbox;
+            using DotBoxD.Plugins;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            [ServerExtension("branch-definite-local")]
+            public sealed partial class BranchDefiniteLocalKernel
+            {
+                public int Pick(bool flag, HookContext ctx)
+                {
+                    int value;
+                    if (flag)
+                    {
+                        value = 1;
+                    }
+                    else
+                    {
+                        value = 2;
+                    }
+
+                    return value;
+                }
+            }
+            """, "Sample.BranchDefiniteLocalPluginPackage");
+
+        using var server = PluginServer.Create(defaultPolicy: PurePolicy());
+        var kernel = await server.InstallServerExtensionAsync(package);
+
+        var whenTrue = await kernel.InvokeServerExtensionAsync([SandboxValue.FromBool(true)]);
+        var whenFalse = await kernel.InvokeServerExtensionAsync([SandboxValue.FromBool(false)]);
+
+        Assert.Equal(1, Assert.IsType<I32Value>(whenTrue).Value);
+        Assert.Equal(2, Assert.IsType<I32Value>(whenFalse).Value);
     }
 
     [Fact]

@@ -72,10 +72,20 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
             static (node, _) => RemoteStagedUseDiagnosticFactory.IsCandidate(node),
             "remote staged-use diagnostic",
             static (syntaxContext, ct) => RemoteStagedUseDiagnosticFactory.Create(syntaxContext, ct));
+        var conditionalHookChainDiagnostics = GeneratorGuard.SyntaxValues(
+            context,
+            static (node, _) => ConditionalHookChainDiagnosticFactory.IsCandidate(node),
+            "conditional hook-chain diagnostic",
+            static (syntaxContext, ct) => ConditionalHookChainDiagnosticFactory.Create(syntaxContext, ct));
         GeneratorGuard.RegisterOutput(
             context,
             remoteStagedUseDiagnostics,
             "remote staged-use diagnostic output",
+            static (sourceContext, diagnostic) => sourceContext.ReportDiagnostic(diagnostic.ToDiagnostic()));
+        GeneratorGuard.RegisterOutput(
+            context,
+            conditionalHookChainDiagnostics,
+            "conditional hook-chain diagnostic output",
             static (sourceContext, diagnostic) => sourceContext.ReportDiagnostic(diagnostic.ToDiagnostic()));
 
         // Report DBXK111 for a recognized remote RunLocal chain whose stages could not be lowered, so the
@@ -133,12 +143,8 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
 
         var invokeAsyncResults = GeneratorGuard.SyntaxValues(
             context,
-            static (node, _) => node is InvocationExpressionSyntax
-            {
-                Expression: MemberAccessExpressionSyntax { Name.Identifier.ValueText: "InvokeAsync" }
-                    or IdentifierNameSyntax { Identifier.ValueText: "InvokeAsync" }
-                    or GenericNameSyntax { Identifier.ValueText: "InvokeAsync" }
-            },
+            static (node, _) => node is InvocationExpressionSyntax invocation &&
+                IsInvokeAsyncCandidate(invocation.Expression),
             "InvokeAsync package model",
             static (syntaxContext, ct) => InvokeAsyncModelFactory.Create(syntaxContext, ct));
         GeneratorGuard.RegisterOutput(
@@ -276,4 +282,17 @@ public sealed class PluginPackageGenerator : IIncrementalGenerator
             }
         };
 
+    private static bool IsInvokeAsyncCandidate(ExpressionSyntax expression)
+        => expression switch
+        {
+            MemberAccessExpressionSyntax { Name.Identifier.ValueText: "InvokeAsync" } => true,
+            MemberBindingExpressionSyntax
+            {
+                Name: IdentifierNameSyntax { Identifier.ValueText: "InvokeAsync" }
+                    or GenericNameSyntax { Identifier.ValueText: "InvokeAsync" }
+            } => true,
+            IdentifierNameSyntax { Identifier.ValueText: "InvokeAsync" } => true,
+            GenericNameSyntax { Identifier.ValueText: "InvokeAsync" } => true,
+            _ => false
+        };
 }

@@ -35,6 +35,39 @@ public sealed partial class PeerInboundCoverageTests
         Assert.Equal("validation-failed", response.ErrorMessage);
     }
 
+    [Fact]
+    public async Task RequestEnvelopeMessageIdMismatch_ReturnsProtocolError()
+    {
+        var serializer = NewSerializer();
+        var (clientConnection, serverConnection) = InMemoryPipe.CreateConnectionPair();
+        await using var client = clientConnection;
+        var protocolError = new TaskCompletionSource<RpcProtocolErrorEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        await using var peer = RpcPeer
+            .Over(serverConnection, serializer, new RpcPeerOptions { RequestTimeout = ShortTimeout })
+            .Provide((IServiceDispatcher)new EchoDispatcher())
+            .Start();
+        peer.ProtocolError += (_, args) => protocolError.TrySetResult(args);
+
+        using var requestFrame = CreateRequestFrame(
+            serializer,
+            frameMessageId: 41,
+            envelopeMessageId: 99,
+            EchoDispatcher.Service,
+            "Call");
+        await client.SendAsync(requestFrame.Memory);
+
+        var response = await ReadErrorResponseAsync(client, serializer, expectedMessageId: 41);
+        var args = await protocolError.Task.WaitAsync(ShortTimeout);
+
+        Assert.Equal(RpcErrorTypes.ProtocolError, response.ErrorType);
+        Assert.Contains("message id", response.ErrorMessage);
+        Assert.Equal(41, args.MessageId);
+        Assert.Equal(MessageType.Request, args.MessageType);
+        Assert.Contains("message id", args.Message);
+    }
+
     // ---- DispatchError event when the error response itself cannot be sent (280, dispatch path) -
 
     [Fact]

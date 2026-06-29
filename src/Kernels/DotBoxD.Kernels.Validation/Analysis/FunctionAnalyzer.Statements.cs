@@ -68,8 +68,11 @@ internal sealed partial class FunctionAnalyzer
             AnalyzeExpression(branch.Condition, scope, ref effects, ref canReorder),
             SandboxType.Bool,
             branch.Span);
-        var thenReturns = AnalyzeBlock(branch.Then, scope.Clone(), returnType, ref effects, ref canReorder, loopDepth);
-        var elseReturns = AnalyzeBlock(branch.Else, scope.Clone(), returnType, ref effects, ref canReorder, loopDepth);
+        var thenScope = scope.Clone();
+        var thenReturns = AnalyzeBlock(branch.Then, thenScope, returnType, ref effects, ref canReorder, loopDepth);
+        var elseScope = scope.Clone();
+        var elseReturns = AnalyzeBlock(branch.Else, elseScope, returnType, ref effects, ref canReorder, loopDepth);
+        scope.MergeContinuingBranches(thenScope, thenReturns, elseScope, elseReturns, _diagnostics, branch.Span);
         return thenReturns && elseReturns;
     }
 

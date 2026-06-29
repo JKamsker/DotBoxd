@@ -94,7 +94,10 @@ public partial class HookPipeline<TEvent, TContext>
     {
         ArgumentNullException.ThrowIfNull(package);
         ArgumentNullException.ThrowIfNull(handler);
-        var kernel = MaterializeResultKernel(package);
+        var packageWithCallback = LocalTerminalIdentity.WithCallbackSubscriptionId(
+            package,
+            LocalTerminalIdentity.CreateCallbackSubscriptionId());
+        var kernel = MaterializeResultKernel(packageWithCallback);
         try
         {
             ValidateResultKernel(kernel, typeof(TResult), resultLocalTerminal: true);

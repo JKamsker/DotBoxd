@@ -75,6 +75,35 @@ internal static partial class InvokeAsyncModelFactory
             return null;
         }
 
+        if (IsConditionalInvokeAsyncExpression(invocation.Expression))
+        {
+            if (BindsToUserInvokeAsync(model, invocation, cancellationToken))
+            {
+                return null;
+            }
+
+            if (invocation.Parent is ConditionalAccessExpressionSyntax conditionalAccess &&
+                TryServerInvocationSurface(
+                    model,
+                    conditionalAccess.Expression,
+                    cancellationToken,
+                    out _,
+                    out _,
+                    out _))
+            {
+                throw new NotSupportedException(
+                    "conditional access InvokeAsync calls are not supported; check the generated plugin server receiver for null before calling InvokeAsync.");
+            }
+
+            if (IsDotBoxDInvokeAsync(model, invocation, cancellationToken))
+            {
+                throw new NotSupportedException(
+                    "conditional access InvokeAsync calls are not supported; check the generated plugin server receiver for null before calling InvokeAsync.");
+            }
+
+            return null;
+        }
+
         if (invocation.Expression is not MemberAccessExpressionSyntax access ||
             !string.Equals(access.Name.Identifier.ValueText, InvokeAsyncMethod, StringComparison.Ordinal))
         {
@@ -174,6 +203,13 @@ internal static partial class InvokeAsyncModelFactory
     private static bool IsUnqualifiedInvokeAsyncExpression(ExpressionSyntax expression)
         => expression is IdentifierNameSyntax { Identifier.ValueText: InvokeAsyncMethod } or
             GenericNameSyntax { Identifier.ValueText: InvokeAsyncMethod };
+
+    private static bool IsConditionalInvokeAsyncExpression(ExpressionSyntax expression)
+        => expression is MemberBindingExpressionSyntax
+        {
+            Name: IdentifierNameSyntax { Identifier.ValueText: InvokeAsyncMethod }
+                or GenericNameSyntax { Identifier.ValueText: InvokeAsyncMethod }
+        };
 
     private static bool TryImplicitGeneratedFacadeSurface(
         SemanticModel model,

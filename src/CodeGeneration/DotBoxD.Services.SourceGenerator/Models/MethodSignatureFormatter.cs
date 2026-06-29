@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using DotBoxD.Services.SourceGenerator.Infrastructure;
 using Microsoft.CodeAnalysis;
@@ -7,6 +8,11 @@ namespace DotBoxD.Services.SourceGenerator.Models;
 
 internal static class MethodSignatureFormatter
 {
+    // Compile against the repo's older Roslyn package, but preserve the C# 13 anti-constraint
+    // when the generator is hosted by a newer compiler that exposes this symbol property.
+    private static readonly PropertyInfo? s_allowsRefLikeTypeProperty =
+        typeof(ITypeParameterSymbol).GetProperty("AllowsRefLikeType");
+
     private static readonly SymbolDisplayFormat s_qualifiedFormat =
         SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
             SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions |
@@ -74,6 +80,11 @@ internal static class MethodSignatureFormatter
                 constraints.Add("new()");
             }
 
+            if (AllowsRefLikeType(typeParameter))
+            {
+                constraints.Add("allows ref struct");
+            }
+
             if (constraints.Count > 0)
             {
                 clauses.Add($" where {IdentifierHelpers.EscapeIdentifier(typeParameter.Name)} : {string.Join(", ", constraints)}");
@@ -82,4 +93,7 @@ internal static class MethodSignatureFormatter
 
         return string.Concat(clauses);
     }
+
+    private static bool AllowsRefLikeType(ITypeParameterSymbol typeParameter) =>
+        s_allowsRefLikeTypeProperty?.GetValue(typeParameter) is true;
 }

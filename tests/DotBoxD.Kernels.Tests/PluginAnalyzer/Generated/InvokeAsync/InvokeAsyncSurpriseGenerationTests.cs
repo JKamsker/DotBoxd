@@ -221,6 +221,23 @@ public sealed class InvokeAsyncSurpriseGenerationTests
                           diagnostic.GetMessage().Contains("IPluginServer", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Conditional_access_InvokeAsync_reports_InvokeAsync_diagnostic()
+    {
+        var result = RunGenerator(UsageSource("""
+            public static ValueTask<int>? Run(RemotePluginServer? kernels)
+                => kernels?.InvokeAsync(async (IGameWorldAccess world) =>
+                {
+                    return world.GetHealth("monster-1");
+                });
+            """));
+
+        Assert.Contains(
+            result.Diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains("conditional access", StringComparison.Ordinal));
+    }
+
     private static string CaptureBagSource(string sampleDeclarations)
         => """
         using System;

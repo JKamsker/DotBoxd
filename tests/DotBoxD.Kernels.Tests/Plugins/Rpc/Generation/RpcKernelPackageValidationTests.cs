@@ -31,6 +31,21 @@ public sealed class RpcKernelPackageValidationTests
     }
 
     [Fact]
+    public async Task Install_rejects_rpc_package_with_entrypoints_that_do_not_match_rpc_entrypoint()
+    {
+        using var server = PluginServer.Create(
+            configureHost: RpcKernelTestPackages.AddKillBinding,
+            defaultPolicy: RpcKernelTestPackages.KillPolicy());
+        var package = RpcKernelTestPackages.MonsterKiller();
+        var invalid = package with { Entrypoints = new KernelEntrypoints("ShouldHandle", "Handle") };
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await server.InstallServerExtensionAsync(invalid).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK074");
+    }
+
+    [Fact]
     public void Prepared_rpc_validation_uses_install_policy_for_async_capability()
     {
         var package = AsyncRpcPackage();

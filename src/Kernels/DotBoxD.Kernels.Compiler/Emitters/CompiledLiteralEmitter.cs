@@ -38,6 +38,10 @@ internal static class CompiledLiteralEmitter
                 il.Emit(OpCodes.Ldc_R8, f64.Value);
                 il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.F64)));
                 break;
+            case GuidValue guid:
+                il.Emit(OpCodes.Ldstr, guid.Value.ToString("D"));
+                il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.GuidLiteralValue)));
+                break;
             case StringValue text:
                 if (chargeLiteral)
                 {

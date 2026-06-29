@@ -10,7 +10,6 @@ public sealed class VerifierStackTypeTests
     [Theory]
     [InlineData("ldarg")]
     [InlineData("ldloc")]
-    [InlineData("starg")]
     [InlineData("stloc")]
     public async Task Verifier_rejects_out_of_range_argument_and_local_operands(string opcode)
     {
@@ -42,6 +41,17 @@ public sealed class VerifierStackTypeTests
             d.Code == "V-STACK-TYPE" &&
             d.Message.Contains("System.Int32", StringComparison.Ordinal) &&
             d.Message.Contains("DotBoxD.Kernels.Sandbox.SandboxValue", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Verifier_rejects_starg_argument_mutation_opcode()
+    {
+        var result = await VerifierTestHelpers.VerifyAsync(ArgumentMutationAssembly());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d =>
+            d.Code == "V-OPCODE" &&
+            d.Message.Contains("Starg", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -111,12 +121,6 @@ public sealed class VerifierStackTypeTests
                     il.Emit(OpCodes.Ldloc_S, (byte)0);
                     il.Emit(OpCodes.Ret);
                     break;
-                case "starg":
-                    il.Emit(OpCodes.Ldarg_1);
-                    il.Emit(OpCodes.Starg_S, (byte)3);
-                    il.Emit(OpCodes.Ldarg_1);
-                    il.Emit(OpCodes.Ret);
-                    break;
                 case "stloc":
                     il.Emit(OpCodes.Ldarg_1);
                     il.Emit(OpCodes.Stloc_S, (byte)0);
@@ -145,6 +149,42 @@ public sealed class VerifierStackTypeTests
             il.Emit(OpCodes.Ldarg_1);
             il.Emit(OpCodes.Stloc, local);
             il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Ret);
+        });
+
+    private static byte[] ArgumentMutationAssembly()
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
+            var function = type.DefineMethod(
+                "Fn_0",
+                MethodAttributes.Private | MethodAttributes.Static,
+                typeof(SandboxValue),
+                [typeof(SandboxContext)]);
+            var il = function.GetILGenerator();
+            var value = il.DeclareLocal(typeof(SandboxValue));
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Starg_S, (byte)0);
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(Kernels.Runtime.CompiledRuntime.EnterCall))!);
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Ldc_I4_1);
+            il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(Kernels.Runtime.CompiledRuntime.ChargeFuel))!);
+            il.Emit(OpCodes.Ldc_I4_0);
+            il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(Kernels.Runtime.CompiledRuntime.I32))!);
+            il.Emit(OpCodes.Stloc, value);
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(Kernels.Runtime.CompiledRuntime.ExitCall))!);
+            il.Emit(OpCodes.Ldloc, value);
+            il.Emit(OpCodes.Ret);
+
+            il = DefineExecute(type).GetILGenerator();
+            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Ldc_I4_0);
+            il.Emit(
+                OpCodes.Call,
+                typeof(CompiledRuntime).GetMethod(nameof(Kernels.Runtime.CompiledRuntime.ValidateEntrypointInput))!);
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Call, function);
             il.Emit(OpCodes.Ret);
         });
 

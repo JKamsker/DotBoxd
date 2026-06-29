@@ -144,7 +144,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             if (declarator.Initializer is not { } initializer)
             {
-                RejectUninitializedServiceHandleLocal(declarator);
+                ValidateUninitializedLocalDeclaration(declarator);
                 continue;
             }
 
@@ -155,16 +155,6 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             }
 
             output.Add(SetStatement(localName, LowerExpressionWithPrelude(initializer.Value, output)));
-        }
-    }
-
-    private void RejectUninitializedServiceHandleLocal(VariableDeclaratorSyntax declarator)
-    {
-        var localSymbol = _model.GetDeclaredSymbol(declarator, _cancellationToken);
-        if (localSymbol is ILocalSymbol { Type: { } localType } && HasDotBoxDServiceAttribute(localType))
-        {
-            throw new NotSupportedException(
-                $"Scoped service handle local '{declarator.Identifier.ValueText}' must be initialized at declaration.");
         }
     }
 

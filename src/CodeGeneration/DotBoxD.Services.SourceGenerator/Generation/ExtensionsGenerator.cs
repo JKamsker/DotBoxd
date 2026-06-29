@@ -56,7 +56,7 @@ internal static class ExtensionsGenerator
                         continue;
                     }
 
-                    var propertyAccess = PropertyAccess(property);
+                    var propertyAccess = $"(({property.ImplementationType})implementation).{property.Name}";
                     if (servicesByType.TryGetValue(property.Type, out var propertyService))
                     {
                         sb.AppendLine($"            peer.Provide{extensionSuffixes[ServiceKey(propertyService)]}({propertyAccess});");
@@ -114,11 +114,6 @@ internal static class ExtensionsGenerator
 
         return false;
     }
-
-    private static string PropertyAccess(ServicePropertyModel property)
-        => string.IsNullOrEmpty(property.DeclaringType)
-            ? "implementation." + property.Name
-            : "((" + property.DeclaringType + ")implementation)." + property.Name;
 
     private static Dictionary<string, string> BuildExtensionSuffixes(
         EquatableArray<ServiceExtensionModel> services,

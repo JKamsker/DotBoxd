@@ -29,6 +29,7 @@ internal static class ServiceModelFactory
                 Error: new GeneratorError(name, ex.ToString()),
                 MethodDiagnostics: EquatableArray<MethodDiagnostic>.Empty,
                 MethodLocations: EquatableArray<DiagnosticLocation>.Empty,
+                PropertyLocations: EquatableArray<DiagnosticLocation>.Empty,
                 ServiceLocation: default,
                 QualifiedInterfaceName: string.Empty,
                 ServiceDiagnostic: null);
@@ -92,6 +93,22 @@ internal static class ServiceModelFactory
                 qualifiedInterfaceName);
         }
 
+        var effectiveProperties = new List<IPropertySymbol>();
+        var duplicatePropertyDiagnostic = InheritedPropertyDeduplicator.CollectUnique(
+            interfaceProperties,
+            interfaceMethods,
+            NamingHelpers.StripInterfacePrefix(interfaceSymbol.Name) + "Proxy",
+            effectiveProperties,
+            ct);
+        if (duplicatePropertyDiagnostic is not null)
+        {
+            return RejectedService(
+                displayName,
+                duplicatePropertyDiagnostic.Value.Reason,
+                duplicatePropertyDiagnostic.Value.Location,
+                qualifiedInterfaceName);
+        }
+
         ct.ThrowIfCancellationRequested();
 
         var serviceName = GetConfiguredServiceName(context) ?? interfaceSymbol.Name;
@@ -110,6 +127,7 @@ internal static class ServiceModelFactory
         var methods = new List<MethodModel>();
         var properties = new List<ServicePropertyModel>();
         var methodLocations = new List<DiagnosticLocation>();
+        var propertyLocations = new List<DiagnosticLocation>();
         var methodDiagnostics = new List<MethodDiagnostic>();
         var seenSignatures = new Dictionary<string, IMethodSymbol>(StringComparer.Ordinal);
         var seenSignatureIndexes = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -198,17 +216,15 @@ internal static class ServiceModelFactory
             methodLocations.Add(methodLocation);
         }
 
-        var unsupportedPropertyDiagnostic = ServicePropertyModelFactory.Collect(
-            interfaceProperties,
-            properties,
-            ct);
-        if (unsupportedPropertyDiagnostic is not null)
+        foreach (var propertySymbol in effectiveProperties)
         {
-            return RejectedService(
-                displayName,
-                unsupportedPropertyDiagnostic.Value.Reason,
-                unsupportedPropertyDiagnostic.Value.Location,
-                qualifiedInterfaceName);
+            if (!ServicePropertyModelFactory.TryBuild(propertySymbol, ct, out var property, out var propertyLocation))
+            {
+                continue;
+            }
+
+            properties.Add(property);
+            propertyLocations.Add(propertyLocation);
         }
 
         WireNameValidator.MarkDuplicateWireNames(displayName, methods, methodLocations, methodDiagnostics, ct);
@@ -224,6 +240,7 @@ internal static class ServiceModelFactory
             Error: null,
             MethodDiagnostics: methodDiagnostics.ToEquatableArray(),
             MethodLocations: methodLocations.ToEquatableArray(),
+            PropertyLocations: propertyLocations.ToEquatableArray(),
             ServiceLocation: serviceLocation,
             QualifiedInterfaceName: qualifiedInterfaceName,
             ServiceDiagnostic: null);
@@ -239,6 +256,7 @@ internal static class ServiceModelFactory
             Error: null,
             MethodDiagnostics: EquatableArray<MethodDiagnostic>.Empty,
             MethodLocations: EquatableArray<DiagnosticLocation>.Empty,
+            PropertyLocations: EquatableArray<DiagnosticLocation>.Empty,
             ServiceLocation: location,
             QualifiedInterfaceName: qualifiedInterfaceName,
             ServiceDiagnostic: new ServiceDiagnostic(displayName, reason, location));

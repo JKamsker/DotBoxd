@@ -44,6 +44,13 @@ public sealed class TcpTransport : ITransport
         // AcceptAsync, NamedPipeClientTransport.ConnectAsync).
         ct.ThrowIfCancellationRequested();
 
+        await ClearDisconnectedConnectionAsync().ConfigureAwait(false);
+
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            throw new ObjectDisposedException(nameof(TcpTransport));
+        }
+
         if (_connection != null)
         {
             throw new InvalidOperationException("Already connected.");
@@ -108,6 +115,16 @@ public sealed class TcpTransport : ITransport
         {
             await connection.DisposeAsync().ConfigureAwait(false);
             client.Dispose();
+            if (ReferenceEquals(_connection, connection))
+            {
+                _connection = null;
+            }
+
+            if (ReferenceEquals(_client, client))
+            {
+                _client = null;
+            }
+
             throw new ObjectDisposedException(nameof(TcpTransport));
         }
     }
@@ -119,6 +136,28 @@ public sealed class TcpTransport : ITransport
             TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default);
 
+    private async ValueTask ClearDisconnectedConnectionAsync()
+    {
+        var connection = _connection;
+        if (connection is null || connection.IsConnected)
+        {
+            return;
+        }
+
+        var client = _client;
+        await connection.DisposeAsync().ConfigureAwait(false);
+        if (ReferenceEquals(_connection, connection))
+        {
+            _connection = null;
+        }
+
+        if (ReferenceEquals(_client, client))
+        {
+            client?.Dispose();
+            _client = null;
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
@@ -129,8 +168,10 @@ public sealed class TcpTransport : ITransport
         if (_connection != null)
         {
             await _connection.DisposeAsync().ConfigureAwait(false);
+            _connection = null;
         }
 
         _client?.Dispose();
+        _client = null;
     }
 }

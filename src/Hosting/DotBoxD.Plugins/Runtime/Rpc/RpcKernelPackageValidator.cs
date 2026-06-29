@@ -43,28 +43,50 @@ internal static class RpcKernelPackageValidator
             ValidateText(metadataKernel, "kernel metadata", diagnostics);
         }
 
-        if (string.IsNullOrWhiteSpace(package.Manifest.RpcEntrypoint))
+        var rpcEntrypoint = package.Manifest.RpcEntrypoint;
+        if (string.IsNullOrWhiteSpace(rpcEntrypoint))
         {
             diagnostics.Add(new SandboxDiagnostic("DBXK070", "Server extension manifest must declare an rpcEntrypoint."));
         }
-        else if (!PluginEntrypointIndex.Build(package).Contains(package.Manifest.RpcEntrypoint))
+        else
         {
-            diagnostics.Add(new SandboxDiagnostic(
-                "DBXK071",
-                $"Server extension entrypoint '{package.Manifest.RpcEntrypoint}' is missing or not a public entrypoint."));
+            if (!PluginEntrypointIndex.Build(package).Contains(rpcEntrypoint))
+            {
+                diagnostics.Add(new SandboxDiagnostic(
+                    "DBXK071",
+                    $"Server extension entrypoint '{rpcEntrypoint}' is missing or not a public entrypoint."));
+            }
+
+            ValidateRpcEntrypointAliases(package.Entrypoints, rpcEntrypoint, diagnostics);
         }
 
         if (package.Manifest.Subscriptions.Count > 0)
         {
             diagnostics.Add(new SandboxDiagnostic(
                 "DBXK073",
-                "Kernel RPC service manifests must not declare hook subscriptions."));
+                "Server extension manifests must not declare hook subscriptions."));
         }
 
         ValidateMode(package.Manifest, diagnostics);
         _ = PluginManifestEffectValidator.Validate(package.Manifest, diagnostics);
         ValidateLiveSettings(package.Manifest, diagnostics);
         ThrowIfErrors(diagnostics);
+    }
+
+    private static void ValidateRpcEntrypointAliases(
+        KernelEntrypoints entrypoints,
+        string rpcEntrypoint,
+        List<SandboxDiagnostic> diagnostics)
+    {
+        if (string.Equals(entrypoints.ShouldHandle, rpcEntrypoint, StringComparison.Ordinal) &&
+            string.Equals(entrypoints.Handle, rpcEntrypoint, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        diagnostics.Add(new SandboxDiagnostic(
+            "DBXK074",
+            "Server extension ShouldHandle and Handle entrypoint aliases must match rpcEntrypoint."));
     }
 
     public static void ValidatePrepared(PluginPackage package, ExecutionPlan plan, SandboxPolicy installPolicy)

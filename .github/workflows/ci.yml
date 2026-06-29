@@ -319,9 +319,11 @@ jobs:
               "CompiledCacheMetadataTests",
               "CompiledCacheRootGuardTests",
               "CompiledCacheTests",
+              "BranchMergeScopeTests",
               "CacheKeyIdentityTests",
               "VerifierAttackMatrixTests",
               "VerifierDocumentedAttackMatrixTests",
+              "Verifier_rejects_starg_argument_mutation_opcode",
               "VerifierLoopMeteringTests",
               "VerifierManifestIdentityTests",
               "VerifierMemberSignatureTests",
@@ -364,12 +366,14 @@ jobs:
               "PluginServerMemberShapeRegressionTests",
               "PluginServerSurpriseRegressionTests",
               "PluginServerControlServiceTests",
+              "PluginServerContextContractTests",
               "PluginServerTargetShapeRegressionTests",
               "PluginServerSurfaceCollisionRegressionTests",
               "ServerExtensionProxyAsyncTests",
               "ServerExtensionProxyCancellationTests",
               "ServerExtensionProxyNullableContractTests",
               "RpcKernelGenerationTests",
+              "RpcKernelPackageValidationTests",
               "RpcKernelLiveSettingRuntimeTests",
               "RpcKernelMethodGenerationTests",
               "RpcKernelMethodContextHelperRegressionTests",
@@ -399,9 +403,11 @@ jobs:
               "ServerExtensionMapTypeSupportTests",
               "ServerExtensionMapBodyLoweringTests",
               "HookResultBuilderHintNameRegressionTests",
+              "HookResultBuilderKeywordFieldTests",
               "ServerExtensionEnumOverflowRegressionTests",
               "Computed_dto_projection_round_trips",
               "PluginRevocationTests",
+              "Fix_API_0027_Tests",
               "PinnedHttpTransportTests",
               "DifferentialFuzzTests"
             )
@@ -411,14 +417,38 @@ jobs:
             -NoBuild `
             -RequiredFullyQualifiedNameContains @(
               "RpcEnvelopeValidationTests",
-              "EnvelopeRoundTripTests"
+              "EnvelopeRoundTripTests",
+              "RequestEnvelopeMessageIdMismatch_ReturnsProtocolError",
+              "InvokeAsync_ResponseEnvelopeMessageIdMismatch_FaultsRequestWithProtocolException",
+              "InstanceRegistryTests",
+              "UnknownStreamComplete_ReportsProtocolError",
+              "UnknownStreamError_ReportsProtocolError",
+              "ForwardedRemoteStreamError_PreservesOriginalRemoteType",
+              "ClientTransportConnectionLifecycleTests",
+              "SingleConnectionServerTransportLifecycleRegressionTests",
+              "NamedPipeServerTransportCancellationRegressionTests"
+            )
+          ./eng/scripts/run-required-tests.ps1 `
+            -Project tests/DotBoxD.Services.SourceGenerator.Tests/DotBoxD.Services.SourceGenerator.Tests.csproj `
+            -Configuration Release `
+            -NoBuild `
+            -RequiredFullyQualifiedNameContains @(
+              "UnsupportedShapeCoverageTests",
+              "SubServiceAvailabilityTests",
+              "SubServicePropertyInheritanceTests",
+              "NullableSubServiceTests",
+              "FloatingPointSpecialDefaults_ArePreservedInGeneratedSurface",
+              "ParamsParameters_ArePreservedInGeneratedProxySurface",
+              "CallerInfoAttributes_ArePreservedInGeneratedServiceSurface",
+              "GenericServiceMethod_WithRefStructAntiConstraint_PreservesConstraintOnProxyStub"
             )
           ./eng/scripts/run-required-tests.ps1 `
             -Project tests/DotBoxD.Plugins.Generated.Tests/DotBoxD.Plugins.Generated.Tests.csproj `
             -Configuration Release `
             -NoBuild `
             -RequiredFullyQualifiedNameContains @(
-              "Remote_RegisterLocal_tamper_rejects"
+              "Remote_RegisterLocal_tamper_rejects",
+              "RegisterLocal_value_only_overload_lowers_and_runs_the_handler"
             ) `
             -MinimumExecutedTestsByGroup @{
               Remote_RegisterLocal_tamper_rejects = 4

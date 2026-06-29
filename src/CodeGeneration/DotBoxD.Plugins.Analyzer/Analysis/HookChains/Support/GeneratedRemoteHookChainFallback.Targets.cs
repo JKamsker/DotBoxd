@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
@@ -46,16 +47,103 @@ internal static partial class GeneratedRemoteHookChainFallback
             return generated;
         }
 
+        if (expression is ConditionalAccessExpressionSyntax conditionalAccess &&
+            TargetFromConditionalAccessGeneratedServerMember(conditionalAccess, model, cancellationToken) is { } conditionalGenerated)
+        {
+            return conditionalGenerated;
+        }
+
+        if (expression is MemberAccessExpressionSyntax tupleElementAccess &&
+            TargetFromTupleElementAccess(tupleElementAccess, model, cancellationToken, depth) is { } tupleElementTarget)
+        {
+            return tupleElementTarget;
+        }
+
+        if (expression is MemberAccessExpressionSyntax anonymousObjectAccess &&
+            TargetFromAnonymousObjectPropertyAccess(anonymousObjectAccess, model, cancellationToken, depth) is { } anonymousTarget)
+        {
+            return anonymousTarget;
+        }
+
+        if (expression is ConditionalExpressionSyntax conditional &&
+            TargetFromConditionalRegistryExpression(conditional, model, cancellationToken, depth) is { } conditionalTarget)
+        {
+            return conditionalTarget;
+        }
+
+        if (expression is BinaryExpressionSyntax coalesce &&
+            TargetFromCoalesceRegistryExpression(coalesce, model, cancellationToken, depth) is { } coalesceTarget)
+        {
+            return coalesceTarget;
+        }
+
+        if (expression is SwitchExpressionSyntax switchExpression &&
+            TargetFromSwitchRegistryExpression(switchExpression, model, cancellationToken, depth) is { } switchTarget)
+        {
+            return switchTarget;
+        }
+
+        if (expression is AssignmentExpressionSyntax assignment &&
+            TargetFromAssignmentRegistryExpression(assignment, model, cancellationToken, depth) is { } assignmentTarget)
+        {
+            return assignmentTarget;
+        }
+
         return TargetFromDeclaredRegistryExpression(expression, model, cancellationToken) ??
             TargetFromLocalAlias(expression, model, cancellationToken, depth);
+    }
+
+    private static GeneratedRemoteHookChainTarget? TargetFromAssignmentRegistryExpression(
+        AssignmentExpressionSyntax assignment,
+        SemanticModel model,
+        CancellationToken cancellationToken,
+        int depth)
+    {
+        if (assignment.IsKind(SyntaxKind.SimpleAssignmentExpression))
+        {
+            return RegistryTarget(assignment.Right, model, cancellationToken, depth + 1);
+        }
+
+        if (assignment.IsKind(SyntaxKind.CoalesceAssignmentExpression))
+        {
+            return RegistryTarget(assignment.Right, model, cancellationToken, depth + 1);
+        }
+
+        return null;
     }
 
     private static GeneratedRemoteHookChainTarget? TargetFromGeneratedServerMember(
         MemberAccessExpressionSyntax registryAccess,
         SemanticModel model,
         CancellationToken cancellationToken)
+        => TargetFromGeneratedServerMember(
+            registryAccess.Name,
+            registryAccess.Expression,
+            registryAccess,
+            model,
+            cancellationToken);
+
+    private static GeneratedRemoteHookChainTarget? TargetFromConditionalAccessGeneratedServerMember(
+        ConditionalAccessExpressionSyntax registryAccess,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+        => registryAccess.WhenNotNull is MemberBindingExpressionSyntax binding
+            ? TargetFromGeneratedServerMember(
+                binding.Name,
+                registryAccess.Expression,
+                binding,
+                model,
+                cancellationToken)
+            : null;
+
+    private static GeneratedRemoteHookChainTarget? TargetFromGeneratedServerMember(
+        SimpleNameSyntax registryName,
+        ExpressionSyntax serverExpressionSyntax,
+        ExpressionSyntax registryExpression,
+        SemanticModel model,
+        CancellationToken cancellationToken)
     {
-        var kind = registryAccess.Name.Identifier.ValueText switch
+        var kind = registryName.Identifier.ValueText switch
         {
             "Hooks" => GeneratedRemoteHookChainKind.Hook,
             "Subscriptions" => GeneratedRemoteHookChainKind.Subscription,
@@ -66,7 +154,7 @@ internal static partial class GeneratedRemoteHookChainFallback
             return null;
         }
 
-        var serverExpression = HookChainAliasResolver.UnwrapTransparentExpression(registryAccess.Expression);
+        var serverExpression = HookChainAliasResolver.UnwrapTransparentExpression(serverExpressionSyntax);
         string? context = null;
         if (model.GetTypeInfo(serverExpression, cancellationToken).Type is INamedTypeSymbol serverType &&
             HasGeneratePluginServerAttribute(serverType, model.Compilation))
@@ -77,7 +165,7 @@ internal static partial class GeneratedRemoteHookChainFallback
                 return null;
             }
 
-            if (model.GetSymbolInfo(registryAccess, cancellationToken).Symbol is IPropertySymbol property &&
+            if (model.GetSymbolInfo(registryExpression, cancellationToken).Symbol is IPropertySymbol property &&
                 property.Type is INamedTypeSymbol registryType)
             {
                 return TargetFromRegistryMarker(registryType, model.Compilation) is { } marked &&
@@ -105,32 +193,6 @@ internal static partial class GeneratedRemoteHookChainFallback
             ? TargetFromOwnedGeneratedRegistryType(typeSyntax, model, cancellationToken)
             : null;
 
-    private static GeneratedRemoteHookChainTarget? TargetFromLocalAlias(
-        ExpressionSyntax expression,
-        SemanticModel model,
-        CancellationToken cancellationToken,
-        int depth)
-    {
-        if (expression is not IdentifierNameSyntax identifier ||
-            model.GetSymbolInfo(identifier, cancellationToken).Symbol is not ILocalSymbol local)
-        {
-            return null;
-        }
-
-        foreach (var reference in local.DeclaringSyntaxReferences)
-        {
-            if (reference.GetSyntax(cancellationToken) is VariableDeclaratorSyntax
-                {
-                    Initializer.Value: { } initializer
-                })
-            {
-                return RegistryTarget(initializer, model, cancellationToken, depth + 1);
-            }
-        }
-
-        return null;
-    }
-
     private static string? ContextFromOwnedGeneratedServerExpression(
         ExpressionSyntax expression,
         SemanticModel model,
@@ -138,91 +200,6 @@ internal static partial class GeneratedRemoteHookChainFallback
         => DeclaredTypeSyntax(expression, model, cancellationToken) is { } typeSyntax
             ? ContextFromOwnedGeneratedServerType(typeSyntax, model, cancellationToken)
             : null;
-
-    private static TypeSyntax? DeclaredTypeSyntax(
-        ExpressionSyntax expression,
-        SemanticModel model,
-        CancellationToken cancellationToken)
-    {
-        var symbol = model.GetSymbolInfo(expression, cancellationToken).Symbol;
-        if (symbol is null &&
-            expression is MemberAccessExpressionSyntax { Name: SimpleNameSyntax name })
-        {
-            symbol = model.GetSymbolInfo(name, cancellationToken).Symbol;
-        }
-
-        return symbol switch
-        {
-            IParameterSymbol parameter => ParameterTypeSyntax(parameter, cancellationToken),
-            ILocalSymbol local => LocalTypeSyntax(local, cancellationToken),
-            IFieldSymbol field => FieldTypeSyntax(field, cancellationToken),
-            IPropertySymbol property => PropertyTypeSyntax(property, cancellationToken),
-            _ => null
-        };
-    }
-
-    private static TypeSyntax? ParameterTypeSyntax(IParameterSymbol parameter, CancellationToken cancellationToken)
-    {
-        foreach (var reference in parameter.DeclaringSyntaxReferences)
-        {
-            if (reference.GetSyntax(cancellationToken) is ParameterSyntax { Type: { } typeSyntax })
-            {
-                return typeSyntax;
-            }
-        }
-
-        return null;
-    }
-
-    private static TypeSyntax? FieldTypeSyntax(IFieldSymbol field, CancellationToken cancellationToken)
-    {
-        foreach (var reference in field.DeclaringSyntaxReferences)
-        {
-            if (reference.GetSyntax(cancellationToken) is VariableDeclaratorSyntax
-                {
-                    Parent: VariableDeclarationSyntax
-                    {
-                        Type: { } typeSyntax,
-                        Parent: FieldDeclarationSyntax
-                    }
-                })
-            {
-                return typeSyntax;
-            }
-        }
-
-        return null;
-    }
-
-    private static TypeSyntax? PropertyTypeSyntax(IPropertySymbol property, CancellationToken cancellationToken)
-    {
-        foreach (var reference in property.DeclaringSyntaxReferences)
-        {
-            if (reference.GetSyntax(cancellationToken) is PropertyDeclarationSyntax { Type: { } typeSyntax })
-            {
-                return typeSyntax;
-            }
-        }
-
-        return null;
-    }
-
-    private static TypeSyntax? LocalTypeSyntax(ILocalSymbol local, CancellationToken cancellationToken)
-    {
-        foreach (var reference in local.DeclaringSyntaxReferences)
-        {
-            if (reference.GetSyntax(cancellationToken) is VariableDeclaratorSyntax
-                {
-                    Parent: VariableDeclarationSyntax { Type: { } typeSyntax }
-                } &&
-                !typeSyntax.IsVar)
-            {
-                return typeSyntax;
-            }
-        }
-
-        return null;
-    }
 
     private static GeneratedRemoteHookChainTarget? TargetFromOwnedGeneratedRegistryType(
         TypeSyntax typeSyntax,
@@ -239,14 +216,24 @@ internal static partial class GeneratedRemoteHookChainFallback
 
         foreach (var surface in OwnedGeneratedSurfaces(model.Compilation, cancellationToken))
         {
-            if (TypeMatches(typeSyntax, surface.HookRegistryName, surface.HookRegistryFullName))
+            if (TypeMatches(
+                typeSyntax,
+                surface.HookRegistryName,
+                surface.HookRegistryFullName,
+                model,
+                cancellationToken))
             {
                 return new GeneratedRemoteHookChainTarget(
                     GeneratedRemoteHookChainKind.Hook,
                     surface.ContextFullName);
             }
 
-            if (TypeMatches(typeSyntax, surface.SubscriptionRegistryName, surface.SubscriptionRegistryFullName))
+            if (TypeMatches(
+                typeSyntax,
+                surface.SubscriptionRegistryName,
+                surface.SubscriptionRegistryFullName,
+                model,
+                cancellationToken))
             {
                 return new GeneratedRemoteHookChainTarget(
                     GeneratedRemoteHookChainKind.Subscription,
@@ -272,26 +259,18 @@ internal static partial class GeneratedRemoteHookChainFallback
 
         foreach (var surface in OwnedGeneratedSurfaces(model.Compilation, cancellationToken))
         {
-            if (TypeMatches(typeSyntax, surface.ServerInterfaceName, surface.ServerInterfaceFullName))
+            if (TypeMatches(
+                typeSyntax,
+                surface.ServerInterfaceName,
+                surface.ServerInterfaceFullName,
+                model,
+                cancellationToken))
             {
                 return surface.ContextFullName;
             }
         }
 
         return null;
-    }
-
-    private static bool TypeMatches(TypeSyntax typeSyntax, string simpleName, string fullName)
-    {
-        var text = typeSyntax.ToString();
-        const string globalPrefix = "global::";
-        if (text.StartsWith(globalPrefix, StringComparison.Ordinal))
-        {
-            text = text.Substring(globalPrefix.Length);
-        }
-
-        return string.Equals(text, simpleName, StringComparison.Ordinal) ||
-            string.Equals(text, fullName, StringComparison.Ordinal);
     }
 
 }

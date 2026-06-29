@@ -79,6 +79,7 @@ public sealed class NamedPipeServerTransport : IServerTransport
     public async Task<IRpcChannel> AcceptAsync(CancellationToken ct = default)
     {
         ThrowIfDisposed();
+        ct.ThrowIfCancellationRequested();
         var stream = CreateStream();
         CancellationTokenSource linkedCts;
         try
@@ -173,8 +174,6 @@ public sealed class NamedPipeServerTransport : IServerTransport
             // only when the (linked) token is already cancelled. The linked token derives from _stopCts,
             // so cancelling first closes the dispose-before-cancel window: a stopped pending accept always
             // surfaces as cancellation, never a raw disposal/socket exception.
-            // The cancellation callback only disposes the pipe stream (lock-free), so running it under
-            // _sync cannot deadlock.
             stopCts?.Cancel();
             _pendingStream?.Dispose();
             _pendingStream = null;

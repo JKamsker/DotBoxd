@@ -150,6 +150,16 @@ $pluginFluentDocs = @(
     "docs/design/remote-plugin-server-builder/interface-driven-plugin-server.md"
 ) | ForEach-Object { Get-Item -LiteralPath (Resolve-RepoPath $_) }
 
+$currentServerExtensionDocs = @(
+    "README.md",
+    "docs/index.md",
+    "docs/getting-started/README.md",
+    "docs/concepts/pushdown.md",
+    "docs/Specs/Addendum/Examples.md",
+    "docs/design/plugin-fluent-hooks-api/followups.md",
+    "docs/design/remote-plugin-server-builder/invoke-async.md"
+) | ForEach-Object { Get-Item -LiteralPath (Resolve-RepoPath $_) }
+
 foreach ($document in $pluginFluentDocs) {
     Test-DocumentCommands $document.FullName
 }
@@ -160,6 +170,20 @@ Assert-DocumentsDoNotContain $pluginFluentDocs "server\.Events\.On" "server hook
 Assert-DocumentsDoNotContain $pluginFluentDocs "server\.Kernels\.(Register|Get)" "generated server surface no longer uses server.Kernels"
 Assert-DocumentsDoNotContain $pluginFluentDocs "InvokeKernel|InvokeLocal" "old kernel invocation terminology is stale"
 Assert-DocumentsDoNotContain $pluginFluentDocs "SetValuesAsync" "live-settings API uses generated update flow"
+
+Assert-DocumentsDoNotContain $currentServerExtensionDocs "KernelRpcService" "server extensions use ServerExtensionAttribute"
+Assert-DocumentsDoNotContain $currentServerExtensionDocs "KernelRpcClientMethod" "server-extension clients use ServerExtensionMethodAttribute"
+Assert-DocumentsDoNotContain $currentServerExtensionDocs "RegisterKernelRpcService" "server extensions register through RegisterServerExtensionAsync"
+Assert-DocumentsDoNotContain $currentServerExtensionDocs "RegisterRpcServiceAsync" "server extensions register through RegisterServerExtensionAsync"
+Assert-DocumentsDoNotContain $currentServerExtensionDocs "RpcService<" "server extensions use ServerExtension<T>"
+Assert-DocumentsDoNotContain $currentServerExtensionDocs "server\.KernelRpc" "generated server surface no longer uses server.KernelRpc"
+Assert-DocumentsDoNotContain $currentServerExtensionDocs "SetupKernelRpc" "builder docs use SetupServerExtensions"
+Assert-DocumentsDoNotContain $currentServerExtensionDocs "RemoteKernelRpcControl" "builder docs use RemoteServerExtensionControl"
+Assert-DocumentsDoNotContain $currentServerExtensionDocs "KernelRpcRegistrationAccumulator" "builder docs use ServerExtensionRegistrationAccumulator"
+Assert-DocumentsDoNotContain $currentServerExtensionDocs "kernel RPC" "current docs call this server extensions"
+Assert-DocumentsDoNotContain $currentServerExtensionDocs "KernelRpcMarshaller" "current server-extension docs avoid legacy KernelRpcMarshaller terminology"
+Assert-DocumentsDoNotContain $currentServerExtensionDocs "KernelRpcValue" "current server-extension docs avoid legacy KernelRpcValue terminology"
+Assert-DocumentsDoNotContain $currentServerExtensionDocs "KernelRpcBinaryCodec" "current server-extension docs avoid legacy KernelRpcBinaryCodec terminology"
 
 if (-not $IsWindows) {
     Write-Host "Skipping GameServer runtime smoke on non-Windows runners."

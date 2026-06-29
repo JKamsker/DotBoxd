@@ -1,4 +1,4 @@
-# Followups: `[KernelMethod]` inlining and kernel RPC services
+# Followups: `[KernelMethod]` inlining and server-extension services
 
 Two follow-on features layered on the lowering pipeline and the kernel runtime. Both keep the DotBoxD.Kernels
 invariant: plugin authors write plain C#, the generator lowers it to **verified, sandboxed IR**, and the
@@ -29,7 +29,7 @@ public static bool IsBullyingLowLevelPlayer(
 There is **no call** in the lowered IR — the method body is **inlined** at each call site. The generator:
 
 1. Resolves the invoked symbol and checks for `[KernelMethod]`
-   ([DotBoxDKernelMethodInliner](../../../src/DotBoxD.Plugins.Analyzer/Analysis/Lowering/Expressions/DotBoxDKernelMethodInliner.cs)).
+   ([DotBoxDKernelMethodInliner](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/Lowering/Expressions/DotBoxDKernelMethodInliner.cs)).
    A method without the attribute returns `null` so the normal dispatch continues; once the attribute is
    seen the inliner *owns* the call and any unsupported shape throws `NotSupportedException` (fail-safe).
 2. Lowers each call-site argument in the **calling** context (so a `[HostBinding]` call or
@@ -85,7 +85,7 @@ under a wildcard grant), and the multi-statement-body fail-safe (no chain packag
 
 ---
 
-## 2. Kernel RPC services
+## 2. Server extension services
 
 ### Goal
 
@@ -94,13 +94,13 @@ entities executes on the server (calling the host's existing bindings) instead o
 entity — and so it can take and return **complex objects and lists of objects**. The motivating shape:
 
 ```csharp
-await server.RegisterKernelRpcService<IMonsterKillerService, MonsterKillerKernel>();
-List<KillResult> killed = server.KernelRpcService<IMonsterKillerService>().KillMonsters(ids); // one roundtrip
+await server.RegisterServerExtensionAsync<IMonsterKillerService, MonsterKillerKernel>();
+List<KillResult> killed = server.ServerExtension<IMonsterKillerService>().KillMonsters(ids); // one roundtrip
 
 public interface IMonsterKillerService { List<KillResult> KillMonsters(List<int> monsterIds); }
 public readonly record struct KillResult(int MonsterId, bool Success);
 
-[KernelRpcService("monster-killer", typeof(IMonsterKillerService))]
+[ServerExtension("monster-killer", typeof(IMonsterKillerService))]
 public sealed partial class MonsterKillerKernel
 {
     public List<KillResult> KillMonsters(List<int> monsterIds, HookContext ctx)
@@ -133,19 +133,19 @@ resource limits); the **compiler** emits fast, verifier-checked IL for `record.n
 `EmitSandboxType` builds the field-type array through the trusted `CompiledRuntime.CreateTypeArray`
 facade (like the value-array path), so the verifier's `newarr` restriction (SandboxValue only) is
 unchanged, and the allowlist simply gains `RecordNew`/`RecordGet`/`TypeRecord`/`CreateTypeArray`.
-`PluginServer.InstallRpcAsync` honors the server's execution mode (Auto/Compiled), so RPC kernels
+`PluginServer.InstallServerExtensionAsync` honors the server's execution mode (Auto/Compiled), so server-extension kernels
 compile to IL like event kernels.
 
 ### The pieces
 
 | Layer | What it does |
 |---|---|
-| **Authoring** ([`[KernelRpcService]`](../../../src/DotBoxD.Abstractions/Contracts.cs)) | Marks the class; its one public batch method (trailing `HookContext` = host-binding marker) is the entrypoint. Supplying the service interface type lets the analyzer emit a source-generated client proxy for IPC/plugin-side calls. |
-| **Lowering** ([`RpcKernelModelFactory`](../../../src/DotBoxD.Plugins.Analyzer/Analysis/Rpc/RpcKernelModelFactory.cs), [`DotBoxDRpcJsonLowerer`](../../../src/DotBoxD.Plugins.Analyzer/Analysis/Rpc/DotBoxDRpcJsonLowerer.cs)) | Lowers the method body to verified IR **JSON** and emits a `<Name>PluginPackage` whose `Create()` imports it — so it ships exactly like an event kernel. Supports locals, a `foreach` over a list, `if`/`else`, host bindings, DTO construction (`new T(...)`/`new T{...}` → `record.new`), list accumulation (`list.Add` → `list.add`), indexing/`.Count`, and `return`. |
-| **Package + install** ([`PluginManifest.RpcEntrypoint`](../../../src/DotBoxD.Plugins/PluginManifest.cs), [`RpcKernelPackageValidator`](../../../src/DotBoxD.Plugins/Runtime/Rpc/RpcKernelPackageValidator.cs)) | A distinct package shape (no event subscription/contract) validated and installed via `InstallRpcAsync` / `PluginSession.InstallRpcAsync` (owned + revoked on disconnect, like event kernels). |
-| **Invoke** ([`InstalledKernel.InvokeRpcAsync`](../../../src/DotBoxD.Plugins/Kernel/InstalledKernel.Rpc.cs)) | Binds caller args to the entrypoint's leading parameters (live settings fill the trailing ones), runs the IR once under the execution gate, and **returns** the result value (not discarded). |
-| **Typed surface** ([`KernelRpcMarshaller`](../../../src/DotBoxD.Plugins/Runtime/Rpc/KernelRpcMarshaller.cs), [`KernelRpcServiceProxy`](../../../src/DotBoxD.Plugins/Runtime/Rpc/KernelRpcServiceProxy.cs), [`PluginServer.RpcService`](../../../src/DotBoxD.Plugins/Runtime/Rpc/PluginServer.Rpc.cs)) | `RegisterRpcServiceAsync<TService, TKernel>()` installs the kernel and binds the contract; `RpcService<TService>()` keeps the in-process runtime proxy path. For IPC/plugin-side calls, the analyzer emits a concrete `<Kernel>RpcClient` that writes/reads supported C# shapes directly, without `DispatchProxy` reflection. |
-| **IPC value transport** ([`KernelRpcValue`](../../../src/DotBoxD.Plugins/Runtime/Rpc/KernelRpcValue.cs), [`KernelRpcBinaryCodec`](../../../src/DotBoxD.Plugins/Runtime/Rpc/KernelRpcBinaryCodec.cs), [`IKernelRpcWireClient`](../../../src/DotBoxD.Plugins/Runtime/Rpc/IKernelRpcWireClient.cs)) | Generated clients encode positional kernel RPC IR values to compact binary payloads (`byte[]`) and send them over an ordinary IPC service method. The server decodes to sandbox values using the installed function's declared parameter/return types. |
+| **Authoring** ([`[ServerExtension]`](../../../src/Hosting/DotBoxD.Abstractions/Contracts.cs)) | Marks the class; its one public batch method (trailing `HookContext` = host-binding marker) is the entrypoint. Supplying the service interface type lets the analyzer emit a source-generated client proxy for IPC/plugin-side calls. |
+| **Lowering** ([`RpcKernelModelFactory`](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/Rpc/RpcKernelModelFactory.cs), [`DotBoxDRpcJsonLowerer`](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/Rpc/DotBoxDRpcJsonLowerer.cs)) | Lowers the method body to verified IR **JSON** and emits a `<Name>PluginPackage` whose `Create()` imports it — so it ships exactly like an event kernel. Supports locals, a `foreach` over a list, `if`/`else`, host bindings, DTO construction (`new T(...)`/`new T{...}` → `record.new`), list accumulation (`list.Add` → `list.add`), indexing/`.Count`, and `return`. |
+| **Package + install** ([`PluginManifest.RpcEntrypoint`](../../../src/Hosting/DotBoxD.Plugins/PluginManifest.cs), [`RpcKernelPackageValidator`](../../../src/Hosting/DotBoxD.Plugins/Runtime/Rpc/RpcKernelPackageValidator.cs)) | A distinct package shape (no event subscription/contract) validated and installed via `InstallServerExtensionAsync` / `PluginSession.InstallServerExtensionAsync` (owned + revoked on disconnect, like event kernels). |
+| **Invoke** ([`InstalledKernel.InvokeServerExtensionAsync`](../../../src/Hosting/DotBoxD.Plugins/Kernel/InstalledKernel.Rpc.cs)) | Binds caller args to the entrypoint's leading parameters (live settings fill the trailing ones), runs the IR once under the execution gate, and **returns** the result value (not discarded). |
+| **Typed surface** ([`ServerExtensionProxy`](../../../src/Hosting/DotBoxD.Plugins/Runtime/Rpc/ServerExtensionProxy.cs), [`PluginServer.ServerExtension`](../../../src/Hosting/DotBoxD.Plugins/Runtime/Rpc/PluginServer.Rpc.cs)) | `RegisterServerExtensionAsync<TService, TKernel>()` installs the kernel and binds the contract; `ServerExtension<TService>()` keeps the in-process runtime proxy path. For IPC/plugin-side calls, the analyzer emits a concrete `<Kernel>ServerExtensionClient` that writes/reads supported C# shapes directly, without `DispatchProxy` reflection. |
+| **IPC value transport** ([`IServerExtensionWireClient`](../../../src/Hosting/DotBoxD.Plugins/Runtime/Rpc/IServerExtensionWireClient.cs)) | Generated clients encode positional server-extension IR values to compact binary payloads (`byte[]`) and send them over an ordinary IPC service method. The server decodes to sandbox values using the installed function's declared parameter/return types. |
 
 ### Capabilities and effects
 
@@ -161,18 +161,18 @@ builds lists/records) + the binding effects, matched against the verified entryp
   DTOs. DTO fields map by **declaration order** (positional records → constructor-parameter order).
 - The typed proxy supports synchronous, `Task<T>`, and `ValueTask<T>` return shapes.
 - **Over IPC:** the plugin registers the generated verified-IR package, then a source-generated
-  plugin-side client marshals args/result to compact kernel RPC IR bytes over the existing control
+  plugin-side client marshals args/result to compact server-extension IR bytes over the existing control
   service. The server only sees the plugin id plus binary IR values; dispatch stays with the installed
   kernel's verified entrypoint and declared sandbox types.
 
 ### Tests
 
-[`RpcKernelRuntimeTests`](../../../tests/DotBoxD.Kernels.Tests/Plugins/Rpc/RpcKernelRuntimeTests.cs) (loop →
+[`RpcKernelRuntimeTests`](../../../tests/DotBoxD.Kernels.Tests/Plugins/Rpc/Runtime/RpcKernelRuntimeTests.cs) (loop →
 host binding per element → `List<Record>` in one roundtrip; JSON round-trip; capability deny;
-arg-count guard), [`RpcKernelGenerationTests`](../../../tests/DotBoxD.Kernels.Tests/Plugins/Rpc/RpcKernelGenerationTests.cs)
-(plain-C# `[KernelRpcService]` → generated IR → install → invoke), and
-[`KernelRpcServiceProxyTests`](../../../tests/DotBoxD.Kernels.Tests/Plugins/Rpc/KernelRpcServiceProxyTests.cs)
-(the typed proxy + `RegisterRpcServiceAsync`/`RpcService` + DTO/list marshaller round-trips + generated
+arg-count guard), [`RpcKernelGenerationTests`](../../../tests/DotBoxD.Kernels.Tests/Plugins/Rpc/Generation/RpcKernelGenerationTests.cs)
+(plain-C# `[ServerExtension]` → generated IR → install → invoke), and
+[`ServerExtensionProxyTests`](../../../tests/DotBoxD.Kernels.Tests/Plugins/Rpc/ServerExtension/ServerExtensionProxyTests.cs)
+(the typed proxy + `RegisterServerExtensionAsync`/`ServerExtension` + DTO/list marshaller round-trips + generated
 IPC client binary-IR request/response), plus the
 record-type foundation in [`SafeRecordCollectionTests`](../../../tests/DotBoxD.Kernels.Tests/Collections/SafeRecordCollectionTests.cs).
 

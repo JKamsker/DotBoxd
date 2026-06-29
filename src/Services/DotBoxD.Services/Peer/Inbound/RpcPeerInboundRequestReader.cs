@@ -9,6 +9,7 @@ internal static class RpcPeerInboundRequestReader
     public static bool TryRead(
         RpcFrame frame,
         ISerializer serializer,
+        int expectedMessageId,
         out RpcRequest request,
         out ReadOnlyMemory<byte> payload,
         out string? protocolError,
@@ -28,6 +29,12 @@ internal static class RpcPeerInboundRequestReader
         try
         {
             request = serializer.Deserialize<RpcRequest>(envelope);
+            if (request.MessageId != expectedMessageId)
+            {
+                protocolError = "Request envelope message id does not match frame header.";
+                return false;
+            }
+
             return true;
         }
         catch (Exception ex)

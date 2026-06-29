@@ -41,7 +41,7 @@ flowchart LR
 ## Runnable Example
 
 The maintained GameServer sample demonstrates service IPC, event kernels, live settings, host
-bindings, policy-gated execution, kernel RPC, and unload-on-disconnect:
+bindings, policy-gated execution, server extensions, and unload-on-disconnect:
 
 ```bash
 dotnet run -c Release --project samples/GameServer/Examples.GameServer.Server/Examples.GameServer.Server.csproj

@@ -60,6 +60,52 @@ public sealed class StreamingWave12RegressionTests
     }
 
     [Fact]
+    public async Task UnknownStreamComplete_ReportsProtocolError()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var protocolErrors = new List<string>();
+        var processor = CreateProcessor(
+            serializer,
+            CreateStreamManager(serializer),
+            protocolErrors);
+        using var complete = MessageFramer.FrameToPayload(
+            16_050,
+            MessageType.StreamComplete,
+            ReadOnlySpan<byte>.Empty);
+
+        Assert.True(await processor.ShouldDisposeAsync(complete, CancellationToken.None));
+
+        Assert.Single(protocolErrors, error => error.Contains("Unknown stream id."));
+    }
+
+    [Fact]
+    public async Task UnknownStreamError_ReportsProtocolError()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var protocolErrors = new List<string>();
+        var processor = CreateProcessor(
+            serializer,
+            CreateStreamManager(serializer),
+            protocolErrors);
+        using var error = MessageFramer.FrameMessage(
+            serializer,
+            16_060,
+            MessageType.StreamError,
+            new RpcResponse
+            {
+                MessageId = 16_060,
+                IsSuccess = false,
+                ErrorMessage = "remote failed",
+                ErrorType = "Remote",
+            },
+            ReadOnlySpan<byte>.Empty);
+
+        Assert.True(await processor.ShouldDisposeAsync(error, CancellationToken.None));
+
+        Assert.Single(protocolErrors, entry => entry.Contains("Unknown stream id."));
+    }
+
+    [Fact]
     public async Task CanceledInboundStreamId_CannotBeRegisteredUntilValidTerminalConsumesTombstone()
     {
         var serializer = new MessagePackRpcSerializer();

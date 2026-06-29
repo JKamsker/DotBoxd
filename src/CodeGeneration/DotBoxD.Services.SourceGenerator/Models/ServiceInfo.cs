@@ -74,10 +74,11 @@ internal sealed record ServiceModel(
 /// <summary>Immutable, value-equatable representation of a get-only sub-service property.</summary>
 internal sealed record ServicePropertyModel(
     string Name,
+    string ImplementationType,
     string Type,
     string? ProxyType,
     bool IsInstanceId,
-    string DeclaringType = "");
+    SubServiceInfo? SubService);
 
 /// <summary>
 /// Immutable, value-equatable representation of a service method. When
@@ -113,6 +114,10 @@ internal sealed record MethodModel(
 /// signature but are not serialized into the RPC payload.
 /// <see cref="RefKindKeyword"/> holds the C# modifier text (<c>""</c>, <c>"ref "</c>,
 /// <c>"in "</c>, or <c>"out "</c>).
+/// <see cref="IsParams"/> preserves a user-authored <c>params</c> modifier for generated public
+/// signatures when the parameter is still the final parameter.
+/// <see cref="CallerInfoAttributePrefix"/> preserves compiler-recognized caller-info attributes as
+/// generated-source text, including a trailing space when non-empty.
 /// <see cref="DefaultValueLiteral"/> holds the C# literal text of a non-cancellation-token
 /// parameter's explicit default value (e.g. <c>"\"x\""</c>, <c>"5"</c>, <c>"null"</c>), so the
 /// generated proxy and async-sibling signatures preserve it; empty when there is no default or it
@@ -123,12 +128,14 @@ internal sealed record ParameterModel(
     string Type,
     string SignatureType,
     string RefKindKeyword = "",
+    bool IsParams = false,
     bool IsCancellationToken = false,
     bool HasDefaultValue = false,
     string DefaultValueLiteral = "",
     ParameterStreamKind StreamKind = ParameterStreamKind.None,
     string? StreamItemType = null,
-    string MetadataType = "");
+    string MetadataType = "",
+    string CallerInfoAttributePrefix = "");
 
 /// <summary>
 /// A <see cref="ServiceModel"/> paired with its computed async-sibling projection. Lives

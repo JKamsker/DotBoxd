@@ -50,4 +50,64 @@ public sealed partial class InvokeAsyncGeneratedReceiverSurpriseTests
             source.Contains("AnonymousInvokeAsync", StringComparison.Ordinal),
             source);
     }
+
+    [Fact]
+    public void Same_compilation_generated_services_receiver_lowers_InvokeAsync()
+    {
+        var result = RunGeneratorAndAssertCompiles(UsageSource("""
+            public static ValueTask<int> Run(RemotePluginServer kernels)
+                => kernels.Services.InvokeAsync(async (IGameWorldAccess world) =>
+                {
+                    return world.GetHealth("monster-1");
+                });
+            """));
+        var source = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
+        Assert.Contains("AnonymousInvokeAsync", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Generated_services_receiver_on_subclass_lowers_InvokeAsync()
+    {
+        var result = RunGeneratorAndAssertCompiles(UsageSource("""
+            public sealed class DerivedServer : RemotePluginServer
+            {
+                public DerivedServer(DotBoxD.Kernels.Game.Server.Abstractions.Ipc.IGamePluginControlService control)
+                    : base(control)
+                {
+                }
+            }
+
+            public static ValueTask<int> Run(DerivedServer kernels)
+                => kernels.Services.InvokeAsync(async (IGameWorldAccess world) =>
+                {
+                    return world.GetHealth("monster-1");
+                });
+            """));
+        var source = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
+        Assert.Contains("AnonymousInvokeAsync", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Generated_builder_tuple_receiver_lowers_InvokeAsync()
+    {
+        var result = RunGeneratorAndAssertCompiles(UsageSource("""
+            public static ValueTask<int> Run(
+                DotBoxD.Kernels.Game.Server.Abstractions.Ipc.IGamePluginControlService control)
+            {
+                var pair = (Server: RemotePluginServerBuilder.FromConnection(control).Build(), Ignored: 0);
+                return pair.Server.InvokeAsync(async (IGameWorldAccess world) =>
+                {
+                    return world.GetHealth("monster-1");
+                });
+            }
+            """));
+        var source = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
+        Assert.Contains("AnonymousInvokeAsync", source, StringComparison.Ordinal);
+    }
 }
