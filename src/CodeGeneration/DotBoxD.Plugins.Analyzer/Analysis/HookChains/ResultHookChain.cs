@@ -212,16 +212,20 @@ internal static partial class ResultHookChain
         resultType = null!;
         foreach (var attribute in contextType.GetAttributes())
         {
-            if (string.Equals(attribute.AttributeClass?.ToDisplayString(), DotBoxDMetadataNames.HookAttribute, StringComparison.Ordinal) &&
-                attribute.ConstructorArguments.Length == 2 &&
-                attribute.ConstructorArguments[0].Value is string declaredName &&
-                !string.IsNullOrWhiteSpace(declaredName) &&
-                attribute.ConstructorArguments[1].Value is INamedTypeSymbol declaredResult)
+            if (!EventTypeName.TryHookName(attribute, out var declaredName))
             {
-                hookName = declaredName;
-                resultType = declaredResult;
-                return true;
+                continue;
             }
+
+            if (attribute.ConstructorArguments.Length != 2 ||
+                attribute.ConstructorArguments[1].Value is not INamedTypeSymbol declaredResult)
+            {
+                throw new NotSupportedException();
+            }
+
+            hookName = declaredName;
+            resultType = declaredResult;
+            return true;
         }
 
         return false;

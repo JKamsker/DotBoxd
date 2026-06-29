@@ -26,15 +26,34 @@ internal static class EventTypeName
     {
         foreach (var attribute in eventType.GetAttributes())
         {
-            if (string.Equals(attribute.AttributeClass?.ToDisplayString(), DotBoxDMetadataNames.HookAttribute, StringComparison.Ordinal) &&
-                attribute.ConstructorArguments.Length > 0 &&
-                attribute.ConstructorArguments[0].Value is string declaredName &&
-                !string.IsNullOrWhiteSpace(declaredName))
+            if (TryHookName(attribute, out var declaredName))
             {
                 return declaredName;
             }
         }
 
         return Qualified(eventType);
+    }
+
+    public static bool TryHookName(AttributeData attribute, out string hookName)
+    {
+        hookName = string.Empty;
+        if (!string.Equals(
+                attribute.AttributeClass?.ToDisplayString(),
+                DotBoxDMetadataNames.HookAttribute,
+                StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (attribute.ConstructorArguments.Length == 0 ||
+            attribute.ConstructorArguments[0].Value is not string declaredName ||
+            string.IsNullOrWhiteSpace(declaredName))
+        {
+            throw new NotSupportedException("[Hook] name must not be empty or whitespace.");
+        }
+
+        hookName = declaredName;
+        return true;
     }
 }
