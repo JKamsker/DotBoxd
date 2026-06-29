@@ -21,6 +21,8 @@ permissions:
   issues: read
   pull-requests: read
 
+if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'failure')
+
 checkout:
   fetch-depth: 0
   fetch: ["*"]
