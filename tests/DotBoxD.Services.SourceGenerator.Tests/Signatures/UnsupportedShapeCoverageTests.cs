@@ -117,6 +117,55 @@ public class UnsupportedShapeCoverageTests
     }
 
     [Fact]
+    public void ObjectAndDynamicPayloads_ProduceDBXS002_AndSkipDispatch()
+    {
+        const string source = """
+            using DotBoxD.Services.Attributes;
+            using System.Collections.Generic;
+            using System.Threading.Tasks;
+
+            namespace Regress.UnsupportedCoverage
+            {
+                [DotBoxDService]
+                public interface IOpenEndedPayloads
+                {
+                    object GetObject();
+                    Task<dynamic> GetDynamicAsync();
+                    void TakeObject(object value);
+                    void TakeNestedObject(Dictionary<string, object> values);
+                }
+            }
+            """;
+
+        var (_, runResult) = Compile(source);
+
+        var diagnostics = runResult.Diagnostics
+            .Where(d => d.Id == "DBXS002" &&
+                d.GetMessage().Contains("object or dynamic as an RPC payload type"))
+            .ToArray();
+        diagnostics.Should().HaveCount(4);
+        diagnostics.Should().Contain(d => d.GetMessage().Contains("return type"));
+        diagnostics.Should().Contain(d => d.GetMessage().Contains("parameter 'value'"));
+        diagnostics.Should().Contain(d => d.GetMessage().Contains("parameter 'values'"));
+
+        var generated = runResult.Results.Single().GeneratedSources;
+        var proxy = generated
+            .Single(g => g.HintName.EndsWith("IOpenEndedPayloads.DotBoxDRpcProxy.g.cs"))
+            .SourceText.ToString();
+        proxy.Should().Contain("public object GetObject()");
+        proxy.Should().Contain("public global::System.Threading.Tasks.Task<dynamic> GetDynamicAsync()");
+        proxy.Should().Contain("throw new global::System.NotSupportedException");
+
+        var dispatcher = generated
+            .Single(g => g.HintName.EndsWith("IOpenEndedPayloads.DotBoxDRpcDispatcher.g.cs"))
+            .SourceText.ToString();
+        dispatcher.Should().NotContain("case \"GetObject\":");
+        dispatcher.Should().NotContain("case \"GetDynamicAsync\":");
+        dispatcher.Should().NotContain("case \"TakeObject\":");
+        dispatcher.Should().NotContain("case \"TakeNestedObject\":");
+    }
+
+    [Fact]
     public void InParameter_ProducesDBXS002_AndPreservesProxyStubSignature()
     {
         const string source = """

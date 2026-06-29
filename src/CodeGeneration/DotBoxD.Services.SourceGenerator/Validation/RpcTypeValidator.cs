@@ -20,6 +20,11 @@ internal static class RpcTypeValidator
             return $"{role} uses Task or ValueTask as an RPC payload type; Task and ValueTask are only supported as top-level return wrappers";
         }
 
+        if (ContainsOpenEndedPayloadType(type, ct))
+        {
+            return $"{role} uses object or dynamic as an RPC payload type; declare a concrete payload type so the wire contract can be reconstructed";
+        }
+
         if (ContainsRefLikeType(type, ct))
         {
             return $"{role} uses a ref-like type, which cannot be serialized as an RPC payload";
@@ -128,6 +133,36 @@ internal static class RpcTypeValidator
     private static bool IsTaskLike(INamedTypeSymbol type) =>
         (type.Name == "Task" || type.Name == "ValueTask") &&
         type.ContainingNamespace?.ToDisplayString() == "System.Threading.Tasks";
+
+    private static bool ContainsOpenEndedPayloadType(ITypeSymbol type, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        if (type.TypeKind == TypeKind.Dynamic || type.SpecialType == SpecialType.System_Object)
+        {
+            return true;
+        }
+
+        if (type is IArrayTypeSymbol array)
+        {
+            return ContainsOpenEndedPayloadType(array.ElementType, ct);
+        }
+
+        if (type is INamedTypeSymbol named)
+        {
+            foreach (var arg in named.TypeArguments)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                if (ContainsOpenEndedPayloadType(arg, ct))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 
     private static bool ContainsRefLikeType(ITypeSymbol type, CancellationToken ct)
     {

@@ -35,6 +35,14 @@ public class CanonicalSignatureEdgeTests
         AssertCompiles(final);
 
         runResult.Diagnostics.Should().NotContain(d => d.Id == "DBXS003");
+        runResult.Diagnostics.Where(d => d.Id == "DBXS002")
+            .Should().ContainSingle(d =>
+                d.GetMessage().Contains("parameter 'value' uses object or dynamic as an RPC payload type"));
+        var proxy = runResult.Results.Single().GeneratedSources
+            .Single(g => g.HintName.EndsWith("ICombined.DotBoxDRpcProxy.g.cs"))
+            .SourceText.ToString();
+        CountOccurrences(proxy, "M(").Should().Be(1);
+        proxy.Should().Contain("throw new global::System.NotSupportedException");
     }
 
     [Fact]
