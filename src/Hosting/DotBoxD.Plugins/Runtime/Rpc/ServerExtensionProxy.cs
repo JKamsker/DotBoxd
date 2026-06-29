@@ -164,26 +164,21 @@ public class ServerExtensionProxy : DispatchProxy
 
     private static IEnumerable<MethodInfo> ContractMethods(Type serviceType)
     {
-        var seen = new HashSet<MethodInfo>();
-        foreach (var method in serviceType.GetMethods())
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var methods = serviceType.GetMethods()
+            .Concat(serviceType.GetInterfaces().SelectMany(static inherited => inherited.GetMethods()));
+        foreach (var method in methods)
         {
-            if (seen.Add(method))
+            if (seen.Add(ContractMethodKey(method)))
             {
                 yield return method;
             }
         }
-
-        foreach (var inherited in serviceType.GetInterfaces())
-        {
-            foreach (var method in inherited.GetMethods())
-            {
-                if (seen.Add(method))
-                {
-                    yield return method;
-                }
-            }
-        }
     }
+
+    private static string ContractMethodKey(MethodInfo method)
+        => method.Name + "|" + method.ReturnType.FullName + "|" +
+           string.Join("|", method.GetParameters().Select(static parameter => parameter.ParameterType.FullName));
 
     private static Type? UnwrapReturnType(Type type)
     {
