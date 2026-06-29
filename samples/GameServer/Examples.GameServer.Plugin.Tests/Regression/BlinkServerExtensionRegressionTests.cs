@@ -36,7 +36,10 @@ public sealed class BlinkServerExtensionRegressionTests
 
     private static SandboxPolicy GrantRequiredCapabilities(IReadOnlyList<string> capabilities)
     {
-        var builder = SandboxPolicyBuilder.Create().WithFuel(100_000).WithMaxHostCalls(1_000);
+        var builder = SandboxPolicyBuilder.Create()
+            .WithFuel(100_000)
+            .WithMaxHostCalls(1_000)
+            .WithWallTime(TimeSpan.FromSeconds(10));
         foreach (var capability in capabilities)
         {
             if (string.Equals(capability, RuntimeCapabilityIds.Async, StringComparison.Ordinal))

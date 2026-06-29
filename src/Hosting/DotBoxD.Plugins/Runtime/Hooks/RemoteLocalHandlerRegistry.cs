@@ -126,7 +126,7 @@ public sealed class RemoteLocalHandlerRegistry
         ArgumentException.ThrowIfNullOrEmpty(subscriptionId);
         ArgumentNullException.ThrowIfNull(handler);
         _ = KernelRpcMarshaller.SandboxTypeOf(typeof(TContext));
-        _ = KernelRpcMarshaller.SandboxTypeOf(typeof(TResult));
+        _ = KernelRpcMarshaller.HookResultSandboxTypeOf(typeof(TResult));
 
         var entry = new ResultHandler(async (payload, hookContext, cancellationToken) =>
         {

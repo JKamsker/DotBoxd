@@ -219,7 +219,7 @@ public partial class HookPipeline<TEvent, TContext>
 
         var expected = resultLocalTerminal
             ? SandboxType.Unit
-            : KernelRpcMarshaller.SandboxTypeOf(resultType);
+            : KernelRpcMarshaller.HookResultSandboxTypeOf(resultType);
         if (handle.ReturnType.Equals(expected))
         {
             return;

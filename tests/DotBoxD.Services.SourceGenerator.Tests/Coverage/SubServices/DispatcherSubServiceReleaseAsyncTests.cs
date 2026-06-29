@@ -34,13 +34,13 @@ public sealed class DispatcherSubServiceReleaseAsyncTests
     [Fact]
     public void Dispatcher_AwaitsRegisteredSubServiceRelease_WhenResponseSerializationFails()
     {
+        var asm = Compile(Source);
+        var dispatcherType = asm.GetType("Coverage.SubServiceRelease.RootServiceDispatcher")!;
+        var iRoot = asm.GetType("Coverage.SubServiceRelease.IRootService")!;
+        var iSub = asm.GetType("Coverage.SubServiceRelease.ISubService")!;
+
         var completed = PumpRunner.RunWithTimeout(async () =>
         {
-            var asm = Compile(Source);
-            var dispatcherType = asm.GetType("Coverage.SubServiceRelease.RootServiceDispatcher")!;
-            var iRoot = asm.GetType("Coverage.SubServiceRelease.IRootService")!;
-            var iSub = asm.GetType("Coverage.SubServiceRelease.ISubService")!;
-
             var disposal = new AsyncDisposalGate();
             var subImpl = SubImplFactory.Create(iSub, disposal);
             var rootImpl = RootImplFactory.Create(iRoot, _ => subImpl);

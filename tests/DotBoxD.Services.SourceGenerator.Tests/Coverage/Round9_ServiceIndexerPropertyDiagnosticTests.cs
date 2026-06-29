@@ -51,7 +51,7 @@ public sealed class Round9_ServiceIndexerPropertyDiagnosticTests
         using (new AssertionScope())
         {
             runResult.Diagnostics.Should().Contain(
-                d => d.Id == "DBXS003" && d.GetMessage().Contains("interface property"),
+                d => d.Id == "DBXS003" && d.GetMessage().Contains("indexer"),
                 "a sub-service indexer is not a shape the generator can reproduce honestly");
 
             runResult.Results.Single().GeneratedSources.Should().NotContain(
