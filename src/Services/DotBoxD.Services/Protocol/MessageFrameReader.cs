@@ -22,7 +22,34 @@ internal static class MessageFrameReader
         {
             throw new InvalidDataException($"Invalid DotBoxD frame length: {declaredLength}.");
         }
+
+        if (!IsDefinedMessageType((MessageType)frame[8]))
+        {
+            throw new InvalidDataException($"Invalid DotBoxD message type: 0x{frame[8]:X2}.");
+        }
     }
+
+    public static void ThrowIfUndefinedMessageType(MessageType type)
+    {
+        if (!IsDefinedMessageType(type))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(type),
+                type,
+                "Unsupported DotBoxD message type.");
+        }
+    }
+
+    private static bool IsDefinedMessageType(MessageType type) =>
+        type is MessageType.Request or
+            MessageType.Response or
+            MessageType.Error or
+            MessageType.Cancel or
+            MessageType.StreamItem or
+            MessageType.StreamComplete or
+            MessageType.StreamError or
+            MessageType.StreamCredit or
+            MessageType.StreamCancel;
 
     public static bool TryReadFrame(
         ReadOnlyMemory<byte> source,

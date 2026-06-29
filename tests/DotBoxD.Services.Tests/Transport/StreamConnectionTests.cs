@@ -89,6 +89,21 @@ public class StreamConnectionTests
     }
 
     [Fact]
+    public async Task SendAsync_RejectsUndefinedMessageType()
+    {
+        var bytes = new byte[MessageFramer.HeaderSize];
+        BinaryPrimitives.WriteInt32LittleEndian(bytes, bytes.Length);
+        bytes[8] = 0x7F;
+        var stream = new MemoryStream();
+        await using var connection = new StreamConnection(stream, ownsStream: false);
+
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(() => connection.SendAsync(bytes));
+
+        Assert.Contains("message type", ex.Message);
+        Assert.Empty(stream.ToArray());
+    }
+
+    [Fact]
     public async Task FrameChannel_SendsPooledWriterAndReceivesRpcFrame()
     {
         var output = new MemoryStream();

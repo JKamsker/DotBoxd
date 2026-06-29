@@ -76,6 +76,21 @@ public sealed partial class MessageFramerCoverageTests
         Assert.Equal(MessageType.Response, readType);
     }
 
+    [Fact]
+    public void FrameWriters_UndefinedMessageType_Throws()
+    {
+        var invalidType = (MessageType)0x7F;
+        using var writer = new PooledBufferWriter();
+
+        var writeEx = Assert.Throws<ArgumentOutOfRangeException>(
+            () => MessageFramer.WriteFrame(writer, 1, invalidType, ReadOnlySpan<byte>.Empty));
+        var frameEx = Assert.Throws<ArgumentOutOfRangeException>(
+            () => MessageFramer.FrameToPayload(1, invalidType, ReadOnlySpan<byte>.Empty));
+
+        Assert.Equal("type", writeEx.ParamName);
+        Assert.Equal("type", frameEx.ParamName);
+    }
+
     // ---- ValidateOutgoingFrame: malformed / oversized frames (lines 173-174, 185-186) -------
 
     [Theory]
@@ -126,6 +141,18 @@ public sealed partial class MessageFramerCoverageTests
 
         // Act + Assert: a real codec output must pass validation unchanged.
         MessageFramer.ValidateOutgoingFrame(frame.Span);
+    }
+
+    [Fact]
+    public void ValidateOutgoingFrame_UndefinedMessageType_Throws()
+    {
+        using var valid = MessageFramer.FrameToPayload(1, MessageType.Request, ReadOnlySpan<byte>.Empty);
+        var frame = valid.Memory.ToArray();
+        frame[8] = 0x7F;
+
+        var ex = Assert.Throws<InvalidDataException>(() => MessageFramer.ValidateOutgoingFrame(frame));
+
+        Assert.Contains("message type", ex.Message);
     }
 
     // ---- TryReadFrame: round trips + malformed (lines 208-209, 228-229) ---------------------

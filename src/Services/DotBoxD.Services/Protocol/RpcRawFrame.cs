@@ -7,6 +7,8 @@ internal static class RpcRawFrame
 {
     public static void WritePrefix(PooledBufferWriter writer, int messageId, MessageType type)
     {
+        MessageFrameReader.ThrowIfUndefinedMessageType(type);
+
         var span = writer.GetSpan(MessageFramer.HeaderSize);
         BinaryPrimitives.WriteInt32LittleEndian(span.Slice(4, 4), messageId);
         span[8] = (byte)type;
@@ -65,6 +67,8 @@ internal static class RpcRawFrame
 
     public static Payload FrameInt32(int messageId, MessageType type, int value)
     {
+        MessageFrameReader.ThrowIfUndefinedMessageType(type);
+
         var frame = Payload.Rent(MessageFramer.HeaderSize + sizeof(int));
         var span = frame.Memory.Span;
         BinaryPrimitives.WriteInt32LittleEndian(span.Slice(0, 4), frame.Length);
