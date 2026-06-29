@@ -25,4 +25,28 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
 
         Assert.Contains("deconstruction-alias", generated, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Same_compilation_generated_registry_nested_deconstruction_alias_lowers()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public static class NestedDeconstructionAliasUsage
+            {
+                public static void Configure(AlphaPluginServer server)
+                {
+                    var ((hooks, _), _) = ((server.Hooks, 0), "ignored");
+                    hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                        .Where(e => e.Distance <= 5)
+                        .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "nested-deconstruction-alias"));
+                }
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("nested-deconstruction-alias", generated, StringComparison.Ordinal);
+    }
 }
