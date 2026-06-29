@@ -86,7 +86,7 @@ internal static partial class DotBoxDRpcTypeMapper
         }
         if (IsRangeWireType(type))
         {
-            RejectRangeTooDeep(type, depth);
+            RejectTooDeep(type, depth + 1);
             return RangeWireJsonType();
         }
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
@@ -146,14 +146,6 @@ internal static partial class DotBoxDRpcTypeMapper
         }
     }
 
-    private static void RejectRangeTooDeep(ITypeSymbol type, int depth)
-    {
-        if (depth + 1 >= MaxJsonTypeDepth)
-        {
-            throw new NotSupportedException(
-                $"Server extension type '{type.ToDisplayString()}' exceeds the supported RPC shape depth.");
-        }
-    }
     /// <summary>The element type of a list-shaped parameter/return (<c>List&lt;T&gt;</c>,
     /// <c>IReadOnlyList&lt;T&gt;</c>, <c>IEnumerable&lt;T&gt;</c>, or <c>T[]</c>), else null.</summary>
     public static ITypeSymbol? ListElementType(ITypeSymbol type)
