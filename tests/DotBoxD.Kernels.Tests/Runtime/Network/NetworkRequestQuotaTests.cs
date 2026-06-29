@@ -32,11 +32,10 @@ public sealed class NetworkRequestQuotaTests
     }
 
     [Fact]
-    public async Task Http_get_request_byte_limit_matches_get_line_byte_count()
+    public async Task Http_get_request_byte_limit_includes_request_line_and_host_header()
     {
         const string uri = "https://api.example.com/config?tenant=alpha&mode=full";
-        // 4 = "GET " request-line prefix.
-        var expectedBytes = 4 + Encoding.UTF8.GetByteCount(uri);
+        var expectedBytes = ExpectedGetRequestBytes("/config?tenant=alpha&mode=full", "api.example.com");
         var allowed = NetworkPolicyBuilder()
             .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024, maxRequestBytes: expectedBytes)
             .WithFuel(5_000)
@@ -57,6 +56,25 @@ public sealed class NetworkRequestQuotaTests
         Assert.False(deniedResult.Succeeded);
         Assert.Equal(SandboxErrorCode.QuotaExceeded, deniedResult.Error!.Code);
     }
+
+    [Fact]
+    public async Task Http_get_request_byte_limit_includes_non_default_host_port()
+    {
+        const string uri = "https://api.example.com:8443/config";
+        var expectedBytes = ExpectedGetRequestBytes("/config", "api.example.com:8443");
+        var allowed = NetworkPolicyBuilder()
+            .GrantHttpGet(["api.example.com:8443"], maxResponseBytes: 1024, maxRequestBytes: expectedBytes)
+            .WithFuel(5_000)
+            .Build();
+
+        var allowedResult = await ExecuteNetworkAsync(uri, allowed);
+
+        Assert.True(allowedResult.Succeeded, allowedResult.Error?.SafeMessage);
+        Assert.Equal(expectedBytes, allowedResult.ResourceUsage.NetworkBytesWritten);
+    }
+
+    private static long ExpectedGetRequestBytes(string requestTarget, string host)
+        => Encoding.UTF8.GetByteCount($"GET {requestTarget} HTTP/1.1\r\nHost: {host}\r\n\r\n");
 
     private static async Task<SandboxExecutionResult> ExecuteNetworkAsync(string uri, SandboxPolicy policy)
     {
