@@ -104,7 +104,7 @@ public sealed class EventQueryHostTests
         var hits = new List<string>();
 
         var handle = await host.Query<AttackTestEvent>()
-            .Where(e => e.AttackerId == "player-1" && e.TargetId.StartsWith("monster-"))
+            .Where(e => e.AttackerId == "player-1" && e.TargetId.StartsWith("monster-", StringComparison.Ordinal))
             .Select(e => e.TargetId)
             .SubscribeAsync((target, _) =>
             {

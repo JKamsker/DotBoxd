@@ -67,7 +67,7 @@ internal static class MethodCallFilterTranslator
             return false;
         }
 
-        var ignoreCase = ReadIgnoreCase(call, call.Arguments, parameter);
+        var ignoreCase = ReadIgnoreCase(call, op, call.Arguments, parameter);
         filter = QueryFilter.Compare(path, op, makeValue(raw, call.Arguments[0]), ignoreCase);
         return true;
     }
@@ -133,11 +133,19 @@ internal static class MethodCallFilterTranslator
 
     private static bool ReadIgnoreCase(
         MethodCallExpression call,
+        QueryComparisonOperator op,
         IReadOnlyList<Expression> arguments,
         ParameterExpression parameter)
     {
         if (arguments.Count == 1)
         {
+            if (op is QueryComparisonOperator.StringStartsWith or QueryComparisonOperator.StringEndsWith)
+            {
+                throw QueryTranslationException.Unsupported(
+                    call,
+                    $"string {call.Method.Name} one-argument overload is culture-sensitive; pass StringComparison.Ordinal or OrdinalIgnoreCase.");
+            }
+
             return false;
         }
 
@@ -159,7 +167,7 @@ internal static class MethodCallFilterTranslator
 
         throw QueryTranslationException.Unsupported(
             call,
-            "string filters support only the one-string-argument overload or a StringComparison.Ordinal/OrdinalIgnoreCase overload.");
+            "string filters support only ordinal overloads: one-argument Contains/Equals, or StringComparison.Ordinal/OrdinalIgnoreCase.");
     }
 
     private static bool HasNonOrdinalComparer(object collection)
