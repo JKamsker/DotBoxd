@@ -96,11 +96,11 @@ internal static class MethodCallFilterTranslator
 
         var unwrapped = UnwrapSpan(collection);
 
-        // An instance collection (HashSet/Dictionary/SortedSet) can carry a custom equality comparer that
-        // changes membership semantics; lowering it to a case-sensitive ordinal In would silently drop or add
-        // matches. Reject the case-insensitive / culture-sensitive comparers rather than mis-translate.
-        if (call.Object is not null &&
-            QueryValueFactory.TryEvaluateObject(unwrapped, parameter, out var collectionObject) &&
+        // HashSet/Dictionary-style collections can carry a custom equality comparer that changes membership
+        // semantics even when written as static Enumerable.Contains(source, item); lowering that to a
+        // case-sensitive ordinal In would silently drop or add matches. Reject case-insensitive /
+        // culture-sensitive comparers rather than mis-translate.
+        if (QueryValueFactory.TryEvaluateObject(unwrapped, parameter, out var collectionObject) &&
             collectionObject is not null &&
             HasNonOrdinalComparer(collectionObject))
         {

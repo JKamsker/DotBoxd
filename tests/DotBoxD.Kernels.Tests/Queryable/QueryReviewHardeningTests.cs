@@ -65,6 +65,15 @@ public sealed class QueryReviewHardeningTests
     }
 
     [Fact]
+    public void Static_contains_over_a_case_insensitive_collection_is_rejected()
+    {
+        var watched = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "a", "b" };
+        Assert.Throws<QueryTranslationException>(() =>
+            ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(
+                e => Enumerable.Contains(watched, e.AttackerId)));
+    }
+
+    [Fact]
     public void Contains_over_a_default_collection_still_lowers_to_in()
     {
         var ids = new[] { "a", "b" };
