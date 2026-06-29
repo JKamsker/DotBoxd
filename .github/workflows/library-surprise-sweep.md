@@ -26,6 +26,12 @@ network:
     - dotnet
     - threat-detection
 
+sandbox:
+  agent:
+    targets:
+      openai:
+        base-url-secret: CODEX_LB_BASE_URL
+
 tools:
   github:
     lockdown: false

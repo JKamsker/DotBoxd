@@ -13,6 +13,12 @@ network:
     - github
     - threat-detection
 
+sandbox:
+  agent:
+    targets:
+      openai:
+        base-url-secret: CODEX_LB_BASE_URL
+
 engine: codex
 
 safe-outputs:
