@@ -10,17 +10,17 @@ public sealed class ServerExtensionClientExtensionAccessibilityTests
         var diagnostics = Diagnostics("""
             public sealed class Owner
             {
-                private sealed class RemoteMonsterControl
+                protected sealed class RemoteMonsterControl
                 {
                     public DotBoxD.Plugins.IServerExtensionClientRegistry ServerExtensions { get; } = null!;
                 }
+            }
 
-                [ServerExtensionClient(typeof(RemoteMonsterControl))]
-                [ServerExtension("monster-killer", typeof(IMonsterKillerService))]
-                public sealed partial class MonsterKillerKernel
-                {
-                    public int Kill(int monsterId, HookContext ctx) => monsterId;
-                }
+            [ServerExtensionClient(typeof(RemoteMonsterControl))]
+            [ServerExtension("monster-killer", typeof(IMonsterKillerService))]
+            public sealed partial class MonsterKillerKernel : Owner
+            {
+                public int Kill(int monsterId, HookContext ctx) => monsterId;
             }
             """);
 
@@ -42,14 +42,14 @@ public sealed class ServerExtensionClientExtensionAccessibilityTests
 
             public sealed class Owner
             {
-                private sealed class SecretToken;
+                protected sealed class SecretToken;
+            }
 
-                [ServerExtensionClient(typeof(RemoteMonsterControl<SecretToken>))]
-                [ServerExtension("monster-killer", typeof(IMonsterKillerService))]
-                public sealed partial class MonsterKillerKernel
-                {
-                    public int Kill(int monsterId, HookContext ctx) => monsterId;
-                }
+            [ServerExtensionClient(typeof(RemoteMonsterControl<SecretToken>))]
+            [ServerExtension("monster-killer", typeof(IMonsterKillerService))]
+            public sealed partial class MonsterKillerKernel : Owner
+            {
+                public int Kill(int monsterId, HookContext ctx) => monsterId;
             }
             """);
 
@@ -75,13 +75,13 @@ public sealed class ServerExtensionClientExtensionAccessibilityTests
                 {
                     DotBoxD.Plugins.IServerExtensionClientRegistry ISecretControl.ServerExtensions => null!;
                 }
+            }
 
-                [ServerExtensionClient(typeof(RemoteMonsterControl))]
-                [ServerExtension("monster-killer", typeof(IMonsterKillerService))]
-                public sealed partial class MonsterKillerKernel
-                {
-                    public int Kill(int monsterId, HookContext ctx) => monsterId;
-                }
+            [ServerExtensionClient(typeof(Owner.RemoteMonsterControl))]
+            [ServerExtension("monster-killer", typeof(IMonsterKillerService))]
+            public sealed partial class MonsterKillerKernel
+            {
+                public int Kill(int monsterId, HookContext ctx) => monsterId;
             }
             """);
 

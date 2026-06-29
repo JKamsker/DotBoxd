@@ -23,10 +23,16 @@ internal static class PluginKernelModelFactory
         var eventTypes = PluginSymbolReader.EventTypes(type);
         if (string.IsNullOrWhiteSpace(pluginId))
         {
-            var diagnostic = PluginKernelDiagnostic.Create(
+            return new PluginKernelModelResult(null, PluginKernelDiagnostic.Create(
                 declaration.Identifier,
-                "Plugin id must be a non-empty string.");
-            return new PluginKernelModelResult(null, diagnostic);
+                "Plugin id must be a non-empty string."));
+        }
+
+        if (type.ContainingType is not null)
+        {
+            return new PluginKernelModelResult(null, PluginKernelDiagnostic.Create(
+                declaration.Identifier,
+                $"Plugin kernels must be top-level types; '{type.ToDisplayString()}' is nested."));
         }
 
         if (eventTypes.Count == 0)

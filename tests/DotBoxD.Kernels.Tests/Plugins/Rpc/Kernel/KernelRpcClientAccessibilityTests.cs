@@ -35,7 +35,7 @@ public sealed class ServerExtensionClientAccessibilityTests
     }
 
     [Fact]
-    public void Generated_client_rejects_private_nested_service_interface()
+    public void Generated_client_rejects_protected_nested_service_interface()
     {
         var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
             using System.Threading.Tasks;
@@ -48,18 +48,18 @@ public sealed class ServerExtensionClientAccessibilityTests
 
             public sealed class Container
             {
-                private interface IEchoService
+                protected interface IEchoService
                 {
                     ValueTask<int> EchoAsync(int value);
                 }
+            }
 
-                [ServerExtension("echo", typeof(IEchoService))]
-                public sealed partial class EchoKernel
+            [ServerExtension("echo", typeof(IEchoService))]
+            public sealed partial class EchoKernel : Container
+            {
+                public int Echo(int value, HookContext ctx)
                 {
-                    public int Echo(int value, HookContext ctx)
-                    {
-                        return value;
-                    }
+                    return value;
                 }
             }
             """);
@@ -90,13 +90,13 @@ public sealed class ServerExtensionClientAccessibilityTests
 
             public sealed class Owner
             {
-                private sealed class SecretToken;
+                protected sealed class SecretToken;
+            }
 
-                [ServerExtension("echo", typeof(IEchoService<SecretToken>))]
-                public sealed partial class EchoKernel
-                {
-                    public int Echo(int value, HookContext ctx) => value;
-                }
+            [ServerExtension("echo", typeof(IEchoService<SecretToken>))]
+            public sealed partial class EchoKernel : Owner
+            {
+                public int Echo(int value, HookContext ctx) => value;
             }
             """);
 

@@ -193,7 +193,7 @@ public sealed class ServerExtensionClientProxyValidationTests
     }
 
     [Fact]
-    public void Kernel_rpc_service_rejects_duplicate_generated_package_names_from_nested_kernels()
+    public void Kernel_rpc_service_rejects_nested_generated_package_owners()
     {
         var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
             using DotBoxD.Abstractions;
@@ -229,7 +229,12 @@ public sealed class ServerExtensionClientProxyValidationTests
         Assert.Contains(
             diagnostics,
             d => d.Id == "DBXK100" &&
-                 d.GetMessage().Contains("Plugin package name 'EchoPluginPackage' is generated more than once", StringComparison.Ordinal));
+                 d.GetMessage().Contains("top-level", StringComparison.OrdinalIgnoreCase) &&
+                 d.GetMessage().Contains("nested", StringComparison.OrdinalIgnoreCase));
+
+        Assert.DoesNotContain(
+            diagnostics,
+            d => d.GetMessage().Contains("generated more than once", StringComparison.Ordinal));
     }
 
     [Fact]

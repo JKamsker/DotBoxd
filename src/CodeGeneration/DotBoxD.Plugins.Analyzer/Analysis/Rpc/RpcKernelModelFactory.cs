@@ -36,6 +36,11 @@ internal static partial class RpcKernelModelFactory
             return Fail(declaration, $"Generated server extension '{type.Name}' cannot be generic.");
         }
 
+        if (type.ContainingType is not null)
+        {
+            return Fail(declaration, $"Server extension kernels must be top-level types; '{type.ToDisplayString()}' is nested.");
+        }
+
         var serviceType = ServiceType(context.Attributes);
         var graftType = GraftType(context.Attributes);
 

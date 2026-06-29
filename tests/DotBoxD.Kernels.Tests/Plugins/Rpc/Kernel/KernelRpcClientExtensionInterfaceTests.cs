@@ -116,15 +116,15 @@ public sealed class ServerExtensionClientExtensionInterfaceTests
                 {
                     DotBoxD.Plugins.IServerExtensionClientRegistry IServerExtensionsBacked.ServerExtensions => null!;
                 }
+            }
 
-                [ServerExtensionClient(typeof(RemoteMonsterControl))]
-                [ServerExtension("monster-killer", typeof(IMonsterKillerService))]
-                public sealed partial class MonsterKillerKernel
+            [ServerExtensionClient(typeof(Owner.RemoteMonsterControl))]
+            [ServerExtension("monster-killer", typeof(IMonsterKillerService))]
+            public sealed partial class MonsterKillerKernel
+            {
+                public int Kill(int monsterId, HookContext ctx)
                 {
-                    public int Kill(int monsterId, HookContext ctx)
-                    {
-                        return monsterId;
-                    }
+                    return monsterId;
                 }
             }
             """);
