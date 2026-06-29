@@ -15,20 +15,15 @@ internal static class RpcKernelPayloadDtoReaderBuilder
         {
             var construction = "new " + TypeName(type) + "(" +
                 string.Join(", ", DtoConstructorArguments(fields, constructor.Symbol)) + ")";
-            if (constructor.AssignedCount == fields.Count &&
-                !RequiresRequiredMemberInitializer(fields, constructor.Symbol, compilation))
-            {
-                return "        return " + construction + ";";
-            }
-
-            if (!DotBoxDRpcTypeMapper.CanReconstructFromAssignedFields(fields, constructor.Assigned, compilation))
+            if (constructor.AssignedCount < fields.Count &&
+                !DotBoxDRpcTypeMapper.CanReconstructFromAssignedFields(fields, constructor.Assigned, compilation))
             {
                 throw new NotSupportedException(
                     $"Server extension DTO '{type.ToDisplayString()}' constructor '{constructor.Symbol.ToDisplayString()}' " +
                     "does not assign every public field and the remaining fields are not settable.");
             }
 
-            return BuildInitializer(construction, fields, constructor.Assigned, constructor.Symbol, compilation);
+            return BuildInitializer(construction, fields, constructor.Assigned, compilation);
         }
 
         if (DotBoxDRpcTypeMapper.CanReconstructWithObjectInitializer(type, fields, compilation))
@@ -37,8 +32,7 @@ internal static class RpcKernelPayloadDtoReaderBuilder
                 "new " + TypeName(type),
                 fields,
                 assigned: new bool[fields.Count],
-                constructor: null,
-                compilation);
+                compilation: compilation);
         }
 
         throw new NotSupportedException(
@@ -75,11 +69,10 @@ internal static class RpcKernelPayloadDtoReaderBuilder
         string construction,
         IReadOnlyList<RecordMember> fields,
         bool[]? assigned,
-        IMethodSymbol? constructor,
         Compilation? compilation)
     {
         var initializer = new StringBuilder();
-        var initialized = InitializerFieldIndexes(fields, assigned, constructor, compilation);
+        var initialized = InitializerFieldIndexes(fields, assigned, compilation);
         initializer.Append("        var __result = ").Append(construction);
         if (initialized.Count == 0)
         {
@@ -98,7 +91,7 @@ internal static class RpcKernelPayloadDtoReaderBuilder
             initializer.AppendLine("        };");
         }
 
-        AppendReadOnlyFieldVerifications(initializer, fields, assigned, compilation);
+        AppendReadOnlyFieldVerifications(initializer, fields, compilation);
         initializer.AppendLine();
         initializer.Append("        return __result;");
         return initializer.ToString();
@@ -107,15 +100,13 @@ internal static class RpcKernelPayloadDtoReaderBuilder
     private static List<int> InitializerFieldIndexes(
         IReadOnlyList<RecordMember> fields,
         bool[]? assigned,
-        IMethodSymbol? constructor,
         Compilation? compilation)
     {
         var initialized = new List<int>();
         for (var i = 0; i < fields.Count; i++)
         {
             if (assigned is not null &&
-                ((assigned[i] && !MustInitializeRequiredMember(fields[i], constructor, compilation)) ||
-                 (!assigned[i] && !DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i], compilation))))
+                !DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i], compilation))
             {
                 continue;
             }
@@ -129,13 +120,11 @@ internal static class RpcKernelPayloadDtoReaderBuilder
     private static void AppendReadOnlyFieldVerifications(
         StringBuilder builder,
         IReadOnlyList<RecordMember> fields,
-        bool[]? assigned,
         Compilation? compilation)
     {
         for (var i = 0; i < fields.Count; i++)
         {
-            if (assigned is not null &&
-                (assigned[i] || DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i], compilation)))
+            if (DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i], compilation))
             {
                 continue;
             }
@@ -220,37 +209,6 @@ internal static class RpcKernelPayloadDtoReaderBuilder
 
         return partial;
     }
-
-    private static bool RequiresRequiredMemberInitializer(
-        IReadOnlyList<RecordMember> fields,
-        IMethodSymbol constructor,
-        Compilation? compilation)
-        => !HasSetsRequiredMembers(constructor) &&
-           fields.Any(field => IsRequiredMember(field) &&
-                               DotBoxDRpcTypeMapper.IsObjectInitializerWritable(field, compilation));
-
-    private static bool MustInitializeRequiredMember(
-        RecordMember field,
-        IMethodSymbol? constructor,
-        Compilation? compilation)
-        => constructor is not null &&
-           !HasSetsRequiredMembers(constructor) &&
-           IsRequiredMember(field) &&
-           DotBoxDRpcTypeMapper.IsObjectInitializerWritable(field, compilation);
-
-    private static bool IsRequiredMember(RecordMember field)
-        => field.Symbol switch
-        {
-            IPropertySymbol property => property.IsRequired,
-            IFieldSymbol fieldSymbol => fieldSymbol.IsRequired,
-            _ => false,
-        };
-
-    private static bool HasSetsRequiredMembers(IMethodSymbol constructor)
-        => constructor.GetAttributes().Any(attribute => string.Equals(
-            attribute.AttributeClass?.ToDisplayString(),
-            "System.Diagnostics.CodeAnalysis.SetsRequiredMembersAttribute",
-            StringComparison.Ordinal));
 
     private static string FieldLocal(int index)
         => "__field" + index.ToString(System.Globalization.CultureInfo.InvariantCulture);

@@ -12,20 +12,15 @@ internal sealed partial class InvokeAsyncResultReaderSource
         {
             var construction = "new " + TypeName(type) + "(" +
                 string.Join(", ", DtoConstructorArguments(fields, constructor.Symbol)) + ")";
-            if (constructor.AssignedCount == fields.Count &&
-                !RequiresRequiredMemberInitializer(fields, constructor.Symbol))
-            {
-                return "            return " + construction + ";";
-            }
-
-            if (!DotBoxDRpcTypeMapper.CanReconstructFromAssignedFields(fields, constructor.Assigned, _compilation))
+            if (constructor.AssignedCount < fields.Count &&
+                !DotBoxDRpcTypeMapper.CanReconstructFromAssignedFields(fields, constructor.Assigned, _compilation))
             {
                 throw new NotSupportedException(
                     $"InvokeAsync DTO '{type.ToDisplayString()}' constructor '{constructor.Symbol.ToDisplayString()}' " +
                     "does not assign every public field and the remaining fields are not settable.");
             }
 
-            return BuildDtoInitializer(construction, fields, constructor.Assigned, constructor.Symbol);
+            return BuildDtoInitializer(construction, fields, constructor.Assigned);
         }
 
         if (DotBoxDRpcTypeMapper.CanReconstructWithObjectInitializer(type, fields, _compilation))
@@ -33,8 +28,7 @@ internal sealed partial class InvokeAsyncResultReaderSource
             return BuildDtoInitializer(
                 "new " + TypeName(type),
                 fields,
-                assigned: new bool[fields.Count],
-                constructor: null);
+                assigned: new bool[fields.Count]);
         }
 
         throw new NotSupportedException(
@@ -45,11 +39,10 @@ internal sealed partial class InvokeAsyncResultReaderSource
     private string BuildDtoInitializer(
         string construction,
         IReadOnlyList<RecordMember> fields,
-        bool[]? assigned,
-        IMethodSymbol? constructor)
+        bool[]? assigned)
     {
         var initializer = new StringBuilder();
-        var initialized = InitializerFieldIndexes(fields, assigned, constructor);
+        var initialized = InitializerFieldIndexes(fields, assigned);
         initializer.Append("            var __result = ").Append(construction);
         if (initialized.Count == 0)
         {
@@ -68,7 +61,7 @@ internal sealed partial class InvokeAsyncResultReaderSource
             initializer.AppendLine("            };");
         }
 
-        AppendReadOnlyFieldVerifications(initializer, fields, assigned);
+        AppendReadOnlyFieldVerifications(initializer, fields);
         initializer.AppendLine();
         initializer.Append("            return __result;");
         return initializer.ToString();
@@ -76,15 +69,13 @@ internal sealed partial class InvokeAsyncResultReaderSource
 
     private List<int> InitializerFieldIndexes(
         IReadOnlyList<RecordMember> fields,
-        bool[]? assigned,
-        IMethodSymbol? constructor)
+        bool[]? assigned)
     {
         var initialized = new List<int>();
         for (var i = 0; i < fields.Count; i++)
         {
             if (assigned is not null &&
-                ((assigned[i] && !MustInitializeRequiredMember(fields[i], constructor)) ||
-                 (!assigned[i] && !DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i], _compilation))))
+                !DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i], _compilation))
             {
                 continue;
             }
@@ -97,13 +88,11 @@ internal sealed partial class InvokeAsyncResultReaderSource
 
     private void AppendReadOnlyFieldVerifications(
         StringBuilder builder,
-        IReadOnlyList<RecordMember> fields,
-        bool[]? assigned)
+        IReadOnlyList<RecordMember> fields)
     {
         for (var i = 0; i < fields.Count; i++)
         {
-            if (assigned is not null &&
-                (assigned[i] || DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i], _compilation)))
+            if (DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i], _compilation))
             {
                 continue;
             }
@@ -208,31 +197,6 @@ internal sealed partial class InvokeAsyncResultReaderSource
 
         return partial;
     }
-
-    private bool RequiresRequiredMemberInitializer(IReadOnlyList<RecordMember> fields, IMethodSymbol constructor)
-        => !HasSetsRequiredMembers(constructor) &&
-           fields.Any(field => IsRequiredMember(field) &&
-                               DotBoxDRpcTypeMapper.IsObjectInitializerWritable(field, _compilation));
-
-    private bool MustInitializeRequiredMember(RecordMember field, IMethodSymbol? constructor)
-        => constructor is not null &&
-           !HasSetsRequiredMembers(constructor) &&
-           IsRequiredMember(field) &&
-           DotBoxDRpcTypeMapper.IsObjectInitializerWritable(field, _compilation);
-
-    private static bool IsRequiredMember(RecordMember field)
-        => field.Symbol switch
-        {
-            IPropertySymbol property => property.IsRequired,
-            IFieldSymbol fieldSymbol => fieldSymbol.IsRequired,
-            _ => false,
-        };
-
-    private static bool HasSetsRequiredMembers(IMethodSymbol constructor)
-        => constructor.GetAttributes().Any(attribute => string.Equals(
-            attribute.AttributeClass?.ToDisplayString(),
-            "System.Diagnostics.CodeAnalysis.SetsRequiredMembersAttribute",
-            StringComparison.Ordinal));
 
     private static string Identifier(string name)
         => "@" + name;

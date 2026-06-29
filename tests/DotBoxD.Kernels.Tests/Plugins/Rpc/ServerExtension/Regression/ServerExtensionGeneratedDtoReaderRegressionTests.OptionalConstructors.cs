@@ -7,7 +7,7 @@ namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
 public sealed partial class ServerExtensionGeneratedDtoReaderRegressionTests
 {
     [Fact]
-    public void Direct_extension_does_not_silently_trust_a_full_constructor_that_drops_a_public_member()
+    public void Direct_extension_rejects_full_constructor_that_drops_a_public_read_only_member()
     {
         var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly("""
             using DotBoxD.Kernels;
@@ -67,13 +67,12 @@ public sealed partial class ServerExtensionGeneratedDtoReaderRegressionTests
                 KernelRpcValue.Int32(9)
             ])));
 
-        var profile = assembly.GetType("Sample.Probe", throwOnError: true)!
+        var ex = Assert.Throws<TargetInvocationException>(() => assembly.GetType("Sample.Probe", throwOnError: true)!
             .GetMethod("Read", BindingFlags.Public | BindingFlags.Static)!
-            .Invoke(null, [control, 3])!;
+            .Invoke(null, [control, 3]));
 
-        var type = profile.GetType();
-        Assert.Equal(3, type.GetProperty("Health")!.GetValue(profile));
-        Assert.Equal(9, type.GetProperty("Rank")!.GetValue(profile));
+        var inner = Assert.IsType<NotSupportedException>(ex.InnerException);
+        Assert.Contains("Rank", inner.Message, StringComparison.Ordinal);
     }
 
     [Fact]

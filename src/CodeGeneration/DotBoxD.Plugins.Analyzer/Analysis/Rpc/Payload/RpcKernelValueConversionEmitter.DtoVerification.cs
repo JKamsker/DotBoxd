@@ -2,21 +2,18 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 
 using System.Collections.Generic;
 using System.Text;
-using Microsoft.CodeAnalysis;
 
 internal sealed partial class RpcKernelValueConversionEmitter
 {
     private List<int> InitializerFieldIndexes(
         IReadOnlyList<RecordMember> fields,
-        bool[]? assigned,
-        IMethodSymbol? constructor)
+        bool[]? assigned)
     {
         var initialized = new List<int>();
         for (var i = 0; i < fields.Count; i++)
         {
             if (assigned is not null &&
-                ((assigned[i] && !MustInitializeRequiredMember(fields[i], constructor)) ||
-                 (!assigned[i] && !DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i], _compilation))))
+                !DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i], _compilation))
             {
                 continue;
             }
@@ -29,13 +26,11 @@ internal sealed partial class RpcKernelValueConversionEmitter
 
     private void AppendReadOnlyFieldVerifications(
         StringBuilder builder,
-        IReadOnlyList<RecordMember> fields,
-        bool[]? assigned)
+        IReadOnlyList<RecordMember> fields)
     {
         for (var i = 0; i < fields.Count; i++)
         {
-            if (assigned is not null &&
-                (assigned[i] || DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i], _compilation)))
+            if (DotBoxDRpcTypeMapper.IsObjectInitializerWritable(fields[i], _compilation))
             {
                 continue;
             }
