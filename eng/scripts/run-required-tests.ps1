@@ -58,6 +58,7 @@ $defaultMinimums = @{
     JsonApiSurfaceTests = 1
     PublicModelImmutabilityTests = 5
     PluginPackageValidationTests = 19
+    KernelRegistryLookupConsistencyTests = 1
     EventIndexTrustBoundaryTests = 7
     CapabilityPolicySplitTests = 7
     HookChainRuntimeTests = 11

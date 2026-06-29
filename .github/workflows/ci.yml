@@ -333,6 +333,7 @@ jobs:
               "JsonApiSurfaceTests",
               "PublicModelImmutabilityTests",
               "PluginPackageValidationTests",
+              "KernelRegistryLookupConsistencyTests",
               "EventIndexTrustBoundaryTests",
               "CapabilityPolicySplitTests",
               "HookChainRuntimeTests",

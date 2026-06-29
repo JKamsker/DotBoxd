@@ -15,9 +15,16 @@ public sealed class KernelRegistry : IEnumerable<InstalledKernel>
 
     public InstalledKernel Get(string pluginId)
     {
+        ArgumentNullException.ThrowIfNull(pluginId);
         lock (_gate)
         {
-            return _currentByPluginId[pluginId];
+            if (TryFindByPluginOrInstallIdLocked(pluginId, out var kernel))
+            {
+                return kernel;
+            }
+
+            throw new KeyNotFoundException(
+                $"No kernel is registered for plugin or install id '{pluginId}'.");
         }
     }
 
