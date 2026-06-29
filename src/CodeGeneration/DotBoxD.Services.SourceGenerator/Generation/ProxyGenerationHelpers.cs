@@ -33,7 +33,7 @@ internal static class ProxyGenerationHelpers
             sb.Append("params ");
         }
 
-        sb.Append(p.RefKindKeyword).Append(p.Type).Append(' ').Append(p.Name);
+        sb.Append(p.ScopeKeyword).Append(p.RefKindKeyword).Append(p.Type).Append(' ').Append(p.Name);
         AppendDefaultValue(sb, p);
     }
 

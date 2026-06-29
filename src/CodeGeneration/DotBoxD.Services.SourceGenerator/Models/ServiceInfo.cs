@@ -112,6 +112,7 @@ internal sealed record MethodModel(
 /// Immutable, value-equatable representation of a method parameter.
 /// <see cref="IsCancellationToken"/> marks parameters that are part of the user's
 /// signature but are not serialized into the RPC payload.
+/// <see cref="ScopeKeyword"/> preserves a user-authored <c>scoped</c> modifier.
 /// <see cref="RefKindKeyword"/> holds the C# modifier text (<c>""</c>, <c>"ref "</c>,
 /// <c>"in "</c>, or <c>"out "</c>).
 /// <see cref="IsParams"/> preserves a user-authored <c>params</c> modifier for generated public
@@ -135,7 +136,8 @@ internal sealed record ParameterModel(
     ParameterStreamKind StreamKind = ParameterStreamKind.None,
     string? StreamItemType = null,
     string MetadataType = "",
-    string CallerInfoAttributePrefix = "");
+    string CallerInfoAttributePrefix = "",
+    string ScopeKeyword = "");
 
 /// <summary>
 /// A <see cref="ServiceModel"/> paired with its computed async-sibling projection. Lives

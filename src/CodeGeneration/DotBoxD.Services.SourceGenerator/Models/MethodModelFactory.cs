@@ -174,7 +174,8 @@ internal static partial class MethodModelFactory
                 streamKind,
                 streamItemType?.ToDisplayString(s_qualifiedFormat),
                 MetadataType: TypeOfExpressionFormatter.Format(param.Type, ct),
-                CallerInfoAttributePrefix: BuildCallerInfoAttributePrefix(param, ct)));
+                CallerInfoAttributePrefix: BuildCallerInfoAttributePrefix(param, ct),
+                ScopeKeyword: ParameterScopeKeyword(param, ct)));
         }
 
         if (unsupportedReason is not null)
