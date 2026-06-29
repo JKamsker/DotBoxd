@@ -101,6 +101,8 @@ internal static partial class GeneratedRemoteHookChainFallback
                     return typeSyntax;
                 case IndexerDeclarationSyntax { Type: { } typeSyntax }:
                     return typeSyntax;
+                case ParameterSyntax { Type: { } typeSyntax }:
+                    return typeSyntax;
             }
         }
 
