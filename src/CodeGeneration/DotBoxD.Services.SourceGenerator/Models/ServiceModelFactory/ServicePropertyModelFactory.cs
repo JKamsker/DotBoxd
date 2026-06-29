@@ -56,9 +56,7 @@ internal static class ServicePropertyModelFactory
     }
 
     private static string GetImplementationType(IPropertySymbol propertySymbol) =>
-        IdentifierHelpers.QualifyTypeName(
-            GetNamespace(propertySymbol.ContainingType.ContainingNamespace),
-            propertySymbol.ContainingType.Name);
+        propertySymbol.ContainingType.ToDisplayString(s_qualifiedFormat);
 
     private static string GetNamespace(INamespaceSymbol namespaceSymbol)
     {
