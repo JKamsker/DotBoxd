@@ -66,7 +66,7 @@ internal static class RpcKernelClientExtensionModelFactory
             }
 
             var receiverType = ReceiverType(attribute, "property");
-            var name = OptionalName(attribute) ?? DefaultPropertyName(kernelType.Name);
+            var name = OptionalName(attribute, "property") ?? DefaultPropertyName(kernelType.Name);
             ValidateMemberName(name, "property");
             return new RpcKernelClientPropertyExtension(receiverType, name);
         }
@@ -86,7 +86,7 @@ internal static class RpcKernelClientExtensionModelFactory
             }
 
             var receiverType = ReceiverType(attribute, "method", defaultReceiverType);
-            var name = OptionalName(attribute) ?? kernelMethod.Name;
+            var name = OptionalName(attribute, "method") ?? kernelMethod.Name;
             ValidateMemberName(name, "method");
             ValidateReceiver(receiverType, name, "method");
             return new RpcKernelClientMethodExtension(receiverType, name);
@@ -120,16 +120,26 @@ internal static class RpcKernelClientExtensionModelFactory
         throw new NotSupportedException($"Server extension client {memberKind} requires a receiver type.");
     }
 
-    private static string? OptionalName(AttributeData attribute)
+    private static string? OptionalName(AttributeData attribute, string memberKind)
     {
         if (attribute.ConstructorArguments.Length < 2)
         {
             return null;
         }
 
-        return attribute.ConstructorArguments[1].Value is string name && !string.IsNullOrWhiteSpace(name)
-            ? name
-            : null;
+        if (attribute.ConstructorArguments[1].Value is null)
+        {
+            return null;
+        }
+
+        if (attribute.ConstructorArguments[1].Value is not string name ||
+            string.IsNullOrWhiteSpace(name))
+        {
+            throw new NotSupportedException(
+                $"Server extension client {memberKind} name must not be empty or whitespace.");
+        }
+
+        return name;
     }
 
     private static void ValidateMemberName(string name, string memberKind)
