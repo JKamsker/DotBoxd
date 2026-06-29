@@ -59,6 +59,12 @@ internal static partial class GeneratedRemoteHookChainFallback
             return tupleElementTarget;
         }
 
+        if (expression is MemberAccessExpressionSyntax anonymousObjectAccess &&
+            TargetFromAnonymousObjectPropertyAccess(anonymousObjectAccess, model, cancellationToken, depth) is { } anonymousTarget)
+        {
+            return anonymousTarget;
+        }
+
         if (expression is ConditionalExpressionSyntax conditional &&
             TargetFromConditionalRegistryExpression(conditional, model, cancellationToken, depth) is { } conditionalTarget)
         {

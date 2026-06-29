@@ -6,6 +6,65 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 
 internal static partial class GeneratedRemoteHookChainFallback
 {
+    private static GeneratedRemoteHookChainTarget? TargetFromAnonymousObjectPropertyAccess(
+        MemberAccessExpressionSyntax access,
+        SemanticModel model,
+        CancellationToken cancellationToken,
+        int depth)
+        => AnonymousObjectPropertyInitializer(access, model, cancellationToken) is { } initializer
+            ? RegistryTarget(initializer, model, cancellationToken, depth + 1)
+            : null;
+
+    private static ExpressionSyntax? AnonymousObjectPropertyInitializer(
+        MemberAccessExpressionSyntax access,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        var memberName = access.Name.Identifier.ValueText;
+        var expression = HookChainAliasResolver.UnwrapTransparentExpression(access.Expression);
+        var creation = expression as AnonymousObjectCreationExpressionSyntax;
+        if (creation is null &&
+            HookChainAliasResolver.Initializer(expression, model, cancellationToken) is { } initializer)
+        {
+            creation = HookChainAliasResolver.UnwrapTransparentExpression(initializer)
+                as AnonymousObjectCreationExpressionSyntax;
+        }
+
+        if (creation is null)
+        {
+            return null;
+        }
+
+        foreach (var memberInitializer in creation.Initializers)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (string.Equals(
+                AnonymousObjectMemberName(memberInitializer),
+                memberName,
+                StringComparison.Ordinal))
+            {
+                return memberInitializer.Expression;
+            }
+        }
+
+        return null;
+    }
+
+    private static string? AnonymousObjectMemberName(AnonymousObjectMemberDeclaratorSyntax initializer)
+    {
+        if (initializer.NameEquals is { Name.Identifier.ValueText: { } explicitName })
+        {
+            return explicitName;
+        }
+
+        return initializer.Expression switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+            MemberAccessExpressionSyntax { Name: SimpleNameSyntax name } => name.Identifier.ValueText,
+            _ => null
+        };
+    }
+
     private static GeneratedRemoteHookChainTarget? TargetFromTupleElementAccess(
         MemberAccessExpressionSyntax access,
         SemanticModel model,
