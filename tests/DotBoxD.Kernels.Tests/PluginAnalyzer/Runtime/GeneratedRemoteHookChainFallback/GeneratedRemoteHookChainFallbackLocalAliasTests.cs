@@ -49,4 +49,29 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
 
         Assert.Contains("nested-deconstruction-alias", generated, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Same_compilation_generated_registry_assignment_expression_lowers()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public static class AssignmentExpressionAliasUsage
+            {
+                public static void Configure(AlphaPluginServer server)
+                {
+                    AlphaPluginHookRegistry hooks = null!;
+                    (hooks = server.Hooks)
+                        .On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                        .Where(e => e.Distance <= 5)
+                        .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "assignment-expression-alias"));
+                }
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("assignment-expression-alias", generated, StringComparison.Ordinal);
+    }
 }

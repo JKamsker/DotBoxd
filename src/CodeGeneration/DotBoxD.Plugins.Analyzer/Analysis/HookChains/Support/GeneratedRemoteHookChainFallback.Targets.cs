@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
@@ -64,8 +65,28 @@ internal static partial class GeneratedRemoteHookChainFallback
             return switchTarget;
         }
 
+        if (expression is AssignmentExpressionSyntax assignment &&
+            TargetFromAssignmentRegistryExpression(assignment, model, cancellationToken, depth) is { } assignmentTarget)
+        {
+            return assignmentTarget;
+        }
+
         return TargetFromDeclaredRegistryExpression(expression, model, cancellationToken) ??
             TargetFromLocalAlias(expression, model, cancellationToken, depth);
+    }
+
+    private static GeneratedRemoteHookChainTarget? TargetFromAssignmentRegistryExpression(
+        AssignmentExpressionSyntax assignment,
+        SemanticModel model,
+        CancellationToken cancellationToken,
+        int depth)
+    {
+        if (!assignment.IsKind(SyntaxKind.SimpleAssignmentExpression))
+        {
+            return null;
+        }
+
+        return RegistryTarget(assignment.Right, model, cancellationToken, depth + 1);
     }
 
     private static GeneratedRemoteHookChainTarget? TargetFromGeneratedServerMember(
