@@ -56,7 +56,7 @@ public partial class CodegenRegressionTests
     private static string FindDotnetRoot()
     {
         var root = Environment.GetEnvironmentVariable("DOTNET_ROOT");
-        if (!string.IsNullOrWhiteSpace(root) && Directory.Exists(root))
+        if (!string.IsNullOrWhiteSpace(root) && HasNet10ReferencePack(root))
         {
             return root;
         }
@@ -65,11 +65,19 @@ public partial class CodegenRegressionTests
         var appDirectory = runtimeDirectory?.Parent;
         var sharedDirectory = appDirectory?.Parent;
         var dotnetDirectory = sharedDirectory?.Parent;
-        if (dotnetDirectory is not null && Directory.Exists(dotnetDirectory.FullName))
+        if (dotnetDirectory is not null && HasNet10ReferencePack(dotnetDirectory.FullName))
         {
             return dotnetDirectory.FullName;
         }
 
         throw new DirectoryNotFoundException("Could not locate the dotnet installation root.");
     }
+
+    private static bool HasNet10ReferencePack(string dotnetRoot)
+        => Directory.Exists(Path.Combine(dotnetRoot, "packs", "Microsoft.NETCore.App.Ref")) &&
+           Directory.EnumerateDirectories(Path.Combine(dotnetRoot, "packs", "Microsoft.NETCore.App.Ref"))
+               .Any(static directory =>
+                   Version.TryParse(Path.GetFileName(directory), out var version) &&
+                   version.Major == 10 &&
+                   Directory.Exists(Path.Combine(directory, "ref", "net10.0")));
 }

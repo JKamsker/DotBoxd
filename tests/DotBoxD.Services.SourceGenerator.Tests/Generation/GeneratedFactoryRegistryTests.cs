@@ -7,6 +7,42 @@ namespace DotBoxD.Services.SourceGenerator.Tests.Generation;
 public class GeneratedFactoryRegistryTests
 {
     [Fact]
+    public void GeneratedFactory_PublicSurfaceCompilesFromConsumerAssembly()
+    {
+        var generatedAssembly = CompileGeneratedReference("""
+            using DotBoxD.Services.Attributes;
+            using System.Threading.Tasks;
+
+            namespace PublicFactory.Sample
+            {
+                [DotBoxDService]
+                public interface IGreeter
+                {
+                    Task<string> HelloAsync();
+                }
+            }
+            """);
+        var consumer = GeneratorTestHelper.CreateCompilation("""
+            using DotBoxD.Services.Generated;
+
+            namespace PublicFactory.Consumer
+            {
+                public static class Probe
+                {
+                    public static int ServiceCount => DotBoxDGenerated.Services.Count;
+                }
+            }
+            """).AddReferences(generatedAssembly);
+
+        using var stream = new MemoryStream();
+        var emit = consumer.Emit(stream);
+
+        Assert.True(
+            emit.Success,
+            string.Join(Environment.NewLine, emit.Diagnostics.Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)));
+    }
+
+    [Fact]
     public void GeneratedFactory_CreatesProxyAndDispatcherWithoutScanning()
     {
         const string source = """

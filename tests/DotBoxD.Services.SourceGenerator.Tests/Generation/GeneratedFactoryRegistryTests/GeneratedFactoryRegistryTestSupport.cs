@@ -38,6 +38,24 @@ internal static class GeneratedFactoryRegistryTestSupport
         var context = new AssemblyLoadContext("FactoryTest_" + Guid.NewGuid().ToString("N"), isCollectible: false);
         return context.LoadFromStream(stream);
     }
+
+    public static MetadataReference CompileGeneratedReference(string source)
+    {
+        var compilation = GeneratorTestHelper.CreateCompilation(source);
+        var driver = GeneratorTestHelper.CreateDriver().RunGenerators(compilation);
+        var finalCompilation = ((CSharpCompilation)compilation).AddSyntaxTrees(driver.GetRunResult().GeneratedTrees);
+
+        using var stream = new MemoryStream();
+        var emit = finalCompilation.Emit(stream);
+        if (!emit.Success)
+        {
+            throw new InvalidOperationException(string.Join(
+                Environment.NewLine,
+                emit.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)));
+        }
+
+        return MetadataReference.CreateFromImage(stream.ToArray());
+    }
 }
 
 internal interface INotGeneratedService
