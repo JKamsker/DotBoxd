@@ -38,22 +38,25 @@ public sealed class MonsterKillerServerExtensionRegressionTests
         var results = KernelRpcBinaryCodec.DecodeValue(response);
         results.RequireKind(KernelRpcValueKind.List);
         Assert.Equal(2, results.ItemCount);
-        AssertKillResult(results.GetItem(0), "monster-3", wasMonster: true, killed: true);
-        AssertKillResult(results.GetItem(1), "player-1", wasMonster: false, killed: false);
+        AssertKillResult(results.GetItem(0), "monster-3", wasMonster: true, level: 8, position: 5, healthBefore: 42, killed: true);
+        AssertKillResult(results.GetItem(1), "player-1", wasMonster: false, level: 1, position: 0, healthBefore: 30, killed: false);
     }
 
     private static void AssertKillResult(
         KernelRpcValue result,
         string monsterId,
         bool wasMonster,
+        int level,
+        int position,
+        int healthBefore,
         bool killed)
     {
         result.RequireKind(KernelRpcValueKind.Record);
         Assert.Equal(monsterId, result.GetItem(0).TextValue);
         Assert.Equal(wasMonster, result.GetItem(1).BoolValue);
-        Assert.Equal(8, result.GetItem(2).Int32Value);
-        Assert.Equal(5, result.GetItem(3).Int32Value);
-        Assert.Equal(42, result.GetItem(4).Int32Value);
+        Assert.Equal(level, result.GetItem(2).Int32Value);
+        Assert.Equal(position, result.GetItem(3).Int32Value);
+        Assert.Equal(healthBefore, result.GetItem(4).Int32Value);
         Assert.Equal(killed, result.GetItem(5).BoolValue);
     }
 
@@ -85,10 +88,13 @@ public sealed class MonsterKillerServerExtensionRegressionTests
 
     private sealed class StubMonsterControl : IMonsterControl
     {
-        public IMonster Get(string entityId) => new StubMonster(entityId);
+        public IMonster Get(string entityId) => new StubMonster(entityId, IsMonster(entityId));
 
         public ValueTask<bool> IsMonsterAsync(string entityId)
-            => ValueTask.FromResult(entityId.StartsWith("monster-", StringComparison.Ordinal));
+            => ValueTask.FromResult(IsMonster(entityId));
+
+        private static bool IsMonster(string entityId)
+            => entityId.StartsWith("monster-", StringComparison.Ordinal);
     }
 
     private sealed class StubEntityControl : IEntityControl
@@ -96,16 +102,24 @@ public sealed class MonsterKillerServerExtensionRegressionTests
         public IEntity Get(string entityId) => new StubEntity(entityId);
     }
 
-    private sealed class StubMonster(string id) : IMonster
+    private sealed class StubMonster(string id, bool isMonster) : IMonster
     {
         public string Id { get; } = id;
-        public ValueTask<MonsterSnapshot> SnapshotAsync() => ValueTask.FromResult(new MonsterSnapshot(Id, Id, 42, 8, 5));
-        public ValueTask<bool> KillAsync() => ValueTask.FromResult(true);
-        public ValueTask<int> GetThreatAsync() => ValueTask.FromResult(7);
+        public ValueTask<MonsterSnapshot> SnapshotAsync()
+            => ValueTask.FromResult(isMonster
+                ? new MonsterSnapshot(Id, Id, 42, 8, 5)
+                : new MonsterSnapshot(Id, string.Empty, 0, 0, 0));
+
+        public ValueTask<bool> KillAsync()
+            => isMonster
+                ? ValueTask.FromResult(true)
+                : throw new InvalidOperationException($"Unexpected monster kill for '{Id}'.");
+
+        public ValueTask<int> GetThreatAsync() => ValueTask.FromResult(isMonster ? 7 : 0);
         public ValueTask TeleportToAsync(int position) => ValueTask.CompletedTask;
-        public ValueTask<int> GetHealthAsync() => ValueTask.FromResult(42);
-        public ValueTask<int> GetLevelAsync() => ValueTask.FromResult(8);
-        public ValueTask<int> GetPositionAsync() => ValueTask.FromResult(5);
+        public ValueTask<int> GetHealthAsync() => ValueTask.FromResult(isMonster ? 42 : 30);
+        public ValueTask<int> GetLevelAsync() => ValueTask.FromResult(isMonster ? 8 : 1);
+        public ValueTask<int> GetPositionAsync() => ValueTask.FromResult(isMonster ? 5 : 0);
     }
 
     private sealed class StubEntity(string id) : IEntity

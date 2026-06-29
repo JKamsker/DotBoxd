@@ -45,22 +45,32 @@ public sealed class GamePluginControlServiceServerExtensionRegressionTests
         var options = new RpcPeerOptions { ExceptionTransformer = ex => RpcErrorInfo.FromException(ex) };
         await using var host = RpcMessagePackIpc.ListenNamedPipe(pipeName, peer =>
         {
-            var session = server.CreateSession();
-            peer.Disconnected += (_, _) => session.Dispose();
-            var service = Create(
-                gameServer,
-                "DotBoxD.Kernels.Game.Server.Ipc.GamePluginControlService",
-                server,
-                session,
-                sink,
-                world);
-            InvokeGeneratedProvide(abstractions, "ProvideGamePluginControlService", peer, service);
-            InvokeGeneratedProvide(
-                abstractions,
-                "ProvideGameWorldAccess",
-                peer,
-                Create(gameServer, "DotBoxD.Kernels.Game.Server.Ipc.GameWorldAccess", world));
-            serviceCreated.SetResult(service);
+            PluginSession? session = null;
+            try
+            {
+                session = server.CreateSession();
+                peer.Disconnected += (_, _) => session.Dispose();
+                var service = Create(
+                    gameServer,
+                    "DotBoxD.Kernels.Game.Server.Ipc.GamePluginControlService",
+                    server,
+                    session,
+                    sink,
+                    world);
+                InvokeGeneratedProvide(abstractions, "ProvideGamePluginControlService", peer, service);
+                InvokeGeneratedProvide(
+                    abstractions,
+                    "ProvideGameWorldAccess",
+                    peer,
+                    Create(gameServer, "DotBoxD.Kernels.Game.Server.Ipc.GameWorldAccess", world));
+                serviceCreated.TrySetResult(service);
+            }
+            catch (Exception ex)
+            {
+                session?.Dispose();
+                serviceCreated.TrySetException(ex);
+                throw;
+            }
         }, options);
         await host.StartAsync();
 
@@ -230,50 +240,17 @@ public sealed class GamePluginControlServiceServerExtensionRegressionTests
             .Invoke(service, []);
 
     private static string GameServerAssemblyPath()
-    {
-        var output = new DirectoryInfo(AppContext.BaseDirectory.TrimEnd(
-            Path.DirectorySeparatorChar,
-            Path.AltDirectorySeparatorChar));
-        var configuration = output.Parent!.Name;
-        return Path.GetFullPath(Path.Combine(
-            AppContext.BaseDirectory,
-            "..",
-            "..",
-            "..",
-            "..",
-            "..",
-            "samples",
-            "GameServer",
-            "Examples.GameServer.Server",
-            "bin",
-            configuration,
-            "net10.0",
-            "Examples.GameServer.Server.dll"));
-    }
+        => SampleAssemblyPath("Examples.GameServer.Server", "Examples.GameServer.Server.dll");
 
     private static string GamePluginAssemblyPath()
-    {
-        var output = new DirectoryInfo(AppContext.BaseDirectory.TrimEnd(
-            Path.DirectorySeparatorChar,
-            Path.AltDirectorySeparatorChar));
-        var configuration = output.Parent!.Name;
-        return Path.GetFullPath(Path.Combine(
-            AppContext.BaseDirectory,
-            "..",
-            "..",
-            "..",
-            "..",
-            "..",
-            "samples",
-            "GameServer",
-            "Examples.GameServer.Plugin",
-            "bin",
-            configuration,
-            "net10.0",
-            "Examples.GameServer.Plugin.dll"));
-    }
+        => SampleAssemblyPath("Examples.GameServer.Plugin", "Examples.GameServer.Plugin.dll");
 
     private static string GameServerAbstractionsAssemblyPath()
+        => SampleAssemblyPath(
+            "Examples.GameServer.Server.Abstractions",
+            "Examples.GameServer.Server.Abstractions.dll");
+
+    private static string SampleAssemblyPath(string project, string fileName)
     {
         var output = new DirectoryInfo(AppContext.BaseDirectory.TrimEnd(
             Path.DirectorySeparatorChar,
@@ -288,10 +265,10 @@ public sealed class GamePluginControlServiceServerExtensionRegressionTests
             "..",
             "samples",
             "GameServer",
-            "Examples.GameServer.Server.Abstractions",
+            project,
             "bin",
             configuration,
             "net10.0",
-            "Examples.GameServer.Server.Abstractions.dll"));
+            fileName));
     }
 }
