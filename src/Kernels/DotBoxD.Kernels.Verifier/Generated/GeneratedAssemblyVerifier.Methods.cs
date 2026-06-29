@@ -125,6 +125,14 @@ public sealed partial class GeneratedAssemblyVerifier
                 $"method '{name}' must be concrete and non-virtual"));
         }
 
+        if (IsGeneratedExecutableMethod(name) &&
+            signature.Header.CallingConvention != SignatureCallingConvention.Default)
+        {
+            diagnostics.Add(new VerificationDiagnostic(
+                "V-METHOD-ATTR",
+                $"method '{name}' uses an unsupported calling convention"));
+        }
+
         var access = method.Attributes & MethodAttributes.MemberAccessMask;
         if (name == "Execute")
         {

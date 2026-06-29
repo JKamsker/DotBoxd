@@ -51,6 +51,17 @@ public sealed class VerifierMethodShapeTests
         Assert.Contains(result.Diagnostics, d => d.Code == "V-FUNCTION-SIGNATURE");
     }
 
+    [Fact]
+    public async Task Verifier_rejects_vararg_execute_signature()
+    {
+        var result = await VerifyAsync(AssemblyWithVarargExecuteSignature());
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d =>
+            d.Code == "V-METHOD-ATTR" &&
+            d.Message.Contains("unsupported calling convention", StringComparison.Ordinal));
+    }
+
     private static async ValueTask<VerificationResult> VerifyAsync(byte[] bytes)
     {
         var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).ToLowerInvariant();
@@ -166,6 +177,44 @@ public sealed class VerifierMethodShapeTests
                 [typeof(SandboxValue)]);
             var il = method.GetILGenerator();
             il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Ret);
+        });
+
+    private static byte[] AssemblyWithVarargExecuteSignature()
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
+            var function = type.DefineMethod(
+                "Fn_0",
+                MethodAttributes.Private | MethodAttributes.Static,
+                typeof(SandboxValue),
+                [typeof(SandboxContext)]);
+            var fnIl = function.GetILGenerator();
+            var value = fnIl.DeclareLocal(typeof(SandboxValue));
+            fnIl.Emit(OpCodes.Ldarg_0);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(Kernels.Runtime.CompiledRuntime.EnterCall))!);
+            fnIl.Emit(OpCodes.Ldarg_0);
+            fnIl.Emit(OpCodes.Ldc_I4_1);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(Kernels.Runtime.CompiledRuntime.ChargeFuel))!);
+            fnIl.Emit(OpCodes.Ldc_I4_0);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(Kernels.Runtime.CompiledRuntime.I32))!);
+            fnIl.Emit(OpCodes.Stloc, value);
+            fnIl.Emit(OpCodes.Ldarg_0);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(Kernels.Runtime.CompiledRuntime.ExitCall))!);
+            fnIl.Emit(OpCodes.Ldloc, value);
+            fnIl.Emit(OpCodes.Ret);
+
+            var execute = type.DefineMethod(
+                "Execute",
+                MethodAttributes.Public | MethodAttributes.Static,
+                CallingConventions.VarArgs,
+                typeof(SandboxValue),
+                [typeof(SandboxContext), typeof(SandboxValue)]);
+            var il = execute.GetILGenerator();
+            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Ldc_I4_0);
+            il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(Kernels.Runtime.CompiledRuntime.ValidateEntrypointInput))!);
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Call, function);
             il.Emit(OpCodes.Ret);
         });
 
