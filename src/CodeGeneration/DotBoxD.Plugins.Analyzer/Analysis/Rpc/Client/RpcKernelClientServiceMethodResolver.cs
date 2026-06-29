@@ -1,6 +1,7 @@
 namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 
 using System.Collections.Generic;
+using System.Text;
 using Microsoft.CodeAnalysis;
 
 internal static class RpcKernelClientServiceMethodResolver
@@ -13,11 +14,16 @@ internal static class RpcKernelClientServiceMethodResolver
         }
 
         var methods = new List<IMethodSymbol>();
+        var methodKeys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var member in ServiceMembers(serviceType))
         {
             if (member is IMethodSymbol { MethodKind: MethodKind.Ordinary, IsStatic: false } method)
             {
-                methods.Add(method);
+                if (methodKeys.Add(MethodKey(method)))
+                {
+                    methods.Add(method);
+                }
+
                 continue;
             }
 
@@ -35,6 +41,23 @@ internal static class RpcKernelClientServiceMethodResolver
         ValidateParameters(serviceMethod, kernelMethod);
         ValidateReturn(serviceMethod, kernelMethod);
         return serviceMethod;
+    }
+
+    private static string MethodKey(IMethodSymbol method)
+    {
+        var key = new StringBuilder();
+        key.Append(method.Name).Append('|')
+            .Append(method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).Append('|')
+            .Append(method.TypeParameters.Length.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        foreach (var parameter in method.Parameters)
+        {
+            key.Append('|')
+                .Append(parameter.RefKind.ToString()).Append(':')
+                .Append(parameter.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).Append(':')
+                .Append(parameter.IsParams ? "params" : string.Empty);
+        }
+
+        return key.ToString();
     }
 
     private static void ValidateNonGeneric(IMethodSymbol serviceMethod)

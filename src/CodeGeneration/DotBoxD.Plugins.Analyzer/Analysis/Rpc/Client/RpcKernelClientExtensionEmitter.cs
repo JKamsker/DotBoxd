@@ -89,7 +89,7 @@ internal static class RpcKernelClientExtensionEmitter
         RpcKernelClientPropertyExtension property,
         string receiver)
     {
-        builder.Append("        public ").Append(TypeName(serviceType)).Append(' ')
+        builder.Append("        public ").Append(ClientTypeName(kernelType)).Append(' ')
             .Append(Identifier(property.Name)).AppendLine();
         builder.AppendLine("        {");
         builder.AppendLine("            get");

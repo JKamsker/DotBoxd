@@ -114,7 +114,7 @@ internal static partial class RpcKernelClientProxyEmitter
             builder.AppendLine("        _pluginId = pluginId ?? throw new global::System.ArgumentNullException(nameof(pluginId));");
             builder.AppendLine("    }");
             builder.AppendLine();
-            builder.Append("    public static ").Append(TypeName(_serviceType))
+            builder.Append("    public static ").Append(clientName)
                 .AppendLine(" Create(global::DotBoxD.Abstractions.IServerExtensionWireClient client, string pluginId)");
             builder.Append("        => new ").Append(clientName).AppendLine("(client, pluginId);");
             builder.AppendLine();
