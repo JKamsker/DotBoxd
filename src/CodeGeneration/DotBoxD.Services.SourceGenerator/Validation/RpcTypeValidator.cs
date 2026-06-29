@@ -20,6 +20,11 @@ internal static class RpcTypeValidator
             return $"{role} uses Task or ValueTask as an RPC payload type; Task and ValueTask are only supported as top-level return wrappers";
         }
 
+        if (StreamingShapeTypeValidator.ContainsConcreteStreamingShape(type, ct, out var streamingReplacement))
+        {
+            return $"{role} uses a concrete streaming-compatible type; use {streamingReplacement} directly in RPC signatures";
+        }
+
         if (ContainsOpenEndedPayloadType(type, ct))
         {
             return $"{role} uses object or dynamic as an RPC payload type; declare a concrete payload type so the wire contract can be reconstructed";
