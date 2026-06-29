@@ -158,6 +158,15 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
     }
 
     [Fact]
+    public void SandboxTypeOf_rejects_dto_shapes_with_nullable_reference_members()
+    {
+        var ex = Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.SandboxTypeOf(typeof(NullableReferenceMemberDto)));
+
+        Assert.Contains("nullable", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void FromSandboxValue_rejects_float_overflow_inside_constructor_dto()
         => Assert.Throws<NotSupportedException>(
             () => KernelRpcMarshaller.FromSandboxValue(
@@ -303,6 +312,11 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
         public int Health { get; }
 
         public int Rank { get; set; }
+    }
+
+    private sealed class NullableReferenceMemberDto
+    {
+        public string? Name { get; set; }
     }
 
     private enum IntBackedEnum
