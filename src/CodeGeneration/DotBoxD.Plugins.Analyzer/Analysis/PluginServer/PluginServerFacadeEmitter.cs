@@ -3,7 +3,7 @@ using DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.PluginServer;
 
-internal static class PluginServerFacadeEmitter
+internal static partial class PluginServerFacadeEmitter
 {
     public static GeneratedPluginPackage Emit(PluginServerFacadeModel model)
     {
@@ -281,43 +281,6 @@ internal static class PluginServerFacadeEmitter
         {
             builder.AppendLine();
         }
-    }
-
-    private static void AppendLiveSettingsHandle(StringBuilder builder, PluginServerFacadeModel model)
-    {
-        builder.AppendLine("    private sealed class LiveSettingsHandle<TKernel> : global::DotBoxD.Abstractions.ILiveSettingsHandle<TKernel> where TKernel : class, new()");
-        builder.AppendLine("    {");
-        builder.AppendLine("        private readonly " + PluginServerIdentifier.Escape(model.ClassName) + " _owner;");
-        builder.AppendLine("        private readonly string _pluginId;");
-        builder.AppendLine("        private readonly global::System.Collections.Generic.List<" + model.LiveSettingUpdateType + "> _updates = new();");
-        builder.AppendLine("        public LiveSettingsHandle(" + PluginServerIdentifier.Escape(model.ClassName) + " owner, string pluginId) { _owner = owner; _pluginId = pluginId; }");
-        builder.AppendLine("        public global::DotBoxD.Abstractions.ILiveSettingsHandle<TKernel> Set<TValue>(global::System.Linq.Expressions.Expression<global::System.Func<TKernel, TValue>> member, TValue value)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            var body = member.Body is global::System.Linq.Expressions.UnaryExpression unary ? unary.Operand : member.Body;");
-        builder.AppendLine("            if (body is not global::System.Linq.Expressions.MemberExpression { Member: global::System.Reflection.PropertyInfo property })");
-        builder.AppendLine("            {");
-        builder.AppendLine("                throw new global::System.ArgumentException(\"Live setting expression must select a property.\", nameof(member));");
-        builder.AppendLine("            }");
-        builder.AppendLine("            if (property.GetCustomAttributes(typeof(global::DotBoxD.Abstractions.LiveSettingAttribute), inherit: true).Length == 0)");
-        builder.AppendLine("            {");
-        builder.AppendLine("                throw new global::System.ArgumentException($\"Property '{property.Name}' is not a live setting.\", nameof(member));");
-        builder.AppendLine("            }");
-        builder.AppendLine("            _updates.Add(new " + model.LiveSettingUpdateType + "(property.Name, global::System.Convert.ToString(value, global::System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty));");
-        builder.AppendLine("            return this;");
-        builder.AppendLine("        }");
-        builder.AppendLine("        public global::System.Threading.Tasks.ValueTask ApplyAsync(bool atomic = false)");
-        builder.AppendLine("            => _owner.RequireControl().UpdateSettingsAsync(_pluginId, _updates.ToArray(), atomic, default);");
-        builder.AppendLine("        public global::System.Threading.Tasks.ValueTask SetValuesAsync(global::System.Action<TKernel> set, bool atomic = false)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            var draft = new TKernel();");
-        builder.AppendLine("            set(draft);");
-        builder.AppendLine("            var updates = typeof(TKernel).GetProperties(global::System.Reflection.BindingFlags.Public | global::System.Reflection.BindingFlags.Instance)");
-        builder.AppendLine("                .Where(p => p.GetMethod is not null && p.GetCustomAttributes(typeof(global::DotBoxD.Abstractions.LiveSettingAttribute), inherit: true).Length != 0)");
-        builder.AppendLine("                .Select(p => new " + model.LiveSettingUpdateType + "(p.Name, global::System.Convert.ToString(p.GetValue(draft), global::System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty))");
-        builder.AppendLine("                .ToArray();");
-        builder.AppendLine("            return _owner.RequireControl().UpdateSettingsAsync(_pluginId, updates, atomic, default);");
-        builder.AppendLine("        }");
-        builder.AppendLine("    }");
     }
 
     private static string ParameterList(PluginServerForwardedMethod method)
