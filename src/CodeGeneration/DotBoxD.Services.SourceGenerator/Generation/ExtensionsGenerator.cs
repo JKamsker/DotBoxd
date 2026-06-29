@@ -56,9 +56,10 @@ internal static class ExtensionsGenerator
                         continue;
                     }
 
+                    var propertyAccess = PropertyAccess(property);
                     if (servicesByType.TryGetValue(property.Type, out var propertyService))
                     {
-                        sb.AppendLine($"            peer.Provide{extensionSuffixes[ServiceKey(propertyService)]}(implementation.{property.Name});");
+                        sb.AppendLine($"            peer.Provide{extensionSuffixes[ServiceKey(propertyService)]}({propertyAccess});");
                     }
                     else
                     {
@@ -66,7 +67,7 @@ internal static class ExtensionsGenerator
                         var propertyDispatcher = proxyType.EndsWith("Proxy", StringComparison.Ordinal)
                             ? proxyType.Substring(0, proxyType.Length - "Proxy".Length) + "Dispatcher"
                             : proxyType + "Dispatcher";
-                        sb.AppendLine($"            peer.Provide(({ServicesGeneratorTypeNames.GlobalServiceDispatcher})new {propertyDispatcher}(implementation.{property.Name}));");
+                        sb.AppendLine($"            peer.Provide(({ServicesGeneratorTypeNames.GlobalServiceDispatcher})new {propertyDispatcher}({propertyAccess}));");
                     }
                 }
 
@@ -113,6 +114,11 @@ internal static class ExtensionsGenerator
 
         return false;
     }
+
+    private static string PropertyAccess(ServicePropertyModel property)
+        => string.IsNullOrEmpty(property.DeclaringType)
+            ? "implementation." + property.Name
+            : "((" + property.DeclaringType + ")implementation)." + property.Name;
 
     private static Dictionary<string, string> BuildExtensionSuffixes(
         EquatableArray<ServiceExtensionModel> services,

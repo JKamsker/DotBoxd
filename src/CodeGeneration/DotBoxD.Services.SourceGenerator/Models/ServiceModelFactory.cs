@@ -11,12 +11,6 @@ internal static class ServiceModelFactory
 {
     private const string CancellationTokenFullName = ServicesGeneratorTypeNames.CancellationTokenMetadata;
 
-    private static readonly SymbolDisplayFormat s_qualifiedFormat =
-        SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
-            SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions |
-            SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers |
-            SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
-
     public static ServiceResult GetServiceResult(GeneratorAttributeSyntaxContext context, CancellationToken ct)
     {
         try
@@ -204,31 +198,17 @@ internal static class ServiceModelFactory
             methodLocations.Add(methodLocation);
         }
 
-        foreach (var propertySymbol in interfaceProperties)
+        var unsupportedPropertyDiagnostic = ServicePropertyModelFactory.Collect(
+            interfaceProperties,
+            properties,
+            ct);
+        if (unsupportedPropertyDiagnostic is not null)
         {
-            ct.ThrowIfCancellationRequested();
-            if (ServiceShapeValidator.IsInstanceIdProperty(propertySymbol))
-            {
-                properties.Add(new ServicePropertyModel(
-                    IdentifierHelpers.EscapeIdentifier(propertySymbol.Name),
-                    propertySymbol.Type.ToDisplayString(s_qualifiedFormat),
-                    ProxyType: null,
-                    IsInstanceId: true));
-                continue;
-            }
-
-            if (propertySymbol.Type is not INamedTypeSymbol propertyType)
-            {
-                continue;
-            }
-
-            var propertyNamespace = GetNamespace(propertyType.ContainingNamespace);
-            var proxyName = NamingHelpers.StripInterfacePrefix(propertyType.Name) + "Proxy";
-            properties.Add(new ServicePropertyModel(
-                IdentifierHelpers.EscapeIdentifier(propertySymbol.Name),
-                propertyType.ToDisplayString(s_qualifiedFormat),
-                IdentifierHelpers.QualifyTypeName(propertyNamespace, proxyName),
-                IsInstanceId: false));
+            return RejectedService(
+                displayName,
+                unsupportedPropertyDiagnostic.Value.Reason,
+                unsupportedPropertyDiagnostic.Value.Location,
+                qualifiedInterfaceName);
         }
 
         WireNameValidator.MarkDuplicateWireNames(displayName, methods, methodLocations, methodDiagnostics, ct);

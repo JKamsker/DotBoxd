@@ -76,7 +76,8 @@ internal sealed record ServicePropertyModel(
     string Name,
     string Type,
     string? ProxyType,
-    bool IsInstanceId);
+    bool IsInstanceId,
+    string DeclaringType = "");
 
 /// <summary>
 /// Immutable, value-equatable representation of a service method. When
