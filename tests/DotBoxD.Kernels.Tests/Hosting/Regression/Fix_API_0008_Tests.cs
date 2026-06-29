@@ -1,15 +1,19 @@
+using System.Reflection;
 using Microsoft.CodeAnalysis;
 
 namespace DotBoxD.Kernels.Tests.Hosting.Regression;
 
 /// <summary>
 /// Regression coverage for API-0008: the DotBoxD.Plugins.Analyzer package ships stable
-/// <c>SGP</c> diagnostic IDs, so every shipped/unshipped rule must expose a public
+/// <c>DBXK</c> diagnostic IDs, so every shipped/unshipped rule must expose a public
 /// <see cref="DiagnosticDescriptor.HelpLinkUri"/> that deep-links to its release-tracking
 /// reference. Without it, IDE/build output is the only documentation a NuGet consumer has.
 /// </summary>
 public sealed class Fix_API_0008_Tests
 {
+    private const string ExpectedHelpLinkPrefix =
+        "https://github.com/JKamsker/DotBoxD/blob/main/src/CodeGeneration/DotBoxD.Plugins.Analyzer/";
+
     [Fact]
     public void Forbidden_host_api_rule_links_to_shipped_reference()
     {
@@ -29,12 +33,12 @@ public sealed class Fix_API_0008_Tests
     }
 
     [Fact]
-    public void Every_supported_diagnostic_exposes_a_help_link_for_its_id()
+    public void Every_plugin_diagnostic_exposes_a_help_link_for_its_id()
     {
-        var analyzer = new DotBoxD.Plugins.Analyzer.Analysis.PluginAnalyzer();
+        var rules = AllPluginDiagnosticDescriptors().ToArray();
 
-        Assert.NotEmpty(analyzer.SupportedDiagnostics);
-        foreach (var rule in analyzer.SupportedDiagnostics)
+        Assert.NotEmpty(rules);
+        foreach (var rule in rules)
         {
             AssertHelpLink(rule, "AnalyzerReleases", rule.Id);
         }
@@ -69,7 +73,33 @@ public sealed class Fix_API_0008_Tests
             uri.Scheme == Uri.UriSchemeHttps,
             $"Rule {rule.Id} help link must be an absolute https URI, was '{rule.HelpLinkUri}'.");
         Assert.Contains(expectedReferenceFile, rule.HelpLinkUri);
+        Assert.StartsWith(ExpectedHelpLinkPrefix, rule.HelpLinkUri, StringComparison.Ordinal);
+        Assert.DoesNotContain("Safe-IR", rule.HelpLinkUri, StringComparison.Ordinal);
         Assert.EndsWith("#" + expectedRuleId, rule.HelpLinkUri);
+    }
+
+    private static IEnumerable<DiagnosticDescriptor> AllPluginDiagnosticDescriptors()
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var analyzer = new DotBoxD.Plugins.Analyzer.Analysis.PluginAnalyzer();
+        foreach (var rule in analyzer.SupportedDiagnostics)
+        {
+            if (seen.Add(rule.Id))
+            {
+                yield return rule;
+            }
+        }
+
+        foreach (var field in typeof(DotBoxD.Plugins.Analyzer.Analysis.PluginAnalyzerDiagnostics).GetFields(
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
+        {
+            if (field.FieldType == typeof(DiagnosticDescriptor) &&
+                field.GetValue(null) is DiagnosticDescriptor rule &&
+                seen.Add(rule.Id))
+            {
+                yield return rule;
+            }
+        }
     }
 
     private static string RepositoryRoot()

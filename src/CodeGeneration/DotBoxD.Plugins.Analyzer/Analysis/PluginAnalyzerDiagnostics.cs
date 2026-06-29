@@ -5,10 +5,10 @@ namespace DotBoxD.Plugins.Analyzer.Analysis;
 internal static class PluginAnalyzerDiagnostics
 {
     internal const string ShippedRulesHelpLinkBase =
-        "https://github.com/JKamsker/Safe-IR/blob/main/src/DotBoxD.Plugins.Analyzer/AnalyzerReleases.Shipped.md#";
+        "https://github.com/JKamsker/DotBoxD/blob/main/src/CodeGeneration/DotBoxD.Plugins.Analyzer/AnalyzerReleases.Shipped.md#";
 
     internal const string UnshippedRulesHelpLinkBase =
-        "https://github.com/JKamsker/Safe-IR/blob/main/src/DotBoxD.Plugins.Analyzer/AnalyzerReleases.Unshipped.md#";
+        "https://github.com/JKamsker/DotBoxD/blob/main/src/CodeGeneration/DotBoxD.Plugins.Analyzer/AnalyzerReleases.Unshipped.md#";
 
     public static readonly DiagnosticDescriptor UnsupportedKernelShapeRule = new(
         "DBXK100",
