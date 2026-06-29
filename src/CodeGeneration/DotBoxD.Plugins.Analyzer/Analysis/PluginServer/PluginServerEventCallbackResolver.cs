@@ -50,7 +50,7 @@ internal static class PluginServerEventCallbackResolver
 
     private static IMethodSymbol? ResolveEventCallbackMethod(INamedTypeSymbol callback)
     {
-        foreach (var member in callback.GetMembers("OnEventAsync"))
+        foreach (var member in Members(callback, "OnEventAsync"))
         {
             if (member is IMethodSymbol { Parameters.Length: 3 } method &&
                 IsValueTask(method.ReturnType) &&
@@ -70,7 +70,7 @@ internal static class PluginServerEventCallbackResolver
 
     private static bool HasResultCallbackMethod(INamedTypeSymbol callback)
     {
-        foreach (var member in callback.GetMembers("OnResultAsync"))
+        foreach (var member in Members(callback, "OnResultAsync"))
         {
             if (member is IMethodSymbol { Parameters.Length: 3 } method &&
                 IsByteArrayValueTask(method.ReturnType) &&
@@ -86,6 +86,22 @@ internal static class PluginServerEventCallbackResolver
         }
 
         return false;
+    }
+
+    private static IEnumerable<ISymbol> Members(INamedTypeSymbol callback, string name)
+    {
+        foreach (var member in callback.GetMembers(name))
+        {
+            yield return member;
+        }
+
+        foreach (var @interface in callback.AllInterfaces)
+        {
+            foreach (var member in @interface.GetMembers(name))
+            {
+                yield return member;
+            }
+        }
     }
 
     // The pushed payload crosses the wire as ReadOnlyMemory<byte> (the pooled encode hands its written span
