@@ -47,6 +47,12 @@ internal static partial class GeneratedRemoteHookChainFallback
             return generated;
         }
 
+        if (expression is ConditionalAccessExpressionSyntax conditionalAccess &&
+            TargetFromConditionalAccessGeneratedServerMember(conditionalAccess, model, cancellationToken) is { } conditionalGenerated)
+        {
+            return conditionalGenerated;
+        }
+
         if (expression is MemberAccessExpressionSyntax tupleElementAccess &&
             TargetFromTupleElementAccess(tupleElementAccess, model, cancellationToken, depth) is { } tupleElementTarget)
         {
@@ -99,8 +105,34 @@ internal static partial class GeneratedRemoteHookChainFallback
         MemberAccessExpressionSyntax registryAccess,
         SemanticModel model,
         CancellationToken cancellationToken)
+        => TargetFromGeneratedServerMember(
+            registryAccess.Name,
+            registryAccess.Expression,
+            registryAccess,
+            model,
+            cancellationToken);
+
+    private static GeneratedRemoteHookChainTarget? TargetFromConditionalAccessGeneratedServerMember(
+        ConditionalAccessExpressionSyntax registryAccess,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+        => registryAccess.WhenNotNull is MemberBindingExpressionSyntax binding
+            ? TargetFromGeneratedServerMember(
+                binding.Name,
+                registryAccess.Expression,
+                binding,
+                model,
+                cancellationToken)
+            : null;
+
+    private static GeneratedRemoteHookChainTarget? TargetFromGeneratedServerMember(
+        SimpleNameSyntax registryName,
+        ExpressionSyntax serverExpressionSyntax,
+        ExpressionSyntax registryExpression,
+        SemanticModel model,
+        CancellationToken cancellationToken)
     {
-        var kind = registryAccess.Name.Identifier.ValueText switch
+        var kind = registryName.Identifier.ValueText switch
         {
             "Hooks" => GeneratedRemoteHookChainKind.Hook,
             "Subscriptions" => GeneratedRemoteHookChainKind.Subscription,
@@ -111,7 +143,7 @@ internal static partial class GeneratedRemoteHookChainFallback
             return null;
         }
 
-        var serverExpression = HookChainAliasResolver.UnwrapTransparentExpression(registryAccess.Expression);
+        var serverExpression = HookChainAliasResolver.UnwrapTransparentExpression(serverExpressionSyntax);
         string? context = null;
         if (model.GetTypeInfo(serverExpression, cancellationToken).Type is INamedTypeSymbol serverType &&
             HasGeneratePluginServerAttribute(serverType, model.Compilation))
@@ -122,7 +154,7 @@ internal static partial class GeneratedRemoteHookChainFallback
                 return null;
             }
 
-            if (model.GetSymbolInfo(registryAccess, cancellationToken).Symbol is IPropertySymbol property &&
+            if (model.GetSymbolInfo(registryExpression, cancellationToken).Symbol is IPropertySymbol property &&
                 property.Type is INamedTypeSymbol registryType)
             {
                 return TargetFromRegistryMarker(registryType, model.Compilation) is { } marked &&

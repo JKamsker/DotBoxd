@@ -56,6 +56,32 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
     }
 
     [Fact]
+    public void Same_compilation_generated_registry_conditional_access_coalesce_alias_lowers_when_operands_match()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public static class ConditionalAccessCoalesceAliasUsage
+            {
+                public static void Configure(
+                    AlphaPluginServer? primary,
+                    AlphaPluginServer fallback)
+                {
+                    var hooks = primary?.Hooks ?? fallback.Hooks;
+                    hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                        .Where(e => e.Distance <= 5)
+                        .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "conditional-access-coalesce-alias"));
+                }
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("conditional-access-coalesce-alias", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Same_compilation_generated_registry_switch_alias_lowers_when_arms_match()
     {
         var result = RunGenerator(GeneratedServerSource + """
