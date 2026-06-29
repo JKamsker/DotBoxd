@@ -101,4 +101,28 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
 
         Assert.Contains("tuple-return-deconstruction-alias", generated, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Same_compilation_generated_registry_tuple_element_alias_lowers()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public static class TupleElementAliasUsage
+            {
+                public static void Configure(AlphaPluginServer server)
+                {
+                    var pair = (Hooks: server.Hooks, Ignored: 0);
+                    pair.Hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                        .Where(e => e.Distance <= 5)
+                        .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "tuple-element-alias"));
+                }
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("tuple-element-alias", generated, StringComparison.Ordinal);
+    }
 }

@@ -47,6 +47,12 @@ internal static partial class GeneratedRemoteHookChainFallback
             return generated;
         }
 
+        if (expression is MemberAccessExpressionSyntax tupleElementAccess &&
+            TargetFromTupleElementAccess(tupleElementAccess, model, cancellationToken, depth) is { } tupleElementTarget)
+        {
+            return tupleElementTarget;
+        }
+
         if (expression is ConditionalExpressionSyntax conditional &&
             TargetFromConditionalRegistryExpression(conditional, model, cancellationToken, depth) is { } conditionalTarget)
         {
