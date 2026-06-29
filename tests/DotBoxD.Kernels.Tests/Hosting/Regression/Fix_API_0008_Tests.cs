@@ -80,26 +80,48 @@ public sealed class Fix_API_0008_Tests
 
     private static IEnumerable<DiagnosticDescriptor> AllPluginDiagnosticDescriptors()
     {
-        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var seen = new Dictionary<string, DiagnosticDescriptor>(StringComparer.Ordinal);
         var analyzer = new DotBoxD.Plugins.Analyzer.Analysis.PluginAnalyzer();
         foreach (var rule in analyzer.SupportedDiagnostics)
         {
-            if (seen.Add(rule.Id))
+            if (seen.TryGetValue(rule.Id, out var existing))
             {
-                yield return rule;
+                AssertEquivalentDescriptor(existing, rule);
+                continue;
             }
+
+            seen.Add(rule.Id, rule);
+            yield return rule;
         }
 
         foreach (var field in typeof(DotBoxD.Plugins.Analyzer.Analysis.PluginAnalyzerDiagnostics).GetFields(
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
         {
             if (field.FieldType == typeof(DiagnosticDescriptor) &&
-                field.GetValue(null) is DiagnosticDescriptor rule &&
-                seen.Add(rule.Id))
+                field.GetValue(null) is DiagnosticDescriptor rule)
             {
+                if (seen.TryGetValue(rule.Id, out var existing))
+                {
+                    AssertEquivalentDescriptor(existing, rule);
+                    continue;
+                }
+
+                seen.Add(rule.Id, rule);
                 yield return rule;
             }
         }
+    }
+
+    private static void AssertEquivalentDescriptor(DiagnosticDescriptor expected, DiagnosticDescriptor actual)
+    {
+        Assert.Equal(expected.HelpLinkUri, actual.HelpLinkUri);
+        Assert.Equal(expected.Title.ToString(), actual.Title.ToString());
+        Assert.Equal(expected.MessageFormat.ToString(), actual.MessageFormat.ToString());
+        Assert.Equal(expected.Description.ToString(), actual.Description.ToString());
+        Assert.Equal(expected.Category, actual.Category);
+        Assert.Equal(expected.DefaultSeverity, actual.DefaultSeverity);
+        Assert.Equal(expected.IsEnabledByDefault, actual.IsEnabledByDefault);
+        Assert.Equal(expected.CustomTags, actual.CustomTags);
     }
 
     private static string RepositoryRoot()
