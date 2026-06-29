@@ -8,7 +8,7 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.HookResults;
 /// <c>Reject(string? reason = null)</c>, and a <c>With&lt;Field&gt;(value)</c> per non-control field — into a
 /// partial declaration. Bodies are tiny (<c>new() { Success = true }</c> / <c>this with { … }</c>) so the
 /// inliner can fold them when a <c>.Register(...)</c> handler is lowered to verified <c>record.new</c> IR.
-/// Only members the author did not declare manually are emitted.
+/// Only same-arity methods the author did not declare manually are emitted.
 /// </summary>
 internal static class HookResultBuilderEmitter
 {
@@ -65,7 +65,7 @@ internal static class HookResultBuilderEmitter
 
     private static void EmitOk(StringBuilder builder, string indent, HookResultModel model)
     {
-        if (Contains(model.ExistingMembers, "Ok"))
+        if (Contains(model.ExistingMembers, "Ok", parameterCount: 0))
         {
             return;
         }
@@ -77,7 +77,7 @@ internal static class HookResultBuilderEmitter
 
     private static void EmitReject(StringBuilder builder, string indent, HookResultModel model)
     {
-        if (Contains(model.ExistingMembers, "Reject"))
+        if (Contains(model.ExistingMembers, "Reject", parameterCount: 1))
         {
             return;
         }
@@ -90,7 +90,7 @@ internal static class HookResultBuilderEmitter
     private static void EmitWith(StringBuilder builder, string indent, HookResultModel model, HookResultField field)
     {
         var methodName = "With" + field.Name;
-        if (Contains(model.ExistingMembers, methodName))
+        if (Contains(model.ExistingMembers, methodName, parameterCount: 1))
         {
             return;
         }
@@ -113,11 +113,13 @@ internal static class HookResultBuilderEmitter
         return kind == SyntaxKind.None ? name : "@" + name;
     }
 
-    private static bool Contains(EquatableArray<string> members, string name)
+    private static bool Contains(EquatableArray<HookResultExistingMember> members, string name, int parameterCount)
     {
         for (var i = 0; i < members.Count; i++)
         {
-            if (string.Equals(members[i], name, StringComparison.Ordinal))
+            var member = members[i];
+            if (string.Equals(member.Name, name, StringComparison.Ordinal) &&
+                (member.BlocksAllOverloads || member.ParameterCount == parameterCount))
             {
                 return true;
             }
