@@ -17,6 +17,28 @@ public sealed class SafeHttpRedirectUriTests
         Assert.True(MatchesAllowedAuthority(allowedHosts, new Uri("https://api.example.com/config")));
     }
 
+    [Theory]
+    [InlineData("api.example.com:443", "https://api.example.com/config")]
+    [InlineData("api.example.com:443", "https://api.example.com:443/config")]
+    [InlineData("api.example.com:80", "http://api.example.com/config")]
+    [InlineData("[::1]:443", "https://[::1]/config")]
+    public void MatchesAllowedAuthority_allows_explicit_default_port_for_uri_scheme(
+        string allowedHost,
+        string uri)
+    {
+        Assert.True(MatchesAllowedAuthority(AllowedHosts(allowedHost), new Uri(uri)));
+    }
+
+    [Theory]
+    [InlineData("api.example.com:80", "https://api.example.com/config")]
+    [InlineData("api.example.com:443", "http://api.example.com/config")]
+    public void MatchesAllowedAuthority_rejects_default_port_for_other_scheme(
+        string allowedHost,
+        string uri)
+    {
+        Assert.False(MatchesAllowedAuthority(AllowedHosts(allowedHost), new Uri(uri)));
+    }
+
     [Fact]
     public async Task Http_get_allows_equal_explicit_port_final_request_uri()
     {
@@ -49,4 +71,7 @@ public sealed class SafeHttpRedirectUriTests
 
         return (bool)method.Invoke(null, [allowedHosts, uri])!;
     }
+
+    private static HashSet<string> AllowedHosts(string allowedHost)
+        => new(StringComparer.Ordinal) { allowedHost };
 }

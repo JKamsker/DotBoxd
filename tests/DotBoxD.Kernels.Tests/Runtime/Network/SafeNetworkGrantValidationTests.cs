@@ -48,6 +48,19 @@ public sealed class SafeNetworkGrantValidationTests
         Assert.True(result.Succeeded, result.Error?.SafeMessage);
     }
 
+    [Fact]
+    public async Task Http_get_allows_explicit_default_port_authority()
+    {
+        var result = await ExecuteNetworkAsync(
+            "https://api.example.com/config",
+            NetworkPolicyBuilder()
+                .GrantHttpGet(["api.example.com:443"], maxResponseBytes: 1024)
+                .WithFuel(5_000)
+                .Build());
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+    }
+
     [Theory]
     [InlineData("api.example.com,,evil.example", "https")]
     [InlineData("https://api.example.com", "https")]
