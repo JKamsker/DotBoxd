@@ -25,7 +25,7 @@ namespace DotBoxD.Kernels.Tests.Compiled.Regression;
 ///   <c>RequireAllowedProperties</c> lists and required/discriminator constraints.</item>
 /// </list>
 /// </summary>
-public sealed class Fix_CMP_0012_Tests
+public sealed partial class Fix_CMP_0012_Tests
 {
     private const string ModuleSchemaRelative = "schemas/v1/dotboxd-kernel-module.schema.json";
     private const string PackageSchemaRelative = "schemas/v1/dotboxd-plugin-package.schema.json";

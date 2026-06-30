@@ -67,7 +67,7 @@
     "type": {
       "description": "A scalar type name, or an object naming a generic type and its arguments.",
       "oneOf": [
-        { "type": "string" },
+        { "type": "string", "not": { "pattern": "[<>]" } },
         {
           "type": "object",
           "additionalProperties": false,
