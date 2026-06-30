@@ -48,16 +48,23 @@ public static partial class KernelRpcMarshaller
         if (ElementType(type) is { } elementType)
         {
             value.RequireKind(KernelRpcValueKind.List);
-            return type.IsArray
-                ? ToArray(value.ItemSpan, elementType)
-                : ToList(value.ItemSpan, elementType);
+            if (type.IsArray)
+            {
+                return ToArray(value.ItemSpan, elementType);
+            }
+
+            return CompleteList(type, elementType, ToList(value.ItemSpan, elementType));
         }
 
         if (MapTypes(type) is { } mapTypes)
         {
             value.RequireKind(KernelRpcValueKind.Map);
             RejectUnsupportedMapKeyType(mapTypes.Key);
-            return ToDictionary(value.ItemSpan, mapTypes.Key, mapTypes.Value);
+            return CompleteDictionary(
+                type,
+                mapTypes.Key,
+                mapTypes.Value,
+                ToDictionary(value.ItemSpan, mapTypes.Key, mapTypes.Value));
         }
 
         throw new NotSupportedException($"Server extension cannot marshal a kernel RPC value to type '{type}'.");

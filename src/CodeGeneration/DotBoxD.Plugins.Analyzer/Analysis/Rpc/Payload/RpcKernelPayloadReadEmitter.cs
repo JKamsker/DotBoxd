@@ -119,14 +119,20 @@ internal sealed partial class RpcKernelPayloadReadEmitter
         var elementName = TypeName(elementType);
         var itemExpression = ReadExpression(elementType, "reader");
         var arrayType = type as IArrayTypeSymbol;
-        var returnType = arrayType is not null ? TypeName(type) : $"global::System.Collections.Generic.List<{elementName}>";
+        var readOnlyList = arrayType is null && DotBoxDRpcTypeMapper.IsReadOnlyListShape(type);
+        var returnType = arrayType is not null
+            ? TypeName(type)
+            : readOnlyList ? TypeName(type) : $"global::System.Collections.Generic.List<{elementName}>";
+        var returnExpression = readOnlyList
+            ? $"new global::System.Collections.ObjectModel.ReadOnlyCollection<{elementName}>(__result)"
+            : "__result";
         _helpers.Append("    private static ").Append(returnType).Append(' ').Append(method)
             .AppendLine("(ref global::DotBoxD.Plugins.KernelRpcPayloadReader reader)");
         _helpers.AppendLine("    {");
         _helpers.AppendLine("        var __count = reader.ReadListHeader();");
         AppendListReaderBody(elementName, itemExpression, arrayType);
         _helpers.AppendLine();
-        _helpers.AppendLine("        return __result;");
+        _helpers.Append("        return ").Append(returnExpression).AppendLine(";");
         _helpers.AppendLine("    }");
         _helpers.AppendLine();
         return method;
@@ -164,11 +170,18 @@ internal sealed partial class RpcKernelPayloadReadEmitter
 
         var method = NextHelperName();
         _readers[key] = method;
+        var keyName = TypeName(keyType);
+        var valueName = TypeName(valueType);
         var dictionaryType =
-            $"global::System.Collections.Generic.Dictionary<{TypeName(keyType)}, {TypeName(valueType)}>";
+            $"global::System.Collections.Generic.Dictionary<{keyName}, {valueName}>";
+        var readOnlyMap = DotBoxDRpcTypeMapper.IsReadOnlyMapShape(type);
+        var returnType = readOnlyMap ? TypeName(type) : dictionaryType;
+        var returnExpression = readOnlyMap
+            ? $"new global::System.Collections.ObjectModel.ReadOnlyDictionary<{keyName}, {valueName}>(__result)"
+            : "__result";
         var keyExpression = ReadExpression(keyType, "reader");
         var valueExpression = ReadExpression(valueType, "reader");
-        _helpers.Append("    private static ").Append(dictionaryType).Append(' ').Append(method)
+        _helpers.Append("    private static ").Append(returnType).Append(' ').Append(method)
             .AppendLine("(ref global::DotBoxD.Plugins.KernelRpcPayloadReader reader)");
         _helpers.AppendLine("    {");
         _helpers.AppendLine("        var __count = reader.ReadMapHeader();");
@@ -187,7 +200,7 @@ internal sealed partial class RpcKernelPayloadReadEmitter
         _helpers.Append("            __result.Add(__key, ").Append(valueExpression).AppendLine(");");
         _helpers.AppendLine("        }");
         _helpers.AppendLine();
-        _helpers.AppendLine("        return __result;");
+        _helpers.Append("        return ").Append(returnExpression).AppendLine(";");
         _helpers.AppendLine("    }");
         _helpers.AppendLine();
         return method;
