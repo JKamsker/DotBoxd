@@ -27,7 +27,10 @@ internal sealed partial class RpcKernelValueConversionEmitter
             .Append('(').Append(TypeName(type)).AppendLine(" value)");
         _helpers.AppendLine("    {");
         _helpers.AppendLine("        global::System.ArgumentNullException.ThrowIfNull(value);");
-        _helpers.AppendLine("        var __entries = new global::DotBoxD.Plugins.KernelRpcValue[value.Count * 2];");
+        _helpers.AppendLine("        var __entryCount = value.Count * 2;");
+        _helpers.AppendLine("        var __entries = __entryCount == 0")
+            .AppendLine("            ? global::System.Array.Empty<global::DotBoxD.Plugins.KernelRpcValue>()")
+            .AppendLine("            : new global::DotBoxD.Plugins.KernelRpcValue[__entryCount];");
         _helpers.AppendLine("        var __index = 0;");
         _helpers.AppendLine("        foreach (var __pair in value)");
         _helpers.AppendLine("        {");

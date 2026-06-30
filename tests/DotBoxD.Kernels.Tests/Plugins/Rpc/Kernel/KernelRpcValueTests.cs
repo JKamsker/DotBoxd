@@ -145,6 +145,24 @@ public sealed class KernelRpcValueTests
     }
 
     [Fact]
+    public void Generated_map_writers_use_empty_array_for_empty_maps()
+    {
+        var source = string.Join(
+            "\n",
+            PluginAnalyzerGeneratedPackageFactory.GeneratedSources(MapServerExtensionSource));
+
+        Assert.Contains("var __entryCount = value.Count * 2;", source, StringComparison.Ordinal);
+        Assert.Contains(
+            "global::System.Array.Empty<global::DotBoxD.Plugins.KernelRpcValue>()",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "new global::DotBoxD.Plugins.KernelRpcValue[__entryCount]",
+            source,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ToSandboxValue_rejects_duplicate_map_keys()
     {
         var wire = KernelRpcValue.Map(
@@ -194,6 +212,31 @@ public sealed class KernelRpcValueTests
         public sealed partial class EchoKernel
         {
             public int Echo(IEnumerable<int> values, HookContext ctx)
+            {
+                return 0;
+            }
+        }
+        """;
+
+    private const string MapServerExtensionSource = """
+        using System.Collections.Generic;
+        using System.Threading.Tasks;
+        using DotBoxD.Kernels;
+        using DotBoxD.Kernels.Sandbox;
+        using DotBoxD.Plugins;
+        using DotBoxD.Abstractions;
+
+        namespace Sample;
+
+        public interface IScoreService
+        {
+            ValueTask<int> SumAsync(Dictionary<string, int> scores);
+        }
+
+        [ServerExtension("score", typeof(IScoreService))]
+        public sealed partial class ScoreKernel
+        {
+            public int Sum(Dictionary<string, int> scores, HookContext ctx)
             {
                 return 0;
             }

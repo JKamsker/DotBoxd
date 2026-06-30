@@ -11,6 +11,7 @@ internal static class KernelRpcValueListWriterProbe
     {
         var values = new List<int> { 4, 5, 6, 7 };
         var empty = new List<int>();
+        var emptyMap = new Dictionary<string, int>();
         var legacy = Measure("List writer via List<T> + ToArray", values, useLegacy: true);
         var direct = MeasureDirect("List writer via direct array fill", values, useEmptyFastPath: false);
         var emptyIndexedLegacy = MeasureDirect(
@@ -43,6 +44,14 @@ internal static class KernelRpcValueListWriterProbe
             emptyEnumerable,
             useCountedBranch: true,
             useEmptyFastPath: true);
+        var emptyMapLegacy = MeasureMap(
+            "Empty map writer via zero array",
+            emptyMap,
+            useEmptyFastPath: false);
+        var emptyMapCurrent = MeasureMap(
+            "Empty map writer via Array.Empty",
+            emptyMap,
+            useEmptyFastPath: true);
 
         Write(legacy);
         Write(direct);
@@ -52,6 +61,8 @@ internal static class KernelRpcValueListWriterProbe
         Write(enumerableCounted);
         Write(emptyEnumerableLegacy);
         Write(emptyEnumerableCurrent);
+        Write(emptyMapLegacy);
+        Write(emptyMapCurrent);
     }
 
     private static Measurement Measure(string name, List<int> values, bool useLegacy)
@@ -99,6 +110,21 @@ internal static class KernelRpcValueListWriterProbe
         var checksum = useCountedBranch
             ? WriteCountedEnumerable(values, useEmptyFastPath)
             : WriteEnumerableFallback(values);
+        watch.Stop();
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        GC.KeepAlive(checksum);
+        return new Measurement(name, watch.Elapsed.TotalMilliseconds, allocated, checksum);
+    }
+
+    private static Measurement MeasureMap(string name, Dictionary<string, int> values, bool useEmptyFastPath)
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var watch = Stopwatch.StartNew();
+        var checksum = WriteMap(values, useEmptyFastPath);
         watch.Stop();
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         GC.KeepAlive(checksum);
@@ -194,6 +220,28 @@ internal static class KernelRpcValueListWriterProbe
             }
 
             checksum += KernelRpcValue.List(items).ItemCount;
+        }
+
+        return checksum;
+    }
+
+    private static long WriteMap(Dictionary<string, int> values, bool useEmptyFastPath)
+    {
+        long checksum = 0;
+        for (var iteration = 0; iteration < Iterations; iteration++)
+        {
+            var entryCount = values.Count * 2;
+            var entries = useEmptyFastPath && entryCount == 0
+                ? Array.Empty<KernelRpcValue>()
+                : new KernelRpcValue[entryCount];
+            var index = 0;
+            foreach (var pair in values)
+            {
+                entries[index++] = KernelRpcValue.String(pair.Key);
+                entries[index++] = KernelRpcValue.Int32(pair.Value);
+            }
+
+            checksum += KernelRpcValue.Map(entries).ItemCount;
         }
 
         return checksum;
