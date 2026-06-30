@@ -103,7 +103,9 @@ internal static class GeneratedFactoryMetadataEmitter
             return "null";
         }
 
-        return parameter.DefaultValueLiteral;
+        return parameter.DefaultValueLiteral == "default"
+            ? "default(" + parameter.MetadataType + ")"
+            : parameter.DefaultValueLiteral;
     }
 
     private static string ReturnKindExpression(MethodReturnKind returnKind) =>
