@@ -469,6 +469,7 @@ jobs:
               "FloatingPointSpecialDefaults_ArePreservedInGeneratedSurface",
               "ParamsParameters_ArePreservedInGeneratedProxySurface",
               "CallerInfoAttributes_ArePreservedInGeneratedServiceSurface",
+              "NullableFlowParameterAttributes_ArePreservedInGeneratedServiceSurface",
               "CallerArgumentExpression_TargetingCancellationToken_RemainsValidOnAsyncSibling",
               "GenericServiceMethod_WithRefStructAntiConstraint_PreservesConstraintOnProxyStub",
               "GeneratedFactoryRegistryDefaultValueTests",
