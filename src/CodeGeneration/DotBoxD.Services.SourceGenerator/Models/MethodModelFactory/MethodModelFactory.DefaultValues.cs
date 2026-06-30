@@ -13,6 +13,11 @@ internal static partial class MethodModelFactory
     /// </summary>
     private static string? FormatDefaultValueLiteral(IParameterSymbol param, bool hasDefaultValue)
     {
+        if (HasDateTimeConstantAttribute(param))
+        {
+            return null;
+        }
+
         if (!param.HasExplicitDefaultValue)
         {
             return hasDefaultValue ? "default" : null;
@@ -48,6 +53,26 @@ internal static partial class MethodModelFactory
         }
 
         return FormatPrimitiveLiteral(value);
+    }
+
+    private static string FormatMetadataDefaultValueExpression(
+        IParameterSymbol param,
+        bool hasDefaultValue,
+        string defaultValueLiteral)
+    {
+        if (!hasDefaultValue)
+        {
+            return string.Empty;
+        }
+
+        if (TryGetDateTimeConstantTicks(param, out var ticks))
+        {
+            return "new global::System.DateTime(" +
+                ticks.ToString(CultureInfo.InvariantCulture) +
+                "L)";
+        }
+
+        return defaultValueLiteral;
     }
 
     private static string? FormatPrimitiveLiteral(object value) => value switch
@@ -146,6 +171,27 @@ internal static partial class MethodModelFactory
             }
         }
 
+        return false;
+    }
+
+    private static bool HasDateTimeConstantAttribute(IParameterSymbol param) =>
+        TryGetDateTimeConstantTicks(param, out _);
+
+    private static bool TryGetDateTimeConstantTicks(IParameterSymbol param, out long ticks)
+    {
+        foreach (var attribute in param.GetAttributes())
+        {
+            if (attribute.AttributeClass?.ToDisplayString() ==
+                "System.Runtime.CompilerServices.DateTimeConstantAttribute" &&
+                attribute.ConstructorArguments.Length == 1 &&
+                attribute.ConstructorArguments[0].Value is long value)
+            {
+                ticks = value;
+                return true;
+            }
+        }
+
+        ticks = 0;
         return false;
     }
 }

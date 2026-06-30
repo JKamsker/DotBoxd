@@ -99,6 +99,55 @@ public sealed class GeneratedFactoryRegistryDefaultValueTests
         Assert.Null(method.Parameters[1].DefaultValue);
     }
 
+    [Fact]
+    public void GeneratedDefaultsPreserveDateTimeConstantAttributeParameters()
+    {
+        const long ticks = 637135200000000000L;
+        const string source = """
+            using DotBoxD.Services.Attributes;
+            using System;
+            using System.Runtime.CompilerServices;
+            using System.Runtime.InteropServices;
+            using System.Threading.Tasks;
+
+            namespace Metadata.DateTimeConstantDefaults
+            {
+                [DotBoxDService]
+                public interface IDateTimeConstantDefaults
+                {
+                    Task<int> CountAsync([Optional, DateTimeConstant(637135200000000000L)] DateTime at);
+                }
+            }
+            """;
+
+        var compilation = GeneratorTestHelper.CreateCompilation(source);
+        var runResult = GeneratorTestHelper.CreateDriver().RunGenerators(compilation).GetRunResult();
+
+        Assert.Empty(runResult.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+
+        const string expectedParameter =
+            "[global::System.Runtime.InteropServices.OptionalAttribute] " +
+            "[global::System.Runtime.CompilerServices.DateTimeConstantAttribute(637135200000000000L)] " +
+            "global::System.DateTime at";
+        Assert.Contains(expectedParameter, GeneratedSource(runResult, "DotBoxDRpcProxy"));
+        Assert.Contains(
+            expectedParameter + ", global::System.Threading.CancellationToken ct = default",
+            GeneratedSource(runResult, "DotBoxDRpcAsync"));
+
+        var assembly = CompileAndLoad(source);
+        var serviceType = assembly.GetType("Metadata.DateTimeConstantDefaults.IDateTimeConstantDefaults")!;
+        var generated = assembly.GetType("DotBoxD.Services.Generated.DotBoxDGenerated")
+            ?? throw new InvalidOperationException("Generated factory type not found.");
+        var services = Assert.IsAssignableFrom<IReadOnlyList<GeneratedService>>(
+            generated.GetProperty("Services")!.GetValue(null));
+
+        var service = services.Single(candidate => candidate.ServiceType == serviceType);
+        var method = service.Methods.Single(candidate => candidate.Name == "CountAsync");
+
+        Assert.True(method.Parameters[0].HasDefaultValue);
+        Assert.Equal(new DateTime(ticks), method.Parameters[0].DefaultValue);
+    }
+
     private static string GeneratedSource(GeneratorDriverRunResult runResult, string hintFragment) =>
         runResult.GeneratedTrees.First(t => t.FilePath.Contains(hintFragment)).GetText().ToString();
 }

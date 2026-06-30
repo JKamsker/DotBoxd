@@ -98,17 +98,17 @@ internal static class GeneratedFactoryMetadataEmitter
     {
         if (!parameter.HasDefaultValue ||
             parameter.IsCancellationToken ||
-            parameter.DefaultValueLiteral.Length == 0)
+            parameter.MetadataDefaultValueExpression.Length == 0)
         {
             return "null";
         }
 
-        if (string.Equals(parameter.DefaultValueLiteral, "default", System.StringComparison.Ordinal))
+        if (string.Equals(parameter.MetadataDefaultValueExpression, "default", System.StringComparison.Ordinal))
         {
             return "default(" + parameter.MetadataType + ")";
         }
 
-        return parameter.DefaultValueLiteral;
+        return parameter.MetadataDefaultValueExpression;
     }
 
     private static string ReturnKindExpression(MethodReturnKind returnKind) =>

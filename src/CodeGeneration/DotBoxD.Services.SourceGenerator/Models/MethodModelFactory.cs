@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using DotBoxD.Services.SourceGenerator.Generation;
 using DotBoxD.Services.SourceGenerator.Infrastructure;
@@ -174,6 +173,9 @@ internal static partial class MethodModelFactory
             // any other optional/defaulted parameter so the generated proxy/async-sibling preserve it.
             var hasDefaultValue = HasDefaultParameterValue(param);
             var defaultValueLiteral = isCancellationToken ? string.Empty : FormatDefaultValueLiteral(param, hasDefaultValue) ?? string.Empty;
+            var metadataDefaultValueExpression = isCancellationToken
+                ? string.Empty
+                : FormatMetadataDefaultValueExpression(param, hasDefaultValue, defaultValueLiteral);
 
             parameters.Add(new ParameterModel(
                 IdentifierHelpers.EscapeIdentifier(param.Name),
@@ -184,6 +186,7 @@ internal static partial class MethodModelFactory
                 isCancellationToken,
                 hasDefaultValue,
                 defaultValueLiteral,
+                metadataDefaultValueExpression,
                 streamKind,
                 streamItemType?.ToDisplayString(s_qualifiedFormat),
                 MetadataType: TypeOfExpressionFormatter.Format(param.Type, ct),
@@ -246,51 +249,6 @@ internal static partial class MethodModelFactory
         }
 
         return null;
-    }
-
-    private static string BuildCallerInfoAttributePrefix(
-        IParameterSymbol parameter,
-        CancellationToken ct)
-    {
-        var attributes = new StringBuilder();
-        foreach (var attr in parameter.GetAttributes())
-        {
-            ct.ThrowIfCancellationRequested();
-
-            switch (attr.AttributeClass?.ToDisplayString())
-            {
-                case "System.Runtime.CompilerServices.CallerMemberNameAttribute":
-                    attributes.Append("[global::System.Runtime.CompilerServices.CallerMemberNameAttribute] ");
-                    break;
-
-                case "System.Runtime.CompilerServices.CallerFilePathAttribute":
-                    attributes.Append("[global::System.Runtime.CompilerServices.CallerFilePathAttribute] ");
-                    break;
-
-                case "System.Runtime.CompilerServices.CallerLineNumberAttribute":
-                    attributes.Append("[global::System.Runtime.CompilerServices.CallerLineNumberAttribute] ");
-                    break;
-
-                case "System.Runtime.CompilerServices.CallerArgumentExpressionAttribute":
-                    AppendCallerArgumentExpressionAttribute(attributes, attr);
-                    break;
-            }
-        }
-
-        return attributes.ToString();
-    }
-
-    private static void AppendCallerArgumentExpressionAttribute(StringBuilder sb, AttributeData attr)
-    {
-        if (attr.ConstructorArguments.Length != 1 ||
-            attr.ConstructorArguments[0].Value is not string parameterName)
-        {
-            return;
-        }
-
-        sb.Append("[global::System.Runtime.CompilerServices.CallerArgumentExpressionAttribute(\"")
-            .Append(LiteralHelpers.EscapeStringLiteral(parameterName))
-            .Append("\")] ");
     }
 
 }

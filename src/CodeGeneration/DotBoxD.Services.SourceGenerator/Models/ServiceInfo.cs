@@ -121,13 +121,15 @@ internal sealed record MethodModel(
 /// <c>"in "</c>, or <c>"out "</c>).
 /// <see cref="IsParams"/> preserves a user-authored <c>params</c> modifier for generated public
 /// signatures when the parameter is still the final parameter.
-/// <see cref="CallerInfoAttributePrefix"/> preserves compiler-recognized caller-info attributes as
+/// <see cref="CallerInfoAttributePrefix"/> preserves compiler-recognized parameter attributes as
 /// generated-source text, including a trailing space when non-empty.
 /// <see cref="DefaultValueLiteral"/> holds the C# literal text of a non-cancellation-token
 /// parameter's default value (e.g. <c>"\"x\""</c>, <c>"5"</c>, <c>"null"</c>, <c>"default"</c>),
 /// so the generated proxy and async-sibling signatures preserve it; empty when there is no default
 /// or it cannot be expressed as a literal. Cancellation-token defaults are emitted as
 /// <c>= default</c>.
+/// <see cref="MetadataDefaultValueExpression"/> holds the generated C# expression used for metadata
+/// default values when it differs from the public signature literal.
 /// </summary>
 internal sealed record ParameterModel(
     string Name,
@@ -138,6 +140,7 @@ internal sealed record ParameterModel(
     bool IsCancellationToken = false,
     bool HasDefaultValue = false,
     string DefaultValueLiteral = "",
+    string MetadataDefaultValueExpression = "",
     ParameterStreamKind StreamKind = ParameterStreamKind.None,
     string? StreamItemType = null,
     string MetadataType = "",
