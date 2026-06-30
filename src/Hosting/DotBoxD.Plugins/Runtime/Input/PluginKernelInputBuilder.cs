@@ -72,7 +72,7 @@ internal static class PluginKernelInputBuilder
         return valueCount switch
         {
             0 => SandboxValue.Unit,
-            1 => eventValueCount == 1 ? writer.ToSandboxValue(e, 0) : value.ToSandboxValue(liveSettings[0]),
+            1 => eventValueCount == 1 ? ReadWriterValue(writer, e, 0) : value.ToSandboxValue(liveSettings[0]),
             _ => BuildList(writer, e, liveSettings, value)
         };
     }
@@ -106,6 +106,7 @@ internal static class PluginKernelInputBuilder
         var eventValueCount = writer.EventValueCount;
         var values = new SandboxValue[eventValueCount + liveSettings.Count];
         writer.CopySandboxValues(e, values, 0);
+        PluginEventValueWriterValueValidator.ValidateCopiedValues(writer, values, 0);
         if (liveSettings.Count > 0)
         {
             value.CopySandboxValues(liveSettings, values, eventValueCount);
@@ -143,7 +144,7 @@ internal static class PluginKernelInputBuilder
         return valueCount switch
         {
             0 => SandboxValue.Unit,
-            1 => eventValueCount == 1 ? writer.ToSandboxValue(e, 0) : value.ToSandboxValue(liveSettings[0]),
+            1 => eventValueCount == 1 ? ReadWriterValue(writer, e, 0) : value.ToSandboxValue(liveSettings[0]),
             _ => BuildListWithReusableBuffer(writer, e, liveSettings, value, ref buffer, ref list)
         };
     }
@@ -176,6 +177,7 @@ internal static class PluginKernelInputBuilder
         var eventValueCount = writer.EventValueCount;
         var values = RentBuffer(eventValueCount + liveSettings.Count, ref buffer);
         writer.CopySandboxValues(e, values, 0);
+        PluginEventValueWriterValueValidator.ValidateCopiedValues(writer, values, 0);
         if (liveSettings.Count > 0)
         {
             value.CopySandboxValues(liveSettings, values, eventValueCount);
@@ -188,6 +190,16 @@ internal static class PluginKernelInputBuilder
         => buffer is { Length: var length } values && length == valueCount
             ? values
             : buffer = new SandboxValue[valueCount];
+
+    private static SandboxValue ReadWriterValue<TEvent>(
+        IPluginEventValueWriter<TEvent> writer,
+        TEvent e,
+        int index)
+    {
+        var eventValue = writer.ToSandboxValue(e, index);
+        PluginEventValueWriterValueValidator.ValidateValue(writer, index, eventValue);
+        return eventValue;
+    }
 
     private static ListValue ReusableList(
         SandboxValue[] values,
