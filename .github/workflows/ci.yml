@@ -460,6 +460,7 @@ jobs:
               "UnsupportedDtoPayloadShapeTests",
               "UnsupportedTransportPayloadShapeTests",
               "SubServiceAvailabilityTests",
+              "SubServiceReturnedPropertyScopeTests",
               "SubServicePropertyInheritanceTests",
               "NullableSubServiceTests",
               "FloatingPointSpecialDefaults_ArePreservedInGeneratedSurface",

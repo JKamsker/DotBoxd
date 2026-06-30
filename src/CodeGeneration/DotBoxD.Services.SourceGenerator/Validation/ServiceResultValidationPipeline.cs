@@ -127,7 +127,7 @@ internal static class ServiceResultValidationPipeline
     {
         var generatedServiceIdentities = results
             .Where(static r => r.Model is not null)
-            .Select(static (r, _) => ServiceIdentity.From(r))
+            .Select(static (r, ct) => GeneratedServiceAvailability.From(r, ct))
             .WithTrackingName(inputTrackingName);
 
         return generatedServiceIdentities

@@ -155,6 +155,7 @@ $defaultMinimums = @{
     UnsupportedDtoPayloadShapeTests = 5
     UnsupportedTransportPayloadShapeTests = 3
     SubServiceAvailabilityTests = 5
+    SubServiceReturnedPropertyScopeTests = 1
     SubServicePropertyInheritanceTests = 8
     NullableSubServiceTests = 5
     FloatingPointSpecialDefaults_ArePreservedInGeneratedSurface = 1
