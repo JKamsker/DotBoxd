@@ -1,5 +1,6 @@
 using System.Reflection;
 using DotBoxD.Kernels.Policies;
+using DotBoxD.Kernels.Tests.PluginAnalyzer.Core;
 using DotBoxD.Plugins;
 using DotBoxD.Plugins.Analyzer.Analysis;
 using DotBoxD.Plugins.Policies;
@@ -44,6 +45,37 @@ public sealed class PluginAnalyzerKernelMethodTemporalDefaultRegressionTests
         var message = Assert.Single(messages.Messages);
         Assert.Equal("monster-1", message.TargetId);
         Assert.Equal("datetime", message.Message);
+    }
+
+    [Fact]
+    public void KernelMethod_metadata_style_datetime_default_argument_lowers_in_hook_chains()
+    {
+        var result = PluginAnalyzerGeneratedPackageFactory.RunGenerator("""
+            using System;
+            using System.Runtime.InteropServices;
+            using DotBoxD.Kernels;
+            using DotBoxD.Abstractions;
+            using DotBoxD.Plugins.Runtime;
+
+            namespace Sample;
+
+            public static class Usage
+            {
+                public static void Configure(RemoteHookRegistry hooks)
+                    => hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.KernelMethod.KernelMethodAggroEvent>()
+                        .Where(e => Matches())
+                        .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "datetime-metadata"));
+
+                [KernelMethod]
+                public static bool Matches([Optional, DateTimeConstant(0L)] DateTime startedAt)
+                    => startedAt == default;
+            }
+            """);
+
+        Assert.DoesNotContain(result.Diagnostics, d => d.Id == "DBXK114");
+        Assert.Contains(
+            result.GeneratedTrees,
+            tree => tree.ToString().Contains("UseGeneratedChain", StringComparison.Ordinal));
     }
 
     private static PluginPackage HookChainPackage(Assembly assembly)
