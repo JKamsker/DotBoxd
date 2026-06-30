@@ -106,6 +106,7 @@ $defaultMinimums = @{
     PluginServerTargetShapeRegressionTests = 4
     PluginServerSurfaceCollisionRegressionTests = 4
     PluginServerReturnFlowAttributeSurpriseTests = 2
+    PluginServerParameterContractSurpriseTests = 1
     ServerExtensionProxyAsyncTests = 4
     ServerExtensionProxyCancellationTests = 1
     ServerExtensionProxyNullableContractTests = 4

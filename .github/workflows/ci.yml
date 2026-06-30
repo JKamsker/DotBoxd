@@ -381,6 +381,7 @@ jobs:
               "PluginServerTargetShapeRegressionTests",
               "PluginServerSurfaceCollisionRegressionTests",
               "PluginServerReturnFlowAttributeSurpriseTests",
+              "PluginServerParameterContractSurpriseTests",
               "ServerExtensionProxyAsyncTests",
               "ServerExtensionProxyCancellationTests",
               "ServerExtensionProxyNullableContractTests",

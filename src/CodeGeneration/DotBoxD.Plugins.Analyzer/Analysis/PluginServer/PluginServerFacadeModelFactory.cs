@@ -158,7 +158,8 @@ internal static partial class PluginServerFacadeModelFactory
             parameters[i] = new PluginServerParameter(
                 parameter.Name,
                 TypeName(parameter.Type),
-                LiteralReader.ParameterDefaultLiteral(parameter));
+                LiteralReader.ParameterDefaultLiteral(parameter),
+                parameter.IsParams);
         }
 
         return parameters;
