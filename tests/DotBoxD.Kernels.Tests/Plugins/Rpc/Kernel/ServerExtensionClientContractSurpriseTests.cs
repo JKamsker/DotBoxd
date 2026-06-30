@@ -4,7 +4,7 @@ using DotBoxD.Plugins;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
 
-public sealed class ServerExtensionClientContractSurpriseTests
+public sealed partial class ServerExtensionClientContractSurpriseTests
 {
     private const string CancellationTokenClientSource = """
         using System.Threading;

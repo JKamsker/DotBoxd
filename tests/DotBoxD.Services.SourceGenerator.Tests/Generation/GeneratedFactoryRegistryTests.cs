@@ -104,7 +104,12 @@ public class GeneratedFactoryRegistryTests
         Assert.Equal("GreeterDispatcher", generatedSinkService.DispatcherType.Name);
 
         var assemblyServices = GeneratedServiceRegistry.GetServices(assembly);
-        Assert.Same(services, assemblyServices);
+        var assemblyService = Assert.Single(assemblyServices);
+        Assert.NotSame(services, assemblyServices);
+        Assert.Equal(services[0].ServiceType, assemblyService.ServiceType);
+        Assert.Equal(services[0].ServiceName, assemblyService.ServiceName);
+        Assert.Equal(services[0].ProxyType, assemblyService.ProxyType);
+        Assert.Equal(services[0].DispatcherType, assemblyService.DispatcherType);
 
         var combinedServices = GeneratedServiceRegistry.GetServices(new[] { assembly, typeof(NullClient).Assembly });
         Assert.Contains(combinedServices, service => service.ServiceType == interfaceType);
@@ -123,7 +128,10 @@ public class GeneratedFactoryRegistryTests
 
         Assert.True(interfaceType.IsInstanceOfType(registryProxy));
         Assert.Equal("IGreeter", registryDispatcher.ServiceName);
-        Assert.Equal(services[0], registryService);
+        Assert.Equal(services[0].ServiceType, registryService.ServiceType);
+        Assert.Equal(services[0].ServiceName, registryService.ServiceName);
+        Assert.Equal(services[0].ProxyType, registryService.ProxyType);
+        Assert.Equal(services[0].DispatcherType, registryService.DispatcherType);
     }
 
     [Fact]
@@ -224,7 +232,9 @@ public class GeneratedFactoryRegistryTests
         Assert.Equal(GeneratedReturnKind.Void, ping.ReturnKind);
 
         var registryService = GeneratedServiceRegistry.GetService(rootType);
-        Assert.Same(root.Methods, registryService.Methods);
+        Assert.NotSame(root.Methods, registryService.Methods);
+        Assert.Equal(root.Methods.Select(method => method.Name), registryService.Methods.Select(method => method.Name));
+        Assert.Equal(root.Methods.Select(method => method.WireName), registryService.Methods.Select(method => method.WireName));
     }
 
     [Fact]

@@ -113,6 +113,7 @@ internal static class RpcKernelClientExtensionEmitter
         RpcKernelClientMethodExtension method,
         string receiver)
     {
+        RpcReturnFlowAttributeSource.Append(builder, serviceMethod, "        ");
         builder.Append("        public ").Append(TypeName(serviceMethod.ReturnType)).Append(' ')
             .Append(Identifier(method.Name)).Append('(')
             .Append(RpcKernelClientParameterSource.ParameterList(serviceMethod)).AppendLine(")");

@@ -78,6 +78,11 @@ internal static partial class HookChainModelFactory
             if ((isSelect || string.Equals(name, WhereMethod, StringComparison.Ordinal)) &&
                 TryLambda(invocation, out var lambda))
             {
+                if (IsResolvedNonDotBoxDStageMethodInvocation(invocation, model, cancellationToken))
+                {
+                    return null;
+                }
+
                 stages.Add(new HookChainStage(isSelect, lambda));
                 current = HookChainAliasResolver.UnwrapTransparentExpression(access.Expression);
                 continue;
@@ -86,6 +91,13 @@ internal static partial class HookChainModelFactory
             return null;
         }
     }
+
+    private static bool IsResolvedNonDotBoxDStageMethodInvocation(
+        InvocationExpressionSyntax invocation,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+        => model.GetSymbolInfo(invocation, cancellationToken).Symbol is IMethodSymbol method &&
+           (method.ContainingType is null || ReceiverKind(method.ContainingType) is null);
 
     internal static HookChainReceiverKind? ReceiverKind(
         SemanticModel model,

@@ -21,6 +21,8 @@ public sealed class SingleConnectionTransport : ITransport
 
     public Task ConnectAsync(CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
+
         if (Volatile.Read(ref _disposed) != 0)
         {
             throw new ObjectDisposedException(nameof(SingleConnectionTransport));

@@ -7,7 +7,7 @@ internal sealed class PluginEventAdapterValidationCache
 {
     private readonly ConditionalWeakTable<object, StrongBox<PluginEventShape>> _validatedAdapters = new();
 
-    public void Validate<TEvent>(
+    public IReadOnlyList<Parameter> Validate<TEvent>(
         PluginManifest manifest,
         ExecutionPlan plan,
         KernelEntrypoints entrypoints,
@@ -17,21 +17,24 @@ internal sealed class PluginEventAdapterValidationCache
 
         var eventName = adapter.EventName;
         var parameters = adapter.Parameters;
-        PluginEventValueWriterShapeValidator.Validate(adapter, parameters);
+        PluginEventAdapterShapeValidator.Validate(adapter, parameters);
         if (_validatedAdapters.TryGetValue(adapter, out var cached) &&
             cached.Value.Matches(eventName, parameters))
         {
-            return;
+            return parameters;
         }
 
         var shape = new PluginEventShape(eventName, parameters);
         KernelEntrypointValidator.Validate<TEvent>(manifest, plan, entrypoints, shape);
         _validatedAdapters.AddOrUpdate(adapter, new StrongBox<PluginEventShape>(shape));
+        return parameters;
     }
 }
 
-internal static class PluginEventValueWriterShapeValidator
+internal static class PluginEventAdapterShapeValidator
 {
+    internal const string DiagnosticCode = "DBXK036";
+
     public static void Validate<TEvent>(
         IPluginEventAdapter<TEvent> adapter,
         IReadOnlyList<Parameter> parameters)
@@ -40,7 +43,7 @@ internal static class PluginEventValueWriterShapeValidator
             writer.EventValueCount != parameters.Count)
         {
             throw new SandboxValidationException([
-                new SandboxDiagnostic("DBXK036", "Plugin event value writer count does not match adapter parameters.")
+                new SandboxDiagnostic(DiagnosticCode, "Plugin event value writer count does not match adapter parameters.")
             ]);
         }
     }

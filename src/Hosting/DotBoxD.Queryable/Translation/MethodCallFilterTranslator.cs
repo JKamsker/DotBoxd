@@ -1,4 +1,6 @@
+using System.Collections.ObjectModel;
 using System.Linq.Expressions;
+using System.Reflection;
 using DotBoxD.Queryable.Ast;
 
 namespace DotBoxD.Queryable.Translation;
@@ -38,17 +40,20 @@ internal static class MethodCallFilterTranslator
         out QueryFilter filter)
     {
         filter = QueryFilter.MatchAll;
-        if (call.Method.DeclaringType != typeof(string) || call.Object is null)
+        if (call.Method.DeclaringType != typeof(string))
         {
             return false;
         }
 
-        if (!MemberPathReader.TryReadPath(call.Object, parameter, out var path) || call.Arguments.Count == 0)
+        if (call.Object is null)
         {
-            return false;
+            return TryTranslateStaticStringEquals(call, parameter, makeValue, out filter);
         }
 
-        if (!QueryValueFactory.TryEvaluateObject(call.Arguments[0], parameter, out var raw) || raw is not string)
+        if (!MemberPathReader.TryReadPath(call.Object, parameter, out var path) ||
+            call.Arguments.Count is not 1 and not 2 ||
+            !QueryValueFactory.TryEvaluateObject(call.Arguments[0], parameter, out var raw) ||
+            raw is not string)
         {
             return false;
         }
@@ -67,9 +72,69 @@ internal static class MethodCallFilterTranslator
             return false;
         }
 
-        var ignoreCase = ReadIgnoreCase(call, op, call.Arguments, parameter);
+        var comparisonArgument = call.Arguments.Count == 2 ? call.Arguments[1] : null;
+        var ignoreCase = ReadIgnoreCase(call, op, comparisonArgument, parameter);
         filter = QueryFilter.Compare(path, op, makeValue(raw, call.Arguments[0]), ignoreCase);
         return true;
+    }
+
+    private static bool TryTranslateStaticStringEquals(
+        MethodCallExpression call,
+        ParameterExpression parameter,
+        Func<object?, Expression, QueryValue> makeValue,
+        out QueryFilter filter)
+    {
+        filter = QueryFilter.MatchAll;
+        if (call.Method.Name != nameof(string.Equals) ||
+            call.Arguments.Count is not 2 and not 3 ||
+            !TryReadStringEqualsOperands(
+                call.Arguments[0],
+                call.Arguments[1],
+                parameter,
+                out var path,
+                out var valueExpression,
+                out var raw) ||
+            raw is not string)
+        {
+            return false;
+        }
+
+        var comparisonArgument = call.Arguments.Count == 3 ? call.Arguments[2] : null;
+        var ignoreCase = ReadIgnoreCase(call, QueryComparisonOperator.Equal, comparisonArgument, parameter);
+        filter = QueryFilter.Compare(
+            path,
+            QueryComparisonOperator.Equal,
+            makeValue(raw, valueExpression),
+            ignoreCase);
+        return true;
+    }
+
+    private static bool TryReadStringEqualsOperands(
+        Expression left,
+        Expression right,
+        ParameterExpression parameter,
+        out string path,
+        out Expression valueExpression,
+        out object? raw)
+    {
+        if (MemberPathReader.TryReadPath(left, parameter, out path) &&
+            QueryValueFactory.TryEvaluateObject(right, parameter, out raw))
+        {
+            valueExpression = right;
+            return true;
+        }
+
+        if (MemberPathReader.TryReadPath(right, parameter, out path) &&
+            QueryValueFactory.TryEvaluateObject(left, parameter, out raw))
+        {
+            valueExpression = left;
+            return true;
+        }
+
+        path = "";
+        valueExpression = left;
+        raw = null;
+        return false;
     }
 
     private static bool TryTranslateContains(
@@ -94,23 +159,86 @@ internal static class MethodCallFilterTranslator
             return false;
         }
 
-        var unwrapped = UnwrapSpan(collection);
-
-        // HashSet/Dictionary-style collections can carry a custom equality comparer that changes membership
-        // semantics even when written as static Enumerable.Contains(source, item); lowering that to a
-        // case-sensitive ordinal In would silently drop or add matches. Reject case-insensitive /
-        // culture-sensitive comparers rather than mis-translate.
-        if (QueryValueFactory.TryEvaluateObject(unwrapped, parameter, out var collectionObject) &&
-            collectionObject is not null &&
-            HasNonOrdinalComparer(collectionObject))
+        if (call.Object is not null && !IsSupportedInstanceContains(call.Method))
         {
             throw QueryTranslationException.Unsupported(
                 call,
-                "Contains over a collection with a case-insensitive or culture-sensitive equality comparer is not supported; use a default/ordinal collection.");
+                "custom instance Contains methods are not supported; use Enumerable.Contains(collection, member) when enumeration membership semantics are intended.");
+        }
+
+        if (call.Object is null && !IsSupportedStaticContains(call.Method))
+        {
+            throw QueryTranslationException.Unsupported(
+                call,
+                "custom static Contains methods are not supported; use Enumerable.Contains(collection, member) when enumeration membership semantics are intended.");
+        }
+
+        var unwrapped = UnwrapSpan(collection);
+
+        // HashSet/Dictionary-style collections can carry a custom equality comparer that changes membership
+        // semantics even when written as static Enumerable.Contains(source, item); lowering that to a plain
+        // In would silently drop or add matches. Reject custom/culture-sensitive comparers rather than
+        // mis-translate.
+        if (QueryValueFactory.TryEvaluateObject(unwrapped, parameter, out var collectionObject) &&
+            collectionObject is not null &&
+            CollectionComparerSupport.HasUnsupportedComparer(collectionObject))
+        {
+            throw QueryTranslationException.Unsupported(
+                call,
+                "Contains over a collection with a custom, case-insensitive, or culture-sensitive comparer is not supported; use a default/ordinal collection.");
         }
 
         filter = QueryFilter.In(path, QueryValueFactory.ToValues(unwrapped, parameter));
         return true;
+    }
+
+    private static bool IsSupportedStaticContains(MethodInfo method) =>
+        method.DeclaringType == typeof(Enumerable) ||
+        string.Equals(method.DeclaringType?.FullName, "System.MemoryExtensions", StringComparison.Ordinal);
+
+    private static bool IsSupportedInstanceContains(MethodInfo method)
+    {
+        var declaringType = method.DeclaringType;
+        if (declaringType is null)
+        {
+            return false;
+        }
+
+        if (declaringType.IsInterface)
+        {
+            return IsSupportedCollectionInterface(declaringType);
+        }
+
+        if (!declaringType.IsGenericType)
+        {
+            return false;
+        }
+
+        var definition = declaringType.GetGenericTypeDefinition();
+        return definition == typeof(Collection<>) ||
+            definition == typeof(Dictionary<,>.KeyCollection) ||
+            definition == typeof(HashSet<>) ||
+            definition == typeof(LinkedList<>) ||
+            definition == typeof(List<>) ||
+            definition == typeof(Queue<>) ||
+            definition == typeof(ReadOnlyCollection<>) ||
+            definition == typeof(ReadOnlyDictionary<,>.KeyCollection) ||
+            definition == typeof(SortedDictionary<,>.KeyCollection) ||
+            definition == typeof(SortedSet<>) ||
+            definition == typeof(Stack<>);
+    }
+
+    private static bool IsSupportedCollectionInterface(Type type)
+    {
+        if (!type.IsGenericType)
+        {
+            return false;
+        }
+
+        var definition = type.GetGenericTypeDefinition();
+        return definition == typeof(ICollection<>) ||
+            definition == typeof(IReadOnlySet<>) ||
+            definition == typeof(ISet<>);
     }
 
     // `array.Contains(x)` binds to MemoryExtensions.Contains(ReadOnlySpan<T>, T); the source then appears as
@@ -134,10 +262,10 @@ internal static class MethodCallFilterTranslator
     private static bool ReadIgnoreCase(
         MethodCallExpression call,
         QueryComparisonOperator op,
-        IReadOnlyList<Expression> arguments,
+        Expression? comparisonArgument,
         ParameterExpression parameter)
     {
-        if (arguments.Count == 1)
+        if (comparisonArgument is null)
         {
             if (op is QueryComparisonOperator.StringStartsWith or QueryComparisonOperator.StringEndsWith)
             {
@@ -149,8 +277,7 @@ internal static class MethodCallFilterTranslator
             return false;
         }
 
-        if (arguments.Count == 2 &&
-            QueryValueFactory.TryEvaluateObject(arguments[1], parameter, out var raw) &&
+        if (QueryValueFactory.TryEvaluateObject(comparisonArgument, parameter, out var raw) &&
             raw is StringComparison comparison)
         {
             // The evaluator compares ordinally, so only the ordinal modes can be honored faithfully. A
@@ -170,17 +297,4 @@ internal static class MethodCallFilterTranslator
             "string filters support only ordinal overloads: one-argument Contains/Equals, or StringComparison.Ordinal/OrdinalIgnoreCase.");
     }
 
-    private static bool HasNonOrdinalComparer(object collection)
-    {
-        if (collection.GetType().GetProperty("Comparer")?.GetValue(collection) is not IEqualityComparer<string> comparer)
-        {
-            return false;
-        }
-
-        // Behavioral probe rather than identity checks against the public singletons: an ordinal/default
-        // comparer treats these pairs as distinct, while any case-insensitive or culture-sensitive comparer —
-        // including factory-created ones via StringComparer.Create(...) — considers at least one pair equal, so
-        // an ordinal In cannot reproduce its membership semantics. A default HashSet<string> is ordinal -> safe.
-        return comparer.Equals("a", "A");
-    }
 }

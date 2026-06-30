@@ -46,6 +46,14 @@ internal sealed partial class RpcPeerOutboundInvoker
         string method,
         string? instanceId,
         RpcStreamAttachment[]? streams) =>
+        CreateEnvelope(messageId, service, method, instanceId, RpcStreamAttachmentSet.FromArray(streams));
+
+    private static RpcRequest CreateEnvelope(
+        int messageId,
+        string service,
+        string method,
+        string? instanceId,
+        RpcStreamAttachmentSet streams) =>
         new()
         {
             MessageId = messageId,
@@ -55,17 +63,17 @@ internal sealed partial class RpcPeerOutboundInvoker
             Streams = CreateHandles(streams),
         };
 
-    private static RpcStreamHandle[]? CreateHandles(RpcStreamAttachment[]? streams)
+    private static RpcStreamHandle[]? CreateHandles(RpcStreamAttachmentSet streams)
     {
-        if (streams is null || streams.Length == 0)
+        if (streams.IsEmpty)
         {
             return null;
         }
 
-        var handles = new RpcStreamHandle[streams.Length];
-        for (var i = 0; i < streams.Length; i++)
+        var handles = new RpcStreamHandle[streams.Count];
+        for (var i = 0; i < handles.Length; i++)
         {
-            handles[i] = streams[i].Handle;
+            handles[i] = streams.GetAt(i)!.Handle;
         }
 
         return handles;

@@ -37,9 +37,31 @@ internal static class RpcKernelClientExtensionModelFactory
         return new RpcKernelClientExtensions(property, method);
     }
 
+    public static void ValidateLanguageVersion(RpcKernelClientExtensions extensions, ParseOptions parseOptions)
+    {
+        if (extensions.IsEmpty ||
+            parseOptions is not CSharpParseOptions csharpOptions)
+        {
+            return;
+        }
+
+        var languageVersion = LanguageVersionFacts.MapSpecifiedToEffectiveVersion(csharpOptions.SpecifiedLanguageVersion);
+        if (languageVersion > LanguageVersion.CSharp13)
+        {
+            return;
+        }
+
+        throw new NotSupportedException(
+            "Service-backed server extension receiver helpers require C# 14 or later because generated client " +
+            "extensions use C# extension blocks; set LangVersion to 14.0/preview or remove the receiver extension attributes.");
+    }
+
     public static bool HasExtensionAttribute(ISymbol symbol)
         => HasAttribute(symbol, DotBoxDMetadataNames.ServerExtensionClientAttribute) ||
            HasAttribute(symbol, DotBoxDMetadataNames.ServerExtensionMethodAttribute);
+
+    public static bool HasClientPropertyAttribute(ISymbol symbol)
+        => HasAttribute(symbol, DotBoxDMetadataNames.ServerExtensionClientAttribute);
 
     public static bool HasReceiverExtensionAttribute(ISymbol symbol)
     {

@@ -47,6 +47,12 @@ internal static class BindingCallEmitter
             return true;
         }
 
+        if (call.Arguments.Count == 1)
+        {
+            EmitOneArgumentGenericCall(call, il, emitExpression);
+            return true;
+        }
+
         if (call.Arguments.Count == 2)
         {
             EmitTwoArgumentGenericCall(call, il, emitExpression);
@@ -55,6 +61,25 @@ internal static class BindingCallEmitter
 
         EmitArrayBackedGenericCall(call, il, emitExpression);
         return true;
+    }
+
+    private static void EmitOneArgumentGenericCall(
+        CallExpression call,
+        ILGenerator il,
+        Action<Expression> emitExpression)
+    {
+        var arg0 = il.DeclareLocal(typeof(SandboxValue));
+        emitExpression(call.Arguments[0]);
+        il.Emit(OpCodes.Stloc, arg0);
+
+        il.Emit(OpCodes.Ldarg_0);
+        EmitInt32(il, call.Arguments.Count);
+        il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.ChargeValueArray)));
+
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Ldstr, call.Name);
+        il.Emit(OpCodes.Ldloc, arg0);
+        il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.CallBinding1)));
     }
 
     private static void EmitTwoArgumentGenericCall(

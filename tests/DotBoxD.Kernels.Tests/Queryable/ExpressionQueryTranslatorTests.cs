@@ -136,6 +136,26 @@ public sealed class ExpressionQueryTranslatorTests
     }
 
     [Fact]
+    public void TranslateFilter_maps_static_string_equals_with_ordinal_ignore_case()
+    {
+        var filter = ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(
+            e => string.Equals(e.TargetId, "PL", StringComparison.OrdinalIgnoreCase));
+
+        Assert.Equal("TargetId", filter.Field);
+        Assert.Equal(QueryComparisonOperator.Equal, filter.Operator);
+        Assert.True(filter.IgnoreCase);
+        Assert.Equal("PL", filter.Value!.String);
+
+        var reversed = ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(
+            e => string.Equals("PL", e.TargetId, StringComparison.Ordinal));
+
+        Assert.Equal("TargetId", reversed.Field);
+        Assert.Equal(QueryComparisonOperator.Equal, reversed.Operator);
+        Assert.False(reversed.IgnoreCase);
+        Assert.Equal("PL", reversed.Value!.String);
+    }
+
+    [Fact]
     public void TranslateFilter_maps_collection_contains_to_in()
     {
         var ids = new[] { "a", "b", "c" };

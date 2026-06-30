@@ -72,12 +72,12 @@ internal static partial class InvokeAsyncReceiverResolver
             return true;
         }
 
-        if (!TryResolveGeneratedFacadeBase(type, out worldType))
+        if (!TryResolveGeneratedFacadeBase(type, out var facadeBaseType, out worldType))
         {
             return false;
         }
 
-        receiverType = TypeName(type);
+        receiverType = TypeName(facadeBaseType);
         return true;
     }
 

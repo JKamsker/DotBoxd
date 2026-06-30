@@ -33,7 +33,7 @@ internal static class DispatcherGenerator
         sb.AppendLine("    {");
         sb.AppendLine($"        private readonly {qualifiedInterface}? _service;");
         sb.AppendLine();
-        sb.AppendLine($"        internal {dispatcherName}()");
+        sb.AppendLine($"        public {dispatcherName}()");
         sb.AppendLine("        {");
         sb.AppendLine("        }");
         sb.AppendLine();

@@ -23,6 +23,52 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
         yield return [DerivedFieldSource];     // projected DTO field derived in the constructor body
     }
 
+    private const string ReorderedDtoConstructorEvaluationOrderSource = HostPrelude + """
+        public sealed record OrderedPair(int First, int Second);
+
+        public interface IOrderProbe
+        {
+            [HostBinding("order.probe.mark", "order.probe.mark", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
+            int Mark(string value);
+        }
+
+        public static class ReorderedDtoConstructorUsage
+        {
+            public static void Configure(RemoteHookRegistry hooks)
+                => hooks.On<Ev.EncounterEvent>().Where(e => e.Distance <= 4)
+                    .Select((e, ctx) => new OrderedPair(
+                        Second: ctx.Host<IOrderProbe>().Mark("B"),
+                        First: ctx.Host<IOrderProbe>().Mark("A")))
+                    .RunLocal((pair, ctx) => { });
+        }
+        """;
+
+    private const string ReorderedDtoInitializerEvaluationOrderSource = HostPrelude + """
+        public sealed class OrderedPair
+        {
+            public int First { get; init; }
+            public int Second { get; init; }
+        }
+
+        public interface IOrderProbe
+        {
+            [HostBinding("order.probe.mark", "order.probe.mark", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
+            int Mark(string value);
+        }
+
+        public static class ReorderedDtoInitializerUsage
+        {
+            public static void Configure(RemoteHookRegistry hooks)
+                => hooks.On<Ev.EncounterEvent>().Where(e => e.Distance <= 4)
+                    .Select((e, ctx) => new OrderedPair
+                    {
+                        Second = ctx.Host<IOrderProbe>().Mark("B"),
+                        First = ctx.Host<IOrderProbe>().Mark("A")
+                    })
+                    .RunLocal((pair, ctx) => { });
+        }
+        """;
+
     [Theory]
     [MemberData(nameof(UnlowerableRemoteRunLocalSources))]
     public void Unlowerable_remote_run_local_chain_reports_DBXK111(string source)
@@ -31,6 +77,28 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
             ChainGeneratorDiagnostics(source),
             d => string.Equals(d.Id, "DBXK111", StringComparison.Ordinal));
         Assert.Equal(DiagnosticSeverity.Info, diagnostic.Severity);
+    }
+
+    [Fact]
+    public void Reordered_dto_constructor_arguments_report_DBXK111_with_evaluation_order_detail()
+    {
+        var diagnostic = Assert.Single(
+            ChainGeneratorDiagnostics(ReorderedDtoConstructorEvaluationOrderSource),
+            d => string.Equals(d.Id, "DBXK111", StringComparison.Ordinal));
+
+        Assert.Equal(DiagnosticSeverity.Info, diagnostic.Severity);
+        Assert.Contains("evaluation order", diagnostic.GetMessage(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Reordered_dto_initializer_assignments_report_DBXK111_with_evaluation_order_detail()
+    {
+        var diagnostic = Assert.Single(
+            ChainGeneratorDiagnostics(ReorderedDtoInitializerEvaluationOrderSource),
+            d => string.Equals(d.Id, "DBXK111", StringComparison.Ordinal));
+
+        Assert.Equal(DiagnosticSeverity.Info, diagnostic.Severity);
+        Assert.Contains("evaluation order", diagnostic.GetMessage(), StringComparison.Ordinal);
     }
 
     [Fact]

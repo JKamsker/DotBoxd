@@ -170,6 +170,11 @@ internal static partial class HostServiceBindingFactory
         IReadOnlyList<SandboxValue> args,
         int startIndex)
     {
+        if (parameterTypes.Length == 0)
+        {
+            return Array.Empty<object?>();
+        }
+
         var values = new object?[parameterTypes.Length];
         for (var i = 0; i < parameterTypes.Length; i++)
         {

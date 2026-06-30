@@ -58,7 +58,9 @@ public static partial class KernelRpcMarshaller
             var itemType = SandboxTypeOf(elementType);
             if (value is ICollection collection)
             {
-                var items = new SandboxValue[collection.Count];
+                var items = collection.Count == 0
+                    ? Array.Empty<SandboxValue>()
+                    : new SandboxValue[collection.Count];
                 var index = 0;
                 foreach (var item in enumerable)
                 {
@@ -198,7 +200,7 @@ public static partial class KernelRpcMarshaller
                 resultList.Add(FromSandboxValue(item, elementType));
             }
 
-            return resultList;
+            return CompleteList(type, elementType, resultList);
         }
 
         if (MapTypes(type) is { } mapTypes && value is MapValue map)
@@ -212,7 +214,7 @@ public static partial class KernelRpcMarshaller
                 result[key] = FromSandboxValue(pair.Value, mapTypes.Value);
             }
 
-            return result;
+            return CompleteDictionary(type, mapTypes.Key, mapTypes.Value, result);
         }
 
         throw new NotSupportedException($"Server extension cannot marshal a sandbox value to type '{type}'.");

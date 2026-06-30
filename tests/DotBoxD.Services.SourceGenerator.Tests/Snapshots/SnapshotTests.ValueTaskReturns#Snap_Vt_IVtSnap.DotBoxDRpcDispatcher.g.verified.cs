@@ -11,7 +11,7 @@ namespace Snap.Vt
     {
         private readonly global::Snap.Vt.IVtSnap? _service;
 
-        internal VtSnapDispatcher()
+        public VtSnapDispatcher()
         {
         }
 
@@ -66,6 +66,10 @@ namespace Snap.Vt
                 }
                 case "PingAsync":
                 {
+                    if (payload.Length != 0)
+                    {
+                        throw new global::DotBoxD.Services.Exceptions.ServiceProtocolException("Request payload is not allowed for a parameterless RPC method.");
+                    }
                     var __dotboxd_task = receiver.PingAsync();
                     if (!__dotboxd_task.IsCompletedSuccessfully)
                     {

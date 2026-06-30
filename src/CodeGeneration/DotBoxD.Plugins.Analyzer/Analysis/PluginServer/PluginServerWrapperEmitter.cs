@@ -32,35 +32,42 @@ internal static class PluginServerWrapperEmitter
 
         foreach (var wrapper in control.ServiceWrappers)
         {
-            AppendServiceWrapper(builder, model, wrapper);
+            AppendServiceWrapper(builder, model, wrapper, "        ");
         }
 
         builder.AppendLine("    }");
     }
 
-    private static void AppendServiceWrapper(
+    public static void AppendServiceWrapper(
         StringBuilder builder,
         PluginServerFacadeModel model,
-        PluginServerServiceWrapper wrapper)
+        PluginServerServiceWrapper wrapper,
+        string indent)
     {
-        PluginServerXmlDocumentation.Append(builder, "        ", wrapper.Documentation);
-        builder.AppendLine("        private sealed class " + wrapper.WrapperName + " : " + wrapper.Type + ", global::DotBoxD.Abstractions.IServerExtensionClientAccessor");
-        builder.AppendLine("        {");
-        builder.AppendLine("            private readonly " + PluginServerIdentifier.Escape(model.ClassName) + " _owner;");
-        builder.AppendLine("            private readonly " + wrapper.Type + " _inner;");
-        builder.AppendLine("            public " + wrapper.WrapperName + "(" + PluginServerIdentifier.Escape(model.ClassName) + " owner, " + wrapper.Type + " inner) { _owner = owner; _inner = inner; }");
-        AppendAccessorSurface(builder, "            ");
+        var memberIndent = indent + "    ";
+        PluginServerXmlDocumentation.Append(builder, indent, wrapper.Documentation);
+        builder.Append(indent).Append("private sealed class ").Append(wrapper.WrapperName)
+            .Append(" : ").Append(wrapper.Type)
+            .AppendLine(", global::DotBoxD.Abstractions.IServerExtensionClientAccessor");
+        builder.Append(indent).AppendLine("{");
+        builder.Append(memberIndent).Append("private readonly ")
+            .Append(PluginServerIdentifier.Escape(model.ClassName)).AppendLine(" _owner;");
+        builder.Append(memberIndent).Append("private readonly ").Append(wrapper.Type).AppendLine(" _inner;");
+        builder.Append(memberIndent).Append("public ").Append(wrapper.WrapperName)
+            .Append('(').Append(PluginServerIdentifier.Escape(model.ClassName)).Append(" owner, ")
+            .Append(wrapper.Type).AppendLine(" inner) { _owner = owner; _inner = inner; }");
+        AppendAccessorSurface(builder, memberIndent);
         foreach (var property in wrapper.Properties)
         {
-            AppendProperty(builder, property, "            ");
+            AppendProperty(builder, property, memberIndent);
         }
 
         foreach (var method in wrapper.Methods)
         {
-            AppendMethod(builder, method, "            ");
+            AppendMethod(builder, method, memberIndent);
         }
 
-        builder.AppendLine("        }");
+        builder.Append(indent).AppendLine("}");
     }
 
     private static void AppendAccessorSurface(StringBuilder builder, string indent)
@@ -76,6 +83,7 @@ internal static class PluginServerWrapperEmitter
     private static void AppendProperty(StringBuilder builder, PluginServerForwardedProperty property, string indent)
     {
         PluginServerXmlDocumentation.Append(builder, indent, property.Documentation);
+        PluginServerFlowAttributeSource.Append(builder, indent, property.Attributes);
         builder.Append(indent).Append("public ").Append(property.Type).Append(' ')
             .Append(PluginServerIdentifier.Escape(property.Name)).Append(" => ");
         if (property.ReturnWrapperName is null)
@@ -91,6 +99,7 @@ internal static class PluginServerWrapperEmitter
     private static void AppendMethod(StringBuilder builder, PluginServerForwardedMethod method, string indent)
     {
         PluginServerXmlDocumentation.Append(builder, indent, method.Documentation);
+        PluginServerFlowAttributeSource.Append(builder, indent, method.ReturnAttributes);
         builder.Append(indent).Append("public ");
         if (method.ReturnWrapperKind is PluginServerReturnWrapperKind.Task or PluginServerReturnWrapperKind.ValueTask)
         {
@@ -122,7 +131,10 @@ internal static class PluginServerWrapperEmitter
     }
 
     private static string ParameterList(PluginServerForwardedMethod method)
-        => string.Join(", ", method.Parameters.Select(static p => p.Type + " @" + p.Name + p.DefaultClause));
+        => string.Join(", ", method.Parameters.Select(static p => ParamsModifier(p) + p.Type + " @" + p.Name + p.DefaultClause));
+
+    private static string ParamsModifier(PluginServerParameter parameter)
+        => parameter.IsParams ? "params " : string.Empty;
 
     private static string ArgumentList(PluginServerForwardedMethod method)
         => string.Join(", ", method.Parameters.Select(static p => "@" + p.Name));

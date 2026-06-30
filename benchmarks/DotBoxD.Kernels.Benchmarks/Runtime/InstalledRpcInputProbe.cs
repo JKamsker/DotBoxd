@@ -11,7 +11,10 @@ internal static class InstalledRpcInputProbe
     private const int FunctionCount = 512;
     private const int Warmup = 10_000;
     private const int Iterations = 200_000;
+    private const int BinderIterations = 1_000_000;
+    private const int WireIterations = 1_000_000;
     private static readonly SourceSpan Span = new(1, 1);
+    private static object? s_argumentsSink;
 
     public static void Run()
     {
@@ -25,11 +28,37 @@ internal static class InstalledRpcInputProbe
 
         var legacy = MeasureLegacy(package, arguments, Iterations);
         var cached = MeasureCached(package, cachedFunction, cachedCallerCount, arguments, Iterations);
+        var zeroFunction = BinderFunction("zero", []);
+        var oneFunction = BinderFunction("one", [new Parameter("value", SandboxType.I32)]);
+        var oneInput = SandboxValue.FromInt32(42);
+        var oneRpcArguments = new[] { KernelRpcValue.Int32(42) };
+
+        _ = MeasureLegacyZeroBind(zeroFunction, Warmup);
+        _ = MeasureBind(zeroFunction, SandboxValue.Unit, Warmup);
+        _ = MeasureBind(oneFunction, oneInput, Warmup);
+        _ = MeasureLegacyZeroRpcArguments(Warmup);
+        _ = MeasureRpcArguments([], zeroFunction.Parameters, Warmup);
+        _ = MeasureRpcArguments(oneRpcArguments, oneFunction.Parameters, Warmup);
+
+        var legacyZeroBind = MeasureLegacyZeroBind(zeroFunction, BinderIterations);
+        var currentZeroBind = MeasureBind(zeroFunction, SandboxValue.Unit, BinderIterations);
+        var oneBind = MeasureBind(oneFunction, oneInput, BinderIterations);
+        var legacyZeroRpc = MeasureLegacyZeroRpcArguments(WireIterations);
+        var currentZeroRpc = MeasureRpcArguments([], zeroFunction.Parameters, WireIterations);
+        var oneRpc = MeasureRpcArguments(oneRpcArguments, oneFunction.Parameters, WireIterations);
 
         Console.WriteLine($"functions = {FunctionCount:N0}");
         Console.WriteLine($"iterations = {Iterations:N0}");
         Write("legacy RPC input build", legacy);
         Write("cached RPC input build", cached);
+        Console.WriteLine($"binder iterations = {BinderIterations:N0}");
+        Write("legacy zero bind", legacyZeroBind);
+        Write("current zero bind", currentZeroBind);
+        Write("one bind control", oneBind);
+        Console.WriteLine($"wire arg iterations = {WireIterations:N0}");
+        Write("legacy zero RPC args", legacyZeroRpc);
+        Write("current zero RPC args", currentZeroRpc);
+        Write("one RPC arg control", oneRpc);
     }
 
     private static Measurement MeasureLegacy(
@@ -69,6 +98,60 @@ internal static class InstalledRpcInputProbe
 
         sw.Stop();
         return new Measurement(sw.Elapsed.TotalMilliseconds, GC.GetAllocatedBytesForCurrentThread() - before, checksum);
+    }
+
+    private static Measurement MeasureBind(SandboxFunction function, SandboxValue input, int iterations)
+        => MeasureArguments(iterations, () => EntrypointBinder.BindArguments(function, input));
+
+    private static Measurement MeasureLegacyZeroBind(SandboxFunction function, int iterations)
+        => MeasureArguments(iterations, () =>
+        {
+            EntrypointBinder.ValidateInputShape(SandboxValue.Unit, function.Parameters.Count);
+            return LegacyEmptyArray();
+        });
+
+    private static Measurement MeasureLegacyZeroRpcArguments(int iterations)
+        => MeasureArguments(iterations, static () => LegacyEmptyArray());
+
+    private static Measurement MeasureRpcArguments(
+        IReadOnlyList<KernelRpcValue> rpcArguments,
+        IReadOnlyList<Parameter> parameters,
+        int iterations)
+        => MeasureArguments(iterations, () => ConvertRpcArguments(rpcArguments, parameters));
+
+    private static Measurement MeasureArguments(int iterations, Func<IReadOnlyList<SandboxValue>> bind)
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        long checksum = 0;
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var sw = Stopwatch.StartNew();
+        for (var i = 0; i < iterations; i++)
+        {
+            var arguments = bind();
+            s_argumentsSink = arguments;
+            checksum += arguments.Count;
+        }
+
+        sw.Stop();
+        return new Measurement(sw.Elapsed.TotalMilliseconds, GC.GetAllocatedBytesForCurrentThread() - before, (int)checksum);
+    }
+
+    private static IReadOnlyList<SandboxValue> ConvertRpcArguments(
+        IReadOnlyList<KernelRpcValue> rpcArguments,
+        IReadOnlyList<Parameter> parameters)
+    {
+        var sandboxArguments = rpcArguments.Count == 0
+            ? Array.Empty<SandboxValue>()
+            : new SandboxValue[rpcArguments.Count];
+        for (var i = 0; i < rpcArguments.Count; i++)
+        {
+            sandboxArguments[i] = KernelRpcValueConverter.ToSandboxValue(rpcArguments[i], parameters[i].Type);
+        }
+
+        return sandboxArguments;
     }
 
     private static SandboxValue BuildInput(
@@ -136,6 +219,21 @@ internal static class InstalledRpcInputProbe
             [new Parameter("value", SandboxType.I32)],
             SandboxType.I32,
             [new ReturnStatement(new VariableExpression("value", Span), Span)]);
+
+    private static SandboxFunction BinderFunction(string id, IReadOnlyList<Parameter> parameters)
+        => new(
+            id,
+            IsEntrypoint: true,
+            parameters,
+            SandboxType.Unit,
+            [new ReturnStatement(new LiteralExpression(SandboxValue.Unit, Span), Span)]);
+
+    private static SandboxValue[] LegacyEmptyArray()
+    {
+#pragma warning disable MA0005 // Intentional legacy allocation measured by this probe.
+        return new SandboxValue[0];
+#pragma warning restore MA0005
+    }
 
     private static void Write(string name, Measurement measurement)
         => Console.WriteLine(

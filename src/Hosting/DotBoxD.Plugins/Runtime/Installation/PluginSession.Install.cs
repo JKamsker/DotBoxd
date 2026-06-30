@@ -1,4 +1,5 @@
 using DotBoxD.Plugins.Kernel;
+using DotBoxD.Plugins.Runtime;
 
 namespace DotBoxD.Plugins;
 
@@ -78,6 +79,10 @@ public sealed partial class PluginSession
     /// be observed by both kernels until promotion completes. (The first install of a given id has no incumbent
     /// and so no such window.)
     /// </para>
+    /// <para>
+    /// Local-terminal packages use their callback route as replay identity: retrying the same owned package reuses
+    /// the existing kernel, while reusing the callback route for a different package is rejected.
+    /// </para>
     /// </summary>
     /// <remarks>
     /// Opt-in convenience over public primitives: hand-write the equivalent with
@@ -107,12 +112,17 @@ public sealed partial class PluginSession
         try
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            if (TryReuseOwnedLocalTerminal(package, out var existing))
+            {
+                return existing;
+            }
 
+            var installPolicy = policy?.Invoke(package);
             // Stage as a non-current instance, wire, then promote — all while holding the gate. Dispose takes the
             // same gate, so it cannot interleave between the install and the wire to revoke the kernel out from
             // under us (it tears the kernel down only after we release), and the incumbent is displaced only once
             // wiring has succeeded.
-            staged = await _server.InstallOwnedStagedAsync(this, package, policy?.Invoke(package), cancellationToken)
+            staged = await _server.InstallOwnedStagedAsync(this, package, installPolicy, cancellationToken)
                 .ConfigureAwait(false);
             _ownedInstallIds.Add(staged.InstallId);
 
@@ -146,6 +156,37 @@ public sealed partial class PluginSession
         {
             _gate.Release();
         }
+    }
+
+    private bool TryReuseOwnedLocalTerminal(PluginPackage package, out InstalledKernel kernel)
+    {
+        kernel = null!;
+        if (!LocalTerminalIdentity.IsLocalTerminal(package.Manifest) ||
+            package.CallbackSubscriptionId is not { Length: > 0 } callbackId)
+        {
+            return false;
+        }
+
+        foreach (var candidate in _server.Kernels.Snapshot())
+        {
+            if (!ReferenceEquals(candidate.OwnerId, this) ||
+                !_ownedInstallIds.Contains(candidate.InstallId) ||
+                !string.Equals(candidate.CallbackSubscriptionId, callbackId, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (LocalTerminalIdentity.HasSameReplayPackageIdentity(candidate.Package, package))
+            {
+                kernel = candidate;
+                return true;
+            }
+
+            throw new InvalidOperationException(
+                $"local-terminal callback route '{callbackId}' is already owned by this session for a different package.");
+        }
+
+        return false;
     }
 
     /// <summary>

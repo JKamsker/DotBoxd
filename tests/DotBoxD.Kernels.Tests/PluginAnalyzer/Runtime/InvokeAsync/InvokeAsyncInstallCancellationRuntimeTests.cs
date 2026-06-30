@@ -38,6 +38,36 @@ public sealed class InvokeAsyncInstallCancellationRuntimeTests
         Assert.Equal(0, wire.GetType().GetProperty("CanceledInstallAttempts")!.GetValue(wire));
     }
 
+    [Fact]
+    public async Task Canceled_caller_does_not_cache_later_failed_anonymous_kernel_install()
+    {
+        var assembly = Compile(Source);
+        var wire = Activator.CreateInstance(
+            assembly.GetType("Sample.RecordingControlService", throwOnError: true)!)!;
+        var controlType = assembly.GetType(
+            "DotBoxD.Kernels.Game.Plugin.Client.RemotePluginServer",
+            throwOnError: true)!;
+        var control = Activator.CreateInstance(controlType, [wire, null])!;
+        var run = assembly.GetType("Sample.Usage", throwOnError: true)!
+            .GetMethod("Run", BindingFlags.Public | BindingFlags.Static)!;
+
+        using var firstCts = new CancellationTokenSource();
+        var first = InvokeRun(run, control, firstCts.Token);
+        await ((TaskCompletionSource)wire.GetType().GetProperty("InstallStarted")!.GetValue(wire)!)
+            .Task;
+
+        firstCts.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await first);
+
+        wire.GetType().GetProperty("FailNextInstallAfterRelease")!.SetValue(wire, true);
+        ((TaskCompletionSource)wire.GetType().GetProperty("ReleaseInstall")!.GetValue(wire)!).SetResult();
+        var second = await InvokeRun(run, control, CancellationToken.None);
+
+        Assert.Equal(42, second);
+        Assert.Equal(2, wire.GetType().GetProperty("InstallAttempts")!.GetValue(wire));
+        Assert.Equal(0, wire.GetType().GetProperty("CanceledInstallAttempts")!.GetValue(wire));
+    }
+
     private const string Source = """
         using System;
         using System.Threading;
@@ -116,6 +146,8 @@ public sealed class InvokeAsyncInstallCancellationRuntimeTests
 
                 public int CanceledInstallAttempts => _canceledInstallAttempts;
 
+                public bool FailNextInstallAfterRelease { get; set; }
+
                 public ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default)
                     => InstallPackageAsync(packageJson, ct);
 
@@ -157,6 +189,12 @@ public sealed class InvokeAsyncInstallCancellationRuntimeTests
                     {
                         Interlocked.Increment(ref _canceledInstallAttempts);
                         throw;
+                    }
+
+                    if (FailNextInstallAfterRelease)
+                    {
+                        FailNextInstallAfterRelease = false;
+                        throw new InvalidOperationException("detached install failed");
                     }
 
                     return package.Manifest.PluginId;

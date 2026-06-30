@@ -8,7 +8,7 @@ namespace DotBoxD.Services.SourceGenerator.Generation;
 internal static class ProxyStreamSetupEmitter
 {
     public static (
-        string? ArrayName,
+        string? ArgumentName,
         System.Collections.Generic.Dictionary<int, string> Handles,
         System.Collections.Generic.List<(string HandleName, string ReservedName)>? Reservations) Emit(
         StringBuilder sb,
@@ -25,7 +25,7 @@ internal static class ProxyStreamSetupEmitter
             return (null, handles, null);
         }
 
-        var arrayName = locals.Reserve("__dotboxd_streams", ct);
+        var streamArgumentName = locals.Reserve("__dotboxd_streams", ct);
         var reservations =
             new System.Collections.Generic.List<(string HandleName, string ReservedName, string Kind, string AttachmentExpression)>(streamCount);
         var reservationFlags = new System.Collections.Generic.List<(string HandleName, string ReservedName)>(streamCount);
@@ -53,8 +53,8 @@ internal static class ProxyStreamSetupEmitter
             sb.AppendLine($"{indent}var {reservedName} = false;");
         }
 
-        EmitReservationBlock(sb, method, reservations, locals, ct, indent, arrayName);
-        return (arrayName, handles, reservationFlags);
+        EmitReservationBlock(sb, method, reservations, locals, ct, indent, streamArgumentName);
+        return (streamArgumentName, handles, reservationFlags);
     }
 
     private static int CountStreamedParameters(
@@ -81,9 +81,12 @@ internal static class ProxyStreamSetupEmitter
         GeneratedLocalNames locals,
         CancellationToken ct,
         string indent,
-        string arrayName)
+        string streamArgumentName)
     {
-        sb.AppendLine($"{indent}{ServicesGeneratorTypeNames.ArrayOf(ServicesGeneratorTypeNames.GlobalRpcStreamAttachment)} {arrayName};");
+        var argumentType = reservations.Count == 1
+            ? ServicesGeneratorTypeNames.GlobalRpcStreamAttachment
+            : ServicesGeneratorTypeNames.ArrayOf(ServicesGeneratorTypeNames.GlobalRpcStreamAttachment);
+        sb.AppendLine($"{indent}{argumentType} {streamArgumentName};");
         sb.AppendLine($"{indent}try");
         sb.AppendLine($"{indent}{{");
         foreach (var reservation in reservations)
@@ -93,15 +96,23 @@ internal static class ProxyStreamSetupEmitter
             sb.AppendLine($"{indent}    {reservation.ReservedName} = true;");
         }
 
-        sb.AppendLine($"{indent}    {arrayName} = new {ServicesGeneratorTypeNames.ArrayOf(ServicesGeneratorTypeNames.GlobalRpcStreamAttachment)}");
-        sb.AppendLine($"{indent}    {{");
-        foreach (var reservation in reservations)
+        if (reservations.Count == 1)
         {
-            ct.ThrowIfCancellationRequested();
-            sb.AppendLine($"{indent}        {reservation.AttachmentExpression},");
+            sb.AppendLine($"{indent}    {streamArgumentName} = {reservations[0].AttachmentExpression};");
+        }
+        else
+        {
+            sb.AppendLine($"{indent}    {streamArgumentName} = new {ServicesGeneratorTypeNames.ArrayOf(ServicesGeneratorTypeNames.GlobalRpcStreamAttachment)}");
+            sb.AppendLine($"{indent}    {{");
+            foreach (var reservation in reservations)
+            {
+                ct.ThrowIfCancellationRequested();
+                sb.AppendLine($"{indent}        {reservation.AttachmentExpression},");
+            }
+
+            sb.AppendLine($"{indent}    }};");
         }
 
-        sb.AppendLine($"{indent}    }};");
         sb.AppendLine($"{indent}}}");
         var canReturnFaulted = ProxyFaultedReturnEmitter.CanReturnFaulted(method.ReturnKind);
         if (canReturnFaulted)

@@ -57,7 +57,7 @@ internal static class PluginKernelModelFactory
             var eventProperties = PluginSymbolReader.EventProperties(eventType);
             if (ContainsUnsupported(eventProperties))
             {
-                throw new NotSupportedException("Kernel event properties must use supported scalar types.");
+                throw new NotSupportedException(PluginKernelUnsupportedShapeMessage.EventProperties(eventType));
             }
 
             var liveSettings = PluginSymbolReader.LiveSettings(type, context.SemanticModel, cancellationToken);

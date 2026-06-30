@@ -139,7 +139,7 @@ internal static partial class PluginPreparedPackageValidator
         }
 
         ValidateReturnTypes(plan, shouldHandle, handle, handleReturnsValue, diagnostics);
-        ValidateLocalTerminalRouting(package, plan, handle.Id, diagnostics);
+        ValidateLocalTerminalRouting(package, plan, diagnostics);
         if (!ParametersMatch(shouldHandle.Parameters, handle.Parameters))
         {
             diagnostics.Add(new SandboxDiagnostic("DBXK034", "Kernel entrypoints must use the same parameter shape."));

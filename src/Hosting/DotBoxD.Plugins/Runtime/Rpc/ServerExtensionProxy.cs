@@ -41,13 +41,25 @@ public class ServerExtensionProxy : DispatchProxy
         }
 
         var method = MethodCache.GetOrAdd(targetMethod, static target => new ServerExtensionMethod(target));
-        var arguments = new SandboxValue[method.PayloadParameterTypes.Length];
-        for (var i = 0; i < method.PayloadParameterTypes.Length; i++)
-        {
-            arguments[i] = KernelRpcMarshaller.ToSandboxValue(args?[i], method.PayloadParameterTypes[i]);
-        }
+        var arguments = ConvertPayloadArguments(args, method.PayloadParameterTypes);
 
         return method.Materialize(_kernel.InvokeServerExtensionAsync(arguments, method.CancellationToken(args)));
+    }
+
+    private static SandboxValue[] ConvertPayloadArguments(object?[]? args, Type[] payloadParameterTypes)
+    {
+        if (payloadParameterTypes.Length == 0)
+        {
+            return Array.Empty<SandboxValue>();
+        }
+
+        var arguments = new SandboxValue[payloadParameterTypes.Length];
+        for (var i = 0; i < payloadParameterTypes.Length; i++)
+        {
+            arguments[i] = KernelRpcMarshaller.ToSandboxValue(args?[i], payloadParameterTypes[i]);
+        }
+
+        return arguments;
     }
 
     private static Func<ValueTask<SandboxValue>, object?> CreateMaterializer(Type returnType)

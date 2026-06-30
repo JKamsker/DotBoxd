@@ -16,7 +16,44 @@ internal static partial class RpcTypeValidator
         bool allowTopLevelAsyncWrapper,
         bool allowCurrentTransportShape = false,
         bool allowCurrentCancellationToken = false,
-        ITypeSymbol? cancellationTokenSymbol = null)
+        ITypeSymbol? cancellationTokenSymbol = null) =>
+        GetUnsupportedTypeReasonCore(
+            type,
+            role,
+            ct,
+            allowTopLevelAsyncWrapper,
+            allowCurrentTransportShape,
+            allowCurrentCancellationToken,
+            cancellationTokenSymbol,
+            inspectDtoMembers: true);
+
+    internal static string? GetUnsupportedDirectTypeReason(
+        ITypeSymbol type,
+        string role,
+        CancellationToken ct,
+        bool allowTopLevelAsyncWrapper,
+        bool allowCurrentTransportShape = false,
+        bool allowCurrentCancellationToken = false,
+        ITypeSymbol? cancellationTokenSymbol = null) =>
+        GetUnsupportedTypeReasonCore(
+            type,
+            role,
+            ct,
+            allowTopLevelAsyncWrapper,
+            allowCurrentTransportShape,
+            allowCurrentCancellationToken,
+            cancellationTokenSymbol,
+            inspectDtoMembers: false);
+
+    private static string? GetUnsupportedTypeReasonCore(
+        ITypeSymbol type,
+        string role,
+        CancellationToken ct,
+        bool allowTopLevelAsyncWrapper,
+        bool allowCurrentTransportShape = false,
+        bool allowCurrentCancellationToken = false,
+        ITypeSymbol? cancellationTokenSymbol = null,
+        bool inspectDtoMembers = true)
     {
         if (ContainsTaskLikePayloadType(type, ct, allowCurrent: allowTopLevelAsyncWrapper))
         {
@@ -36,12 +73,17 @@ internal static partial class RpcTypeValidator
                 allowTopLevelAsyncWrapper,
                 cancellationTokenSymbol))
         {
-            return $"{role} uses a streaming or control type as an RPC payload; Stream, Pipe, IAsyncEnumerable<T>, and CancellationToken are only supported as direct streaming/control RPC shapes";
+            return $"{role} uses a streaming or control type as an RPC payload; Stream, Pipe, IAsyncEnumerable<T>, RpcStreamHandle, and CancellationToken are only supported as direct streaming/control RPC shapes";
         }
 
         if (ContainsOpenEndedPayloadType(type, ct))
         {
             return $"{role} uses object or dynamic as an RPC payload type; declare a concrete payload type so the wire contract can be reconstructed";
+        }
+
+        if (ContainsDelegatePayloadType(type, ct))
+        {
+            return $"{role} uses a delegate type as an RPC payload; delegates are executable in-process callbacks and cannot be reconstructed across RPC peers";
         }
 
         if (ContainsRefLikeType(type, ct))
@@ -59,7 +101,22 @@ internal static partial class RpcTypeValidator
             return $"{role} uses a function pointer type, which cannot be serialized as an RPC payload";
         }
 
-        return null;
+        var reconstructibilityReason = RpcPayloadReconstructibilityInspector.GetUnsupportedReason(type, role, ct);
+        if (reconstructibilityReason is not null)
+        {
+            return reconstructibilityReason;
+        }
+
+        return inspectDtoMembers
+            ? RpcPayloadMemberInspector.GetUnsupportedPayloadMemberReason(
+                type,
+                role,
+                ct,
+                allowTopLevelAsyncWrapper,
+                allowCurrentTransportShape,
+                allowCurrentCancellationToken,
+                cancellationTokenSymbol)
+            : null;
     }
 
     public static string? GetUnsupportedSubServicePayloadReason(
@@ -213,63 +270,4 @@ internal static partial class RpcTypeValidator
         return false;
     }
 
-    private static bool ContainsPointerType(ITypeSymbol type, CancellationToken ct)
-    {
-        ct.ThrowIfCancellationRequested();
-
-        if (type is IPointerTypeSymbol)
-        {
-            return true;
-        }
-
-        if (type is IArrayTypeSymbol array)
-        {
-            return ContainsPointerType(array.ElementType, ct);
-        }
-
-        if (type is INamedTypeSymbol named)
-        {
-            foreach (var arg in named.TypeArguments)
-            {
-                ct.ThrowIfCancellationRequested();
-
-                if (ContainsPointerType(arg, ct))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private static bool ContainsFunctionPointerType(ITypeSymbol type, CancellationToken ct)
-    {
-        ct.ThrowIfCancellationRequested();
-
-        if (type is IFunctionPointerTypeSymbol)
-        {
-            return true;
-        }
-
-        if (type is IArrayTypeSymbol array)
-        {
-            return ContainsFunctionPointerType(array.ElementType, ct);
-        }
-
-        if (type is INamedTypeSymbol named)
-        {
-            foreach (var arg in named.TypeArguments)
-            {
-                ct.ThrowIfCancellationRequested();
-
-                if (ContainsFunctionPointerType(arg, ct))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
 }

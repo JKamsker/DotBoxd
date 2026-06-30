@@ -7,9 +7,9 @@ internal static class RpcKernelClientParameterSource
     public static string ParameterList(IMethodSymbol method)
     {
         var parts = new List<string>();
-        foreach (var parameter in method.Parameters)
+        for (var i = 0; i < method.Parameters.Length; i++)
         {
-            parts.Add(Declaration(parameter));
+            parts.Add(Declaration(method.Parameters[i], isLast: i == method.Parameters.Length - 1));
         }
 
         return string.Join(", ", parts);
@@ -26,11 +26,14 @@ internal static class RpcKernelClientParameterSource
         return string.Join(", ", parts);
     }
 
-    public static string Declaration(IParameterSymbol parameter)
-        => AttributePrefix(parameter) + TypeName(parameter.Type) + " " + Identifier(parameter.Name) +
-           DefaultClause(parameter);
+    public static string Declaration(IParameterSymbol parameter, bool isLast = false)
+        => AttributePrefix(parameter) + ParamsModifier(parameter, isLast) + TypeName(parameter.Type) + " " +
+           Identifier(parameter.Name) + DefaultClause(parameter);
 
     public static string Identifier(string name) => "@" + name;
+
+    private static string ParamsModifier(IParameterSymbol parameter, bool isLast)
+        => parameter.IsParams && isLast ? "params " : string.Empty;
 
     private static string DefaultClause(IParameterSymbol parameter)
     {

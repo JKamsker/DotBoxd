@@ -21,7 +21,7 @@ internal static class LiveKernelValueFactory
             return kernel.Value.As<T>();
         }
 
-        var state = Activator.CreateInstance<T>();
+        var state = CreateStateInstance<T>();
         var properties = LiveProperties(typeof(T));
         PullFromStore(kernel, state, properties);
         kernel.RegisterStateSynchronizer(typeof(T), () => PushToStore(kernel, state, properties));
@@ -30,7 +30,7 @@ internal static class LiveKernelValueFactory
 
     public static T CreateDraft<T>(T source) where T : class
     {
-        var draft = Activator.CreateInstance<T>();
+        var draft = CreateStateInstance<T>();
         CopyLiveProperties(source, draft);
         return draft;
     }
@@ -64,6 +64,35 @@ internal static class LiveKernelValueFactory
 
     public static void PullFromStore(InstalledKernel kernel, object state)
         => PullFromStore(kernel, state, LiveProperties(state.GetType()));
+
+    private static T CreateStateInstance<T>() where T : class
+    {
+        var type = typeof(T);
+        if (type.IsAbstract || HasNoParameterlessConstructor(type))
+        {
+            throw UnsupportedStateType(type);
+        }
+
+        try
+        {
+            return (T)Activator.CreateInstance(type, nonPublic: true)!;
+        }
+        catch (Exception ex) when (ex is MemberAccessException or MissingMethodException)
+        {
+            throw UnsupportedStateType(type);
+        }
+    }
+
+    private static bool HasNoParameterlessConstructor(Type type)
+        => type.GetConstructor(
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            Type.EmptyTypes,
+            modifiers: null) is null;
+
+    private static Exception UnsupportedStateType(Type type)
+        => LiveSettingTypeConverter.Diagnostic(
+            $"Live setting view type '{type.FullName ?? type.Name}' must be non-abstract and expose a parameterless constructor.");
 
     private static IReadOnlyList<PropertyInfo> LiveProperties(Type type)
         => LivePropertyCache.GetOrAdd(type, DiscoverLiveProperties);

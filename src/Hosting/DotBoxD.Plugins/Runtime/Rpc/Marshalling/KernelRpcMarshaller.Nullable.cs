@@ -53,7 +53,8 @@ public static partial class KernelRpcMarshaller
                 $"Server extension cannot marshal a sandbox value to nullable type '{type}'.");
         }
 
-        result = hasValue.Value ? FromSandboxValue(record.Fields[1], underlying) : null;
+        var inner = FromSandboxValue(record.Fields[1], underlying);
+        result = hasValue.Value ? inner : null;
         return true;
     }
 
@@ -73,7 +74,9 @@ public static partial class KernelRpcMarshaller
                 $"Server extension cannot marshal a kernel RPC value to nullable type '{type}'.");
         }
 
-        result = value.GetItem(0).BoolValue ? FromKernelRpcValue(value.GetItem(1), underlying) : null;
+        var hasValue = value.GetItem(0).BoolValue;
+        var inner = FromKernelRpcValue(value.GetItem(1), underlying);
+        result = hasValue ? inner : null;
         return true;
     }
 

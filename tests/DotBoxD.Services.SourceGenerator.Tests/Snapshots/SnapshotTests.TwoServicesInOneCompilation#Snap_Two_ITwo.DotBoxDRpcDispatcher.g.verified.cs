@@ -11,7 +11,7 @@ namespace Snap.Two
     {
         private readonly global::Snap.Two.ITwo? _service;
 
-        internal TwoDispatcher()
+        public TwoDispatcher()
         {
         }
 
@@ -56,6 +56,10 @@ namespace Snap.Two
             {
                 case "BAsync":
                 {
+                    if (payload.Length != 0)
+                    {
+                        throw new global::DotBoxD.Services.Exceptions.ServiceProtocolException("Request payload is not allowed for a parameterless RPC method.");
+                    }
                     var __dotboxd_task = receiver.BAsync();
                     var __dotboxd_result = __dotboxd_task.IsCompletedSuccessfully
                         ? __dotboxd_task.Result

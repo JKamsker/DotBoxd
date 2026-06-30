@@ -159,7 +159,7 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
 
         var subscription = Assert.Single(package.Manifest.Subscriptions);
         Assert.True(subscription.LocalTerminal);     // a local-terminal (RunLocal) chain
-        Assert.Equal("record", subscription.ProjectedType); // no Select => explicit whole-event projection
+        Assert.Equal("global::" + typeof(ChainAggroEvent).FullName, subscription.ProjectedType);
         Assert.Empty(package.Manifest.RequiredCapabilities);
     }
 

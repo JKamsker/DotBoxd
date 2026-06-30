@@ -1,3 +1,8 @@
+using System.Runtime.CompilerServices;
+using DotBoxD.Kernels.Sandbox;
+using DotBoxD.Plugins.Runtime.Rpc;
+using DotBoxD.Plugins.Runtime.Validation;
+
 namespace DotBoxD.Plugins.Runtime;
 
 internal static class LocalTerminalManifestValidator
@@ -23,6 +28,26 @@ internal static class LocalTerminalManifestValidator
                 $"Hook package '{package.Manifest.PluginId}' projectedType '{subscription.ProjectedType}' does not match " +
                 $"handler type '{typeof(TProjected).FullName ?? typeof(TProjected).Name}'.");
         }
+
+        ValidateHandleReturnType<TProjected>(package);
+    }
+
+    private static void ValidateHandleReturnType<TProjected>(PluginPackage package)
+    {
+        if (!PluginEntrypointIndex.Build(package).TryGet(package.Entrypoints.Handle, out var handle) ||
+            handle.ReturnType == SandboxType.Unit)
+        {
+            return;
+        }
+
+        var expected = KernelRpcMarshaller.SandboxTypeOf(typeof(TProjected));
+        if (handle.ReturnType != expected)
+        {
+            throw new InvalidOperationException(
+                $"Hook package '{package.Manifest.PluginId}' projectedType '{package.Manifest.Subscriptions[0].ProjectedType}' " +
+                $"declares handler type '{typeof(TProjected).FullName ?? typeof(TProjected).Name}', but Handle returns " +
+                $"'{handle.ReturnType}' instead of '{expected}'.");
+        }
     }
 
     private static bool ProjectedTypeMatches(string declared, Type expected)
@@ -38,21 +63,9 @@ internal static class LocalTerminalManifestValidator
                 !IsMap(expected) &&
                 typeof(System.Collections.IEnumerable).IsAssignableFrom(expected),
             "map" => IsMap(expected),
-            "record" => !IsKnownProjectedScalar(expected) &&
-                !typeof(System.Collections.IEnumerable).IsAssignableFrom(expected) &&
-                !IsMap(expected),
+            "record" => IsAnonymousType(expected) || IsFrameworkRecordType(expected),
             _ => TypeNameMatches(declared, expected)
         };
-
-    private static bool IsKnownProjectedScalar(Type type)
-        => type == typeof(bool) ||
-           type == typeof(int) ||
-           type == typeof(long) ||
-           type == typeof(double) ||
-           type == typeof(float) ||
-           type == typeof(string) ||
-           type == typeof(Guid) ||
-           IsEnum(type);
 
     private static bool IsEnum(Type type)
         => type.IsEnum;
@@ -79,8 +92,47 @@ internal static class LocalTerminalManifestValidator
 
     private static bool TypeNameMatches(string declared, Type expected)
     {
-        var expectedName = expected.FullName ?? expected.Name;
-        return string.Equals(Normalize(declared), Normalize(expectedName), StringComparison.Ordinal);
+        var normalized = Normalize(declared);
+        return string.Equals(normalized, Normalize(CSharpTypeName(expected)), StringComparison.Ordinal) ||
+               string.Equals(normalized, Normalize(expected.FullName ?? expected.Name), StringComparison.Ordinal);
+    }
+
+    private static bool IsAnonymousType(Type type)
+        => Attribute.IsDefined(type, typeof(CompilerGeneratedAttribute), inherit: false) &&
+           type.IsGenericType &&
+           (type.Name.StartsWith("<>", StringComparison.Ordinal) ||
+            type.Name.StartsWith("VB$", StringComparison.Ordinal)) &&
+           type.Name.Contains("AnonymousType", StringComparison.Ordinal) &&
+           !type.IsPublic &&
+           !type.IsNestedPublic;
+
+    private static bool IsFrameworkRecordType(Type type)
+        => type == typeof(DateTime) ||
+           type == typeof(Index) ||
+           type == typeof(Range);
+
+    private static string CSharpTypeName(Type type)
+    {
+        if (type.IsArray)
+        {
+            return CSharpTypeName(type.GetElementType()!) + "[]";
+        }
+
+        if (!type.IsGenericType)
+        {
+            return type.FullName ?? type.Name;
+        }
+
+        var definitionName = type.GetGenericTypeDefinition().FullName ?? type.Name;
+        var tick = definitionName.IndexOf('`', StringComparison.Ordinal);
+        if (tick >= 0)
+        {
+            definitionName = definitionName[..tick];
+        }
+
+        return definitionName + "<" +
+               string.Join(", ", type.GetGenericArguments().Select(CSharpTypeName)) +
+               ">";
     }
 
     private static string Normalize(string name)

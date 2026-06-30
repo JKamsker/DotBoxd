@@ -23,7 +23,8 @@ internal static class GeneratedFactoryGenerator
         sb.AppendLine("    {");
         GeneratedFactoryMetadataEmitter.AppendMethodArrays(sb, services, ct);
         sb.AppendLine();
-        sb.AppendLine($"        private static readonly {ServicesGeneratorTypeNames.ArrayOf(ServicesGeneratorTypeNames.GlobalGeneratedService)} s_services =");
+        sb.AppendLine($"        private static readonly {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalReadOnlyList, ServicesGeneratorTypeNames.GlobalGeneratedService)} s_services =");
+        sb.AppendLine($"            {ServicesGeneratorTypeNames.GlobalArray}.AsReadOnly(new {ServicesGeneratorTypeNames.ArrayOf(ServicesGeneratorTypeNames.GlobalGeneratedService)}");
         sb.AppendLine("        {");
 
         for (var i = 0; i < services.Array.Length; i++)
@@ -46,7 +47,7 @@ internal static class GeneratedFactoryGenerator
             sb.AppendLine($"                {GeneratedFactoryMetadataEmitter.MethodArrayName(i)}),");
         }
 
-        sb.AppendLine("        };");
+        sb.AppendLine("        });");
         sb.AppendLine();
         sb.AppendLine("        static DotBoxDGenerated()");
         sb.AppendLine("        {");

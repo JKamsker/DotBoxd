@@ -11,7 +11,7 @@ namespace Snap.One
     {
         private readonly global::Snap.One.ICalculator? _service;
 
-        internal CalculatorDispatcher()
+        public CalculatorDispatcher()
         {
         }
 

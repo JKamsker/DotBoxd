@@ -59,6 +59,12 @@ internal static partial class RpcKernelModelFactory
 
     private static void ValidateBatchMethodParameters(IMethodSymbol method)
     {
+        if (method.TypeParameters.Length > 0)
+        {
+            throw new NotSupportedException(
+                $"Server extension method '{method.Name}' must be non-generic.");
+        }
+
         foreach (var parameter in method.Parameters)
         {
             if (parameter.RefKind != RefKind.None)

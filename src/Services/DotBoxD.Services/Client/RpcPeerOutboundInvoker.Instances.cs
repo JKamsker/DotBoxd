@@ -63,7 +63,7 @@ internal sealed partial class RpcPeerOutboundInvoker
             instanceId,
             streams: null,
             ct).ConfigureAwait(false);
-        EnsureNonStreamingResponse(received);
+        EnsureNoResponsePayload(received);
     }
 
     public async Task InvokeOnInstanceAsync<TRequest>(
@@ -77,7 +77,7 @@ internal sealed partial class RpcPeerOutboundInvoker
         instanceId = ValidateInstanceId(instanceId);
         using var received = await SendRequestAsync(service, method, request, instanceId, streams, ct)
             .ConfigureAwait(false);
-        EnsureNonStreamingResponse(received);
+        EnsureNoResponsePayload(received);
     }
 
     public async Task InvokeOnInstanceAsync(
@@ -88,7 +88,7 @@ internal sealed partial class RpcPeerOutboundInvoker
     {
         instanceId = ValidateInstanceId(instanceId);
         using var received = await SendRequestAsync(service, method, instanceId, ct).ConfigureAwait(false);
-        EnsureNonStreamingResponse(received);
+        EnsureNoResponsePayload(received);
     }
 
     public Task<Stream> InvokeStreamOnInstanceAsync(

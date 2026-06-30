@@ -1,6 +1,7 @@
 using DotBoxD.Kernels.Bindings;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
+using DotBoxD.Kernels.Runtime.Bindings;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Plugins.Policies;
 using DotBoxD.Plugins.Runtime;
@@ -19,25 +20,79 @@ internal static class CompiledBindingFastPathProbe
     {
         var target = SandboxValue.FromString("player-1");
         var message = SandboxValue.FromString("Ouch, fire.");
+        var logMessage = SandboxValue.FromString("position updated");
 
-        _ = MeasureArrayBacked(Warmup, target, message);
-        _ = MeasureFastPath(Warmup, target, message);
+        _ = MeasureOneArgumentArrayBacked(Warmup, logMessage);
+        _ = MeasureOneArgumentFastPath(Warmup, logMessage);
+        _ = MeasureTwoArgumentArrayBacked(Warmup, target, message);
+        _ = MeasureTwoArgumentFastPath(Warmup, target, message);
 
         GC.Collect();
         GC.WaitForPendingFinalizers();
         GC.Collect();
 
-        var arrayBacked = MeasureArrayBacked(Iterations, target, message);
-        var fastPath = MeasureFastPath(Iterations, target, message);
+        var oneArgArrayBacked = MeasureOneArgumentArrayBacked(Iterations, logMessage);
+        var oneArgFastPath = MeasureOneArgumentFastPath(Iterations, logMessage);
+        var twoArgArrayBacked = MeasureTwoArgumentArrayBacked(Iterations, target, message);
+        var twoArgFastPath = MeasureTwoArgumentFastPath(Iterations, target, message);
 
         Console.WriteLine("case                         iterations   elapsed       allocated      messages       audit");
-        Write("array-backed CallBinding", arrayBacked);
-        Write("CallBinding2 fast path", fastPath);
+        Write("array-backed CallBinding1", oneArgArrayBacked);
+        Write("CallBinding1 fast path", oneArgFastPath);
         Console.WriteLine(
-            $"saved per call: {(arrayBacked.AllocatedBytes - fastPath.AllocatedBytes) / (double)Iterations:N1} B");
+            $"saved per one-arg call: {(oneArgArrayBacked.AllocatedBytes - oneArgFastPath.AllocatedBytes) / (double)Iterations:N1} B");
+        Write("array-backed CallBinding2", twoArgArrayBacked);
+        Write("CallBinding2 fast path", twoArgFastPath);
+        Console.WriteLine(
+            $"saved per two-arg call: {(twoArgArrayBacked.AllocatedBytes - twoArgFastPath.AllocatedBytes) / (double)Iterations:N1} B");
     }
 
-    private static RunSummary MeasureArrayBacked(
+    private static RunSummary MeasureOneArgumentArrayBacked(
+        int iterations,
+        SandboxValue message)
+    {
+        var run = BindingRun.Create();
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var sw = Stopwatch.StartNew();
+        for (var i = 0; i < iterations; i++)
+        {
+            var args = Kernels.Runtime.CompiledRuntime.CreateValueArray(run.Context, 1);
+            args[0] = message;
+            _ = Kernels.Runtime.CompiledRuntime.CallBinding(run.Context, SafeLogBindings.Info.Id, args);
+        }
+
+        sw.Stop();
+        return new RunSummary(
+            iterations,
+            sw.Elapsed.TotalMilliseconds,
+            GC.GetAllocatedBytesForCurrentThread() - before,
+            run.Messages.Sent,
+            run.Audit.EventsWritten);
+    }
+
+    private static RunSummary MeasureOneArgumentFastPath(
+        int iterations,
+        SandboxValue message)
+    {
+        var run = BindingRun.Create();
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var sw = Stopwatch.StartNew();
+        for (var i = 0; i < iterations; i++)
+        {
+            Kernels.Runtime.CompiledRuntime.ChargeValueArray(run.Context, 1);
+            _ = Kernels.Runtime.CompiledRuntime.CallBinding1(run.Context, SafeLogBindings.Info.Id, message);
+        }
+
+        sw.Stop();
+        return new RunSummary(
+            iterations,
+            sw.Elapsed.TotalMilliseconds,
+            GC.GetAllocatedBytesForCurrentThread() - before,
+            run.Messages.Sent,
+            run.Audit.EventsWritten);
+    }
+
+    private static RunSummary MeasureTwoArgumentArrayBacked(
         int iterations,
         SandboxValue target,
         SandboxValue message)
@@ -62,7 +117,7 @@ internal static class CompiledBindingFastPathProbe
             run.Audit.EventsWritten);
     }
 
-    private static RunSummary MeasureFastPath(
+    private static RunSummary MeasureTwoArgumentFastPath(
         int iterations,
         SandboxValue target,
         SandboxValue message)
@@ -96,10 +151,13 @@ internal static class CompiledBindingFastPathProbe
 
     private static SandboxPolicy Policy()
         => SandboxPolicyBuilder.Create()
+            .GrantLogging()
             .GrantHostMessageWrite()
             .WithFuel(long.MaxValue)
             .WithMaxAllocatedBytes(long.MaxValue)
             .WithMaxHostCalls(int.MaxValue)
+            .WithMaxLogEvents(int.MaxValue)
+            .WithMaxLogMessageLength(int.MaxValue)
             .WithMaxTotalStringBytes(long.MaxValue)
             .WithWallTime(TimeSpan.FromMinutes(5))
             .Build();
@@ -124,7 +182,10 @@ internal static class CompiledBindingFastPathProbe
             {
                 CostModel = BindingCostModel.Fixed(5)
             };
-            var registry = new BindingRegistryBuilder().Add(descriptor).Build();
+            var registry = new BindingRegistryBuilder()
+                .Add(descriptor)
+                .Add(SafeLogBindings.Info)
+                .Build();
             var policy = Policy();
             var audit = new CountingAuditSink();
             var context = new SandboxContext(

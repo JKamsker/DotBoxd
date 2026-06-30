@@ -11,7 +11,7 @@ public sealed class PluginEventAdapterRegistry
     public void Register<TEvent>(IPluginEventAdapter<TEvent> adapter)
     {
         var parameters = adapter.Parameters;
-        PluginEventValueWriterShapeValidator.Validate(adapter, parameters);
+        PluginEventAdapterShapeValidator.Validate(adapter, parameters);
         var shape = new PluginEventShape(adapter.EventName, parameters);
         ValidateEventNameShape(typeof(TEvent), shape);
         // Capture the type-erased wire closure here — the single store site both the explicit Register path and

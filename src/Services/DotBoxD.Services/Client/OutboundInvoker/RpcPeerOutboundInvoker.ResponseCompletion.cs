@@ -88,4 +88,14 @@ internal sealed partial class RpcPeerOutboundInvoker
                 "Response opened a stream for a non-streaming invocation.");
         }
     }
+
+    private static void EnsureNoResponsePayload(ReceivedResponse received)
+    {
+        EnsureNonStreamingResponse(received);
+        if (received.Payload.Length != 0)
+        {
+            throw new ServiceProtocolException(
+                "Response payload is not allowed for a no-response invocation.");
+        }
+    }
 }

@@ -52,6 +52,35 @@ public sealed class PluginInputAllocationTests
     }
 
     [Fact]
+    public async Task Kernel_input_building_rejects_writer_value_type_mismatch()
+    {
+        var messages = new InMemoryPluginMessageSink();
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
+        var kernel = await server.InstallAsync(InputBuildPackage());
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await kernel.HandleAsync(new WrongTypeWriterEventAdapter(), new IndexOnlyEvent("player-1")).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK036");
+        Assert.Empty(messages.Messages);
+    }
+
+    [Fact]
+    public async Task Kernel_input_building_rejects_adapter_value_type_mismatch()
+    {
+        var messages = new InMemoryPluginMessageSink();
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
+        var kernel = await server.InstallAsync(InputBuildPackage());
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await kernel.HandleAsync(new WrongTypeEventAdapter(), new IndexOnlyEvent("player-1")).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK036");
+        Assert.Empty(messages.Messages);
+        Assert.Empty(kernel.ExecutionObservations);
+    }
+
+    [Fact]
     public void Register_event_adapter_rejects_writer_value_count_mismatch()
     {
         var server = DotBoxD.Plugins.PluginServer.Create();
@@ -172,6 +201,16 @@ public sealed class PluginInputAllocationTests
             => new IndexOnlyValues(SandboxValue.FromString(e.TargetId));
     }
 
+    private sealed class WrongTypeEventAdapter : IPluginEventAdapter<IndexOnlyEvent>
+    {
+        public string EventName => nameof(IndexOnlyEvent);
+
+        public IReadOnlyList<Parameter> Parameters { get; } = [new("e_TargetId", SandboxType.String)];
+
+        public IReadOnlyList<SandboxValue> ToSandboxValues(IndexOnlyEvent e)
+            => [SandboxValue.FromInt32(123)];
+    }
+
     private sealed class WriterEventAdapter : IPluginEventValueWriter<IndexOnlyEvent>
     {
         public string EventName => nameof(IndexOnlyEvent);
@@ -206,6 +245,24 @@ public sealed class PluginInputAllocationTests
 
         public void CopySandboxValues(IndexOnlyEvent e, SandboxValue[] destination, int destinationIndex)
             => destination[destinationIndex] = SandboxValue.FromString(e.TargetId);
+    }
+
+    private sealed class WrongTypeWriterEventAdapter : IPluginEventValueWriter<IndexOnlyEvent>
+    {
+        public string EventName => nameof(IndexOnlyEvent);
+
+        public IReadOnlyList<Parameter> Parameters { get; } = [new("e_TargetId", SandboxType.String)];
+
+        public int EventValueCount => 1;
+
+        public IReadOnlyList<SandboxValue> ToSandboxValues(IndexOnlyEvent e)
+            => throw new InvalidOperationException("Writer adapters should not allocate event value lists.");
+
+        public SandboxValue ToSandboxValue(IndexOnlyEvent e, int index)
+            => index == 0 ? SandboxValue.FromInt32(123) : throw new ArgumentOutOfRangeException(nameof(index));
+
+        public void CopySandboxValues(IndexOnlyEvent e, SandboxValue[] destination, int destinationIndex)
+            => destination[destinationIndex] = SandboxValue.FromInt32(123);
     }
 
     private sealed class IndexOnlyValues(SandboxValue value) : IReadOnlyList<SandboxValue>

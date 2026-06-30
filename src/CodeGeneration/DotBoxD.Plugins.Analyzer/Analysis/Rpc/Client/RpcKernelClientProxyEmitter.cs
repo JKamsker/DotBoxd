@@ -112,6 +112,7 @@ internal static partial class RpcKernelClientProxyEmitter
             var result = locals.Next("__result");
             var payloadParameterCount = RpcKernelClientParameters.PayloadParameterCount(_serviceMethod);
 
+            RpcReturnFlowAttributeSource.Append(builder, _serviceMethod, "    ");
             builder.Append("    public ");
             if (_returnShape != ReturnShape.Direct)
             {

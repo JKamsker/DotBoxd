@@ -1,9 +1,49 @@
 using DotBoxD.Kernels.Tests.PluginAnalyzer.Core;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
 
 public sealed class ServerExtensionClientExtensionValidationTests
 {
+    private const string ServiceBackedReceiverExtensionSource = """
+        using System.Threading.Tasks;
+        using DotBoxD.Abstractions;
+        using DotBoxD.Plugins;
+        using DotBoxD.Plugins.Runtime;
+        using DotBoxD.Services.Attributes;
+
+        namespace Sample;
+
+        [DotBoxDService]
+        public interface IRemoteMonsterControl;
+
+        public interface IMonsterKillerService
+        {
+            ValueTask<int> KillMonstersAsync(int monsterId);
+        }
+
+        [ServerExtensionClient(typeof(IRemoteMonsterControl))]
+        [ServerExtension("monster-killer", typeof(IMonsterKillerService))]
+        public sealed partial class MonsterKillerKernel
+        {
+            public int KillMonsters(int monsterId, HookContext ctx) => monsterId;
+        }
+        """;
+
+    [Fact]
+    public void Service_backed_receiver_extensions_require_csharp_14()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics(
+            ServiceBackedReceiverExtensionSource,
+            LanguageVersion.CSharp13);
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("C# 14", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics, d => d.Id.StartsWith("CS", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData("[ServerExtensionClient(typeof(IRemoteMonsterControl), \" \")]", "property")]
     [InlineData("[ServerExtensionMethod(typeof(IRemoteMonsterControl), \" \")]", "method")]

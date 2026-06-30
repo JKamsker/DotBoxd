@@ -121,6 +121,16 @@ public sealed class KernelRpcBinaryCodecTests
     }
 
     [Fact]
+    public void DecodeArguments_reuses_empty_array_for_empty_payload()
+    {
+        var payload = KernelRpcBinaryCodec.EncodeArguments(Array.Empty<KernelRpcValue>());
+
+        var arguments = KernelRpcBinaryCodec.DecodeArguments(payload);
+
+        Assert.Same(Array.Empty<KernelRpcValue>(), arguments);
+    }
+
+    [Fact]
     public void DecodeArguments_rejects_excessive_aggregate_item_count()
     {
         var payload = new List<byte>();

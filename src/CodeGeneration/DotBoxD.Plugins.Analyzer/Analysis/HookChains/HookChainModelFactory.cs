@@ -256,7 +256,7 @@ internal static partial class HookChainModelFactory
             // push rather than run. Even no-Select RunLocal chains are emitted as an explicit event-record
             // projection, so ordinary Unit-returning Run packages cannot be relabeled into native callbacks.
             LocalTerminal = installKind == HookChainInterceptorInstallKind.LocalCallback,
-            ProjectedType = localCallbackProjection?.Value.Type,
+            ProjectedType = LocalProjectedManifestType(localCallbackProjection, projectedTypeSymbol),
             LocalDecoderSource = localDecoderSource,
         };
 

@@ -52,6 +52,7 @@ public sealed class ServicesGeneratorTypeNameContractTests
             [nameof(ServicesGeneratorTypeNames.SystemThreadingTasksNamespace)] = typeof(Task).Namespace!,
 
             [nameof(ServicesGeneratorTypeNames.GlobalArgumentNullException)] = GlobalTypeName(typeof(ArgumentNullException)),
+            [nameof(ServicesGeneratorTypeNames.GlobalArray)] = GlobalTypeName(typeof(Array)),
             [nameof(ServicesGeneratorTypeNames.GlobalBufferWriter)] = GlobalTypeName(typeof(IBufferWriter<>)),
             [nameof(ServicesGeneratorTypeNames.GlobalCancellationToken)] = GlobalTypeName(typeof(CancellationToken)),
             [nameof(ServicesGeneratorTypeNames.GlobalException)] = GlobalTypeName(typeof(Exception)),
@@ -104,6 +105,8 @@ public sealed class ServicesGeneratorTypeNameContractTests
                 GlobalTypeName(typeof(ServiceNotFoundException)),
             [nameof(ServicesGeneratorTypeNames.GlobalServiceNotFoundKind)] =
                 GlobalTypeName(typeof(ServiceNotFoundException)) + ".NotFoundKind",
+            [nameof(ServicesGeneratorTypeNames.GlobalServiceProtocolException)] =
+                GlobalTypeName(typeof(ServiceProtocolException)),
         };
 
     private static string GlobalTypeName(Type type) => ServicesGeneratorTypeNames.GlobalPrefix + TypeName(type);

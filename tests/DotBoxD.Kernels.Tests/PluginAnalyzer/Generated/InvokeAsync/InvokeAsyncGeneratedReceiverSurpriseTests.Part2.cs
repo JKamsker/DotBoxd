@@ -92,6 +92,85 @@ public sealed partial class InvokeAsyncGeneratedReceiverSurpriseTests
     }
 
     [Fact]
+    public void Generated_services_receiver_on_subclass_with_hidden_services_member_reports_erased_surface()
+    {
+        var result = RunGenerator(UsageSource("""
+            public sealed class ShadowPluginServer : IPluginServer<IGameWorldAccess>
+            {
+                public ValueTask StartAsync(CancellationToken cancellationToken = default) => default;
+
+                public ValueTask RunAsync(CancellationToken cancellationToken = default) => default;
+
+                public ValueTask<TReturn> InvokeAsync<TReturn>(
+                    Func<IGameWorldAccess, ValueTask<TReturn>> lambda,
+                    CancellationToken cancellationToken = default)
+                    => default;
+
+                public ValueTask<TReturn> InvokeAsync<TCaptures, TReturn>(
+                    TCaptures captures,
+                    RemoteServerInvocation<IGameWorldAccess, TCaptures, TReturn> lambda,
+                    CancellationToken cancellationToken = default)
+                    where TCaptures : class
+                    => default;
+
+                public ValueTask HoldUntilShutdownAsync(CancellationToken cancellationToken = default) => default;
+            }
+
+            public sealed class DerivedServer : RemotePluginServer
+            {
+                public DerivedServer(DotBoxD.Kernels.Game.Server.Abstractions.Ipc.IGamePluginControlService control)
+                    : base(control)
+                {
+                }
+
+                public new IPluginServer<IGameWorldAccess> Services { get; } = new ShadowPluginServer();
+            }
+
+            public static ValueTask<int> Run(DerivedServer kernels)
+                => kernels.Services.InvokeAsync(async (IGameWorldAccess world) =>
+                {
+                    return world.GetHealth("monster-1");
+                });
+            """));
+        var source = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.Contains(
+            result.Diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains("erased IPluginServer", StringComparison.Ordinal));
+        Assert.DoesNotContain("AnonymousInvokeAsync", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void InvokeAsync_on_subclass_with_hidden_services_member_uses_generated_base_surface()
+    {
+        var result = RunGeneratorAndAssertCompiles(UsageSource("""
+            public sealed class ShadowServices;
+
+            public sealed class DerivedServer : RemotePluginServer
+            {
+                public DerivedServer(DotBoxD.Kernels.Game.Server.Abstractions.Ipc.IGamePluginControlService control)
+                    : base(control)
+                {
+                }
+
+                public new ShadowServices Services { get; } = new();
+            }
+
+            public static ValueTask<int> Run(DerivedServer kernels)
+                => kernels.InvokeAsync(async (IGameWorldAccess world) =>
+                {
+                    return world.GetHealth("monster-1");
+                });
+            """));
+        var source = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
+        Assert.Contains("AnonymousInvokeAsync", source, StringComparison.Ordinal);
+        Assert.Contains("this global::DotBoxD.Kernels.Game.Plugin.Client.RemotePluginServer server", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Generated_builder_tuple_receiver_lowers_InvokeAsync()
     {
         var result = RunGeneratorAndAssertCompiles(UsageSource("""

@@ -11,7 +11,7 @@ namespace Snap.Inherit
     {
         private readonly global::Snap.Inherit.IDerived? _service;
 
-        internal DerivedDispatcher()
+        public DerivedDispatcher()
         {
         }
 
@@ -56,6 +56,10 @@ namespace Snap.Inherit
             {
                 case "DerivedAsync":
                 {
+                    if (payload.Length != 0)
+                    {
+                        throw new global::DotBoxD.Services.Exceptions.ServiceProtocolException("Request payload is not allowed for a parameterless RPC method.");
+                    }
                     var __dotboxd_task = receiver.DerivedAsync();
                     var __dotboxd_result = __dotboxd_task.IsCompletedSuccessfully
                         ? __dotboxd_task.Result

@@ -130,7 +130,7 @@ internal static class RpcKernelClientServiceMethodResolver
         IParameterSymbol kernelParameter)
     {
         if (serviceParameter.RefKind == kernelParameter.RefKind &&
-            serviceParameter.IsParams == kernelParameter.IsParams)
+            ParamsCompatible(serviceParameter, kernelParameter))
         {
             return;
         }
@@ -138,6 +138,12 @@ internal static class RpcKernelClientServiceMethodResolver
         throw new NotSupportedException(
             $"Server extension parameter '{serviceParameter.Name}' modifier '{DescribeParameterModifiers(serviceParameter)}' must match kernel parameter '{kernelParameter.Name}' modifier '{DescribeParameterModifiers(kernelParameter)}'.");
     }
+
+    private static bool ParamsCompatible(
+        IParameterSymbol serviceParameter,
+        IParameterSymbol kernelParameter) =>
+        serviceParameter.IsParams == kernelParameter.IsParams ||
+        (serviceParameter.IsParams && !kernelParameter.IsParams);
 
     private static void ValidateReturn(
         IMethodSymbol serviceMethod,

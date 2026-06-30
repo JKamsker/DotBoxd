@@ -48,7 +48,7 @@ public static partial class KernelRpcBinaryCodec
         var reader = new Reader(payload.Span);
         var count = reader.ReadLength();
         reader.ReserveItems(count);
-        var values = new KernelRpcValue[count];
+        var values = count == 0 ? Array.Empty<KernelRpcValue>() : new KernelRpcValue[count];
         for (var i = 0; i < count; i++)
         {
             values[i] = ReadValue(ref reader, 0);
@@ -167,7 +167,7 @@ public static partial class KernelRpcBinaryCodec
 
         var count = reader.ReadLength();
         reader.ReserveItems(count);
-        var values = new KernelRpcValue[count];
+        var values = count == 0 ? Array.Empty<KernelRpcValue>() : new KernelRpcValue[count];
         for (var i = 0; i < count; i++)
         {
             values[i] = ReadValue(ref reader, nextDepth);

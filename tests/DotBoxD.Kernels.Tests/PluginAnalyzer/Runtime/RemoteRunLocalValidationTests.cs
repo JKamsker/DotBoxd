@@ -93,7 +93,7 @@ public sealed partial class RemoteRunLocalValidationTests
 
         var subscription = Assert.Single(package.Manifest.Subscriptions);
         Assert.True(subscription.LocalTerminal);        // marked local-terminal
-        Assert.Equal("record", subscription.ProjectedType); // whole-event => explicit event-record projection
+        Assert.Equal("global::" + typeof(ChainAggroEvent).FullName, subscription.ProjectedType);
 
         using var server = PluginServer.Create(new InMemoryPluginMessageSink(), defaultPolicy: Policy());
         // Installing runs PluginPreparedPackageValidator over the value-returning Handle: a no-Select RunLocal

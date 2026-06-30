@@ -66,6 +66,9 @@ internal static partial class RpcKernelModelFactory
                     method,
                     context.SemanticModel.Compilation);
                 clientExtensions = RpcKernelClientExtensionModelFactory.Resolve(type, method);
+                RpcKernelClientExtensionModelFactory.ValidateLanguageVersion(
+                    clientExtensions,
+                    context.SemanticModel.SyntaxTree.Options);
                 ValidateGeneratedClientTypeCollisions(type, clientExtensions);
             }
             else if (graft is not null)
@@ -83,6 +86,10 @@ internal static partial class RpcKernelModelFactory
                 {
                     ValidateGeneratedTypeCollision(type, type.Name + "DirectServerExtensionClientExtensions");
                 }
+            }
+            else if (RpcKernelClientExtensionModelFactory.HasClientPropertyAttribute(type))
+            {
+                RejectClientPropertyWithoutService(type);
             }
             else if (RpcKernelClientExtensionModelFactory.HasReceiverExtensionAttribute(method))
             {
@@ -139,6 +146,12 @@ internal static partial class RpcKernelModelFactory
         {
             return Fail(declaration, ex.Message);
         }
+    }
+
+    private static void RejectClientPropertyWithoutService(INamedTypeSymbol type)
+    {
+        throw new NotSupportedException(
+            $"[ServerExtensionClient] on server extension '{type.ToDisplayString()}' requires a service-backed [ServerExtension(id, serviceType)] class.");
     }
 
     private static GeneratedPluginPackage EmitPackage(

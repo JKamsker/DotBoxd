@@ -127,6 +127,7 @@ public HookPipeline<TEvent, TContext> Use(InstalledKernel kernel)
 public HookPipeline<TEvent, TContext> Use(InstalledKernelPool pool)
 public HookPipeline<TEvent, TContext> Use<TKernel>() where TKernel : class
 public HookPipeline<TEvent, TContext> UseGeneratedChain(PluginPackage package)
+public HookPipeline<TEvent, TContext> UseGeneratedChainFromInterceptor(PluginPackage package)
 public HookPipeline<TEvent, TContext> UseGeneratedLocalResultChain<TResult>( PluginPackage package, Func<TEvent, CancellationToken, ValueTask<TResult>> handler, int priority = 0) where TResult : struct, IHookResult
 public HookPipeline<TEvent, TContext> UseGeneratedLocalResultChain<TResult>( PluginPackage package, Func<TEvent, TContext, CancellationToken, ValueTask<TResult>> handler, int priority = 0) where TResult : struct, IHookResult
 public HookPipeline<TEvent, TContext> UseGeneratedLocalResultChain<TResult>( PluginPackage package, Func<TEvent, TContext, TResult> handler, int priority = 0) where TResult : struct, IHookResult
@@ -609,6 +610,7 @@ public SubscriptionPipeline<TEvent, TContext> Use(InstalledKernel kernel)
 public SubscriptionPipeline<TEvent, TContext> Use(InstalledKernelPool pool)
 public SubscriptionPipeline<TEvent, TContext> Use<TKernel>() where TKernel : class
 public SubscriptionPipeline<TEvent, TContext> UseGeneratedChain(PluginPackage package)
+public SubscriptionPipeline<TEvent, TContext> UseGeneratedChainFromInterceptor(PluginPackage package)
 public SubscriptionPipeline<TEvent, TContext> UseProjecting( InstalledKernel kernel, string subscriptionId, Hooks.RemoteLocalPush push)
 public SubscriptionPipeline<TEvent, TContext> Where(Func<TEvent, bool> filter)
 public SubscriptionPipeline<TEvent, TContext> Where(Func<TEvent, TContext, bool> filter)
@@ -630,6 +632,7 @@ public TimeSpan RemoteHandlerTimeout { get; init; } = Timeout.InfiniteTimeSpan
 public TResult? RemoteTimeoutResult { get; init; }
 public TService ServerExtension<TService>() where TService : class
 public TSettings Value { get; }
+public TypedInstalledKernel<TSettings> As<TSettings>() where TSettings : class => new(this)
 public TypedInstalledKernel<TState> Get<TState>(string pluginId) where TState : class
 public ValueTask DisposeAsync()
 public ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)

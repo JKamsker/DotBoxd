@@ -85,6 +85,38 @@ public sealed class ServerExtensionMapBodyLoweringTests
             d => d.Id == "DBXK100" && d.GetMessage().Contains("map key", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public void Server_extension_rejects_map_comparer_constructors()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
+            using System;
+            using System.Collections.Generic;
+            using DotBoxD.Kernels;
+            using DotBoxD.Plugins;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            [ServerExtension("score-comparer")]
+            public sealed partial class ScoreComparerKernel
+            {
+                public Dictionary<string, int> Build(HookContext ctx)
+                {
+                    var result = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                    result["hero"] = 1;
+                    result["HERO"] = 2;
+                    return result;
+                }
+            }
+            """);
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("map", StringComparison.OrdinalIgnoreCase) &&
+                 d.GetMessage().Contains("comparer", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static SandboxPolicy PurePolicy()
         => SandboxPolicyBuilder.Create()
             .GrantLogging()
@@ -107,7 +139,7 @@ public sealed class ServerExtensionMapBodyLoweringTests
         {
             public Dictionary<string, int> Bump(Dictionary<string, int> scores, string key, HookContext ctx)
             {
-                var result = new Dictionary<string, int>();
+                Dictionary<string, int> result = new();
                 if (scores.ContainsKey(key))
                 {
                     result[key] = scores[key] + 1;

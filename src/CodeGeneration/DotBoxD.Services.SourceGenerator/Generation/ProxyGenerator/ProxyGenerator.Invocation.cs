@@ -32,9 +32,9 @@ internal static partial class ProxyGenerator
                 : ProxyGenerationHelpers.GetWireType(method.UnwrappedReturnType);
         var requestParameters = ProxyGenerationHelpers.GetRequestParameters(method.Parameters, ct);
         var streamSetup = ProxyStreamSetupEmitter.Emit(sb, method, requestParameters, locals, ct, indent);
-        var streamArray = streamSetup.ArrayName;
+        var streamArgument = streamSetup.ArgumentName;
         var useStreamAwareTaskValueInvocation =
-            streamArray is not null && (method.ReturnKind is MethodReturnKind.ValueTask or MethodReturnKind.ValueTaskOf);
+            streamArgument is not null && (method.ReturnKind is MethodReturnKind.ValueTask or MethodReturnKind.ValueTaskOf);
         var svc = service.ServiceName;
         var rpc = method.RpcName;
         var singletonMethod = GetInvokerMethod(
@@ -64,8 +64,8 @@ internal static partial class ProxyGenerator
             var wireType = ProxyGenerationHelpers.GetWireType(p);
             var wireArgument = GetWireArgument(p, requestIndex: 0, streamSetup.Handles);
             typeArgs = BuildTypeArgs(method.ReturnKind, wireType, returnType, hasReturn);
-            var streamArg = NeedsStreamArrayArgument(method.ReturnKind, streamArray)
-                ? $", {streamArray ?? "null"}"
+            var streamArg = NeedsStreamArgument(method.ReturnKind, streamArgument)
+                ? $", {streamArgument ?? NullStreamArray()}"
                 : string.Empty;
             callArgs = $"\"{svc}\", \"{rpc}\", {wireArgument}{streamArg}, {ctArg}";
             callArgsInst = $"\"{svc}\", this._instanceId!, \"{rpc}\", {wireArgument}{streamArg}, {ctArg}";
@@ -88,8 +88,8 @@ internal static partial class ProxyGenerator
             }
 
             typeArgs = BuildTypeArgs(method.ReturnKind, $"({tupleTypes})", returnType, hasReturn);
-            var streamArg = NeedsStreamArrayArgument(method.ReturnKind, streamArray)
-                ? $", {streamArray ?? "null"}"
+            var streamArg = NeedsStreamArgument(method.ReturnKind, streamArgument)
+                ? $", {streamArgument ?? NullStreamArray()}"
                 : string.Empty;
             callArgs = $"\"{svc}\", \"{rpc}\", ({tupleValues}){streamArg}, {ctArg}";
             callArgsInst = $"\"{svc}\", this._instanceId!, \"{rpc}\", ({tupleValues}){streamArg}, {ctArg}";
@@ -137,8 +137,11 @@ internal static partial class ProxyGenerator
         return hasReturn ? $"<{requestType}, {returnType}>" : $"<{requestType}>";
     }
 
-    private static bool NeedsStreamArrayArgument(MethodReturnKind returnKind, string? streamArray) =>
-        streamArray is not null ||
+    private static string NullStreamArray() =>
+        $"({ServicesGeneratorTypeNames.ArrayOf(ServicesGeneratorTypeNames.GlobalRpcStreamAttachment)}?)null";
+
+    private static bool NeedsStreamArgument(MethodReturnKind returnKind, string? streamArgument) =>
+        streamArgument is not null ||
         NamingHelpers.IsStreamReturn(returnKind) ||
         NamingHelpers.IsPipeReturn(returnKind) ||
         NamingHelpers.IsAsyncEnumerableReturn(returnKind);

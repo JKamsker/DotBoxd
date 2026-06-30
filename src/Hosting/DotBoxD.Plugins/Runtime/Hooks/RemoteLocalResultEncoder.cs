@@ -61,7 +61,9 @@ internal static class RemoteLocalResultEncoder
         var type = typeof(TResult);
         const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
         var members = new List<ResultMember<TResult>>();
-        foreach (var property in type.GetProperties(flags))
+        var properties = type.GetProperties(flags);
+        Array.Sort(properties, static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
+        foreach (var property in properties)
         {
             if (property.CanRead &&
                 property.GetIndexParameters().Length == 0 &&
@@ -75,21 +77,19 @@ internal static class RemoteLocalResultEncoder
             }
         }
 
-        if (members.Count == 0)
+        var fields = type.GetFields(flags);
+        Array.Sort(fields, static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
+        foreach (var field in fields)
         {
-            foreach (var field in type.GetFields(flags))
+            if (!KernelRpcMarshaller.IsIgnoredMember(field))
             {
-                if (!KernelRpcMarshaller.IsIgnoredMember(field))
-                {
-                    members.Add(new ResultMember<TResult>(
-                        field.Name,
-                        CreateWriter<TResult>(field, field.FieldType, field.Name),
-                        field.MetadataToken));
-                }
+                members.Add(new ResultMember<TResult>(
+                    field.Name,
+                    CreateWriter<TResult>(field, field.FieldType, field.Name),
+                    field.MetadataToken));
             }
         }
 
-        members.Sort(static (left, right) => left.Order.CompareTo(right.Order));
         return [.. members];
     }
 

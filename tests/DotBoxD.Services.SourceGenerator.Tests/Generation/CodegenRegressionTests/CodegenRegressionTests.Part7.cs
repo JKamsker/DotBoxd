@@ -135,4 +135,98 @@ public partial class CodegenRegressionTests
         asyncSibling.Should().Contain(
             "TraceAsync(" + callerInfoParameters + ", global::System.Threading.CancellationToken ct = default)");
     }
+
+    [Fact]
+    public void NullableFlowParameterAttributes_ArePreservedInGeneratedServiceSurface()
+    {
+        const string source = """
+            #nullable enable
+            using DotBoxD.Services.Attributes;
+            using System.Diagnostics.CodeAnalysis;
+            using System.Threading.Tasks;
+
+            namespace Regress.NullableFlowSurface
+            {
+                [DotBoxDService]
+                public interface INullableFlowSurface
+                {
+                    Task<string?> EchoAsync(
+                        [DisallowNull] string? value,
+                        [AllowNull] string label);
+
+                    Task<string?> FlowAsync(
+                        [MaybeNull] string maybe,
+                        [NotNull] string? notNull,
+                        [MaybeNullWhen(false)] string whenFalse,
+                        [NotNullWhen(true)] string? whenTrue,
+                        [NotNullIfNotNull("whenTrue")] string? mirrored);
+                }
+            }
+            """;
+
+        var (final, runResult) = Run(source);
+        AssertCompiles(final);
+
+        const string nullableFlowParameters =
+            "[global::System.Diagnostics.CodeAnalysis.DisallowNullAttribute] string? value, " +
+            "[global::System.Diagnostics.CodeAnalysis.AllowNullAttribute] string label";
+
+        var generated = runResult.Results.Single().GeneratedSources;
+        var proxy = generated
+            .Single(g => g.HintName == GeneratorTestHelper.HintName(
+                "Regress.NullableFlowSurface", "INullableFlowSurface", GeneratorTestHelper.GeneratedKind.Proxy))
+            .SourceText.ToString();
+        proxy.Should().Contain("EchoAsync(" + nullableFlowParameters + ")");
+
+        var asyncSibling = generated
+            .Single(g => g.HintName.EndsWith("INullableFlowSurface.DotBoxDRpcAsync.g.cs", StringComparison.Ordinal))
+            .SourceText.ToString();
+        asyncSibling.Should().Contain(
+            "EchoAsync(" + nullableFlowParameters + ", global::System.Threading.CancellationToken ct = default)");
+
+        const string conditionalFlowParameters =
+            "[global::System.Diagnostics.CodeAnalysis.MaybeNullAttribute] string maybe, " +
+            "[global::System.Diagnostics.CodeAnalysis.NotNullAttribute] string? notNull, " +
+            "[global::System.Diagnostics.CodeAnalysis.MaybeNullWhenAttribute(false)] string whenFalse, " +
+            "[global::System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] string? whenTrue, " +
+            "[global::System.Diagnostics.CodeAnalysis.NotNullIfNotNullAttribute(\"whenTrue\")] string? mirrored";
+        proxy.Should().Contain("FlowAsync(" + conditionalFlowParameters + ")");
+        asyncSibling.Should().Contain(
+            "FlowAsync(" + conditionalFlowParameters + ", global::System.Threading.CancellationToken ct = default)");
+    }
+
+    [Fact]
+    public void CallerArgumentExpression_TargetingCancellationToken_RemainsValidOnAsyncSibling()
+    {
+        const string source = """
+            using DotBoxD.Services.Attributes;
+            using System.Runtime.CompilerServices;
+            using System.Threading;
+
+            namespace Regress.CallerExpressionCancellation
+            {
+                [DotBoxDService]
+                public interface ICallerExpressionCancellation
+                {
+                    int Measure(
+                        CancellationToken token = default,
+                        [CallerArgumentExpression("token")] string expression = "");
+                }
+            }
+            """;
+
+        var (final, runResult) = Run(source);
+
+        using var ms = new MemoryStream();
+        var emit = final.Emit(ms);
+        emit.Diagnostics.Should().NotContain(d => d.Id == "CS8963");
+
+        var asyncSibling = runResult.Results.Single()
+            .GeneratedSources
+            .Single(g => g.HintName.EndsWith("ICallerExpressionCancellation.DotBoxDRpcAsync.g.cs", StringComparison.Ordinal))
+            .SourceText
+            .ToString();
+        asyncSibling.Should().Contain(
+            "[global::System.Runtime.CompilerServices.CallerArgumentExpressionAttribute(\"token\")] string expression = \"\", global::System.Threading.CancellationToken token = default");
+    }
 }

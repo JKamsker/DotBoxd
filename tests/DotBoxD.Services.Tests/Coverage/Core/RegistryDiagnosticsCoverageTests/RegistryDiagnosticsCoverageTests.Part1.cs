@@ -1,4 +1,6 @@
 using System.Buffers;
+using System.Reflection;
+using System.Reflection.Emit;
 using DotBoxD.Services.Serialization;
 using DotBoxD.Services.Server;
 using Shared;
@@ -88,6 +90,50 @@ public sealed partial class GeneratedServiceRegistryCoverageTests
 
         // The latest registration wins.
         Assert.IsType<ReplaceableProxyV2>(proxy);
+    }
+
+    [Fact]
+    public void RegisterServices_SnapshotsCallerOwnedCatalogLists()
+    {
+        var assembly = AssemblyBuilder.DefineDynamicAssembly(
+            new AssemblyName("DotBoxD.Services.Tests.MutableCatalog." + Guid.NewGuid().ToString("N")),
+            AssemblyBuilderAccess.Run);
+        var parameters = new List<GeneratedParameter>
+        {
+            new("ct", typeof(CancellationToken), 0, IsCancellationToken: true, HasDefaultValue: true, DefaultValue: null)
+        };
+        var methods = new List<GeneratedMethod>
+        {
+            new(
+                "DoAsync",
+                "do",
+                typeof(Task),
+                ResultType: null,
+                GeneratedReturnKind.Task,
+                ReturnsNestedService: false,
+                parameters)
+        };
+        var services = new List<GeneratedService>
+        {
+            ValidCustomService() with { Methods = methods }
+        };
+
+        GeneratedServiceRegistry.RegisterServices(assembly, services);
+        services.Clear();
+        methods.Clear();
+        parameters.Clear();
+
+        var published = GeneratedServiceRegistry.GetServices(assembly);
+        var service = Assert.Single(published);
+        var method = Assert.Single(service.Methods);
+        var parameter = Assert.Single(method.Parameters);
+
+        Assert.NotSame(services, published);
+        Assert.NotSame(methods, service.Methods);
+        Assert.NotSame(parameters, method.Parameters);
+        Assert.Equal("Custom", service.ServiceName);
+        Assert.Equal("DoAsync", method.Name);
+        Assert.Equal("ct", parameter.Name);
     }
 
     private static GeneratedService ValidCustomService() =>

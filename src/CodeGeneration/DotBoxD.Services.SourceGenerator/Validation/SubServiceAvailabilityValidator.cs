@@ -82,24 +82,6 @@ internal sealed record RejectedServiceIndex(EquatableArray<string> QualifiedInte
         => ServiceAvailabilityIndexHelpers.ContainsSorted(QualifiedInterfaceNames, qualifiedInterfaceName, ct);
 }
 
-internal sealed record GeneratedServiceIndex(EquatableArray<string> QualifiedInterfaceNames)
-{
-    public static GeneratedServiceIndex Create(ImmutableArray<ServiceIdentity> services, CancellationToken ct)
-    {
-        var names = new List<string>(services.Length);
-        foreach (var service in services)
-        {
-            ct.ThrowIfCancellationRequested();
-            names.Add(service.QualifiedInterfaceName);
-        }
-
-        return new GeneratedServiceIndex(ServiceAvailabilityIndexHelpers.SortedUnique(names, ct).ToEquatableArray());
-    }
-
-    public bool Contains(string qualifiedInterfaceName, CancellationToken ct)
-        => ServiceAvailabilityIndexHelpers.ContainsSorted(QualifiedInterfaceNames, qualifiedInterfaceName, ct);
-}
-
 internal static class SubServiceAvailabilityValidator
 {
     public static ServiceResult Apply(
@@ -151,6 +133,23 @@ internal static class SubServiceAvailabilityValidator
             {
                 var reason =
                     $"sub-service return type '{method.SubService.QualifiedInterfaceName}' cannot be proxied because that service was not generated";
+                method = method with { UnsupportedReason = reason };
+                diagnostics.Add(new MethodDiagnostic(
+                    GetDisplayName(result.Model),
+                    method.Name,
+                    reason,
+                    GetLocation(result.MethodLocations, i)));
+                changed = true;
+            }
+            else if (method.UnsupportedReason is null &&
+                method.SubService is not null &&
+                generatedServices.TryGetInstanceScopedSubServiceProperty(
+                    method.SubService.QualifiedInterfaceName,
+                    ct,
+                    out var propertyName))
+            {
+                var reason =
+                    $"sub-service return type '{method.SubService.QualifiedInterfaceName}' exposes sub-service property '{IdentifierHelpers.UnescapeIdentifier(propertyName)}' whose proxy would not be instance-scoped";
                 method = method with { UnsupportedReason = reason };
                 diagnostics.Add(new MethodDiagnostic(
                     GetDisplayName(result.Model),

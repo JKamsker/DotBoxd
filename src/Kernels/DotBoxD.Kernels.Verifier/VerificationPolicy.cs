@@ -207,6 +207,7 @@ public sealed record VerificationPolicy(
                 RuntimeMember("RecordNew", $"{SandboxContextName},{SandboxValueArrayName}", SandboxValueName),
                 RuntimeMember("RecordGet", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("CallBinding", $"{SandboxContextName},{StringName},{SandboxValueArrayName}", SandboxValueName),
+                RuntimeMember("CallBinding1", $"{SandboxContextName},{StringName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("CallBinding2", $"{SandboxContextName},{StringName},{SandboxValueName},{SandboxValueName}", SandboxValueName)
             },
             new HashSet<string>(StringComparer.Ordinal) {

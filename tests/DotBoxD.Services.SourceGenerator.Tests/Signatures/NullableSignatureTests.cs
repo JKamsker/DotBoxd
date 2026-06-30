@@ -46,6 +46,42 @@ public class NullableSignatureTests
         asyncInterface.Should().Contain("string? key, global::System.Threading.CancellationToken ct = default");
     }
 
+    [Fact]
+    public void ReturnFlowAttributes_ArePreservedOnProxyMethods()
+    {
+        const string source = """
+            #nullable enable
+            using DotBoxD.Services.Attributes;
+            using System.Diagnostics.CodeAnalysis;
+
+            namespace Regress.NullableSignatures
+            {
+                [DotBoxDService]
+                public interface INulls
+                {
+                    [return: NotNullIfNotNull(nameof(value))]
+                    string? Echo(string? value);
+                }
+            }
+            """;
+
+        var (final, runResult) = Run(source);
+        AssertCompiles(final);
+
+        var generated = runResult.Results.Single().GeneratedSources;
+        var proxy = generated
+            .Single(g => g.HintName.EndsWith("INulls.DotBoxDRpcProxy.g.cs"))
+            .SourceText.ToString();
+        proxy.Should().Contain(
+            "[return: global::System.Diagnostics.CodeAnalysis.NotNullIfNotNullAttribute(\"value\")]");
+        proxy.Should().Contain("string? Echo(string? value)");
+
+        var asyncInterface = generated
+            .Single(g => g.HintName.EndsWith("INulls.DotBoxDRpcAsync.g.cs"))
+            .SourceText.ToString();
+        asyncInterface.Should().NotContain("NotNullIfNotNullAttribute");
+    }
+
     private static (CSharpCompilation Final, GeneratorDriverRunResult RunResult) Run(string source)
     {
         var compilation = GeneratorTestHelper.CreateCompilation(source);

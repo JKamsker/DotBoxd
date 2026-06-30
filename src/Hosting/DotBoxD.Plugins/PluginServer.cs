@@ -98,7 +98,11 @@ public sealed partial class PluginServer : IDisposable
         ThrowIfDisposed();
         var required = _host.GetRequiredCapabilities(package.Module)
             .ToHashSet(StringComparer.Ordinal);
-        required.UnionWith(PluginManifestCapabilityValidator.NonBindingRequiredCapabilities(package.Manifest));
+        if (package.Manifest.RpcEntrypoint is null)
+        {
+            required.UnionWith(PluginManifestCapabilityValidator.NonBindingRequiredCapabilities(package.Manifest));
+        }
+
         return required.Order(StringComparer.Ordinal).ToArray();
     }
 

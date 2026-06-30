@@ -67,7 +67,8 @@ internal static partial class HookChainModelFactory
                     hasLocalDecoder && substitution.TryGetValue(anonymousProjection, out var decoderTypeArgument)
                         ? decoderTypeArgument
                         : null,
-                    string.Join(", ", typeParameters.Select(parameter => parameter.Name)));
+                    string.Join(", ", typeParameters.Select(parameter => parameter.Name)),
+                    BypassReceiverStage: BypassReceiverStage(receiverType));
             }
 
             return new HookChainInterception(
@@ -77,7 +78,8 @@ internal static partial class HookChainModelFactory
                 method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                 packageFullName,
                 installKind,
-                hasLocalDecoder);
+                hasLocalDecoder,
+                BypassReceiverStage: BypassReceiverStage(receiverType));
         }
 
         if (generatedRemoteKind is null)
@@ -106,6 +108,13 @@ internal static partial class HookChainModelFactory
             installKind,
             generatedRemoteKind.Value,
             hasLocalDecoder);
+    }
+
+    private static bool BypassReceiverStage(INamedTypeSymbol receiverType)
+    {
+        var original = receiverType.OriginalDefinition.ToDisplayString();
+        return string.Equals(original, DotBoxDGenerationNames.TypeNames.HookStageWithContextOriginal, StringComparison.Ordinal) ||
+            string.Equals(original, DotBoxDGenerationNames.TypeNames.SubscriptionStageWithContextOriginal, StringComparison.Ordinal);
     }
 
     // The fully-qualified display of <paramref name="type"/> with any type (at any nesting depth) present in

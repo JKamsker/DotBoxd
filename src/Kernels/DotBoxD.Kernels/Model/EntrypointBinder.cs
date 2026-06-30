@@ -7,8 +7,14 @@ public static class EntrypointBinder
 {
     public static IReadOnlyList<SandboxValue> BindArguments(SandboxFunction function, SandboxValue input)
     {
-        ValidateInputShape(input, function.Parameters.Count);
-        var args = new SandboxValue[function.Parameters.Count];
+        var parameterCount = function.Parameters.Count;
+        ValidateInputShape(input, parameterCount);
+        if (parameterCount == 0)
+        {
+            return Array.Empty<SandboxValue>();
+        }
+
+        var args = new SandboxValue[parameterCount];
         for (var i = 0; i < args.Length; i++)
         {
             args[i] = GetArgument(input, i, args.Length, function.Parameters[i].Type);

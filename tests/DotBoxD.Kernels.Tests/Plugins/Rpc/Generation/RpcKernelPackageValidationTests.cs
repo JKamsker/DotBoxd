@@ -3,6 +3,7 @@ using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Plugins;
+using DotBoxD.Plugins.Json;
 using DotBoxD.Plugins.Runtime.Rpc;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Rpc;
@@ -31,6 +32,54 @@ public sealed class RpcKernelPackageValidationTests
     }
 
     [Fact]
+    public async Task Install_rejects_rpc_package_that_self_asserts_event_property_capability()
+    {
+        using var server = PluginServer.Create(
+            configureHost: RpcKernelTestPackages.AddKillBinding,
+            defaultPolicy: RpcKernelTestPackages.KillPolicy());
+        var package = RpcKernelTestPackages.MonsterKiller();
+        var invalid = WithEventReadCapability(package);
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await server.InstallServerExtensionAsync(invalid, KillAndEventReadPolicy()).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d =>
+            d.Code == "DBXK044" &&
+            d.Message.Contains("event.read.secret", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Server_required_capability_analysis_excludes_rpc_event_property_manifest_capabilities()
+    {
+        using var server = PluginServer.Create(
+            configureHost: RpcKernelTestPackages.AddKillBinding,
+            defaultPolicy: RpcKernelTestPackages.KillPolicy());
+        var package = WithEventReadCapability(RpcKernelTestPackages.MonsterKiller());
+
+        var required = server.GetRequiredCapabilities(package);
+
+        Assert.Contains(RpcKernelTestPackages.KillCapability, required);
+        Assert.DoesNotContain("event.read.secret", required);
+    }
+
+    [Fact]
+    public async Task Install_rejects_rpc_package_with_invalid_manifest_plugin_id_shape()
+    {
+        using var server = PluginServer.Create(
+            configureHost: RpcKernelTestPackages.AddKillBinding,
+            defaultPolicy: RpcKernelTestPackages.KillPolicy());
+        var invalid = WithPluginId(RpcKernelTestPackages.MonsterKiller(), "../monster/killer");
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await server.InstallServerExtensionAsync(invalid).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d =>
+            d.Code == "DBXK050" &&
+            d.Message.Contains("plugin id", StringComparison.OrdinalIgnoreCase) &&
+            d.Message.Contains("identifier", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task Install_rejects_rpc_package_with_entrypoints_that_do_not_match_rpc_entrypoint()
     {
         using var server = PluginServer.Create(
@@ -43,6 +92,22 @@ public sealed class RpcKernelPackageValidationTests
             async () => await server.InstallServerExtensionAsync(invalid).AsTask());
 
         Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK074");
+    }
+
+    [Fact]
+    public void Import_rejects_rpc_package_with_missing_handle_entrypoint_alias()
+    {
+        var json = PluginPackageJsonSerializer.Export(RpcKernelTestPackages.MonsterKiller())
+            .Replace("\"KillMonsters\"", "\"Handle\"", StringComparison.Ordinal)
+            .Replace(
+                "\"entrypoints\":{\"shouldHandle\":\"Handle\",\"handle\":\"Handle\"}",
+                "\"entrypoints\":{\"shouldHandle\":\"Handle\"}",
+                StringComparison.Ordinal);
+
+        var ex = Assert.Throws<SandboxValidationException>(
+            () => PluginPackageJsonSerializer.Import(json));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-JSON-MISSING");
     }
 
     [Fact]
@@ -115,5 +180,38 @@ public sealed class RpcKernelPackageValidationTests
         => SandboxPolicyBuilder.Create()
             .WithFuel(10_000)
             .WithWallTime(TimeSpan.FromSeconds(5))
+            .Build();
+
+    private static PluginPackage WithEventReadCapability(PluginPackage package)
+        => package with
+        {
+            Manifest = package.Manifest with
+            {
+                RequiredCapabilities = [.. package.Manifest.RequiredCapabilities, "event.read.secret"]
+            }
+        };
+
+    private static PluginPackage WithPluginId(PluginPackage package, string pluginId)
+    {
+        var metadata = new Dictionary<string, string>(package.Module.Metadata, StringComparer.Ordinal)
+        {
+            ["pluginId"] = pluginId
+        };
+
+        return package with
+        {
+            Manifest = package.Manifest with { PluginId = pluginId },
+            Module = package.Module with { Id = pluginId, Metadata = metadata }
+        };
+    }
+
+    private static SandboxPolicy KillAndEventReadPolicy()
+        => SandboxPolicyBuilder.Create()
+            .GrantLogging()
+            .Grant("game.world.monster.write.*", new { }, SandboxEffect.HostStateWrite)
+            .Grant("event.read.*", new { }, SandboxEffect.None)
+            .WithFuel(100_000)
+            .WithMaxHostCalls(10_000)
+            .WithWallTime(TimeSpan.FromSeconds(10))
             .Build();
 }

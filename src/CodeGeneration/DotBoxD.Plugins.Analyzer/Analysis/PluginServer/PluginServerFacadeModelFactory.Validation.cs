@@ -215,12 +215,14 @@ internal static partial class PluginServerFacadeModelFactory
         INamedTypeSymbol worldType,
         IReadOnlyList<PluginServerForwardedProperty> properties,
         IReadOnlyList<PluginServerForwardedMethod> methods,
+        IReadOnlyList<PluginServerServiceWrapper> worldServiceWrappers,
         IReadOnlyList<PluginServerControlProperty> controls,
         bool emitsRemoteLocalEventSink)
     {
         var reserved = GeneratedReservedMemberNames();
+        AddGeneratedFieldNames(reserved, controls, emitsRemoteLocalEventSink);
         var generatedMembers = new HashSet<string>(reserved, StringComparer.Ordinal);
-        AddGeneratedNestedTypeNames(generatedMembers, controls, emitsRemoteLocalEventSink);
+        AddGeneratedNestedTypeNames(generatedMembers, worldType, worldServiceWrappers, controls, emitsRemoteLocalEventSink);
 
         foreach (var property in properties)
         {

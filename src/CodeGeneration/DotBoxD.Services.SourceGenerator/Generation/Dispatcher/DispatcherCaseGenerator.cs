@@ -24,7 +24,11 @@ internal static class DispatcherCaseGenerator
         sb.AppendLine("                {");
 
         var requestParameters = DispatcherGeneratorHelpers.GetRequestParameters(method.Parameters, ct);
-        if (requestParameters.Count == 1)
+        if (requestParameters.Count == 0)
+        {
+            AppendNoPayloadGuard(sb);
+        }
+        else if (requestParameters.Count == 1)
         {
             var wireType = ProxyGenerationHelpers.GetWireType(requestParameters[0]);
             sb.AppendLine($"                    var arg = serializer.Deserialize<{wireType}>(payload);");
@@ -45,6 +49,14 @@ internal static class DispatcherCaseGenerator
 
         GenerateReturn(sb, method, call);
         sb.AppendLine("                }");
+    }
+
+    private static void AppendNoPayloadGuard(StringBuilder sb)
+    {
+        sb.AppendLine("                    if (payload.Length != 0)");
+        sb.AppendLine("                    {");
+        sb.AppendLine($"                        throw new {ServicesGeneratorTypeNames.GlobalServiceProtocolException}(\"Request payload is not allowed for a parameterless RPC method.\");");
+        sb.AppendLine("                    }");
     }
 
     private static void AppendTupleArgumentReader(

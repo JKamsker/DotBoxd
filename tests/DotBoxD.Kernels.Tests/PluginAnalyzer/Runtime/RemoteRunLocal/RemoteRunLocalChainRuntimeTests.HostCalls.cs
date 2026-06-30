@@ -93,8 +93,9 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
     [Fact]
     public async Task Host_list_read_in_a_select_with_downstream_count_filters_server_side()
     {
-        // The marquee shape: Select((e, ctx) => ctx.Host<ITagWorld>().GetTags(e.Zone)) returns a List<string> from a
-        // host binding (P2), and .Where(tags => tags.Count > 1) reads its size via list.count (P3) — all server-side.
+        // The marquee shape: Select((e, ctx) => ctx.Host<ITagWorld>().GetTags(e.Zone)) returns an
+        // IReadOnlyList<string> from a host binding (P2), and .Where(tags => tags.Count > 1) reads its size via
+        // list.count (P3) — all server-side.
         // The binding returns 3 tags for "crypt" and 1 for anything else, so the downstream Count discriminates: the
         // "crypt" event matches and pushes its list; an otherwise-identical "void" event is filtered before any push.
         var payload = await PushFirstMatchingHosted(
@@ -102,9 +103,12 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
             Matching,                          // Zone "crypt" -> 3 tags, Count 3 > 1 -> matches
             Matching with { Zone = "void" });  // Zone "void"  -> 1 tag,  Count 1 > 1 -> filtered downstream
 
-        var expected = new List<string> { "alpha", "beta", "gamma" };
-        Assert.Equal(expected, DecodeReflective<List<string>>(payload));
-        Assert.Equal(expected, DecodeGenerated<List<string>>(HostListCountSource, payload));
+        var expected = new[] { "alpha", "beta", "gamma" };
+        Assert.Equal(expected, DecodeReflective<IReadOnlyList<string>>(payload));
+
+        var generated = DecodeGenerated<IReadOnlyList<string>>(HostListCountSource, payload);
+        Assert.Equal(expected, generated);
+        Assert.False(generated is ICollection<string> { IsReadOnly: false });
     }
 
     // The chain prelude plus the using directives a host-binding interface needs (HostBinding attribute + the

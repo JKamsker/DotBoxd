@@ -35,6 +35,7 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-binding-dispatch-scope
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-compiled-binding-arity
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-capability-grant-lookup
+dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-host-service-arguments
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-compiled-binding-structural-validation
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-list-add-type-match
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-validated-value-type
@@ -49,6 +50,8 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-installed-rpc-input
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-kernel-rpc-value-items
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-kernel-rpc-value-list-writer
+dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-kernel-rpc-binary-codec-empty-decode
+dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-invokeasync-capture-argument-writer
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-kernel-rpc-marshaller-dto
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-subscription-dispatch
 dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseSharedCompilation=false -- --probe-event-query-dispatch
@@ -99,6 +102,8 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 | Installed no-audit executable shortcut | this commit | `--probe-prepared-values` | Cached the compiled executable in the installed-kernel no-audit run state after the first verified no-audit dispatch, with a single-entry fast path for the common one-entrypoint case and the existing host compiled caches still used for first lookup and non-installed execution. Same-session compiled no-audit miss probe for 200k calls measured the provider-cache path at 487.1 ms and 78,646,064 B with the shortcut temporarily disabled; restored shortcut samples measured 389.6-451.5 ms and 37,084,800-38,764,032 B. |
 | Installed no-audit input buffer reuse | this commit | `--probe-prepared-values`, `--probe-examples` | Reused the synthetic multi-parameter input array for installed-kernel compiled `ShouldHandle` entrypoints with no binding references, while snapshotting the input before any non-no-audit `Handle` dispatch so audited/binding paths keep immutable inputs. Same-session compiled no-audit miss probe for 200k calls measured the fresh-input path at 434.7 ms and 41,600,064 B with buffer reuse disabled; restored reuse samples measured 418.7-447.9 ms and 19,595,136-24,159,296 B. One workflow sample measured compiled `predicate miss` at 56.6 ms, down from the prior 74.3-80.6 ms band, while hit/mixed cases remained noisy. |
 | Installed no-audit input list reuse | this commit | `--probe-prepared-values` | Reused the synthetic `ListValue` wrapper together with the no-audit input buffer for installed-kernel compiled `ShouldHandle` entrypoints, keeping the public defensive-copy list path unchanged and still snapshotting before non-no-audit `Handle` dispatch. Same-session compiled no-audit miss probe for 200k calls measured the buffer-only path at 433.6 ms and 26,353,408 B with list reuse disabled; restored list-reuse samples measured 431.3-455.3 ms and 16,595,840-17,082,992 B. This step claims allocation reduction only because elapsed time was noisy. |
+| Zero-argument host-service binding conversion | this commit | `--probe-host-service-arguments` | `HostServiceBindingFactory.ConvertArguments` now returns `Array.Empty<object?>()` for zero-parameter host-service bindings instead of allocating a fresh empty object array per call. The focused 1M-conversion probe measured the old current zero-arg path at 8.8 ms and 24,000,040 B, matching the explicit legacy `new object?[0]` row; after the change, repeated current zero-arg samples measured 15.8-16.0 ms and 40 B. The one-argument control stayed allocating at 47.0-53.1 ms and 56,000,040 B. This step claims allocation reduction only because elapsed time was noisy. |
+| Compiled one-argument binding fast path | this commit | `--probe-compiled-binding-fast-path` | Emitted `CompiledRuntime.CallBinding1` for one-argument runtime-stub bindings and let descriptor targets that implement the internal fast invoker receive the value without materializing a `SandboxValue[]`, while `ChargeValueArray` preserves generated-code fuel/allocation accounting. The focused real `host.log.write` probe for 200k calls measured the array-backed shape at 283.7 ms and 185,601,112 B; the new fast path measured 245.7 ms and 179,201,112 B, saving 32.0 B/call. |
 | Compiled two-argument binding fast path | this commit | `--probe-compiled-binding-fast-path`, `--probe-examples` | Emitted `CompiledRuntime.CallBinding2` for two-argument runtime-stub bindings and let descriptor targets that implement the internal fast invoker receive the two values without materializing a `SandboxValue[]`, while `ChargeValueArray` preserves generated-code fuel/allocation accounting. The focused real `host.message.send` probe for 200k calls measured the old array-backed shape at 373.6-424.8 ms and 334,401,112 B; the new fast path measured 135.4-140.2 ms and 322,238,456-322,842,136 B, saving 57.8-60.8 B/call after warmup. Broad workflow samples stayed noisy but sanity-ran with compiled `mixed fire/ice` at 315.0-342.1 ms and `predicate hit` at 222.9-265.3 ms. |
 | Direct scalar shape-cache measurement | this commit | `--probe-value-shape-cache` | Avoided sending scalar/text values through the generic `SandboxValueShapeMeter.MeasureWithNodes` walker when composing incremental `list.add` / `map.set` shapes. The compiled scalar `ListAdd` probe for 10k appends measured the pre-change path at 12.1 ms and 10,099,752 B. After the direct scalar path, samples measured 10.7-13.4 ms and 8,259,752 B with identical `fuel=50,801,726` and `collectionElements=50,005,000`; this step claims the allocation reduction. |
 | Single-pass HTTP response metadata accounting | this commit | `--probe-http-metadata` | Reused the `ChargeMetadata` return value instead of measuring response metadata once for local bookkeeping and again while charging network bytes. The in-process probe for 100k metadata charges with 24 headers measured the legacy double-measure pattern at 615.4-639.8 ms and 354,692,976-354,864,936 B; the single-pass path measured 98.6-99.8 ms and 176,800,040 B with identical `55,300,000` charged network bytes. |
@@ -116,6 +121,7 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 | Allocation-free no-op compiled binding dispatch | this commit | `--probe-binding-dispatch-scope` | Converted the binding grant-clock scope from an allocated `IDisposable` class to a concrete struct and made binding-return validation messages lazy for the success path. The 500k-call no-arg `Unit` binding probe improved from 228.4 ms and 87,769,944 B to 218.1 ms and 184 B. The intermediate struct-scope-only sample measured 222.8 ms and 68,000,184 B, isolating the remaining allocation to the eager return-validation message. |
 | Shared generated zero-arg binding arrays | this commit | `--probe-compiled-binding-arity` | Reused `Array.Empty<SandboxValue>()` for generated-code `CreateLiteralValueArray(0)` calls. The generated-shape zero-argument runtime-stub binding probe improved from 236.4 ms and 12,000,184 B to 221.7 ms and 184 B for 500k calls, while `ChargeValueArray` kept the same sandbox fuel/allocation charges. |
 | Capability grant lookup cache | this commit | `--probe-capability-grant-lookup` | Cached the last successful `SandboxContext.GetCapability` grant by requested capability id and `EffectiveGrantClock`, avoiding the common capability-backed binding sequence that calls `RequireCapability` and then resolves the same grant again. The 1M-pair probe improved from 24.5 ms (24.5 ns/op) and 728 B to 2.2 ms (2.2 ns/op) and 728 B; this is a time-only improvement with expiry/clock semantics preserved. |
+| Zero-parameter entrypoint argument binding | this commit | `--probe-installed-rpc-input` | `EntrypointBinder.BindArguments` now returns `Array.Empty<SandboxValue>()` after validating `Unit` input for zero-parameter entrypoints instead of allocating a fresh empty argument array. The integrated 1M-bind lane improved from 15.7 ms and 24,000,040 B to 53.1 ms and 40 B. The one-parameter control still allocates its argument array at 103.5 ms and 32,000,040 B, so this step claims allocation reduction only. |
 | Run-summary policy-id sanitizer fast path | this commit | `--probe-run-summary-policy-id` | Replaced LINQ char-array sanitization plus lowercase marker checks with a direct scan that returns the original clean string, allocates only the safe trimmed substring when trimming is needed, and redacts invalid or secret-marker ids without constructing normalized strings. The 1M-call probe improved clean ids from 316.9 ms and 182,409,928 B to 244.9 ms and 40 B, trimmed/control ids from 247.7 ms and 240,000,040 B to 112.4 ms and 56,000,040 B, and secret-marker ids from 139.4 ms and 232,000,040 B to 18.9 ms and 40 B. This step claims the allocation reduction. |
 | Remote `RunLocal` int-backed enum fallback | this commit | `--probe-runlocal-push` | Added the same narrow scalar fallback shape used for `int` to int-backed enum projections, avoiding `Enum.ToObject` boxing on the runtime fallback path. The 200k-call `Enum` fallback decode row improved from 32.2 ms and 24.0 B/op to 24.7 ms and 0.0 B/op. Non-int enum underlying types still use the existing marshaller path. |
 | Structural compiled binding validation | this commit | `--probe-compiled-binding-structural-validation` | Replaced the compiled binding dispatcher's structural `.Type.Equals(expected)` argument check with a direct shape matcher keyed by scalar kind and list/map/record metadata, preserving mismatch errors while avoiding nested `SandboxType` materialization. The 1M list + record argument-pair probe (2M validations) improved from 350.2 ms, 175.1 ns/check, and 520,000,040 B to 74.8 ms, 37.4 ns/check, and 40 B. |
@@ -138,14 +144,18 @@ dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -p:UseShar
 | Scalar literal safety fast path | this commit | `--probe-literal-scalar-safety` | Avoided the stack-backed flatten iterator for non-collection literal safety checks while keeping collection literals on the existing recursive walk. The 1M I32 `ContainsDangerousReference` + `Validate` pair probe improved from a legacy flatten-walk simulation at 169.8 ms and 304,000,040 B to direct scalar checks at 27.9 ms and 40 B. |
 | Type known-validation single walk | this commit | `--probe-sandbox-type-validation` | Removed redundant `IsForbidden()` checks after `IsKnown()` / `IsKnownBuiltIn()`, since `IsKnown` already rejects forbidden names recursively. The 1M nested-type validation probe improved from a legacy `IsKnown && !IsForbidden` predicate at 532.4 ms and 40 B to the single `IsKnown` walk at 294.4 ms and 40 B. |
 | Server-extension proxy lookup cache | this commit | `--probe-server-extension-proxy-lookup` | Cached the typed `DispatchProxy` inside the server-extension service registration and cleared that registration on uninstall or direct same-plugin replacement. The 1M lookup probe compares simulated legacy `ServerExtensionProxy.Create` calls at 321.7 ms and 288,002,456 B with cached `PluginServer.ServerExtension<TService>` lookups at 22.3 ms and 80 B. |
+| Server-extension zero-argument proxy calls | this commit | `--probe-server-extension-proxy-arguments` | `ServerExtensionProxy` now reuses `Array.Empty<SandboxValue>()` for no-payload service methods instead of allocating a zero-length argument array on every proxy call. The 1M conversion probe measured the legacy zero-argument allocation at 24,000,040 B and the current zero-argument path at 40 B. The one-argument control still allocates its per-call argument array, so this step claims the no-payload allocation reduction only. |
 | Installed RPC entrypoint input cache | this commit | `--probe-installed-rpc-input` | Cached the resolved server-extension RPC `SandboxFunction` and caller argument count on `InstalledKernel` construction instead of scanning module functions for every invocation. The 200k input-build probe over 512 module functions improved from the legacy scan at 350.9 ms and 6,400,040 B to the cached shape at 1.4 ms and 40 B. |
 | Kernel RPC value indexed read path | this commit | `--probe-kernel-rpc-value-items` | Added read-only `ItemCount`/`GetItem` accessors so generated plugin RPC readers can materialize lists and records without cloning the defensive `Items` array. The 1M 4-field record-read probe improved from the legacy `Items` clone shape at 38.6 ms and 184,000,040 B to indexed reads at 3.2 ms and 40 B; `Items` still returns a copy for public callers. |
 | Kernel RPC generated counted list writers | this commit | `--probe-kernel-rpc-value-list-writer` | Emitted direct `KernelRpcValue[]` fills for counted array/list arguments instead of building a temporary `List<KernelRpcValue>` and calling `ToArray()`. The 1M 4-item `List<int>` write probe improved from 77.1 ms and 584,000,040 B to 43.4 ms and 368,000,040 B; plain `IEnumerable<T>` keeps the foreach fallback. |
+| Kernel RPC generated empty collection writers | this commit | `--probe-kernel-rpc-value-list-writer` | Generated counted list/map writers now use `Array.Empty<KernelRpcValue>()` for zero-count indexed list, counted-enumerable, and map inputs. The 1M empty indexed writer probe improved from 3.6 ms and 24,000,040 B to 2.1 ms and 40 B, the empty counted-enumerable branch from 14.2 ms and 24,000,072 B to 11.3 ms and 40 B, and the empty map branch from 6.2 ms and 24,000,040 B to 2.7 ms and 40 B. |
+| Kernel RPC binary empty decode arrays | this commit | `--probe-kernel-rpc-binary-codec-empty-decode` | `KernelRpcBinaryCodec` now reuses `Array.Empty<KernelRpcValue>()` when decoding empty argument lists and empty list/record/map item sequences. The 1M-call probe isolates the old zero-array allocation and measured empty arguments, list, record, and map decode branches at 24,000,040 B each; the current decode paths measured 40 B in each lane. Final timing samples were 4.5 ms legacy versus 9.6 ms current for empty arguments, 5.1 ms versus 19.4 ms for empty lists, 3.4 ms versus 29.9 ms for empty records, and 3.3 ms versus 29.0 ms for empty maps. This step claims allocation reduction only because the legacy rows intentionally isolate the removed allocation instead of reproducing the full current decode validation. |
+| InvokeAsync generated capture collection writers | this commit | `--probe-invokeasync-capture-argument-writer` | Generated InvokeAsync capture arguments now fill `KernelRpcValue[]` arrays directly for captured list/map values instead of emitting LINQ `Select`/`SelectMany` plus `ToArray`; zero-count paths use `Array.Empty<KernelRpcValue>()`. The 1M 4-item list capture probe improved from 150.1 ms and 616,000,128 B to 42.8 ms and 496,000,040 B. The 1M 4-entry map capture probe improved from 287.6 ms and 1,656,000,104 B to 57.5 ms and 944,000,040 B by removing iterator overhead and the per-entry temporary arrays. |
 | Kernel RPC anonymous DTO shape factory | this commit | `--probe-kernel-rpc-marshaller-dto` | Cached compiled DTO field getters and constructor factories for `KernelRpcMarshaller` record shapes, and used a single cached DTO-shape lookup for record-valued `FromSandboxValue` calls. The 500k anonymous `{ Guid Id, string Zone }` reconstruction probe improved from a cached-reflection constructor baseline at 90.0 ms and 56,000,040 B to the compiled shape path at 71.5 ms and 20,000,040 B. |
 | Owned collection construction arrays | this commit | `--probe-collection-construction` | Compiled and interpreter `list.of`/`record.new` now transfer the freshly allocated argument array through the existing internal owned-array path instead of taking a second defensive snapshot. Same-session before and repeated after samples for 500k constructions measured `list.of` arity 8 at 216.0 B/op to 128.0 B/op, `list.of` arity 32 at 600.0 B/op to 320.0 B/op, `record.new` arity 8 at 304.9 B/op to 227.4 B/op, and `record.new` arity 32 at 690.2 B/op to 405.0 B/op. Stopwatch movement was mixed, including a slower arity-8 record row, so this step claims allocation reduction only. |
 | Owned compiled literal collections | this commit | `--probe-literal-collection-construction` | Compiled list/map literal construction now transfers compiler/runtime-owned arrays and dictionaries through internal owned construction paths instead of defensively snapshotting them a second time. Same-session before and repeated after samples for 500k constructions measured list literal arity 8 at 352.0 to 240.0 B/op, list literal arity 32 at 736.0 to 432.0 B/op, map literal arity 8 at 1,362.2 to 931.4 B/op, map literal arity 32 at 3,197.0 to 2,034.2 B/op, and `map.empty` at 304.9 to 235.4 B/op. Public `FromList`/`FromMap` defensive-copy behavior remains unchanged; this step claims allocation reduction only. |
 
-Versioning note for the two-argument binding fast path: `CallBinding2` and `ChargeValueArray`
+Versioning note for compiled binding fast paths: `CallBinding1`, `CallBinding2`, and `ChargeValueArray`
 are public generated-code ABI on `CompiledRuntime` for the same reason as the existing facade
 members: compiled assemblies must call them across assembly boundaries and the verifier allowlist
 hashes their exact signatures. They are not supported host API.
@@ -929,3 +939,74 @@ Settable DTO fallback         178.7 / 96.0     69.8 / 32.0
 
 The remaining allocation is the DTO object itself. Constructor-backed anonymous DTO rows stayed in the same
 range (about 75 ms and 40 B/op), which confirms the shared field-reader refactor did not regress that path.
+
+## Kernel RPC value converter collection fast paths
+
+The converter now reuses `Array.Empty<T>()` for empty list/record/map wire temporaries and decodes wire maps
+through the owned `MapValueBuilder` path, preserving duplicate-key rejection while avoiding the extra defensive
+dictionary copy in `SandboxValue.FromMap`.
+
+Command:
+
+```text
+dotnet run --project benchmarks\DotBoxD.Kernels.Benchmarks\DotBoxD.Kernels.Benchmarks.csproj -c Release -- --probe-kernel-rpc-value-converter-collections
+```
+
+Representative local run:
+
+```text
+Case                                      Before ms/Bop    After ms/Bop
+empty wire list -> sandbox                116.3 /  64.0    189.9 /  40.0
+empty sandbox list -> wire                 34.4 /  24.0     46.1 /   0.0
+empty sandbox record -> wire               32.3 /  24.0     48.6 /   0.0
+empty sandbox map -> wire                  54.8 /  24.0     50.4 /   0.0
+wire map -> sandbox (8 entries)           220.6 /1136.0    175.0 / 720.0
+wire map -> sandbox (32 entries)          374.6 /3168.0    318.1 /2024.0
+```
+
+The empty decode path is an allocation-only win; the non-empty map decode path improves both allocation and
+elapsed time by removing the extra dictionary snapshot.
+
+## Kernel RPC marshaller empty object-list fast path
+
+The CLR-to-sandbox marshaller now reuses `Array.Empty<SandboxValue>()` when an `ICollection` list has zero
+items instead of allocating a new zero-length array before calling the owned list factory.
+
+Command:
+
+```text
+dotnet run --project benchmarks\DotBoxD.Kernels.Benchmarks\DotBoxD.Kernels.Benchmarks.csproj -c Release -- --probe-kernel-rpc-marshaller-collections
+```
+
+Representative local run, 100k measured iterations for the isolated list construction branch:
+
+```text
+Case                                 Before ms/Bop    After ms/Bop
+empty object list -> sandbox           3.7 / 64.0      11.1 / 40.0
+```
+
+This is an allocation-only win on the empty collection branch; non-empty lists keep the existing array fill path.
+
+## Installed server-extension wire empty argument fast path
+
+`InstalledKernel.InvokeServerExtensionRpcAsync` now reuses `Array.Empty<SandboxValue>()` after decoding an
+empty wire argument payload instead of allocating a fresh empty sandbox argument array before invoking the
+server extension.
+
+Command:
+
+```text
+dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -- --probe-installed-rpc-input
+```
+
+Representative local run:
+
+```text
+wire arg iterations = 1,000,000
+legacy zero RPC args         9.6 ms     24,000,040 B checksum=0
+current zero RPC args        4.7 ms             40 B checksum=0
+one RPC arg control         28.9 ms     32,000,040 B checksum=1,000,000
+```
+
+The one-argument control still allocates for the required argument array; the empty wire argument path removes
+the per-call zero-length array allocation.

@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace DotBoxD.Services.SourceGenerator.Tests.Signatures;
 
-public class UnsupportedShapeCoverageTests
+public partial class UnsupportedShapeCoverageTests
 {
     [Fact]
     public void RefLikeReturnType_ProducesDBXS002_AndCompilingProxyStub()

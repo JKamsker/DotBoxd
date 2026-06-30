@@ -48,15 +48,13 @@ internal sealed partial class RpcStreamManager
     }
 
     internal void ReleaseOutboundReservations(RpcStreamAttachment[]? attachments)
-    {
-        if (attachments is null)
-        {
-            return;
-        }
+        => ReleaseOutboundReservations(RpcStreamAttachmentSet.FromArray(attachments));
 
-        foreach (var attachment in attachments)
+    internal void ReleaseOutboundReservations(RpcStreamAttachmentSet attachments)
+    {
+        for (var i = 0; i < attachments.Count; i++)
         {
-            if (attachment is not null)
+            if (attachments.GetAt(i) is { } attachment)
             {
                 ReleaseOutboundReservation(attachment.Handle.StreamId);
             }
@@ -64,15 +62,18 @@ internal sealed partial class RpcStreamManager
     }
 
     public RpcOutboundStreamSet RegisterOutbound(RpcStreamAttachment[]? attachments, CancellationToken ct)
+        => RegisterOutbound(RpcStreamAttachmentSet.FromArray(attachments), ct);
+
+    internal RpcOutboundStreamSet RegisterOutbound(RpcStreamAttachmentSet attachments, CancellationToken ct)
     {
-        if (attachments is null || attachments.Length == 0)
+        if (attachments.IsEmpty)
         {
             return RpcOutboundStreamSet.Empty;
         }
 
-        return attachments.Length == 1
-            ? RegisterOutbound(attachments[0], ct)
-            : RegisterOutboundMany(attachments, ct);
+        return attachments.IsSingle
+            ? RegisterOutbound(attachments.Single, ct)
+            : RegisterOutboundMany(attachments.Many, ct);
     }
 
     private RpcOutboundStreamSet RegisterOutboundMany(RpcStreamAttachment[] attachments, CancellationToken ct)

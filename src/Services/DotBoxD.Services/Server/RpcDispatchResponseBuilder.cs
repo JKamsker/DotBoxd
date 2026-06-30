@@ -97,6 +97,7 @@ internal sealed class RpcDispatchResponseBuilder
                 writer,
                 streaming,
                 ct).ConfigureAwait(false);
+            streaming.EnsureAllDeclaredInboundStreamsClaimed();
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

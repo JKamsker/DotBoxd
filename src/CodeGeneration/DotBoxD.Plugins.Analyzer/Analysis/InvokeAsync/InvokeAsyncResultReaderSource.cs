@@ -57,6 +57,26 @@ internal sealed partial class InvokeAsyncResultReaderSource
             return $"new global::System.TimeSpan({expression}.Int64Value)";
         }
 
+        if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
+        {
+            return $"{EnsureDateOnlyValueReader()}({expression}.Int32Value)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeOnlyWireType(type))
+        {
+            return $"{EnsureTimeOnlyValueReader()}({expression}.Int64Value)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsIndexWireType(type))
+        {
+            return $"{EnsureIndexValueReader()}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsRangeWireType(type))
+        {
+            return $"{EnsureRangeValueReader()}({expression})";
+        }
+
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return $"{EnsureEnumValueReader(enumType)}({expression})";

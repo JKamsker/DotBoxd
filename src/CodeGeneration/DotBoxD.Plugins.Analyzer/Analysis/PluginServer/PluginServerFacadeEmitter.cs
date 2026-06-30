@@ -106,6 +106,7 @@ internal static partial class PluginServerFacadeEmitter
             builder.Append("    private ").Append(control.WrapperName).Append("? ")
                 .Append(control.FieldName).AppendLine(";");
         }
+        builder.AppendLine("    private readonly global::System.Threading.SemaphoreSlim _startGate = new(1, 1);");
         builder.AppendLine("    private bool _started;");
         builder.AppendLine("    private bool _setupReplayed;");
         builder.AppendLine("    private int _setupReplayIndex;");
@@ -156,6 +157,11 @@ internal static partial class PluginServerFacadeEmitter
         PluginServerFacadeSurfaceEmitter.AppendProperties(builder, model);
         AppendLifecycle(builder, model);
         AppendWorldForwarders(builder, model);
+        foreach (var wrapper in model.WorldServiceWrappers)
+        {
+            PluginServerWrapperEmitter.AppendServiceWrapper(builder, model, wrapper, "    ");
+        }
+
         PluginServerFacadeSurfaceEmitter.AppendInstallSurface(builder, model);
         PluginServerSetupEmitter.AppendSetupMembers(builder, model);
         AppendLiveSettingsHandle(builder, model);
@@ -167,100 +173,12 @@ internal static partial class PluginServerFacadeEmitter
         builder.AppendLine("}");
     }
 
-    private static void AppendLifecycle(StringBuilder builder, PluginServerFacadeModel model)
-    {
-        builder.AppendLine();
-        PluginServerXmlDocumentation.AppendSummary(
-            builder,
-            "    ",
-            "Connects the generated plugin server, initializes runtime domain, hook, subscription, and extension APIs, and replays setup registrations once.");
-        builder.AppendLine("    public async global::System.Threading.Tasks.ValueTask StartAsync(global::System.Threading.CancellationToken cancellationToken = default)");
-        builder.AppendLine("    {");
-        builder.AppendLine("        ThrowIfDisposed();");
-        builder.AppendLine("        if (!_started)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            if (_connectionFactory is null) { throw new global::System.InvalidOperationException(NotStartedMessage); }");
-        if (model.EventCallbackType is not null)
-        {
-            // Provide the reverse event-callback sink during the connect (before the peer starts — services can
-            // only be registered then) so the server can push filtered+projected values to native RunLocal
-            // terminals. The sink forwards each pushed event to the facade's local-handler registry.
-            builder.AppendLine("            _session = await _connectionFactory(peer => global::DotBoxD.Services.Generated.DotBoxDGeneratedExtensions.Provide" + model.EventCallbackProvideSuffix + "(peer, new RemoteLocalEventSink(_localHandlers)), cancellationToken).ConfigureAwait(false);");
-        }
-        else
-        {
-            builder.AppendLine("            _session = await _connectionFactory(null, cancellationToken).ConfigureAwait(false);");
-        }
-        builder.AppendLine("            var control = _session.Get<" + model.ControlServiceType + ">();");
-        builder.AppendLine("            var world = global::DotBoxD.Services.Generated.DotBoxDGeneratedExtensions.Get" + model.WorldExtensionSuffix + "(_session.Peer);");
-        builder.AppendLine("            Initialize(control, world);");
-        builder.AppendLine("            _started = true;");
-        builder.AppendLine("        }");
-        builder.AppendLine("        await ReplaySetupAsync(cancellationToken).ConfigureAwait(false);");
-        builder.AppendLine("        if (!_configured)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            OnConfigured();");
-        builder.AppendLine("            _configured = true;");
-        builder.AppendLine("        }");
-        builder.AppendLine("    }");
-        builder.AppendLine();
-        PluginServerXmlDocumentation.AppendSummary(
-            builder,
-            "    ",
-            "Starts the generated plugin server and then waits until the remote host shuts down or the operation is cancelled.");
-        builder.AppendLine("    public async global::System.Threading.Tasks.ValueTask RunAsync(global::System.Threading.CancellationToken cancellationToken = default)");
-        builder.AppendLine("    {");
-        builder.AppendLine("        await StartAsync(cancellationToken).ConfigureAwait(false);");
-        builder.AppendLine("        await HoldUntilShutdownAsync(cancellationToken).ConfigureAwait(false);");
-        builder.AppendLine("    }");
-        builder.AppendLine();
-        PluginServerXmlDocumentation.AppendSummary(
-            builder,
-            "    ",
-            "Waits for the remote host to signal shutdown after the generated plugin server has started.");
-        builder.AppendLine("    public global::System.Threading.Tasks.ValueTask HoldUntilShutdownAsync(global::System.Threading.CancellationToken cancellationToken = default)");
-        builder.AppendLine("        => RequireControl().HoldUntilShutdownAsync(cancellationToken);");
-        builder.AppendLine();
-        PluginServerXmlDocumentation.AppendSummary(
-            builder,
-            "    ",
-            "Synchronously releases the generated plugin server session and any owned connection.");
-        builder.AppendLine("    public void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();");
-        PluginServerXmlDocumentation.AppendSummary(
-            builder,
-            "    ",
-            "Asynchronously releases the generated plugin server session and any owned connection.");
-        builder.AppendLine("    public async global::System.Threading.Tasks.ValueTask DisposeAsync()");
-        builder.AppendLine("    {");
-        builder.AppendLine("        if (_disposed) { return; }");
-        builder.AppendLine("        _disposed = true;");
-        builder.AppendLine("        if (_session is not null) { await _session.DisposeAsync().ConfigureAwait(false); }");
-        builder.AppendLine("    }");
-        builder.AppendLine();
-        builder.AppendLine("    private void Initialize(" + model.ControlServiceType + " control, " + model.WorldType + "? world)");
-        builder.AppendLine("    {");
-        builder.AppendLine("        _control = control;");
-        builder.AppendLine("        _world = world;");
-        var localHandlersArg = model.EventCallbackType is not null ? ", _localHandlers" : string.Empty;
-        builder.AppendLine("        _hooks = new " + model.HookRegistryName + "(package => InstallPluginPackageAsync(package)" + localHandlersArg + ");");
-        builder.AppendLine("        _subscriptions = new " + model.SubscriptionRegistryName + "(package => InstallSubscriptionPackageAsync(package)" + localHandlersArg + ");");
-        foreach (var control in model.Controls)
-        {
-            builder.Append("        ").Append(control.FieldName).Append(" = world is null ? null : new ")
-                .Append(control.WrapperName).Append("(this, world.")
-                .Append(PluginServerIdentifier.Escape(control.Name)).AppendLine(");");
-        }
-        builder.AppendLine("    }");
-        builder.AppendLine("    private " + model.ControlServiceType + " RequireControl() => _started && _control is not null ? _control : throw new global::System.InvalidOperationException(NotStartedMessage);");
-        builder.AppendLine("    private " + model.WorldType + " RequireWorld() => _started && _world is not null ? _world : throw new global::System.InvalidOperationException(NotStartedMessage);");
-        builder.AppendLine("    private void ThrowIfDisposed() => global::System.ObjectDisposedException.ThrowIf(_disposed, this);");
-    }
-
     private static void AppendWorldForwarders(StringBuilder builder, PluginServerFacadeModel model)
     {
         foreach (var property in model.WorldProperties)
         {
             PluginServerXmlDocumentation.Append(builder, "    ", property.Documentation);
+            PluginServerFlowAttributeSource.Append(builder, "    ", property.Attributes);
             builder.Append("    public ").Append(property.Type).Append(' ')
                 .Append(PluginServerIdentifier.Escape(property.Name))
                 .Append(" => RequireWorld().")
@@ -270,12 +188,17 @@ internal static partial class PluginServerFacadeEmitter
         foreach (var method in model.WorldMethods)
         {
             PluginServerXmlDocumentation.Append(builder, "    ", method.Documentation);
-            builder.Append("    public ").Append(method.ReturnType).Append(' ')
+            PluginServerFlowAttributeSource.Append(builder, "    ", method.ReturnAttributes);
+            builder.Append("    public ");
+            if (method.ReturnWrapperKind is PluginServerReturnWrapperKind.Task or PluginServerReturnWrapperKind.ValueTask)
+            {
+                builder.Append("async ");
+            }
+
+            builder.Append(method.ReturnType).Append(' ')
                 .Append(PluginServerIdentifier.Escape(method.Name))
-                .Append('(').Append(ParameterList(method)).Append(") => ((")
-                .Append(method.ReceiverType).Append(")RequireWorld()).")
-                .Append(PluginServerIdentifier.Escape(method.Name)).Append('(')
-                .Append(ArgumentList(method)).AppendLine(");");
+                .Append('(').Append(ParameterList(method)).Append(") => ");
+            AppendWorldMethodBody(builder, method);
         }
 
         if (model.WorldProperties.Count > 0 || model.WorldMethods.Count > 0)
@@ -284,8 +207,36 @@ internal static partial class PluginServerFacadeEmitter
         }
     }
 
+    private static void AppendWorldMethodBody(StringBuilder builder, PluginServerForwardedMethod method)
+    {
+        if (method.ReturnWrapperName is null)
+        {
+            builder.Append("((").Append(method.ReceiverType).Append(")RequireWorld()).")
+                .Append(PluginServerIdentifier.Escape(method.Name)).Append('(')
+                .Append(ArgumentList(method)).AppendLine(");");
+            return;
+        }
+
+        if (method.ReturnWrapperKind is PluginServerReturnWrapperKind.Task or PluginServerReturnWrapperKind.ValueTask)
+        {
+            builder.Append("new ").Append(method.ReturnWrapperName).Append("(this, await ((")
+                .Append(method.ReceiverType).Append(")RequireWorld()).")
+                .Append(PluginServerIdentifier.Escape(method.Name)).Append('(')
+                .Append(ArgumentList(method)).AppendLine(").ConfigureAwait(false));");
+            return;
+        }
+
+        builder.Append("new ").Append(method.ReturnWrapperName).Append("(this, ((")
+            .Append(method.ReceiverType).Append(")RequireWorld()).")
+            .Append(PluginServerIdentifier.Escape(method.Name)).Append('(')
+            .Append(ArgumentList(method)).AppendLine("));");
+    }
+
     private static string ParameterList(PluginServerForwardedMethod method)
-        => string.Join(", ", method.Parameters.Select(p => p.Type + " @" + p.Name + p.DefaultClause));
+        => string.Join(", ", method.Parameters.Select(p => ParamsModifier(p) + p.Type + " @" + p.Name + p.DefaultClause));
+
+    private static string ParamsModifier(PluginServerParameter parameter)
+        => parameter.IsParams ? "params " : string.Empty;
 
     private static string ArgumentList(PluginServerForwardedMethod method)
         => string.Join(", ", method.Parameters.Select(p => "@" + p.Name));

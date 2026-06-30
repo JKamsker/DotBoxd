@@ -8,7 +8,8 @@ internal static class PluginManifestCapabilityValidator
         PluginManifest manifest,
         ExecutionPlan plan,
         IReadOnlyList<string> entrypoints,
-        List<SandboxDiagnostic> diagnostics)
+        List<SandboxDiagnostic> diagnostics,
+        bool allowNonBindingCapabilities = true)
     {
         var declared = new HashSet<string>(manifest.RequiredCapabilities, StringComparer.Ordinal);
         var expected = RequiredCapabilities(plan, entrypoints);
@@ -18,7 +19,7 @@ internal static class PluginManifestCapabilityValidator
             .ToArray();
         var extra = declared
             .Except(expected, StringComparer.Ordinal)
-            .Where(static capability => !IsKnownNonBindingCapability(capability))
+            .Where(capability => !allowNonBindingCapabilities || !IsKnownNonBindingCapability(capability))
             .Order(StringComparer.Ordinal)
             .ToArray();
         if (declared.Count == manifest.RequiredCapabilities.Count &&

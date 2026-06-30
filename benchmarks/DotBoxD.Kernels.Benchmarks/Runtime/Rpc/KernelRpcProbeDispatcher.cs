@@ -16,6 +16,18 @@ internal static class KernelRpcProbeDispatcher
             return true;
         }
 
+        if (args.Contains("--probe-kernel-rpc-binary-codec-empty-decode", StringComparer.OrdinalIgnoreCase))
+        {
+            KernelRpcBinaryCodecEmptyDecodeProbe.Run();
+            return true;
+        }
+
+        if (args.Contains("--probe-invokeasync-capture-argument-writer", StringComparer.OrdinalIgnoreCase))
+        {
+            InvokeAsyncCaptureArgumentWriterProbe.Run();
+            return true;
+        }
+
         if (args.Contains("--probe-kernel-rpc-marshaller-dto", StringComparer.OrdinalIgnoreCase))
         {
             KernelRpcMarshallerDtoProbe.Run();
@@ -25,6 +37,12 @@ internal static class KernelRpcProbeDispatcher
         if (args.Contains("--probe-kernel-rpc-marshaller-collections", StringComparer.OrdinalIgnoreCase))
         {
             KernelRpcMarshallerCollectionsProbe.Run();
+            return true;
+        }
+
+        if (args.Contains("--probe-kernel-rpc-value-converter-collections", StringComparer.OrdinalIgnoreCase))
+        {
+            KernelRpcValueConverterCollectionsProbe.Run();
             return true;
         }
 

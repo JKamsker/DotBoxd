@@ -79,7 +79,9 @@ public static class KernelRpcValueConverter
             value.RequireKind(KernelRpcValueKind.List);
             var itemType = expectedType.Arguments[0];
             var source = value.ItemSpan;
-            var items = new SandboxValue[source.Length];
+            var items = source.Length == 0
+                ? Array.Empty<SandboxValue>()
+                : new SandboxValue[source.Length];
             for (var i = 0; i < source.Length; i++)
             {
                 items[i] = ToSandboxValue(source[i], itemType);
@@ -94,7 +96,7 @@ public static class KernelRpcValueConverter
             var keyType = expectedType.Arguments[0];
             var valueType = expectedType.Arguments[1];
             var source = value.ItemSpan;
-            var entries = new Dictionary<SandboxValue, SandboxValue>(source.Length / 2);
+            var entries = new MapValueBuilder(source.Length / 2);
             for (var i = 0; i + 1 < source.Length; i += 2)
             {
                 var key = ToSandboxValue(source[i], keyType);
@@ -105,7 +107,7 @@ public static class KernelRpcValueConverter
                 }
             }
 
-            return SandboxValue.FromMap(entries, keyType, valueType);
+            return SandboxValue.FromOwnedMap(entries, keyType, valueType);
         }
 
         if (expectedType.IsRecord)
@@ -118,7 +120,9 @@ public static class KernelRpcValueConverter
                     $"Server extension IPC record expected {expectedType.Arguments.Count} field(s) but received {source.Length}.");
             }
 
-            var fields = new SandboxValue[source.Length];
+            var fields = source.Length == 0
+                ? Array.Empty<SandboxValue>()
+                : new SandboxValue[source.Length];
             for (var i = 0; i < source.Length; i++)
             {
                 fields[i] = ToSandboxValue(source[i], expectedType.Arguments[i]);
@@ -132,6 +136,11 @@ public static class KernelRpcValueConverter
 
     private static KernelRpcValue[] ConvertList(IReadOnlyList<SandboxValue> values)
     {
+        if (values.Count == 0)
+        {
+            return Array.Empty<KernelRpcValue>();
+        }
+
         var converted = new KernelRpcValue[values.Count];
         for (var i = 0; i < values.Count; i++)
         {
@@ -145,6 +154,11 @@ public static class KernelRpcValueConverter
     // KernelRpcValue.Map's representation; the host reads it back into a Dictionary by pairs.
     private static KernelRpcValue[] ConvertMap(MapValue values)
     {
+        if (values.Values.Count == 0)
+        {
+            return Array.Empty<KernelRpcValue>();
+        }
+
         var entries = new KernelRpcValue[values.Values.Count * 2];
         var index = 0;
         foreach (var pair in values.Entries)

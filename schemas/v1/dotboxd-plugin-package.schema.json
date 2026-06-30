@@ -72,7 +72,22 @@
           "type": "string",
           "description": "For a kernel RPC service: the request/response batch entrypoint function id. Absent for event kernels."
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["rpcEntrypoint"] },
+          "then": {
+            "properties": {
+              "subscriptions": { "maxItems": 0 }
+            }
+          },
+          "else": {
+            "properties": {
+              "subscriptions": { "minItems": 1, "maxItems": 1 }
+            }
+          }
+        }
+      ]
     },
     "liveSetting": {
       "type": "object",
@@ -190,6 +205,22 @@
           "then": { "required": ["resultType"] }
         },
         {
+          "if": {
+            "properties": { "localTerminal": { "const": true } },
+            "required": ["localTerminal"]
+          },
+          "then": { "required": ["projectedType"] }
+        },
+        {
+          "if": { "required": ["projectedType"] },
+          "then": {
+            "properties": {
+              "localTerminal": { "const": true }
+            },
+            "required": ["localTerminal"]
+          }
+        },
+        {
           "if": { "required": ["resultType"] },
           "then": {
             "not": {
@@ -221,7 +252,49 @@
           "type": ["boolean", "integer", "number", "string"]
         },
         "valueType": { "type": "string", "enum": ["bool", "int", "long", "double", "string"] }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "valueType": { "const": "bool" } }, "required": ["valueType"] },
+          "then": {
+            "properties": {
+              "value": { "type": "boolean" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "valueType": { "const": "int" } }, "required": ["valueType"] },
+          "then": {
+            "properties": {
+              "value": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "valueType": { "const": "long" } }, "required": ["valueType"] },
+          "then": {
+            "properties": {
+              "value": { "type": "integer", "minimum": -9223372036854775808, "maximum": 9223372036854775807 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "valueType": { "const": "double" } }, "required": ["valueType"] },
+          "then": {
+            "properties": {
+              "value": { "type": "number", "minimum": -1.7976931348623157e308, "maximum": 1.7976931348623157e308 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "valueType": { "const": "string" } }, "required": ["valueType"] },
+          "then": {
+            "properties": {
+              "value": { "type": "string" }
+            }
+          }
+        }
+      ]
     },
     "entrypoints": {
       "type": "object",

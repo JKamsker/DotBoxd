@@ -24,7 +24,7 @@ internal static partial class InvokeAsyncReceiverResolver
             {
                 Name.Identifier.ValueText: "Services",
                 Expression: { } facadeExpression
-            } ||
+            } servicesAccess ||
             model.GetTypeInfo(facadeExpression, cancellationToken).Type is not INamedTypeSymbol facadeType)
         {
             return false;
@@ -41,7 +41,23 @@ internal static partial class InvokeAsyncReceiverResolver
 
         receiverType = PluginServerInterfaceTypeName(worldType);
         serverAccessType = ServerInterfaceTypeName(serverFacadeType, worldType);
-        return true;
+        return SelectedServicesMemberCanBeGenerated(model, servicesAccess, serverAccessType, cancellationToken);
+    }
+
+    private static bool SelectedServicesMemberCanBeGenerated(
+        SemanticModel model,
+        MemberAccessExpressionSyntax servicesAccess,
+        string serverAccessType,
+        CancellationToken cancellationToken)
+    {
+        var symbolInfo = model.GetSymbolInfo(servicesAccess, cancellationToken);
+        if (symbolInfo.Symbol is null)
+        {
+            return symbolInfo.CandidateSymbols.Length == 0;
+        }
+
+        return symbolInfo.Symbol is IPropertySymbol { Type: INamedTypeSymbol propertyType } &&
+               string.Equals(TypeName(propertyType), serverAccessType, StringComparison.Ordinal);
     }
 
     private static ExpressionSyntax ResolveServicesReceiverExpression(

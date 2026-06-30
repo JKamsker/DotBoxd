@@ -225,6 +225,7 @@ internal static partial class DotBoxDRpcTypeMapper
            !DotBoxDNullableScalarType.IsNullableValueType(type) &&
            ListElementType(type) is null &&
            MapTypes(type) is null &&
+           !ImplementsGenericEnumerable(type) &&
            RecordFields(type).Count > 0;
 
     /// <summary>

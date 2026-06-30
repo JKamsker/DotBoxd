@@ -7,6 +7,37 @@ namespace DotBoxD.Services.SourceGenerator.Tests.Signatures;
 public sealed class UnsupportedTransportPayloadShapeTests
 {
     [Fact]
+    public void RpcStreamHandleParameter_ProducesDBXS002_AndSkipsDispatch()
+    {
+        const string source = """
+            using DotBoxD.Services.Attributes;
+            using DotBoxD.Services.Protocol;
+            using System.Threading.Tasks;
+
+            namespace Regress.UnsupportedTransportPayloads
+            {
+                [DotBoxDService]
+                public interface IRawStreamHandle
+                {
+                    Task<int> UploadAsync(RpcStreamHandle stream);
+                }
+            }
+            """;
+
+        var runResult = Compile(source);
+
+        runResult.Diagnostics.Should().ContainSingle(d => d.Id == "DBXS002" &&
+            d.GetMessage().Contains("parameter 'stream'") &&
+            d.GetMessage().Contains("RpcStreamHandle"));
+
+        var generated = runResult.Results.Single().GeneratedSources;
+        var dispatcher = generated
+            .Single(g => g.HintName.EndsWith("IRawStreamHandle.DotBoxDRpcDispatcher.g.cs"))
+            .SourceText.ToString();
+        dispatcher.Should().NotContain("case \"UploadAsync\":");
+    }
+
+    [Fact]
     public void NestedStreamingAndControlPayloads_ProduceDBXS002_AndCompilingProxyStubs()
     {
         const string source = """

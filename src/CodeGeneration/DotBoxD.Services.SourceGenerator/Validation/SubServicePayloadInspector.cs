@@ -80,14 +80,12 @@ internal static class SubServicePayloadInspector
             }
         }
 
-        if (!visitedOriginalDefinitions.Add(named.OriginalDefinition))
-        {
-            return false;
-        }
-
-        var contains = CanInspectDtoMembers(named) &&
-            DtoMembersContainDotBoxDServiceInterface(named, ct, visitedOriginalDefinitions, cache);
-        visitedOriginalDefinitions.Remove(named.OriginalDefinition);
+        var contains = DtoPayloadMemberInspector.ContainsMemberMatching(
+            named,
+            ct,
+            visitedOriginalDefinitions,
+            (memberType, memberCt, memberVisited) =>
+                ContainsDotBoxDServiceInterface(memberType, memberCt, memberVisited, cache));
 
         // Only positive results are cycle-independent and safe to cache. A false computed here may
         // be a cycle-break artifact (the type's traversal hit an in-progress ancestor and returned
@@ -98,64 +96,6 @@ internal static class SubServicePayloadInspector
         }
 
         return contains;
-    }
-
-    private static bool DtoMembersContainDotBoxDServiceInterface(
-        INamedTypeSymbol type,
-        CancellationToken ct,
-        HashSet<INamedTypeSymbol> visitedOriginalDefinitions,
-        RpcTypeValidationCache? cache)
-    {
-        foreach (var member in type.GetMembers())
-        {
-            ct.ThrowIfCancellationRequested();
-
-            var memberType = member switch
-            {
-                IPropertySymbol { IsStatic: false, Parameters.Length: 0, DeclaredAccessibility: Accessibility.Public } property => property.Type,
-                IFieldSymbol { IsStatic: false, IsImplicitlyDeclared: false, DeclaredAccessibility: Accessibility.Public } field => field.Type,
-                _ => null,
-            };
-
-            if (memberType is not null &&
-                ContainsDotBoxDServiceInterface(memberType, ct, visitedOriginalDefinitions, cache))
-            {
-                return true;
-            }
-        }
-
-        return type.BaseType is not null && ContainsDotBoxDServiceInterface(
-            type.BaseType,
-            ct,
-            visitedOriginalDefinitions,
-            cache);
-    }
-
-    private static bool CanInspectDtoMembers(INamedTypeSymbol type)
-    {
-        if (type.SpecialType != SpecialType.None ||
-            type.TypeKind is not (TypeKind.Class or TypeKind.Struct))
-        {
-            return false;
-        }
-
-        var ns = type.ContainingNamespace;
-        return ns is null || ns.IsGlobalNamespace || !IsSystemNamespace(ns);
-    }
-
-    private static bool IsSystemNamespace(INamespaceSymbol ns)
-    {
-        while (!ns.IsGlobalNamespace)
-        {
-            if (ns.ContainingNamespace.IsGlobalNamespace)
-            {
-                return ns.Name == "System";
-            }
-
-            ns = ns.ContainingNamespace;
-        }
-
-        return false;
     }
 
     private static bool HasDotBoxDServiceAttribute(INamedTypeSymbol type, CancellationToken ct)

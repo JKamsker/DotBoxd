@@ -46,6 +46,10 @@ public sealed class GeneratedStreamingRpcTests
         Assert.Equal(new[] { 3, 4 }, wrappedValues);
 
         await using var bytes = new MemoryStream(new byte[] { 5, 6, 7 });
+        var byteOnlyUpload = await proxy.UploadBytesAsync(bytes).WaitAsync(Timeout);
+        Assert.Equal(5 + 6 + 7, byteOnlyUpload);
+        bytes.Position = 0;
+
         var uploaded = await proxy.UploadAsync(bytes, UploadItems()).WaitAsync(Timeout);
 
         Assert.Equal(5 + 6 + 7 + 10 + 20, uploaded);
@@ -114,9 +118,8 @@ public sealed class GeneratedStreamingRpcTests
             return Task.FromResult(WrappedNumbers(ct));
         }
 
-        public async Task<int> UploadAsync(
+        public async Task<int> UploadBytesAsync(
             Stream bytes,
-            IAsyncEnumerable<int> items,
             CancellationToken ct = default)
         {
             var sum = 0;
@@ -124,8 +127,21 @@ public sealed class GeneratedStreamingRpcTests
             int read;
             while ((read = await bytes.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
             {
-                sum += buffer.AsSpan(0, read).ToArray().Sum(static b => b);
+                for (var i = 0; i < read; i++)
+                {
+                    sum += buffer[i];
+                }
             }
+
+            return sum;
+        }
+
+        public async Task<int> UploadAsync(
+            Stream bytes,
+            IAsyncEnumerable<int> items,
+            CancellationToken ct = default)
+        {
+            var sum = await UploadBytesAsync(bytes, ct).ConfigureAwait(false);
 
             await foreach (var item in items.WithCancellation(ct).ConfigureAwait(false))
             {

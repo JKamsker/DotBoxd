@@ -47,6 +47,7 @@ internal static partial class PluginServerFacadeModelFactory
                 property.Name,
                 UniqueFieldName(property.Name, fieldNames),
                 propertyTypeName,
+                PluginServerFlowAttributeSource.PropertyAttributes(property),
                 PluginServerXmlDocumentation.FromSymbol(
                     property,
                     "Accesses the server's " + property.Name + " domain control after StartAsync.",
@@ -64,15 +65,7 @@ internal static partial class PluginServerFacadeModelFactory
                         propertyType,
                         serviceWrappers,
                         cancellationToken)),
-                new EquatableArray<PluginServerServiceWrapper>(
-                    serviceWrappers.Values
-                        .Select(static wrapper => new PluginServerServiceWrapper(
-                            wrapper.Type,
-                            wrapper.WrapperName,
-                            wrapper.Documentation,
-                            new EquatableArray<PluginServerForwardedProperty>(wrapper.Properties.ToArray()),
-                            new EquatableArray<PluginServerForwardedMethod>(wrapper.Methods.ToArray())))
-                        .ToArray())));
+                new EquatableArray<PluginServerServiceWrapper>(BuildServiceWrappers(serviceWrappers))));
         }
 
         return controls.ToArray();
@@ -83,6 +76,7 @@ internal static partial class PluginServerFacadeModelFactory
         [
             "_connectionFactory",
             "_anonymousKernels",
+            "_installedPluginIds",
             "_serverExtensions",
             "_setupInstalls",
             "_control",
@@ -91,6 +85,7 @@ internal static partial class PluginServerFacadeModelFactory
             "_subscriptions",
             "_localHandlers",
             "_session",
+            "_startGate",
             "_started",
             "_setupReplayed",
             "_setupReplayIndex",

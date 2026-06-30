@@ -199,18 +199,23 @@ internal static class AsyncSiblingProjector
         }
 
         var parameters = new List<ParameterModel>();
+        var cancellationTokenName = "ct";
         foreach (var parameter in method.Parameters.Array)
         {
             ct.ThrowIfCancellationRequested();
 
-            if (!parameter.IsCancellationToken)
+            if (parameter.IsCancellationToken)
+            {
+                cancellationTokenName = parameter.Name;
+            }
+            else
             {
                 parameters.Add(parameter);
             }
         }
 
         parameters.Add(new ParameterModel(
-            UniqueParameterName(method.Parameters, "ct", ct),
+            UniqueParameterName(parameters, cancellationTokenName, ct),
             ServicesGeneratorTypeNames.GlobalCancellationToken,
             ServicesGeneratorTypeNames.GlobalCancellationToken,
             IsCancellationToken: true,
@@ -221,12 +226,12 @@ internal static class AsyncSiblingProjector
     }
 
     private static string UniqueParameterName(
-        EquatableArray<ParameterModel> parameters,
+        IReadOnlyList<ParameterModel> parameters,
         string baseName,
         CancellationToken ct)
     {
         var usedNames = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var parameter in parameters.Array)
+        foreach (var parameter in parameters)
         {
             ct.ThrowIfCancellationRequested();
             usedNames.Add(parameter.Name);

@@ -110,6 +110,37 @@ public sealed class PluginAnalyzerPropertyShapeTests
     }
 
     [Fact]
+    public void Generator_rejects_nullable_string_event_properties()
+    {
+        var result = RunGenerator("""
+            #nullable enable
+
+            using DotBoxD.Plugins;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public sealed record NullableStringEvent(string? TargetId);
+
+            [Plugin("nullable-string-event")]
+            public sealed partial class NullableStringKernel : IEventKernel<NullableStringEvent>
+            {
+                public bool ShouldHandle(NullableStringEvent e, HookContext ctx) => true;
+
+                public void Handle(NullableStringEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, "message");
+            }
+            """, expectGeneratorErrors: true);
+
+        Assert.Contains(
+            result.Diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains("TargetId", StringComparison.Ordinal) &&
+                          diagnostic.GetMessage().Contains("nullable reference", StringComparison.Ordinal));
+        Assert.Empty(result.GeneratedTrees);
+    }
+
+    [Fact]
     public void Generator_rejects_live_setting_indexers()
     {
         var result = RunGenerator("""

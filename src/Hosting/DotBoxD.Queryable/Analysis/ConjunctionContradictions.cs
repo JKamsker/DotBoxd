@@ -62,9 +62,9 @@ internal static class ConjunctionContradictions
     {
         private readonly List<QueryValue> _equalities = [];
         private readonly List<QueryValue> _notEquals = [];
-        private double? _lower;
+        private NumericLiteral? _lower;
         private bool _lowerStrict;
-        private double? _upper;
+        private NumericLiteral? _upper;
         private bool _upperStrict;
 
         public void Add(QueryComparisonOperator op, QueryValue value)
@@ -119,7 +119,8 @@ internal static class ConjunctionContradictions
                 return false;
             }
 
-            return lo > hi || (lo == hi && (_lowerStrict || _upperStrict));
+            var comparison = lo.CompareTo(hi);
+            return comparison is > 0 || (comparison is 0 && (_lowerStrict || _upperStrict));
         }
 
         private bool HasEqualityOutsideRange()
@@ -131,12 +132,14 @@ internal static class ConjunctionContradictions
                     continue;
                 }
 
-                if (_lower is { } lo && (value < lo || (value == lo && _lowerStrict)))
+                var lowerComparison = _lower is { } lo ? value.CompareTo(lo) : null;
+                if (lowerComparison is < 0 || (lowerComparison is 0 && _lowerStrict))
                 {
                     return true;
                 }
 
-                if (_upper is { } hi && (value > hi || (value == hi && _upperStrict)))
+                var upperComparison = _upper is { } hi ? value.CompareTo(hi) : null;
+                if (upperComparison is > 0 || (upperComparison is 0 && _upperStrict))
                 {
                     return true;
                 }
@@ -145,7 +148,7 @@ internal static class ConjunctionContradictions
             return false;
         }
 
-        private static void Tighten(ref double? bound, ref bool strict, QueryValue value, bool isStrict, bool takeMax)
+        private static void Tighten(ref NumericLiteral? bound, ref bool strict, QueryValue value, bool isStrict, bool takeMax)
         {
             if (TryNumber(value) is not { } number)
             {
@@ -159,13 +162,19 @@ internal static class ConjunctionContradictions
                 return;
             }
 
-            var tighter = takeMax ? number > current : number < current;
+            var comparison = number.CompareTo(current);
+            if (comparison is not { } order)
+            {
+                return;
+            }
+
+            var tighter = takeMax ? order > 0 : order < 0;
             if (tighter)
             {
                 bound = number;
                 strict = isStrict;
             }
-            else if (number == current && isStrict)
+            else if (order == 0 && isStrict)
             {
                 // Same bound value, but this constraint is strict (> vs >=): the stricter wins.
                 strict = true;
@@ -176,7 +185,7 @@ internal static class ConjunctionContradictions
         {
             if (TryNumber(a) is { } na && TryNumber(b) is { } nb)
             {
-                return na == nb;
+                return na.CompareTo(nb) is { } comparison ? comparison == 0 : null;
             }
 
             if (a.Kind != b.Kind)
@@ -193,11 +202,33 @@ internal static class ConjunctionContradictions
             };
         }
 
-        private static double? TryNumber(QueryValue value) => value.Kind switch
+        private static NumericLiteral? TryNumber(QueryValue value) => value.Kind switch
         {
-            QueryValueKind.Integer => value.Integer,
-            QueryValueKind.Number => value.Number,
+            QueryValueKind.Integer => NumericLiteral.FromExact(value.Integer),
+            QueryValueKind.UnsignedInteger => NumericLiteral.FromExact(value.UnsignedInteger),
+            QueryValueKind.Decimal => NumericLiteral.FromExact(value.Decimal),
+            QueryValueKind.Number => NumericLiteral.FromFloating(value.Number),
             _ => null,
         };
+
+        private readonly record struct NumericLiteral(decimal Exact, double Floating, bool IsFloating)
+        {
+            public static NumericLiteral FromExact(decimal value) => new(value, 0, IsFloating: false);
+
+            public static NumericLiteral FromFloating(double value) => new(0, value, IsFloating: true);
+
+            public int? CompareTo(NumericLiteral other)
+            {
+                if (IsFloating != other.IsFloating)
+                {
+                    // The AST does not know the member's CLR type, so exact-vs-floating contradictions are not certain.
+                    return null;
+                }
+
+                return IsFloating
+                    ? Floating.CompareTo(other.Floating)
+                    : Exact.CompareTo(other.Exact);
+            }
+        }
     }
 }

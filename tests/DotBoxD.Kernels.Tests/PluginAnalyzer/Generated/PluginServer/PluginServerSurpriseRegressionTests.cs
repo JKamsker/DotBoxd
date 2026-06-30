@@ -146,6 +146,20 @@ public sealed partial class PluginServerSurpriseRegressionTests
     }
 
     [Fact]
+    public void Generated_plugin_server_rejects_world_object_member_collisions()
+    {
+        var diagnostics = PluginServerGenerationTestDriver.Diagnostics(BaseServerSource(worldMembers: """
+                    string ToString();
+            """));
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("ToString", StringComparison.Ordinal) &&
+                 d.GetMessage().Contains("collides with the generated facade surface", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Generated_plugin_server_emits_cancellable_InvokeAsync_and_indexed_setup_replay()
     {
         var (generated, outputCompilation) = PluginServerGenerationTestDriver.Run(BaseServerSource());

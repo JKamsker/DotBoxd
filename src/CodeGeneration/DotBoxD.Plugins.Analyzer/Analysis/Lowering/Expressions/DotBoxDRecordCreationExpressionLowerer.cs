@@ -38,10 +38,13 @@ internal static partial class DotBoxDRecordCreationExpressionLowerer
         var fields = DotBoxDRpcTypeMapper.RecordFields(recordType);
         var arguments = creation.ArgumentList?.Arguments ?? default;
 
-        // Object-initializer construction (e.g. `new() { Success = true, Damage = x }`) is how the generated
-        // hook-result builders and explicit `new Result { ... }` produce a value: lower each assigned field and
-        // fill the omitted ones with their manifest-tag zero. If constructor arguments are present, lower them
-        // first and let the initializer override them, matching C# object-initializer semantics.
+        var allowStoredZero = HasHookResultAttribute(recordType);
+
+        // Object-initializer construction (e.g. `new() { Success = true, Damage = x }`) lowers each assigned
+        // field. Hook-result records keep their documented zero-fill convention for omitted fields; ordinary DTOs
+        // fail closed unless the omitted field is a derived computed property that can be lowered from assigned
+        // fields. If constructor arguments are present, lower them first and let the initializer override them,
+        // matching C# object-initializer semantics.
         if (creation.Initializer is { } initializer)
         {
             if (arguments.Count > 0)
@@ -64,6 +67,7 @@ internal static partial class DotBoxDRecordCreationExpressionLowerer
                     lowerExpression,
                     fieldSources,
                     assigned,
+                    allowStoredZero,
                     allocates);
             }
 
@@ -75,14 +79,14 @@ internal static partial class DotBoxDRecordCreationExpressionLowerer
                 lowerExpression,
                 fieldSources: null,
                 assigned: null,
+                allowStoredZero,
                 allocates: true);
         }
 
         if (arguments.Count != constructor.Parameters.Length || constructor.Parameters.Length > fields.Count)
         {
-            // Constructor arguments must bind one argument per declared constructor parameter, and the constructor
-            // cannot expose more fields than the DTO has. Missing DTO fields are filled below from derived getters
-            // or manifest zeros where that is faithful to an omitted stored field.
+            // Constructor arguments must bind one argument per declared constructor parameter and cannot expose more
+            // fields than the DTO has. Missing DTO fields must be derived from assigned fields.
             throw new System.NotSupportedException();
         }
 
@@ -104,7 +108,7 @@ internal static partial class DotBoxDRecordCreationExpressionLowerer
             positionalSources,
             positionalAssigned,
             context,
-            allowStoredZero: true,
+            allowStoredZero: false,
             allocates: positionalAllocates);
 
         context.Effects?.Add(DotBoxDGenerationNames.Effects.Alloc);
@@ -147,11 +151,13 @@ internal static partial class DotBoxDRecordCreationExpressionLowerer
                 throw new System.NotSupportedException();
             }
 
-            // record.new declares the FIELD's sandbox type, and the value comes from the constructor parameter that
-            // fills it. If that parameter is a different CLR type than the field (a converting ctor, e.g. an int
-            // arg into an enum field, or List<long> into a List<int> field), the coarse manifest-tag check below
-            // would still pass while the emitted record carried a value of the wrong shape. Require an exact type
-            // match so only a faithful positional construction lowers; anything else fails safe.
+            if (fieldIndex != i)
+            {
+                throw new NotSupportedException("DTO constructor arguments must match DTO field order to preserve remote projection evaluation order.");
+            }
+
+            // record.new declares the field's sandbox type. Require the constructor parameter's value to carry the
+            // exact field shape; otherwise coarse manifest tags could hide a mismatched CLR payload type.
             var lowered = LowerFieldValue(
                 arguments[i].Expression,
                 fields[fieldIndex].Type,
@@ -192,9 +198,8 @@ internal static partial class DotBoxDRecordCreationExpressionLowerer
             $"[{string.Join(", ", fieldSources)}], {recordTypeSource}, Span)";
 
     // Lowers an object-initializer construction to record.new: each `Field = value` assignment lowers the value
-    // with the field's expected type. When Roslyn has a real RHS type, require an exact CLR match; generated
-    // remote fallback chains can have unresolved lambda parameters on the first pass, so those rely on the
-    // contextual lowerer's manifest-tag check. Omitted fields are filled with their manifest-tag zero.
+    // with the field's expected type. Omitted stored fields fail closed unless the caller opts into the hook-result
+    // zero-fill convention.
     private static DotBoxDExpressionModel LowerInitializer(
         IReadOnlyList<RecordMember> fields,
         string recordTypeSource,
@@ -203,10 +208,12 @@ internal static partial class DotBoxDRecordCreationExpressionLowerer
         System.Func<ExpressionSyntax, DotBoxDExpressionModel> lowerExpression,
         string?[]? fieldSources,
         bool[]? assigned,
+        bool allowStoredZero,
         bool allocates)
     {
         fieldSources ??= new string?[fields.Count];
         assigned ??= new bool[fields.Count];
+        var previousInitializedField = -1;
         foreach (var expression in initializer.Expressions)
         {
             if (expression is not AssignmentExpressionSyntax assignment ||
@@ -222,6 +229,12 @@ internal static partial class DotBoxDRecordCreationExpressionLowerer
                 throw new System.NotSupportedException();
             }
 
+            if (index <= previousInitializedField)
+            {
+                throw new NotSupportedException("DTO object initializer assignments must match DTO field order to preserve remote projection evaluation order.");
+            }
+
+            previousInitializedField = index;
             var lowered = LowerFieldValue(assignment.Right, fields[index].Type, context, lowerExpression);
 
             fieldSources[index] = lowered.Source;
@@ -234,7 +247,7 @@ internal static partial class DotBoxDRecordCreationExpressionLowerer
             fieldSources,
             assigned,
             context,
-            allowStoredZero: true,
+            allowStoredZero,
             allocates: allocates);
 
         context.Effects?.Add(DotBoxDGenerationNames.Effects.Alloc);
@@ -244,6 +257,13 @@ internal static partial class DotBoxDRecordCreationExpressionLowerer
             ManifestTypes.Record,
             allocates);
     }
+
+    private static bool HasHookResultAttribute(INamedTypeSymbol type)
+        => type.GetAttributes().Any(attribute =>
+            string.Equals(
+                attribute.AttributeClass?.ToDisplayString(),
+                DotBoxDMetadataNames.HookResultAttribute,
+                StringComparison.Ordinal));
 
     private static DotBoxDExpressionModel LowerFieldValue(
         ExpressionSyntax expression,

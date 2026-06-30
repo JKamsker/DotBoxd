@@ -39,8 +39,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             Allocates = true;
             return Call("list.empty", DotBoxDRpcTypeMapper.JsonType(elementType, _model.Compilation));
         }
-        if (creation is ObjectCreationExpressionSyntax explicitCreation &&
-            TryLowerEmptyMapCreation(explicitCreation, created) is { } emptyMap)
+        if (TryLowerMapCreation(creation, created) is { } emptyMap)
         {
             return emptyMap;
         }

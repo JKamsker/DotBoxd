@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Diagnostics;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Sandbox.Values;
@@ -15,12 +16,28 @@ internal static class KernelRpcMarshallerCollectionsProbe
     {
         Console.WriteLine("Kernel RPC marshaller collection probe");
         Console.WriteLine($"iterations = {Iterations:N0}");
+        RunEmptyListEncodeLane();
         RunMapLane(0);
         RunMapLane(4);
         RunMapLane(32);
         RunFallbackDecodeLane(4);
         RunFallbackDecodeLane(32);
         RunMapEnumerationLane(32);
+    }
+
+    private static void RunEmptyListEncodeLane()
+    {
+        var source = Array.Empty<int>();
+        var state = new EmptyCollectionState(source, SandboxType.I32);
+
+        _ = Measure(Warmup, static value => LegacyEmptyCollectionToSandbox(value), state);
+        _ = Measure(Warmup, static value => CurrentEmptyCollectionToSandbox(value), state);
+
+        var legacy = Measure(Iterations, static value => LegacyEmptyCollectionToSandbox(value), state);
+        var current = Measure(Iterations, static value => CurrentEmptyCollectionToSandbox(value), state);
+
+        Print("legacy empty object list -> sandbox", legacy);
+        Print("current empty object list -> sandbox", current);
     }
 
     private static void RunFallbackDecodeLane(int entries)
@@ -72,6 +89,20 @@ internal static class KernelRpcMarshallerCollectionsProbe
         Print($"sandbox map -> wire ({entries,2})", wire);
         Print($"sandbox map -> object dictionary ({entries,2})", runtime);
         Print($"sandbox map -> binary ({entries,2})", binary);
+    }
+
+    private static int LegacyEmptyCollectionToSandbox(EmptyCollectionState state)
+    {
+        var items = new SandboxValue[state.Collection.Count];
+        return ((ListValue)SandboxValue.FromOwnedList(items, state.ItemType)).Values.Count;
+    }
+
+    private static int CurrentEmptyCollectionToSandbox(EmptyCollectionState state)
+    {
+        var items = state.Collection.Count == 0
+            ? Array.Empty<SandboxValue>()
+            : new SandboxValue[state.Collection.Count];
+        return ((ListValue)SandboxValue.FromOwnedList(items, state.ItemType)).Values.Count;
     }
 
     private static void RunMapLane(int entries)
@@ -184,6 +215,8 @@ internal static class KernelRpcMarshallerCollectionsProbe
     private sealed record WireState(KernelRpcValue WireMap, SandboxType ExpectedType);
 
     private sealed record ObjectState(Dictionary<string, int> Source);
+
+    private sealed record EmptyCollectionState(ICollection Collection, SandboxType ItemType);
 
     private sealed record SandboxMapState(MapValue Map);
 

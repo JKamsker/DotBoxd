@@ -5,20 +5,27 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 
 /// <summary>
 /// Map (<c>Dictionary&lt;K,V&gt;</c>) body lowering for <see cref="DotBoxDRpcJsonLowerer"/>: builds and reads
-/// maps through the kernel's immutable <c>map.*</c> intrinsics. <c>new Dictionary&lt;K,V&gt;()</c> →
+/// maps through the kernel's immutable <c>map.*</c> intrinsics. <c>new Dictionary&lt;K,V&gt;()</c> or
+/// <c>new()</c> →
 /// <c>map.empty</c>, <c>dict[key]</c> → <c>map.get</c>, <c>dict[key] = value</c> → a rebinding <c>map.set</c>,
 /// and <c>dict.ContainsKey(key)</c> → <c>map.containsKey</c>.
 /// </summary>
 internal sealed partial class DotBoxDRpcJsonLowerer
 {
-    // new Dictionary<K,V>() → an empty typed map.
-    private string? TryLowerEmptyMapCreation(ObjectCreationExpressionSyntax creation, ITypeSymbol created)
+    // new Dictionary<K,V>() or new() → an empty typed map. Comparer-bearing constructors fail closed because
+    // kernel maps have fixed wire equality semantics that cannot preserve caller-provided comparers.
+    private string? TryLowerMapCreation(BaseObjectCreationExpressionSyntax creation, ITypeSymbol created)
     {
-        if (DotBoxDRpcTypeMapper.MapTypes(created) is null ||
-            creation.Initializer is not null ||
-            creation.ArgumentList is { Arguments.Count: > 0 })
+        if (DotBoxDRpcTypeMapper.MapTypes(created) is null)
         {
             return null;
+        }
+
+        if (creation.Initializer is not null ||
+            creation.ArgumentList is { Arguments.Count: > 0 })
+        {
+            throw new NotSupportedException(
+                "Server extension map creation supports only an empty dictionary with default comparer semantics; comparer constructors, capacity constructors, and initializers are not supported.");
         }
 
         Allocates = true;
