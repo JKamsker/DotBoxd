@@ -221,6 +221,14 @@ public sealed class PluginPackageJsonTests
             });
     }
 
+    [Fact]
+    public void Import_rejects_live_setting_default_outside_manifest_range()
+    {
+        var ex = Assert.Throws<SandboxValidationException>(() => PluginPackageJsonSerializer.Import(JsonDamagePackage(
+            """{ "name": "MinDamage", "type": "int", "defaultValue": 10001, "min": 0, "max": 10000 }""")));
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK023");
+    }
+
     private static string JsonDamagePackageWithSettings()
         => JsonDamagePackage("""
             { "name": "DamageType", "type": "string", "defaultValue": "fire" },

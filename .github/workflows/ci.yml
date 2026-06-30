@@ -332,6 +332,7 @@ jobs:
               "WorkerResultHardeningTests",
               "JsonApiSurfaceTests",
               "PublicModelImmutabilityTests",
+              "PluginPackageJsonTests",
               "PluginPackageValidationTests",
               "KernelRegistryLookupConsistencyTests",
               "PluginTypedLiveSettingViewTests",

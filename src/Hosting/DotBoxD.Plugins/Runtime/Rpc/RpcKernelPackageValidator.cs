@@ -192,9 +192,7 @@ internal static class RpcKernelPackageValidator
             PluginManifestTextValidator.ValidateText(setting.Type, "live setting type", diagnostics);
             try
             {
-                _ = LiveSettingTypeConverter.ToSandboxType(setting.Type);
-                _ = LiveSettingTypeConverter.ToSandboxValue(setting.Type, setting.DefaultValue);
-                LiveSettingTypeConverter.ValidateRangeDefinition(setting);
+                LiveSettingTypeConverter.ValidateDefinition(setting);
             }
             catch (SandboxValidationException ex)
             {

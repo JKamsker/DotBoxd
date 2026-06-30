@@ -243,9 +243,7 @@ internal static class PluginPackageValidator
     {
         try
         {
-            _ = LiveSettingTypeConverter.ToSandboxType(setting.Type);
-            _ = LiveSettingTypeConverter.ToSandboxValue(setting.Type, setting.DefaultValue);
-            ValidateRange(setting, diagnostics);
+            LiveSettingTypeConverter.ValidateDefinition(setting);
         }
         catch (SandboxValidationException ex)
         {
@@ -254,18 +252,6 @@ internal static class PluginPackageValidator
         catch (Exception)
         {
             diagnostics.Add(new SandboxDiagnostic("DBXK020", $"Live setting type '{setting.Type}' is not supported."));
-        }
-    }
-
-    private static void ValidateRange(LiveSettingDefinition setting, List<SandboxDiagnostic> diagnostics)
-    {
-        try
-        {
-            LiveSettingTypeConverter.ValidateRangeDefinition(setting);
-        }
-        catch (SandboxValidationException ex)
-        {
-            diagnostics.AddRange(ex.Diagnostics);
         }
     }
 

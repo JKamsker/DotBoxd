@@ -57,6 +57,7 @@ $defaultMinimums = @{
     WorkerResultHardeningTests = 11
     JsonApiSurfaceTests = 1
     PublicModelImmutabilityTests = 5
+    PluginPackageJsonTests = 22
     PluginPackageValidationTests = 22
     KernelRegistryLookupConsistencyTests = 1
     PluginTypedLiveSettingViewTests = 4
