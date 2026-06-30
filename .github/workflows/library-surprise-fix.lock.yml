@@ -1,5 +1,5 @@
-# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"ae5ab59747e7644884307cd8098b6abf860812aa12a8df8f9ea7139306ccc696","body_hash":"c311316da0a8390ff86724089c5ace392ed4151ee2d6f5d33bc2f2c7b11c5a41","compiler_version":"v0.82.0-jk.1","strict":true,"agent_id":"codex","engine_versions":{"codex":"0.142.4"}}
-# gh-aw-manifest: {"version":1,"secrets":["CODEX_API_KEY","CODEX_LB_BASE_URL","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_TOKEN","GITHUB_TOKEN","OPENAI_API_KEY"],"actions":[{"repo":"JKamsker/gh-aw/actions/setup","sha":"21e402d7a4b5367258a7692cbb84fee60b507598","version":"v0.82.0-jk.1"},{"repo":"actions/cache/restore","sha":"55cc8345863c7cc4c66a329aec7e433d2d1c52a9","version":"v6.1.0"},{"repo":"actions/cache/save","sha":"55cc8345863c7cc4c66a329aec7e433d2d1c52a9","version":"v6.1.0"},{"repo":"actions/checkout","sha":"9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0","version":"v7.0.0"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/setup-node","sha":"48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e","version":"v6.4.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.27.13","digest":"sha256:691a06b64961b5b35aac117eaace202fa721e91da19d1d2e22dcdd6663cd571b","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.27.13@sha256:691a06b64961b5b35aac117eaace202fa721e91da19d1d2e22dcdd6663cd571b"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.27.13","digest":"sha256:c57febf4aeeefbb4fd96f5b12c07f4279ca55edca6a700032debf9dd0787286e","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.27.13@sha256:c57febf4aeeefbb4fd96f5b12c07f4279ca55edca6a700032debf9dd0787286e"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.27.13","digest":"sha256:700b1b5a73098373b04fb684f291e95d9be0124ab559717b04f27acaf8b41bed","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.27.13@sha256:700b1b5a73098373b04fb684f291e95d9be0124ab559717b04f27acaf8b41bed"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.3.32","digest":"sha256:63e46b56dfd70895a701b6fc6dd0189e11e2d875f327f1781e81b31848735477","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.3.32@sha256:63e46b56dfd70895a701b6fc6dd0189e11e2d875f327f1781e81b31848735477"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:529d02eb970b1161aa25c593a9c3df57fdfad5a8add328cb3b6eccef66f3183b","pinned_image":"ghcr.io/github/gh-aw-node@sha256:529d02eb970b1161aa25c593a9c3df57fdfad5a8add328cb3b6eccef66f3183b"},{"image":"ghcr.io/github/github-mcp-server:v1.5.0","digest":"sha256:e25564dccc9110a70a77b9df560cbde11aa392fcb5f08b9abe5c4ebc6d146ea4","pinned_image":"ghcr.io/github/github-mcp-server:v1.5.0@sha256:e25564dccc9110a70a77b9df560cbde11aa392fcb5f08b9abe5c4ebc6d146ea4"}]}
+# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"478081154fd117f6fd2fa11df2b869f742ccdc8ff88042752c887a3e96064c5f","body_hash":"260c55cdc4c97a2dccc073b85f74124137f2b80385eab8faabbb78c9349736d2","compiler_version":"v0.82.0-jk.1","strict":true,"agent_id":"codex","engine_versions":{"codex":"0.142.4"}}
+# gh-aw-manifest: {"version":1,"secrets":["CODEX_API_KEY","CODEX_LB_BASE_URL","GH_AW_CI_TRIGGER_TOKEN","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_TOKEN","GITHUB_TOKEN","OPENAI_API_KEY"],"actions":[{"repo":"JKamsker/gh-aw/actions/setup","sha":"21e402d7a4b5367258a7692cbb84fee60b507598","version":"v0.82.0-jk.1"},{"repo":"actions/cache/restore","sha":"55cc8345863c7cc4c66a329aec7e433d2d1c52a9","version":"v6.1.0"},{"repo":"actions/cache/save","sha":"55cc8345863c7cc4c66a329aec7e433d2d1c52a9","version":"v6.1.0"},{"repo":"actions/checkout","sha":"9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0","version":"v7.0.0"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/setup-dotnet","sha":"67a3573c9a986a3f9c594539f4ab511d57bb3ce9","version":"v4"},{"repo":"actions/setup-node","sha":"48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e","version":"v6.4.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.27.13","digest":"sha256:691a06b64961b5b35aac117eaace202fa721e91da19d1d2e22dcdd6663cd571b","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.27.13@sha256:691a06b64961b5b35aac117eaace202fa721e91da19d1d2e22dcdd6663cd571b"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.27.13","digest":"sha256:c57febf4aeeefbb4fd96f5b12c07f4279ca55edca6a700032debf9dd0787286e","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.27.13@sha256:c57febf4aeeefbb4fd96f5b12c07f4279ca55edca6a700032debf9dd0787286e"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.27.13","digest":"sha256:700b1b5a73098373b04fb684f291e95d9be0124ab559717b04f27acaf8b41bed","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.27.13@sha256:700b1b5a73098373b04fb684f291e95d9be0124ab559717b04f27acaf8b41bed"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.3.32","digest":"sha256:63e46b56dfd70895a701b6fc6dd0189e11e2d875f327f1781e81b31848735477","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.3.32@sha256:63e46b56dfd70895a701b6fc6dd0189e11e2d875f327f1781e81b31848735477"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:529d02eb970b1161aa25c593a9c3df57fdfad5a8add328cb3b6eccef66f3183b","pinned_image":"ghcr.io/github/gh-aw-node@sha256:529d02eb970b1161aa25c593a9c3df57fdfad5a8add328cb3b6eccef66f3183b"},{"image":"ghcr.io/github/github-mcp-server:v1.5.0","digest":"sha256:e25564dccc9110a70a77b9df560cbde11aa392fcb5f08b9abe5c4ebc6d146ea4","pinned_image":"ghcr.io/github/github-mcp-server:v1.5.0@sha256:e25564dccc9110a70a77b9df560cbde11aa392fcb5f08b9abe5c4ebc6d146ea4"}]}
 # This file was automatically generated by gh-aw (v0.82.0-jk.1). DO NOT EDIT. To debug this workflow, load the skill at https://github.com/github/gh-aw/blob/main/debug.md
 #
 #    ___                   _   _
@@ -23,11 +23,14 @@
 #
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
-# Minimal gh-aw Codex smoke test.
+# Follows up on [surprise-red-test] PRs after CI has proven the red regression
+# tests fail, then fixes the production issue on the same PR branch and folds
+# in CodeRabbit feedback when present.
 #
 # Secrets used:
 #   - CODEX_API_KEY
 #   - CODEX_LB_BASE_URL
+#   - GH_AW_CI_TRIGGER_TOKEN
 #   - GH_AW_GITHUB_MCP_SERVER_TOKEN
 #   - GH_AW_GITHUB_TOKEN
 #   - GITHUB_TOKEN
@@ -40,7 +43,7 @@
 #   - actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 #   - actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
 #   - actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-#   - actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0 (source v9)
+#   - actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
 #   - actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
 #   - actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
 #
@@ -52,7 +55,7 @@
 #   - ghcr.io/github/gh-aw-node@sha256:529d02eb970b1161aa25c593a9c3df57fdfad5a8add328cb3b6eccef66f3183b
 #   - ghcr.io/github/github-mcp-server:v1.5.0@sha256:e25564dccc9110a70a77b9df560cbde11aa392fcb5f08b9abe5c4ebc6d146ea4
 
-name: "gh-aw Smoke Test"
+name: "Library Surprise Fix"
 on:
   workflow_dispatch:
     inputs:
@@ -61,16 +64,32 @@ on:
         description: "Agent caller context (used internally by Agentic Workflows)."
         required: false
         type: string
+      pr_number:
+        description: Optional [surprise-red-test] pull request number to fix.
+        required: false
+        type: string
+  workflow_run:
+    # zizmor: ignore[dangerous-triggers] - workflow_run trigger is secured with role and fork validation
+    types:
+    - completed
+    workflows:
+    - ci
 
 permissions: {}
 
 concurrency:
   group: "gh-aw-${{ github.workflow }}"
 
-run-name: "gh-aw Smoke Test"
+run-name: "Library Surprise Fix"
 
 jobs:
   activation:
+    needs: pre_activation
+    # zizmor: ignore[dangerous-triggers] - workflow_run trigger is secured with role and fork validation
+    if: >
+      (needs.pre_activation.outputs.activated == 'true' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'failure'))) && (github.event_name != 'workflow_run' || github.event.workflow_run.repository.id == github.repository_id &&
+      (!(github.event.workflow_run.repository.fork)))
     runs-on: ubuntu-slim
     permissions:
       actions: read
@@ -99,10 +118,12 @@ jobs:
         with:
           destination: ${{ runner.temp }}/gh-aw/actions
           job-name: ${{ github.job }}
+          trace-id: ${{ needs.pre_activation.outputs.setup-trace-id }}
+          parent-span-id: ${{ needs.pre_activation.outputs.setup-parent-span-id || needs.pre_activation.outputs.setup-span-id }}
           safe-output-artifact-client: ${{ env.GH_AW_MAX_DAILY_AI_CREDITS != '' }}
         env:
-          GH_AW_SETUP_WORKFLOW_NAME: "gh-aw Smoke Test"
-          GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/gh-aw-smoke-test.lock.yml@${{ github.ref }}
+          GH_AW_SETUP_WORKFLOW_NAME: "Library Surprise Fix"
+          GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/library-surprise-fix.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "0.142.4"
           GH_AW_INFO_AWF_VERSION: "v0.27.13"
           GH_AW_INFO_ENGINE_ID: "codex"
@@ -115,11 +136,11 @@ jobs:
           GH_AW_INFO_VERSION: "0.142.4"
           GH_AW_INFO_AGENT_VERSION: "0.142.4"
           GH_AW_INFO_CLI_VERSION: "v0.82.0-jk.1"
-          GH_AW_INFO_WORKFLOW_NAME: "gh-aw Smoke Test"
+          GH_AW_INFO_WORKFLOW_NAME: "Library Surprise Fix"
           GH_AW_INFO_EXPERIMENTAL: "false"
           GH_AW_INFO_SUPPORTS_TOOLS_ALLOWLIST: "true"
           GH_AW_INFO_STAGED: "false"
-          GH_AW_INFO_ALLOWED_DOMAINS: '["defaults","github","threat-detection"]'
+          GH_AW_INFO_ALLOWED_DOMAINS: '["defaults","github","dotnet","threat-detection"]'
           GH_AW_INFO_FIREWALL_ENABLED: "true"
           GH_AW_INFO_AWF_VERSION: "v0.27.13"
           GH_AW_INFO_AWMG_VERSION: ""
@@ -138,8 +159,8 @@ jobs:
         continue-on-error: true
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          key: agentic-workflow-usage-ghawsmoketest-${{ github.run_id }}
-          restore-keys: agentic-workflow-usage-ghawsmoketest-
+          key: agentic-workflow-usage-librarysurprisefix-${{ github.run_id }}
+          restore-keys: agentic-workflow-usage-librarysurprisefix-
           path: /tmp/gh-aw/agentic-workflow-usage-cache.jsonl
       - name: Restore daily AIC usage cache (artifact fallback)
         id: restore-daily-aic-cache-fallback
@@ -161,8 +182,8 @@ jobs:
         if: ${{ env.GH_AW_MAX_DAILY_AI_CREDITS != '' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          GH_AW_WORKFLOW_NAME: "gh-aw Smoke Test"
-          GH_AW_WORKFLOW_ID: "gh-aw-smoke-test"
+          GH_AW_WORKFLOW_NAME: "Library Surprise Fix"
+          GH_AW_WORKFLOW_ID: "library-surprise-fix"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_WORKFLOW_DISPATCH_AW_CONTEXT: ${{ github.event.inputs.aw_context || '' }}
           GH_AW_HAS_SLASH_COMMAND: "false"
@@ -208,7 +229,7 @@ jobs:
         id: check-lock-file
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          GH_AW_WORKFLOW_FILE: "gh-aw-smoke-test.lock.yml"
+          GH_AW_WORKFLOW_FILE: "library-surprise-fix.lock.yml"
           GH_AW_CONTEXT_WORKFLOW_REF: "${{ github.workflow_ref }}"
         with:
           script: |
@@ -245,20 +266,23 @@ jobs:
         run: |
           bash "${RUNNER_TEMP}/gh-aw/actions/create_prompt_first.sh"
           {
-          cat << 'GH_AW_PROMPT_0155524e9d98bc4a_EOF'
+          cat << 'GH_AW_PROMPT_f5d6b2e31443043d_EOF'
           <system>
-          GH_AW_PROMPT_0155524e9d98bc4a_EOF
+          GH_AW_PROMPT_f5d6b2e31443043d_EOF
           cat "${RUNNER_TEMP}/gh-aw/prompts/xpia.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/temp_folder_prompt.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/markdown.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/safe_outputs_prompt.md"
-          cat << 'GH_AW_PROMPT_0155524e9d98bc4a_EOF'
+          cat << 'GH_AW_PROMPT_f5d6b2e31443043d_EOF'
           <safe-output-tools>
-          Tools: noop, record_smoke_result
+          Tools: push_to_pull_request_branch, noop
+          GH_AW_PROMPT_f5d6b2e31443043d_EOF
+          cat "${RUNNER_TEMP}/gh-aw/prompts/safe_outputs_push_to_pr_branch.md"
+          cat << 'GH_AW_PROMPT_f5d6b2e31443043d_EOF'
           </safe-output-tools>
-          GH_AW_PROMPT_0155524e9d98bc4a_EOF
+          GH_AW_PROMPT_f5d6b2e31443043d_EOF
           cat "${RUNNER_TEMP}/gh-aw/prompts/mcp_cli_tools_prompt.md"
-          cat << 'GH_AW_PROMPT_0155524e9d98bc4a_EOF'
+          cat << 'GH_AW_PROMPT_f5d6b2e31443043d_EOF'
           <github-context>
           The following GitHub context information is available for this workflow:
           {{#if github.actor}}
@@ -285,14 +309,27 @@ jobs:
           {{#if github.run_id}}
           - **workflow-run-id**: __GH_AW_GITHUB_RUN_ID__
           {{/if}}
+          - **checkouts**: The following repositories have been checked out and are available in the workspace:
+            - repo `__GH_AW_GITHUB_REPOSITORY__` → `$GITHUB_WORKSPACE` (cwd) [full history, all branches available as remote-tracking refs] [additional refs fetched: *]
+            - **Note**: If a branch you need is not in the list above and is not listed as an additional fetched ref, it has NOT been checked out. For private repositories you cannot fetch it. If the branch is required and not available, exit with an error and ask the user to add it to the `fetch:` option of the `checkout:` configuration (e.g., `fetch: ["refs/pulls/open/*"]` for all open PR refs, or `fetch: ["main", "feature/my-branch"]` for specific branches).
+            - **Warning: No git credentials are available to the agent.** Credentials are
+              intentionally removed after the checkout step for security. This means any git
+              operation that needs to authenticate to the remote will fail. In private repositories, that includes:
+              - `git fetch`, `git pull`, `git clone`, and `git push` (direct push, not via safe-output tools)
+              - Checking out or switching to a remote branch that is not already fetched
+              - Deepening a shallow clone (`git fetch --unshallow`)
+              - On-demand blob fetches in partial/blobless clones (operations on files not in the initial checkout)
+              Do NOT attempt to configure credentials, run `git credential fill`, or modify `.gitconfig` —
+              authentication will not succeed. If you encounter credential prompts or authentication errors,
+              stop immediately and report the limitation rather than spending turns trying to work around it.
           </github-context>
 
-          GH_AW_PROMPT_0155524e9d98bc4a_EOF
+          GH_AW_PROMPT_f5d6b2e31443043d_EOF
           cat "${RUNNER_TEMP}/gh-aw/prompts/github_mcp_tools_with_safeoutputs_prompt.md"
-          cat << 'GH_AW_PROMPT_0155524e9d98bc4a_EOF'
+          cat << 'GH_AW_PROMPT_f5d6b2e31443043d_EOF'
           </system>
-          {{#runtime-import .github/workflows/gh-aw-smoke-test.md}}
-          GH_AW_PROMPT_0155524e9d98bc4a_EOF
+          {{#runtime-import .github/workflows/library-surprise-fix.md}}
+          GH_AW_PROMPT_f5d6b2e31443043d_EOF
           } > "$GH_AW_PROMPT"
       - name: Interpolate variables and render templates
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -318,6 +355,7 @@ jobs:
           GH_AW_GITHUB_RUN_ID: ${{ github.run_id }}
           GH_AW_GITHUB_WORKSPACE: ${{ github.workspace }}
           GH_AW_MCP_CLI_SERVERS_LIST: '- `safeoutputs` — run `safeoutputs --help` to see available tools'
+          GH_AW_NEEDS_PRE_ACTIVATION_OUTPUTS_ACTIVATED: ${{ needs.pre_activation.outputs.activated }}
         with:
           script: |
             const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
@@ -337,7 +375,8 @@ jobs:
                 GH_AW_GITHUB_REPOSITORY: process.env.GH_AW_GITHUB_REPOSITORY,
                 GH_AW_GITHUB_RUN_ID: process.env.GH_AW_GITHUB_RUN_ID,
                 GH_AW_GITHUB_WORKSPACE: process.env.GH_AW_GITHUB_WORKSPACE,
-                GH_AW_MCP_CLI_SERVERS_LIST: process.env.GH_AW_MCP_CLI_SERVERS_LIST
+                GH_AW_MCP_CLI_SERVERS_LIST: process.env.GH_AW_MCP_CLI_SERVERS_LIST,
+                GH_AW_NEEDS_PRE_ACTIVATION_OUTPUTS_ACTIVATED: process.env.GH_AW_NEEDS_PRE_ACTIVATION_OUTPUTS_ACTIVATED
               }
             });
       - name: Validate prompt placeholders
@@ -374,7 +413,13 @@ jobs:
     if: needs.activation.outputs.daily_ai_credits_exceeded != 'true'
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
+      issues: read
+      pull-requests: read
+    concurrency:
+      group: "gh-aw-codex-${{ github.workflow }}"
+      queue: max
     env:
       DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
       GH_AW_ASSETS_ALLOWED_EXTS: ""
@@ -382,7 +427,7 @@ jobs:
       GH_AW_ASSETS_MAX_SIZE_KB: 0
       GH_AW_MCP_LOG_DIR: /tmp/gh-aw/mcp-logs/safeoutputs
       GH_AW_RUNTIME_FEATURES: ${{ vars.GH_AW_RUNTIME_FEATURES }}
-      GH_AW_WORKFLOW_ID_SANITIZED: ghawsmoketest
+      GH_AW_WORKFLOW_ID_SANITIZED: librarysurprisefix
     outputs:
       agentic_engine_timeout: ${{ steps.detect-agent-errors.outputs.agentic_engine_timeout || 'false' }}
       ai_credits_rate_limit_error: ${{ steps.parse-mcp-gateway.outputs.ai_credits_rate_limit_error || 'false' }}
@@ -412,8 +457,8 @@ jobs:
           trace-id: ${{ needs.activation.outputs.setup-trace-id }}
           parent-span-id: ${{ needs.activation.outputs.setup-parent-span-id || needs.activation.outputs.setup-span-id }}
         env:
-          GH_AW_SETUP_WORKFLOW_NAME: "gh-aw Smoke Test"
-          GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/gh-aw-smoke-test.lock.yml@${{ github.ref }}
+          GH_AW_SETUP_WORKFLOW_NAME: "Library Surprise Fix"
+          GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/library-surprise-fix.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "0.142.4"
           GH_AW_INFO_AWF_VERSION: "v0.27.13"
           GH_AW_INFO_ENGINE_ID: "codex"
@@ -429,6 +474,13 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - name: Fetch additional refs
+        env:
+          GH_AW_FETCH_TOKEN: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          header=$(printf "x-access-token:%s" "${GH_AW_FETCH_TOKEN}" | base64 -w 0)
+          git -c "http.extraheader=Authorization: Basic ${header}" fetch origin '+refs/heads/*:refs/remotes/origin/*'
       - name: Create gh-aw temp directory
         run: bash "${RUNNER_TEMP}/gh-aw/actions/create_gh_aw_tmp_dir.sh"
       - name: Configure gh CLI for GitHub Enterprise
@@ -464,16 +516,13 @@ jobs:
         run: npm install --ignore-scripts -g @openai/codex@0.142.4
       - name: Install AWF binary
         run: bash "${RUNNER_TEMP}/gh-aw/actions/install_awf_binary.sh" v0.27.13
-      - name: Determine automatic lockdown mode for GitHub MCP Server
-        id: determine-automatic-lockdown
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0 (source v9)
+      - name: Parse integrity filter lists
+        id: parse-guard-vars
         env:
-          GH_AW_GITHUB_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
-          GH_AW_GITHUB_MCP_SERVER_TOKEN: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN }}
-        with:
-          script: |
-            const determineAutomaticLockdown = require('${{ runner.temp }}/gh-aw/actions/determine_automatic_lockdown.cjs');
-            await determineAutomaticLockdown(github, context, core);
+          GH_AW_BLOCKED_USERS_VAR: ${{ vars.GH_AW_GITHUB_BLOCKED_USERS || '' }}
+          GH_AW_TRUSTED_USERS_VAR: ${{ vars.GH_AW_GITHUB_TRUSTED_USERS || '' }}
+          GH_AW_APPROVAL_LABELS_VAR: ${{ vars.GH_AW_GITHUB_APPROVAL_LABELS || '' }}
+        run: bash "${RUNNER_TEMP}/gh-aw/actions/parse_guard_list.sh"
       - name: Download activation artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -494,6 +543,16 @@ jobs:
         env:
           GH_AW_SKILL_DIR: ".codex/skills"
         run: bash "${RUNNER_TEMP}/gh-aw/actions/restore_inline_skills.sh"
+      - env:
+          DISPATCH_PR_NUMBER: ${{ inputs.pr_number || '' }}
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+          SURPRISE_PR_TITLE_PREFIX: "[surprise-red-test] "
+        id: surprise-fix-target
+        name: Resolve eligible surprise fix target
+        run: "set -euo pipefail\nmkdir -p /tmp/gh-aw\npython3 - <<'PY'\nimport json\nimport os\nimport subprocess\nimport sys\n\nevent_name = os.environ[\"EVENT_NAME\"]\nrepo = os.environ[\"GITHUB_REPOSITORY\"]\nprefix = os.environ[\"SURPRISE_PR_TITLE_PREFIX\"]\ndispatch_pr_number = os.environ.get(\"DISPATCH_PR_NUMBER\", \"\").strip()\nevent_path = os.environ.get(\"GITHUB_EVENT_PATH\")\n\nwith open(event_path, encoding=\"utf-8\") as handle:\n    event = json.load(handle)\n\ntarget = {\n    \"should_run\": False,\n    \"reason\": \"No eligible surprise PR target was found.\",\n    \"event_name\": event_name,\n    \"pr_number\": None,\n    \"pr_url\": None,\n    \"head_ref\": None,\n    \"head_sha\": None,\n    \"ci_proof\": None,\n}\n\ndef run_json(args):\n    result = subprocess.run(args, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n    if result.returncode != 0:\n        print(result.stderr, file=sys.stderr)\n        raise SystemExit(result.returncode)\n    return json.loads(result.stdout or \"null\")\n\npr_number = None\nif event_name == \"workflow_run\":\n    workflow_run = event.get(\"workflow_run\") or {}\n    if workflow_run.get(\"event\") != \"pull_request\":\n        target[\"reason\"] = \"Completed ci run was not for a pull_request event.\"\n    elif workflow_run.get(\"conclusion\") != \"failure\":\n        target[\"reason\"] = f\"Completed ci run conclusion was {workflow_run.get('conclusion')!r}, not failure.\"\n    else:\n        pull_requests = workflow_run.get(\"pull_requests\") or []\n        if len(pull_requests) != 1:\n            target[\"reason\"] = f\"Expected one associated pull request, found {len(pull_requests)}.\"\n        else:\n            pr_number = pull_requests[0].get(\"number\")\n            target[\"ci_proof\"] = {\n                \"source\": \"workflow_run\",\n                \"run_id\": workflow_run.get(\"id\"),\n                \"run_url\": workflow_run.get(\"html_url\"),\n                \"head_sha\": workflow_run.get(\"head_sha\"),\n                \"conclusion\": workflow_run.get(\"conclusion\"),\n            }\nelif event_name == \"workflow_dispatch\":\n    if dispatch_pr_number:\n        pr_number = dispatch_pr_number\n    else:\n        target[\"reason\"] = \"Manual dispatch did not provide pr_number.\"\nelse:\n    target[\"reason\"] = f\"Unsupported event: {event_name}\"\n\nif pr_number is not None:\n    pr = run_json(\n        [\n            \"gh\",\n            \"pr\",\n            \"view\",\n            str(pr_number),\n            \"--repo\",\n            repo,\n            \"--json\",\n            \"number,title,state,url,headRefName,headRefOid,headRepository,baseRefName,isCrossRepository,labels,commits\",\n        ]\n    )\n    label_names = {label.get(\"name\") for label in pr.get(\"labels\") or []}\n    head_repository = (pr.get(\"headRepository\") or {}).get(\"nameWithOwner\")\n    errors = []\n    if pr.get(\"state\") != \"OPEN\":\n        errors.append(\"PR is not open\")\n    if not str(pr.get(\"title\") or \"\").startswith(prefix):\n        errors.append(f\"PR title does not start with {prefix!r}\")\n    for required_label in [\"bug\", \".NET\"]:\n        if required_label not in label_names:\n            errors.append(f\"PR is missing required label {required_label!r}\")\n    if pr.get(\"isCrossRepository\"):\n        errors.append(\"PR is from a fork or different repository\")\n    if head_repository and head_repository != repo:\n        errors.append(f\"PR head repository is {head_repository!r}, expected {repo!r}\")\n    if pr.get(\"headRefName\") == pr.get(\"baseRefName\"):\n        errors.append(\"PR head branch equals base branch\")\n\n    if not target[\"ci_proof\"]:\n        runs = run_json(\n            [\n                \"gh\",\n                \"run\",\n                \"list\",\n                \"--repo\",\n                repo,\n                \"--workflow\",\n                \"ci.yml\",\n                \"--event\",\n                \"pull_request\",\n                \"--limit\",\n                \"50\",\n                \"--json\",\n                \"databaseId,status,conclusion,headSha,url,createdAt,displayTitle\",\n            ]\n        )\n        commit_oids = {\n            commit.get(\"oid\")\n            for commit in pr.get(\"commits\") or []\n            if commit.get(\"oid\")\n        }\n        commit_oids.add(pr.get(\"headRefOid\"))\n        failed_runs = [\n            run\n            for run in runs\n            if run.get(\"status\") == \"completed\"\n            and run.get(\"conclusion\") == \"failure\"\n            and run.get(\"headSha\") in commit_oids\n        ]\n        if failed_runs:\n            run = failed_runs[0]\n            target[\"ci_proof\"] = {\n                \"source\": \"run_list\",\n                \"run_id\": run.get(\"databaseId\"),\n                \"run_url\": run.get(\"url\"),\n                \"head_sha\": run.get(\"headSha\"),\n                \"conclusion\": run.get(\"conclusion\"),\n            }\n        else:\n            errors.append(\"No completed failing ci run was found for the PR branch\")\n\n    if errors:\n        target[\"reason\"] = \"; \".join(errors)\n    else:\n        target.update(\n            {\n                \"should_run\": True,\n                \"reason\": \"Eligible surprise red-test PR with failing CI proof.\",\n                \"pr_number\": pr.get(\"number\"),\n                \"pr_url\": pr.get(\"url\"),\n                \"head_ref\": pr.get(\"headRefName\"),\n                \"head_sha\": pr.get(\"headRefOid\"),\n                \"base_ref\": pr.get(\"baseRefName\"),\n            }\n        )\n\nwith open(\"/tmp/gh-aw/surprise-fix-target.json\", \"w\", encoding=\"utf-8\") as handle:\n    json.dump(target, handle, indent=2, sort_keys=True)\n\nwith open(os.environ[\"GITHUB_ENV\"], \"a\", encoding=\"utf-8\") as env_file:\n    env_file.write(f\"SURPRISE_FIX_SHOULD_RUN={str(target['should_run']).lower()}\\n\")\n    env_file.write(f\"SURPRISE_FIX_PR_NUMBER={target.get('pr_number') or ''}\\n\")\n    env_file.write(f\"SURPRISE_FIX_PR_URL={target.get('pr_url') or ''}\\n\")\n\nwith open(\"/tmp/gh-aw/surprise-fix-target.env\", \"w\", encoding=\"utf-8\") as env_file:\n    env_file.write(f\"surprise_should_run={str(target['should_run']).lower()}\\n\")\n    env_file.write(f\"surprise_pr_number={target.get('pr_number') or ''}\\n\")\n\nprint(json.dumps(target, indent=2, sort_keys=True))\nPY\n\n. /tmp/gh-aw/surprise-fix-target.env\n\nif [ \"${surprise_should_run:-false}\" = \"true\" ]; then\n  gh pr checkout \"$surprise_pr_number\" --repo \"$GITHUB_REPOSITORY\"\n  original_head=\"$(git rev-parse HEAD)\"\n  echo \"SURPRISE_FIX_ORIGINAL_HEAD=${original_head}\" >> \"$GITHUB_ENV\"\nfi\n"
+        shell: bash
+
       - name: Download container images
         run: bash "${RUNNER_TEMP}/gh-aw/actions/download_docker_images.sh" ghcr.io/github/gh-aw-firewall/agent:0.27.13@sha256:691a06b64961b5b35aac117eaace202fa721e91da19d1d2e22dcdd6663cd571b ghcr.io/github/gh-aw-firewall/api-proxy:0.27.13@sha256:c57febf4aeeefbb4fd96f5b12c07f4279ca55edca6a700032debf9dd0787286e ghcr.io/github/gh-aw-firewall/squid:0.27.13@sha256:700b1b5a73098373b04fb684f291e95d9be0124ab559717b04f27acaf8b41bed ghcr.io/github/gh-aw-mcpg:v0.3.32@sha256:63e46b56dfd70895a701b6fc6dd0189e11e2d875f327f1781e81b31848735477 ghcr.io/github/gh-aw-node@sha256:529d02eb970b1161aa25c593a9c3df57fdfad5a8add328cb3b6eccef66f3183b ghcr.io/github/github-mcp-server:v1.5.0@sha256:e25564dccc9110a70a77b9df560cbde11aa392fcb5f08b9abe5c4ebc6d146ea4
       - name: Generate Safe Outputs Config
@@ -501,37 +560,24 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/gh-aw/safeoutputs"
           mkdir -p /tmp/gh-aw/safeoutputs
           mkdir -p /tmp/gh-aw/mcp-logs/safeoutputs
-          cat > "${RUNNER_TEMP}/gh-aw/safeoutputs/config.json" << 'GH_AW_SAFE_OUTPUTS_CONFIG_43320a87046314b3_EOF'
-          {"noop":{"max":1,"report-as-issue":"false"},"record_smoke_result":{"description":"Record that the gh-aw smoke test completed.","inputs":{"status":{"default":null,"description":"Short smoke-test status.","required":true,"type":"string"}}},"report_incomplete":{}}
-          GH_AW_SAFE_OUTPUTS_CONFIG_43320a87046314b3_EOF
+          cat > "${RUNNER_TEMP}/gh-aw/safeoutputs/config.json" << 'GH_AW_SAFE_OUTPUTS_CONFIG_06616c2481b0532b_EOF'
+          {"mentions":{"enabled":false},"noop":{"max":1,"report-as-issue":"false"},"push_to_pull_request_branch":{"if_no_changes":"error","max":1,"max_patch_size":8192,"protect_top_level_dot_folders":true,"protected_files":["package.json","bun.lockb","bunfig.toml","deno.json","deno.jsonc","deno.lock","global.json","NuGet.Config","Directory.Packages.props","mix.exs","mix.lock","go.mod","go.sum","stack.yaml","stack.yaml.lock","pom.xml","build.gradle","build.gradle.kts","settings.gradle","settings.gradle.kts","gradle.properties","package-lock.json","yarn.lock","pnpm-lock.yaml","npm-shrinkwrap.json","requirements.txt","Pipfile","Pipfile.lock","pyproject.toml","setup.py","setup.cfg","Gemfile","Gemfile.lock","uv.lock","CODEOWNERS","DESIGN.md","README.md","CONTRIBUTING.md","CHANGELOG.md","SECURITY.md","CODE_OF_CONDUCT.md","AGENTS.md","CLAUDE.md","GEMINI.md"],"protected_files_policy":"fallback-to-issue","required_labels":["bug",".NET"],"target":"*","title_prefix":"[surprise-red-test] "},"report_incomplete":{}}
+          GH_AW_SAFE_OUTPUTS_CONFIG_06616c2481b0532b_EOF
       - name: Generate Safe Outputs Tools
         env:
           GH_AW_TOOLS_META_JSON: |
             {
-              "description_suffixes": {},
+              "description_suffixes": {
+                "push_to_pull_request_branch": " CONSTRAINTS: Maximum 1 push(es) can be made. The target pull request title must start with \"[surprise-red-test] \"."
+              },
               "repo_params": {},
-              "dynamic_tools": [
-                {
-                  "description": "Record that the gh-aw smoke test completed.",
-                  "inputSchema": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "status": {
-                        "description": "Short smoke-test status.",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "status"
-                    ],
-                    "type": "object"
-                  },
-                  "name": "record_smoke_result"
-                }
-              ]
+              "dynamic_tools": []
             }
           GH_AW_VALIDATION_JSON: |
             {
+              "mentions": {
+                "enabled": false
+              },
               "noop": {
                 "defaultMax": 1,
                 "fields": {
@@ -540,6 +586,25 @@ jobs:
                     "type": "string",
                     "sanitize": true,
                     "maxLength": 65000
+                  }
+                }
+              },
+              "push_to_pull_request_branch": {
+                "defaultMax": 1,
+                "fields": {
+                  "branch": {
+                    "type": "string",
+                    "sanitize": true,
+                    "maxLength": 256
+                  },
+                  "message": {
+                    "required": true,
+                    "type": "string",
+                    "sanitize": true,
+                    "maxLength": 65000
+                  },
+                  "pull_request_number": {
+                    "issueOrPRNumber": true
                   }
                 }
               },
@@ -575,8 +640,6 @@ jobs:
           GH_AW_SAFE_OUTPUTS: ${{ steps.set-runtime-paths.outputs.GH_AW_SAFE_OUTPUTS }}
           GH_AW_SAFE_OUTPUTS_CONFIG_PATH: ${{ steps.set-runtime-paths.outputs.GH_AW_SAFE_OUTPUTS_CONFIG_PATH }}
           GH_AW_SAFE_OUTPUTS_TOOLS_PATH: ${{ steps.set-runtime-paths.outputs.GH_AW_SAFE_OUTPUTS_TOOLS_PATH }}
-          GITHUB_MCP_GUARD_MIN_INTEGRITY: ${{ steps.determine-automatic-lockdown.outputs.min_integrity }}
-          GITHUB_MCP_GUARD_REPOS: ${{ steps.determine-automatic-lockdown.outputs.repos }}
           GITHUB_MCP_SERVER_TOKEN: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -606,7 +669,7 @@ jobs:
           DOCKER_SOCK_GID=$(stat -c '%g' "$DOCKER_SOCK_PATH" 2>/dev/null || echo '0')
           export MCP_GATEWAY_DOCKER_COMMAND='docker run -i --rm --network host --name awmg-mcpg --add-host host.docker.internal:127.0.0.1 --user '"${MCP_GATEWAY_UID}"':'"${MCP_GATEWAY_GID}"' --group-add '"${DOCKER_SOCK_GID}"' -v '"${DOCKER_SOCK_PATH}"':/var/run/docker.sock -e MCP_GATEWAY_PORT -e MCP_GATEWAY_DOMAIN -e MCP_GATEWAY_API_KEY -e MCP_GATEWAY_PAYLOAD_DIR -e MCP_GATEWAY_PAYLOAD_SIZE_THRESHOLD -e DOCKER_HOST=unix:///var/run/docker.sock -e DEBUG -e MCP_GATEWAY_LOG_DIR -e GH_AW_MCP_LOG_DIR -e GH_AW_SAFE_OUTPUTS -e GH_AW_SAFE_OUTPUTS_CONFIG_PATH -e GH_AW_SAFE_OUTPUTS_TOOLS_PATH -e GH_AW_POLICY_ALLOW_CREATE_PULL_REQUEST -e GH_AW_ASSETS_BRANCH -e GH_AW_ASSETS_MAX_SIZE_KB -e GH_AW_ASSETS_ALLOWED_EXTS -e DEFAULT_BRANCH -e GITHUB_MCP_SERVER_TOKEN -e GITHUB_MCP_GUARD_MIN_INTEGRITY -e GITHUB_MCP_GUARD_REPOS -e GITHUB_REPOSITORY -e GITHUB_SERVER_URL -e GITHUB_SHA -e GITHUB_WORKSPACE -e GITHUB_TOKEN -e GITHUB_RUN_ID -e GITHUB_RUN_NUMBER -e GITHUB_RUN_ATTEMPT -e GITHUB_JOB -e GITHUB_ACTION -e GITHUB_EVENT_NAME -e GITHUB_EVENT_PATH -e GITHUB_ACTOR -e GITHUB_ACTOR_ID -e GITHUB_TRIGGERING_ACTOR -e GITHUB_WORKFLOW -e GITHUB_WORKFLOW_REF -e GITHUB_WORKFLOW_SHA -e GITHUB_REF -e GITHUB_REF_NAME -e GITHUB_REF_TYPE -e GITHUB_HEAD_REF -e GITHUB_BASE_REF -e RUNNER_TEMP -e CODEX_HOME -v /tmp/gh-aw/mcp-payloads:/tmp/gh-aw/mcp-payloads:rw -v /opt:/opt:ro -v /tmp:/tmp:rw -v '"${GITHUB_WORKSPACE}"':'"${GITHUB_WORKSPACE}"':rw -v '"${RUNNER_TEMP}"'/gh-aw/safeoutputs:'"${RUNNER_TEMP}"'/gh-aw/safeoutputs:rw ghcr.io/github/gh-aw-mcpg:v0.3.32'
 
-          cat > "${RUNNER_TEMP}/gh-aw/mcp-config/config.toml" << GH_AW_MCP_CONFIG_ac907b07637c4b02_EOF
+          cat > "${RUNNER_TEMP}/gh-aw/mcp-config/config.toml" << GH_AW_MCP_CONFIG_69dd12bc8dfd88cc_EOF
           [history]
           persistence = "none"
 
@@ -615,7 +678,7 @@ jobs:
           include_only = ["^CODEX_API_KEY$", "^GH_AW_ASSETS_ALLOWED_EXTS$", "^GH_AW_ASSETS_BRANCH$", "^GH_AW_ASSETS_MAX_SIZE_KB$", "^GH_AW_SAFE_OUTPUTS$", "^GITHUB_PERSONAL_ACCESS_TOKEN$", "^GITHUB_REPOSITORY$", "^GITHUB_SERVER_URL$", "^HOME$", "^OPENAI_API_KEY$", "^PATH$"]
 
           [mcp_servers.github]
-          user_agent = "gh-aw-smoke-test"
+          user_agent = "library-surprise-fix"
           startup_timeout_sec = 120
           tool_timeout_sec = 60
           container = "ghcr.io/github/github-mcp-server:v1.5.0"
@@ -634,11 +697,11 @@ jobs:
 
           [mcp_servers.safeoutputs."guard-policies".write-sink]
           accept = ["*"]
-          GH_AW_MCP_CONFIG_ac907b07637c4b02_EOF
+          GH_AW_MCP_CONFIG_69dd12bc8dfd88cc_EOF
 
           # Generate JSON config for MCP gateway
           GH_AW_NODE=$(which node 2>/dev/null || command -v node 2>/dev/null || echo node)
-          cat << GH_AW_MCP_CONFIG_cb820f1214383cf0_EOF | "$GH_AW_NODE" "${RUNNER_TEMP}/gh-aw/actions/start_mcp_gateway.cjs"
+          cat << GH_AW_MCP_CONFIG_6ea6ce9a25fc4165_EOF | "$GH_AW_NODE" "${RUNNER_TEMP}/gh-aw/actions/start_mcp_gateway.cjs"
           {
             "mcpServers": {
               "github": {
@@ -651,8 +714,11 @@ jobs:
                 },
                 "guard-policies": {
                   "allow-only": {
-                    "min-integrity": "$GITHUB_MCP_GUARD_MIN_INTEGRITY",
-                    "repos": "$GITHUB_MCP_GUARD_REPOS"
+                    "approval-labels": ${{ steps.parse-guard-vars.outputs.approval_labels }},
+                    "blocked-users": ${{ steps.parse-guard-vars.outputs.blocked_users }},
+                    "min-integrity": "none",
+                    "repos": "all",
+                    "trusted-users": ${{ steps.parse-guard-vars.outputs.trusted_users }}
                   }
                 }
               },
@@ -694,7 +760,7 @@ jobs:
               "payloadDir": "${MCP_GATEWAY_PAYLOAD_DIR}"
             }
           }
-          GH_AW_MCP_CONFIG_cb820f1214383cf0_EOF
+          GH_AW_MCP_CONFIG_6ea6ce9a25fc4165_EOF
 
           # Sync converter output to writable CODEX_HOME for Codex
           mkdir -p /tmp/gh-aw/mcp-config
@@ -751,7 +817,7 @@ jobs:
           mkdir -p "$CODEX_HOME/logs" && touch /tmp/gh-aw/agent-step-summary.md
           (umask 177 && touch /tmp/gh-aw/agent-stdio.log)
           GH_AW_MAX_AI_CREDITS="${{ vars.GH_AW_DEFAULT_MAX_AI_CREDITS || '1000' }}"
-          printf '%s\n' "{\"\$schema\":\"https://github.com/github/gh-aw-firewall/releases/download/v0.27.13/awf-config.schema.json\",\"network\":{\"allowDomains\":[\"*.githubusercontent.com\",\"172.30.0.1\",\"api.business.githubcopilot.com\",\"api.enterprise.githubcopilot.com\",\"api.github.com\",\"api.githubcopilot.com\",\"api.individual.githubcopilot.com\",\"api.openai.com\",\"api.snapcraft.io\",\"archive.ubuntu.com\",\"azure.archive.ubuntu.com\",\"chatgpt.com\",\"codeload.github.com\",\"crl.geotrust.com\",\"crl.globalsign.com\",\"crl.identrust.com\",\"crl.sectigo.com\",\"crl.thawte.com\",\"crl.usertrust.com\",\"crl.verisign.com\",\"crl3.digicert.com\",\"crl4.digicert.com\",\"crls.ssl.com\",\"docs.github.com\",\"github-cloud.githubusercontent.com\",\"github-cloud.s3.amazonaws.com\",\"github.blog\",\"github.com\",\"github.githubassets.com\",\"host.docker.internal\",\"json-schema.org\",\"json.schemastore.org\",\"keyserver.ubuntu.com\",\"lfs.github.com\",\"objects.githubusercontent.com\",\"ocsp.digicert.com\",\"ocsp.geotrust.com\",\"ocsp.globalsign.com\",\"ocsp.identrust.com\",\"ocsp.sectigo.com\",\"ocsp.ssl.com\",\"ocsp.thawte.com\",\"ocsp.usertrust.com\",\"ocsp.verisign.com\",\"openai.com\",\"packagecloud.io\",\"packages.cloud.google.com\",\"packages.microsoft.com\",\"patch-diff.githubusercontent.com\",\"patchdiff.githubusercontent.com\",\"ppa.launchpad.net\",\"raw.githubusercontent.com\",\"registry.npmjs.org\",\"s.symcb.com\",\"s.symcd.com\",\"security.ubuntu.com\",\"telemetry.enterprise.githubcopilot.com\",\"ts-crl.ws.symantec.com\",\"ts-ocsp.ws.symantec.com\",\"www.googleapis.com\"]},\"apiProxy\":{\"enabled\":true,\"enableTokenSteering\":true,\"maxRuns\":500,\"maxAiCredits\":${GH_AW_MAX_AI_CREDITS},\"maxCacheMisses\":5,\"models\":{\"agent\":[\"sonnet-6x\",\"gpt-5.5\",\"gpt-5.4\",\"gpt-5.3\",\"gemini-pro\",\"any\"],\"antigravity\":[\"copilot/antigravity*\",\"google/antigravity*\",\"gemini/antigravity*\"],\"any\":[\"copilot/*\",\"anthropic/*\",\"openai/*\",\"google/*\",\"gemini/*\"],\"claude\":[\"agent\"],\"codex\":[\"agent\"],\"coding\":[\"copilot/gpt-5*codex*\",\"openai/gpt-5*codex*\",\"gpt-5-codex\"],\"computer-use\":[\"copilot/*computer-use*\",\"google/*computer-use*\",\"gemini/*computer-use*\",\"openai/*computer-use*\"],\"copilot\":[\"agent\"],\"deep-research\":[\"copilot/deep-research*\",\"copilot/o3-deep-research*\",\"copilot/o4-mini-deep-research*\",\"google/deep-research*\",\"gemini/deep-research*\",\"openai/o3-deep-research*\",\"openai/o4-mini-deep-research*\"],\"gemini\":[\"agent\"],\"gemini-3-flash\":[\"copilot/gemini-3*flash*\",\"google/gemini-3*flash*\",\"gemini/gemini-3*flash*\"],\"gemini-3-pro\":[\"copilot/gemini-3*pro*\",\"google/gemini-3*pro*\",\"google/nano-banana*\",\"gemini/gemini-3*pro*\"],\"gemini-3.1-flash\":[\"copilot/gemini-3.1*flash*\",\"google/gemini-3.1*flash*\",\"gemini/gemini-3.1*flash*\"],\"gemini-3.1-pro\":[\"copilot/gemini-3.1*pro*\",\"google/gemini-3.1*pro*\",\"gemini/gemini-3.1*pro*\"],\"gemini-3.5-flash\":[\"copilot/gemini-3.5*flash*\",\"google/gemini-3.5*flash*\",\"gemini/gemini-3.5*flash*\"],\"gemini-flash\":[\"copilot/gemini-*flash*\",\"google/gemini-*flash*\",\"gemini/gemini-*flash*\"],\"gemini-flash-lite\":[\"copilot/gemini-*flash*lite*\",\"google/gemini-*flash*lite*\",\"gemini/gemini-*flash*lite*\"],\"gemini-pro\":[\"copilot/gemini-*pro*\",\"google/gemini-*pro*\",\"gemini/gemini-*pro*\"],\"gemma\":[\"copilot/gemma*\",\"google/gemma*\",\"gemini/gemma*\"],\"gpt-5\":[\"copilot/gpt-5*\",\"openai/gpt-5*\"],\"gpt-5-codex\":[\"copilot/gpt-5*codex*\",\"openai/gpt-5*codex*\"],\"gpt-5-mini\":[\"copilot/gpt-5*mini*\",\"openai/gpt-5*mini*\"],\"gpt-5-nano\":[\"copilot/gpt-5*nano*\",\"openai/gpt-5*nano*\"],\"gpt-5-pro\":[\"copilot/gpt-5*pro*\",\"openai/gpt-5*pro*\"],\"gpt-5.1\":[\"copilot/gpt-5.1*\",\"openai/gpt-5.1*\"],\"gpt-5.2\":[\"copilot/gpt-5.2*\",\"openai/gpt-5.2*\"],\"gpt-5.3\":[\"copilot/gpt-5.3*\",\"openai/gpt-5.3*\"],\"gpt-5.4\":[\"copilot/gpt-5.4*\",\"openai/gpt-5.4*\"],\"gpt-5.5\":[\"copilot/gpt-5.5*\",\"openai/gpt-5.5*\"],\"haiku\":[\"copilot/*haiku*\",\"anthropic/*haiku*\"],\"image-generation\":[\"copilot/gpt-image*\",\"openai/gpt-image*\",\"openai/chatgpt-image*\",\"copilot/gemini-*image*\",\"google/gemini-*image*\",\"gemini/gemini-*image*\",\"google/imagen*\"],\"large\":[\"sonnet\",\"gpt-5-pro\",\"gpt-5\",\"gemini-pro\"],\"mai-code\":[\"copilot/MAI-Code*\",\"copilot/mai-code*\",\"openai/MAI-Code*\"],\"mini\":[\"haiku\",\"gpt-5-mini\",\"gpt-5-nano\",\"gemini-flash-lite\"],\"nano-banana\":[\"copilot/nano-banana*\",\"google/nano-banana*\",\"gemini/nano-banana*\"],\"opus\":[\"copilot/*opus*\",\"anthropic/*opus*\"],\"opusplan\":[\"opus?effort=high\"],\"reasoning\":[\"copilot/o1*\",\"copilot/o3*\",\"copilot/o4*\",\"openai/o1*\",\"openai/o3*\",\"openai/o4*\"],\"robotics\":[\"copilot/*robotics*\",\"google/*robotics*\",\"gemini/*robotics*\"],\"small\":[\"mini\"],\"small-agent\":[\"haiku\",\"gpt-5-mini\",\"gemini-flash\"],\"sonnet\":[\"copilot/*sonnet*\",\"anthropic/*sonnet*\"],\"sonnet-6x\":[\"copilot/*sonnet-4.5*\",\"copilot/*sonnet-4.6*\",\"copilot/*sonnet-4-5-*\",\"anthropic/*sonnet-4-5-*\",\"copilot/*sonnet-4-6*\",\"anthropic/*sonnet-4-6*\"],\"summarization\":[\"haiku\",\"gpt-5-mini\",\"gemini-flash-lite\",\"mini\"],\"vision\":[\"copilot/gemini-*image*\",\"google/gemini-*image*\",\"gemini/gemini-*image*\",\"copilot/gemini-*flash*\",\"google/gemini-*flash*\",\"gemini/gemini-*flash*\"]}},\"container\":{\"imageTag\":\"0.27.13,squid=sha256:700b1b5a73098373b04fb684f291e95d9be0124ab559717b04f27acaf8b41bed,agent=sha256:691a06b64961b5b35aac117eaace202fa721e91da19d1d2e22dcdd6663cd571b,agent-act=sha256:676de58a0abad8054cd9d4fc45b861715856819f083a268372d60bca0090018c,api-proxy=sha256:c57febf4aeeefbb4fd96f5b12c07f4279ca55edca6a700032debf9dd0787286e,cli-proxy=sha256:79dfd3a5d139bd1956ba6d7d1782b831a07175cf5afa29c45cb20bb0140f23c5\"}}" > "${RUNNER_TEMP}/gh-aw/awf-config.json"
+          printf '%s\n' "{\"\$schema\":\"https://github.com/github/gh-aw-firewall/releases/download/v0.27.13/awf-config.schema.json\",\"network\":{\"allowDomains\":[\"*.githubusercontent.com\",\"*.vsblob.vsassets.io\",\"172.30.0.1\",\"api.business.githubcopilot.com\",\"api.enterprise.githubcopilot.com\",\"api.github.com\",\"api.githubcopilot.com\",\"api.individual.githubcopilot.com\",\"api.nuget.org\",\"api.openai.com\",\"api.snapcraft.io\",\"archive.ubuntu.com\",\"azure.archive.ubuntu.com\",\"azuresearch-usnc.nuget.org\",\"azuresearch-ussc.nuget.org\",\"builds.dotnet.microsoft.com\",\"chatgpt.com\",\"ci.dot.net\",\"codeload.github.com\",\"crl.geotrust.com\",\"crl.globalsign.com\",\"crl.identrust.com\",\"crl.sectigo.com\",\"crl.thawte.com\",\"crl.usertrust.com\",\"crl.verisign.com\",\"crl3.digicert.com\",\"crl4.digicert.com\",\"crls.ssl.com\",\"dc.services.visualstudio.com\",\"dist.nuget.org\",\"docs.github.com\",\"dot.net\",\"dotnet.microsoft.com\",\"dotnetcli.blob.core.windows.net\",\"github-cloud.githubusercontent.com\",\"github-cloud.s3.amazonaws.com\",\"github.blog\",\"github.com\",\"github.githubassets.com\",\"host.docker.internal\",\"json-schema.org\",\"json.schemastore.org\",\"keyserver.ubuntu.com\",\"lfs.github.com\",\"nuget.org\",\"nuget.pkg.github.com\",\"nugetregistryv2prod.blob.core.windows.net\",\"objects.githubusercontent.com\",\"ocsp.digicert.com\",\"ocsp.geotrust.com\",\"ocsp.globalsign.com\",\"ocsp.identrust.com\",\"ocsp.sectigo.com\",\"ocsp.ssl.com\",\"ocsp.thawte.com\",\"ocsp.usertrust.com\",\"ocsp.verisign.com\",\"oneocsp.microsoft.com\",\"openai.com\",\"packagecloud.io\",\"packages.cloud.google.com\",\"packages.microsoft.com\",\"patch-diff.githubusercontent.com\",\"patchdiff.githubusercontent.com\",\"pkgs.dev.azure.com\",\"ppa.launchpad.net\",\"raw.githubusercontent.com\",\"registry.npmjs.org\",\"s.symcb.com\",\"s.symcd.com\",\"security.ubuntu.com\",\"telemetry.enterprise.githubcopilot.com\",\"ts-crl.ws.symantec.com\",\"ts-ocsp.ws.symantec.com\",\"www.googleapis.com\",\"www.microsoft.com\"]},\"apiProxy\":{\"enabled\":true,\"enableTokenSteering\":true,\"maxRuns\":500,\"maxAiCredits\":${GH_AW_MAX_AI_CREDITS},\"maxCacheMisses\":5,\"models\":{\"agent\":[\"sonnet-6x\",\"gpt-5.5\",\"gpt-5.4\",\"gpt-5.3\",\"gemini-pro\",\"any\"],\"antigravity\":[\"copilot/antigravity*\",\"google/antigravity*\",\"gemini/antigravity*\"],\"any\":[\"copilot/*\",\"anthropic/*\",\"openai/*\",\"google/*\",\"gemini/*\"],\"claude\":[\"agent\"],\"codex\":[\"agent\"],\"coding\":[\"copilot/gpt-5*codex*\",\"openai/gpt-5*codex*\",\"gpt-5-codex\"],\"computer-use\":[\"copilot/*computer-use*\",\"google/*computer-use*\",\"gemini/*computer-use*\",\"openai/*computer-use*\"],\"copilot\":[\"agent\"],\"deep-research\":[\"copilot/deep-research*\",\"copilot/o3-deep-research*\",\"copilot/o4-mini-deep-research*\",\"google/deep-research*\",\"gemini/deep-research*\",\"openai/o3-deep-research*\",\"openai/o4-mini-deep-research*\"],\"gemini\":[\"agent\"],\"gemini-3-flash\":[\"copilot/gemini-3*flash*\",\"google/gemini-3*flash*\",\"gemini/gemini-3*flash*\"],\"gemini-3-pro\":[\"copilot/gemini-3*pro*\",\"google/gemini-3*pro*\",\"google/nano-banana*\",\"gemini/gemini-3*pro*\"],\"gemini-3.1-flash\":[\"copilot/gemini-3.1*flash*\",\"google/gemini-3.1*flash*\",\"gemini/gemini-3.1*flash*\"],\"gemini-3.1-pro\":[\"copilot/gemini-3.1*pro*\",\"google/gemini-3.1*pro*\",\"gemini/gemini-3.1*pro*\"],\"gemini-3.5-flash\":[\"copilot/gemini-3.5*flash*\",\"google/gemini-3.5*flash*\",\"gemini/gemini-3.5*flash*\"],\"gemini-flash\":[\"copilot/gemini-*flash*\",\"google/gemini-*flash*\",\"gemini/gemini-*flash*\"],\"gemini-flash-lite\":[\"copilot/gemini-*flash*lite*\",\"google/gemini-*flash*lite*\",\"gemini/gemini-*flash*lite*\"],\"gemini-pro\":[\"copilot/gemini-*pro*\",\"google/gemini-*pro*\",\"gemini/gemini-*pro*\"],\"gemma\":[\"copilot/gemma*\",\"google/gemma*\",\"gemini/gemma*\"],\"gpt-5\":[\"copilot/gpt-5*\",\"openai/gpt-5*\"],\"gpt-5-codex\":[\"copilot/gpt-5*codex*\",\"openai/gpt-5*codex*\"],\"gpt-5-mini\":[\"copilot/gpt-5*mini*\",\"openai/gpt-5*mini*\"],\"gpt-5-nano\":[\"copilot/gpt-5*nano*\",\"openai/gpt-5*nano*\"],\"gpt-5-pro\":[\"copilot/gpt-5*pro*\",\"openai/gpt-5*pro*\"],\"gpt-5.1\":[\"copilot/gpt-5.1*\",\"openai/gpt-5.1*\"],\"gpt-5.2\":[\"copilot/gpt-5.2*\",\"openai/gpt-5.2*\"],\"gpt-5.3\":[\"copilot/gpt-5.3*\",\"openai/gpt-5.3*\"],\"gpt-5.4\":[\"copilot/gpt-5.4*\",\"openai/gpt-5.4*\"],\"gpt-5.5\":[\"copilot/gpt-5.5*\",\"openai/gpt-5.5*\"],\"haiku\":[\"copilot/*haiku*\",\"anthropic/*haiku*\"],\"image-generation\":[\"copilot/gpt-image*\",\"openai/gpt-image*\",\"openai/chatgpt-image*\",\"copilot/gemini-*image*\",\"google/gemini-*image*\",\"gemini/gemini-*image*\",\"google/imagen*\"],\"large\":[\"sonnet\",\"gpt-5-pro\",\"gpt-5\",\"gemini-pro\"],\"mai-code\":[\"copilot/MAI-Code*\",\"copilot/mai-code*\",\"openai/MAI-Code*\"],\"mini\":[\"haiku\",\"gpt-5-mini\",\"gpt-5-nano\",\"gemini-flash-lite\"],\"nano-banana\":[\"copilot/nano-banana*\",\"google/nano-banana*\",\"gemini/nano-banana*\"],\"opus\":[\"copilot/*opus*\",\"anthropic/*opus*\"],\"opusplan\":[\"opus?effort=high\"],\"reasoning\":[\"copilot/o1*\",\"copilot/o3*\",\"copilot/o4*\",\"openai/o1*\",\"openai/o3*\",\"openai/o4*\"],\"robotics\":[\"copilot/*robotics*\",\"google/*robotics*\",\"gemini/*robotics*\"],\"small\":[\"mini\"],\"small-agent\":[\"haiku\",\"gpt-5-mini\",\"gemini-flash\"],\"sonnet\":[\"copilot/*sonnet*\",\"anthropic/*sonnet*\"],\"sonnet-6x\":[\"copilot/*sonnet-4.5*\",\"copilot/*sonnet-4.6*\",\"copilot/*sonnet-4-5-*\",\"anthropic/*sonnet-4-5-*\",\"copilot/*sonnet-4-6*\",\"anthropic/*sonnet-4-6*\"],\"summarization\":[\"haiku\",\"gpt-5-mini\",\"gemini-flash-lite\",\"mini\"],\"vision\":[\"copilot/gemini-*image*\",\"google/gemini-*image*\",\"gemini/gemini-*image*\",\"copilot/gemini-*flash*\",\"google/gemini-*flash*\",\"gemini/gemini-*flash*\"]}},\"container\":{\"imageTag\":\"0.27.13,squid=sha256:700b1b5a73098373b04fb684f291e95d9be0124ab559717b04f27acaf8b41bed,agent=sha256:691a06b64961b5b35aac117eaace202fa721e91da19d1d2e22dcdd6663cd571b,agent-act=sha256:676de58a0abad8054cd9d4fc45b861715856819f083a268372d60bca0090018c,api-proxy=sha256:c57febf4aeeefbb4fd96f5b12c07f4279ca55edca6a700032debf9dd0787286e,cli-proxy=sha256:79dfd3a5d139bd1956ba6d7d1782b831a07175cf5afa29c45cb20bb0140f23c5\"}}" > "${RUNNER_TEMP}/gh-aw/awf-config.json"
           python3 - <<'PY'
           import json
           import os
@@ -906,7 +972,8 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           GH_AW_SAFE_OUTPUTS: ${{ steps.set-runtime-paths.outputs.GH_AW_SAFE_OUTPUTS }}
-          GH_AW_ALLOWED_DOMAINS: "*.githubusercontent.com,172.30.0.1,api.business.githubcopilot.com,api.enterprise.githubcopilot.com,api.github.com,api.githubcopilot.com,api.individual.githubcopilot.com,api.openai.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,chatgpt.com,codeload.github.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,docs.github.com,github-cloud.githubusercontent.com,github-cloud.s3.amazonaws.com,github.blog,github.com,github.githubassets.com,host.docker.internal,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,lfs.github.com,objects.githubusercontent.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,openai.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,patch-diff.githubusercontent.com,patchdiff.githubusercontent.com,ppa.launchpad.net,raw.githubusercontent.com,registry.npmjs.org,s.symcb.com,s.symcd.com,security.ubuntu.com,telemetry.enterprise.githubcopilot.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com,www.googleapis.com"
+          GH_AW_ALLOWED_DOMAINS: "*.githubusercontent.com,*.vsblob.vsassets.io,172.30.0.1,api.business.githubcopilot.com,api.enterprise.githubcopilot.com,api.github.com,api.githubcopilot.com,api.individual.githubcopilot.com,api.nuget.org,api.openai.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,azuresearch-usnc.nuget.org,azuresearch-ussc.nuget.org,builds.dotnet.microsoft.com,chatgpt.com,ci.dot.net,codeload.github.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,dc.services.visualstudio.com,dist.nuget.org,docs.github.com,dot.net,dotnet.microsoft.com,dotnetcli.blob.core.windows.net,github-cloud.githubusercontent.com,github-cloud.s3.amazonaws.com,github.blog,github.com,github.githubassets.com,host.docker.internal,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,lfs.github.com,nuget.org,nuget.pkg.github.com,nugetregistryv2prod.blob.core.windows.net,objects.githubusercontent.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,oneocsp.microsoft.com,openai.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,patch-diff.githubusercontent.com,patchdiff.githubusercontent.com,pkgs.dev.azure.com,ppa.launchpad.net,raw.githubusercontent.com,registry.npmjs.org,s.symcb.com,s.symcd.com,security.ubuntu.com,telemetry.enterprise.githubcopilot.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com,www.googleapis.com,www.microsoft.com"
+          GH_AW_ALLOWED_GITHUB_REFS: ""
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
         with:
@@ -977,6 +1044,43 @@ jobs:
           if [ ! -f /tmp/gh-aw/agent_output.json ]; then
             echo '{"items":[]}' > /tmp/gh-aw/agent_output.json
           fi
+      - id: surprise-fix-guard
+        name: Check whether fix push validation is required
+        run: |
+          set -euo pipefail
+          outputs="/tmp/gh-aw/safeoutputs.jsonl"
+          should_validate=false
+          if [ -s "$outputs" ] && grep -Eq '"type":"push_to_pull_request_branch"' "$outputs"; then
+            should_validate=true
+          fi
+          echo "should_validate=${should_validate}" >> "$GITHUB_OUTPUT"
+        shell: bash
+      - if: steps.surprise-fix-guard.outputs.should_validate == 'true'
+        name: Reject ineligible surprise fix push output
+        run: "set -euo pipefail\npython3 - <<'PY'\nimport json\nimport os\nimport sys\n\ntarget_path = \"/tmp/gh-aw/surprise-fix-target.json\"\noutputs_path = \"/tmp/gh-aw/safeoutputs.jsonl\"\n\nwith open(target_path, encoding=\"utf-8\") as handle:\n    target = json.load(handle)\nif not target.get(\"should_run\"):\n    print(f\"::error::Refusing push output for ineligible target: {target.get('reason')}\", file=sys.stderr)\n    sys.exit(1)\nexpected_number = int(target[\"pr_number\"])\n\npush_items = []\nwith open(outputs_path, encoding=\"utf-8\") as handle:\n    for line_number, line in enumerate(handle, start=1):\n        text = line.strip()\n        if not text:\n            continue\n        item = json.loads(text)\n        if item.get(\"type\") == \"push_to_pull_request_branch\":\n            push_items.append((line_number, item))\n\nif len(push_items) != 1:\n    print(f\"::error::Expected exactly one push_to_pull_request_branch output, found {len(push_items)}.\", file=sys.stderr)\n    sys.exit(1)\n\n_, item = push_items[0]\nraw_number = (\n    item.get(\"pull_request_number\")\n    or item.get(\"pr_number\")\n    or item.get(\"pull_number\")\n    or item.get(\"pr\")\n)\nif int(raw_number) != expected_number:\n    print(\n        f\"::error::Push target PR #{raw_number} does not match resolved target #{expected_number}.\",\n        file=sys.stderr,\n    )\n    sys.exit(1)\n\nprint(f\"Validated push output target for surprise PR #{expected_number}.\")\nPY\n"
+        shell: bash
+      - if: steps.surprise-fix-guard.outputs.should_validate == 'true'
+        name: Setup .NET for fix validation
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+      - if: steps.surprise-fix-guard.outputs.should_validate == 'true'
+        name: Materialize safe-output patch for fix validation
+        run: "set -euo pipefail\noriginal_sha=\"${SURPRISE_FIX_ORIGINAL_HEAD:-}\"\ncurrent_sha=\"$(git rev-parse HEAD)\"\nhas_workspace_changes=false\ngit diff --quiet || has_workspace_changes=true\ngit diff --cached --quiet || has_workspace_changes=true\n\nif [ \"$has_workspace_changes\" = false ] && [ -n \"$original_sha\" ] && [ \"$current_sha\" = \"$original_sha\" ]; then\n  shopt -s nullglob\n  patches=(/tmp/gh-aw/aw-*.patch)\n  if [ \"${#patches[@]}\" -eq 0 ]; then\n    echo \"::error::Safe output requested a PR branch push, but no workspace changes or patch artifact were found.\"\n    exit 1\n  fi\n  if [ \"${#patches[@]}\" -gt 1 ]; then\n    printf '::error::Expected one safe-output patch, found %s: %s\\n' \"${#patches[@]}\" \"${patches[*]}\"\n    exit 1\n  fi\n  git apply --check \"${patches[0]}\"\n  git apply \"${patches[0]}\"\nfi\n\ngit status --short\n"
+        shell: bash
+      - if: steps.surprise-fix-guard.outputs.should_validate == 'true'
+        name: Restore before fix validation
+        run: dotnet restore DotBoxD.slnx
+      - if: steps.surprise-fix-guard.outputs.should_validate == 'true'
+        name: Build before fix validation
+        run: GITHUB_ACTIONS=true dotnet build DotBoxD.slnx -c Release --no-restore
+      - if: steps.surprise-fix-guard.outputs.should_validate == 'true'
+        name: Verify fix is green
+        run: GITHUB_ACTIONS=true dotnet test DotBoxD.slnx -c Release --no-build
+
       - name: Upload agent artifacts
         if: always()
         continue-on-error: true
@@ -988,6 +1092,8 @@ jobs:
             /tmp/gh-aw/mcp-config/logs/
             /tmp/gh-aw/redacted-urls.log
             /tmp/gh-aw/mcp-logs/
+            /tmp/gh-aw/proxy-logs/
+            !/tmp/gh-aw/proxy-logs/proxy-tls/
             /tmp/gh-aw/agent_usage.json
             /tmp/gh-aw/agent-stdio.log
             /tmp/gh-aw/pre-agent-audit.txt
@@ -1013,9 +1119,11 @@ jobs:
       always() && (needs.agent.result != 'skipped' || needs.activation.outputs.lockdown_check_failed == 'true' ||
       needs.activation.outputs.stale_lock_file_failed == 'true' || needs.activation.outputs.daily_ai_credits_exceeded == 'true')
     runs-on: ubuntu-slim
-    permissions: {}
+    permissions:
+      contents: write
+      pull-requests: write
     concurrency:
-      group: "gh-aw-conclusion-gh-aw-smoke-test"
+      group: "gh-aw-conclusion-library-surprise-fix"
       cancel-in-progress: false
       queue: max
     env:
@@ -1033,8 +1141,8 @@ jobs:
           trace-id: ${{ needs.activation.outputs.setup-trace-id }}
           parent-span-id: ${{ needs.activation.outputs.setup-parent-span-id || needs.activation.outputs.setup-span-id }}
         env:
-          GH_AW_SETUP_WORKFLOW_NAME: "gh-aw Smoke Test"
-          GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/gh-aw-smoke-test.lock.yml@${{ github.ref }}
+          GH_AW_SETUP_WORKFLOW_NAME: "Library Surprise Fix"
+          GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/library-surprise-fix.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "0.142.4"
           GH_AW_INFO_AWF_VERSION: "v0.27.13"
           GH_AW_INFO_ENGINE_ID: "codex"
@@ -1101,8 +1209,8 @@ jobs:
         continue-on-error: true
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          key: agentic-workflow-usage-ghawsmoketest-${{ github.run_id }}
-          restore-keys: agentic-workflow-usage-ghawsmoketest-
+          key: agentic-workflow-usage-librarysurprisefix-${{ github.run_id }}
+          restore-keys: agentic-workflow-usage-librarysurprisefix-
           path: /tmp/gh-aw/agentic-workflow-usage-cache.jsonl
       - name: Write daily AIC usage cache entry
         id: write-daily-aic-cache
@@ -1122,7 +1230,7 @@ jobs:
         continue-on-error: true
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          key: agentic-workflow-usage-ghawsmoketest-${{ github.run_id }}
+          key: agentic-workflow-usage-librarysurprisefix-${{ github.run_id }}
           path: /tmp/gh-aw/agentic-workflow-usage-cache.jsonl
       - name: Upload daily AIC usage cache artifact
         id: upload-daily-aic-cache
@@ -1140,15 +1248,15 @@ jobs:
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
           GH_AW_NOOP_MAX: "1"
-          GH_AW_WORKFLOW_NAME: "gh-aw Smoke Test"
-          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/gh-aw-smoke-test.md"
+          GH_AW_WORKFLOW_NAME: "Library Surprise Fix"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/library-surprise-fix.md"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_AGENT_CONCLUSION: ${{ needs.agent.result }}
           GH_AW_NOOP_REPORT_AS_ISSUE: "false"
           GH_AW_AIC: ${{ needs.agent.outputs.aic }}
           GH_AW_THREAT_DETECTION_AIC: ${{ needs.detection.outputs.aic }}
           GH_AW_AMBIENT_CONTEXT: ${{ needs.agent.outputs.ambient_context }}
-          GH_AW_WORKFLOW_ID: "gh-aw-smoke-test"
+          GH_AW_WORKFLOW_ID: "library-surprise-fix"
         with:
           github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
@@ -1161,8 +1269,8 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
-          GH_AW_WORKFLOW_NAME: "gh-aw Smoke Test"
-          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/gh-aw-smoke-test.md"
+          GH_AW_WORKFLOW_NAME: "Library Surprise Fix"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/library-surprise-fix.md"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_DETECTION_CONCLUSION: ${{ needs.detection.outputs.detection_conclusion }}
           GH_AW_DETECTION_REASON: ${{ needs.detection.outputs.detection_reason }}
@@ -1180,8 +1288,8 @@ jobs:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
           GH_AW_REPORT_INCOMPLETE_CREATE_ISSUE: "false"
           GH_AW_REPORT_INCOMPLETE_TITLE_PREFIX: "[incomplete]"
-          GH_AW_WORKFLOW_NAME: "gh-aw Smoke Test"
-          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/gh-aw-smoke-test.md"
+          GH_AW_WORKFLOW_NAME: "Library Surprise Fix"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/library-surprise-fix.md"
         with:
           github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
@@ -1195,11 +1303,11 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
-          GH_AW_WORKFLOW_NAME: "gh-aw Smoke Test"
-          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/gh-aw-smoke-test.md"
+          GH_AW_WORKFLOW_NAME: "Library Surprise Fix"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/library-surprise-fix.md"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_AGENT_CONCLUSION: ${{ needs.agent.result }}
-          GH_AW_WORKFLOW_ID: "gh-aw-smoke-test"
+          GH_AW_WORKFLOW_ID: "library-surprise-fix"
           GH_AW_ACTION_FAILURE_ISSUE_EXPIRES_HOURS: "168"
           GH_AW_ENGINE_ID: "codex"
           GH_AW_SECRET_VERIFICATION_RESULT: ${{ needs.activation.outputs.secret_verification_result }}
@@ -1216,6 +1324,8 @@ jobs:
           GH_AW_MODEL_NOT_SUPPORTED_ERROR: ${{ needs.agent.outputs.model_not_supported_error }}
           GH_AW_HTTP_400_RESPONSE_ERROR: ${{ needs.agent.outputs.http_400_response_error }}
           GH_AW_ENGINE_API_HOSTS: "api.openai.com"
+          GH_AW_CODE_PUSH_FAILURE_ERRORS: ${{ needs.safe_outputs.outputs.code_push_failure_errors }}
+          GH_AW_CODE_PUSH_FAILURE_COUNT: ${{ needs.safe_outputs.outputs.code_push_failure_count }}
           GH_AW_LOCKDOWN_CHECK_FAILED: ${{ needs.activation.outputs.lockdown_check_failed }}
           GH_AW_STALE_LOCK_FILE_FAILED: ${{ needs.activation.outputs.stale_lock_file_failed }}
           GH_AW_DAILY_AI_CREDITS_EXCEEDED: ${{ needs.activation.outputs.daily_ai_credits_exceeded }}
@@ -1259,8 +1369,8 @@ jobs:
           trace-id: ${{ needs.activation.outputs.setup-trace-id }}
           parent-span-id: ${{ needs.activation.outputs.setup-parent-span-id || needs.activation.outputs.setup-span-id }}
         env:
-          GH_AW_SETUP_WORKFLOW_NAME: "gh-aw Smoke Test"
-          GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/gh-aw-smoke-test.lock.yml@${{ github.ref }}
+          GH_AW_SETUP_WORKFLOW_NAME: "Library Surprise Fix"
+          GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/library-surprise-fix.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "0.142.4"
           GH_AW_INFO_AWF_VERSION: "v0.27.13"
           GH_AW_INFO_ENGINE_ID: "codex"
@@ -1330,8 +1440,8 @@ jobs:
         if: always() && steps.detection_guard.outputs.run_detection == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          WORKFLOW_NAME: "gh-aw Smoke Test"
-          WORKFLOW_DESCRIPTION: "Minimal gh-aw Codex smoke test."
+          WORKFLOW_NAME: "Library Surprise Fix"
+          WORKFLOW_DESCRIPTION: "Follows up on [surprise-red-test] PRs after CI has proven the red regression\ntests fail, then fixes the production issue on the same PR branch and folds\nin CodeRabbit feedback when present."
           HAS_PATCH: ${{ needs.agent.outputs.has_patch }}
         with:
           script: |
@@ -1600,6 +1710,44 @@ jobs:
               }
             }
 
+  pre_activation:
+    if: >
+      github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'failure')
+    runs-on: ubuntu-slim
+    env:
+      GH_AW_RUNTIME_FEATURES: ${{ vars.GH_AW_RUNTIME_FEATURES }}
+    outputs:
+      activated: ${{ steps.check_membership.outputs.is_team_member == 'true' }}
+      matched_command: ''
+      setup-parent-span-id: ${{ steps.setup.outputs.parent-span-id || steps.setup.outputs.span-id }}
+      setup-span-id: ${{ steps.setup.outputs.span-id }}
+      setup-trace-id: ${{ steps.setup.outputs.trace-id }}
+    steps:
+      - name: Setup Scripts
+        id: setup
+        uses: JKamsker/gh-aw/actions/setup@21e402d7a4b5367258a7692cbb84fee60b507598 # v0.82.0-jk.1
+        with:
+          destination: ${{ runner.temp }}/gh-aw/actions
+          job-name: ${{ github.job }}
+        env:
+          GH_AW_SETUP_WORKFLOW_NAME: "Library Surprise Fix"
+          GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/library-surprise-fix.lock.yml@${{ github.ref }}
+          GH_AW_INFO_VERSION: "0.142.4"
+          GH_AW_INFO_AWF_VERSION: "v0.27.13"
+          GH_AW_INFO_ENGINE_ID: "codex"
+      - name: Check team membership for workflow
+        id: check_membership
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          GH_AW_REQUIRED_ROLES: "admin,maintainer,write"
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
+            setupGlobals(core, github, context, exec, io, getOctokit);
+            const { main } = require('${{ runner.temp }}/gh-aw/actions/check_membership.cjs');
+            await main();
+
   safe_outputs:
     needs:
       - activation
@@ -1607,13 +1755,15 @@ jobs:
       - detection
     if: (!cancelled()) && needs.agent.result != 'skipped' && needs.detection.result == 'success'
     runs-on: ubuntu-slim
-    permissions: {}
+    permissions:
+      contents: write
+      pull-requests: write
     timeout-minutes: 45
     env:
       GH_AW_AGENT_AIC: ${{ needs.agent.outputs.aic }}
       GH_AW_AIC: ${{ needs.agent.outputs.aic }}
       GH_AW_AMBIENT_CONTEXT: ${{ needs.agent.outputs.ambient_context }}
-      GH_AW_CALLER_WORKFLOW_ID: "${{ github.repository }}/gh-aw-smoke-test"
+      GH_AW_CALLER_WORKFLOW_ID: "${{ github.repository }}/library-surprise-fix"
       GH_AW_DETECTION_CONCLUSION: ${{ needs.detection.outputs.detection_conclusion }}
       GH_AW_DETECTION_REASON: ${{ needs.detection.outputs.detection_reason }}
       GH_AW_EFFECTIVE_TOKENS: ${{ needs.agent.outputs.effective_tokens }}
@@ -1621,9 +1771,9 @@ jobs:
       GH_AW_ENGINE_MODEL: ${{ needs.agent.outputs.model }}
       GH_AW_RUNTIME_FEATURES: ${{ vars.GH_AW_RUNTIME_FEATURES }}
       GH_AW_THREAT_DETECTION_AIC: ${{ needs.detection.outputs.aic }}
-      GH_AW_WORKFLOW_ID: "gh-aw-smoke-test"
-      GH_AW_WORKFLOW_NAME: "gh-aw Smoke Test"
-      GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/gh-aw-smoke-test.md"
+      GH_AW_WORKFLOW_ID: "library-surprise-fix"
+      GH_AW_WORKFLOW_NAME: "Library Surprise Fix"
+      GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/.github/workflows/library-surprise-fix.md"
     outputs:
       code_push_failure_count: ${{ steps.process_safe_outputs.outputs.code_push_failure_count }}
       code_push_failure_errors: ${{ steps.process_safe_outputs.outputs.code_push_failure_errors }}
@@ -1631,6 +1781,8 @@ jobs:
       create_discussion_errors: ${{ steps.process_safe_outputs.outputs.create_discussion_errors }}
       process_safe_outputs_processed_count: ${{ steps.process_safe_outputs.outputs.processed_count }}
       process_safe_outputs_temporary_id_map: ${{ steps.process_safe_outputs.outputs.temporary_id_map }}
+      push_commit_sha: ${{ steps.process_safe_outputs.outputs.push_commit_sha }}
+      push_commit_url: ${{ steps.process_safe_outputs.outputs.push_commit_url }}
     steps:
       - name: Setup Scripts
         id: setup
@@ -1641,8 +1793,8 @@ jobs:
           trace-id: ${{ needs.activation.outputs.setup-trace-id }}
           parent-span-id: ${{ needs.activation.outputs.setup-parent-span-id || needs.activation.outputs.setup-span-id }}
         env:
-          GH_AW_SETUP_WORKFLOW_NAME: "gh-aw Smoke Test"
-          GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/gh-aw-smoke-test.lock.yml@${{ github.ref }}
+          GH_AW_SETUP_WORKFLOW_NAME: "Library Surprise Fix"
+          GH_AW_CURRENT_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/library-surprise-fix.lock.yml@${{ github.ref }}
           GH_AW_INFO_VERSION: "0.142.4"
           GH_AW_INFO_AWF_VERSION: "v0.27.13"
           GH_AW_INFO_ENGINE_ID: "codex"
@@ -1660,6 +1812,33 @@ jobs:
           mkdir -p /tmp/gh-aw/
           find "/tmp/gh-aw/" -type f -print
           echo "GH_AW_AGENT_OUTPUT=/tmp/gh-aw/agent_output.json" >> "$GITHUB_OUTPUT"
+      - name: Download patch artifact
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: agent
+          path: /tmp/gh-aw/
+      - name: Checkout repository
+        if: (!cancelled()) && needs.agent.result != 'skipped' && contains(needs.agent.outputs.output_types, 'push_to_pull_request_branch')
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+          token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      - name: Fetch additional refs
+        if: (!cancelled()) && needs.agent.result != 'skipped' && contains(needs.agent.outputs.output_types, 'push_to_pull_request_branch')
+        env:
+          GH_AW_FETCH_TOKEN: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          header=$(printf "x-access-token:%s" "${GH_AW_FETCH_TOKEN}" | base64 -w 0)
+          git -c "http.extraheader=Authorization: Basic ${header}" fetch origin '+refs/heads/*:refs/remotes/origin/*'
+      - name: Configure Git credentials
+        if: (!cancelled()) && needs.agent.result != 'skipped' && contains(needs.agent.outputs.output_types, 'push_to_pull_request_branch')
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GIT_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+        run: bash "${RUNNER_TEMP}/gh-aw/actions/configure_git_credentials.sh"
       - name: Configure GH_HOST for enterprise compatibility
         id: ghes-host-config
         shell: bash
@@ -1669,39 +1848,17 @@ jobs:
           GH_HOST="${GITHUB_SERVER_URL#https://}"
           GH_HOST="${GH_HOST#http://}"
           echo "GH_HOST=${GH_HOST}" >> "$GITHUB_ENV"
-      - name: Configure Safe Outputs Custom Scripts
-        run: |
-          cat > "${RUNNER_TEMP}/gh-aw/actions/safe_output_script_record_smoke_result.cjs" << 'GH_AW_SAFE_OUTPUT_SCRIPT_RECORD_SMOKE_RESULT_b41be9e7bc2e1902_EOF'
-          // @ts-check
-          /// <reference types="./safe-output-script" />
-          // Auto-generated safe-output script handler: record-smoke-result
-
-          const { sanitizeContent } = require("./sanitize_content.cjs");
-
-          /** @type {import('./types/safe-output-script').SafeOutputScriptMain} */
-          async function main(config = {}) {
-            const { status } = config;
-            return async function handleRecordSmokeResult(item, resolvedTemporaryIds, temporaryIdMap) {
-              const statusText = String(item.status || "").trim();
-              core.info(`gh-aw smoke result: ${statusText}`);
-              return { success: statusText === "ok", status: statusText };
-
-            };
-          }
-          module.exports = { main };
-
-          GH_AW_SAFE_OUTPUT_SCRIPT_RECORD_SMOKE_RESULT_b41be9e7bc2e1902_EOF
       - name: Process Safe Outputs
         id: process_safe_outputs
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
           GH_AW_COMMENT_ID: ${{ needs.activation.outputs.comment_id }}
-          GH_AW_ALLOWED_DOMAINS: "*.githubusercontent.com,172.30.0.1,api.business.githubcopilot.com,api.enterprise.githubcopilot.com,api.github.com,api.githubcopilot.com,api.individual.githubcopilot.com,api.openai.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,chatgpt.com,codeload.github.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,docs.github.com,github-cloud.githubusercontent.com,github-cloud.s3.amazonaws.com,github.blog,github.com,github.githubassets.com,host.docker.internal,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,lfs.github.com,objects.githubusercontent.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,openai.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,patch-diff.githubusercontent.com,patchdiff.githubusercontent.com,ppa.launchpad.net,raw.githubusercontent.com,registry.npmjs.org,s.symcb.com,s.symcd.com,security.ubuntu.com,telemetry.enterprise.githubcopilot.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com,www.googleapis.com"
+          GH_AW_ALLOWED_DOMAINS: "*.githubusercontent.com,*.vsblob.vsassets.io,172.30.0.1,api.business.githubcopilot.com,api.enterprise.githubcopilot.com,api.github.com,api.githubcopilot.com,api.individual.githubcopilot.com,api.nuget.org,api.openai.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,azuresearch-usnc.nuget.org,azuresearch-ussc.nuget.org,builds.dotnet.microsoft.com,chatgpt.com,ci.dot.net,codeload.github.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,dc.services.visualstudio.com,dist.nuget.org,docs.github.com,dot.net,dotnet.microsoft.com,dotnetcli.blob.core.windows.net,github-cloud.githubusercontent.com,github-cloud.s3.amazonaws.com,github.blog,github.com,github.githubassets.com,host.docker.internal,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,lfs.github.com,nuget.org,nuget.pkg.github.com,nugetregistryv2prod.blob.core.windows.net,objects.githubusercontent.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,oneocsp.microsoft.com,openai.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,patch-diff.githubusercontent.com,patchdiff.githubusercontent.com,pkgs.dev.azure.com,ppa.launchpad.net,raw.githubusercontent.com,registry.npmjs.org,s.symcb.com,s.symcd.com,security.ubuntu.com,telemetry.enterprise.githubcopilot.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com,www.googleapis.com,www.microsoft.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUT_SCRIPTS: "{\"record_smoke_result\":\"safe_output_script_record_smoke_result.cjs\"}"
-          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"report_incomplete\":{}}"
+          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"mentions\":{\"enabled\":false},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"push_to_pull_request_branch\":{\"if_no_changes\":\"error\",\"max\":1,\"max_patch_size\":8192,\"protect_top_level_dot_folders\":true,\"protected_files\":[\"package.json\",\"bun.lockb\",\"bunfig.toml\",\"deno.json\",\"deno.jsonc\",\"deno.lock\",\"global.json\",\"NuGet.Config\",\"Directory.Packages.props\",\"mix.exs\",\"mix.lock\",\"go.mod\",\"go.sum\",\"stack.yaml\",\"stack.yaml.lock\",\"pom.xml\",\"build.gradle\",\"build.gradle.kts\",\"settings.gradle\",\"settings.gradle.kts\",\"gradle.properties\",\"package-lock.json\",\"yarn.lock\",\"pnpm-lock.yaml\",\"npm-shrinkwrap.json\",\"requirements.txt\",\"Pipfile\",\"Pipfile.lock\",\"pyproject.toml\",\"setup.py\",\"setup.cfg\",\"Gemfile\",\"Gemfile.lock\",\"uv.lock\",\"CODEOWNERS\",\"DESIGN.md\",\"README.md\",\"CONTRIBUTING.md\",\"CHANGELOG.md\",\"SECURITY.md\",\"CODE_OF_CONDUCT.md\",\"AGENTS.md\",\"CLAUDE.md\",\"GEMINI.md\"],\"protected_files_policy\":\"fallback-to-issue\",\"required_labels\":[\"bug\",\".NET\"],\"target\":\"*\",\"title_prefix\":\"[surprise-red-test] \"},\"report_incomplete\":{}}"
+          GH_AW_CI_TRIGGER_TOKEN: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
         with:
           github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |

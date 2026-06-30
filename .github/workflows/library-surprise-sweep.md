@@ -1,8 +1,8 @@
 ---
 description: |
-  Runs the local library-surprise-sweep skill on a schedule. The workflow looks
-  for one public-surface surprise at a time and opens a PR containing only red
-  regression tests that prove the bug.
+  Runs the local library-surprise-sweep discovery phase on a schedule. This
+  agent only finds one candidate public-surface surprise and dispatches the
+  dedicated red-test worker.
 
 on:
   workflow_dispatch:
@@ -15,6 +15,7 @@ permissions:
   contents: read
   issues: read
   pull-requests: read
+  actions: read
 
 checkout:
   fetch-depth: 0
@@ -26,6 +27,12 @@ network:
     - dotnet
     - threat-detection
 
+sandbox:
+  agent:
+    targets:
+      openai:
+        base-url-secret: CODEX_LB_BASE_URL
+
 tools:
   github:
     lockdown: false
@@ -34,13 +41,9 @@ tools:
 safe-outputs:
   mentions: false
   allowed-github-references: []
-  create-pull-request:
-    title-prefix: "[surprise-red-test] "
-    labels: [bug, ".NET"]
-    draft: false
+  dispatch-workflow:
+    workflows: [library-surprise-red-test]
     max: 1
-    if-no-changes: "ignore"
-    protected-files: fallback-to-issue
   noop:
     report-as-issue: false
   missing-tool: false
@@ -49,186 +52,28 @@ safe-outputs:
     create-issue: false
 
 engine: codex
-
-post-steps:
-  - name: Check whether red-test PR validation is required
-    id: surprise-red-test-guard
-    shell: bash
-    run: |
-      set -euo pipefail
-      outputs="/tmp/gh-aw/safeoutputs.jsonl"
-      should_validate=false
-      if [ -s "$outputs" ] && grep -Eq '"type":"create_pull_request"' "$outputs"; then
-        should_validate=true
-      fi
-      echo "should_validate=${should_validate}" >> "$GITHUB_OUTPUT"
-
-  - name: Reject duplicate or under-specified surprise PR output
-    if: steps.surprise-red-test-guard.outputs.should_validate == 'true'
-    shell: bash
-    env:
-      GH_TOKEN: ${{ github.token }}
-      SURPRISE_PR_TITLE_PREFIX: "[surprise-red-test] "
-    run: |
-      set -euo pipefail
-      python3 - <<'PY'
-      import json
-      import os
-      import subprocess
-      import sys
-
-      outputs_path = "/tmp/gh-aw/safeoutputs.jsonl"
-      prefix = os.environ["SURPRISE_PR_TITLE_PREFIX"]
-      repo = os.environ["GITHUB_REPOSITORY"]
-
-      create_pr_items = []
-      with open(outputs_path, encoding="utf-8") as handle:
-          for line_number, line in enumerate(handle, start=1):
-              text = line.strip()
-              if not text:
-                  continue
-              try:
-                  item = json.loads(text)
-              except json.JSONDecodeError as exc:
-                  print(f"::error::Invalid safe-output JSON on line {line_number}: {exc}", file=sys.stderr)
-                  sys.exit(1)
-              if item.get("type") == "create_pull_request":
-                  create_pr_items.append(item)
-
-      if not create_pr_items:
-          print("No create_pull_request safe output found.")
-          sys.exit(0)
-
-      result = subprocess.run(
-          [
-              "gh",
-              "pr",
-              "list",
-              "--repo",
-              repo,
-              "--state",
-              "open",
-              "--limit",
-              "100",
-              "--json",
-              "number,title,url",
-          ],
-          check=False,
-          text=True,
-          stdout=subprocess.PIPE,
-          stderr=subprocess.PIPE,
-      )
-      if result.returncode != 0:
-          print("::error::Unable to list open PRs for duplicate validation.", file=sys.stderr)
-          print(result.stderr, file=sys.stderr)
-          sys.exit(result.returncode)
-
-      open_prs = json.loads(result.stdout or "[]")
-      open_titles = {pr.get("title", ""): pr for pr in open_prs}
-
-      for item in create_pr_items:
-          title = str(item.get("title") or "").strip()
-          if not title:
-              print("::error::create_pull_request must include a non-empty title.", file=sys.stderr)
-              sys.exit(1)
-
-          final_title = title if title.startswith(prefix) else prefix + title
-          for candidate_title in {title, final_title}:
-              duplicate = open_titles.get(candidate_title)
-              if duplicate:
-                  print(
-                      f"::error::Duplicate open surprise PR title found: #{duplicate.get('number')} {duplicate.get('url')}",
-                      file=sys.stderr,
-                  )
-                  sys.exit(1)
-
-          body = str(item.get("body") or item.get("description") or "")
-          required_sections = ["Duplicate check", "Red test", "Expected failure", "Validation"]
-          missing = [section for section in required_sections if section.lower() not in body.lower()]
-          if missing:
-              print(
-                  "::error::create_pull_request body must include these sections: " + ", ".join(missing),
-                  file=sys.stderr,
-              )
-              sys.exit(1)
-
-      print(f"Validated {len(create_pr_items)} create_pull_request safe output(s) against {len(open_prs)} open PR(s).")
-      PY
-
-  - name: Setup .NET for red-test validation
-    if: steps.surprise-red-test-guard.outputs.should_validate == 'true'
-    uses: actions/setup-dotnet@v4
-    with:
-      dotnet-version: 10.0.x
-
-  - name: Materialize safe-output patch for red-test validation
-    if: steps.surprise-red-test-guard.outputs.should_validate == 'true'
-    shell: bash
-    run: |
-      set -euo pipefail
-      base_sha="${GITHUB_SHA:-}"
-      current_sha="$(git rev-parse HEAD)"
-      has_workspace_changes=false
-      git diff --quiet || has_workspace_changes=true
-      git diff --cached --quiet || has_workspace_changes=true
-
-      if [ "$has_workspace_changes" = false ] && [ -n "$base_sha" ] && [ "$current_sha" = "$base_sha" ]; then
-        shopt -s nullglob
-        patches=(/tmp/gh-aw/aw-*.patch)
-        if [ "${#patches[@]}" -eq 0 ]; then
-          echo "::error::Safe output requested a PR, but no workspace changes or patch artifact were found."
-          exit 1
-        fi
-        if [ "${#patches[@]}" -gt 1 ]; then
-          printf '::error::Expected one safe-output patch, found %s: %s\n' "${#patches[@]}" "${patches[*]}"
-          exit 1
-        fi
-        git apply --check "${patches[0]}"
-        git apply "${patches[0]}"
-      fi
-
-      git status --short
-
-  - name: Restore before red-test validation
-    if: steps.surprise-red-test-guard.outputs.should_validate == 'true'
-    run: dotnet restore DotBoxD.slnx
-
-  - name: Build before red-test validation
-    if: steps.surprise-red-test-guard.outputs.should_validate == 'true'
-    run: GITHUB_ACTIONS=true dotnet build DotBoxD.slnx -c Release --no-restore
-
-  - name: Verify the proposed tests are red
-    if: steps.surprise-red-test-guard.outputs.should_validate == 'true'
-    shell: bash
-    run: |
-      set -euo pipefail
-      log="/tmp/gh-aw/red-test-validation.log"
-      set +e
-      GITHUB_ACTIONS=true dotnet test DotBoxD.slnx -c Release --no-build > "$log" 2>&1
-      status=$?
-      set -e
-      tail -n 200 "$log"
-      if [ "$status" -eq 0 ]; then
-        echo "::error::The proposed red-test PR passed dotnet test; refusing to create a PR without a failing regression test."
-        exit 1
-      fi
-      echo "Red-test validation failed as expected with exit code ${status}."
 ---
 
-# Library Surprise Sweep
+# Library Surprise Sweep Discovery
 
-Use the local skill at `.codex/skills/library-surprise-sweep/SKILL.md` for this run.
+Use the local skill at `.codex/skills/library-surprise-sweep/SKILL.md` for the
+discovery part of this run.
 
-Find one actionable "library surprise" in DotBoxD's public surface and prove it
-with focused failing regression tests. A library surprise is behavior where an
-API, attribute, generator, analyzer, runtime contract, or documentation implies
-support, but the implementation silently skips it, lowers the wrong shape,
-misbehaves at runtime, or accepts unsupported input without a clear diagnostic.
+Find one actionable "library surprise" in DotBoxD's public surface, then hand
+the candidate to the dedicated red-test workflow. A library surprise is behavior
+where an API, attribute, generator, analyzer, runtime contract, or documentation
+implies support, but the implementation silently skips it, lowers the wrong
+shape, misbehaves at runtime, or accepts unsupported input without a clear
+diagnostic.
+
+Do not edit repository files in this workflow. Do not create a pull request in
+this workflow. This agent specializes in discovery and handoff only.
 
 ## Required Duplicate Check
 
-Before editing files, use the GitHub read tools to inspect open pull requests.
-Search broadly enough to catch semantic duplicates, not just exact titles:
+Before selecting a candidate, use the GitHub read tools to inspect open pull
+requests. Search broadly enough to catch semantic duplicates, not just exact
+titles:
 
 - open PRs with titles beginning `[surprise-red-test]`
 - open PRs labeled `bug` or touching nearby test/source areas
@@ -236,70 +81,37 @@ Search broadly enough to catch semantic duplicates, not just exact titles:
   source-generator path, runtime behavior, or failing shape you are considering
 
 If any open PR already covers the same bug or substantially overlapping failing
-shape, do not create a second PR for it. Leave the workspace unchanged and call
-`noop` with the duplicate PR number and the candidate bug you skipped.
+shape, leave the workspace unchanged and call `noop` with the duplicate PR
+number and the candidate bug you skipped.
 
-When you do create a PR, its body must include a `Duplicate check` section that
-lists the open PR search terms you used and the relevant PR numbers you ruled
-out. The workflow also rejects exact open-title duplicates before safe outputs
-are processed.
+## Discovery Scope
 
-## Scope
+Choose at most one cohesive candidate per run. Prefer one bug or one tightly
+connected class of bugs. Do not bundle unrelated discoveries just because you
+found them in the same run.
 
-Create at most one cohesive PR per run. Prefer one bug or one tightly connected
-class of bugs. Do not bundle unrelated discoveries just because you found them
-in the same run.
+Map a focused promise surface: public APIs, attributes, source generator entry
+points, analyzers, runtime validators, docs, and nearby tests. Build a small
+surprise inventory, then select the strongest candidate that is not already
+covered by an open PR.
 
-The PR must contain red regression tests only. Do not implement the production
-fix, do not relax assertions to make tests pass, and do not change public API
-unless a test fixture cannot compile without a minimal test-only scaffold.
+## Handoff Contract
 
-## Sweep Process
+Dispatch `.github/workflows/library-surprise-red-test.md` with these inputs:
 
-1. Read `.codex/skills/library-surprise-sweep/SKILL.md`.
-2. Map a focused promise surface: public APIs, attributes, source generator
-   entry points, analyzers, runtime validators, docs, and nearby tests.
-3. Build a small surprise inventory and choose the strongest candidate that is
-   not already covered by an open PR.
-4. Add focused tests in the repository's existing style. Assert the user-visible
-   behavior: diagnostic presence/absence, generated source shape, runtime
-   round trip, validation error, or exact failure mode.
-5. Run restore/build and the focused test command. The branch must build, and
-   the new test must fail because the bug is real.
-6. Commit only the red tests and any necessary test data.
-7. Use the `create_pull_request` safe-output tool.
+- `candidate_title`: a concise, PR-title-ready description that omits the
+  `[surprise-red-test] ` prefix.
+- `candidate_payload`: compact JSON containing:
+  - `bug`: the public promise and the surprising behavior.
+  - `expected_red_test`: the user-visible behavior the worker should prove.
+  - `expected_failure`: the assertion, diagnostic mismatch, or runtime failure
+    expected before the production fix.
+  - `suggested_test_area`: the likely test project/files to inspect.
+  - `suggested_source_area`: the likely production project/files to inspect.
+  - `duplicate_check`: search terms used and open PRs inspected.
 
-## Validation Requirements
-
-Before requesting `create_pull_request`:
-
-- `dotnet restore DotBoxD.slnx` must succeed.
-- `GITHUB_ACTIONS=true dotnet build DotBoxD.slnx -c Release --no-restore` must succeed.
-- A focused `dotnet test` command for the new regression test must fail for the
-  expected reason.
-- If the focused test unexpectedly passes, remove the changes and call `noop`.
-
-The workflow runs its own post-step validation as well: it builds the proposed
-branch and requires `dotnet test DotBoxD.slnx -c Release --no-build` to fail
-before the PR is created. This is intentional; these PRs are supposed to be red
-test reports for confirmed bugs.
-
-## Pull Request Shape
-
-Use a title that omits the configured prefix; safe outputs adds
-`[surprise-red-test] `. Keep the rest of the title specific, for example:
-
-`Plugin generator: red test for ignored required init-only DTO member`
-
-The PR body must include these sections:
-
-- `Bug`: the public promise and the surprising behavior.
-- `Red test`: the test files and scenario added.
-- `Expected failure`: the failing assertion, diagnostic mismatch, or runtime
-  failure the test currently exposes.
-- `Duplicate check`: search terms used and open PRs inspected.
-- `Validation`: restore/build commands that passed and the focused test command
-  that failed as expected.
+If you cannot produce that handoff without guessing, leave the workspace
+unchanged and call `noop` with the reason.
 
 Do not print, inspect, or summarize secrets, API keys, virtual tokens, endpoint
 hosts, or full endpoint URLs.
