@@ -12,6 +12,7 @@ public sealed class TcpTransport : ITransport
     private readonly int _port;
     private TcpClient? _client;
     private TcpConnection? _connection;
+    private int _connecting;
     private int _disposed;
 
     public TcpTransport(string host, int port)
@@ -44,90 +45,110 @@ public sealed class TcpTransport : ITransport
         // AcceptAsync, NamedPipeClientTransport.ConnectAsync).
         ct.ThrowIfCancellationRequested();
 
-        await ClearDisconnectedConnectionAsync().ConfigureAwait(false);
-
-        if (Volatile.Read(ref _disposed) != 0)
+        if (Interlocked.CompareExchange(ref _connecting, 1, 0) != 0)
         {
-            throw new ObjectDisposedException(nameof(TcpTransport));
+            throw new InvalidOperationException("Connect already in progress.");
         }
 
-        if (_connection != null)
-        {
-            throw new InvalidOperationException("Already connected.");
-        }
-
-        // Connect against a fresh local client and publish it to the fields only once the connect
-        // has succeeded. Any failure — connect error, timeout, or cancellation — disposes the client,
-        // so a failed attempt never leaks a socket and a retry never overwrites an undisposed _client.
-        var client = new TcpClient();
         try
         {
-            // netstandard2.1 has no CancellationToken overload for ConnectAsync, so race it against an
-            // infinite delay bound to the token. The delay is cancelled in the finally so its timer and
-            // token registration are released on the success path instead of lingering for ct's lifetime.
-            var connectTask = client.ConnectAsync(_host, _port);
-            using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            await ClearDisconnectedConnectionAsync().ConfigureAwait(false);
+
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                throw new ObjectDisposedException(nameof(TcpTransport));
+            }
+
+            if (_connection != null)
+            {
+                throw new InvalidOperationException("Already connected.");
+            }
+
+            var attemptStartedHook = _onConnectAttemptStartedForTest;
+            if (attemptStartedHook is not null)
+            {
+                await attemptStartedHook().ConfigureAwait(false);
+            }
+
+            // Connect against a fresh local client and publish it to the fields only once the connect
+            // has succeeded. Any failure - connect error, timeout, or cancellation - disposes the client,
+            // so a failed attempt never leaks a socket and a retry never overwrites an undisposed _client.
+            var client = new TcpClient();
             try
             {
-                if (await Task.WhenAny(connectTask, Task.Delay(Timeout.Infinite, connectCts.Token)).ConfigureAwait(false) != connectTask)
+                // netstandard2.1 has no CancellationToken overload for ConnectAsync, so race it against an
+                // infinite delay bound to the token. The delay is cancelled in the finally so its timer and
+                // token registration are released on the success path instead of lingering for ct's lifetime.
+                var connectTask = client.ConnectAsync(_host, _port);
+                using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                try
                 {
-                    // Cancelled before the connect completed. Observe the connect task's eventual fault
-                    // (it faults once the client is disposed below) so it is not an unobserved exception.
-                    ObserveFault(connectTask);
-                    ct.ThrowIfCancellationRequested();
+                    if (await Task.WhenAny(connectTask, Task.Delay(Timeout.Infinite, connectCts.Token)).ConfigureAwait(false) != connectTask)
+                    {
+                        // Cancelled before the connect completed. Observe the connect task's eventual fault
+                        // (it faults once the client is disposed below) so it is not an unobserved exception.
+                        ObserveFault(connectTask);
+                        ct.ThrowIfCancellationRequested();
+                    }
+
+                    await connectTask.ConfigureAwait(false);
+                }
+                finally
+                {
+                    connectCts.Cancel();
+                }
+            }
+            catch
+            {
+                client.Dispose();
+                throw;
+            }
+
+            TcpConnection connection;
+            try
+            {
+                connection = new TcpConnection(client, FrameReadIdleTimeout);
+            }
+            catch
+            {
+                client.Dispose();
+                throw;
+            }
+
+            _client = client;
+            _connection = connection;
+
+            // Full store-load fence so the _client/_connection publication above is globally visible before
+            // _disposed is read. Without it an x86/x64 store-buffer (Dekker) interleaving could let this read
+            // miss a concurrent DisposeAsync while that DisposeAsync misses _connection, leaking the socket.
+            Interlocked.MemoryBarrier();
+
+            // Close the window where DisposeAsync ran during the connect and observed null fields: tear
+            // down the connection we just created so it cannot outlive a disposed transport.
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                await connection.DisposeAsync().ConfigureAwait(false);
+                client.Dispose();
+                if (ReferenceEquals(_connection, connection))
+                {
+                    _connection = null;
                 }
 
-                await connectTask.ConfigureAwait(false);
-            }
-            finally
-            {
-                connectCts.Cancel();
+                if (ReferenceEquals(_client, client))
+                {
+                    _client = null;
+                }
+
+                throw new ObjectDisposedException(nameof(TcpTransport));
             }
         }
-        catch
+        finally
         {
-            client.Dispose();
-            throw;
-        }
-
-        TcpConnection connection;
-        try
-        {
-            connection = new TcpConnection(client, FrameReadIdleTimeout);
-        }
-        catch
-        {
-            client.Dispose();
-            throw;
-        }
-
-        _client = client;
-        _connection = connection;
-
-        // Full store-load fence so the _client/_connection publication above is globally visible before
-        // _disposed is read. Without it an x86/x64 store-buffer (Dekker) interleaving could let this read
-        // miss a concurrent DisposeAsync while that DisposeAsync misses _connection, leaking the socket.
-        Interlocked.MemoryBarrier();
-
-        // Close the window where DisposeAsync ran during the connect and observed null fields: tear
-        // down the connection we just created so it cannot outlive a disposed transport.
-        if (Volatile.Read(ref _disposed) != 0)
-        {
-            await connection.DisposeAsync().ConfigureAwait(false);
-            client.Dispose();
-            if (ReferenceEquals(_connection, connection))
-            {
-                _connection = null;
-            }
-
-            if (ReferenceEquals(_client, client))
-            {
-                _client = null;
-            }
-
-            throw new ObjectDisposedException(nameof(TcpTransport));
+            Volatile.Write(ref _connecting, 0);
         }
     }
+
+    internal Func<Task>? _onConnectAttemptStartedForTest;
 
     private static void ObserveFault(Task task) =>
         _ = task.ContinueWith(
