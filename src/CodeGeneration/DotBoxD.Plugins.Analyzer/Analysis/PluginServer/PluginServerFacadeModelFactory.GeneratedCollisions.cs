@@ -90,6 +90,28 @@ internal static partial class PluginServerFacadeModelFactory
         }
     }
 
+    private static void AddGeneratedFieldNames(
+        HashSet<string> generatedMembers,
+        IReadOnlyList<PluginServerControlProperty> controls,
+        bool emitsRemoteLocalEventSink)
+    {
+        foreach (var fieldName in ReservedFacadeFieldNames())
+        {
+            if (!emitsRemoteLocalEventSink &&
+                string.Equals(fieldName, "_localHandlers", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            generatedMembers.Add(fieldName);
+        }
+
+        foreach (var control in controls)
+        {
+            generatedMembers.Add(control.FieldName);
+        }
+    }
+
     private static bool IsGeneratedInvokeAsyncSignature(IMethodSymbol method, INamedTypeSymbol worldType)
         => IsGeneratedSimpleInvokeAsyncSignature(method, worldType) ||
            IsGeneratedCaptureInvokeAsyncSignature(method, worldType);

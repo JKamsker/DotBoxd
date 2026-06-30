@@ -80,6 +80,21 @@ public sealed partial class PluginServerSurpriseRegressionTests
     }
 
     [Fact]
+    public void Generated_plugin_server_reports_private_generated_facade_field_collision()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics(BaseServerSource(serverMembers: """
+                private bool _started;
+            """));
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("_started", StringComparison.Ordinal) &&
+                 d.GetMessage().Contains("collides with the generated facade surface", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics, d => d.Id == "CS0102");
+    }
+
+    [Fact]
     public void Generated_plugin_server_reports_existing_InvokeAsync_signature_collision()
     {
         var diagnostics = PluginServerGenerationTestDriver.Diagnostics(BaseServerSource(serverMembers: """

@@ -83,6 +83,7 @@ internal static partial class PluginServerFacadeModelFactory
         [
             "_connectionFactory",
             "_anonymousKernels",
+            "_installedPluginIds",
             "_serverExtensions",
             "_setupInstalls",
             "_control",

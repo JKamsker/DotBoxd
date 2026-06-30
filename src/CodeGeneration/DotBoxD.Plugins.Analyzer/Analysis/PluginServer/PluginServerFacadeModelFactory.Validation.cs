@@ -219,6 +219,7 @@ internal static partial class PluginServerFacadeModelFactory
         bool emitsRemoteLocalEventSink)
     {
         var reserved = GeneratedReservedMemberNames();
+        AddGeneratedFieldNames(reserved, controls, emitsRemoteLocalEventSink);
         var generatedMembers = new HashSet<string>(reserved, StringComparer.Ordinal);
         AddGeneratedNestedTypeNames(generatedMembers, controls, emitsRemoteLocalEventSink);
 
