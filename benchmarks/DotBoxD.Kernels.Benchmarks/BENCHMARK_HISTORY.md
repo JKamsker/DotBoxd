@@ -986,3 +986,27 @@ empty object list -> sandbox           3.7 / 64.0      11.1 / 40.0
 ```
 
 This is an allocation-only win on the empty collection branch; non-empty lists keep the existing array fill path.
+
+## Installed server-extension wire empty argument fast path
+
+`InstalledKernel.InvokeServerExtensionRpcAsync` now reuses `Array.Empty<SandboxValue>()` after decoding an
+empty wire argument payload instead of allocating a fresh empty sandbox argument array before invoking the
+server extension.
+
+Command:
+
+```text
+dotnet run -c Release --project benchmarks/DotBoxD.Kernels.Benchmarks -- --probe-installed-rpc-input
+```
+
+Representative local run:
+
+```text
+wire arg iterations = 1,000,000
+legacy zero RPC args         9.6 ms     24,000,040 B checksum=0
+current zero RPC args        4.7 ms             40 B checksum=0
+one RPC arg control         28.9 ms     32,000,040 B checksum=1,000,000
+```
+
+The one-argument control still allocates for the required argument array; the empty wire argument path removes
+the per-call zero-length array allocation.

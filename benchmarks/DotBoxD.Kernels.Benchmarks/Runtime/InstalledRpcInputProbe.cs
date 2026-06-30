@@ -12,6 +12,7 @@ internal static class InstalledRpcInputProbe
     private const int Warmup = 10_000;
     private const int Iterations = 200_000;
     private const int BinderIterations = 1_000_000;
+    private const int WireIterations = 1_000_000;
     private static readonly SourceSpan Span = new(1, 1);
     private static object? s_argumentsSink;
 
@@ -30,14 +31,21 @@ internal static class InstalledRpcInputProbe
         var zeroFunction = BinderFunction("zero", []);
         var oneFunction = BinderFunction("one", [new Parameter("value", SandboxType.I32)]);
         var oneInput = SandboxValue.FromInt32(42);
+        var oneRpcArguments = new[] { KernelRpcValue.Int32(42) };
 
         _ = MeasureLegacyZeroBind(zeroFunction, Warmup);
         _ = MeasureBind(zeroFunction, SandboxValue.Unit, Warmup);
         _ = MeasureBind(oneFunction, oneInput, Warmup);
+        _ = MeasureLegacyZeroRpcArguments(Warmup);
+        _ = MeasureRpcArguments([], zeroFunction.Parameters, Warmup);
+        _ = MeasureRpcArguments(oneRpcArguments, oneFunction.Parameters, Warmup);
 
         var legacyZeroBind = MeasureLegacyZeroBind(zeroFunction, BinderIterations);
         var currentZeroBind = MeasureBind(zeroFunction, SandboxValue.Unit, BinderIterations);
         var oneBind = MeasureBind(oneFunction, oneInput, BinderIterations);
+        var legacyZeroRpc = MeasureLegacyZeroRpcArguments(WireIterations);
+        var currentZeroRpc = MeasureRpcArguments([], zeroFunction.Parameters, WireIterations);
+        var oneRpc = MeasureRpcArguments(oneRpcArguments, oneFunction.Parameters, WireIterations);
 
         Console.WriteLine($"functions = {FunctionCount:N0}");
         Console.WriteLine($"iterations = {Iterations:N0}");
@@ -47,6 +55,10 @@ internal static class InstalledRpcInputProbe
         Write("legacy zero bind", legacyZeroBind);
         Write("current zero bind", currentZeroBind);
         Write("one bind control", oneBind);
+        Console.WriteLine($"wire arg iterations = {WireIterations:N0}");
+        Write("legacy zero RPC args", legacyZeroRpc);
+        Write("current zero RPC args", currentZeroRpc);
+        Write("one RPC arg control", oneRpc);
     }
 
     private static Measurement MeasureLegacy(
@@ -98,6 +110,15 @@ internal static class InstalledRpcInputProbe
             return LegacyEmptyArray();
         });
 
+    private static Measurement MeasureLegacyZeroRpcArguments(int iterations)
+        => MeasureArguments(iterations, static () => LegacyEmptyArray());
+
+    private static Measurement MeasureRpcArguments(
+        IReadOnlyList<KernelRpcValue> rpcArguments,
+        IReadOnlyList<Parameter> parameters,
+        int iterations)
+        => MeasureArguments(iterations, () => ConvertRpcArguments(rpcArguments, parameters));
+
     private static Measurement MeasureArguments(int iterations, Func<IReadOnlyList<SandboxValue>> bind)
     {
         GC.Collect();
@@ -116,6 +137,21 @@ internal static class InstalledRpcInputProbe
 
         sw.Stop();
         return new Measurement(sw.Elapsed.TotalMilliseconds, GC.GetAllocatedBytesForCurrentThread() - before, (int)checksum);
+    }
+
+    private static IReadOnlyList<SandboxValue> ConvertRpcArguments(
+        IReadOnlyList<KernelRpcValue> rpcArguments,
+        IReadOnlyList<Parameter> parameters)
+    {
+        var sandboxArguments = rpcArguments.Count == 0
+            ? Array.Empty<SandboxValue>()
+            : new SandboxValue[rpcArguments.Count];
+        for (var i = 0; i < rpcArguments.Count; i++)
+        {
+            sandboxArguments[i] = KernelRpcValueConverter.ToSandboxValue(rpcArguments[i], parameters[i].Type);
+        }
+
+        return sandboxArguments;
     }
 
     private static SandboxValue BuildInput(

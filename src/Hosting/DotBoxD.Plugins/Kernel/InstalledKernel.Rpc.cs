@@ -69,7 +69,9 @@ public sealed partial class InstalledKernel
                 $"Server extension '{Manifest.PluginId}' expects {callerCount} argument(s) but received {rpcArguments.Length}.");
         }
 
-        var sandboxArguments = new SandboxValue[rpcArguments.Length];
+        var sandboxArguments = rpcArguments.Length == 0
+            ? Array.Empty<SandboxValue>()
+            : new SandboxValue[rpcArguments.Length];
         for (var i = 0; i < rpcArguments.Length; i++)
         {
             sandboxArguments[i] = KernelRpcValueConverter.ToSandboxValue(rpcArguments[i], function.Parameters[i].Type);
