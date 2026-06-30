@@ -7,15 +7,15 @@ namespace DotBoxD.Services.SourceGenerator.Models;
 internal static partial class MethodModelFactory
 {
     /// <summary>
-    /// Formats a non-cancellation-token parameter's explicit default value as the C# literal to emit
-    /// in a generated signature, or <see langword="null"/> when it cannot be safely expressed - in
-    /// which case the caller emits no default rather than a wrong one (preserving prior behaviour).
+    /// Formats a non-cancellation-token parameter's default value as the C# literal to emit in a
+    /// generated signature, or <see langword="null"/> when it cannot be safely expressed - in which
+    /// case the caller emits no default rather than a wrong one (preserving prior behaviour).
     /// </summary>
-    private static string? FormatDefaultValueLiteral(IParameterSymbol param)
+    private static string? FormatDefaultValueLiteral(IParameterSymbol param, bool hasDefaultValue)
     {
         if (!param.HasExplicitDefaultValue)
         {
-            return null;
+            return hasDefaultValue ? "default" : null;
         }
 
         var value = param.ExplicitDefaultValue;
@@ -128,4 +128,24 @@ internal static partial class MethodModelFactory
             ? "\\u" + ((int)c).ToString("x4", CultureInfo.InvariantCulture)
             : c.ToString(),
     };
+
+    private static bool HasDefaultParameterValue(IParameterSymbol param) =>
+        param.HasExplicitDefaultValue ||
+        param.IsOptional ||
+        HasOptionalAttribute(param);
+
+    private static bool HasOptionalAttribute(IParameterSymbol param)
+    {
+        foreach (var attribute in param.GetAttributes())
+        {
+            var attributeClass = attribute.AttributeClass;
+            if (attributeClass?.Name == "OptionalAttribute" &&
+                attributeClass.ContainingNamespace.ToDisplayString() == "System.Runtime.InteropServices")
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

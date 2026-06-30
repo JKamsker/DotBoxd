@@ -171,8 +171,9 @@ internal static partial class MethodModelFactory
                 parameterLocation);
 
             // A cancellation-token default is always emitted as "= default"; capture the literal text of
-            // any other parameter's explicit default so the generated proxy/async-sibling preserve it.
-            var defaultValueLiteral = isCancellationToken ? string.Empty : FormatDefaultValueLiteral(param) ?? string.Empty;
+            // any other optional/defaulted parameter so the generated proxy/async-sibling preserve it.
+            var hasDefaultValue = HasDefaultParameterValue(param);
+            var defaultValueLiteral = isCancellationToken ? string.Empty : FormatDefaultValueLiteral(param, hasDefaultValue) ?? string.Empty;
 
             parameters.Add(new ParameterModel(
                 IdentifierHelpers.EscapeIdentifier(param.Name),
@@ -181,7 +182,7 @@ internal static partial class MethodModelFactory
                 ParameterRefKindKeyword(param.RefKind),
                 param.IsParams,
                 isCancellationToken,
-                param.HasExplicitDefaultValue,
+                hasDefaultValue,
                 defaultValueLiteral,
                 streamKind,
                 streamItemType?.ToDisplayString(s_qualifiedFormat),

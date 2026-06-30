@@ -124,9 +124,10 @@ internal sealed record MethodModel(
 /// <see cref="CallerInfoAttributePrefix"/> preserves compiler-recognized caller-info attributes as
 /// generated-source text, including a trailing space when non-empty.
 /// <see cref="DefaultValueLiteral"/> holds the C# literal text of a non-cancellation-token
-/// parameter's explicit default value (e.g. <c>"\"x\""</c>, <c>"5"</c>, <c>"null"</c>), so the
-/// generated proxy and async-sibling signatures preserve it; empty when there is no default or it
-/// cannot be expressed as a literal. Cancellation-token defaults are emitted as <c>= default</c>.
+/// parameter's default value (e.g. <c>"\"x\""</c>, <c>"5"</c>, <c>"null"</c>, <c>"default"</c>),
+/// so the generated proxy and async-sibling signatures preserve it; empty when there is no default
+/// or it cannot be expressed as a literal. Cancellation-token defaults are emitted as
+/// <c>= default</c>.
 /// </summary>
 internal sealed record ParameterModel(
     string Name,
