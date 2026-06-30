@@ -52,6 +52,7 @@ public sealed class PluginAnalyzerKernelMethodTemporalDefaultRegressionTests
     {
         var result = PluginAnalyzerGeneratedPackageFactory.RunGenerator("""
             using System;
+            using System.Runtime.CompilerServices;
             using System.Runtime.InteropServices;
             using DotBoxD.Kernels;
             using DotBoxD.Abstractions;

@@ -108,7 +108,7 @@ internal static partial class DotBoxDKernelMethodInliner
     {
         if (argument.Expression is not { } expression)
         {
-            return LowerDefaultArgument(argument.Parameter, argument.DefaultValue);
+            return KernelMethodDefaultArgumentLowerer.Lower(argument.Parameter, argument.DefaultValue);
         }
 
         return DotBoxDNullableScalarExpressionLowerer.TryLower(

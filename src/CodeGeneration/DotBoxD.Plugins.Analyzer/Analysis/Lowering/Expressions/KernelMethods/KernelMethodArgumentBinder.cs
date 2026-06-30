@@ -60,12 +60,12 @@ internal static class KernelMethodArgumentBinder
                 continue;
             }
 
-            if (!parameters[i].HasExplicitDefaultValue)
+            if (!TryGetDefaultValue(parameters[i], out var defaultValue))
             {
                 throw new NotSupportedException($"{description} call must pass parameter '{parameters[i].Name}'.");
             }
 
-            bound[i] = new BoundKernelMethodArgument(parameters[i], null, parameters[i].ExplicitDefaultValue, UsesDefault: true);
+            bound[i] = new BoundKernelMethodArgument(parameters[i], null, defaultValue, UsesDefault: true);
         }
 
         return new BoundKernelMethodCall(definition, bound, evaluationOrder);
@@ -116,6 +116,44 @@ internal static class KernelMethodArgumentBinder
         }
 
         throw new NotSupportedException($"{description} has no parameter '{name}'.");
+    }
+
+    private static bool TryGetDefaultValue(IParameterSymbol parameter, out object? value)
+    {
+        if (parameter.HasExplicitDefaultValue)
+        {
+            value = parameter.ExplicitDefaultValue;
+            return true;
+        }
+
+        if (parameter.IsOptional && TryGetDateTimeConstantDefault(parameter, out var dateTime))
+        {
+            value = dateTime;
+            return true;
+        }
+
+        value = null;
+        return false;
+    }
+
+    private static bool TryGetDateTimeConstantDefault(IParameterSymbol parameter, out DateTime value)
+    {
+        if (parameter.Type.SpecialType == SpecialType.System_DateTime)
+        {
+            foreach (var attribute in parameter.GetAttributes())
+            {
+                if (attribute.AttributeClass?.Name == "DateTimeConstantAttribute" &&
+                    attribute.ConstructorArguments.Length == 1 &&
+                    attribute.ConstructorArguments[0].Value is long ticks)
+                {
+                    value = new DateTime(ticks);
+                    return true;
+                }
+            }
+        }
+
+        value = default;
+        return false;
     }
 }
 

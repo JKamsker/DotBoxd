@@ -163,7 +163,9 @@ internal static partial class DotBoxDPatternExpressionLowerer
             value,
             constant,
             negate: false,
-            value.Allocates || constant.Allocates);
+            value.Allocates || constant.Allocates,
+            leftType: null,
+            rightType: null);
     }
 
     private static DotBoxDExpressionModel LowerRelational(
