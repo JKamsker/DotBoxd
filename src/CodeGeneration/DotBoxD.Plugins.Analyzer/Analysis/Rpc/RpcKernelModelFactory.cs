@@ -66,6 +66,9 @@ internal static partial class RpcKernelModelFactory
                     method,
                     context.SemanticModel.Compilation);
                 clientExtensions = RpcKernelClientExtensionModelFactory.Resolve(type, method);
+                RpcKernelClientExtensionModelFactory.ValidateLanguageVersion(
+                    clientExtensions,
+                    context.SemanticModel.SyntaxTree.Options);
                 ValidateGeneratedClientTypeCollisions(type, clientExtensions);
             }
             else if (graft is not null)
