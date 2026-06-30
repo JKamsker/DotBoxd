@@ -36,6 +36,26 @@ internal static class InvokeAsyncArgumentWriterSource
             return $"global::DotBoxD.Plugins.KernelRpcValue.Int64({expression}.Ticks)";
         }
 
+        if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
+        {
+            return $"global::DotBoxD.Plugins.KernelRpcValue.Int32({expression}.DayNumber)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeOnlyWireType(type))
+        {
+            return $"global::DotBoxD.Plugins.KernelRpcValue.Int64({expression}.Ticks)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsIndexWireType(type))
+        {
+            return WriteIndexExpression(expression);
+        }
+
+        if (DotBoxDRpcTypeMapper.IsRangeWireType(type))
+        {
+            return WriteRangeExpression(expression);
+        }
+
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return DotBoxDRpcTypeMapper.EnumUsesI64(enumType)
@@ -106,6 +126,16 @@ internal static class InvokeAsyncArgumentWriterSource
         => "global::DotBoxD.Plugins.KernelRpcValue.Record(new global::DotBoxD.Plugins.KernelRpcValue[] { " +
            "global::DotBoxD.Plugins.KernelRpcValue.Int64(" + value + ".UtcTicks), " +
            "global::DotBoxD.Plugins.KernelRpcValue.Int64(" + value + ".Offset.Ticks) })";
+
+    private static string WriteIndexExpression(string expression)
+        => "global::DotBoxD.Plugins.KernelRpcValue.Record(new global::DotBoxD.Plugins.KernelRpcValue[] { " +
+           "global::DotBoxD.Plugins.KernelRpcValue.Int32(" + expression + ".Value), " +
+           "global::DotBoxD.Plugins.KernelRpcValue.Bool(" + expression + ".IsFromEnd) })";
+
+    private static string WriteRangeExpression(string expression)
+        => "global::DotBoxD.Plugins.KernelRpcValue.Record(new global::DotBoxD.Plugins.KernelRpcValue[] { " +
+           WriteIndexExpression(expression + ".Start") + ", " +
+           WriteIndexExpression(expression + ".End") + " })";
 
     private static bool IsDateTimeOffset(ITypeSymbol type)
         => type is INamedTypeSymbol { Name: "DateTimeOffset" };

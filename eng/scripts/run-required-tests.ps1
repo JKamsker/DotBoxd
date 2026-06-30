@@ -82,6 +82,7 @@ $defaultMinimums = @{
     InvokeAsyncDtoConstructorSelectionRegressionTests = 2
     InvokeAsyncScalarDecodeRuntimeTests = 4
     InvokeAsyncDateTimeRuntimeTests = 3
+    InvokeAsyncFrameworkStructRuntimeTests = 1
     InvokeAsyncCaptureBagRuntimeTests = 2
     InvokeAsyncMapReturnRuntimeTests = 1
     InvokeAsyncObjectInitializerOrderTests = 1

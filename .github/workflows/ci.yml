@@ -357,6 +357,7 @@ jobs:
               "InvokeAsyncDtoConstructorSelectionRegressionTests",
               "InvokeAsyncScalarDecodeRuntimeTests",
               "InvokeAsyncDateTimeRuntimeTests",
+              "InvokeAsyncFrameworkStructRuntimeTests",
               "InvokeAsyncCaptureBagRuntimeTests",
               "InvokeAsyncMapReturnRuntimeTests",
               "InvokeAsyncObjectInitializerOrderTests",
