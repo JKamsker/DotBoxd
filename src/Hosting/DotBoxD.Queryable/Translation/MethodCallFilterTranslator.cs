@@ -173,17 +173,18 @@ internal static class MethodCallFilterTranslator
     private static bool HasNonOrdinalComparer(object collection)
     {
         // Behavioral probes rather than identity checks against public singletons: an ordinal/default
-        // comparer treats these pairs as distinct, while case-insensitive comparers consider them equal.
+        // comparer treats these pairs as distinct. Case-insensitive comparers match "a"/"A"; culture-sensitive
+        // case-sensitive comparers can match "a\0"/"a" because some cultures ignore embedded nulls.
         // SortedSet<T> exposes ordering comparers, so compare equality must be checked there too.
         var comparer = collection.GetType().GetProperty("Comparer")?.GetValue(collection);
         if (comparer is IEqualityComparer<string> equalityComparer)
         {
-            return equalityComparer.Equals("a", "A");
+            return equalityComparer.Equals("a", "A") || equalityComparer.Equals("a\0", "a");
         }
 
         if (comparer is IComparer<string> orderingComparer)
         {
-            return orderingComparer.Compare("a", "A") == 0;
+            return orderingComparer.Compare("a", "A") == 0 || orderingComparer.Compare("a\0", "a") == 0;
         }
 
         return false;

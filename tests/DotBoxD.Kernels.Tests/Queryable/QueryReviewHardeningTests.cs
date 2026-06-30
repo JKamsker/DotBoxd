@@ -174,6 +174,19 @@ public sealed class QueryReviewHardeningTests
     }
 
     [Fact]
+    public void Contains_over_a_case_sensitive_culture_comparer_is_rejected()
+    {
+        var watched = new HashSet<string>(StringComparer.InvariantCulture) { "a\0" };
+
+        Assert.True(watched.Comparer.Equals("a\0", "a"));
+
+        var ex = Assert.Throws<QueryTranslationException>(() =>
+            ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(e => watched.Contains(e.AttackerId)));
+
+        Assert.Contains("culture-sensitive", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Contains_over_a_sorted_set_with_non_ordinal_comparer_is_rejected()
     {
         var watched = new SortedSet<string>(
