@@ -115,6 +115,31 @@ public sealed partial class PluginServerMemberShapeRegressionTests
     }
 
     [Fact]
+    public void Generated_plugin_server_preserves_nullable_enum_default_parameters()
+    {
+        var (generated, outputCompilation) = PluginServerGenerationTestDriver.Run(ServerSource("""
+                    ValueTask<int> ReadAsync(Mode? mode = Mode.Slow, CancellationToken ct = default);
+            """, """
+
+                public enum Mode
+                {
+                    Fast = 1,
+                    Slow = 2
+                }
+            """));
+
+        PluginServerGenerationTestDriver.AssertNoCompilationErrors(outputCompilation);
+        Assert.Contains(
+            "ReadAsync(global::Regression.Game.Mode? @mode = ",
+            generated,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "ReadAsync(global::Regression.Game.Mode? @mode = 2,",
+            generated,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Generated_plugin_server_reports_unsupported_event_members()
     {
         var diagnostics = PluginServerGenerationTestDriver.Diagnostics(ServerSource("""
