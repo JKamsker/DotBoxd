@@ -115,6 +115,23 @@ public sealed partial class PluginServerMemberShapeRegressionTests
     }
 
     [Fact]
+    public void Generated_plugin_server_preserves_metadata_style_DateTime_default_parameters()
+    {
+        var (generated, outputCompilation) = PluginServerGenerationTestDriver.Run(ServerSource("""
+                    ValueTask<int> ReadAsync(
+                        [global::System.Runtime.InteropServices.Optional,
+                         global::System.Runtime.CompilerServices.DateTimeConstant(0L)]
+                        global::System.DateTime when);
+            """));
+
+        PluginServerGenerationTestDriver.AssertNoCompilationErrors(outputCompilation);
+        Assert.Contains(
+            "ReadAsync(global::System.DateTime @when = default)",
+            generated,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Generated_plugin_server_reports_unsupported_event_members()
     {
         var diagnostics = PluginServerGenerationTestDriver.Diagnostics(ServerSource("""
