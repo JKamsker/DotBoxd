@@ -30,6 +30,7 @@ internal static class PluginServerFacadeSurfaceEmitter
         foreach (var control in model.Controls)
         {
             PluginServerXmlDocumentation.Append(builder, "    ", control.Documentation);
+            PluginServerFlowAttributeSource.Append(builder, "    ", control.Attributes);
             builder.Append("    public ").Append(control.Type).Append(' ')
                 .Append(PluginServerIdentifier.Escape(control.Name))
                 .Append(" => RequireStarted(").Append(control.FieldName).AppendLine(");");

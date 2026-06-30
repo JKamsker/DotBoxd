@@ -37,6 +37,7 @@ internal sealed record PluginServerControlProperty(
     string Name,
     string FieldName,
     string Type,
+    EquatableArray<string> Attributes,
     string Documentation,
     string WrapperName,
     string AccumulatorInterfaceName,
@@ -48,6 +49,7 @@ internal sealed record PluginServerForwardedMethod(
     string Name,
     string ReceiverType,
     string ReturnType,
+    EquatableArray<string> ReturnAttributes,
     string Documentation,
     string? ReturnWrapperName,
     PluginServerReturnWrapperKind ReturnWrapperKind,
@@ -56,6 +58,7 @@ internal sealed record PluginServerForwardedMethod(
 internal sealed record PluginServerForwardedProperty(
     string Name,
     string Type,
+    EquatableArray<string> Attributes,
     string Documentation,
     string? ReturnWrapperName = null);
 

@@ -76,6 +76,7 @@ internal static class PluginServerWrapperEmitter
     private static void AppendProperty(StringBuilder builder, PluginServerForwardedProperty property, string indent)
     {
         PluginServerXmlDocumentation.Append(builder, indent, property.Documentation);
+        PluginServerFlowAttributeSource.Append(builder, indent, property.Attributes);
         builder.Append(indent).Append("public ").Append(property.Type).Append(' ')
             .Append(PluginServerIdentifier.Escape(property.Name)).Append(" => ");
         if (property.ReturnWrapperName is null)
@@ -91,6 +92,7 @@ internal static class PluginServerWrapperEmitter
     private static void AppendMethod(StringBuilder builder, PluginServerForwardedMethod method, string indent)
     {
         PluginServerXmlDocumentation.Append(builder, indent, method.Documentation);
+        PluginServerFlowAttributeSource.Append(builder, indent, method.ReturnAttributes);
         builder.Append(indent).Append("public ");
         if (method.ReturnWrapperKind is PluginServerReturnWrapperKind.Task or PluginServerReturnWrapperKind.ValueTask)
         {

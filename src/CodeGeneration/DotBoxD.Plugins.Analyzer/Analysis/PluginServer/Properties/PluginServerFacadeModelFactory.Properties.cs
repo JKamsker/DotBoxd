@@ -33,6 +33,7 @@ internal static partial class PluginServerFacadeModelFactory
             var forwarded = new PluginServerForwardedProperty(
                 property.Name,
                 TypeName(property.Type),
+                PluginServerFlowAttributeSource.PropertyAttributes(property),
                 PluginServerXmlDocumentation.FromSymbol(
                     property,
                     "Forwards the " + property.Name + " property from the remote domain service.",
@@ -44,6 +45,12 @@ internal static partial class PluginServerFacadeModelFactory
                 {
                     throw new NotSupportedException(
                         $"Generated plugin server member '{property.ToDisplayString()}' has an inherited property collision with a different type.");
+                }
+
+                if (!existing.Attributes.Equals(forwarded.Attributes))
+                {
+                    throw new NotSupportedException(
+                        $"Generated plugin server member '{property.ToDisplayString()}' has an inherited property collision with different flow attributes.");
                 }
 
                 continue;

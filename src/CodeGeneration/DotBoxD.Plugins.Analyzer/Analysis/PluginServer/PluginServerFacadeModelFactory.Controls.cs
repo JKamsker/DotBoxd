@@ -47,6 +47,7 @@ internal static partial class PluginServerFacadeModelFactory
                 property.Name,
                 UniqueFieldName(property.Name, fieldNames),
                 propertyTypeName,
+                PluginServerFlowAttributeSource.PropertyAttributes(property),
                 PluginServerXmlDocumentation.FromSymbol(
                     property,
                     "Accesses the server's " + property.Name + " domain control after StartAsync.",

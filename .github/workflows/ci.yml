@@ -380,6 +380,7 @@ jobs:
               "PluginServerContextContractTests",
               "PluginServerTargetShapeRegressionTests",
               "PluginServerSurfaceCollisionRegressionTests",
+              "PluginServerReturnFlowAttributeSurpriseTests",
               "ServerExtensionProxyAsyncTests",
               "ServerExtensionProxyCancellationTests",
               "ServerExtensionProxyNullableContractTests",

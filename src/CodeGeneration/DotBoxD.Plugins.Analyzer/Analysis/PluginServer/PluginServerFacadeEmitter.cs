@@ -173,6 +173,7 @@ internal static partial class PluginServerFacadeEmitter
         foreach (var property in model.WorldProperties)
         {
             PluginServerXmlDocumentation.Append(builder, "    ", property.Documentation);
+            PluginServerFlowAttributeSource.Append(builder, "    ", property.Attributes);
             builder.Append("    public ").Append(property.Type).Append(' ')
                 .Append(PluginServerIdentifier.Escape(property.Name))
                 .Append(" => RequireWorld().")
@@ -182,6 +183,7 @@ internal static partial class PluginServerFacadeEmitter
         foreach (var method in model.WorldMethods)
         {
             PluginServerXmlDocumentation.Append(builder, "    ", method.Documentation);
+            PluginServerFlowAttributeSource.Append(builder, "    ", method.ReturnAttributes);
             builder.Append("    public ").Append(method.ReturnType).Append(' ')
                 .Append(PluginServerIdentifier.Escape(method.Name))
                 .Append('(').Append(ParameterList(method)).Append(") => ((")
