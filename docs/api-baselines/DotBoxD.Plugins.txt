@@ -630,6 +630,7 @@ public TimeSpan RemoteHandlerTimeout { get; init; } = Timeout.InfiniteTimeSpan
 public TResult? RemoteTimeoutResult { get; init; }
 public TService ServerExtension<TService>() where TService : class
 public TSettings Value { get; }
+public TypedInstalledKernel<TSettings> As<TSettings>() where TSettings : class => new(this)
 public TypedInstalledKernel<TState> Get<TState>(string pluginId) where TState : class
 public ValueTask DisposeAsync()
 public ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)

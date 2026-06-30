@@ -64,6 +64,8 @@ public sealed partial class InstalledKernel
     public IReadOnlyList<PluginExecutionObservation> ExecutionObservations => _executionObserver.Snapshot();
     public bool IsRevoked => Volatile.Read(ref _revoked) != 0;
 
+    public TypedInstalledKernel<TSettings> As<TSettings>() where TSettings : class => new(this);
+
     /// <summary>
     /// Opaque owner token of the session that installed this kernel, or <c>null</c> for kernels
     /// installed directly on the server (no session). Used by <see cref="KernelRegistry"/> to reject

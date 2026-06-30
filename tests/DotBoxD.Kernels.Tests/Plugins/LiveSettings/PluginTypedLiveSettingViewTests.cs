@@ -40,6 +40,24 @@ public sealed class PluginTypedLiveSettingViewTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Installed_kernel_exposes_typed_live_setting_view_without_registry_lookup()
+    {
+        var messages = new InMemoryPluginMessageSink();
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
+        var installed = await server.InstallAsync(FireDamagePluginPackage.Create());
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
+
+        var typed = installed.As<FireDamageKernel>();
+
+        typed.Value.MinDamage = 250;
+        await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
+
+        Assert.Empty(messages.Messages);
+        Assert.Same(installed, typed.Kernel);
+        Assert.Equal(250, installed.Value.Get<int>("MinDamage"));
+    }
+
     private sealed class AlternateFireDamageSettings
     {
         [LiveSetting]

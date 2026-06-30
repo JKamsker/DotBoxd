@@ -29,7 +29,7 @@ public sealed class KernelRegistry : IEnumerable<InstalledKernel>
     }
 
     public TypedInstalledKernel<TState> Get<TState>(string pluginId) where TState : class
-        => new(Get(pluginId));
+        => Get(pluginId).As<TState>();
 
     /// <summary>
     /// Probes installation state without throwing, letting an admin/host UI discover whether a
