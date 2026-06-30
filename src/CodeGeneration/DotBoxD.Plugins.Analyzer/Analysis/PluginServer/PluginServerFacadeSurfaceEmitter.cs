@@ -11,37 +11,35 @@ internal static class PluginServerFacadeSurfaceEmitter
             builder,
             "    ",
             "Returns this generated server as its complete service facade.");
-        builder.Append("    public ").Append(model.ServerInterfaceName).AppendLine(" Services => this;");
+        builder.Append("    public ").Append(model.ServerInterfaceName).AppendLine(" Services => RequireFacade();");
         PluginServerXmlDocumentation.AppendSummary(
             builder,
             "    ",
             "Registry for server extension clients installed through setup, Extend, or EnsureAnonymousKernelAsync.");
-        builder.AppendLine("    public global::DotBoxD.Abstractions.IServerExtensionClientRegistry ServerExtensions => this;");
+        builder.AppendLine("    public global::DotBoxD.Abstractions.IServerExtensionClientRegistry ServerExtensions => RequireFacade();");
         PluginServerXmlDocumentation.AppendSummary(
             builder,
             "    ",
             "Remote hook registration surface. Hooks plug plugin logic into server decisions and are awaited by the server when matching events are published.");
-        builder.Append("    public ").Append(model.HookRegistryName).AppendLine(" Hooks => _started && _hooks is not null ? _hooks : throw new global::System.InvalidOperationException(NotStartedMessage);");
+        builder.Append("    public ").Append(model.HookRegistryName).AppendLine(" Hooks => RequireStarted(_hooks);");
         PluginServerXmlDocumentation.AppendSummary(
             builder,
             "    ",
             "Remote fire-and-forget subscription registration surface. Subscriptions are notifications: the server calls matching handlers when an event is published but does not wait for them.");
-        builder.Append("    public ").Append(model.SubscriptionRegistryName).AppendLine(" Subscriptions => _started && _subscriptions is not null ? _subscriptions : throw new global::System.InvalidOperationException(NotStartedMessage);");
+        builder.Append("    public ").Append(model.SubscriptionRegistryName).AppendLine(" Subscriptions => RequireStarted(_subscriptions);");
         foreach (var control in model.Controls)
         {
             PluginServerXmlDocumentation.Append(builder, "    ", control.Documentation);
             builder.Append("    public ").Append(control.Type).Append(' ')
                 .Append(PluginServerIdentifier.Escape(control.Name))
-                .Append(" => _started && ").Append(control.FieldName)
-                .Append(" is not null ? ").Append(control.FieldName)
-                .AppendLine(" : throw new global::System.InvalidOperationException(NotStartedMessage);");
+                .Append(" => RequireStarted(").Append(control.FieldName).AppendLine(");");
         }
 
         PluginServerXmlDocumentation.AppendSummary(
             builder,
             "    ",
             "Wire client used by generated server extension clients to invoke installed server-side extension kernels.");
-        builder.AppendLine("    public global::DotBoxD.Abstractions.IServerExtensionWireClient WireClient => this;");
+        builder.AppendLine("    public global::DotBoxD.Abstractions.IServerExtensionWireClient WireClient => RequireFacade();");
     }
 
     public static void AppendServerInterface(StringBuilder builder, PluginServerFacadeModel model)
@@ -111,7 +109,10 @@ internal static class PluginServerFacadeSurfaceEmitter
             "    ",
             "Creates a live-settings handle for an installed kernel so the plugin can batch strongly typed setting updates.");
         builder.AppendLine("    public global::DotBoxD.Abstractions.ILiveSettingsHandle<TKernel> Get<TKernel>() where TKernel : class, new()");
-        builder.AppendLine("        => new LiveSettingsHandle<TKernel>(this, global::DotBoxD.Plugins.Kernel.KernelPackageRegistry.Resolve<TKernel>().Manifest.PluginId);");
+        builder.AppendLine("    {");
+        builder.AppendLine("        ThrowIfDisposed();");
+        builder.AppendLine("        return new LiveSettingsHandle<TKernel>(this, global::DotBoxD.Plugins.Kernel.KernelPackageRegistry.Resolve<TKernel>().Manifest.PluginId);");
+        builder.AppendLine("    }");
         PluginServerXmlDocumentation.AppendSummary(
             builder,
             "    ",
