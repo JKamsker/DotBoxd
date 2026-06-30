@@ -423,6 +423,7 @@ jobs:
               "Fix_API_0027_Tests",
               "PinnedHttpTransportTests",
               "ExpressionQueryTranslatorTests",
+              "QuerySatisfiabilityTests",
               "QueryComparerHardeningTests",
               "QueryReviewHardeningTests",
               "DifferentialFuzzTests"
