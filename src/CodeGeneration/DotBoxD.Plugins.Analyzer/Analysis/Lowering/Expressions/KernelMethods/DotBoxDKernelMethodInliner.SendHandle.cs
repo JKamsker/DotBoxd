@@ -22,6 +22,7 @@ internal static partial class DotBoxDKernelMethodInliner
         var call = KernelMethodArgumentBinder.Bind(
             invocation,
             resolvedMethod,
+            context.SemanticModel.Compilation,
             $"[KernelMethod] send helper '{KernelMethodArgumentBinder.Definition(resolvedMethod).Name}'");
         var method = call.Method;
         if (!method.IsStatic || !method.ReturnsVoid)
@@ -108,7 +109,7 @@ internal static partial class DotBoxDKernelMethodInliner
     {
         if (argument.Expression is not { } expression)
         {
-            return LowerDefaultArgument(argument.Parameter, argument.DefaultValue);
+            return KernelMethodDefaultArgumentLowerer.Lower(argument.Parameter, argument.DefaultValue);
         }
 
         return DotBoxDNullableScalarExpressionLowerer.TryLower(

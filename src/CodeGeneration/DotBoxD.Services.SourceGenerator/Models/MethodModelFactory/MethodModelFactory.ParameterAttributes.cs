@@ -10,12 +10,13 @@ internal static partial class MethodModelFactory
     private static string BuildCallerInfoAttributePrefix(
         IParameterSymbol parameter,
         CancellationToken ct,
-        bool preserveOptionalAttributeDefault)
+        bool preserveOptionalAttributeDefault,
+        bool preserveMetadataDefaultAttributes)
     {
         var attributes = new StringBuilder();
-        var hasDateTimeConstant = HasDateTimeConstantAttribute(parameter);
-        var hasDecimalConstant = HasDecimalConstantAttribute(parameter);
-        var hasDefaultParameterValue = HasDefaultParameterValueAttribute(parameter);
+        var hasDateTimeConstant = preserveMetadataDefaultAttributes && HasDateTimeConstantAttribute(parameter);
+        var hasDecimalConstant = preserveMetadataDefaultAttributes && HasDecimalConstantAttribute(parameter);
+        var hasDefaultParameterValue = preserveMetadataDefaultAttributes && HasDefaultParameterValueAttribute(parameter);
         var preserveOptionalAttribute =
             preserveOptionalAttributeDefault ||
             hasDateTimeConstant ||
@@ -49,15 +50,27 @@ internal static partial class MethodModelFactory
                     break;
 
                 case "System.Runtime.CompilerServices.DateTimeConstantAttribute":
-                    AppendDateTimeConstantAttribute(attributes, parameter);
+                    if (preserveMetadataDefaultAttributes)
+                    {
+                        AppendDateTimeConstantAttribute(attributes, parameter);
+                    }
+
                     break;
 
                 case "System.Runtime.CompilerServices.DecimalConstantAttribute":
-                    AppendDecimalConstantAttribute(attributes, parameter);
+                    if (preserveMetadataDefaultAttributes)
+                    {
+                        AppendDecimalConstantAttribute(attributes, parameter);
+                    }
+
                     break;
 
                 case "System.Runtime.InteropServices.DefaultParameterValueAttribute":
-                    AppendDefaultParameterValueAttribute(attributes, parameter);
+                    if (preserveMetadataDefaultAttributes)
+                    {
+                        AppendDefaultParameterValueAttribute(attributes, parameter);
+                    }
+
                     break;
 
                 case "System.Diagnostics.CodeAnalysis.AllowNullAttribute":

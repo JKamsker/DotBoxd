@@ -68,7 +68,7 @@ public static class QueryFilterCompiler
             CompareMethod,
             Read(filter, target, reader),
             Expression.Constant(filter.Operator),
-            Expression.Constant(filter.Value ?? QueryValue.Null),
+            Expression.Constant(QueryFilterInvariants.CompareValue(filter)),
             Expression.Constant(filter.IgnoreCase));
 
     private static Expression InExpression(QueryFilter filter, ParameterExpression target, Expression reader)

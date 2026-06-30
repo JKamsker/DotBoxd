@@ -18,6 +18,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         var call = KernelMethodArgumentBinder.Bind(
             invocation,
             resolvedMethod,
+            _model.Compilation,
             $"[KernelMethod] '{KernelMethodArgumentBinder.Definition(resolvedMethod).Name}'");
         var method = call.Method;
         if (!method.IsStatic && !IsServerContextReceiver(invocation, method))

@@ -101,6 +101,18 @@ internal static class PluginAnalyzerGeneratedPackageFactory
         return driver.GetRunResult();
     }
 
+    public static GeneratorDriverRunResult RunGeneratorWithReferences(
+        string source,
+        params MetadataReference[] additionalReferences)
+    {
+        var compilation = CreateCompilation(source, additionalReferences);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            [new PluginPackageGenerator().AsSourceGenerator()],
+            parseOptions: ParseOptions);
+        driver = driver.RunGenerators(compilation);
+        return driver.GetRunResult();
+    }
+
     public static IReadOnlyList<Diagnostic> Diagnostics(string source, params Type[] additionalReferenceTypes)
         => Diagnostics(source, ParseOptions.LanguageVersion, additionalReferenceTypes);
 

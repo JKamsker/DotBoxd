@@ -194,7 +194,11 @@ internal static partial class MethodModelFactory
                 streamKind,
                 streamItemType?.ToDisplayString(s_qualifiedFormat),
                 MetadataType: TypeOfExpressionFormatter.Format(param.Type, ct),
-                CallerInfoAttributePrefix: BuildCallerInfoAttributePrefix(param, ct, preserveOptionalAttributeDefault),
+                CallerInfoAttributePrefix: BuildCallerInfoAttributePrefix(
+                    param,
+                    ct,
+                    preserveOptionalAttributeDefault,
+                    preserveMetadataDefaultAttributes: defaultValueLiteral.Length == 0),
                 ScopeKeyword: ParameterScopeKeyword(param, ct)));
         }
 

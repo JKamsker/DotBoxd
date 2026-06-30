@@ -67,7 +67,7 @@ internal static class QueryTextWriter
         }
 
         builder.Append(op).Append(' ');
-        writeValue(filter.Value ?? QueryValue.Null);
+        writeValue(QueryFilterInvariants.CompareValue(filter));
     }
 
     private static void WriteIn(QueryFilter filter, StringBuilder builder)

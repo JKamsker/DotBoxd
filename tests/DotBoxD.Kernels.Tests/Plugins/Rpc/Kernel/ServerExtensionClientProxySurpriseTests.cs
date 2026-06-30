@@ -43,6 +43,44 @@ public sealed class ServerExtensionClientProxySurpriseTests
     }
 
     [Fact]
+    public void Service_backed_generated_client_preserves_metadata_style_DateTime_defaults()
+    {
+        var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly("""
+            using System;
+            using System.Runtime.CompilerServices;
+            using System.Runtime.InteropServices;
+            using System.Threading.Tasks;
+            using DotBoxD.Kernels;
+            using DotBoxD.Kernels.Sandbox;
+            using DotBoxD.Plugins;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public interface IClockService
+            {
+                ValueTask<DateTime> EchoAsync([Optional, DateTimeConstant(0L)] DateTime when);
+            }
+
+            [ServerExtension("clock", typeof(IClockService))]
+            public sealed partial class ClockKernel
+            {
+                public DateTime Echo(DateTime when, HookContext ctx) => when;
+            }
+            """);
+
+        var client = assembly.GetType("Sample.ClockKernelServerExtensionClient", throwOnError: true)!;
+        var method = client.GetMethod(
+            "EchoAsync",
+            BindingFlags.Public | BindingFlags.Instance,
+            [typeof(DateTime)])!;
+        var when = Assert.Single(method.GetParameters());
+
+        Assert.True(when.HasDefaultValue);
+        Assert.Equal(default(DateTime), Assert.IsType<DateTime>(when.DefaultValue));
+    }
+
+    [Fact]
     public void Service_backed_generated_client_preserves_non_finite_double_defaults()
     {
         var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly("""

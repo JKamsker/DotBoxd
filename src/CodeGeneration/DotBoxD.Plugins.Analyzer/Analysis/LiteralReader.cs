@@ -31,6 +31,11 @@ internal static class LiteralReader
                 : "unchecked((" + TypeName(type) + ")" + EnumSignedLiteral((INamedTypeSymbol)type, value) + ")";
         }
 
+        if (NullableEnumUnderlying(type) is { } nullableEnum)
+        {
+            return ObjectDefaultLiteral(nullableEnum, value);
+        }
+
         if (type.SpecialType == SpecialType.System_Single && value is float number)
         {
             if (float.IsNaN(number))
@@ -69,6 +74,15 @@ internal static class LiteralReader
             {
                 return "global::System.Double.NegativeInfinity";
             }
+        }
+
+        if (type.SpecialType == SpecialType.System_DateTime &&
+            value is DateTime dateTime &&
+            dateTime == default)
+        {
+            // Metadata optional DateTime defaults arrive boxed, not as a source literal. Re-emit the
+            // equivalent source default instead of an invalid culture-formatted DateTime string.
+            return "default";
         }
 
         return ObjectLiteral(value);
@@ -129,6 +143,19 @@ internal static class LiteralReader
 
     private static string TypeName(ITypeSymbol type)
         => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+    private static ITypeSymbol? NullableEnumUnderlying(ITypeSymbol type)
+    {
+        if (type is not INamedTypeSymbol named ||
+            named.ConstructedFrom.SpecialType != SpecialType.System_Nullable_T ||
+            named.TypeArguments.Length != 1 ||
+            named.TypeArguments[0].TypeKind != TypeKind.Enum)
+        {
+            return null;
+        }
+
+        return named.TypeArguments[0];
+    }
 
     private static string EnumSignedLiteral(INamedTypeSymbol enumType, object value)
     {

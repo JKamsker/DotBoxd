@@ -1,3 +1,4 @@
+using DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -18,6 +19,7 @@ internal static partial class InvokeAsyncReceiverResolver
         worldType = null!;
 
         INamedTypeSymbol serverFacadeType;
+        receiver = ResolveServicesReceiverExpression(model, receiver, cancellationToken);
         if (receiver is not MemberAccessExpressionSyntax
             {
                 Name.Identifier.ValueText: "Services",
@@ -56,5 +58,24 @@ internal static partial class InvokeAsyncReceiverResolver
 
         return symbolInfo.Symbol is IPropertySymbol { Type: INamedTypeSymbol propertyType } &&
                string.Equals(TypeName(propertyType), serverAccessType, StringComparison.Ordinal);
+    }
+
+    private static ExpressionSyntax ResolveServicesReceiverExpression(
+        SemanticModel model,
+        ExpressionSyntax receiver,
+        CancellationToken cancellationToken)
+    {
+        receiver = HookChainAliasResolver.UnwrapTransparentExpression(receiver);
+        for (var depth = 0; depth < 8; depth++)
+        {
+            if (HookChainAliasResolver.Initializer(receiver, model, cancellationToken) is not { } initializer)
+            {
+                return receiver;
+            }
+
+            receiver = HookChainAliasResolver.UnwrapTransparentExpression(initializer);
+        }
+
+        return receiver;
     }
 }

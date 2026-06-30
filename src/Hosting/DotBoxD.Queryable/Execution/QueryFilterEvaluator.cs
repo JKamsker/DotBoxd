@@ -59,7 +59,10 @@ public static class QueryFilterEvaluator
                 return !EvaluateNode(filter.Children[0], target, reader, depth + 1, ref budget);
             case QueryFilterKind.Compare:
                 return QueryValueComparer.Compare(
-                    reader.Read(target, filter.Field), filter.Operator, filter.Value ?? QueryValue.Null, filter.IgnoreCase);
+                    reader.Read(target, filter.Field),
+                    filter.Operator,
+                    QueryFilterInvariants.CompareValue(filter),
+                    filter.IgnoreCase);
             case QueryFilterKind.In:
                 return EvaluateIn(filter, target, reader);
             default:
@@ -85,6 +88,11 @@ public static class QueryFilterEvaluator
     private static void Measure(QueryFilter filter, int depth, ref int budget)
     {
         CheckBudget(depth, ref budget);
+        if (filter.Kind == QueryFilterKind.Compare)
+        {
+            _ = QueryFilterInvariants.CompareValue(filter);
+        }
+
         EnsureInWidth(filter);
         foreach (var child in filter.Children)
         {

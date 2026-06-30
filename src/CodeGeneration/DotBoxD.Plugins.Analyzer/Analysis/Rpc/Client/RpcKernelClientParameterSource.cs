@@ -27,7 +27,8 @@ internal static class RpcKernelClientParameterSource
     }
 
     public static string Declaration(IParameterSymbol parameter, bool isLast = false)
-        => ParamsModifier(parameter, isLast) + TypeName(parameter.Type) + " " + Identifier(parameter.Name) + DefaultClause(parameter);
+        => AttributePrefix(parameter) + ParamsModifier(parameter, isLast) + TypeName(parameter.Type) + " " +
+           Identifier(parameter.Name) + DefaultClause(parameter);
 
     public static string Identifier(string name) => "@" + name;
 
@@ -35,7 +36,35 @@ internal static class RpcKernelClientParameterSource
         => parameter.IsParams && isLast ? "params " : string.Empty;
 
     private static string DefaultClause(IParameterSymbol parameter)
-        => parameter.HasExplicitDefaultValue ? " = " + DefaultLiteral(parameter) : string.Empty;
+    {
+        if (TryGetDateTimeConstantDefault(parameter, out _))
+        {
+            return string.Empty;
+        }
+
+        return parameter.HasExplicitDefaultValue ? " = " + DefaultLiteral(parameter) : string.Empty;
+    }
+
+    private static string AttributePrefix(IParameterSymbol parameter)
+        => TryGetDateTimeConstantDefault(parameter, out var dateTime)
+            ? "[global::System.Runtime.InteropServices.OptionalAttribute, " +
+              "global::System.Runtime.CompilerServices.DateTimeConstantAttribute(" +
+              dateTime.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture) + "L)] "
+            : string.Empty;
+
+    private static bool TryGetDateTimeConstantDefault(IParameterSymbol parameter, out DateTime dateTime)
+    {
+        if (parameter.HasExplicitDefaultValue &&
+            parameter.Type.SpecialType == SpecialType.System_DateTime &&
+            parameter.ExplicitDefaultValue is DateTime value)
+        {
+            dateTime = value;
+            return true;
+        }
+
+        dateTime = default;
+        return false;
+    }
 
     private static string DefaultLiteral(IParameterSymbol parameter)
         => LiteralReader.ObjectDefaultLiteral(parameter.Type, parameter.ExplicitDefaultValue);

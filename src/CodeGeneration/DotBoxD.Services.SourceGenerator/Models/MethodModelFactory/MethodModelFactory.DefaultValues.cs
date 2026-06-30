@@ -13,16 +13,6 @@ internal static partial class MethodModelFactory
     /// </summary>
     private static string? FormatDefaultValueLiteral(IParameterSymbol param, bool hasDefaultValue)
     {
-        if (HasDateTimeConstantAttribute(param))
-        {
-            return null;
-        }
-
-        if (HasDecimalConstantAttribute(param))
-        {
-            return null;
-        }
-
         if (!param.HasExplicitDefaultValue)
         {
             return hasDefaultValue ? "default" : null;
@@ -57,7 +47,18 @@ internal static partial class MethodModelFactory
                 : "(" + underlyingType.ToDisplayString(s_qualifiedFormat) + ")" + underlyingLiteral;
         }
 
-        return FormatPrimitiveLiteral(value);
+        if (FormatPrimitiveLiteral(value) is { } primitiveLiteral)
+        {
+            return primitiveLiteral;
+        }
+
+        return type.IsValueType && IsRuntimeDefaultValue(value) ? "default" : null;
+    }
+
+    private static bool IsRuntimeDefaultValue(object value)
+    {
+        var type = value.GetType();
+        return Equals(value, System.Activator.CreateInstance(type));
     }
 
     private static string FormatMetadataDefaultValueExpression(
@@ -182,9 +183,7 @@ internal static partial class MethodModelFactory
     private static bool ShouldPreserveOptionalAttributeDefault(IMethodSymbol method, int parameterIndex)
     {
         var param = method.Parameters[parameterIndex];
-        if (HasDateTimeConstantAttribute(param) ||
-            HasDecimalConstantAttribute(param) ||
-            !HasOptionalMetadata(param))
+        if (!HasOptionalMetadata(param))
         {
             return false;
         }
