@@ -16,6 +16,12 @@ internal static class KernelRpcProbeDispatcher
             return true;
         }
 
+        if (args.Contains("--probe-invokeasync-capture-argument-writer", StringComparer.OrdinalIgnoreCase))
+        {
+            InvokeAsyncCaptureArgumentWriterProbe.Run();
+            return true;
+        }
+
         if (args.Contains("--probe-kernel-rpc-marshaller-dto", StringComparer.OrdinalIgnoreCase))
         {
             KernelRpcMarshallerDtoProbe.Run();
