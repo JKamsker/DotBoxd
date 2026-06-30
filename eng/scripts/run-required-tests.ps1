@@ -173,6 +173,7 @@ $defaultMinimums = @{
     Fix_CMP_0012_Tests = 30
     Fix_API_0027_Tests = 2
     PinnedHttpTransportTests = 3
+    ExpressionQueryTranslatorTests = 23
     QueryReviewHardeningTests = 25
     QueryComparerHardeningTests = 3
     DifferentialFuzzTests = 1
