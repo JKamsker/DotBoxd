@@ -171,6 +171,7 @@ $defaultMinimums = @{
     DtoProjectionTests = 5
     PluginRevocationTests = 4
     Fix_CMP_0012_Tests = 31
+    Fix_CMP_0026_Tests = 7
     Fix_API_0027_Tests = 2
     PinnedHttpTransportTests = 3
     ExpressionQueryTranslatorTests = 23

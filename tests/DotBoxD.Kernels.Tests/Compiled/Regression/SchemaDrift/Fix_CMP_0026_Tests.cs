@@ -41,6 +41,25 @@ public sealed class Fix_CMP_0026_Tests
     }
 
     [Fact]
+    public void Plugin_package_schema_indexed_predicate_values_match_declared_type()
+    {
+        using var document = JsonDocument.Parse(PluginPackageJsonSchemas.PackageEnvelope);
+        var rules = document.RootElement
+            .GetProperty("$defs")
+            .GetProperty("indexedPredicate")
+            .GetProperty("allOf")
+            .EnumerateArray()
+            .ToArray();
+
+        Assert.Equal(5, rules.Length);
+        Assert.Contains(rules, rule => MatchesIndexedPredicateType(rule, "bool", "boolean"));
+        Assert.Contains(rules, rule => MatchesIndexedPredicateType(rule, "int", "integer", (decimal)int.MinValue, int.MaxValue));
+        Assert.Contains(rules, rule => MatchesIndexedPredicateType(rule, "long", "integer", (decimal)long.MinValue, long.MaxValue));
+        Assert.Contains(rules, rule => MatchesIndexedPredicateType(rule, "double", "number", -double.MaxValue, double.MaxValue));
+        Assert.Contains(rules, rule => MatchesIndexedPredicateType(rule, "string", "string"));
+    }
+
+    [Fact]
     public void Drift_guard_rejects_same_property_set_when_required_properties_are_relaxed()
     {
         var contract = new JsonSchemaObjectContract(
@@ -129,4 +148,42 @@ public sealed class Fix_CMP_0026_Tests
             ? type.EnumerateArray().Select(item => item.GetString()!).ToArray()
             : [type.GetString()!];
     }
+
+    private static bool MatchesIndexedPredicateType(
+        JsonElement rule,
+        string valueType,
+        string expectedType)
+        => ConditionValueType(rule, valueType) &&
+           PropertyTypes(rule, "value").SequenceEqual([expectedType]) &&
+           !rule.GetProperty("then").GetProperty("properties").GetProperty("value").TryGetProperty("minimum", out _) &&
+           !rule.GetProperty("then").GetProperty("properties").GetProperty("value").TryGetProperty("maximum", out _);
+
+    private static bool MatchesIndexedPredicateType(
+        JsonElement rule,
+        string valueType,
+        string expectedType,
+        decimal expectedMinimum,
+        decimal expectedMaximum)
+        => ConditionValueType(rule, valueType) &&
+           PropertyTypes(rule, "value").SequenceEqual([expectedType]) &&
+           rule.GetProperty("then").GetProperty("properties").GetProperty("value").GetProperty("minimum").GetDecimal() == expectedMinimum &&
+           rule.GetProperty("then").GetProperty("properties").GetProperty("value").GetProperty("maximum").GetDecimal() == expectedMaximum;
+
+    private static bool MatchesIndexedPredicateType(
+        JsonElement rule,
+        string valueType,
+        string expectedType,
+        double expectedMinimum,
+        double expectedMaximum)
+        => ConditionValueType(rule, valueType) &&
+           PropertyTypes(rule, "value").SequenceEqual([expectedType]) &&
+           rule.GetProperty("then").GetProperty("properties").GetProperty("value").GetProperty("minimum").GetDouble() == expectedMinimum &&
+           rule.GetProperty("then").GetProperty("properties").GetProperty("value").GetProperty("maximum").GetDouble() == expectedMaximum;
+
+    private static bool ConditionValueType(JsonElement rule, string valueType)
+        => rule.GetProperty("if")
+            .GetProperty("properties")
+            .GetProperty("valueType")
+            .GetProperty("const")
+            .GetString() == valueType;
 }

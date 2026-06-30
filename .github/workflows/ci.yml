@@ -420,6 +420,7 @@ jobs:
               "Computed_dto_projection_round_trips",
               "PluginRevocationTests",
               "Fix_CMP_0012_Tests",
+              "Fix_CMP_0026_Tests",
               "Fix_API_0027_Tests",
               "PinnedHttpTransportTests",
               "ExpressionQueryTranslatorTests",
