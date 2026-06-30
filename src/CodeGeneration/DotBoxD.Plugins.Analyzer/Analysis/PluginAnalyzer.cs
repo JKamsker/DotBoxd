@@ -277,6 +277,6 @@ public sealed partial class PluginAnalyzer : DiagnosticAnalyzer
             StringComparison.Ordinal)) == true;
 
     private static bool IsAllowedLiveSettingType(ITypeSymbol type)
-        => DotBoxDTypeNameReader.IsSupportedScalar(type);
+        => DotBoxDTypeNameReader.IsSupportedLiveSettingType(type);
 
 }

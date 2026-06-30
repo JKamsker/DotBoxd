@@ -208,7 +208,7 @@ internal static class PluginSymbolReader
         CancellationToken cancellationToken)
     {
         var syntax = DeclaringPropertySyntax(property, cancellationToken);
-        var type = DotBoxDTypeNameReader.SandboxTypeName(property.Type);
+        var type = DotBoxDTypeNameReader.LiveSettingTypeName(property.Type);
         var range = PluginLiveSettingRangeReader.Read(property, type);
         return new LiveSettingModel(
             property.Name,

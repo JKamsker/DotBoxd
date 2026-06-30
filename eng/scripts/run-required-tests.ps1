@@ -69,6 +69,7 @@ $defaultMinimums = @{
     RemoteRunLocalValidationTests = 8
     GeneratedRemoteHookChainFallbackTests = 38
     PluginAnalyzerEnumerableDtoValidationTests = 1
+    PluginAnalyzerLiveSettingTypeValidationTests = 2
     ServerExtensionGeneratedContextParameterTests = 4
     PluginAnalyzerHookChainTests = 79
     InvokeAsyncGenerationTests = 7
