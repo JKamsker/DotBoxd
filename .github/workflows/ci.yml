@@ -361,6 +361,7 @@ jobs:
               "InvokeAsyncCaptureBagRuntimeTests",
               "InvokeAsyncMapReturnRuntimeTests",
               "InvokeAsyncObjectInitializerOrderTests",
+              "InvokeAsyncInstallCancellationRuntimeTests",
               "HostServiceBindingContractTests",
               "PluginAnalyzerForbiddenApiReachabilityTests",
               "PluginAnalyzerForbiddenApiConstructorReachabilityTests",
