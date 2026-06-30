@@ -28,6 +28,7 @@ internal static partial class PluginServerFacadeModelFactory
             "Initialize",
             "RequireControl",
             "RequireWorld",
+            "RequireInstalledKernel",
             "ThrowIfDisposed",
             "RecordSetup",
             "ReplaySetupAsync",
