@@ -170,6 +170,7 @@ $defaultMinimums = @{
     RegisterLocal_value_only_overload_lowers_and_runs_the_handler = 1
     DtoProjectionTests = 5
     PluginRevocationTests = 4
+    Fix_CMP_0012_Tests = 30
     Fix_API_0027_Tests = 2
     PinnedHttpTransportTests = 3
     QueryReviewHardeningTests = 25

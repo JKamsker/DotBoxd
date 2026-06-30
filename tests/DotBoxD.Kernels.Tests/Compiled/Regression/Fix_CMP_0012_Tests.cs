@@ -203,7 +203,7 @@ public sealed class Fix_CMP_0012_Tests
     }
 
     [Fact]
-    public void Module_schema_literal_vocabulary_includes_guid()
+    public void Module_schema_guid_literal_domain_matches_importer()
     {
         using var document = JsonDocument.Parse(File.ReadAllText(RepositoryPath(ModuleSchemaRelative)));
         var guid = document.RootElement
@@ -213,6 +213,7 @@ public sealed class Fix_CMP_0012_Tests
             .GetProperty("guid");
 
         Assert.Equal("string", guid.GetProperty("type").GetString());
+        AssertPattern(guid, "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
     }
 
     /// <summary>
