@@ -115,4 +115,8 @@ internal sealed record HookChainInterception(
     string? InterceptorTypeParameters = null,
     // For a result chain (Register/RegisterLocal): the fully-qualified result type the install entrypoint is
     // closed over (UseGeneratedResultChain<TResult> / UseGeneratedLocalResultChain<TResult>). Null otherwise.
-    string? ResultTypeFullName = null);
+    string? ResultTypeFullName = null,
+    // True when the intercepted receiver is a local staged fluent chain. The generated package already contains
+    // that receiver's stages, so the interceptor must bypass the runtime stage guard to avoid evaluating them
+    // once as native delegates and again inside the sandbox package.
+    bool BypassReceiverStage = false);

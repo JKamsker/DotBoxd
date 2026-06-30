@@ -337,6 +337,7 @@ jobs:
               "PluginTypedLiveSettingViewTests",
               "EventIndexTrustBoundaryTests",
               "CapabilityPolicySplitTests",
+              "HookChainInterceptorRuntimeSurpriseTests",
               "HookChainRuntimeTests",
               "SubscriptionRuntimeTests",
               "RemoteRunLocalChainRuntimeTests",

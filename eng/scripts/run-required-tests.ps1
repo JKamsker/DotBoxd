@@ -62,6 +62,7 @@ $defaultMinimums = @{
     PluginTypedLiveSettingViewTests = 3
     EventIndexTrustBoundaryTests = 7
     CapabilityPolicySplitTests = 7
+    HookChainInterceptorRuntimeSurpriseTests = 2
     HookChainRuntimeTests = 11
     SubscriptionRuntimeTests = 9
     RemoteRunLocalChainRuntimeTests = 65

@@ -69,9 +69,7 @@ internal static class DotBoxDHookChainInterceptorEmitter
 
             builder.Append("            ").Append(interception.HandlerTypeFullName).AppendLine(" handler)");
             builder.Append("            => pipeline.")
-                .Append(interception.InstallKind == HookChainInterceptorInstallKind.LocalCallback
-                    ? "UseGeneratedLocalChain"
-                    : "UseGeneratedChain")
+                .Append(InstallMethod(interception))
                 .Append('(')
                 .Append(interception.PackageFullName)
                 .Append(InstallArguments(interception))
@@ -81,6 +79,18 @@ internal static class DotBoxDHookChainInterceptorEmitter
         builder.AppendLine("    }");
         builder.AppendLine("}");
         return builder.ToString();
+    }
+
+    private static string InstallMethod(HookChainInterception interception)
+    {
+        if (interception.InstallKind == HookChainInterceptorInstallKind.LocalCallback)
+        {
+            return "UseGeneratedLocalChain";
+        }
+
+        return interception.BypassReceiverStage
+            ? "UseGeneratedChainFromInterceptor"
+            : "UseGeneratedChain";
     }
 
     // A non-local chain takes only the package; a local chain also takes the native handler, and — when the
