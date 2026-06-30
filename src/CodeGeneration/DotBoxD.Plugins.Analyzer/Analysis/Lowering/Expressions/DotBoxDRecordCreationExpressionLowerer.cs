@@ -152,6 +152,12 @@ internal static partial class DotBoxDRecordCreationExpressionLowerer
                 throw new System.NotSupportedException();
             }
 
+            if (fieldIndex != i)
+            {
+                throw new NotSupportedException(
+                    "DTO constructor arguments must match DTO field order to preserve remote projection evaluation order.");
+            }
+
             // record.new declares the FIELD's sandbox type, and the value comes from the constructor parameter that
             // fills it. If that parameter is a different CLR type than the field (a converting ctor, e.g. an int
             // arg into an enum field, or List<long> into a List<int> field), the coarse manifest-tag check below

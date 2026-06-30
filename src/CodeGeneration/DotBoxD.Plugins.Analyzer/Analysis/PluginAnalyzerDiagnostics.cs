@@ -28,7 +28,7 @@ internal static class PluginAnalyzerDiagnostics
         "DBXK111",
         "RunLocal chain is not lowered and will throw at runtime",
         "This remote RunLocal chain could not be lowered to verified IR (an unsupported Where/Select projection or "
-            + "predicate), so the generator does not intercept it and the runtime terminal throws "
+            + "predicate{0}), so the generator does not intercept it and the runtime terminal throws "
             + "NotSupportedException; use a supported projection/predicate shape",
         "DotBoxD.Kernels.Generation",
         DiagnosticSeverity.Info,

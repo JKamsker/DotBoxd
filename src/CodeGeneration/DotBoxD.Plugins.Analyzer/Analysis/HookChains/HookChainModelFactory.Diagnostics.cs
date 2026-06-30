@@ -18,7 +18,9 @@ internal static partial class HookChainModelFactory
 
         if (TryRemoteRunLocalLocation(invocation, model, cancellationToken, out var location))
         {
-            return new HookChainCreateResult(null, new HookChainNotLoweredDiagnostic(location));
+            return new HookChainCreateResult(
+                null,
+                new HookChainNotLoweredDiagnostic(location, Detail: detail ?? string.Empty));
         }
 
         if (TryResultChainLocation(invocation, model, cancellationToken, out var resultLocation, out var isLocalTerminal))
