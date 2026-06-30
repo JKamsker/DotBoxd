@@ -87,6 +87,10 @@ internal static partial class RpcKernelModelFactory
                     ValidateGeneratedTypeCollision(type, type.Name + "DirectServerExtensionClientExtensions");
                 }
             }
+            else if (RpcKernelClientExtensionModelFactory.HasClientPropertyAttribute(type))
+            {
+                RejectClientPropertyWithoutService(type);
+            }
             else if (RpcKernelClientExtensionModelFactory.HasReceiverExtensionAttribute(method))
             {
                 throw new NotSupportedException(
@@ -142,6 +146,12 @@ internal static partial class RpcKernelModelFactory
         {
             return Fail(declaration, ex.Message);
         }
+    }
+
+    private static void RejectClientPropertyWithoutService(INamedTypeSymbol type)
+    {
+        throw new NotSupportedException(
+            $"[ServerExtensionClient] on server extension '{type.ToDisplayString()}' requires a service-backed [ServerExtension(id, serviceType)] class.");
     }
 
     private static GeneratedPluginPackage EmitPackage(

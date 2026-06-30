@@ -60,6 +60,9 @@ internal static class RpcKernelClientExtensionModelFactory
         => HasAttribute(symbol, DotBoxDMetadataNames.ServerExtensionClientAttribute) ||
            HasAttribute(symbol, DotBoxDMetadataNames.ServerExtensionMethodAttribute);
 
+    public static bool HasClientPropertyAttribute(ISymbol symbol)
+        => HasAttribute(symbol, DotBoxDMetadataNames.ServerExtensionClientAttribute);
+
     public static bool HasReceiverExtensionAttribute(ISymbol symbol)
     {
         foreach (var attribute in symbol.GetAttributes())
