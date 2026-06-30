@@ -465,7 +465,8 @@ jobs:
             -NoBuild `
             -RequiredFullyQualifiedNameContains @(
               "Remote_RegisterLocal_tamper_rejects",
-              "RegisterLocal_value_only_overload_lowers_and_runs_the_handler"
+              "RegisterLocal_value_only_overload_lowers_and_runs_the_handler",
+              "DtoProjectionTests"
             ) `
             -MinimumExecutedTestsByGroup @{
               Remote_RegisterLocal_tamper_rejects = 4

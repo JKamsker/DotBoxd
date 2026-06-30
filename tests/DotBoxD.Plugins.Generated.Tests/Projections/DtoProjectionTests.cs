@@ -4,7 +4,8 @@ namespace DotBoxD.Plugins.Generated.Tests;
 /// Build-time-intercepted record/DTO projections: projecting an existing nested record field, constructing a
 /// <c>new Dto(...)</c>, constructing a record whose first field is itself a record (record-in-record), and a
 /// <c>new Dto(..., EnumConstant)</c>. Each projected record round-trips to the native <c>RunLocal</c> delegate with
-/// field-level fidelity.
+/// field-level fidelity. DTO construction also fails closed when a stored field would otherwise be silently
+/// substituted with a manifest zero instead of the C# constructor/property default.
 /// </summary>
 public sealed class DtoProjectionTests
 {
@@ -78,5 +79,35 @@ public sealed class DtoProjectionTests
         await h.PublishAsync(SampleEvents.Filtered);
 
         Assert.Equal(new PhaseTicket(SampleEvents.SampleId, GamePhase.Battle), Assert.Single(received));
+    }
+
+    [Fact]
+    public void Constructed_dto_with_omitted_stored_member_is_not_intercepted()
+    {
+        using var h = new RunLocalHarness<EncounterEvent>();
+
+        Assert.Throws<NotSupportedException>(() =>
+        {
+            h.Hooks.On<EncounterEvent>()
+                .Where(e => e.Distance <= 4)
+                .Select(e => new DefaultedProjectionTicket(e.EncounterId))
+                .RunLocal((ticket, ctx) => { });
+        });
+    }
+}
+
+public sealed class DefaultedProjectionTicket
+{
+    public Guid EncounterId { get; set; }
+
+    public string Zone { get; set; } = "fallback";
+
+    public DefaultedProjectionTicket()
+    {
+    }
+
+    public DefaultedProjectionTicket(Guid encounterId)
+    {
+        EncounterId = encounterId;
     }
 }

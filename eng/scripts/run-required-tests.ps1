@@ -166,6 +166,7 @@ $defaultMinimums = @{
     ServerExtensionEnumOverflowRegressionTests = 1
     Computed_dto_projection_round_trips = 1
     RegisterLocal_value_only_overload_lowers_and_runs_the_handler = 1
+    DtoProjectionTests = 5
     PluginRevocationTests = 4
     Fix_API_0027_Tests = 2
     PinnedHttpTransportTests = 3
