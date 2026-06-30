@@ -107,7 +107,7 @@ public static class GeneratedServiceRegistry
             services.AddRange(GetServices(assembly));
         }
 
-        return services;
+        return services.AsReadOnly();
     }
 
     /// <summary>

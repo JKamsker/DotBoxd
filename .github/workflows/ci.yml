@@ -471,6 +471,7 @@ jobs:
               "CallerArgumentExpression_TargetingCancellationToken_RemainsValidOnAsyncSibling",
               "GenericServiceMethod_WithRefStructAntiConstraint_PreservesConstraintOnProxyStub",
               "GeneratedFactoryRegistryDefaultValueTests",
+              "GeneratedFactoryRegistryImmutabilityTests",
               "GeneratedDispatcherSurfaceTests"
             )
           ./eng/scripts/run-required-tests.ps1 `

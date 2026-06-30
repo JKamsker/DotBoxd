@@ -18,6 +18,7 @@ internal static class ServicesGeneratorTypeNames
     public const string SystemThreadingTasksNamespace = "System.Threading.Tasks";
 
     public const string GlobalArgumentNullException = GlobalPrefix + "System.ArgumentNullException";
+    public const string GlobalArray = GlobalPrefix + "System.Array";
     public const string GlobalBufferWriter = GlobalPrefix + "System.Buffers.IBufferWriter";
     public const string GlobalCancellationToken = GlobalPrefix + CancellationTokenMetadata;
     public const string GlobalException = GlobalPrefix + "System.Exception";

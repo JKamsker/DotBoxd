@@ -9,7 +9,8 @@ namespace DotBoxD.Services.Generated
     /// </summary>
     public static class DotBoxDGenerated
     {
-        private static readonly global::DotBoxD.Services.Generated.GeneratedMethod[] s_service0Methods =
+        private static readonly global::System.Collections.Generic.IReadOnlyList<global::DotBoxD.Services.Generated.GeneratedMethod> s_service0Methods =
+            global::System.Array.AsReadOnly(new global::DotBoxD.Services.Generated.GeneratedMethod[]
         {
             new global::DotBoxD.Services.Generated.GeneratedMethod(
                 "GetSubAsync",
@@ -18,7 +19,7 @@ namespace DotBoxD.Services.Generated
                 typeof(global::Snap.Nested.ISubSnap),
                 global::DotBoxD.Services.Generated.GeneratedReturnKind.TaskOfNestedService,
                 true,
-                new global::DotBoxD.Services.Generated.GeneratedParameter[]
+                global::System.Array.AsReadOnly(new global::DotBoxD.Services.Generated.GeneratedParameter[]
                 {
                     new global::DotBoxD.Services.Generated.GeneratedParameter(
                         "label",
@@ -27,10 +28,11 @@ namespace DotBoxD.Services.Generated
                         false,
                         false,
                         null),
-                }),
-        };
+                })),
+        });
 
-        private static readonly global::DotBoxD.Services.Generated.GeneratedMethod[] s_service1Methods =
+        private static readonly global::System.Collections.Generic.IReadOnlyList<global::DotBoxD.Services.Generated.GeneratedMethod> s_service1Methods =
+            global::System.Array.AsReadOnly(new global::DotBoxD.Services.Generated.GeneratedMethod[]
         {
             new global::DotBoxD.Services.Generated.GeneratedMethod(
                 "CountAsync",
@@ -39,12 +41,13 @@ namespace DotBoxD.Services.Generated
                 typeof(int),
                 global::DotBoxD.Services.Generated.GeneratedReturnKind.TaskOfT,
                 false,
-                new global::DotBoxD.Services.Generated.GeneratedParameter[]
+                global::System.Array.AsReadOnly(new global::DotBoxD.Services.Generated.GeneratedParameter[]
                 {
-                }),
-        };
+                })),
+        });
 
-        private static readonly global::DotBoxD.Services.Generated.GeneratedService[] s_services =
+        private static readonly global::System.Collections.Generic.IReadOnlyList<global::DotBoxD.Services.Generated.GeneratedService> s_services =
+            global::System.Array.AsReadOnly(new global::DotBoxD.Services.Generated.GeneratedService[]
         {
             new global::DotBoxD.Services.Generated.GeneratedService(
                 typeof(global::Snap.Nested.IRootSnap),
@@ -58,7 +61,7 @@ namespace DotBoxD.Services.Generated
                 typeof(global::Snap.Nested.SubSnapDispatcher),
                 "ISubSnap",
                 s_service1Methods),
-        };
+        });
 
         static DotBoxDGenerated()
         {

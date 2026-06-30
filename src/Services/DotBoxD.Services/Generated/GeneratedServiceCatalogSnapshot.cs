@@ -10,7 +10,7 @@ internal static class GeneratedServiceCatalogSnapshot
             snapshot[i] = Snapshot(services[i]);
         }
 
-        return snapshot;
+        return Array.AsReadOnly(snapshot);
     }
 
     public static GeneratedService Snapshot(GeneratedService service)
@@ -30,7 +30,7 @@ internal static class GeneratedServiceCatalogSnapshot
             snapshot[i] = method with { Parameters = SnapshotParameters(method.Parameters) };
         }
 
-        return snapshot;
+        return Array.AsReadOnly(snapshot);
     }
 
     private static IReadOnlyList<GeneratedParameter> SnapshotParameters(IReadOnlyList<GeneratedParameter>? parameters)
@@ -46,6 +46,6 @@ internal static class GeneratedServiceCatalogSnapshot
             snapshot[i] = parameters[i];
         }
 
-        return snapshot;
+        return Array.AsReadOnly(snapshot);
     }
 }

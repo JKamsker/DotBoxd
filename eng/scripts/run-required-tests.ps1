@@ -165,6 +165,7 @@ $defaultMinimums = @{
     CallerArgumentExpression_TargetingCancellationToken_RemainsValidOnAsyncSibling = 1
     GenericServiceMethod_WithRefStructAntiConstraint_PreservesConstraintOnProxyStub = 1
     GeneratedFactoryRegistryDefaultValueTests = 5
+    GeneratedFactoryRegistryImmutabilityTests = 3
     GeneratedDispatcherSurfaceTests = 1
     GeneratedReadonlyCollectionReaderTests = 2
     ServerExtensionMapTypeSupportTests = 8
