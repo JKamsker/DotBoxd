@@ -35,6 +35,7 @@ internal static partial class DotBoxDKernelMethodInliner
         var call = KernelMethodArgumentBinder.Bind(
             invocation,
             resolvedMethod,
+            context.SemanticModel.Compilation,
             $"[KernelMethod] '{KernelMethodArgumentBinder.Definition(resolvedMethod).Name}'");
         var method = call.Method;
         if (!method.IsStatic && !IsServerContextReceiver(invocation, method, context))

@@ -9,6 +9,7 @@ internal static class KernelMethodArgumentBinder
     public static BoundKernelMethodCall Bind(
         InvocationExpressionSyntax invocation,
         IMethodSymbol method,
+        Compilation compilation,
         string description)
     {
         var definition = method.ReducedFrom ?? method;
@@ -60,7 +61,7 @@ internal static class KernelMethodArgumentBinder
                 continue;
             }
 
-            if (!TryGetDefaultValue(parameters[i], out var defaultValue))
+            if (!TryGetDefaultValue(parameters[i], compilation, out var defaultValue))
             {
                 throw new NotSupportedException($"{description} call must pass parameter '{parameters[i].Name}'.");
             }
@@ -118,7 +119,7 @@ internal static class KernelMethodArgumentBinder
         throw new NotSupportedException($"{description} has no parameter '{name}'.");
     }
 
-    private static bool TryGetDefaultValue(IParameterSymbol parameter, out object? value)
+    private static bool TryGetDefaultValue(IParameterSymbol parameter, Compilation compilation, out object? value)
     {
         if (parameter.HasExplicitDefaultValue)
         {
@@ -126,7 +127,7 @@ internal static class KernelMethodArgumentBinder
             return true;
         }
 
-        if (parameter.IsOptional && TryGetDateTimeConstantDefault(parameter, out var dateTime))
+        if (parameter.IsOptional && TryGetDateTimeConstantDefault(parameter, compilation, out var dateTime))
         {
             value = dateTime;
             return true;
@@ -136,15 +137,22 @@ internal static class KernelMethodArgumentBinder
         return false;
     }
 
-    private static bool TryGetDateTimeConstantDefault(IParameterSymbol parameter, out DateTime value)
+    private static bool TryGetDateTimeConstantDefault(
+        IParameterSymbol parameter,
+        Compilation compilation,
+        out DateTime value)
     {
-        if (parameter.Type.SpecialType == SpecialType.System_DateTime)
+        var dateTimeConstantAttribute =
+            compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.DateTimeConstantAttribute");
+        if (parameter.Type.SpecialType == SpecialType.System_DateTime &&
+            dateTimeConstantAttribute is not null)
         {
             foreach (var attribute in parameter.GetAttributes())
             {
-                if (attribute.AttributeClass?.Name == "DateTimeConstantAttribute" &&
+                if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, dateTimeConstantAttribute) &&
                     attribute.ConstructorArguments.Length == 1 &&
-                    attribute.ConstructorArguments[0].Value is long ticks)
+                    attribute.ConstructorArguments[0].Value is long ticks &&
+                    IsValidDateTimeTicks(ticks))
                 {
                     value = new DateTime(ticks);
                     return true;
@@ -155,6 +163,9 @@ internal static class KernelMethodArgumentBinder
         value = default;
         return false;
     }
+
+    private static bool IsValidDateTimeTicks(long ticks)
+        => ticks >= DateTime.MinValue.Ticks && ticks <= DateTime.MaxValue.Ticks;
 }
 
 internal sealed record BoundKernelMethodCall(

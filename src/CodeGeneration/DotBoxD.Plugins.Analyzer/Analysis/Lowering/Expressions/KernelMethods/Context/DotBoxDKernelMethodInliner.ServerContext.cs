@@ -37,7 +37,7 @@ internal static partial class DotBoxDKernelMethodInliner
         {
             if (candidate.IsStatic ||
                 !HasKernelMethodAttribute(candidate, context.SemanticModel.Compilation) ||
-                !CanBind(invocation, candidate))
+                !CanBind(invocation, candidate, context.SemanticModel.Compilation))
             {
                 continue;
             }
@@ -54,11 +54,11 @@ internal static partial class DotBoxDKernelMethodInliner
         };
     }
 
-    private static bool CanBind(InvocationExpressionSyntax invocation, IMethodSymbol method)
+    private static bool CanBind(InvocationExpressionSyntax invocation, IMethodSymbol method, Compilation compilation)
     {
         try
         {
-            _ = KernelMethodArgumentBinder.Bind(invocation, method, $"[KernelMethod] '{method.Name}'");
+            _ = KernelMethodArgumentBinder.Bind(invocation, method, compilation, $"[KernelMethod] '{method.Name}'");
             return true;
         }
         catch (NotSupportedException)
