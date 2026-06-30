@@ -167,6 +167,36 @@ public sealed class ServerExtensionClientProxySurpriseTests
     }
 
     [Fact]
+    public void Direct_generated_client_rejects_generic_kernel_methods()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
+            using DotBoxD.Kernels;
+            using DotBoxD.Kernels.Sandbox;
+            using DotBoxD.Plugins;
+            using DotBoxD.Services.Attributes;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            [DotBoxDService]
+            public interface IRemoteControl;
+
+            [ServerExtension(typeof(IRemoteControl), "generic-method")]
+            public sealed partial class EchoKernel
+            {
+                [ServerExtensionMethod(typeof(IRemoteControl))]
+                public int Echo<T>(int value, HookContext ctx) => value;
+            }
+            """);
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("generic", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(diagnostics, d => d.Id == "CS0246");
+    }
+
+    [Fact]
     public void Server_extension_rejects_existing_generated_package_type_collision()
     {
         var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
