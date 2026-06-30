@@ -71,6 +71,15 @@ internal static class LiteralReader
             }
         }
 
+        if (type.SpecialType == SpecialType.System_DateTime &&
+            value is DateTime dateTime &&
+            dateTime == default)
+        {
+            // Metadata optional DateTime defaults arrive boxed, not as a source literal. Re-emit the
+            // equivalent source default instead of an invalid culture-formatted DateTime string.
+            return "default";
+        }
+
         return ObjectLiteral(value);
     }
 
