@@ -83,6 +83,11 @@ internal static partial class MethodModelFactory
             return decimalConstant;
         }
 
+        if (TryFormatDefaultParameterValueAttributeLiteral(param, out var attributeLiteral))
+        {
+            return attributeLiteral;
+        }
+
         if (defaultValueLiteral.Length == 0 && HasOptionalMetadata(param))
         {
             return "default";
@@ -197,6 +202,57 @@ internal static partial class MethodModelFactory
 
     private static bool HasOptionalMetadata(IParameterSymbol param) =>
         param.IsOptional || HasOptionalAttribute(param);
+
+    private static bool HasDefaultParameterValueAttribute(IParameterSymbol param) =>
+        TryFormatDefaultParameterValueAttributeLiteral(param, out _);
+
+    private static bool TryFormatDefaultParameterValueAttributeLiteral(
+        IParameterSymbol param,
+        out string literal)
+    {
+        foreach (var attribute in param.GetAttributes())
+        {
+            if (attribute.AttributeClass?.ToDisplayString() !=
+                "System.Runtime.InteropServices.DefaultParameterValueAttribute" ||
+                attribute.ConstructorArguments.Length != 1)
+            {
+                continue;
+            }
+
+            return TryFormatAttributeValueLiteral(attribute.ConstructorArguments[0], out literal);
+        }
+
+        literal = string.Empty;
+        return false;
+    }
+
+    private static bool TryFormatAttributeValueLiteral(TypedConstant argument, out string literal)
+    {
+        if (argument.IsNull)
+        {
+            literal = "null";
+            return true;
+        }
+
+        if (argument.Kind == TypedConstantKind.Enum &&
+            argument.Type is not null &&
+            argument.Value is not null &&
+            FormatPrimitiveLiteral(argument.Value) is { } enumValue)
+        {
+            literal = "(" + argument.Type.ToDisplayString(s_qualifiedFormat) + ")" + enumValue;
+            return true;
+        }
+
+        if (argument.Value is not null &&
+            FormatPrimitiveLiteral(argument.Value) is { } value)
+        {
+            literal = value;
+            return true;
+        }
+
+        literal = string.Empty;
+        return false;
+    }
 
     private static bool HasOptionalAttribute(IParameterSymbol param)
     {

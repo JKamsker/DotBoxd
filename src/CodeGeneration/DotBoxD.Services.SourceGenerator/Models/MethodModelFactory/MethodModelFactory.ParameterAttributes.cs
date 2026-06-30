@@ -15,10 +15,12 @@ internal static partial class MethodModelFactory
         var attributes = new StringBuilder();
         var hasDateTimeConstant = HasDateTimeConstantAttribute(parameter);
         var hasDecimalConstant = HasDecimalConstantAttribute(parameter);
+        var hasDefaultParameterValue = HasDefaultParameterValueAttribute(parameter);
         var preserveOptionalAttribute =
             preserveOptionalAttributeDefault ||
             hasDateTimeConstant ||
-            hasDecimalConstant;
+            hasDecimalConstant ||
+            hasDefaultParameterValue;
         if (preserveOptionalAttribute)
         {
             attributes.Append("[global::System.Runtime.InteropServices.OptionalAttribute] ");
@@ -52,6 +54,10 @@ internal static partial class MethodModelFactory
 
                 case "System.Runtime.CompilerServices.DecimalConstantAttribute":
                     AppendDecimalConstantAttribute(attributes, parameter);
+                    break;
+
+                case "System.Runtime.InteropServices.DefaultParameterValueAttribute":
+                    AppendDefaultParameterValueAttribute(attributes, parameter);
                     break;
 
                 case "System.Diagnostics.CodeAnalysis.AllowNullAttribute":
@@ -228,5 +234,17 @@ internal static partial class MethodModelFactory
         sb.Append("[global::System.Runtime.CompilerServices.DateTimeConstantAttribute(")
             .Append(ticks)
             .Append("L)] ");
+    }
+
+    private static void AppendDefaultParameterValueAttribute(StringBuilder sb, IParameterSymbol parameter)
+    {
+        if (!TryFormatDefaultParameterValueAttributeLiteral(parameter, out var literal))
+        {
+            return;
+        }
+
+        sb.Append("[global::System.Runtime.InteropServices.DefaultParameterValueAttribute(")
+            .Append(literal)
+            .Append(")] ");
     }
 }
