@@ -64,6 +64,7 @@ internal static class PluginSymbolReader
         for (var i = 0; i < properties.Length; i++)
         {
             var property = properties[i];
+            RejectNullableReferenceEventProperty(eventType, property);
             if (PolymorphicHandleMetadataReader.TryResolve(property.Type, out var handle))
             {
                 models[i] = new EventPropertyModel(
@@ -87,6 +88,20 @@ internal static class PluginSymbolReader
         }
 
         return EquatableArray<EventPropertyModel>.FromOwned(models);
+    }
+
+    private static void RejectNullableReferenceEventProperty(
+        INamedTypeSymbol eventType,
+        IPropertySymbol property)
+    {
+        if ((property.NullableAnnotation == NullableAnnotation.Annotated ||
+             property.Type.NullableAnnotation == NullableAnnotation.Annotated) &&
+            property.Type.IsReferenceType)
+        {
+            throw new NotSupportedException(
+                $"Event property '{eventType.ToDisplayString()}.{property.Name}' is a nullable reference type; " +
+                "plugin event parameters cannot encode null reference values.");
+        }
     }
 
     public static string? Capability(IPropertySymbol property)
