@@ -1,5 +1,4 @@
 using DotBoxD.Kernels.Model;
-using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Plugins.Runtime.Lifecycle;
 using DotBoxD.Plugins.Runtime.Validation;
 
@@ -15,8 +14,8 @@ internal static class PluginPackageValidator
             diagnostics.Add(new SandboxDiagnostic("DBXK010", "Plugin id is required."));
         }
 
-        ValidateManifestText(package.Manifest.PluginId, "plugin id", diagnostics);
-        ValidateManifestText(package.Manifest.Contract, "plugin contract", diagnostics);
+        PluginManifestTextValidator.ValidatePluginId(package.Manifest.PluginId, diagnostics);
+        PluginManifestTextValidator.ValidateText(package.Manifest.Contract, "plugin contract", diagnostics);
 
         if (!string.Equals(package.Manifest.PluginId, package.Module.Id, StringComparison.Ordinal))
         {
@@ -50,8 +49,8 @@ internal static class PluginPackageValidator
 
         foreach (var setting in package.Manifest.LiveSettings)
         {
-            ValidateManifestText(setting.Name, "live setting name", diagnostics);
-            ValidateManifestText(setting.Type, "live setting type", diagnostics);
+            PluginManifestTextValidator.ValidateText(setting.Name, "live setting name", diagnostics);
+            PluginManifestTextValidator.ValidateText(setting.Type, "live setting type", diagnostics);
             ValidateSetting(setting, diagnostics);
         }
 
@@ -73,8 +72,8 @@ internal static class PluginPackageValidator
                 diagnostics.Add(new SandboxDiagnostic("DBXK031", "Hook subscription event and kernel are required."));
             }
 
-            ValidateManifestText(subscription.Event, "hook subscription event", diagnostics);
-            ValidateManifestText(subscription.Kernel, "hook subscription kernel", diagnostics);
+            PluginManifestTextValidator.ValidateText(subscription.Event, "hook subscription event", diagnostics);
+            PluginManifestTextValidator.ValidateText(subscription.Kernel, "hook subscription kernel", diagnostics);
             ValidateResultMetadata(subscription, diagnostics);
             if (!string.IsNullOrWhiteSpace(metadataKernel) &&
                 !string.Equals(subscription.Kernel, metadataKernel, StringComparison.Ordinal))
@@ -106,7 +105,7 @@ internal static class PluginPackageValidator
             return null;
         }
 
-        ValidateManifestText(metadataKernel, "kernel metadata", diagnostics);
+        PluginManifestTextValidator.ValidateText(metadataKernel, "kernel metadata", diagnostics);
         return metadataKernel;
     }
 
@@ -116,7 +115,7 @@ internal static class PluginPackageValidator
     {
         foreach (var predicate in subscription.IndexedPredicates)
         {
-            ValidateManifestText(predicate.Path, "indexed predicate path", diagnostics);
+            PluginManifestTextValidator.ValidateText(predicate.Path, "indexed predicate path", diagnostics);
             if (!Enum.IsDefined(predicate.Operator))
             {
                 diagnostics.Add(new SandboxDiagnostic(
@@ -164,7 +163,7 @@ internal static class PluginPackageValidator
             return;
         }
 
-        ValidateManifestText(subscription.ResultType, "hook result type", diagnostics);
+        PluginManifestTextValidator.ValidateText(subscription.ResultType, "hook result type", diagnostics);
         if (subscription.LocalTerminal || subscription.ProjectedType is not null)
         {
             diagnostics.Add(new SandboxDiagnostic(
@@ -221,25 +220,11 @@ internal static class PluginPackageValidator
             return;
         }
 
-        ValidateManifestText(functionId, $"kernel {name} entrypoint", diagnostics);
+        PluginManifestTextValidator.ValidateText(functionId, $"kernel {name} entrypoint", diagnostics);
 
         if (!entrypointIndex.Contains(functionId))
         {
             diagnostics.Add(new SandboxDiagnostic("DBXK032", $"Kernel entrypoint '{functionId}' is missing or not public."));
-        }
-    }
-
-    private static void ValidateManifestText(string value, string description, List<SandboxDiagnostic> diagnostics)
-    {
-        if (string.IsNullOrWhiteSpace(value) || value.Any(char.IsControl))
-        {
-            diagnostics.Add(new SandboxDiagnostic("DBXK050", $"Plugin manifest {description} must be non-empty and must not contain control characters."));
-            return;
-        }
-
-        if (SandboxDescriptorGuards.ContainsForbiddenDescriptor(value))
-        {
-            diagnostics.Add(new SandboxDiagnostic("DBXK050", $"Plugin manifest {description} looks like a forbidden CLR or IL descriptor."));
         }
     }
 

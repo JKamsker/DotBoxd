@@ -19,8 +19,8 @@ internal static class RpcKernelPackageValidator
     public static void Validate(PluginPackage package)
     {
         var diagnostics = new List<SandboxDiagnostic>();
-        ValidateText(package.Manifest.PluginId, "plugin id", diagnostics);
-        ValidateText(package.Manifest.Contract, "plugin contract", diagnostics);
+        PluginManifestTextValidator.ValidatePluginId(package.Manifest.PluginId, diagnostics);
+        PluginManifestTextValidator.ValidateText(package.Manifest.Contract, "plugin contract", diagnostics);
 
         if (!string.Equals(package.Manifest.PluginId, package.Module.Id, StringComparison.Ordinal))
         {
@@ -40,7 +40,7 @@ internal static class RpcKernelPackageValidator
         }
         else
         {
-            ValidateText(metadataKernel, "kernel metadata", diagnostics);
+            PluginManifestTextValidator.ValidateText(metadataKernel, "kernel metadata", diagnostics);
         }
 
         var rpcEntrypoint = package.Manifest.RpcEntrypoint;
@@ -188,8 +188,8 @@ internal static class RpcKernelPackageValidator
 
         foreach (var setting in manifest.LiveSettings)
         {
-            ValidateText(setting.Name, "live setting name", diagnostics);
-            ValidateText(setting.Type, "live setting type", diagnostics);
+            PluginManifestTextValidator.ValidateText(setting.Name, "live setting name", diagnostics);
+            PluginManifestTextValidator.ValidateText(setting.Type, "live setting type", diagnostics);
             try
             {
                 _ = LiveSettingTypeConverter.ToSandboxType(setting.Type);
@@ -204,20 +204,6 @@ internal static class RpcKernelPackageValidator
             {
                 diagnostics.Add(new SandboxDiagnostic("DBXK020", $"Live setting type '{setting.Type}' is not supported."));
             }
-        }
-    }
-
-    private static void ValidateText(string value, string description, List<SandboxDiagnostic> diagnostics)
-    {
-        if (string.IsNullOrWhiteSpace(value) || value.Any(char.IsControl))
-        {
-            diagnostics.Add(new SandboxDiagnostic("DBXK050", $"Plugin manifest {description} must be non-empty and must not contain control characters."));
-            return;
-        }
-
-        if (SandboxDescriptorGuards.ContainsForbiddenDescriptor(value))
-        {
-            diagnostics.Add(new SandboxDiagnostic("DBXK050", $"Plugin manifest {description} looks like a forbidden CLR or IL descriptor."));
         }
     }
 

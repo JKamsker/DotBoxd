@@ -63,6 +63,23 @@ public sealed class RpcKernelPackageValidationTests
     }
 
     [Fact]
+    public async Task Install_rejects_rpc_package_with_invalid_manifest_plugin_id_shape()
+    {
+        using var server = PluginServer.Create(
+            configureHost: RpcKernelTestPackages.AddKillBinding,
+            defaultPolicy: RpcKernelTestPackages.KillPolicy());
+        var invalid = WithPluginId(RpcKernelTestPackages.MonsterKiller(), "../monster/killer");
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await server.InstallServerExtensionAsync(invalid).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d =>
+            d.Code == "DBXK050" &&
+            d.Message.Contains("plugin id", StringComparison.OrdinalIgnoreCase) &&
+            d.Message.Contains("identifier", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task Install_rejects_rpc_package_with_entrypoints_that_do_not_match_rpc_entrypoint()
     {
         using var server = PluginServer.Create(
@@ -173,6 +190,20 @@ public sealed class RpcKernelPackageValidationTests
                 RequiredCapabilities = [.. package.Manifest.RequiredCapabilities, "event.read.secret"]
             }
         };
+
+    private static PluginPackage WithPluginId(PluginPackage package, string pluginId)
+    {
+        var metadata = new Dictionary<string, string>(package.Module.Metadata, StringComparer.Ordinal)
+        {
+            ["pluginId"] = pluginId
+        };
+
+        return package with
+        {
+            Manifest = package.Manifest with { PluginId = pluginId },
+            Module = package.Module with { Id = pluginId, Metadata = metadata }
+        };
+    }
 
     private static SandboxPolicy KillAndEventReadPolicy()
         => SandboxPolicyBuilder.Create()
