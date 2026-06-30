@@ -75,7 +75,7 @@ internal static class DotBoxDGeneratedAssemblyCatalog
         s_serviceCatalogs.GetOrAdd(assembly, static assembly => LoadGeneratedServices(assembly));
 
     public static void PublishServices(Assembly assembly, IReadOnlyList<GeneratedService> services) =>
-        s_serviceCatalogs[assembly] = services;
+        s_serviceCatalogs[assembly] = GeneratedServiceCatalogSnapshot.Snapshot(services);
 
     public static void RegisterServices(Assembly assembly, IDotBoxDServiceRegistrationSink sink) =>
         s_serviceSinks
@@ -108,8 +108,9 @@ internal static class DotBoxDGeneratedAssemblyCatalog
         var property = generatedType.GetProperty("Services", BindingFlags.Public | BindingFlags.Static);
         if (property?.GetValue(null) is IReadOnlyList<GeneratedService> legacyServices)
         {
-            s_serviceCatalogs[assembly] = legacyServices;
-            return legacyServices;
+            var snapshot = GeneratedServiceCatalogSnapshot.Snapshot(legacyServices);
+            s_serviceCatalogs[assembly] = snapshot;
+            return snapshot;
         }
 
         throw new InvalidOperationException(

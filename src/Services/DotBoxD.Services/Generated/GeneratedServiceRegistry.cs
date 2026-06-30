@@ -55,10 +55,11 @@ public static class GeneratedServiceRegistry
         lock (s_registrationLock)
         {
             var version = s_registrationVersion + 1;
+            var snapshot = GeneratedServiceCatalogSnapshot.Snapshot(service);
             s_services[typeof(TService)] = new RegisteredService(
                 invoker => proxyFactory(invoker)!,
                 dispatcherFactory,
-                service,
+                snapshot,
                 version);
             Volatile.Write(ref s_registrationVersion, version);
         }
