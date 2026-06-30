@@ -73,7 +73,7 @@ internal static partial class RpcTypeValidator
                 allowTopLevelAsyncWrapper,
                 cancellationTokenSymbol))
         {
-            return $"{role} uses a streaming or control type as an RPC payload; Stream, Pipe, IAsyncEnumerable<T>, and CancellationToken are only supported as direct streaming/control RPC shapes";
+            return $"{role} uses a streaming or control type as an RPC payload; Stream, Pipe, IAsyncEnumerable<T>, RpcStreamHandle, and CancellationToken are only supported as direct streaming/control RPC shapes";
         }
 
         if (ContainsOpenEndedPayloadType(type, ct))

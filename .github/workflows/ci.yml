@@ -448,6 +448,7 @@ jobs:
             -RequiredFullyQualifiedNameContains @(
               "UnsupportedShapeCoverageTests",
               "UnsupportedDtoPayloadShapeTests",
+              "UnsupportedTransportPayloadShapeTests",
               "SubServiceAvailabilityTests",
               "SubServicePropertyInheritanceTests",
               "NullableSubServiceTests",

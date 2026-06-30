@@ -37,6 +37,11 @@ internal static partial class RpcTypeValidator
             return !allowCurrentCancellationToken;
         }
 
+        if (IsRpcStreamHandle(named))
+        {
+            return true;
+        }
+
         if (IsTaskLike(named) && allowCurrentTaskWrapper)
         {
             return ContainsTypeArguments(named, ct, allowCurrentTransportShape, cancellationTokenSymbol);
@@ -93,6 +98,10 @@ internal static partial class RpcTypeValidator
         cancellationTokenSymbol is not null
             ? SymbolEqualityComparer.Default.Equals(type, cancellationTokenSymbol)
             : type.Name == nameof(CancellationToken) && type.ContainingNamespace?.ToDisplayString() == "System.Threading";
+
+    private static bool IsRpcStreamHandle(INamedTypeSymbol type) =>
+        type.Name == "RpcStreamHandle" &&
+        type.ContainingNamespace?.ToDisplayString() == "DotBoxD.Services.Protocol";
 
     private static bool ContainsPointerType(ITypeSymbol type, CancellationToken ct)
     {

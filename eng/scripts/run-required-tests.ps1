@@ -149,6 +149,7 @@ $defaultMinimums = @{
     NamedPipeServerTransportCancellationRegressionTests = 2
     UnsupportedShapeCoverageTests = 6
     UnsupportedDtoPayloadShapeTests = 2
+    UnsupportedTransportPayloadShapeTests = 3
     SubServiceAvailabilityTests = 5
     SubServicePropertyInheritanceTests = 8
     NullableSubServiceTests = 5
