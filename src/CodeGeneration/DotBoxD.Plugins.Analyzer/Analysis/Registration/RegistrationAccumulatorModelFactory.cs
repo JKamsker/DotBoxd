@@ -227,8 +227,8 @@ internal static class RegistrationAccumulatorModelFactory
 
                     properties.Add(new RegistrationRootPropertyModel(
                         property.Name,
-                        TypeName(property.Type),
-                        TypeName(property.ContainingType)));
+                        TypeName(property.ContainingType),
+                        RegistrationAssignableTypeNameCollector.Collect(property.Type)));
                 }
             }
         }

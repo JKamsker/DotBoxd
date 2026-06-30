@@ -23,8 +23,8 @@ internal sealed record RegistrationRootAccumulatorModel(
 
 internal sealed record RegistrationRootPropertyModel(
     string Name,
-    string TypeName,
-    string DeclaringTypeName);
+    string DeclaringTypeName,
+    EquatableArray<string> AssignableReceiverTypeNames);
 
 internal sealed record RegistrationChildAccumulatorModel(
     string PropertyName,
