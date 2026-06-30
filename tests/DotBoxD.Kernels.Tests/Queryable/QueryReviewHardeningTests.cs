@@ -158,6 +158,18 @@ public sealed class QueryReviewHardeningTests
     }
 
     [Fact]
+    public void Public_member_projection_initializer_without_path_is_rejected_on_write()
+    {
+        var projection = new QueryProjection { Kind = QueryProjectionKind.Member };
+
+        var exception = Assert.ThrowsAny<Exception>(() =>
+            JsonSerializer.Serialize(projection, EventQueryJson.Options));
+        Assert.True(exception is JsonException or InvalidOperationException);
+        Assert.Contains("Member", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("Path", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Shared_serializer_options_are_read_only()
     {
         Assert.True(EventQueryJson.Options.IsReadOnly);
