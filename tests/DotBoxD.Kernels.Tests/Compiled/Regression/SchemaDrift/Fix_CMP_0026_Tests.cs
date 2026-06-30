@@ -60,6 +60,20 @@ public sealed class Fix_CMP_0026_Tests
     }
 
     [Fact]
+    public void Plugin_package_schema_local_terminal_requires_projected_type()
+    {
+        using var document = JsonDocument.Parse(PluginPackageJsonSchemas.PackageEnvelope);
+        var rules = document.RootElement
+            .GetProperty("$defs")
+            .GetProperty("subscription")
+            .GetProperty("allOf")
+            .EnumerateArray()
+            .ToArray();
+
+        Assert.Contains(rules, RequiresProjectedTypeForLocalTerminal);
+    }
+
+    [Fact]
     public void Drift_guard_rejects_same_property_set_when_required_properties_are_relaxed()
     {
         var contract = new JsonSchemaObjectContract(
@@ -186,4 +200,13 @@ public sealed class Fix_CMP_0026_Tests
             .GetProperty("valueType")
             .GetProperty("const")
             .GetString() == valueType;
+
+    private static bool RequiresProjectedTypeForLocalTerminal(JsonElement rule)
+        => rule.GetProperty("if").TryGetProperty("properties", out var properties) &&
+           properties.TryGetProperty("localTerminal", out var localTerminal) &&
+           localTerminal.TryGetProperty("const", out var constValue) &&
+           constValue.ValueKind == JsonValueKind.True &&
+           rule.GetProperty("then").GetProperty("required")
+               .EnumerateArray()
+               .Any(value => value.GetString() == "projectedType");
 }

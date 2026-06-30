@@ -5,7 +5,7 @@ using DotBoxD.Plugins.Json;
 
 namespace DotBoxD.Kernels.Tests.Plugins;
 
-public sealed class PluginPackageJsonTests
+public sealed partial class PluginPackageJsonTests
 {
     [Fact]
     public async Task InstallJsonAsync_installs_serialized_package_data()

@@ -190,6 +190,13 @@
           "then": { "required": ["resultType"] }
         },
         {
+          "if": {
+            "properties": { "localTerminal": { "const": true } },
+            "required": ["localTerminal"]
+          },
+          "then": { "required": ["projectedType"] }
+        },
+        {
           "if": { "required": ["projectedType"] },
           "then": {
             "properties": {

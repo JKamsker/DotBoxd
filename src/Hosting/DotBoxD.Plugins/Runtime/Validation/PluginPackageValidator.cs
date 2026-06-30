@@ -164,6 +164,13 @@ internal static class PluginPackageValidator
 
         if (subscription.ResultType is null)
         {
+            if (subscription.LocalTerminal && subscription.ProjectedType is null)
+            {
+                diagnostics.Add(new SandboxDiagnostic(
+                    "DBXK031",
+                    "Local-terminal hook subscriptions must declare an explicit projected type."));
+            }
+
             if (subscription.ResultLocalTerminal)
             {
                 diagnostics.Add(new SandboxDiagnostic(
