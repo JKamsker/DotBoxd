@@ -168,8 +168,25 @@ public partial class HookPipeline<TEvent, TContext>
 
     private static void ValidateResultKernel(InstalledKernel kernel, Type resultType, bool resultLocalTerminal)
     {
+        ValidateHookResultContract(resultType);
         ValidateResultManifest(kernel.Manifest, resultType, resultLocalTerminal);
         ValidateHandleReturnType(kernel.Package, resultType, resultLocalTerminal);
+    }
+
+    private static void ValidateHookResultContract(Type resultType)
+    {
+        var hook = (DotBoxD.Abstractions.HookAttribute?)Attribute.GetCustomAttribute(
+            typeof(TEvent),
+            typeof(DotBoxD.Abstractions.HookAttribute),
+            inherit: false);
+        if (hook is null || hook.ResultType == resultType)
+        {
+            return;
+        }
+
+        throw ResultValidationError(
+            $"Hook context '{typeof(TEvent).FullName}' declares result type " +
+            $"'{hook.ResultType.FullName}', but '{resultType.FullName}' was installed.");
     }
 
     private static void ValidateResultManifest(PluginManifest manifest, Type resultType, bool resultLocalTerminal)

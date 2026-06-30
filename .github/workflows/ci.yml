@@ -477,6 +477,7 @@ jobs:
             -NoBuild `
             -RequiredFullyQualifiedNameContains @(
               "Remote_RegisterLocal_tamper_rejects",
+              "Local_result_install_rejects_manifest_result_type_that_does_not_match_hook_contract",
               "RegisterLocal_value_only_overload_lowers_and_runs_the_handler",
               "DtoProjectionTests"
             ) `

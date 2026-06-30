@@ -171,6 +171,7 @@ $defaultMinimums = @{
     HookResultBuilderKeywordFieldTests = 1
     ServerExtensionEnumOverflowRegressionTests = 1
     Computed_dto_projection_round_trips = 1
+    Local_result_install_rejects_manifest_result_type_that_does_not_match_hook_contract = 1
     RegisterLocal_value_only_overload_lowers_and_runs_the_handler = 1
     DtoProjectionTests = 5
     PluginRevocationTests = 4
