@@ -139,7 +139,7 @@ internal static class LocalCallbackProjection
         var writer = (IPluginEventValueWriter<TEvent>)adapter;
         var values = new SandboxValue[writer.EventValueCount];
         writer.CopySandboxValues(e, values, 0);
-        PluginEventValueWriterValueValidator.ValidateCopiedValues(writer, values, 0);
+        PluginEventAdapterValueValidator.ValidateCopiedValues(writer, values, 0);
         return SandboxValue.FromOwnedRecord(values);
     }
 

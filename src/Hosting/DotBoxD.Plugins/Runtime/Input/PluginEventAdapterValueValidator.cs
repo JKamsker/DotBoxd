@@ -3,18 +3,29 @@ using DotBoxD.Kernels.Sandbox;
 
 namespace DotBoxD.Plugins.Runtime.Input;
 
-internal static class PluginEventValueWriterValueValidator
+internal static class PluginEventAdapterValueValidator
 {
-    public static void ValidateValue<TEvent>(
-        IPluginEventValueWriter<TEvent> writer,
+    public static void ValidateValues(
+        IReadOnlyList<Parameter> parameters,
+        IReadOnlyList<SandboxValue> values)
+    {
+        EnsureValueCountMatches(values.Count, parameters.Count);
+        for (var i = 0; i < parameters.Count; i++)
+        {
+            RequireType(values[i], parameters[i], i);
+        }
+    }
+
+    public static void ValidateValue(
+        IReadOnlyList<Parameter> parameters,
+        int eventValueCount,
         int index,
         SandboxValue value)
     {
-        var parameters = writer.Parameters;
-        EnsureValueCountMatches(writer.EventValueCount, parameters.Count);
+        EnsureValueCountMatches(eventValueCount, parameters.Count);
         if ((uint)index >= (uint)parameters.Count)
         {
-            throw CreateException("Plugin event value writer index is outside adapter parameters.");
+            throw CreateException("Plugin event adapter value index is outside adapter parameters.");
         }
 
         RequireType(value, parameters[index], index);
@@ -26,7 +37,16 @@ internal static class PluginEventValueWriterValueValidator
         int destinationIndex)
     {
         var parameters = writer.Parameters;
-        EnsureValueCountMatches(writer.EventValueCount, parameters.Count);
+        ValidateCopiedValues(parameters, writer.EventValueCount, values, destinationIndex);
+    }
+
+    public static void ValidateCopiedValues(
+        IReadOnlyList<Parameter> parameters,
+        int eventValueCount,
+        SandboxValue[] values,
+        int destinationIndex)
+    {
+        EnsureValueCountMatches(eventValueCount, parameters.Count);
         for (var i = 0; i < parameters.Count; i++)
         {
             RequireType(values[destinationIndex + i], parameters[i], i);
@@ -37,14 +57,14 @@ internal static class PluginEventValueWriterValueValidator
     {
         if (valueCount != parameterCount)
         {
-            throw CreateException("Plugin event value writer count does not match adapter parameters.");
+            throw CreateException("Plugin event adapter value count does not match adapter parameters.");
         }
     }
 
     private static void RequireType(SandboxValue value, Parameter parameter, int index)
     {
         var message =
-            "Plugin event value writer output for parameter '" +
+            "Plugin event adapter output for parameter '" +
             parameter.Name +
             "' at index " +
             index.ToString(System.Globalization.CultureInfo.InvariantCulture) +
@@ -64,6 +84,6 @@ internal static class PluginEventValueWriterValueValidator
 
     private static SandboxValidationException CreateException(string message) =>
         new([
-            new SandboxDiagnostic(PluginEventValueWriterShapeValidator.DiagnosticCode, message)
+            new SandboxDiagnostic(PluginEventAdapterShapeValidator.DiagnosticCode, message)
         ]);
 }

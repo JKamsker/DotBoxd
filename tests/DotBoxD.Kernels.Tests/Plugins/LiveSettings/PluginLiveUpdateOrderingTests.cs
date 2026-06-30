@@ -83,15 +83,24 @@ public sealed class PluginLiveUpdateOrderingTests
 
     private static SandboxValue BuildInput(InstalledKernel kernel, DamageEvent e)
     {
+        var adapter = DamageEventAdapter.Instance;
+        var validateMethod = typeof(InstalledKernel).GetMethod(
+            "ValidateFor",
+            BindingFlags.Instance | BindingFlags.NonPublic);
         var method = typeof(InstalledKernel).GetMethod(
             "BuildInput",
             BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(validateMethod);
         Assert.NotNull(method);
         try
         {
+            var parameters = validateMethod
+                .MakeGenericMethod(typeof(DamageEvent))
+                .Invoke(kernel, [adapter])!;
+
             return (SandboxValue)method
                 .MakeGenericMethod(typeof(DamageEvent))
-                .Invoke(kernel, [DamageEventAdapter.Instance, e, kernel.Package.Entrypoints.ShouldHandle])!;
+                .Invoke(kernel, [adapter, e, kernel.Package.Entrypoints.ShouldHandle, parameters])!;
         }
         catch (TargetInvocationException ex) when (ex.InnerException is not null)
         {

@@ -45,8 +45,8 @@ public sealed partial class InstalledKernel
                 return ProjectionResult.NotMatched;
             }
 
-            ValidateFor(adapter);
-            var input = BuildInput(adapter, e, _entrypoints.ShouldHandle);
+            var parameters = ValidateFor(adapter);
+            var input = BuildInput(adapter, e, _entrypoints.ShouldHandle, parameters);
             var result = await ExecutePreparedAsync(_entrypoints.ShouldHandle, input, cancellationToken).ConfigureAwait(false);
             if (!AsShouldHandleResult(result) || IsRevoked)
             {

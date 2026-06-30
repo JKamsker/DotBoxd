@@ -66,6 +66,21 @@ public sealed class PluginInputAllocationTests
     }
 
     [Fact]
+    public async Task Kernel_input_building_rejects_adapter_value_type_mismatch()
+    {
+        var messages = new InMemoryPluginMessageSink();
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
+        var kernel = await server.InstallAsync(InputBuildPackage());
+
+        var ex = await Assert.ThrowsAsync<SandboxValidationException>(
+            async () => await kernel.HandleAsync(new WrongTypeEventAdapter(), new IndexOnlyEvent("player-1")).AsTask());
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK036");
+        Assert.Empty(messages.Messages);
+        Assert.Empty(kernel.ExecutionObservations);
+    }
+
+    [Fact]
     public void Register_event_adapter_rejects_writer_value_count_mismatch()
     {
         var server = DotBoxD.Plugins.PluginServer.Create();
@@ -184,6 +199,16 @@ public sealed class PluginInputAllocationTests
 
         public IReadOnlyList<SandboxValue> ToSandboxValues(IndexOnlyEvent e)
             => new IndexOnlyValues(SandboxValue.FromString(e.TargetId));
+    }
+
+    private sealed class WrongTypeEventAdapter : IPluginEventAdapter<IndexOnlyEvent>
+    {
+        public string EventName => nameof(IndexOnlyEvent);
+
+        public IReadOnlyList<Parameter> Parameters { get; } = [new("e_TargetId", SandboxType.String)];
+
+        public IReadOnlyList<SandboxValue> ToSandboxValues(IndexOnlyEvent e)
+            => [SandboxValue.FromInt32(123)];
     }
 
     private sealed class WriterEventAdapter : IPluginEventValueWriter<IndexOnlyEvent>

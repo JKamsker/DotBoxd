@@ -154,8 +154,8 @@ public sealed partial class InstalledKernel
         try
         {
             PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
-            ValidateFor(adapter);
-            var input = BuildInput(adapter, e, _entrypoints.ShouldHandle);
+            var parameters = ValidateFor(adapter);
+            var input = BuildInput(adapter, e, _entrypoints.ShouldHandle, parameters);
             var result = await ExecutePreparedAsync(_entrypoints.ShouldHandle, input, cancellationToken).ConfigureAwait(false);
             PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
             return AsShouldHandleResult(result);
@@ -175,8 +175,8 @@ public sealed partial class InstalledKernel
         try
         {
             PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
-            ValidateFor(adapter);
-            var input = BuildInput(adapter, e, _entrypoints.Handle);
+            var parameters = ValidateFor(adapter);
+            var input = BuildInput(adapter, e, _entrypoints.Handle, parameters);
             _ = await ExecutePreparedAsync(_entrypoints.Handle, input, cancellationToken).ConfigureAwait(false);
             PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
         }
@@ -208,8 +208,8 @@ public sealed partial class InstalledKernel
                 return;
             }
 
-            ValidateFor(adapter);
-            var input = BuildInput(adapter, e, _entrypoints.ShouldHandle);
+            var parameters = ValidateFor(adapter);
+            var input = BuildInput(adapter, e, _entrypoints.ShouldHandle, parameters);
             var result = await ExecutePreparedAsync(_entrypoints.ShouldHandle, input, cancellationToken).ConfigureAwait(false);
             if (AsShouldHandleResult(result))
             {
@@ -271,7 +271,7 @@ public sealed partial class InstalledKernel
         return handled.Value;
     }
 
-    internal void ValidateFor<TEvent>(IPluginEventAdapter<TEvent> adapter)
+    internal IReadOnlyList<Parameter> ValidateFor<TEvent>(IPluginEventAdapter<TEvent> adapter)
         => _adapterValidation.Validate(Manifest, _plan, _entrypoints, adapter);
 
     internal void RefreshTypedValuesFromStore()
