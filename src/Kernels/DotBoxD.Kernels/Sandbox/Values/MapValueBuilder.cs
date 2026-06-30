@@ -12,6 +12,9 @@ internal sealed class MapValueBuilder
     public void Set(SandboxValue key, SandboxValue value)
         => Values[key] = value;
 
+    public bool TryAdd(SandboxValue key, SandboxValue value)
+        => Values.TryAdd(key, value);
+
     internal Dictionary<SandboxValue, SandboxValue> Consume()
     {
         var values = _values ?? throw Consumed();

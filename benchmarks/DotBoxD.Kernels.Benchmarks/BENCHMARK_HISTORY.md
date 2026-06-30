@@ -933,3 +933,30 @@ Settable DTO fallback         178.7 / 96.0     69.8 / 32.0
 
 The remaining allocation is the DTO object itself. Constructor-backed anonymous DTO rows stayed in the same
 range (about 75 ms and 40 B/op), which confirms the shared field-reader refactor did not regress that path.
+
+## Kernel RPC value converter collection fast paths
+
+The converter now reuses `Array.Empty<T>()` for empty list/record/map wire temporaries and decodes wire maps
+through the owned `MapValueBuilder` path, preserving duplicate-key rejection while avoiding the extra defensive
+dictionary copy in `SandboxValue.FromMap`.
+
+Command:
+
+```text
+dotnet run --project benchmarks\DotBoxD.Kernels.Benchmarks\DotBoxD.Kernels.Benchmarks.csproj -c Release -- --probe-kernel-rpc-value-converter-collections
+```
+
+Representative local run:
+
+```text
+Case                                      Before ms/Bop    After ms/Bop
+empty wire list -> sandbox                116.3 /  64.0    189.9 /  40.0
+empty sandbox list -> wire                 34.4 /  24.0     46.1 /   0.0
+empty sandbox record -> wire               32.3 /  24.0     48.6 /   0.0
+empty sandbox map -> wire                  54.8 /  24.0     50.4 /   0.0
+wire map -> sandbox (8 entries)           220.6 /1136.0    175.0 / 720.0
+wire map -> sandbox (32 entries)          374.6 /3168.0    318.1 /2024.0
+```
+
+The empty decode path is an allocation-only win; the non-empty map decode path improves both allocation and
+elapsed time by removing the extra dictionary snapshot.

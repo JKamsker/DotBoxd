@@ -28,6 +28,12 @@ internal static class KernelRpcProbeDispatcher
             return true;
         }
 
+        if (args.Contains("--probe-kernel-rpc-value-converter-collections", StringComparer.OrdinalIgnoreCase))
+        {
+            KernelRpcValueConverterCollectionsProbe.Run();
+            return true;
+        }
+
         return false;
     }
 }
