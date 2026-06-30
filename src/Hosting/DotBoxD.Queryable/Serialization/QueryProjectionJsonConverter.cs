@@ -45,10 +45,10 @@ public sealed class QueryProjectionJsonConverter : JsonConverter<QueryProjection
             case QueryProjectionKind.Identity:
                 break;
             case QueryProjectionKind.Member:
-                writer.WriteString("path", value.Path);
+                writer.WriteString("path", QueryProjectionInvariants.MemberPath(value));
                 break;
             case QueryProjectionKind.Construct:
-                writer.WriteString("type", value.TypeName);
+                writer.WriteString("type", QueryProjectionInvariants.ConstructTypeName(value));
                 writer.WritePropertyName("fields");
                 WriteFields(writer, value.Fields, options);
                 break;
@@ -68,15 +68,15 @@ public sealed class QueryProjectionJsonConverter : JsonConverter<QueryProjection
         foreach (var field in fields)
         {
             writer.WriteStartObject();
-            writer.WriteString("name", field.Name);
-            if (field.Path is not null)
+            writer.WriteString("name", QueryProjectionInvariants.FieldName(field));
+            if (QueryProjectionInvariants.FieldHasPath(field))
             {
-                writer.WriteString("path", field.Path);
+                writer.WriteString("path", QueryProjectionInvariants.FieldPath(field));
             }
             else
             {
                 writer.WritePropertyName("value");
-                JsonSerializer.Serialize(writer, field.Constant ?? QueryValue.Null, options);
+                JsonSerializer.Serialize(writer, QueryProjectionInvariants.FieldConstant(field), options);
             }
 
             writer.WriteEndObject();
