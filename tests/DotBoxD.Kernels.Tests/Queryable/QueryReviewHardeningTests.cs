@@ -112,6 +112,26 @@ public sealed class QueryReviewHardeningTests
     }
 
     [Fact]
+    public void Public_compare_filter_initializer_without_value_is_rejected()
+    {
+        var filter = new QueryFilter
+        {
+            Kind = QueryFilterKind.Compare,
+            Field = "Key",
+            Operator = QueryComparisonOperator.Equal,
+        };
+
+        var evaluation = Assert.Throws<InvalidOperationException>(() =>
+            QueryFilterEvaluator.Evaluate(filter, new NullableTestEvent(null, 1), new MemberValueReader()));
+        Assert.Contains("Compare", evaluation.Message, StringComparison.Ordinal);
+        Assert.Contains("Value", evaluation.Message, StringComparison.Ordinal);
+
+        var formatting = Assert.Throws<InvalidOperationException>(() => QueryText.Format(filter));
+        Assert.Contains("Compare", formatting.Message, StringComparison.Ordinal);
+        Assert.Contains("Value", formatting.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Deeply_nested_text_is_rejected_instead_of_overflowing_the_stack()
     {
         var deep = string.Concat(Enumerable.Repeat("not ", 2000)) + "AttackerId == \"a\"";
