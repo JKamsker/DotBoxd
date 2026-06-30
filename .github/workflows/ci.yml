@@ -349,6 +349,8 @@ jobs:
               "PluginAnalyzerEnumerableDtoValidationTests",
               "PluginAnalyzerLiveSettingTypeValidationTests",
               "ServerExtensionGeneratedContextParameterTests",
+              "LoweringFailClosedInvariantTests",
+              "LoweringNegativeShapeMatrixTests",
               "PluginAnalyzerHookChainTests",
               "InvokeAsyncGenerationTests",
               "InvokeAsyncSurpriseGenerationTests",
