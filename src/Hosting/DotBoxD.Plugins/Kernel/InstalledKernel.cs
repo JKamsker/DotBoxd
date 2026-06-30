@@ -95,7 +95,7 @@ public sealed partial class InstalledKernel
     {
         if (typeof(TSettings).IsInterface)
         {
-            return Value.As<TSettings>();
+            return Value.As<TSettings>(() => IsRevoked);
         }
 
         lock (_typedValueGate)

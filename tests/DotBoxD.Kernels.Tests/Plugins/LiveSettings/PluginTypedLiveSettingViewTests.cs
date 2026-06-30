@@ -1,5 +1,6 @@
-using DotBoxD.Kernels.PluginIpc.Server.Abstractions;
 using DotBoxD.Kernels.Model;
+using DotBoxD.Kernels.PluginIpc.Server.Abstractions;
+using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Tests._TestSupport;
 
 namespace DotBoxD.Kernels.Tests.Plugins.LiveSettings;
@@ -56,6 +57,22 @@ public sealed class PluginTypedLiveSettingViewTests
         Assert.Empty(messages.Messages);
         Assert.Same(installed, typed.Kernel);
         Assert.Equal(250, installed.Value.Get<int>("MinDamage"));
+    }
+
+    [Fact]
+    public async Task Revoked_interface_typed_view_rejects_setting_mutation()
+    {
+        var server = PluginAddendumTestPolicies.CreateServer();
+        var installed = await server.InstallAsync(FireDamagePluginPackage.Create());
+        var settings = installed.As<IFireDamageSettings>();
+
+        Assert.True(server.Uninstall("fire-damage"));
+
+        var ex = Assert.Throws<SandboxRuntimeException>(
+            () => settings.Value.MinDamage = 250);
+
+        Assert.Equal(SandboxErrorCode.PolicyDenied, ex.Error.Code);
+        Assert.Equal(100, installed.Value.Get<int>("MinDamage"));
     }
 
     private sealed class AlternateFireDamageSettings

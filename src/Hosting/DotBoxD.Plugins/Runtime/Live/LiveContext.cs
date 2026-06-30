@@ -21,11 +21,14 @@ internal class LiveContextProxy<T> : DispatchProxy where T : class
 {
     private static readonly IReadOnlyDictionary<MethodInfo, LiveContextAccessor> Accessors = CreateAccessors();
     private LiveSettingStore? _settings;
+    private Func<bool>? _isRevoked;
 
-    public static T Create(LiveSettingStore settings)
+    public static T Create(LiveSettingStore settings, Func<bool>? isRevoked = null)
     {
         var proxy = Create<T, LiveContextProxy<T>>();
-        ((LiveContextProxy<T>)(object)proxy)._settings = settings;
+        var context = (LiveContextProxy<T>)(object)proxy;
+        context._settings = settings;
+        context._isRevoked = isRevoked;
         return proxy;
     }
 
@@ -40,6 +43,7 @@ internal class LiveContextProxy<T> : DispatchProxy where T : class
     private object? Invoke(LiveContextAccessor accessor, object?[]? args)
     {
         var settings = _settings ?? throw new InvalidOperationException("Live context proxy is not initialized.");
+        PluginKernelRevocation.ThrowIfRevoked(_isRevoked?.Invoke() == true);
         if (accessor.IsGetter)
         {
             return LiveSettingTypeConverter.CoerceClr(
