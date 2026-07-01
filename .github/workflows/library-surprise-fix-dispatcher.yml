@@ -1,0 +1,130 @@
+name: Library Surprise Fix Dispatcher
+
+# Drives the "fix" half of the surprise-hunt graph WITHOUT depending on the
+# approval-gated pull_request CI.
+#
+# Why this exists: bot-authored PRs get their `ci` runs held at `action_required`
+# unless the repo's fork/first-time-contributor approval policy is relaxed. Rather
+# than depend on that mutable, external setting, the fixer is driven off OUR own
+# workflows: the red-test worker already refuses to open a PR unless `dotnet test`
+# FAILS inside its run, and the fix worker refuses to push unless `dotnet test`
+# PASSES inside its run. The red->green proof lives entirely in our runs, so this
+# dispatcher just needs to find open [surprise-red-test] PRs that still need a
+# production fix and dispatch one fix worker per PR (identified by number).
+#
+# See docs/Task/BugHunting/README.md.
+
+on:
+  # Primary trigger: a red-test worker just finished (it may have opened a new PR).
+  # Each tick re-scans ALL open unfixed red PRs, so a single missed tick self-heals
+  # on the next red-test completion — no separate schedule needed. (A `schedule:`
+  # can be added later for standalone backlog draining, but it is intentionally
+  # omitted here so enabling this workflow does not burst-fix the existing backlog.)
+  workflow_run:
+    workflows: ["Library Surprise Red-Test Worker"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      max:
+        description: Max fix workers to dispatch this tick.
+        required: false
+        default: "5"
+        type: string
+
+permissions:
+  actions: write
+  contents: read
+  issues: read
+  pull-requests: read
+
+# Serialize dispatcher ticks so two overlapping ticks can't double-dispatch the
+# same PR. Per-PR fan-out safety is handled by the fix worker's own per-PR group.
+concurrency:
+  group: surprise-fix-dispatcher
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch fix workers for unfixed red-test PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          MAX_DISPATCH: ${{ inputs.max || '5' }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, re, subprocess, sys
+
+          repo = os.environ["GH_REPO"]
+          try:
+              max_dispatch = int(os.environ.get("MAX_DISPATCH") or "5")
+          except ValueError:
+              max_dispatch = 5
+          prefix = "[surprise-red-test] "
+
+          def gh(args, tolerant=False):
+              r = subprocess.run(["gh", *args], check=False, text=True,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+              if r.returncode != 0:
+                  msg = f"gh {' '.join(args)} failed ({r.returncode}): {r.stderr.strip()}"
+                  if tolerant:
+                      print(f"::warning::{msg}")
+                      return None
+                  raise SystemExit(msg)
+              return r.stdout
+
+          # Open [surprise-red-test] PRs that still carry the bug labels and are NOT
+          # yet marked sweep:fixed are the fix frontier.
+          prs = json.loads(gh(["pr", "list", "--repo", repo, "--state", "open",
+                               "--limit", "100",
+                               "--json", "number,title,labels"]) or "[]")
+
+          def eligible(pr):
+              if not str(pr.get("title") or "").startswith(prefix):
+                  return False
+              names = {l.get("name") for l in pr.get("labels") or []}
+              return {"bug", ".NET"} <= names and "sweep:fixed" not in names
+
+          candidates = sorted((pr for pr in prs if eligible(pr)),
+                              key=lambda p: p["number"])
+
+          # Busy-check: never dispatch a second fix worker for a PR that already has
+          # one in flight (the worker's per-PR concurrency group would queue it, but
+          # skipping here avoids the wasted run entirely).
+          runs = json.loads(gh(["run", "list", "--repo", repo, "--workflow",
+                                "library-surprise-fix.lock.yml", "--limit", "60",
+                                "--json", "status,displayTitle"], tolerant=True) or "[]")
+          IN_FLIGHT = {"in_progress", "queued", "requested", "waiting", "pending"}
+          busy = set()
+          for run in runs:
+              if run.get("status") in IN_FLIGHT:
+                  m = re.search(r"fix #(\d+)", run.get("displayTitle", ""))
+                  if m:
+                      busy.add(int(m.group(1)))
+
+          dispatched = 0
+          for pr in candidates:
+              if dispatched >= max_dispatch:
+                  print(f"reached max ({max_dispatch}); "
+                        f"{len(candidates) - dispatched} candidate(s) deferred to next tick")
+                  break
+              n = pr["number"]
+              if n in busy:
+                  print(f"skip #{n}: a fix run is already in flight")
+                  continue
+              r = subprocess.run(["gh", "workflow", "run",
+                                  "library-surprise-fix.lock.yml",
+                                  "--repo", repo, "-f", f"pr_number={n}"],
+                                 check=False, text=True,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+              if r.returncode != 0:
+                  print(f"::warning::failed to dispatch fix for #{n}: {r.stderr.strip()}")
+              else:
+                  print(f"dispatched fix worker for #{n}")
+                  dispatched += 1
+
+          print(f"dispatched {dispatched} fix worker(s) "
+                f"from {len(candidates)} eligible candidate(s)")
+          PY

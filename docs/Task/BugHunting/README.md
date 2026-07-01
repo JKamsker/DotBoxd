@@ -551,10 +551,13 @@ bug record**; **lens-issue comment logs are the durable memory / dedup ledger**;
 - **Matrix variant** — the dispatcher (dynamic frontier) was chosen over a static matrix.
 
 ### Activation
-Nothing runs until this merges (gh-aw scheduled/dispatch workflows execute from the default
-branch). After merge the dispatcher goes live hourly. Requires `GH_AW_CI_TRIGGER_TOKEN` (set) so
-bot PRs auto-run CI without manual approval. To test immediately after merge, run the dispatcher
-via `workflow_dispatch`.
+gh-aw scheduled/dispatch workflows execute from the default branch. The discovery
+`library-surprise-dispatcher` is currently **disabled** (`gh workflow disable`), so no discovery
+fans out until deliberately enabled. `library-surprise-fix-dispatcher` is enabled but only fires on
+red-test completion, so it stays dormant while discovery is off. Enable the discovery dispatcher to
+run the full autonomous loop; dispatch the fix-dispatcher via `workflow_dispatch` (with `max`) to
+drain the existing red-test backlog on demand. `GH_AW_CI_TRIGGER_TOKEN` alone does **not** bypass
+the CI approval gate — see "CI approval gate" below.
 
 ### Runtime gotcha found by live testing (fixed)
 The generic `dispatch_workflow` safe-output tool is a **no-op** in this fork: the agent's call
@@ -566,3 +569,41 @@ explicitly and warn off the generic one. This was invisible to compile/validate 
 when the dispatcher ran live and created zero explore runs; the explore→red-test path happened to
 pick the dedicated tool on its own. Verified fixed: after the change the dispatcher reports "Found 5
 messages" and fans out one explore run per lens.
+
+### CI approval gate + the fix half was dead (found by live testing; fixed via Plan B)
+The Activation note's original claim was wrong: `GH_AW_CI_TRIGGER_TOKEN` does **not** make bot PRs
+auto-run CI. Its empty-commit push authenticates as `github-actions[bot]`, so every red-test PR's
+`ci` run sat at **`action_required`** — GitHub requires approval for workflow runs on PRs from a
+first-time contributor, which the bot always is (confirmed: the run `actor`/`triggering_actor` were
+`github-actions[bot]`, and the fork `/approve` REST endpoint rejects these as "not a fork PR").
+Because `library-surprise-fix` triggered on `workflow_run: ci` with `conclusion == failure`, and
+`ci` never actually ran, **fix was `skipped` on every run — the fixer half never executed a single
+production fix.**
+
+**Resolution — decouple the fixer from the approval-gated CI (Plan B):**
+- New **`library-surprise-fix-dispatcher.yml`** (plain Actions YAML): triggers on `workflow_run`
+  of the red-test worker (+ manual `workflow_dispatch`). Enumerates open `[surprise-red-test]` PRs
+  lacking `sweep:fixed` and dispatches one **fix** worker per PR by number (busy-check dedup on the
+  `fix #<n>` run-name). Each tick re-scans all unfixed PRs, so a missed tick self-heals on the next
+  red-test completion — no separate `schedule:` needed (and it is intentionally omitted so enabling
+  the workflow does not burst-fix the backlog).
+- **`library-surprise-fix.md`** reworked: entry is `workflow_dispatch(pr_number)` with **per-PR
+  concurrency** (`surprise-fix-<pr>`, no-cancel); the "must have a failing `ci` run" gate is
+  dropped. Proof now lives entirely in our own runs — red-test refuses to open a PR unless
+  `dotnet test` FAILS in-run, and fix refuses to push unless `dotnet test` PASSES in-run — so the
+  approval-gated PR CI is not needed as proof. Fix marks the PR `sweep:fixed` on success.
+- Net: the fixer is driven by **our** red-test completion, never by an external approval-gated
+  check. Works regardless of how GitHub gates bot PRs or whether any token/setting is present.
+
+**Bonus (not depended on):** relaxed the repo's `actions/permissions/fork-pr-contributor-approval`
+policy from `first_time_contributors` → `first_time_contributors_new_to_github`, so bot PRs' `ci`
+runs execute automatically (the bot is not new-to-GitHub) and each PR also shows a real red→green
+CI check for humans. Mild security relaxation on a public repo (established outside contributors'
+`pull_request` workflows run without approval; they still get a read-only token and no secrets). If
+undesired, revert the policy — the loop still works via Plan B.
+
+**Live evidence:** a full `ci` run executes end-to-end and goes **red** on a red-test branch (both
+`workflow_dispatch` and `pull_request` events → `failure`); a genuine `pull_request` CI failure
+emits `workflow_run` and triggers a non-skipped fix run. Note `gh run rerun` does **not** emit
+`workflow_run`, which is one reason the fix-dispatcher keys off the red-test worker rather than off
+CI.

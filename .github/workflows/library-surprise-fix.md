@@ -1,27 +1,32 @@
 ---
 description: |
-  Follows up on [surprise-red-test] PRs after CI has proven the red regression
-  tests fail, then fixes the production issue on the same PR branch and folds
-  in CodeRabbit feedback when present.
+  Fixes the production issue behind one open [surprise-red-test] PR on the same
+  PR branch and folds in CodeRabbit feedback when present. Dispatched per-PR by
+  library-surprise-fix-dispatcher; re-proves the red regression test locally
+  (red then green) inside this run rather than depending on the approval-gated
+  pull_request CI.
 
 on:
-  workflow_run:
-    workflows: [ci]
-    types: [completed]
   workflow_dispatch:
     inputs:
       pr_number:
-        description: Optional [surprise-red-test] pull request number to fix.
-        required: false
+        description: The [surprise-red-test] pull request number to fix.
+        required: true
         type: string
+
+run-name: "fix #${{ inputs.pr_number }}"
+
+# Per-PR group: distinct fix dispatches for different PRs run in parallel and never
+# cancel each other; a duplicate dispatch for the SAME PR queues instead of double-fixing.
+concurrency:
+  group: surprise-fix-${{ inputs.pr_number }}
+  cancel-in-progress: false
 
 permissions:
   actions: read
   contents: read
   issues: read
   pull-requests: read
-
-if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'failure')
 
 checkout:
   fetch-depth: 0
@@ -57,6 +62,9 @@ safe-outputs:
     if-no-changes: "error"
     protected-files: fallback-to-issue
     github-token-for-extra-empty-commit: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
+  add-labels:
+    target: "*"
+    max: 1
   noop:
     report-as-issue: false
   missing-tool: false
@@ -80,6 +88,7 @@ pre-agent-steps:
       EVENT_NAME: ${{ github.event_name }}
       DISPATCH_PR_NUMBER: ${{ inputs.pr_number || '' }}
       SURPRISE_PR_TITLE_PREFIX: "[surprise-red-test] "
+      # NOTE: only workflow_dispatch remains; EVENT_NAME kept for the resolver's guard.
     run: |
       set -euo pipefail
       mkdir -p /tmp/gh-aw
@@ -215,7 +224,10 @@ pre-agent-steps:
                       "conclusion": run.get("conclusion"),
                   }
               else:
-                  errors.append("No completed failing ci run was found for the PR branch")
+                  # A failing pull_request ci run is a nice-to-have, not required:
+                  # this run re-proves the red test locally in its own validation
+                  # steps (Build + "Verify fix is green" establish red->green here).
+                  pass
 
           if errors:
               target["reason"] = "; ".join(errors)
@@ -223,7 +235,7 @@ pre-agent-steps:
               target.update(
                   {
                       "should_run": True,
-                      "reason": "Eligible surprise red-test PR with failing CI proof.",
+                      "reason": "Eligible open [surprise-red-test] PR; red is re-proven locally in this run.",
                       "pr_number": pr.get("number"),
                       "pr_url": pr.get("url"),
                       "head_ref": pr.get("headRefName"),
@@ -371,9 +383,15 @@ post-steps:
 
 # Library Surprise Fix
 
-This workflow repairs an existing `[surprise-red-test]` pull request after CI
-has proved that the red regression tests fail. Do not discover a new surprise
-in this workflow.
+This workflow repairs an existing `[surprise-red-test]` pull request whose red
+regression test reproduces a real bug. It is dispatched per-PR (by number) from
+`library-surprise-fix-dispatcher`. Do not discover a new surprise in this
+workflow.
+
+The red->green proof lives entirely in this run: you confirm the red test FAILS
+on the checked-out branch, implement the fix, and this workflow's post-steps
+rebuild and require `dotnet test` to PASS before your push is accepted. It does
+not depend on the approval-gated pull_request CI.
 
 ## Target Resolution
 
@@ -382,17 +400,18 @@ Read `/tmp/gh-aw/surprise-fix-target.json` first.
 If `SURPRISE_FIX_SHOULD_RUN` is not `true`, leave the workspace unchanged and
 call `noop` with the recorded reason. This workflow is intentionally selective:
 it may only act on an open, same-repository PR whose title starts with
-`[surprise-red-test] `, has the `bug` and `.NET` labels, and has a completed
-failing `ci` run as proof that the red tests expose a real bug.
+`[surprise-red-test] `, has the `bug` and `.NET` labels, and is not already
+marked `sweep:fixed`.
 
 The pre-agent step checks out the target PR branch before you start. Confirm
 that the checked-out branch contains the red tests from the PR.
 
 ## Required Process
 
-1. Inspect the PR body, diff, and completed failing `ci` run logs. Confirm that
-   the failure is caused by the red regression tests, not infrastructure or an
-   unrelated failure.
+1. Inspect the PR body and diff. Build the branch and run the focused regression
+   test; confirm it FAILS for the expected reason — that failure is the proof
+   the bug is real. If the test already PASSES, the bug is already fixed: leave
+   the workspace unchanged and call `noop`.
 2. Inspect CodeRabbit feedback before editing:
    - PR reviews
    - PR review comments
@@ -406,18 +425,19 @@ that the checked-out branch contains the red tests from the PR.
 4. Implement the smallest maintainable production fix. Keep the public design
    rule intact: public abstractions and generators must remain opt-in sugar over
    public primitives, never lock-in.
-5. Run the focused failing test to verify it is now green, then run:
+5. Run the focused test to verify it is now green, then run:
    `dotnet restore DotBoxD.slnx`,
    `GITHUB_ACTIONS=true dotnet build DotBoxD.slnx -c Release --no-restore`, and
    `GITHUB_ACTIONS=true dotnet test DotBoxD.slnx -c Release --no-build`.
 6. Commit the fix on the checked-out PR branch. The commit message must include
    a short summary followed by a body explaining what changed and why.
 7. Call `push_to_pull_request_branch` for `SURPRISE_FIX_PR_NUMBER`. Include a
-   concise summary covering the CI proof run, the fix, local validation, and
-   CodeRabbit handling.
+   concise summary covering the confirmed red test, the fix, local validation,
+   and CodeRabbit handling. Then call `add_labels` to add `sweep:fixed` to the
+   PR so the dispatcher does not re-dispatch it.
 
-If the completed CI failure is not the red-test proof, or if the PR is no
-longer eligible, leave the workspace unchanged and call `noop`.
+If the red test does not fail (already fixed) or the PR is no longer eligible,
+leave the workspace unchanged and call `noop`.
 
 Do not print, inspect, or summarize secrets, API keys, virtual tokens, endpoint
 hosts, or full endpoint URLs.
