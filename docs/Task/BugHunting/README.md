@@ -555,3 +555,14 @@ Nothing runs until this merges (gh-aw scheduled/dispatch workflows execute from 
 branch). After merge the dispatcher goes live hourly. Requires `GH_AW_CI_TRIGGER_TOKEN` (set) so
 bot PRs auto-run CI without manual approval. To test immediately after merge, run the dispatcher
 via `workflow_dispatch`.
+
+### Runtime gotcha found by live testing (fixed)
+The generic `dispatch_workflow` safe-output tool is a **no-op** in this fork: the agent's call
+returns `200 OK` but writes no collectable safe-output message, so the safe_outputs job reports
+"Found 0 messages" and **nothing is dispatched**. The correct mechanism is the auto-generated
+**per-workflow** tool — `library_surprise_explore` (dispatcher) / `library_surprise_red_test`
+(explore) — which does persist a message. Both agent prompts now name the dedicated tool
+explicitly and warn off the generic one. This was invisible to compile/validate and only surfaced
+when the dispatcher ran live and created zero explore runs; the explore→red-test path happened to
+pick the dedicated tool on its own. Verified fixed: after the change the dispatcher reports "Found 5
+messages" and fans out one explore run per lens.
