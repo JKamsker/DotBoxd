@@ -50,6 +50,32 @@ public sealed class PluginLiveUpdateRecoveryTests
     }
 
     [Fact]
+    public async Task AsyncSet_flush_with_precanceled_token_preserves_completed_failure()
+    {
+        var messages = new InMemoryPluginMessageSink();
+        var server = PluginAddendumTestPolicies.CreateServer(messages);
+        await server.InstallAsync(FireDamagePluginPackage.Create());
+        server.Hooks.On<DamageEvent>().Use<FireDamageKernel>();
+        var kernel = server.Kernels.Get<FireDamageKernel>("fire-damage");
+
+        kernel.UpdateMode = LiveUpdateMode.AsyncSet;
+        kernel.Value.MinDamage = 10_001;
+        await server.Hooks.PublishAsync(new DamageEvent("fire", 120, "player-1"));
+        await WaitForAsyncUpdateErrorAsync(kernel);
+        kernel.Value.MinDamage = 100;
+        await Task.Delay(100);
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await kernel.FlushUpdatesAsync().AsTask());
+
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            async () => await kernel.FlushUpdatesAsync(cancellation.Token).AsTask());
+        Assert.NotNull(kernel.LastAsyncUpdateError);
+    }
+
+    [Fact]
     public async Task AsyncSet_flush_rejects_revoked_kernel_without_applying_typed_value()
     {
         var server = PluginAddendumTestPolicies.CreateServer();
