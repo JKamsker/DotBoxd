@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Reflection.Emit;
+using DotBoxD.Kernels.Runtime;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Tests.Verifier.Generated;
 using Microsoft.CodeAnalysis;
@@ -16,7 +17,8 @@ public sealed class VerifierDocumentedAttackMatrixTests
             { "Thread.Start", ThreadStartAssembly, ["V-TYPE-FORBIDDEN", "V-MEMBER"] },
             { "raw Stream", StreamAssembly, ["V-TYPE-FORBIDDEN", "V-MEMBER"] },
             { "IServiceProvider.GetService", ServiceProviderAssembly, ["V-TYPE-FORBIDDEN", "V-MEMBER"] },
-            { "unmanaged function pointer signature", FunctionPointerSignatureAssembly, ["V-FUNCTION-SIGNATURE"] }
+            { "unmanaged function pointer signature", FunctionPointerSignatureAssembly, ["V-FUNCTION-SIGNATURE"] },
+            { "unmanaged pointer local signature", PointerLocalSignatureAssembly, ["V-FUNCTION-SIGNATURE"] }
         };
 
     [Theory]
@@ -149,6 +151,40 @@ public sealed class VerifierDocumentedAttackMatrixTests
 
         return output.ToArray();
     }
+
+    private static byte[] PointerLocalSignatureAssembly()
+        => VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
+            var function = type.DefineMethod(
+                "Fn_0",
+                MethodAttributes.Private | MethodAttributes.Static,
+                typeof(SandboxValue),
+                [typeof(SandboxContext)]);
+            var fnIl = function.GetILGenerator();
+            fnIl.DeclareLocal(typeof(int).MakePointerType());
+            var value = fnIl.DeclareLocal(typeof(SandboxValue));
+            fnIl.Emit(OpCodes.Ldarg_0);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.EnterCall))!);
+            fnIl.Emit(OpCodes.Ldarg_0);
+            fnIl.Emit(OpCodes.Ldc_I4_1);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.ChargeFuel))!);
+            fnIl.Emit(OpCodes.Ldc_I4_0);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.I32))!);
+            fnIl.Emit(OpCodes.Stloc, value);
+            fnIl.Emit(OpCodes.Ldarg_0);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.ExitCall))!);
+            fnIl.Emit(OpCodes.Ldloc, value);
+            fnIl.Emit(OpCodes.Ret);
+
+            var execute = DefineExecute(type);
+            var executeIl = execute.GetILGenerator();
+            executeIl.Emit(OpCodes.Ldarg_1);
+            executeIl.Emit(OpCodes.Ldc_I4_0);
+            executeIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.ValidateEntrypointInput))!);
+            executeIl.Emit(OpCodes.Ldarg_0);
+            executeIl.Emit(OpCodes.Call, function);
+            executeIl.Emit(OpCodes.Ret);
+        });
 
     private static IEnumerable<MetadataReference> TrustedPlatformReferences()
     {
