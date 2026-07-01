@@ -49,6 +49,7 @@ public interface IServerExtensionClientRegistry : IServerExtensionWireClient
 public interface IServerExtensionWireClient
 public interface IServiceControl : IExtensibleControl
 public IPluginMessageSink Messages { get; }
+public IReadOnlyList<LoweredPipelineStep> Steps
 public IReadOnlyList<Parameter> Parameters
 public IReadOnlyList<PluginMessage> Messages => _readOnlyMessages
 public IReadOnlyList<Statement> Prefix
@@ -85,11 +86,16 @@ public sealed class PolymorphicHandleAttribute : Attribute
 public sealed class ServerExtensionAttribute : Attribute
 public sealed class ServerExtensionClientAttribute(Type receiverType, string? name = null) : Attribute
 public sealed class ServerExtensionMethodAttribute(Type? receiverType = null, string? name = null) : Attribute
+public sealed record LoweredPipelineComposition( string ModuleId, IReadOnlyList<LoweredPipelineStep> Steps, SandboxType ResultType)
 public sealed record LoweredPipelineStep( LoweredPipelineStepKind Kind, string InputType, string OutputType, IReadOnlyList<Parameter> Parameters, IReadOnlyList<Statement> Prefix, Expression Value, IReadOnlyList<string> RequiredCapabilities, IReadOnlyList<string> Effects)
 public sealed record PluginMessage(string TargetId, string Message)
+public SemVersion TargetSandboxVersion { get; init; } = new(1, 0, 0)
+public SemVersion Version { get; init; } = new(1, 0, 0)
 public ServerExtensionAttribute(string id, Type serviceType)
 public ServerExtensionAttribute(string id) => Id = id
 public ServerExtensionAttribute(Type grafts, string? id = null)
+public static class LoweredPipelineComposer
+public static SandboxModule Compose(LoweredPipelineComposition composition)
 public string AccumulatorName { get; } = accumulatorName
 public string BindingId { get; } = bindingId
 public string BindingPrefix { get; }
@@ -98,6 +104,7 @@ public string Capability { get; } = capability
 public string DescriptorHash { get; } = descriptorHash
 public string DescriptorPayload { get; } = descriptorPayload
 public string Discriminator { get; }
+public string HandleFunctionId { get; init; } = "Handle"
 public string Id { get; }
 public string Id { get; } = id
 public string KeyMember { get; }
@@ -105,6 +112,7 @@ public string MethodMetadataName { get; } = methodMetadataName
 public string MethodName { get; } = methodName
 public string Name { get; }
 public string NormalizedSignature { get; } = normalizedSignature
+public string ShouldHandleFunctionId { get; init; } = "ShouldHandle"
 public string? ContextFactory { get; set; }
 public string? Id { get; }
 public string? Id { get; } = id
