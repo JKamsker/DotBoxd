@@ -125,7 +125,21 @@ internal static class ParameterDefaultValueEmitter
     {
         if (parameter.HasExplicitDefaultValue)
         {
-            value = parameter.ExplicitDefaultValue;
+            var explicitDefaultValue = parameter.ExplicitDefaultValue;
+            if (explicitDefaultValue is not null ||
+                parameter.Type.IsReferenceType ||
+                parameter.Type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+            {
+                value = explicitDefaultValue;
+                return true;
+            }
+
+            if (TryGetRuntimeDefaultValue(parameter.Type, out value))
+            {
+                return true;
+            }
+
+            value = explicitDefaultValue;
             return true;
         }
 
@@ -230,6 +244,13 @@ internal static class ParameterDefaultValueEmitter
             case SpecialType.System_DateTime:
                 value = default(System.DateTime);
                 return true;
+        }
+
+        if (type.Name == nameof(System.Guid) &&
+            string.Equals(type.ContainingNamespace.ToDisplayString(), nameof(System), System.StringComparison.Ordinal))
+        {
+            value = default(System.Guid);
+            return true;
         }
 
         if (type is INamedTypeSymbol { TypeKind: TypeKind.Enum } enumType)

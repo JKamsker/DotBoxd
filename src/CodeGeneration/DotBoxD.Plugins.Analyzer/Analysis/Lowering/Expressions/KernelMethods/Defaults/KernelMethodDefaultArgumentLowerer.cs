@@ -60,6 +60,14 @@ internal static class KernelMethodDefaultArgumentLowerer
             return LowerDateTimeDefault(parameterType, dateTime, parameter);
         }
 
+        if (DotBoxDRpcTypeMapper.IsGuid(parameterType) &&
+            value is Guid guid &&
+            guid == Guid.Empty &&
+            TryLowerFrameworkDefault(parameterType) is { } guidDefault)
+        {
+            return guidDefault;
+        }
+
         if (value is null && TryLowerFrameworkDefault(parameterType) is { } frameworkDefault)
         {
             return frameworkDefault;

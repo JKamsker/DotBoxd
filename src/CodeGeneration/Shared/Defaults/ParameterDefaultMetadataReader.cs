@@ -21,6 +21,8 @@ internal static class ParameterDefaultMetadataReader
     {
         foreach (var attribute in parameter.GetAttributes())
         {
+            // Concrete readers match framework metadata names first. Any remaining lookalike
+            // metadata-default attribute fails closed instead of becoming a plain optional default.
             if (attribute.AttributeClass?.Name is
                 "DateTimeConstantAttribute" or
                 "DecimalConstantAttribute" or

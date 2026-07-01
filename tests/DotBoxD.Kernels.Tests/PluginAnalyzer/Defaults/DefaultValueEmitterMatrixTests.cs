@@ -16,7 +16,9 @@ public sealed class AnalyzerDefaultValueEmitterMatrixTests
             "int amount",
             "EchoAsync(int @amount = 7",
             "int amount = 7",
-            ""),
+            "",
+            "amount == 7",
+            "I32(7)"),
         new DefaultCase(
             "nullable",
             "int? maybe = null",
@@ -25,7 +27,9 @@ public sealed class AnalyzerDefaultValueEmitterMatrixTests
             "int? maybe",
             "EchoAsync(int? @maybe = null",
             "int? maybe = null",
-            ""),
+            "",
+            "true",
+            KernelExpected: null),
         new DefaultCase(
             "enum",
             "Mode mode = Mode.Slow",
@@ -34,7 +38,31 @@ public sealed class AnalyzerDefaultValueEmitterMatrixTests
             "Mode mode",
             "EchoAsync(global::Matrix.Rpc.Mode @mode = unchecked((global::Matrix.Rpc.Mode)2)",
             "Mode mode = Mode.Slow",
-            ""),
+            "",
+            "mode == Mode.Slow",
+            "I32(2)"),
+        new DefaultCase(
+            "enum-default-literal",
+            "Mode mode = default",
+            "ReadAsync(global::Matrix.PluginServer.Game.Mode @mode = unchecked((global::Matrix.PluginServer.Game.Mode)0))",
+            "Mode mode = default",
+            "Mode mode",
+            "EchoAsync(global::Matrix.Rpc.Mode @mode = unchecked((global::Matrix.Rpc.Mode)0)",
+            "Mode mode = default",
+            "",
+            "mode == default",
+            "I32(0)"),
+        new DefaultCase(
+            "guid-default-literal",
+            "Guid id = default",
+            "ReadAsync(global::System.Guid @id = default)",
+            "Guid id = default",
+            "Guid id",
+            "EchoAsync(global::System.Guid @id = default",
+            "Guid id = default",
+            "",
+            "id == default",
+            "FromGuid(global::System.Guid.Empty)"),
         new DefaultCase(
             "datetime-metadata",
             "[Optional, DateTimeConstant(0L)] DateTime when",
@@ -43,7 +71,9 @@ public sealed class AnalyzerDefaultValueEmitterMatrixTests
             "DateTime when",
             "[global::System.Runtime.CompilerServices.DateTimeConstantAttribute(0L)] global::System.DateTime @when",
             "[Optional, DateTimeConstant(0L)] DateTime when",
-            ""),
+            "",
+            "when == default",
+            "I64(0L)"),
         new DefaultCase(
             "decimal",
             "decimal price = 1.5m",
@@ -52,7 +82,9 @@ public sealed class AnalyzerDefaultValueEmitterMatrixTests
             RpcKernelParameters: null,
             RpcExpected: null,
             KernelParameters: null,
-            KernelInvocation: ""),
+            KernelInvocation: "",
+            KernelPredicate: "true",
+            KernelExpected: null),
         new DefaultCase(
             "optional-metadata-before-required",
             "[Optional] int optional, int required",
@@ -61,7 +93,9 @@ public sealed class AnalyzerDefaultValueEmitterMatrixTests
             "int optional, int required",
             "EchoAsync([global::System.Runtime.InteropServices.OptionalAttribute] int @optional, int @required",
             "[Optional] int optional, int needed",
-            "needed: 1"),
+            "needed: 1",
+            "optional == 0 && needed == 1",
+            "I32(0)"),
         new DefaultCase(
             "default-attribute-before-required",
             "[Optional, DefaultParameterValue(42)] int optional, int required",
@@ -70,7 +104,9 @@ public sealed class AnalyzerDefaultValueEmitterMatrixTests
             "int optional, int required",
             "EchoAsync([global::System.Runtime.InteropServices.OptionalAttribute] [global::System.Runtime.InteropServices.DefaultParameterValueAttribute(42)] int @optional, int @required",
             "[Optional, DefaultParameterValue(42)] int optional, int needed",
-            "needed: 1"),
+            "needed: 1",
+            "optional == 42 && needed == 1",
+            "I32(42)"),
     };
 
     [Theory]
@@ -107,12 +143,16 @@ public sealed class AnalyzerDefaultValueEmitterMatrixTests
         }
 
         var result = PluginAnalyzerGeneratedPackageFactory.RunGenerator(
-            KernelMethodSource(testCase.KernelParameters, testCase.KernelInvocation),
+            KernelMethodSource(testCase.KernelParameters, testCase.KernelInvocation, testCase.KernelPredicate),
             typeof(KernelMethodAggroEvent));
         var generated = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
 
         Assert.DoesNotContain(result.Diagnostics, d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
         Assert.Contains("UseGeneratedChain", generated, StringComparison.Ordinal);
+        if (testCase.KernelExpected is not null)
+        {
+            Assert.Contains(testCase.KernelExpected, generated, StringComparison.Ordinal);
+        }
     }
 
     private static string RpcClientSource(string serviceParameters, string kernelParameters)
@@ -146,7 +186,7 @@ public sealed class AnalyzerDefaultValueEmitterMatrixTests
             }
             """;
 
-    private static string KernelMethodSource(string parameters, string invocation)
+    private static string KernelMethodSource(string parameters, string invocation, string predicate)
         => $$"""
             using System;
             using System.Runtime.CompilerServices;
@@ -171,7 +211,7 @@ public sealed class AnalyzerDefaultValueEmitterMatrixTests
                         .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "default"));
 
                 [KernelMethod]
-                public static bool Matches({{parameters}}) => true;
+                public static bool Matches({{parameters}}) => {{predicate}};
             }
             """;
 
@@ -245,7 +285,9 @@ public sealed class AnalyzerDefaultValueEmitterMatrixTests
         string? RpcKernelParameters,
         string? RpcExpected,
         string? KernelParameters,
-        string KernelInvocation)
+        string KernelInvocation,
+        string KernelPredicate,
+        string? KernelExpected)
     {
         public override string ToString() => Name;
     }
