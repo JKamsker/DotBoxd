@@ -60,6 +60,27 @@ public sealed class StreamingWave12RegressionTests
     }
 
     [Fact]
+    public async Task ZeroIdStreamCredit_ReportsProtocolErrorWithoutOutboundCreditLookup()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var protocolErrors = new List<string>();
+        var streams = CreateStreamManager(serializer);
+        var outboundSenderMisses = 0;
+        var reservedCreditBuffers = 0;
+        streams.AfterOutboundSenderMissForTest = _ => outboundSenderMisses++;
+        streams.AfterReservedOutboundCreditObservedForTest = _ => reservedCreditBuffers++;
+        var processor = CreateProcessor(serializer, streams, protocolErrors);
+        using var credit = RpcRawFrame.FrameInt32(0, MessageType.StreamCredit, 1);
+
+        Assert.True(await processor.ShouldDisposeAsync(credit, CancellationToken.None));
+
+        Assert.Single(protocolErrors, error => error.Contains("Malformed stream credit frame."));
+        Assert.Equal(0, outboundSenderMisses);
+        Assert.Equal(0, reservedCreditBuffers);
+        Assert.Equal(0, streams.PendingCreditCount);
+    }
+
+    [Fact]
     public async Task UnknownStreamComplete_ReportsProtocolError()
     {
         var serializer = new MessagePackRpcSerializer();
