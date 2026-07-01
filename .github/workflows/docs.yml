@@ -9,9 +9,9 @@ name: docs
 # preserve `dev/bench/**`. Do NOT switch this to actions/deploy-pages: that would flip the
 # Pages source to "GitHub Actions" and stop serving the branch, breaking the benchmark charts.
 #
-# One-time setup (repo admin): Settings -> Pages -> "Deploy from a branch" -> gh-pages / (root).
-# The site is then served at https://jkamsker.github.io/DotBoxD/ and benchmarks at
-# https://jkamsker.github.io/DotBoxD/dev/bench/.
+# Pages setup (repo admin): Settings -> Pages -> "Deploy from a branch" -> gh-pages / (root),
+# with the custom domain dotboxd.kamsker.at. The site is served at https://dotboxd.kamsker.at/
+# and benchmarks at https://dotboxd.kamsker.at/dev/bench/.
 
 on:
   push:
@@ -90,6 +90,10 @@ jobs:
         with:
           branch: gh-pages
           folder: _site
+          # Custom domain: write the CNAME file on every deploy so `clean: true` cannot drop it
+          # (GitHub also manages this file when the domain is set in Settings, but owning it here
+          # keeps the domain pinned regardless of that setting).
+          cname: dotboxd.kamsker.at
           clean: true
           # Preserve BenchmarkDotNet history published by benchmarks.yml.
           clean-exclude: |

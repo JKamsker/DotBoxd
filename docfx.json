@@ -73,7 +73,7 @@
       }
     },
     "sitemap": {
-      "baseUrl": "https://jkamsker.github.io/DotBoxD/"
+      "baseUrl": "https://dotboxd.kamsker.at/"
     },
     "postProcessors": ["ExtractSearchIndex"],
     "disableGitFeatures": false

@@ -7,9 +7,9 @@
 [![NuGet packages](https://img.shields.io/badge/NuGet-packages-004880.svg?logo=nuget)](https://www.nuget.org/packages?q=DotBoxD)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-8%20%7C%209%20%7C%2010-512BD4.svg)](https://dotnet.microsoft.com/)
-[![Docs](https://img.shields.io/badge/docs-online-2ea44f.svg)](https://jkamsker.github.io/DotBoxD/)
+[![Docs](https://img.shields.io/badge/docs-online-2ea44f.svg)](https://dotboxd.kamsker.at/)
 
-📖 **Documentation site:** <https://jkamsker.github.io/DotBoxD/> — guide, tutorials, examples, and the
+📖 **Documentation site:** <https://dotboxd.kamsker.at/> — guide, tutorials, examples, and the
 generated API reference.
 
 DotBoxD lets a host and its clients share **one C# contract** and use it in three different ways,
