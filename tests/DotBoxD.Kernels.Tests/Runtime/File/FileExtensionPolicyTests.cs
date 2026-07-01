@@ -32,6 +32,20 @@ public sealed class FileExtensionPolicyTests
         Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
     }
 
+    [Fact]
+    public async Task File_write_denies_disallowed_extension_with_write_operation_message()
+    {
+        using var temp = TempDirectory.Create();
+
+        var result = await ExecuteWriteAsync(temp.Path, "blocked.txt", "blocked", ".json");
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
+        Assert.Contains("file.writeText denied", result.Error.SafeMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain("file.readText denied", result.Error.SafeMessage, StringComparison.Ordinal);
+        Assert.False(System.IO.File.Exists(Path.Combine(temp.Path, "blocked.txt")));
+    }
+
     private static async Task<SandboxExecutionResult> ExecuteReadAsync(
         string root,
         string path,
@@ -57,6 +71,64 @@ public sealed class FileExtensionPolicyTests
         var plan = await host.PrepareAsync(module, policy);
         return await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
     }
+
+    private static async Task<SandboxExecutionResult> ExecuteWriteAsync(
+        string root,
+        string path,
+        string text,
+        string allowedExtensions)
+    {
+        var host = SandboxTestHost.Create();
+        var module = await host.ImportJsonAsync(FileWriteJson(path, text));
+        var policy = SandboxPolicyBuilder.Create()
+            .WithWallTime(TimeSpan.FromSeconds(2))
+            .AllowRuntimeAsync()
+            .Grant(
+                "file.write",
+                new Dictionary<string, string>
+                {
+                    ["root"] = root,
+                    ["allowCreate"] = "true",
+                    ["allowOverwrite"] = "false",
+                    ["maxBytesPerRun"] = "1024",
+                    ["allowedExtensions"] = allowedExtensions
+                },
+                SandboxEffect.FileWrite | SandboxEffect.Audit,
+                limits => limits with { MaxFileBytesWritten = 1024 })
+            .WithFuel(5_000)
+            .Build();
+        var plan = await host.PrepareAsync(module, policy);
+        return await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
+    }
+
+    private static string FileWriteJson(string path, string text)
+        => $$"""
+        {
+          "id": "file-write-extension-policy",
+          "version": "1.0.0",
+          "capabilityRequests": [{ "id": "file.write" }],
+          "functions": [
+            {
+              "id": "main",
+              "visibility": "entrypoint",
+              "parameters": [],
+              "returnType": "Unit",
+              "body": [
+                {
+                  "op": "return",
+                  "value": {
+                    "call": "file.writeText",
+                    "args": [
+                      { "path": "{{path}}" },
+                      { "string": "{{text}}" }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+        """;
 
     private sealed class TempDirectory : IDisposable
     {
