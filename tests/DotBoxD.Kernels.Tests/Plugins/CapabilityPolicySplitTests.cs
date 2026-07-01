@@ -98,6 +98,38 @@ public sealed class CapabilityPolicySplitTests
     }
 
     [Fact]
+    public async Task Install_denies_missing_gated_event_property_manifest_capability()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
+        var package = PluginAnalyzerGeneratedPackageFactory.Create(
+            GatedEventPropertyKernelSource,
+            "Sample.GatedPluginPackage");
+        Assert.Contains("event.read.health", package.Manifest.RequiredCapabilities);
+        var invalid = package with
+        {
+            Manifest = package.Manifest with
+            {
+                RequiredCapabilities = package.Manifest.RequiredCapabilities
+                    .Where(capability => !string.Equals(capability, "event.read.health", StringComparison.Ordinal))
+                    .ToArray()
+            }
+        };
+        var policy = SandboxPolicyBuilder.Create()
+            .GrantLogging()
+            .GrantHostMessageWrite()
+            .WithFuel(100_000)
+            .WithMaxHostCalls(1_000)
+            .WithWallTime(TimeSpan.FromSeconds(10))
+            .Build();
+
+        var exception = await Assert.ThrowsAsync<SandboxValidationException>(
+            () => server.InstallAsync(invalid, policy).AsTask());
+
+        Assert.Contains(exception.Diagnostics, diagnostic =>
+            diagnostic.Message.Contains("event.read.health", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Server_extension_install_rejects_ungranted_event_property_manifest_capabilities()
     {
         using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
