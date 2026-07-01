@@ -75,7 +75,8 @@ Query and Pushdown **both** run author-supplied logic server-side as sandboxed
   (IR language, type system, effects/capabilities, threat model, runtime).
 - **Contributing** — [`contributing/migration-from-standalone-repos.md`](/contributing/migration-from-standalone-repos/):
   how this repo merges the former ShaRPC + Safe-IR projects and how to view their pre-merge history.
-- **Channels (legacy RPC docs)** — [quick-start](/channels/quick-start/),
+- **Channels (RPC) guide** — deeper reference for the channel layer the Services stack rides on
+  (transports and codecs are standalone packages, usable independently): [quick-start](/channels/quick-start/),
   [API reference](/channels/api-reference/), [Unity integration](/channels/unity-integration/),
   [named-pipe](/channels/named-pipe-transport/)/[websocket](/channels/websocket-setup/) transports,
   [performance](/channels/performance/).

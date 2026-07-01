@@ -89,7 +89,7 @@ Backpressure and the near-zero-allocation `ValueTask<T>` path are peer options, 
 transport you pick — see [performance](/channels/performance/).
 
 For deeper transport material (named pipes, WebSocket extension, performance, design rationale) see the
-legacy RPC docs under [`docs/channels/`](/channels/quick-start/).
+[Channels (RPC) guide](/channels/quick-start/).
 
 > Roadmap: extracting the transport-neutral abstractions into a dedicated `DotBoxD.Channels` /
 > `DotBoxD.Channels.Abstractions` package is tracked in

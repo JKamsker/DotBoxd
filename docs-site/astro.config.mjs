@@ -87,7 +87,7 @@ export default defineConfig({
           ],
         },
         {
-          label: 'Channels (RPC) guide — legacy',
+          label: 'Channels (RPC) guide',
           collapsed: true,
           items: [
             { label: 'Quick start', slug: 'channels/quick-start' },

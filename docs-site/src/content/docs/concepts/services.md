@@ -65,8 +65,8 @@ Diagnostics from the generator use the `DBXS###` prefix — see
 
 **See also:** the annotated [GameServer walkthrough](/examples/gameserver-walkthrough/) for a
 guided tour, or the raw GameServer sample under
-[`samples/GameServer`](https://github.com/JKamsker/DotBoxD/tree/main/samples/GameServer), the legacy RPC docs under
-[`docs/channels/`](/channels/quick-start/) (quick-start, API reference, Unity integration, transports,
+[`samples/GameServer`](https://github.com/JKamsker/DotBoxD/tree/main/samples/GameServer), the
+[Channels (RPC) guide](/channels/quick-start/) (quick-start, API reference, Unity integration, transports,
 performance), [pushdown](/concepts/pushdown/) for composing services server-side, and
 [`docs/examples/coverage-gaps.md`](/examples/coverage-gaps/) for service scenarios no longer shown
 by maintained samples.
