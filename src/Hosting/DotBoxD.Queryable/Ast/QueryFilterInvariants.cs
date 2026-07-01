@@ -15,7 +15,25 @@ internal static class QueryFilterInvariants
         };
 
     public static QueryValue CompareValue(QueryFilter filter)
-        => filter.Value ?? throw MissingCompareValue();
+    {
+        _ = RequireKnownCompareOperator(filter.Operator);
+        return filter.Value ?? throw MissingCompareValue();
+    }
+
+    public static QueryComparisonOperator RequireKnownCompareOperator(QueryComparisonOperator op)
+        => op switch
+        {
+            QueryComparisonOperator.Equal or
+            QueryComparisonOperator.NotEqual or
+            QueryComparisonOperator.GreaterThan or
+            QueryComparisonOperator.GreaterThanOrEqual or
+            QueryComparisonOperator.LessThan or
+            QueryComparisonOperator.LessThanOrEqual or
+            QueryComparisonOperator.StringContains or
+            QueryComparisonOperator.StringStartsWith or
+            QueryComparisonOperator.StringEndsWith => op,
+            _ => throw UnknownCompareOperator(op),
+        };
 
     public static void RequireCompareValues(QueryFilter filter)
     {
@@ -36,4 +54,7 @@ internal static class QueryFilterInvariants
 
     private static InvalidOperationException UnknownKind(QueryFilterKind kind)
         => new($"QueryFilter has unsupported Kind value '{(int)kind}'.");
+
+    private static InvalidOperationException UnknownCompareOperator(QueryComparisonOperator op)
+        => new($"QueryFilter Compare node has unsupported Operator value '{(int)op}'.");
 }
