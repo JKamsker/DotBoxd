@@ -38,7 +38,7 @@ internal static partial class HookChainModelFactory
             method.Parameters.Length >= 1 &&
             model.GetTypeInfo(receiver, cancellationToken).Type is INamedTypeSymbol expressionReceiverType &&
             ResolvedReceiverType(method, expressionReceiverType) is { } receiverType &&
-            ReceiverKind(receiverType) is not null)
+            ReceiverKind(receiverType, model.Compilation) is not null)
         {
             // When the terminal projection is an anonymous type, neither the receiver (RemoteHookStage<TEvent, T>)
             // nor the handler (Func/Action<T, ...>) can spell T in C# source. Emit a GENERIC interceptor whose

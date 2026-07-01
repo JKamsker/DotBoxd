@@ -37,7 +37,7 @@ internal static class ConditionalHookChainDiagnosticFactory
 
         if (context.SemanticModel.GetTypeInfo(conditional.Expression, cancellationToken).Type
                 is not INamedTypeSymbol receiverType ||
-            HookChainModelFactory.ReceiverKind(receiverType) is null)
+            HookChainModelFactory.ReceiverKind(receiverType, context.SemanticModel.Compilation) is null)
         {
             return null;
         }

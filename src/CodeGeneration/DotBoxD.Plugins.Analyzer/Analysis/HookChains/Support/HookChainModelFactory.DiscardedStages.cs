@@ -31,7 +31,7 @@ internal static partial class HookChainModelFactory
             }
 
             if (invocation.Expression is not MemberAccessExpressionSyntax access ||
-                access.Name.Identifier.ValueText is not (WhereMethod or SelectMethod) ||
+                RoleOf(invocation, model, cancellationToken) is not (PipelineStepRole.Filter or PipelineStepRole.Projection) ||
                 !IsHookStageInvocation(invocation, model, cancellationToken) ||
                 !ExpressionReferencesLocal(access.Expression, receiverLocal, model, cancellationToken, depth: 0))
             {
@@ -56,7 +56,7 @@ internal static partial class HookChainModelFactory
         SemanticModel model,
         CancellationToken cancellationToken)
         => model.GetTypeInfo(invocation, cancellationToken).Type is INamedTypeSymbol type &&
-           ReceiverKind(type) is not null;
+           ReceiverKind(type, model.Compilation) is not null;
 
     private static bool IsAssignedBackToReceiver(
         InvocationExpressionSyntax invocation,

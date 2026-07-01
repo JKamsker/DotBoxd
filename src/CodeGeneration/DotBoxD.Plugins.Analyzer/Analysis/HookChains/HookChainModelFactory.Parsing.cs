@@ -7,24 +7,65 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 internal static partial class HookChainModelFactory
 {
     private static HookChainInterceptorInstallKind? InstallKind(
-        string terminalMethod,
+        PipelineStepRole? terminalRole,
         HookChainReceiverKind? receiverKind,
         GeneratedRemoteHookChainKind? generatedRemoteKind)
-        => terminalMethod switch
+        => terminalRole switch
         {
-            RunMethod => HookChainInterceptorInstallKind.GeneratedChain,
-            RunLocalMethod when receiverKind == HookChainReceiverKind.Remote || generatedRemoteKind is not null =>
+            PipelineStepRole.Run => HookChainInterceptorInstallKind.GeneratedChain,
+            PipelineStepRole.RunLocal when receiverKind == HookChainReceiverKind.Remote || generatedRemoteKind is not null =>
                 HookChainInterceptorInstallKind.LocalCallback,
-            RegisterMethod when receiverKind is HookChainReceiverKind.Local or HookChainReceiverKind.Remote =>
+            PipelineStepRole.Register when receiverKind is HookChainReceiverKind.Local or HookChainReceiverKind.Remote =>
                 HookChainInterceptorInstallKind.ResultChain,
-            RegisterMethod when generatedRemoteKind == GeneratedRemoteHookChainKind.Hook =>
+            PipelineStepRole.Register when generatedRemoteKind == GeneratedRemoteHookChainKind.Hook =>
                 HookChainInterceptorInstallKind.ResultChain,
-            RegisterLocalMethod when receiverKind is HookChainReceiverKind.Local or HookChainReceiverKind.Remote =>
+            PipelineStepRole.RegisterLocal when receiverKind is HookChainReceiverKind.Local or HookChainReceiverKind.Remote =>
                 HookChainInterceptorInstallKind.LocalResultChain,
-            RegisterLocalMethod when generatedRemoteKind == GeneratedRemoteHookChainKind.Hook =>
+            PipelineStepRole.RegisterLocal when generatedRemoteKind == GeneratedRemoteHookChainKind.Hook =>
                 HookChainInterceptorInstallKind.LocalResultChain,
             _ => null
         };
+
+    // Resolves the pipeline role of a fluent call from its [PipelineStep] attribute, falling back to the
+    // framework's own method names while the library's pipeline methods are being annotated. The name fallback
+    // is transitional; once every framework pipeline method carries [PipelineStep] the LegacyNameRole map (and
+    // the *Method name constants) are deleted so no method-name literal drives recognition.
+    private static PipelineStepRole? RoleOf(IMethodSymbol? method, Compilation compilation)
+        => PipelineRoleReader.RoleOf(method, compilation) ?? LegacyNameRole(method?.Name);
+
+    private static PipelineStepRole? LegacyNameRole(string? methodName)
+        => methodName switch
+        {
+            OnMethod => PipelineStepRole.Seed,
+            WhereMethod => PipelineStepRole.Filter,
+            SelectMethod => PipelineStepRole.Projection,
+            RunMethod => PipelineStepRole.Run,
+            RunLocalMethod => PipelineStepRole.RunLocal,
+            RegisterMethod => PipelineStepRole.Register,
+            RegisterLocalMethod => PipelineStepRole.RegisterLocal,
+            _ => null,
+        };
+
+    private static PipelineStepRole? RoleOf(
+        InvocationExpressionSyntax invocation,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        var info = model.GetSymbolInfo(invocation, cancellationToken);
+        var symbol = info.Symbol ?? (info.CandidateSymbols.Length > 0 ? info.CandidateSymbols[0] : null);
+        if (RoleOf(symbol as IMethodSymbol, model.Compilation) is { } role)
+        {
+            return role;
+        }
+
+        // A generated or unbound receiver — a not-yet-emitted plugin-server registry, or a terminal whose
+        // shape binds to no overload — exposes no symbol that could carry [PipelineStep]. Recognize the
+        // framework's own pipeline methods by their syntactic name there so lowering and the not-lowered
+        // diagnostics still fire; a consumer's custom-named surface participates through the attribute path.
+        return invocation.Expression is MemberAccessExpressionSyntax access
+            ? LegacyNameRole(access.Name.Identifier.ValueText)
+            : null;
+    }
 
     private static InvocationExpressionSyntax? WalkToSeed(
         ExpressionSyntax receiver,
@@ -68,14 +109,13 @@ internal static partial class HookChainModelFactory
                 return null;
             }
 
-            var name = access.Name.Identifier.ValueText;
-            if (string.Equals(name, OnMethod, StringComparison.Ordinal))
+            var role = RoleOf(invocation, model, cancellationToken);
+            if (role == PipelineStepRole.Seed)
             {
                 return invocation;
             }
 
-            var isSelect = string.Equals(name, SelectMethod, StringComparison.Ordinal);
-            if ((isSelect || string.Equals(name, WhereMethod, StringComparison.Ordinal)) &&
+            if (role is PipelineStepRole.Filter or PipelineStepRole.Projection &&
                 TryLambda(invocation, out var lambda))
             {
                 if (IsResolvedNonDotBoxDStageMethodInvocation(invocation, model, cancellationToken))
@@ -83,7 +123,7 @@ internal static partial class HookChainModelFactory
                     return null;
                 }
 
-                stages.Add(new HookChainStage(isSelect, lambda));
+                stages.Add(new HookChainStage(role == PipelineStepRole.Projection, lambda));
                 current = HookChainAliasResolver.UnwrapTransparentExpression(access.Expression);
                 continue;
             }
@@ -97,7 +137,7 @@ internal static partial class HookChainModelFactory
         SemanticModel model,
         CancellationToken cancellationToken)
         => model.GetSymbolInfo(invocation, cancellationToken).Symbol is IMethodSymbol method &&
-           (method.ContainingType is null || ReceiverKind(method.ContainingType) is null);
+           (method.ContainingType is null || ReceiverKind(method.ContainingType, model.Compilation) is null);
 
     internal static HookChainReceiverKind? ReceiverKind(
         SemanticModel model,
@@ -109,10 +149,16 @@ internal static partial class HookChainModelFactory
             return null;
         }
 
-        return ReceiverKind(type);
+        return ReceiverKind(type, model.Compilation);
     }
 
-    internal static HookChainReceiverKind? ReceiverKind(INamedTypeSymbol type)
+    // Transport declared by [PipelineSurface] on the receiver type, falling back to the framework's own
+    // pipeline/stage type names while they are being annotated. The fallback is transitional and is deleted
+    // (together with LegacyReceiverKind) once every framework surface carries [PipelineSurface].
+    internal static HookChainReceiverKind? ReceiverKind(INamedTypeSymbol type, Compilation compilation)
+        => PipelineRoleReader.Transport(type, compilation) ?? LegacyReceiverKind(type);
+
+    private static HookChainReceiverKind? LegacyReceiverKind(INamedTypeSymbol type)
     {
         var original = type.OriginalDefinition.ToDisplayString();
         if (string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteHookPipelineOriginal, StringComparison.Ordinal) ||

@@ -70,7 +70,7 @@ internal static partial class HookChainModelFactory
             return null;
         }
 
-        var terminalMethod = terminalAccess.Name.Identifier.ValueText;
+        var terminalRole = RoleOf(invocation, model, cancellationToken);
         if (HasPriorDiscardedStageOnReceiver(terminalAccess.Expression, invocation, model, cancellationToken))
         {
             return null;
@@ -97,7 +97,7 @@ internal static partial class HookChainModelFactory
         var generatedRemoteServerContextTypeFullName = generatedRemoteTarget is { } target
             ? GeneratedRemoteHookChainFallback.ServerContextTypeFullName(model, seed, target, cancellationToken)
             : null;
-        var installKind = InstallKind(terminalMethod, receiverKind, generatedRemoteKind);
+        var installKind = InstallKind(terminalRole, receiverKind, generatedRemoteKind);
         if (installKind is null)
         {
             return null;
