@@ -90,7 +90,8 @@ public sealed partial class PeerInboundCoverageTests
 
     private static async Task WaitForPayloadDisposedAsync(Payload payload)
     {
-        for (var attempt = 0; attempt < 100; attempt++)
+        var deadline = DateTime.UtcNow + ShortTimeout;
+        while (DateTime.UtcNow < deadline)
         {
             try
             {
