@@ -106,6 +106,7 @@
 <hr>
 <h2 id="overview">Overview</h2>
 <p>DotBoxD is a transport-agnostic RPC framework designed with Unity compatibility as a primary goal. It uses compile-time source generation to create type-safe proxies and dispatchers, avoiding runtime reflection that causes issues with IL2CPP builds.</p>
+<p><strong>Why this works on Unity/IL2CPP:</strong> the three libraries you drop into <code>Assets/Plugins</code> — <a href="../concepts/services.html">Services (RPC)</a>, the channel/transport, and the <a href="../concepts/channels-transports.html">MessagePack codec</a> — all target <code>netstandard2.1</code> and keep runtime reflection off the hot path. One C# contract compiles to a typed proxy plus dispatcher (no hand-written marshaling), so nothing on the call path needs the dynamic codegen IL2CPP's AOT compiler rejects. Reach for this stack whenever you need type-safe client/server calls that must survive AOT; on Mono it works the same, but the netstandard2.1 / no-reflection design is what makes the IL2CPP target hold.</p>
 <h3 id="key-features-for-unity">Key Features for Unity</h3>
 <ul>
 <li><strong>IL2CPP Safe</strong>: No runtime reflection or dynamic code generation</li>

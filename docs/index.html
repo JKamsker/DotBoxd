@@ -105,6 +105,57 @@ small remote calls collapse into one validated round-trip.</li>
     Pushdown --&gt; Kernels
     Pushdown --&gt; Services
 </code></pre>
+<h2 id="choosing-a-mode">Choosing a mode</h2>
+<p>Same contract, three delivery strategies. What differs is <em>where the author's logic runs</em> and
+<em>what crosses the wire</em>:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>What it solves</th>
+<th>Direction</th>
+<th>Round-trips</th>
+<th>Where the author's logic runs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><a href="concepts/services.html">Services (RPC)</a></strong></td>
+<td>Easy interop — the interface is the single source of truth; the generator emits a typed proxy + dispatcher, so there is no hand-written marshaling and no runtime reflection on the hot path (it AOTs, runs on Unity/IL2CPP).</td>
+<td>client → host, response back</td>
+<td><strong>1 per call</strong></td>
+<td>host runs the hand-written implementation; the client invokes the typed proxy</td>
+</tr>
+<tr>
+<td><strong><a href="tutorials/event-pipeline-runlocal.html">Query (RunLocal)</a></strong></td>
+<td>Server-side filter + projection so the plugin gets only the data it needs — <code>Where</code>/<code>Select</code> lower to verified IR, so only matching, projected values cross the pipe (fewer bytes, fewer wake-ups, no round-trips).</td>
+<td>server → plugin, <strong>one-way push</strong></td>
+<td><strong>0</strong></td>
+<td><code>Where</code>/<code>Select</code> lower to server-side sandboxed IR; only the <code>RunLocal</code> delegate is native plugin C#</td>
+</tr>
+<tr>
+<td><strong><a href="concepts/pushdown.html">Pushdown</a></strong></td>
+<td>Collapse N fine-grained calls into one server-side batch — move the loop/aggregation next to the host's data so latency and chattiness collapse, while the host stays frozen and minimal.</td>
+<td>client → host, <strong>one submission</strong></td>
+<td><strong>1, replacing N</strong></td>
+<td>the author's batch method lowers to server-side sandboxed IR, looping the host's existing bindings</td>
+</tr>
+</tbody>
+</table>
+<p>Decision rules:</p>
+<ul>
+<li><strong>Services</strong> — a one-shot request/response (fetch a price, compute a cart total). The interface is the
+single source of truth, so proxy and impl cannot drift.</li>
+<li><strong>Query (RunLocal)</strong> — you react to a high-frequency server event stream but only need a subset/summary
+locally. Because the filter runs as validated, fuel-metered IR, you can accept that logic from untrusted
+plugins safely.</li>
+<li><strong>Pushdown</strong> — a chatty <code>for each id: Kill(id)</code> loop that should be one batch. The server is never
+recompiled; the plugin ships the batch, which runs as verified, capability-gated, fuel-metered IR (real
+sandbox, not a trusted plugin).</li>
+</ul>
+<p>Query and Pushdown <strong>both</strong> run author-supplied logic server-side as sandboxed
+<a href="concepts/kernels.html">kernels</a> — the only difference is push-to-plugin (Query) vs aggregate-and-return
+(Pushdown). Services instead runs a hand-written host implementation, with no sandbox involved.</p>
 <h2 id="map">Map</h2>
 <ul>
 <li><strong>Getting started</strong> — <a href="getting-started/README.html">install, first service, first kernel, pushdown quickstart</a>.</li>

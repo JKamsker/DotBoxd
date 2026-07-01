@@ -96,6 +96,42 @@ calls it over a named pipe in one round-trip per method. Every API used here is 
 maintained sample under
 <a href="https://github.com/JKamsker/DotBoxD/blob/main/README.md"><code>samples/GameServer</code></a>; the pieces are shown in the README's
 <a href="https://github.com/JKamsker/DotBoxD/blob/main/README.md">&quot;1. Services&quot;</a> section.</p>
+<h2 id="why-services-rpc-and-when-to-use-it">Why Services (RPC)? (and when to use it)</h2>
+<p>Services exist to make interop easy. Hand-writing RPC marshaling — build a request envelope, serialize
+args, match a response to its call, deserialize, cast — is repetitive and easy to get subtly wrong. With
+DotBoxD you annotate one interface with <code>[DotBoxDService]</code> and a Roslyn source generator emits three
+artifacts at compile time: a <strong>typed client proxy</strong> (what <code>Get&lt;T&gt;()</code> returns), a <strong>server dispatcher</strong>
+that decodes a request and invokes your implementation, and the <code>Provide{Service}</code> / <code>Get&lt;T&gt;()</code>
+extensions
+(<a href="https://github.com/JKamsker/DotBoxD/blob/main/src/CodeGeneration/DotBoxD.Services.SourceGenerator/EntryPoint/DotBoxDRpcGenerator.cs">generator wiring</a>).
+The payoff: your implementation is <em>just your logic</em> — nothing DotBoxD-specific leaks into it, and the
+client calls <code>connection.Get&lt;ICatalogService&gt;().GetUnitPriceAsync(&quot;sword&quot;)</code> as one typed round-trip.</p>
+<p>A few grounded reasons this design earns its place:</p>
+<ul>
+<li><strong>The interface is the single source of truth, so proxy and impl can't drift.</strong> Both are generated
+from the same C# shape, so a rename or type change is a compile error, not a runtime wire fault.
+Unsupported shapes surface as build-time diagnostics (<code>DBXS001</code>–<code>DBXS004</code>) — for example a
+<code>ref</code>/<code>in</code>/<code>out</code> parameter or a generic/nested interface is rejected at compile time.</li>
+<li><strong>No runtime reflection on the hot path.</strong> Proxy/dispatcher lookup goes through a <em>generated</em> registry
+rather than scanning assemblies, and the MessagePack codec uses generated formatters. That is why the
+Services stack targets <code>netstandard2.1</code> and runs on <strong>Unity / IL2CPP</strong> and NativeAOT, where runtime
+reflection and dynamic codegen are stripped or forbidden.</li>
+<li><strong>Peer-based and bidirectional.</strong> A connection is a symmetric <code>RpcPeer</code>: the same object can <code>Provide</code>
+local services and <code>Get</code> proxies for remote ones over one read loop, so the host can call <em>back</em> into
+a connecting plugin over the same wire — no separate client/server class on the hot path.</li>
+<li><strong>Transport- and codec-neutral.</strong> The same contract runs over named pipes, TCP, WebSocket, or an
+in-process test channel, with MessagePack (or another <code>ISerializer</code>) as the codec — the generated
+proxy, dispatcher, and <code>Provide</code>/<code>Get</code> extensions are identical either way.</li>
+</ul>
+<p><strong>When to use a Service:</strong> the host owns a capability and the client needs a typed request→response it
+can <code>await</code>, the interaction is a bounded number of discrete calls (one method = one round-trip), you
+need host↔plugin callbacks on one connection, or you need Unity/IL2CPP reach.</p>
+<p><strong>When to prefer another mode:</strong> if you're reacting to a high-frequency <em>server event</em> and only need a
+subset or summary, prefer the <a href="event-pipeline-runlocal.html">query / event pipeline (RunLocal)</a> — its
+<code>Where</code>/<code>Select</code> lower to server-side IR so only matching, projected values push one-way to your plugin,
+no round-trips. If instead you face a <em>chatty N-call loop</em> against a frozen host, prefer
+<a href="../concepts/pushdown.html">Pushdown</a>, which collapses N round-trips into one server-side batch. Note that
+Services (RPC) is a <em>trusted</em> channel; the sandbox trust boundary lives in Kernels/Pushdown, not here.</p>
 <h2 id="what-youll-build">What you'll build</h2>
 <p>Three pieces, mirroring how the GameServer sample is laid out (shared abstractions, server, client):</p>
 <ul>

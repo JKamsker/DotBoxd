@@ -102,6 +102,43 @@ for tests). Channels carry framed messages and know nothing about services.</li>
 <li><strong>Codecs</strong>: <code>DotBoxD.Codecs.MessagePack</code>.</li>
 </ul>
 <p>The Services + channel + codec libraries target <strong>netstandard2.1</strong>, so they run on <strong>Unity / IL2CPP</strong>.</p>
+<h2 id="why-services-rpc">Why Services (RPC)?</h2>
+<p><strong>The problem it solves: interop without hand-written marshaling.</strong> Classic RPC makes you build a
+request envelope, serialize args, match each response back to its call, deserialize, and cast —
+repetitive and easy to get subtly wrong. Schema-first or hand-rolled stubs have a worse failure mode:
+the client stub and the server handler drift apart (a renamed param, a changed return type) and you
+only find out at runtime.</p>
+<p><strong>The payoff: one C# interface is the single source of truth.</strong> Both the proxy and the dispatcher are
+generated from that one interface, so they cannot drift — a contract-shape mismatch is a compile error
+(<code>DBXS###</code>), not a wire fault. The implementation is just your logic: nothing DotBoxD-specific leaks
+into <code>class CatalogService : ICatalogService</code>; the client calls
+<code>connection.Get&lt;ICatalogService&gt;().GetUnitPriceAsync(&quot;sword&quot;)</code> and the generated proxy does all the
+marshaling — one method, one remote round-trip.</p>
+<p>Grounded aspects:</p>
+<ul>
+<li><strong>AOT / Unity / IL2CPP reach.</strong> There is no runtime reflection on the hot path and no assembly scan
+— proxy/dispatcher lookup goes through a <em>generated</em> registry — so the netstandard2.1 Services stack
+runs where IL2CPP and NativeAOT forbid dynamic reflection. The MessagePack codec is reflection-free
+too (generated formatters).</li>
+<li><strong>Peer-based, bidirectional.</strong> Direction is configuration, not type: the same connection can both
+<code>Provide</code> and <code>Get</code>, so the host can call back into a connected plugin over one demuxed read loop —
+there is no separate client/server class on the hot path.</li>
+<li><strong>Transport- and codec-neutral.</strong> The same contract runs over named-pipe, TCP, WebSocket, or an
+in-process channel with a swappable codec; the generated proxy, dispatcher, and <code>Provide</code>/<code>Get</code>
+extensions are identical either way.</li>
+<li><strong>A trusted channel, not a sandbox.</strong> A provided service is callable by <em>any</em> peer on the channel, so
+enforce access control at the transport or application layer. The real trust boundary for untrusted
+author logic is Kernels / <a href="pushdown.html">Pushdown</a>, not Services.</li>
+</ul>
+<p><strong>When to use Services:</strong> a discrete, typed request→response you can <code>await</code>; a bounded number of calls
+(one method = one round-trip); host↔plugin callbacks on one connection; or when you need Unity/IL2CPP
+reach (Services is the most-mature netstandard2.1 surface).</p>
+<p><strong>When to prefer another mode:</strong> to react to a high-frequency server event but only need a filtered
+subset, prefer the <a href="../tutorials/event-pipeline-runlocal.html">event pipeline (RunLocal)</a> — <code>Where</code> /
+<code>Select</code> lower to server-side IR so only matching, projected values cross the pipe (one-way push, no
+round-trips). To collapse a chatty N-call loop over the host's fine-grained bindings into one
+server-side batch, prefer <a href="pushdown.html">Pushdown</a> — the batch runs as verified, capability-gated,
+fuel-metered IR.</p>
 <p>Diagnostics from the generator use the <code>DBXS###</code> prefix — see
 <a href="../reference/diagnostics.html">reference/diagnostics.md</a>.</p>
 <p><strong>See also:</strong> the GameServer sample under

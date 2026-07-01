@@ -88,6 +88,13 @@
 <h1 id="dotboxd-quick-start-guide">DotBoxD Quick Start Guide</h1>
 
 <p>Get up and running with DotBoxD in 5 minutes.</p>
+<p>Reach for RPC channels when you want request/response host capabilities behind a shared contract:
+one C# interface compiles to a typed proxy plus dispatcher, so you get easy interop with no
+hand-written marshaling and no runtime reflection on the hot path (AOT-friendly, runs on
+Unity/IL2CPP) — the interface is the single source of truth. Prefer a
+<a href="../tutorials/event-pipeline-runlocal.html">query/event pipeline</a> instead when the host should receive
+only server-side filtered and projected data over a one-way push, or
+<a href="../concepts/pushdown.html">pushdown</a> when you need to collapse N round-trips into one server-side batch.</p>
 <h2 id="1-define-your-service-contract">1. Define Your Service Contract</h2>
 <p>Create a shared library with your service interface:</p>
 <pre><code class="lang-csharp">// Shared/IMyService.cs

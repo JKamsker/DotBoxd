@@ -101,6 +101,38 @@ dotnet add package DotBoxD
 dotnet add package DotBoxD.Services.All
 </code></pre>
 <p>Or reference individual packages — see the table in the root <a href="../../README.md">README</a>.</p>
+<h2 id="why-dotboxd-and-which-mode-to-use-when">Why DotBoxD? (and which mode to use when)</h2>
+<p><strong>The problem it solves.</strong> Host↔plugin communication usually forces a choice between two bad options:
+hand-written marshaling (request envelopes, arg serialization, matching each response back to its call —
+repetitive and easy to get subtly wrong), or a chatty stream where the host ships every event / exposes
+only fine-grained calls and the client loops and filters after the fact. DotBoxD starts from <strong>one C#
+contract</strong> and lowers it at compile time — no runtime reflection on the hot path — into whichever of
+<strong>three delivery strategies</strong> fits the call shape. The interface stays the single source of truth: a
+contract-shape mismatch is a compile error, not a wire fault.</p>
+<p><strong>The payoff: pick the strategy by call shape, keep one authoring model.</strong></p>
+<ul>
+<li><strong>Services (RPC) = easy interop.</strong> One <code>[DotBoxDService]</code> interface compiles to a typed proxy plus a
+dispatcher, so there is no hand-written marshaling and no runtime reflection on the hot path — the
+netstandard2.1 stack AOTs and runs on Unity / IL2CPP. Reach for it for a discrete, typed
+request→response you can <code>await</code>, a bounded number of calls (one method = one round-trip), or
+host↔plugin callbacks over one connection. See <a href="../concepts/services.html">concepts/services.md</a>.</li>
+<li><strong>Query / event pipeline (RunLocal) = efficient server-side filtering + projection.</strong> <code>Where</code> /
+<code>Select</code> lower to verified IR that runs next to the data, so only matching, projected values cross the
+pipe — fewer bytes, fewer wake-ups, one-way push, no round-trips. Because that filter logic runs as
+validated, fuel-metered IR, it is safe to accept from untrusted plugins. Reach for it to react to a
+high-frequency server event but consume only a filtered/shaped subset. See
+<a href="../tutorials/event-pipeline-runlocal.html">tutorials/event-pipeline-runlocal.md</a>.</li>
+<li><strong>Pushdown = reduce round-trips.</strong> Move the loop/aggregation next to the data so N per-entity calls
+collapse into one server-side batch. The host stays frozen and minimal while plugins add batch ops
+without recompiling it, and the batch runs as verified, capability-gated, fuel-metered IR. Reach for
+it when a client would otherwise loop with one round-trip per entity against a frozen host. See
+<a href="../concepts/pushdown.html">concepts/pushdown.md</a>.</li>
+</ul>
+<p>RunLocal and Pushdown share the same sandbox foundation (<a href="../concepts/kernels.html">concepts/kernels.md</a>):
+untrusted author C# is lowered to validated, fuel-metered <strong>kernel IR</strong>, so plugin logic never runs as
+trusted CLR code. Services, by contrast, is a <strong>trusted channel</strong> — a provided service is callable by any
+peer, so enforce access control at the transport or application layer. The three quickstarts below map
+one-to-one onto these strategies.</p>
 <h2 id="first-service-rpc">First Service (RPC)</h2>
 <ol>
 <li>Define a contract and annotate it with <code>[DotBoxDService]</code>.</li>

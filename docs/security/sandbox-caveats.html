@@ -125,6 +125,48 @@ treat <code>AssemblyLoadContext</code> unload/isolation as containment of untrus
 <li>an OS-level isolation mechanism (job objects, seccomp, AppContainer, etc.).</li>
 </ul>
 <p>In-process restrictions are not a substitute for an OS/hypervisor boundary for this case.</p>
+<h2 id="why-safe-mode-is-the-boundary--and-why-capabilities--metering">Why safe mode is the boundary — and why capabilities + metering</h2>
+<p>The three modes are superficially symmetric — each &quot;runs some logic the caller supplied&quot; — so the
+load-bearing decision is <strong>trust level, not convenience</strong>. Only validated IR is a trust boundary: its
+guarantees are established <em>before</em> the logic runs and <em>bounded</em> while it runs. A loaded assembly's
+guarantees are established <em>never</em>.</p>
+<p><strong>The alternative it beats.</strong> Running author-supplied logic as C#/IL — or loading it as a plugin
+assembly — hands it the full CLR (filesystem, sockets, P/Invoke, spawning processes) regardless of any
+DotBoxD API wrapped around it. The kernel replaces that with restricted IR the host inspects and rejects
+<em>before</em> execution, so a method reachable via normal RPC is <strong>not</strong> automatically reachable from a
+kernel (see <a href="../concepts/kernels.html">Kernels</a>). That substrate is what makes accepting untrusted author
+logic safe in-process.</p>
+<p><strong>Why capabilities (least privilege).</strong> A kernel starts with <em>no</em> ambient authority: every host
+operation it can reach — files, time, random, logging, HTTP — must be an explicit <code>[HostBinding]</code> the
+host exposed and a capability the policy granted. In the
+<a href="https://github.com/JKamsker/DotBoxD/blob/main/README.md"><code>README</code></a> example, <code>Kill</code> is pinned to
+capability <code>&quot;game.world.monster.write.kill&quot;</code> with effects <code>SandboxEffect.Cpu | SandboxEffect.HostStateWrite</code>; nothing outside that enumerated surface is reachable. Grants are
+<strong>derived and fail closed</strong> — the required set is the union of what the IR actually touches, and install
+is rejected unless the policy grants them, so bad code never runs. The reachable blast <em>surface</em> is what
+the host enumerates, not what the author discovers.</p>
+<p><strong>Why metering (bounded blast radius).</strong> Capabilities bound <em>what</em> a kernel may touch; metering bounds
+<em>how much</em>. The policy is a hard budget — <code>WithFuel</code>, <code>WithMaxLoopIterations</code>, <code>WithMaxListLength</code>,
+per-capability quotas — and execution reports <code>ResourceUsage.FuelUsed</code> back to the host. Together they
+cap the blast radius even for <em>granted</em> operations: HTTP cannot become unbounded requests, a loop cannot
+spin forever, output cannot exhaust the output budget. Least privilege plus bounded consumption is why a
+<em>hostile</em> author, not just a <em>buggy</em> one, can be accepted in this mode.</p>
+<p><strong>Why <code>AssemblyLoadContext</code> isn't a boundary.</strong> ALC provides assembly-versioning and unload isolation,
+not containment — it never inspects, restricts, or meters what the code does. So the two modes that look
+symmetric are not: a validated kernel can only do what the policy permits; a loaded assembly can do
+anything the process can. Conflating them is the exact mistake this page exists to prevent, which is why
+the <a href="https://github.com/JKamsker/DotBoxD/blob/main/SECURITY.md">trust posture</a> is stated as a table, not
+a nuance.</p>
+<p><strong>Pushdown inherits this boundary — it does not widen it.</strong> A plugin's server-side batch (Pushdown /
+server extensions) lowers to the <em>same</em> validated, capability-gated, fuel-metered IR as an event kernel
+and reaches only bindings the host already exposes. Moving the loop next to the data collapses N
+round-trips into one server-side batch <strong>without</strong> relaxing the trust model or recompiling the frozen
+host.</p>
+<p><strong>When to reach for each.</strong> Untrusted author <em>logic</em> → <strong>safe mode (Kernels)</strong>. Logic that is a host
+capability <em>you</em> implement and trust → a plain <a href="../concepts/services.html">Service</a> RPC, which needs no
+sandbox. Already-trusted first-party or vetted-partner <em>assemblies</em> → trusted plugin. Untrusted
+<em>compiled</em> .NET → an OS/process boundary (mode 3 above). One honest limit: the kernel boundary defends
+against buggy and <em>many</em> malicious authors — deliberately &quot;many,&quot; not &quot;all&quot; — so for hard multi-tenant
+isolation of hostile compiled code, do not lean on safe mode.</p>
 <h2 id="summary">Summary</h2>
 <table>
 <thead>

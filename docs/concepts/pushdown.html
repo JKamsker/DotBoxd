@@ -93,6 +93,39 @@ operations. Instead of the client looping (one round-trip per entity), a <strong
 server-side batch aggregate</strong> as a sandboxed <strong>server extension</strong>: the analyzer lowers a C# batch
 method to verified IR that runs server-side, looping over the host's <em>existing</em> bindings. Only the
 plugin changes; the server is never recompiled.</p>
+<h2 id="why-pushdown-and-when-to-use-it">Why Pushdown? (and when to use it)</h2>
+<p><strong>The problem it beats.</strong> A shipped host is usually frozen at release and exposes only the <em>safe</em>
+fine-grained primitives it wants to hand the sandbox (<code>Kill(id)</code> — one monster). A client acting on many
+entities is then forced into a chatty loop where every iteration is a network hop: for N monsters that is
+N remote calls, N serialization passes, and N chances for latency to dominate. You cannot add
+<code>KillMonsters(...)</code> to the host (it is already released), and a bespoke trusted per-plugin RPC endpoint is
+impossible because the server cannot be recompiled.</p>
+<p><strong>The payoff.</strong> Pushdown collapses those N round-trips into <strong>one</strong>. The plugin ships a <code>[ServerExtension]</code>
+batch that runs <em>next to the host's data</em>, looping the host's existing bindings in-process — local calls,
+no IPC hop per entity — and returns one compact result. The GameServer <code>MonsterKillerKernel</code> does five
+reads/writes per entity server-side yet returns only the final <code>List&lt;MonsterKillResult&gt;</code>; client-side that
+would be ~5N round-trips.</p>
+<ul>
+<li><strong>Host stays frozen and minimal.</strong> New coarse operations arrive by installing a plugin, never by shipping
+a new host build; the untrusted batch logic lives in the plugin, keeping the trusted host surface small.</li>
+<li><strong>Composition the host never anticipated.</strong> The batch recombines primitives the host already exposes — the
+same reads/writes back <code>MonsterKillerKernel</code> (batch over a list), <code>RangeMonsterKillerKernel</code> (spatial
+predicate + result cap), and <code>BlinkKernel</code> (per-instance graft).</li>
+<li><strong>Untrusted-author code under a real sandbox.</strong> The batch is plain C#, but the analyzer lowers it to the
+same validated, capability-gated, fuel-metered <a href="kernels.html">kernel IR</a> that event kernels run under (see
+<a href="../security/sandbox-caveats.html">sandbox caveats</a>) — not a trusted plugin with CLR access. It reaches only
+registered bindings, and install fails (the code never runs) if the manifest requests a capability the host
+policy did not grant.</li>
+<li><strong>No lock-in.</strong> <code>[ServerExtension]</code> is opt-in sugar over public IR primitives — everything it emits is
+verified JSON IR plus a manifest you could hand-author and run through the same <code>SandboxHost</code> pipeline.</li>
+</ul>
+<p><strong>When to use it:</strong> a client would otherwise loop with one round-trip per entity against a frozen host and
+the batch fits the lowering surface (<code>foreach</code>/<code>if</code>/locals/host-calls/DTO/<code>List&lt;T&gt;</code>).
+<strong>When to prefer another mode:</strong> for a one-way push of a filtered/shaped <em>event stream</em> with no return value,
+use the <a href="../tutorials/event-pipeline-runlocal.html">event pipeline (RunLocal)</a>; for a single request/response
+call to a host capability, use a <a href="services.html">Service</a>; if you control the host and it is not frozen, add
+the method to the host directly; if the body needs arbitrary CLR calls or streaming results, Pushdown's
+one-shot sandboxed model does not apply.</p>
 <p>Without pushdown (host has only <code>Kill(id)</code>):</p>
 <pre><code class="lang-text">client -&gt; Kill(1)
 client -&gt; Kill(2)

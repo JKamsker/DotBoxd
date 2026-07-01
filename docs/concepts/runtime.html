@@ -88,6 +88,94 @@
 <h1 id="kernel-runtime">Kernel runtime</h1>
 
 <p>The kernel runtime executes validated IR under hard budgets. Key pieces:</p>
+<h2 id="why-two-backends-and-why-everything-is-metered">Why two backends, and why everything is metered</h2>
+<p>A kernel is untrusted, author-supplied logic (restricted IR, never C#/IL/reflection) that the host runs
+<strong>in-process</strong> — there is no OS process boundary by default, so the runtime <em>is</em> the boundary (see
+<a href="kernels.html">kernels.md</a>). That single fact drives every design choice on this page:</p>
+<ul>
+<li><strong>Resource containment</strong> — a buggy or hostile kernel must not be able to exhaust host CPU, memory,
+I/O, or output size. This is why everything is metered.</li>
+<li><strong>Effect containment</strong> — a kernel can only touch the outside world through host-granted capabilities.
+This is why bindings and capability grants exist.</li>
+</ul>
+<p>Backend selection is therefore a <strong>performance decision, never a safety decision</strong>: both backends must
+enforce identical guarantees, and the interpreter defines what &quot;correct&quot; means.</p>
+<h3 id="why-an-interpreter-and-a-compiler">Why an interpreter <em>and</em> a compiler</h3>
+<ul>
+<li>The <strong>interpreter</strong> is the default and the safety baseline. It walks verified IR directly, emits no
+code, and so adds no new attack surface. Metering is just method calls the evaluator makes as it walks
+nodes, so quotas and diagnostics are trivial, and it is a normal managed method that can <code>await</code> a
+pending host binding mid-execution — which is why async bindings always run interpreted.</li>
+<li>The <strong>compiler</strong> exists purely for throughput: interpretation pays per-node dispatch overhead on
+every run, so a hot kernel executed thousands of times amortizes compilation into near-native speed.
+It emits real IL (via <code>PersistedAssemblyBuilder</code>) and caches the artifact, content-addressed by
+module hash + entrypoint + policy hash + compiler version.</li>
+</ul>
+<p>But emitting IL reintroduces exactly the attack surface the interpreter avoids — arbitrary IL could
+box/unbox, reach static state, forge references, call forbidden members, throw, or skip metering. That
+is why the compiled path is only safe because of the <strong>Verifier</strong> (<code>DotBoxD.Kernels.Verifier</code>):</p>
+<ul>
+<li>Emitted assemblies are verified <strong>before they ever run</strong>, and compilation throws if verification
+fails
+(<a href="https://github.com/JKamsker/DotBoxD/blob/main/src/Kernels/DotBoxD.Kernels.Compiler/Emitters/ReflectionEmitSandboxCompiler.cs"><code>ReflectionEmitSandboxCompiler.cs</code></a>).
+<strong>Cache reads are re-verified too</strong>, so a tampered on-disk artifact cannot smuggle unverified IL into
+the process.</li>
+<li>Verification enforces an <strong>opcode allowlist</strong> with an explicit forbidden set — <code>Calli</code>, <code>Jmp</code>,
+<code>Localloc</code>, <code>Cpblk/Initblk</code>, <code>Ldftn/Ldvirtftn</code>, <code>Ldtoken</code>, <code>Box/Unbox</code>, <code>Castclass/Isinst</code>,
+<code>Ldsfld/Stsfld</code>, <code>Throw/Rethrow</code>, <code>Starg</code>, <code>Arglist</code> — i.e. every primitive that could break type
+safety, forge references, reach static state, or escape the ABI; exception handlers are rejected
+outright
+(<a href="https://github.com/JKamsker/DotBoxD/blob/main/src/Kernels/DotBoxD.Kernels.Verifier/OpCodeVerifier.cs"><code>OpCodeVerifier.cs</code></a>).</li>
+<li>It enforces a <strong>member allowlist</strong>
+(<a href="https://github.com/JKamsker/DotBoxD/blob/main/src/Kernels/DotBoxD.Kernels.Verifier/VerificationPolicy.cs"><code>VerificationPolicy.cs</code></a>)
+restricted to corelib primitives plus the metering/value facade, with allowed assemblies pinned by
+strong identity (version + public key token).</li>
+</ul>
+<p>This is what lets the compiled path &quot;enforce the same restrictions as the interpreter&quot;: the interpreter
+is safe by construction, and the compiler is safe because verification proves the emitted IL can <em>only</em>
+do what the interpreter would.</p>
+<h3 id="why-compiled-code-is-still-metered">Why compiled code is still metered</h3>
+<p>Metering is not skipped just because the code is native IL — the compiler <strong>emits the charge calls into
+the IL itself</strong>. The verifier's member allowlist includes exactly the metering ABI (<code>ChargeFuel</code>,
+<code>ChargeLoopIteration</code>, <code>ChargeBindingCall</code>, <code>EnterCall</code>/<code>ExitCall</code>, …) on
+<a href="https://github.com/JKamsker/DotBoxD/blob/main/src/Kernels/DotBoxD.Kernels.Runtime/CompiledRuntime.cs"><code>CompiledRuntime</code></a>,
+which forwards to the same meter the interpreter uses. Both backends build a fresh <code>ResourceMeter</code> per
+run against the same context, so fuel and quota semantics are identical by construction. (<code>CompiledRuntime</code>
+is marked <code>EditorBrowsable(Never)</code>: it is generated-code ABI kept in lockstep with the verifier
+allowlist, not host API.) The same guarantee extends to <a href="pushdown.html">pushdown</a> server extensions, which
+run as the same validated, metered, capability-gated kernels.</p>
+<h3 id="why-fuel-and-a-wall-clock-deadline">Why fuel <em>and</em> a wall-clock deadline</h3>
+<p>All limits live in one immutable
+<a href="https://github.com/JKamsker/DotBoxD/blob/main/src/Kernels/DotBoxD.Kernels/Model/ResourceLimits.cs"><code>ResourceLimits</code></a>
+record with fail-safe defaults: an instruction (<code>MaxFuel</code>) budget, loop-iteration and call-depth
+budgets, <code>MaxHostCalls</code> plus per-capability quotas, collection-cardinality caps, <code>MaxAllocatedBytes</code>,
+file/network byte caps (write default <code>0</code> — fail-closed), log/output caps, and a wall-time deadline.
+Fuel is charged because it is <strong>deterministic and reproducible</strong> — independent of machine speed or GC
+pauses — so quota exhaustion is testable and identical across runs; the wall-clock deadline is a cheap
+secondary backstop, checked only every N charges to keep the hot path fast
+(<a href="https://github.com/JKamsker/DotBoxD/blob/main/src/Kernels/DotBoxD.Kernels/Model/ResourceMeter.HostCalls.cs"><code>ResourceMeter.HostCalls.cs</code></a>).
+Every charge is overflow-checked and throws <code>QuotaExceeded</code> on breach, and the meter is created fresh
+per run, so a budget can neither wrap around nor leak across executions.</p>
+<h3 id="when-to-pick-which-backend">When to pick which backend</h3>
+<p>Backend is chosen per run via <code>SandboxExecutionOptions.Mode</code> (<code>Interpreted</code> / <code>Compiled</code> / <code>Auto</code>); a
+host opts into compilation with <code>UseCompilerIfAvailable(...)</code> + <code>UseCompilerCache(...)</code> on top of the
+always-available <code>UseInterpreter(...)</code>
+(<a href="https://github.com/JKamsker/DotBoxD/blob/main/src/Hosting/DotBoxD.Hosting/Execution/Host/SandboxHostBuilder.cs"><code>SandboxHostBuilder.cs</code></a>).</p>
+<ul>
+<li><strong>Interpreter</strong> — the default. Reach for it for the correctness baseline, debugging (<code>EnableDebugTrace</code>
+forces it), one-shot/cold kernels, AOT targets, and <strong>anything with async host bindings</strong> (generated
+kernel IL stays synchronous, so async bindings always fall back to the interpreter).</li>
+<li><strong>Compiler</strong> — hot paths where the same plan runs repeatedly and compile cost amortizes; requires a
+verifiable artifact and a compilable entrypoint.</li>
+<li><strong>Auto</strong> (recommended) — starts interpreted and promotes to compiled by <em>hotness</em>: the first run is
+always interpreted, and the selector promotes once <code>RunCount</code> crosses <code>max(2, AutoCompileThreshold)</code>,
+falling back to the interpreter whenever the compiler is unavailable, debug tracing is on, or the
+entrypoint is async/uncompilable
+(<a href="https://github.com/JKamsker/DotBoxD/blob/main/src/Hosting/DotBoxD.Hosting/Execution/Host/SandboxHost.Auto.cs"><code>SandboxHost.Auto.cs</code></a>,
+<a href="https://github.com/JKamsker/DotBoxD/blob/main/src/Hosting/DotBoxD.Hosting/Execution/ExecutionModeSelector.cs"><code>ExecutionModeSelector.cs</code></a>).
+You pay compilation cost only for kernels that are actually hot, while every kernel still runs
+immediately on the safe baseline.</li>
+</ul>
 <h2 id="two-execution-backends">Two execution backends</h2>
 <ul>
 <li><strong>Interpreter</strong> (<code>DotBoxD.Kernels.Interpreter</code>) — executes verified IR directly. Predictable

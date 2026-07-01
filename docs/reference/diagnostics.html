@@ -88,7 +88,12 @@
 <h1 id="diagnostics-reference">Diagnostics reference</h1>
 
 <p>DotBoxD's compile-time generators/analyzers and runtime emit namespaced diagnostic codes. Each family
-has a reserved prefix so codes never collide as the product grows:</p>
+has a reserved prefix so codes never collide as the product grows.</p>
+<p>These diagnostics exist because the analyzer and kernel validators fail <strong>closed</strong>: an unsupported
+construct is rejected at build time (or at plugin import time) instead of being silently miscompiled or
+lowered into something that misbehaves at runtime. So a <code>DBXS</code>/<code>DBXK</code> code means &quot;this construct isn't
+supported here&quot; — it's telling you to express the intent a different way, not a bug in the generator to
+work around.</p>
 <table>
 <thead>
 <tr>

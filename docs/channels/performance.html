@@ -87,6 +87,11 @@
         <article data-uid="">
 <h1 id="performance-hot-paths">Performance Hot Paths</h1>
 
+<p>Channel calls are cheap by construction: the generated proxy and dispatcher marshal each contract
+method with source-generated code, so there is no runtime reflection on the hot path, and payloads
+move as framed binary MessagePack frames rather than per-call reflective serialization (see
+<a href="../concepts/services.html">Services</a>). The switches on this page shave the remaining per-call
+allocation off that baseline — reach for them only on measured hot paths.</p>
 <p>DotBoxD defaults favor safe behavior: per-call timeouts, inbound cancellation tokens, bounded
 inbound queues, and <code>Task</code>-backed proxy invocation. That costs some allocation, but it is the
 right default for most applications.</p>

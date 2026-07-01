@@ -110,6 +110,94 @@ pipes or TCP.</strong></p>
 </ul>
 <p>All of these target <strong>netstandard2.1</strong> (Unity/IL2CPP friendly). A connection handshake negotiates
 protocol version, framing limits, and codec.</p>
+<h2 id="why-the-stack-is-transportcodec-neutral-and-when-to-pick-each-transport">Why the stack is transport/codec-neutral (and when to pick each transport)</h2>
+<p><strong>The problem it solves.</strong> Wiring a protocol straight to a socket type is the usual trap: the
+serialization format, the frame layout, and <code>if (tcp) … else if (pipe) …</code> branching leak into the call
+path, so moving from local IPC to the network — or from MessagePack to something else — means editing
+the code that dispatches calls. DotBoxD avoids that by making the wire and the serializer
+constructor-injected strategies. An
+<a href="../channels/design/peer-model.html"><code>RpcPeer</code></a> only ever sees two interfaces:
+<a href="https://github.com/JKamsker/DotBoxD/blob/main/src/Services/DotBoxD.Services/Transport/IRpcChannel.cs"><code>IRpcChannel</code></a>
+(the pipe) and
+<a href="https://github.com/JKamsker/DotBoxD/blob/main/src/Services/DotBoxD.Services/Serialization/ISerializer.cs"><code>ISerializer</code></a>
+(the codec). It never names TCP, named pipes, or MessagePack — that single decision is the whole
+mechanism behind the split quoted at the top of this page.</p>
+<p><strong>The payoff.</strong> You can swap the wire (named-pipe → TCP → WebSocket → in-process) and swap the
+serialization <em>without touching a single service contract</em>. The three ways plugins talk to a host all
+ride this one substrate and are equally indifferent to it: <a href="services.html">Services / RPC</a> — one C#
+contract compiles to a typed proxy + dispatcher, no hand-written marshaling and no runtime reflection on
+the hot path; the <a href="kernels.html">query / event pipeline</a> — server-side <code>Where</code>/<code>Select</code> filtering so only
+matching, projected values cross the pipe; and <a href="pushdown.html">pushdown</a> — moving a loop next to the data
+to turn N round-trips into one server-side batch.</p>
+<p>Grounded aspects:</p>
+<ul>
+<li><strong>A channel is just a duplex framed byte pipe — it has no notion of &quot;service&quot; or &quot;method.&quot;</strong>
+<code>IRpcChannel</code> exposes only <code>SendAsync</code>, <code>ReceiveAsync</code>, <code>IsConnected</code>, and <code>RemoteEndpoint</code>; a
+zero-length receive signals &quot;remote closed.&quot; Service names, method names, request IDs, and
+cancellation all live <em>above</em> this line in the envelope, never in the channel.</li>
+<li><strong>Framing is shared, not reinvented per transport.</strong> The wire frame —
+<code>[4B total length][4B messageId][1B MessageType][body]</code> — is defined once in
+<a href="https://github.com/JKamsker/DotBoxD/blob/main/src/Services/DotBoxD.Services/Protocol/MessageFramer.cs"><code>MessageFramer</code></a>
+and reused by every stream-backed transport. Named pipes reuse <code>StreamConnection</code> directly, so
+named-pipe traffic gets the same length validation, serialized sends, pooled receive buffers, and
+clean EOF behavior as every other stream-backed DotBoxD connection; TCP validates outgoing frames with
+the same <code>MessageFramer</code> constants so a malformed frame is rejected locally rather than differing by
+transport.</li>
+<li><strong>Symmetry falls out of the channel being duplex.</strong> The four core
+<a href="https://github.com/JKamsker/DotBoxD/blob/main/src/Services/DotBoxD.Services/Protocol/MessageType.cs"><code>MessageType</code>s</a>
+(<code>Request</code>/<code>Response</code>/<code>Error</code>/<code>Cancel</code>) encode <em>direction</em> independently of <em>who sent the frame</em>, so
+responses flow back over the same pipe and one read loop can demux both directions. The
+&quot;client = get-only / server = provide-only&quot; asymmetry is peer configuration, not a channel or
+transport property — see <a href="../channels/design/peer-model.html">peer-model</a>.</li>
+<li><strong>Adding a transport = implement three interfaces, change zero contracts.</strong> The
+<a href="../channels/websocket-setup.html">WebSocket guide</a> is proof by construction: it is not a shipped
+package but a walkthrough that implements <code>ITransport</code>, <code>IServerTransport</code>, and <code>IRpcChannel</code> — the
+same <code>[DotBoxDService]</code> interfaces and generated proxies then run over a transport the framework never
+shipped.</li>
+<li><strong>Codec neutrality is the same trick applied to bytes.</strong> <code>RpcPeer</code>/<code>RpcHost</code> take an <code>ISerializer</code>;
+swapping codecs is passing a different one. The
+<a href="https://github.com/JKamsker/DotBoxD/blob/main/src/Channels/DotBoxD.Codecs.MessagePack/MessagePackRpcSerializer.cs">MessagePack codec</a>
+is zero-reflection <em>by design</em> — it composes DotBoxD's own binary formatters ahead of the standard
+resolvers and hardens the boundary with <code>MessagePackSecurity.UntrustedData</code> (validate untrusted input
+at the edge). A <code>CreateUnityCompatible()</code> variant swaps in a contractless resolver for attribute-free
+DTOs. Zero runtime reflection is what makes both the codec swap and the transport swap safe under
+Unity/IL2CPP AOT (see <a href="../channels/unity-integration.html">unity-integration</a>); the <code>netstandard2.1</code>
+target above is the same story.</li>
+</ul>
+<h3 id="when-to-reach-for-each-transport">When to reach for each transport</h3>
+<table>
+<thead>
+<tr>
+<th>Transport</th>
+<th>Reach for it when</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Named pipes</strong> (<code>DotBoxD.Transports.NamedPipes</code>)</td>
+<td>Same machine, cross-process IPC</td>
+<td>Separate package so TCP-only hosts take no pipe dependency; duplex, so one pipe can both serve and call. See <a href="../channels/named-pipe-transport.html">named-pipe transport</a>.</td>
+</tr>
+<tr>
+<td><strong>TCP</strong> (<code>DotBoxD.Transports.Tcp</code>)</td>
+<td>Cross-host / over the network</td>
+<td>Default <a href="../channels/quick-start.html">quick-start</a> transport; faces untrusted networks, so <code>TcpConnection</code> ships a slow-loris defense (<code>DefaultFrameReadIdleTimeout</code>, 30s).</td>
+</tr>
+<tr>
+<td><strong>WebSocket</strong> (you implement it)</td>
+<td>Browser clients, Unity WebGL, or HTTP-based connectivity</td>
+<td>Not shipped — implement the three interfaces from the <a href="../channels/websocket-setup.html">WebSocket guide</a>.</td>
+</tr>
+<tr>
+<td><strong>In-process</strong> (in-memory <code>IRpcChannel</code>)</td>
+<td>Tests and benchmarks, no OS transport</td>
+<td>Lives in test/benchmark code, not a shipped <code>src/</code> package.</td>
+</tr>
+</tbody>
+</table>
+<p>Backpressure and the near-zero-allocation <code>ValueTask&lt;T&gt;</code> path are peer options, orthogonal to the
+transport you pick — see <a href="../channels/performance.html">performance</a>.</p>
 <p>For deeper transport material (named pipes, WebSocket extension, performance, design rationale) see the
 legacy RPC docs under <a href="../channels/"><code>docs/channels/</code></a>.</p>
 <blockquote>

@@ -91,6 +91,12 @@
 <a href="https://github.com/JKamsker/DotBoxD/tree/main/samples/GameServer"><code>samples/GameServer</code></a>. It combines
 all three modes — service IPC, event kernels, live settings, host bindings, policy-gated execution,
 and a server extension (pushdown) — in one program.</p>
+<p>One maintained program (instead of many small samples that drift out of sync) means every mode is
+exercised end to end against the same host: services (RPC) for typed interop, the query/event pipeline
+(RunLocal) for server-side filtering and projection, and pushdown for collapsing N calls into one
+server-side batch. Regression tests pin that behavior in place — see the
+<a href="https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin.Tests/Regression/MonsterKillerServerExtensionRegressionTests.cs">regression suite</a>
+— so the walkthrough below describes code that is proven to run, not illustrative snippets.</p>
 <ul>
 <li><strong><a href="gameserver-walkthrough.html">GameServer walkthrough</a></strong> — an annotated tour that maps each feature
 to the file that implements it.</li>

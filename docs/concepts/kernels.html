@@ -89,6 +89,40 @@
 
 <p>A <strong>Kernel</strong> is client/plugin-supplied logic the host runs <strong>safely under policy</strong>. It is restricted
 <strong>IR</strong> (authored as JSON), never C#, IL, reflection, CLR member names, or arbitrary host calls.</p>
+<h2 id="why-kernels-the-sandbox-behind-query-filters-and-pushdown-batches">Why Kernels (the sandbox behind Query filters and Pushdown batches)?</h2>
+<p><strong>The problem.</strong> Two of DotBoxD's three modes run <em>code the plugin author wrote</em> inside the host
+process: the <a href="../tutorials/event-pipeline-runlocal.html">Query pipeline</a> lowers <code>Where</code>/<code>Select</code> to
+server-side logic, and <a href="pushdown.html">Pushdown</a> lowers a batch method that loops the host's bindings
+server-side. Running that logic as C#/IL would hand it full CLR access. The alternative — filtering
+client-side or bloating a frozen host with every batch op — either wastes the wire or is impossible.
+The kernel is the shared substrate that makes accepting untrusted author logic safe.</p>
+<p><strong>The payoff.</strong> A kernel is validated restricted IR, capability-gated, and metered: fuel, loop
+iterations, call depth, list length, output bytes, and per-capability quotas. A buggy or hostile
+kernel cannot exhaust host resources or reach disallowed effects, and it can touch only the
+<code>[HostBinding]</code>s the host explicitly exposes — a method reachable via normal RPC is <strong>not</strong>
+automatically reachable from a kernel. This is what makes both server-side lowerings safe to accept
+from less-trusted plugin authors.</p>
+<p><strong>Grounded specifics:</strong></p>
+<ul>
+<li><strong>One boundary, two lowerings.</strong> Query's <code>Where</code>/<code>Select</code> and Pushdown's batch run as the <em>same</em>
+validated, fuel-metered IR. Query keeps the payoff on the wire — the filter runs server-side so
+non-matching events never cross, and <code>Select</code> ships only the projected scalar (fewer bytes, fewer
+wake-ups, one-way push, no round-trips). Pushdown keeps it in round-trips — N fine-grained calls
+collapse into <strong>one</strong> server-side batch next to the host's data.</li>
+<li><strong>Capabilities are derived, not self-asserted, and fail closed.</strong> The manifest's required
+capabilities are the union of what the IR actually touches; install is rejected unless the host
+policy grants them, so bad code never runs. Async is itself a gated capability
+(<code>dotboxd.runtime.async</code>) that fails closed without a grant.</li>
+<li><strong>No lock-in.</strong> The IR plus manifest are public artifacts; you can delete the <code>[ServerExtension]</code>
+attribute and hand-author the same IR through the same <code>SandboxHost</code> pipeline. The generator emits
+nothing a hand-written kernel could not also request.</li>
+</ul>
+<p><strong>When to use it — and when not.</strong> Reach for kernels (directly, or via Query/Pushdown lowering) when
+you must run author-supplied logic in-process safely. Prefer a <a href="services.html">Service</a> when the logic
+is a host capability <em>you</em> implement and trust — it is a plain request/response RPC that needs no
+sandbox. And note the trust ceiling below: safe-mode kernels are the real boundary; trusted-plugin
+assembly loading is <strong>not</strong> a sandbox, and hard multi-tenant isolation against arbitrary compiled
+.NET still needs an OS/process boundary.</p>
 <p>Lifecycle (via <code>SandboxHost</code> in <code>DotBoxD.Hosting</code>):</p>
 <ol>
 <li><strong>Import</strong> — parse JSON IR into a <code>SandboxModule</code>; reject anything outside the allowed shape.</li>
