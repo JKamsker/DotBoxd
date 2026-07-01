@@ -170,6 +170,7 @@ public sealed partial class HookRegistry
 
     public ValueTask PublishAsync<TEvent>(TEvent e, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         object? single;
         CachedPipelineFanout multiple;
         lock (_gate)

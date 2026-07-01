@@ -91,6 +91,7 @@ public sealed partial class HookRegistry
     {
         for (var i = 0; i < pipelines.Count; i++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             await ((IHookPipeline<TEvent>)pipelines[i]).PublishAsync(e, cancellationToken).ConfigureAwait(false);
         }
     }

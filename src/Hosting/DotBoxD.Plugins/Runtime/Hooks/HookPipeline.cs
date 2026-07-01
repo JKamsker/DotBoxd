@@ -181,6 +181,7 @@ public partial class HookPipeline<TEvent, TContext> : IHookPipeline<TEvent>
 
     internal ValueTask PublishAsync(TEvent e, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         // Read each copy-on-write reference once for a stable per-publish snapshot. No lock or
         // allocation: a concurrent mutation replaces the array reference rather than editing it.
         var filters = _filters;
@@ -192,6 +193,7 @@ public partial class HookPipeline<TEvent, TContext> : IHookPipeline<TEvent>
         var context = _contextFactory.Create(rawContext);
         for (var i = 0; i < filters.Length; i++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var filter = filters[i](e, context);
             if (!filter.IsCompletedSuccessfully)
             {
@@ -206,6 +208,7 @@ public partial class HookPipeline<TEvent, TContext> : IHookPipeline<TEvent>
 
         for (var i = 0; i < handlers.Length; i++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var handler = handlers[i](e, rawContext, context);
             if (!handler.IsCompletedSuccessfully)
             {
@@ -228,13 +231,17 @@ public partial class HookPipeline<TEvent, TContext> : IHookPipeline<TEvent>
         TContext context,
         int index)
     {
-        if (!await pending.ConfigureAwait(false))
+        rawContext.CancellationToken.ThrowIfCancellationRequested();
+        var matched = await pending.ConfigureAwait(false);
+        rawContext.CancellationToken.ThrowIfCancellationRequested();
+        if (!matched)
         {
             return;
         }
 
         for (var i = index + 1; i < filters.Length; i++)
         {
+            rawContext.CancellationToken.ThrowIfCancellationRequested();
             if (!await filters[i](e, context).ConfigureAwait(false))
             {
                 return;
@@ -243,6 +250,7 @@ public partial class HookPipeline<TEvent, TContext> : IHookPipeline<TEvent>
 
         for (var i = 0; i < handlers.Length; i++)
         {
+            rawContext.CancellationToken.ThrowIfCancellationRequested();
             await handlers[i](e, rawContext, context).ConfigureAwait(false);
         }
     }
@@ -256,8 +264,10 @@ public partial class HookPipeline<TEvent, TContext> : IHookPipeline<TEvent>
         int index)
     {
         await pending.ConfigureAwait(false);
+        rawContext.CancellationToken.ThrowIfCancellationRequested();
         for (var i = index + 1; i < handlers.Length; i++)
         {
+            rawContext.CancellationToken.ThrowIfCancellationRequested();
             await handlers[i](e, rawContext, context).ConfigureAwait(false);
         }
     }
