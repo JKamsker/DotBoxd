@@ -1,0 +1,81 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": ".",
+          "files": [
+            "src/Services/DotBoxD.Services/DotBoxD.Services.csproj",
+            "src/Channels/DotBoxD.Codecs.MessagePack/DotBoxD.Codecs.MessagePack.csproj",
+            "src/Channels/DotBoxD.Transports.Tcp/DotBoxD.Transports.Tcp.csproj",
+            "src/Channels/DotBoxD.Transports.NamedPipes/DotBoxD.Transports.NamedPipes.csproj",
+            "src/Hosting/DotBoxD.Abstractions/DotBoxD.Abstractions.csproj",
+            "src/Kernels/DotBoxD.Kernels/DotBoxD.Kernels.csproj",
+            "src/Kernels/DotBoxD.Kernels.Validation/DotBoxD.Kernels.Validation.csproj",
+            "src/Kernels/DotBoxD.Kernels.Runtime/DotBoxD.Kernels.Runtime.csproj",
+            "src/Kernels/DotBoxD.Kernels.Interpreter/DotBoxD.Kernels.Interpreter.csproj",
+            "src/Kernels/DotBoxD.Kernels.Compiler/DotBoxD.Kernels.Compiler.csproj",
+            "src/Kernels/DotBoxD.Kernels.Verifier/DotBoxD.Kernels.Verifier.csproj",
+            "src/Kernels/DotBoxD.Kernels.Serialization.Json/DotBoxD.Kernels.Serialization.Json.csproj",
+            "src/Hosting/DotBoxD.Hosting/DotBoxD.Hosting.csproj",
+            "src/Hosting/DotBoxD.Hosting.Http/DotBoxD.Hosting.Http.csproj",
+            "src/Hosting/DotBoxD.Plugins/DotBoxD.Plugins.csproj",
+            "src/Pushdown/DotBoxD.Pushdown.Services/DotBoxD.Pushdown.Services.csproj"
+          ]
+        }
+      ],
+      "dest": "api",
+      "namespaceLayout": "nested",
+      "memberLayout": "samePage",
+      "filter": "filterConfig.yml",
+      "disableGitFeatures": true,
+      "properties": {
+        "Configuration": "Release",
+        "TreatWarningsAsErrors": "false"
+      }
+    }
+  ],
+  "build": {
+    "content": [
+      { "files": ["index.md", "toc.yml"] },
+      {
+        "files": [
+          "docs/toc.yml",
+          "docs/index.md",
+          "docs/getting-started/**/*.{md,yml}",
+          "docs/concepts/**/*.{md,yml}",
+          "docs/tutorials/**/*.{md,yml}",
+          "docs/examples/**/*.{md,yml}",
+          "docs/security/**/*.{md,yml}",
+          "docs/reference/**/*.{md,yml}",
+          "docs/channels/**/*.{md,yml}",
+          "docs/contributing/**/*.{md,yml}"
+        ]
+      },
+      { "files": ["api/**/*.{md,yml}"] },
+      { "files": ["SECURITY.md", "CONTRIBUTING.md", "CHANGELOG.md", "CODE_OF_CONDUCT.md"] }
+    ],
+    "resource": [
+      { "files": ["docs/**/*.{png,jpg,jpeg,gif,svg}"] }
+    ],
+    "output": "_site",
+    "template": ["default", "modern"],
+    "globalMetadata": {
+      "_appName": "DotBoxD",
+      "_appTitle": "DotBoxD — contract-first .NET extension runtime",
+      "_appFooter": "DotBoxD &middot; MIT licensed &middot; <a href=\"https://github.com/JKamsker/DotBoxD\">GitHub</a>",
+      "_enableSearch": true,
+      "_disableContribution": false,
+      "_gitContribute": {
+        "repo": "https://github.com/JKamsker/DotBoxD",
+        "branch": "main"
+      }
+    },
+    "sitemap": {
+      "baseUrl": "https://jkamsker.github.io/DotBoxD/"
+    },
+    "postProcessors": ["ExtractSearchIndex"],
+    "disableGitFeatures": false
+  }
+}
