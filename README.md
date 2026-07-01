@@ -31,7 +31,7 @@ The snippets below use the real, compiling API. The maintained runnable example 
 sample at [`samples/GameServer/Examples.GameServer.Server`](samples/GameServer/Examples.GameServer.Server),
 which combines service IPC, event kernels, live settings, host bindings, policies, and server extensions.
 Features that used to be split across removed samples are tracked in
-[`docs/examples/coverage-gaps.md`](docs/examples/coverage-gaps.md).
+[the examples coverage-gaps page](https://dotboxd.kamsker.at/examples/coverage-gaps/).
 
 ### 1. Services — define a contract, host it, call it remotely
 
@@ -170,7 +170,7 @@ dotnet add package DotBoxD.Services.All --prerelease
 dotnet add package DotBoxD.Pushdown.Services --prerelease
 ```
 
-Then read [`docs/getting-started`](docs/getting-started/) for first-service, first-kernel, and
+Then read [Getting started](https://dotboxd.kamsker.at/getting-started/) for first-service, first-kernel, and
 pushdown walkthroughs, or run the maintained example:
 
 ```bash
@@ -259,7 +259,7 @@ flowchart LR
 
 The generators (`DotBoxD.Services.SourceGenerator`, `DotBoxD.Plugins.Analyzer`) emit proxies,
 dispatchers, and plugin factories at compile time. Diagnostics are namespaced `DBXS###` (services)
-and `DBXK###` (kernels/plugins). See [`docs/index.md`](docs/index.md) for the full picture.
+and `DBXK###` (kernels/plugins). See [the docs overview](https://dotboxd.kamsker.at/overview/) for the full picture.
 
 ---
 
@@ -319,8 +319,8 @@ DotBoxD is precise about its trust boundary — read this before deploying:
   defend against accidental and many malicious-author attacks, but hard multi-tenant isolation
   requires a worker process, container, or OS-level boundary.
 
-See [`SECURITY.md`](SECURITY.md) and [`docs/security`](docs/security/) for the threat model, the
-three execution modes, and the capabilities/bindings model.
+See [`SECURITY.md`](SECURITY.md) and [Sandbox caveats](https://dotboxd.kamsker.at/security/sandbox-caveats/) for the threat model,
+the three execution modes, and the capabilities/bindings model.
 
 ---
 
@@ -342,7 +342,7 @@ dotnet test  DotBoxD.slnx -c Release
 
 Please read the [Code of Conduct](CODE_OF_CONDUCT.md). For how to view pre-merge history of the two
 original repos, see
-[`docs/contributing/migration-from-standalone-repos.md`](docs/contributing/migration-from-standalone-repos.md).
+[Migration from standalone repos](https://dotboxd.kamsker.at/contributing/migration-from-standalone-repos/).
 
 ## License
 
