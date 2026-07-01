@@ -85,7 +85,7 @@ public sealed class QueryNullChildValidationTests
     private static void AssertNullChildMessage(Exception exception, QueryFilterKind kind)
     {
         Assert.Contains("QueryFilter", exception.Message, StringComparison.Ordinal);
-        Assert.Contains(kind.ToString(), exception.Message, StringComparison.Ordinal);
+        Assert.Contains($"QueryFilter {kind} nodes", exception.Message, StringComparison.Ordinal);
         Assert.True(
             exception.Message.Contains("child", StringComparison.OrdinalIgnoreCase) ||
             exception.Message.Contains("null", StringComparison.OrdinalIgnoreCase),

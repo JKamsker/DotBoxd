@@ -51,7 +51,8 @@ internal static class QueryFilterInvariants
 
     public static void RequireValidShape(QueryFilter filter)
     {
-        switch (RequireKnownKind(filter))
+        var kind = RequireKnownKind(filter);
+        switch (kind)
         {
             case QueryFilterKind.Compare:
                 RequireFieldPath(filter, "Compare");
@@ -65,8 +66,9 @@ internal static class QueryFilterInvariants
                 break;
         }
 
-        foreach (var child in filter.Children)
+        for (var i = 0; i < filter.Children.Count; i++)
         {
+            var child = filter.Children[i] ?? throw NullChild(kind, i);
             RequireValidShape(child);
         }
     }
@@ -134,4 +136,7 @@ internal static class QueryFilterInvariants
 
     private static InvalidOperationException UnknownCompareOperator(QueryComparisonOperator op)
         => new($"QueryFilter Compare node has unsupported Operator value '{(int)op}'.");
+
+    private static InvalidOperationException NullChild(QueryFilterKind kind, int index)
+        => new($"QueryFilter {kind} nodes cannot contain a null child at index {index}.");
 }
