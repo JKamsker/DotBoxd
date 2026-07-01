@@ -31,6 +31,23 @@ public sealed class RpcEnvelopeValidationTests
             () => serializer.Deserialize<RpcRequest>(payload));
     }
 
+    [Theory]
+    [InlineData("", "Call", "ServiceName")]
+    [InlineData("Sample.Service", "", "MethodName")]
+    public void RpcRequest_empty_required_name_throws(
+        string serviceName,
+        string methodName,
+        string fieldName)
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var payload = WriteRequestWithNames(serviceName, methodName);
+
+        var ex = Assert.Throws<MessagePackSerializationException>(
+            () => serializer.Deserialize<RpcRequest>(payload));
+        Assert.Contains(fieldName, ex.ToString());
+        Assert.Contains("empty", ex.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void RpcRequest_unknown_deeply_nested_envelope_field_throws()
     {
@@ -117,6 +134,21 @@ public sealed class RpcEnvelopeValidationTests
         message.Write("Second");
         message.Write("MethodName");
         message.Write("Call");
+        message.Flush();
+        return writer.WrittenMemory.ToArray();
+    }
+
+    private static byte[] WriteRequestWithNames(string serviceName, string methodName)
+    {
+        var writer = new ArrayBufferWriter<byte>();
+        var message = new MessagePackWriter(writer);
+        message.WriteMapHeader(3);
+        message.Write("MessageId");
+        message.Write(42);
+        message.Write("ServiceName");
+        message.Write(serviceName);
+        message.Write("MethodName");
+        message.Write(methodName);
         message.Flush();
         return writer.WrittenMemory.ToArray();
     }
