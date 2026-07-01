@@ -32,16 +32,20 @@ public static class QueryFilterCompiler
         return Expression.Lambda<Func<object, bool>>(body, parameter).Compile();
     }
 
-    private static Expression Build(QueryFilter filter, ParameterExpression target, Expression reader) => filter.Kind switch
+    private static Expression Build(QueryFilter filter, ParameterExpression target, Expression reader)
     {
-        QueryFilterKind.MatchAll => Expression.Constant(true),
-        QueryFilterKind.And => Fold(filter.Children, target, reader, Expression.AndAlso, identity: true),
-        QueryFilterKind.Or => Fold(filter.Children, target, reader, Expression.OrElse, identity: false),
-        QueryFilterKind.Not => Expression.Not(Build(filter.Children[0], target, reader)),
-        QueryFilterKind.Compare => CompareExpression(filter, target, reader),
-        QueryFilterKind.In => InExpression(filter, target, reader),
-        _ => Expression.Constant(false),
-    };
+        var kind = QueryFilterInvariants.RequireKnownKind(filter);
+        return kind switch
+        {
+            QueryFilterKind.MatchAll => Expression.Constant(true),
+            QueryFilterKind.And => Fold(filter.Children, target, reader, Expression.AndAlso, identity: true),
+            QueryFilterKind.Or => Fold(filter.Children, target, reader, Expression.OrElse, identity: false),
+            QueryFilterKind.Not => Expression.Not(Build(filter.Children[0], target, reader)),
+            QueryFilterKind.Compare => CompareExpression(filter, target, reader),
+            QueryFilterKind.In => InExpression(filter, target, reader),
+            _ => throw new InvalidOperationException("Query filter compilation reached an unreachable kind."),
+        };
+    }
 
     private static Expression Fold(
         IReadOnlyList<QueryFilter> children,
