@@ -1,7 +1,20 @@
+# Single comprehensive tree used as the left sidebar for the whole Docs section.
+# Nested `items:` render as an expandable tree in the modern template. The tutorials/
+# and examples/ subfolders intentionally have NO toc.yml of their own so their pages
+# fall back to this tree instead of a shallow per-folder sidebar.
 - name: Overview
   href: index.md
 - name: Getting started
   href: getting-started/README.md
+- name: Tutorials
+  href: tutorials/index.md
+  items:
+    - name: 1 · First Service (RPC)
+      href: tutorials/first-service.md
+    - name: 2 · First Kernel (sandbox)
+      href: tutorials/first-kernel.md
+    - name: 3 · Pushdown server extension
+      href: tutorials/pushdown-server-extension.md
 - name: Concepts
   items:
     - name: Services (RPC)
@@ -14,6 +27,13 @@
       href: concepts/runtime.md
     - name: Channels & transports
       href: concepts/channels-transports.md
+- name: Examples
+  href: examples/index.md
+  items:
+    - name: GameServer walkthrough
+      href: examples/gameserver-walkthrough.md
+    - name: Coverage gaps
+      href: examples/coverage-gaps.md
 - name: Security
   items:
     - name: Sandbox caveats
@@ -40,3 +60,5 @@
       href: channels/performance.md
 - name: Contributing
   href: contributing/migration-from-standalone-repos.md
+- name: API reference ›
+  href: ../api/index.md

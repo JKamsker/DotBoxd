@@ -1,8 +1,0 @@
-- name: Overview
-  href: index.md
-- name: 1 · First Service (RPC)
-  href: first-service.md
-- name: 2 · First Kernel (sandbox)
-  href: first-kernel.md
-- name: 3 · Pushdown server extension
-  href: pushdown-server-extension.md
