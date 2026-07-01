@@ -58,6 +58,29 @@ public sealed class CapabilityPolicySplitTests
     }
 
     [Fact]
+    public void Server_required_capability_analysis_includes_stripped_gated_event_properties()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
+        var package = PluginAnalyzerGeneratedPackageFactory.Create(
+            GatedEventPropertyKernelSource,
+            "Sample.GatedPluginPackage");
+        var invalid = package with
+        {
+            Manifest = package.Manifest with
+            {
+                RequiredCapabilities = package.Manifest.RequiredCapabilities
+                    .Where(capability => !string.Equals(capability, "event.read.health", StringComparison.Ordinal))
+                    .ToArray()
+            }
+        };
+
+        var required = server.GetRequiredCapabilities(invalid);
+
+        Assert.Contains("event.read.health", required);
+        Assert.Contains(PluginMessageBindings.CapabilityId, required);
+    }
+
+    [Fact]
     public async Task Manifest_parity_ignores_independently_granted_plugin_requests()
     {
         using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: PluginAddendumTestPolicies.LongWall());
