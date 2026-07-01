@@ -34,6 +34,28 @@ public sealed class CapabilityRevocationTests
     }
 
     [Fact]
+    public async Task Revoked_wildcard_capability_denies_prepared_interpreted_plan()
+    {
+        var host = SandboxTestHost.Create();
+        var module = await host.ImportJsonAsync(PureModuleWithLoggingRequest());
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create()
+                .Grant("log.*", new { }, SandboxEffect.Audit)
+                .WithFuel(1_000)
+                .Build());
+
+        host.RevokeCapability("log.*", "tenant disabled log capabilities");
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.Unit,
+            new SandboxExecutionOptions { Mode = ExecutionMode.Interpreted });
+
+        AssertRevoked(result, ExecutionMode.Interpreted, "log.*", "tenant disabled log capabilities");
+    }
+
+    [Fact]
     public async Task Revoked_capability_denies_prepared_plan_before_compiled_cache_reuse()
     {
         using var temp = TempDirectory.Create();
@@ -151,6 +173,7 @@ public sealed class CapabilityRevocationTests
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.PolicyDenied, result.Error!.Code);
         Assert.Equal(expectedMode, result.ActualMode);
+        Assert.False(result.ExecutionDispatched);
         var audit = Assert.Single(result.AuditEvents, e => e.Kind == "CapabilityRevoked");
         Assert.False(audit.Success);
         Assert.Equal(capabilityId, audit.CapabilityId);
