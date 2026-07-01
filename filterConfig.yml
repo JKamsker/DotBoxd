@@ -1,0 +1,15 @@
+# Controls which APIs appear in the generated reference.
+# Public/protected members are included by default; these rules trim tooling
+# namespaces and anything explicitly hidden from IntelliSense.
+apiRules:
+  - exclude:
+      uidRegex: ^DotBoxD\.Services\.SourceGenerator
+  - exclude:
+      uidRegex: ^DotBoxD\.Plugins\.Analyzer
+  - exclude:
+      uidRegex: ^DotBoxD\.Plugins\.Fody
+  - exclude:
+      hasAttribute:
+        uid: System.ComponentModel.EditorBrowsableAttribute
+        ctorArguments:
+          - System.ComponentModel.EditorBrowsableState.Never
