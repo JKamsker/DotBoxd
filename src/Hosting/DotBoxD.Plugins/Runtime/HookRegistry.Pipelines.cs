@@ -105,6 +105,7 @@ public sealed partial class HookRegistry
         var registrations = OrderedResultRegistrations<TEvent>(pipelines);
         foreach (var registration in registrations)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var result = await registration
                 .InvokeAsync<TResult>(e, options: null, cancellationToken)
                 .ConfigureAwait(false);
@@ -127,6 +128,7 @@ public sealed partial class HookRegistry
         var registrations = OrderedResultRegistrations<TEvent>(pipelines);
         foreach (var registration in registrations)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var result = await registration
                 .InvokeAsync(e, options, cancellationToken)
                 .ConfigureAwait(false);

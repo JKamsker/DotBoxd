@@ -201,6 +201,7 @@ public sealed partial class HookRegistry
         CancellationToken cancellationToken = default)
         where TResult : struct, IHookResult
     {
+        cancellationToken.ThrowIfCancellationRequested();
         object? single;
         CachedPipelineFanout multiple;
         lock (_gate)
@@ -227,6 +228,7 @@ public sealed partial class HookRegistry
     {
         ArgumentNullException.ThrowIfNull(options);
         options.Validate();
+        cancellationToken.ThrowIfCancellationRequested();
         object? single;
         CachedPipelineFanout multiple;
         lock (_gate)
