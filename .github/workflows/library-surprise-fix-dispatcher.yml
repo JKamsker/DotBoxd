@@ -28,7 +28,14 @@ on:
   # and a GLOBAL in-flight cap (MAX_INFLIGHT) below keep the higher cadence + per-tick
   # max from bursting the backlog or running away on cost.
   schedule:
-    - cron: "*/10 * * * *"
+    # Off-peak minutes on purpose: GitHub throttles/drops short-interval schedule
+    # slots, and drops disproportionately at :00/:05-multiples (observed 2026-07-01:
+    # `*/10` fired 1 of 6 slots in its first hour). Ticks are cheap and self-healing
+    # (each re-scans the full frontier), so dropped slots degrade latency, not
+    # correctness — and the red-test worker now ALSO kicks this dispatcher directly
+    # via safe-outputs dispatch on every PR it opens, so the cron is the fallback
+    # path, not the primary latency path.
+    - cron: "7,17,27,37,47,57 * * * *"
   # Kept for immediacy: fires instantly when a human/PAT dispatches a red-test
   # (those DO emit workflow_run). Harmless for bot-dispatched ones (never fires).
   workflow_run:

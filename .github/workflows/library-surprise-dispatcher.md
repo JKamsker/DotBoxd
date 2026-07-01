@@ -9,8 +9,9 @@ description: |
 on:
   workflow_dispatch:
   schedule:
-    # UTC. Every 30 min at :05/:35, staggered off the CI and legacy sweep crons.
-    - cron: "5,35 * * * *"
+    # UTC. Every 30 min at :09/:39 — off-peak minutes; GitHub drops fewer schedule
+    # slots away from :00/:05-multiples, and this stays staggered off other crons.
+    - cron: "9,39 * * * *"
 
 permissions:
   contents: read
@@ -40,7 +41,7 @@ safe-outputs:
   allowed-github-references: []
   dispatch-workflow:
     workflows: [library-surprise-explore]
-    max: 5
+    max: 8
   noop:
     report-as-issue: false
   missing-tool: false
@@ -107,7 +108,8 @@ pre-agent-steps:
                   busy_numbers.add(int(m.group(1)))
 
       # Severity order: security first, codegen last.
-      SEV = ["vein:security", "vein:concurrency", "vein:wire", "vein:error-path", "vein:codegen"]
+      SEV = ["vein:security", "vein:concurrency", "vein:wire", "vein:error-path",
+             "vein:resource-lifetime", "vein:roundtrip", "vein:api-contract", "vein:codegen"]
       def rank(issue):
           names = {l["name"] for l in issue.get("labels", [])}
           return next((n for n, v in enumerate(SEV) if v in names), len(SEV))
@@ -133,7 +135,7 @@ lens that already has an `explore` run in flight removed.
 
 Your only job is to fan out — do **not** read source, edit files, or open issues/PRs.
 
-For each entry in `frontier.json`, in the given order and up to the cap (5), call the **dedicated**
+For each entry in `frontier.json`, in the given order and up to the cap (8), call the **dedicated**
 `library_surprise_explore` safe-output tool **once per entry** — one call per lens. Do **not** use the
 generic `dispatch_workflow` tool: in this runtime it is a no-op (it returns success but produces no
 collectable safe output, so nothing is dispatched). Pass:
