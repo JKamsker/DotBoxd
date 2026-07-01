@@ -2,2545 +2,2545 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://dotboxd.kamsker.at/CHANGELOG.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/CODE_OF_CONDUCT.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/CONTRIBUTING.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/SECURITY.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.CapabilityAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.EventKernelAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.GeneratePluginRegistrationAccumulatorAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.GeneratePluginRegistrationRootAccumulatorAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.GeneratePluginServerAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.GeneratedKernelMethodDescriptorAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.GeneratedPluginServerRegistryAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.GeneratedPluginServerRegistryKind.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.HandleSubtypeAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.HookAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.HookContext.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.HookResultAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.HostBindingAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.HostBindingEffect.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.HostCapabilityAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.IEventKernel-1.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.IExtensibleControl.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.IHookResult.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.ILiveSettingsHandle-1.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.IPluginEventAdapter-1.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.IPluginEventValueWriter-1.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.IPluginMessageSink.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.IPluginServer-1.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.IServerExtensionClientAccessor.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.IServerExtensionClientRegistry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.IServerExtensionWireClient.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.IServiceControl.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.InMemoryPluginMessageSink.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.KernelMethodAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.LiveSettingAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.LocalAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.PluginAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.PluginMessage.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.PolymorphicHandleAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.RemoteServerInvocation-3.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.ServerExtensionAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.ServerExtensionClientAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.ServerExtensionMethodAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Abstractions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Codecs.MessagePack.MessagePackRpcSerializer.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Codecs.MessagePack.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Execution.ExecutionModeDecision.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Execution.HostServiceBindingExtensions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Execution.HotnessExecutionModeSelector.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Execution.IExecutionModeSelector.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Execution.ModuleHotnessStats.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Execution.SandboxHost.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Execution.SandboxHostBuilder.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Execution.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Http.Bindings.SafeHttpBindingExtensions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Http.Bindings.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Http.Hosting.SafeHttpHostBuilderExtensions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Http.Hosting.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Http.Internal.SafeHttpBindingExtensions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Http.Internal.SafeHttpBindings.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Http.Internal.SafeHttpHostBuilderExtensions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Http.Internal.SafeHttpPolicyBuilderExtensions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Http.Internal.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Http.Policy.SafeHttpPolicyBuilderExtensions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Http.Policy.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Http.SafeDnsResolver.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Http.SafeHttpClient.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Http.SafeInMemoryHttpMessageInvoker.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.Http.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.ISandboxWorkerClient.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.SandboxHostWorkerClient.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.SandboxWorkerProfile.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Hosting.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.AssignmentStatement.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.BinaryExpression.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.AuditLevel.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.BindingAuditFields.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.BindingCostModel.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.BindingDescriptor.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.BindingInvoker.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.BindingReferenceCollector.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.BindingRegistry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.BindingRegistryBuilder.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.BindingSafety.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.BindingSignature.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.CapabilityGrantValidator.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.CompiledBinding.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.IAuditSink.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.IBindingCatalog.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.InMemoryAuditSink.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.SandboxAuditEvent.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.SandboxRunId.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Bindings.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.BreakStatement.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.CallExpression.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.CapabilityGrant.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.CapabilityRequest.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Compiler.CacheKeyBuilder.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Compiler.CompileOptions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Compiler.CompiledArtifact.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Compiler.CompiledCacheLookup.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Compiler.CompiledCacheStatus.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Compiler.CompiledRuntimeFormKind.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Compiler.Emitters.ReflectionEmitSandboxCompiler.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Compiler.Emitters.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Compiler.ISandboxCompiler.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Compiler.PersistentCompiledArtifactCache.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Compiler.SandboxCompiledEntrypoint.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Compiler.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.ContinueStatement.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.ExecutionMode.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.ExecutionPlan.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.ExecutionPlanSeal.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Expression.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.ExpressionStatement.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.ForRangeStatement.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.FunctionAnalysis.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.IfStatement.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Interpreter.ISandboxInterpreter.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Interpreter.SandboxInterpreter.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Interpreter.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.LiteralExpression.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Model.CanonicalModuleHasher.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Model.DiagnosticSeverity.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Model.EntrypointBinder.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Model.ResourceLimitValidation.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Model.ResourceLimits.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Model.ResourceMeter.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Model.RunSummaryAuditFields.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Model.SandboxDiagnostic.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Model.SandboxRuntimeException.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Model.SandboxValidationException.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Model.SemVersion.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Model.ShortCircuitExpressionOrder.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Model.ShortCircuitOperands.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Model.SourceSpan.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Model.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Parameter.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Policies.CapabilityPattern.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Policies.SandboxPolicyBuilder.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Policies.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.ReturnStatement.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Runtime.AuditTextSanitizer.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Runtime.Bindings.DefaultSandboxBindings.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Runtime.Bindings.FileSystem.SafeFileSystem.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Runtime.Bindings.FileSystem.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Runtime.Bindings.MathBindings.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Runtime.Bindings.SafeFileBindings.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Runtime.Bindings.SafeFileSystem.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Runtime.Bindings.SafeLogBindings.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Runtime.Bindings.SafeRandomBindings.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Runtime.Bindings.SafeTimeBindings.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Runtime.Bindings.StringBindings.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Runtime.Bindings.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Runtime.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.RuntimeCapabilityIds.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.BoolValue.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.F64Value.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.GuidValue.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.I32Value.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.I64Value.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.OpaqueIdValue.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.RecordValue.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxCollectionFuel.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxContext.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxDescriptorGuards.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxEffect.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxEffects.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxError.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxErrorCode.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxFloat64Math.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxInt32Math.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxInt64Math.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxLanguage.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxLiteralConstraints.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxNumericOperations.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxPath.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxPathValue.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxResourceUsage.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxType.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxUri.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxUriValue.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxValue.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.SandboxValueValidator.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.StringValue.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.UnitValue.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.Values.ListValue.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.Values.MapValue.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.Values.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Sandbox.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.SandboxExecutionOptions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.SandboxExecutionResult.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.SandboxFunction.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.SandboxIsolation.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.SandboxModule.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.SandboxPolicy.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Serialization.Json.Hosting.SandboxHostJsonExtensions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Serialization.Json.Hosting.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Serialization.Json.JsonExporter.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Serialization.Json.JsonImporter.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Serialization.Json.Schema.JsonSchemas.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Serialization.Json.Schema.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Serialization.Json.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Statement.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.UnaryExpression.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Validation.Model.ModuleValidationResult.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Validation.Model.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Validation.ModuleValidator.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Validation.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.VariableExpression.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Verifier.Diagnostics.VerifierDiagnosticCategory.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Verifier.Diagnostics.VerifierDiagnosticCodes.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Verifier.Diagnostics.VerifierDiagnosticReference.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Verifier.Diagnostics.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Verifier.Generated.ArtifactManifest.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Verifier.Generated.GeneratedAssemblyVerifier.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Verifier.Generated.IGeneratedAssemblyVerifier.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Verifier.Generated.VerificationDiagnostic.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Verifier.Generated.VerificationManifestIdentity.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Verifier.Generated.VerificationResult.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Verifier.Generated.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Verifier.VerificationPolicy.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.Verifier.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.WhileStatement.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Kernels.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.HookSubscriptionManifest.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.IServerExtensionClientRegistry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.IServerExtensionWireClient.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.IndexPredicateOperator.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.IndexedPredicate.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Indexing.EventIndexKeyAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Indexing.EventIndexMatcher-1.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Indexing.EventIndexRegistry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Indexing.EventIndexStats.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Indexing.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Json.PluginPackageJsonSchemas.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Json.PluginPackageJsonSerializer.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Json.PluginServerJsonExtensions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Json.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Kernel.InstalledKernel.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Kernel.InstalledKernelPool.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Kernel.KernelPackageRegistry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Kernel.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.KernelEntrypoints.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.KernelRegistry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.KernelRpcBinaryCodec.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.KernelRpcValue.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.KernelRpcValueConverter.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.KernelRpcValueKind.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.KernelWireKind.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.KernelWireTerminal.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.LiveSettingDefinition.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.PluginManifest.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.PluginPackage.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.PluginServer.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.PluginSession.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Policies.HostMessagePolicyBuilderExtensions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Policies.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Diagnostics.PluginDiagnosticAudience.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Diagnostics.PluginDiagnosticCodes.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Diagnostics.PluginDiagnosticPhase.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Diagnostics.PluginDiagnosticReference.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Diagnostics.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.HookPipeline-2.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.HookRegistry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Hooks.HookStage-3.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Hooks.RemoteHookStage-2.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Hooks.RemoteHookStage-3.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Hooks.RemoteLocalHandlerRegistry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Hooks.RemoteLocalPush.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Hooks.RemoteLocalResultRequest.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Hooks.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.IErasedPluginEventAdapter.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.ILiveSetting.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Lifecycle.LiveUpdateMode.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Lifecycle.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.LiveContext-1.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.LiveSettingStore.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.LiveValue-1.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.PluginEventAdapterRegistry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.PluginExecutionObservation.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.PluginMessageBindings.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.RemoteHookPipeline-1.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.RemoteHookPipeline-2.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.RemoteHookRegistry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.RemoteSubscriptionPipeline-1.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.RemoteSubscriptionPipeline-2.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.RemoteSubscriptionRegistry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.ResultHookDispatchOptions-1.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.ResultHookFault.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Rpc.KernelRpcMarshaller.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Rpc.ServerExtensionProxy.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Rpc.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.SubscriptionDeliveryFault.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.SubscriptionDeliveryStage.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.SubscriptionPipeline-2.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.SubscriptionRegistry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Subscriptions.RemoteSubscriptionStage-2.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Subscriptions.RemoteSubscriptionStage-3.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Subscriptions.SubscriptionStage-3.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.Subscriptions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.TypedInstalledKernel-1.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.Runtime.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.WireCallbacks.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.WireOptions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.WireResult.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Plugins.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Pushdown.Services.NamedPipeTransportOptions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Pushdown.Services.PluginConnectionHost-1.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Pushdown.Services.RpcMessagePackIpc.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Pushdown.Services.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Attributes.DotBoxDMethodAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Attributes.DotBoxDServiceAttribute.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Attributes.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Buffers.Payload.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Buffers.PooledBufferWriter.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Buffers.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Diagnostics.RpcDiagnosticErrorEventArgs.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Diagnostics.RpcDiagnostics.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Diagnostics.RpcDisconnectedEventArgs.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Diagnostics.RpcDispatchErrorEventArgs.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Diagnostics.RpcErrorInfo.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Diagnostics.RpcErrorTypes.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Diagnostics.RpcHostErrorEventArgs.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Diagnostics.RpcPeerEventArgs.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Diagnostics.RpcProtocolErrorEventArgs.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Diagnostics.RpcReadErrorEventArgs.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Diagnostics.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Exceptions.RemoteServiceException.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Exceptions.ServiceConnectionException.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Exceptions.ServiceException.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Exceptions.ServiceNotFoundException.NotFoundKind.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Exceptions.ServiceNotFoundException.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Exceptions.ServiceProtocolException.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Exceptions.ServiceTimeoutException.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Exceptions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Generated.GeneratedMethod.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Generated.GeneratedParameter.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Generated.GeneratedReturnKind.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Generated.GeneratedService.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Generated.GeneratedServiceRegistry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Generated.IDotBoxDGeneratedServiceRegistrationSink.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Generated.IDotBoxDServiceRegistrationSink.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Generated.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Peer.RpcPeer.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Peer.RpcPeerOptions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Peer.RpcPeerSession.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Peer.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Protocol.MessageFramer.FramedMessage.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Protocol.MessageFramer.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Protocol.MessageType.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Protocol.RpcRequest.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Protocol.RpcResponse.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Protocol.RpcStreamHandle.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Protocol.RpcStreamKind.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Protocol.ServiceHandle.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Protocol.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Serialization.ISerializer.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Serialization.SerializerExtensions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Serialization.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Server.IInstanceRegistry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Server.INonStreamingServiceDispatcher.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Server.IRpcInvoker.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Server.IServiceDispatcher.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Server.InstanceRegistry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Server.RpcHost.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Server.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Streaming.Frames.RpcStreamAttachment.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Streaming.Frames.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Streaming.Remote.IRpcStreamingContext.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Streaming.Remote.RpcStreamingContext.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Streaming.Remote.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Streaming.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Transport.IRpcChannel.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Transport.IRpcFrameChannel.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Transport.IRpcValueTaskChannel.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Transport.IServerTransport.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Transport.ITransport.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Transport.QueueFullMode.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Transport.RpcFrame.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Transport.RpcTransportExtensions.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Transport.SingleConnectionServerTransport.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Transport.SingleConnectionTransport.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Transport.StreamConnection.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.Transport.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Services.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Transports.NamedPipes.NamedPipeClientTransport.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Transports.NamedPipes.NamedPipeServerTransport.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Transports.NamedPipes.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Transports.Tcp.TcpConnection.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Transports.Tcp.TcpServerTransport.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Transports.Tcp.TcpTransport.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Transports.Tcp.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.Transports.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/DotBoxD.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/api/index.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/channels/api-reference.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/channels/design/nested-services.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/channels/design/peer-model.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/channels/generated-service-registry.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/channels/named-pipe-transport.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/channels/performance.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/channels/quick-start.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/channels/race-condition-fixes.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/channels/unity-integration.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/channels/websocket-setup.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/concepts/channels-transports.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/concepts/kernels.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/concepts/pushdown.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/concepts/runtime.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/concepts/services.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/contributing/migration-from-standalone-repos.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/examples/coverage-gaps.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/examples/gameserver-walkthrough.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/examples/index.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/getting-started/README.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/index.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/reference/diagnostics.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/reference/schemas.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/security/sandbox-caveats.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/tutorials/first-kernel.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/tutorials/first-service.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/tutorials/index.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/docs/tutorials/pushdown-server-extension.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://dotboxd.kamsker.at/index.html</loc>
-    <lastmod>2026-07-01T02:23:30+00:00</lastmod>
+    <lastmod>2026-07-01T02:50:05+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
