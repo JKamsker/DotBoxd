@@ -595,15 +595,22 @@ production fix.**
 - Net: the fixer is driven by **our** red-test completion, never by an external approval-gated
   check. Works regardless of how GitHub gates bot PRs or whether any token/setting is present.
 
-**Bonus (not depended on):** relaxed the repo's `actions/permissions/fork-pr-contributor-approval`
-policy from `first_time_contributors` → `first_time_contributors_new_to_github`, so bot PRs' `ci`
-runs execute automatically (the bot is not new-to-GitHub) and each PR also shows a real red→green
-CI check for humans. Mild security relaxation on a public repo (established outside contributors'
-`pull_request` workflows run without approval; they still get a read-only token and no secrets). If
-undesired, revert the policy — the loop still works via Plan B.
+**Why not just relax the approval policy (Plan A) — tested and rejected:** relaxing
+`actions/permissions/fork-pr-contributor-approval` to `first_time_contributors_new_to_github` did
+**not** ungate bot-authored PRs. A genuine `github-actions[bot]` push (the fix worker's commit on
+PR #164) still produced a `ci` run stuck at `action_required`; GitHub gates workflow runs triggered
+by the Actions bot regardless of that policy. The runs that *did* execute during testing were all
+owner-initiated (re-runs and owner pushes), which are trusted independent of the policy — a
+confound, not evidence. The flip gave zero benefit for this system and was reverted. The only ways
+to get real CI on bot PRs are a human PAT for the trigger push (out of scope — a user-owned
+credential) or not depending on PR CI at all, i.e. Plan B. Bot-PR `ci` checks therefore stay
+`action_required` (cosmetic); nothing in the loop reads them.
 
 **Live evidence:** a full `ci` run executes end-to-end and goes **red** on a red-test branch (both
-`workflow_dispatch` and `pull_request` events → `failure`); a genuine `pull_request` CI failure
-emits `workflow_run` and triggers a non-skipped fix run. Note `gh run rerun` does **not** emit
+`workflow_dispatch` and `pull_request` events → `failure`), proving the red regression test
+genuinely fails in real CI. The fix worker produces a real green production fix and pushes it
+(verified on PR #164: commit "Enforce generated event capability metadata", run concluded success
+with its in-run `dotnet test` green gate). The fix-dispatcher enumerates unfixed red PRs and
+dispatches one fix worker per PR by number via `GITHUB_TOKEN`. Note `gh run rerun` does **not** emit
 `workflow_run`, which is one reason the fix-dispatcher keys off the red-test worker rather than off
 CI.
