@@ -61,6 +61,7 @@ public sealed partial class InstalledKernel
         var function = _rpcEntrypointFunction ?? throw new InvalidOperationException(
             $"Kernel '{Manifest.PluginId}' is not a server extension (no rpcEntrypoint).");
 
+        cancellationToken.ThrowIfCancellationRequested();
         var rpcArguments = KernelRpcBinaryCodec.DecodeArguments(arguments);
         var callerCount = _rpcCallerArgumentCount;
         if (callerCount < 0 || rpcArguments.Length != callerCount)
