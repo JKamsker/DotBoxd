@@ -23,6 +23,8 @@
       href: concepts/kernels.md
     - name: Pushdown
       href: concepts/pushdown.md
+    - name: Event pipelines
+      href: concepts/event-pipelines.md
     - name: Kernel runtime
       href: concepts/runtime.md
     - name: Channels & transports

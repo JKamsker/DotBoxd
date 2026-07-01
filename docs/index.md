@@ -31,7 +31,7 @@ Same contract, three delivery strategies. What differs is *where the author's lo
 | Mode | What it solves | Direction | Round-trips | Where the author's logic runs |
 |------|----------------|-----------|-------------|-------------------------------|
 | **[Services (RPC)](concepts/services.md)** | Typed request/response interop; no hand-written marshaling, and no runtime reflection on the hot path (it compiles ahead-of-time / AOT, so it runs on Unity's IL2CPP compiler). | client → host, response back | **1 per call** | host runs the hand-written implementation; the client invokes the typed proxy |
-| **[Query (RunLocal)](tutorials/event-pipeline-runlocal.md)** | Server-side filter + projection, so only the data you need is pushed to the plugin. | server → plugin, **one-way push** | **0** | `Where`/`Select` lower (compile down) to server-side sandboxed IR; only the `RunLocal` delegate is native plugin C# |
+| **[Query / event pipeline](concepts/event-pipelines.md)** | Server-side filter + projection, so only the data you need is pushed to the plugin. | server → plugin, **one-way push** | **0** | `Where`/`Select` lower (compile down) to server-side sandboxed IR; only the `RunLocal` delegate is native plugin C# |
 | **[Pushdown](concepts/pushdown.md)** | Collapse N per-entity calls into one server-side batch, next to the host's data. | client → host, **one submission** | **1, replacing N** | the author's batch method lowers to server-side sandboxed IR, looping the host's existing bindings |
 
 Decision rules:
@@ -56,8 +56,10 @@ Query and Pushdown **both** run author-supplied logic server-side as sandboxed
   [event pipelines (RunLocal)](tutorials/event-pipeline-runlocal.md), [Pushdown server extension](tutorials/pushdown-server-extension.md).
 - **Examples** — [an annotated tour of the GameServer sample](examples/gameserver-walkthrough.md).
 - **Concepts** — [Services](concepts/services.md), [Kernels](concepts/kernels.md),
-  [Pushdown](concepts/pushdown.md), [Channels & transports](concepts/channels-transports.md), and the
-  kernel [runtime](concepts/runtime.md) (interpreted vs verified-IL, fuel/quotas/capabilities).
+  [Pushdown](concepts/pushdown.md), [Event pipelines](concepts/event-pipelines.md) (react to server events;
+  `Hooks` vs `Subscriptions`, the stages, and all five terminals),
+  [Channels & transports](concepts/channels-transports.md), and the kernel
+  [runtime](concepts/runtime.md) (interpreted vs verified-IL, fuel/quotas/capabilities).
 - **Security** — the threat model and the all-important
   [sandbox caveats](security/sandbox-caveats.md) (what is and isn't a boundary). See also the top-level
   [`SECURITY.md`](../SECURITY.md).

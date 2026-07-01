@@ -41,7 +41,7 @@ link for the full treatment.
   attaches reactions to: `server.Hooks` are awaited decision points whose logic can influence the outcome;
   `server.Subscriptions` are fire-and-forget notifications.
 - **Event-pipeline terminals (`RunLocal` / `Run` / `RegisterLocal` / `Register` / `Use`)** — The last call in an
-  [event pipeline](../tutorials/event-pipeline-runlocal.md#step-6--choosing-a-terminal), chosen on two axes:
+  [event pipeline](../concepts/event-pipelines.md#the-terminals-run-modes), chosen on two axes:
   *where your handler runs* — in your plugin as native C# (`RunLocal`, `RegisterLocal`) or server-side as
   sandboxed IR (`Run`, `Register`) — and *whether it returns a decision* — `Register` / `RegisterLocal` hand an
   `IHookResult` back to the server, while `Run` / `RunLocal` are fire-and-forget. `Use<TKernel>` installs a

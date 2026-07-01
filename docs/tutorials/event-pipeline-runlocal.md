@@ -1,13 +1,14 @@
-# Tutorial: event pipelines — filter server-side, react locally (RunLocal)
+# Tutorial: event pipelines — filter server-side, react where it fits
 
-This tutorial walks through the **event pipeline**, DotBoxD's fluent way to subscribe to a server-side event and react to it *without streaming every event over the wire*. You author one chain —
-`server.Hooks.On<TEvent>().Where(...).Select(...).RunLocal(...)` — and the analyzer splits it across the process boundary for you: the `Where` **filter** and `Select` **projection** are lowered to verified IR that **runs on the server**, and only the small projected value crosses the IPC pipe — and only for events that pass the filter. Your `RunLocal` delegate is the one piece that stays native: ordinary C# running in **your** plugin process.
+This tutorial builds an **event pipeline** end to end — DotBoxD's fluent way to react to a server-side event *without streaming every event over the wire*. You author one chain — `server.Hooks.On<TEvent>().Where(...).Select(...).<terminal>(...)` — and the analyzer splits it across the process boundary for you: the `Where` **filter** and `Select` **projection** lower to verified IR that **runs on the server**, and only the small projected value crosses the IPC pipe — only for events that pass the filter.
+
+The last stage — the **terminal** — decides *where your reaction runs and whether it hands a value back*. This walkthrough builds with **`RunLocal`** (react in native plugin C#), then [Step 6](#step-6--choosing-a-terminal) lays out all five terminals — `RunLocal`, `Run`, `RegisterLocal`, `Register`, and `Use<TKernel>` — side by side. For the whole model in one place — the two registries, the stages, and every terminal — see the [Event pipelines concept](../concepts/event-pipelines.md).
 
 The payoff: a plugin subscribing to a high-frequency event does not have to receive every event and filter it locally. The server does the filtering and shaping first, so the pipe carries only the few small values you actually asked for — fewer bytes, fewer wake-ups, and no round-trips (the push is one-way, server → plugin). This is the same "collapse remote traffic into server-side work" idea as [Pushdown](./pushdown-server-extension.md), applied to the event-push direction.
 
 Everything below uses the real, compiling API. The runnable chains live in the GameServer sample's [`LocalReactions.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin/Authoring/LocalReactions.cs); the 2-process premise is proven end to end over a live named pipe in [`RemoteRunLocalIpcPremiseTests.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin.Tests/RemoteRunLocalIpcPremiseTests.cs).
 
-## Why the event pipeline (RunLocal)? (and when to use it)
+## Why event pipelines? (and when to use it)
 
 **The problem it solves.** The naive way to react to a server event is to subscribe to everything and filter in the plugin. That serializes and ships every full record even when you discard most, wakes the plugin per event, and pays a process-boundary crossing for events you were never going to act on. The design doc names this cost directly: "broad subscription + run the lowered predicate for every event — correct, but expensive for high-volume event families" ([`index-predicate-metadata.md`](https://github.com/JKamsker/DotBoxD/blob/main/docs/design/plugin-fluent-hooks-api/index-predicate-metadata.md)).
 
@@ -24,7 +25,7 @@ Everything below uses the real, compiling API. The runnable chains live in the G
 - A **plugin process** that builds the generated `IGameWorldServer` facade from a pipe name and starts it.
 - A **filter pipeline** — `On<MonsterAggroEvent>().Where(...).Select(...).RunLocal(...)` — where the filter and projection run server-side and only the projected `MonsterId` reaches your delegate.
 - Three variants of the same shape: a **scalar projection**, the **whole-event** form (no `Select`), and the **server-context** form (`(x, ctx) => ...`).
-- A clear map of when to reach for `.Run(...)` (server-side terminal), `.RegisterLocal(...)` (result hooks), and `.Use<TKernel>()` (setup-time kernels) instead.
+- A side-by-side map of all five terminals — `.RunLocal`, `.Run`, `.RegisterLocal`, `.Register`, and `.Use<TKernel>()` — so you can pick the right one (full reference: [Event pipelines](../concepts/event-pipelines.md#the-terminals-run-modes)).
 
 ## Prerequisites
 
@@ -190,7 +191,8 @@ The same five terminals as a lookup:
 > `RunLocal`, only the `Where` / `Select` lower — your terminal delegate stays native plugin code.
 
 The rest of this step shows each server-side and result terminal against the `RunLocal` baseline from
-Steps 1–5.
+Steps 1–5. For these same terminals framed as part of the whole model — alongside the two registries and
+the stages — see the [Event pipelines concept](../concepts/event-pipelines.md#the-terminals-run-modes).
 
 **`.Run((x, ctx) => ...)` — the terminal stays on the server.** Swap `RunLocal` for `Run` and the filter, the projection, *and* the terminal all lower to verified IR and run fully server-side. There is no plugin-process delegate at all; the send happens on the host ([`Program.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin/Program.cs)):
 
@@ -250,6 +252,7 @@ What you should see: the sample prints three phases — a **baseline** run with 
 
 ## Next steps
 
+- [Event pipelines concept](../concepts/event-pipelines.md) — the whole model in one place: the two registries (`Hooks` vs `Subscriptions`), the `On`/`Where`/`Select` stages, and all five terminals with when-to-use-each.
 - [Pushdown — ship a server-side batch operation](./pushdown-server-extension.md) — the sibling tutorial: the *other* way author logic runs server-side, aggregating N round-trips into one instead of reacting to events.
 - [Kernels concept](../concepts/kernels.md) — the validated, fuel-metered sandbox the `Where`/`Select` IR runs inside, and what `.Use<TKernel>()` installs.
 - [Services concepts](../concepts/services.md) — the RPC dispatch model, peers/hosts, and the named-pipe transport that carries the projected values.
