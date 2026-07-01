@@ -157,7 +157,7 @@ public static partial class SafeFileSystem
         }
 
         EnsureNoReparsePoint(rootFull, fullPath);
-        EnsureExtensionAllowed(grant, fullPath);
+        EnsureExtensionAllowed(grant, fullPath, bindingId);
         return new ResolvedPath(grant, rootFull, fullPath, $"sandbox://{capabilityId}/" + relative.Replace('\\', '/'));
     }
 
@@ -272,7 +272,7 @@ public static partial class SafeFileSystem
         }
     }
 
-    private static void EnsureExtensionAllowed(CapabilityGrant grant, string fullPath)
+    private static void EnsureExtensionAllowed(CapabilityGrant grant, string fullPath, string bindingId)
     {
         var allowed = SafeFileGrantReader.Read(grant).AllowedExtensions;
         if (allowed is null)
@@ -283,7 +283,7 @@ public static partial class SafeFileSystem
         var extension = Path.GetExtension(fullPath);
         if (!allowed.Contains(extension))
         {
-            throw Error(SandboxErrorCode.PermissionDenied, "file.readText denied: extension is not allowed");
+            throw Error(SandboxErrorCode.PermissionDenied, $"{bindingId} denied: extension is not allowed");
         }
     }
 
