@@ -5,11 +5,11 @@ description: |
   dedicated red-test worker.
 
 on:
+  # SUPERSEDED by library-surprise-dispatcher + library-surprise-explore
+  # (see docs/Task/BugHunting/README.md). The hourly schedule is disabled so this
+  # legacy single-candidate discovery agent no longer double-dispatches the red-test
+  # worker alongside the graph-based dispatcher. Kept for manual/back-compat runs.
   workflow_dispatch:
-  schedule:
-    # GitHub Actions cron uses UTC. Run once per hour, away from the top
-    # of the hour to reduce contention with common scheduled workflows.
-    - cron: "17 * * * *"
 
 permissions:
   contents: read
