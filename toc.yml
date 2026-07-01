@@ -1,11 +1,7 @@
 - name: Home
   href: index.md
-- name: Guide
+- name: Docs
   href: docs/toc.yml
-- name: Tutorials
-  href: docs/tutorials/toc.yml
-- name: Examples
-  href: docs/examples/toc.yml
 - name: API
   href: api/toc.yml
 - name: GitHub

@@ -37,13 +37,13 @@ dotnet add package DotBoxD.Services.All --prerelease
 ```
 
 Then follow [**Getting started**](docs/getting-started/README.md) or jump straight into a
-[**Tutorial**](docs/tutorials/toc.yml).
+[**Tutorial**](docs/tutorials/index.md).
 
 ## Explore the docs
 
 - 📘 **[Guide](docs/toc.yml)** — concepts (Services, Kernels, Pushdown, the runtime), security model, and reference (diagnostics, schemas).
-- 🎓 **[Tutorials](docs/tutorials/toc.yml)** — end-to-end walkthroughs for your first service, first kernel, and first pushdown extension.
-- 🧩 **[Examples](docs/examples/toc.yml)** — an annotated tour of the maintained GameServer sample.
+- 🎓 **[Tutorials](docs/tutorials/index.md)** — end-to-end walkthroughs for your first service, first kernel, and first pushdown extension.
+- 🧩 **[Examples](docs/examples/index.md)** — an annotated tour of the maintained GameServer sample.
 - 🔎 **[API reference](api/toc.yml)** — generated from the source of every published package.
 
 ## Security in one line
