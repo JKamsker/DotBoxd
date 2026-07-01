@@ -10,8 +10,8 @@ generator, so reach for them when you need to emit, inspect, or verify a payload
 
 | Schema | File | Accepted by |
 |--------|------|-------------|
-| Kernel module envelope | [`schemas/v1/dotboxd-kernel-module.schema.json`](../../schemas/v1/dotboxd-kernel-module.schema.json) | the JSON IR importer in `DotBoxD.Kernels.Serialization.Json` |
-| Plugin package envelope | [`schemas/v1/dotboxd-plugin-package.schema.json`](../../schemas/v1/dotboxd-plugin-package.schema.json) | the plugin-package importer in `DotBoxD.Plugins` |
+| Kernel module envelope | [`schemas/v1/dotboxd-kernel-module.schema.json`](https://github.com/JKamsker/DotBoxD/blob/main/schemas/v1/dotboxd-kernel-module.schema.json) | the JSON IR importer in `DotBoxD.Kernels.Serialization.Json` |
+| Plugin package envelope | [`schemas/v1/dotboxd-plugin-package.schema.json`](https://github.com/JKamsker/DotBoxD/blob/main/schemas/v1/dotboxd-plugin-package.schema.json) | the plugin-package importer in `DotBoxD.Plugins` |
 
 The schemas are a versioned contract (the `v1/` directory). A regression test keeps each schema in sync
 with the code that consumes it, so a schema change that diverges from the importer fails CI.

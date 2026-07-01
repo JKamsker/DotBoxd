@@ -105,4 +105,4 @@ isolation of hostile compiled code, do not lean on safe mode.
 | Untrusted assembly | .NET assembly | **OS-level only** | requires process/container/VM isolation |
 
 See [`SECURITY.md`](../../SECURITY.md) for reporting, and the full threat model under
-[`docs/Specs/`](../Specs/).
+[`docs/Specs/`](https://github.com/JKamsker/DotBoxD/tree/main/docs/Specs).

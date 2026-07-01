@@ -33,7 +33,7 @@ dotnet run -c Release --project samples/GameServer/Examples.GameServer.Server/Ex
 ### Analyzers and formatting
 
 The build runs the .NET analyzers (`AnalysisLevel` 10) plus **Roslynator** and **Meziantou**,
-with every rule severity configured centrally in [`.editorconfig`](.editorconfig). Because warnings
+with every rule severity configured centrally in [`.editorconfig`](https://github.com/JKamsker/DotBoxD/blob/main/.editorconfig). Because warnings
 are errors in CI, a new analyzer finding fails the build. The `.editorconfig` documents, per rule,
 which rules are enforced and which are deliberately disabled (with the reason). Format your changes
 with `dotnet format` before pushing — CI verifies formatting with
@@ -76,7 +76,7 @@ If you change a public API on purpose, update the baseline with
 
 ## Coding standards
 
-See [`AGENTS.md`](AGENTS.md) for repository expectations and the C# size guard (files under ~300
+See [`AGENTS.md`](https://github.com/JKamsker/DotBoxD/blob/main/AGENTS.md) for repository expectations and the C# size guard (files under ~300
 lines where practical; folders containing a `.csproj` hold at most 5 tracked C# files unless
 justified). Prefer many small, focused files over a few large ones, and add or update tests for any
 behavior change.

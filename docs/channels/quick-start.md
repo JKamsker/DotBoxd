@@ -217,5 +217,5 @@ DotBoxDGenerated.RegisterGeneratedServices(new GeneratedSink());
 - [WebSocket Transport Guide](./websocket-setup.md) - WebSocket setup for browsers and WebGL
 - [Generated Service Registry](./generated-service-registry.md) - Factory and registry usage
 - [Named Pipe Transport](./named-pipe-transport.md) - Local IPC setup
-- [Samples](../samples/) - Working examples
+- [Samples](../examples/index.md) - Working examples
 - [API Reference](./api-reference.md) - Detailed API docs

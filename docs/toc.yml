@@ -60,5 +60,3 @@
       href: channels/performance.md
 - name: Contributing
   href: contributing/migration-from-standalone-repos.md
-- name: API reference ›
-  href: ../api/index.md

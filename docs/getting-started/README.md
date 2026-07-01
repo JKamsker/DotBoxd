@@ -16,7 +16,7 @@ dotnet add package DotBoxD
 dotnet add package DotBoxD.Services.All
 ```
 
-Or reference individual packages — see the table in the root [README](../../README.md).
+Or reference individual packages — see the table in the root [README](https://github.com/JKamsker/DotBoxD/blob/main/README.md).
 
 ## Why DotBoxD? (and which mode to use when)
 
@@ -60,7 +60,7 @@ one-to-one onto these strategies.
 3. Connect from the client and call the generated typed proxy.
 
 The maintained runnable sample uses the same generated service pattern for its plugin control plane:
-[`samples/GameServer/Examples.GameServer.Server`](../../samples/GameServer/Examples.GameServer.Server).
+[`samples/GameServer/Examples.GameServer.Server`](https://github.com/JKamsker/DotBoxD/tree/main/samples/GameServer/Examples.GameServer.Server).
 See [concepts/services.md](../concepts/services.md).
 
 ## First Kernel (sandbox)

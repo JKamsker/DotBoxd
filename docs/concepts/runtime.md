@@ -125,7 +125,7 @@ Bindings (`DotBoxD.Kernels.Runtime`, `DotBoxD.Hosting.Http`) are the only way a 
 pure computation, and only when the policy grants the matching capability. This is what makes
 author-supplied logic safe to run in-process. See
 [security/sandbox-caveats.md](../security/sandbox-caveats.md) and the full specification under
-[`docs/Specs/`](../Specs/).
+[`docs/Specs/`](https://github.com/JKamsker/DotBoxD/tree/main/docs/Specs).
 
 Async-capable bindings are opt-in. A binding marked `BindingDescriptor.IsAsync` adds the
 `Concurrency` effect and requires the `dotboxd.runtime.async` runtime capability. Hosts grant it with
