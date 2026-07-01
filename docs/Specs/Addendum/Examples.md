@@ -13,7 +13,7 @@ The addendum is now demonstrated through one maintained runnable example:
 
 The old topic-specific examples were removed to keep one high-quality sample. Their historical source
 is preserved by the `examples-before-prune-2026-06-15` tag, and the feature gaps left by removing them
-are tracked in [`docs/examples/coverage-gaps.md`](../../examples/coverage-gaps.md).
+are tracked in [`docs-site/src/content/docs/examples/coverage-gaps.md`](../../../docs-site/src/content/docs/examples/coverage-gaps.md).
 
 ## Recommended Walkthrough
 

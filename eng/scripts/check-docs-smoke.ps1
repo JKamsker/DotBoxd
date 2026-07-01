@@ -134,7 +134,7 @@ function Invoke-GameServer([string] $ServerProject, [string] $HostDll) {
 
 Test-DocumentCommands (Join-Path $root "README.md")
 Test-DocumentCommands (Join-Path $root "CONTRIBUTING.md")
-Test-DocumentCommands (Join-Path $root "docs/getting-started/README.md")
+Test-DocumentCommands (Join-Path $root "docs-site/src/content/docs/getting-started.md")
 Test-DocumentCommands (Join-Path $root "docs/Specs/Addendum/Examples.md")
 
 Assert-DocsDoNotContain "Sandbox\.Parse" "JSON IR import is Sandbox.ImportJson"
@@ -152,9 +152,9 @@ $pluginFluentDocs = @(
 
 $currentServerExtensionDocs = @(
     "README.md",
-    "docs/index.md",
-    "docs/getting-started/README.md",
-    "docs/concepts/pushdown.md",
+    "docs-site/src/content/docs/overview.md",
+    "docs-site/src/content/docs/getting-started.md",
+    "docs-site/src/content/docs/concepts/pushdown.md",
     "docs/Specs/Addendum/Examples.md",
     "docs/design/plugin-fluent-hooks-api/followups.md",
     "docs/design/remote-plugin-server-builder/invoke-async.md"

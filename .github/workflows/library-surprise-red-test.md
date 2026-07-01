@@ -59,6 +59,9 @@ safe-outputs:
     if-no-changes: "ignore"
     protected-files: fallback-to-issue
     github-token-for-extra-empty-commit: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
+  dispatch-workflow:
+    workflows: [library-surprise-fix-dispatcher]
+    max: 1
   noop:
     report-as-issue: false
   missing-tool: false
@@ -298,6 +301,16 @@ titles:
 - open PRs whose title/body mentions the same API, attribute, diagnostic ID,
   source-generator path, runtime behavior, or failing shape from the handoff
 
+Also check for an **in-flight duplicate that has no PR yet**: explores run in parallel across
+lenses, and each records every candidate it dispatches as a comment on its `sweep:lens` issue
+*before* the corresponding red-test finishes. Scan the comments posted in the last ~2 hours on the
+open `sweep:lens` issues (`gh issue list --label "sweep:lens" --state open`, then recent comments).
+Ignore the entry for **this run's own candidate** (same `candidate_title` / same `lens_issue` as
+the handoff). If another lens's recent entry describes the same underlying defect and its comment
+is **older** than this run's dispatch, treat it as a duplicate-in-flight: call `noop` naming that
+lens issue and candidate. If this run's entry is the older one — or the overlap is genuinely
+ambiguous — proceed; a later integration pass dedups residual twins.
+
 If any open PR already covers the same bug or substantially overlapping failing
 shape, do not create a second PR. Leave the workspace unchanged and call `noop`
 with the duplicate PR number and the candidate bug you skipped.
@@ -335,10 +348,12 @@ branch and requires `dotnet test DotBoxD.slnx -c Release --no-build` to fail
 before the PR is created. This is intentional; these PRs are supposed to be red
 test reports for confirmed bugs.
 
-After the PR is created, CI must run and fail for the red tests. The companion
-`library-surprise-fix` workflow is triggered by completed `ci` runs for
-`[surprise-red-test]` PRs. It is responsible for implementing the production fix
-on the same PR branch and folding in actionable CodeRabbit findings.
+The companion fixer is driven by the `Library Surprise Fix Dispatcher`, which scans open unfixed
+`[surprise-red-test]` PRs (it does NOT depend on PR CI — this run's in-run red proof is the
+evidence). **Whenever you call `create_pull_request`, also call the dedicated
+`library_surprise_fix_dispatcher` safe-output tool once (no inputs)** so the fixer picks the new
+PR up immediately instead of waiting for the dispatcher's cron. Do not call it when you `noop`.
+The fix worker implements the production fix on the same PR branch.
 
 ## Pull Request Shape
 

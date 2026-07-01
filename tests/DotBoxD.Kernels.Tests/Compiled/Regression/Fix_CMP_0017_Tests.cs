@@ -86,7 +86,7 @@ public sealed class Fix_CMP_0017_Tests
     [Fact]
     public void Removed_audit_observer_sample_is_listed_as_an_example_coverage_gap()
     {
-        var gaps = ReadRepositoryText("docs/examples/coverage-gaps.md");
+        var gaps = ReadRepositoryText("docs-site/src/content/docs/examples/coverage-gaps.md");
 
         Assert.Contains("Standalone audit-observer demonstrations", gaps);
     }
