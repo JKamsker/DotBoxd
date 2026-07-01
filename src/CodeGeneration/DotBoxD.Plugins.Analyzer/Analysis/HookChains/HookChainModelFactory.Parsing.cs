@@ -57,10 +57,19 @@ internal static partial class HookChainModelFactory
             return role;
         }
 
-        // A generated or unbound receiver — a not-yet-emitted plugin-server registry, or a terminal whose
-        // shape binds to no overload — exposes no symbol that could carry [PipelineStep]. Recognize the
-        // framework's own pipeline methods by their syntactic name there so lowering and the not-lowered
-        // diagnostics still fire; a consumer's custom-named surface participates through the attribute path.
+        // A method on a type that DID opt into [PipelineSurface] but left this method unmarked is deliberately
+        // NOT a pipeline step: the per-method [PipelineStep] opt-in is enforced, so we must not resurrect it by
+        // name (that would silently lower a consumer's ordinary, standard-named method on their surface type).
+        // Fall back to syntactic name recognition only for receivers OUTSIDE the attribute vocabulary: a
+        // generated/not-yet-emitted registry (no symbol at all) or a prebuilt/legacy SDK type that predates
+        // [PipelineStep] (a resolved symbol whose containing type is not itself a [PipelineSurface]).
+        if (symbol is IMethodSymbol resolved &&
+            resolved.ContainingType is { } containingType &&
+            ReceiverKind(containingType, model.Compilation) is not null)
+        {
+            return null;
+        }
+
         return invocation.Expression is MemberAccessExpressionSyntax access
             ? LegacyNameRole(access.Name.Identifier.ValueText)
             : null;

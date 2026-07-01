@@ -5,40 +5,6 @@ using DotBoxD.Kernels.Sandbox;
 namespace DotBoxD.Abstractions;
 
 /// <summary>
-/// Inputs for <see cref="LoweredPipelineComposer.Compose"/>. Carries the ordered mergeable-IR
-/// <see cref="LoweredPipelineStep"/> fragments plus the small amount of module identity a fragment
-/// deliberately does not know (see <c>docs/design/mergeable-ir-fragments</c>).
-/// </summary>
-public sealed record LoweredPipelineComposition(
-    string ModuleId,
-    IReadOnlyList<LoweredPipelineStep> Steps,
-    SandboxType ResultType)
-{
-    private IReadOnlyList<LoweredPipelineStep> _steps = CopySteps(Steps);
-
-    public IReadOnlyList<LoweredPipelineStep> Steps
-    {
-        get => _steps;
-        init => _steps = CopySteps(value);
-    }
-
-    /// <summary>Module version stamped on the composed <see cref="SandboxModule"/>.</summary>
-    public SemVersion Version { get; init; } = new(1, 0, 0);
-
-    /// <summary>Sandbox ABI the composed module targets.</summary>
-    public SemVersion TargetSandboxVersion { get; init; } = new(1, 0, 0);
-
-    /// <summary>Id of the emitted boolean gate function (AND of every filter).</summary>
-    public string ShouldHandleFunctionId { get; init; } = "ShouldHandle";
-
-    /// <summary>Id of the emitted projection function (returns the final projected value).</summary>
-    public string HandleFunctionId { get; init; } = "Handle";
-
-    private static IReadOnlyList<LoweredPipelineStep> CopySteps(IEnumerable<LoweredPipelineStep> steps)
-        => Array.AsReadOnly((steps ?? throw new ArgumentNullException(nameof(steps))).ToArray());
-}
-
-/// <summary>
 /// Merges an ordered sequence of mergeable-IR <see cref="LoweredPipelineStep"/> fragments into one complete,
 /// verifiable <see cref="SandboxModule"/>. This is the runtime counterpart to the source generator's
 /// build-time hook-chain fusion: a consumer that collected steps from a custom pipeline surface can combine
@@ -54,6 +20,13 @@ public sealed record LoweredPipelineComposition(
 /// </list>
 /// Each step's <c>$dotboxd.current</c> placeholder is rewritten to the scoped variable holding the value that
 /// flows into that step, so projections compose without name capture.
+/// <para>
+/// Because the two entrypoints are independent, a projection that a later filter depends on is evaluated both
+/// in <c>ShouldHandle</c> (to gate) and again in <c>Handle</c> (to produce the result). The lowered fragments
+/// the generator emits are pure, so this is a redundant computation rather than a duplicated side effect;
+/// <c>ShouldHandle</c> stops at the last filter, so a projection with no filter after it is not evaluated
+/// there at all.
+/// </para>
 /// </remarks>
 public static class LoweredPipelineComposer
 {
@@ -66,6 +39,7 @@ public static class LoweredPipelineComposer
     public static SandboxModule Compose(LoweredPipelineComposition composition)
     {
         ArgumentNullException.ThrowIfNull(composition);
+        ArgumentException.ThrowIfNullOrEmpty(composition.ModuleId);
         var steps = composition.Steps;
         if (steps.Count == 0)
         {
@@ -98,6 +72,12 @@ public static class LoweredPipelineComposer
         {
             var step = steps[i];
             _ = CurrentParameter(step, i);
+            if (step.Kind is not (LoweredPipelineStepKind.Filter or LoweredPipelineStepKind.Projection))
+            {
+                throw new ArgumentException(
+                    $"step {i} has unsupported kind '{step.Kind}'; only Filter and Projection compose.");
+            }
+
             if (step.Prefix.Count != 0)
             {
                 throw new NotSupportedException(
@@ -131,22 +111,39 @@ public static class LoweredPipelineComposer
         return step.Parameters[0];
     }
 
-    // When the pipeline ends without a projection the value that flows out is the input record, so ResultType
-    // is checkable. A trailing projection produces a shape the fragment only carries as a manifest tag, so the
-    // composer trusts the caller-supplied ResultType there and leaves the final mismatch to the verifier.
+    // Handle returns the value produced by the last projection; when the pipeline has no projection at all it
+    // returns the input record, so ResultType is checkable only in that case. A trailing filter after a
+    // projection (e.g. Select(...).Where(...)) does not change the flowing value, so it must not force
+    // ResultType back to the input type. A projected output shape is one the fragment only carries as a
+    // manifest tag, so the composer trusts the caller-supplied ResultType there and leaves any final mismatch
+    // to the verifier.
     private static void ValidateResultType(
         IReadOnlyList<LoweredPipelineStep> steps,
         SandboxType resultType,
         SandboxType inputType)
     {
         ArgumentNullException.ThrowIfNull(resultType);
-        if (steps[^1].Kind != LoweredPipelineStepKind.Projection && resultType != inputType)
+        var hasProjection = false;
+        foreach (var step in steps)
+        {
+            if (step.Kind == LoweredPipelineStepKind.Projection)
+            {
+                hasProjection = true;
+                break;
+            }
+        }
+
+        if (!hasProjection && resultType != inputType)
         {
             throw new ArgumentException(
-                "ResultType must equal the pipeline input type when the last step is not a projection.");
+                "ResultType must equal the pipeline input type when the pipeline has no projection.");
         }
     }
 
+    // Gating only needs the steps up to and including the LAST filter: a projection after the final filter can
+    // never change whether the event is handled, so recomputing it here is pure waste (and would run an
+    // effectful projection twice, once here and once in Handle). Projections BEFORE the last filter are still
+    // emitted, because a later filter reads the value they produce.
     private static SandboxFunction BuildShouldHandle(
         IReadOnlyList<LoweredPipelineStep> steps,
         SandboxType inputType,
@@ -154,8 +151,10 @@ public static class LoweredPipelineComposer
     {
         var body = new List<Statement>();
         var current = InitialVariable();
-        foreach (var step in steps)
+        var lastFilter = LastFilterIndex(steps);
+        for (var i = 0; i <= lastFilter; i++)
         {
+            var step = steps[i];
             var value = Rewrite(step.Value, current);
             if (step.Kind == LoweredPipelineStepKind.Filter)
             {
@@ -174,6 +173,19 @@ public static class LoweredPipelineComposer
 
         body.Add(new ReturnStatement(Bool(true), Span));
         return new SandboxFunction(functionId, IsEntrypoint: true, [InputParameter(inputType)], SandboxType.Bool, body);
+    }
+
+    private static int LastFilterIndex(IReadOnlyList<LoweredPipelineStep> steps)
+    {
+        for (var i = steps.Count - 1; i >= 0; i--)
+        {
+            if (steps[i].Kind == LoweredPipelineStepKind.Filter)
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     private static SandboxFunction BuildHandle(
@@ -215,7 +227,9 @@ public static class LoweredPipelineComposer
         => expression switch
         {
             VariableExpression { Name: CurrentPlaceholder } variable => new VariableExpression(current, variable.Span),
-            VariableExpression => expression,
+            VariableExpression variable => throw new NotSupportedException(
+                $"a fragment expression may only reference the '{CurrentPlaceholder}' placeholder, not the " +
+                $"variable '{variable.Name}' (which could collide with the composer's reserved running-value slots)."),
             LiteralExpression => expression,
             UnaryExpression unary => new UnaryExpression(unary.Operator, Rewrite(unary.Operand, current), unary.Span),
             BinaryExpression binary => new BinaryExpression(

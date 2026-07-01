@@ -71,6 +71,73 @@ public sealed class LoweredPipelineComposerTests
         Assert.Contains("does not match", mismatch.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Composes_projection_then_filter_and_keeps_the_projected_result_type()
+    {
+        // Select(TargetId).Where(_ => true): a projection FOLLOWED by a filter. Handle returns the projected
+        // string, so ResultType is String even though the LAST step is a filter. This must not be rejected as
+        // "ResultType must equal the input type" — the trailing filter does not change the flowing value.
+        var projection = MergeableIrPipelineFixture.ConfigureSteps()[1];
+        var alwaysTrue = new LoweredPipelineStep(
+            LoweredPipelineStepKind.Filter,
+            "string",
+            "bool",
+            [new Parameter("$dotboxd.current", SandboxType.String)],
+            [],
+            new LiteralExpression(SandboxValue.FromBool(true), new SourceSpan(1, 1)),
+            [],
+            []);
+
+        var module = LoweredPipelineComposer.Compose(
+            new LoweredPipelineComposition("projection-then-filter", [projection, alwaysTrue], SandboxType.String));
+
+        var host = SandboxTestHost.Create();
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000_000).Build());
+
+        var gate = await host.ExecuteAsync(plan, "ShouldHandle", Record(5, "target-1"));
+        var projected = await host.ExecuteAsync(plan, "Handle", Record(5, "target-1"));
+
+        Assert.True(gate.Succeeded, gate.Error?.SafeMessage);
+        Assert.True(((BoolValue)gate.Value!).Value);
+        Assert.Equal("target-1", ((StringValue)projected.Value!).Value);
+    }
+
+    [Fact]
+    public void Rejects_an_unknown_step_kind()
+    {
+        var bogus = new LoweredPipelineStep(
+            (LoweredPipelineStepKind)99,
+            "i32",
+            "bool",
+            [new Parameter("$dotboxd.current", SandboxType.I32)],
+            [],
+            new LiteralExpression(SandboxValue.FromBool(true), new SourceSpan(1, 1)),
+            [],
+            []);
+
+        Assert.Throws<ArgumentException>(() => LoweredPipelineComposer.Compose(
+            new LoweredPipelineComposition("bogus", [bogus], SandboxType.I32)));
+    }
+
+    [Fact]
+    public void Rejects_a_fragment_that_references_a_reserved_running_value_variable()
+    {
+        // Only $dotboxd.current may be referenced; a fragment that names 'current0' would silently collide with
+        // the composer's reserved running-value slots, so it must be rejected rather than rewritten.
+        var collides = new LoweredPipelineStep(
+            LoweredPipelineStepKind.Filter,
+            "i32",
+            "bool",
+            [new Parameter("$dotboxd.current", SandboxType.I32)],
+            [],
+            new VariableExpression("current0", new SourceSpan(1, 1)),
+            [],
+            []);
+
+        Assert.Throws<NotSupportedException>(() => LoweredPipelineComposer.Compose(
+            new LoweredPipelineComposition("collide", [collides], SandboxType.I32)));
+    }
+
     private static LoweredPipelineStep Step(
         LoweredPipelineStepKind kind,
         string inputTag,

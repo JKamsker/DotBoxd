@@ -62,6 +62,16 @@ internal static class MergeableIrStepModelFactory
         var inputTypeSource = SandboxTypeSourceEmitter.TryEmit(inputType)
             ?? throw new NotSupportedException("the input type is not wire-eligible.");
         var inputTag = SandboxTypeSourceEmitter.ManifestTag(inputType);
+
+        // An anonymous-type projection (e.g. Select(e => new { e.TargetId })) has no C#-nameable type, so its
+        // display string cannot be emitted as interceptor source. Reject it as a diagnostic instead of
+        // generating code that fails to compile.
+        if (call.OutputType.IsAnonymousType)
+        {
+            throw new NotSupportedException(
+                "anonymous-type projections are not supported; project to a named type so the generated interceptor can name it.");
+        }
+
         var outputTag = OutputTag(call.Kind, call.OutputType);
         var capabilities = new SortedSet<string>(StringComparer.Ordinal);
         var effects = new SortedSet<string>(StringComparer.Ordinal);

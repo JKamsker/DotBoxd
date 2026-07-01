@@ -136,6 +136,43 @@ public sealed class MergeableIrStepGeneratorTests
             tree => tree.FilePath.Contains("LoweredPipelineStep_", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Generator_reports_diagnostic_for_an_anonymous_projection()
+    {
+        // Select(e => new { ... }) projects to an anonymous type with no C#-nameable form, so emitting the
+        // interceptor would produce uncompilable source. It must surface as a DBXK100 diagnostic with no step.
+        var result = RunGenerator("""
+            using System;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public sealed class ProjectionPipeline<T>
+            {
+                public ProjectionPipeline<object> Select<TOut>([LowerToIr(LoweredPipelineStepKind.Projection)] Func<T, TOut> projection)
+                    => throw new InvalidOperationException("not lowered");
+
+                public ProjectionPipeline<object> Select(LoweredPipelineStep step)
+                    => this;
+            }
+
+            public static class Usage
+            {
+                public static ProjectionPipeline<object> Configure(ProjectionPipeline<int> pipeline)
+                    => pipeline.Select(value => new { Doubled = value * 2 });
+            }
+            """);
+
+        var diagnostic = Assert.Single(result.Diagnostics, candidate => candidate.Id == "DBXK100");
+        Assert.Contains(
+            "anonymous-type projections",
+            diagnostic.GetMessage(CultureInfo.InvariantCulture),
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            result.GeneratedTrees,
+            tree => tree.FilePath.Contains("LoweredPipelineStep_", StringComparison.Ordinal));
+    }
+
     private static GeneratorDriverRunResult RunGeneratorAndAssertCompiles(string source)
     {
         var result = RunGenerator(source, out var outputCompilation, out var diagnostics);
