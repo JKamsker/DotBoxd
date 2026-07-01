@@ -3,7 +3,7 @@
   "isRoot": true,
   "tools": {
     "codeenforcer": {
-      "version": "0.1.0-ci.8",
+      "version": "0.1.0-ci.10",
       "commands": [
         "code-enforcer"
       ],
