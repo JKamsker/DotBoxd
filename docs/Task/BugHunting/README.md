@@ -552,12 +552,13 @@ bug record**; **lens-issue comment logs are the durable memory / dedup ledger**;
 
 ### Activation
 gh-aw scheduled/dispatch workflows execute from the default branch. The discovery
-`library-surprise-dispatcher` is currently **disabled** (`gh workflow disable`), so no discovery
-fans out until deliberately enabled. `library-surprise-fix-dispatcher` is enabled but only fires on
-red-test completion, so it stays dormant while discovery is off. Enable the discovery dispatcher to
-run the full autonomous loop; dispatch the fix-dispatcher via `workflow_dispatch` (with `max`) to
-drain the existing red-test backlog on demand. `GH_AW_CI_TRIGGER_TOKEN` alone does **not** bypass
-the CI approval gate — see "CI approval gate" below.
+`library-surprise-fix-dispatcher` now runs on a **`schedule` (`15,45 * * * *`)**, so while enabled it
+drains open unfixed red PRs on its own (`max=2` per tick, retry-capped) — this is what closes the
+autonomous loop (see "the autonomous handoff was also a confound" below). The discovery
+`library-surprise-dispatcher` gates whether *new* bugs are found: enable it to run the full find→fix
+loop hands-off, or leave it disabled and let the scheduled fix-dispatcher drain the existing backlog.
+Either is paused with `gh workflow disable`. `GH_AW_CI_TRIGGER_TOKEN` alone does **not** bypass the CI
+approval gate — see "CI approval gate" below.
 
 ### Runtime gotcha found by live testing (fixed)
 The generic `dispatch_workflow` safe-output tool is a **no-op** in this fork: the agent's call
@@ -581,12 +582,12 @@ Because `library-surprise-fix` triggered on `workflow_run: ci` with `conclusion 
 production fix.**
 
 **Resolution — decouple the fixer from the approval-gated CI (Plan B):**
-- New **`library-surprise-fix-dispatcher.yml`** (plain Actions YAML): triggers on `workflow_run`
-  of the red-test worker (+ manual `workflow_dispatch`). Enumerates open `[surprise-red-test]` PRs
-  lacking `sweep:fixed` and dispatches one **fix** worker per PR by number (busy-check dedup on the
-  `fix #<n>` run-name). Each tick re-scans all unfixed PRs, so a missed tick self-heals on the next
-  red-test completion — no separate `schedule:` needed (and it is intentionally omitted so enabling
-  the workflow does not burst-fix the backlog).
+- New **`library-surprise-fix-dispatcher.yml`** (plain Actions YAML): scans open `[surprise-red-test]`
+  PRs lacking `sweep:fixed` and dispatches one **fix** worker per PR by number (busy-check dedup on the
+  `fix #<n>` run-name). Its **primary** trigger is a **`schedule` (`15,45 * * * *`)** — `workflow_run`
+  alone is not enough, see "the autonomous handoff was also a confound" below — plus `workflow_run` of
+  the red-test worker (human/PAT immediacy) and manual `workflow_dispatch`. `max=2` + the busy-check +
+  a retry cap keep any single tick from bursting the backlog.
 - **`library-surprise-fix.md`** reworked: entry is `workflow_dispatch(pr_number)` with **per-PR
   concurrency** (`surprise-fix-<pr>`, no-cancel); the "must have a failing `ci` run" gate is
   dropped. Proof now lives entirely in our own runs — red-test refuses to open a PR unless
@@ -614,3 +615,28 @@ with its in-run `dotnet test` green gate). The fix-dispatcher enumerates unfixed
 dispatches one fix worker per PR by number via `GITHUB_TOKEN`. Note `gh run rerun` does **not** emit
 `workflow_run`, which is one reason the fix-dispatcher keys off the red-test worker rather than off
 CI.
+
+### The autonomous handoff was ALSO a confound — `workflow_run` is suppressed for bot-dispatched red-tests (found by live testing; fixed via a schedule)
+Plan B's fix-dispatcher originally relied solely on `workflow_run` of the red-test worker. That fired
+in every early test — but only because those red-tests were **human-dispatched**. GitHub's
+recursion-prevention suppresses `workflow_run` events for any run whose triggering actor is
+`github-actions[bot]` (i.e. dispatched with `GITHUB_TOKEN`). The explore worker dispatches red-tests
+with `GITHUB_TOKEN`, so in fully autonomous operation their completion emits **no** `workflow_run`
+event and the fix-dispatcher never fires. The fixer half was therefore still dead for hands-off runs —
+the same class of fail-open confound as the CI gate above.
+
+Verified 2026-07-01: in one untouched loop tick the discovery dispatcher fanned out to 5 explores,
+which opened bot red-tests → PRs **#170-172**; those three red-test runs (`28523484435` /
+`28523516570` / `28523545465`, actor `github-actions[bot]`) did **not** fire the fix-dispatcher, while
+a `JKamsker`-dispatched red-test in the same tick **did** (it dispatched the green fixes on #152/#153).
+The only difference was the triggering actor.
+
+**Resolution:** make the fix-dispatcher independent of that event. It now has a **`schedule`
+(`15,45 * * * *`)** as its primary trigger — a periodic scan of open unfixed red PRs that closes the
+loop regardless of who opened the PR. Two guards make a schedule safe (the reason it was originally
+omitted): `max=2` per tick + the per-PR busy-check bound the fan-out, and a **retry cap**
+(`MAX_ATTEMPTS=3`) skips a candidate that has burned N genuine (non-cancelled) completed fix runs and
+is still unfixed, so an unfixable bug can't be re-dispatched every tick forever. `workflow_run` is kept
+for instant human/PAT-dispatched immediacy. (Future immediacy option for the autonomous path: have the
+red-test worker explicitly `gh workflow run` the fix-dispatcher — `GITHUB_TOKEN` *dispatch* works even
+though its *events* are suppressed — to avoid the ≤30-min schedule latency.)
