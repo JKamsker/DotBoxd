@@ -127,7 +127,7 @@ lowered to a sandboxed kernel and installed into a frozen host without recompili
 attaches reactions to: <code>server.Hooks</code> are awaited decision points whose logic can influence the outcome;
 <code>server.Subscriptions</code> are fire-and-forget notifications.</li>
 <li><strong>Event-pipeline terminals (<code>RunLocal</code> / <code>Run</code> / <code>RegisterLocal</code> / <code>Register</code> / <code>Use</code>)</strong> — The last call in an
-<a href="../tutorials/event-pipeline-runlocal.html#step-6--choosing-a-terminal">event pipeline</a>, chosen on two axes:
+<a href="../concepts/event-pipelines.html#the-terminals-run-modes">event pipeline</a>, chosen on two axes:
 <em>where your handler runs</em> — in your plugin as native C# (<code>RunLocal</code>, <code>RegisterLocal</code>) or server-side as
 sandboxed IR (<code>Run</code>, <code>Register</code>) — and <em>whether it returns a decision</em> — <code>Register</code> / <code>RegisterLocal</code> hand an
 <code>IHookResult</code> back to the server, while <code>Run</code> / <code>RunLocal</code> are fire-and-forget. <code>Use&lt;TKernel&gt;</code> installs a

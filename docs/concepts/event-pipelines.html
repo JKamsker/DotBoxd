@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Event pipelines | DotBoxD — contract-first .NET extension runtime </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Event pipelines | DotBoxD — contract-first .NET extension runtime ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/JKamsker/DotBoxD/blob/main/docs/concepts/event-pipelines.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../logo.svg" alt="DotBoxD">
+            DotBoxD
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="event-pipelines">Event pipelines</h1>
+
+<p>An <strong>event pipeline</strong> lets a plugin react to a host event <em>without receiving every event over the wire</em>. You
+author one fluent chain — <code>server.Hooks.On&lt;TEvent&gt;().Where(...).Select(...).&lt;terminal&gt;(...)</code> — and the
+<a href="https://github.com/JKamsker/DotBoxD/tree/main/src/CodeGeneration/DotBoxD.Plugins.Analyzer"><code>DotBoxD.Plugins.Analyzer</code></a>
+lowers the <code>Where</code> filter and <code>Select</code> projection to verified server-side <a href="kernels.html">kernel IR</a>. The host
+does the matching and shaping first, so only the values you actually asked for cross the pipe — and only for
+events that pass the filter. It is the event-push counterpart to <a href="pushdown.html">Pushdown</a>: both move author
+logic next to the host's data instead of round-tripping.</p>
+<p>This page is the model — the two registries, the pipeline stages, and every terminal (&quot;run mode&quot;). To build
+one end to end against the maintained sample, follow the
+<a href="../tutorials/event-pipeline-runlocal.html">event-pipeline tutorial</a>.</p>
+<h2 id="why-event-pipelines-and-when-to-use-it">Why event pipelines? (and when to use it)</h2>
+<p><strong>The problem it beats.</strong> The naive way to react to a server event is to subscribe to everything and filter
+in the plugin. That ships every full record even when you discard most, wakes the plugin once per event, and
+pays a process-boundary crossing for events you were never going to act on — expensive for high-volume event
+families.</p>
+<p><strong>The payoff.</strong> Because <code>Where</code>/<code>Select</code> run server-side, only matching, projected values cross the pipe —
+fewer bytes, fewer wake-ups, and no round-trips (the push is one-way, server → plugin). The split is
+measured, not asserted: the sample's premise test publishes one matching and one missing event and proves
+only the match crosses
+(<a href="https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin.Tests/RemoteRunLocalIpcPremiseTests.cs"><code>RemoteRunLocalIpcPremiseTests.cs</code></a>).</p>
+<ul>
+<li><strong>Safe to accept from untrusted authors.</strong> <code>Where</code>/<code>Select</code> are not plugin code running on the server —
+they lower to the same validated, fuel-metered, capability-gated <a href="kernels.html">kernel IR</a> that event
+kernels run under; only a <code>*Local</code> terminal is trusted native C#, and it runs in <em>your</em> plugin process. A
+pure event-field chain needs no capability grant; when a chain reads gated host services the analyzer
+<em>derives</em> the required capabilities from the IR (the plugin can't self-grant), and install is fail-closed
+if the manifest asks for more than the host policy allows (<a href="../security/sandbox-caveats.html">sandbox caveats</a>).</li>
+<li><strong>Interest gets indexed for free.</strong> When a <code>.Where</code> leaf compares an <code>[EventIndexKey]</code> property to a
+compile-time constant, the lowered chain ships index metadata so the host prefilters into equality/range
+buckets <em>before</em> entering the sandbox. You express interest declaratively; the framework — not the author —
+decides the wire cost.</li>
+<li><strong>No lock-in.</strong> The fluent chain is opt-in sugar over public IR primitives — the lowered projection kernel
+plus its manifest are verified JSON IR you could hand-author and run through the same <code>SandboxHost</code>
+pipeline.</li>
+</ul>
+<p><strong>When to use it:</strong> you react to a server event stream but only need a filtered/shaped subset locally, or a
+decision returned to the host. <strong>When to prefer another mode:</strong> for a chatty request/response loop you want
+to collapse into one aggregating server-side batch, use <a href="pushdown.html">Pushdown</a>; for a single
+request→response to a host capability, use a <a href="services.html">Service</a>.</p>
+<h2 id="two-registries-serverhooks-vs-serversubscriptions">Two registries: <code>server.Hooks</code> vs <code>server.Subscriptions</code></h2>
+<p>A plugin attaches every pipeline to one of two registries, and the choice sets the semantics:</p>
+<table>
+<thead>
+<tr>
+<th>Registry</th>
+<th>It models</th>
+<th>Handlers run</th>
+<th>Can change the outcome?</th>
+<th>Result terminals?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>server.Hooks</code></td>
+<td>awaited <strong>decision points</strong></td>
+<td>sequentially, awaited to completion; exceptions propagate</td>
+<td>yes</td>
+<td>yes (<code>Register</code> / <code>RegisterLocal</code>)</td>
+</tr>
+<tr>
+<td><code>server.Subscriptions</code></td>
+<td>fire-and-forget <strong>notifications</strong></td>
+<td>isolated background delivery; a fault is contained, not propagated</td>
+<td>no</td>
+<td>no</td>
+</tr>
+</tbody>
+</table>
+<p>Reach for <strong>Hooks</strong> when the host is asking <em>&quot;what should happen?&quot;</em> and your reaction can change the answer
+(scale a damage number, allow or deny an action). Reach for <strong>Subscriptions</strong> when you only need to <em>know</em> an
+event happened and nothing waits on you. The stages and terminals below work on both — except the result
+terminals, which exist only on Hooks.</p>
+<h2 id="the-stages">The stages</h2>
+<p>Every pipeline is the same shape; only <code>On</code> and the terminal are required:</p>
+<ol>
+<li><strong><code>.On&lt;TEvent&gt;()</code></strong> — choose the event type to react to.</li>
+<li><strong><code>.Where(predicate)</code></strong> — a <strong>server-side filter</strong>, lowered to verified IR; it runs on the host, so events
+that don't match never cross the pipe. A <code>[EventIndexKey]</code> constant comparison additionally prefilters
+through a host index before the sandbox runs.</li>
+<li><strong><code>.Select(projection)</code></strong> — a <strong>server-side projection</strong>, lowered to IR, so only the projected value —
+not the whole event record — crosses. Omit it to hand the terminal the whole event.</li>
+<li><strong>a terminal</strong> — what to do on a match (next section).</li>
+</ol>
+<p>Every stage offers an element-only (<code>x =&gt; ...</code>) and an <code>(element, context)</code> overload, chosen independently.
+<code>Where</code>/<code>Select</code> always run in the sandbox; only the terminal can be native plugin code — so what crosses the
+pipe is exactly <em>the projected value of each matching event</em>, and nothing for events that miss.</p>
+<h2 id="the-terminals-run-modes">The terminals (run modes)</h2>
+<p>The terminal is the last call — what happens when an event matches. Pick one on two axes: <strong>where your
+handler runs</strong> (in your plugin as native C#, or server-side as sandboxed IR) and <strong>whether it returns a
+decision</strong> the host acts on.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Handler runs <strong>in your plugin</strong> (native C#)</th>
+<th>Handler runs <strong>server-side</strong> (sandboxed IR)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Fire-and-forget</strong> (react, return nothing)</td>
+<td><strong><code>RunLocal</code></strong></td>
+<td><strong><code>Run</code></strong></td>
+</tr>
+<tr>
+<td><strong>Return a decision</strong> (<code>IHookResult</code>)</td>
+<td><strong><code>RegisterLocal</code></strong></td>
+<td><strong><code>Register</code></strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Terminal</th>
+<th>Handler runs…</th>
+<th>What crosses the pipe</th>
+<th>Returns a value?</th>
+<th>Valid on</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RunLocal</code></td>
+<td>your plugin (native C#)</td>
+<td>the projected value only, one-way push</td>
+<td>no</td>
+<td>Hooks + Subscriptions</td>
+</tr>
+<tr>
+<td><code>Run</code></td>
+<td>server-side (lowered to IR)</td>
+<td>nothing — runs on the host</td>
+<td>no</td>
+<td>Hooks + Subscriptions</td>
+</tr>
+<tr>
+<td><code>RegisterLocal</code></td>
+<td>your plugin (native C#)</td>
+<td>projected value out, <code>IHookResult</code> back (round-trip)</td>
+<td>yes</td>
+<td>Hooks only</td>
+</tr>
+<tr>
+<td><code>Register</code></td>
+<td>server-side (lowered to IR)</td>
+<td>nothing — decided on the host</td>
+<td>yes</td>
+<td>Hooks only</td>
+</tr>
+<tr>
+<td><code>Use&lt;TKernel&gt;</code></td>
+<td>server-side, as an installed kernel</td>
+<td>nothing</td>
+<td>as the kernel defines</td>
+<td>Hooks + Subscriptions</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong><code>RunLocal</code></strong> — react in native plugin C#. Use it when the reaction touches your own plugin state or
+services (emit a message, update local UI). It is a one-way push; there is no reverse channel to mutate
+server state — do that as a separate server call keyed by id.</li>
+<li><strong><code>Run</code></strong> — the same idea, but lowered to run entirely on the host. Use it when the effect is purely
+host-side (call a host binding) and nothing needs to reach the plugin.</li>
+<li><strong><code>RegisterLocal</code></strong> — a <strong>result hook</strong>: the filter runs server-side, the matching event is pushed to your
+plugin, your delegate computes an <code>IHookResult</code>, and that value returns to the host to influence the
+decision. Use it when computing the decision needs your plugin's own types or services. Carries an
+<code>int priority</code>; the result type is a <code>readonly record struct … : IHookResult</code>.</li>
+<li><strong><code>Register</code></strong> — the server-side counterpart to <code>RegisterLocal</code>: the whole decision (filter, projection,
+and result computation) lowers into the sandbox and runs on the host, with nothing crossing the pipe. Use
+it when the decision is pure host-data logic.</li>
+<li><strong><code>Use&lt;TKernel&gt;()</code></strong> — install a separately-authored <a href="kernels.html">kernel</a> as the reaction, wired at setup
+time. Use it when the whole reaction is itself validated sandbox logic.</li>
+</ul>
+<p>Two rules follow from the tables. <strong>Result terminals (<code>Register</code>, <code>RegisterLocal</code>) exist only on
+<code>server.Hooks</code></strong> — a fire-and-forget subscription has no decision to return to. And <strong><code>Run</code>, <code>Register</code>, and
+<code>RegisterLocal</code> are lowered by the analyzer at build time</strong>, so you author them in a plugin project that
+references the <code>DotBoxD.Plugins.Analyzer</code> (a raw, un-lowered call throws <code>DBXK062</code>); with <code>RunLocal</code>, only
+the <code>Where</code>/<code>Select</code> lower and the terminal delegate stays native.</p>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="../tutorials/event-pipeline-runlocal.html">Event-pipeline tutorial</a> — build a pipeline end to end against
+the maintained sample, with the runnable chains from
+<a href="https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin/Authoring/LocalReactions.cs"><code>LocalReactions.cs</code></a>.</li>
+<li><a href="kernels.html">Kernels</a> — the validated, fuel-metered sandbox the <code>Where</code>/<code>Select</code> IR runs inside, and what
+<code>Use&lt;TKernel&gt;</code> installs.</li>
+<li><a href="pushdown.html">Pushdown</a> — the sibling server-side mode: aggregate N round-trips into one instead of
+reacting to an event stream.</li>
+<li><a href="../security/sandbox-caveats.html">Sandbox caveats</a> — the trust boundary before you ship a <code>RunLocal</code> delegate
+that runs native plugin code.</li>
+<li><a href="../examples/gameserver-walkthrough.html">GameServer walkthrough</a> — the whole sample end to end: services,
+kernels, pushdown, and event pipelines together.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/JKamsker/DotBoxD/blob/main/docs/concepts/event-pipelines.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          DotBoxD &middot; MIT licensed &middot; <a href="https://github.com/JKamsker/DotBoxD">GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

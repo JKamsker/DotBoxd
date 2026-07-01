@@ -129,7 +129,7 @@ small remote calls collapse into one validated round-trip.</li>
 <td>host runs the hand-written implementation; the client invokes the typed proxy</td>
 </tr>
 <tr>
-<td><strong><a href="tutorials/event-pipeline-runlocal.html">Query (RunLocal)</a></strong></td>
+<td><strong><a href="concepts/event-pipelines.html">Query / event pipeline</a></strong></td>
 <td>Server-side filter + projection, so only the data you need is pushed to the plugin.</td>
 <td>server → plugin, <strong>one-way push</strong></td>
 <td><strong>0</strong></td>
@@ -165,8 +165,10 @@ sandbox, not a trusted plugin).</li>
 <a href="tutorials/event-pipeline-runlocal.html">event pipelines (RunLocal)</a>, <a href="tutorials/pushdown-server-extension.html">Pushdown server extension</a>.</li>
 <li><strong>Examples</strong> — <a href="examples/gameserver-walkthrough.html">an annotated tour of the GameServer sample</a>.</li>
 <li><strong>Concepts</strong> — <a href="concepts/services.html">Services</a>, <a href="concepts/kernels.html">Kernels</a>,
-<a href="concepts/pushdown.html">Pushdown</a>, <a href="concepts/channels-transports.html">Channels &amp; transports</a>, and the
-kernel <a href="concepts/runtime.html">runtime</a> (interpreted vs verified-IL, fuel/quotas/capabilities).</li>
+<a href="concepts/pushdown.html">Pushdown</a>, <a href="concepts/event-pipelines.html">Event pipelines</a> (react to server events;
+<code>Hooks</code> vs <code>Subscriptions</code>, the stages, and all five terminals),
+<a href="concepts/channels-transports.html">Channels &amp; transports</a>, and the kernel
+<a href="concepts/runtime.html">runtime</a> (interpreted vs verified-IL, fuel/quotas/capabilities).</li>
 <li><strong>Security</strong> — the threat model and the all-important
 <a href="security/sandbox-caveats.html">sandbox caveats</a> (what is and isn't a boundary). See also the top-level
 <a href="../SECURITY.html"><code>SECURITY.md</code></a>.</li>

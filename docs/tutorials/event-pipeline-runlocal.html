@@ -2,9 +2,9 @@
 <html>
   <head>
     <meta charset="utf-8">
-      <title>Tutorial: event pipelines — filter server-side, react locally (RunLocal) | DotBoxD — contract-first .NET extension runtime </title>
+      <title>Tutorial: event pipelines — filter server-side, react where it fits | DotBoxD — contract-first .NET extension runtime </title>
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <meta name="title" content="Tutorial: event pipelines — filter server-side, react locally (RunLocal) | DotBoxD — contract-first .NET extension runtime ">
+      <meta name="title" content="Tutorial: event pipelines — filter server-side, react where it fits | DotBoxD — contract-first .NET extension runtime ">
       
       
       <link rel="icon" href="../../favicon.ico">
@@ -85,13 +85,13 @@
         </div>
 
         <article data-uid="">
-<h1 id="tutorial-event-pipelines--filter-server-side-react-locally-runlocal">Tutorial: event pipelines — filter server-side, react locally (RunLocal)</h1>
+<h1 id="tutorial-event-pipelines--filter-server-side-react-where-it-fits">Tutorial: event pipelines — filter server-side, react where it fits</h1>
 
-<p>This tutorial walks through the <strong>event pipeline</strong>, DotBoxD's fluent way to subscribe to a server-side event and react to it <em>without streaming every event over the wire</em>. You author one chain —
-<code>server.Hooks.On&lt;TEvent&gt;().Where(...).Select(...).RunLocal(...)</code> — and the analyzer splits it across the process boundary for you: the <code>Where</code> <strong>filter</strong> and <code>Select</code> <strong>projection</strong> are lowered to verified IR that <strong>runs on the server</strong>, and only the small projected value crosses the IPC pipe — and only for events that pass the filter. Your <code>RunLocal</code> delegate is the one piece that stays native: ordinary C# running in <strong>your</strong> plugin process.</p>
+<p>This tutorial builds an <strong>event pipeline</strong> end to end — DotBoxD's fluent way to react to a server-side event <em>without streaming every event over the wire</em>. You author one chain — <code>server.Hooks.On&lt;TEvent&gt;().Where(...).Select(...).&lt;terminal&gt;(...)</code> — and the analyzer splits it across the process boundary for you: the <code>Where</code> <strong>filter</strong> and <code>Select</code> <strong>projection</strong> lower to verified IR that <strong>runs on the server</strong>, and only the small projected value crosses the IPC pipe — only for events that pass the filter.</p>
+<p>The last stage — the <strong>terminal</strong> — decides <em>where your reaction runs and whether it hands a value back</em>. This walkthrough builds with <strong><code>RunLocal</code></strong> (react in native plugin C#), then <a href="#step-6--choosing-a-terminal">Step 6</a> lays out all five terminals — <code>RunLocal</code>, <code>Run</code>, <code>RegisterLocal</code>, <code>Register</code>, and <code>Use&lt;TKernel&gt;</code> — side by side. For the whole model in one place — the two registries, the stages, and every terminal — see the <a href="../concepts/event-pipelines.html">Event pipelines concept</a>.</p>
 <p>The payoff: a plugin subscribing to a high-frequency event does not have to receive every event and filter it locally. The server does the filtering and shaping first, so the pipe carries only the few small values you actually asked for — fewer bytes, fewer wake-ups, and no round-trips (the push is one-way, server → plugin). This is the same &quot;collapse remote traffic into server-side work&quot; idea as <a href="pushdown-server-extension.html">Pushdown</a>, applied to the event-push direction.</p>
 <p>Everything below uses the real, compiling API. The runnable chains live in the GameServer sample's <a href="https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin/Authoring/LocalReactions.cs"><code>LocalReactions.cs</code></a>; the 2-process premise is proven end to end over a live named pipe in <a href="https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin.Tests/RemoteRunLocalIpcPremiseTests.cs"><code>RemoteRunLocalIpcPremiseTests.cs</code></a>.</p>
-<h2 id="why-the-event-pipeline-runlocal-and-when-to-use-it">Why the event pipeline (RunLocal)? (and when to use it)</h2>
+<h2 id="why-event-pipelines-and-when-to-use-it">Why event pipelines? (and when to use it)</h2>
 <p><strong>The problem it solves.</strong> The naive way to react to a server event is to subscribe to everything and filter in the plugin. That serializes and ships every full record even when you discard most, wakes the plugin per event, and pays a process-boundary crossing for events you were never going to act on. The design doc names this cost directly: &quot;broad subscription + run the lowered predicate for every event — correct, but expensive for high-volume event families&quot; (<a href="https://github.com/JKamsker/DotBoxD/blob/main/docs/design/plugin-fluent-hooks-api/index-predicate-metadata.md"><code>index-predicate-metadata.md</code></a>).</p>
 <p><strong>The payoff — measured, not asserted.</strong> Because <code>Where</code>/<code>Select</code> run server-side, only matching, projected values cross the pipe. A live-pipe premise test proves it by publishing two events (one match, one miss) and asserting the split directly — Step 3 walks the three assertions against <a href="https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin.Tests/RemoteRunLocalIpcPremiseTests.cs"><code>RemoteRunLocalIpcPremiseTests.cs</code></a>.</p>
 <p><strong>It's safe to accept from untrusted authors.</strong> <code>Where</code>/<code>Select</code> are not plugin code running on the server — they lower to the same validated, fuel-metered, capability-gated sandbox IR that <a href="../concepts/kernels.html">event kernels</a> run under; only <code>RunLocal</code> is trusted native C#, and it runs in <em>your</em> plugin process. A pure event-field chain needs no capability grant (<code>subscription.LocalTerminal == true</code>, empty <code>RequiredCapabilities</code>); when a chain reads gated host services the analyzer <em>derives</em> the required capabilities from the IR — the plugin can't self-grant authority — and install is fail-closed if the manifest asks for more than the policy allows (<a href="https://github.com/JKamsker/DotBoxD/blob/main/docs/design/plugin-fluent-hooks-api/capability-gating.md"><code>capability-gating.md</code></a>).</p>
@@ -102,7 +102,7 @@
 <li>A <strong>plugin process</strong> that builds the generated <code>IGameWorldServer</code> facade from a pipe name and starts it.</li>
 <li>A <strong>filter pipeline</strong> — <code>On&lt;MonsterAggroEvent&gt;().Where(...).Select(...).RunLocal(...)</code> — where the filter and projection run server-side and only the projected <code>MonsterId</code> reaches your delegate.</li>
 <li>Three variants of the same shape: a <strong>scalar projection</strong>, the <strong>whole-event</strong> form (no <code>Select</code>), and the <strong>server-context</strong> form (<code>(x, ctx) =&gt; ...</code>).</li>
-<li>A clear map of when to reach for <code>.Run(...)</code> (server-side terminal), <code>.RegisterLocal(...)</code> (result hooks), and <code>.Use&lt;TKernel&gt;()</code> (setup-time kernels) instead.</li>
+<li>A side-by-side map of all five terminals — <code>.RunLocal</code>, <code>.Run</code>, <code>.RegisterLocal</code>, <code>.Register</code>, and <code>.Use&lt;TKernel&gt;()</code> — so you can pick the right one (full reference: <a href="../concepts/event-pipelines.html#the-terminals-run-modes">Event pipelines</a>).</li>
 </ul>
 <h2 id="prerequisites">Prerequisites</h2>
 <blockquote>
@@ -288,7 +288,8 @@ plugin project that references the DotBoxD analyzer (a raw, un-lowered call thro
 <code>RunLocal</code>, only the <code>Where</code> / <code>Select</code> lower — your terminal delegate stays native plugin code.</p>
 </blockquote>
 <p>The rest of this step shows each server-side and result terminal against the <code>RunLocal</code> baseline from
-Steps 1–5.</p>
+Steps 1–5. For these same terminals framed as part of the whole model — alongside the two registries and
+the stages — see the <a href="../concepts/event-pipelines.html#the-terminals-run-modes">Event pipelines concept</a>.</p>
 <p><strong><code>.Run((x, ctx) =&gt; ...)</code> — the terminal stays on the server.</strong> Swap <code>RunLocal</code> for <code>Run</code> and the filter, the projection, <em>and</em> the terminal all lower to verified IR and run fully server-side. There is no plugin-process delegate at all; the send happens on the host (<a href="https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin/Program.cs"><code>Program.cs</code></a>):</p>
 <pre><code class="lang-csharp">server.Hooks.On&lt;MonsterAggroEvent&gt;()
     .Where(e =&gt; e.Distance &lt;= 4)
@@ -330,6 +331,7 @@ s.Subscriptions.On&lt;AttackEvent&gt;().Use&lt;RetaliationKernel&gt;();     // f
 </ul>
 <h2 id="next-steps">Next steps</h2>
 <ul>
+<li><a href="../concepts/event-pipelines.html">Event pipelines concept</a> — the whole model in one place: the two registries (<code>Hooks</code> vs <code>Subscriptions</code>), the <code>On</code>/<code>Where</code>/<code>Select</code> stages, and all five terminals with when-to-use-each.</li>
 <li><a href="pushdown-server-extension.html">Pushdown — ship a server-side batch operation</a> — the sibling tutorial: the <em>other</em> way author logic runs server-side, aggregating N round-trips into one instead of reacting to events.</li>
 <li><a href="../concepts/kernels.html">Kernels concept</a> — the validated, fuel-metered sandbox the <code>Where</code>/<code>Select</code> IR runs inside, and what <code>.Use&lt;TKernel&gt;()</code> installs.</li>
 <li><a href="../concepts/services.html">Services concepts</a> — the RPC dispatch model, peers/hosts, and the named-pipe transport that carries the projected values.</li>

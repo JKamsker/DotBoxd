@@ -5648,6 +5648,16 @@
     },
     {
       "type": "Conceptual",
+      "source_relative_path": "docs/concepts/event-pipelines.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/concepts/event-pipelines.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
       "source_relative_path": "docs/concepts/kernels.md",
       "output": {
         ".html": {
