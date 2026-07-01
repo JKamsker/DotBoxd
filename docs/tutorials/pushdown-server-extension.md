@@ -34,6 +34,8 @@ Everything below uses the real, compiling API. The canonical snippet lives in [`
 
 ## Prerequisites
 
+> This tutorial teaches the **plugin-side authoring shapes**; the host `PluginServer` (the `server` used in Step 5) is not built here — run the pattern via the maintained GameServer sample (Step 7 below), or scaffold your own host project as in [first-service](./first-service.md) Step 1.
+
 Pushdown lives on the net10.0 Kernels/Plugins stack. Add the authoring contracts, the host runtime, and the generator/analyzer (and the IPC addon if the plugin and host are in separate processes):
 
 ```bash
@@ -152,7 +154,7 @@ The trust model is spelled out in the README: the batch logic "runs as a validat
 
 ## Step 5 — Install once, invoke once (N round-trips → 1)
 
-On the host side, `PluginServer` (from `DotBoxD.Plugins`) resolves the kernel's generated verified-IR package, installs it as a server extension, and binds it to the contract. Then any caller gets a typed proxy and calls the batch in **one** round-trip:
+On the host side, `PluginServer` (from `DotBoxD.Plugins`) resolves the kernel's generated verified-IR package, installs it as a server extension, and binds it to the contract. Then any caller gets a typed proxy and calls the batch in **one** round-trip. Here `server` is that `PluginServer` instance — the one built in the [GameServer walkthrough](../examples/gameserver-walkthrough.md):
 
 ```csharp
 using DotBoxD.Plugins;
@@ -162,6 +164,7 @@ using DotBoxD.Plugins;
 await server.RegisterServerExtensionAsync<IMonsterKillerService, MonsterKillerKernel>();
 
 // The caller invokes the whole batch in ONE round-trip, not N:
+var ids = new List<int> { 1, 2, 3 };
 List<KillResult> killed = server.ServerExtension<IMonsterKillerService>().KillMonsters(ids);
 ```
 
@@ -180,8 +183,19 @@ Across a process boundary, the same install + a compact binary IR invoke payload
 
 **No lock-in.** The `[ServerExtension]` attribute and the generator are **opt-in sugar over public primitives, never lock-in** ([`CLAUDE.md`](https://github.com/JKamsker/DotBoxD/blob/main/CLAUDE.md), [`rules/design-guidelines.md`](https://github.com/JKamsker/DotBoxD/blob/main/rules/design-guidelines.md)). Everything the generator produces is verified JSON IR plus a manifest — both first-class, public artifacts. You could delete the attribute and hand-author the same IR, then import and run it through the same `SandboxHost` pipeline the Kernels quick-start uses (`ImportJsonAsync` → `PrepareAsync` under a `SandboxPolicy` → `ExecuteAsync`, as shown in [`README.md`](https://github.com/JKamsker/DotBoxD/blob/main/README.md) section 2). The generator saves you from writing IR by hand; it does not grant your code any capability a hand-written kernel could not also request — and it never bypasses validation, capability gating, or metering. If you can't hand-write it against the public API, the generator won't emit it either.
 
+## Step 7 — Run the maintained example
+
+The `server` from Step 5 lives in the maintained GameServer sample, which wires the `PluginServer`, registers the `IGameWorld` binding, and installs the `MonsterKillerKernel` server extension. Run it from the repo root:
+
+```bash
+dotnet run -c Release --project samples/GameServer/Examples.GameServer.Server/Examples.GameServer.Server.csproj
+```
+
+What you should see: the sample host boots, loads the plugin, and exercises the batch server extension end to end — the same install-once/invoke-once path from Step 5 — alongside the other modes (service IPC, event kernels, host bindings, policy-gated execution).
+
 ## Next steps
 
 - [Event pipelines (RunLocal)](./event-pipeline-runlocal.md) — the sibling tutorial: the *other* way author logic runs server-side — a `Where`/`Select` filter lowered to the same verified IR, reacting locally instead of aggregating.
 - [Pushdown, in depth](../concepts/pushdown.md) — the concept, the round-trip diagrams, and the roadmap items (`DotBoxD.Pushdown.Linq`, fluent client API).
 - [Sandbox caveats](../security/sandbox-caveats.md) — what is and isn't a trust boundary before you deploy a server extension that runs author-supplied logic.
+- [GameServer walkthrough](../examples/gameserver-walkthrough.md) — all three modes (Services, RunLocal, Pushdown) working together in one runnable program.

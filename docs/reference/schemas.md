@@ -15,3 +15,9 @@ generator, so reach for them when you need to emit, inspect, or verify a payload
 
 The schemas are a versioned contract (the `v1/` directory). A regression test keeps each schema in sync
 with the code that consumes it, so a schema change that diverges from the importer fails CI.
+
+## See also
+
+- [Kernels](../concepts/kernels.md)
+- [Pushdown Step 6 — hand-authoring the payload](../tutorials/pushdown-server-extension.md#step-6--diagnostics-and-the-no-lock-in-principle)
+- [Glossary](glossary.md)

@@ -73,7 +73,9 @@ Because the batch logic is author-supplied, it runs as a validated sandboxed ker
 host bindings the server already exposes, under the same capability + fuel/quota limits as event kernels.
 A method reachable via normal RPC is **not** automatically reachable from a kernel.
 
-**See also:** the runnable GameServer sample under
+**See also:** for a guided next stop, the beginner-friendly
+[GameServer walkthrough](../examples/gameserver-walkthrough.md) narrates this pushdown path end to end;
+the runnable sample it is based on lives under
 [`samples/GameServer`](https://github.com/JKamsker/DotBoxD/tree/main/samples/GameServer), which demonstrates the
 `MonsterKillerKernel` server-extension path.
 Roadmap items (`DotBoxD.Pushdown.Linq`, fluent client API) are tracked in

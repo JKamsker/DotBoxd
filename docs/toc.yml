@@ -44,7 +44,9 @@
       href: reference/diagnostics.md
     - name: Schemas
       href: reference/schemas.md
-- name: Channels (RPC) guide
+    - name: Glossary
+      href: reference/glossary.md
+- name: Channels (RPC) guide (legacy)
   items:
     - name: Quick start
       href: channels/quick-start.md

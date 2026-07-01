@@ -98,17 +98,15 @@ always-available `UseInterpreter(...)`
   You pay compilation cost only for kernels that are actually hot, while every kernel still runs
   immediately on the safe baseline.
 
-## Two execution backends
+## Reference: backends & metering
 
-- **Interpreter** (`DotBoxD.Kernels.Interpreter`) — executes verified IR directly. Predictable
-  semantics, easy quotas, great diagnostics, AOT-friendly, no codegen. This is the default and the
-  safety baseline.
-- **Compiler** (`DotBoxD.Kernels.Compiler`) — emits verified IL for hot kernels and caches the artifact
-  (content-addressed by module hash + entrypoint + policy hash + compiler version). The emitted assembly
-  is checked by `DotBoxD.Kernels.Verifier` before it runs, so the compiled path enforces the same
-  restrictions as the interpreter.
+The two sections above explain the *why*; this is the canonical quick reference. Both backends enforce
+identical guarantees — pick by performance, not safety.
 
-## Metering & policy
+| Backend | Assembly | Role |
+| --- | --- | --- |
+| **Interpreter** | `DotBoxD.Kernels.Interpreter` | Default and safety baseline: walks verified IR directly, no codegen, AOT-friendly. |
+| **Compiler** | `DotBoxD.Kernels.Compiler` | Emits verified IL for hot kernels; the artifact is checked by `DotBoxD.Kernels.Verifier` before every run. |
 
 Every run is bounded by a `SandboxPolicy`:
 
@@ -136,3 +134,7 @@ When a plugin authoring interface uses `[HostBinding]`, set the additive
 `HostBindingAttribute.IsAsync` named property to mirror the registered descriptor's `IsAsync` value.
 The property defaults to `false`, so existing source remains compatible while async host bindings can
 derive `dotboxd.runtime.async` into generated manifests.
+
+## Next
+
+See these runtime guarantees end-to-end in the [GameServer walkthrough](../examples/gameserver-walkthrough.md).

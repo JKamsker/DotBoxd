@@ -1,7 +1,8 @@
 # Kernels (validated sandbox logic)
 
 A **Kernel** is client/plugin-supplied logic the host runs **safely under policy**. It is restricted
-**IR** (authored as JSON), never C#, IL, reflection, CLR member names, or arbitrary host calls.
+**IR** (intermediate representation), authored as JSON, never C#, IL, reflection, CLR member names,
+or arbitrary host calls.
 
 ## Why Kernels (the sandbox behind Query filters and Pushdown batches)?
 
@@ -12,8 +13,9 @@ server-side. Running that logic as C#/IL would hand it full CLR access. The alte
 client-side or bloating a frozen host with every batch op — either wastes the wire or is impossible.
 The kernel is the shared substrate that makes accepting untrusted author logic safe.
 
-**The payoff.** A kernel is validated restricted IR, capability-gated, and metered: fuel, loop
-iterations, call depth, list length, output bytes, and per-capability quotas. A buggy or hostile
+**The payoff.** A kernel is validated restricted IR, capability-gated, and metered: fuel (fuel is an
+abstract instruction budget — each operation costs fuel, and the kernel is stopped when the budget
+runs out), loop iterations, call depth, list length, output bytes, and per-capability quotas. A buggy or hostile
 kernel cannot exhaust host resources or reach disallowed effects, and it can touch only the
 `[HostBinding]`s the host explicitly exposes — a method reachable via normal RPC is **not**
 automatically reachable from a kernel. This is what makes both server-side lowerings safe to accept
@@ -52,9 +54,11 @@ Lifecycle (via `SandboxHost` in `DotBoxD.Hosting`):
      `DotBoxD.Kernels.Verifier` before it runs. Compiled async bindings run through a trusted runtime
      trampoline; generated kernel IL stays synchronous.
 
-Everything is **metered**: fuel, loop iterations, call depth, list length, output bytes, and
-per-capability quotas. A buggy or hostile kernel cannot exhaust host resources or reach disallowed
-effects. Host capabilities (files, time, random, logging, HTTP via `DotBoxD.Hosting.Http`) are exposed
+For the smallest end-to-end host, see section 2 (Kernels) of the root README
+(https://github.com/JKamsker/DotBoxD/blob/main/README.md).
+
+Beyond that metering, host capabilities (files, time,
+random, logging, HTTP via `DotBoxD.Hosting.Http`) are exposed
 only through explicit **capability grants** — see [capabilities-and-bindings](../security/sandbox-caveats.md)
 and the full spec under [`docs/Specs/`](https://github.com/JKamsker/DotBoxD/tree/main/docs/Specs).
 
@@ -64,7 +68,8 @@ Async binding tails are also capability-gated. Policies must grant `dotboxd.runt
 > **Important:** the kernel sandbox is the real boundary. It is **not** the same as loading a .NET
 > plugin assembly — see [security/sandbox-caveats.md](../security/sandbox-caveats.md).
 
-Diagnostics use the `DBXK###` prefix. **See also:** the GameServer sample under
+Diagnostics use the `DBXK###` prefix. **See also:** the [GameServer walkthrough](../examples/gameserver-walkthrough.md)
+for a beginner-friendly tour, the GameServer sample under
 [`samples/GameServer`](https://github.com/JKamsker/DotBoxD/tree/main/samples/GameServer), [runtime](runtime.md), and
 [`docs/examples/coverage-gaps.md`](../examples/coverage-gaps.md) for kernel scenarios no longer shown
 by maintained samples.

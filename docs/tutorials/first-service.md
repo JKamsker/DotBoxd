@@ -8,7 +8,7 @@ path), and a MessagePack named-pipe transport carries the calls.
 By the end of this page you will have a host process that serves a contract and a client process that
 calls it over a named pipe in one round-trip per method. Every API used here is exercised by the
 maintained sample under
-[`samples/GameServer`](https://github.com/JKamsker/DotBoxD/blob/main/README.md); the pieces are shown in the README's
+[`samples/GameServer`](https://github.com/JKamsker/DotBoxD/tree/main/samples/GameServer); the pieces are shown in the README's
 ["1. Services"](https://github.com/JKamsker/DotBoxD/blob/main/README.md) section.
 
 ## Why Services (RPC)? (and when to use it)
@@ -44,27 +44,29 @@ A few grounded reasons this design earns its place:
 can `await`, the interaction is a bounded number of discrete calls (one method = one round-trip), you
 need host↔plugin callbacks on one connection, or you need Unity/IL2CPP reach.
 
-**When to prefer another mode:** if you're reacting to a high-frequency *server event* and only need a
-subset or summary, prefer the [query / event pipeline (RunLocal)](event-pipeline-runlocal.md) — its
-`Where`/`Select` lower to server-side IR so only matching, projected values push one-way to your plugin,
-no round-trips. If instead you face a *chatty N-call loop* against a frozen host, prefer
-[Pushdown](../concepts/pushdown.md), which collapses N round-trips into one server-side batch. Note that
-Services (RPC) is a *trusted* channel; the sandbox trust boundary lives in Kernels/Pushdown, not here.
+**When to prefer another mode:** reach for the [event pipeline (RunLocal)](event-pipeline-runlocal.md)
+to react to high-frequency events, or [Pushdown](../concepts/pushdown.md) to collapse a chatty N-call
+loop into one server-side batch. Services (RPC) is a *trusted* channel; the sandbox trust boundary lives
+in Kernels/Pushdown, not here.
 
 ## What you'll build
 
 Three pieces, mirroring how the GameServer sample is laid out (shared abstractions, server, client):
 
-- A **shared contract** project holding the `[DotBoxDService]` interface and its DTOs.
+- A **shared contract** project holding the `[DotBoxDService]` interface and its DTOs (data transfer objects — the plain data types that cross the wire).
 - A **host** that implements the contract and listens on a named pipe.
 - A **client** that connects and calls the contract through a generated proxy.
 
 ## Prerequisites
 
-- .NET SDK 8, 9, or 10. The named-pipe IPC helper used below (`RpcMessagePackIpc`) ships in
-  `DotBoxD.Pushdown.Services`, which targets `net10.0`, so target `net10.0` for the host and client in
-  this tutorial. (The pure Services/channel stack is `netstandard2.1` and also runs on Unity/IL2CPP —
-  see [Unity note](#unity-and-the-netstandard21-stack) at the end.)
+- **.NET SDK 10** — required, because the host and client in this tutorial target `net10.0`. An SDK 8
+  or 9 alone cannot build `net10.0` and fails the `dotnet add package DotBoxD` restore below with a
+  cryptic `NU1202`/`NETSDK1045` error. (The .NET 8 and 9 *runtimes* only matter for the
+  `netstandard2.1` Services stack or the full test suite — not for building this walkthrough.) The
+  named-pipe IPC helper used below (`RpcMessagePackIpc`) ships in `DotBoxD.Pushdown.Services`, which
+  targets `net10.0`, so target `net10.0` for the host and client in this tutorial. (The pure
+  Services/channel stack is `netstandard2.1` and also runs on Unity/IL2CPP — see
+  [Unity note](#unity-and-the-netstandard21-stack) at the end.)
 
 ## Step 1 — Create the projects and install the package
 
@@ -77,6 +79,10 @@ dotnet new console  -n MyApp.Client
 dotnet add MyApp.Host    reference MyApp.Contracts
 dotnet add MyApp.Client  reference MyApp.Contracts
 ```
+
+> **Target `net10.0` in all three projects.** `MyApp.Contracts`, `MyApp.Host`, and `MyApp.Client` each
+> reference DotBoxD, so each must target `net10.0`. Set `<TargetFramework>net10.0</TargetFramework>` in
+> every `.csproj`, or pass `-f net10.0` to each `dotnet new` command above.
 
 Add DotBoxD to each project. The meta-package `DotBoxD` pulls the full net10.0 stack (Services +
 Kernels + Pushdown), which includes the `RpcMessagePackIpc` named-pipe helper and the bundled
@@ -265,6 +271,20 @@ Run the two processes:
 dotnet run --project MyApp.Host
 # copy the printed pipe name, then in a second terminal:
 dotnet run --project MyApp.Client -- myapp-catalog-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+```
+
+You should now see the host terminal print:
+
+```text
+Catalog host listening on pipe: myapp-catalog-…
+Press Enter to stop.
+```
+
+and the client terminal print (sword = 100, shield = 75):
+
+```text
+sword unit price = 100
+cart: 2 items, total = 175
 ```
 
 ## Step 6 — What the source generator emits

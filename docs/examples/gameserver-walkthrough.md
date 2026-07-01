@@ -1,6 +1,12 @@
 # Example: the GameServer sample, end to end
 
-The GameServer sample is the maintained, runnable example that ties **Services**, **Kernels**, and **Pushdown** together in one program. It is the canonical reference because it exercises all three modes end to end in a single process pair: **Services (RPC)** for typed interop from one C# contract, the **query/event pipeline (RunLocal)** for server-side filtering and projection so the host receives only the data it needs, and **Pushdown** server extensions that batch work next to the data instead of round-tripping — so the patterns you see here map straight onto your own host and plugins. A parent *server* process runs a small deterministic simulation; a child *plugin* process ships untrusted, sandboxed kernels to the server over a bidirectional named-pipe control plane. This page walks the sample feature by feature and maps each one to the concrete file that implements it, so you can jump straight into the real code.
+The GameServer sample is the maintained, runnable example that ties **Services**, **Kernels**, and **Pushdown** together in one program. It is the canonical reference because it exercises all three modes end to end in a single process pair:
+
+- **Services (RPC)** — typed interop from one C# contract.
+- **Query/event pipeline (RunLocal)** — server-side filtering and projection so the host receives only the data it needs.
+- **Pushdown** — server extensions that batch work next to the data instead of round-tripping.
+
+So the patterns you see here map straight onto your own host and plugins. A parent *server* process runs a small deterministic simulation; a child *plugin* process ships untrusted, sandboxed kernels to the server over a bidirectional named-pipe control plane. This page walks the sample feature by feature and maps each one to the concrete file that implements it, so you can jump straight into the real code.
 
 The sample lives under [`samples/GameServer`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer) and is the example the root [`README.md`](https://github.com/JKamsker/DotBoxD/blob/main/README.md) points at for "service IPC, event kernels, live settings, host bindings, policies, and server extensions."
 
@@ -68,6 +74,8 @@ Each method carries the capability and host-state effect it needs as metadata, s
 [HostCapability("game.world.monster.write.kill", HostBindingEffect.HostStateWrite)]
 ValueTask<bool> KillAsync();
 ```
+
+`[HostCapability]` here is the *auto-binding* form (the source calls these "analyzer-visible auto bindings"): on a `[DotBoxDService]` domain-interface method you declare only the capability and its `HostBindingEffect`, and the framework derives the binding from the interface method — whereas the explicit [`[HostBinding("id", "cap", SandboxEffect)]`](../tutorials/pushdown-server-extension.md) you met in Pushdown Step 2 (the [glossary](../reference/glossary.md)'s *Host binding*) makes you pin the binding id yourself and declares its effects with a different enum, `SandboxEffect` rather than `HostBindingEffect`.
 
 Supporting contracts in this project:
 

@@ -35,7 +35,7 @@ Grounded aspects:
 
 - **AOT / Unity / IL2CPP reach.** There is no runtime reflection on the hot path and no assembly scan
   — proxy/dispatcher lookup goes through a *generated* registry — so the netstandard2.1 Services stack
-  runs where IL2CPP and NativeAOT forbid dynamic reflection. The MessagePack codec is reflection-free
+  runs where IL2CPP and NativeAOT (ahead-of-time compilation) forbid dynamic reflection. The MessagePack codec is reflection-free
   too (generated formatters).
 - **Peer-based, bidirectional.** Direction is configuration, not type: the same connection can both
   `Provide` and `Get`, so the host can call back into a connected plugin over one demuxed read loop —
@@ -61,7 +61,8 @@ fuel-metered IR.
 Diagnostics from the generator use the `DBXS###` prefix — see
 [reference/diagnostics.md](../reference/diagnostics.md).
 
-**See also:** the GameServer sample under
+**See also:** the annotated [GameServer walkthrough](../examples/gameserver-walkthrough.md) for a
+guided tour, or the raw GameServer sample under
 [`samples/GameServer`](https://github.com/JKamsker/DotBoxD/tree/main/samples/GameServer), the legacy RPC docs under
 [`docs/channels/`](../channels/quick-start.md) (quick-start, API reference, Unity integration, transports,
 performance), [pushdown](pushdown.md) for composing services server-side, and

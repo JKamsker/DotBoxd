@@ -1,5 +1,7 @@
 # DotBoxD Quick Start Guide
 
+> **New to DotBoxD?** Start with [Getting started](../getting-started/README.md) and the [Tutorials](../tutorials/index.md). This page is a deeper reference for the RPC channel layer (transports, codecs, generated registry).
+
 Get up and running with DotBoxD in 5 minutes.
 
 Reach for RPC channels when you want request/response host capabilities behind a shared contract:
@@ -114,6 +116,8 @@ dotnet run --project Client
 
 Your shared project needs these references:
 
+> These `ProjectReference`s assume you are building inside the cloned DotBoxD repo; if you installed from NuGet ([getting started](../getting-started/README.md)), reference the packages instead — the `DotBoxD.Services` package bundles `DotBoxD.Services.SourceGenerator` as an analyzer automatically, so you never add the generator as a standalone reference.
+
 ```xml
 <ItemGroup>
   <PackageReference Include="MessagePack" Version="2.5.187" />
@@ -132,7 +136,7 @@ Server and client projects reference:
 For process-local IPC, use the dedicated named-pipe package instead of TCP:
 
 ```sh
-dotnet add package DotBoxD.Transports.NamedPipes
+dotnet add package DotBoxD.Transports.NamedPipes --prerelease
 ```
 
 ```csharp
@@ -174,7 +178,6 @@ implement `IDotBoxDServiceRegistrationSink` and pass it to the generated callbac
 
 ```csharp
 using DotBoxD.Services.Generated;
-using DotBoxD.Services.Generated;
 
 public sealed class MySink : IDotBoxDServiceRegistrationSink
 {
@@ -195,7 +198,6 @@ If the host needs both generated implementation types, use
 ```csharp
 using DotBoxD.Services.Generated;
 using DotBoxD.Services.Server;
-using DotBoxD.Services.Generated;
 
 public sealed class GeneratedSink : IDotBoxDGeneratedServiceRegistrationSink
 {

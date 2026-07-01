@@ -11,7 +11,7 @@ Everything below uses the real, compiling API. The runnable chains live in the G
 
 **The problem it solves.** The naive way to react to a server event is to subscribe to everything and filter in the plugin. That serializes and ships every full record even when you discard most, wakes the plugin per event, and pays a process-boundary crossing for events you were never going to act on. The design doc names this cost directly: "broad subscription + run the lowered predicate for every event — correct, but expensive for high-volume event families" ([`index-predicate-metadata.md`](https://github.com/JKamsker/DotBoxD/blob/main/docs/design/plugin-fluent-hooks-api/index-predicate-metadata.md)).
 
-**The payoff — measured, not asserted.** Because `Where`/`Select` run server-side, only matching, projected values cross the pipe. The premise test publishes two events (one match, one miss) and asserts the split directly: exactly one delivery crosses (`PushCount == 1` — zero wire traffic for the filtered event), what crosses is the projected `MonsterId` scalar and not the five-field record (`Assert.Equal(["monster-7"], calmedOnPluginSide)`), and a `RunLocal` terminal does no server-side send (`Assert.Empty(serverMessages.Messages)`) — see [`RemoteRunLocalIpcPremiseTests.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin.Tests/RemoteRunLocalIpcPremiseTests.cs). The concrete win: **fewer bytes** (one scalar instead of a whole record), **fewer wake-ups** (one push instead of two; zero for filtered events), and **no round-trips** (the push is one-way, server → plugin).
+**The payoff — measured, not asserted.** Because `Where`/`Select` run server-side, only matching, projected values cross the pipe. A live-pipe premise test proves it by publishing two events (one match, one miss) and asserting the split directly — Step 3 walks the three assertions against [`RemoteRunLocalIpcPremiseTests.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin.Tests/RemoteRunLocalIpcPremiseTests.cs).
 
 **It's safe to accept from untrusted authors.** `Where`/`Select` are not plugin code running on the server — they lower to the same validated, fuel-metered, capability-gated sandbox IR that [event kernels](../concepts/kernels.md) run under; only `RunLocal` is trusted native C#, and it runs in *your* plugin process. A pure event-field chain needs no capability grant (`subscription.LocalTerminal == true`, empty `RequiredCapabilities`); when a chain reads gated host services the analyzer *derives* the required capabilities from the IR — the plugin can't self-grant authority — and install is fail-closed if the manifest asks for more than the policy allows ([`capability-gating.md`](https://github.com/JKamsker/DotBoxD/blob/main/docs/design/plugin-fluent-hooks-api/capability-gating.md)).
 
@@ -28,7 +28,9 @@ Everything below uses the real, compiling API. The runnable chains live in the G
 
 ## Prerequisites
 
-Event pipelines live on the same net10.0 Plugins stack as Pushdown. Add the authoring contracts, the host runtime, the generator/analyzer, and the IPC addon (the plugin and host are separate processes here):
+> **Follow along against the sample; don't paste these snippets into an empty project.** Unlike the [first Service tutorial](./first-service.md), every type on this page — `GamePluginServer`, `GamePluginContext`, `IGameWorldServer`, `MonsterAggroEvent`, and the rest — is defined by the maintained GameServer sample, not the framework. Clone [the repo](https://github.com/JKamsker/DotBoxD) and read and run the sample as you follow along; Step 7 lists the exact files and the command to launch it.
+
+You don't need to install anything to run the sample — the repo already references these packages. Install this set only if you scaffold your own plugin project instead. Event pipelines live on the same net10.0 Plugins stack as Pushdown. Add the authoring contracts, the host runtime, the generator/analyzer, and the IPC addon (the plugin and host are separate processes here):
 
 ```bash
 # Plugin authoring contracts: [GeneratePluginServer], HookContext, event/hook attributes
@@ -46,7 +48,7 @@ dotnet add package DotBoxD.Pushdown.Services --prerelease
 
 Package names and purposes are from the README "Installing from NuGet" table ([`README.md`](https://github.com/JKamsker/DotBoxD/blob/main/README.md)).
 
-> **The analyzer is load-bearing, not optional.** For the remote hook family, `.Where`/`.Select`/`.RunLocal` are **lowering markers**: the `DotBoxD.Plugins.Analyzer` intercepts the call sites and replaces them with a lowered projection kernel plus a native-delegate registration. Without interception the library throws at runtime (`RunLocal` throws "requires an event callback transport"; `Run` throws "must be intercepted by the DotBoxD plugin generator"). That is why the chains must be authored **in the plugin project** — the project the analyzer runs on. See [`RemoteHookPipeline.Typed.cs`](https://github.com/JKamsker/DotBoxD/blob/main/src/Hosting/DotBoxD.Plugins/Runtime/Hooks/Remote/RemoteHookPipeline.Typed.cs).
+> **The analyzer is load-bearing, not optional.** For the remote hook family, `.Where`/`.Select`/`.RunLocal` are **lowering markers**: the `DotBoxD.Plugins.Analyzer` intercepts the call sites and replaces them with a lowered projection kernel plus a native-delegate registration. Without interception the library throws at runtime (`RunLocal` throws "requires an event callback transport"; `Run` throws "must be intercepted by the DotBoxD plugin generator"). That is why the chains must be authored **in the plugin project** — the project the analyzer runs on. Because interception happens at compile time, an unsupported shape inside a lowered `.Where`/`.Select` — a construct the sandbox IR can't express — surfaces as a build-time diagnostic from the same `DotBoxD.Plugins.Analyzer` (kernel diagnostics use the `DBXK` prefix), not as a runtime surprise. See [`RemoteHookPipeline.Typed.cs`](https://github.com/JKamsker/DotBoxD/blob/main/src/Hosting/DotBoxD.Plugins/Runtime/Hooks/Remote/RemoteHookPipeline.Typed.cs).
 
 ## Step 1 — Build and start the generated server
 
@@ -74,7 +76,7 @@ using IGameWorldServer server = GamePluginServerBuilder
 await server.StartAsync();     // StartAsync() connects the pipe and ships the recorded IR.
 ```
 
-`Build()` is synchronous and performs no I/O; `FromPipeName` defers the actual pipe connection until `StartAsync()`, which is where the recorded IR is shipped to the host. Pipe-name resolution and the RPC transport itself are covered in the [first Service tutorial](./first-service.md) — here we focus on what you do with `server.Hooks` once the server is up.
+`Build()` is synchronous and performs no I/O; `FromPipeName` defers the actual pipe connection until `StartAsync()`, which is where the recorded IR is shipped to the host. Pipe-name resolution and the RPC transport itself are covered in the [first Service tutorial](./first-service.md) — here we focus on what you do with `server.Hooks` once the server is up. The server exposes two event registries: `server.Hooks` are awaited decision points whose logic can influence the outcome, while `server.Subscriptions` (Step 6) are fire-and-forget notifications.
 
 ## Step 2 — Install a filter pipeline: `On<T>().Where().Select().RunLocal()`
 
@@ -199,6 +201,8 @@ The chains on this page are lifted verbatim from the maintained GameServer sampl
 dotnet run -c Release --project samples/GameServer/Examples.GameServer.Server/Examples.GameServer.Server.csproj
 ```
 
+What you should see: the sample prints three phases — a **baseline** run with no plugin, a **with-plugins** run where the plugin's lowered reactions take effect, and a **summary** confirming the plugin's kernels unloaded on disconnect. For the annotated console output, see [What the run prints](../examples/gameserver-walkthrough.md#what-the-run-prints).
+
 - Canonical authoring (all four shapes: scalar projection, `(x, context)`, whole-event, and `RegisterLocal`): [`LocalReactions.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin/Authoring/LocalReactions.cs).
 - End-to-end 2-process premise proof over a live named pipe: [`RemoteRunLocalIpcPremiseTests.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin.Tests/RemoteRunLocalIpcPremiseTests.cs).
 - An in-process preview of the same `RunLocal` shape (no pipe, for local experimentation): [`AdvancedUsage.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin/AdvancedUsage.cs).
@@ -210,4 +214,5 @@ dotnet run -c Release --project samples/GameServer/Examples.GameServer.Server/Ex
 - [Kernels concept](../concepts/kernels.md) — the validated, fuel-metered sandbox the `Where`/`Select` IR runs inside, and what `.Use<TKernel>()` installs.
 - [Services concepts](../concepts/services.md) — the RPC dispatch model, peers/hosts, and the named-pipe transport that carries the projected values.
 - [Sandbox caveats](../security/sandbox-caveats.md) — what is and isn't a trust boundary before you ship a `RunLocal` delegate that runs native plugin code.
+- [Diagnostics reference](../reference/diagnostics.md) — the `DBXK` build-time diagnostics the analyzer raises when a `.Where`/`.Select` shape can't be lowered.
 - [GameServer walkthrough](../examples/gameserver-walkthrough.md) — the whole sample end to end: services, kernels, pushdown, and event pipelines together.
