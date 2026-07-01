@@ -4,6 +4,7 @@ using DotBoxD.Plugins.Runtime.Subscriptions;
 
 namespace DotBoxD.Plugins.Runtime;
 
+[PipelineSurface(PipelineTransport.Remote)]
 public sealed class RemoteSubscriptionPipeline<TEvent, TContext>
 {
     private readonly RemoteSubscriptionPipeline<TEvent> _inner;
@@ -27,18 +28,21 @@ public sealed class RemoteSubscriptionPipeline<TEvent, TContext>
         return this;
     }
 
+    [PipelineStep(PipelineStepRole.Filter)]
     public RemoteSubscriptionPipeline<TEvent, TContext> Where(Func<TEvent, TContext, bool> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
         return this;
     }
 
+    [PipelineStep(PipelineStepRole.Filter)]
     public RemoteSubscriptionPipeline<TEvent, TContext> Where(Func<TEvent, bool> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
         return this;
     }
 
+    [PipelineStep(PipelineStepRole.Projection)]
     public RemoteSubscriptionStage<TEvent, TNext, TContext> Select<TNext>(
         Func<TEvent, TContext, TNext> projection)
     {
@@ -46,33 +50,42 @@ public sealed class RemoteSubscriptionPipeline<TEvent, TContext>
         return new RemoteSubscriptionStage<TEvent, TNext, TContext>(this);
     }
 
+    [PipelineStep(PipelineStepRole.Projection)]
     public RemoteSubscriptionStage<TEvent, TNext, TContext> Select<TNext>(Func<TEvent, TNext> projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
         return new RemoteSubscriptionStage<TEvent, TNext, TContext>(this);
     }
 
+    [PipelineStep(PipelineStepRole.Run)]
     public RemoteSubscriptionPipeline<TEvent, TContext> Run(Func<TEvent, TContext, ValueTask> handler)
         => throw NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public RemoteSubscriptionPipeline<TEvent, TContext> Run(Action<TEvent, TContext> handler)
         => throw NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public RemoteSubscriptionPipeline<TEvent, TContext> Run(Func<TEvent, ValueTask> handler)
         => throw NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public RemoteSubscriptionPipeline<TEvent, TContext> Run(Action<TEvent> handler)
         => throw NotLowered();
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public RemoteSubscriptionPipeline<TEvent, TContext> RunLocal(Func<TEvent, TContext, ValueTask> handler)
         => throw LocalHandlersNotSupported();
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public RemoteSubscriptionPipeline<TEvent, TContext> RunLocal(Action<TEvent, TContext> handler)
         => throw LocalHandlersNotSupported();
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public RemoteSubscriptionPipeline<TEvent, TContext> RunLocal(Func<TEvent, ValueTask> handler)
         => throw LocalHandlersNotSupported();
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public RemoteSubscriptionPipeline<TEvent, TContext> RunLocal(Action<TEvent> handler)
         => throw LocalHandlersNotSupported();
 

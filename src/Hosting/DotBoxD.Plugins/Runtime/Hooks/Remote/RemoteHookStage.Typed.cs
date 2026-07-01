@@ -1,5 +1,6 @@
 namespace DotBoxD.Plugins.Runtime.Hooks;
 
+[PipelineSurface(PipelineTransport.Remote)]
 public sealed partial class RemoteHookStage<TEvent, TCurrent, TContext>
 {
     private readonly RemoteHookPipeline<TEvent, TContext> _root;
@@ -7,24 +8,28 @@ public sealed partial class RemoteHookStage<TEvent, TCurrent, TContext>
     internal RemoteHookStage(RemoteHookPipeline<TEvent, TContext> root)
         => _root = root;
 
+    [PipelineStep(PipelineStepRole.Filter)]
     public RemoteHookStage<TEvent, TCurrent, TContext> Where(Func<TCurrent, TContext, bool> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
         return this;
     }
 
+    [PipelineStep(PipelineStepRole.Filter)]
     public RemoteHookStage<TEvent, TCurrent, TContext> Where(Func<TCurrent, bool> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
         return this;
     }
 
+    [PipelineStep(PipelineStepRole.Projection)]
     public RemoteHookStage<TEvent, TNext, TContext> Select<TNext>(Func<TCurrent, TContext, TNext> projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
         return new RemoteHookStage<TEvent, TNext, TContext>(_root);
     }
 
+    [PipelineStep(PipelineStepRole.Projection)]
     public RemoteHookStage<TEvent, TNext, TContext> Select<TNext>(Func<TCurrent, TNext> projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
@@ -151,27 +156,35 @@ public sealed partial class RemoteHookStage<TEvent, TCurrent, TContext>
         }, decoder);
     }
 
+    [PipelineStep(PipelineStepRole.Run)]
     public RemoteHookPipeline<TEvent, TContext> Run(Func<TCurrent, TContext, ValueTask> handler)
         => throw NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public RemoteHookPipeline<TEvent, TContext> Run(Action<TCurrent, TContext> handler)
         => throw NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public RemoteHookPipeline<TEvent, TContext> Run(Func<TCurrent, ValueTask> handler)
         => throw NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public RemoteHookPipeline<TEvent, TContext> Run(Action<TCurrent> handler)
         => throw NotLowered();
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public RemoteHookPipeline<TEvent, TContext> RunLocal(Func<TCurrent, TContext, ValueTask> handler)
         => throw LocalHandlersNotSupported();
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public RemoteHookPipeline<TEvent, TContext> RunLocal(Action<TCurrent, TContext> handler)
         => throw LocalHandlersNotSupported();
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public RemoteHookPipeline<TEvent, TContext> RunLocal(Func<TCurrent, ValueTask> handler)
         => throw LocalHandlersNotSupported();
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public RemoteHookPipeline<TEvent, TContext> RunLocal(Action<TCurrent> handler)
         => throw LocalHandlersNotSupported();
 

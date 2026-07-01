@@ -12,6 +12,7 @@ namespace DotBoxD.Plugins.Runtime.Hooks;
 /// Every fluent method offers both the (element, context) and element-only lambda arities, chosen
 /// independently per stage.
 /// </summary>
+[PipelineSurface(PipelineTransport.Local)]
 public class HookStage<TEvent, TCurrent, TContext>
 {
     private readonly HookPipeline<TEvent, TContext> _root;
@@ -25,6 +26,7 @@ public class HookStage<TEvent, TCurrent, TContext>
         _project = project;
     }
 
+    [PipelineStep(PipelineStepRole.Filter)]
     public HookStage<TEvent, TCurrent, TContext> Where(Func<TCurrent, TContext, bool> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
@@ -38,12 +40,14 @@ public class HookStage<TEvent, TCurrent, TContext>
 
     /// <summary>Element-only filter over the projected element — the (element, context) overload with
     /// the context discarded, so a stage need not take the context it doesn't use.</summary>
+    [PipelineStep(PipelineStepRole.Filter)]
     public HookStage<TEvent, TCurrent, TContext> Where(Func<TCurrent, bool> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
         return Where((value, _) => filter(value));
     }
 
+    [PipelineStep(PipelineStepRole.Projection)]
     public HookStage<TEvent, TNext, TContext> Select<TNext>(Func<TCurrent, TContext, TNext> projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
@@ -55,6 +59,7 @@ public class HookStage<TEvent, TCurrent, TContext>
         });
     }
 
+    [PipelineStep(PipelineStepRole.Projection)]
     public HookStage<TEvent, TNext, TContext> Select<TNext>(Func<TCurrent, TNext> projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
@@ -62,6 +67,7 @@ public class HookStage<TEvent, TCurrent, TContext>
     }
 
     /// <summary>Native host terminal over the projected element (NOT sandboxed).</summary>
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public HookPipeline<TEvent, TContext> RunLocal(Func<TCurrent, TContext, ValueTask> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
@@ -76,6 +82,7 @@ public class HookStage<TEvent, TCurrent, TContext>
         });
     }
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public HookPipeline<TEvent, TContext> RunLocal(Action<TCurrent, TContext> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
@@ -86,12 +93,14 @@ public class HookStage<TEvent, TCurrent, TContext>
         });
     }
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public HookPipeline<TEvent, TContext> RunLocal(Func<TCurrent, ValueTask> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
         return RunLocal((value, _) => handler(value));
     }
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public HookPipeline<TEvent, TContext> RunLocal(Action<TCurrent> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
@@ -117,15 +126,19 @@ public class HookStage<TEvent, TCurrent, TContext>
     }
 
     /// <summary>The terminal the analyzer lowers to verified IR; un-lowered it throws (never native).</summary>
+    [PipelineStep(PipelineStepRole.Run)]
     public HookPipeline<TEvent, TContext> Run(Func<TCurrent, TContext, ValueTask> handler)
         => throw HookLowering.NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public HookPipeline<TEvent, TContext> Run(Action<TCurrent, TContext> handler)
         => throw HookLowering.NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public HookPipeline<TEvent, TContext> Run(Func<TCurrent, ValueTask> handler)
         => throw HookLowering.NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public HookPipeline<TEvent, TContext> Run(Action<TCurrent> handler)
         => throw HookLowering.NotLowered();
 }

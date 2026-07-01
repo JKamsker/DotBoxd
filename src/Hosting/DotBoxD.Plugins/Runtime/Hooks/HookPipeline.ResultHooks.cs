@@ -11,22 +11,26 @@ public partial class HookPipeline<TEvent, TContext>
     private readonly Hooks.ResultHookSlot<TEvent, TContext> _resultHooks;
     private readonly Dictionary<Type, object> _resultDispatchOptions = [];
 
+    [PipelineStep(PipelineStepRole.Register)]
     public HookPipeline<TEvent, TContext> Register<TResult>(Func<TEvent, TResult> handler, int priority = 0)
         where TResult : struct, IHookResult
         => throw Hooks.HookLowering.ResultNotLowered();
 
+    [PipelineStep(PipelineStepRole.Register)]
     public HookPipeline<TEvent, TContext> Register<TResult>(
         Func<TEvent, TContext, TResult> handler,
         int priority = 0)
         where TResult : struct, IHookResult
         => throw Hooks.HookLowering.ResultNotLowered();
 
+    [PipelineStep(PipelineStepRole.RegisterLocal)]
     public HookPipeline<TEvent, TContext> RegisterLocal<TResult>(
         Func<TEvent, TResult> handler,
         int priority = 0)
         where TResult : struct, IHookResult
         => throw Hooks.HookLowering.ResultNotLowered();
 
+    [PipelineStep(PipelineStepRole.RegisterLocal)]
     public HookPipeline<TEvent, TContext> RegisterLocal<TResult>(
         Func<TEvent, TContext, TResult> handler,
         int priority = 0)

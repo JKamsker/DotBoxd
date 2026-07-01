@@ -50,21 +50,25 @@ public sealed partial class HookRegistry
         _onFault = onFault;
     }
 
+    [PipelineStep(PipelineStepRole.Seed)]
     public HookPipeline<TEvent, HookContext> On<TEvent>()
     {
         var adapter = _events.Resolve<TEvent>();
         return On(adapter);
     }
 
+    [PipelineStep(PipelineStepRole.Seed)]
     public HookPipeline<TEvent, HookContext> On<TEvent>(IPluginEventAdapter<TEvent> adapter)
         => OnHookContext(adapter, ServerContextFactory<HookContext>.Identity);
 
+    [PipelineStep(PipelineStepRole.Seed)]
     public HookPipeline<TEvent, TContext> On<TEvent, TContext>(Func<HookContext, TContext> createContext)
     {
         var adapter = _events.Resolve<TEvent>();
         return On(adapter, createContext);
     }
 
+    [PipelineStep(PipelineStepRole.Seed)]
     public HookPipeline<TEvent, TContext> On<TEvent, TContext>(
         IPluginEventAdapter<TEvent> adapter,
         Func<HookContext, TContext> createContext)

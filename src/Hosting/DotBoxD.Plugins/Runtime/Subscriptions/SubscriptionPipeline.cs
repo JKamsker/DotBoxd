@@ -4,6 +4,7 @@ using DotBoxD.Plugins.Runtime.Subscriptions;
 
 namespace DotBoxD.Plugins.Runtime;
 
+[PipelineSurface(PipelineTransport.Local)]
 public class SubscriptionPipeline<TEvent, TContext> : ISubscriptionPipeline<TEvent>
 {
     private readonly object _gate = new();
@@ -79,12 +80,14 @@ public class SubscriptionPipeline<TEvent, TContext> : ISubscriptionPipeline<TEve
         }
     }
 
+    [PipelineStep(PipelineStepRole.Filter)]
     public SubscriptionPipeline<TEvent, TContext> Where(Func<TEvent, TContext, bool> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
         return Where((e, context) => ValueTask.FromResult(filter(e, context)));
     }
 
+    [PipelineStep(PipelineStepRole.Filter)]
     public SubscriptionPipeline<TEvent, TContext> Where(Func<TEvent, TContext, ValueTask<bool>> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
@@ -96,12 +99,14 @@ public class SubscriptionPipeline<TEvent, TContext> : ISubscriptionPipeline<TEve
         return this;
     }
 
+    [PipelineStep(PipelineStepRole.Filter)]
     public SubscriptionPipeline<TEvent, TContext> Where(Func<TEvent, bool> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
         return Where((e, _) => filter(e));
     }
 
+    [PipelineStep(PipelineStepRole.Filter)]
     public SubscriptionPipeline<TEvent, TContext> Where(Func<TEvent, ValueTask<bool>> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
@@ -137,18 +142,23 @@ public class SubscriptionPipeline<TEvent, TContext> : ISubscriptionPipeline<TEve
         return InvokeHostHandler((e, _) => handler(e));
     }
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public SubscriptionPipeline<TEvent, TContext> RunLocal(Func<TEvent, TContext, ValueTask> handler)
         => InvokeHostHandler(handler);
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public SubscriptionPipeline<TEvent, TContext> RunLocal(Action<TEvent, TContext> handler)
         => InvokeHostHandler(handler);
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public SubscriptionPipeline<TEvent, TContext> RunLocal(Func<TEvent, ValueTask> handler)
         => InvokeHostHandler(handler);
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public SubscriptionPipeline<TEvent, TContext> RunLocal(Action<TEvent> handler)
         => InvokeHostHandler(handler);
 
+    [PipelineStep(PipelineStepRole.Projection)]
     public SubscriptionStage<TEvent, TNext, TContext> Select<TNext>(Func<TEvent, TContext, TNext> projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
@@ -157,21 +167,26 @@ public class SubscriptionPipeline<TEvent, TContext> : ISubscriptionPipeline<TEve
             (e, ctx) => ValueTask.FromResult((true, projection(e, ctx))));
     }
 
+    [PipelineStep(PipelineStepRole.Projection)]
     public SubscriptionStage<TEvent, TNext, TContext> Select<TNext>(Func<TEvent, TNext> projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
         return Select((e, _) => projection(e));
     }
 
+    [PipelineStep(PipelineStepRole.Run)]
     public SubscriptionPipeline<TEvent, TContext> Run(Func<TEvent, TContext, ValueTask> handler)
         => throw Hooks.HookLowering.NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public SubscriptionPipeline<TEvent, TContext> Run(Action<TEvent, TContext> handler)
         => throw Hooks.HookLowering.NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public SubscriptionPipeline<TEvent, TContext> Run(Func<TEvent, ValueTask> handler)
         => throw Hooks.HookLowering.NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public SubscriptionPipeline<TEvent, TContext> Run(Action<TEvent> handler)
         => throw Hooks.HookLowering.NotLowered();
 

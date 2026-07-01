@@ -3,6 +3,7 @@ using DotBoxD.Plugins.Runtime.Hooks;
 
 namespace DotBoxD.Plugins.Runtime;
 
+[PipelineSurface(PipelineTransport.Local)]
 public partial class HookPipeline<TEvent, TContext> : IHookPipeline<TEvent>
 {
     private readonly object _gate = new();
@@ -38,12 +39,14 @@ public partial class HookPipeline<TEvent, TContext> : IHookPipeline<TEvent>
         _resultHooks = new ResultHookSlot<TEvent, TContext>(adapter, onFault, nextResultOrder);
     }
 
+    [PipelineStep(PipelineStepRole.Filter)]
     public HookPipeline<TEvent, TContext> Where(Func<TEvent, TContext, bool> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
         return Where((e, context) => ValueTask.FromResult(filter(e, context)));
     }
 
+    [PipelineStep(PipelineStepRole.Filter)]
     public HookPipeline<TEvent, TContext> Where(Func<TEvent, TContext, ValueTask<bool>> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
@@ -57,12 +60,14 @@ public partial class HookPipeline<TEvent, TContext> : IHookPipeline<TEvent>
 
     /// <summary>Element-only filter — the same as the (element, context) overload with the context
     /// discarded. Both arities are always available so a stage need not take the context it doesn't use.</summary>
+    [PipelineStep(PipelineStepRole.Filter)]
     public HookPipeline<TEvent, TContext> Where(Func<TEvent, bool> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
         return Where((e, _) => filter(e));
     }
 
+    [PipelineStep(PipelineStepRole.Filter)]
     public HookPipeline<TEvent, TContext> Where(Func<TEvent, ValueTask<bool>> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
@@ -99,19 +104,24 @@ public partial class HookPipeline<TEvent, TContext> : IHookPipeline<TEvent>
     }
 
     /// <summary>Native host terminal — runs in-process (NOT sandboxed). Use sparingly.</summary>
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public HookPipeline<TEvent, TContext> RunLocal(Func<TEvent, TContext, ValueTask> handler)
         => InvokeHostHandler(handler);
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public HookPipeline<TEvent, TContext> RunLocal(Action<TEvent, TContext> handler)
         => InvokeHostHandler(handler);
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public HookPipeline<TEvent, TContext> RunLocal(Func<TEvent, ValueTask> handler)
         => InvokeHostHandler(handler);
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public HookPipeline<TEvent, TContext> RunLocal(Action<TEvent> handler)
         => InvokeHostHandler(handler);
 
     /// <summary>Projects the flowing element to a new type for downstream Where/terminal stages.</summary>
+    [PipelineStep(PipelineStepRole.Projection)]
     public HookStage<TEvent, TNext, TContext> Select<TNext>(Func<TEvent, TContext, TNext> projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
@@ -120,6 +130,7 @@ public partial class HookPipeline<TEvent, TContext> : IHookPipeline<TEvent>
             (e, ctx) => ValueTask.FromResult((true, projection(e, ctx))));
     }
 
+    [PipelineStep(PipelineStepRole.Projection)]
     public HookStage<TEvent, TNext, TContext> Select<TNext>(Func<TEvent, TNext> projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
@@ -130,15 +141,19 @@ public partial class HookPipeline<TEvent, TContext> : IHookPipeline<TEvent>
     /// The terminal the analyzer lowers to verified IR. It never runs as host code: un-lowered it
     /// throws, so plugin logic cannot accidentally execute unsandboxed.
     /// </summary>
+    [PipelineStep(PipelineStepRole.Run)]
     public HookPipeline<TEvent, TContext> Run(Func<TEvent, TContext, ValueTask> handler)
         => throw HookLowering.NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public HookPipeline<TEvent, TContext> Run(Action<TEvent, TContext> handler)
         => throw HookLowering.NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public HookPipeline<TEvent, TContext> Run(Func<TEvent, ValueTask> handler)
         => throw HookLowering.NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public HookPipeline<TEvent, TContext> Run(Action<TEvent> handler)
         => throw HookLowering.NotLowered();
 

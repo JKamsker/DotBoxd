@@ -2,24 +2,28 @@ namespace DotBoxD.Plugins.Runtime;
 
 public partial class HookPipeline<TEvent, TContext>
 {
+    [PipelineStep(PipelineStepRole.RegisterLocal)]
     public HookPipeline<TEvent, TContext> RegisterLocal<TResult>(
         Func<TEvent, ValueTask<TResult>> handler,
         int priority = 0)
         where TResult : struct, IHookResult
         => throw Hooks.HookLowering.ResultNotLowered();
 
+    [PipelineStep(PipelineStepRole.RegisterLocal)]
     public HookPipeline<TEvent, TContext> RegisterLocal<TResult>(
         Func<TEvent, TContext, ValueTask<TResult>> handler,
         int priority = 0)
         where TResult : struct, IHookResult
         => throw Hooks.HookLowering.ResultNotLowered();
 
+    [PipelineStep(PipelineStepRole.RegisterLocal)]
     public HookPipeline<TEvent, TContext> RegisterLocal<TResult>(
         Func<TEvent, CancellationToken, ValueTask<TResult>> handler,
         int priority = 0)
         where TResult : struct, IHookResult
         => throw Hooks.HookLowering.ResultNotLowered();
 
+    [PipelineStep(PipelineStepRole.RegisterLocal)]
     public HookPipeline<TEvent, TContext> RegisterLocal<TResult>(
         Func<TEvent, TContext, CancellationToken, ValueTask<TResult>> handler,
         int priority = 0)

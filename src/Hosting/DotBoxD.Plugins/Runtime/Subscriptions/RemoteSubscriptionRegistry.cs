@@ -20,8 +20,10 @@ public sealed class RemoteSubscriptionRegistry
         _localHandlers = localHandlers;
     }
 
+    [PipelineStep(PipelineStepRole.Seed)]
     public RemoteSubscriptionPipeline<TEvent> On<TEvent>() => new(_install, _localHandlers);
 
+    [PipelineStep(PipelineStepRole.Seed)]
     public RemoteSubscriptionPipeline<TEvent, TContext> On<TEvent, TContext>(
         Func<HookContext, TContext> createContext)
     {

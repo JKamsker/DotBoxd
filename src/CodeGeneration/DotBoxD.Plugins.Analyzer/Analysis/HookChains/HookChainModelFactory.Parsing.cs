@@ -26,12 +26,11 @@ internal static partial class HookChainModelFactory
             _ => null
         };
 
-    // Resolves the pipeline role of a fluent call from its [PipelineStep] attribute, falling back to the
-    // framework's own method names while the library's pipeline methods are being annotated. The name fallback
-    // is transitional; once every framework pipeline method carries [PipelineStep] the LegacyNameRole map (and
-    // the *Method name constants) are deleted so no method-name literal drives recognition.
+    // Resolves the pipeline role of a resolved method purely from its [PipelineStep] attribute. The framework
+    // marks its own pipeline methods (see [PipelineStep]/[PipelineSurface] on the Runtime pipeline types), so
+    // no method-name literal drives recognition once a symbol (or overload candidate) is available.
     private static PipelineStepRole? RoleOf(IMethodSymbol? method, Compilation compilation)
-        => PipelineRoleReader.RoleOf(method, compilation) ?? LegacyNameRole(method?.Name);
+        => PipelineRoleReader.RoleOf(method, compilation);
 
     private static PipelineStepRole? LegacyNameRole(string? methodName)
         => methodName switch
@@ -152,37 +151,11 @@ internal static partial class HookChainModelFactory
         return ReceiverKind(type, model.Compilation);
     }
 
-    // Transport declared by [PipelineSurface] on the receiver type, falling back to the framework's own
-    // pipeline/stage type names while they are being annotated. The fallback is transitional and is deleted
-    // (together with LegacyReceiverKind) once every framework surface carries [PipelineSurface].
+    // Transport declared by [PipelineSurface] on the receiver type. Every framework pipeline/stage type carries
+    // the attribute (enforced by PipelineStepMarkingContractTests), so a null result means the receiver is not a
+    // pipeline surface at all — an unmarked consumer type or an unrelated type — and the chain is left alone.
     internal static HookChainReceiverKind? ReceiverKind(INamedTypeSymbol type, Compilation compilation)
-        => PipelineRoleReader.Transport(type, compilation) ?? LegacyReceiverKind(type);
-
-    private static HookChainReceiverKind? LegacyReceiverKind(INamedTypeSymbol type)
-    {
-        var original = type.OriginalDefinition.ToDisplayString();
-        if (string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteHookPipelineOriginal, StringComparison.Ordinal) ||
-            string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteHookPipelineWithContextOriginal, StringComparison.Ordinal) ||
-            string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteHookStageOriginal, StringComparison.Ordinal) ||
-            string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteHookStageWithContextOriginal, StringComparison.Ordinal) ||
-            string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteSubscriptionPipelineOriginal, StringComparison.Ordinal) ||
-            string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteSubscriptionPipelineWithContextOriginal, StringComparison.Ordinal) ||
-            string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteSubscriptionStageOriginal, StringComparison.Ordinal) ||
-            string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteSubscriptionStageWithContextOriginal, StringComparison.Ordinal))
-        {
-            return HookChainReceiverKind.Remote;
-        }
-
-        if (string.Equals(original, DotBoxDGenerationNames.TypeNames.HookPipelineWithContextOriginal, StringComparison.Ordinal) ||
-            string.Equals(original, DotBoxDGenerationNames.TypeNames.HookStageWithContextOriginal, StringComparison.Ordinal) ||
-            string.Equals(original, DotBoxDGenerationNames.TypeNames.SubscriptionPipelineWithContextOriginal, StringComparison.Ordinal) ||
-            string.Equals(original, DotBoxDGenerationNames.TypeNames.SubscriptionStageWithContextOriginal, StringComparison.Ordinal))
-        {
-            return HookChainReceiverKind.Local;
-        }
-
-        return null;
-    }
+        => PipelineRoleReader.Transport(type, compilation);
 
     // Accepts both lambda forms a fluent stage can take: a parenthesized lambda (e), (e, ctx) or (),
     // and the simple form e => .... Arity is resolved later by LambdaParameters, so every stage

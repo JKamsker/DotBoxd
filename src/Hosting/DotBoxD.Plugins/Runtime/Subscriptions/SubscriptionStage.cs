@@ -6,6 +6,7 @@ namespace DotBoxD.Plugins.Runtime.Subscriptions;
 /// <summary>
 /// A re-typed stage in a subscription chain after a <c>SubscriptionPipeline&lt;TEvent&gt;.Select</c>.
 /// </summary>
+[PipelineSurface(PipelineTransport.Local)]
 public class SubscriptionStage<TEvent, TCurrent, TContext>
 {
     private readonly SubscriptionPipeline<TEvent, TContext> _root;
@@ -19,6 +20,7 @@ public class SubscriptionStage<TEvent, TCurrent, TContext>
         _project = project;
     }
 
+    [PipelineStep(PipelineStepRole.Filter)]
     public SubscriptionStage<TEvent, TCurrent, TContext> Where(Func<TCurrent, TContext, bool> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
@@ -30,12 +32,14 @@ public class SubscriptionStage<TEvent, TCurrent, TContext>
         });
     }
 
+    [PipelineStep(PipelineStepRole.Filter)]
     public SubscriptionStage<TEvent, TCurrent, TContext> Where(Func<TCurrent, bool> filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
         return Where((value, _) => filter(value));
     }
 
+    [PipelineStep(PipelineStepRole.Projection)]
     public SubscriptionStage<TEvent, TNext, TContext> Select<TNext>(Func<TCurrent, TContext, TNext> projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
@@ -47,12 +51,14 @@ public class SubscriptionStage<TEvent, TCurrent, TContext>
         });
     }
 
+    [PipelineStep(PipelineStepRole.Projection)]
     public SubscriptionStage<TEvent, TNext, TContext> Select<TNext>(Func<TCurrent, TNext> projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
         return Select((value, _) => projection(value));
     }
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public SubscriptionPipeline<TEvent, TContext> RunLocal(Func<TCurrent, TContext, ValueTask> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
@@ -67,6 +73,7 @@ public class SubscriptionStage<TEvent, TCurrent, TContext>
         });
     }
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public SubscriptionPipeline<TEvent, TContext> RunLocal(Action<TCurrent, TContext> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
@@ -77,12 +84,14 @@ public class SubscriptionStage<TEvent, TCurrent, TContext>
         });
     }
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public SubscriptionPipeline<TEvent, TContext> RunLocal(Func<TCurrent, ValueTask> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
         return RunLocal((value, _) => handler(value));
     }
 
+    [PipelineStep(PipelineStepRole.RunLocal)]
     public SubscriptionPipeline<TEvent, TContext> RunLocal(Action<TCurrent> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
@@ -107,15 +116,19 @@ public class SubscriptionStage<TEvent, TCurrent, TContext>
         return _root.UseGeneratedChain(package);
     }
 
+    [PipelineStep(PipelineStepRole.Run)]
     public SubscriptionPipeline<TEvent, TContext> Run(Func<TCurrent, TContext, ValueTask> handler)
         => throw HookLowering.NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public SubscriptionPipeline<TEvent, TContext> Run(Action<TCurrent, TContext> handler)
         => throw HookLowering.NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public SubscriptionPipeline<TEvent, TContext> Run(Func<TCurrent, ValueTask> handler)
         => throw HookLowering.NotLowered();
 
+    [PipelineStep(PipelineStepRole.Run)]
     public SubscriptionPipeline<TEvent, TContext> Run(Action<TCurrent> handler)
         => throw HookLowering.NotLowered();
 }
