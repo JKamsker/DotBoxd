@@ -77,6 +77,33 @@ public sealed class HookPipelineFluentTests
     }
 
     [Fact]
+    public async Task Precancelled_publish_does_not_run_filters_or_local_handlers()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create();
+        var filterInvoked = false;
+        var handlerInvoked = false;
+        server.Hooks.On<Ping>()
+            .Where((_, _) => { filterInvoked = true; return true; })
+            .RunLocal((_, _) => handlerInvoked = true);
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        Exception? exception = null;
+        try
+        {
+            await server.Hooks.PublishAsync(new Ping("monster-1", 21), cts.Token);
+        }
+        catch (Exception ex)
+        {
+            exception = ex;
+        }
+
+        Assert.False(filterInvoked);
+        Assert.False(handlerInvoked);
+        Assert.IsAssignableFrom<OperationCanceledException>(exception);
+    }
+
+    [Fact]
     public async Task Native_wire_methods_return_the_resolved_event_and_terminal()
     {
         var messages = new InMemoryPluginMessageSink();
