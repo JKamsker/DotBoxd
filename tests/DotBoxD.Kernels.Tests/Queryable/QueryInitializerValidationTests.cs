@@ -34,6 +34,30 @@ public sealed class QueryInitializerValidationTests
     }
 
     [Fact]
+    public void Public_filter_initializer_with_undefined_kind_is_rejected_by_evaluator()
+    {
+        var filter = new QueryFilter { Kind = (QueryFilterKind)999 };
+
+        var evaluation = Assert.ThrowsAny<Exception>(() =>
+            QueryFilterEvaluator.Evaluate(filter, new NullableTestEvent(null, 1), new MemberValueReader()));
+        Assert.True(evaluation is InvalidOperationException or ArgumentOutOfRangeException);
+        Assert.Contains("kind", evaluation.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("999", evaluation.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Public_filter_initializer_with_undefined_kind_is_rejected_by_compiler()
+    {
+        var filter = new QueryFilter { Kind = (QueryFilterKind)999 };
+
+        var compilation = Assert.ThrowsAny<Exception>(() =>
+            QueryFilterCompiler.Compile(filter, new MemberValueReader()));
+        Assert.True(compilation is InvalidOperationException or ArgumentOutOfRangeException);
+        Assert.Contains("kind", compilation.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("999", compilation.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Public_member_projection_initializer_without_path_is_rejected_on_write()
     {
         var projection = new QueryProjection { Kind = QueryProjectionKind.Member };
