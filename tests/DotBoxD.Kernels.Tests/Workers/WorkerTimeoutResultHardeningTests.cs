@@ -133,6 +133,37 @@ public sealed class WorkerTimeoutResultHardeningTests
             builder.UseWorkerClient(worker, SandboxWorkerProfile.HardenedOutOfProcess);
         });
 
+    private static SandboxExecutionResult BuildSuccessResult(ExecutionPlan plan, SandboxExecutionOptions options)
+    {
+        var budget = new ResourceMeter(plan.Budget);
+        var runId = options.RunId ?? SandboxRunId.New();
+        var audit = new InMemoryAuditSink();
+        audit.Write(new SandboxAuditEvent(
+            runId,
+            "RunSummary",
+            DateTimeOffset.UtcNow,
+            Success: true,
+            ResourceId: $"module:{plan.ModuleHash}",
+            Fields: RunSummaryAuditFields.Create(
+                plan,
+                budget,
+                ExecutionMode.Interpreted,
+                "None",
+                executionDispatched: true)));
+
+        return new SandboxExecutionResult
+        {
+            Succeeded = true,
+            Value = SandboxValue.FromInt32(35),
+            ResourceUsage = budget.Snapshot(),
+            AuditEvents = audit.Events,
+            ActualMode = ExecutionMode.Interpreted,
+            ModuleHash = plan.ModuleHash,
+            PlanHash = plan.PlanHash,
+            PolicyHash = plan.PolicyHash
+        };
+    }
+
     private sealed class TimeoutSwallowingWorker : ISandboxWorkerClient
     {
         public int Calls { get; private set; }
@@ -154,33 +185,7 @@ public sealed class WorkerTimeoutResultHardeningTests
                 // Malicious or buggy worker observed the host-side timeout but still returns success.
             }
 
-            var budget = new ResourceMeter(plan.Budget);
-            var runId = options.RunId ?? SandboxRunId.New();
-            var audit = new InMemoryAuditSink();
-            audit.Write(new SandboxAuditEvent(
-                runId,
-                "RunSummary",
-                DateTimeOffset.UtcNow,
-                Success: true,
-                ResourceId: $"module:{plan.ModuleHash}",
-                Fields: RunSummaryAuditFields.Create(
-                    plan,
-                    budget,
-                    ExecutionMode.Interpreted,
-                    "None",
-                    executionDispatched: true)));
-
-            return new SandboxExecutionResult
-            {
-                Succeeded = true,
-                Value = SandboxValue.FromInt32(35),
-                ResourceUsage = budget.Snapshot(),
-                AuditEvents = audit.Events,
-                ActualMode = ExecutionMode.Interpreted,
-                ModuleHash = plan.ModuleHash,
-                PlanHash = plan.PlanHash,
-                PolicyHash = plan.PolicyHash
-            };
+            return BuildSuccessResult(plan, options);
         }
     }
 
@@ -252,33 +257,7 @@ public sealed class WorkerTimeoutResultHardeningTests
             CancellationToken cancellationToken = default)
         {
             Calls++;
-            var budget = new ResourceMeter(plan.Budget);
-            var runId = options.RunId ?? SandboxRunId.New();
-            var audit = new InMemoryAuditSink();
-            audit.Write(new SandboxAuditEvent(
-                runId,
-                "RunSummary",
-                DateTimeOffset.UtcNow,
-                Success: true,
-                ResourceId: $"module:{plan.ModuleHash}",
-                Fields: RunSummaryAuditFields.Create(
-                    plan,
-                    budget,
-                    ExecutionMode.Interpreted,
-                    "None",
-                    executionDispatched: true)));
-
-            return ValueTask.FromResult(new SandboxExecutionResult
-            {
-                Succeeded = true,
-                Value = SandboxValue.FromInt32(35),
-                ResourceUsage = budget.Snapshot(),
-                AuditEvents = audit.Events,
-                ActualMode = ExecutionMode.Interpreted,
-                ModuleHash = plan.ModuleHash,
-                PlanHash = plan.PlanHash,
-                PolicyHash = plan.PolicyHash
-            });
+            return ValueTask.FromResult(BuildSuccessResult(plan, options));
         }
     }
 }
