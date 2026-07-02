@@ -269,4 +269,5 @@ public sealed class StreamingProtocolValidationRegressionTests
         Assert.Contains("Stream id", ex.Message, StringComparison.Ordinal);
         Assert.Equal(0, streams.InboundReceiverCount);
     }
+
 }
