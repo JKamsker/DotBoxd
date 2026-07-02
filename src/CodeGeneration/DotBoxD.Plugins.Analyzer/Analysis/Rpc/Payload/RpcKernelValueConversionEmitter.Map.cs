@@ -24,14 +24,14 @@ internal sealed partial class RpcKernelValueConversionEmitter
         _writers[key] = method;
         var keyExpression = WriteExpression(keyType, "__pair.Key");
         var valueExpression = WriteExpression(valueType, "__pair.Value");
-        _helpers.Append("    private static global::DotBoxD.Plugins.KernelRpcValue ").Append(method)
+        _helpers.Append($"    private static {DotBoxDRpcValueNames.GlobalKernelRpcValue} ").Append(method)
             .Append('(').Append(TypeName(type)).AppendLine(" value)");
         _helpers.AppendLine("    {");
         _helpers.AppendLine("        global::System.ArgumentNullException.ThrowIfNull(value);");
         _helpers.AppendLine("        var __entryCount = value.Count * 2;");
         _helpers.AppendLine("        var __entries = __entryCount == 0")
-            .AppendLine("            ? global::System.Array.Empty<global::DotBoxD.Plugins.KernelRpcValue>()")
-            .AppendLine("            : new global::DotBoxD.Plugins.KernelRpcValue[__entryCount];");
+            .AppendLine($"            ? global::System.Array.Empty<{DotBoxDRpcValueNames.GlobalKernelRpcValue}>()")
+            .AppendLine($"            : new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[__entryCount];");
         _helpers.AppendLine("        var __index = 0;");
         _helpers.AppendLine("        foreach (var __pair in value)");
         _helpers.AppendLine("        {");
@@ -39,7 +39,7 @@ internal sealed partial class RpcKernelValueConversionEmitter
         _helpers.Append("            __entries[__index++] = ").Append(valueExpression).AppendLine(";");
         _helpers.AppendLine("        }");
         _helpers.AppendLine();
-        _helpers.AppendLine("        return global::DotBoxD.Plugins.KernelRpcValue.Map(__entries);");
+        _helpers.AppendLine($"        return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.Map(__entries);");
         _helpers.AppendLine("    }");
         _helpers.AppendLine();
         return method;
@@ -67,9 +67,9 @@ internal sealed partial class RpcKernelValueConversionEmitter
         var valueExpression = ReadExpression(valueType, "value.GetItem(i + 1)");
 
         _helpers.Append("    private static ").Append(returnType).Append(' ').Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("    {");
-        _helpers.AppendLine("        value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Map);");
+        _helpers.AppendLine($"        value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Map);");
         _helpers.AppendLine("        var __count = value.ItemCount;");
         _helpers.Append("        var __result = new ").Append(dictionaryType).AppendLine("(__count / 2);");
         _helpers.AppendLine("        for (var i = 0; i < __count; i += 2)");

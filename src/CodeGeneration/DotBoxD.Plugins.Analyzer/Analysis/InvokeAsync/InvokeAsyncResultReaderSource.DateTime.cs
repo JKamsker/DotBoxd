@@ -1,3 +1,4 @@
+using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.InvokeAsync;
@@ -24,7 +25,7 @@ internal sealed partial class InvokeAsyncResultReaderSource
         var dateTimeMethod = NextHelperName();
         _readers[key] = dateTimeMethod;
         _helpers.Append("        private static global::System.DateTime ").Append(dateTimeMethod)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("        {");
         _helpers.AppendLine("            return " + dateTimeReader + "(" + offsetReader + "(value));");
         _helpers.AppendLine("        }");
@@ -44,9 +45,9 @@ internal sealed partial class InvokeAsyncResultReaderSource
         _readers[key] = method;
         var fromWire = EnsureDateTimeOffsetFromWireHelper();
         _helpers.Append("        private static global::System.DateTimeOffset ").Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("        {");
-        _helpers.AppendLine("            value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Record);");
+        _helpers.AppendLine($"            value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Record);");
         _helpers.AppendLine("            if (value.ItemCount != 2)");
         _helpers.AppendLine("            {");
         _helpers.AppendLine("                throw new global::System.NotSupportedException(\"InvokeAsync DateTime wire value field count did not match the generated projection shape.\");");

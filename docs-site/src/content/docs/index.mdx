@@ -1,15 +1,17 @@
 ---
 title: DotBoxD
 description: >-
-  Source-generated, contract-first .NET extension runtime. One C# contract, used three ways —
-  Services (RPC), sandboxed Kernels, and Pushdown — with no runtime reflection on the hot path.
+  DotBoxD is a contract-first plugin runtime for .NET hosts: one C# interface becomes typed RPC
+  services, server-side event pipelines, and sandboxed pushdown batches — all generated at compile
+  time, with no runtime reflection on the hot path.
 template: splash
 editUrl: false
 hero:
   title: DotBoxD
   tagline: >-
-    Source-generated, contract-first .NET extension runtime. One C# contract, used three ways —
-    all driven by Roslyn source generators, with no runtime reflection on the hot path.
+    The contract-first way to let plugins extend a .NET host. One C# interface becomes typed RPC,
+    filtered event pipelines, and sandboxed server-side batches — generated at compile time, with
+    no runtime reflection and no hand-written marshaling.
   actions:
     - text: Get started
       link: /getting-started/
@@ -26,7 +28,20 @@ hero:
 
 import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
 
+## What is DotBoxD?
+
+**A complete plugin system for .NET hosts.** .NET can't safely isolate arbitrary code in-process,
+so plugins live in a sidecar process behind IPC — safe, but the boundary costs you round-trips and
+an unwinnable filter API. DotBoxD ships that whole architecture from one C# contract (transports,
+typed RPC, event pipelines) and dissolves both costs: plugin-authored logic — filters,
+projections, batches — runs *inside the host* as a validated, fuel-metered sandbox — restricted
+IR, never loaded C#/IL.
+
+[Why DotBoxD? The dilemma, in three diagrams ›](/why-dotboxd/)
+
 ## The three ways to use one contract
+
+The same contract can be delivered three ways — pick by call shape:
 
 <CardGrid stagger>
   <Card title="Services (RPC)" icon="rocket">

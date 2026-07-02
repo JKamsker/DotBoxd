@@ -76,11 +76,11 @@ internal static class RpcKernelDirectClientExtensionEmitter
             builder.AppendLine("            throw new global::System.InvalidOperationException(\"Server extension calls require a generated plugin facade receiver.\");");
             builder.AppendLine("        }");
 
-            builder.Append("        var ").Append(arguments).Append(" = new global::DotBoxD.Plugins.KernelRpcValue[")
+            builder.Append("        var ").Append(arguments).Append($" = new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[")
                 .Append(userParameterCount + argumentOffset).AppendLine("];");
             if (hasReceiverId)
             {
-                builder.Append("        ").Append(arguments).Append("[0] = global::DotBoxD.Plugins.KernelRpcValue.String(")
+                builder.Append("        ").Append(arguments).Append($"[0] = {DotBoxDRpcValueNames.GlobalKernelRpcValue}.String(")
                     .Append(receiver).AppendLine(".Id);");
             }
 
@@ -93,20 +93,20 @@ internal static class RpcKernelDirectClientExtensionEmitter
             }
 
             builder.Append("        var ").Append(request)
-                .Append(" = global::DotBoxD.Plugins.KernelRpcBinaryCodec.EncodeArguments(")
+                .Append($" = {DotBoxDRpcValueNames.GlobalKernelRpcBinaryCodec}.EncodeArguments(")
                 .Append(arguments).AppendLine(");");
             if (payloadReturnType is null)
             {
                 AppendInvoke(builder, isAsyncReturn, accessor, request, response, cancellationToken, assignResponse: true);
-                builder.Append("        global::DotBoxD.Plugins.KernelRpcBinaryCodec.DecodeValue(").Append(response)
-                    .AppendLine(").RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Unit);");
+                builder.Append($"        {DotBoxDRpcValueNames.GlobalKernelRpcBinaryCodec}.DecodeValue(").Append(response)
+                    .AppendLine($").RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Unit);");
                 builder.AppendLine("        return;");
             }
             else
             {
                 AppendInvoke(builder, isAsyncReturn, accessor, request, response, cancellationToken, assignResponse: true);
                 builder.Append("        var ").Append(result)
-                    .Append(" = global::DotBoxD.Plugins.KernelRpcBinaryCodec.DecodeValue(")
+                    .Append($" = {DotBoxDRpcValueNames.GlobalKernelRpcBinaryCodec}.DecodeValue(")
                     .Append(response).AppendLine(");");
                 builder.Append("        return ").Append(_conv.ReadExpression(payloadReturnType, result)).AppendLine(";");
             }

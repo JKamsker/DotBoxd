@@ -258,7 +258,7 @@ internal sealed partial class InvokeAsyncCallShape
            ",\"type\":" + DotBoxDRpcTypeMapper.JsonType(captureParameter.Type, compilation) + "}]";
 
     private static string CaptureArgumentsExpression(ITypeSymbol captureType)
-        => "new global::DotBoxD.Plugins.KernelRpcValue[] { " +
+        => $"new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[] {{ " +
            InvokeAsyncArgumentWriterSource.WriteExpression(captureType, "captures") +
            " }";
 }

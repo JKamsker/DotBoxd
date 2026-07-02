@@ -439,5 +439,16 @@ that the checked-out branch contains the red tests from the PR.
 If the red test does not fail (already fixed) or the PR is no longer eligible,
 leave the workspace unchanged and call `noop`.
 
+## Protected files — never touch them
+
+Never include top-level protected files in your patch: `README.md`, `CONTRIBUTING.md`,
+`CHANGELOG.md`, `AGENTS.md`, `CLAUDE.md`, `DESIGN.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`,
+`Directory.Packages.props`, `NuGet.Config`, `global.json`, lockfiles, or anything under dot-folders.
+The push layer hard-blocks the ENTIRE patch when it contains any of them (your work is discarded
+into a "[gh-aw] Protected Files" issue instead of landing). Documented samples and doc pages live
+under `docs/**`, which is allowed — put documentation updates there. If a protected file genuinely
+must change for correctness, say so in a comment/PR body and leave the file itself untouched for a
+human.
+
 Do not print, inspect, or summarize secrets, API keys, virtual tokens, endpoint
 hosts, or full endpoint URLs.

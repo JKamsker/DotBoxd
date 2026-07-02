@@ -51,7 +51,7 @@ internal static class GeneratedFactoryGenerator
         sb.AppendLine();
         sb.AppendLine("        static DotBoxDGenerated()");
         sb.AppendLine("        {");
-        sb.AppendLine($"            {ServicesGeneratorTypeNames.GlobalGeneratedServiceRegistry}.RegisterServices(");
+        sb.AppendLine($"            {ServicesGeneratorTypeNames.GlobalGeneratedServiceRegistry}.{ServicesGeneratorMemberNames.GeneratedServiceRegistry.RegisterServices}(");
         sb.AppendLine($"                typeof({ServicesGeneratorTypeNames.GlobalDotBoxDGenerated}).Assembly,");
         sb.AppendLine("                s_services);");
 
@@ -64,7 +64,7 @@ internal static class GeneratedFactoryGenerator
             var fullProxyName = IdentifierHelpers.QualifyTypeName(service.Namespace, serviceName + "Proxy");
             var fullDispatcherName = IdentifierHelpers.QualifyTypeName(service.Namespace, serviceName + "Dispatcher");
 
-            sb.AppendLine($"            {ServicesGeneratorTypeNames.GlobalGeneratedServiceRegistry}.Register<{fullInterfaceName}>(");
+            sb.AppendLine($"            {ServicesGeneratorTypeNames.GlobalGeneratedServiceRegistry}.{ServicesGeneratorMemberNames.GeneratedServiceRegistry.Register}<{fullInterfaceName}>(");
             sb.AppendLine($"                static client => new {fullProxyName}(client),");
             sb.AppendLine($"                static implementation => new {fullDispatcherName}(({fullInterfaceName})implementation),");
             sb.AppendLine($"                s_services[{i.ToString(System.Globalization.CultureInfo.InvariantCulture)}]);");
@@ -96,7 +96,7 @@ internal static class GeneratedFactoryGenerator
             var fullInterfaceName = IdentifierHelpers.QualifyTypeName(service.Namespace, service.InterfaceName);
             var fullProxyName = IdentifierHelpers.QualifyTypeName(service.Namespace, serviceName + "Proxy");
 
-            sb.AppendLine($"            sink.AddService<{fullInterfaceName}, {fullProxyName}>();");
+            sb.AppendLine($"            sink.{ServicesGeneratorMemberNames.ServiceRegistrationSink.AddService}<{fullInterfaceName}, {fullProxyName}>();");
         }
 
         sb.AppendLine("        }");
@@ -120,7 +120,7 @@ internal static class GeneratedFactoryGenerator
             var fullProxyName = IdentifierHelpers.QualifyTypeName(service.Namespace, serviceName + "Proxy");
             var fullDispatcherName = IdentifierHelpers.QualifyTypeName(service.Namespace, serviceName + "Dispatcher");
 
-            sb.AppendLine($"            sink.AddService<{fullInterfaceName}, {fullProxyName}, {fullDispatcherName}>();");
+            sb.AppendLine($"            sink.{ServicesGeneratorMemberNames.ServiceRegistrationSink.AddService}<{fullInterfaceName}, {fullProxyName}, {fullDispatcherName}>();");
         }
 
         sb.AppendLine("        }");
@@ -130,26 +130,26 @@ internal static class GeneratedFactoryGenerator
         sb.AppendLine("        /// </summary>");
         sb.AppendLine($"        public static TService CreateProxy<TService>({ServicesGeneratorTypeNames.GlobalRpcInvoker} invoker)");
         sb.AppendLine("            where TService : class");
-        sb.AppendLine($"            => {ServicesGeneratorTypeNames.GlobalGeneratedServiceRegistry}.CreateProxy<TService>(invoker);");
+        sb.AppendLine($"            => {ServicesGeneratorTypeNames.GlobalGeneratedServiceRegistry}.{ServicesGeneratorMemberNames.GeneratedServiceRegistry.CreateProxy}<TService>(invoker);");
         sb.AppendLine();
         sb.AppendLine("        /// <summary>");
         sb.AppendLine("        /// Creates the generated proxy for <paramref name=\"serviceInterface\" /> over an invoker.");
         sb.AppendLine("        /// </summary>");
         sb.AppendLine($"        public static object CreateProxy({ServicesGeneratorTypeNames.GlobalType} serviceInterface, {ServicesGeneratorTypeNames.GlobalRpcInvoker} invoker)");
-        sb.AppendLine($"            => {ServicesGeneratorTypeNames.GlobalGeneratedServiceRegistry}.CreateProxy(serviceInterface, invoker);");
+        sb.AppendLine($"            => {ServicesGeneratorTypeNames.GlobalGeneratedServiceRegistry}.{ServicesGeneratorMemberNames.GeneratedServiceRegistry.CreateProxy}(serviceInterface, invoker);");
         sb.AppendLine();
         sb.AppendLine("        /// <summary>");
         sb.AppendLine("        /// Creates the generated server dispatcher for <paramref name=\"implementation\" />.");
         sb.AppendLine("        /// </summary>");
         sb.AppendLine($"        public static {ServicesGeneratorTypeNames.GlobalServiceDispatcher} CreateDispatcher<TService>(TService implementation)");
         sb.AppendLine("            where TService : class");
-        sb.AppendLine($"            => {ServicesGeneratorTypeNames.GlobalGeneratedServiceRegistry}.CreateDispatcher<TService>(implementation);");
+        sb.AppendLine($"            => {ServicesGeneratorTypeNames.GlobalGeneratedServiceRegistry}.{ServicesGeneratorMemberNames.GeneratedServiceRegistry.CreateDispatcher}<TService>(implementation);");
         sb.AppendLine();
         sb.AppendLine("        /// <summary>");
         sb.AppendLine("        /// Creates the generated server dispatcher for <paramref name=\"implementation\" />.");
         sb.AppendLine("        /// </summary>");
         sb.AppendLine($"        public static {ServicesGeneratorTypeNames.GlobalServiceDispatcher} CreateDispatcher({ServicesGeneratorTypeNames.GlobalType} serviceInterface, object implementation)");
-        sb.AppendLine($"            => {ServicesGeneratorTypeNames.GlobalGeneratedServiceRegistry}.CreateDispatcher(serviceInterface, implementation);");
+        sb.AppendLine($"            => {ServicesGeneratorTypeNames.GlobalGeneratedServiceRegistry}.{ServicesGeneratorMemberNames.GeneratedServiceRegistry.CreateDispatcher}(serviceInterface, implementation);");
         sb.AppendLine("    }");
         sb.AppendLine("}");
 

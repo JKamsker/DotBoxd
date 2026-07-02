@@ -33,13 +33,13 @@ internal sealed partial class RpcKernelValueConversionEmitter
     public string WriteExpression(ITypeSymbol type, string expression)
         => type.SpecialType switch
         {
-            SpecialType.System_Boolean => $"global::DotBoxD.Plugins.KernelRpcValue.Bool({expression})",
-            SpecialType.System_Int32 => $"global::DotBoxD.Plugins.KernelRpcValue.Int32({expression})",
-            SpecialType.System_Int64 => $"global::DotBoxD.Plugins.KernelRpcValue.Int64({expression})",
-            SpecialType.System_Double => $"global::DotBoxD.Plugins.KernelRpcValue.Double({expression})",
+            SpecialType.System_Boolean => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Bool({expression})",
+            SpecialType.System_Int32 => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32({expression})",
+            SpecialType.System_Int64 => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64({expression})",
+            SpecialType.System_Double => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Double({expression})",
             // float widens losslessly to the wire's only floating kind (F64); read narrows it back.
-            SpecialType.System_Single => $"global::DotBoxD.Plugins.KernelRpcValue.Double({expression})",
-            SpecialType.System_String => $"global::DotBoxD.Plugins.KernelRpcValue.String({expression})",
+            SpecialType.System_Single => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Double({expression})",
+            SpecialType.System_String => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.String({expression})",
             _ => WriteComplexExpression(type, expression)
         };
 
@@ -65,7 +65,7 @@ internal sealed partial class RpcKernelValueConversionEmitter
 
         if (DotBoxDRpcTypeMapper.IsGuid(type))
         {
-            return $"global::DotBoxD.Plugins.KernelRpcValue.Guid({expression})";
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Guid({expression})";
         }
 
         if (DotBoxDRpcTypeMapper.IsDateTimeWireType(type))
@@ -75,22 +75,22 @@ internal sealed partial class RpcKernelValueConversionEmitter
 
         if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
         {
-            return $"global::DotBoxD.Plugins.KernelRpcValue.Int32({expression}.DayNumber)";
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32({expression}.DayNumber)";
         }
 
         if (DotBoxDRpcTypeMapper.IsTimeOnlyWireType(type))
         {
-            return $"global::DotBoxD.Plugins.KernelRpcValue.Int64({expression}.Ticks)";
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64({expression}.Ticks)";
         }
 
         if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
         {
-            return $"global::DotBoxD.Plugins.KernelRpcValue.Int64({expression}.Ticks)";
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64({expression}.Ticks)";
         }
 
         if (DotBoxDRpcTypeMapper.IsCancellationTokenWireType(type))
         {
-            return $"global::DotBoxD.Plugins.KernelRpcValue.Bool({expression}.IsCancellationRequested)";
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Bool({expression}.IsCancellationRequested)";
         }
 
         if (DotBoxDRpcTypeMapper.IsIndexWireType(type))
@@ -106,8 +106,8 @@ internal sealed partial class RpcKernelValueConversionEmitter
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return DotBoxDRpcTypeMapper.EnumUsesI64(enumType)
-                ? $"global::DotBoxD.Plugins.KernelRpcValue.Int64(unchecked((long){expression}))"
-                : $"global::DotBoxD.Plugins.KernelRpcValue.Int32(unchecked((int){expression}))";
+                ? $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64(unchecked((long){expression}))"
+                : $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32(unchecked((int){expression}))";
         }
 
         if (DotBoxDRpcTypeMapper.ListElementType(type) is not null)

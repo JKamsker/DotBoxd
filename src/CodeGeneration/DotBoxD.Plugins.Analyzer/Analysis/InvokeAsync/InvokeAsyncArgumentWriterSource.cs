@@ -12,12 +12,12 @@ internal static class InvokeAsyncArgumentWriterSource
     private static string WriteExpression(ITypeSymbol type, string expression, int depth)
         => type.SpecialType switch
         {
-            SpecialType.System_Boolean => $"global::DotBoxD.Plugins.KernelRpcValue.Bool({expression})",
-            SpecialType.System_Int32 => $"global::DotBoxD.Plugins.KernelRpcValue.Int32({expression})",
-            SpecialType.System_Int64 => $"global::DotBoxD.Plugins.KernelRpcValue.Int64({expression})",
-            SpecialType.System_Double => $"global::DotBoxD.Plugins.KernelRpcValue.Double({expression})",
-            SpecialType.System_Single => $"global::DotBoxD.Plugins.KernelRpcValue.Double({expression})",
-            SpecialType.System_String => $"global::DotBoxD.Plugins.KernelRpcValue.String({expression})",
+            SpecialType.System_Boolean => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Bool({expression})",
+            SpecialType.System_Int32 => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32({expression})",
+            SpecialType.System_Int64 => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64({expression})",
+            SpecialType.System_Double => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Double({expression})",
+            SpecialType.System_Single => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Double({expression})",
+            SpecialType.System_String => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.String({expression})",
             _ => WriteComplexExpression(type, expression, depth)
         };
 
@@ -25,7 +25,7 @@ internal static class InvokeAsyncArgumentWriterSource
     {
         if (DotBoxDRpcTypeMapper.IsGuid(type))
         {
-            return $"global::DotBoxD.Plugins.KernelRpcValue.Guid({expression})";
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Guid({expression})";
         }
 
         if (DotBoxDRpcTypeMapper.IsDateTimeWireType(type))
@@ -37,17 +37,17 @@ internal static class InvokeAsyncArgumentWriterSource
 
         if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
         {
-            return $"global::DotBoxD.Plugins.KernelRpcValue.Int64({expression}.Ticks)";
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64({expression}.Ticks)";
         }
 
         if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
         {
-            return $"global::DotBoxD.Plugins.KernelRpcValue.Int32({expression}.DayNumber)";
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32({expression}.DayNumber)";
         }
 
         if (DotBoxDRpcTypeMapper.IsTimeOnlyWireType(type))
         {
-            return $"global::DotBoxD.Plugins.KernelRpcValue.Int64({expression}.Ticks)";
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64({expression}.Ticks)";
         }
 
         if (DotBoxDRpcTypeMapper.IsIndexWireType(type))
@@ -63,8 +63,8 @@ internal static class InvokeAsyncArgumentWriterSource
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return DotBoxDRpcTypeMapper.EnumUsesI64(enumType)
-                ? $"global::DotBoxD.Plugins.KernelRpcValue.Int64(unchecked((long){expression}))"
-                : $"global::DotBoxD.Plugins.KernelRpcValue.Int32(unchecked((int){expression}))";
+                ? $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64(unchecked((long){expression}))"
+                : $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32(unchecked((int){expression}))";
         }
 
         if (DotBoxDRpcTypeMapper.ListElementType(type) is { } elementType)
@@ -98,7 +98,7 @@ internal static class InvokeAsyncArgumentWriterSource
                 depth + 1);
         }
 
-        return "global::DotBoxD.Plugins.KernelRpcValue.Record(new global::DotBoxD.Plugins.KernelRpcValue[] { " +
+        return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Record(new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[] {{ " +
                string.Join(", ", values) +
                " })";
     }
@@ -112,7 +112,7 @@ internal static class InvokeAsyncArgumentWriterSource
             ? IndexedListBody(listType, value, item, itemExpression, depth)
             : EnumerableListBody(value, item, itemExpression, depth);
 
-        return "((global::System.Func<" + TypeName(listType) + ", global::DotBoxD.Plugins.KernelRpcValue>)(static " +
+        return "((global::System.Func<" + TypeName(listType) + $", {DotBoxDRpcValueNames.GlobalKernelRpcValue}>)(static " +
                value + " => { global::System.ArgumentNullException.ThrowIfNull(" + value + "); " +
                body + " }))(" + expression + ")";
     }
@@ -130,12 +130,12 @@ internal static class InvokeAsyncArgumentWriterSource
         var countExpression = listType is IArrayTypeSymbol ? value + ".Length" : value + ".Count";
         return "var " + count + " = " + countExpression + "; " +
                "var " + items + " = " + count + " == 0 ? " +
-               "global::System.Array.Empty<global::DotBoxD.Plugins.KernelRpcValue>() : " +
-               "new global::DotBoxD.Plugins.KernelRpcValue[" + count + "]; " +
+               $"global::System.Array.Empty<{DotBoxDRpcValueNames.GlobalKernelRpcValue}>() : " +
+               $"new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[" + count + "]; " +
                "for (var " + index + " = 0; " + index + " < " + count + "; " + index + "++) { var " +
                item + " = " + value + "[" + index + "]; " +
                items + "[" + index + "] = " + itemExpression + "; } " +
-               "return global::DotBoxD.Plugins.KernelRpcValue.List(" + items + ");";
+               $"return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.List(" + items + ");";
     }
 
     private static string EnumerableListBody(string value, string item, string itemExpression, int depth)
@@ -146,17 +146,17 @@ internal static class InvokeAsyncArgumentWriterSource
         var fallbackItems = Local("fallbackItems", depth);
         return "if (global::System.Linq.Enumerable.TryGetNonEnumeratedCount(" + value + ", out var " + count + ")) { " +
                "var " + items + " = " + count + " == 0 ? " +
-               "global::System.Array.Empty<global::DotBoxD.Plugins.KernelRpcValue>() : " +
-               "new global::DotBoxD.Plugins.KernelRpcValue[" + count + "]; " +
+               $"global::System.Array.Empty<{DotBoxDRpcValueNames.GlobalKernelRpcValue}>() : " +
+               $"new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[" + count + "]; " +
                "var " + index + " = 0; foreach (var " + item + " in " + value + ") { " +
                "if (" + index + " >= " + items + ".Length) { global::System.Array.Resize(ref " + items +
                ", checked(" + index + " + 1)); } " +
                items + "[" + index + "++] = " + itemExpression + "; } " +
                "if (" + index + " != " + items + ".Length) { global::System.Array.Resize(ref " + items + ", " +
-               index + "); } return global::DotBoxD.Plugins.KernelRpcValue.List(" + items + "); } " +
-               "var " + fallbackItems + " = new global::System.Collections.Generic.List<global::DotBoxD.Plugins.KernelRpcValue>(); " +
+               index + $"); }} return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.List(" + items + "); } " +
+               "var " + fallbackItems + $" = new global::System.Collections.Generic.List<{DotBoxDRpcValueNames.GlobalKernelRpcValue}>(); " +
                "foreach (var " + item + " in " + value + ") { " + fallbackItems + ".Add(" + itemExpression + "); } " +
-               "return global::DotBoxD.Plugins.KernelRpcValue.List(" + fallbackItems + ".ToArray());";
+               $"return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.List(" + fallbackItems + ".ToArray());";
     }
 
     private static string WriteMapExpression(
@@ -174,22 +174,22 @@ internal static class InvokeAsyncArgumentWriterSource
         var keyExpression = WriteExpression(keyType, pair + ".Key", depth + 1);
         var valueExpression = WriteExpression(valueType, pair + ".Value", depth + 1);
 
-        return "((global::System.Func<" + TypeName(mapType) + ", global::DotBoxD.Plugins.KernelRpcValue>)(static " +
+        return "((global::System.Func<" + TypeName(mapType) + $", {DotBoxDRpcValueNames.GlobalKernelRpcValue}>)(static " +
                value + " => { global::System.ArgumentNullException.ThrowIfNull(" + value + "); " +
                "var " + entryCount + " = " + value + ".Count * 2; " +
                "var " + entries + " = " + entryCount + " == 0 ? " +
-               "global::System.Array.Empty<global::DotBoxD.Plugins.KernelRpcValue>() : " +
-               "new global::DotBoxD.Plugins.KernelRpcValue[" + entryCount + "]; " +
+               $"global::System.Array.Empty<{DotBoxDRpcValueNames.GlobalKernelRpcValue}>() : " +
+               $"new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[" + entryCount + "]; " +
                "var " + index + " = 0; foreach (var " + pair + " in " + value + ") { " +
                entries + "[" + index + "++] = " + keyExpression + "; " +
                entries + "[" + index + "++] = " + valueExpression + "; } " +
-               "return global::DotBoxD.Plugins.KernelRpcValue.Map(" + entries + "); }))(" + expression + ")";
+               $"return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.Map(" + entries + "); }))(" + expression + ")";
     }
 
     private static string WriteDateTimeOffsetExpression(string expression, int depth)
     {
         var value = Local("dateTimeOffset", depth);
-        return "((global::System.Func<global::System.DateTimeOffset, global::DotBoxD.Plugins.KernelRpcValue>)(static " +
+        return $"((global::System.Func<global::System.DateTimeOffset, {DotBoxDRpcValueNames.GlobalKernelRpcValue}>)(static " +
                value + " => " + DateTimeOffsetRecordExpression(value) + "))(" + expression + ")";
     }
 
@@ -197,7 +197,7 @@ internal static class InvokeAsyncArgumentWriterSource
     {
         var value = Local("dateTime", depth);
         var offset = Local("offset", depth);
-        return "((global::System.Func<global::System.DateTime, global::DotBoxD.Plugins.KernelRpcValue>)(static " + value + " => " +
+        return $"((global::System.Func<global::System.DateTime, {DotBoxDRpcValueNames.GlobalKernelRpcValue}>)(static " + value + " => " +
            "{ if (" + value + ".Kind != global::System.DateTimeKind.Unspecified) { " +
            "throw new global::System.NotSupportedException(\"InvokeAsync DateTime values must use DateTimeKind.Unspecified; use System.DateTimeOffset to preserve offset or UTC/local semantics.\"); } " +
            "var " + offset + " = new global::System.DateTimeOffset(" + value + ", global::System.TimeSpan.Zero); " +
@@ -206,17 +206,17 @@ internal static class InvokeAsyncArgumentWriterSource
     }
 
     private static string DateTimeOffsetRecordExpression(string value)
-        => "global::DotBoxD.Plugins.KernelRpcValue.Record(new global::DotBoxD.Plugins.KernelRpcValue[] { " +
-           "global::DotBoxD.Plugins.KernelRpcValue.Int64(" + value + ".UtcTicks), " +
-           "global::DotBoxD.Plugins.KernelRpcValue.Int64(" + value + ".Offset.Ticks) })";
+        => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Record(new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[] {{ " +
+           $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64(" + value + ".UtcTicks), " +
+           $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64(" + value + ".Offset.Ticks) })";
 
     private static string WriteIndexExpression(string expression)
-        => "global::DotBoxD.Plugins.KernelRpcValue.Record(new global::DotBoxD.Plugins.KernelRpcValue[] { " +
-           "global::DotBoxD.Plugins.KernelRpcValue.Int32(" + expression + ".Value), " +
-           "global::DotBoxD.Plugins.KernelRpcValue.Bool(" + expression + ".IsFromEnd) })";
+        => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Record(new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[] {{ " +
+           $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32(" + expression + ".Value), " +
+           $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Bool(" + expression + ".IsFromEnd) })";
 
     private static string WriteRangeExpression(string expression)
-        => "global::DotBoxD.Plugins.KernelRpcValue.Record(new global::DotBoxD.Plugins.KernelRpcValue[] { " +
+        => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Record(new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[] {{ " +
            WriteIndexExpression(expression + ".Start") + ", " +
            WriteIndexExpression(expression + ".End") + " })";
 

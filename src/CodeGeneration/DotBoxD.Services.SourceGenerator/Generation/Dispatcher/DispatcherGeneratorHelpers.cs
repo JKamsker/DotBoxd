@@ -10,9 +10,9 @@ internal static class DispatcherGeneratorHelpers
     public static string BuildStreamingArgument(ParameterModel parameter, string source) =>
         parameter.StreamKind switch
         {
-            ParameterStreamKind.Stream => $"streaming.GetStream({source})",
-            ParameterStreamKind.Pipe => $"streaming.GetPipe({source})",
-            ParameterStreamKind.AsyncEnumerable => $"streaming.GetAsyncEnumerable<{parameter.StreamItemType}>({source})",
+            ParameterStreamKind.Stream => $"streaming.{ServicesGeneratorMemberNames.RpcStreamingContext.GetStream}({source})",
+            ParameterStreamKind.Pipe => $"streaming.{ServicesGeneratorMemberNames.RpcStreamingContext.GetPipe}({source})",
+            ParameterStreamKind.AsyncEnumerable => $"streaming.{ServicesGeneratorMemberNames.RpcStreamingContext.GetAsyncEnumerable}<{parameter.StreamItemType}>({source})",
             _ => source,
         };
 

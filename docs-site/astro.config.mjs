@@ -35,6 +35,7 @@ export default defineConfig({
       customCss: ['./src/styles/custom.css'],
       sidebar: [
         { label: 'Overview', slug: 'overview' },
+        { label: 'Why DotBoxD?', slug: 'why-dotboxd' },
         { label: 'Getting started', slug: 'getting-started' },
         {
           label: 'Tutorials',
