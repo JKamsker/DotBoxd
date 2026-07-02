@@ -24,7 +24,7 @@ public Task StopAsync(CancellationToken ct = default)
 public Task<Payload> ReceiveAsync(CancellationToken ct = default) =>
 public TcpConnection(TcpClient client, TimeSpan? frameReadIdleTimeout)
 public TcpConnection(TcpClient client) : this(client, null)
-public TcpServerTransport(int port) : this(IPAddress.Any, port)
+public TcpServerTransport(int port) : this(IPAddress.Loopback, port)
 public TcpServerTransport(IPAddress address, int port)
 public TcpServerTransport(string address, int port)
 public TcpTransport(string host, int port)
