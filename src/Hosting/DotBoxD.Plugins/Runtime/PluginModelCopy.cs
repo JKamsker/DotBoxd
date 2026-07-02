@@ -10,6 +10,16 @@ internal static class PluginModelCopy
         return new ReadOnlyCollection<T>(values.ToArray());
     }
 
+    public static IReadOnlyList<T> List<T>(IEnumerable<T> values, string parameterName)
+    {
+        if (values is null)
+        {
+            throw new ArgumentNullException(parameterName);
+        }
+
+        return new ReadOnlyCollection<T>(values.ToArray());
+    }
+
     public static PluginPackage Package(PluginPackage package)
     {
         ArgumentNullException.ThrowIfNull(package);
@@ -59,9 +69,14 @@ internal static class PluginModelCopy
         var copy = new HookSubscriptionManifest[subscriptions.Count];
         for (var i = 0; i < copy.Length; i++)
         {
-            copy[i] = subscriptions[i] with
+            var subscription = subscriptions[i] ??
+                throw new ArgumentException(
+                    "Subscriptions cannot contain null elements.",
+                    nameof(PluginManifest.Subscriptions));
+
+            copy[i] = subscription with
             {
-                IndexedPredicates = subscriptions[i].IndexedPredicates
+                IndexedPredicates = subscription.IndexedPredicates
             };
         }
 
