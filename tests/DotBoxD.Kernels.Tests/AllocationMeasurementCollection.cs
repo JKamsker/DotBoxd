@@ -24,4 +24,6 @@ namespace DotBoxD.Kernels.Tests;
 public sealed class AllocationMeasurementCollection
 {
     public const string Name = "Allocation measurement (serial)";
+    public const string TraitName = "Category";
+    public const string TraitValue = "AllocationMeasurement";
 }

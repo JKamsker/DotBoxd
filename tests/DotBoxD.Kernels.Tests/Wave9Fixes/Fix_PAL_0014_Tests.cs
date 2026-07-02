@@ -23,6 +23,7 @@ namespace DotBoxD.Kernels.Tests.Wave9Fixes;
 // allocation should be at parity with the explicit low-allocation path. It is red today because the
 // default path allocates materially more per call.
 [Collection(AllocationMeasurementCollection.Name)]
+[Trait(AllocationMeasurementCollection.TraitName, AllocationMeasurementCollection.TraitValue)]
 public sealed class Fix_PAL_0014_Tests
 {
     private const int WarmupIterations = 200;

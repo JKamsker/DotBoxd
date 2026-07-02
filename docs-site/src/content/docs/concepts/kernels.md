@@ -19,9 +19,9 @@ The kernel is the shared substrate that makes accepting untrusted author logic s
 abstract instruction budget — each operation costs fuel, and the kernel is stopped when the budget
 runs out), loop iterations, call depth, list length, output bytes, and per-capability quotas. A buggy or hostile
 kernel cannot exhaust host resources or reach disallowed effects, and it can touch only the
-`[HostBinding]`s the host explicitly exposes — a method reachable via normal RPC is **not**
-automatically reachable from a kernel. This is what makes both server-side lowerings safe to accept
-from less-trusted plugin authors.
+[host bindings](/concepts/host-bindings/) the host explicitly exposes — a method reachable via
+normal RPC is **not** automatically reachable from a kernel. This is what makes both server-side
+lowerings safe to accept from less-trusted plugin authors.
 
 **Grounded specifics:**
 
@@ -61,7 +61,8 @@ For the smallest end-to-end host, see section 2 (Kernels) of the root README
 
 Beyond that metering, host capabilities (files, time,
 random, logging, HTTP via `DotBoxD.Hosting.Http`) are exposed
-only through explicit **capability grants** — see [capabilities-and-bindings](/security/sandbox-caveats/)
+only through explicit [host bindings](/concepts/host-bindings/) and **capability grants** — see
+[capabilities-and-bindings](/security/sandbox-caveats/)
 and the full spec under [`docs/Specs/`](https://github.com/JKamsker/DotBoxD/tree/main/docs/Specs).
 
 Async binding tails are also capability-gated. Policies must grant `dotboxd.runtime.async` via
