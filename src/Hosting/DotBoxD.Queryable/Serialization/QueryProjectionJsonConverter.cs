@@ -22,9 +22,9 @@ public sealed class QueryProjectionJsonConverter : JsonConverter<QueryProjection
         return kind switch
         {
             QueryProjectionKind.Identity => QueryProjection.Identity,
-            QueryProjectionKind.Member => QueryProjection.Member(RequiredString(element, "path")),
+            QueryProjectionKind.Member => QueryProjection.Member(RequiredStructuralString(element, "path")),
             QueryProjectionKind.Construct => QueryProjection.Construct(
-                RequiredString(element, "type"),
+                RequiredStructuralString(element, "type"),
                 ReadFields(element, options)),
             _ => throw new JsonException($"Unsupported query projection kind '{kind}'."),
         };
@@ -48,10 +48,18 @@ public sealed class QueryProjectionJsonConverter : JsonConverter<QueryProjection
             case QueryProjectionKind.Identity:
                 break;
             case QueryProjectionKind.Member:
-                writer.WriteString("path", QueryProjectionInvariants.MemberPath(value));
+                writer.WriteString(
+                    "path",
+                    EventQueryJsonStringSafety.RequireWellFormedUtf16(
+                        QueryProjectionInvariants.MemberPath(value),
+                        "projection.path"));
                 break;
             case QueryProjectionKind.Construct:
-                writer.WriteString("type", QueryProjectionInvariants.ConstructTypeName(value));
+                writer.WriteString(
+                    "type",
+                    EventQueryJsonStringSafety.RequireWellFormedUtf16(
+                        QueryProjectionInvariants.ConstructTypeName(value),
+                        "projection.type"));
                 writer.WritePropertyName("fields");
                 WriteFields(writer, value.Fields, options);
                 break;
@@ -71,10 +79,17 @@ public sealed class QueryProjectionJsonConverter : JsonConverter<QueryProjection
         foreach (var field in fields)
         {
             writer.WriteStartObject();
-            writer.WriteString("name", QueryProjectionInvariants.FieldName(field));
+            var fieldName = QueryProjectionInvariants.FieldName(field);
+            writer.WriteString(
+                "name",
+                EventQueryJsonStringSafety.RequireWellFormedUtf16(fieldName, "projection.fields.name"));
             if (QueryProjectionInvariants.FieldHasPath(field))
             {
-                writer.WriteString("path", QueryProjectionInvariants.FieldPath(field));
+                writer.WriteString(
+                    "path",
+                    EventQueryJsonStringSafety.RequireWellFormedUtf16(
+                        QueryProjectionInvariants.FieldPath(field),
+                        "projection.fields.path"));
             }
             else
             {
@@ -94,7 +109,7 @@ public sealed class QueryProjectionJsonConverter : JsonConverter<QueryProjection
         foreach (var field in RequiredProperty(element, "fields").EnumerateArray())
         {
             var name = field.TryGetProperty("name", out var n) && n.GetString() is { } parsed
-                ? parsed
+                ? EventQueryJsonStringSafety.RequireWellFormedUtf16(parsed, "projection.fields.name")
                 : throw new JsonException("Query projection field is missing 'name'.");
 
             // A field is either a member read ('path') or a constant ('value'), never both or neither —
@@ -111,8 +126,10 @@ public sealed class QueryProjectionJsonConverter : JsonConverter<QueryProjection
             {
                 fields.Add(QueryProjectionField.FromMember(
                     name,
-                    path.GetString() ?? throw new JsonException(
-                        $"Query projection field '{name}' property 'path' must be a string.")));
+                    RequiredStructuralString(
+                        path,
+                        $"Query projection field '{name}' property 'path' must be a string.",
+                        "projection.fields.path")));
             }
             else
             {
@@ -158,6 +175,16 @@ public sealed class QueryProjectionJsonConverter : JsonConverter<QueryProjection
     private static string RequiredString(JsonElement element, string property)
         => RequiredProperty(element, property).GetString()
             ?? throw new JsonException($"Query projection property '{property}' must be a string.");
+
+    private static string RequiredStructuralString(JsonElement element, string property)
+        => EventQueryJsonStringSafety.RequireWellFormedUtf16(
+            RequiredString(element, property),
+            $"projection.{property}");
+
+    private static string RequiredStructuralString(JsonElement element, string message, string name)
+        => element.GetString() is { } value
+            ? EventQueryJsonStringSafety.RequireWellFormedUtf16(value, name)
+            : throw new JsonException(message);
 
     private static JsonElement RequiredProperty(JsonElement element, string property)
         => element.TryGetProperty(property, out var value)

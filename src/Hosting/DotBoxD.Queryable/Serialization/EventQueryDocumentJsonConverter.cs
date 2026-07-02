@@ -21,7 +21,7 @@ public sealed class EventQueryDocumentJsonConverter : JsonConverter<EventQueryDo
         var root = document.RootElement;
 
         var eventName = root.TryGetProperty("event", out var e) && e.GetString() is { } name
-            ? name
+            ? EventQueryJsonStringSafety.RequireWellFormedUtf16(name, "event")
             : throw new JsonException("Event query document is missing required property 'event'.");
 
         var filter = root.TryGetProperty("filter", out var f)
@@ -44,7 +44,9 @@ public sealed class EventQueryDocumentJsonConverter : JsonConverter<EventQueryDo
 
         writer.WriteStartObject();
         writer.WriteNumber("version", CurrentVersion);
-        writer.WriteString("event", value.EventName);
+        writer.WriteString(
+            "event",
+            EventQueryJsonStringSafety.RequireWellFormedUtf16(value.EventName, "event"));
         writer.WritePropertyName("filter");
         JsonSerializer.Serialize(writer, value.Filter, options);
         writer.WritePropertyName("projection");

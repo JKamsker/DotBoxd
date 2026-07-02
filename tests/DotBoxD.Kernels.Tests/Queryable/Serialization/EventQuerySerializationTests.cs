@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DotBoxD.Kernels.Model;
 using DotBoxD.Queryable.Ast;
 using DotBoxD.Queryable.Serialization;
 using DotBoxD.Queryable.Translation;
@@ -71,6 +72,50 @@ public sealed class EventQuerySerializationTests
     }
 
     [Fact]
+    public void Structural_strings_round_trip_valid_surrogate_pairs()
+    {
+        var value = "prefix-\ud83d\ude00-suffix";
+        var document = EventQueryDocument.Create(
+            value,
+            QueryFilter.MatchAll,
+            QueryProjection.Construct(
+                "Notice",
+                [QueryProjectionField.FromMember(value, value)]));
+
+        var restored = EventQueryJson.Deserialize(EventQueryJson.Serialize(document));
+
+        Assert.Equal(value, restored.EventName);
+        var field = Assert.Single(restored.Projection.Fields);
+        Assert.Equal(value, field.Name);
+        Assert.Equal(value, field.Path);
+    }
+
+    [Theory]
+    [InlineData(StructuralStringTarget.EventName)]
+    [InlineData(StructuralStringTarget.ProjectionPath)]
+    [InlineData(StructuralStringTarget.ProjectionFieldName)]
+    public void Structural_strings_round_trip_without_utf16_replacement(
+        StructuralStringTarget target)
+    {
+        const string expected = "prefix-\ud800-suffix";
+        var exception = Record.Exception(() =>
+        {
+            var restored = EventQueryJson.Deserialize(EventQueryJson.Serialize(CreateDocument(target, expected)));
+            Assert.Equal(expected, ReadRestoredValue(target, restored));
+        });
+
+        if (exception is null)
+        {
+            return;
+        }
+
+        Assert.True(
+            exception is JsonException or InvalidOperationException or SandboxValidationException,
+            $"Expected JSON boundary rejection or exact round trip, got {exception.GetType().Name}: {exception.Message}");
+        AssertMalformedUtf16Message(exception);
+    }
+
+    [Fact]
     public void Fingerprint_is_stable_and_order_independent()
     {
         var attacker = QueryFilter.Compare("AttackerId", QueryComparisonOperator.Equal, QueryValue.FromString("player-1"));
@@ -110,5 +155,47 @@ public sealed class EventQuerySerializationTests
             QueryProjection.Identity);
 
         Assert.NotEqual(QueryFingerprint.Compute(a), QueryFingerprint.Compute(b));
+    }
+
+    private static void AssertMalformedUtf16Message(Exception exception)
+    {
+        Assert.True(
+            exception.Message.Contains("surrogate", StringComparison.OrdinalIgnoreCase) ||
+            exception.Message.Contains("UTF-16", StringComparison.OrdinalIgnoreCase) ||
+            exception.Message.Contains("malformed", StringComparison.OrdinalIgnoreCase),
+            $"Expected malformed UTF-16 boundary message, got: {exception.Message}");
+    }
+
+    private static EventQueryDocument CreateDocument(StructuralStringTarget target, string value)
+        => target switch
+        {
+            StructuralStringTarget.EventName =>
+                EventQueryDocument.Create(value, QueryFilter.MatchAll, QueryProjection.Identity),
+            StructuralStringTarget.ProjectionPath =>
+                EventQueryDocument.Create("AttackEvent", QueryFilter.MatchAll, QueryProjection.Member(value)),
+            StructuralStringTarget.ProjectionFieldName =>
+                EventQueryDocument.Create(
+                    "AttackEvent",
+                    QueryFilter.MatchAll,
+                    QueryProjection.Construct(
+                        "Notice",
+                        [QueryProjectionField.FromMember(value, "AttackerId")])),
+            _ => throw new ArgumentOutOfRangeException(nameof(target), target, null),
+        };
+
+    private static string ReadRestoredValue(StructuralStringTarget target, EventQueryDocument document)
+        => target switch
+        {
+            StructuralStringTarget.EventName => document.EventName,
+            StructuralStringTarget.ProjectionPath => document.Projection.Path!,
+            StructuralStringTarget.ProjectionFieldName => Assert.Single(document.Projection.Fields).Name,
+            _ => throw new ArgumentOutOfRangeException(nameof(target), target, null),
+        };
+
+    public enum StructuralStringTarget
+    {
+        EventName,
+        ProjectionPath,
+        ProjectionFieldName,
     }
 }
