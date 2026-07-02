@@ -70,6 +70,37 @@ public sealed class EventQuerySerializationTests
         Assert.Contains("\"kind\":\"construct\"", json, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(QueryFilterKind.And)]
+    [InlineData(QueryFilterKind.Or)]
+    public void Empty_boolean_filter_initializers_are_rejected_or_preserved_by_json_round_trip(QueryFilterKind kind)
+    {
+        var filter = new QueryFilter { Kind = kind };
+        QueryFilter? restored = null;
+
+        var exception = Record.Exception(() =>
+        {
+            var json = JsonSerializer.Serialize(filter, EventQueryJson.Options);
+            restored = JsonSerializer.Deserialize<QueryFilter>(json, EventQueryJson.Options);
+        });
+
+        if (exception is not null)
+        {
+            Assert.True(exception is InvalidOperationException or JsonException);
+            Assert.Contains("QueryFilter", exception.Message, StringComparison.Ordinal);
+            Assert.Contains(kind.ToString(), exception.Message, StringComparison.Ordinal);
+            Assert.True(
+                exception.Message.Contains("empty", StringComparison.OrdinalIgnoreCase) ||
+                exception.Message.Contains("terms", StringComparison.OrdinalIgnoreCase),
+                $"Expected an empty boolean-terms validation message, but got: {exception.Message}");
+            return;
+        }
+
+        Assert.NotNull(restored);
+        Assert.Equal(kind, restored.Kind);
+        Assert.Empty(restored.Children);
+    }
+
     [Fact]
     public void Fingerprint_is_stable_and_order_independent()
     {
