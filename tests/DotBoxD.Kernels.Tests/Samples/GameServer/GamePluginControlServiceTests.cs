@@ -168,7 +168,14 @@ public sealed class GamePluginControlServiceTests
     public void GameServer_project_builds_child_plugin_project()
     {
         var project = XDocument.Load(GameServerProjectPath());
-        Assert.DoesNotContain(project.Descendants("ProjectReference"), IsGamePluginReference);
+        var generatedSampleReferences = project.Descendants("ProjectReference")
+            .Where(IsGeneratedSampleReference)
+            .ToArray();
+
+        Assert.NotEmpty(generatedSampleReferences);
+        Assert.All(
+            generatedSampleReferences,
+            reference => Assert.Equal("false", (string?)reference.Attribute("ReferenceOutputAssembly")));
     }
 
     private static object Create(Assembly assembly, string typeName, params object[] args)
@@ -214,12 +221,13 @@ public sealed class GamePluginControlServiceTests
         return KernelPackageRegistry.Resolve(kernelType);
     }
 
-    private static bool IsGamePluginReference(XElement reference)
+    private static bool IsGeneratedSampleReference(XElement reference)
     {
         var include = ((string?)reference.Attribute("Include"))?.Replace('\\', '/');
-        return include?.EndsWith(
-            "/Examples.GameServer.Plugin/Examples.GameServer.Plugin.csproj",
-            StringComparison.Ordinal) is true;
+        return include is not null &&
+            (include.EndsWith("/Examples.GameServer.Plugin/Examples.GameServer.Plugin.csproj", StringComparison.Ordinal) ||
+             include.EndsWith("/Examples.GameServer.Plugin.Client/Examples.GameServer.Plugin.Client.csproj", StringComparison.Ordinal) ||
+             include.EndsWith("/Examples.GameServer.Client/Examples.GameServer.Client.csproj", StringComparison.Ordinal));
     }
 
     private static string GameServerAssemblyPath()

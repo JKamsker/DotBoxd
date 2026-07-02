@@ -9,6 +9,7 @@ TestResults/
 *.snupkg
 artifacts/
 BenchmarkDotNet.Artifacts/
+samples/GameServer/plugins/
 
 error.log
 

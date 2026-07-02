@@ -1,7 +1,10 @@
 <Solution>
   <Folder Name="/samples/GameServer/">
     <Project Path="samples/GameServer/Examples.GameServer.Plugin.Tests/Examples.GameServer.Plugin.Tests.csproj" />
+    <Project Path="samples/GameServer/Examples.GameServer.Client.Abstractions/Examples.GameServer.Client.Abstractions.csproj" />
+    <Project Path="samples/GameServer/Examples.GameServer.Client/Examples.GameServer.Client.csproj" />
     <Project Path="samples/GameServer/Examples.GameServer.Plugin/Examples.GameServer.Plugin.csproj" />
+    <Project Path="samples/GameServer/Examples.GameServer.Plugin.Client/Examples.GameServer.Plugin.Client.csproj" />
     <Project Path="samples/GameServer/Examples.GameServer.Server.Abstractions/Examples.GameServer.Server.Abstractions.csproj" />
     <Project Path="samples/GameServer/Examples.GameServer.Server/Examples.GameServer.Server.csproj" />
   </Folder>

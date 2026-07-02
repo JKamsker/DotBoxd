@@ -127,6 +127,7 @@ internal static partial class HostServiceBindingFactory
         Type? payloadType)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        context.RequireCapability(capability);
         var startedAt = DateTimeOffset.UtcNow;
         var values = ConvertArguments(callTarget.ParameterTypes, args, startIndex: 0);
         var result = callTarget.Invoke(target, values);
@@ -151,6 +152,7 @@ internal static partial class HostServiceBindingFactory
         Type? payloadType)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        context.RequireCapability(capability);
         var startedAt = DateTimeOffset.UtcNow;
         var factoryValues = ConvertArguments(factoryCallTarget.ParameterTypes, args, startIndex: 0);
         var handle = factoryCallTarget.Invoke(factoryTarget, factoryValues)

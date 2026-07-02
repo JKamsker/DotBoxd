@@ -30,6 +30,13 @@ internal static class Program
 {
     public static async Task<int> Main(string[] args)
     {
+        if (args.Length == 2 && string.Equals(args[0], "--export", StringComparison.Ordinal))
+        {
+            PackageExport.ExportAll(args[1]);
+            Console.WriteLine($"[plugin-export] server bundles exported to '{Path.GetFullPath(args[1])}'.");
+            return 0;
+        }
+
         string pipeName;
         try
         {

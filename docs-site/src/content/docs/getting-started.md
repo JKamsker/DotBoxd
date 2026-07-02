@@ -66,7 +66,8 @@ For the fluent event-pipeline equivalent — `server.Hooks` over a `GamePluginSe
 
 Expose a contract method that composes host data and runs a validated kernel server-side, so the client
 submits work in one round-trip instead of N. The GameServer sample demonstrates this with the
-`MonsterKillerKernel` server extension. See [concepts/pushdown.md](/concepts/pushdown/), or
+`BountyPayoutKernel` server extension, which the client reaches only through the approved
+`bounty.claim` relay operation. See [concepts/pushdown.md](/concepts/pushdown/), or
 [build it step by step](/tutorials/pushdown-server-extension/).
 
 ## Run the maintained example
@@ -78,12 +79,13 @@ run from the repo root:
 dotnet run -c Release --project samples/GameServer/Examples.GameServer.Server/Examples.GameServer.Server.csproj
 ```
 
-You should see three phases print — a baseline run, a with-plugins run, and a summary confirming the
-plugin's kernels unloaded on disconnect. For the annotated output, see
+You should see the server install phase, a baseline run, a TCP client connection, client sandbox
+install/deny messages, bounty claims, and a summary. For the annotated output, see
 [What the run prints](/examples/gameserver-walkthrough/#what-the-run-prints).
 
-It demonstrates service IPC, event kernels, live settings, host bindings, policy-gated execution,
-server extensions, and unload-on-disconnect. Features no longer covered by maintained samples are listed in
+It demonstrates service IPC, disk plugin bundles, event kernels, live settings, host bindings,
+policy-gated execution, server extensions, and client-side sandboxing. Features no longer covered by
+maintained samples are listed in
 [`docs/examples/coverage-gaps.md`](/examples/coverage-gaps/).
 
 ## Next steps

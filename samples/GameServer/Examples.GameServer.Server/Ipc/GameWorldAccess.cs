@@ -23,11 +23,14 @@ internal sealed class GameWorldAccess : IGameWorldAccess
         ArgumentNullException.ThrowIfNull(world);
         Monsters = new GameMonsterControl(world);
         Entities = new GameEntityControl(world);
+        Gold = new GameGoldLedger(world);
     }
 
     public IMonsterControl Monsters { get; }
 
     public IEntityControl Entities { get; }
+
+    public IGoldLedger Gold { get; }
 }
 
 internal sealed class GameMonsterControl : IMonsterControl
@@ -122,4 +125,24 @@ internal sealed class GameEntity : IEntity
 
     [HostCapability("game.world.entity.read.position", HostBindingEffect.HostStateRead)]
     public ValueTask<int> GetPositionAsync() => ValueTask.FromResult(_world().GetPosition(Id));
+}
+
+internal sealed class GameGoldLedger : IGoldLedger
+{
+    private readonly Func<GameWorld> _world;
+
+    public GameGoldLedger(Func<GameWorld> world)
+        => _world = world ?? throw new ArgumentNullException(nameof(world));
+
+    [HostCapability("game.world.gold.read.balance", HostBindingEffect.HostStateRead)]
+    public ValueTask<int> GetBalanceAsync(string entityId)
+        => ValueTask.FromResult(_world().Economy.GetBalance(entityId));
+
+    [HostCapability("game.world.gold.read.claimable", HostBindingEffect.HostStateRead)]
+    public ValueTask<bool> IsBountyClaimableAsync(string monsterId)
+        => ValueTask.FromResult(_world().Economy.IsBountyClaimable(monsterId));
+
+    [HostCapability("game.world.gold.write.grant", HostBindingEffect.HostStateWrite)]
+    public ValueTask<bool> GrantBountyAsync(string playerId, string monsterId, int amount)
+        => ValueTask.FromResult(_world().Economy.GrantBounty(playerId, monsterId, amount));
 }

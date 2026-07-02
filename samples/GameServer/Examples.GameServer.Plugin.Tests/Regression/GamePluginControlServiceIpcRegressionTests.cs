@@ -52,6 +52,12 @@ public sealed class GamePluginControlServiceIpcRegressionTests
             return ValueTask.FromResult(arguments.Reverse().ToArray());
         }
 
+        public ValueTask<string> CallPluginOperationAsync(
+            string operation,
+            string payload,
+            CancellationToken ct = default)
+            => ValueTask.FromResult("denied:test-operation");
+
         public ValueTask UpdateSettingsAsync(
             string pluginId,
             LiveSettingUpdate[] updates,

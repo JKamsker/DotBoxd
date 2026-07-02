@@ -86,7 +86,10 @@ public sealed class MonsterKillerServerExtensionRegressionTests
     private sealed class StubWorld : IGameWorldAccess
     {
         public IMonsterControl Monsters { get; } = new StubMonsterControl();
+
         public IEntityControl Entities { get; } = new StubEntityControl();
+
+        public IGoldLedger Gold { get; } = TestGoldLedger.Instance;
     }
 
     private sealed class StubMonsterControl : IMonsterControl

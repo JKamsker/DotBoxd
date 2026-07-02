@@ -28,6 +28,7 @@ internal sealed class GameWorld
         _entities = [.. entities];
         _hooks = hooks;
         _subscriptions = subscriptions;
+        Economy = new GameEconomy(subscriptions, IndexRegistry);
     }
 
     public int Tick => _tick;
@@ -40,6 +41,10 @@ internal sealed class GameWorld
     /// reflection-pinned <see cref="GameWorld"/> constructor and <c>CreateDefault</c> shapes stay stable.
     /// </summary>
     public EventIndexRegistry IndexRegistry { get; } = new();
+
+    internal SubscriptionRegistry Subscriptions => _subscriptions;
+
+    public GameEconomy Economy { get; }
 
     public static GameWorld CreateDefault(HookRegistry hooks, SubscriptionRegistry subscriptions)
         => new(
@@ -59,7 +64,7 @@ internal sealed class GameWorld
         var snapshots = new EntitySnapshot[_entities.Count];
         for (var i = 0; i < _entities.Count; i++)
         {
-            snapshots[i] = _entities[i].ToSnapshot();
+            snapshots[i] = _entities[i].ToSnapshot(Economy.GetBalance(_entities[i].Id));
         }
 
         return new WorldSnapshot(snapshots, _tick);
@@ -68,6 +73,7 @@ internal sealed class GameWorld
     public async ValueTask TickAsync(CancellationToken cancellationToken = default)
     {
         _tick++;
+        Economy.ResetTickBudget();
         foreach (var monster in Monsters())
         {
             if (!monster.IsAlive)
@@ -78,6 +84,8 @@ internal sealed class GameWorld
             monster.ClearTaunts();
             await RunMonsterAsync(monster, cancellationToken).ConfigureAwait(false);
         }
+
+        RunPlayerStrikeBacks(cancellationToken);
     }
 
     public IReadOnlyList<GameEntity> Players()
@@ -132,7 +140,13 @@ internal sealed class GameWorld
             return false;
         }
 
-        return monster.Kill();
+        var killed = monster.Kill();
+        if (killed)
+        {
+            PublishMonsterKilled(monster, "server", CancellationToken.None);
+        }
+
+        return killed;
     }
 
     private async ValueTask RunMonsterAsync(GameEntity monster, CancellationToken cancellationToken)
@@ -175,6 +189,30 @@ internal sealed class GameWorld
 
         // Plugins observe the attack and may taunt the attacker off the target.
         await _hooks.PublishAsync(attack, cancellationToken).ConfigureAwait(false);
+    }
+
+    private void RunPlayerStrikeBacks(CancellationToken cancellationToken)
+    {
+        var player = FindEntity("player-1");
+        var monster = FindEntity("monster-1");
+        if (player is not { IsAlive: true } ||
+            monster is not { Kind: EntityKind.Monster, IsAlive: true })
+        {
+            return;
+        }
+
+        monster.TakeDamage(30);
+        if (!monster.IsAlive)
+        {
+            PublishMonsterKilled(monster, player.Id, cancellationToken);
+        }
+    }
+
+    private void PublishMonsterKilled(GameEntity monster, string killerId, CancellationToken cancellationToken)
+    {
+        var killed = new MonsterKilledEvent(monster.Id, killerId, monster.Level, _tick);
+        _subscriptions.Publish(killed, cancellationToken);
+        IndexRegistry.Publish(killed, cancellationToken);
     }
 
     private IEnumerable<GameEntity> Monsters()

@@ -83,8 +83,9 @@ Query and Pushdown **both** run author-supplied logic server-side as sandboxed
 
 ## Runnable Example
 
-The maintained GameServer sample demonstrates service IPC (inter-process communication), event kernels, live settings, host
-bindings, policy-gated execution, server extensions, and unload-on-disconnect:
+The maintained GameServer sample demonstrates service IPC (inter-process communication), disk plugin
+bundles, event kernels, live settings, host bindings, policy-gated execution, server extensions, a TCP
+vendor server/client split, and client-side sandbox denial:
 
 ```bash
 dotnet run -c Release --project samples/GameServer/Examples.GameServer.Server/Examples.GameServer.Server.csproj

@@ -23,13 +23,14 @@ public readonly struct LiveSettingUpdate
 public readonly struct EntitySnapshot
 {
     [SerializationConstructor]
-    public EntitySnapshot(string id, string kind, int level, int hp, int position)
+    public EntitySnapshot(string id, string kind, int level, int hp, int position, int gold = 0)
     {
         Id = id;
         Kind = kind;
         Level = level;
         Hp = hp;
         Position = position;
+        Gold = gold;
     }
 
     [Key(0)]
@@ -46,6 +47,9 @@ public readonly struct EntitySnapshot
 
     [Key(4)]
     public int Position { get; }
+
+    [Key(5)]
+    public int Gold { get; }
 }
 
 [MessagePackObject]

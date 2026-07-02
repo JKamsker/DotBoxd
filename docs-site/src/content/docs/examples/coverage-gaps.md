@@ -15,18 +15,23 @@ for historical reference only; the examples on that tag are not part of the main
 
 GameServer remains the prime example because it combines the core plugin model in one coherent domain:
 
-- service IPC over the plugin control plane
+- service IPC over the TCP vendor server/client link
+- disk plugin bundles with separate server and client halves
 - analyzer-generated event kernel packages
 - package JSON export/import
-- live setting updates over IPC
+- operator allow-list decisions over derived package capabilities
+- live setting updates on installed server halves
 - event hook dispatch with server-owned adapters
 - host bindings behind capability grants
+- an authoritative gold economy behind server-only bindings
+- a restricted client sandbox with no gold bindings
+- an approved client-to-server relay operation
 - per-resource audit events from host bindings
 - least-privilege policy construction
 - compiled kernel execution
-- kernel RPC pushdown for server-side batch work
+- pushdown through server extensions
 - ordinary server APIs beside kernel execution
-- plugin ownership tied to the IPC connection lifetime
+- per-connection session lifetime for client feed chains
 
 ## No Longer Shown In Maintained Examples
 

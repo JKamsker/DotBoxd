@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Examples.GameServer.Plugin\Examples.GameServer.Plugin.csproj" />
+    <ProjectReference Include="..\Examples.GameServer.Client\Examples.GameServer.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>

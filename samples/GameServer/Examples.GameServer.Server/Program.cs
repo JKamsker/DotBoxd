@@ -1,40 +1,32 @@
+using System.Diagnostics;
 using DotBoxD.Kernels.Game.Server.Abstractions.Events;
 using DotBoxD.Kernels.Game.Server.Ipc;
+using DotBoxD.Kernels.Game.Server.PluginCatalog;
 using DotBoxD.Kernels.Game.Server.Simulation;
-using DotBoxD.Pushdown.Services;
 using PluginServer = DotBoxD.Plugins.PluginServer;
 
 namespace DotBoxD.Kernels.Game.Server;
 
-using System.Diagnostics;
-using System.Globalization;
-
-/// <summary>
-/// The game server (parent process): a deterministic 1D simulation that runs a baseline phase with no
-/// plugins, launches the plugin child process to ship verified kernels over IPC, then runs a with-plugin
-/// phase showing the sandboxed kernels change behavior. The per-connection IPC ceremony is wrapped in
-/// <see cref="GamePluginHost"/> so this file reads as phases.
-/// </summary>
 internal static class Program
 {
     private const int BaselineTicks = 3;
-    private const int PluginTicks = 4;
 
     public static async Task<int> Main(string[] args)
     {
-        if (args.Length > 1 || (args.Length == 1 && args[0] != "--use-builder"))
+        if (!TryParse(args, out var listenPort, out var launchClient))
         {
-            await Console.Error
-                .WriteLineAsync("Usage: Examples.GameServer.Server [--use-builder]")
-                .ConfigureAwait(false);
+            await Console.Error.WriteLineAsync(
+                "Usage: Examples.GameServer.Server [--listen <port>] [--no-launch]");
             return 1;
         }
 
-        var useBuilder = args.Length == 1;
+        var pluginsRoot = PluginsRoot();
+        if (!Directory.Exists(pluginsRoot))
+        {
+            await Console.Error.WriteLineAsync($"Plugin bundles missing: {pluginsRoot}");
+            return 1;
+        }
 
-        // (a) Build the world and plugin server. The command sink is the example-defined capability that turns
-        // plugin messages into game-state changes; the world host backs the gated ctx.Host<IGameWorldAccess>()
-        // read bindings. Both are bound to the world once it exists.
         var sink = new GameCommandSink();
         var worldHost = new GameWorldHost();
         using var server = PluginServer.Create(
@@ -43,199 +35,158 @@ internal static class Program
             defaultPolicy: ServerPolicy.Create(),
             executionMode: ExecutionMode.Compiled);
 
-        _ = server.Events.Resolve<MonsterAggroEvent>();
-        _ = server.Events.Resolve<AttackEvent>();
-
+        RegisterEvents(server);
         var world = GameWorld.CreateDefault(server.Hooks, server.Subscriptions);
         sink.Bind(world);
         worldHost.Bind(world);
 
-        // Register an opt-in dynamic event query (DotBoxD.Queryable) alongside the generated plugin path.
-        // It observes attacks for the whole run; its filter/projection is captured as a portable AST and the
-        // server logs the resulting plan below.
-        Console.WriteLine("--- DYNAMIC QUERY (DotBoxD.Queryable) ---");
-        await Queries.DynamicQueries.ConfigureAsync(server).ConfigureAwait(false);
+        Console.WriteLine("=== DotBoxD.Kernels Game Server (vendor server + vendor client) ===");
+        Console.WriteLine("[server] real vendors put authenticated session identity + TLS on this TCP link.");
         Console.WriteLine();
 
-        var playerHpBaseline = PlayerHpById(world);
-
-        Console.WriteLine("=== DotBoxD.Kernels Game Server (golden example) ===");
-        Console.WriteLine("Low-level players face nearby lvl8 monsters; two remote monsters are used by the RPC demo.");
-        Console.WriteLine();
-
-        // (b) Baseline phase: no plugins. Monsters bully the low-level players.
-        Console.WriteLine("--- BASELINE (no plugins) ---");
-        PrintWorld(world);
-        for (var i = 0; i < BaselineTicks; i++)
-        {
-            await world.TickAsync().ConfigureAwait(false);
-            Console.WriteLine($"[tick {world.Tick}]");
-            PrintWorld(world);
-        }
-
-        var baselineDamage = TotalDamageTaken(playerHpBaseline, world);
-        Console.WriteLine($"Baseline: low-level players took {baselineDamage} total damage in {BaselineTicks} ticks.");
-        Console.WriteLine();
-
-        // (c) Start the IPC control plane. GamePluginHost owns the pipe, the per-peer ownership session, and
-        // provisioning both services; when the connection drops it disposes the session and unloads the
-        // kernels it owned.
-        await using var host = await GamePluginHost.StartAsync(server, sink, world).ConfigureAwait(false);
-        Console.WriteLine($"[server] listening for plugin on pipe '{host.PipeName}'.");
-
-        // (d) Launch the plugin child process.
-        Console.WriteLine("[server] launching plugin child process...");
-        var pluginProcess = PluginLauncher.Launch(host.PipeName, useBuilder);
-        var pluginExit = pluginProcess.WaitForExitAsync();
-        var readinessTimeout = PluginReadinessGate.ReadTimeout();
-
-        // (e) Wait until the plugin has connected and installed its kernels (it then holds the connection).
-        // Fail fast if it exits early.
-        var connectionWait = await PluginReadinessGate
-            .WaitAsync(host.Connected, pluginExit, readinessTimeout)
+        var operations = new ClientOperationRegistry();
+        Console.WriteLine("--- SERVER INSTALL ---");
+        await new PluginCatalogInstaller(server, world, operations)
+            .InstallServerPartsAsync(pluginsRoot)
             .ConfigureAwait(false);
-        if (connectionWait == PluginReadinessWaitResult.PluginExited)
-        {
-            return await FailPluginAsync(host, pluginProcess, $"plugin exited before connecting (code {pluginProcess.ExitCode}).").ConfigureAwait(false);
-        }
-
-        if (connectionWait == PluginReadinessWaitResult.TimedOut)
-        {
-            return await FailPluginAsync(host, pluginProcess, "plugin did not connect before the readiness timeout.").ConfigureAwait(false);
-        }
-
-        var control = await host.Connected.ConfigureAwait(false);
-        var readyWait = await PluginReadinessGate
-            .WaitAsync(control.Ready, pluginExit, readinessTimeout)
-            .ConfigureAwait(false);
-        if (readyWait == PluginReadinessWaitResult.PluginExited)
-        {
-            return await FailPluginAsync(host, pluginProcess, $"plugin exited before installing kernels (code {pluginProcess.ExitCode}).").ConfigureAwait(false);
-        }
-
-        if (readyWait == PluginReadinessWaitResult.TimedOut)
-        {
-            return await FailPluginAsync(host, pluginProcess, "plugin did not install kernels before the readiness timeout.").ConfigureAwait(false);
-        }
-
-        Console.WriteLine("[server] plugin connected; event kernels and server extension are installed and live.");
-        Console.WriteLine("[server] Running with-plugin phase after the plugin's direct IPC/RPC setup calls.");
         Console.WriteLine();
 
-        // (f) With-plugin phase: the untrusted kernels run sandboxed WHILE the plugin is connected.
-        Console.WriteLine("--- WITH PLUGINS (guardian calms, retaliation taunts) ---");
-        var pluginPhaseStart = PlayerHpById(world);
-        for (var i = 0; i < PluginTicks; i++)
+        Console.WriteLine("--- BASELINE ---");
+        await RunTicksAsync(world, BaselineTicks).ConfigureAwait(false);
+        Console.WriteLine("[server] baseline complete; monster-1 is dead and its bounty is unclaimed.");
+        Console.WriteLine();
+
+        await using var host = await GameClientConnectionHost
+            .StartAsync(server, sink, world, operations, listenPort)
+            .ConfigureAwait(false);
+        Console.WriteLine($"[server] listening on 127.0.0.1:{host.Port}");
+        Process? client = launchClient ? ClientLauncher.Launch(host.Port, pluginsRoot) : null;
+
+        GameClientControlService control;
+        try
         {
-            await world.TickAsync().ConfigureAwait(false);
-            Console.WriteLine($"[tick {world.Tick}]");
-            PrintEffects(sink.DrainEffects());
-            PrintWorld(world);
+            control = await host.Connected.WaitAsync(ClientConnectTimeout()).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            client?.Kill(entireProcessTree: true);
+            await Console.Error.WriteLineAsync("client did not connect before timeout.").ConfigureAwait(false);
+            return 1;
         }
 
-        var pluginDamage = TotalDamageTaken(pluginPhaseStart, world);
-        var perTickBaseline = (double)baselineDamage / BaselineTicks;
-        var perTickPlugin = (double)pluginDamage / PluginTicks;
+        Console.WriteLine("[server] client connected.");
+        var refusal = await control.InstallServerExtensionAsync("{}", CancellationToken.None).ConfigureAwait(false);
+        Console.WriteLine($"[server] scripted extension install attempt => {refusal}");
 
-        // (g) Release the plugin; it disconnects, and ownership unloads its kernels.
+        await Task.Delay(1_200).ConfigureAwait(false);
+        Console.WriteLine("[server] OPERATOR RETUNE MaxBountyPerKill=30");
+        if (operations.TryResolve("bounty.claim", out var bounty))
+        {
+            await bounty.ModifySettingsAsync(
+                new Dictionary<string, object?> { ["MaxBountyPerKill"] = 30 },
+                atomic: true).ConfigureAwait(false);
+        }
+
+        Console.WriteLine("[server] triggering plugin-visible kills for monster-2/3/4.");
+        world.KillMonster("monster-2");
+        world.KillMonster("monster-3");
+        world.KillMonster("monster-4");
+
+        await Task.Delay(3_000).ConfigureAwait(false);
         control.SignalShutdown();
-        if (await Task.WhenAny(pluginExit, Task.Delay(readinessTimeout)).ConfigureAwait(false) != pluginExit)
+        if (client is not null)
         {
-            return await FailPluginAsync(host, pluginProcess, "plugin did not shut down before the readiness timeout.").ConfigureAwait(false);
+            try
+            {
+                await WaitForClientAsync(client, ClientShutdownTimeout()).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                await Console.Error.WriteLineAsync("client did not shut down before timeout.").ConfigureAwait(false);
+                return 1;
+            }
         }
 
-        await pluginExit.ConfigureAwait(false);
-        await host.Disconnected.ConfigureAwait(false);
-        if (pluginProcess.ExitCode != 0)
-        {
-            return await FailPluginAsync(host, pluginProcess, $"plugin exited with code {pluginProcess.ExitCode}.").ConfigureAwait(false);
-        }
-
-        // (h) Summary, plus proof that disconnect unloaded the plugin's kernels.
+        await host.Disconnected.WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
         Console.WriteLine();
         Console.WriteLine("=== SUMMARY ===");
-        Console.WriteLine(Format("Baseline damage/tick (no plugin)", perTickBaseline));
-        Console.WriteLine(Format("With-plugin damage/tick", perTickPlugin));
-        Console.WriteLine(perTickPlugin < perTickBaseline
-            ? "Plugins reduced bullying: low-level players survive longer than baseline."
-            : "Plugins applied (see per-tick effects above).");
-        Console.WriteLine($"On disconnect the plugin's kernels were unloaded (installed kernels now: {server.Kernels.Snapshot().Count}).");
-        PrintSurvivors(world);
-
+        Console.WriteLine($"Balances: {string.Join(", ", world.Economy.Balances().Select(p => p.Key + '=' + p.Value))}");
+        Console.WriteLine($"Claims: {string.Join(", ", world.Economy.Claims())}");
+        Console.WriteLine($"Client disconnected; installed server kernels now: {server.Kernels.Snapshot().Count}.");
         await host.StopAsync().ConfigureAwait(false);
         return 0;
     }
 
-    private static async Task<int> FailAsync(PluginConnectionHost<GamePluginControlService> host, string message)
+    private static async Task RunTicksAsync(GameWorld world, int ticks)
     {
-        await Console.Error.WriteLineAsync($"[server] {message}").ConfigureAwait(false);
-        await host.StopAsync().ConfigureAwait(false);
-        return 1;
-    }
-
-    private static async Task<int> FailPluginAsync(PluginConnectionHost<GamePluginControlService> host, Process pluginProcess, string message)
-    {
-        KillProcessTree(pluginProcess);
-        return await FailAsync(host, message).ConfigureAwait(false);
-    }
-
-    private static void KillProcessTree(Process process)
-    {
-        try
+        for (var i = 0; i < ticks; i++)
         {
-            if (!process.HasExited)
+            await world.TickAsync().ConfigureAwait(false);
+            Console.WriteLine($"[tick {world.Tick}]");
+            Console.WriteLine(world.Render());
+        }
+    }
+
+    private static void RegisterEvents(PluginServer server)
+    {
+        _ = server.Events.Resolve<MonsterAggroEvent>();
+        _ = server.Events.Resolve<AttackEvent>();
+        _ = server.Events.Resolve<RemoteDamageDecisionEvent>();
+        _ = server.Events.Resolve<MonsterKilledEvent>();
+        _ = server.Events.Resolve<GoldChangedEvent>();
+    }
+
+    private static async Task WaitForClientAsync(Process client, TimeSpan timeout)
+    {
+        var exit = client.WaitForExitAsync();
+        if (await Task.WhenAny(exit, Task.Delay(timeout)).ConfigureAwait(false) != exit)
+        {
+            client.Kill(entireProcessTree: true);
+            throw new TimeoutException();
+        }
+
+        await exit.ConfigureAwait(false);
+        if (client.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"client exited with code {client.ExitCode}.");
+        }
+    }
+
+    private static TimeSpan ClientConnectTimeout()
+        => TimeoutFromEnvironment("DOTBOXD_GAME_CLIENT_CONNECT_TIMEOUT_MS", TimeSpan.FromSeconds(15));
+
+    private static TimeSpan ClientShutdownTimeout()
+        => TimeoutFromEnvironment("DOTBOXD_GAME_CLIENT_SHUTDOWN_TIMEOUT_MS", TimeSpan.FromSeconds(15));
+
+    private static TimeSpan TimeoutFromEnvironment(string variableName, TimeSpan fallback)
+        => int.TryParse(Environment.GetEnvironmentVariable(variableName), out var milliseconds) && milliseconds > 0
+            ? TimeSpan.FromMilliseconds(milliseconds)
+            : fallback;
+
+    private static bool TryParse(string[] args, out int listenPort, out bool launchClient)
+    {
+        listenPort = 0;
+        launchClient = true;
+        for (var i = 0; i < args.Length; i++)
+        {
+            if (string.Equals(args[i], "--no-launch", StringComparison.Ordinal))
             {
-                process.Kill(entireProcessTree: true);
+                launchClient = false;
+            }
+            else if (string.Equals(args[i], "--listen", StringComparison.Ordinal) &&
+                     i + 1 < args.Length &&
+                     int.TryParse(args[++i], out listenPort))
+            {
+            }
+            else
+            {
+                return false;
             }
         }
-        catch (InvalidOperationException)
-        {
-        }
+
+        return listenPort >= 0;
     }
 
-    private static Dictionary<string, int> PlayerHpById(GameWorld world)
-        => world.Players().ToDictionary(p => p.Id, p => p.Hp, StringComparer.Ordinal);
-
-    private static int TotalDamageTaken(IReadOnlyDictionary<string, int> before, GameWorld world)
-    {
-        var total = 0;
-        foreach (var player in world.Players())
-        {
-            if (before.TryGetValue(player.Id, out var previous))
-            {
-                total += Math.Max(0, previous - player.Hp);
-            }
-        }
-
-        return total;
-    }
-
-    private static void PrintWorld(GameWorld world)
-        => Console.WriteLine(world.Render());
-
-    private static void PrintEffects(IReadOnlyList<string> effects)
-    {
-        if (effects.Count == 0)
-        {
-            Console.WriteLine("    (no plugin effects applied this tick)");
-            return;
-        }
-
-        foreach (var effect in effects)
-        {
-            Console.WriteLine($"    effect: {effect}");
-        }
-    }
-
-    private static void PrintSurvivors(GameWorld world)
-    {
-        foreach (var player in world.Players())
-        {
-            var state = player.IsAlive ? $"alive (hp {player.Hp})" : "defeated";
-            Console.WriteLine($"    {player.Id}: {state}");
-        }
-    }
-
-    private static string Format(string label, double value)
-        => $"{label}: {value.ToString("0.0", CultureInfo.InvariantCulture)}";
+    private static string PluginsRoot()
+        => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "plugins"));
 }

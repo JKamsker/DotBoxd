@@ -106,6 +106,12 @@ public sealed class RemoteRunLocalFacadeIpcTests
             CancellationToken ct = default)
             => ValueTask.FromResult(Array.Empty<byte>());
 
+        public ValueTask<string> CallPluginOperationAsync(
+            string operation,
+            string payload,
+            CancellationToken ct = default)
+            => ValueTask.FromResult("denied:test-operation");
+
         public ValueTask UpdateSettingsAsync(
             string pluginId,
             LiveSettingUpdate[] updates,

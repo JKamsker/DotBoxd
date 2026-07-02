@@ -25,6 +25,8 @@ public sealed class RemotePluginServerBuilderSetupTests
         public IMonsterControl Monsters { get; } = new FakeMonsterControl();
 
         public IEntityControl Entities { get; } = new FakeEntityControl();
+
+        public IGoldLedger Gold { get; } = TestGoldLedger.Instance;
     }
 
     private sealed class FakeMonsterControl : IMonsterControl

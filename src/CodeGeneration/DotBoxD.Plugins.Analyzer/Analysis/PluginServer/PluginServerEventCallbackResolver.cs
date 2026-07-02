@@ -174,9 +174,16 @@ internal static class PluginServerEventCallbackResolver
         INamedTypeSymbol rpcPeerType,
         INamedTypeSymbol callbackType)
         => method is { IsStatic: true, IsGenericMethod: false, Parameters.Length: 2 } &&
-        SymbolEqualityComparer.Default.Equals(method.ReturnType, rpcPeerType) &&
-        SymbolEqualityComparer.Default.Equals(method.Parameters[0].Type, rpcPeerType) &&
-        SymbolEqualityComparer.Default.Equals(method.Parameters[1].Type, callbackType);
+        SameType(method.ReturnType, rpcPeerType) &&
+        SameType(method.Parameters[0].Type, rpcPeerType) &&
+        SameType(method.Parameters[1].Type, callbackType);
+
+    private static bool SameType(ITypeSymbol left, ITypeSymbol right)
+        => SymbolEqualityComparer.Default.Equals(left, right) ||
+           string.Equals(
+               left.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+               right.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+               StringComparison.Ordinal);
 
     private static bool HasDotBoxDServiceAttribute(INamedTypeSymbol type)
     {

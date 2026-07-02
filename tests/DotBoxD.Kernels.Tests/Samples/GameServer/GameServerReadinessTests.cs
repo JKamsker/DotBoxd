@@ -6,7 +6,7 @@ namespace DotBoxD.Kernels.Tests.Samples.GameServer;
 
 public sealed class GameServerReadinessTests
 {
-    private const string PluginReadinessTimeoutMilliseconds = "5000";
+    private const string ClientTimeoutMilliseconds = "1000";
     private static readonly TimeSpan ProcessExitTimeout = TimeSpan.FromSeconds(15);
 
     [Fact]
@@ -29,7 +29,7 @@ public sealed class GameServerReadinessTests
 
             Assert.Equal(1, process.ExitCode);
             Assert.Contains(
-                "plugin did not connect",
+                "client did not connect",
                 await CapturedOutputAsync(stdout, stderr),
                 StringComparison.OrdinalIgnoreCase);
         }
@@ -59,7 +59,7 @@ public sealed class GameServerReadinessTests
 
             Assert.Equal(1, process.ExitCode);
             Assert.Contains(
-                "plugin did not shut down",
+                "client did not shut down",
                 await CapturedOutputAsync(stdout, stderr),
                 StringComparison.OrdinalIgnoreCase);
         }
@@ -78,9 +78,9 @@ public sealed class GameServerReadinessTests
             UseShellExecute = false
         };
         startInfo.ArgumentList.Add(GameServerAssemblyPath());
-        startInfo.Environment["SAFEIR_GAME_PLUGIN_DLL"] = fakePlugin;
-        startInfo.Environment["DOTBOXD_GAME_PLUGIN_READINESS_TIMEOUT_MS"] =
-            PluginReadinessTimeoutMilliseconds;
+        startInfo.Environment["DOTBOXD_GAME_CLIENT_DLL"] = fakePlugin;
+        startInfo.Environment["DOTBOXD_GAME_CLIENT_CONNECT_TIMEOUT_MS"] = ClientTimeoutMilliseconds;
+        startInfo.Environment["DOTBOXD_GAME_CLIENT_SHUTDOWN_TIMEOUT_MS"] = ClientTimeoutMilliseconds;
 
         return Process.Start(startInfo)
             ?? throw new InvalidOperationException("Could not start GameServer sample process.");
@@ -108,19 +108,42 @@ public sealed class GameServerReadinessTests
             "ShutdownIgnoringPlugin",
             """
             using System;
+            using System.Globalization;
+            using System.Threading;
             using System.Threading.Tasks;
             using DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
             using DotBoxD.Pushdown.Services;
+            using DotBoxD.Services.Server;
+            using DotBoxD.Transports.Tcp;
 
             public static class Program
             {
                 public static async Task<int> Main(string[] args)
                 {
-                    await using var connection = await RpcMessagePackIpc.ConnectNamedPipeAsync(args[0]);
-                    var control = connection.Get<IGamePluginControlService>();
+                    var host = args[1];
+                    var port = int.Parse(args[2], CultureInfo.InvariantCulture);
+                    await using var connection = await RpcMessagePackIpc.ConnectAsync(
+                        new TcpTransport(host, port),
+                        peer => peer.Provide((IServiceDispatcher)new PluginEventCallbackDispatcher(new Callback())));
+                    var control = connection.Get<IGameClientControlService>();
                     await control.HoldUntilShutdownAsync();
                     await Task.Delay(TimeSpan.FromSeconds(30));
                     return 0;
+                }
+
+                private sealed class Callback : IPluginEventCallback
+                {
+                    public ValueTask OnEventAsync(
+                        string subscriptionId,
+                        ReadOnlyMemory<byte> projectedValue,
+                        CancellationToken ct = default)
+                        => ValueTask.CompletedTask;
+
+                    public ValueTask<byte[]> OnResultAsync(
+                        string subscriptionId,
+                        ReadOnlyMemory<byte> contextValue,
+                        CancellationToken ct = default)
+                        => ValueTask.FromResult(Array.Empty<byte>());
                 }
             }
             """);

@@ -9,7 +9,8 @@ public sealed class PluginAdapterDocumentationTests
 
         Assert.Contains("samples/GameServer/Examples.GameServer.Server", examples);
         Assert.Contains("Examples.GameServer.Plugin", examples);
-        Assert.Contains("server never compiles or loads the plugin assembly", examples);
+        Assert.Contains("Examples.GameServer.Plugin.Client", examples);
+        Assert.Contains("The host still imports the JSON and derives capabilities from the IR", examples);
     }
 
     [Fact]

@@ -24,4 +24,12 @@
     <InternalsVisibleTo Include="Examples.GameServer.Plugin.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\Shared\PackageExporter.cs" Link="Shared\PackageExporter.cs" />
+  </ItemGroup>
+
+  <Target Name="ExportGameServerPluginPackages" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="dotnet &quot;$(TargetPath)&quot; --export &quot;$(MSBuildProjectDirectory)\..\plugins&quot;" />
+  </Target>
+
 </Project>

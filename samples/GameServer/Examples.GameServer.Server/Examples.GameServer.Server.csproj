@@ -5,6 +5,10 @@
     <ProjectReference Include="..\..\..\src\Hosting\DotBoxD.Queryable\DotBoxD.Queryable.csproj" />
     <ProjectReference Include="..\..\..\src\Kernels\DotBoxD.Kernels.Serialization.Json\DotBoxD.Kernels.Serialization.Json.csproj" />
     <ProjectReference Include="..\..\..\src\Pushdown\DotBoxD.Pushdown.Services\DotBoxD.Pushdown.Services.csproj" />
+    <ProjectReference Include="..\..\..\src\Channels\DotBoxD.Transports.Tcp\DotBoxD.Transports.Tcp.csproj" />
+    <ProjectReference Include="..\Examples.GameServer.Client\Examples.GameServer.Client.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Examples.GameServer.Plugin.Client\Examples.GameServer.Plugin.Client.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Examples.GameServer.Plugin\Examples.GameServer.Plugin.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Examples.GameServer.Server.Abstractions\Examples.GameServer.Server.Abstractions.csproj" />
   </ItemGroup>
 

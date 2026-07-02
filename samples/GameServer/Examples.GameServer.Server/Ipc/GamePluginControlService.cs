@@ -1,4 +1,5 @@
 using DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
+using DotBoxD.Kernels.Game.Server.PluginCatalog;
 using DotBoxD.Kernels.Game.Server.Simulation;
 using DotBoxD.Plugins.Json;
 using DotBoxD.Plugins.Kernel;
@@ -13,21 +14,26 @@ namespace DotBoxD.Kernels.Game.Server.Ipc;
 /// hook for whichever event the installed kernel subscribes to. The plugin then holds the connection
 /// (<see cref="HoldUntilShutdownAsync"/>) until the server's with-plugin phase finishes.
 /// </summary>
-internal sealed class GamePluginControlService : IGamePluginControlService
+internal class GamePluginControlService : IGamePluginControlService
 {
-    private readonly PluginServer _server;
-    private readonly PluginSession _session;
+    private const int MaxRelayPayloadChars = 128;
+
+    protected readonly PluginServer _server;
+    protected readonly PluginSession _session;
     private readonly GameCommandSink _sink;
     private readonly GameWorld _world;
-    private readonly GamePluginKernelWiring _kernelWiring;
+    protected readonly GamePluginKernelWiring _kernelWiring;
+    private readonly ClientOperationRegistry _operations;
+    private readonly RelayRateLimiter _rateLimiter = new(limit: 20);
     private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource _shutdown = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly string _playerId;
 
     // Back-compat 4-arg ctor (no event-callback transport): a plugin that never uses a remote RunLocal chain
     // needs no callback. Kept as a distinct overload so reflection-based construction with four positional
     // arguments resolves unambiguously.
     public GamePluginControlService(PluginServer server, PluginSession session, GameCommandSink sink, GameWorld world)
-        : this(server, session, sink, world, (IPluginEventCallback?)null)
+        : this(server, session, sink, world, new ClientOperationRegistry(), "player-1", (IPluginEventCallback?)null)
     {
     }
 
@@ -42,6 +48,27 @@ internal sealed class GamePluginControlService : IGamePluginControlService
             session,
             sink,
             world,
+            new ClientOperationRegistry(),
+            "player-1",
+            eventCallback)
+    {
+    }
+
+    public GamePluginControlService(
+        PluginServer server,
+        PluginSession session,
+        GameCommandSink sink,
+        GameWorld world,
+        ClientOperationRegistry operations,
+        string playerId,
+        IPluginEventCallback? eventCallback)
+        : this(
+            server,
+            session,
+            sink,
+            world,
+            operations,
+            playerId,
             new GamePluginKernelWiring(server, world, eventCallback))
     {
     }
@@ -51,12 +78,16 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         PluginSession session,
         GameCommandSink sink,
         GameWorld world,
+        ClientOperationRegistry operations,
+        string playerId,
         GamePluginKernelWiring kernelWiring)
     {
         _server = server;
         _session = session;
         _sink = sink;
         _world = world;
+        _operations = operations;
+        _playerId = playerId;
         _kernelWiring = kernelWiring;
     }
 
@@ -66,7 +97,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
     /// <summary>Releases the plugin's <see cref="HoldUntilShutdownAsync"/> so it can disconnect.</summary>
     public void SignalShutdown() => _shutdown.TrySetResult();
 
-    public async ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default)
+    public virtual async ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(packageJson);
 
@@ -82,7 +113,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         return InstallRouteId(kernel);
     }
 
-    public async ValueTask<string> InstallSubscriptionAsync(string packageJson, CancellationToken ct = default)
+    public virtual async ValueTask<string> InstallSubscriptionAsync(string packageJson, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(packageJson);
 
@@ -99,7 +130,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         return InstallRouteId(kernel);
     }
 
-    public async ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default)
+    public virtual async ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(packageJson);
 
@@ -119,7 +150,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         }
     }
 
-    public async ValueTask<byte[]> InvokeServerExtensionAsync(
+    public virtual async ValueTask<byte[]> InvokeServerExtensionAsync(
         string pluginId,
         byte[] arguments,
         CancellationToken ct = default)
@@ -137,6 +168,36 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         }
 
         return await kernel.InvokeServerExtensionRpcAsync(arguments, ct).ConfigureAwait(false);
+    }
+
+    public async ValueTask<string> CallPluginOperationAsync(
+        string operation,
+        string payload,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+        ArgumentNullException.ThrowIfNull(payload);
+        ct.ThrowIfCancellationRequested();
+
+        if (payload.Length > MaxRelayPayloadChars)
+        {
+            return "denied:payload-too-large";
+        }
+
+        if (!_rateLimiter.TryAcquire())
+        {
+            return "denied:rate-limit";
+        }
+
+        if (!_operations.TryResolve(operation, out var kernel))
+        {
+            return $"denied:operation:{operation}";
+        }
+
+        var result = await kernel.InvokeServerExtensionAsync(
+            [SandboxValue.FromString(_playerId), SandboxValue.FromString(payload)],
+            ct).ConfigureAwait(false);
+        return ((StringValue)result).Value;
     }
 
     public ValueTask UpdateSettingsAsync(
@@ -176,7 +237,7 @@ internal sealed class GamePluginControlService : IGamePluginControlService
         return ValueTask.FromResult(_sink.DrainEffects());
     }
 
-    private static string InstallRouteId(InstalledKernel kernel)
+    protected static string InstallRouteId(InstalledKernel kernel)
         => kernel.CallbackSubscriptionId ?? kernel.Manifest.PluginId;
 
     // The per-entity domain calls (KillMonster / IsMonster / GetEntity*) moved to GameWorldAccess, which

@@ -69,6 +69,6 @@ internal sealed class GameEntity
 
     public void ClearTaunts() => _tauntedAway.Clear();
 
-    public EntitySnapshot ToSnapshot()
-        => new(Id, Kind.ToString(), Level, Hp, Position);
+    public EntitySnapshot ToSnapshot(int gold = 0)
+        => new(Id, Kind.ToString(), Level, Hp, Position, gold);
 }

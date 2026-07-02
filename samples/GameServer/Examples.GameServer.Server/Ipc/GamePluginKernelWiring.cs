@@ -40,6 +40,8 @@ internal sealed class GamePluginKernelWiring
         server.Events.Resolve<MonsterAggroEvent>();
         server.Events.Resolve<AttackEvent>();
         server.Events.Resolve<RemoteDamageDecisionEvent>();
+        server.Events.Resolve<MonsterKilledEvent>();
+        server.Events.Resolve<GoldChangedEvent>();
 
         RemoteLocalPush? push = eventCallback is null
             ? null
@@ -62,7 +64,9 @@ internal sealed class GamePluginKernelWiring
         var subscription = SubscribedEvent(package.Manifest);
         if (MatchesEvent<MonsterAggroEvent>(subscription) ||
             MatchesEvent<AttackEvent>(subscription) ||
-            MatchesEvent<RemoteDamageDecisionEvent>(subscription))
+            MatchesEvent<RemoteDamageDecisionEvent>(subscription) ||
+            MatchesEvent<MonsterKilledEvent>(subscription) ||
+            MatchesEvent<GoldChangedEvent>(subscription))
         {
             return;
         }

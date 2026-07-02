@@ -29,7 +29,8 @@ The Kernels and Pushdown stack targets `net10.0`.
 
 The snippets below use the real, compiling API. The maintained runnable example is the GameServer
 sample at [`samples/GameServer/Examples.GameServer.Server`](samples/GameServer/Examples.GameServer.Server),
-which combines service IPC, event kernels, live settings, host bindings, policies, and server extensions.
+which combines service IPC, disk plugin bundles, event kernels, live settings, host bindings, policies,
+server extensions, and a TCP vendor server/client split.
 Features that used to be split across removed samples are tracked in
 [the examples coverage-gaps page](https://dotboxd.kamsker.at/examples/coverage-gaps/).
 
@@ -150,8 +151,8 @@ List<KillResult> killed = server.ServerExtension<IMonsterKillerService>().KillMo
 The batch logic is **author-supplied**, so it runs as a validated sandboxed kernel under the same trust
 model as event kernels: it can reach only the host bindings the server already exposes, gated by
 capabilities and fuel/quota limits, and it can take and return complex objects and lists of objects
-(via the IR `Record` type). The GameServer sample demonstrates server extensions over the plugin IPC
-control plane; see
+(via the IR `Record` type). The GameServer sample demonstrates server extensions as disk-exported
+plugin halves installed by the server and invoked through an approved client relay; see
 [`docs/design/plugin-fluent-hooks-api/followups.md`](docs/design/plugin-fluent-hooks-api/followups.md)
 for the full design.
 

@@ -17,6 +17,8 @@ internal static class ServerPolicy
     private const string MonsterReadPrefix = "game.world.monster.read.";
     private const string MonsterWritePrefix = "game.world.monster.write.";
     private const string EntityReadPrefix = "game.world.entity.read.";
+    private const string GoldReadPrefix = "game.world.gold.read.";
+    private const string GoldWritePrefix = "game.world.gold.write.";
     private const string CombatThreat = "game.world.combat.threat";
 
     /// <summary>The base ceiling applied to a kernel with no extra capability needs.</summary>
@@ -46,6 +48,16 @@ internal static class ServerPolicy
         if (RequiresPrefix(requiredCapabilities, MonsterWritePrefix))
         {
             builder.Grant("game.world.monster.write.*", new { }, SandboxEffect.HostStateWrite);
+        }
+
+        if (RequiresPrefix(requiredCapabilities, GoldReadPrefix))
+        {
+            builder.Grant("game.world.gold.read.*", new { }, SandboxEffect.HostStateRead);
+        }
+
+        if (RequiresPrefix(requiredCapabilities, GoldWritePrefix))
+        {
+            builder.Grant("game.world.gold.write.*", new { }, SandboxEffect.HostStateWrite);
         }
 
         if (requiredCapabilities.Contains(CombatThreat, StringComparer.Ordinal))

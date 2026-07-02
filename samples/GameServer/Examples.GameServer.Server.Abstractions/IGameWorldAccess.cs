@@ -1,8 +1,20 @@
+using DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
 using DotBoxD.Services.Attributes;
 
 namespace DotBoxD.Kernels.Game.Server.Abstractions;
 
 public sealed record MonsterSnapshot(string Id, string Name, int Health, int Level, int Position);
+
+public sealed record PlayerSnapshot(string Id, int Level, int Health, int Gold);
+
+/// <summary>Read-only world surface exposed to the trusted vendor client over TCP.</summary>
+[DotBoxDService]
+public interface IGameWorldView
+{
+    ValueTask<WorldSnapshot> GetWorldAsync(CancellationToken ct = default);
+
+    ValueTask<int> GetBalanceAsync(string entityId, CancellationToken ct = default);
+}
 
 /// <summary>
 /// THE single game surface — one PURE domain interface, three consumers:
@@ -29,6 +41,22 @@ public interface IGameWorldAccess
 
     /// <summary>Entity-wide commands and scoped entity handles exposed by the game world.</summary>
     IEntityControl Entities { get; }
+
+    /// <summary>Privileged gold-economy bindings exposed only inside the server-side sandbox.</summary>
+    IGoldLedger Gold { get; }
+}
+
+[DotBoxDService]
+public interface IGoldLedger
+{
+    [HostCapability("game.world.gold.read.balance", HostBindingEffect.HostStateRead)]
+    ValueTask<int> GetBalanceAsync(string entityId);
+
+    [HostCapability("game.world.gold.read.claimable", HostBindingEffect.HostStateRead)]
+    ValueTask<bool> IsBountyClaimableAsync(string monsterId);
+
+    [HostCapability("game.world.gold.write.grant", HostBindingEffect.HostStateWrite)]
+    ValueTask<bool> GrantBountyAsync(string playerId, string monsterId, int amount);
 }
 
 [DotBoxDService]

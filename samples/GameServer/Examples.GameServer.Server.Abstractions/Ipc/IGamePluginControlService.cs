@@ -10,7 +10,7 @@ namespace DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
 /// <c>IPluginServer&lt;TWorld&gt;</c> lifecycle — the dev never calls these directly.
 /// </summary>
 [DotBoxDService]
-public interface IGamePluginControlService : DotBoxD.Plugins.IServerExtensionWireClient
+public interface IGameClientControlService : DotBoxD.Plugins.IServerExtensionWireClient
 {
     ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default);
 
@@ -26,6 +26,12 @@ public interface IGamePluginControlService : DotBoxD.Plugins.IServerExtensionWir
 
     ValueTask HoldUntilShutdownAsync(CancellationToken ct = default);
 
+    ValueTask<string> CallPluginOperationAsync(string operation, string payload, CancellationToken ct = default);
+}
+
+[DotBoxDService]
+public interface IGamePluginControlService : IGameClientControlService
+{
     ValueTask<WorldSnapshot> GetWorldAsync(CancellationToken ct = default);
 
     ValueTask<string[]> DrainEffectsAsync(CancellationToken ct = default);

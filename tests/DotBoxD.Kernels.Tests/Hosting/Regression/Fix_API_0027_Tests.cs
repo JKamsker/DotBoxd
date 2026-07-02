@@ -27,7 +27,8 @@ public sealed class Fix_API_0027_Tests
         Assert.Contains("RegisterServerExtensionAsync<IMonsterKillerService, MonsterKillerKernel>", readme, StringComparison.Ordinal);
         Assert.Contains("ServerExtension<IMonsterKillerService>().KillMonsters(ids)", readme, StringComparison.Ordinal);
         Assert.Contains("[ServerExtension", concepts, StringComparison.Ordinal);
-        Assert.Contains("### 5. Use Server Extensions For Pushdown", addendum, StringComparison.Ordinal);
+        Assert.Contains("### 2. Author A Privileged Server Extension", addendum, StringComparison.Ordinal);
+        Assert.Contains("[ServerExtension(\"bounty.claim\")]", addendum, StringComparison.Ordinal);
 
         foreach (var staleToken in StaleServerExtensionTokens())
         {

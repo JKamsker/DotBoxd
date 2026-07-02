@@ -64,6 +64,16 @@ internal sealed class RecordingGamePluginControlService : IGamePluginControlServ
         return ValueTask.FromResult(RpcResponse);
     }
 
+    public ValueTask<string> CallPluginOperationAsync(
+        string operation,
+        string payload,
+        CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        Calls.Add("operation:" + operation);
+        return ValueTask.FromResult("denied:test-operation");
+    }
+
     public ValueTask UpdateSettingsAsync(
         string pluginId,
         LiveSettingUpdate[] updates,

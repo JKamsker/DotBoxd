@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\CodeGeneration\DotBoxD.Plugins.Analyzer\DotBoxD.Plugins.Analyzer.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\..\src\Hosting\DotBoxD.Plugins\DotBoxD.Plugins.csproj" />
+    <ProjectReference Include="..\..\..\src\Kernels\DotBoxD.Kernels.Serialization.Json\DotBoxD.Kernels.Serialization.Json.csproj" />
+    <ProjectReference Include="..\Examples.GameServer.Client.Abstractions\Examples.GameServer.Client.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\PackageExporter.cs" Link="Shared\PackageExporter.cs" />
+    <None Include="assets\skull.anim.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <DotBoxDGeneratedInterceptorsNamespace>DotBoxD.Plugins.Generated</DotBoxDGeneratedInterceptorsNamespace>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);$(DotBoxDGeneratedInterceptorsNamespace)</InterceptorsNamespaces>
+  </PropertyGroup>
+
+  <Target Name="ExportGameServerClientPluginPackages" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="dotnet &quot;$(TargetPath)&quot; --export &quot;$(MSBuildProjectDirectory)\..\plugins&quot;" />
+  </Target>
+
+</Project>

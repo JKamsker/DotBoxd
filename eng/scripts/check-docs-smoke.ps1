@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $gameServerExample = Join-Path $root "samples/GameServer/Examples.GameServer.Server/Examples.GameServer.Server.csproj"
-$gamePluginDll = Join-Path $root "samples/GameServer/Examples.GameServer.Plugin/bin/$Configuration/net10.0/Examples.GameServer.Plugin.dll"
+$pluginsRoot = Join-Path $root "samples/GameServer/plugins"
 
 function Resolve-RepoPath([string] $Path) {
     $normalized = $Path.Trim().Trim('"').Replace('\', [System.IO.Path]::DirectorySeparatorChar)
@@ -88,7 +88,34 @@ function Stop-ProcessTree([System.Diagnostics.Process] $Process) {
     $Process.WaitForExit()
 }
 
-function Invoke-GameServer([string] $ServerProject, [string] $HostDll) {
+function Assert-ExportedGameServerBundles {
+    $expected = @(
+        "guardian/server/hooks/guardian.json",
+        "guardian/server/subscriptions/retaliation.json",
+        "bounty-hunter/server/extensions/bounty-payout.json",
+        "bounty-hunter/client/extensions/bounty-claim.json",
+        "bounty-hunter/client/hooks/monster-death-fx.json",
+        "bounty-hunter/client/subscriptions/gold-hud.json",
+        "bounty-hunter/client/assets/skull.anim.txt",
+        "gold-cheat/server/extensions/gold-cheat.json",
+        "gold-cheat/client/extensions/gold-cheat.json"
+    )
+
+    foreach ($relative in $expected) {
+        $path = Join-Path $pluginsRoot ($relative.Replace('/', [System.IO.Path]::DirectorySeparatorChar))
+        if (-not (Test-Path -LiteralPath $path)) {
+            throw "GameServer exported bundle missing: $relative (build the solution first)."
+        }
+    }
+}
+
+function Assert-OutputContains([string] $Output, [string] $Marker) {
+    if (-not $Output.Contains($Marker, [System.StringComparison]::Ordinal)) {
+        throw "GameServer example smoke output did not contain marker: $Marker"
+    }
+}
+
+function Invoke-GameServer([string] $ServerProject) {
     $outputPath = Join-Path ([System.IO.Path]::GetTempPath()) ("dotboxd-game-" + [Guid]::NewGuid().ToString("N") + ".out")
     $errorPath = Join-Path ([System.IO.Path]::GetTempPath()) ("dotboxd-game-" + [Guid]::NewGuid().ToString("N") + ".err")
     $arguments = @(
@@ -107,13 +134,7 @@ function Invoke-GameServer([string] $ServerProject, [string] $HostDll) {
         $parameters.WindowStyle = "Hidden"
     }
 
-    $previousHostDll = $env:SAFEIR_GAME_PLUGIN_DLL
-    $env:SAFEIR_GAME_PLUGIN_DLL = $HostDll
-    try {
-        $process = Start-Process @parameters
-    } finally {
-        $env:SAFEIR_GAME_PLUGIN_DLL = $previousHostDll
-    }
+    $process = Start-Process @parameters
 
     try {
         if (-not $process.WaitForExit(60000)) {
@@ -126,6 +147,12 @@ function Invoke-GameServer([string] $ServerProject, [string] $HostDll) {
         if ($process.ExitCode -ne 0) {
             throw "GameServer example smoke test failed with exit code $($process.ExitCode)."
         }
+
+        $output = Read-TextIfExists $outputPath
+        Assert-OutputContains $output "listening on"
+        Assert-OutputContains $output "client connected"
+        Assert-OutputContains $output "bounty: paid"
+        Assert-OutputContains $output "=== SUMMARY ==="
     } finally {
         $process.Dispose()
         Remove-Item -LiteralPath $outputPath, $errorPath -Force -ErrorAction SilentlyContinue
@@ -185,16 +212,14 @@ Assert-DocumentsDoNotContain $currentServerExtensionDocs "KernelRpcMarshaller" "
 Assert-DocumentsDoNotContain $currentServerExtensionDocs "KernelRpcValue" "current server-extension docs avoid legacy KernelRpcValue terminology"
 Assert-DocumentsDoNotContain $currentServerExtensionDocs "KernelRpcBinaryCodec" "current server-extension docs avoid legacy KernelRpcBinaryCodec terminology"
 
+Assert-ExportedGameServerBundles
+
 if (-not $IsWindows) {
     Write-Host "Skipping GameServer runtime smoke on non-Windows runners."
     Write-Host "Docs/static smoke checks passed; GameServer runtime smoke was skipped."
     return
 }
 
-if (-not (Test-Path -LiteralPath $gamePluginDll)) {
-    throw "GameServer smoke prerequisite missing: $gamePluginDll (build the solution first)."
-}
-
-Invoke-GameServer $gameServerExample $gamePluginDll
+Invoke-GameServer $gameServerExample
 
 Write-Host "Docs/example smoke checks passed."
