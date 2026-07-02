@@ -210,6 +210,7 @@ internal sealed class GameWorld
 
     private void PublishMonsterKilled(GameEntity monster, string killerId, CancellationToken cancellationToken)
     {
+        Economy.MarkBountyClaimable(monster.Id);
         var killed = new MonsterKilledEvent(monster.Id, killerId, monster.Level, _tick);
         _subscriptions.Publish(killed, cancellationToken);
         IndexRegistry.Publish(killed, cancellationToken);

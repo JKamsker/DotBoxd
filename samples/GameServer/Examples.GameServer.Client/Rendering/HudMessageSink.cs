@@ -3,12 +3,12 @@ namespace DotBoxD.Kernels.Game.Client.Rendering;
 internal sealed class HudMessageSink : IPluginMessageSink
 {
     private readonly ConsoleHudRenderer _renderer;
-    private readonly string _pluginsRoot;
+    private readonly string[] _skullFrames;
 
-    public HudMessageSink(ConsoleHudRenderer renderer, string pluginsRoot)
+    public HudMessageSink(ConsoleHudRenderer renderer, string pluginsRoot, string skullBundleId = "bounty-hunter")
     {
         _renderer = renderer;
-        _pluginsRoot = pluginsRoot;
+        _skullFrames = LoadSkullFrames(pluginsRoot, skullBundleId);
     }
 
     public void Send(string targetId, string message) => Render(targetId, message);
@@ -24,7 +24,7 @@ internal sealed class HudMessageSink : IPluginMessageSink
     {
         if (message.StartsWith("fx:skull:", StringComparison.Ordinal))
         {
-            foreach (var frame in SkullFrames())
+            foreach (var frame in _skullFrames)
             {
                 _renderer.Write(targetId, frame);
             }
@@ -35,9 +35,9 @@ internal sealed class HudMessageSink : IPluginMessageSink
         _renderer.Write(targetId, message);
     }
 
-    private string[] SkullFrames()
+    private static string[] LoadSkullFrames(string pluginsRoot, string bundleId)
     {
-        var path = Path.Combine(_pluginsRoot, "bounty-hunter", "client", "assets", "skull.anim.txt");
+        var path = Path.Combine(pluginsRoot, bundleId, "client", "assets", "skull.anim.txt");
         return File.Exists(path) ? File.ReadAllLines(path) : ["skull"];
     }
 }

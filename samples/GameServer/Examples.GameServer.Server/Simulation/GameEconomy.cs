@@ -15,6 +15,7 @@ internal sealed class GameEconomy
         ["player-1"] = 20,
         ["player-2"] = 10
     };
+    private readonly HashSet<string> _claimableBounties = new(StringComparer.Ordinal);
     private readonly HashSet<string> _claimedBounties = new(StringComparer.Ordinal);
     private readonly SubscriptionRegistry _subscriptions;
     private readonly EventIndexRegistry _indexRegistry;
@@ -30,12 +31,15 @@ internal sealed class GameEconomy
 
     public int GetBalance(string entityId) => _balances.GetValueOrDefault(entityId);
 
-    public bool IsBountyClaimable(string monsterId) => !_claimedBounties.Contains(monsterId);
+    public void MarkBountyClaimable(string monsterId) => _claimableBounties.Add(monsterId);
+
+    public bool IsBountyClaimable(string monsterId)
+        => _claimableBounties.Contains(monsterId) && !_claimedBounties.Contains(monsterId);
 
     public bool GrantBounty(string playerId, string monsterId, int amount)
     {
         if (amount <= 0 ||
-            _claimedBounties.Contains(monsterId) ||
+            !IsBountyClaimable(monsterId) ||
             amount > _remainingTickBudget ||
             GetBalance("treasury") < amount)
         {

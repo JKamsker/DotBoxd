@@ -42,7 +42,7 @@ internal sealed class GameClientRuntime : IAsyncDisposable
         var world = global::DotBoxD.Services.Generated.DotBoxDGeneratedExtensions.GetGameWorldView(session.Peer);
         var renderer = new ConsoleHudRenderer();
         var plugins = new ClientPluginHost(renderer, pluginsRoot, control);
-        pump.Bind(plugins);
+        await pump.BindAsync(plugins).ConfigureAwait(false);
         return new GameClientRuntime(session, world, plugins, control);
     }
 

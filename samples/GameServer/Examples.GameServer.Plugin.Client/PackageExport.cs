@@ -18,8 +18,6 @@ internal static class PackageExport
     {
         var destination = Path.GetFullPath(Path.Combine(pluginsRoot, relativePath));
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-        var assemblyDirectory = Path.GetDirectoryName(typeof(PackageExport).Assembly.Location) ??
-            throw new InvalidOperationException("Could not resolve plugin client assembly directory.");
-        File.Copy(Path.Combine(assemblyDirectory, "assets", "skull.anim.txt"), destination, overwrite: true);
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "assets", "skull.anim.txt"), destination, overwrite: true);
     }
 }

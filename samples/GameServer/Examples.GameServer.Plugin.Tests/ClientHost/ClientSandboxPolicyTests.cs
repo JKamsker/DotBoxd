@@ -10,7 +10,13 @@ public sealed class ClientSandboxPolicyTests
     public void ClientPolicy_grants_client_capabilities_without_world_gold_access()
     {
         var policy = ClientPolicy.ForKernel(
-            ["dotboxd.runtime.async", "game.client.server.call", "game.client.ui.write"]);
+            [
+                "dotboxd.runtime.async",
+                "game.client.server.call",
+                "game.client.ui.write",
+                "game.world.gold.write.grant",
+                "game.world.gold.read.balance"
+            ]);
 
         Assert.True(policy.GrantsCapability("dotboxd.runtime.async"));
         Assert.True(policy.GrantsCapability("game.client.server.call"));

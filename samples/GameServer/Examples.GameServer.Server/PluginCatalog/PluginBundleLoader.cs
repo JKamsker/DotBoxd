@@ -32,12 +32,19 @@ internal static class PluginBundleLoader
                 continue;
             }
 
-            var json = File.ReadAllText(file);
-            parts.Add(new PluginBundlePart(
-                segments[0],
-                kind,
-                relative,
-                PluginPackageJsonSerializer.Import(json)));
+            try
+            {
+                var json = File.ReadAllText(file);
+                parts.Add(new PluginBundlePart(
+                    segments[0],
+                    kind,
+                    relative,
+                    PluginPackageJsonSerializer.Import(json)));
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                throw new InvalidDataException($"Failed to load plugin bundle '{file}'.", ex);
+            }
         }
 
         return parts;

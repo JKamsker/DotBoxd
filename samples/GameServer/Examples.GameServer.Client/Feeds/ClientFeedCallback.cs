@@ -10,20 +10,13 @@ internal sealed class ClientFeedCallback(ClientEventPump pump) : IPluginEventCal
         CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        switch (subscriptionId)
+        return subscriptionId switch
         {
-            case GameClientFeedIds.MonsterKilled:
-                pump.OnMonsterKilled(Read<MonsterKilledEvent>(projectedValue));
-                break;
-            case GameClientFeedIds.GoldChanged:
-                pump.OnGoldChanged(Read<GoldChangedEvent>(projectedValue));
-                break;
-            case GameClientFeedIds.AttackSeen:
-                pump.OnAttackSeen(Read<AttackEvent>(projectedValue).TargetId);
-                break;
-        }
-
-        return ValueTask.CompletedTask;
+            GameClientFeedIds.MonsterKilled => pump.OnMonsterKilledAsync(Read<MonsterKilledEvent>(projectedValue)),
+            GameClientFeedIds.GoldChanged => pump.OnGoldChangedAsync(Read<GoldChangedEvent>(projectedValue)),
+            GameClientFeedIds.AttackSeen => pump.OnAttackSeenAsync(Read<AttackEvent>(projectedValue).TargetId),
+            _ => ValueTask.CompletedTask
+        };
     }
 
     public ValueTask<byte[]> OnResultAsync(

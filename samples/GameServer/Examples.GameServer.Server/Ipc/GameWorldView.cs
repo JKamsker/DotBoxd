@@ -17,6 +17,7 @@ internal sealed class GameWorldView : IGameWorldView
 
     public ValueTask<int> GetBalanceAsync(string entityId, CancellationToken ct = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(entityId);
         ct.ThrowIfCancellationRequested();
         return ValueTask.FromResult(_world.Economy.GetBalance(entityId));
     }

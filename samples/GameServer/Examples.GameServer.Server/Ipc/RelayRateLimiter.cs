@@ -3,6 +3,7 @@ namespace DotBoxD.Kernels.Game.Server.Ipc;
 internal sealed class RelayRateLimiter
 {
     private readonly int _limit;
+    private readonly object _gate = new();
     private int _remaining;
     private int _windowTick = Environment.TickCount;
 
@@ -14,19 +15,22 @@ internal sealed class RelayRateLimiter
 
     public bool TryAcquire()
     {
-        var now = Environment.TickCount;
-        if (unchecked(now - _windowTick) > 1_000)
+        lock (_gate)
         {
-            _windowTick = now;
-            _remaining = _limit;
-        }
+            var now = Environment.TickCount;
+            if (unchecked(now - _windowTick) > 1_000)
+            {
+                _windowTick = now;
+                _remaining = _limit;
+            }
 
-        if (_remaining <= 0)
-        {
-            return false;
-        }
+            if (_remaining <= 0)
+            {
+                return false;
+            }
 
-        _remaining--;
-        return true;
+            _remaining--;
+            return true;
+        }
     }
 }

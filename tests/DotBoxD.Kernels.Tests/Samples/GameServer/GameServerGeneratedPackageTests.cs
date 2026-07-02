@@ -15,27 +15,14 @@ public sealed class GameServerGeneratedPackageTests
         string? subscription,
         string? rpcEntrypoint,
         string[] requiredCapabilities)
-    {
-        var kernelType = GamePluginAssembly().GetType(kernelTypeName, throwOnError: true)!;
-        var package = KernelPackageRegistry.Resolve(kernelType);
-
-        Assert.Equal(pluginId, package.Manifest.PluginId);
-        Assert.Equal(contract, package.Manifest.Contract);
-        Assert.Equal(rpcEntrypoint, package.Manifest.RpcEntrypoint);
-        Assert.Equal(
-            subscription is null ? [] : [subscription],
-            package.Manifest.Subscriptions.Select(item => item.Event).ToArray());
-        foreach (var capability in requiredCapabilities)
-        {
-            Assert.Contains(capability, package.Manifest.RequiredCapabilities, StringComparer.Ordinal);
-        }
-
-        var imported = PluginPackageJsonSerializer.Import(PluginPackageJsonSerializer.Export(package));
-        Assert.Equal(package.Manifest.PluginId, imported.Manifest.PluginId);
-        Assert.Equal(package.Manifest.Contract, imported.Manifest.Contract);
-        Assert.Equal(package.Manifest.RpcEntrypoint, imported.Manifest.RpcEntrypoint);
-        Assert.Equal(package.Manifest.RequiredCapabilities, imported.Manifest.RequiredCapabilities);
-    }
+        => AssertGeneratedPackage(
+            GamePluginAssembly(),
+            kernelTypeName,
+            pluginId,
+            contract,
+            subscription,
+            rpcEntrypoint,
+            requiredCapabilities);
 
     public static TheoryData<string, string, string, string?, string?, string[]> GeneratedPackages()
         => new()
@@ -130,27 +117,14 @@ public sealed class GameServerGeneratedPackageTests
         string? subscription,
         string? rpcEntrypoint,
         string[] requiredCapabilities)
-    {
-        var kernelType = GamePluginClientAssembly().GetType(kernelTypeName, throwOnError: true)!;
-        var package = KernelPackageRegistry.Resolve(kernelType);
-
-        Assert.Equal(pluginId, package.Manifest.PluginId);
-        Assert.Equal(contract, package.Manifest.Contract);
-        Assert.Equal(rpcEntrypoint, package.Manifest.RpcEntrypoint);
-        Assert.Equal(
-            subscription is null ? [] : [subscription],
-            package.Manifest.Subscriptions.Select(item => item.Event).ToArray());
-        foreach (var capability in requiredCapabilities)
-        {
-            Assert.Contains(capability, package.Manifest.RequiredCapabilities, StringComparer.Ordinal);
-        }
-
-        var imported = PluginPackageJsonSerializer.Import(PluginPackageJsonSerializer.Export(package));
-        Assert.Equal(package.Manifest.PluginId, imported.Manifest.PluginId);
-        Assert.Equal(package.Manifest.Contract, imported.Manifest.Contract);
-        Assert.Equal(package.Manifest.RpcEntrypoint, imported.Manifest.RpcEntrypoint);
-        Assert.Equal(package.Manifest.RequiredCapabilities, imported.Manifest.RequiredCapabilities);
-    }
+        => AssertGeneratedPackage(
+            GamePluginClientAssembly(),
+            kernelTypeName,
+            pluginId,
+            contract,
+            subscription,
+            rpcEntrypoint,
+            requiredCapabilities);
 
     public static TheoryData<string, string, string, string?, string?, string[]> ClientGeneratedPackages()
         => new()
@@ -250,29 +224,43 @@ public sealed class GameServerGeneratedPackageTests
             .GetMethod("ExportAll", BindingFlags.Public | BindingFlags.Static)!
             .Invoke(null, [pluginsRoot]);
 
-    private static string GamePluginAssemblyPath()
+    private static void AssertGeneratedPackage(
+        Assembly assembly,
+        string kernelTypeName,
+        string pluginId,
+        string contract,
+        string? subscription,
+        string? rpcEntrypoint,
+        string[] requiredCapabilities)
     {
-        var output = new DirectoryInfo(AppContext.BaseDirectory.TrimEnd(
-            Path.DirectorySeparatorChar,
-            Path.AltDirectorySeparatorChar));
-        var configuration = output.Parent!.Name;
-        return Path.GetFullPath(Path.Combine(
-            AppContext.BaseDirectory,
-            "..",
-            "..",
-            "..",
-            "..",
-            "..",
-            "samples",
-            "GameServer",
-            "Examples.GameServer.Plugin",
-            "bin",
-            configuration,
-            "net10.0",
-            "Examples.GameServer.Plugin.dll"));
+        var kernelType = assembly.GetType(kernelTypeName, throwOnError: true)!;
+        var package = KernelPackageRegistry.Resolve(kernelType);
+
+        Assert.Equal(pluginId, package.Manifest.PluginId);
+        Assert.Equal(contract, package.Manifest.Contract);
+        Assert.Equal(rpcEntrypoint, package.Manifest.RpcEntrypoint);
+        Assert.Equal(
+            subscription is null ? [] : [subscription],
+            package.Manifest.Subscriptions.Select(item => item.Event).ToArray());
+        foreach (var capability in requiredCapabilities)
+        {
+            Assert.Contains(capability, package.Manifest.RequiredCapabilities, StringComparer.Ordinal);
+        }
+
+        var imported = PluginPackageJsonSerializer.Import(PluginPackageJsonSerializer.Export(package));
+        Assert.Equal(package.Manifest.PluginId, imported.Manifest.PluginId);
+        Assert.Equal(package.Manifest.Contract, imported.Manifest.Contract);
+        Assert.Equal(package.Manifest.RpcEntrypoint, imported.Manifest.RpcEntrypoint);
+        Assert.Equal(package.Manifest.RequiredCapabilities, imported.Manifest.RequiredCapabilities);
     }
 
+    private static string GamePluginAssemblyPath()
+        => SampleAssemblyPath("Examples.GameServer.Plugin", "Examples.GameServer.Plugin.dll");
+
     private static string GamePluginClientAssemblyPath()
+        => SampleAssemblyPath("Examples.GameServer.Plugin.Client", "Examples.GameServer.Plugin.Client.dll");
+
+    private static string SampleAssemblyPath(string projectFolder, string dllName)
     {
         var output = new DirectoryInfo(AppContext.BaseDirectory.TrimEnd(
             Path.DirectorySeparatorChar,
@@ -287,10 +275,10 @@ public sealed class GameServerGeneratedPackageTests
             "..",
             "samples",
             "GameServer",
-            "Examples.GameServer.Plugin.Client",
+            projectFolder,
             "bin",
             configuration,
             "net10.0",
-            "Examples.GameServer.Plugin.Client.dll"));
+            dllName));
     }
 }

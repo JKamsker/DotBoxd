@@ -4,13 +4,14 @@ namespace DotBoxD.Kernels.Game.Client.Sandbox;
 
 internal sealed class GameClientAccess : IGameClientAccess
 {
+    private static readonly IReadOnlySet<string> AllowedServerOperations =
+        new HashSet<string>(["bounty.claim"], StringComparer.Ordinal);
+
     public GameClientAccess(ConsoleHudRenderer renderer, IGameClientControlService control)
     {
         Ui = new ClientHud(renderer);
         Fx = new ClientFx(renderer);
-        Server = new GameServerRelay(
-            control,
-            new HashSet<string>(["bounty.claim"], StringComparer.Ordinal));
+        Server = new GameServerRelay(control, AllowedServerOperations);
     }
 
     public IClientHud Ui { get; }

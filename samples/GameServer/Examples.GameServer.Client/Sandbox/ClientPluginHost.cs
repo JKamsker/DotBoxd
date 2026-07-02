@@ -10,6 +10,10 @@ namespace DotBoxD.Kernels.Game.Client.Sandbox;
 
 internal sealed class ClientPluginHost : IDisposable
 {
+    private const string ClientServerCallCapability = "game.client.server.call";
+    private const string ClientUiWriteCapability = "game.client.ui.write";
+    private const string ClientFxPlayCapability = "game.client.fx.play";
+
     private readonly PluginServer _server;
     private InstalledKernel? _claimKernel;
 
@@ -38,9 +42,10 @@ internal sealed class ClientPluginHost : IDisposable
         {
             var required = _server.GetRequiredCapabilities(part.Package);
             Console.WriteLine($"[client] bundle {part.BundleId}/{part.Kind}: caps [{string.Join(", ", required)}]");
-            if (string.Equals(part.BundleId, "gold-cheat", StringComparison.Ordinal))
+            if (IsUnsupportedRelayOnlyExtension(part, required))
             {
-                Console.WriteLine("[client] DENY gold-cheat: E-POLICY-CAP (no gold bindings are registered in this host).");
+                Console.WriteLine(
+                    $"[client] DENY {part.BundleId}: E-POLICY-CAP (no gold bindings are registered in this host).");
                 continue;
             }
 
@@ -62,14 +67,22 @@ internal sealed class ClientPluginHost : IDisposable
         return ((StringValue)result).Value;
     }
 
-    public void Publish(ClientMonsterKilledEvent e)
-        => _server.Hooks.PublishAsync(e).AsTask().GetAwaiter().GetResult();
+    public ValueTask PublishAsync(ClientMonsterKilledEvent e)
+        => _server.Hooks.PublishAsync(e);
 
     public void Publish(ClientGoldChangedEvent e) => _server.Subscriptions.Publish(e);
 
     public void Publish(ClientAttackSeenEvent e) => _server.Subscriptions.Publish(e);
 
     public void Dispose() => _server.Dispose();
+
+    private static bool IsUnsupportedRelayOnlyExtension(
+        ClientBundlePart part,
+        IReadOnlyList<string> requiredCapabilities)
+        => part.Kind == ClientBundlePartKind.Extension &&
+           requiredCapabilities.Contains(ClientServerCallCapability, StringComparer.Ordinal) &&
+           !requiredCapabilities.Contains(ClientUiWriteCapability, StringComparer.Ordinal) &&
+           !requiredCapabilities.Contains(ClientFxPlayCapability, StringComparer.Ordinal);
 
     private async ValueTask InstallPartAsync(
         ClientBundlePart part,

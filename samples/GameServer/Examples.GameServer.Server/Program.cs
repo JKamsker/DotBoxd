@@ -105,6 +105,11 @@ internal static class Program
                 await Console.Error.WriteLineAsync("client did not shut down before timeout.").ConfigureAwait(false);
                 return 1;
             }
+            catch (InvalidOperationException ex)
+            {
+                await Console.Error.WriteLineAsync(ex.Message).ConfigureAwait(false);
+                return 1;
+            }
         }
 
         await host.Disconnected.WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
@@ -165,6 +170,7 @@ internal static class Program
 
     private static bool TryParse(string[] args, out int listenPort, out bool launchClient)
     {
+        const int maxTcpPort = 65_535;
         listenPort = 0;
         launchClient = true;
         for (var i = 0; i < args.Length; i++)
@@ -175,7 +181,8 @@ internal static class Program
             }
             else if (string.Equals(args[i], "--listen", StringComparison.Ordinal) &&
                      i + 1 < args.Length &&
-                     int.TryParse(args[++i], out listenPort))
+                     int.TryParse(args[++i], out listenPort) &&
+                     listenPort is >= 0 and <= maxTcpPort)
             {
             }
             else
@@ -184,7 +191,7 @@ internal static class Program
             }
         }
 
-        return listenPort >= 0;
+        return true;
     }
 
     private static string PluginsRoot()
