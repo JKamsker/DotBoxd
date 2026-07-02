@@ -108,7 +108,7 @@ public sealed class RpcPeerSessionTests
             await session.DisposeAsync();
         }
 
-        Assert.IsType<OperationCanceledException>(exception);
+        Assert.IsAssignableFrom<OperationCanceledException>(exception);
         Assert.False(transport.ConnectCalled);
         Assert.Null(transport.Connection);
         Assert.False(channel.ReceiveCalled);

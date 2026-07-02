@@ -79,6 +79,8 @@ public sealed class RpcPeerSession : IAsyncDisposable
             throw new ArgumentNullException(nameof(serializer));
         }
 
+        ct.ThrowIfCancellationRequested();
+
         RpcPeer? peer = null;
         try
         {
