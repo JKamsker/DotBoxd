@@ -56,6 +56,9 @@ internal static partial class DotBoxDRpcTypeMapper
                 return Scalar("F64");
             case SpecialType.System_Single:
                 return Scalar("F64");
+            case SpecialType.System_Decimal:
+                RejectTooDeep(type, depth);
+                return DecimalWireJsonType();
             case SpecialType.System_String:
                 return Scalar("String");
         }
@@ -271,14 +274,9 @@ internal static partial class DotBoxDRpcTypeMapper
         return members;
     }
 
-    /// <summary>
-    /// True when <paramref name="member"/> is marked <c>[IgnoreDataMember]</c>
-    /// (<c>System.Runtime.Serialization</c>). Such a member is non-wire — a lazily-resolved or computed
-    /// projection of the record (e.g. a context snapshot resolved on first read), not part of its serialized
-    /// data — so it is excluded from the marshalled record/event field set. The runtime convention adapter and
-    /// the decode-side record shape exclude it too, keeping the analyzer's wire field set in lockstep with both
-    /// runtime readers, and letting a record/event that carries such a member still lower.
-    /// </summary>
+    /// <summary>True when <paramref name="member"/> is marked <c>[IgnoreDataMember]</c>.
+    /// Such a member is non-wire, so the analyzer, convention adapter, and record decoder all exclude it from
+    /// the marshalled field set.</summary>
     public static bool IsIgnoredDataMember(ISymbol member)
     {
         foreach (var attribute in member.GetAttributes())

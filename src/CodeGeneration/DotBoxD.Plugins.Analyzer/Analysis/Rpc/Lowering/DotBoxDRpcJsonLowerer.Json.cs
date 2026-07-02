@@ -59,6 +59,18 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
     private static string I64(long value) => Obj(("i64", value.ToString(CultureInfo.InvariantCulture)));
 
+    private static string DecimalLiteralJson(decimal value)
+    {
+        var bits = decimal.GetBits(value);
+        return Call(
+            "record.new",
+            DotBoxDRpcTypeMapper.DecimalWireJsonType(),
+            I32(bits[0]),
+            I32(bits[1]),
+            I32(bits[2]),
+            I32(bits[3]));
+    }
+
     private static string EnumLiteralJson(INamedTypeSymbol enumType, object? value)
     {
         if (value is null)

@@ -139,6 +139,7 @@ $defaultMinimums = @{
     ServerExtensionClientReturnAttributeSurpriseTests = 3
     ServerExtensionClientProxyValidationTests = 8
     ServerExtensionDateTimeSupportTests = 4
+    ServerExtensionDecimalSupportTests = 4
     ServerExtensionTimeSpanSupportTests = 6
     KernelRpcMarshallerSurpriseTests = 27
     KernelRpcMarshallerReadonlyCollectionTests = 2

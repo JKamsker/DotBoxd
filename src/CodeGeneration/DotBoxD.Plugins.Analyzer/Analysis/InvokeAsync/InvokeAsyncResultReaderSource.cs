@@ -52,6 +52,11 @@ internal sealed partial class InvokeAsyncResultReaderSource
             return $"{EnsureDateTimeValueReader(type)}({expression})";
         }
 
+        if (DotBoxDRpcTypeMapper.IsDecimalWireType(type))
+        {
+            return $"{EnsureDecimalValueReader()}({expression})";
+        }
+
         if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
         {
             return $"new global::System.TimeSpan({expression}.Int64Value)";

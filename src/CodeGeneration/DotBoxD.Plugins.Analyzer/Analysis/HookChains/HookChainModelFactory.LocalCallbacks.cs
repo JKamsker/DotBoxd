@@ -86,6 +86,7 @@ internal static partial class HookChainModelFactory
     private static bool IsFrameworkRecordManifestType(ITypeSymbol? type)
         => type is not null &&
            (Rpc.DotBoxDRpcTypeMapper.IsDateTimeWireType(type) ||
+            Rpc.DotBoxDRpcTypeMapper.IsDecimalWireType(type) ||
             Rpc.DotBoxDRpcTypeMapper.IsIndexWireType(type) ||
             Rpc.DotBoxDRpcTypeMapper.IsRangeWireType(type));
 

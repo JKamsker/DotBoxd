@@ -34,6 +34,11 @@ public static partial class KernelRpcMarshaller
             return dateTime;
         }
 
+        if (TryDecimalToSandboxValue(value, type, out var decimalValue))
+        {
+            return decimalValue;
+        }
+
         if (TryFrameworkStructToSandboxValue(value, type, out var frameworkStruct))
         {
             return frameworkStruct;
@@ -156,6 +161,11 @@ public static partial class KernelRpcMarshaller
         if (TryDateTimeFromSandboxValue(value, type, out var dateTime))
         {
             return dateTime;
+        }
+
+        if (TryDecimalFromSandboxValue(value, type, out var decimalValue))
+        {
+            return decimalValue;
         }
 
         if (TryFrameworkStructFromSandboxValue(value, type, out var frameworkStruct))

@@ -35,6 +35,11 @@ internal static class InvokeAsyncArgumentWriterSource
                 : WriteDateTimeExpression(expression, depth);
         }
 
+        if (DotBoxDRpcTypeMapper.IsDecimalWireType(type))
+        {
+            return WriteDecimalExpression(expression, depth);
+        }
+
         if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
         {
             return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64({expression}.Ticks)";
@@ -209,6 +214,20 @@ internal static class InvokeAsyncArgumentWriterSource
         => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Record(new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[] {{ " +
            $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64(" + value + ".UtcTicks), " +
            $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64(" + value + ".Offset.Ticks) })";
+
+    private static string WriteDecimalExpression(string expression, int depth)
+    {
+        var value = Local("decimal", depth);
+        var bits = Local("bits", depth);
+        return $"((global::System.Func<decimal, {DotBoxDRpcValueNames.GlobalKernelRpcValue}>)(static " +
+               value + " => { var " + bits + " = global::System.Decimal.GetBits(" + value + "); " +
+               $"return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.Record(new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[] {{ " +
+               $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32(" + bits + "[0]), " +
+               $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32(" + bits + "[1]), " +
+               $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32(" + bits + "[2]), " +
+               $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32(" + bits + "[3]) }); }))(" +
+               expression + ")";
+    }
 
     private static string WriteIndexExpression(string expression)
         => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Record(new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[] {{ " +

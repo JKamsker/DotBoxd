@@ -22,6 +22,11 @@ public static partial class KernelRpcMarshaller
             return dateTime;
         }
 
+        if (TryDecimalFromKernelRpcValue(value, type, out var decimalValue))
+        {
+            return decimalValue;
+        }
+
         if (TryFrameworkStructFromKernelRpcValue(value, type, out var frameworkStruct))
         {
             return frameworkStruct;

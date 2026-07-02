@@ -108,6 +108,7 @@ internal static class LocalTerminalManifestValidator
 
     private static bool IsFrameworkRecordType(Type type)
         => type == typeof(DateTime) ||
+           type == typeof(decimal) ||
            type == typeof(Index) ||
            type == typeof(Range);
 

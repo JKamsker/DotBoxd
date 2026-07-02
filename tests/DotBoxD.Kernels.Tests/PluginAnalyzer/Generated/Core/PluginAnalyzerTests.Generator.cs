@@ -181,7 +181,7 @@ public sealed partial class PluginAnalyzerTests
 
             namespace Sample;
 
-            public sealed record DamageEvent(decimal Amount);
+            public sealed record DamageEvent(char Marker);
 
             [Plugin("bad-event")]
             public sealed partial class BadKernel : IEventKernel<DamageEvent>
