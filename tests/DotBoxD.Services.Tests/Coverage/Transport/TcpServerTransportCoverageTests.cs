@@ -19,15 +19,15 @@ public sealed class TcpServerTransportCoverageTests
     // ---- Constructors ---------------------------------------------------------------------
 
     [Fact]
-    public async Task Constructor_PortOnly_BindsOnAnyAddress()
+    public async Task Constructor_PortOnly_BindsOnLoopbackAddress()
     {
-        // The (int port) overload delegates to (IPAddress.Any, port). Binding port 0 picks a free port
-        // and StartAsync must expose the bound endpoint.
+        // The convenience overload is safe-by-default: it binds loopback, not all interfaces.
         await using var server = new TcpServerTransport(0);
         await server.StartAsync().WaitAsync(Timeout);
 
         Assert.NotNull(server.LocalEndpoint);
         Assert.True(server.LocalEndpoint!.Port > 0);
+        Assert.Equal(IPAddress.Loopback, server.LocalEndpoint.Address);
     }
 
     [Fact]

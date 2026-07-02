@@ -15,7 +15,7 @@ public sealed class TcpServerTransport : IServerTransport
     private int _disposed;
     private int _started;
     private int _freshAcceptStartsForTest;
-    public TcpServerTransport(int port) : this(IPAddress.Any, port)
+    public TcpServerTransport(int port) : this(IPAddress.Loopback, port)
     {
     }
     public TcpServerTransport(IPAddress address, int port)
