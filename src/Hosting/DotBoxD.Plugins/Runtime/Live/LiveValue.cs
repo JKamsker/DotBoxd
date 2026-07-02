@@ -26,8 +26,10 @@ public sealed class LiveValue<T> : ICoercibleLiveSetting
     private T _value;
 
     public LiveValue(string name, T value)
-        : this(new LiveSettingDefinition(name, LiveSettingTypeConverter.FromClrType(typeof(T)), value), value)
     {
+        ArgumentNullException.ThrowIfNull(name);
+        Definition = new LiveSettingDefinition(name, LiveSettingTypeConverter.FromClrType(typeof(T)), value);
+        _value = value;
     }
 
     internal LiveValue(LiveSettingDefinition definition, T value)

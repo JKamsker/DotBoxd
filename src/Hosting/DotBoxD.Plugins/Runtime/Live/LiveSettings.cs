@@ -14,7 +14,13 @@ public sealed class LiveSettingStore
         _settings = new Dictionary<string, ILiveSetting>(StringComparer.Ordinal);
         foreach (var setting in settings)
         {
-            _settings.Add(setting.Name, setting);
+            ArgumentNullException.ThrowIfNull(setting, nameof(settings));
+            var name = setting.Name;
+            ArgumentNullException.ThrowIfNull(name);
+            if (!_settings.TryAdd(name, setting))
+            {
+                throw new ArgumentException($"Duplicate live setting name '{name}'.", nameof(settings));
+            }
         }
     }
 

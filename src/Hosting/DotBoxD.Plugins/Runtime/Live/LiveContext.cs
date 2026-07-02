@@ -81,6 +81,7 @@ internal static class LiveContextFactory
 {
     public static LiveContext<T> Create<T>(string name, Action<T>? initialize = null) where T : class
     {
+        ArgumentNullException.ThrowIfNull(name);
         if (!typeof(T).IsInterface)
         {
             throw LiveSettingTypeConverter.Diagnostic("Live context bindings must use an interface type.");
