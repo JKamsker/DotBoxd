@@ -77,6 +77,10 @@ Console.ReadLine();
 await host.StopAsync(); // DisposeAsync also stops the host
 ```
 
+The port-only `TcpServerTransport` constructor binds to loopback. To accept remote TCP clients,
+bind an explicit interface such as `new TcpServerTransport(IPAddress.Any, 5050)` and add your
+own authentication or network access control before exposing services.
+
 ## 3. Create the Client
 
 ```csharp

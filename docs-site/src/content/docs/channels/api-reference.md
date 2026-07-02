@@ -113,6 +113,10 @@ await host.StartAsync();
 await host.StopAsync();   // DisposeAsync also stops the host and closes every accepted peer
 ```
 
+`new TcpServerTransport(port)` binds to loopback only. Use
+`new TcpServerTransport(IPAddress.Any, port)` or a specific interface address only when you intend
+to accept remote clients and have an authentication or network access-control layer in place.
+
 | Member | Description |
 |--------|-------------|
 | `RpcHost.Listen(IServerTransport, ISerializer, RpcPeerOptions?)` | Creates a host bound to a listener |
@@ -381,7 +385,7 @@ public TcpServerTransport(string address, int port)
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `port` | `int` | Port to listen on |
-| `address` | `IPAddress`/`string` | Interface to bind (default: `IPAddress.Any`) |
+| `address` | `IPAddress`/`string` | Interface to bind. The port-only overload uses `IPAddress.Loopback`; pass `IPAddress.Any` explicitly for all interfaces. |
 
 `TcpServerTransport.LocalEndpoint` exposes the bound endpoint after `StartAsync` succeeds,
 including the OS-assigned port when the transport is created with port `0`.
