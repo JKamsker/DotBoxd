@@ -93,6 +93,11 @@ public sealed class PluginConnectionHost<TConnection> : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(server);
         ArgumentNullException.ThrowIfNull(configure);
 
+        using (server.CreateSession())
+        {
+            // Validate the server before starting transport; the real per-peer session is still minted on accept.
+        }
+
         var self = new PluginConnectionHost<TConnection>(pipeName);
         self._host = listen(peer =>
         {
