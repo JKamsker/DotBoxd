@@ -154,6 +154,19 @@ public class EnvelopeRoundTripTests
     }
 
     [Theory]
+    [MemberData(nameof(RpcRequestsWithNullRequiredNames))]
+    public void RpcRequest_NullRequiredNames_ThrowOnSerialize(RpcRequest request, string missingName)
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var writer = new ArrayBufferWriter<byte>();
+
+        var ex = Assert.Throws<MessagePackSerializationException>(
+            () => serializer.Serialize(writer, request));
+
+        Assert.Contains(missingName, ex.ToString());
+    }
+
+    [Theory]
     [InlineData(false, false, true, false, "ServiceName")]
     [InlineData(true, true, true, false, "ServiceName")]
     [InlineData(true, false, false, false, "MethodName")]
@@ -205,6 +218,14 @@ public class EnvelopeRoundTripTests
             () => serializer.Deserialize<RpcRequest>(writer.WrittenMemory));
         Assert.Contains(missingName, ex.ToString());
     }
+
+    public static TheoryData<RpcRequest, string> RpcRequestsWithNullRequiredNames()
+        => new()
+        {
+            { default, "ServiceName" },
+            { new RpcRequest { MessageId = 42, ServiceName = null!, MethodName = "Op" }, "ServiceName" },
+            { new RpcRequest { MessageId = 42, ServiceName = "Svc", MethodName = null! }, "MethodName" },
+        };
 
     [Fact]
     public void RpcResponse_RoundTrips_Success()
