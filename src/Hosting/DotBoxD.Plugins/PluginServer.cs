@@ -283,6 +283,6 @@ public sealed partial class PluginServer : IDisposable
         }
     }
 
-    private void ThrowIfDisposed()
+    internal void ThrowIfDisposed()
         => ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 }
