@@ -16,6 +16,7 @@ internal sealed class CompiledArtifactExecutionCache
         Func<CancellationToken, ValueTask<CompiledArtifact>> compile,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var key = new CacheKey(plan.PlanHash, entrypoint);
         CacheLookup lookup;
         lock (_gate)

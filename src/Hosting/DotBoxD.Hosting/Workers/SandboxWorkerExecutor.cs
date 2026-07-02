@@ -32,12 +32,15 @@ internal sealed partial class SandboxWorkerExecutor(ConfiguredSandboxWorker? wor
         using var timeout = CreateWorkerTimeoutSource(cancellationToken, plan.Budget.EffectiveWallTime);
         try
         {
-            var result = await worker.Client.ExecuteInWorkerAsync(
+            var pending = worker.Client.ExecuteInWorkerAsync(
                     plan,
                     entrypoint,
                     input,
                     workerOptions,
                     timeout.Token)
+                .AsTask();
+            var result = await pending
+                .WaitAsync(timeout.Token)
                 .ConfigureAwait(false);
             if (timeout.IsCancellationRequested)
             {

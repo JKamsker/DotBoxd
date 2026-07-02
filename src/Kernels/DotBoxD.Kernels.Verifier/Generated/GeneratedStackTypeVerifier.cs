@@ -65,9 +65,6 @@ internal static class GeneratedStackTypeVerifier
                 or ILOpCode.Ldloc_2 or ILOpCode.Ldloc_3:
                 stack.Add(IndexedType("local", signature.Locals, instruction, diagnostics));
                 break;
-            case ILOpCode.Starg or ILOpCode.Starg_s:
-                StoreIndexed("argument", signature.Arguments, instruction, stack, diagnostics);
-                break;
             case ILOpCode.Stloc or ILOpCode.Stloc_s or ILOpCode.Stloc_0 or ILOpCode.Stloc_1
                 or ILOpCode.Stloc_2 or ILOpCode.Stloc_3:
                 StoreIndexed("local", signature.Locals, instruction, stack, diagnostics);

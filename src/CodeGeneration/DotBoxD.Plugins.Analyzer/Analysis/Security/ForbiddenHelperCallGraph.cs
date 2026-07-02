@@ -36,6 +36,24 @@ internal sealed class ForbiddenHelperCallGraph
         _helperEdges.Add(new HelperEdge(caller.OriginalDefinition, normalizedTarget));
     }
 
+    // A field/property initializer in an event kernel runs when the kernel is constructed in-host, so a helper
+    // invoked from one is a call-graph ROOT exactly like a helper called from a kernel method body. Its
+    // ContainingSymbol is the field/property (not a method), so RecordCall never sees it; record the root here so
+    // taint that reaches the target through its own body (e.g. Helper.Danger -> System.IO.File) is reported at
+    // the initializer site. Mirrors RecordCall's root rules: the target must be declared in source and must not
+    // itself be an event-kernel member (those are analyzed directly).
+    public void RecordInitializerRootCall(INamedTypeSymbol containingType, IMethodSymbol target, Location location)
+    {
+        if (target.DeclaringSyntaxReferences.Length == 0 ||
+            !PluginAnalyzer.IsEventKernel(containingType) ||
+            PluginAnalyzer.IsEventKernel(target.ContainingType))
+        {
+            return;
+        }
+
+        _rootCalls.Add(new RootHelperCall(target.OriginalDefinition, location));
+    }
+
     public void ReportDiagnostics(CompilationAnalysisContext context)
     {
         if (_forbidden.IsEmpty ||

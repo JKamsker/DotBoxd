@@ -64,6 +64,8 @@ public sealed partial class InstalledKernel
     public IReadOnlyList<PluginExecutionObservation> ExecutionObservations => _executionObserver.Snapshot();
     public bool IsRevoked => Volatile.Read(ref _revoked) != 0;
 
+    public TypedInstalledKernel<TSettings> As<TSettings>() where TSettings : class => new(this);
+
     /// <summary>
     /// Opaque owner token of the session that installed this kernel, or <c>null</c> for kernels
     /// installed directly on the server (no session). Used by <see cref="KernelRegistry"/> to reject
@@ -93,7 +95,7 @@ public sealed partial class InstalledKernel
     {
         if (typeof(TSettings).IsInterface)
         {
-            return Value.As<TSettings>();
+            return Value.As<TSettings>(() => IsRevoked);
         }
 
         lock (_typedValueGate)
@@ -124,6 +126,7 @@ public sealed partial class InstalledKernel
             throw new ArgumentOutOfRangeException(nameof(mode), mode, "Live update mode is not supported.");
         }
 
+        PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
         lock (_updateModeGate)
         {
             _updateModes[stateType] = mode;
@@ -133,6 +136,7 @@ public sealed partial class InstalledKernel
     public async ValueTask FlushUpdatesAsync(CancellationToken cancellationToken = default)
     {
         PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
+        cancellationToken.ThrowIfCancellationRequested();
         _pendingLiveUpdates.ClearError();
         await _pendingLiveUpdates.FlushAsync(cancellationToken).ConfigureAwait(false);
         lock (_lifecycleGate)
@@ -151,8 +155,8 @@ public sealed partial class InstalledKernel
         try
         {
             PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
-            ValidateFor(adapter);
-            var input = BuildInput(adapter, e, _entrypoints.ShouldHandle);
+            var parameters = ValidateFor(adapter);
+            var input = BuildInput(adapter, e, _entrypoints.ShouldHandle, parameters);
             var result = await ExecutePreparedAsync(_entrypoints.ShouldHandle, input, cancellationToken).ConfigureAwait(false);
             PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
             return AsShouldHandleResult(result);
@@ -172,8 +176,8 @@ public sealed partial class InstalledKernel
         try
         {
             PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
-            ValidateFor(adapter);
-            var input = BuildInput(adapter, e, _entrypoints.Handle);
+            var parameters = ValidateFor(adapter);
+            var input = BuildInput(adapter, e, _entrypoints.Handle, parameters);
             _ = await ExecutePreparedAsync(_entrypoints.Handle, input, cancellationToken).ConfigureAwait(false);
             PluginKernelRevocation.ThrowIfRevoked(IsRevoked);
         }
@@ -205,8 +209,8 @@ public sealed partial class InstalledKernel
                 return;
             }
 
-            ValidateFor(adapter);
-            var input = BuildInput(adapter, e, _entrypoints.ShouldHandle);
+            var parameters = ValidateFor(adapter);
+            var input = BuildInput(adapter, e, _entrypoints.ShouldHandle, parameters);
             var result = await ExecutePreparedAsync(_entrypoints.ShouldHandle, input, cancellationToken).ConfigureAwait(false);
             if (AsShouldHandleResult(result))
             {
@@ -268,7 +272,7 @@ public sealed partial class InstalledKernel
         return handled.Value;
     }
 
-    internal void ValidateFor<TEvent>(IPluginEventAdapter<TEvent> adapter)
+    internal IReadOnlyList<Parameter> ValidateFor<TEvent>(IPluginEventAdapter<TEvent> adapter)
         => _adapterValidation.Validate(Manifest, _plan, _entrypoints, adapter);
 
     internal void RefreshTypedValuesFromStore()

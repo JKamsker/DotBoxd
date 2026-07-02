@@ -79,6 +79,7 @@ internal sealed partial class RpcPeerInboundDispatcher
         if (!RpcPeerInboundRequestReader.TryRead(
             frame,
             _serializer,
+            messageId,
             out var request,
             out var payload,
             out protocolError,

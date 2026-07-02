@@ -157,35 +157,45 @@ public sealed partial class RpcHost
             {
                 return Task.CompletedTask;
             }
-
             return _stopTask ??= StopCoreAsync(_cts, _acceptTask, ct);
         }
     }
-
     private async Task StopCoreAsync(CancellationTokenSource cts, Task? acceptTask, CancellationToken ct)
     {
         var completed = false;
+        var cancellationStarted = false;
+        var stopListenerBeforeCancel = acceptTask is not null && ct.IsCancellationRequested;
         try
         {
+            if (stopListenerBeforeCancel)
+            {
+                await Task.Yield();
+                await StopListenerOnceAsync(CancellationToken.None).ConfigureAwait(false);
+            }
             TryCancel(cts);
+            cancellationStarted = true;
             if (acceptTask is not null)
             {
                 await ObserveAcceptShutdownAsync(acceptTask).ConfigureAwait(false);
             }
-
             await _acceptLoop.DrainInFlightAsync().ConfigureAwait(false);
-            await StopListenerOnceAsync(ct).ConfigureAwait(false);
+            if (!stopListenerBeforeCancel)
+            {
+                await StopListenerOnceAsync(ct).ConfigureAwait(false);
+            }
             await _peers.CloseAllAsync().ConfigureAwait(false);
             await _peers.AwaitCleanupAsync().ConfigureAwait(false);
             completed = true;
         }
         finally
         {
-            DisposeCts(cts);
+            if (cancellationStarted)
+            {
+                DisposeCts(cts);
+            }
             CompleteStop(cts, completed);
         }
     }
-
     private static void TryCancel(CancellationTokenSource cts)
     {
         try

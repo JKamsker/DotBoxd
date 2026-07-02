@@ -37,7 +37,7 @@ var monsterName = await server.InvokeAsync(
     });
 ```
 
-The lambda body is lowered to the same verified IR a `[KernelRpcService]` method produces. The explicit bag
+The lambda body is lowered to the same verified IR a `[ServerExtension]` method produces. The explicit bag
 is encoded as one record argument, and assigned bag properties are returned in a response record and written
 back to the same object after the await.
 
@@ -119,9 +119,9 @@ var flow = semanticModel.AnalyzeDataFlow(lambdaBlock);
   static field access when the compiled call site exposes a safe compiler-generated display class.
 - Capture-bag calls also reject ambient `DataFlowsIn` / `DataFlowsOut`; only the explicit bag parameter can
   carry values across the boundary.
-- **Capture-bag sync-in** = the capture-bag object encoded as a `KernelRpcValue.Record`.
+- **Capture-bag sync-in** = the capture-bag object encoded as a server-extension wire record.
 - **Capture-bag sync-out** = simple assignments to supported settable bag properties, e.g. `bag.LastHealth = ...`.
-- **Implicit sync-in** = captured local/parameter values encoded as individual `KernelRpcValue` arguments.
+- **Implicit sync-in** = captured local/parameter values encoded as individual server-extension wire arguments.
 - **Implicit sync-out** = captured locals/parameters written inside the lambda and returned in the response
   record, then reflected back into the closure object.
 
@@ -129,8 +129,8 @@ Each assigned bag property gets an initialized IR local (`__syncOut_<Property>`)
 locals back through the response envelope.
 
 Nullable-reference capture-bag fields are a documented caveat. The IR scalar type system cannot represent
-"String-or-null": `KernelRpcValue.String(null)` coerces to empty, and `KernelRpcValueConverter.ToSandboxValue`
-validates each value's kind against the IR-declared `SandboxType`. Capture bags should use non-nullable fields
+"String-or-null": the server-extension string wire encoding coerces null to empty, and wire-to-sandbox
+conversion validates each value's kind against the IR-declared `SandboxType`. Capture bags should use non-nullable fields
 or accept null-to-empty-string behavior.
 
 ---
@@ -214,7 +214,7 @@ var name = await server.InvokeAsync(
     });
 ```
 
-The bag is encoded as one `KernelRpcValue.Record` argument (sync-in). Assignments to bag properties lower to
+The bag is encoded as one server-extension wire record argument (sync-in). Assignments to bag properties lower to
 generated IR locals. If any bag property is assigned, the anonymous kernel returns
 `Record([returnValue, syncOut0, …])`; the interceptor decodes the response and writes each sync-out value
 back onto the same bag object after the await. This is more explicit than closure-local capture, but it is
@@ -252,10 +252,10 @@ internal static async ValueTask<int> InvokeAsync_0(
         .EnsureAnonymousKernelAsync("$anon:<hex>", global::…$anon_<hex>PluginPackage.Create)
         .ConfigureAwait(false);
 
-    var __request  = KernelRpcBinaryCodec.EncodeArguments(Array.Empty<KernelRpcValue>());
+    var __request  = WriteServerExtensionArguments(Array.Empty<object>());
     var __response = await server.Services.WireClient
         .InvokeServerExtensionAsync(__pluginId, __request).ConfigureAwait(false);
-    var __result   = KernelRpcBinaryCodec.DecodeValue(__response);
+    var __result   = ReadServerExtensionValue(__response);
 
     return __result.RequireInt32();
 }
@@ -336,8 +336,8 @@ Anonymous kernels reuse the server-extension RPC path:
    `RpcKernelPackageValidator.Validate` → `SandboxHost.PrepareAsync` (capability deny-at-install via
    `PolicyResolver.Validate`) → `RpcKernelPackageValidator.ValidatePrepared` → `new InstalledKernel(...)`
    owned by the session.
-2. `InvokeServerExtensionAsync(pluginId, bytes)` → `DecodeArguments` → per-arg `KernelRpcValueConverter
-   .ToSandboxValue` against each `function.Parameters[i].Type` → `InstalledKernel.InvokeServerExtensionAsync` →
+2. `InvokeServerExtensionAsync(pluginId, bytes)` → decode arguments → per-arg wire-to-sandbox conversion
+   against each `function.Parameters[i].Type` → `InstalledKernel.InvokeServerExtensionAsync` →
    `BuildRpcInput` → execute → return one `SandboxValue`.
 
 ### `BuildRpcInput` parameter shapes (must match the generated IR)
@@ -399,7 +399,7 @@ refactored to call it.
 
 **Reused as-is:** `HookChainIdentity.Compute`; `DotBoxDRpcJsonLowerer.LowerBody`/`LowerInvocation`/
 `LowerMemberAccess`; `DotBoxDHostBindingExpressionLowerer` (capability sink); `DotBoxDRpcTypeMapper.JsonType`;
-`KernelRpcBinaryCodec` (encode args / decode value); `KernelRpcValueConverter`; `InstalledKernel
+server-extension binary argument/value encoding; server-extension wire-to-sandbox conversion; `InstalledKernel
 .InvokeServerExtensionAsync` + `BuildRpcInput`; `PluginSession`/`PluginServer` install + ownership + revocation;
 `SandboxHost.PrepareAsync` + `PolicyResolver` capability gating; `RpcKernelPackageValidator`.
 

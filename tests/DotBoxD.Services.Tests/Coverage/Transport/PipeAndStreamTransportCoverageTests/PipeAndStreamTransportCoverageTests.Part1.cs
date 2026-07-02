@@ -140,6 +140,18 @@ public sealed class SingleConnectionTransportCoverageTests
     }
 
     [Fact]
+    public async Task ConnectAsync_WithPreCancelledToken_ThrowsOperationCanceled()
+    {
+        await using var channel = new ScriptedConnection();
+        await using var transport = new SingleConnectionTransport(channel);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => transport.ConnectAsync(cts.Token));
+    }
+
+    [Fact]
     public async Task ConnectionAndIsConnected_BecomeFalse_AfterDispose()
     {
         var channel = new ScriptedConnection();

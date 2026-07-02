@@ -65,7 +65,7 @@ internal static class PluginLiveSettingRangeReader
 
         if (range.ConstructorArguments.Length == DotBoxDGenerationNames.RangeAttributeArguments.TypeAndStringOverloadCount &&
             range.ConstructorArguments[DotBoxDGenerationNames.RangeAttributeArguments.ConversionTypeIndex].Value is INamedTypeSymbol conversionType &&
-            string.Equals(DotBoxDTypeNameReader.SandboxTypeName(conversionType), type, StringComparison.Ordinal))
+            string.Equals(DotBoxDTypeNameReader.LiveSettingTypeName(conversionType), type, StringComparison.Ordinal))
         {
             return (
                 RangeValue(

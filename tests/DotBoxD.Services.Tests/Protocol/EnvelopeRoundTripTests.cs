@@ -153,59 +153,6 @@ public class EnvelopeRoundTripTests
         Assert.Equal(request.InstanceId, result.InstanceId);
     }
 
-    [Theory]
-    [InlineData(false, false, true, false, "ServiceName")]
-    [InlineData(true, true, true, false, "ServiceName")]
-    [InlineData(true, false, false, false, "MethodName")]
-    [InlineData(true, false, true, true, "MethodName")]
-    public void RpcRequest_MissingRequiredNames_Throws(
-        bool includeServiceName,
-        bool nilServiceName,
-        bool includeMethodName,
-        bool nilMethodName,
-        string missingName)
-    {
-        var serializer = new MessagePackRpcSerializer();
-        var writer = new ArrayBufferWriter<byte>();
-        var messagePackWriter = new MessagePackWriter(writer);
-        var fieldCount = 1 + (includeServiceName ? 1 : 0) + (includeMethodName ? 1 : 0);
-        messagePackWriter.WriteMapHeader(fieldCount);
-        messagePackWriter.Write("MessageId");
-        messagePackWriter.Write(42);
-
-        if (includeServiceName)
-        {
-            messagePackWriter.Write("ServiceName");
-            if (nilServiceName)
-            {
-                messagePackWriter.WriteNil();
-            }
-            else
-            {
-                messagePackWriter.Write("Svc");
-            }
-        }
-
-        if (includeMethodName)
-        {
-            messagePackWriter.Write("MethodName");
-            if (nilMethodName)
-            {
-                messagePackWriter.WriteNil();
-            }
-            else
-            {
-                messagePackWriter.Write("Op");
-            }
-        }
-
-        messagePackWriter.Flush();
-
-        var ex = Assert.Throws<MessagePackSerializationException>(
-            () => serializer.Deserialize<RpcRequest>(writer.WrittenMemory));
-        Assert.Contains(missingName, ex.ToString());
-    }
-
     [Fact]
     public void RpcResponse_RoundTrips_Success()
     {
@@ -256,6 +203,53 @@ public class EnvelopeRoundTripTests
         Assert.NotNull(result.Stream);
         Assert.Equal(201, result.Stream!.Value.StreamId);
         Assert.Equal(RpcStreamKind.Binary, result.Stream.Value.Kind);
+    }
+
+    [Fact]
+    public void RpcResponse_RemainsReadableByContractlessResolver()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var response = new RpcResponse
+        {
+            MessageId = 44,
+            IsSuccess = false,
+            ErrorMessage = "compat-error",
+            ErrorType = "CompatException",
+        };
+        var writer = new ArrayBufferWriter<byte>();
+        serializer.Serialize(writer, response);
+
+        var result = MessagePackSerializer.Deserialize<RpcResponse>(
+            writer.WrittenMemory,
+            MessagePackSerializerOptions.Standard.WithResolver(ContractlessStandardResolver.Instance));
+
+        Assert.Equal(response.MessageId, result.MessageId);
+        Assert.Equal(response.IsSuccess, result.IsSuccess);
+        Assert.Equal(response.ErrorMessage, result.ErrorMessage);
+        Assert.Equal(response.ErrorType, result.ErrorType);
+    }
+
+    [Fact]
+    public void RpcResponse_ReadsContractlessResolverBytes()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var response = new RpcResponse
+        {
+            MessageId = 45,
+            IsSuccess = false,
+            ErrorMessage = "compat-error",
+            ErrorType = "CompatException",
+        };
+        var bytes = MessagePackSerializer.Serialize(
+            response,
+            MessagePackSerializerOptions.Standard.WithResolver(ContractlessStandardResolver.Instance));
+
+        var result = serializer.Deserialize<RpcResponse>(bytes);
+
+        Assert.Equal(response.MessageId, result.MessageId);
+        Assert.Equal(response.IsSuccess, result.IsSuccess);
+        Assert.Equal(response.ErrorMessage, result.ErrorMessage);
+        Assert.Equal(response.ErrorType, result.ErrorType);
     }
 
     [Fact]

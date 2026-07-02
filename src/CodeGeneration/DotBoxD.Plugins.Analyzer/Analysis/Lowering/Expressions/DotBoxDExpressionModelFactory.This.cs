@@ -10,16 +10,42 @@ internal static partial class DotBoxDExpressionModelFactory
         string memberName,
         DotBoxDExpressionLoweringContext context)
     {
-        if (context.InlinedBindings is { } bindings &&
-            bindings.TryGetValue(memberName, out var bound))
-        {
-            return bound;
-        }
-
         if (context.SemanticModel.GetSymbolInfo(member, context.CancellationToken).Symbol
             is not IPropertySymbol property)
         {
+            if (context.InlinedBindings is { } bindings &&
+                bindings.TryGetValue(memberName, out var bound))
+            {
+                return bound;
+            }
+
             return Unsupported(member);
+        }
+
+        return TryLowerThisProperty(property, memberName, context) ?? Unsupported(member);
+    }
+
+    private static DotBoxDExpressionModel? TryLowerImplicitThisIdentifier(
+        IdentifierNameSyntax identifier,
+        DotBoxDExpressionLoweringContext context)
+    {
+        if (context.SemanticModel.GetSymbolInfo(identifier, context.CancellationToken).Symbol
+            is not IPropertySymbol { IsStatic: false } property)
+        {
+            return null;
+        }
+
+        return TryLowerThisProperty(property, identifier.Identifier.ValueText, context);
+    }
+
+    private static DotBoxDExpressionModel? TryLowerThisProperty(
+        IPropertySymbol property,
+        string memberName,
+        DotBoxDExpressionLoweringContext context)
+    {
+        if (DotBoxDHostBindingExpressionLowerer.TryLowerProperty(property, context) is { } hostProperty)
+        {
+            return hostProperty;
         }
 
         var symbolKey = LiveSettingSymbolKey(property);
@@ -36,7 +62,13 @@ internal static partial class DotBoxDExpressionModelFactory
             }
         }
 
-        return Unsupported(member);
+        if (context.InlinedBindings is { } fallbackBindings &&
+            fallbackBindings.TryGetValue(memberName, out var fallbackBound))
+        {
+            return fallbackBound;
+        }
+
+        return null;
     }
 
     private static string LiveSettingSymbolKey(IPropertySymbol property)

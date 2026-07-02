@@ -227,6 +227,37 @@ public sealed class RpcKernelMethodGenerationTests
     }
 
     [Fact]
+    public async Task ServerExtension_KernelMethod_string_default_declares_allocation_effect()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create(
+            """
+            using DotBoxD.Plugins; using DotBoxD.Abstractions;
+            namespace Sample;
+
+            [ServerExtension("kernel-method-string-default")]
+            public sealed partial class HelperKernel
+            {
+                public string Run(HookContext ctx)
+                {
+                    return Echo();
+                }
+
+                [KernelMethod]
+                public static string Echo(string value = "fallback") => value;
+            }
+            """,
+            "Sample.HelperPluginPackage");
+
+        Assert.Contains("Alloc", package.Manifest.Effects);
+
+        using var server = PluginServer.Create(defaultPolicy: PurePolicy());
+        var kernel = await server.InstallServerExtensionAsync(package);
+        var result = await kernel.InvokeServerExtensionAsync([]);
+
+        Assert.Equal("fallback", Assert.IsType<StringValue>(result).Value);
+    }
+
+    [Fact]
     public void ServerExtension_rejects_unsupported_KernelMethod_default_parameter_type()
     {
         var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics(

@@ -22,18 +22,24 @@ internal static partial class HookChainModelFactory
             cancellationToken,
             capabilities,
             effects);
-        return projection ?? WholeEventProjection(eventType, eventProperties, effects);
+        return projection ?? WholeEventProjection(eventType, eventProperties, capabilities, effects);
     }
 
     private static HookChainProjection WholeEventProjection(
         INamedTypeSymbol eventType,
         EquatableArray<EventPropertyModel> eventProperties,
+        ICollection<string> capabilities,
         ICollection<string> effects)
     {
         var sandboxType = Rpc.SandboxTypeSourceEmitter.TryEmit(eventType) ?? throw new NotSupportedException();
         var fields = new string[eventProperties.Count];
         for (var i = 0; i < eventProperties.Count; i++)
         {
+            if (eventProperties[i].Capability is { Length: > 0 } capability)
+            {
+                capabilities.Add(capability);
+            }
+
             fields[i] = DotBoxDGenerationNames.Helpers.Var + "(" +
                 LiteralReader.StringLiteral(DotBoxDExpressionModelFactory.EventVariable(eventProperties[i].Name)) + ")";
         }
@@ -56,6 +62,32 @@ internal static partial class HookChainModelFactory
         => projection is null
             ? throw new NotSupportedException()
             : DotBoxDHandleBodyModelFactory.ReturnExpression(projection.Value, projection.Prefix);
+
+    private static string? LocalProjectedManifestType(
+        HookChainProjection? projection,
+        ITypeSymbol? projectedTypeSymbol)
+    {
+        if (projection is null)
+        {
+            return null;
+        }
+
+        var tag = projection.Value.Type;
+        if (!string.Equals(tag, DotBoxDGenerationNames.ManifestTypes.Record, StringComparison.Ordinal) ||
+            IsFrameworkRecordManifestType(projectedTypeSymbol) ||
+            projectedTypeSymbol is not { CanBeReferencedByName: true })
+        {
+            return tag;
+        }
+
+        return projectedTypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+    }
+
+    private static bool IsFrameworkRecordManifestType(ITypeSymbol? type)
+        => type is not null &&
+           (Rpc.DotBoxDRpcTypeMapper.IsDateTimeWireType(type) ||
+            Rpc.DotBoxDRpcTypeMapper.IsIndexWireType(type) ||
+            Rpc.DotBoxDRpcTypeMapper.IsRangeWireType(type));
 
     private static string LocalCallbackHandleReturnType(
         HookChainProjection? projection,

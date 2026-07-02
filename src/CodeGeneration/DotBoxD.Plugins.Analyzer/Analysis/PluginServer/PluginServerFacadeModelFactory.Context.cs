@@ -25,7 +25,7 @@ internal static partial class PluginServerFacadeModelFactory
                 $"Generated plugin server '{serverType.Name}' must declare Context = typeof(TContext).");
 
         ValidateContextShape(serverType, contextType, cancellationToken);
-        ValidateContextMembers(contextType);
+        ValidateContextMembers(contextType, cancellationToken);
         EnsureSingleServerOwnsContext(serverType, contextType, compilation, cancellationToken);
 
         var factoryName = ContextFactoryName(attribute);
@@ -186,32 +186,6 @@ internal static partial class PluginServerFacadeModelFactory
         {
             throw new NotSupportedException(
                 $"ContextFactory '{factoryName}' on '{contextType.ToDisplayString()}' must be static and have signature {contextType.Name} {factoryName}(HookContext raw).");
-        }
-    }
-
-    private static void ValidateContextMembers(INamedTypeSymbol contextType)
-    {
-        foreach (var member in contextType.GetMembers())
-        {
-            if (member is IMethodSymbol or IPropertySymbol)
-            {
-                ValidateNoContextHostBinding(contextType, member);
-            }
-        }
-    }
-
-    private static void ValidateNoContextHostBinding(INamedTypeSymbol contextType, ISymbol member)
-    {
-        foreach (var attribute in member.GetAttributes())
-        {
-            if (string.Equals(
-                    attribute.AttributeClass?.ToDisplayString(),
-                    DotBoxDMetadataNames.HostBindingAttribute,
-                    StringComparison.Ordinal))
-            {
-                throw new NotSupportedException(
-                    $"Generated plugin server context '{contextType.ToDisplayString()}' must not declare [HostBinding] members; expose host services through [DotBoxDService] selectors.");
-            }
         }
     }
 }

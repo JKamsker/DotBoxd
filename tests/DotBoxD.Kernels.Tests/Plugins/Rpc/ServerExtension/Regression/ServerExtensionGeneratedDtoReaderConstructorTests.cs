@@ -238,6 +238,55 @@ public sealed partial class ServerExtensionGeneratedDtoReaderRegressionTests
         Assert.Contains(
             diagnostics,
             d => d.Id == "DBXK100" &&
-                 d.GetMessage().Contains("must expose either a constructor", StringComparison.Ordinal));
+                 d.GetMessage().Contains("does not assign every public field", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Direct_extension_rejects_required_read_only_dto_without_SetsRequiredMembers()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
+            using DotBoxD.Kernels;
+            using DotBoxD.Kernels.Sandbox;
+            using DotBoxD.Plugins;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Services.Attributes;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            [DotBoxDService]
+            public interface IRemoteWorldControl
+            {
+            }
+
+            public sealed class RequiredProfile
+            {
+                public RequiredProfile(int health) => Health = health;
+
+                public required int Health { get; }
+            }
+
+            public interface IWorld
+            {
+                [HostBinding("host.profile.read", "profile.read", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
+                RequiredProfile ReadProfile(int id);
+            }
+
+            [ServerExtension(typeof(IRemoteWorldControl), "required-profile")]
+            public sealed partial class RequiredProfileKernel
+            {
+                [ServerExtensionMethod(typeof(IRemoteWorldControl))]
+                public RequiredProfile Read(int id, HookContext ctx)
+                {
+                    return ctx.Host<IWorld>().ReadProfile(id);
+                }
+            }
+            """);
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("required", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(diagnostics, d => d.Id == "CS9035");
     }
 }

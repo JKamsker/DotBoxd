@@ -47,7 +47,7 @@ public sealed class EventQueryPlannerTests
     public void Plan_keeps_unindexable_terms_as_residual_partial_coverage()
     {
         var filter = ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(
-            e => e.AttackerId == "player-1" && e.TargetId.StartsWith("player-"));
+            e => e.AttackerId == "player-1" && e.TargetId.StartsWith("player-", StringComparison.Ordinal));
 
         var plan = EventQueryPlanner.Plan(filter);
 

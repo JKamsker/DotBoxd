@@ -11,7 +11,7 @@ namespace Snap.RefOut
     {
         private readonly global::Snap.RefOut.IRefOutSnap? _service;
 
-        internal RefOutSnapDispatcher()
+        public RefOutSnapDispatcher()
         {
         }
 

@@ -20,6 +20,7 @@ public sealed class NetworkIpClassificationTests
     [InlineData("2001:db8::1")]
     [InlineData("2002::1")]
     [InlineData("3fff::1")]
+    [InlineData("::ffff:192.168.1.10")]
     public async Task Http_get_denies_hostname_resolving_to_special_use_ipv6(string address)
     {
         var host = SandboxTestHost.Create(
@@ -36,6 +37,25 @@ public sealed class NetworkIpClassificationTests
 
         Assert.False(result.Succeeded);
         Assert.Equal(SandboxErrorCode.PermissionDenied, result.Error!.Code);
+    }
+
+    [Fact]
+    public async Task Http_get_allows_hostname_resolving_to_ipv4_mapped_public_address()
+    {
+        var host = SandboxTestHost.Create(
+            networkInvoker: FakeInvoker("ok"),
+            dnsResolver: StaticDns(IPAddress.Parse("::ffff:93.184.216.34")));
+        var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
+        var policy = NetworkPolicyBuilder()
+            .GrantHttpGet(["api.example.com"], maxResponseBytes: 1024)
+            .WithFuel(5_000)
+            .Build();
+        var plan = await host.PrepareAsync(module, policy);
+
+        var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+        Assert.Equal("ok", ((StringValue)result.Value!).Value);
     }
 
     [Fact]

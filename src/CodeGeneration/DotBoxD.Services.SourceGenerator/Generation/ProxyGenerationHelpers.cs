@@ -20,9 +20,21 @@ internal static class ProxyGenerationHelpers
             if (i > 0)
                 sb.Append(", ");
             var p = parameters[i];
-            sb.Append(p.RefKindKeyword).Append(p.Type).Append(' ').Append(p.Name);
-            AppendDefaultValue(sb, p);
+            AppendParameter(sb, p, isLast: i == parameters.Count - 1);
         }
+    }
+
+    public static void AppendParameter(StringBuilder sb, ParameterModel p, bool isLast)
+    {
+        sb.Append(p.CallerInfoAttributePrefix);
+
+        if (p.IsParams && isLast)
+        {
+            sb.Append("params ");
+        }
+
+        sb.Append(p.ScopeKeyword).Append(p.RefKindKeyword).Append(p.Type).Append(' ').Append(p.Name);
+        AppendDefaultValue(sb, p);
     }
 
     /// <summary>

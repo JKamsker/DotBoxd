@@ -7,15 +7,15 @@ namespace DotBoxD.Services.SourceGenerator.Models;
 internal static partial class MethodModelFactory
 {
     /// <summary>
-    /// Formats a non-cancellation-token parameter's explicit default value as the C# literal to emit
-    /// in a generated signature, or <see langword="null"/> when it cannot be safely expressed - in
-    /// which case the caller emits no default rather than a wrong one (preserving prior behaviour).
+    /// Formats a non-cancellation-token parameter's default value as the C# literal to emit in a
+    /// generated signature, or <see langword="null"/> when it cannot be safely expressed - in which
+    /// case the caller emits no default rather than a wrong one (preserving prior behaviour).
     /// </summary>
-    private static string? FormatDefaultValueLiteral(IParameterSymbol param)
+    private static string? FormatDefaultValueLiteral(IParameterSymbol param, bool hasDefaultValue)
     {
         if (!param.HasExplicitDefaultValue)
         {
-            return null;
+            return hasDefaultValue ? "default" : null;
         }
 
         var value = param.ExplicitDefaultValue;
@@ -47,7 +47,54 @@ internal static partial class MethodModelFactory
                 : "(" + underlyingType.ToDisplayString(s_qualifiedFormat) + ")" + underlyingLiteral;
         }
 
-        return FormatPrimitiveLiteral(value);
+        if (FormatPrimitiveLiteral(value) is { } primitiveLiteral)
+        {
+            return primitiveLiteral;
+        }
+
+        return type.IsValueType && IsRuntimeDefaultValue(value) ? "default" : null;
+    }
+
+    private static bool IsRuntimeDefaultValue(object value)
+    {
+        var type = value.GetType();
+        return Equals(value, System.Activator.CreateInstance(type));
+    }
+
+    private static string FormatMetadataDefaultValueExpression(
+        IParameterSymbol param,
+        bool hasDefaultValue,
+        string defaultValueLiteral)
+    {
+        if (!hasDefaultValue)
+        {
+            return string.Empty;
+        }
+
+        if (TryGetDateTimeConstantTicks(param, out var ticks))
+        {
+            return "new global::System.DateTime(" +
+                ticks.ToString(CultureInfo.InvariantCulture) +
+                "L)";
+        }
+
+        var decimalConstant = FormatDecimalConstantMetadataDefaultValueExpression(param);
+        if (decimalConstant.Length > 0)
+        {
+            return decimalConstant;
+        }
+
+        if (TryFormatDefaultParameterValueAttributeLiteral(param, out var attributeLiteral))
+        {
+            return attributeLiteral;
+        }
+
+        if (defaultValueLiteral.Length == 0 && HasOptionalMetadata(param))
+        {
+            return "default";
+        }
+
+        return defaultValueLiteral;
     }
 
     private static string? FormatPrimitiveLiteral(object value) => value switch
@@ -63,12 +110,51 @@ internal static partial class MethodModelFactory
         uint v => v.ToString(CultureInfo.InvariantCulture) + "U",
         long v => v.ToString(CultureInfo.InvariantCulture) + "L",
         ulong v => v.ToString(CultureInfo.InvariantCulture) + "UL",
-        // NaN/Infinity have no literal form; fall back to "no default" rather than emit invalid code.
-        float v => float.IsNaN(v) || float.IsInfinity(v) ? null : v.ToString("R", CultureInfo.InvariantCulture) + "F",
-        double v => double.IsNaN(v) || double.IsInfinity(v) ? null : v.ToString("R", CultureInfo.InvariantCulture) + "D",
+        float v => FormatSingleLiteral(v),
+        double v => FormatDoubleLiteral(v),
         decimal v => v.ToString(CultureInfo.InvariantCulture) + "M",
         _ => null,
     };
+
+    private static string FormatSingleLiteral(float value)
+    {
+        if (float.IsNaN(value))
+        {
+            return "global::System.Single.NaN";
+        }
+
+        if (float.IsPositiveInfinity(value))
+        {
+            return "global::System.Single.PositiveInfinity";
+        }
+
+        if (float.IsNegativeInfinity(value))
+        {
+            return "global::System.Single.NegativeInfinity";
+        }
+
+        return value.ToString("R", CultureInfo.InvariantCulture) + "F";
+    }
+
+    private static string FormatDoubleLiteral(double value)
+    {
+        if (double.IsNaN(value))
+        {
+            return "global::System.Double.NaN";
+        }
+
+        if (double.IsPositiveInfinity(value))
+        {
+            return "global::System.Double.PositiveInfinity";
+        }
+
+        if (double.IsNegativeInfinity(value))
+        {
+            return "global::System.Double.NegativeInfinity";
+        }
+
+        return value.ToString("R", CultureInfo.InvariantCulture) + "D";
+    }
 
     private static string EscapeCharLiteral(char c) => c switch
     {
@@ -89,4 +175,117 @@ internal static partial class MethodModelFactory
             ? "\\u" + ((int)c).ToString("x4", CultureInfo.InvariantCulture)
             : c.ToString(),
     };
+
+    private static bool HasDefaultParameterValue(IParameterSymbol param) =>
+        param.HasExplicitDefaultValue ||
+        HasOptionalMetadata(param);
+
+    private static bool ShouldPreserveOptionalAttributeDefault(IMethodSymbol method, int parameterIndex)
+    {
+        var param = method.Parameters[parameterIndex];
+        if (!HasOptionalMetadata(param))
+        {
+            return false;
+        }
+
+        for (var i = parameterIndex + 1; i < method.Parameters.Length; i++)
+        {
+            if (!HasDefaultParameterValue(method.Parameters[i]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool HasOptionalMetadata(IParameterSymbol param) =>
+        param.IsOptional || HasOptionalAttribute(param);
+
+    private static bool HasDefaultParameterValueAttribute(IParameterSymbol param) =>
+        TryFormatDefaultParameterValueAttributeLiteral(param, out _);
+
+    private static bool TryFormatDefaultParameterValueAttributeLiteral(
+        IParameterSymbol param,
+        out string literal)
+    {
+        foreach (var attribute in param.GetAttributes())
+        {
+            if (attribute.AttributeClass?.ToDisplayString() !=
+                "System.Runtime.InteropServices.DefaultParameterValueAttribute" ||
+                attribute.ConstructorArguments.Length != 1)
+            {
+                continue;
+            }
+
+            return TryFormatAttributeValueLiteral(attribute.ConstructorArguments[0], out literal);
+        }
+
+        literal = string.Empty;
+        return false;
+    }
+
+    private static bool TryFormatAttributeValueLiteral(TypedConstant argument, out string literal)
+    {
+        if (argument.IsNull)
+        {
+            literal = "null";
+            return true;
+        }
+
+        if (argument.Kind == TypedConstantKind.Enum &&
+            argument.Type is not null &&
+            argument.Value is not null &&
+            FormatPrimitiveLiteral(argument.Value) is { } enumValue)
+        {
+            literal = "(" + argument.Type.ToDisplayString(s_qualifiedFormat) + ")" + enumValue;
+            return true;
+        }
+
+        if (argument.Value is not null &&
+            FormatPrimitiveLiteral(argument.Value) is { } value)
+        {
+            literal = value;
+            return true;
+        }
+
+        literal = string.Empty;
+        return false;
+    }
+
+    private static bool HasOptionalAttribute(IParameterSymbol param)
+    {
+        foreach (var attribute in param.GetAttributes())
+        {
+            var attributeClass = attribute.AttributeClass;
+            if (attributeClass?.Name == "OptionalAttribute" &&
+                attributeClass.ContainingNamespace.ToDisplayString() == "System.Runtime.InteropServices")
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool HasDateTimeConstantAttribute(IParameterSymbol param) =>
+        TryGetDateTimeConstantTicks(param, out _);
+
+    private static bool TryGetDateTimeConstantTicks(IParameterSymbol param, out long ticks)
+    {
+        foreach (var attribute in param.GetAttributes())
+        {
+            if (attribute.AttributeClass?.ToDisplayString() ==
+                "System.Runtime.CompilerServices.DateTimeConstantAttribute" &&
+                attribute.ConstructorArguments.Length == 1 &&
+                attribute.ConstructorArguments[0].Value is long value)
+            {
+                ticks = value;
+                return true;
+            }
+        }
+
+        ticks = 0;
+        return false;
+    }
 }

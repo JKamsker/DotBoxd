@@ -3,6 +3,7 @@ using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Runtime;
 using DotBoxD.Kernels.Sandbox;
+using DotBoxD.Kernels.Sandbox.Values;
 
 namespace DotBoxD.Kernels.Tests.Compiled.Generated;
 
@@ -43,6 +44,32 @@ public sealed class CompiledRuntimeQuotaTests
         Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
         Assert.Equal(536_870_912, context.Budget.FuelUsed);
         Assert.True(context.Budget.AllocatedBytes > context.Budget.Limits.MaxAllocatedBytes);
+    }
+
+    [Fact]
+    public void ListOf_wraps_compiler_owned_value_array()
+    {
+        var context = ContextWithLimits(new ResourceLimits(MaxFuel: long.MaxValue, MaxAllocatedBytes: long.MaxValue));
+        var values = new[] { SandboxValue.FromInt32(1), SandboxValue.FromInt32(2) };
+
+        var list = Assert.IsType<ListValue>(CompiledRuntime.ListOf(context, values));
+
+        values[0] = SandboxValue.FromInt32(99);
+        Assert.Equal(SandboxValue.FromInt32(99), list.Values[0]);
+        Assert.Equal(SandboxType.List(SandboxType.I32), list.Type);
+    }
+
+    [Fact]
+    public void RecordNew_wraps_compiler_owned_field_array()
+    {
+        var context = ContextWithLimits(new ResourceLimits(MaxFuel: long.MaxValue, MaxAllocatedBytes: long.MaxValue));
+        var fields = new[] { SandboxValue.FromInt32(1), SandboxValue.FromString("two") };
+
+        var record = Assert.IsType<RecordValue>(CompiledRuntime.RecordNew(context, fields));
+
+        fields[0] = SandboxValue.FromInt32(99);
+        Assert.Equal(SandboxValue.FromInt32(99), record.Fields[0]);
+        Assert.Equal(SandboxType.Record([SandboxType.I32, SandboxType.String]), record.Type);
     }
 
     private static SandboxType BuiltinScalar(string name)

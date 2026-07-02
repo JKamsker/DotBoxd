@@ -37,6 +37,14 @@ public class SubscriptionPipeline<TEvent, TContext> : ISubscriptionPipeline<TEve
     public SubscriptionPipeline<TEvent, TContext> UseGeneratedChain(PluginPackage package)
     {
         ArgumentNullException.ThrowIfNull(package);
+        return UseGeneratedChain(package, shouldInvoke: null);
+    }
+
+    internal SubscriptionPipeline<TEvent, TContext> UseGeneratedChain(
+        PluginPackage package,
+        Func<TEvent, TContext, ValueTask<bool>>? shouldInvoke)
+    {
+        ArgumentNullException.ThrowIfNull(package);
         if (_installer is null)
         {
             throw new SandboxValidationException([
@@ -49,7 +57,20 @@ public class SubscriptionPipeline<TEvent, TContext> : ISubscriptionPipeline<TEve
         var kernel = _installer(package);
         try
         {
-            return Use(kernel);
+            if (shouldInvoke is null)
+            {
+                return Use(kernel);
+            }
+
+            kernel.ValidateFor(_adapter);
+            _handlerSet.Add(kernel, async (e, rawContext, context) =>
+            {
+                if (await shouldInvoke(e, context).ConfigureAwait(false))
+                {
+                    await kernel.InvokeAsync(_adapter, e, rawContext.CancellationToken).ConfigureAwait(false);
+                }
+            });
+            return this;
         }
         catch
         {

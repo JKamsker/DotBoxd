@@ -8,36 +8,41 @@ using DotBoxD.Kernels;
 internal static partial class PluginPreparedPackageValidator
 {
     private static void ValidateLocalTerminalRouting(
-        IReadOnlyList<HookSubscriptionManifest> subscriptions,
+        PluginPackage package,
         ExecutionPlan plan,
-        string handleId,
         List<SandboxDiagnostic> diagnostics)
     {
-        ValidateLocalTerminalShape(subscriptions, diagnostics);
-        if (!plan.FunctionAnalysis.TryGetValue(handleId, out var handleAnalysis) ||
-            (handleAnalysis.Effects & SandboxEffect.HostStateWrite) == 0)
+        ValidateLocalTerminalShape(package, diagnostics);
+        if ((EntrypointEffects(package, plan) & SandboxEffect.HostStateWrite) == 0)
         {
             return;
         }
 
-        foreach (var subscription in subscriptions)
+        foreach (var subscription in package.Manifest.Subscriptions)
         {
             if (subscription.LocalTerminal || subscription.ResultLocalTerminal)
             {
                 diagnostics.Add(new SandboxDiagnostic(
                     "DBXK031",
-                    "Local-terminal hook subscriptions must not declare a host-write Handle entrypoint."));
+                    "Local-terminal hook subscriptions must not declare host-write entrypoints."));
                 return;
             }
         }
     }
 
-    private static void ValidateLocalTerminalShape(
-        IReadOnlyList<HookSubscriptionManifest> subscriptions,
-        List<SandboxDiagnostic> diagnostics)
+    private static void ValidateLocalTerminalShape(PluginPackage package, List<SandboxDiagnostic> diagnostics)
     {
-        foreach (var subscription in subscriptions)
+        foreach (var subscription in package.Manifest.Subscriptions)
         {
+            if ((subscription.LocalTerminal || subscription.ResultLocalTerminal) &&
+                package.CallbackSubscriptionId is null)
+            {
+                diagnostics.Add(new SandboxDiagnostic(
+                    "DBXK031",
+                    "Local-terminal hook subscriptions must declare callbackSubscriptionId metadata."));
+                return;
+            }
+
             if (subscription.LocalTerminal && subscription.ProjectedType is null)
             {
                 diagnostics.Add(new SandboxDiagnostic(

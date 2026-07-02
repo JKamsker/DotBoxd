@@ -14,8 +14,7 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 /// lowering context's projected-element binding); the <c>Run</c> terminal's single
 /// <c>ctx.Messages.Send(targetId, message)</c> becomes <c>Handle</c>. Supported subset: expression-body
 /// lambdas and a direct Send terminal or static <c>[KernelMethod]</c> Send helper. Any other shape fails safe
-/// (returns <c>null</c>, no package),
-/// leaving the runtime terminal to throw DBXK062 / the generator to report DBXK114.
+/// (returns <c>null</c>, no package), leaving the runtime terminal to throw DBXK062 / the generator to report DBXK114.
 /// </summary>
 internal static partial class HookChainModelFactory
 {
@@ -72,6 +71,11 @@ internal static partial class HookChainModelFactory
         }
 
         var terminalMethod = terminalAccess.Name.Identifier.ValueText;
+        if (HasPriorDiscardedStageOnReceiver(terminalAccess.Expression, invocation, model, cancellationToken))
+        {
+            return null;
+        }
+
         var stages = new List<HookChainStage>();
         var seed = WalkToSeed(terminalAccess.Expression, stages, model, cancellationToken);
         if (seed is null)
@@ -198,12 +202,10 @@ internal static partial class HookChainModelFactory
                 cancellationToken,
                 capabilities,
                 effects);
-        // The CLR type the pushed value carries: the final Select element, or the whole event when there is no
-        // Select. Resolved once and reused for both the Handle return SandboxType (projection chains) and the
-        // reflection-free decoder. Null only for a non-local chain.
-        var projectedTypeSymbol = installKind == HookChainInterceptorInstallKind.LocalCallback
-            ? ProjectedTypeSymbol(stages, eventType, model, cancellationToken)
-            : null;
+        // The CLR type the terminal handler receives: the final Select element, or the whole event when there is
+        // no Select. Anonymous projections are not source-nameable, so interception needs this symbol even for
+        // ordinary remote Run chains to emit a generic interceptor and let Roslyn infer the anonymous argument.
+        var projectedTypeSymbol = ProjectedTypeSymbol(stages, eventType, model, cancellationToken);
 
         // An anonymous type CAN be the terminal (pushed) projection — it has a real metadata identity Roslyn can
         // infer as a type ARGUMENT — but it has no C#-source-nameable name. The interceptor handles it by binding
@@ -254,7 +256,7 @@ internal static partial class HookChainModelFactory
             // push rather than run. Even no-Select RunLocal chains are emitted as an explicit event-record
             // projection, so ordinary Unit-returning Run packages cannot be relabeled into native callbacks.
             LocalTerminal = installKind == HookChainInterceptorInstallKind.LocalCallback,
-            ProjectedType = localCallbackProjection?.Value.Type,
+            ProjectedType = LocalProjectedManifestType(localCallbackProjection, projectedTypeSymbol),
             LocalDecoderSource = localDecoderSource,
         };
 
@@ -289,7 +291,6 @@ internal static partial class HookChainModelFactory
            projectedTypeSymbol is INamedTypeSymbol { IsAnonymousType: true }
             ? "anonymous terminal projections on generated-server chains require a named record projection"
             : "the call site is not interceptable";
-
 }
 
 internal enum HookChainReceiverKind

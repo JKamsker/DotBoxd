@@ -7,9 +7,13 @@ namespace DotBoxD.Services.Generated
     /// <summary>
     /// Factory methods for DotBoxD-generated proxies and dispatchers.
     /// </summary>
-    internal static class DotBoxDGenerated
+    public static class DotBoxDGenerated
     {
-        private static readonly global::DotBoxD.Services.Generated.GeneratedMethod[] s_service0Methods =
+        private static readonly global::System.Collections.Generic.IReadOnlyList<global::DotBoxD.Services.Generated.GeneratedParameter> s_emptyParameters =
+            global::System.Array.AsReadOnly(global::System.Array.Empty<global::DotBoxD.Services.Generated.GeneratedParameter>());
+
+        private static readonly global::System.Collections.Generic.IReadOnlyList<global::DotBoxD.Services.Generated.GeneratedMethod> s_service0Methods =
+            global::System.Array.AsReadOnly(new global::DotBoxD.Services.Generated.GeneratedMethod[]
         {
             new global::DotBoxD.Services.Generated.GeneratedMethod(
                 "GetNameAsync",
@@ -18,9 +22,7 @@ namespace DotBoxD.Services.Generated
                 typeof(string),
                 global::DotBoxD.Services.Generated.GeneratedReturnKind.TaskOfT,
                 false,
-                new global::DotBoxD.Services.Generated.GeneratedParameter[]
-                {
-                }),
+                s_emptyParameters),
             new global::DotBoxD.Services.Generated.GeneratedMethod(
                 "SaveAsync",
                 "SaveAsync",
@@ -28,7 +30,7 @@ namespace DotBoxD.Services.Generated
                 null,
                 global::DotBoxD.Services.Generated.GeneratedReturnKind.Task,
                 false,
-                new global::DotBoxD.Services.Generated.GeneratedParameter[]
+                global::System.Array.AsReadOnly(new global::DotBoxD.Services.Generated.GeneratedParameter[]
                 {
                     new global::DotBoxD.Services.Generated.GeneratedParameter(
                         "value",
@@ -37,7 +39,7 @@ namespace DotBoxD.Services.Generated
                         false,
                         false,
                         null),
-                }),
+                })),
             new global::DotBoxD.Services.Generated.GeneratedMethod(
                 "SyncAdd",
                 "SyncAdd",
@@ -45,7 +47,7 @@ namespace DotBoxD.Services.Generated
                 null,
                 global::DotBoxD.Services.Generated.GeneratedReturnKind.Sync,
                 false,
-                new global::DotBoxD.Services.Generated.GeneratedParameter[]
+                global::System.Array.AsReadOnly(new global::DotBoxD.Services.Generated.GeneratedParameter[]
                 {
                     new global::DotBoxD.Services.Generated.GeneratedParameter(
                         "a",
@@ -61,7 +63,7 @@ namespace DotBoxD.Services.Generated
                         false,
                         false,
                         null),
-                }),
+                })),
             new global::DotBoxD.Services.Generated.GeneratedMethod(
                 "SyncPing",
                 "SyncPing",
@@ -69,12 +71,11 @@ namespace DotBoxD.Services.Generated
                 null,
                 global::DotBoxD.Services.Generated.GeneratedReturnKind.Void,
                 false,
-                new global::DotBoxD.Services.Generated.GeneratedParameter[]
-                {
-                }),
-        };
+                s_emptyParameters),
+        });
 
-        private static readonly global::DotBoxD.Services.Generated.GeneratedService[] s_services =
+        private static readonly global::System.Collections.Generic.IReadOnlyList<global::DotBoxD.Services.Generated.GeneratedService> s_services =
+            global::System.Array.AsReadOnly(new global::DotBoxD.Services.Generated.GeneratedService[]
         {
             new global::DotBoxD.Services.Generated.GeneratedService(
                 typeof(global::Snap.Mixed.IMix),
@@ -82,7 +83,7 @@ namespace DotBoxD.Services.Generated
                 typeof(global::Snap.Mixed.MixDispatcher),
                 "IMix",
                 s_service0Methods),
-        };
+        });
 
         static DotBoxDGenerated()
         {

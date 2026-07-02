@@ -38,6 +38,12 @@ public sealed record EncounterEvent(
     int[] MonsterIds,
     PlayerInfo Player);
 
+public sealed record TemporalEvent(int Distance, DateTime OccurredAt);
+
+public sealed record GatedRunLocalEvent(
+    string TargetId,
+    [property: Capability("event.read.health")] int Health);
+
 /// <summary>
 /// Rich-type coverage for remote <c>RunLocal</c>: a whole-event push of an event carrying Guid/enum/array/nested
 /// DTO, and projections to each non-scalar kind (Guid, enum, list, nested DTO, and a constructed
@@ -124,6 +130,24 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
         }
         """;
 
+    private const string DateTimeProjectionSource = Prelude + """
+        public static class DateTimeProjectionUsage
+        {
+            public static void Configure(RemoteHookRegistry hooks)
+                => hooks.On<Ev.TemporalEvent>().Where(e => e.Distance <= 4)
+                    .Select(e => e.OccurredAt).RunLocal((occurredAt, ctx) => { });
+        }
+        """;
+
+    private const string GatedWholeEventSource = Prelude + """
+        public static class GatedWholeEventUsage
+        {
+            public static void Configure(RemoteHookRegistry hooks)
+                => hooks.On<Ev.GatedRunLocalEvent>().Where(e => e.TargetId == "player-1")
+                    .RunLocal((e, ctx) => { });
+        }
+        """;
+
     [Fact]
     public async Task Whole_event_with_rich_fields_round_trips_with_field_fidelity()
     {
@@ -189,6 +213,36 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
         var expected = new Squad(new PlayerInfo("hero", 7), "crypt");
         Assert.Equal(expected, DecodeReflective<Squad>(payload));
         Assert.Equal(expected, DecodeGenerated<Squad>(NestedNewDtoProjectionSource, payload));
+    }
+
+    [Fact]
+    public async Task DateTime_projection_round_trips_over_both_decode_paths()
+    {
+        var expected = new DateTime(2026, 6, 28, 12, 30, 0, DateTimeKind.Unspecified);
+        var payload = await PushFirstMatching(
+            DateTimeProjectionSource,
+            new TemporalEvent(3, expected),
+            new TemporalEvent(99, expected.AddMinutes(1)));
+
+        Assert.Equal(expected, DecodeReflective<DateTime>(payload));
+        Assert.Equal(expected, DecodeGenerated<DateTime>(DateTimeProjectionSource, payload));
+
+        var generated = GeneratedSource(DateTimeProjectionSource);
+        Assert.Contains("DateTimeFromWireOffset", generated, StringComparison.Ordinal);
+        Assert.Contains("DateTimeFromPayloadWireOffset", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Whole_event_RunLocal_requires_capabilities_for_materialized_event_properties()
+    {
+        var package = LowerToPackage(GatedWholeEventSource);
+
+        Assert.Contains("event.read.health", package.Manifest.RequiredCapabilities);
+        using var denied = PluginServer.Create(new InMemoryPluginMessageSink(), defaultPolicy: ChainPolicy());
+        await Assert.ThrowsAnyAsync<Exception>(() => denied.InstallAsync(package).AsTask());
+
+        using var allowed = PluginServer.Create(new InMemoryPluginMessageSink(), defaultPolicy: ChainPolicyWithEventRead());
+        _ = await allowed.InstallAsync(package);
     }
 
     [Fact]

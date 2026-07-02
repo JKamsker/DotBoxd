@@ -26,6 +26,12 @@ if (args.Contains("--probe-matrix", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+if (args.Contains("--probe-branched-f64-loop", StringComparer.OrdinalIgnoreCase))
+{
+    await DotBoxD.Kernels.Benchmarks.Interpreter.BranchedF64LoopProbe.RunAsync();
+    return;
+}
+
 if (args.Contains("--probe-rogue", StringComparer.OrdinalIgnoreCase))
 {
     await DotBoxD.Kernels.Benchmarks.Interpreter.RogueScalingProbe.RunAsync();
@@ -56,9 +62,14 @@ if (args.Contains("--probe-resource-meter", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
-if (args.Contains("--probe-http-metadata", StringComparer.OrdinalIgnoreCase))
+if (DotBoxD.Kernels.Benchmarks.Http.HttpProbeDispatcher.TryRun(args))
 {
-    DotBoxD.Kernels.Benchmarks.Http.HttpMetadataAccountingProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-safe-file-path-safety", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.File.SafeFilePathSafetyProbe.Run();
     return;
 }
 
@@ -71,6 +82,18 @@ if (args.Contains("--probe-value-shape-cache", StringComparer.OrdinalIgnoreCase)
 if (args.Contains("--probe-validated-value-type", StringComparer.OrdinalIgnoreCase))
 {
     DotBoxD.Kernels.Benchmarks.Validation.ValidatedValueTypeProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-empty-validated-value", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Validation.EmptyStructuralValidationProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-nonempty-structural-validation", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Validation.NonEmptyStructuralValidationProbe.Run();
     return;
 }
 
@@ -128,15 +151,39 @@ if (args.Contains("--probe-map-remove", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+if (args.Contains("--probe-map-set-replace", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Core.MapSetReplaceProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-list-add-type-match", StringComparer.OrdinalIgnoreCase))
 {
     DotBoxD.Kernels.Benchmarks.Core.ListAddTypeMatchProbe.Run();
     return;
 }
 
+if (args.Contains("--probe-collection-construction", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Core.CollectionConstructionProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-literal-collection-construction", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Core.LiteralCollectionConstructionProbe.Run();
+    return;
+}
+
 if (args.Contains("--probe-host-call-accounting", StringComparer.OrdinalIgnoreCase))
 {
     DotBoxD.Kernels.Benchmarks.Runtime.HostCallAccountingProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-run-summary-policy-id", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Runtime.Audit.RunSummaryPolicyIdProbe.Run();
     return;
 }
 
@@ -158,9 +205,8 @@ if (args.Contains("--probe-capability-grant-lookup", StringComparer.OrdinalIgnor
     return;
 }
 
-if (args.Contains("--probe-server-extension-proxy-lookup", StringComparer.OrdinalIgnoreCase))
+if (DotBoxD.Kernels.Benchmarks.Runtime.PackageProbeDispatcher.TryRun(args))
 {
-    DotBoxD.Kernels.Benchmarks.Runtime.ServerExtensionProxyLookupProbe.Run();
     return;
 }
 
@@ -170,27 +216,50 @@ if (args.Contains("--probe-installed-rpc-input", StringComparer.OrdinalIgnoreCas
     return;
 }
 
-if (args.Contains("--probe-kernel-rpc-value-items", StringComparer.OrdinalIgnoreCase))
+if (DotBoxD.Kernels.Benchmarks.Runtime.KernelRpcProbeDispatcher.TryRun(args))
 {
-    DotBoxD.Kernels.Benchmarks.Runtime.KernelRpcValueItemsProbe.Run();
-    return;
-}
-
-if (args.Contains("--probe-kernel-rpc-value-list-writer", StringComparer.OrdinalIgnoreCase))
-{
-    DotBoxD.Kernels.Benchmarks.Runtime.KernelRpcValueListWriterProbe.Run();
-    return;
-}
-
-if (args.Contains("--probe-kernel-rpc-marshaller-dto", StringComparer.OrdinalIgnoreCase))
-{
-    DotBoxD.Kernels.Benchmarks.Runtime.KernelRpcMarshallerDtoProbe.Run();
     return;
 }
 
 if (args.Contains("--probe-runlocal-push", StringComparer.OrdinalIgnoreCase))
 {
     DotBoxD.Kernels.Benchmarks.Ipc.RunLocal.RunLocalPushProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-remote-result-hook", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Plugins.RemoteResultHookProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-subscription-dispatch", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Plugins.SubscriptionDispatchProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-hook-dispatch", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Plugins.HookDispatchProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-event-query-dispatch", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Queryable.EventQueryDispatchProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-json-schema-resources", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Json.JsonSchemaResourceProbe.Run();
+    return;
+}
+
+if (args.Contains("--probe-json-import-source-map", StringComparer.OrdinalIgnoreCase))
+{
+    DotBoxD.Kernels.Benchmarks.Json.JsonImportSourceMapProbe.Run();
     return;
 }
 

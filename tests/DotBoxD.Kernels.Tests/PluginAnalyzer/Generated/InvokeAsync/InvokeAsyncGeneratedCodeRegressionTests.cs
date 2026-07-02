@@ -168,10 +168,9 @@ public sealed class InvokeAsyncGeneratedCodeRegressionTests
         var source = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
 
         Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
-        Assert.Contains(
-            "new global::Sample.Usage.Profile(value.GetItem(0).Int32Value, value.GetItem(1).Int32Value)",
-            source,
-            StringComparison.Ordinal);
+        Assert.Contains("new global::Sample.Usage.Profile", source, StringComparison.Ordinal);
+        Assert.Contains("Health: __field0", source, StringComparison.Ordinal);
+        Assert.Contains("Rank: __field1", source, StringComparison.Ordinal);
         Assert.Contains("@Name =", source, StringComparison.Ordinal);
     }
 

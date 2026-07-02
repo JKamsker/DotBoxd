@@ -44,7 +44,9 @@ public static class MessageFramer
     /// </summary>
     public static void WriteFrame(IBufferWriter<byte> writer, int messageId, MessageType type, ReadOnlySpan<byte> payload)
     {
-        var totalLength = HeaderSize + payload.Length;
+        MessageFrameReader.ThrowIfUndefinedMessageType(type);
+
+        var totalLength = MessageFrameReader.GetOutgoingFrameLength(payload.Length);
         var span = writer.GetSpan(totalLength);
 
         BinaryPrimitives.WriteInt32LittleEndian(span.Slice(0, 4), totalLength);
@@ -64,7 +66,9 @@ public static class MessageFramer
     /// </summary>
     public static Payload FrameToPayload(int messageId, MessageType type, ReadOnlySpan<byte> payload)
     {
-        var totalLength = HeaderSize + payload.Length;
+        MessageFrameReader.ThrowIfUndefinedMessageType(type);
+
+        var totalLength = MessageFrameReader.GetOutgoingFrameLength(payload.Length);
         var result = Payload.Rent(totalLength);
         var span = result.Memory.Span;
 
@@ -203,6 +207,8 @@ public static class MessageFramer
     /// </summary>
     internal static void WriteFramePrefix(PooledBufferWriter writer, int messageId, MessageType type)
     {
+        MessageFrameReader.ThrowIfUndefinedMessageType(type);
+
         // Reserve the header + envelope-length prefix; both length fields are patched in by FinishFrame.
         var prefix = writer.GetSpan(HeaderSize + EnvelopeLengthSize);
         BinaryPrimitives.WriteInt32LittleEndian(prefix.Slice(4, 4), messageId);

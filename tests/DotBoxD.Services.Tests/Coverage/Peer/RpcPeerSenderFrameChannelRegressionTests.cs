@@ -1,7 +1,11 @@
 using System.Buffers.Binary;
+using DotBoxD.Codecs.MessagePack;
 using DotBoxD.Services.Buffers;
+using DotBoxD.Services.Client;
 using DotBoxD.Services.Peer;
 using DotBoxD.Services.Protocol;
+using DotBoxD.Services.Serialization;
+using DotBoxD.Services.Streaming.Core;
 using DotBoxD.Services.Transport;
 using Xunit;
 
@@ -48,6 +52,69 @@ public sealed class RpcPeerSenderFrameChannelRegressionTests
         AssertDisposed(frame);
     }
 
+    [Fact]
+    public async Task InvokeAsync_DirectFrameSend_KeepsTransferredFrameAlive()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var streams = new RpcStreamManager(serializer, SendNoopAsync, exceptionTransformer: null);
+        PooledBufferWriter? transferredFrame = null;
+        RpcPeerOutboundInvoker? invoker = null;
+
+        try
+        {
+            invoker = new RpcPeerOutboundInvoker(
+                serializer,
+                new RpcPeerOptions { RequestTimeout = Timeout },
+                ensureStarted: static () => { },
+                SendNoopAsync,
+                SendFrameAndComplete,
+                streams);
+
+            var result = await invoker.InvokeAsync<int, string>("Svc", "Op", 42).WaitAsync(Timeout);
+
+            Assert.Equal("ok", result);
+            Assert.NotNull(transferredFrame);
+            Assert.True(MessageFramer.TryReadFrameHeader(
+                transferredFrame.WrittenMemory,
+                out var messageId,
+                out var type));
+            Assert.Equal(1, messageId);
+            Assert.Equal(MessageType.Request, type);
+        }
+        finally
+        {
+            transferredFrame?.Dispose();
+            if (invoker is not null)
+            {
+                await invoker.StopCancelFramesAsync();
+            }
+
+            streams.Stop();
+        }
+
+        ValueTask SendFrameAndComplete(PooledBufferWriter frame, CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            transferredFrame = frame;
+            Assert.True(MessageFramer.TryReadFrameHeader(frame.WrittenMemory, out var messageId, out var type));
+            Assert.Equal(MessageType.Request, type);
+
+            using var payload = serializer.SerializeToPayload("ok");
+            var response = MessageFramer.FrameMessage(
+                serializer,
+                messageId,
+                MessageType.Response,
+                new RpcResponse { MessageId = messageId, IsSuccess = true },
+                payload.Memory.Span);
+            if (!invoker!.TryCompleteResponse(messageId, response))
+            {
+                response.Dispose();
+            }
+
+            return default;
+        }
+    }
+
     private static PooledBufferWriter CreateValidFrame()
     {
         var frame = new PooledBufferWriter();
@@ -68,6 +135,9 @@ public sealed class RpcPeerSenderFrameChannelRegressionTests
 
     private static void AssertDisposed(PooledBufferWriter frame) =>
         Assert.Throws<ObjectDisposedException>(() => _ = frame.WrittenMemory);
+
+    private static Task SendNoopAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default) =>
+        Task.CompletedTask;
 
     private sealed class BlockingFrameChannel : IRpcFrameChannel
     {

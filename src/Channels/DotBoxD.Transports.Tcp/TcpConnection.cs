@@ -21,6 +21,7 @@ public sealed class TcpConnection : IRpcFrameChannel
     private readonly TimeSpan _frameReadIdleTimeout;
     private readonly FrameReadTimeoutSource? _frameReadTimeout;
     private readonly byte[] _lengthBuffer = new byte[4];
+    private int _activeReceive;
     private int _disposed;
 
     public TcpConnection(TcpClient client) : this(client, null)
@@ -110,57 +111,67 @@ public sealed class TcpConnection : IRpcFrameChannel
 
     public async ValueTask<Payload> ReceiveValueAsync(CancellationToken ct = default)
     {
-        if (Volatile.Read(ref _disposed) != 0)
-        {
-            throw new ObjectDisposedException(nameof(TcpConnection));
-        }
+        ThrowIfDisposed();
+        ReceiveConcurrencyGuard.Enter(ref _activeReceive, nameof(TcpConnection));
 
-        // Read length prefix (4 bytes). Keep this per connection instead of renting
-        // a tiny ArrayPool buffer for every received frame.
-        var lengthBuffer = _lengthBuffer;
-        var bytesRead = await ReadExactAsync(lengthBuffer.AsMemory(0, 4), ct, timeFirstRead: false)
-            .ConfigureAwait(false);
-        if (bytesRead < 4)
-        {
-            return Payload.Empty; // Connection closed
-        }
-
-        var totalLength = BinaryPrimitives.ReadInt32LittleEndian(lengthBuffer.AsSpan(0, 4));
-
-        // A valid frame is at least a full header (length prefix + type + message id). Rejecting
-        // sub-header lengths (1-3) before renting also avoids the Slice(0, 4) below throwing on a
-        // too-small buffer and leaking it. Mirrors StreamConnection.ValidateIncomingLength.
-        if (totalLength < MessageFramer.HeaderSize || totalLength > MessageFramer.MaxMessageSize)
-        {
-            // A malformed length from the peer is invalid inbound DATA, not a local state error.
-            // Matches StreamConnection.ValidateIncomingLength and MessageFramer.ReadMessageAsync so
-            // the IRpcChannel contract surfaces one exception type across every transport.
-            throw new InvalidDataException($"Invalid DotBoxD frame length: {totalLength}.");
-        }
-
-        // Rent the full frame buffer and write back the length prefix we already consumed.
-        var payload = Payload.Rent(totalLength);
         try
         {
-            lengthBuffer.AsSpan(0, 4).CopyTo(payload.Memory.Span);
-
-            // The header has fully arrived, so a frame is in progress: time every body read so a
-            // peer that stalls mid-frame cannot pin this rented buffer indefinitely.
-            bytesRead = await ReadExactAsync(payload.Memory.Slice(4), ct, timeFirstRead: true)
+            // Read length prefix (4 bytes). Keep this per connection instead of renting
+            // a tiny ArrayPool buffer for every received frame.
+            var lengthBuffer = _lengthBuffer;
+            var bytesRead = await ReadExactAsync(lengthBuffer.AsMemory(0, 4), ct, timeFirstRead: false)
                 .ConfigureAwait(false);
-            if (bytesRead < totalLength - 4)
+            if (bytesRead == 0)
             {
-                throw new InvalidDataException(
-                    $"Connection closed after {bytesRead} of {totalLength - 4} frame bytes.");
+                return Payload.Empty; // Connection closed
             }
-        }
-        catch
-        {
-            payload.Dispose();
-            throw;
-        }
 
-        return payload;
+            if (bytesRead < 4)
+            {
+                throw new InvalidDataException($"Connection closed after {bytesRead} of 4 frame length bytes.");
+            }
+
+            var totalLength = BinaryPrimitives.ReadInt32LittleEndian(lengthBuffer.AsSpan(0, 4));
+
+            // A valid frame is at least a full header (length prefix + type + message id). Rejecting
+            // sub-header lengths (1-3) before renting also avoids the Slice(0, 4) below throwing on a
+            // too-small buffer and leaking it. Mirrors StreamConnection.ValidateIncomingLength.
+            if (totalLength < MessageFramer.HeaderSize || totalLength > MessageFramer.MaxMessageSize)
+            {
+                // A malformed length from the peer is invalid inbound DATA, not a local state error.
+                // Matches StreamConnection.ValidateIncomingLength and MessageFramer.ReadMessageAsync so
+                // the IRpcChannel contract surfaces one exception type across every transport.
+                throw new InvalidDataException($"Invalid DotBoxD frame length: {totalLength}.");
+            }
+
+            // Rent the full frame buffer and write back the length prefix we already consumed.
+            var payload = Payload.Rent(totalLength);
+            try
+            {
+                lengthBuffer.AsSpan(0, 4).CopyTo(payload.Memory.Span);
+
+                // The header has fully arrived, so a frame is in progress: time every body read so a
+                // peer that stalls mid-frame cannot pin this rented buffer indefinitely.
+                bytesRead = await ReadExactAsync(payload.Memory.Slice(4), ct, timeFirstRead: true)
+                    .ConfigureAwait(false);
+                if (bytesRead < totalLength - 4)
+                {
+                    throw new InvalidDataException(
+                        $"Connection closed after {bytesRead} of {totalLength - 4} frame bytes.");
+                }
+            }
+            catch
+            {
+                payload.Dispose();
+                throw;
+            }
+
+            return payload;
+        }
+        finally
+        {
+            ReceiveConcurrencyGuard.Exit(ref _activeReceive);
+        }
     }
 
     public async ValueTask SendFrameValueAsync(PooledBufferWriter frame, CancellationToken ct = default)

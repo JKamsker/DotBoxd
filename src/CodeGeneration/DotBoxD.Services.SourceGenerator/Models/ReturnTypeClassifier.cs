@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 
 namespace DotBoxD.Services.SourceGenerator.Models;
 
-internal static class ReturnTypeClassifier
+internal static partial class ReturnTypeClassifier
 {
     private const string DotBoxDServiceAttributeName = ServicesGeneratorTypeNames.DotBoxDServiceAttribute;
     private const string SystemCollectionsGeneric = ServicesGeneratorTypeNames.SystemCollectionsGenericNamespace;
@@ -286,7 +286,8 @@ internal static class ReturnTypeClassifier
         info = new SubServiceInfo(
             QualifiedInterfaceName: named.ToDisplayString(s_qualifiedIdentityFormat),
             ServiceName: LiteralHelpers.EscapeStringLiteral(serviceName),
-            AllowsNull: named.NullableAnnotation == NullableAnnotation.Annotated);
+            AllowsNull: named.NullableAnnotation == NullableAnnotation.Annotated,
+            HasProxyCompanion: HasGeneratedProxyCompanion(named, ct));
         return true;
     }
 }

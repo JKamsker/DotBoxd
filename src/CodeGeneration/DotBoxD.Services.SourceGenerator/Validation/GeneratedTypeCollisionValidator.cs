@@ -115,6 +115,7 @@ internal static class GeneratedTypeCollisionValidator
             Error: null,
             MethodDiagnostics: EquatableArray<MethodDiagnostic>.Empty,
             MethodLocations: EquatableArray<DiagnosticLocation>.Empty,
+            PropertyLocations: EquatableArray<DiagnosticLocation>.Empty,
             ServiceLocation: default,
             QualifiedInterfaceName: IdentifierHelpers.QualifyTypeName(model.Namespace, model.InterfaceName),
             ServiceDiagnostic: null,

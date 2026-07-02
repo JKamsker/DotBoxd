@@ -132,9 +132,10 @@ public sealed class ServerExtensionClientProxyValidationTests
     }
 
     [Fact]
-    public void Generated_client_rejects_nullable_scalar_parameters()
+    public void Generated_client_rejects_unsupported_nullable_value_type_parameters()
     {
         var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
+            using System;
             using System.Threading.Tasks;
             using DotBoxD.Kernels;
             using DotBoxD.Kernels.Sandbox;
@@ -145,13 +146,13 @@ public sealed class ServerExtensionClientProxyValidationTests
 
             public interface IEchoService
             {
-                ValueTask<int> EchoAsync(int? value);
+                ValueTask<int> EchoAsync(DateTime? value);
             }
 
             [ServerExtension("echo", typeof(IEchoService))]
             public sealed partial class EchoKernel
             {
-                public int Echo(int? value, HookContext ctx)
+                public int Echo(DateTime? value, HookContext ctx)
                 {
                     return 0;
                 }
@@ -192,7 +193,7 @@ public sealed class ServerExtensionClientProxyValidationTests
     }
 
     [Fact]
-    public void Kernel_rpc_service_rejects_duplicate_generated_package_names_from_nested_kernels()
+    public void Kernel_rpc_service_rejects_nested_generated_package_owners()
     {
         var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
             using DotBoxD.Abstractions;
@@ -228,7 +229,12 @@ public sealed class ServerExtensionClientProxyValidationTests
         Assert.Contains(
             diagnostics,
             d => d.Id == "DBXK100" &&
-                 d.GetMessage().Contains("Plugin package name 'EchoPluginPackage' is generated more than once", StringComparison.Ordinal));
+                 d.GetMessage().Contains("top-level", StringComparison.OrdinalIgnoreCase) &&
+                 d.GetMessage().Contains("nested", StringComparison.OrdinalIgnoreCase));
+
+        Assert.DoesNotContain(
+            diagnostics,
+            d => d.GetMessage().Contains("generated more than once", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -260,4 +266,5 @@ public sealed class ServerExtensionClientProxyValidationTests
             d => d.Id == "DBXK100" &&
                  d.GetMessage().Contains("cannot use ref, in, or out", StringComparison.Ordinal));
     }
+
 }

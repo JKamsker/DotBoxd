@@ -11,7 +11,7 @@ namespace Snap.Kw
     {
         private readonly global::Snap.Kw.IKwSnap? _service;
 
-        internal KwSnapDispatcher()
+        public KwSnapDispatcher()
         {
         }
 

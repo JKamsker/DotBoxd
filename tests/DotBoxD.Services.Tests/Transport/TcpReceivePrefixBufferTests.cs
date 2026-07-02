@@ -47,6 +47,49 @@ public sealed class TcpReceivePrefixBufferTests
         Assert.Same(Payload.Empty, eof);
     }
 
+    [Fact]
+    public async Task ReceiveAsync_rejects_truncated_length_prefix()
+    {
+        await using var server = new TcpServerTransport(IPAddress.Loopback, 0);
+        await server.StartAsync().WaitAsync(Timeout);
+        var port = server.LocalEndpoint?.Port ?? throw new InvalidOperationException("no bound port");
+
+        using var rawClient = new TcpClient();
+        var acceptTask = server.AcceptAsync();
+        await rawClient.ConnectAsync(IPAddress.Loopback, port).WaitAsync(Timeout);
+        await using var serverConnection = await acceptTask.WaitAsync(Timeout);
+
+        await rawClient.GetStream().WriteAsync(new byte[] { 1, 2 }).AsTask().WaitAsync(Timeout);
+        rawClient.Client.Shutdown(SocketShutdown.Send);
+
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(
+            () => serverConnection.ReceiveAsync().WaitAsync(Timeout));
+        Assert.Contains("frame length bytes", ex.Message);
+    }
+
+    [Fact]
+    public async Task ReceiveAsync_rejects_concurrent_receive()
+    {
+        await using var server = new TcpServerTransport(IPAddress.Loopback, 0);
+        await server.StartAsync().WaitAsync(Timeout);
+        var port = server.LocalEndpoint?.Port ?? throw new InvalidOperationException("no bound port");
+
+        using var rawClient = new TcpClient();
+        var acceptTask = server.AcceptAsync();
+        await rawClient.ConnectAsync(IPAddress.Loopback, port).WaitAsync(Timeout);
+        await using var serverConnection = await acceptTask.WaitAsync(Timeout);
+        using var cts = new CancellationTokenSource();
+        var firstReceive = serverConnection.ReceiveAsync(cts.Token);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => serverConnection.ReceiveAsync().WaitAsync(Timeout));
+
+        Assert.Contains("one pending receive", ex.Message);
+        cts.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => firstReceive.WaitAsync(Timeout));
+    }
+
     private static void AssertFrame(RpcFrame frame, int expectedMessageId)
     {
         Assert.True(MessageFramer.TryReadFrameHeader(frame.Memory, out var messageId, out var type));

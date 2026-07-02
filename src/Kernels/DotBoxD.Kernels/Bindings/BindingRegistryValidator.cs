@@ -55,6 +55,16 @@ internal static class BindingRegistryValidator
             diagnostics.Add(new SandboxDiagnostic("E-BINDING-EFFECT", $"binding '{binding.Id}' declares no effects"));
         }
 
+        if (!IsKnownAuditLevel(binding.AuditLevel))
+        {
+            diagnostics.Add(new SandboxDiagnostic("E-BINDING-AUDIT", $"binding '{binding.Id}' declares an unknown audit level"));
+        }
+
+        if (!IsKnownBindingSafety(binding.Safety))
+        {
+            diagnostics.Add(new SandboxDiagnostic("E-BINDING-SAFETY", $"binding '{binding.Id}' declares an unknown safety classification"));
+        }
+
         if (binding.Effects.RequiresCapability() && string.IsNullOrWhiteSpace(binding.RequiredCapability))
         {
             diagnostics.Add(new SandboxDiagnostic("E-BINDING-CAP", $"binding '{binding.Id}' has side effects but no capability"));
@@ -243,6 +253,20 @@ internal static class BindingRegistryValidator
 
     private static bool IsExternal(BindingSafety safety)
         => safety is BindingSafety.ReadOnlyExternal or BindingSafety.SideEffectingExternal;
+
+    private static bool IsKnownAuditLevel(AuditLevel auditLevel)
+        => auditLevel is AuditLevel.None or
+            AuditLevel.Summary or
+            AuditLevel.PerCall or
+            AuditLevel.PerResource or
+            AuditLevel.FullInputOutput;
+
+    private static bool IsKnownBindingSafety(BindingSafety safety)
+        => safety is BindingSafety.PureIntrinsic or
+            BindingSafety.PureHostFacade or
+            BindingSafety.ReadOnlyExternal or
+            BindingSafety.SideEffectingExternal or
+            BindingSafety.DangerousRequiresReview;
 
     private static void ValidateBuiltInCapabilityEffect(
         BindingDescriptor binding,

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using DotBoxD.Queryable.Analysis;
 using DotBoxD.Queryable.Ast;
@@ -17,7 +18,9 @@ public sealed class EventQueryHost : IEventQuerySource
 {
     private readonly MemberValueReader _reader = new();
     private readonly object _gate = new();
-    private readonly Dictionary<Type, object> _dispatchers = [];
+    // Read lock-free on the hot PublishAsync/HasSubscriptions path; the dispatcher set only mutates on
+    // Register, which still serializes through _gate so each event type creates exactly one dispatcher.
+    private readonly ConcurrentDictionary<Type, object> _dispatchers = new();
 
     /// <inheritdoc />
     public EventQuery<TEvent> Query<TEvent>() => new(this);
@@ -26,6 +29,7 @@ public sealed class EventQueryHost : IEventQuerySource
     public ValueTask PublishAsync<TEvent>(TEvent e, HookContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        context.CancellationToken.ThrowIfCancellationRequested();
         return TryGetDispatcher<TEvent>() is { } dispatcher
             ? dispatcher.PublishAsync(e, context)
             : ValueTask.CompletedTask;
@@ -83,6 +87,10 @@ public sealed class EventQueryHost : IEventQuerySource
 
     private EventQueryDispatcher<TEvent> GetOrAddDispatcher<TEvent>()
     {
+        // Double-checked under _gate (not ConcurrentDictionary.GetOrAdd): the value factory can run on
+        // racing threads and discard a built dispatcher, which would silently drop a concurrent Register's
+        // subscription. The lock guarantees one dispatcher instance per type and that the caller registers
+        // onto the instance that is actually stored.
         lock (_gate)
         {
             if (!_dispatchers.TryGetValue(typeof(TEvent), out var existing))
@@ -97,11 +105,12 @@ public sealed class EventQueryHost : IEventQuerySource
 
     private EventQueryDispatcher<TEvent>? TryGetDispatcher<TEvent>()
     {
-        lock (_gate)
+        if (!_dispatchers.TryGetValue(typeof(TEvent), out var existing))
         {
-            return _dispatchers.TryGetValue(typeof(TEvent), out var existing)
-                ? (EventQueryDispatcher<TEvent>)existing
-                : null;
+            return null;
         }
+
+        var dispatcher = (EventQueryDispatcher<TEvent>)existing;
+        return dispatcher.HasSubscriptions ? dispatcher : null;
     }
 }

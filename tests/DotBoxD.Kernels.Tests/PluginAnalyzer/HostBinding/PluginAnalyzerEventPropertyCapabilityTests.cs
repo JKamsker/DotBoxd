@@ -51,4 +51,38 @@ public sealed class PluginAnalyzerEventPropertyCapabilityTests
 
         Assert.Equal("gated-property", kernel.Manifest.PluginId);
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Blank_gated_event_property_capability_reports_DBXK100(string capability)
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics($$"""
+            using DotBoxD.Plugins;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public sealed record GatedEvent(
+                string TargetId,
+                string Message,
+                [property: Capability("{{capability}}")] int Health);
+
+            [Plugin("blank-capability")]
+            public sealed partial class GatedKernel : IEventKernel<GatedEvent>
+            {
+                public bool ShouldHandle(GatedEvent e, HookContext ctx) => e.Health > 0;
+
+                public void Handle(GatedEvent e, HookContext ctx)
+                    => ctx.Messages.Send(e.TargetId, e.Message);
+            }
+            """);
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("Capability", StringComparison.Ordinal) &&
+                 d.GetMessage().Contains("must not be empty or whitespace", StringComparison.Ordinal));
+    }
 }

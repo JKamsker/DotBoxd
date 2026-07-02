@@ -96,10 +96,7 @@ internal sealed partial class SandboxWorkerExecutor
 
             try
             {
-                EntrypointBinder.RequireType(result.Value, analysis.ReturnType, "worker result return type mismatch");
-                var meter = new ResourceMeter(plan.Budget);
-                meter.ChargeValue(result.Value);
-                resultShapeUsage = meter.Snapshot();
+                resultShapeUsage = WorkerResultShapeUsage.Measure(result.Value, analysis.ReturnType, plan.Budget);
             }
             catch (SandboxRuntimeException)
             {
@@ -180,13 +177,16 @@ internal sealed partial class SandboxWorkerExecutor
         var observedLogEvents = 0;
         var observedBindingBaseFuel = 0L;
         Dictionary<string, int>? observedBindingCalls = null;
+        var expectedSequenceNumber = 1L;
         foreach (var auditEvent in result.AuditEvents)
         {
-            if (auditEvent.RunId != runId ||
+            if (auditEvent.SequenceNumber != expectedSequenceNumber ||
+                auditEvent.RunId != runId ||
                 !WorkerAuditValidator.Matches(plan, entrypoint, options, auditEvent))
             {
                 return false;
             }
+            expectedSequenceNumber++;
 
             if (IsBindingAudit(auditEvent.Kind))
             {

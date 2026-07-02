@@ -159,7 +159,7 @@ public sealed class RemoteRunLocalIpcPremiseTests
         Assert.NotNull(subscriptionId);
         var subscription = Assert.Single(lowered!.Manifest.Subscriptions);
         Assert.True(subscription.LocalTerminal);
-        Assert.Equal("record", subscription.ProjectedType);   // no Select => explicit whole-event projection
+        Assert.Equal("global::" + typeof(MonsterAggroEvent).FullName, subscription.ProjectedType);
 
         // --- Live named-pipe IPC: plugin PROVIDES the callback; server GETS the proxy. ---
         var pipeName = "dotboxd-runlocal-we-e2e-" + Guid.NewGuid().ToString("N");

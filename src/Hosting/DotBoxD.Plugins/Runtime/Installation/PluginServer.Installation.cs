@@ -20,6 +20,7 @@ public sealed partial class PluginServer
                 "kernel pool degree of parallelism must be positive.");
         }
 
+        ArgumentNullException.ThrowIfNull(package);
         ThrowIfDisposed();
         PluginPackageValidator.Validate(package);
         var installPolicy = policy ?? _defaultPolicy;
@@ -51,13 +52,14 @@ public sealed partial class PluginServer
         object? owner,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(package);
         ThrowIfDisposed();
         RpcKernelPackageValidator.Validate(package);
         var installPolicy = policy ?? _defaultPolicy;
         var (sandboxModule, sandboxPolicy) = PrepareSandboxInputs(package, installPolicy);
         var plan = await _host.PrepareAsync(sandboxModule, sandboxPolicy, cancellationToken)
             .ConfigureAwait(false);
-        RpcKernelPackageValidator.ValidatePrepared(package, plan);
+        RpcKernelPackageValidator.ValidatePrepared(package, plan, installPolicy);
         var kernel = new InstalledKernel(_host, plan, package, _executionMode, owner);
         var replaced = AddKernel(kernel);
         if (replaced is not null)
@@ -76,6 +78,7 @@ public sealed partial class PluginServer
         CancellationToken cancellationToken,
         bool deferActivation = false)
     {
+        ArgumentNullException.ThrowIfNull(package);
         ThrowIfDisposed();
         PluginPackageValidator.Validate(package);
         var installPolicy = policy ?? _defaultPolicy;

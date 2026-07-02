@@ -26,3 +26,5 @@
 # Treat snapshot baselines as text but don't let them churn on EOL
 *.verified.txt text eol=lf
 *.received.txt text eol=lf
+
+.github/workflows/*.lock.yml linguist-generated=true merge=ours

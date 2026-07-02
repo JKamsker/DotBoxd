@@ -41,6 +41,16 @@ internal static class RpcKernelDirectClientExtensionEmitter
             var userParameterCount = kernelMethod.Parameters.Length - 1;
             var argumentOffset = hasReceiverId ? 1 : 0;
             var receiver = ReceiverParameterName(kernelMethod);
+            var cancellationToken = CancellationTokenParameterName(kernelMethod, receiver);
+            var locals = new RpcGeneratedLocalNames(kernelMethod);
+            locals.Reserve(receiver);
+            locals.Reserve(cancellationToken);
+            var accessor = locals.Next("__accessor");
+            var arguments = locals.Next("__arguments");
+            var request = locals.Next("__request");
+            var response = locals.Next("__response");
+            var result = locals.Next("__result");
+            RpcReturnFlowAttributeSource.Append(builder, kernelMethod, "    ");
             builder.Append("    public static ");
             if (isAsyncReturn)
             {
@@ -56,63 +66,83 @@ internal static class RpcKernelDirectClientExtensionEmitter
                 builder.Append(", ").Append(RpcKernelClientParameterSource.Declaration(parameter));
             }
 
+            builder.Append(", global::System.Threading.CancellationToken ")
+                .Append(cancellationToken).Append(" = default");
             builder.AppendLine(")");
             builder.AppendLine("    {");
-            builder.Append("        if (").Append(receiver).AppendLine(" is not global::DotBoxD.Abstractions.IServerExtensionClientAccessor __accessor)");
+            builder.Append("        if (").Append(receiver).Append(" is not global::DotBoxD.Abstractions.IServerExtensionClientAccessor ")
+                .Append(accessor).AppendLine(")");
             builder.AppendLine("        {");
             builder.AppendLine("            throw new global::System.InvalidOperationException(\"Server extension calls require a generated plugin facade receiver.\");");
             builder.AppendLine("        }");
 
-            builder.Append("        var __arguments = new global::DotBoxD.Plugins.KernelRpcValue[")
+            builder.Append("        var ").Append(arguments).Append($" = new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[")
                 .Append(userParameterCount + argumentOffset).AppendLine("];");
             if (hasReceiverId)
             {
-                builder.Append("        __arguments[0] = global::DotBoxD.Plugins.KernelRpcValue.String(")
+                builder.Append("        ").Append(arguments).Append($"[0] = {DotBoxDRpcValueNames.GlobalKernelRpcValue}.String(")
                     .Append(receiver).AppendLine(".Id);");
             }
 
             for (var i = 0; i < userParameterCount; i++)
             {
                 var parameter = kernelMethod.Parameters[i];
-                builder.Append("        __arguments[").Append(i + argumentOffset).Append("] = ")
+                builder.Append("        ").Append(arguments).Append('[').Append(i + argumentOffset).Append("] = ")
                     .Append(_conv.WriteExpression(parameter.Type, RpcKernelClientParameterSource.Identifier(parameter.Name)))
                     .AppendLine(";");
             }
 
-            builder.AppendLine("        var __request = global::DotBoxD.Plugins.KernelRpcBinaryCodec.EncodeArguments(__arguments);");
+            builder.Append("        var ").Append(request)
+                .Append($" = {DotBoxDRpcValueNames.GlobalKernelRpcBinaryCodec}.EncodeArguments(")
+                .Append(arguments).AppendLine(");");
             if (payloadReturnType is null)
             {
-                AppendInvoke(builder, isAsyncReturn, assignResponse: false);
+                AppendInvoke(builder, isAsyncReturn, accessor, request, response, cancellationToken, assignResponse: true);
+                builder.Append($"        {DotBoxDRpcValueNames.GlobalKernelRpcBinaryCodec}.DecodeValue(").Append(response)
+                    .AppendLine($").RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Unit);");
                 builder.AppendLine("        return;");
             }
             else
             {
-                AppendInvoke(builder, isAsyncReturn, assignResponse: true);
-                builder.AppendLine("        var __result = global::DotBoxD.Plugins.KernelRpcBinaryCodec.DecodeValue(__response);");
-                builder.Append("        return ").Append(_conv.ReadExpression(payloadReturnType, "__result")).AppendLine(";");
+                AppendInvoke(builder, isAsyncReturn, accessor, request, response, cancellationToken, assignResponse: true);
+                builder.Append("        var ").Append(result)
+                    .Append($" = {DotBoxDRpcValueNames.GlobalKernelRpcBinaryCodec}.DecodeValue(")
+                    .Append(response).AppendLine(");");
+                builder.Append("        return ").Append(_conv.ReadExpression(payloadReturnType, result)).AppendLine(";");
             }
 
             builder.AppendLine("    }");
             builder.AppendLine();
         }
 
-        private void AppendInvoke(StringBuilder builder, bool isAsyncReturn, bool assignResponse)
+        private void AppendInvoke(
+            StringBuilder builder,
+            bool isAsyncReturn,
+            string accessor,
+            string request,
+            string response,
+            string cancellationToken,
+            bool assignResponse)
         {
             builder.Append("        ");
             if (assignResponse)
             {
-                builder.Append("var __response = ");
+                builder.Append("var ").Append(response).Append(" = ");
             }
 
             if (isAsyncReturn)
             {
-                builder.Append("await __accessor.ServerExtensions.InvokeServerExtensionAsync(");
-                builder.Append("__accessor.ServerExtensions.PluginId<").Append(TypeName(kernelType)).AppendLine(">(), __request).ConfigureAwait(false);");
+                builder.Append("await ").Append(accessor).Append(".ServerExtensions.InvokeServerExtensionAsync(");
+                builder.Append(accessor).Append(".ServerExtensions.PluginId<").Append(TypeName(kernelType))
+                    .Append(">(), ").Append(request).Append(", ").Append(cancellationToken)
+                    .AppendLine(").ConfigureAwait(false);");
                 return;
             }
 
-            builder.Append("__accessor.ServerExtensions.InvokeServerExtensionAsync(");
-            builder.Append("__accessor.ServerExtensions.PluginId<").Append(TypeName(kernelType)).AppendLine(">(), __request).AsTask().GetAwaiter().GetResult();");
+            builder.Append(accessor).Append(".ServerExtensions.InvokeServerExtensionAsync(");
+            builder.Append(accessor).Append(".ServerExtensions.PluginId<").Append(TypeName(kernelType))
+                .Append(">(), ").Append(request).Append(", ").Append(cancellationToken)
+                .AppendLine(").AsTask().GetAwaiter().GetResult();");
         }
 
         private static string TypeName(ITypeSymbol type)
@@ -155,6 +185,25 @@ internal static class RpcKernelDirectClientExtensionEmitter
             {
                 var candidate = seed + "_" + suffix.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 if (!HasParameter(method, candidate))
+                {
+                    return candidate;
+                }
+            }
+        }
+
+        private static string CancellationTokenParameterName(IMethodSymbol method, string receiverName)
+        {
+            const string seed = "cancellationToken";
+            if (!HasParameter(method, seed) && !string.Equals(receiverName, seed, StringComparison.Ordinal))
+            {
+                return seed;
+            }
+
+            for (var suffix = 0; ; suffix++)
+            {
+                var candidate = seed + "_" + suffix.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                if (!HasParameter(method, candidate) &&
+                    !string.Equals(receiverName, candidate, StringComparison.Ordinal))
                 {
                     return candidate;
                 }

@@ -45,7 +45,7 @@ internal static partial class HookChainModelFactory
             return null;
         }
 
-        receiver = HookChainAliasResolver.UnwrapParentheses(receiver);
+        receiver = HookChainAliasResolver.UnwrapTransparentExpression(receiver);
 
         if (HookChainAliasResolver.Initializer(receiver, model, cancellationToken) is { } initializer)
         {
@@ -55,7 +55,7 @@ internal static partial class HookChainModelFactory
         var current = receiver;
         while (true)
         {
-            current = HookChainAliasResolver.UnwrapParentheses(current);
+            current = HookChainAliasResolver.UnwrapTransparentExpression(current);
             if (HookChainAliasResolver.Initializer(current, model, cancellationToken) is { } currentInitializer)
             {
                 current = currentInitializer;
@@ -78,8 +78,13 @@ internal static partial class HookChainModelFactory
             if ((isSelect || string.Equals(name, WhereMethod, StringComparison.Ordinal)) &&
                 TryLambda(invocation, out var lambda))
             {
+                if (IsResolvedNonDotBoxDStageMethodInvocation(invocation, model, cancellationToken))
+                {
+                    return null;
+                }
+
                 stages.Add(new HookChainStage(isSelect, lambda));
-                current = HookChainAliasResolver.UnwrapParentheses(access.Expression);
+                current = HookChainAliasResolver.UnwrapTransparentExpression(access.Expression);
                 continue;
             }
 
@@ -87,7 +92,14 @@ internal static partial class HookChainModelFactory
         }
     }
 
-    private static HookChainReceiverKind? ReceiverKind(
+    private static bool IsResolvedNonDotBoxDStageMethodInvocation(
+        InvocationExpressionSyntax invocation,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+        => model.GetSymbolInfo(invocation, cancellationToken).Symbol is IMethodSymbol method &&
+           (method.ContainingType is null || ReceiverKind(method.ContainingType) is null);
+
+    internal static HookChainReceiverKind? ReceiverKind(
         SemanticModel model,
         ExpressionSyntax receiver,
         CancellationToken cancellationToken)
@@ -100,7 +112,7 @@ internal static partial class HookChainModelFactory
         return ReceiverKind(type);
     }
 
-    private static HookChainReceiverKind? ReceiverKind(INamedTypeSymbol type)
+    internal static HookChainReceiverKind? ReceiverKind(INamedTypeSymbol type)
     {
         var original = type.OriginalDefinition.ToDisplayString();
         if (string.Equals(original, DotBoxDGenerationNames.TypeNames.RemoteHookPipelineOriginal, StringComparison.Ordinal) ||

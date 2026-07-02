@@ -160,7 +160,9 @@ internal static class PolicyGrantValidator
             matched = true;
             if (!ValidateConcreteGrant(request.Id, grant, bindings, diagnostics))
             {
-                RequireAllowedKeys(grant, diagnostics, NoAllowedParameterKeys);
+                diagnostics.Add(new SandboxDiagnostic(
+                    "E-POLICY-GRANT",
+                    $"wildcard grant '{grant.Id}' matches requested capability '{request.Id}', but that capability is not supported by the prepared module"));
             }
         }
 

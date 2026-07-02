@@ -15,7 +15,7 @@ public static partial class KernelRpcMarshaller
         // properties do expose a set accessor, so reflection can still assign them.
         public bool IsSettable => Member switch
         {
-            PropertyInfo property => property.SetMethod is not null,
+            PropertyInfo property => property.SetMethod is { IsPublic: true },
             FieldInfo fieldInfo => !fieldInfo.IsInitOnly,
             _ => false,
         };
@@ -115,6 +115,14 @@ public static partial class KernelRpcMarshaller
             for (var i = 0; i < parameters.Length; i++)
             {
                 var fieldIndex = constructorMap[i];
+                if (fieldIndex < 0)
+                {
+                    arguments[i] = LinqExpression.Constant(
+                        DefaultParameterValue(parameters[i]),
+                        parameters[i].ParameterType);
+                    continue;
+                }
+
                 var sandboxField = LinqExpression.Property(
                     recordFields,
                     "Item",
@@ -125,8 +133,7 @@ public static partial class KernelRpcMarshaller
             }
 
             var created = LinqExpression.New(constructor, arguments);
-            if (RecordTailBindings(
-                    constructorMap,
+            if (RecordInitializerBindings(
                     fields,
                     fieldIndex => LinqExpression.Property(
                         recordFields,
@@ -160,7 +167,26 @@ public static partial class KernelRpcMarshaller
 
         private static Func<object, object?> CreateGetter(RecordMember member)
         {
-            return member.GetValue;
+            // Compile the field read once instead of paying a reflection PropertyInfo/FieldInfo.GetValue
+            // invoke per field per RPC. Convert(instance, DeclaringType) unboxes struct DTOs and casts class
+            // DTOs; the final Convert to object boxes the value type exactly as GetValue did. Mirrors the
+            // proven getter compilation in PluginEventAdapterRegistry. Amortized by RecordShapeCache.
+            var declaringType = member.Member.DeclaringType;
+            if (declaringType is null)
+            {
+                return member.GetValue;
+            }
+
+            var instance = LinqExpression.Parameter(typeof(object), "instance");
+            var typed = LinqExpression.Convert(instance, declaringType);
+            LinqExpression access = member.Member switch
+            {
+                PropertyInfo property => LinqExpression.Property(typed, property),
+                FieldInfo field => LinqExpression.Field(typed, field),
+                _ => throw new NotSupportedException($"Unsupported record member '{member.Name}'."),
+            };
+            var body = LinqExpression.Convert(access, typeof(object));
+            return LinqExpression.Lambda<Func<object, object?>>(body, instance).Compile();
         }
 
         private static (ConstructorInfo? Constructor, int[] Map) FindConstructor(
@@ -177,15 +203,15 @@ public static partial class KernelRpcMarshaller
             foreach (var constructor in type.GetConstructors())
             {
                 var parameters = constructor.GetParameters();
-                if (parameters.Length == 0 || parameters.Length > fields.Count)
+                if (parameters.Length == 0)
                 {
                     continue;
                 }
 
                 var map = new int[parameters.Length];
                 var assigned = new bool[fields.Count];
-                if (TryMapConstructor(parameters, fields, map, assigned) &&
-                    parameters.Length > (best?.GetParameters().Length ?? 0))
+                if (TryMapConstructor(parameters, fields, map, assigned, out var assignedCount) &&
+                    assignedCount > bestMap.Count(index => index >= 0))
                 {
                     best = constructor;
                     bestMap = map;
@@ -199,13 +225,25 @@ public static partial class KernelRpcMarshaller
             IReadOnlyList<ParameterInfo> parameters,
             IReadOnlyList<RecordMember> fields,
             int[] map,
-            bool[] assigned)
+            bool[] assigned,
+            out int assignedCount)
         {
+            assignedCount = 0;
             for (var i = 0; i < parameters.Count; i++)
             {
                 var fieldIndex = FieldIndex(fields, parameters[i].Name);
-                if (fieldIndex < 0 ||
-                    assigned[fieldIndex] ||
+                if (fieldIndex < 0)
+                {
+                    if (!parameters[i].HasDefaultValue)
+                    {
+                        return false;
+                    }
+
+                    map[i] = -1;
+                    continue;
+                }
+
+                if (assigned[fieldIndex] ||
                     parameters[i].ParameterType != fields[fieldIndex].Type)
                 {
                     return false;
@@ -213,6 +251,7 @@ public static partial class KernelRpcMarshaller
 
                 map[i] = fieldIndex;
                 assigned[fieldIndex] = true;
+                assignedCount++;
             }
 
             return true;

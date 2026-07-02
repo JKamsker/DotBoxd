@@ -25,11 +25,11 @@ public sealed class EventQueryDocumentJsonConverter : JsonConverter<EventQueryDo
             : throw new JsonException("Event query document is missing required property 'event'.");
 
         var filter = root.TryGetProperty("filter", out var f)
-            ? f.Deserialize<QueryFilter>(options) ?? QueryFilter.MatchAll
+            ? ReadFilter(f, options)
             : QueryFilter.MatchAll;
 
         var projection = root.TryGetProperty("projection", out var p)
-            ? p.Deserialize<QueryProjection>(options) ?? QueryProjection.Identity
+            ? ReadProjection(p, options)
             : QueryProjection.Identity;
 
         return EventQueryDocument.Create(eventName, filter, projection);
@@ -50,5 +50,27 @@ public sealed class EventQueryDocumentJsonConverter : JsonConverter<EventQueryDo
         writer.WritePropertyName("projection");
         JsonSerializer.Serialize(writer, value.Projection, options);
         writer.WriteEndObject();
+    }
+
+    private static QueryFilter ReadFilter(JsonElement element, JsonSerializerOptions options)
+    {
+        if (element.ValueKind == JsonValueKind.Null)
+        {
+            throw new JsonException("EventQueryDocument property 'filter' must not be null.");
+        }
+
+        return element.Deserialize<QueryFilter>(options)
+            ?? throw new JsonException("EventQueryDocument property 'filter' could not be read.");
+    }
+
+    private static QueryProjection ReadProjection(JsonElement element, JsonSerializerOptions options)
+    {
+        if (element.ValueKind == JsonValueKind.Null)
+        {
+            throw new JsonException("EventQueryDocument property 'projection' must not be null.");
+        }
+
+        return element.Deserialize<QueryProjection>(options)
+            ?? throw new JsonException("EventQueryDocument property 'projection' could not be read.");
     }
 }

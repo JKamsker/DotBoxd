@@ -50,6 +50,7 @@ public sealed partial class PluginAnalyzer : DiagnosticAnalyzer
             startContext.RegisterOperationAction(c => AnalyzePropertyReference(c, helperGraph), OperationKind.PropertyReference);
             startContext.RegisterOperationAction(c => AnalyzeFieldReference(c, helperGraph), OperationKind.FieldReference);
             startContext.RegisterOperationAction(c => AnalyzeTypeOf(c, helperGraph), OperationKind.TypeOf);
+            startContext.RegisterOperationAction(c => AnalyzeMethodReference(c, helperGraph), OperationKind.MethodReference);
             startContext.RegisterCompilationEndAction(helperGraph.ReportDiagnostics);
         });
     }
@@ -92,6 +93,8 @@ public sealed partial class PluginAnalyzer : DiagnosticAnalyzer
         var invocation = (IInvocationOperation)context.Operation;
         if (context.ContainingSymbol is not IMethodSymbol method)
         {
+            ReportForbiddenInInitializer(context, invocation.TargetMethod.ContainingType);
+            RecordInitializerRootCall(context, helperGraph, invocation.TargetMethod);
             return;
         }
 
@@ -102,43 +105,94 @@ public sealed partial class PluginAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeObjectCreation(OperationAnalysisContext context, ForbiddenHelperCallGraph helperGraph)
     {
+        var creation = (IObjectCreationOperation)context.Operation;
         if (context.ContainingSymbol is not IMethodSymbol method)
         {
+            ReportForbiddenInInitializer(context, creation.Type);
+            if (creation.Constructor is { } initializerConstructor)
+            {
+                RecordInitializerRootCall(context, helperGraph, initializerConstructor);
+            }
+
             return;
         }
 
-        ReportAndRecordIfForbidden(context, helperGraph, method, ((IObjectCreationOperation)context.Operation).Type);
+        ReportAndRecordIfForbidden(context, helperGraph, method, creation.Type);
+        if (creation.Constructor is { } constructor)
+        {
+            helperGraph.RecordCall(method, constructor, context.Operation.Syntax.GetLocation());
+        }
     }
 
     private static void AnalyzePropertyReference(OperationAnalysisContext context, ForbiddenHelperCallGraph helperGraph)
     {
+        var property = ((IPropertyReferenceOperation)context.Operation).Property;
         if (context.ContainingSymbol is not IMethodSymbol method)
         {
+            ReportForbiddenInInitializer(context, property.ContainingType);
+            RecordInitializerPropertyRootCall(context, helperGraph, property);
             return;
         }
 
-        ReportAndRecordIfForbidden(context, helperGraph, method, ((IPropertyReferenceOperation)context.Operation).Property.ContainingType);
-        ReportLocalUseIfInvalid(context, ((IPropertyReferenceOperation)context.Operation).Property);
+        ReportAndRecordIfForbidden(context, helperGraph, method, property.ContainingType);
+        ReportLocalUseIfInvalid(context, property);
+
+        // A forbidden API reached through a helper property's accessor body is only linked to the kernel
+        // if we record an edge to the accessor it actually uses: the getter for a read, the setter for a
+        // write, both for a compound/increment. Without this the accessor taints but never reaches a root.
+        var (usesGetter, usesSetter) = AccessorUsage(context.Operation);
+        var location = context.Operation.Syntax.GetLocation();
+        if (usesGetter && property.GetMethod is { } getter)
+        {
+            helperGraph.RecordCall(method, getter, location);
+        }
+
+        if (usesSetter && property.SetMethod is { } setter)
+        {
+            helperGraph.RecordCall(method, setter, location);
+        }
     }
 
     private static void AnalyzeFieldReference(OperationAnalysisContext context, ForbiddenHelperCallGraph helperGraph)
     {
+        var field = ((IFieldReferenceOperation)context.Operation).Field;
         if (context.ContainingSymbol is not IMethodSymbol method)
         {
+            ReportForbiddenInInitializer(context, field.ContainingType);
             return;
         }
 
-        ReportAndRecordIfForbidden(context, helperGraph, method, ((IFieldReferenceOperation)context.Operation).Field.ContainingType);
+        ReportAndRecordIfForbidden(context, helperGraph, method, field.ContainingType);
     }
 
     private static void AnalyzeTypeOf(OperationAnalysisContext context, ForbiddenHelperCallGraph helperGraph)
     {
+        var type = ((ITypeOfOperation)context.Operation).Type;
         if (context.ContainingSymbol is not IMethodSymbol method)
         {
+            ReportForbiddenInInitializer(context, type);
             return;
         }
 
-        ReportAndRecordIfForbidden(context, helperGraph, method, ((ITypeOfOperation)context.Operation).Type);
+        ReportAndRecordIfForbidden(context, helperGraph, method, type);
+    }
+
+    // A method group / delegate reference to a helper (e.g. items.Select(Helper.Danger)) is an
+    // IMethodReferenceOperation, not an invocation, so without this it never adds a caller -> helper edge
+    // and a forbidden API in the referenced helper escapes the call graph.
+    private static void AnalyzeMethodReference(OperationAnalysisContext context, ForbiddenHelperCallGraph helperGraph)
+    {
+        var reference = (IMethodReferenceOperation)context.Operation;
+        if (context.ContainingSymbol is not IMethodSymbol method)
+        {
+            ReportForbiddenInInitializer(context, reference.Method.ContainingType);
+            RecordInitializerRootCall(context, helperGraph, reference.Method);
+            return;
+        }
+
+        ReportAndRecordIfForbidden(context, helperGraph, method, reference.Method.ContainingType);
+        helperGraph.RecordCall(method, reference.Method, context.Operation.Syntax.GetLocation());
+        ReportLocalUseIfInvalid(context, reference.Method);
     }
 
     private static bool HasAttribute(ISymbol symbol, string metadataName)
@@ -223,6 +277,6 @@ public sealed partial class PluginAnalyzer : DiagnosticAnalyzer
             StringComparison.Ordinal)) == true;
 
     private static bool IsAllowedLiveSettingType(ITypeSymbol type)
-        => DotBoxDTypeNameReader.IsSupportedScalar(type);
+        => DotBoxDTypeNameReader.IsSupportedLiveSettingType(type);
 
 }

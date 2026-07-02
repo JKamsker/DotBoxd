@@ -10,8 +10,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$root = Resolve-Path (Join-Path $PSScriptRoot "../..")
-$justificationPath = Join-Path $root ".config/code-enforcer/justifications.json"
+$root = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($PSScriptRoot, "../.."))
+$justificationPath = [System.IO.Path]::Combine($root, ".config/code-enforcer/justifications.json")
 $violations = [System.Collections.Generic.List[string]]::new()
 $warnings = [System.Collections.Generic.List[string]]::new()
 
@@ -19,40 +19,85 @@ function Normalize-PathText([string] $path) {
     return $path.Replace("\", "/").Trim("/")
 }
 
-function Add-Justifications($set, $entries, [string[]] $propertyNames) {
-    foreach ($entry in @($entries)) {
-        if ($null -eq $entry) {
+function Add-JsonJustifications(
+    [System.Collections.Generic.HashSet[string]] $set,
+    [System.Text.Json.JsonElement] $rootElement,
+    [string] $arrayName,
+    [string[]] $propertyNames) {
+    $entries = [System.Text.Json.JsonElement]::new()
+    if (-not $rootElement.TryGetProperty($arrayName, [ref] $entries) -or
+        $entries.ValueKind -ne [System.Text.Json.JsonValueKind]::Array) {
+        return
+    }
+
+    foreach ($entry in $entries.EnumerateArray()) {
+        if ($entry.ValueKind -eq [System.Text.Json.JsonValueKind]::String) {
+            $value = $entry.GetString()
+            if (-not [string]::IsNullOrWhiteSpace($value)) {
+                [void] $set.Add((Normalize-PathText $value))
+            }
+
             continue
         }
 
-        if ($entry -is [string]) {
-            [void] $set.Add((Normalize-PathText $entry))
+        if ($entry.ValueKind -ne [System.Text.Json.JsonValueKind]::Object) {
             continue
         }
 
         foreach ($propertyName in $propertyNames) {
-            $property = $entry.PSObject.Properties[$propertyName]
-            if ($null -ne $property -and -not [string]::IsNullOrWhiteSpace($property.Value)) {
-                [void] $set.Add((Normalize-PathText ([string] $property.Value)))
-                break
+            $property = [System.Text.Json.JsonElement]::new()
+            if ($entry.TryGetProperty($propertyName, [ref] $property) -and
+                $property.ValueKind -eq [System.Text.Json.JsonValueKind]::String) {
+                $value = $property.GetString()
+                if (-not [string]::IsNullOrWhiteSpace($value)) {
+                    [void] $set.Add((Normalize-PathText $value))
+                    break
+                }
             }
         }
     }
 }
 
 function Get-RepositoryCSharpFiles {
-    $gitFiles = & git -C $root ls-files --cached --others --exclude-standard -- "*.cs"
-    if ($LASTEXITCODE -eq 0 -and $null -ne $gitFiles) {
-        return @($gitFiles | ForEach-Object { Normalize-PathText $_ })
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = "git"
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    [void] $startInfo.ArgumentList.Add("-C")
+    [void] $startInfo.ArgumentList.Add($root)
+    [void] $startInfo.ArgumentList.Add("ls-files")
+    [void] $startInfo.ArgumentList.Add("--cached")
+    [void] $startInfo.ArgumentList.Add("--others")
+    [void] $startInfo.ArgumentList.Add("--exclude-standard")
+    [void] $startInfo.ArgumentList.Add("--")
+    [void] $startInfo.ArgumentList.Add("*.cs")
+
+    $process = [System.Diagnostics.Process]::Start($startInfo)
+    $gitOutput = $process.StandardOutput.ReadToEnd()
+    $null = $process.StandardError.ReadToEnd()
+    $process.WaitForExit()
+    if ($process.ExitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitOutput)) {
+        $result = [System.Collections.Generic.List[string]]::new()
+        foreach ($file in ($gitOutput -split "\r?\n")) {
+            if (-not [string]::IsNullOrWhiteSpace($file)) {
+                $result.Add((Normalize-PathText $file))
+            }
+        }
+
+        return $result.ToArray()
     }
 
-    return @(Get-ChildItem -LiteralPath $root -Recurse -Filter "*.cs" -File |
-        Where-Object {
-            $_.FullName -notmatch "\\(bin|obj|\.git)\\"
-        } |
-        ForEach-Object {
-            Normalize-PathText ([System.IO.Path]::GetRelativePath($root, $_.FullName))
-        })
+    $fallback = [System.Collections.Generic.List[string]]::new()
+    foreach ($file in [System.IO.Directory]::EnumerateFiles($root, "*.cs", [System.IO.SearchOption]::AllDirectories)) {
+        if ($file -match "[\\/](bin|obj|\.git)[\\/]") {
+            continue
+        }
+
+        $fallback.Add((Normalize-PathText ([System.IO.Path]::GetRelativePath($root, $file))))
+    }
+
+    return $fallback.ToArray()
 }
 
 function Test-GeneratedFile([string] $relativePath) {
@@ -61,18 +106,29 @@ function Test-GeneratedFile([string] $relativePath) {
         return $true
     }
 
-    $fullPath = Join-Path $root $relativePath
-    if (-not (Test-Path -LiteralPath $fullPath)) {
+    $fullPath = [System.IO.Path]::Combine($root, $relativePath)
+    if (-not [System.IO.File]::Exists($fullPath)) {
         return $true
     }
 
-    $head = Get-Content -LiteralPath $fullPath -TotalCount 20
-    return ($head -match "<auto-generated").Count -gt 0
+    $lineCount = 0
+    foreach ($line in [System.IO.File]::ReadLines($fullPath)) {
+        if ($line -match "<auto-generated") {
+            return $true
+        }
+
+        $lineCount++
+        if ($lineCount -ge 20) {
+            break
+        }
+    }
+
+    return $false
 }
 
 function Get-LineCount([string] $relativePath) {
     $count = 0
-    foreach ($line in [System.IO.File]::ReadLines((Join-Path $root $relativePath))) {
+    foreach ($line in [System.IO.File]::ReadLines([System.IO.Path]::Combine($root, $relativePath))) {
         $count++
     }
 
@@ -92,11 +148,16 @@ $justifiedFiles = [System.Collections.Generic.HashSet[string]]::new([System.Stri
 $justifiedFolders = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 $justifiedRootFolders = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
-if (Test-Path -LiteralPath $justificationPath) {
-    $justifications = Get-Content -Raw -LiteralPath $justificationPath | ConvertFrom-Json
-    Add-Justifications $justifiedFiles $justifications.files @("path", "file")
-    Add-Justifications $justifiedFolders $justifications.folders @("path", "folder")
-    Add-Justifications $justifiedRootFolders $justifications.rootFolders @("path", "folder", "rootFolder")
+if ([System.IO.File]::Exists($justificationPath)) {
+    $justificationDocument = [System.Text.Json.JsonDocument]::Parse([System.IO.File]::ReadAllText($justificationPath))
+    try {
+        Add-JsonJustifications $justifiedFiles $justificationDocument.RootElement "files" @("path", "file")
+        Add-JsonJustifications $justifiedFolders $justificationDocument.RootElement "folders" @("path", "folder")
+        Add-JsonJustifications $justifiedRootFolders $justificationDocument.RootElement "rootFolders" @("path", "folder", "rootFolder")
+    }
+    finally {
+        $justificationDocument.Dispose()
+    }
 }
 
 $csharpFiles = @(Get-RepositoryCSharpFiles | Where-Object { -not (Test-GeneratedFile $_) })
@@ -130,10 +191,17 @@ foreach ($folder in $filesByFolder.Keys) {
     }
 }
 
-$projectFolders = @(Get-ChildItem -LiteralPath $root -Recurse -Filter "*.csproj" -File |
-    Where-Object { $_.FullName -notmatch "\\(bin|obj|\.git)\\" } |
-    ForEach-Object { Normalize-PathText ([System.IO.Path]::GetRelativePath($root, $_.DirectoryName)) } |
-    Select-Object -Unique)
+$projectFoldersSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($projectFile in [System.IO.Directory]::EnumerateFiles($root, "*.csproj", [System.IO.SearchOption]::AllDirectories)) {
+    if ($projectFile -match "[\\/](bin|obj|\.git)[\\/]") {
+        continue
+    }
+
+    [void] $projectFoldersSet.Add((Normalize-PathText ([System.IO.Path]::GetRelativePath($root, [System.IO.Path]::GetDirectoryName($projectFile)))))
+}
+
+$projectFolders = [string[]]::new($projectFoldersSet.Count)
+$projectFoldersSet.CopyTo($projectFolders)
 
 foreach ($projectFolder in $projectFolders) {
     $count = if ($filesByFolder.ContainsKey($projectFolder)) { $filesByFolder[$projectFolder].Count } else { 0 }
@@ -143,7 +211,7 @@ foreach ($projectFolder in $projectFolders) {
 }
 
 foreach ($warning in $warnings) {
-    Write-Warning $warning
+    [System.Console]::Error.WriteLine("WARNING: $warning")
 }
 
 # Soft-limit budget: the count of files over the soft cap (CE0002) is a ratcheting
@@ -152,12 +220,18 @@ foreach ($warning in $warnings) {
 $softLimitCount = $warnings.Count
 $budget = $MaxSoftLimitViolations
 if ($budget -lt 0) {
-    $configPath = Join-Path $root ".config/code-enforcer/code-enforcer.json"
-    if (Test-Path -LiteralPath $configPath) {
-        $config = Get-Content -Raw -LiteralPath $configPath | ConvertFrom-Json
-        $field = $config.PSObject.Properties["maxSoftLimitViolations"]
-        if ($null -ne $field) {
-            $budget = [int] $field.Value
+    $configPath = [System.IO.Path]::Combine($root, ".config/code-enforcer/code-enforcer.json")
+    if ([System.IO.File]::Exists($configPath)) {
+        $configDocument = [System.Text.Json.JsonDocument]::Parse([System.IO.File]::ReadAllText($configPath))
+        try {
+            $field = [System.Text.Json.JsonElement]::new()
+            if ($configDocument.RootElement.TryGetProperty("maxSoftLimitViolations", [ref] $field) -and
+                $field.ValueKind -eq [System.Text.Json.JsonValueKind]::Number) {
+                $budget = $field.GetInt32()
+            }
+        }
+        finally {
+            $configDocument.Dispose()
         }
     }
 }
@@ -167,16 +241,16 @@ if ($budget -ge 0) {
         $violations.Add("CE0006 soft-limit budget exceeded: $softLimitCount file(s) over $WarnAt lines, budget is $budget. Split a file under $WarnAt lines, or deliberately raise maxSoftLimitViolations in .config/code-enforcer/code-enforcer.json.")
     }
     elseif ($softLimitCount -lt $budget) {
-        Write-Host "CodeEnforcer: soft-limit count ($softLimitCount) is below the budget ($budget). Lower maxSoftLimitViolations in .config/code-enforcer/code-enforcer.json to lock in the improvement."
+        [System.Console]::Out.WriteLine("CodeEnforcer: soft-limit count ($softLimitCount) is below the budget ($budget). Lower maxSoftLimitViolations in .config/code-enforcer/code-enforcer.json to lock in the improvement.")
     }
 }
 
 if ($violations.Count -gt 0) {
     foreach ($violation in $violations) {
-        Write-Error $violation -ErrorAction Continue
+        [System.Console]::Error.WriteLine($violation)
     }
 
     throw "CodeEnforcer found $($violations.Count) violation(s)."
 }
 
-Write-Host "CodeEnforcer passed."
+[System.Console]::Out.WriteLine("CodeEnforcer passed.")

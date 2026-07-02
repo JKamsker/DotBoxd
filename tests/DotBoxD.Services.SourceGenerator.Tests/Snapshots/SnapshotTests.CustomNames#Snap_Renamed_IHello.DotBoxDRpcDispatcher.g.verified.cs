@@ -11,7 +11,7 @@ namespace Snap.Renamed
     {
         private readonly global::Snap.Renamed.IHello? _service;
 
-        internal HelloDispatcher()
+        public HelloDispatcher()
         {
         }
 

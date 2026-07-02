@@ -217,6 +217,24 @@ public sealed partial class RpcKernelGenerationTests
         Assert.Equal("\b\f", text.Value);
     }
 
+    [Fact]
+    public async Task Empty_wire_argument_payload_invokes_zero_argument_server_extension()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create(
+            ControlStringSource,
+            "Sample.ControlStringPluginPackage");
+
+        using var server = PluginServer.Create(defaultPolicy: PurePolicy());
+        var kernel = await server.InstallServerExtensionAsync(package);
+
+        var response = await kernel.InvokeServerExtensionRpcAsync(
+            KernelRpcBinaryCodec.EncodeArguments(Array.Empty<KernelRpcValue>()));
+
+        var text = KernelRpcBinaryCodec.DecodeValue(response);
+        Assert.Equal(KernelRpcValueKind.String, text.Kind);
+        Assert.Equal("\b\f", text.TextValue);
+    }
+
     private static void AssertKill(SandboxValue value, int expectedId, bool expectedSuccess)
     {
         var record = Assert.IsType<RecordValue>(value);

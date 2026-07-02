@@ -9,6 +9,8 @@ internal static class QueryTextWriter
 {
     public static string Write(QueryFilter filter)
     {
+        ArgumentNullException.ThrowIfNull(filter);
+        QueryFilterInvariants.RequireValidShape(filter);
         var builder = new StringBuilder();
         Write(filter, builder);
         return builder.ToString();
@@ -67,7 +69,7 @@ internal static class QueryTextWriter
         }
 
         builder.Append(op).Append(' ');
-        writeValue(filter.Value ?? QueryValue.Null);
+        writeValue(QueryFilterInvariants.CompareValue(filter));
     }
 
     private static void WriteIn(QueryFilter filter, StringBuilder builder)

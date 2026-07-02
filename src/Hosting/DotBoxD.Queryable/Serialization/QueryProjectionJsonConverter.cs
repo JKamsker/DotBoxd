@@ -18,6 +18,7 @@ public sealed class QueryProjectionJsonConverter : JsonConverter<QueryProjection
         using var document = JsonDocument.ParseValue(ref reader);
         var element = document.RootElement;
         var kind = Deserialize<QueryProjectionKind>(element, "kind", options);
+        RejectInactiveArmProperties(element, kind);
         return kind switch
         {
             QueryProjectionKind.Identity => QueryProjection.Identity,
@@ -36,6 +37,8 @@ public sealed class QueryProjectionJsonConverter : JsonConverter<QueryProjection
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(options);
 
+        QueryProjectionInvariants.RequireValidShape(value);
+
         writer.WriteStartObject();
         writer.WritePropertyName("kind");
         JsonSerializer.Serialize(writer, value.Kind, options);
@@ -45,10 +48,10 @@ public sealed class QueryProjectionJsonConverter : JsonConverter<QueryProjection
             case QueryProjectionKind.Identity:
                 break;
             case QueryProjectionKind.Member:
-                writer.WriteString("path", value.Path);
+                writer.WriteString("path", QueryProjectionInvariants.MemberPath(value));
                 break;
             case QueryProjectionKind.Construct:
-                writer.WriteString("type", value.TypeName);
+                writer.WriteString("type", QueryProjectionInvariants.ConstructTypeName(value));
                 writer.WritePropertyName("fields");
                 WriteFields(writer, value.Fields, options);
                 break;
@@ -68,15 +71,15 @@ public sealed class QueryProjectionJsonConverter : JsonConverter<QueryProjection
         foreach (var field in fields)
         {
             writer.WriteStartObject();
-            writer.WriteString("name", field.Name);
-            if (field.Path is not null)
+            writer.WriteString("name", QueryProjectionInvariants.FieldName(field));
+            if (QueryProjectionInvariants.FieldHasPath(field))
             {
-                writer.WriteString("path", field.Path);
+                writer.WriteString("path", QueryProjectionInvariants.FieldPath(field));
             }
             else
             {
                 writer.WritePropertyName("value");
-                JsonSerializer.Serialize(writer, field.Constant ?? QueryValue.Null, options);
+                JsonSerializer.Serialize(writer, QueryProjectionInvariants.FieldConstant(field), options);
             }
 
             writer.WriteEndObject();
@@ -118,6 +121,34 @@ public sealed class QueryProjectionJsonConverter : JsonConverter<QueryProjection
         }
 
         return fields;
+    }
+
+    private static void RejectInactiveArmProperties(JsonElement element, QueryProjectionKind kind)
+    {
+        switch (kind)
+        {
+            case QueryProjectionKind.Identity:
+                RejectInactiveArmProperty(element, kind, "path");
+                RejectInactiveArmProperty(element, kind, "type");
+                RejectInactiveArmProperty(element, kind, "fields");
+                break;
+            case QueryProjectionKind.Member:
+                RejectInactiveArmProperty(element, kind, "type");
+                RejectInactiveArmProperty(element, kind, "fields");
+                break;
+            case QueryProjectionKind.Construct:
+                RejectInactiveArmProperty(element, kind, "path");
+                break;
+        }
+    }
+
+    private static void RejectInactiveArmProperty(JsonElement element, QueryProjectionKind kind, string property)
+    {
+        if (element.TryGetProperty(property, out _))
+        {
+            throw new JsonException(
+                $"QueryProjection {kind} JSON cannot carry inactive union-arm property '{property}'.");
+        }
     }
 
     private static T Deserialize<T>(JsonElement element, string property, JsonSerializerOptions options)

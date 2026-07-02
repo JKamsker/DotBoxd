@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": ".",
+          "files": [
+            "src/Services/DotBoxD.Services/DotBoxD.Services.csproj",
+            "src/Channels/DotBoxD.Codecs.MessagePack/DotBoxD.Codecs.MessagePack.csproj",
+            "src/Channels/DotBoxD.Transports.Tcp/DotBoxD.Transports.Tcp.csproj",
+            "src/Channels/DotBoxD.Transports.NamedPipes/DotBoxD.Transports.NamedPipes.csproj",
+            "src/Hosting/DotBoxD.Abstractions/DotBoxD.Abstractions.csproj",
+            "src/Kernels/DotBoxD.Kernels/DotBoxD.Kernels.csproj",
+            "src/Kernels/DotBoxD.Kernels.Validation/DotBoxD.Kernels.Validation.csproj",
+            "src/Kernels/DotBoxD.Kernels.Runtime/DotBoxD.Kernels.Runtime.csproj",
+            "src/Kernels/DotBoxD.Kernels.Interpreter/DotBoxD.Kernels.Interpreter.csproj",
+            "src/Kernels/DotBoxD.Kernels.Compiler/DotBoxD.Kernels.Compiler.csproj",
+            "src/Kernels/DotBoxD.Kernels.Verifier/DotBoxD.Kernels.Verifier.csproj",
+            "src/Kernels/DotBoxD.Kernels.Serialization.Json/DotBoxD.Kernels.Serialization.Json.csproj",
+            "src/Hosting/DotBoxD.Hosting/DotBoxD.Hosting.csproj",
+            "src/Hosting/DotBoxD.Hosting.Http/DotBoxD.Hosting.Http.csproj",
+            "src/Hosting/DotBoxD.Plugins/DotBoxD.Plugins.csproj",
+            "src/Pushdown/DotBoxD.Pushdown.Services/DotBoxD.Pushdown.Services.csproj"
+          ]
+        }
+      ],
+      "dest": "docs-site/src/content/docs/api",
+      "outputFormat": "markdown",
+      "namespaceLayout": "nested",
+      "memberLayout": "samePage",
+      "filter": "filterConfig.yml",
+      "disableGitFeatures": true,
+      "properties": {
+        "Configuration": "Release",
+        "TreatWarningsAsErrors": "false"
+      }
+    }
+  ]
+}

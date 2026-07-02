@@ -1,3 +1,4 @@
+using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Tests.PluginAnalyzer.Core;
 using DotBoxD.Plugins;
 
@@ -101,8 +102,13 @@ public sealed class KernelRpcValueTests
             PluginAnalyzerGeneratedPackageFactory.GeneratedSources(
                 ServerExtensionProxyTests.MonsterKillerWithGeneratedClientSource));
 
+        Assert.Contains("var __count = value.Count;", source, StringComparison.Ordinal);
         Assert.Contains(
-            "new global::DotBoxD.Plugins.KernelRpcValue[value.Count]",
+            "global::System.Array.Empty<global::DotBoxD.Plugins.KernelRpcValue>()",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "new global::DotBoxD.Plugins.KernelRpcValue[__count]",
             source,
             StringComparison.Ordinal);
         Assert.Contains("var __item = value[i];", source, StringComparison.Ordinal);
@@ -113,17 +119,66 @@ public sealed class KernelRpcValueTests
     }
 
     [Fact]
-    public void Generated_list_writers_keep_foreach_fallback_for_enumerables()
+    public void Generated_list_writers_use_counted_branch_and_keep_foreach_fallback_for_enumerables()
     {
         var source = string.Join(
             "\n",
             PluginAnalyzerGeneratedPackageFactory.GeneratedSources(EnumerableServerExtensionSource));
 
         Assert.Contains(
+            "global::System.Linq.Enumerable.TryGetNonEnumeratedCount(value, out var __count)",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "global::System.Array.Empty<global::DotBoxD.Plugins.KernelRpcValue>()",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "new global::DotBoxD.Plugins.KernelRpcValue[__count]",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
             "new global::System.Collections.Generic.List<global::DotBoxD.Plugins.KernelRpcValue>()",
             source,
             StringComparison.Ordinal);
         Assert.Contains("foreach (var __item in value)", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Generated_map_writers_use_empty_array_for_empty_maps()
+    {
+        var source = string.Join(
+            "\n",
+            PluginAnalyzerGeneratedPackageFactory.GeneratedSources(MapServerExtensionSource));
+
+        Assert.Contains("var __entryCount = value.Count * 2;", source, StringComparison.Ordinal);
+        Assert.Contains(
+            "global::System.Array.Empty<global::DotBoxD.Plugins.KernelRpcValue>()",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "new global::DotBoxD.Plugins.KernelRpcValue[__entryCount]",
+            source,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ToSandboxValue_rejects_duplicate_map_keys()
+    {
+        var wire = KernelRpcValue.Map(
+        [
+            KernelRpcValue.String("same"),
+            KernelRpcValue.Int32(1),
+            KernelRpcValue.String("same"),
+            KernelRpcValue.Int32(2)
+        ]);
+
+        var ex = Assert.Throws<FormatException>(
+            () => KernelRpcValueConverter.ToSandboxValue(
+                wire,
+                SandboxType.Map(SandboxType.String, SandboxType.I32)));
+
+        Assert.Contains("duplicate", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     private static void AssertGeneratedReaderUsesIndexedItems(string testSource)
@@ -157,6 +212,31 @@ public sealed class KernelRpcValueTests
         public sealed partial class EchoKernel
         {
             public int Echo(IEnumerable<int> values, HookContext ctx)
+            {
+                return 0;
+            }
+        }
+        """;
+
+    private const string MapServerExtensionSource = """
+        using System.Collections.Generic;
+        using System.Threading.Tasks;
+        using DotBoxD.Kernels;
+        using DotBoxD.Kernels.Sandbox;
+        using DotBoxD.Plugins;
+        using DotBoxD.Abstractions;
+
+        namespace Sample;
+
+        public interface IScoreService
+        {
+            ValueTask<int> SumAsync(Dictionary<string, int> scores);
+        }
+
+        [ServerExtension("score", typeof(IScoreService))]
+        public sealed partial class ScoreKernel
+        {
+            public int Sum(Dictionary<string, int> scores, HookContext ctx)
             {
                 return 0;
             }

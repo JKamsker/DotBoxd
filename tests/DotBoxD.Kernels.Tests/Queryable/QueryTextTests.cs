@@ -65,6 +65,18 @@ public sealed class QueryTextTests
     public void Parse_rejects_malformed_input(string text)
         => Assert.Throws<QueryTranslationException>(() => QueryText.Parse(text));
 
+    [Fact]
+    public void Parse_rejects_unknown_string_escape_sequences()
+        => Assert.Throws<QueryTranslationException>(() => QueryText.Parse("Path == \"C:\\temp\""));
+
+    [Fact]
+    public void Parse_accepts_writer_supported_string_escape_sequences()
+    {
+        var filter = QueryText.Parse("Path == \"C:\\\\quoted\\\"name\"");
+
+        Assert.Equal("C:\\quoted\"name", filter.Value!.String);
+    }
+
     [Theory]
     [InlineData(1e21)]
     [InlineData(1.5e-10)]

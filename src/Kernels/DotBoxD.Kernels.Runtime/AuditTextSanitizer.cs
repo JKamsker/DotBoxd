@@ -33,10 +33,19 @@ public static partial class AuditTextSanitizer
         RedactionOptions,
         RedactionTimeout);
 
-    private static readonly Regex SecretPathSegmentRegex = new(
-        "(?i)(^|[-_.])(authorization|bearer|credential|key|password|passwd|pwd|secret|session|signature|token)([-_.=:]|$)",
-        RedactionOptions,
-        RedactionTimeout);
+    // Single source of truth for path markers: the regex, cheap prefilter, and standalone-marker
+    // classifier all consume this table so the prefilter stays a superset of the redaction matcher.
+    private static readonly string[] SecretPathMarkers =
+    [
+        "authorization", "bearer", "credential", "key",
+        "password", "passwd", "pwd", "secret",
+        "session", "signature",
+        "token"
+    ];
+
+    private static readonly char[] SecretPathMarkerInitials = CreateSecretPathMarkerInitials();
+    private static readonly int MaxSecretPathMarkerLength = GetMaxSecretPathMarkerLength();
+    private static readonly Regex SecretPathSegmentRegex = CreateSecretPathSegmentRegex();
 
     public static string SanitizeAndRedact(string message)
     {
@@ -91,6 +100,11 @@ public static partial class AuditTextSanitizer
 
     public static string RedactPathSegments(string path)
     {
+        if (!MayContainSecretPathSegment(path))
+        {
+            return path;
+        }
+
         var segments = path.Split('/');
         var previousWasSecretMarker = false;
         for (var i = 0; i < segments.Length; i++)
@@ -106,6 +120,114 @@ public static partial class AuditTextSanitizer
         }
 
         return string.Join("/", segments);
+    }
+
+    private static bool MayContainSecretPathSegment(string path)
+    {
+        for (var i = 0; i < path.Length; i++)
+        {
+            var remaining = path.AsSpan(i);
+            if (path[i] == '%' || StartsSecretPathMarker(remaining))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool StartsSecretPathMarker(ReadOnlySpan<char> value)
+    {
+        if (value.IsEmpty)
+        {
+            return false;
+        }
+
+        if (value[0] <= '\u007f' && !HasSecretPathMarkerInitial(value[0]))
+        {
+            return false;
+        }
+
+        var comparison = value[0] > '\u007f' || ContainsNonAscii(value, MaxSecretPathMarkerLength)
+            ? StringComparison.InvariantCultureIgnoreCase
+            : StringComparison.OrdinalIgnoreCase;
+        return StartsAnySecretPathMarker(value, comparison);
+    }
+
+    private static Regex CreateSecretPathSegmentRegex()
+    {
+        var markers = string.Join("|", SecretPathMarkers.Select(Regex.Escape));
+        return new Regex(
+            $"(?i)(^|[-_.])({markers})([-_.=:]|$)",
+            RedactionOptions,
+            RedactionTimeout);
+    }
+
+    private static char[] CreateSecretPathMarkerInitials()
+    {
+        var initials = new List<char>(SecretPathMarkers.Length);
+        foreach (var marker in SecretPathMarkers)
+        {
+            var initial = char.ToUpperInvariant(marker[0]);
+            if (!initials.Contains(initial))
+            {
+                initials.Add(initial);
+            }
+        }
+
+        return initials.ToArray();
+    }
+
+    private static int GetMaxSecretPathMarkerLength()
+    {
+        var max = 0;
+        foreach (var marker in SecretPathMarkers)
+        {
+            max = Math.Max(max, marker.Length);
+        }
+
+        return max;
+    }
+
+    private static bool StartsAnySecretPathMarker(ReadOnlySpan<char> value, StringComparison comparison)
+    {
+        foreach (var marker in SecretPathMarkers)
+        {
+            if (value.StartsWith(marker, comparison))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool HasSecretPathMarkerInitial(char value)
+    {
+        var upper = char.ToUpperInvariant(value);
+        foreach (var initial in SecretPathMarkerInitials)
+        {
+            if (upper == initial)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ContainsNonAscii(ReadOnlySpan<char> value, int length)
+    {
+        var count = Math.Min(value.Length, length);
+        for (var i = 0; i < count; i++)
+        {
+            if (value[i] > '\u007f')
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static (bool Redact, bool RedactFollowingSegment) ClassifySecretPathSegment(string segment)
@@ -153,19 +275,22 @@ public static partial class AuditTextSanitizer
     private static bool IsStandaloneSecretMarker(string segment)
     {
         var normalized = segment.Trim().Trim('-', '_', '.');
-        return normalized.Equals("authorization", StringComparison.OrdinalIgnoreCase) ||
-               normalized.Equals("bearer", StringComparison.OrdinalIgnoreCase) ||
-               normalized.Equals("credential", StringComparison.OrdinalIgnoreCase) ||
-               normalized.Equals("key", StringComparison.OrdinalIgnoreCase) ||
-               normalized.Equals("password", StringComparison.OrdinalIgnoreCase) ||
-               normalized.Equals("passwd", StringComparison.OrdinalIgnoreCase) ||
-               normalized.Equals("pwd", StringComparison.OrdinalIgnoreCase) ||
-               normalized.Equals("secret", StringComparison.OrdinalIgnoreCase) ||
-               normalized.Equals("session", StringComparison.OrdinalIgnoreCase) ||
-               normalized.Equals("signature", StringComparison.OrdinalIgnoreCase) ||
-               normalized.Equals("token", StringComparison.OrdinalIgnoreCase) ||
-               normalized.EndsWith("-key", StringComparison.OrdinalIgnoreCase) ||
-               normalized.EndsWith("_key", StringComparison.OrdinalIgnoreCase) ||
-               normalized.EndsWith(".key", StringComparison.OrdinalIgnoreCase);
+        return IsExactSecretPathMarker(normalized) ||
+               normalized.EndsWith("-key", StringComparison.InvariantCultureIgnoreCase) ||
+               normalized.EndsWith("_key", StringComparison.InvariantCultureIgnoreCase) ||
+               normalized.EndsWith(".key", StringComparison.InvariantCultureIgnoreCase);
+    }
+
+    private static bool IsExactSecretPathMarker(string value)
+    {
+        foreach (var marker in SecretPathMarkers)
+        {
+            if (value.Equals(marker, StringComparison.InvariantCultureIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

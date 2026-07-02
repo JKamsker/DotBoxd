@@ -17,6 +17,7 @@ public static class QuerySatisfiability
     public static bool IsSatisfiable(QueryFilter filter)
     {
         ArgumentNullException.ThrowIfNull(filter);
+        QueryFilterInvariants.RequireValidShape(filter);
         return !IsContradiction(filter);
     }
 

@@ -1,7 +1,6 @@
 using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using DotBoxD.Shared.HostBindings;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.TypeNames;
 
@@ -13,8 +12,9 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 /// <c>CallExpression(bindingId, args)</c>. The called method must carry
 /// <c>[HostBinding(bindingId, capability)]</c>; the capability is collected so it lands in the
 /// manifest's required capabilities and gates the install (the host registers a matching binding whose
-/// <c>RequiredCapability</c> the policy must grant). Arguments are positional and both argument and
-/// return types must be supported scalars; anything else fails safe via <see cref="NotSupportedException"/>.
+/// <c>RequiredCapability</c> the policy must grant). Arguments lower in parameter order, with explicit
+/// defaults filled in only for marshaller-eligible scalars; reordered named calls fail closed because this
+/// expression IR cannot preserve call-site side-effect order with temporaries.
 /// </summary>
 internal static partial class DotBoxDHostBindingExpressionLowerer
 {
@@ -52,35 +52,18 @@ internal static partial class DotBoxDHostBindingExpressionLowerer
         // Host bindings use the same non-nullable marshaller shapes the runtime binding factory accepts.
         var returnType = HostBindingReturnTag(method.ReturnType, bindingId);
 
-        var arguments = invocation.ArgumentList.Arguments;
-        if (arguments.Count != method.Parameters.Length)
-        {
-            throw new NotSupportedException(
-                $"Host binding '{bindingId}' call must pass {method.Parameters.Length} positional argument(s).");
-        }
-
-        var loweredSources = new List<string>(arguments.Count);
         var allocates = HostBindingMetadataRules.ReturnAllocatesManifestTag(returnType);
-        for (var i = 0; i < arguments.Count; i++)
+        var arguments = LowerHostBindingCallArguments(
+            invocation,
+            method,
+            bindingId,
+            context,
+            lowerExpression);
+        var loweredSources = new List<string>(arguments.Count);
+        foreach (var argument in arguments)
         {
-            if (arguments[i].NameColon is not null ||
-                !arguments[i].RefKindKeyword.IsKind(SyntaxKind.None) ||
-                method.Parameters[i].RefKind != RefKind.None)
-            {
-                throw new NotSupportedException(
-                    $"Host binding '{bindingId}' arguments must be positional value arguments.");
-            }
-
-            var expected = HostBindingManifestTag(method.Parameters[i].Type, bindingId, $"argument {i}");
-            var lowered = lowerExpression(arguments[i].Expression);
-            if (!string.Equals(lowered.Type, expected, StringComparison.Ordinal))
-            {
-                throw new NotSupportedException(
-                    $"Host binding '{bindingId}' argument {i} must lower to {expected}.");
-            }
-
-            loweredSources.Add(lowered.Source);
-            allocates |= lowered.Allocates;
+            loweredSources.Add(argument.Source);
+            allocates |= argument.Allocates;
         }
 
         AddBindingRequirements(context, capability, effects, isAsync);

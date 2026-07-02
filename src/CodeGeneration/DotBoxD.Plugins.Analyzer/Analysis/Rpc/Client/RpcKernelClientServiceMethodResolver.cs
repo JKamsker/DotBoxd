@@ -1,11 +1,15 @@
 namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 
 using System.Collections.Generic;
+using System.Text;
 using Microsoft.CodeAnalysis;
 
 internal static class RpcKernelClientServiceMethodResolver
 {
-    public static IMethodSymbol Resolve(INamedTypeSymbol serviceType, IMethodSymbol kernelMethod)
+    public static IMethodSymbol Resolve(
+        INamedTypeSymbol serviceType,
+        IMethodSymbol kernelMethod,
+        Compilation compilation)
     {
         if (serviceType.TypeKind != TypeKind.Interface)
         {
@@ -13,11 +17,16 @@ internal static class RpcKernelClientServiceMethodResolver
         }
 
         var methods = new List<IMethodSymbol>();
+        var methodKeys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var member in ServiceMembers(serviceType))
         {
             if (member is IMethodSymbol { MethodKind: MethodKind.Ordinary, IsStatic: false } method)
             {
-                methods.Add(method);
+                if (methodKeys.Add(MethodKey(method)))
+                {
+                    methods.Add(method);
+                }
+
                 continue;
             }
 
@@ -30,10 +39,37 @@ internal static class RpcKernelClientServiceMethodResolver
         }
 
         var serviceMethod = methods[0];
+        ValidateNonGeneric(serviceMethod);
         ValidateName(serviceMethod, kernelMethod);
         ValidateParameters(serviceMethod, kernelMethod);
-        ValidateReturn(serviceMethod, kernelMethod);
+        ValidateReturn(serviceMethod, kernelMethod, compilation);
         return serviceMethod;
+    }
+
+    private static string MethodKey(IMethodSymbol method)
+    {
+        var key = new StringBuilder();
+        key.Append(method.Name).Append('|')
+            .Append(method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).Append('|')
+            .Append(method.TypeParameters.Length.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        foreach (var parameter in method.Parameters)
+        {
+            key.Append('|')
+                .Append(parameter.RefKind.ToString()).Append(':')
+                .Append(parameter.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).Append(':')
+                .Append(parameter.IsParams ? "params" : string.Empty);
+        }
+
+        return key.ToString();
+    }
+
+    private static void ValidateNonGeneric(IMethodSymbol serviceMethod)
+    {
+        if (serviceMethod.TypeParameters.Length > 0)
+        {
+            throw new NotSupportedException(
+                $"Server extension method '{serviceMethod.Name}' must be non-generic.");
+        }
     }
 
     private static void ValidateName(IMethodSymbol serviceMethod, IMethodSymbol kernelMethod)
@@ -52,7 +88,8 @@ internal static class RpcKernelClientServiceMethodResolver
     private static void ValidateParameters(IMethodSymbol serviceMethod, IMethodSymbol kernelMethod)
     {
         var kernelParameterCount = kernelMethod.Parameters.Length - 1;
-        if (serviceMethod.Parameters.Length != kernelParameterCount)
+        var serviceParameterCount = RpcKernelClientParameters.PayloadParameterCount(serviceMethod);
+        if (serviceParameterCount != kernelParameterCount)
         {
             throw new NotSupportedException(
                 $"Server extension method '{serviceMethod.Name}' must declare {kernelParameterCount} parameter(s).");
@@ -64,8 +101,14 @@ internal static class RpcKernelClientServiceMethodResolver
             var kernelParameter = kernelMethod.Parameters[i];
             RejectRefLikeParameter(serviceParameter, "service");
             RejectRefLikeParameter(kernelParameter, "kernel");
+            RejectNullReferenceDefault(serviceParameter);
             ValidateParameterType(serviceParameter, kernelParameter);
             ValidateParameterModifiers(serviceParameter, kernelParameter);
+        }
+
+        if (RpcKernelClientParameters.TryGetCancellationToken(serviceMethod, out var cancellationToken))
+        {
+            RejectRefLikeParameter(cancellationToken, "service");
         }
     }
 
@@ -87,7 +130,7 @@ internal static class RpcKernelClientServiceMethodResolver
         IParameterSymbol kernelParameter)
     {
         if (serviceParameter.RefKind == kernelParameter.RefKind &&
-            serviceParameter.IsParams == kernelParameter.IsParams)
+            ParamsCompatible(serviceParameter, kernelParameter))
         {
             return;
         }
@@ -96,10 +139,19 @@ internal static class RpcKernelClientServiceMethodResolver
             $"Server extension parameter '{serviceParameter.Name}' modifier '{DescribeParameterModifiers(serviceParameter)}' must match kernel parameter '{kernelParameter.Name}' modifier '{DescribeParameterModifiers(kernelParameter)}'.");
     }
 
-    private static void ValidateReturn(IMethodSymbol serviceMethod, IMethodSymbol kernelMethod)
+    private static bool ParamsCompatible(
+        IParameterSymbol serviceParameter,
+        IParameterSymbol kernelParameter) =>
+        serviceParameter.IsParams == kernelParameter.IsParams ||
+        (serviceParameter.IsParams && !kernelParameter.IsParams);
+
+    private static void ValidateReturn(
+        IMethodSymbol serviceMethod,
+        IMethodSymbol kernelMethod,
+        Compilation compilation)
     {
-        var serviceReturn = DotBoxDRpcReturnType.PayloadType(serviceMethod.ReturnType);
-        var kernelReturn = DotBoxDRpcReturnType.PayloadType(kernelMethod.ReturnType);
+        var serviceReturn = DotBoxDRpcReturnType.PayloadType(serviceMethod.ReturnType, compilation);
+        var kernelReturn = DotBoxDRpcReturnType.PayloadType(kernelMethod.ReturnType, compilation);
         if (serviceReturn is null && kernelReturn is null)
         {
             return;
@@ -145,6 +197,17 @@ internal static class RpcKernelClientServiceMethodResolver
 
         throw new NotSupportedException(
             $"Server extension {owner} parameter '{parameter.Name}' cannot use ref, in, or out modifiers.");
+    }
+
+    private static void RejectNullReferenceDefault(IParameterSymbol parameter)
+    {
+        if (parameter.HasExplicitDefaultValue &&
+            parameter.ExplicitDefaultValue is null &&
+            parameter.Type.IsReferenceType)
+        {
+            throw new NotSupportedException(
+                $"Server extension service parameter '{parameter.Name}' cannot default to null because kernel RPC does not encode null reference values.");
+        }
     }
 
     private static string DescribeParameterModifiers(IParameterSymbol parameter)

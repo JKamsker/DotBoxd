@@ -63,7 +63,7 @@ public sealed record QueryFilter
             Kind = QueryFilterKind.In,
             Field = EnsureFieldPath(field),
             // Snapshot so a mutable list passed/cast by the caller cannot mutate the AST after construction.
-            Values = [.. values],
+            Values = SnapshotValues(values),
             IgnoreCase = ignoreCase,
         };
     }
@@ -139,5 +139,17 @@ public sealed record QueryFilter
         return flattened.Count == 1
             ? flattened[0]
             : new QueryFilter { Kind = kind, Children = [.. flattened] };
+    }
+
+    private static QueryValue[] SnapshotValues(IReadOnlyList<QueryValue> values)
+    {
+        var snapshot = new QueryValue[values.Count];
+        for (var i = 0; i < values.Count; i++)
+        {
+            snapshot[i] = values[i]
+                ?? throw new ArgumentException("QueryFilter In nodes require Values to contain only non-null QueryValue elements.", nameof(values));
+        }
+
+        return snapshot;
     }
 }

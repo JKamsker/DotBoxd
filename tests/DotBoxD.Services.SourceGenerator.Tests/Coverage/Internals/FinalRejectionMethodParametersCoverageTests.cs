@@ -29,6 +29,7 @@ public sealed class FinalRejectionMethodParametersCoverageTests
             DeclaredReturnType: "void",
             UnwrappedReturnType: null,
             ReturnRefKindKeyword: "",
+            ReturnAttributePrefix: "",
             HasCancellationToken: hasCancellationToken,
             Parameters: new EquatableArray<ParameterModel>(ImmutableArray.Create(parameters)),
             AdditionalExplicitImplementationTypes: EquatableArray<string>.Empty);

@@ -67,8 +67,10 @@ public static partial class PluginPackageJsonSerializer
         var manifest = ReadManifest(Required(element, "manifest"));
         var moduleElement = Required(element, "module");
         var module = JsonImporter.Import(moduleElement, moduleElement.GetRawText());
-        var entrypoints = element.TryGetProperty("entrypoints", out var entrypointElement)
-            ? ReadEntrypoints(entrypointElement)
+        var entrypoints = manifest.RpcEntrypoint is not null
+            ? ReadEntrypoints(Required(element, "entrypoints"), requireAliases: true)
+            : element.TryGetProperty("entrypoints", out var entrypointElement)
+                ? ReadEntrypoints(entrypointElement, requireAliases: false)
             : null;
 
         return PluginPackage.Create(manifest, module, entrypoints);
@@ -297,13 +299,20 @@ public static partial class PluginPackageJsonSerializer
         return op;
     }
 
-    private static KernelEntrypoints ReadEntrypoints(JsonElement element)
+    private static KernelEntrypoints ReadEntrypoints(JsonElement element, bool requireAliases)
     {
         RequireAllowedProperties(element, "kernel entrypoints", ["shouldHandle", "handle"]);
         return new KernelEntrypoints(
-            OptionalString(element, "shouldHandle") ?? "ShouldHandle",
-            OptionalString(element, "handle") ?? "Handle");
+            ReadEntrypointAlias(element, "shouldHandle", requireAliases, "ShouldHandle"),
+            ReadEntrypointAlias(element, "handle", requireAliases, "Handle"));
     }
+
+    private static string ReadEntrypointAlias(
+        JsonElement element,
+        string name,
+        bool requireAlias,
+        string defaultValue)
+        => requireAlias ? RequiredString(element, name) : OptionalString(element, name) ?? defaultValue;
 }
 
 public static class PluginServerJsonExtensions

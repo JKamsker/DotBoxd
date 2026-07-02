@@ -55,6 +55,24 @@ public sealed class BindingRegistryHardeningTests
     }
 
     [Fact]
+    public void Binding_registry_rejects_undefined_safety_classification()
+    {
+        var ex = Assert.Throws<SandboxValidationException>(() => Build(TestBinding(
+            safety: (BindingSafety)999)));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-BINDING-SAFETY");
+    }
+
+    [Fact]
+    public void Binding_registry_rejects_undefined_audit_level()
+    {
+        var ex = Assert.Throws<SandboxValidationException>(() => Build(TestBinding(
+            auditLevel: (AuditLevel)999)));
+
+        Assert.Contains(ex.Diagnostics, d => d.Code == "E-BINDING-AUDIT");
+    }
+
+    [Fact]
     public void Binding_registry_rejects_custom_capability_without_validator()
     {
         var ex = Assert.Throws<SandboxValidationException>(() => Build(TestBinding(

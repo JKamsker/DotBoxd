@@ -3,6 +3,34 @@
   "files": [
   ],
   "folders": [
+    {
+      "path": "src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/InvokeAsync",
+      "justification": "InvokeAsync lowering is split by receiver, capture, payload, and result-reader concerns; existing folder remains dense until the analyzer layout is reorganized."
+    },
+    {
+      "path": "src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer",
+      "justification": "PluginServer facade generation is split by controls, validation, world, properties, and emit support; existing folder remains dense until the analyzer layout is reorganized."
+    },
+    {
+      "path": "src/Hosting/DotBoxD.Plugins/Runtime/Rpc",
+      "justification": "Runtime RPC support contains codecs, marshalling, DTO shape handling, and service registration helpers that share one public runtime area."
+    },
+    {
+      "path": "tests/DotBoxD.Kernels.Tests/PluginAnalyzer/KernelMethod",
+      "justification": "KernelMethod lowering has many focused regression fixtures covering distinct generated-code shapes."
+    },
+    {
+      "path": "tests/DotBoxD.Kernels.Tests/PluginAnalyzer/Runtime/RemoteRunLocal",
+      "justification": "Remote RunLocal runtime coverage is intentionally split into focused fixtures for local callback and projection behavior."
+    },
+    {
+      "path": "tests/DotBoxD.Kernels.Tests/Plugins/Rpc/Kernel",
+      "justification": "Kernel RPC regression coverage is split by codec, marshalling, proxy, DTO, and service-registration behavior."
+    },
+    {
+      "path": "tests/DotBoxD.Kernels.Tests/Plugins/Rpc/ServerExtension",
+      "justification": "Server-extension RPC regression coverage is split by lowering, DTO, fallback, payload, and runtime behavior."
+    }
   ],
   "rootFolders": []
 }

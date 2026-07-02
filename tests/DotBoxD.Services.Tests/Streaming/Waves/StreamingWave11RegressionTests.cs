@@ -5,6 +5,7 @@ using DotBoxD.Services.Peer;
 using DotBoxD.Services.Protocol;
 using DotBoxD.Services.Server;
 using DotBoxD.Services.Streaming.Core;
+using DotBoxD.Services.Tests.Support;
 using Xunit;
 
 namespace DotBoxD.Services.Tests.Streaming.Waves;
@@ -153,28 +154,25 @@ public sealed class StreamingWave11RegressionTests
         RpcStreamHandle handle,
         MalformedStreamErrorKind kind)
     {
-        var response = new RpcResponse
-        {
-            MessageId = kind == MalformedStreamErrorKind.MismatchedMessageId
-                ? handle.StreamId + 1
-                : handle.StreamId,
-            IsSuccess = kind == MalformedStreamErrorKind.SuccessResponse,
-            ErrorMessage = "remote failed",
-            ErrorType = "Remote",
-            Stream = kind == MalformedStreamErrorKind.StreamResponse
-                ? new RpcStreamHandle(handle.StreamId + 10_000, RpcStreamKind.Binary)
-                : null,
-        };
+        var messageId = kind == MalformedStreamErrorKind.MismatchedMessageId
+            ? handle.StreamId + 1
+            : handle.StreamId;
+        var stream = kind == MalformedStreamErrorKind.StreamResponse
+            ? new RpcStreamHandle(handle.StreamId + 10_000, RpcStreamKind.Binary)
+            : (RpcStreamHandle?)null;
         var payload = kind == MalformedStreamErrorKind.TrailingPayload
             ? new byte[] { 1 }
             : ReadOnlySpan<byte>.Empty;
-
-        return MessageFramer.FrameMessage(
+        return RpcEnvelopeTestFrames.FrameErrorResponse(
             serializer,
-            handle.StreamId,
-            MessageType.StreamError,
-            response,
-            payload);
+            frameMessageId: handle.StreamId,
+            messageType: MessageType.StreamError,
+            envelopeMessageId: messageId,
+            isSuccess: kind == MalformedStreamErrorKind.SuccessResponse,
+            errorMessage: "remote failed",
+            errorType: "Remote",
+            stream: stream,
+            trailingPayload: payload);
     }
 
     private static RpcStreamManager CreateStreamManager(MessagePackRpcSerializer serializer) =>

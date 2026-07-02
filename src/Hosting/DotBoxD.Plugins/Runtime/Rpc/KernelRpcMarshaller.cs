@@ -29,6 +29,16 @@ public static partial class KernelRpcMarshaller
             return scalar;
         }
 
+        if (TryDateTimeToSandboxValue(value, type, out var dateTime))
+        {
+            return dateTime;
+        }
+
+        if (TryFrameworkStructToSandboxValue(value, type, out var frameworkStruct))
+        {
+            return frameworkStruct;
+        }
+
         if (type.IsEnum)
         {
             return EnumUsesI64(type)
@@ -48,7 +58,9 @@ public static partial class KernelRpcMarshaller
             var itemType = SandboxTypeOf(elementType);
             if (value is ICollection collection)
             {
-                var items = new SandboxValue[collection.Count];
+                var items = collection.Count == 0
+                    ? Array.Empty<SandboxValue>()
+                    : new SandboxValue[collection.Count];
                 var index = 0;
                 foreach (var item in enumerable)
                 {
@@ -76,6 +88,7 @@ public static partial class KernelRpcMarshaller
                     nameof(value));
             }
 
+            RejectUnsupportedMapKeyType(mapTypes.Key);
             var keyType = SandboxTypeOf(mapTypes.Key);
             // Mirror the SandboxTypeOf map-key guard: the kernel verifier only accepts a fixed set of scalar map
             // keys (bool/int/long/string/opaque-id, not Guid or double). Reject an unsupported key here with a
@@ -87,18 +100,19 @@ public static partial class KernelRpcMarshaller
             }
 
             var valueType = SandboxTypeOf(mapTypes.Value);
-            var entries = new Dictionary<SandboxValue, SandboxValue>();
+            var entries = new MapValueBuilder(value is ICollection collection ? collection.Count : 0);
             foreach (var entry in MapEntries(enumerable, mapTypes.Key, mapTypes.Value))
             {
                 var key = MarshalChild(entry.Key, mapTypes.Key, "Map key");
-                entries[key] = MarshalChild(entry.Value, mapTypes.Value, "Map value");
+                entries.Set(key, MarshalChild(entry.Value, mapTypes.Value, "Map value"));
             }
 
-            return SandboxValue.FromMap(entries, keyType, valueType);
+            return SandboxValue.FromOwnedMap(entries, keyType, valueType);
         }
 
         if (DtoShape(type) is { } shape)
         {
+            shape.RejectUnmatchedRequiredConstructor();
             var fields = shape.Fields;
             var values = new SandboxValue[fields.Count];
             for (var i = 0; i < fields.Count; i++)
@@ -139,15 +153,28 @@ public static partial class KernelRpcMarshaller
             return scalar;
         }
 
+        if (TryDateTimeFromSandboxValue(value, type, out var dateTime))
+        {
+            return dateTime;
+        }
+
+        if (TryFrameworkStructFromSandboxValue(value, type, out var frameworkStruct))
+        {
+            return frameworkStruct;
+        }
+
         if (type.IsEnum)
         {
-            return value switch
+            if (EnumUsesI64(type))
             {
-                I32Value i => Enum.ToObject(type, i.Value),
-                I64Value l => Enum.ToObject(type, l.Value),
-                _ => throw new NotSupportedException(
-                    $"Server extension cannot marshal a sandbox value to enum '{type}'.")
-            };
+                return value is I64Value longValue
+                    ? EnumFromInt64(type, longValue.Value)
+                    : throw CannotMarshalEnum(value, type, SandboxType.I64);
+            }
+
+            return value is I32Value intValue
+                ? EnumFromInt32(type, intValue.Value)
+                : throw CannotMarshalEnum(value, type, SandboxType.I32);
         }
 
         if (value is RecordValue record && DtoShape(type) is { } shape)
@@ -168,103 +195,35 @@ public static partial class KernelRpcMarshaller
                 return ToArray(list.Values, elementType);
             }
 
-            var resultList = CreateList(elementType);
+            var resultList = CreateList(elementType, list.Values.Count);
             foreach (var item in list.Values)
             {
                 resultList.Add(FromSandboxValue(item, elementType));
             }
 
-            return resultList;
+            return CompleteList(type, elementType, resultList);
         }
 
         if (MapTypes(type) is { } mapTypes && value is MapValue map)
         {
-            var result = CreateDictionary(mapTypes.Key, mapTypes.Value);
-            foreach (var pair in map.Values)
+            RejectUnsupportedMapKeyType(mapTypes.Key);
+            var result = CreateDictionary(mapTypes.Key, mapTypes.Value, map.Values.Count);
+            foreach (var pair in map.Entries)
             {
                 var key = FromSandboxValue(pair.Key, mapTypes.Key)
                     ?? throw new NotSupportedException("Server extension cannot marshal a null map key.");
                 result[key] = FromSandboxValue(pair.Value, mapTypes.Value);
             }
 
-            return result;
+            return CompleteDictionary(type, mapTypes.Key, mapTypes.Value, result);
         }
 
         throw new NotSupportedException($"Server extension cannot marshal a sandbox value to type '{type}'.");
     }
 
-    public static SandboxType SandboxTypeOf(Type type)
-    {
-        ArgumentNullException.ThrowIfNull(type);
-        return SandboxTypeOf(type, 0);
-    }
-
-    // The list/map/record nesting depth is bounded so a self-referential DTO (e.g. a class with a property of
-    // its own type) fails with a catchable NotSupportedException instead of an uncatchable StackOverflowException
-    // when, say, ConventionEventAdapter is constructed for it. Kept at or below the kernel verifier's structural
-    // depth limit (SandboxType.IsKnown defaults to maxDepth 8) so a produced type is never rejected at install.
-    private const int MaxTypeNestingDepth = 8;
-
-    private static SandboxType SandboxTypeOf(Type type, int depth)
-    {
-        if (TryNullableSandboxType(type, depth, out var nullable))
-        {
-            return nullable;
-        }
-
-        if (type == typeof(bool))
-            return SandboxType.Bool;
-        if (type == typeof(int))
-            return SandboxType.I32;
-        if (type == typeof(long))
-            return SandboxType.I64;
-        if (type == typeof(double))
-            return SandboxType.F64;
-        // float widens losslessly to the sandbox's only floating kind (F64); decode narrows back exactly.
-        if (type == typeof(float))
-            return SandboxType.F64;
-        if (type == typeof(string))
-            return SandboxType.String;
-        if (type == typeof(Guid))
-            return SandboxType.Guid;
-        if (type.IsEnum)
-            return EnumUsesI64(type) ? SandboxType.I64 : SandboxType.I32;
-
-        if (depth >= MaxTypeNestingDepth)
-        {
-            throw new NotSupportedException(
-                $"Kernel RPC service type '{type}' nests beyond the supported depth of {MaxTypeNestingDepth}.");
-        }
-
-        if (ElementType(type) is { } elementType)
-            return SandboxType.List(SandboxTypeOf(elementType, depth + 1));
-        if (MapTypes(type) is { } mapTypes)
-        {
-            var keyType = SandboxTypeOf(mapTypes.Key, depth + 1);
-            // The kernel verifier only accepts a fixed set of scalar map keys (bool/int/long/string/opaque-id, not
-            // Guid or double). Reject an unsupported key here with a catchable NotSupportedException instead of
-            // producing a Map<Guid,V> that later fails IsKnown validation at install.
-            if (!keyType.IsValidMapKey())
-            {
-                throw new NotSupportedException(
-                    $"Kernel RPC service map key type '{mapTypes.Key}' is not a supported sandbox map key.");
-            }
-
-            return SandboxType.Map(keyType, SandboxTypeOf(mapTypes.Value, depth + 1));
-        }
-
-        if (DtoShape(type) is { } shape)
-        {
-            var fields = shape.Fields;
-            var fieldTypes = new SandboxType[fields.Count];
-            for (var i = 0; i < fields.Count; i++)
-            {
-                fieldTypes[i] = SandboxTypeOf(fields[i].Type, depth + 1);
-            }
-
-            return SandboxType.Record(fieldTypes);
-        }
-
-        throw new NotSupportedException($"Server extension has no sandbox type for '{type}'.");
-    }
+    private static NotSupportedException CannotMarshalEnum(
+        SandboxValue value,
+        Type type,
+        SandboxType expected)
+        => new($"Server extension cannot marshal sandbox value '{value.Type}' to enum '{type}'; expected '{expected}'.");
 }

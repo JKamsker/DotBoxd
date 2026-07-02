@@ -102,11 +102,7 @@ public sealed class StreamConnection : IRpcFrameChannel
 
     public async ValueTask<Payload> ReceiveValueAsync(CancellationToken ct = default)
     {
-        var trackActiveReceive = !_ownsStream;
-        if (trackActiveReceive)
-        {
-            Interlocked.Increment(ref _activeReceives);
-        }
+        ReceiveConcurrencyGuard.Enter(ref _activeReceives, nameof(StreamConnection));
 
         try
         {
@@ -114,9 +110,14 @@ public sealed class StreamConnection : IRpcFrameChannel
 
             var read = await ReadExactAsync(_lengthBuffer.AsMemory(0, 4), ct, timeFirstRead: false)
                 .ConfigureAwait(false);
-            if (read < 4)
+            if (read == 0)
             {
                 return Payload.Empty;
+            }
+
+            if (read < 4)
+            {
+                throw new InvalidDataException($"Connection closed after {read} of 4 frame length bytes.");
             }
 
             var totalLength = BinaryPrimitives.ReadInt32LittleEndian(_lengthBuffer.AsSpan(0, 4));
@@ -145,10 +146,7 @@ public sealed class StreamConnection : IRpcFrameChannel
         }
         finally
         {
-            if (trackActiveReceive)
-            {
-                Interlocked.Decrement(ref _activeReceives);
-            }
+            ReceiveConcurrencyGuard.Exit(ref _activeReceives);
         }
     }
 
@@ -175,6 +173,8 @@ public sealed class StreamConnection : IRpcFrameChannel
     /// </summary>
     public async Task CloseAsync(CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
+
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
             return;

@@ -11,22 +11,26 @@ public interface IInstanceRegistry
     /// <summary>
     /// Registers an instance under <paramref name="serviceName"/> and returns the
     /// freshly allocated identifier the client will quote on subsequent calls.
+    /// <paramref name="serviceName"/> must be non-empty and non-whitespace.
     /// </summary>
     string Register(string serviceName, object instance);
 
     /// <summary>
     /// Looks up an instance previously registered under
-    /// (<paramref name="serviceName"/>, <paramref name="instanceId"/>).
+    /// (<paramref name="serviceName"/>, <paramref name="instanceId"/>). Invalid or unknown keys
+    /// return <see langword="false"/>.
     /// </summary>
     bool TryGet(string serviceName, string instanceId, out object instance);
 
     /// <summary>
-    /// Releases an instance early (the connection-teardown path also clears it).
+    /// Releases an instance early (the connection-teardown path also clears it). Keys must be
+    /// non-empty and non-whitespace.
     /// </summary>
     void Release(string serviceName, string instanceId);
 
     /// <summary>
-    /// Releases an instance early, awaiting async disposal when the instance supports it.
+    /// Releases an instance early, awaiting async disposal when the instance supports it. Keys must
+    /// be non-empty and non-whitespace.
     /// </summary>
     ValueTask ReleaseAsync(string serviceName, string instanceId);
 

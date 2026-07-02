@@ -14,6 +14,7 @@ internal sealed class CompiledExecutableExecutionCache
         Func<CancellationToken, ValueTask<CompiledExecutable>> materialize,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var key = new CacheKey(plan.PlanHash, entrypoint);
         CacheLookup lookup;
         lock (_gate)

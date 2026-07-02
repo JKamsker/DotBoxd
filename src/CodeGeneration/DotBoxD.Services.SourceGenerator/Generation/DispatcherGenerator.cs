@@ -33,7 +33,7 @@ internal static class DispatcherGenerator
         sb.AppendLine("    {");
         sb.AppendLine($"        private readonly {qualifiedInterface}? _service;");
         sb.AppendLine();
-        sb.AppendLine($"        internal {dispatcherName}()");
+        sb.AppendLine($"        public {dispatcherName}()");
         sb.AppendLine("        {");
         sb.AppendLine("        }");
         sb.AppendLine();
@@ -42,7 +42,7 @@ internal static class DispatcherGenerator
         sb.AppendLine($"            _service = service ?? throw new {ServicesGeneratorTypeNames.GlobalArgumentNullException}(nameof(service));");
         sb.AppendLine("        }");
         sb.AppendLine();
-        sb.AppendLine($"        public string ServiceName => \"{service.ServiceName}\";");
+        sb.AppendLine($"        public string {ServicesGeneratorMemberNames.ServiceDispatcher.ServiceName} => \"{service.ServiceName}\";");
 
         EmitDispatchEndpoint(sb, service, qualifiedInterface, isInstanceScoped: false);
         EmitDispatchEndpoint(sb, service, qualifiedInterface, isInstanceScoped: true);
@@ -70,14 +70,14 @@ internal static class DispatcherGenerator
         sb.AppendLine();
         if (isInstanceScoped)
         {
-            sb.AppendLine($"        public {ServicesGeneratorTypeNames.GlobalTask} DispatchOnInstanceAsync(string instanceId, string method, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalReadOnlyMemory, "byte")} payload, {ServicesGeneratorTypeNames.GlobalSerializer} serializer, {ServicesGeneratorTypeNames.GlobalInstanceRegistry} registry, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalBufferWriter, "byte")} output, {ServicesGeneratorTypeNames.GlobalCancellationToken} ct = default) =>");
-            sb.AppendLine($"            DispatchOnInstanceAsync(instanceId, method, payload, serializer, registry, output, {ServicesGeneratorTypeNames.GlobalRpcStreamingContext}.Disabled, ct);");
+            sb.AppendLine($"        public {ServicesGeneratorTypeNames.GlobalTask} {ServicesGeneratorMemberNames.ServiceDispatcher.DispatchOnInstanceAsync}(string instanceId, string method, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalReadOnlyMemory, "byte")} payload, {ServicesGeneratorTypeNames.GlobalSerializer} serializer, {ServicesGeneratorTypeNames.GlobalInstanceRegistry} registry, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalBufferWriter, "byte")} output, {ServicesGeneratorTypeNames.GlobalCancellationToken} ct = default) =>");
+            sb.AppendLine($"            {ServicesGeneratorMemberNames.ServiceDispatcher.DispatchOnInstanceAsync}(instanceId, method, payload, serializer, registry, output, {ServicesGeneratorTypeNames.GlobalRpcStreamingContext}.{ServicesGeneratorMemberNames.RpcStreamingContext.Disabled}, ct);");
             sb.AppendLine();
-            sb.AppendLine($"        public {ServicesGeneratorTypeNames.GlobalTask} DispatchOnInstanceAsync(string instanceId, string method, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalReadOnlyMemory, "byte")} payload, {ServicesGeneratorTypeNames.GlobalSerializer} serializer, {ServicesGeneratorTypeNames.GlobalInstanceRegistry} registry, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalBufferWriter, "byte")} output, {ServicesGeneratorTypeNames.GlobalRpcStreamingContextInterface} streaming, {ServicesGeneratorTypeNames.GlobalCancellationToken} ct = default)");
+            sb.AppendLine($"        public {ServicesGeneratorTypeNames.GlobalTask} {ServicesGeneratorMemberNames.ServiceDispatcher.DispatchOnInstanceAsync}(string instanceId, string method, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalReadOnlyMemory, "byte")} payload, {ServicesGeneratorTypeNames.GlobalSerializer} serializer, {ServicesGeneratorTypeNames.GlobalInstanceRegistry} registry, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalBufferWriter, "byte")} output, {ServicesGeneratorTypeNames.GlobalRpcStreamingContextInterface} streaming, {ServicesGeneratorTypeNames.GlobalCancellationToken} ct = default)");
             sb.AppendLine("        {");
-            sb.AppendLine($"            if (!registry.TryGet(\"{service.ServiceName}\", instanceId, out var __obj) || __obj is not {qualifiedInterface} __inst)");
+            sb.AppendLine($"            if (!registry.{ServicesGeneratorMemberNames.InstanceRegistry.TryGet}(\"{service.ServiceName}\", instanceId, out var __obj) || __obj is not {qualifiedInterface} __inst)");
             sb.AppendLine("            {");
-            sb.AppendLine($"                throw new {ServicesGeneratorTypeNames.GlobalServiceNotFoundException}(\"Instance '\" + instanceId + \"' not found for service '{service.ServiceName}'.\", {ServicesGeneratorTypeNames.GlobalServiceNotFoundKind}.Instance);");
+            sb.AppendLine($"                throw new {ServicesGeneratorTypeNames.GlobalServiceNotFoundException}(\"Instance '\" + instanceId + \"' not found for service '{service.ServiceName}'.\", {ServicesGeneratorTypeNames.GlobalServiceNotFoundKind}.{ServicesGeneratorMemberNames.NotFoundKind.Instance});");
             sb.AppendLine("            }");
             sb.AppendLine();
             sb.AppendLine("            return DispatchCoreAsync(__inst, method, payload, serializer, registry, output, streaming, ct);");
@@ -85,14 +85,14 @@ internal static class DispatcherGenerator
             return;
         }
 
-        sb.AppendLine($"        public {ServicesGeneratorTypeNames.GlobalTask} DispatchAsync(string method, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalReadOnlyMemory, "byte")} payload, {ServicesGeneratorTypeNames.GlobalSerializer} serializer, {ServicesGeneratorTypeNames.GlobalInstanceRegistry} registry, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalBufferWriter, "byte")} output, {ServicesGeneratorTypeNames.GlobalCancellationToken} ct = default) =>");
-        sb.AppendLine($"            DispatchAsync(method, payload, serializer, registry, output, {ServicesGeneratorTypeNames.GlobalRpcStreamingContext}.Disabled, ct);");
+        sb.AppendLine($"        public {ServicesGeneratorTypeNames.GlobalTask} {ServicesGeneratorMemberNames.ServiceDispatcher.DispatchAsync}(string method, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalReadOnlyMemory, "byte")} payload, {ServicesGeneratorTypeNames.GlobalSerializer} serializer, {ServicesGeneratorTypeNames.GlobalInstanceRegistry} registry, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalBufferWriter, "byte")} output, {ServicesGeneratorTypeNames.GlobalCancellationToken} ct = default) =>");
+        sb.AppendLine($"            {ServicesGeneratorMemberNames.ServiceDispatcher.DispatchAsync}(method, payload, serializer, registry, output, {ServicesGeneratorTypeNames.GlobalRpcStreamingContext}.{ServicesGeneratorMemberNames.RpcStreamingContext.Disabled}, ct);");
         sb.AppendLine();
-        sb.AppendLine($"        public {ServicesGeneratorTypeNames.GlobalTask} DispatchAsync(string method, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalReadOnlyMemory, "byte")} payload, {ServicesGeneratorTypeNames.GlobalSerializer} serializer, {ServicesGeneratorTypeNames.GlobalInstanceRegistry} registry, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalBufferWriter, "byte")} output, {ServicesGeneratorTypeNames.GlobalRpcStreamingContextInterface} streaming, {ServicesGeneratorTypeNames.GlobalCancellationToken} ct = default)");
+        sb.AppendLine($"        public {ServicesGeneratorTypeNames.GlobalTask} {ServicesGeneratorMemberNames.ServiceDispatcher.DispatchAsync}(string method, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalReadOnlyMemory, "byte")} payload, {ServicesGeneratorTypeNames.GlobalSerializer} serializer, {ServicesGeneratorTypeNames.GlobalInstanceRegistry} registry, {ServicesGeneratorTypeNames.Generic(ServicesGeneratorTypeNames.GlobalBufferWriter, "byte")} output, {ServicesGeneratorTypeNames.GlobalRpcStreamingContextInterface} streaming, {ServicesGeneratorTypeNames.GlobalCancellationToken} ct = default)");
         sb.AppendLine("        {");
         sb.AppendLine("            if (_service is null)");
         sb.AppendLine("            {");
-        sb.AppendLine($"                throw new {ServicesGeneratorTypeNames.GlobalServiceNotFoundException}(\"Service '{service.ServiceName}' can only dispatch instance calls.\", {ServicesGeneratorTypeNames.GlobalServiceNotFoundKind}.Service);");
+        sb.AppendLine($"                throw new {ServicesGeneratorTypeNames.GlobalServiceNotFoundException}(\"Service '{service.ServiceName}' can only dispatch instance calls.\", {ServicesGeneratorTypeNames.GlobalServiceNotFoundKind}.{ServicesGeneratorMemberNames.NotFoundKind.Service});");
         sb.AppendLine("            }");
         sb.AppendLine();
         sb.AppendLine("            return DispatchCoreAsync(_service, method, payload, serializer, registry, output, streaming, ct);");
@@ -121,7 +121,7 @@ internal static class DispatcherGenerator
         }
 
         sb.AppendLine("                default:");
-        sb.AppendLine($"                    throw new {ServicesGeneratorTypeNames.GlobalServiceNotFoundException}(\"Method '\" + method + \"' not found on service '{service.ServiceName}'.\", {ServicesGeneratorTypeNames.GlobalServiceNotFoundKind}.Method);");
+        sb.AppendLine($"                    throw new {ServicesGeneratorTypeNames.GlobalServiceNotFoundException}(\"Method '\" + method + \"' not found on service '{service.ServiceName}'.\", {ServicesGeneratorTypeNames.GlobalServiceNotFoundKind}.{ServicesGeneratorMemberNames.NotFoundKind.Method});");
         sb.AppendLine("            }");
         sb.AppendLine("        }");
     }

@@ -7,7 +7,8 @@ Services, Kernels, and Pushdown.
 
 - **Merged repositories:** the formerly standalone ShaRPC (RPC framework) and Safe-IR (kernel
   sandbox) projects were combined into one monorepo via history-preserving subtree merges. See
-  `docs/contributing/migration-from-standalone-repos.md` for how to view pre-merge history.
+  [Migration from standalone repos](https://dotboxd.kamsker.at/contributing/migration-from-standalone-repos/)
+  for how to view pre-merge history.
 - **Full rebrand:** all assemblies, namespaces, attributes, and diagnostics renamed to the
   `DotBoxD.*` family (`[DotBoxDService]`, `DBXS###` services diagnostics, `DBXK###` kernel/plugin
   diagnostics). The wire format is unchanged.
@@ -21,7 +22,8 @@ Services, Kernels, and Pushdown.
   Unity/IL2CPP service bundle).
 - **GameServer example:** `samples/GameServer/Examples.GameServer.Server` is the maintained
   runnable example for service IPC, event kernels, live settings, host bindings, policies, and
-  kernel RPC. Removed sample coverage is tracked in `docs/examples/coverage-gaps.md`.
+  kernel RPC. Removed sample coverage is tracked in
+  [the examples coverage-gaps page](https://dotboxd.kamsker.at/examples/coverage-gaps/).
 - **Server-extension DTO parameters & broader type support:** `[ServerExtensionMethod]` entrypoints now
   accept record/value-object parameters — including nested DTOs and plain `class` DTOs — on the grafted
   client path, matching the typed-proxy path (issue #41). The proxy and grafted clients now share one

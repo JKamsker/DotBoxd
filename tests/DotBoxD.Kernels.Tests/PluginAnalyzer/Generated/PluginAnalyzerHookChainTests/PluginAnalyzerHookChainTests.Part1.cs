@@ -42,7 +42,7 @@ public sealed partial class PluginAnalyzerHookChainTests
 
             namespace Sample;
 
-            public sealed record MixedEvent(string TargetId, DateTime When);
+            public sealed record MixedEvent(string TargetId, decimal Amount);
 
             public static class Usage
             {
@@ -55,6 +55,38 @@ public sealed partial class PluginAnalyzerHookChainTests
         Assert.DoesNotContain(
             result.GeneratedTrees,
             tree => tree.ToString().Contains("HookChain_", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Lowers_hook_chain_with_temporal_event_property_types()
+    {
+        var result = RunGenerator("""
+            using System;
+            using DotBoxD.Plugins;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public sealed record MixedEvent(string TargetId, DateTime When, DateOnly Day, TimeOnly Time, TimeSpan Delay);
+
+            public static class Usage
+            {
+                    public static void Configure(HookRegistry hooks)
+                        => hooks.On<MixedEvent>()
+                        .Run((e, ctx) => ctx.Messages.Send(e.TargetId, "hit"));
+            }
+            """);
+
+        var generated = string.Join(
+            Environment.NewLine,
+            result.GeneratedTrees.Select(tree => tree.GetText().ToString()));
+
+        Assert.Contains("HookChain_", generated, StringComparison.Ordinal);
+        Assert.Contains("SandboxType.Record(new global::DotBoxD.Kernels.Sandbox.SandboxType[] { global::DotBoxD.Kernels.Sandbox.SandboxType.I64, global::DotBoxD.Kernels.Sandbox.SandboxType.I64 })", generated, StringComparison.Ordinal);
+        Assert.Contains("new global::DotBoxD.Kernels.Parameter(\"e_Day\", global::DotBoxD.Kernels.Sandbox.SandboxType.I32)", generated, StringComparison.Ordinal);
+        Assert.Contains("new global::DotBoxD.Kernels.Parameter(\"e_Time\", global::DotBoxD.Kernels.Sandbox.SandboxType.I64)", generated, StringComparison.Ordinal);
+        Assert.Contains("new global::DotBoxD.Kernels.Parameter(\"e_Delay\", global::DotBoxD.Kernels.Sandbox.SandboxType.I64)", generated, StringComparison.Ordinal);
     }
 
     [Fact]

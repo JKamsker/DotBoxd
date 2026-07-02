@@ -12,7 +12,7 @@ public sealed record ChainAggroEvent(string MonsterId, int Distance);
 /// End-to-end runtime proof of the Phase C lowering + interceptor hook-up: a real inline chain is
 /// lowered by the generator, compiled, loaded, and the lowered verified IR executes correctly — its
 /// <c>Where</c> gates and its <c>Send</c> runs. One test installs the package directly via
-/// <see cref="HookPipeline{TEvent, TContext}.UseGeneratedChain"/>; the other proves the generated C# interceptor
+/// <see cref="HookPipeline{TEvent, TContext}.UseGeneratedChain(PluginPackage)"/>; the other proves the generated C# interceptor
 /// does it automatically at the <c>Run</c> call site (no manual wiring).
 /// </summary>
 public sealed class HookChainRuntimeTests
@@ -95,6 +95,24 @@ public sealed class HookChainRuntimeTests
         var message = Assert.Single(messages.Messages);
         Assert.Equal("monster-7", message.TargetId);
         Assert.Equal("calm", message.Message);
+    }
+
+    [Fact]
+    public async Task Staged_UseGeneratedChain_honors_runtime_stage_filter()
+    {
+        var assembly = Compile(OneParamChainSource, enableInterceptors: true);
+        var package = PackageFrom(assembly);
+
+        var messages = new InMemoryPluginMessageSink();
+        using var server = DotBoxD.Plugins.PluginServer.Create(messages, defaultPolicy: ChainPolicy());
+        server.Hooks.On<ChainAggroEvent>()
+            .Select(e => e.MonsterId)
+            .Where(_ => false)
+            .UseGeneratedChain(package);
+
+        await server.Hooks.PublishAsync(new ChainAggroEvent("monster-1", 3));
+
+        Assert.Empty(messages.Messages);
     }
 
     [Fact]

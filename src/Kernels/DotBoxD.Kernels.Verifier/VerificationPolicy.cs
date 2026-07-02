@@ -84,13 +84,14 @@ public sealed record VerificationPolicy(
                 RuntimeMember("TypeList", SandboxTypeName, SandboxTypeName),
                 RuntimeMember("TypeMap", $"{SandboxTypeName},{SandboxTypeName}", SandboxTypeName),
                 RuntimeMember("TypeRecord", SandboxTypeArrayName, SandboxTypeName),
-                RuntimeMember("CreateTypeArray", Int32Name, SandboxTypeArrayName),
+                RuntimeMember("CreateMeteredTypeArray", $"{SandboxContextName},{Int32Name}", SandboxTypeArrayName),
                 RuntimeMember("StringConst", $"{SandboxContextName},{StringName}", SandboxValueName),
                 RuntimeMember("OpaqueIdConst", $"{SandboxContextName},{StringName},{StringName}", SandboxValueName),
                 RuntimeMember("PathConst", $"{SandboxContextName},{StringName}", SandboxValueName),
                 RuntimeMember("UriConst", $"{SandboxContextName},{StringName}", SandboxValueName),
                 RuntimeMember("StringLiteralValue", StringName, SandboxValueName),
                 RuntimeMember("OpaqueIdLiteralValue", $"{StringName},{StringName}", SandboxValueName),
+                RuntimeMember("GuidLiteralValue", StringName, SandboxValueName),
                 RuntimeMember("PathLiteralValue", StringName, SandboxValueName),
                 RuntimeMember("UriLiteralValue", StringName, SandboxValueName),
                 RuntimeMember("AsI32", SandboxValueName, Int32Name),
@@ -206,6 +207,7 @@ public sealed record VerificationPolicy(
                 RuntimeMember("RecordNew", $"{SandboxContextName},{SandboxValueArrayName}", SandboxValueName),
                 RuntimeMember("RecordGet", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("CallBinding", $"{SandboxContextName},{StringName},{SandboxValueArrayName}", SandboxValueName),
+                RuntimeMember("CallBinding1", $"{SandboxContextName},{StringName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("CallBinding2", $"{SandboxContextName},{StringName},{SandboxValueName},{SandboxValueName}", SandboxValueName)
             },
             new HashSet<string>(StringComparer.Ordinal) {

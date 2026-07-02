@@ -22,7 +22,7 @@
 
   <ItemGroup>
     <!-- The root meta-package is the one-package authoring experience. Ship the plugin analyzer
-         directly so [Plugin]/[KernelRpcService] packages are generated for DotBoxD consumers. -->
+         directly so [Plugin]/[ServerExtension] packages are generated for DotBoxD consumers. -->
     <None Include="..\..\CodeGeneration\DotBoxD.Plugins.Analyzer\bin\$(Configuration)\netstandard2.0\DotBoxD.Plugins.Analyzer.dll"
           Pack="true"
           PackagePath="analyzers/dotnet/cs"

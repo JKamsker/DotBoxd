@@ -19,8 +19,8 @@ internal static class RpcKernelPackageValidator
     public static void Validate(PluginPackage package)
     {
         var diagnostics = new List<SandboxDiagnostic>();
-        ValidateText(package.Manifest.PluginId, "plugin id", diagnostics);
-        ValidateText(package.Manifest.Contract, "plugin contract", diagnostics);
+        PluginManifestTextValidator.ValidatePluginId(package.Manifest.PluginId, diagnostics);
+        PluginManifestTextValidator.ValidateText(package.Manifest.Contract, "plugin contract", diagnostics);
 
         if (!string.Equals(package.Manifest.PluginId, package.Module.Id, StringComparison.Ordinal))
         {
@@ -40,25 +40,31 @@ internal static class RpcKernelPackageValidator
         }
         else
         {
-            ValidateText(metadataKernel, "kernel metadata", diagnostics);
+            PluginManifestTextValidator.ValidateText(metadataKernel, "kernel metadata", diagnostics);
         }
 
-        if (string.IsNullOrWhiteSpace(package.Manifest.RpcEntrypoint))
+        var rpcEntrypoint = package.Manifest.RpcEntrypoint;
+        if (string.IsNullOrWhiteSpace(rpcEntrypoint))
         {
             diagnostics.Add(new SandboxDiagnostic("DBXK070", "Server extension manifest must declare an rpcEntrypoint."));
         }
-        else if (!PluginEntrypointIndex.Build(package).Contains(package.Manifest.RpcEntrypoint))
+        else
         {
-            diagnostics.Add(new SandboxDiagnostic(
-                "DBXK071",
-                $"Server extension entrypoint '{package.Manifest.RpcEntrypoint}' is missing or not a public entrypoint."));
+            if (!PluginEntrypointIndex.Build(package).Contains(rpcEntrypoint))
+            {
+                diagnostics.Add(new SandboxDiagnostic(
+                    "DBXK071",
+                    $"Server extension entrypoint '{rpcEntrypoint}' is missing or not a public entrypoint."));
+            }
+
+            ValidateRpcEntrypointAliases(package.Entrypoints, rpcEntrypoint, diagnostics);
         }
 
         if (package.Manifest.Subscriptions.Count > 0)
         {
             diagnostics.Add(new SandboxDiagnostic(
                 "DBXK073",
-                "Kernel RPC service manifests must not declare hook subscriptions."));
+                "Server extension manifests must not declare hook subscriptions."));
         }
 
         ValidateMode(package.Manifest, diagnostics);
@@ -67,7 +73,23 @@ internal static class RpcKernelPackageValidator
         ThrowIfErrors(diagnostics);
     }
 
-    public static void ValidatePrepared(PluginPackage package, ExecutionPlan plan)
+    private static void ValidateRpcEntrypointAliases(
+        KernelEntrypoints entrypoints,
+        string rpcEntrypoint,
+        List<SandboxDiagnostic> diagnostics)
+    {
+        if (string.Equals(entrypoints.ShouldHandle, rpcEntrypoint, StringComparison.Ordinal) &&
+            string.Equals(entrypoints.Handle, rpcEntrypoint, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        diagnostics.Add(new SandboxDiagnostic(
+            "DBXK074",
+            "Server extension ShouldHandle and Handle entrypoint aliases must match rpcEntrypoint."));
+    }
+
+    public static void ValidatePrepared(PluginPackage package, ExecutionPlan plan, SandboxPolicy installPolicy)
     {
         var diagnostics = new List<SandboxDiagnostic>();
         var manifestEffects = PluginManifestEffectValidator.Validate(package.Manifest, diagnostics);
@@ -89,7 +111,7 @@ internal static class RpcKernelPackageValidator
             }
 
             if ((analysis.Effects & SandboxEffect.Concurrency) != 0 &&
-                !plan.Policy.GrantsCapability(RuntimeCapabilityIds.Async))
+                !installPolicy.GrantsCapability(RuntimeCapabilityIds.Async))
             {
                 diagnostics.Add(new SandboxDiagnostic(
                     "DBXK043",
@@ -102,7 +124,20 @@ internal static class RpcKernelPackageValidator
             }
         }
 
-        PluginManifestCapabilityValidator.Validate(package.Manifest, plan, [entrypointId], diagnostics);
+        PluginManifestCapabilityValidator.Validate(
+            package.Manifest,
+            package.Module,
+            plan,
+            [entrypointId],
+            diagnostics,
+            allowNonBindingCapabilities: false,
+            includeModuleNonBindingCapabilities: false);
+        PluginManifestCapabilityValidator.ValidateRequiredCapabilityGrants(
+            package.Manifest,
+            package.Module,
+            installPolicy,
+            diagnostics,
+            includeModuleNonBindingCapabilities: false);
         ValidateLiveSettingSuffix(package.Manifest.LiveSettings, entrypoint, diagnostics);
         ThrowIfErrors(diagnostics);
     }
@@ -157,13 +192,11 @@ internal static class RpcKernelPackageValidator
 
         foreach (var setting in manifest.LiveSettings)
         {
-            ValidateText(setting.Name, "live setting name", diagnostics);
-            ValidateText(setting.Type, "live setting type", diagnostics);
+            PluginManifestTextValidator.ValidateText(setting.Name, "live setting name", diagnostics);
+            PluginManifestTextValidator.ValidateText(setting.Type, "live setting type", diagnostics);
             try
             {
-                _ = LiveSettingTypeConverter.ToSandboxType(setting.Type);
-                _ = LiveSettingTypeConverter.ToSandboxValue(setting.Type, setting.DefaultValue);
-                LiveSettingTypeConverter.ValidateRangeDefinition(setting);
+                LiveSettingTypeConverter.ValidateDefinition(setting);
             }
             catch (SandboxValidationException ex)
             {
@@ -173,20 +206,6 @@ internal static class RpcKernelPackageValidator
             {
                 diagnostics.Add(new SandboxDiagnostic("DBXK020", $"Live setting type '{setting.Type}' is not supported."));
             }
-        }
-    }
-
-    private static void ValidateText(string value, string description, List<SandboxDiagnostic> diagnostics)
-    {
-        if (string.IsNullOrWhiteSpace(value) || value.Any(char.IsControl))
-        {
-            diagnostics.Add(new SandboxDiagnostic("DBXK050", $"Plugin manifest {description} must be non-empty and must not contain control characters."));
-            return;
-        }
-
-        if (SandboxDescriptorGuards.ContainsForbiddenDescriptor(value))
-        {
-            diagnostics.Add(new SandboxDiagnostic("DBXK050", $"Plugin manifest {description} looks like a forbidden CLR or IL descriptor."));
         }
     }
 

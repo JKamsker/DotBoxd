@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using DotBoxD.Plugins.Runtime.Hooks;
 
 namespace DotBoxD.Plugins.Runtime.Subscriptions;
@@ -89,7 +90,22 @@ public class SubscriptionStage<TEvent, TCurrent, TContext>
     }
 
     public SubscriptionPipeline<TEvent, TContext> UseGeneratedChain(PluginPackage package)
-        => _root.UseGeneratedChain(package);
+    {
+        ArgumentNullException.ThrowIfNull(package);
+        var project = _project;
+        return _root.UseGeneratedChain(package, async (e, ctx) =>
+        {
+            var (ok, _) = await project(e, ctx).ConfigureAwait(false);
+            return ok;
+        });
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public SubscriptionPipeline<TEvent, TContext> UseGeneratedChainFromInterceptor(PluginPackage package)
+    {
+        ArgumentNullException.ThrowIfNull(package);
+        return _root.UseGeneratedChain(package);
+    }
 
     public SubscriptionPipeline<TEvent, TContext> Run(Func<TCurrent, TContext, ValueTask> handler)
         => throw HookLowering.NotLowered();

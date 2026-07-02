@@ -11,7 +11,12 @@ internal static class KernelEntrypointValidator
         ExecutionPlan plan,
         KernelEntrypoints entrypoints,
         IPluginEventAdapter<TEvent> adapter)
-        => Validate<TEvent>(manifest, plan, entrypoints, PluginEventShape.From(adapter));
+    {
+        var eventName = adapter.EventName;
+        var parameters = adapter.Parameters;
+        PluginEventAdapterShapeValidator.Validate(adapter, eventName, parameters);
+        Validate<TEvent>(manifest, plan, entrypoints, new PluginEventShape(eventName, parameters));
+    }
 
     public static void Validate<TEvent>(
         PluginManifest manifest,

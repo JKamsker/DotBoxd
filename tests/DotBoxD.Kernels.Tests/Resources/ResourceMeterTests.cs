@@ -1,5 +1,6 @@
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
+using DotBoxD.Kernels.Sandbox.Values;
 
 namespace DotBoxD.Kernels.Tests.Resources;
 
@@ -99,6 +100,32 @@ public sealed class ResourceMeterTests
     }
 
     [Fact]
+    public void Shape_cache_miss_checks_wall_time_during_measurement()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxWallTime: TimeSpan.Zero));
+        var value = CreateFlatScalarList(128);
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() =>
+            SandboxValueShapeMeter.MeasureWithNodes(value, CancellationToken.None, meter));
+
+        Assert.Equal(SandboxErrorCode.Timeout, ex.Error.Code);
+    }
+
+    [Fact]
+    public void Cached_shape_charge_checks_wall_time_after_aggregated_scan_fuel()
+    {
+        var value = CreateFlatScalarList(128);
+        _ = ValueShapeCache.GetOrMeasure(value);
+        var meter = new ResourceMeter(new ResourceLimits(
+            MaxFuel: long.MaxValue,
+            MaxWallTime: TimeSpan.Zero));
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() => meter.ChargeValue(value));
+
+        Assert.Equal(SandboxErrorCode.Timeout, ex.Error.Code);
+    }
+
+    [Fact]
     public void Flat_scalar_list_fast_path_matches_shape_scan_fuel_boundary()
     {
         var freeMeter = new ResourceMeter(new ResourceLimits(MaxFuel: 0));
@@ -139,6 +166,50 @@ public sealed class ResourceMeterTests
         var value = SandboxValue.FromList(
             [SandboxValue.FromInt32(1), SandboxValue.FromInt32(2), SandboxValue.FromInt32(3)],
             SandboxType.I32);
+
+        var ex = Assert.Throws<SandboxRuntimeException>(() => meter.ChargeValue(value));
+
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
+    }
+
+    [Fact]
+    public void Flat_scalar_record_fast_path_matches_shape_scan_fuel_boundary()
+    {
+        var freeMeter = new ResourceMeter(new ResourceLimits(MaxFuel: 0));
+        var freeValue = CreateFlatScalarRecord(61);
+
+        freeMeter.ChargeValue(freeValue);
+
+        var chargedMeter = new ResourceMeter(new ResourceLimits(MaxFuel: 0));
+        var chargedValue = CreateFlatScalarRecord(62);
+        var ex = Assert.Throws<SandboxRuntimeException>(() => chargedMeter.ChargeValue(chargedValue));
+
+        Assert.Equal(SandboxErrorCode.QuotaExceeded, ex.Error.Code);
+    }
+
+    [Fact]
+    public void Flat_scalar_record_charge_preserves_resource_usage()
+    {
+        var meter = new ResourceMeter(new ResourceLimits());
+        var value = SandboxValue.FromRecord([
+            SandboxValue.FromInt32(1),
+            SandboxValue.FromString("ab"),
+            SandboxValue.FromBool(true)
+        ]);
+
+        meter.ChargeValue(value);
+
+        Assert.Equal(3, meter.CollectionElements);
+        Assert.Equal(4, meter.StringBytes);
+        Assert.Equal(4, meter.AllocatedBytes);
+    }
+
+    [Fact]
+    public void Flat_scalar_record_charge_preserves_quota_failures()
+    {
+        var meter = new ResourceMeter(new ResourceLimits(MaxListLength: 2));
+        var value = SandboxValue.FromRecord(
+            [SandboxValue.FromInt32(1), SandboxValue.FromInt32(2), SandboxValue.FromInt32(3)]);
 
         var ex = Assert.Throws<SandboxRuntimeException>(() => meter.ChargeValue(value));
 
@@ -207,4 +278,10 @@ public sealed class ResourceMeterTests
                 .Select(SandboxValue.FromInt32)
                 .ToArray(),
             SandboxType.I32);
+
+    private static SandboxValue CreateFlatScalarRecord(int count)
+        => SandboxValue.FromRecord(
+            Enumerable.Range(0, count)
+                .Select(SandboxValue.FromInt32)
+                .ToArray());
 }

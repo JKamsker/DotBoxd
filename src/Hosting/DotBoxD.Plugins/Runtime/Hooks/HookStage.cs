@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using DotBoxD.Kernels.Model;
 
 namespace DotBoxD.Plugins.Runtime.Hooks;
@@ -98,7 +99,22 @@ public class HookStage<TEvent, TCurrent, TContext>
     }
 
     public HookPipeline<TEvent, TContext> UseGeneratedChain(PluginPackage package)
-        => _root.UseGeneratedChain(package);
+    {
+        ArgumentNullException.ThrowIfNull(package);
+        var project = _project;
+        return _root.UseGeneratedChain(package, async (e, ctx) =>
+        {
+            var (ok, _) = await project(e, ctx).ConfigureAwait(false);
+            return ok;
+        });
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public HookPipeline<TEvent, TContext> UseGeneratedChainFromInterceptor(PluginPackage package)
+    {
+        ArgumentNullException.ThrowIfNull(package);
+        return _root.UseGeneratedChain(package);
+    }
 
     /// <summary>The terminal the analyzer lowers to verified IR; un-lowered it throws (never native).</summary>
     public HookPipeline<TEvent, TContext> Run(Func<TCurrent, TContext, ValueTask> handler)

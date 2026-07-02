@@ -23,7 +23,7 @@ public static class KernelRpcValueConverter
             GuidValue guid => KernelRpcValue.Guid(guid.Value),
             ListValue list => KernelRpcValue.ListFromOwnedItems(ConvertList(list.Values)),
             RecordValue record => KernelRpcValue.RecordFromOwnedFields(ConvertList(record.Fields)),
-            MapValue map => KernelRpcValue.MapFromOwnedEntries(ConvertMap(map.Values)),
+            MapValue map => KernelRpcValue.MapFromOwnedEntries(ConvertMap(map)),
             _ => throw new NotSupportedException(
                 $"Server extension IPC cannot marshal sandbox value '{value.GetType().Name}'.")
         };
@@ -79,7 +79,9 @@ public static class KernelRpcValueConverter
             value.RequireKind(KernelRpcValueKind.List);
             var itemType = expectedType.Arguments[0];
             var source = value.ItemSpan;
-            var items = new SandboxValue[source.Length];
+            var items = source.Length == 0
+                ? Array.Empty<SandboxValue>()
+                : new SandboxValue[source.Length];
             for (var i = 0; i < source.Length; i++)
             {
                 items[i] = ToSandboxValue(source[i], itemType);
@@ -94,14 +96,18 @@ public static class KernelRpcValueConverter
             var keyType = expectedType.Arguments[0];
             var valueType = expectedType.Arguments[1];
             var source = value.ItemSpan;
-            var entries = new Dictionary<SandboxValue, SandboxValue>(source.Length / 2);
+            var entries = new MapValueBuilder(source.Length / 2);
             for (var i = 0; i + 1 < source.Length; i += 2)
             {
                 var key = ToSandboxValue(source[i], keyType);
-                entries[key] = ToSandboxValue(source[i + 1], valueType);
+                var item = ToSandboxValue(source[i + 1], valueType);
+                if (!entries.TryAdd(key, item))
+                {
+                    throw new FormatException("Server extension IPC map payload contains a duplicate key.");
+                }
             }
 
-            return SandboxValue.FromMap(entries, keyType, valueType);
+            return SandboxValue.FromOwnedMap(entries, keyType, valueType);
         }
 
         if (expectedType.IsRecord)
@@ -114,7 +120,9 @@ public static class KernelRpcValueConverter
                     $"Server extension IPC record expected {expectedType.Arguments.Count} field(s) but received {source.Length}.");
             }
 
-            var fields = new SandboxValue[source.Length];
+            var fields = source.Length == 0
+                ? Array.Empty<SandboxValue>()
+                : new SandboxValue[source.Length];
             for (var i = 0; i < source.Length; i++)
             {
                 fields[i] = ToSandboxValue(source[i], expectedType.Arguments[i]);
@@ -128,6 +136,11 @@ public static class KernelRpcValueConverter
 
     private static KernelRpcValue[] ConvertList(IReadOnlyList<SandboxValue> values)
     {
+        if (values.Count == 0)
+        {
+            return Array.Empty<KernelRpcValue>();
+        }
+
         var converted = new KernelRpcValue[values.Count];
         for (var i = 0; i < values.Count; i++)
         {
@@ -139,11 +152,16 @@ public static class KernelRpcValueConverter
 
     // Maps marshal to a flat key/value sequence (key, value, key, value, …) to match
     // KernelRpcValue.Map's representation; the host reads it back into a Dictionary by pairs.
-    private static KernelRpcValue[] ConvertMap(IReadOnlyDictionary<SandboxValue, SandboxValue> values)
+    private static KernelRpcValue[] ConvertMap(MapValue values)
     {
-        var entries = new KernelRpcValue[values.Count * 2];
+        if (values.Values.Count == 0)
+        {
+            return Array.Empty<KernelRpcValue>();
+        }
+
+        var entries = new KernelRpcValue[values.Values.Count * 2];
         var index = 0;
-        foreach (var pair in values)
+        foreach (var pair in values.Entries)
         {
             entries[index++] = FromSandboxValue(pair.Key);
             entries[index++] = FromSandboxValue(pair.Value);

@@ -1,6 +1,7 @@
 using System.Reflection;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Plugins.Runtime.Rpc;
+using LinqExpression = System.Linq.Expressions.Expression;
 
 namespace DotBoxD.Plugins.Runtime;
 
@@ -139,7 +140,8 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
         return new ConventionEventProperty<TEvent>(
             property.PropertyType,
             CreateGetter(property),
-            CoerceNullStringToEmpty: true);
+            CoerceNullStringToEmpty: true,
+            ConventionScalarGetter.TryCreate<TEvent>(property));
     }
 
     private static Func<TEvent, object?> CreateHandleKeyGetter(
@@ -171,10 +173,20 @@ internal sealed class ConventionEventAdapter<TEvent> : IPluginEventAdapter<TEven
 internal readonly record struct ConventionEventProperty<TEvent>(
     Type ValueType,
     Func<TEvent, object?> Getter,
-    bool CoerceNullStringToEmpty)
+    bool CoerceNullStringToEmpty,
+    Func<TEvent, SandboxValue>? TypedGetter = null)
 {
     public SandboxValue ToSandboxValue(TEvent e)
     {
+        // Fast path for non-nullable scalar value types: the typed getter calls the SandboxValue factory on
+        // the strongly-typed field directly, skipping the Convert(_, object) box the boxed getter performs
+        // and the marshaller's unbox/type-switch. It yields the identical SandboxValue the boxed path would
+        // (same factories), and bool/small-int factories return cached instances — zero allocation per event.
+        if (TypedGetter is not null)
+        {
+            return TypedGetter(e);
+        }
+
         var value = Getter(e);
 
         // The sandbox/wire model has no null. Preserve the historical scalar behaviour of treating a null
@@ -195,4 +207,49 @@ internal readonly record struct ConventionEventProperty<TEvent>(
 
         return KernelRpcMarshaller.ToSandboxValue(value, ValueType);
     }
+}
+
+/// <summary>
+/// Builds a compiled <see cref="Func{TEvent, SandboxValue}"/> for non-nullable scalar value-type event
+/// properties so the convention adapter can read them without boxing. Non-generic so the resolved factory
+/// <see cref="MethodInfo"/>s are shared across every event type rather than re-resolved per closed generic.
+/// Returns <see langword="null"/> for any type that must stay on the boxed marshaller path — enums (which
+/// marshal through a width-dependent integer), <see cref="Nullable{T}"/>, strings, and composite types.
+/// </summary>
+internal static class ConventionScalarGetter
+{
+    private static readonly MethodInfo FromBool = Factory(nameof(SandboxValue.FromBool), typeof(bool));
+    private static readonly MethodInfo FromInt32 = Factory(nameof(SandboxValue.FromInt32), typeof(int));
+    private static readonly MethodInfo FromInt64 = Factory(nameof(SandboxValue.FromInt64), typeof(long));
+    private static readonly MethodInfo FromDouble = Factory(nameof(SandboxValue.FromDouble), typeof(double));
+    private static readonly MethodInfo FromGuid = Factory(nameof(SandboxValue.FromGuid), typeof(Guid));
+
+    public static Func<TEvent, SandboxValue>? TryCreate<TEvent>(PropertyInfo property)
+    {
+        var type = property.PropertyType;
+        if (type.IsEnum)
+        {
+            return null;
+        }
+
+        var instance = LinqExpression.Parameter(typeof(TEvent), "e");
+        LinqExpression access = LinqExpression.Property(instance, property);
+        LinqExpression? call =
+            type == typeof(bool) ? LinqExpression.Call(FromBool, access)
+            : type == typeof(int) ? LinqExpression.Call(FromInt32, access)
+            : type == typeof(long) ? LinqExpression.Call(FromInt64, access)
+            : type == typeof(double) ? LinqExpression.Call(FromDouble, access)
+            // float widens to double exactly as the marshaller's FromDouble((float)value) does.
+            : type == typeof(float) ? LinqExpression.Call(FromDouble, LinqExpression.Convert(access, typeof(double)))
+            : type == typeof(Guid) ? LinqExpression.Call(FromGuid, access)
+            : null;
+
+        return call is null
+            ? null
+            : LinqExpression.Lambda<Func<TEvent, SandboxValue>>(call, instance).Compile();
+    }
+
+    private static MethodInfo Factory(string name, Type argType)
+        => typeof(SandboxValue).GetMethod(name, BindingFlags.Public | BindingFlags.Static, [argType])
+           ?? throw new InvalidOperationException($"SandboxValue.{name}({argType}) was not found.");
 }

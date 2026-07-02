@@ -1,5 +1,4 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using TypeNames = DotBoxD.Plugins.Analyzer.Analysis.Lowering.DotBoxDGenerationNames.TypeNames;
 
@@ -32,35 +31,17 @@ internal static partial class DotBoxDHostBindingExpressionLowerer
             binding.BindingId,
             "return");
 
-        var arguments = invocation.ArgumentList.Arguments;
-        if (arguments.Count != method.Parameters.Length)
-        {
-            throw new NotSupportedException(
-                $"Host binding '{binding.BindingId}' call must pass {method.Parameters.Length} positional argument(s).");
-        }
-
+        var arguments = LowerHostBindingArguments(
+            invocation.ArgumentList.Arguments,
+            method.Parameters,
+            binding.BindingId,
+            lowerExpression);
         var loweredSources = new List<string>(arguments.Count + 1) { capture.Key.Source };
         var allocates = capture.Key.Allocates || IsAllocatingTag(returnType);
-        for (var i = 0; i < arguments.Count; i++)
+        foreach (var argument in arguments)
         {
-            if (arguments[i].NameColon is not null ||
-                !arguments[i].RefKindKeyword.IsKind(SyntaxKind.None) ||
-                method.Parameters[i].RefKind != RefKind.None)
-            {
-                throw new NotSupportedException(
-                    $"Host binding '{binding.BindingId}' arguments must be positional value arguments.");
-            }
-
-            var expected = HostBindingManifestTag(method.Parameters[i].Type, binding.BindingId, $"argument {i}");
-            var lowered = lowerExpression(arguments[i].Expression);
-            if (!string.Equals(lowered.Type, expected, StringComparison.Ordinal))
-            {
-                throw new NotSupportedException(
-                    $"Host binding '{binding.BindingId}' argument {i} must lower to {expected}.");
-            }
-
-            loweredSources.Add(lowered.Source);
-            allocates |= lowered.Allocates;
+            loweredSources.Add(argument.Source);
+            allocates |= argument.Allocates;
         }
 
         AddBindingRequirements(context, binding.Capability, binding.Effects, binding.IsAsync);

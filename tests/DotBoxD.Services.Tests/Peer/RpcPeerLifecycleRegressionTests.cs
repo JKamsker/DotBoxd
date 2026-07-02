@@ -55,6 +55,23 @@ public sealed class RpcPeerLifecycleRegressionTests
     }
 
     [Fact]
+    public async Task Get_AfterRemoteClose_ThrowsConnectionClosed()
+    {
+        await using var channel = new ScriptedConnection();
+        var disconnected = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var peer = RpcPeer
+            .Over(channel, NewSerializer(), new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) })
+            .Start();
+        peer.Disconnected += (_, _) => disconnected.TrySetResult(true);
+
+        channel.Enqueue(Payload.Empty);
+        await disconnected.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        var ex = Assert.Throws<ServiceConnectionException>(() => peer.Get<IGameService>());
+        Assert.Contains("closed", ex.Message);
+    }
+
+    [Fact]
     public void RpcPeerOptions_InvalidBoundedValues_ThrowDuringConfiguration()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new RpcPeerOptions { InboundQueueCapacity = 0 });

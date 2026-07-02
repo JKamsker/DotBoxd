@@ -1,4 +1,3 @@
-using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -36,6 +35,7 @@ internal static partial class DotBoxDKernelMethodInliner
         var call = KernelMethodArgumentBinder.Bind(
             invocation,
             resolvedMethod,
+            context.SemanticModel.Compilation,
             $"[KernelMethod] '{KernelMethodArgumentBinder.Definition(resolvedMethod).Name}'");
         var method = call.Method;
         if (!method.IsStatic && !IsServerContextReceiver(invocation, method, context))
@@ -142,90 +142,8 @@ internal static partial class DotBoxDKernelMethodInliner
                 : lowerExpression(expression);
         }
 
-        return LowerDefaultArgument(argument.Parameter, argument.DefaultValue);
+        return KernelMethodDefaultArgumentLowerer.Lower(argument.Parameter, argument.DefaultValue);
     }
-
-    private static DotBoxDExpressionModel LowerDefaultArgument(IParameterSymbol parameter, object? value)
-    {
-        if (DotBoxDNullableScalarType.TryGetSupportedUnderlying(parameter.Type, out _))
-        {
-            return LowerNullableDefaultArgument(parameter, value);
-        }
-
-        return LowerScalarDefaultArgument(parameter.Type, value, parameter);
-    }
-
-    private static DotBoxDExpressionModel LowerNullableDefaultArgument(IParameterSymbol parameter, object? value)
-    {
-        if (value is null)
-        {
-            return new(
-                DotBoxDNullableScalarExpressionLowerer.NullSource(parameter.Type),
-                DotBoxDGenerationNames.ManifestTypes.Record,
-                true);
-        }
-
-        var scalar = LowerScalarDefaultArgument(
-            ((INamedTypeSymbol)parameter.Type).TypeArguments[0],
-            value,
-            parameter);
-        return new(
-            DotBoxDNullableScalarExpressionLowerer.PresentSource(parameter.Type, scalar),
-            DotBoxDGenerationNames.ManifestTypes.Record,
-            true);
-    }
-
-    private static DotBoxDExpressionModel LowerScalarDefaultArgument(
-        ITypeSymbol parameterType,
-        object? value,
-        IParameterSymbol parameter)
-    {
-        var type = DotBoxDTypeNameReader.KernelMethodTypeName(parameterType);
-        return type switch
-        {
-            DotBoxDGenerationNames.ManifestTypes.Bool when value is bool boolean => new(
-                $"{DotBoxDGenerationNames.Helpers.Bool}({LiteralReader.ObjectLiteral(boolean)})",
-                DotBoxDGenerationNames.ManifestTypes.Bool,
-                false),
-            DotBoxDGenerationNames.ManifestTypes.Int when value is int number => new(
-                $"{DotBoxDGenerationNames.Helpers.I32}({LiteralReader.ObjectLiteral(number)})",
-                DotBoxDGenerationNames.ManifestTypes.Int,
-                false),
-            DotBoxDGenerationNames.ManifestTypes.Long when value is int number => new(
-                $"{DotBoxDGenerationNames.Helpers.I64}({LiteralReader.ObjectLiteral((long)number)})",
-                DotBoxDGenerationNames.ManifestTypes.Long,
-                false),
-            DotBoxDGenerationNames.ManifestTypes.Long when value is long number => new(
-                $"{DotBoxDGenerationNames.Helpers.I64}({LiteralReader.ObjectLiteral(number)})",
-                DotBoxDGenerationNames.ManifestTypes.Long,
-                false),
-            DotBoxDGenerationNames.ManifestTypes.Double when value is int number => new(
-                $"{DotBoxDGenerationNames.Helpers.F64}({LiteralReader.ObjectLiteral((double)number)})",
-                DotBoxDGenerationNames.ManifestTypes.Double,
-                false),
-            DotBoxDGenerationNames.ManifestTypes.Double when value is long number => new(
-                $"{DotBoxDGenerationNames.Helpers.F64}({LiteralReader.ObjectLiteral((double)number)})",
-                DotBoxDGenerationNames.ManifestTypes.Double,
-                false),
-            DotBoxDGenerationNames.ManifestTypes.Double when value is float number && IsFinite(number) => new(
-                $"{DotBoxDGenerationNames.Helpers.F64}({LiteralReader.ObjectLiteral((double)number)})",
-                DotBoxDGenerationNames.ManifestTypes.Double,
-                false),
-            DotBoxDGenerationNames.ManifestTypes.Double when value is double number && IsFinite(number) => new(
-                $"{DotBoxDGenerationNames.Helpers.F64}({LiteralReader.ObjectLiteral(number)})",
-                DotBoxDGenerationNames.ManifestTypes.Double,
-                false),
-            DotBoxDGenerationNames.ManifestTypes.String when value is string text => new(
-                $"{DotBoxDGenerationNames.Helpers.Str}({LiteralReader.StringLiteral(text)})",
-                DotBoxDGenerationNames.ManifestTypes.String,
-                true),
-            _ => throw new NotSupportedException(
-                $"[KernelMethod] '{parameter.ContainingSymbol.Name}' optional parameter '{parameter.Name}' has an unsupported default value.")
-        };
-    }
-
-    private static bool IsFinite(double value)
-        => !double.IsNaN(value) && !double.IsInfinity(value);
 
     private static ExpressionSyntax? TryKernelMethodBody(IMethodSymbol method, CancellationToken cancellationToken)
     {

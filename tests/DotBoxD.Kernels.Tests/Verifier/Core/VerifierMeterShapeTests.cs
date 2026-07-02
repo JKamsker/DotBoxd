@@ -162,6 +162,33 @@ public sealed class VerifierMeterShapeTests
         Assert.True(result.Succeeded, string.Join(Environment.NewLine, result.Diagnostics.Select(d => d.Message)));
     }
 
+    [Fact]
+    public async Task Verifier_accepts_metered_type_array_allocation()
+    {
+        var result = await VerifierTestHelpers.VerifyAsync(VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
+            var fn = DefineFunction(type);
+            var fnIl = fn.GetILGenerator();
+            EmitEnterCall(fnIl);
+            EmitChargeFuel(fnIl, 2);
+            fnIl.Emit(OpCodes.Ldarg_0);
+            fnIl.Emit(OpCodes.Ldc_I4_1);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.CreateMeteredTypeArray))!);
+            fnIl.Emit(OpCodes.Dup);
+            fnIl.Emit(OpCodes.Ldc_I4_0);
+            EmitTypeScalar(fnIl);
+            fnIl.Emit(OpCodes.Stelem_Ref);
+            fnIl.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(CompiledRuntime.TypeRecord))!);
+            fnIl.Emit(OpCodes.Pop);
+            EmitExitCall(fnIl);
+            fnIl.Emit(OpCodes.Ldarg_1);
+            fnIl.Emit(OpCodes.Ret);
+            EmitExecuteCalling(type, fn);
+        }));
+
+        Assert.True(result.Succeeded, string.Join(Environment.NewLine, result.Diagnostics.Select(d => d.Message)));
+    }
+
     private static MethodBuilder DefineFunction(TypeBuilder type)
         => type.DefineMethod(
             "Fn_0",

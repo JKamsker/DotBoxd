@@ -21,6 +21,7 @@ public sealed class NamedPipeClientTransport : ITransport
     private NamedPipeClientStream? _stream;
     private StreamConnection? _connection;
     private CancellationTokenSource? _connectCts;
+    private int _connecting;
     private int _disposed;
 
     public NamedPipeClientTransport(string pipeName, int maxMessageSize = MessageFramer.MaxMessageSize)
@@ -52,74 +53,96 @@ public sealed class NamedPipeClientTransport : ITransport
     public async Task ConnectAsync(CancellationToken ct = default)
     {
         ThrowIfDisposed();
-        if (_connection is not null)
+        ct.ThrowIfCancellationRequested();
+        if (Interlocked.CompareExchange(ref _connecting, 1, 0) != 0)
         {
-            throw new InvalidOperationException("Already connected.");
+            throw new InvalidOperationException("Connect already in progress.");
         }
 
-        var stream = new NamedPipeClientStream(
-            _serverName,
-            _pipeName,
-            PipeDirection.InOut,
-            PipeOptions.Asynchronous);
-        var connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        _stream = stream;
-        _connectCts = connectCts;
         try
         {
+            await ClearDisconnectedConnectionAsync().ConfigureAwait(false);
+
+            if (_connection is not null)
+            {
+                throw new InvalidOperationException("Already connected.");
+            }
+
+            var stream = new NamedPipeClientStream(
+                _serverName,
+                _pipeName,
+                PipeDirection.InOut,
+                PipeOptions.Asynchronous);
+            var connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            _stream = stream;
+            _connectCts = connectCts;
+            try
+            {
+                if (Volatile.Read(ref _disposed) != 0)
+                {
+                    throw new ObjectDisposedException(nameof(NamedPipeClientTransport));
+                }
+
+                await stream.ConnectAsync(connectCts.Token).ConfigureAwait(false);
+                _connection = new StreamConnection(
+                    stream,
+                    RemoteEndpoint,
+                    ownsStream: true,
+                    _maxMessageSize,
+                    FrameReadIdleTimeout ?? DefaultFrameReadIdleTimeout);
+            }
+            catch
+            {
+                if (ReferenceEquals(_stream, stream))
+                {
+                    _stream = null;
+                }
+
+                stream.Dispose();
+                throw;
+            }
+            finally
+            {
+                if (ReferenceEquals(_connectCts, connectCts))
+                {
+                    _connectCts = null;
+                }
+
+                connectCts.Dispose();
+            }
+
+            // Test seam (null/no-op in production): lets a test deterministically interleave DisposeAsync
+            // between the _connection publication above and the disposed re-check below.
+            var publishedHook = _onConnectionPublishedForTest;
+            if (publishedHook is not null)
+            {
+                await publishedHook().ConfigureAwait(false);
+            }
+
+            // Full store-load fence so the _stream/_connection publication above is globally visible before
+            // _disposed is read. Without it an x86/x64 store-buffer (Dekker) interleaving could let this read
+            // miss a concurrent DisposeAsync while that DisposeAsync misses _connection, leaking the pipe.
+            Interlocked.MemoryBarrier();
+
+            // Close the window where DisposeAsync ran during the connect and observed null fields: tear
+            // down the connection we just published so it (and its owned stream) cannot outlive a disposed
+            // transport. Mirrors TcpTransport.ConnectAsync.
             if (Volatile.Read(ref _disposed) != 0)
             {
+                var connection = _connection;
+                if (connection is not null)
+                {
+                    await connection.DisposeAsync().ConfigureAwait(false);
+                }
+
+                _connection = null;
+                _stream = null;
                 throw new ObjectDisposedException(nameof(NamedPipeClientTransport));
             }
-
-            await stream.ConnectAsync(connectCts.Token).ConfigureAwait(false);
-            _connection = new StreamConnection(
-                stream,
-                RemoteEndpoint,
-                ownsStream: true,
-                _maxMessageSize,
-                FrameReadIdleTimeout ?? DefaultFrameReadIdleTimeout);
-        }
-        catch
-        {
-            if (ReferenceEquals(_stream, stream))
-            {
-                _stream = null;
-            }
-
-            stream.Dispose();
-            throw;
         }
         finally
         {
-            if (ReferenceEquals(_connectCts, connectCts))
-            {
-                _connectCts = null;
-            }
-
-            connectCts.Dispose();
-        }
-
-        // Test seam (null/no-op in production): lets a test deterministically interleave DisposeAsync
-        // between the _connection publication above and the disposed re-check below.
-        var publishedHook = _onConnectionPublishedForTest;
-        if (publishedHook is not null)
-        {
-            await publishedHook().ConfigureAwait(false);
-        }
-
-        // Full store-load fence so the _stream/_connection publication above is globally visible before
-        // _disposed is read. Without it an x86/x64 store-buffer (Dekker) interleaving could let this read
-        // miss a concurrent DisposeAsync while that DisposeAsync misses _connection, leaking the pipe.
-        Interlocked.MemoryBarrier();
-
-        // Close the window where DisposeAsync ran during the connect and observed null fields: tear
-        // down the connection we just published so it (and its owned stream) cannot outlive a disposed
-        // transport. Mirrors TcpTransport.ConnectAsync.
-        if (Volatile.Read(ref _disposed) != 0)
-        {
-            await _connection.DisposeAsync().ConfigureAwait(false);
-            throw new ObjectDisposedException(nameof(NamedPipeClientTransport));
+            Volatile.Write(ref _connecting, 0);
         }
     }
 
@@ -129,6 +152,28 @@ public sealed class NamedPipeClientTransport : ITransport
     /// in production.
     /// </summary>
     internal Func<Task>? _onConnectionPublishedForTest;
+
+    private async ValueTask ClearDisconnectedConnectionAsync()
+    {
+        var connection = _connection;
+        if (connection is null || connection.IsConnected)
+        {
+            return;
+        }
+
+        var stream = _stream;
+        await connection.DisposeAsync().ConfigureAwait(false);
+        if (ReferenceEquals(_connection, connection))
+        {
+            _connection = null;
+        }
+
+        if (ReferenceEquals(_stream, stream))
+        {
+            stream?.Dispose();
+            _stream = null;
+        }
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -146,14 +191,18 @@ public sealed class NamedPipeClientTransport : ITransport
             // ConnectAsync can finish and dispose the linked CTS while DisposeAsync is starting.
         }
 
-        if (_connection is not null)
+        var connection = _connection;
+        if (connection is not null)
         {
-            await _connection.DisposeAsync().ConfigureAwait(false);
+            await connection.DisposeAsync().ConfigureAwait(false);
+            _connection = null;
         }
         else
         {
             _stream?.Dispose();
         }
+
+        _stream = null;
     }
 
     private string RemoteEndpoint => $"pipe://{_serverName}/{_pipeName}";

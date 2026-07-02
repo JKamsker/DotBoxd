@@ -1,13 +1,14 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 
 internal static partial class RemoteStagedUseDiagnosticFactory
 {
-    private const string Message =
+    private const string TerminalMessagePrefix =
         "Remote Where/Select stages only lower when the terminal is Run, RunLocal, Register, or RegisterLocal; " +
-        "calling Use/UseGeneratedChain after Where/Select would ignore those stages.";
+        "calling ";
     private const string DiscardedStageMessage =
         "Remote Where/Select stages must be chained into Run, RunLocal, Register, or RegisterLocal; " +
         "discarding the stage result would ignore the stage.";
@@ -59,9 +60,12 @@ internal static partial class RemoteStagedUseDiagnosticFactory
         }
 
         return new PluginKernelDiagnostic(
-            Message,
+            UnsupportedTerminalMessage(access.Name.Identifier.ValueText),
             PluginDiagnosticLocation.From(access.Name.GetLocation()));
     }
+
+    private static string UnsupportedTerminalMessage(string terminal)
+        => TerminalMessagePrefix + terminal + " after Where/Select would ignore those stages.";
 
     private static PluginKernelDiagnostic? CreateDiscardedStageDiagnostic(
         InvocationExpressionSyntax invocation,
@@ -69,14 +73,27 @@ internal static partial class RemoteStagedUseDiagnosticFactory
         SemanticModel model,
         CancellationToken cancellationToken)
     {
-        if (invocation.Parent is AssignmentExpressionSyntax assignment &&
-            assignment.Right == invocation &&
+        var transparentExpression = UnwrapTransparentParent(invocation);
+        ExpressionSyntax discardedExpression = transparentExpression;
+        if (transparentExpression.Parent is AssignmentExpressionSyntax assignment &&
+            assignment.Right == transparentExpression &&
             assignment.Parent is ExpressionStatementSyntax)
         {
-            return CreateAssignedStageDiagnostic(access, model, cancellationToken);
+            var assignsLocal = model.GetSymbolInfo(assignment.Left, cancellationToken).Symbol is ILocalSymbol;
+            if (CreateAssignedStageDiagnostic(invocation, assignment, access, model, cancellationToken) is { } assigned)
+            {
+                return assigned;
+            }
+
+            if (assignsLocal)
+            {
+                return null;
+            }
+
+            discardedExpression = assignment;
         }
 
-        if (invocation.Parent is EqualsValueClauseSyntax
+        if (transparentExpression.Parent is EqualsValueClauseSyntax
             {
                 Parent: VariableDeclaratorSyntax declarator
             } &&
@@ -85,7 +102,7 @@ internal static partial class RemoteStagedUseDiagnosticFactory
             return CreateStagedLocalDiagnostic(invocation, access, model, local, cancellationToken);
         }
 
-        if (invocation.Parent is not ExpressionStatementSyntax)
+        if (discardedExpression.Parent is not ExpressionStatementSyntax)
         {
             return null;
         }
@@ -123,6 +140,8 @@ internal static partial class RemoteStagedUseDiagnosticFactory
     }
 
     private static PluginKernelDiagnostic? CreateAssignedStageDiagnostic(
+        InvocationExpressionSyntax invocation,
+        AssignmentExpressionSyntax assignment,
         MemberAccessExpressionSyntax access,
         SemanticModel model,
         CancellationToken cancellationToken)
@@ -130,6 +149,12 @@ internal static partial class RemoteStagedUseDiagnosticFactory
         var receiverType = model.GetTypeInfo(access.Expression, cancellationToken).Type;
         if (!IsRemoteChainOrStageType(receiverType) &&
             !IsGeneratedRemoteChain(access.Expression, model, cancellationToken))
+        {
+            return null;
+        }
+
+        if (model.GetSymbolInfo(assignment.Left, cancellationToken).Symbol is not ILocalSymbol local ||
+            !LocalFlowsIntoTerminalOrUse(invocation, local, model, cancellationToken))
         {
             return null;
         }
@@ -151,17 +176,18 @@ internal static partial class RemoteStagedUseDiagnosticFactory
             return false;
         }
 
-        foreach (var terminal in block.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        foreach (var terminal in block.DescendantNodes(static node =>
+                node is not LambdaExpressionSyntax and not LocalFunctionStatementSyntax)
+            .OfType<InvocationExpressionSyntax>())
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (terminal == invocation ||
-                terminal.SpanStart <= invocation.SpanStart ||
-                terminal.Expression is not MemberAccessExpressionSyntax access)
+            if (terminal == invocation || terminal.SpanStart <= invocation.SpanStart)
             {
                 continue;
             }
 
-            if (access.Name.Identifier.ValueText is not
+            if (!TryTerminalReceiver(terminal, out var terminalName, out var terminalReceiver) ||
+                terminalName is not
                 ("Run" or "RunLocal" or "Register" or "RegisterLocal" or
                  "Use" or "UseGeneratedChain" or "UseGeneratedLocalChain" or
                  "UseGeneratedResultChain" or "UseGeneratedLocalResultChain"))
@@ -169,7 +195,17 @@ internal static partial class RemoteStagedUseDiagnosticFactory
                 continue;
             }
 
-            if (ExpressionReferencesLocal(access.Expression, local, model, cancellationToken, depth: 0))
+            if (HookChainAliasResolver.HasMutationBetween(
+                local,
+                invocation.SpanStart,
+                terminal.SpanStart,
+                model,
+                cancellationToken))
+            {
+                continue;
+            }
+
+            if (ExpressionReferencesLocal(terminalReceiver, local, model, cancellationToken, depth: 0))
             {
                 return true;
             }
@@ -190,7 +226,7 @@ internal static partial class RemoteStagedUseDiagnosticFactory
             return false;
         }
 
-        expression = HookChainAliasResolver.UnwrapParentheses(expression);
+        expression = HookChainAliasResolver.UnwrapTransparentExpression(expression);
         if (expression is IdentifierNameSyntax identifier &&
             SymbolEqualityComparer.Default.Equals(model.GetSymbolInfo(identifier, cancellationToken).Symbol, local))
         {
@@ -217,7 +253,7 @@ internal static partial class RemoteStagedUseDiagnosticFactory
 
     private static bool ContainsStageInvocation(ExpressionSyntax expression)
     {
-        expression = HookChainAliasResolver.UnwrapParentheses(expression);
+        expression = HookChainAliasResolver.UnwrapTransparentExpression(expression);
 
         if (expression is InvocationExpressionSyntax
             {
@@ -232,5 +268,4 @@ internal static partial class RemoteStagedUseDiagnosticFactory
         return expression is MemberAccessExpressionSyntax access &&
             ContainsStageInvocation(access.Expression);
     }
-
 }

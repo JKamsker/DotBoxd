@@ -112,6 +112,48 @@ public class SubServiceAvailabilityTests
     }
 
     [Fact]
+    public void RootPropertyReturningRejectedSubService_RejectsRootService()
+    {
+        const string source = """
+            using DotBoxD.Services.Attributes;
+
+            namespace Regress.SubServiceAvailability
+            {
+                [DotBoxDService]
+                public interface ISub
+                {
+                    int Count { get; }
+                }
+
+                [DotBoxDService]
+                public interface IRoot
+                {
+                    ISub Sub { get; }
+                }
+            }
+            """;
+
+        var runResult = Run(source, out var finalCompilation);
+
+        runResult.Diagnostics.Should().Contain(d => d.Id == "DBXS003" &&
+            d.GetMessage().Contains("interface property 'Count' is not supported"));
+        runResult.Diagnostics.Should().Contain(d => d.Id == "DBXS003" &&
+            d.GetMessage().Contains("property 'Sub' cannot be proxied because that service was not generated"));
+        runResult.Results.Single().GeneratedSources.Should().NotContain(
+            g => g.HintName.EndsWith("IRoot.DotBoxDRpcProxy.g.cs"));
+        runResult.Results.Single().GeneratedSources.Should().NotContain(
+            g => g.HintName.EndsWith("IRoot.DotBoxDRpcDispatcher.g.cs"));
+
+        using var ms = new MemoryStream();
+        var emit = finalCompilation.Emit(ms);
+        emit.Success.Should().BeTrue(string.Join(
+            "\n",
+            emit.Diagnostics
+                .Where(d => d.Severity == DiagnosticSeverity.Error)
+                .Select(d => d.ToString())));
+    }
+
+    [Fact]
     public void RootMethodReturningSubServiceRejectedByWireNameCollision_BecomesUnsupportedStub()
     {
         const string source = """

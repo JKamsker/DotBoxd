@@ -25,7 +25,7 @@ namespace DotBoxD.Kernels.Tests.Compiled.Regression;
 ///   <c>RequireAllowedProperties</c> lists and required/discriminator constraints.</item>
 /// </list>
 /// </summary>
-public sealed class Fix_CMP_0012_Tests
+public sealed partial class Fix_CMP_0012_Tests
 {
     private const string ModuleSchemaRelative = "schemas/v1/dotboxd-kernel-module.schema.json";
     private const string PackageSchemaRelative = "schemas/v1/dotboxd-plugin-package.schema.json";
@@ -179,6 +179,18 @@ public sealed class Fix_CMP_0012_Tests
     }
 
     [Fact]
+    public void Module_schema_semver_domain_matches_importer()
+    {
+        using var document = JsonDocument.Parse(File.ReadAllText(RepositoryPath(ModuleSchemaRelative)));
+        var semver = document.RootElement
+            .GetProperty("$defs")
+            .GetProperty("semver");
+
+        Assert.Equal("string", semver.GetProperty("type").GetString());
+        AssertPattern(semver, "^v?[0-9]+(?:\\.[0-9]+\\.[0-9]+)?$");
+    }
+
+    [Fact]
     public void Module_schema_i64_and_f64_literal_ranges_match_importer()
     {
         using var document = JsonDocument.Parse(File.ReadAllText(RepositoryPath(ModuleSchemaRelative)));
@@ -200,6 +212,20 @@ public sealed class Fix_CMP_0012_Tests
 
         Assert.True(f64.TryGetProperty("maximum", out var f64Maximum), "f64 schema is missing maximum.");
         Assert.Equal(double.MaxValue, f64Maximum.GetDouble());
+    }
+
+    [Fact]
+    public void Module_schema_guid_literal_domain_matches_importer()
+    {
+        using var document = JsonDocument.Parse(File.ReadAllText(RepositoryPath(ModuleSchemaRelative)));
+        var guid = document.RootElement
+            .GetProperty("$defs")
+            .GetProperty("literal")
+            .GetProperty("properties")
+            .GetProperty("guid");
+
+        Assert.Equal("string", guid.GetProperty("type").GetString());
+        AssertPattern(guid, "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
     }
 
     /// <summary>

@@ -9,6 +9,7 @@ internal sealed partial class InvokeAsyncCallShape
     private InvokeAsyncCallShape(
         BlockSyntax block,
         ITypeSymbol worldType,
+        string worldParameterName,
         ITypeSymbol returnType,
         ITypeSymbol? captureType,
         bool usesReflectionCaptures,
@@ -17,12 +18,13 @@ internal sealed partial class InvokeAsyncCallShape
         string argumentsExpression,
         IReadOnlyList<ITypeSymbol> argumentTypes,
         EquatableArray<InvokeAsyncSyncOut> syncOuts,
-        IReadOnlyList<(string Name, ExpressionSyntax Value)> leadingLocals,
+        IReadOnlyList<(string Name, string Value)> leadingLocals,
         Func<AssignmentExpressionSyntax, Func<ExpressionSyntax, string>, string?>? assignmentOverride,
         Func<ExpressionSyntax, string?>? expressionOverride)
     {
         Block = block;
         WorldType = worldType;
+        WorldParameterName = worldParameterName;
         ReturnType = returnType;
         CaptureType = captureType;
         UsesReflectionCaptures = usesReflectionCaptures;
@@ -40,6 +42,8 @@ internal sealed partial class InvokeAsyncCallShape
 
     public ITypeSymbol WorldType { get; }
 
+    public string WorldParameterName { get; }
+
     public ITypeSymbol ReturnType { get; }
 
     public ITypeSymbol? CaptureType { get; }
@@ -56,7 +60,7 @@ internal sealed partial class InvokeAsyncCallShape
 
     public EquatableArray<InvokeAsyncSyncOut> SyncOuts { get; }
 
-    private IReadOnlyList<(string Name, ExpressionSyntax Value)> LeadingLocals { get; }
+    private IReadOnlyList<(string Name, string Value)> LeadingLocals { get; }
 
     private Func<AssignmentExpressionSyntax, Func<ExpressionSyntax, string>, string?>? AssignmentOverride { get; }
 
@@ -93,7 +97,13 @@ internal sealed partial class InvokeAsyncCallShape
                 out worldType) &&
             !HasExternalCaptures(lambda, model))
         {
-            return CaptureBag(method.TypeArguments[1], captureParameter, captureBlock, model, worldType);
+            return CaptureBag(
+                method.TypeArguments[1],
+                captureParameter,
+                captureBlock,
+                model,
+                worldType,
+                InvokeAsyncLambdaShape.WorldParameterName(lambda));
         }
 
         return null;
@@ -130,7 +140,13 @@ internal sealed partial class InvokeAsyncCallShape
             TryGeneratedReceiverReturnType(invocation, captureBlock, model, cancellationToken, expectedTypeArgumentCount: 2, typeArgumentIndex: 1, out returnType) &&
             !HasExternalCaptures(lambda, model))
         {
-            return CaptureBag(returnType, captureParameter, captureBlock, model, worldType);
+            return CaptureBag(
+                returnType,
+                captureParameter,
+                captureBlock,
+                model,
+                worldType,
+                InvokeAsyncLambdaShape.WorldParameterName(lambda));
         }
 
         return null;
@@ -150,64 +166,6 @@ internal sealed partial class InvokeAsyncCallShape
             ? captureType
             : null;
 
-    private static bool TryGeneratedReceiverReturnType(
-        InvocationExpressionSyntax invocation,
-        BlockSyntax block,
-        SemanticModel model,
-        CancellationToken cancellationToken,
-        int expectedTypeArgumentCount,
-        int typeArgumentIndex,
-        out ITypeSymbol returnType)
-    {
-        if (TryExplicitGenericTypeArgument(
-                invocation,
-                model,
-                cancellationToken,
-                expectedTypeArgumentCount,
-                typeArgumentIndex,
-                out returnType))
-        {
-            return true;
-        }
-
-        return InvokeAsyncLambdaShape.TryReturnType(block, model, cancellationToken, out returnType);
-    }
-
-    private static bool TryExplicitGenericTypeArgument(
-        InvocationExpressionSyntax invocation,
-        SemanticModel model,
-        CancellationToken cancellationToken,
-        int expectedTypeArgumentCount,
-        int typeArgumentIndex,
-        out ITypeSymbol type)
-    {
-        type = null!;
-        if (GenericInvokeAsyncName(invocation.Expression) is not { } generic ||
-            generic.TypeArgumentList.Arguments.Count != expectedTypeArgumentCount)
-        {
-            return false;
-        }
-
-        var candidate = model.GetTypeInfo(
-            generic.TypeArgumentList.Arguments[typeArgumentIndex],
-            cancellationToken).Type;
-        if (candidate is null || candidate.TypeKind == TypeKind.Error)
-        {
-            return false;
-        }
-
-        type = candidate;
-        return true;
-    }
-
-    private static GenericNameSyntax? GenericInvokeAsyncName(ExpressionSyntax expression)
-        => expression switch
-        {
-            GenericNameSyntax { Identifier.ValueText: "InvokeAsync" } generic => generic,
-            MemberAccessExpressionSyntax { Name: GenericNameSyntax { Identifier.ValueText: "InvokeAsync" } generic } => generic,
-            _ => null,
-        };
-
     public string LowerBody(DotBoxDRpcJsonLowerer lowerer, BlockSyntax block)
         => lowerer.LowerBody(
             block,
@@ -215,18 +173,25 @@ internal sealed partial class InvokeAsyncCallShape
             ReturnLocalNames(),
             ReturnTypeJsonForBody(),
             AssignmentOverride,
-            ExpressionOverride);
+            ExpressionOverride,
+            ReturnType);
 
-    private static InvokeAsyncCallShape NoCapture(BlockSyntax block, ITypeSymbol worldType, ITypeSymbol returnType)
+    private static InvokeAsyncCallShape NoCapture(
+        BlockSyntax block,
+        ITypeSymbol worldType,
+        string worldParameterName,
+        ITypeSymbol returnType,
+        Compilation compilation)
         => new(
             block,
             worldType,
+            worldParameterName,
             returnType,
             captureType: null,
             usesReflectionCaptures: false,
             parametersJson: "[]",
-            returnTypeJson: DotBoxDRpcReturnType.JsonType(returnType),
-            argumentsExpression: "global::System.Array.Empty<global::DotBoxD.Plugins.KernelRpcValue>()",
+            returnTypeJson: DotBoxDRpcReturnType.JsonType(returnType, compilation),
+            argumentsExpression: $"global::System.Array.Empty<{DotBoxDRpcValueNames.GlobalKernelRpcValue}>()",
             argumentTypes: [],
             default,
             [],
@@ -238,18 +203,20 @@ internal sealed partial class InvokeAsyncCallShape
         InvokeAsyncCaptureParameter captureParameter,
         BlockSyntax block,
         SemanticModel model,
-        ITypeSymbol worldType)
+        ITypeSymbol worldType,
+        string worldParameterName)
     {
-        var captureAliases = CaptureBagAliases(block, captureParameter.Name);
+        var captureAliases = CaptureBagAliases(block, captureParameter.Name, model);
         var syncOuts = FindSyncOuts(block, captureParameter, model, captureAliases);
-        var returnTypeJson = BuildReturnTypeJson(returnType, syncOuts);
+        var returnTypeJson = BuildReturnTypeJson(returnType, syncOuts, model.Compilation);
         return new InvokeAsyncCallShape(
             block,
             worldType,
+            worldParameterName,
             returnType,
             captureParameter.Type,
             usesReflectionCaptures: false,
-            CaptureParametersJson(captureParameter),
+            CaptureParametersJson(captureParameter, model.Compilation),
             returnTypeJson,
             CaptureArgumentsExpression(captureParameter.Type),
             [captureParameter.Type],
@@ -260,8 +227,9 @@ internal sealed partial class InvokeAsyncCallShape
                 captureParameter,
                 syncOuts,
                 captureAliases,
+                model,
                 lower),
-            expression => LowerCaptureRead(expression, captureParameter, syncOuts, captureAliases));
+            expression => LowerCaptureRead(expression, captureParameter, syncOuts, captureAliases, model));
     }
 
     private IReadOnlyList<string> ReturnLocalNames()

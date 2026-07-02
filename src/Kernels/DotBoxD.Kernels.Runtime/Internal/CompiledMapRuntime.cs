@@ -18,7 +18,7 @@ internal static class CompiledMapRuntime
     {
         context.ChargeFuel(SandboxCollectionFuel.Empty());
         context.ChargeAllocation(16);
-        return ChargeValue(context, SandboxValue.FromMap(new Dictionary<SandboxValue, SandboxValue>(), keyType, valueType));
+        return ChargeValue(context, SandboxValue.FromOwnedMap(new MapValueBuilder(), keyType, valueType));
     }
 
     internal static SandboxValue ContainsKey(SandboxContext context, SandboxValue map, SandboxValue key)
@@ -59,11 +59,13 @@ internal static class CompiledMapRuntime
         var updated = typedMap.SetEntry(key, value);
 
         // New-key insert: charge incrementally from the source's cached shape (identical fuel/shape to a
-        // full walk), turning repeated map.set from O(n^2) into O(n). Replacement changes a value subtree in
-        // place and falls back to a full walk (rare in build loops). Mirrors the interpreter path.
+        // full walk), turning repeated map.set from O(n^2) into O(n). Zero-shape scalar replacements can reuse
+        // the source shape exactly; complex replacements still fall back to a full walk.
         if (isReplace)
         {
-            return ChargeValue(context, updated);
+            return ValueShapeCache.TryChargeScalarMapReplace(context, typedMap, updated)
+                ? updated
+                : ChargeValue(context, updated);
         }
 
         ValueShapeCache.ChargeMapInsert(context, typedMap, key, value, updated, typedMap.Values.Count + 1);
@@ -73,14 +75,18 @@ internal static class CompiledMapRuntime
     internal static SandboxValue Remove(SandboxContext context, SandboxValue map, SandboxValue key)
     {
         // Source map is already validated and immutable, so trust its entries (as reads and map.set do) and
-        // validate only the key. The result still uses a full shape charge because removal changes an
-        // existing subtree set and cannot be composed forward from the source shape without subtracting.
+        // validate only the key. Zero-shape scalar maps can subtract the removed entry exactly; complex maps
+        // still fall back to a full shape walk because removal can change nested maxima.
         var typedMap = AsMapReadOnly(map);
         RequireType(key, typedMap.KeyType, "map key type mismatch");
         context.ChargeFuel(SandboxCollectionFuel.Copy(typedMap.Values.Count));
-        var count = typedMap.Values.ContainsKey(key) ? typedMap.Values.Count - 1 : typedMap.Values.Count;
+        var keyWasPresent = typedMap.Values.ContainsKey(key);
+        var count = keyWasPresent ? typedMap.Values.Count - 1 : typedMap.Values.Count;
         context.ChargeAllocation(SandboxCollectionFuel.AllocationBytes(count, 32, minimumOne: true));
-        return ChargeValue(context, typedMap.RemoveEntry(key));
+        var removed = typedMap.RemoveEntry(key);
+        return ValueShapeCache.TryChargeScalarMapRemove(context, typedMap, removed, keyWasPresent)
+            ? removed
+            : ChargeValue(context, removed);
     }
 
     // Read-only map operations only need the runtime kind, not a recursive re-walk

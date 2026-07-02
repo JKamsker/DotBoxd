@@ -29,7 +29,7 @@ internal sealed class RpcPeerFrameProcessor
 
     public async ValueTask<bool> ShouldDisposeAsync(RpcFrame frame, CancellationToken ct)
     {
-        if (!MessageFramer.TryReadFrameHeader(frame.Memory, out var messageId, out var messageType))
+        if (!MessageFrameReader.TryReadFrameHeaderUnchecked(frame.Memory, out var messageId, out var messageType))
         {
             _protocolError(0, default, "Malformed frame header.", null);
             return true;
@@ -43,12 +43,33 @@ internal sealed class RpcPeerFrameProcessor
             case MessageType.Request:
                 return !await _inbound.AcceptRequestAsync(frame, messageId, ct).ConfigureAwait(false);
             case MessageType.Cancel:
+                if (messageId == 0 || frame.Length != MessageFramer.HeaderSize)
+                {
+                    _protocolError(messageId, messageType, "Malformed cancel frame.", null);
+                    return true;
+                }
+
                 _inbound.Cancel(messageId);
                 return true;
             case MessageType.StreamCancel:
-                _streams.CancelOutbound(messageId);
+                if (!RpcStreamControlFrameReader.TryRead(
+                        frame.Memory,
+                        MessageType.StreamCancel,
+                        out var streamCancelId))
+                {
+                    _protocolError(messageId, messageType, "Malformed stream cancel frame.", null);
+                    return true;
+                }
+
+                _streams.CancelOutbound(streamCancelId);
                 return true;
             case MessageType.StreamItem:
+                if (messageId == 0)
+                {
+                    _protocolError(messageId, messageType, "Malformed stream item frame.", null);
+                    return true;
+                }
+
                 var itemFrame = frame.DetachPayload();
                 if (_streams.TryAcceptItem(messageId, itemFrame))
                 {
@@ -65,12 +86,17 @@ internal sealed class RpcPeerFrameProcessor
                     return true;
                 }
 
-                _streams.CompleteInbound(streamId);
+                if (!_streams.TryCompleteInbound(streamId))
+                {
+                    _protocolError(messageId, messageType, "Unknown stream id.", null);
+                }
+
                 return true;
             case MessageType.StreamError:
-                if (!_streams.TryCompleteInboundError(frame.Memory))
+                if (!_streams.TryCompleteInboundError(frame.Memory, out var malformed))
                 {
-                    _protocolError(messageId, messageType, "Malformed stream error frame.", null);
+                    var message = malformed ? "Malformed stream error frame." : "Unknown stream id.";
+                    _protocolError(messageId, messageType, message, null);
                 }
 
                 return true;

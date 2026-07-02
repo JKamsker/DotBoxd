@@ -148,9 +148,9 @@ public static class PluginDiagnosticCodes
             "Live setting parameters are missing, misnamed, mistyped, or out of order at the end of the entrypoint.",
             "Append each live setting as a trailing parameter with the exact declared name and type."),
         new("DBXK036", PluginDiagnosticPhase.RuntimeEntrypoint, PluginDiagnosticAudience.HostOperator,
-            "An event value writer reports a value count that does not match the registered adapter parameters.",
-            "The host-provided IPluginEventValueWriter<TEvent> returns a different EventValueCount than its Parameters count.",
-            "Make EventValueCount match the adapter Parameters count so reusable event-value buffers can be built safely."),
+            "An event adapter reports values that do not match the registered adapter parameters.",
+            "The host-provided IPluginEventAdapter<TEvent> returns a mismatched value count or a value with the wrong SandboxType.",
+            "Make each adapter value and IPluginEventValueWriter EventValueCount match the adapter Parameters exactly."),
         new("DBXK040", PluginDiagnosticPhase.PackageValidation, PluginDiagnosticAudience.PluginAuthor,
             "The manifest declares an unsupported effect, or declares no verified effects at all.",
             "An effect name is not a known SandboxEffect, or the manifest effect set is empty.",
@@ -236,9 +236,13 @@ public static class PluginDiagnosticCodes
             "The verified RPC entrypoint's return type is not a supported sandbox type (scalar, list, or record).",
             "Return a supported scalar, a List of one, or a DTO/record built from supported field types."),
         new("DBXK073", PluginDiagnosticPhase.PackageValidation, PluginDiagnosticAudience.PluginAuthor,
-            "A kernel RPC service manifest also declares hook subscriptions.",
-            "RPC packages are request/response entrypoints and must not be installable as event hook kernels in the same manifest.",
+            "A package manifest mixes hook and RPC entrypoint shapes.",
+            "RPC packages are request/response entrypoints, hook packages are event subscriptions, and a single manifest cannot be both.",
             "Remove subscriptions from the RPC manifest, or package the event hook kernel separately without rpcEntrypoint."),
+        new("DBXK074", PluginDiagnosticPhase.PackageValidation, PluginDiagnosticAudience.PluginAuthor,
+            "A server extension package has entrypoint aliases that do not match rpcEntrypoint.",
+            "The package manifest names one rpcEntrypoint, but the package entrypoint aliases still point at hook-style ShouldHandle/Handle functions.",
+            "Regenerate the server-extension package so ShouldHandle and Handle both alias the manifest rpcEntrypoint."),
     ];
 
     private static readonly IReadOnlyDictionary<string, PluginDiagnosticReference> ReferencesByCode =

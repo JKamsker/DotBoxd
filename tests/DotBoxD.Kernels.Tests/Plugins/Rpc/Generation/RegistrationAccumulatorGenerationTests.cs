@@ -132,4 +132,157 @@ public sealed class RegistrationAccumulatorGenerationTests
             diagnostic => diagnostic.Id == "DBXK100" &&
                           diagnostic.GetMessage().Contains("has no public child control property", StringComparison.Ordinal));
     }
+
+    [Theory]
+    [InlineData("Task")]
+    [InlineData("ValueTask")]
+    public void Registration_method_without_result_payload_reports_diagnostic(string returnType)
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics($$"""
+            using System.Threading.Tasks;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            [GeneratePluginRegistrationAccumulator("ServiceRegistrationAccumulator", "Replace")]
+            internal sealed class RemoteServiceControl
+            {
+                public {{returnType}} Replace<TService, TKernel>()
+                    where TService : class
+                    where TKernel : class, TService
+                    => {{returnType}}.CompletedTask;
+            }
+            """);
+
+        Assert.Contains(
+            diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains(returnType, StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            diagnostics,
+            diagnostic => diagnostic.Id.StartsWith("CS", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("private")]
+    [InlineData("protected")]
+    [InlineData("private protected")]
+    public void Inaccessible_registration_method_reports_diagnostic(string accessibility)
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics($$"""
+            using System.Threading.Tasks;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            [GeneratePluginRegistrationAccumulator("ServiceRegistrationAccumulator", "Replace")]
+            internal class RemoteServiceControl
+            {
+                {{accessibility}} ValueTask<string> Replace<TService, TKernel>()
+                    where TService : class
+                    where TKernel : class, TService
+                    => ValueTask.FromResult("service");
+            }
+            """);
+
+        Assert.Contains(
+            diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains("must be accessible", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            diagnostics,
+            diagnostic => diagnostic.Id.StartsWith("CS", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("target")]
+    [InlineData("root")]
+    public void Generated_accumulator_name_collision_reports_diagnostic(string kind)
+    {
+        var source = kind == "target"
+            ? """
+                using System.Threading.Tasks;
+                using DotBoxD.Abstractions;
+
+                namespace Sample;
+
+                internal sealed class ServiceRegistrationAccumulator
+                {
+                }
+
+                [GeneratePluginRegistrationAccumulator("ServiceRegistrationAccumulator", "Replace")]
+                internal sealed class RemoteServiceControl
+                {
+                    public ValueTask<string> Replace<TService, TKernel>()
+                        where TService : class
+                        where TKernel : class, TService
+                        => ValueTask.FromResult("service");
+                }
+                """
+            : """
+                using DotBoxD.Abstractions;
+
+                namespace Sample;
+
+                internal sealed class WorldRegistrationAccumulator
+                {
+                }
+
+                [GeneratePluginRegistrationRootAccumulator("WorldRegistrationAccumulator")]
+                internal sealed class RemoteWorldControl
+                {
+                    public RemoteMonsterControl Monsters { get; } = new();
+                }
+
+                [GeneratePluginRegistrationAccumulator("RemoteMonsterExtensionAccumulator", "Extend")]
+                internal sealed class RemoteMonsterControl
+                {
+                    public System.Threading.Tasks.ValueTask<string> Extend<TService, TKernel>()
+                        where TService : class
+                        where TKernel : class
+                        => System.Threading.Tasks.ValueTask.FromResult("extension");
+                }
+                """;
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics(source);
+
+        Assert.Contains(
+            diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains("collides", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            diagnostics,
+            diagnostic => diagnostic.Id.StartsWith("CS", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Generated_accumulator_name_allows_generic_sibling_with_same_metadata_name()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
+            using System.Threading.Tasks;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            internal sealed class ServiceRegistrationAccumulator<T>
+            {
+            }
+
+            [GeneratePluginRegistrationAccumulator("ServiceRegistrationAccumulator", "Replace")]
+            internal sealed class RemoteServiceControl
+            {
+                public ValueTask<string> Replace<TService, TKernel>()
+                    where TService : class
+                    where TKernel : class, TService
+                    => ValueTask.FromResult("service");
+            }
+            """);
+
+        Assert.DoesNotContain(
+            diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains("collides", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            diagnostics,
+            diagnostic => diagnostic.Id.StartsWith("CS", StringComparison.Ordinal));
+    }
 }

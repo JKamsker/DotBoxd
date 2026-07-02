@@ -10,11 +10,7 @@ internal sealed partial class RpcStreamManager
 {
     public RpcStreamReceiver GetRegisteredInbound(RpcStreamHandle handle)
     {
-        if (handle.StreamId == 0)
-        {
-            throw new ServiceProtocolException("Stream id must not be zero.");
-        }
-
+        RpcStreamValidation.ValidateStreamId(handle.StreamId);
         RpcStreamValidation.ValidateKind(handle.Kind);
         if (!_receivers.TryGetValue(handle.StreamId, out var existing))
         {
@@ -92,11 +88,7 @@ internal sealed partial class RpcStreamManager
 
     private RpcStreamReceiver RegisterInbound(RpcStreamHandle handle, CancellationToken ct)
     {
-        if (handle.StreamId == 0)
-        {
-            throw new ServiceProtocolException("Stream id must not be zero.");
-        }
-
+        RpcStreamValidation.ValidateStreamId(handle.StreamId);
         RpcStreamValidation.ValidateKind(handle.Kind);
         var receiver = new RpcStreamReceiver(this, handle);
         lock (_inboundGate)
@@ -136,46 +128,47 @@ internal sealed partial class RpcStreamManager
             _canceledInbound.TryConsumeItem(streamId, frame);
     }
 
-    public void CompleteInbound(int streamId) => CompleteInbound(streamId, error: null);
+    public bool TryCompleteInbound(int streamId) => TryCompleteInbound(streamId, error: null);
 
-    public void CompleteInbound(int streamId, Exception? error)
+    public void CompleteInbound(int streamId) => _ = TryCompleteInbound(streamId);
+
+    public void CompleteInbound(int streamId, Exception? error) =>
+        _ = TryCompleteInbound(streamId, error);
+
+    private bool TryCompleteInbound(int streamId, Exception? error)
     {
         lock (_inboundGate)
         {
             if (_receivers.TryGetValue(streamId, out var receiver))
             {
                 receiver.Complete(error);
-                return;
+                return true;
             }
 
-            _canceledInbound.Remove(streamId);
+            return _canceledInbound.TryRemove(streamId);
         }
     }
 
     public bool TryCompleteInboundError(Payload frame) =>
         TryCompleteInboundError(frame.Memory);
 
-    public bool TryCompleteInboundError(ReadOnlyMemory<byte> frame)
+    public bool TryCompleteInboundError(ReadOnlyMemory<byte> frame) =>
+        TryCompleteInboundError(frame, out _);
+
+    public bool TryCompleteInboundError(ReadOnlyMemory<byte> frame, out bool malformed)
     {
+        malformed = false;
         if (!RpcStreamErrorFrameReader.TryRead(frame, _serializer, out var streamId, out var response))
         {
+            malformed = true;
             return false;
         }
 
-        lock (_inboundGate)
-        {
-            if (_canceledInbound.TryRemove(streamId))
-            {
-                return true;
-            }
-        }
-
-        CompleteInbound(
+        return TryCompleteInbound(
             streamId,
             new RemoteServiceException(
                 response.ErrorMessage ?? "Remote stream failed.",
                 response.ErrorType ?? "Unknown"));
-        return true;
     }
 
     public void RemoveInbound(int streamId) => AbortInbound(streamId);

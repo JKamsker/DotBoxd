@@ -11,7 +11,7 @@ namespace Snap.Two
     {
         private readonly global::Snap.Two.IOne? _service;
 
-        internal OneDispatcher()
+        public OneDispatcher()
         {
         }
 

@@ -1,5 +1,7 @@
 using System.Globalization;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 
@@ -28,6 +30,28 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     }
 
     internal static string Var(string name) => Obj(("var", Str(name)));
+
+    private static string JsonBinaryOperator(BinaryExpressionSyntax binary)
+        => binary.Kind() switch
+        {
+            SyntaxKind.AddExpression => "add",
+            SyntaxKind.SubtractExpression => "sub",
+            SyntaxKind.MultiplyExpression => "mul",
+            SyntaxKind.DivideExpression => "div",
+            SyntaxKind.ModuloExpression => "rem",
+            SyntaxKind.EqualsExpression => "eq",
+            SyntaxKind.NotEqualsExpression => "ne",
+            SyntaxKind.LessThanExpression => "lt",
+            SyntaxKind.LessThanOrEqualExpression => "lte",
+            SyntaxKind.GreaterThanExpression => "gt",
+            SyntaxKind.GreaterThanOrEqualExpression => "gte",
+            SyntaxKind.LogicalAndExpression => "and",
+            SyntaxKind.LogicalOrExpression => "or",
+            _ => throw new NotSupportedException($"Server extension operator '{binary.OperatorToken.ValueText}' is not supported.")
+        };
+
+    internal static string RecordGet(string receiver, int index)
+        => Call("record.get", null, receiver, I32(index));
 
     private static string Unit() => Obj(("unit", "true"));
 

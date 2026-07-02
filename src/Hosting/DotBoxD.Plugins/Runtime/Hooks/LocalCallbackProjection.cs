@@ -1,5 +1,6 @@
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Plugins.Kernel;
+using DotBoxD.Plugins.Runtime.Input;
 using DotBoxD.Plugins.Runtime.Rpc;
 
 namespace DotBoxD.Plugins.Runtime.Hooks;
@@ -138,6 +139,7 @@ internal static class LocalCallbackProjection
         var writer = (IPluginEventValueWriter<TEvent>)adapter;
         var values = new SandboxValue[writer.EventValueCount];
         writer.CopySandboxValues(e, values, 0);
+        PluginEventAdapterValueValidator.ValidateCopiedValues(writer, values, 0);
         return SandboxValue.FromOwnedRecord(values);
     }
 

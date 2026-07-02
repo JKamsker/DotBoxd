@@ -1,37 +1,37 @@
 using DotBoxD.Kernels.Model;
-using DotBoxD.Kernels.Sandbox;
 
 namespace DotBoxD.Plugins.Runtime.Validation;
-
-using DotBoxD.Kernels;
 
 internal static class PluginManifestCapabilityValidator
 {
     public static void Validate(
         PluginManifest manifest,
+        SandboxModule module,
         ExecutionPlan plan,
         IReadOnlyList<string> entrypoints,
-        List<SandboxDiagnostic> diagnostics)
+        List<SandboxDiagnostic> diagnostics,
+        bool allowNonBindingCapabilities = true,
+        bool includeModuleNonBindingCapabilities = true)
     {
         var declared = new HashSet<string>(manifest.RequiredCapabilities, StringComparer.Ordinal);
         var expected = RequiredCapabilities(plan, entrypoints);
-        var comparableDeclared = declared
-            .Where(capability => expected.Contains(capability) || IsKnownSandboxCapability(capability, plan))
-            .ToHashSet(StringComparer.Ordinal);
+        AddModuleNonBindingRequiredCapabilities(module, expected, includeModuleNonBindingCapabilities);
+        var missing = expected
+            .Except(declared, StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        var extra = declared
+            .Except(expected, StringComparer.Ordinal)
+            .Where(capability => !allowNonBindingCapabilities || !IsKnownNonBindingCapability(capability))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
         if (declared.Count == manifest.RequiredCapabilities.Count &&
-            comparableDeclared.SetEquals(expected))
+            missing.Length == 0 &&
+            extra.Length == 0)
         {
             return;
         }
 
-        var missing = expected
-            .Except(comparableDeclared, StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-        var extra = comparableDeclared
-            .Except(expected, StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
         var details = new List<string>();
         if (missing.Length > 0)
         {
@@ -58,55 +58,74 @@ internal static class PluginManifestCapabilityValidator
             message));
     }
 
+    public static IEnumerable<string> ModuleNonBindingRequiredCapabilities(SandboxModule module)
+    {
+        if (!module.Metadata.TryGetValue(PluginManifestNames.ModuleMetadata.RequiredCapabilities, out var metadata) ||
+            string.IsNullOrWhiteSpace(metadata))
+        {
+            yield break;
+        }
+
+        foreach (var capability in metadata.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (IsKnownNonBindingCapability(capability))
+            {
+                yield return capability;
+            }
+        }
+    }
+
+    public static void ValidateRequiredCapabilityGrants(
+        PluginManifest manifest,
+        SandboxModule module,
+        SandboxPolicy installPolicy,
+        List<SandboxDiagnostic> diagnostics,
+        bool includeModuleNonBindingCapabilities = true)
+    {
+        var now = installPolicy.GrantClock;
+        var required = new HashSet<string>(manifest.RequiredCapabilities, StringComparer.Ordinal);
+        AddModuleNonBindingRequiredCapabilities(module, required, includeModuleNonBindingCapabilities);
+        foreach (var capability in required)
+        {
+            if (string.Equals(capability, RuntimeCapabilityIds.Async, StringComparison.Ordinal) ||
+                installPolicy.GrantsCapability(capability, now))
+            {
+                continue;
+            }
+
+            diagnostics.Add(new SandboxDiagnostic(
+                "E-POLICY-CAP",
+                $"required capability '{capability}' is not granted"));
+        }
+    }
+
     private static HashSet<string> RequiredCapabilities(ExecutionPlan plan, IReadOnlyList<string> entrypoints)
     {
         var required = new HashSet<string>(StringComparer.Ordinal);
         foreach (var entrypoint in entrypoints)
         {
-            if (!plan.BindingReferences.TryGetValue(entrypoint, out var references))
-            {
-                continue;
-            }
-
-            foreach (var bindingId in references)
-            {
-                if (!plan.Bindings.TryGet(bindingId, out var binding))
-                {
-                    continue;
-                }
-
-                if (binding.RequiredCapability is not null)
-                {
-                    required.Add(binding.RequiredCapability);
-                }
-
-                if (binding.IsAsync || (binding.Effects & SandboxEffect.Concurrency) != 0)
-                {
-                    required.Add(RuntimeCapabilityIds.Async);
-                }
-            }
+            required.UnionWith(plan.GetEntrypointMetadata(entrypoint).RequiredCapabilities);
         }
 
         return required;
     }
 
-    private static bool IsKnownSandboxCapability(string capability, ExecutionPlan plan)
+    private static void AddModuleNonBindingRequiredCapabilities(
+        SandboxModule module,
+        HashSet<string> capabilities,
+        bool include)
     {
-        if (capability is "file.read" or "file.write" or "time.now" or "random" or "log.write" ||
-            string.Equals(capability, RuntimeCapabilityIds.Async, StringComparison.Ordinal) ||
-            string.Equals(capability, RuntimeCapabilityIds.Reentrant, StringComparison.Ordinal))
+        if (!include)
         {
-            return true;
+            return;
         }
 
-        foreach (var binding in plan.Bindings.Signatures)
+        foreach (var capability in ModuleNonBindingRequiredCapabilities(module))
         {
-            if (string.Equals(binding.RequiredCapability, capability, StringComparison.Ordinal))
-            {
-                return true;
-            }
+            capabilities.Add(capability);
         }
-
-        return false;
     }
+
+    private static bool IsKnownNonBindingCapability(string capability)
+        => capability.StartsWith("event.read.", StringComparison.Ordinal);
 }

@@ -32,9 +32,9 @@ internal static partial class ProxyGenerator
                 : ProxyGenerationHelpers.GetWireType(method.UnwrappedReturnType);
         var requestParameters = ProxyGenerationHelpers.GetRequestParameters(method.Parameters, ct);
         var streamSetup = ProxyStreamSetupEmitter.Emit(sb, method, requestParameters, locals, ct, indent);
-        var streamArray = streamSetup.ArrayName;
+        var streamArgument = streamSetup.ArgumentName;
         var useStreamAwareTaskValueInvocation =
-            streamArray is not null && (method.ReturnKind is MethodReturnKind.ValueTask or MethodReturnKind.ValueTaskOf);
+            streamArgument is not null && (method.ReturnKind is MethodReturnKind.ValueTask or MethodReturnKind.ValueTaskOf);
         var svc = service.ServiceName;
         var rpc = method.RpcName;
         var singletonMethod = GetInvokerMethod(
@@ -64,8 +64,8 @@ internal static partial class ProxyGenerator
             var wireType = ProxyGenerationHelpers.GetWireType(p);
             var wireArgument = GetWireArgument(p, requestIndex: 0, streamSetup.Handles);
             typeArgs = BuildTypeArgs(method.ReturnKind, wireType, returnType, hasReturn);
-            var streamArg = NeedsStreamArrayArgument(method.ReturnKind, streamArray)
-                ? $", {streamArray ?? "null"}"
+            var streamArg = NeedsStreamArgument(method.ReturnKind, streamArgument)
+                ? $", {streamArgument ?? NullStreamArray()}"
                 : string.Empty;
             callArgs = $"\"{svc}\", \"{rpc}\", {wireArgument}{streamArg}, {ctArg}";
             callArgsInst = $"\"{svc}\", this._instanceId!, \"{rpc}\", {wireArgument}{streamArg}, {ctArg}";
@@ -88,8 +88,8 @@ internal static partial class ProxyGenerator
             }
 
             typeArgs = BuildTypeArgs(method.ReturnKind, $"({tupleTypes})", returnType, hasReturn);
-            var streamArg = NeedsStreamArrayArgument(method.ReturnKind, streamArray)
-                ? $", {streamArray ?? "null"}"
+            var streamArg = NeedsStreamArgument(method.ReturnKind, streamArgument)
+                ? $", {streamArgument ?? NullStreamArray()}"
                 : string.Empty;
             callArgs = $"\"{svc}\", \"{rpc}\", ({tupleValues}){streamArg}, {ctArg}";
             callArgsInst = $"\"{svc}\", this._instanceId!, \"{rpc}\", ({tupleValues}){streamArg}, {ctArg}";
@@ -137,8 +137,11 @@ internal static partial class ProxyGenerator
         return hasReturn ? $"<{requestType}, {returnType}>" : $"<{requestType}>";
     }
 
-    private static bool NeedsStreamArrayArgument(MethodReturnKind returnKind, string? streamArray) =>
-        streamArray is not null ||
+    private static string NullStreamArray() =>
+        $"({ServicesGeneratorTypeNames.ArrayOf(ServicesGeneratorTypeNames.GlobalRpcStreamAttachment)}?)null";
+
+    private static bool NeedsStreamArgument(MethodReturnKind returnKind, string? streamArgument) =>
+        streamArgument is not null ||
         NamingHelpers.IsStreamReturn(returnKind) ||
         NamingHelpers.IsPipeReturn(returnKind) ||
         NamingHelpers.IsAsyncEnumerableReturn(returnKind);
@@ -158,12 +161,16 @@ internal static partial class ProxyGenerator
     {
         if (NamingHelpers.IsStreamReturn(returnKind))
         {
-            return isInstanceScoped ? "InvokeStreamOnInstanceAsync" : "InvokeStreamAsync";
+            return isInstanceScoped
+                ? ServicesGeneratorMemberNames.RpcInvoker.InvokeStreamOnInstanceAsync
+                : ServicesGeneratorMemberNames.RpcInvoker.InvokeStreamAsync;
         }
 
         if (NamingHelpers.IsPipeReturn(returnKind))
         {
-            return isInstanceScoped ? "InvokePipeOnInstanceAsync" : "InvokePipeAsync";
+            return isInstanceScoped
+                ? ServicesGeneratorMemberNames.RpcInvoker.InvokePipeOnInstanceAsync
+                : ServicesGeneratorMemberNames.RpcInvoker.InvokePipeAsync;
         }
 
         if (NamingHelpers.IsAsyncEnumerableReturn(returnKind))
@@ -171,16 +178,20 @@ internal static partial class ProxyGenerator
             var eager = returnKind == MethodReturnKind.TaskOfAsyncEnumerable ||
                 returnKind == MethodReturnKind.ValueTaskOfAsyncEnumerable;
             return isInstanceScoped
-                ? eager ? "InvokeAsyncEnumerableOnInstanceAsync" : "InvokeAsyncEnumerableOnInstance"
-                : eager ? "InvokeAsyncEnumerableAsync" : "InvokeAsyncEnumerable";
+                ? eager ? ServicesGeneratorMemberNames.RpcInvoker.InvokeAsyncEnumerableOnInstanceAsync : ServicesGeneratorMemberNames.RpcInvoker.InvokeAsyncEnumerableOnInstance
+                : eager ? ServicesGeneratorMemberNames.RpcInvoker.InvokeAsyncEnumerableAsync : ServicesGeneratorMemberNames.RpcInvoker.InvokeAsyncEnumerable;
         }
 
         if (returnKind is MethodReturnKind.ValueTask or MethodReturnKind.ValueTaskOf &&
             !useStreamAwareTaskValueInvocation)
         {
-            return isInstanceScoped ? "InvokeValueOnInstanceAsync" : "InvokeValueAsync";
+            return isInstanceScoped
+                ? ServicesGeneratorMemberNames.RpcInvoker.InvokeValueOnInstanceAsync
+                : ServicesGeneratorMemberNames.RpcInvoker.InvokeValueAsync;
         }
 
-        return isInstanceScoped ? "InvokeOnInstanceAsync" : "InvokeAsync";
+        return isInstanceScoped
+            ? ServicesGeneratorMemberNames.RpcInvoker.InvokeOnInstanceAsync
+            : ServicesGeneratorMemberNames.RpcInvoker.InvokeAsync;
     }
 }

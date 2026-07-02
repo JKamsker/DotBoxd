@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Text.RegularExpressions;
 using DotBoxD.Kernels.Runtime;
 
 namespace DotBoxD.Kernels.Tests.Plugins.Regression.PolicyAndAudit;
@@ -58,5 +60,86 @@ public sealed class Fix_PAL_0027_Tests
         // Assert
         Assert.Equal(clean, result);
         Assert.Same(clean, result);
+    }
+
+    [Fact]
+    public void RedactPathSegments_returns_same_instance_for_clean_path()
+    {
+        var clean = new string("/v1/config/public/status".ToCharArray());
+
+        var result = AuditTextSanitizer.RedactPathSegments(clean);
+
+        Assert.Equal(clean, result);
+        Assert.Same(clean, result);
+    }
+
+    [Fact]
+    public void RedactPathSegments_still_redacts_direct_secret_marker_and_value()
+    {
+        var result = AuditTextSanitizer.RedactPathSegments("/v1/token/abc123/status");
+
+        Assert.Equal("/v1/[redacted]/[redacted]/status", result);
+    }
+
+    [Fact]
+    public void RedactPathSegments_still_redacts_percent_encoded_secret_marker_and_value()
+    {
+        var result = AuditTextSanitizer.RedactPathSegments("/v1/%74%6f%6b%65%6e/abc123/status");
+
+        Assert.Equal("/v1/[redacted]/[redacted]/status", result);
+    }
+
+    [Fact]
+    public void RedactPathSegments_prefilter_preserves_regex_unicode_case_folding()
+    {
+        var result = AuditTextSanitizer.RedactPathSegments("/v1/\u212Aey=cleanvalue/status");
+
+        Assert.Equal("/v1/[redacted]/status", result);
+    }
+
+    [Fact]
+    public void RedactPathSegments_standalone_marker_preserves_regex_unicode_case_folding()
+    {
+        var result = AuditTextSanitizer.RedactPathSegments("/v1/\u212Aey/abc123/status");
+
+        Assert.Equal("/v1/[redacted]/[redacted]/status", result);
+    }
+
+    [Theory]
+    [MemberData(nameof(SecretPathSegmentRegexMarkers))]
+    public void RedactPathSegments_prefilter_recognizes_every_regex_marker(string marker)
+    {
+        var result = AuditTextSanitizer.RedactPathSegments($"/v1/{marker}/abc123/status");
+
+        Assert.Equal("/v1/[redacted]/[redacted]/status", result);
+    }
+
+    public static TheoryData<string> SecretPathSegmentRegexMarkers()
+    {
+        const string prefix = "(?i)(^|[-_.])(";
+        const string suffix = ")([-_.=:]|$)";
+        var pattern = SecretPathSegmentRegex().ToString();
+        if (!pattern.StartsWith(prefix, StringComparison.Ordinal) ||
+            !pattern.EndsWith(suffix, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("SecretPathSegmentRegex marker pattern changed.");
+        }
+
+        var markers = pattern[prefix.Length..^suffix.Length].Split('|', StringSplitOptions.RemoveEmptyEntries);
+        var data = new TheoryData<string>();
+        foreach (var marker in markers)
+        {
+            data.Add(marker);
+        }
+
+        return data;
+    }
+
+    private static Regex SecretPathSegmentRegex()
+    {
+        var field = typeof(AuditTextSanitizer).GetField(
+            "SecretPathSegmentRegex",
+            BindingFlags.NonPublic | BindingFlags.Static)!;
+        return (Regex)field.GetValue(null)!;
     }
 }

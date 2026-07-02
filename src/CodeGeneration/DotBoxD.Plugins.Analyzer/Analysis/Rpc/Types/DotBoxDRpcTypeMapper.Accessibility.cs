@@ -16,6 +16,14 @@ internal static partial class DotBoxDRpcTypeMapper
             _ => false
         };
 
+    public static bool IsReadableFromGeneratedCode(RecordMember member, Compilation? compilation = null)
+        => member.Symbol switch
+        {
+            IPropertySymbol { GetMethod: { } getter } => IsAccessibleFromGeneratedCode(getter, compilation),
+            IFieldSymbol field => IsAccessibleFromGeneratedCode(field, compilation),
+            _ => false
+        };
+
     public static bool IsAccessibleFromGeneratedCode(ISymbol symbol, Compilation? compilation)
         => compilation is null
             ? symbol.DeclaredAccessibility == Accessibility.Public

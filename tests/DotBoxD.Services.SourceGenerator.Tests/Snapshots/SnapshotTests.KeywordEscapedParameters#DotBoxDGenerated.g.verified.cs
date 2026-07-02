@@ -7,9 +7,10 @@ namespace DotBoxD.Services.Generated
     /// <summary>
     /// Factory methods for DotBoxD-generated proxies and dispatchers.
     /// </summary>
-    internal static class DotBoxDGenerated
+    public static class DotBoxDGenerated
     {
-        private static readonly global::DotBoxD.Services.Generated.GeneratedMethod[] s_service0Methods =
+        private static readonly global::System.Collections.Generic.IReadOnlyList<global::DotBoxD.Services.Generated.GeneratedMethod> s_service0Methods =
+            global::System.Array.AsReadOnly(new global::DotBoxD.Services.Generated.GeneratedMethod[]
         {
             new global::DotBoxD.Services.Generated.GeneratedMethod(
                 "DoAsync",
@@ -18,7 +19,7 @@ namespace DotBoxD.Services.Generated
                 typeof(int),
                 global::DotBoxD.Services.Generated.GeneratedReturnKind.TaskOfT,
                 false,
-                new global::DotBoxD.Services.Generated.GeneratedParameter[]
+                global::System.Array.AsReadOnly(new global::DotBoxD.Services.Generated.GeneratedParameter[]
                 {
                     new global::DotBoxD.Services.Generated.GeneratedParameter(
                         "class",
@@ -34,10 +35,11 @@ namespace DotBoxD.Services.Generated
                         false,
                         false,
                         null),
-                }),
-        };
+                })),
+        });
 
-        private static readonly global::DotBoxD.Services.Generated.GeneratedService[] s_services =
+        private static readonly global::System.Collections.Generic.IReadOnlyList<global::DotBoxD.Services.Generated.GeneratedService> s_services =
+            global::System.Array.AsReadOnly(new global::DotBoxD.Services.Generated.GeneratedService[]
         {
             new global::DotBoxD.Services.Generated.GeneratedService(
                 typeof(global::Snap.Kw.IKwSnap),
@@ -45,7 +47,7 @@ namespace DotBoxD.Services.Generated
                 typeof(global::Snap.Kw.KwSnapDispatcher),
                 "IKwSnap",
                 s_service0Methods),
-        };
+        });
 
         static DotBoxDGenerated()
         {

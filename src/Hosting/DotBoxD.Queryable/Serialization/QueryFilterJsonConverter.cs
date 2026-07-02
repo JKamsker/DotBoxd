@@ -26,6 +26,7 @@ public sealed class QueryFilterJsonConverter : JsonConverter<QueryFilter>
         ArgumentNullException.ThrowIfNull(writer);
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(options);
+        QueryFilterInvariants.RequireValidShape(value);
 
         writer.WriteStartObject();
         writer.WritePropertyName("kind");
@@ -38,7 +39,7 @@ public sealed class QueryFilterJsonConverter : JsonConverter<QueryFilter>
                 writer.WritePropertyName("op");
                 JsonSerializer.Serialize(writer, value.Operator, options);
                 writer.WritePropertyName("value");
-                JsonSerializer.Serialize(writer, value.Value ?? QueryValue.Null, options);
+                JsonSerializer.Serialize(writer, QueryFilterInvariants.CompareValue(value), options);
                 WriteIgnoreCase(writer, value);
                 break;
             case QueryFilterKind.In:

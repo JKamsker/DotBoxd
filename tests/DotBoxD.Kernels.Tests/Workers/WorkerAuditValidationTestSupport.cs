@@ -144,6 +144,7 @@ internal sealed class AuditForgingWorker(
     Func<ExecutionPlan, SandboxRunId, SandboxAuditEvent> forgeAuditEvent,
     bool AddSummaryExtraField = false,
     Action<Dictionary<string, string>>? MutateSummaryFields = null,
+    Action<List<SandboxAuditEvent>>? MutateAuditEvents = null,
     SandboxValue? Value = null) : ISandboxWorkerClient
 {
     public ValueTask<SandboxExecutionResult> ExecuteInWorkerAsync(
@@ -174,13 +175,15 @@ internal sealed class AuditForgingWorker(
             ResourceId: $"module:{plan.ModuleHash}",
             Fields: summaryFields));
         audit.Write(forgeAuditEvent(plan, runId));
+        var auditEvents = audit.Events.ToList();
+        MutateAuditEvents?.Invoke(auditEvents);
 
         return ValueTask.FromResult(new SandboxExecutionResult
         {
             Succeeded = true,
             Value = Value ?? SandboxValue.FromInt32(35),
             ResourceUsage = budget.Snapshot(),
-            AuditEvents = audit.Events,
+            AuditEvents = auditEvents,
             ActualMode = ExecutionMode.Interpreted,
             ModuleHash = plan.ModuleHash,
             PlanHash = plan.PlanHash,

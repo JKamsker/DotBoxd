@@ -9,7 +9,8 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 /// scoped handle via <c>Get(key)</c> whose method bindings have lowered arity <c>scopeArgs + methodArgs</c> —
 /// the key captured by <c>Get(key)</c> becomes the leading host-call argument. Both the local-variable form
 /// (<c>var h = control.Get(key); h.Method(...)</c>) and the inline form (<c>control.Get(key).Method(...)</c>)
-/// capture the same key and lower identically.
+/// capture the same key and lower identically. A handle local can also be copied to another local; the alias
+/// remains a scoped handle over the original key.
 /// </summary>
 internal sealed partial class DotBoxDRpcJsonLowerer
 {
@@ -42,12 +43,37 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         if (value is not InvocationExpressionSyntax invocation ||
             !TryGetServiceHandleAccessor(invocation, out var handleId, output))
         {
-            return false;
+            if (TryResolveScopeHandleAlias(value) is not { } aliasHandleId)
+            {
+                return false;
+            }
+
+            handleId = aliasHandleId;
         }
 
         _serviceHandleLocals[localName] = handleId;
         output.Add(SetStatement(localName, handleId));
         return true;
+    }
+
+    private void LowerServiceHandleScopedBlock(BlockSyntax block, List<string> output)
+    {
+        var previous = new Dictionary<string, string>(_serviceHandleLocals, StringComparer.Ordinal);
+        try
+        {
+            foreach (var inner in block.Statements)
+            {
+                LowerStatement(inner, output);
+            }
+        }
+        finally
+        {
+            _serviceHandleLocals.Clear();
+            foreach (var local in previous)
+            {
+                _serviceHandleLocals.Add(local.Key, local.Value);
+            }
+        }
     }
 
     /// <summary>
@@ -63,13 +89,40 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         => receiver switch
         {
             ParenthesizedExpressionSyntax parenthesized => TryResolveScopeHandle(parenthesized.Expression),
+            CastExpressionSyntax cast => TryResolveScopeHandle(cast.Expression),
             IdentifierNameSyntax identifier
                 when _serviceHandleLocals.TryGetValue(identifier.Identifier.ValueText, out var localHandleId)
                 => localHandleId,
+            MemberAccessExpressionSyntax member when TryResolveServiceHandleMember(member) is { } memberHandleId
+                => memberHandleId,
             InvocationExpressionSyntax accessor when TryGetServiceHandleAccessor(accessor, out var inlineHandleId)
                 => inlineHandleId,
             _ => null
         };
+
+    private string? TryResolveScopeHandleAlias(ExpressionSyntax value)
+        => value switch
+        {
+            ParenthesizedExpressionSyntax parenthesized => TryResolveScopeHandleAlias(parenthesized.Expression),
+            CastExpressionSyntax cast => TryResolveScopeHandleAlias(cast.Expression),
+            IdentifierNameSyntax identifier
+                when _serviceHandleLocals.TryGetValue(identifier.Identifier.ValueText, out var localHandleId)
+                => localHandleId,
+            MemberAccessExpressionSyntax member when TryResolveServiceHandleMember(member) is { } memberHandleId
+                => memberHandleId,
+            _ => null
+        };
+
+    private string? TryResolveServiceHandleMember(MemberAccessExpressionSyntax member)
+    {
+        if (!IsThisOrBaseExpression(member.Expression) ||
+            _model.GetSymbolInfo(member, _cancellationToken).Symbol is not { } symbol)
+        {
+            return null;
+        }
+
+        return _serviceHandleMembers.TryGetValue(symbol, out var handleId) ? handleId : null;
+    }
 
     /// <summary>
     /// Recognizes a scoped-handle accessor call — <c>control.Get(key)</c> whose return type is a
@@ -96,9 +149,16 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 $"Scoped service handle accessor '{method.Name}' must pass exactly one scope argument.");
         }
 
+        var scopeArgument = invocation.ArgumentList.Arguments[0];
+        if (scopeArgument.RefKindKeyword.ValueText.Length != 0)
+        {
+            throw new NotSupportedException(
+                $"Scoped service handle accessor '{method.Name}' cannot use ref, in, or out arguments.");
+        }
+
         handleId = output is null
-            ? LowerExpression(invocation.ArgumentList.Arguments[0].Expression)
-            : LowerExpressionWithPrelude(invocation.ArgumentList.Arguments[0].Expression, output);
+            ? LowerExpression(scopeArgument.Expression)
+            : LowerExpressionWithPrelude(scopeArgument.Expression, output);
         return true;
     }
 
@@ -107,4 +167,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
            method.Arity == 1 &&
            method.ContainingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ==
            "global::DotBoxD.Abstractions.HookContext";
+
+    private static bool IsThisOrBaseExpression(ExpressionSyntax expression)
+        => expression is ThisExpressionSyntax or BaseExpressionSyntax;
 }

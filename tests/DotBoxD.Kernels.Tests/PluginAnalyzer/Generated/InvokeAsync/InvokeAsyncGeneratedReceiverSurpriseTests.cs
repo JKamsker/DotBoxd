@@ -63,6 +63,7 @@ public sealed partial class InvokeAsyncGeneratedReceiverSurpriseTests
 
         Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
         Assert.Contains("\\\"returnType\\\":\\\"I64\\\"", source, StringComparison.Ordinal);
+        Assert.Contains("numeric.toI64", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -86,6 +87,7 @@ public sealed partial class InvokeAsyncGeneratedReceiverSurpriseTests
 
         Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
         Assert.Contains("\\\"returnType\\\":{\\\"name\\\":\\\"Record\\\",\\\"arguments\\\":[\\\"I64\\\"", source, StringComparison.Ordinal);
+        Assert.Contains("numeric.toI64", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -97,6 +99,22 @@ public sealed partial class InvokeAsyncGeneratedReceiverSurpriseTests
                     {
                         return world.GetHealth("monster-1");
                     });
+            """));
+        var source = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
+        Assert.Contains("AnonymousInvokeAsync", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Generated_receiver_lowers_simple_block_lambda_InvokeAsync()
+    {
+        var result = RunGeneratorAndAssertCompiles(UsageSource("""
+            public static ValueTask<int> Run(RemotePluginServer kernels)
+                => kernels.InvokeAsync(async world =>
+                {
+                    return world.GetHealth("monster-1");
+                });
             """));
         var source = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
 
@@ -194,6 +212,32 @@ public sealed partial class InvokeAsyncGeneratedReceiverSurpriseTests
 
         Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "DBXK100");
         Assert.Contains("captures.LastHealth =", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Explicit_capture_bag_alias_reassignment_reports_DBXK100()
+    {
+        var result = RunGenerator(UsageSource("""
+            public sealed class Capture
+            {
+                public string MonsterId { get; set; } = "";
+                public int LastHealth { get; set; }
+            }
+
+            public static ValueTask<int> Run(RemotePluginServer kernels, Capture captures)
+                => kernels.InvokeAsync(captures, async (IGameWorldAccess world, Capture bag) =>
+                {
+                    var alias = bag;
+                    alias = new Capture { MonsterId = bag.MonsterId, LastHealth = 0 };
+                    alias.LastHealth = world.GetHealth(bag.MonsterId);
+                    return bag.LastHealth;
+                });
+            """));
+
+        Assert.Contains(
+            result.Diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains("capture alias 'alias'", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -22,15 +22,21 @@ public sealed class GamePluginRemoteSettingsTests
         var serverType = plugin.GetType(
             "DotBoxD.Kernels.Game.Plugin.GamePluginServer",
             throwOnError: true)!;
+        var builderType = plugin.GetType(
+            "DotBoxD.Kernels.Game.Plugin.GamePluginServerBuilder",
+            throwOnError: true)!;
+        var serviceType = abstractions.GetType(
+            "DotBoxD.Kernels.Game.Server.Abstractions.IMonsterAggroService",
+            throwOnError: true)!;
         var control = DispatchProxy.Create(controlType, typeof(CapturingControlProxy));
         var world = DispatchProxy.Create(worldType, typeof(NoopProxy));
         var capture = (CapturingControlProxy)control;
-        var server = Activator.CreateInstance(
-            serverType,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-            binder: null,
-            args: [control, world],
-            culture: null)!;
+        var server = await BuildStartedServer(
+            builderType,
+            control,
+            world,
+            serviceType,
+            kernelType);
         var getHandle = serverType
             .GetMethod("Get", BindingFlags.Instance | BindingFlags.Public)!
             .MakeGenericMethod(kernelType);
@@ -49,6 +55,53 @@ public sealed class GamePluginRemoteSettingsTests
         var update = Assert.Single(capture.Updates);
         Assert.Equal("AggroRange", update.Name);
         Assert.Equal("6", update.Value);
+    }
+
+    private static async Task<object> BuildStartedServer(
+        Type builderType,
+        object control,
+        object world,
+        Type serviceType,
+        Type kernelType)
+    {
+        var builder = builderType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(method => method.Name == "FromConnection" && method.GetParameters().Length == 2)
+            .Invoke(null, [control, world])!;
+        var setup = builder.GetType().GetMethod("Setup", BindingFlags.Public | BindingFlags.Instance)!;
+        var setupActionType = setup.GetParameters()[0].ParameterType;
+        var setupType = setupActionType.GetGenericArguments()[0];
+        var configure = CreateSetupDelegate(setupActionType, setupType, serviceType, kernelType);
+        setup.Invoke(builder, [configure]);
+
+        var server = builder.GetType().GetMethod("Build", BindingFlags.Public | BindingFlags.Instance)!
+            .Invoke(builder, null)!;
+        var start = server.GetType().GetMethod("StartAsync", BindingFlags.Public | BindingFlags.Instance)!;
+        await AwaitValueTask(start.Invoke(server, [CancellationToken.None])!);
+        return server;
+    }
+
+    private static Delegate CreateSetupDelegate(
+        Type setupActionType,
+        Type setupType,
+        Type serviceType,
+        Type kernelType)
+        => Delegate.CreateDelegate(
+            setupActionType,
+            typeof(GamePluginRemoteSettingsTests)
+                .GetMethod(nameof(ConfigureGuardian), BindingFlags.NonPublic | BindingFlags.Static)!
+                .MakeGenericMethod(setupType, serviceType, kernelType));
+
+    private static void ConfigureGuardian<TSetup, TService, TKernel>(TSetup setup)
+    {
+        setup!.GetType().GetMethod("Replace")!
+            .MakeGenericMethod(typeof(TService), typeof(TKernel))
+            .Invoke(setup, null);
+    }
+
+    private static async Task AwaitValueTask(object valueTask)
+    {
+        var asTask = valueTask.GetType().GetMethod("AsTask", Type.EmptyTypes)!;
+        await (Task)asTask.Invoke(valueTask, null)!;
     }
 
     private static LambdaExpression CreatePropertySelector(Type targetType, string propertyName)
@@ -99,6 +152,11 @@ public sealed class GamePluginRemoteSettingsTests
             MethodInfo? targetMethod,
             object?[]? args)
         {
+            if (targetMethod?.Name == "InstallPluginAsync")
+            {
+                return ValueTask.FromResult("guardian");
+            }
+
             if (targetMethod?.Name == "UpdateSettingsAsync")
             {
                 CaptureUpdates((Array)args![1]!);

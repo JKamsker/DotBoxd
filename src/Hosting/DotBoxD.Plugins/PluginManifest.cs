@@ -155,9 +155,9 @@ public sealed record PluginPackage(
         SandboxModule module,
         KernelEntrypoints? entrypoints = null)
         => new(
-            manifest,
-            module,
-            entrypoints ?? new KernelEntrypoints(
+            PluginModelCopy.Manifest(manifest),
+            PluginModelCopy.Module(module),
+            PluginModelCopy.Entrypoints(entrypoints ?? new KernelEntrypoints(
                 PluginManifestNames.Entrypoints.ShouldHandle,
-                PluginManifestNames.Entrypoints.Handle));
+                PluginManifestNames.Entrypoints.Handle)));
 }

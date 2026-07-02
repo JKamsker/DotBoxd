@@ -101,12 +101,31 @@ internal static class PluginAnalyzerGeneratedPackageFactory
         return driver.GetRunResult();
     }
 
-    public static IReadOnlyList<Diagnostic> Diagnostics(string source, params Type[] additionalReferenceTypes)
+    public static GeneratorDriverRunResult RunGeneratorWithReferences(
+        string source,
+        params MetadataReference[] additionalReferences)
     {
-        var compilation = CreateCompilation(source, additionalReferenceTypes);
+        var compilation = CreateCompilation(source, additionalReferences);
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             [new PluginPackageGenerator().AsSourceGenerator()],
             parseOptions: ParseOptions);
+        driver = driver.RunGenerators(compilation);
+        return driver.GetRunResult();
+    }
+
+    public static IReadOnlyList<Diagnostic> Diagnostics(string source, params Type[] additionalReferenceTypes)
+        => Diagnostics(source, ParseOptions.LanguageVersion, additionalReferenceTypes);
+
+    public static IReadOnlyList<Diagnostic> Diagnostics(
+        string source,
+        LanguageVersion languageVersion,
+        params Type[] additionalReferenceTypes)
+    {
+        var parseOptions = ParseOptions.WithLanguageVersion(languageVersion);
+        var compilation = CreateCompilation(source, parseOptions, additionalReferenceTypes);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            [new PluginPackageGenerator().AsSourceGenerator()],
+            parseOptions: parseOptions);
         driver.RunGeneratorsAndUpdateCompilation(
             compilation,
             out var outputCompilation,
@@ -121,12 +140,28 @@ internal static class PluginAnalyzerGeneratedPackageFactory
     private static CSharpCompilation CreateCompilation(string source, params Type[] additionalReferenceTypes)
         => CreateCompilation(
             source,
+            ParseOptions,
             AdditionalReferences(additionalReferenceTypes));
 
     private static CSharpCompilation CreateCompilation(string source, IEnumerable<MetadataReference> additionalReferences)
+        => CreateCompilation(source, ParseOptions, additionalReferences);
+
+    private static CSharpCompilation CreateCompilation(
+        string source,
+        CSharpParseOptions parseOptions,
+        params Type[] additionalReferenceTypes)
+        => CreateCompilation(
+            source,
+            parseOptions,
+            AdditionalReferences(additionalReferenceTypes));
+
+    private static CSharpCompilation CreateCompilation(
+        string source,
+        CSharpParseOptions parseOptions,
+        IEnumerable<MetadataReference> additionalReferences)
         => CSharpCompilation.Create(
             "DotBoxDGeneratedPackageRuntimeTest",
-            [CSharpSyntaxTree.ParseText(source, ParseOptions)],
+            [CSharpSyntaxTree.ParseText(source, parseOptions)],
             TrustedPlatformReferences()
                 .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(PluginPackage).Assembly.Location))

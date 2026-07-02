@@ -174,6 +174,52 @@ public class InheritedExplicitProxyTests
     }
 
     [Fact]
+    public void DuplicateInheritedSubServiceProperties_Deduplicate()
+    {
+        const string source = """
+            using DotBoxD.Services.Attributes;
+            using System.Threading.Tasks;
+
+            namespace Regress.DuplicateInheritedSubServiceProperty
+            {
+                [DotBoxDService]
+                public interface ISub
+                {
+                    Task<int> CountAsync();
+                }
+
+                public interface ILeft
+                {
+                    ISub Child { get; }
+                }
+
+                public interface IRight
+                {
+                    ISub Child { get; }
+                }
+
+                [DotBoxDService]
+                public interface IRoot : ILeft, IRight
+                {
+                }
+            }
+            """;
+
+        var (final, runResult) = Run(source);
+
+        runResult.Diagnostics.Should().NotContain(d => d.Id == "DBXS003");
+        AssertCompiles(final);
+
+        var extensions = runResult.Results.Single().GeneratedSources
+            .Single(g => g.HintName == "DotBoxDRpcExtensions.g.cs")
+            .SourceText.ToString();
+        System.Text.RegularExpressions.Regex.Matches(extensions, @"peer\.ProvideSub\(")
+            .Should().HaveCount(1);
+        System.Text.RegularExpressions.Regex.Matches(extensions, @"\.Child\b")
+            .Should().HaveCount(1);
+    }
+
+    [Fact]
     public void DuplicateInheritedMethodsWithDifferentNullableAnnotations_RejectService()
     {
         const string source = """

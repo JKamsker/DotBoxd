@@ -35,25 +35,37 @@ internal sealed record RpcServerExtensionGraft(
 
     private static IEnumerable<string> ReceiverHandleFieldNames(INamedTypeSymbol kernelType, INamedTypeSymbol receiverType)
     {
-        foreach (var member in kernelType.GetMembers())
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (INamedTypeSymbol? current = kernelType; current is not null; current = current.BaseType)
         {
-            if (member is IFieldSymbol { IsStatic: false } field &&
-                CanStoreReceiver(field.Type, receiverType))
+            foreach (var member in current.GetMembers())
             {
-                yield return field.Name;
-            }
-            else if (member is IPropertySymbol
-            {
-                IsStatic: false,
-                GetMethod: not null,
-                SetMethod: null
-            } property &&
-                CanStoreReceiver(property.Type, receiverType))
-            {
-                yield return property.Name;
+                if (member is IFieldSymbol { IsStatic: false } field &&
+                    IsVisibleReceiverMember(field, kernelType) &&
+                    CanStoreReceiver(field.Type, receiverType) &&
+                    seen.Add(field.Name))
+                {
+                    yield return field.Name;
+                }
+                else if (member is IPropertySymbol
+                {
+                    IsStatic: false,
+                    GetMethod: not null,
+                    SetMethod: null
+                } property &&
+                    IsVisibleReceiverMember(property, kernelType) &&
+                    CanStoreReceiver(property.Type, receiverType) &&
+                    seen.Add(property.Name))
+                {
+                    yield return property.Name;
+                }
             }
         }
     }
+
+    private static bool IsVisibleReceiverMember(ISymbol member, INamedTypeSymbol kernelType)
+        => SymbolEqualityComparer.Default.Equals(member.ContainingType, kernelType) ||
+           member.DeclaredAccessibility != Accessibility.Private;
 
     private static bool CanStoreReceiver(ITypeSymbol fieldType, INamedTypeSymbol receiverType)
     {

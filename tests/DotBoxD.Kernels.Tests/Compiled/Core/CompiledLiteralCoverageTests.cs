@@ -1,5 +1,6 @@
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
+using DotBoxD.Kernels.Runtime;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Kernels.Sandbox.Values;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
@@ -14,6 +15,7 @@ public sealed class CompiledLiteralCoverageTests
         {
             { "Unit", """{ "unit": true }""" },
             { "I64", """{ "i64": 9223372036854775807 }""" },
+            { "Guid", """{ "guid": "0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9" }""" },
             { "SandboxPath", """{ "path": "config/settings.json" }""" },
             { "SandboxUri", """{ "uri": "https://api.example.com/config" }""" },
             { "PlayerId", """{ "opaqueId": { "type": "PlayerId", "value": "player-1" } }""" }
@@ -84,6 +86,31 @@ public sealed class CompiledLiteralCoverageTests
         Assert.Equal(ExecutionMode.Compiled, result.ActualMode);
         var map = Assert.IsType<MapValue>(result.Value);
         Assert.Equal(41, ((I32Value)map.Values[SandboxValue.FromString("alice")]).Value);
+    }
+
+    [Fact]
+    public void Compiled_list_literal_wraps_compiler_owned_value_array()
+    {
+        var values = new[] { SandboxValue.FromInt32(1), SandboxValue.FromInt32(2) };
+
+        var list = Assert.IsType<ListValue>(CompiledRuntime.ListLiteralValue(SandboxType.I32, values));
+
+        values[0] = SandboxValue.FromInt32(99);
+        Assert.Equal(SandboxValue.FromInt32(99), list.Values[0]);
+    }
+
+    [Fact]
+    public void Owned_map_consumes_runtime_owned_builder()
+    {
+        var key = SandboxValue.FromString("first");
+        var builder = new MapValueBuilder(1);
+        builder.Set(key, SandboxValue.FromInt32(1));
+
+        var map = Assert.IsType<MapValue>(
+            SandboxValue.FromOwnedMap(builder, SandboxType.String, SandboxType.I32));
+
+        Assert.Throws<InvalidOperationException>(() => builder.Set(key, SandboxValue.FromInt32(99)));
+        Assert.Equal(SandboxValue.FromInt32(1), map.Values[key]);
     }
 
     [Fact]

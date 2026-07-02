@@ -149,7 +149,60 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
                 StringComparison.Ordinal));
     }
 
-    private static string ForgedDescriptorSdkSource(string? sourceOverride = null, string? extraSdkDeclarations = null)
+    [Fact]
+    public void Prebuilt_sdk_descriptor_rejects_duplicate_root_payload_member()
+    {
+        var sdkReference = CompilePlainReference(
+            ForgedDescriptorSdkSource(
+                mutatePayload: json => json.Insert(json.Length - 1, ",\"source\":\"I32(1)\"")),
+            "DuplicateRootKernelMethodDescriptorSdk");
+        var diagnostics = GeneratorDiagnostics(
+            PluginAnalyzerKernelMethodDescriptorTestSources.DescriptorlessConsumer.Replace(
+                "using Descriptorless;",
+                "using Sdk;",
+                StringComparison.Ordinal).Replace(
+                "ctx.IsClose(e.Distance)",
+                "ctx.IsAllowed(e.MonsterId, e.PlayerLevel)",
+                StringComparison.Ordinal),
+            sdkReference);
+
+        AssertMalformedDescriptor(diagnostics);
+    }
+
+    [Fact]
+    public void Prebuilt_sdk_descriptor_rejects_extra_parameter_payload_member()
+    {
+        var sdkReference = CompilePlainReference(
+            ForgedDescriptorSdkSource(
+                mutatePayload: json => json.Replace(
+                    "\"placeholder\":\"__dotboxd_kernel_method_arg_0__\"",
+                    "\"placeholder\":\"__dotboxd_kernel_method_arg_0__\",\"extra\":\"ignored\"",
+                    StringComparison.Ordinal)),
+            "ExtraParameterKernelMethodDescriptorSdk");
+        var diagnostics = GeneratorDiagnostics(
+            PluginAnalyzerKernelMethodDescriptorTestSources.DescriptorlessConsumer.Replace(
+                "using Descriptorless;",
+                "using Sdk;",
+                StringComparison.Ordinal).Replace(
+                "ctx.IsClose(e.Distance)",
+                "ctx.IsAllowed(e.MonsterId, e.PlayerLevel)",
+                StringComparison.Ordinal),
+            sdkReference);
+
+        AssertMalformedDescriptor(diagnostics);
+    }
+
+    private static void AssertMalformedDescriptor(IEnumerable<Microsoft.CodeAnalysis.Diagnostic> diagnostics)
+        => Assert.Contains(
+            diagnostics,
+            diagnostic => diagnostic.GetMessage().Contains(
+                "is malformed or has a stale hash",
+                StringComparison.Ordinal));
+
+    private static string ForgedDescriptorSdkSource(
+        string? sourceOverride = null,
+        string? extraSdkDeclarations = null,
+        Func<string, string>? mutatePayload = null)
     {
         var payload = new KernelMethodDescriptorPayload(
             KernelMethodDescriptorPayload.CurrentVersion,
@@ -169,6 +222,7 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
             "new global::DotBoxD.Kernels.CallExpression(\"host.Sdk.IGameWorld.Read\", " +
                 "[__dotboxd_kernel_method_arg_0__], null, Span)");
         var json = payload.ToJson();
+        json = mutatePayload?.Invoke(json) ?? json;
         var hash = KernelMethodDescriptorPayload.Hash(json);
         return $$"""
             using DotBoxD.Abstractions;

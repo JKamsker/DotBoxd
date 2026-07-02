@@ -35,6 +35,39 @@ public sealed partial class PeerInboundCoverageTests
         Assert.Equal("validation-failed", response.ErrorMessage);
     }
 
+    [Fact]
+    public async Task RequestEnvelopeMessageIdMismatch_ReturnsProtocolError()
+    {
+        var serializer = NewSerializer();
+        var (clientConnection, serverConnection) = InMemoryPipe.CreateConnectionPair();
+        await using var client = clientConnection;
+        var protocolError = new TaskCompletionSource<RpcProtocolErrorEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        await using var peer = RpcPeer
+            .Over(serverConnection, serializer, new RpcPeerOptions { RequestTimeout = ShortTimeout })
+            .Provide((IServiceDispatcher)new EchoDispatcher())
+            .Start();
+        peer.ProtocolError += (_, args) => protocolError.TrySetResult(args);
+
+        using var requestFrame = CreateRequestFrame(
+            serializer,
+            frameMessageId: 41,
+            envelopeMessageId: 99,
+            EchoDispatcher.Service,
+            "Call");
+        await client.SendAsync(requestFrame.Memory);
+
+        var response = await ReadErrorResponseAsync(client, serializer, expectedMessageId: 41);
+        var args = await protocolError.Task.WaitAsync(ShortTimeout);
+
+        Assert.Equal(RpcErrorTypes.ProtocolError, response.ErrorType);
+        Assert.Contains("message id", response.ErrorMessage);
+        Assert.Equal(41, args.MessageId);
+        Assert.Equal(MessageType.Request, args.MessageType);
+        Assert.Contains("message id", args.Message);
+    }
+
     // ---- DispatchError event when the error response itself cannot be sent (280, dispatch path) -
 
     [Fact]
@@ -55,9 +88,9 @@ public sealed partial class PeerInboundCoverageTests
                 connection,
                 serializer,
                 new RpcPeerOptions { InboundQueueCapacity = null, RequestTimeout = ShortTimeout })
-            .Provide((IServiceDispatcher)new ThrowingDispatcher("kaboom"))
-            .Start();
+            .Provide((IServiceDispatcher)new ThrowingDispatcher("kaboom"));
         peer.DispatchError += (_, args) => dispatchError.TrySetResult(args);
+        peer.Start();
 
         var args = await dispatchError.Task.WaitAsync(ShortTimeout);
 
@@ -94,6 +127,64 @@ public sealed partial class PeerInboundCoverageTests
         connection.Enqueue(CopyFrame(cancelFrame));
 
         await dispatcher.Canceled.Task.WaitAsync(ShortTimeout);
+    }
+
+    [Fact]
+    public async Task ZeroIdCancelFrame_RaisesProtocolError_AndDisposesFrame()
+    {
+        var serializer = NewSerializer();
+        await using var connection = new ScriptedConnection();
+        var protocolErrors = new List<RpcProtocolErrorEventArgs>();
+        var cancelFrame = MessageFramer.FrameToPayload(0, MessageType.Cancel, ReadOnlySpan<byte>.Empty);
+
+        connection.Enqueue(cancelFrame);
+
+        await using var peer = RpcPeer.Over(connection, serializer);
+        peer.ProtocolError += (_, args) => protocolErrors.Add(args);
+        peer.Start();
+
+        await connection.WaitForReceiveCountAsync(1, ShortTimeout);
+        await WaitForPayloadDisposedAsync(cancelFrame);
+
+        var args = Assert.Single(protocolErrors);
+        Assert.Equal(0, args.MessageId);
+        Assert.Equal(MessageType.Cancel, args.MessageType);
+        Assert.Contains("Malformed cancel frame", args.Message);
+    }
+
+    [Fact]
+    public async Task CancelFrameWithTrailingPayload_RaisesProtocolErrorWithoutCancelingInboundRequest()
+    {
+        var serializer = NewSerializer();
+        await using var connection = new ScriptedConnection();
+        var dispatcher = new CancelAwareDispatcher();
+        var protocolErrors = new List<RpcProtocolErrorEventArgs>();
+
+        connection.Enqueue(CreateRequestFrame(serializer, 13, CancelAwareDispatcher.Service, "Wait"));
+
+        await using var peer = RpcPeer
+            .Over(
+                connection,
+                serializer,
+                new RpcPeerOptions { InboundQueueCapacity = null, RequestTimeout = TimeSpan.FromMinutes(5) })
+            .Provide((IServiceDispatcher)dispatcher);
+        peer.ProtocolError += (_, args) => protocolErrors.Add(args);
+        peer.Start();
+
+        await dispatcher.Started.Task.WaitAsync(ShortTimeout);
+        var requestToken = await dispatcher.ObservedToken.Task.WaitAsync(ShortTimeout);
+
+        var cancelFrame = MessageFramer.FrameToPayload(13, MessageType.Cancel, new byte[] { 1 });
+        connection.Enqueue(cancelFrame);
+
+        await connection.WaitForReceiveCountAsync(2, ShortTimeout);
+        await WaitForPayloadDisposedAsync(cancelFrame);
+
+        Assert.False(requestToken.IsCancellationRequested);
+        var args = Assert.Single(protocolErrors);
+        Assert.Equal(13, args.MessageId);
+        Assert.Equal(MessageType.Cancel, args.MessageType);
+        Assert.Contains("Malformed cancel frame", args.Message);
     }
 
     // ---- StopAsync awaits in-flight inline (unbounded) dispatch on dispose (154-156, ObserveShutdown) --

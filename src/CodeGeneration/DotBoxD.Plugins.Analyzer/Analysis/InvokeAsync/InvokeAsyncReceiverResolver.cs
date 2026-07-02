@@ -48,7 +48,13 @@ internal static partial class InvokeAsyncReceiverResolver
             return true;
         }
 
-        return false;
+        return TryResolveGeneratedServicesReceiver(
+            model,
+            receiver,
+            cancellationToken,
+            out receiverType,
+            out serverAccessType,
+            out worldType);
     }
 
     internal static bool TryResolveGeneratedFacadeType(
@@ -60,13 +66,43 @@ internal static partial class InvokeAsyncReceiverResolver
         receiverType = string.Empty;
         serverAccessType = null;
         worldType = null!;
-        if (!TryResolveWorld(type, out worldType))
+        if (TryResolveWorld(type, out worldType))
+        {
+            receiverType = TypeName(type);
+            return true;
+        }
+
+        if (!TryResolveGeneratedFacadeBase(type, out var facadeBaseType, out worldType))
         {
             return false;
         }
 
-        receiverType = TypeName(type);
+        receiverType = TypeName(facadeBaseType);
         return true;
+    }
+
+    private static bool TryResolveGeneratedFacadeBase(
+        INamedTypeSymbol type,
+        out INamedTypeSymbol worldType)
+        => TryResolveGeneratedFacadeBase(type, out _, out worldType);
+
+    private static bool TryResolveGeneratedFacadeBase(
+        INamedTypeSymbol type,
+        out INamedTypeSymbol facadeBaseType,
+        out INamedTypeSymbol worldType)
+    {
+        for (var current = type.BaseType; current is not null; current = current.BaseType)
+        {
+            if (TryResolveWorld(current, out worldType))
+            {
+                facadeBaseType = current;
+                return true;
+            }
+        }
+
+        facadeBaseType = null!;
+        worldType = null!;
+        return false;
     }
 
     internal static bool IsGeneratedServerInterfaceNameCandidate(string name)
@@ -139,6 +175,11 @@ internal static partial class InvokeAsyncReceiverResolver
         out INamedTypeSymbol receiverType)
     {
         receiverType = null!;
+        if (TryResolveGeneratedBuilderProjection(model, receiver, cancellationToken, out receiverType))
+        {
+            return true;
+        }
+
         if (receiver is not IdentifierNameSyntax identifier ||
             model.GetSymbolInfo(identifier, cancellationToken).Symbol is not ILocalSymbol local)
         {

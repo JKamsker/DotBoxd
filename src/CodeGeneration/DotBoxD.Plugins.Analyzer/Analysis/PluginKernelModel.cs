@@ -63,7 +63,7 @@ internal sealed record PluginKernelModel(
 /// parameter, so non-scalar (Guid/enum/list/record) properties declare the exact sandbox type the runtime
 /// convention adapter produces. Empty when the property is not marshaller-eligible (the chain fails safe).
 /// </summary>
-internal sealed record EventPropertyModel(string Name, string Type, string SandboxTypeSource);
+internal sealed record EventPropertyModel(string Name, string Type, string SandboxTypeSource, string? Capability);
 
 /// <summary>
 /// One index-eligible <c>event-property &lt;op&gt; constant</c> comparison extracted from a lowered

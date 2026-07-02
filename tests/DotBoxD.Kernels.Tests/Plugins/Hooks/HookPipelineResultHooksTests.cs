@@ -125,6 +125,17 @@ public sealed class HookPipelineResultHooksTests
     }
 
     [Fact]
+    public async Task FireAsync_observes_precanceled_token_when_no_hook_point_exists()
+    {
+        using var server = PluginServer.Create();
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            async () => await server.Hooks.FireAsync<DamageCtx, DamageResult>(new DamageCtx(10), cts.Token));
+    }
+
+    [Fact]
     public async Task FireAsync_returns_null_when_a_hook_point_has_no_result_handlers()
     {
         using var server = PluginServer.Create();
@@ -133,6 +144,34 @@ public sealed class HookPipelineResultHooksTests
         var result = await server.Hooks.FireAsync<DamageCtx, DamageResult>(new DamageCtx(10));
 
         Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task FireAsync_observes_precanceled_token_when_a_hook_point_has_no_result_handlers()
+    {
+        using var server = PluginServer.Create();
+        server.Hooks.On<DamageCtx>(new StubAdapter());
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            async () => await server.Hooks.FireAsync<DamageCtx, DamageResult>(new DamageCtx(10), cts.Token));
+    }
+
+    [Fact]
+    public async Task FireAsync_observes_precanceled_token_when_multiple_hook_points_have_no_result_handlers()
+    {
+        using var server = PluginServer.Create();
+        var adapter = new StubAdapter();
+        server.Hooks.On<DamageCtx>(adapter);
+        server.Hooks.On<DamageCtx, DamageServerContext>(
+            adapter,
+            ctx => new DamageServerContext(ctx));
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            async () => await server.Hooks.FireAsync<DamageCtx, DamageResult>(new DamageCtx(10), cts.Token));
     }
 
     [Fact]

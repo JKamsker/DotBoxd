@@ -67,6 +67,7 @@ internal sealed class PendingLiveUpdateQueue
 
     public async ValueTask FlushAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         Task[] pending;
         lock (_gate)
         {

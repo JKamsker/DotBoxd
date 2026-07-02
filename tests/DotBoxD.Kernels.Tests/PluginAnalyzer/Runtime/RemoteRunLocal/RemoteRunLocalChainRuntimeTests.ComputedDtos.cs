@@ -9,6 +9,26 @@ public sealed record CalculatedPointEvent(int Distance, CalculatedPoint Point);
 
 public sealed record CalculatedPointFlatEvent(int Distance, int X, int Y);
 
+public sealed class OptionalConstructorProfileEvent
+{
+    public OptionalConstructorProfileEvent(string name, int health, int marker = 7)
+    {
+        _ = marker;
+        Name = name;
+        Health = health;
+    }
+
+    public OptionalConstructorProfileEvent(string name, int health)
+    {
+        Name = "wrong:" + name;
+        Health = -health;
+    }
+
+    public string Name { get; }
+    public int Health { get; }
+    public int Rank { get; set; }
+}
+
 public sealed partial class RemoteRunLocalChainRuntimeTests
 {
     private const string ComputedDtoProjectionSource = Prelude + """
@@ -42,6 +62,15 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
         }
         """;
 
+    private const string OptionalConstructorOverloadWholeEventSource = Prelude + """
+        public static class OptionalConstructorOverloadWholeEventUsage
+        {
+            public static void Configure(RemoteHookRegistry hooks)
+                => hooks.On<Ev.OptionalConstructorProfileEvent>().Where(e => e.Rank <= 9)
+                    .RunLocal((profile, ctx) => { });
+        }
+        """;
+
     [Fact]
     public async Task Computed_dto_projection_round_trips_over_generated_payload_decoder()
     {
@@ -66,6 +95,22 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
 
         Assert.Equal(expected, DecodeReflective<CalculatedPoint>(payload));
         AssertCalculatedPoint(expected, DecodeGeneratedObject(ComputedDtoInitializerProjectionSource, payload));
+    }
+
+    [Fact]
+    public async Task Generated_payload_decoder_pins_optional_constructor_defaults_when_overloads_match()
+    {
+        var payload = await PushFirstMatching(
+            OptionalConstructorOverloadWholeEventSource,
+            new OptionalConstructorProfileEvent("hero", 3, 7) { Rank = 9 },
+            new OptionalConstructorProfileEvent("filtered", 99, 7) { Rank = 99 });
+
+        var profile = DecodeGenerated<OptionalConstructorProfileEvent>(
+            OptionalConstructorOverloadWholeEventSource,
+            payload);
+        Assert.Equal("hero", profile.Name);
+        Assert.Equal(3, profile.Health);
+        Assert.Equal(9, profile.Rank);
     }
 
     private static void AssertCalculatedPoint(CalculatedPoint expected, object actual)

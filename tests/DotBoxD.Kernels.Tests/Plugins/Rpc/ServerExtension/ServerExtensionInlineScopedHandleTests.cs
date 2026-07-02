@@ -130,6 +130,23 @@ public sealed class ServerExtensionInlineScopedHandleTests
     }
 
     [Fact]
+    public void Scoped_handle_alias_keeps_the_captured_scope()
+    {
+        var source = LocalKernel.Replace(
+            "return await monster.KillAsync();",
+            """
+            var alias = monster;
+                            return await alias.KillAsync();
+            """,
+            StringComparison.Ordinal);
+
+        var call = HostCall(BuildPackage(source), "KillAsync");
+
+        var argument = Assert.IsType<VariableExpression>(Assert.Single(call.Arguments));
+        Assert.Equal("id", argument.Name);
+    }
+
+    [Fact]
     public void Scoped_handle_accessor_with_multiple_arguments_reports_DBXK100()
     {
         var source = InlineKernel
@@ -142,6 +159,51 @@ public sealed class ServerExtensionInlineScopedHandleTests
             diagnostics,
             diagnostic => diagnostic.Id == "DBXK100" &&
                           diagnostic.GetMessage().Contains("exactly one scope argument", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Scoped_handle_accessor_with_ref_scope_argument_reports_DBXK100()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
+            using DotBoxD.Abstractions;
+            using DotBoxD.Services.Attributes;
+
+            namespace Sample;
+
+            [DotBoxDService]
+            public interface IGameWorldAccess
+            {
+                IMonsterControl Monsters { get; }
+            }
+
+            [DotBoxDService]
+            public interface IMonsterControl
+            {
+                [HostCapability("game.world.monster.read.handle", HostBindingEffect.HostStateRead)]
+                IMonster Get(ref string entityId);
+            }
+
+            [DotBoxDService]
+            public interface IMonster
+            {
+                [HostCapability("game.world.monster.read.threat", HostBindingEffect.HostStateRead)]
+                int Threat();
+            }
+
+            [ServerExtension(typeof(IMonsterControl))]
+            public sealed partial class ScopedCallKernel
+            {
+                private readonly IGameWorldAccess _world;
+                public ScopedCallKernel(IGameWorldAccess world) => _world = world;
+
+                public int Read(string id, HookContext ctx) => _world.Monsters.Get(ref id).Threat();
+            }
+            """);
+
+        Assert.Contains(
+            diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.GetMessage().Contains("ref, in, or out", StringComparison.Ordinal));
     }
 
     [Fact]

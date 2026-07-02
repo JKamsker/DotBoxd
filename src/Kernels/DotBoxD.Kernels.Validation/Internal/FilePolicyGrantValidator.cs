@@ -87,6 +87,12 @@ internal static class FilePolicyGrantValidator
                 !PathsEqual(NormalizeRootForCompare(root), NormalizeRootForCompare(fullPath)))
             {
                 Add(diagnostics, grant, "parameter 'root' must be an absolute canonical path");
+                return;
+            }
+
+            if (!Directory.Exists(fullPath))
+            {
+                Add(diagnostics, grant, "parameter 'root' must be an existing directory");
             }
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)

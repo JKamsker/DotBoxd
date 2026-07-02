@@ -1,3 +1,4 @@
+using System.Globalization;
 using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
 
@@ -6,76 +7,225 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.InvokeAsync;
 internal static class InvokeAsyncArgumentWriterSource
 {
     public static string WriteExpression(ITypeSymbol type, string expression)
+        => WriteExpression(type, expression, depth: 0);
+
+    private static string WriteExpression(ITypeSymbol type, string expression, int depth)
         => type.SpecialType switch
         {
-            SpecialType.System_Boolean => $"global::DotBoxD.Plugins.KernelRpcValue.Bool({expression})",
-            SpecialType.System_Int32 => $"global::DotBoxD.Plugins.KernelRpcValue.Int32({expression})",
-            SpecialType.System_Int64 => $"global::DotBoxD.Plugins.KernelRpcValue.Int64({expression})",
-            SpecialType.System_Double => $"global::DotBoxD.Plugins.KernelRpcValue.Double({expression})",
-            SpecialType.System_Single => $"global::DotBoxD.Plugins.KernelRpcValue.Double({expression})",
-            SpecialType.System_String => $"global::DotBoxD.Plugins.KernelRpcValue.String({expression})",
-            _ => WriteComplexExpression(type, expression)
+            SpecialType.System_Boolean => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Bool({expression})",
+            SpecialType.System_Int32 => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32({expression})",
+            SpecialType.System_Int64 => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64({expression})",
+            SpecialType.System_Double => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Double({expression})",
+            SpecialType.System_Single => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Double({expression})",
+            SpecialType.System_String => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.String({expression})",
+            _ => WriteComplexExpression(type, expression, depth)
         };
 
-    private static string WriteComplexExpression(ITypeSymbol type, string expression)
+    private static string WriteComplexExpression(ITypeSymbol type, string expression, int depth)
     {
         if (DotBoxDRpcTypeMapper.IsGuid(type))
         {
-            return $"global::DotBoxD.Plugins.KernelRpcValue.Guid({expression})";
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Guid({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsDateTimeWireType(type))
+        {
+            return IsDateTimeOffset(type)
+                ? WriteDateTimeOffsetExpression(expression, depth)
+                : WriteDateTimeExpression(expression, depth);
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
+        {
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64({expression}.Ticks)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
+        {
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32({expression}.DayNumber)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeOnlyWireType(type))
+        {
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64({expression}.Ticks)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsIndexWireType(type))
+        {
+            return WriteIndexExpression(expression);
+        }
+
+        if (DotBoxDRpcTypeMapper.IsRangeWireType(type))
+        {
+            return WriteRangeExpression(expression);
         }
 
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return DotBoxDRpcTypeMapper.EnumUsesI64(enumType)
-                ? $"global::DotBoxD.Plugins.KernelRpcValue.Int64(unchecked((long){expression}))"
-                : $"global::DotBoxD.Plugins.KernelRpcValue.Int32(unchecked((int){expression}))";
+                ? $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64(unchecked((long){expression}))"
+                : $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32(unchecked((int){expression}))";
         }
 
         if (DotBoxDRpcTypeMapper.ListElementType(type) is { } elementType)
         {
-            return WriteListExpression(elementType, expression);
+            return WriteListExpression(type, elementType, expression, depth);
         }
 
         if (DotBoxDRpcTypeMapper.MapTypes(type) is { } map)
         {
-            return WriteMapExpression(map.Key, map.Value, expression);
+            return WriteMapExpression(type, map.Key, map.Value, expression, depth);
         }
 
         if (type is INamedTypeSymbol named && DotBoxDRpcTypeMapper.IsRecordDto(named))
         {
-            return WriteRecordExpression(named, expression);
+            return WriteRecordExpression(named, expression, depth);
         }
 
         throw new NotSupportedException(
             $"InvokeAsync capture type '{type.ToDisplayString()}' is not supported.");
     }
 
-    private static string WriteRecordExpression(INamedTypeSymbol type, string expression)
+    private static string WriteRecordExpression(INamedTypeSymbol type, string expression, int depth)
     {
         var fields = DotBoxDRpcTypeMapper.RecordFields(type);
         var values = new string[fields.Count];
         for (var i = 0; i < fields.Count; i++)
         {
-            values[i] = WriteExpression(fields[i].Type, expression + "." + InvokeAsyncSourceIdentifier.Escape(fields[i].Name));
+            values[i] = WriteExpression(
+                fields[i].Type,
+                expression + "." + InvokeAsyncSourceIdentifier.Escape(fields[i].Name),
+                depth + 1);
         }
 
-        return "global::DotBoxD.Plugins.KernelRpcValue.Record(new global::DotBoxD.Plugins.KernelRpcValue[] { " +
+        return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Record(new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[] {{ " +
                string.Join(", ", values) +
                " })";
     }
 
-    private static string WriteListExpression(ITypeSymbol elementType, string expression)
-        => "global::DotBoxD.Plugins.KernelRpcValue.List(" +
-           "global::System.Linq.Enumerable.ToArray(" +
-           "global::System.Linq.Enumerable.Select(" + expression + ", static __item => " +
-           WriteExpression(elementType, "__item") + ")))";
+    private static string WriteListExpression(ITypeSymbol listType, ITypeSymbol elementType, string expression, int depth)
+    {
+        var value = Local("value", depth);
+        var item = Local("item", depth);
+        var itemExpression = WriteExpression(elementType, item, depth + 1);
+        var body = DotBoxDRpcTypeMapper.SupportsIndexedListWrite(listType)
+            ? IndexedListBody(listType, value, item, itemExpression, depth)
+            : EnumerableListBody(value, item, itemExpression, depth);
 
-    private static string WriteMapExpression(ITypeSymbol keyType, ITypeSymbol valueType, string expression)
-        => "global::DotBoxD.Plugins.KernelRpcValue.Map(" +
-           "global::System.Linq.Enumerable.ToArray(" +
-           "global::System.Linq.Enumerable.SelectMany(" + expression + ", static __entry => " +
-           "new global::DotBoxD.Plugins.KernelRpcValue[] { " +
-           WriteExpression(keyType, "__entry.Key") + ", " +
-           WriteExpression(valueType, "__entry.Value") + " })))";
+        return "((global::System.Func<" + TypeName(listType) + $", {DotBoxDRpcValueNames.GlobalKernelRpcValue}>)(static " +
+               value + " => { global::System.ArgumentNullException.ThrowIfNull(" + value + "); " +
+               body + " }))(" + expression + ")";
+    }
 
+    private static string IndexedListBody(
+        ITypeSymbol listType,
+        string value,
+        string item,
+        string itemExpression,
+        int depth)
+    {
+        var count = Local("count", depth);
+        var items = Local("items", depth);
+        var index = Local("index", depth);
+        var countExpression = listType is IArrayTypeSymbol ? value + ".Length" : value + ".Count";
+        return "var " + count + " = " + countExpression + "; " +
+               "var " + items + " = " + count + " == 0 ? " +
+               $"global::System.Array.Empty<{DotBoxDRpcValueNames.GlobalKernelRpcValue}>() : " +
+               $"new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[" + count + "]; " +
+               "for (var " + index + " = 0; " + index + " < " + count + "; " + index + "++) { var " +
+               item + " = " + value + "[" + index + "]; " +
+               items + "[" + index + "] = " + itemExpression + "; } " +
+               $"return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.List(" + items + ");";
+    }
+
+    private static string EnumerableListBody(string value, string item, string itemExpression, int depth)
+    {
+        var count = Local("count", depth);
+        var items = Local("items", depth);
+        var index = Local("index", depth);
+        var fallbackItems = Local("fallbackItems", depth);
+        return "if (global::System.Linq.Enumerable.TryGetNonEnumeratedCount(" + value + ", out var " + count + ")) { " +
+               "var " + items + " = " + count + " == 0 ? " +
+               $"global::System.Array.Empty<{DotBoxDRpcValueNames.GlobalKernelRpcValue}>() : " +
+               $"new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[" + count + "]; " +
+               "var " + index + " = 0; foreach (var " + item + " in " + value + ") { " +
+               "if (" + index + " >= " + items + ".Length) { global::System.Array.Resize(ref " + items +
+               ", checked(" + index + " + 1)); } " +
+               items + "[" + index + "++] = " + itemExpression + "; } " +
+               "if (" + index + " != " + items + ".Length) { global::System.Array.Resize(ref " + items + ", " +
+               index + $"); }} return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.List(" + items + "); } " +
+               "var " + fallbackItems + $" = new global::System.Collections.Generic.List<{DotBoxDRpcValueNames.GlobalKernelRpcValue}>(); " +
+               "foreach (var " + item + " in " + value + ") { " + fallbackItems + ".Add(" + itemExpression + "); } " +
+               $"return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.List(" + fallbackItems + ".ToArray());";
+    }
+
+    private static string WriteMapExpression(
+        ITypeSymbol mapType,
+        ITypeSymbol keyType,
+        ITypeSymbol valueType,
+        string expression,
+        int depth)
+    {
+        var value = Local("value", depth);
+        var pair = Local("pair", depth);
+        var entryCount = Local("entryCount", depth);
+        var entries = Local("entries", depth);
+        var index = Local("index", depth);
+        var keyExpression = WriteExpression(keyType, pair + ".Key", depth + 1);
+        var valueExpression = WriteExpression(valueType, pair + ".Value", depth + 1);
+
+        return "((global::System.Func<" + TypeName(mapType) + $", {DotBoxDRpcValueNames.GlobalKernelRpcValue}>)(static " +
+               value + " => { global::System.ArgumentNullException.ThrowIfNull(" + value + "); " +
+               "var " + entryCount + " = " + value + ".Count * 2; " +
+               "var " + entries + " = " + entryCount + " == 0 ? " +
+               $"global::System.Array.Empty<{DotBoxDRpcValueNames.GlobalKernelRpcValue}>() : " +
+               $"new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[" + entryCount + "]; " +
+               "var " + index + " = 0; foreach (var " + pair + " in " + value + ") { " +
+               entries + "[" + index + "++] = " + keyExpression + "; " +
+               entries + "[" + index + "++] = " + valueExpression + "; } " +
+               $"return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.Map(" + entries + "); }))(" + expression + ")";
+    }
+
+    private static string WriteDateTimeOffsetExpression(string expression, int depth)
+    {
+        var value = Local("dateTimeOffset", depth);
+        return $"((global::System.Func<global::System.DateTimeOffset, {DotBoxDRpcValueNames.GlobalKernelRpcValue}>)(static " +
+               value + " => " + DateTimeOffsetRecordExpression(value) + "))(" + expression + ")";
+    }
+
+    private static string WriteDateTimeExpression(string expression, int depth)
+    {
+        var value = Local("dateTime", depth);
+        var offset = Local("offset", depth);
+        return $"((global::System.Func<global::System.DateTime, {DotBoxDRpcValueNames.GlobalKernelRpcValue}>)(static " + value + " => " +
+           "{ if (" + value + ".Kind != global::System.DateTimeKind.Unspecified) { " +
+           "throw new global::System.NotSupportedException(\"InvokeAsync DateTime values must use DateTimeKind.Unspecified; use System.DateTimeOffset to preserve offset or UTC/local semantics.\"); } " +
+           "var " + offset + " = new global::System.DateTimeOffset(" + value + ", global::System.TimeSpan.Zero); " +
+           "return " + DateTimeOffsetRecordExpression(offset) + "; }))(" +
+           expression + ")";
+    }
+
+    private static string DateTimeOffsetRecordExpression(string value)
+        => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Record(new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[] {{ " +
+           $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64(" + value + ".UtcTicks), " +
+           $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64(" + value + ".Offset.Ticks) })";
+
+    private static string WriteIndexExpression(string expression)
+        => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Record(new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[] {{ " +
+           $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32(" + expression + ".Value), " +
+           $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Bool(" + expression + ".IsFromEnd) })";
+
+    private static string WriteRangeExpression(string expression)
+        => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Record(new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[] {{ " +
+           WriteIndexExpression(expression + ".Start") + ", " +
+           WriteIndexExpression(expression + ".End") + " })";
+
+    private static bool IsDateTimeOffset(ITypeSymbol type)
+        => type is INamedTypeSymbol { Name: "DateTimeOffset" };
+
+    private static string Local(string stem, int depth)
+        => "__dotboxd_" + stem + depth.ToString(CultureInfo.InvariantCulture);
+
+    private static string TypeName(ITypeSymbol type)
+        => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 }

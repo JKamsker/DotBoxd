@@ -5,8 +5,8 @@ namespace DotBoxD.Kernels.Sandbox.Values;
 
 /// <summary>
 /// Memoizes the measured <see cref="ValueShape"/> (and metering-walk frame count) of immutable collection
-/// values so that <c>list.add</c> / <c>map.set</c> can charge their result incrementally instead of
-/// re-walking the entire collection on every operation.
+/// values so that <c>list.add</c> / <c>map.set</c> / zero-shape scalar <c>map.remove</c> can charge their
+/// result incrementally instead of re-walking the entire collection on every operation.
 ///
 /// Why this matters: <c>ChargeValue</c> walks the whole value to measure its shape (and charges
 /// <c>nodes / 64</c> scan-fuel while doing so). Building a collection with repeated add/set therefore
@@ -24,12 +24,15 @@ internal static class ValueShapeCache
     private static readonly ConditionalWeakTable<SandboxValue, StrongBox<ShapeInfo>> Cache = new();
 
     /// <summary>Returns the cached shape/frame-count for a value, measuring and caching collections on miss.</summary>
-    public static ShapeInfo GetOrMeasure(SandboxValue value, CancellationToken cancellationToken = default)
+    public static ShapeInfo GetOrMeasure(
+        SandboxValue value,
+        CancellationToken cancellationToken = default,
+        ResourceMeter? meter = null)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         // Scalars and text are O(1) to measure and not worth caching (one frame, no children).
         if (value is not (ListValue or MapValue or RecordValue))
         {
-            cancellationToken.ThrowIfCancellationRequested();
             return new ShapeInfo(MeasureScalar(value), Nodes: 1);
         }
 
@@ -38,10 +41,25 @@ internal static class ValueShapeCache
             return box.Value;
         }
 
-        var measured = SandboxValueShapeMeter.MeasureWithNodes(value, cancellationToken);
+        var measured = SandboxValueShapeMeter.MeasureWithNodes(value, cancellationToken, meter);
         var info = new ShapeInfo(measured.Shape, measured.Nodes);
         Cache.AddOrUpdate(value, new StrongBox<ShapeInfo>(info));
         return info;
+    }
+
+    private static ShapeInfo GetOrMeasure(SandboxValue value, Sandbox.SandboxContext context)
+        => GetOrMeasure(value, context.CancellationToken, context.Budget);
+
+    public static bool TryGet(SandboxValue value, out ShapeInfo info)
+    {
+        if (Cache.TryGetValue(value, out var box))
+        {
+            info = box.Value;
+            return true;
+        }
+
+        info = default;
+        return false;
     }
 
     private static ValueShape MeasureScalar(SandboxValue value)
@@ -74,9 +92,8 @@ internal static class ValueShapeCache
         SandboxValue appended,
         int newCount)
     {
-        var cancellationToken = context.CancellationToken;
-        var sourceInfo = GetOrMeasure(source, cancellationToken);
-        var itemInfo = GetOrMeasure(item, cancellationToken);
+        var sourceInfo = GetOrMeasure(source, context);
+        var itemInfo = GetOrMeasure(item, context);
         var combined = sourceInfo.Shape.Combine(itemInfo.Shape);
         var shape = combined with
         {
@@ -103,10 +120,9 @@ internal static class ValueShapeCache
         SandboxValue updated,
         int newCount)
     {
-        var cancellationToken = context.CancellationToken;
-        var sourceInfo = GetOrMeasure(source, cancellationToken);
-        var keyInfo = GetOrMeasure(key, cancellationToken);
-        var valueInfo = GetOrMeasure(value, cancellationToken);
+        var sourceInfo = GetOrMeasure(source, context);
+        var keyInfo = GetOrMeasure(key, context);
+        var valueInfo = GetOrMeasure(value, context);
         var combined = sourceInfo.Shape.Combine(keyInfo.Shape).Combine(valueInfo.Shape);
         var shape = combined with
         {
@@ -117,6 +133,82 @@ internal static class ValueShapeCache
         context.ChargeComposedValue(info);
         Set(updated, info);
     }
+
+    /// <summary>
+    /// Charges map removal from the source shape. Missing-key removes reuse the source shape for every map
+    /// type because the result is unchanged. Present-key removes are limited to maps whose keys and values
+    /// have zero scalar shape; text, opaque IDs, paths, URIs, and nested values can change maxima that are not
+    /// derivable from the aggregate source shape alone.
+    /// </summary>
+    public static bool TryChargeScalarMapRemove(
+        Sandbox.SandboxContext context,
+        MapValue source,
+        MapValue removed,
+        bool keyWasPresent)
+    {
+        var expectedCount = keyWasPresent ? source.Values.Count - 1 : source.Values.Count;
+        if (expectedCount < 0 || removed.Values.Count != expectedCount)
+        {
+            return false;
+        }
+
+        if (!keyWasPresent)
+        {
+            var unchangedInfo = GetOrMeasure(source, context);
+            context.ChargeComposedValue(unchangedInfo);
+            Set(removed, unchangedInfo);
+            return true;
+        }
+
+        if (!HasZeroShape(source.KeyType) || !HasZeroShape(source.ValueType))
+        {
+            return false;
+        }
+
+        var sourceInfo = GetOrMeasure(source, context);
+        var newCount = expectedCount;
+        var shape = sourceInfo.Shape with
+        {
+            Elements = sourceInfo.Shape.Elements - 1,
+            MaxMapEntries = newCount
+        };
+        var info = new ShapeInfo(shape, sourceInfo.Nodes - 2);
+        context.ChargeComposedValue(info);
+        Set(removed, info);
+        return true;
+    }
+
+    /// <summary>
+    /// Charges replacement in a map whose keys and values have zero scalar shape. Such replacements keep the
+    /// same map entry count, aggregate shape, and metering-walk node count, so the source shape can be reused
+    /// exactly. Returns false for text, opaque IDs, paths, URIs, and nested values because those replacements
+    /// can change aggregate string or nested collection maxima.
+    /// </summary>
+    public static bool TryChargeScalarMapReplace(
+        Sandbox.SandboxContext context,
+        MapValue source,
+        MapValue replaced)
+    {
+        if (!HasZeroShape(source.KeyType) ||
+            !HasZeroShape(source.ValueType) ||
+            source.Values.Count != replaced.Values.Count)
+        {
+            return false;
+        }
+
+        var sourceInfo = GetOrMeasure(source, context);
+        context.ChargeComposedValue(sourceInfo);
+        Set(replaced, sourceInfo);
+        return true;
+    }
+
+    private static bool HasZeroShape(SandboxType type)
+        => ReferenceEquals(type, SandboxType.Unit) ||
+           ReferenceEquals(type, SandboxType.Bool) ||
+           ReferenceEquals(type, SandboxType.I32) ||
+           ReferenceEquals(type, SandboxType.I64) ||
+           ReferenceEquals(type, SandboxType.F64) ||
+           ReferenceEquals(type, SandboxType.Guid);
 }
 
 /// <summary>A value's pure shape plus the number of frames its metering walk would process.</summary>

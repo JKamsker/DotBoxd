@@ -6,3 +6,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("DotBoxD.Plugins")]
 [assembly: InternalsVisibleTo("DotBoxD.Hosting.Http")]
 [assembly: InternalsVisibleTo("DotBoxD.Kernels.Tests")]
+[assembly: InternalsVisibleTo("DotBoxD.Kernels.Benchmarks")]

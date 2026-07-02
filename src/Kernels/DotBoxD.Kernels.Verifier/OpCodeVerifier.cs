@@ -10,7 +10,7 @@ internal static class OpCodeVerifier
 {
     private static readonly HashSet<ILOpCode> Allowed = [
         ILOpCode.Nop, ILOpCode.Ldarg_0, ILOpCode.Ldarg_1, ILOpCode.Ldarg_2, ILOpCode.Ldarg_3,
-        ILOpCode.Ldarg, ILOpCode.Ldarg_s, ILOpCode.Starg, ILOpCode.Starg_s,
+        ILOpCode.Ldarg, ILOpCode.Ldarg_s,
         ILOpCode.Ldloc_0, ILOpCode.Ldloc_1, ILOpCode.Ldloc_2, ILOpCode.Ldloc_3,
         ILOpCode.Ldloc, ILOpCode.Ldloc_s, ILOpCode.Stloc_0, ILOpCode.Stloc_1, ILOpCode.Stloc_2, ILOpCode.Stloc_3,
         ILOpCode.Stloc, ILOpCode.Stloc_s, ILOpCode.Ldnull, ILOpCode.Ldc_i4, ILOpCode.Ldc_i4_s,
@@ -31,7 +31,8 @@ internal static class OpCodeVerifier
         ILOpCode.Ldftn, ILOpCode.Ldvirtftn, ILOpCode.Ldtoken, ILOpCode.Mkrefany,
         ILOpCode.Refanytype, ILOpCode.Refanyval, ILOpCode.Arglist, ILOpCode.Throw,
         ILOpCode.Rethrow, ILOpCode.Box, ILOpCode.Unbox, ILOpCode.Unbox_any,
-        ILOpCode.Castclass, ILOpCode.Isinst, ILOpCode.Ldsfld, ILOpCode.Stsfld
+        ILOpCode.Castclass, ILOpCode.Isinst, ILOpCode.Ldsfld, ILOpCode.Stsfld,
+        ILOpCode.Starg, ILOpCode.Starg_s
     ];
 
     public static void VerifyBody(

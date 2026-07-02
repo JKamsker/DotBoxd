@@ -24,6 +24,24 @@ public static partial class CompiledRuntime
 
     public static SandboxType TypeRecord(SandboxType[] fieldTypes) => SandboxType.Record(fieldTypes);
 
+    public static SandboxType[] CreateMeteredTypeArray(SandboxContext context, int count)
+    {
+        ChargeTypeArray(context, count);
+        return new SandboxType[count];
+    }
+
     public static SandboxType[] CreateTypeArray(int count)
         => count >= 0 ? new SandboxType[count] : throw InvalidInput("type array length must be non-negative");
+
+    private static void ChargeTypeArray(SandboxContext context, int count)
+    {
+        if (count < 0)
+        {
+            throw InvalidInput("type array length must be non-negative");
+        }
+
+        var elementCount = Math.Max(1L, count);
+        context.ChargeFuel(elementCount);
+        context.ChargeAllocation(checked(elementCount * 8));
+    }
 }

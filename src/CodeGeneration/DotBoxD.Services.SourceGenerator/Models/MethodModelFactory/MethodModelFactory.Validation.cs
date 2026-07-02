@@ -2,6 +2,8 @@ using System.Threading;
 using DotBoxD.Services.SourceGenerator.Infrastructure;
 using DotBoxD.Services.SourceGenerator.Validation;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DotBoxD.Services.SourceGenerator.Models;
 
@@ -17,6 +19,28 @@ internal static partial class MethodModelFactory
             "RefReadOnlyParameter" => "ref readonly ",
             _ => string.Empty,
         };
+
+    private static string ParameterScopeKeyword(IParameterSymbol parameter, CancellationToken ct)
+    {
+        foreach (var syntaxRef in parameter.DeclaringSyntaxReferences)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (syntaxRef.GetSyntax(ct) is not ParameterSyntax syntax)
+            {
+                continue;
+            }
+
+            foreach (var modifier in syntax.Modifiers)
+            {
+                if (modifier.IsKind(SyntaxKind.ScopedKeyword))
+                {
+                    return "scoped ";
+                }
+            }
+        }
+
+        return string.Empty;
+    }
 
     private static string ReturnRefKindKeyword(RefKind kind) =>
         kind.ToString() switch
@@ -84,12 +108,22 @@ internal static partial class MethodModelFactory
         ParameterStreamKind streamKind,
         ITypeSymbol? streamItemType,
         string parameterName,
+        bool isCancellationToken,
+        INamedTypeSymbol? cancellationTokenSymbol,
         CancellationToken ct)
     {
         var target = streamKind == ParameterStreamKind.AsyncEnumerable && streamItemType is not null
             ? streamItemType
             : type;
-        return RpcTypeValidator.GetUnsupportedTypeReason(target, $"parameter '{parameterName}'", ct);
+        return RpcTypeValidator.GetUnsupportedTypeReason(
+            target,
+            $"parameter '{parameterName}'",
+            ct,
+            allowTopLevelAsyncWrapper: false,
+            allowCurrentTransportShape:
+                streamKind is ParameterStreamKind.Stream or ParameterStreamKind.Pipe,
+            allowCurrentCancellationToken: isCancellationToken,
+            cancellationTokenSymbol: cancellationTokenSymbol);
     }
 
     private static string? GetUnsupportedNullableStreamingReturnReason(

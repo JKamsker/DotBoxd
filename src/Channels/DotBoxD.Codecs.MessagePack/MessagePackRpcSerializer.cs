@@ -82,6 +82,7 @@ public sealed class MessagePackRpcSerializer : ISerializer
                 new IMessagePackFormatter[]
                 {
                     RpcRequestFormatter.Instance,
+                    RpcResponseFormatter.Instance,
                     ReadOnlyMemoryByteFormatter.Instance,
                 },
                 effectiveResolvers))

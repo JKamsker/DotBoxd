@@ -121,4 +121,96 @@ public sealed class EventQueryDispatchEdgeCaseTests
 
         Assert.Equal(1, idHits);
     }
+
+    [Fact]
+    public async Task Unreadable_routing_member_does_not_abort_dispatch_for_other_subscriptions()
+    {
+        var host = new EventQueryHost();
+        var hiddenHits = 0;
+        var idHits = 0;
+
+        await host.Query<IExplicitRoutingEvent>()
+            .Where(e => e.Hidden == "never")
+            .SubscribeAsync((_, _) =>
+            {
+                hiddenHits++;
+                return ValueTask.CompletedTask;
+            });
+        await host.Query<IExplicitRoutingEvent>()
+            .Where(e => e.Id == "x")
+            .SubscribeAsync((_, _) =>
+            {
+                idHits++;
+                return ValueTask.CompletedTask;
+            });
+
+        var context = NewContext();
+        await host.PublishAsync<IExplicitRoutingEvent>(new ExplicitRoutingEvent("x"), context);
+
+        Assert.Equal(0, hiddenHits);
+        Assert.Equal(1, idHits);
+    }
+
+    [Fact]
+    public async Task Reentrant_publish_from_routing_getter_does_not_corrupt_outer_event_key()
+    {
+        var host = new EventQueryHost();
+        var hits = new List<string>();
+        var context = NewContext();
+
+        await host.Query<ReentrantRoutingEvent>()
+            .Where(e => e.Id == "outer" && e.Marker == "stable")
+            .SubscribeAsync((e, _) =>
+            {
+                hits.Add(e.Id);
+                return ValueTask.CompletedTask;
+            });
+        await host.Query<ReentrantRoutingEvent>()
+            .Where(e => e.Id == "nested" && e.Marker == "stable")
+            .SubscribeAsync((e, _) =>
+            {
+                hits.Add(e.Id);
+                return ValueTask.CompletedTask;
+            });
+
+        var outer = new ReentrantRoutingEvent("outer", host, context);
+        await host.PublishAsync(outer, context);
+
+        Assert.Equal(["nested", "outer"], hits);
+    }
+
+    private sealed class ReentrantRoutingEvent(string id, EventQueryHost? host = null, HookContext? context = null)
+    {
+        private bool _published;
+
+        public string Id { get; } = id;
+
+        public string Marker
+        {
+            get
+            {
+                if (!_published && host is not null)
+                {
+                    _published = true;
+                    host.PublishAsync(new ReentrantRoutingEvent("nested"), context!).GetAwaiter().GetResult();
+                }
+
+                return "stable";
+            }
+        }
+    }
+
+    private interface IExplicitRoutingEvent
+    {
+        string Id { get; }
+
+        string Hidden { get; }
+    }
+
+    private sealed class ExplicitRoutingEvent(string id) : IExplicitRoutingEvent
+    {
+        public string Id { get; } = id;
+
+        string IExplicitRoutingEvent.Hidden => "never";
+    }
 }

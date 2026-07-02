@@ -249,7 +249,7 @@ Each PR ends green (`dotnet build DotBoxD.slnx -c Release` + per-project `dotnet
 6. **PR6 — Cancellation / revocation / capability parity (compiled).** Land the four async parity classes; verify `PluginExecutionCancellation.Create` links revocation (R1); wire `CapabilityViolationResponse` (default `DenyCall`) as Layer-2 backstop. *Gate:* T-NEG-005/006; all four parity classes green both backends. **(Hardens #31.)**
 7. **PR7 — #30 lever: horizontal scaling.** Document/support N serialized kernel instances; sharded dispatch helper. *Gate:* `KernelConcurrencyProbe` shows ~linear I/O scaling with instance count; each instance retains single-threaded determinism. **(Informs #30, cheap.)**
 8. **PR8 (optional, gated, only if PR7 insufficient) — intra-kernel reentrancy.** Shape-keyed per-execution pooling (generalize `SnapshotInput`, pool `CompiledNoAuditRunState`), serialized pre/post sections + unguarded tail, behind `dotboxd.runtime.reentrant` (requires async). *Gate:* `Fix_ASY_0003` (overlap ON, serialized OFF), extended PAL-0046 isolation under reentrancy, per-execution budget/RNG independence, `KernelConcurrencyProbe` OFF==baseline. **(Resolves #30 if pursued.)**
-9. **PR9 — Docs + benchmark history + CI wiring.** Update `capability-gating.md`, `docs/concepts/runtime.md`/`kernels.md`, `docs/security/sandbox-caveats.md`; append `BENCHMARK_HISTORY.md`; confirm required-tests allowlist + baseline gate.
+9. **PR9 — Docs + benchmark history + CI wiring.** Update `capability-gating.md`, `docs-site/src/content/docs/concepts/runtime.md`/`kernels.md`, `docs-site/src/content/docs/security/sandbox-caveats.md`; append `BENCHMARK_HISTORY.md`; confirm required-tests allowlist + baseline gate.
 
 ## 8. Risks & open questions
 

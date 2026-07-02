@@ -19,11 +19,11 @@ internal static class PluginPackageGeneratorOutput
     public static void RegisterPackageSources(
         IncrementalGeneratorInitializationContext context,
         IncrementalValuesProvider<GeneratedPluginPackage> packages,
-        IncrementalValueProvider<EquatableArray<GeneratedPluginPackageIdentity>> duplicateIdentities)
+        IncrementalValueProvider<EquatableArray<GeneratedPluginPackageIdentity>> blockedIdentities)
         => GeneratorGuard.RegisterOutput(
             context,
             packages
-                .Combine(duplicateIdentities)
+                .Combine(blockedIdentities)
                 .Where(static pair => !PluginPackageDuplicateDetector.Contains(pair.Right, pair.Left))
                 .Select(static (pair, _) => pair.Left),
             "plugin package source output",

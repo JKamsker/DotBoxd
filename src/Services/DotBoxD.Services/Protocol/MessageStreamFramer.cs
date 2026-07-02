@@ -17,9 +17,15 @@ internal static class MessageStreamFramer
                 stream,
                 headerBuffer.AsMemory(0, MessageFramer.HeaderSize),
                 ct).ConfigureAwait(false);
-            if (bytesRead < MessageFramer.HeaderSize)
+            if (bytesRead == 0)
             {
                 return null;
+            }
+
+            if (bytesRead < MessageFramer.HeaderSize)
+            {
+                throw new InvalidDataException(
+                    $"Connection closed after {bytesRead} of {MessageFramer.HeaderSize} frame header bytes.");
             }
 
             var totalLength = BinaryPrimitives.ReadInt32LittleEndian(headerBuffer.AsSpan(0, 4));
@@ -28,8 +34,13 @@ internal static class MessageStreamFramer
                 throw new InvalidDataException($"Invalid DotBoxD frame length: {totalLength}.");
             }
 
-            var messageId = BinaryPrimitives.ReadInt32LittleEndian(headerBuffer.AsSpan(4, 4));
             var messageType = (MessageType)headerBuffer[8];
+            if (!MessageFrameReader.IsDefinedMessageType(messageType))
+            {
+                throw new InvalidDataException($"Invalid DotBoxD message type: 0x{headerBuffer[8]:X2}.");
+            }
+
+            var messageId = BinaryPrimitives.ReadInt32LittleEndian(headerBuffer.AsSpan(4, 4));
             var payload = await ReadPayloadAsync(stream, totalLength, ct).ConfigureAwait(false);
             return new MessageFramer.FramedMessage(messageId, messageType, payload);
         }
@@ -46,7 +57,8 @@ internal static class MessageStreamFramer
         ReadOnlyMemory<byte> payload,
         CancellationToken ct)
     {
-        using var writer = PooledBufferWriter.Rent(MessageFramer.HeaderSize + payload.Length);
+        var totalLength = MessageFrameReader.GetOutgoingFrameLength(payload.Length);
+        using var writer = PooledBufferWriter.Rent(totalLength);
         MessageFramer.WriteFrame(writer, messageId, type, payload.Span);
         await stream.WriteAsync(writer.WrittenMemory, ct).ConfigureAwait(false);
         await stream.FlushAsync(ct).ConfigureAwait(false);

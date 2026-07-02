@@ -36,6 +36,7 @@ public sealed class ReflectionEmitSandboxCompiler : ISandboxCompiler
         CompileOptions options,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var function = ResolveSupportedFunction(plan, options.Entrypoint);
         var cacheKey = CacheKeyBuilder.Build(plan, options.Entrypoint, _verificationPolicy, options.Optimize);
 

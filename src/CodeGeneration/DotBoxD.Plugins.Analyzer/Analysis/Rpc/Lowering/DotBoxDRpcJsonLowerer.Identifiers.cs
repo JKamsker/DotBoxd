@@ -26,6 +26,18 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             $"Kernel RPC service identifier '{name}' is not a local or parameter.");
     }
 
+    private string? TryLowerLiveSettingMemberAccess(MemberAccessExpressionSyntax member)
+    {
+        if (member.Expression is not ThisExpressionSyntax ||
+            _model.GetSymbolInfo(member, _cancellationToken).Symbol is not IPropertySymbol property ||
+            !IsLiveSetting(property))
+        {
+            return null;
+        }
+
+        return Var(member.Name.Identifier.ValueText);
+    }
+
     private static bool IsLiveSetting(IPropertySymbol property)
     {
         foreach (var attribute in property.GetAttributes())

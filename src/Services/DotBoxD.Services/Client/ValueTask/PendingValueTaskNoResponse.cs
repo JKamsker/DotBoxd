@@ -112,6 +112,12 @@ internal sealed class PendingValueTaskNoResponse :
                     "Response opened a stream for a non-streaming invocation.");
             }
 
+            if (payload.Length != 0)
+            {
+                throw new ServiceProtocolException(
+                    "Response payload is not allowed for a no-response invocation.");
+            }
+
             CompleteAndSetResult();
         }
         catch (Exception ex)

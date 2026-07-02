@@ -98,13 +98,60 @@ public sealed class EventQueryHostTests
     }
 
     [Fact]
+    public async Task Disposing_the_last_handle_clears_subscription_status()
+    {
+        var host = new EventQueryHost();
+
+        Assert.False(host.HasSubscriptions<AttackTestEvent>());
+
+        var handle = await host.Query<AttackTestEvent>()
+            .Where(e => e.AttackerId == "a")
+            .SubscribeAsync((_, _) => ValueTask.CompletedTask);
+
+        Assert.True(host.HasSubscriptions<AttackTestEvent>());
+
+        handle.Dispose();
+        handle.Dispose();
+
+        Assert.False(host.HasSubscriptions<AttackTestEvent>());
+    }
+
+    [Fact]
+    public async Task Pre_canceled_context_stops_before_query_dispatch_work()
+    {
+        var host = new EventQueryHost();
+        var handlerInvoked = false;
+
+        var handle = await host.Query<AttackTestEvent>()
+            .Where(e => e.AttackerId == "a")
+            .SubscribeAsync((_, _) =>
+            {
+                handlerInvoked = true;
+                return ValueTask.CompletedTask;
+            });
+
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var context = new HookContext(new InMemoryPluginMessageSink(), cancellation.Token);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            async () => await host.PublishAsync(new AttackTestEvent("a", "b", 1, 1), context));
+
+        Assert.False(handlerInvoked);
+        Assert.Equal(0, handle.EventsObserved);
+        Assert.Equal(0, handle.FilterEvaluations);
+        Assert.Equal(0, handle.Matches);
+        Assert.Equal(0, handle.Dispatches);
+    }
+
+    [Fact]
     public async Task Residual_filter_is_evaluated_on_indexed_candidates()
     {
         var host = new EventQueryHost();
         var hits = new List<string>();
 
         var handle = await host.Query<AttackTestEvent>()
-            .Where(e => e.AttackerId == "player-1" && e.TargetId.StartsWith("monster-"))
+            .Where(e => e.AttackerId == "player-1" && e.TargetId.StartsWith("monster-", StringComparison.Ordinal))
             .Select(e => e.TargetId)
             .SubscribeAsync((target, _) =>
             {

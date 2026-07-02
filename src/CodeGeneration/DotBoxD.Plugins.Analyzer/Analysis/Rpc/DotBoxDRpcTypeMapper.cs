@@ -5,27 +5,38 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 /// Maps C# types used by a <c>[ServerExtension]</c> batch method onto DotBoxD.Kernels JSON IR types: scalars to
 /// their sandbox names, <c>List&lt;T&gt;</c>/<c>IEnumerable&lt;T&gt;</c>/<c>T[]</c> to <c>List</c>, and a
 /// DTO (record/struct/class of supported fields) to a positional <c>Record</c>. A DTO's fields are its
-/// public instance properties in declaration order, which is also the order <c>record.new</c> arguments
-/// and <c>record.get</c> indices use. Anything unsupported throws <see cref="NotSupportedException"/> so
+/// public readable properties followed by public instance fields, which is also the order <c>record.new</c>
+/// arguments and <c>record.get</c> indices use. Anything unsupported throws <see cref="NotSupportedException"/> so
 /// the whole kernel fails generation safely.
 /// </summary>
 internal static partial class DotBoxDRpcTypeMapper
 {
     private const int MaxJsonTypeDepth = 8;
 
-    public static string JsonType(ITypeSymbol type)
-        => JsonType(type, 0, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default));
+    public static string JsonType(ITypeSymbol type, Compilation compilation)
+        => JsonType(type, compilation, 0, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default));
 
-    private static string JsonType(ITypeSymbol type, int depth, HashSet<ITypeSymbol> visiting)
+    private static string JsonType(
+        ITypeSymbol type,
+        Compilation compilation,
+        int depth,
+        HashSet<ITypeSymbol> visiting)
     {
-        if (type.SpecialType == SpecialType.System_Void || DotBoxDRpcReturnType.IsTaskLike(type))
+        if (type.SpecialType == SpecialType.System_Void ||
+            DotBoxDRpcReturnType.IsTaskLike(type, compilation))
         {
             throw new NotSupportedException(
                 $"Server extension type '{type.ToDisplayString()}' is only supported as a top-level return type.");
         }
         if (DotBoxDNullableScalarType.IsNullableValueType(type))
         {
-            throw new NotSupportedException($"Server extension nullable type '{type.ToDisplayString()}' is not supported.");
+            if (!DotBoxDNullableScalarType.TryGetSupportedUnderlying(type, out var nullableUnderlying))
+            {
+                throw new NotSupportedException($"Server extension nullable type '{type.ToDisplayString()}' is not supported.");
+            }
+
+            RejectTooDeep(type, depth);
+            return $"{{\"name\":\"Record\",\"arguments\":[\"Bool\",{JsonType(nullableUnderlying, compilation, depth + 1, visiting)}]}}";
         }
         if (type.NullableAnnotation == NullableAnnotation.Annotated && type.IsReferenceType)
         {
@@ -52,6 +63,37 @@ internal static partial class DotBoxDRpcTypeMapper
         {
             return Scalar("Guid");
         }
+        if (IsDateTimeWireType(type))
+        {
+            RejectTooDeep(type, depth);
+            return DateTimeWireJsonType();
+        }
+        if (IsDateOnlyWireType(type))
+        {
+            return Scalar("I32");
+        }
+        if (IsTimeOnlyWireType(type))
+        {
+            return Scalar("I64");
+        }
+        if (IsTimeSpanWireType(type))
+        {
+            return Scalar("I64");
+        }
+        if (IsCancellationTokenWireType(type))
+        {
+            return Scalar("Bool");
+        }
+        if (IsIndexWireType(type))
+        {
+            RejectTooDeep(type, depth);
+            return IndexWireJsonType();
+        }
+        if (IsRangeWireType(type))
+        {
+            RejectTooDeep(type, depth + 1);
+            return RangeWireJsonType();
+        }
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return Scalar(EnumUsesI64(enumType) ? "I64" : "I32");
@@ -59,7 +101,7 @@ internal static partial class DotBoxDRpcTypeMapper
         if (ListElementType(type) is { } elementType)
         {
             RejectTooDeep(type, depth);
-            return $"{{\"name\":\"List\",\"arguments\":[{JsonType(elementType, depth + 1, visiting)}]}}";
+            return $"{{\"name\":\"List\",\"arguments\":[{JsonType(elementType, compilation, depth + 1, visiting)}]}}";
         }
         if (MapTypes(type) is { } map)
         {
@@ -68,9 +110,9 @@ internal static partial class DotBoxDRpcTypeMapper
             {
                 throw new NotSupportedException(
                     $"Server extension map key type '{map.Key.ToDisplayString()}' is not supported; " +
-                    "map keys must be bool, int, long, string, or an enum.");
+                    "map keys must be bool, int, long, string, DateOnly, TimeOnly, TimeSpan, or an enum.");
             }
-            return $"{{\"name\":\"Map\",\"arguments\":[{JsonType(map.Key, depth + 1, visiting)},{JsonType(map.Value, depth + 1, visiting)}]}}";
+            return $"{{\"name\":\"Map\",\"arguments\":[{JsonType(map.Key, compilation, depth + 1, visiting)},{JsonType(map.Value, compilation, depth + 1, visiting)}]}}";
         }
         if (type is INamedTypeSymbol named && IsRecordDto(named))
         {
@@ -88,7 +130,7 @@ internal static partial class DotBoxDRpcTypeMapper
                 var fieldTypes = new List<string>(fields.Count);
                 foreach (var field in fields)
                 {
-                    fieldTypes.Add(JsonType(field.Type, depth + 1, visiting));
+                    fieldTypes.Add(JsonType(field.Type, compilation, depth + 1, visiting));
                 }
                 return $"{{\"name\":\"Record\",\"arguments\":[{string.Join(",", fieldTypes)}]}}";
             }
@@ -108,15 +150,7 @@ internal static partial class DotBoxDRpcTypeMapper
                 $"Server extension type '{type.ToDisplayString()}' exceeds the supported RPC shape depth.");
         }
     }
-    public static bool IsScalar(ITypeSymbol type)
-        => type.SpecialType is SpecialType.System_Boolean or SpecialType.System_Int32
-            or SpecialType.System_Int64 or SpecialType.System_Double or SpecialType.System_Single
-            or SpecialType.System_String;
-    /// <summary><see cref="System.Guid"/> is a first-class 16-byte scalar (sandbox <c>Guid</c> kind), distinct
-    /// from <c>string</c>. Detected structurally so it is robust to display-format differences.</summary>
-    public static bool IsGuid(ITypeSymbol type)
-        => type is INamedTypeSymbol { Name: "Guid", ContainingNamespace: { Name: "System" } ns }
-           && ns.ContainingNamespace is { IsGlobalNamespace: true };
+
     /// <summary>The element type of a list-shaped parameter/return (<c>List&lt;T&gt;</c>,
     /// <c>IReadOnlyList&lt;T&gt;</c>, <c>IEnumerable&lt;T&gt;</c>, or <c>T[]</c>), else null.</summary>
     public static ITypeSymbol? ListElementType(ITypeSymbol type)
@@ -166,14 +200,6 @@ internal static partial class DotBoxDRpcTypeMapper
         return null;
     }
 
-    /// <summary>A map key must lower to a scalar the kernel verifier accepts as a key: <c>bool</c>,
-    /// <c>int</c>, <c>long</c>, <c>string</c>, or an enum (which lowers to <c>I32</c>/<c>I64</c>).
-    /// <c>double</c> and composite types are rejected.</summary>
-    public static bool IsSupportedMapKey(ITypeSymbol type)
-        => type.SpecialType is SpecialType.System_Boolean or SpecialType.System_Int32
-               or SpecialType.System_Int64 or SpecialType.System_String
-           || type.TypeKind == TypeKind.Enum;
-
     public static bool SupportsIndexedListWrite(ITypeSymbol type)
     {
         if (type is IArrayTypeSymbol)
@@ -195,18 +221,17 @@ internal static partial class DotBoxDRpcTypeMapper
     public static bool IsRecordDto(INamedTypeSymbol type)
         => type.TypeKind is TypeKind.Class or TypeKind.Struct &&
            !IsScalar(type) &&
-           !IsUnsupportedFrameworkStruct(type) &&
+           !IsFirstClassFrameworkWireStruct(type) &&
            !DotBoxDNullableScalarType.IsNullableValueType(type) &&
            ListElementType(type) is null &&
            MapTypes(type) is null &&
+           !ImplementsGenericEnumerable(type) &&
            RecordFields(type).Count > 0;
 
     /// <summary>
-    /// The DTO's positional fields, in declaration order (for a positional record this is its primary-constructor
-    /// parameter order): its public instance properties with a getter, or — for a value type that carries its
-    /// data in public fields rather than properties (e.g. <c>System.Numerics.Vector3</c>, whose <c>X/Y/Z</c> are
-    /// <c>float</c> fields) — its public instance fields. The field fallback only runs when there are no readable
-    /// properties, so a property-based DTO is unaffected and the change is strictly additive.
+    /// The DTO's positional fields: public readable properties first, then public instance fields. That order
+    /// mirrors the runtime reflection shape, keeps existing property DTOs stable, and lets a DTO that mixes
+    /// properties with fields marshal every public wire member instead of silently dropping fields.
     /// </summary>
     public static IReadOnlyList<RecordMember> RecordFields(INamedTypeSymbol type)
     {
@@ -228,21 +253,18 @@ internal static partial class DotBoxDRpcTypeMapper
             }
         }
 
-        if (members.Count == 0)
+        foreach (var member in type.GetMembers())
         {
-            foreach (var member in type.GetMembers())
-            {
-                if (member is IFieldSymbol
-                    {
-                        DeclaredAccessibility: Accessibility.Public,
-                        IsStatic: false,
-                        IsConst: false
-                    } field &&
-                    !field.IsImplicitlyDeclared &&
-                    !IsIgnoredDataMember(field))
+            if (member is IFieldSymbol
                 {
-                    members.Add(new RecordMember(field.Name, field.Type, field));
-                }
+                    DeclaredAccessibility: Accessibility.Public,
+                    IsStatic: false,
+                    IsConst: false
+                } field &&
+                !field.IsImplicitlyDeclared &&
+                !IsIgnoredDataMember(field))
+            {
+                members.Add(new RecordMember(field.Name, field.Type, field));
             }
         }
 
@@ -274,15 +296,5 @@ internal static partial class DotBoxDRpcTypeMapper
         return false;
     }
 
-    /// <summary>An enum marshals through its underlying integer; widths that overflow <c>I32</c>
-    /// (<c>uint</c>, <c>long</c>, <c>ulong</c>) use <c>I64</c>, everything else <c>I32</c>.</summary>
-    public static bool EnumUsesI64(INamedTypeSymbol enumType)
-        => enumType.EnumUnderlyingType?.SpecialType is
-            SpecialType.System_UInt32 or SpecialType.System_Int64 or SpecialType.System_UInt64;
-
     private static string Scalar(string name) => "\"" + name + "\"";
-
-    private static bool IsUnsupportedFrameworkStruct(INamedTypeSymbol type)
-        => type.ContainingNamespace.ToDisplayString() == "System" &&
-           type.Name is "DateTime" or "DateTimeOffset" or "TimeSpan";
 }

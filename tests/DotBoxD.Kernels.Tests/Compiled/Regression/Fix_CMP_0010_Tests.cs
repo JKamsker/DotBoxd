@@ -25,7 +25,7 @@ public sealed class Fix_CMP_0010_Tests
     [Fact]
     public void Removed_manifest_inspection_sample_is_listed_as_an_example_coverage_gap()
     {
-        var gaps = ReadRepositoryText("docs/examples/coverage-gaps.md");
+        var gaps = ReadRepositoryText("docs-site/src/content/docs/examples/coverage-gaps.md");
 
         Assert.Contains("Standalone package-manifest inspection examples", gaps);
     }

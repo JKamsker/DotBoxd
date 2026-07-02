@@ -158,6 +158,39 @@ public sealed partial class PluginAnalyzerHookChainTests
     }
 
     [Fact]
+    public void Register_with_author_defined_non_colliding_with_overload_still_lowers()
+    {
+        var result = RunGenerator("""
+            using DotBoxD.Plugins;
+            using DotBoxD.Plugins.Runtime;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            [Hook("combat.damage", typeof(DamageResult))]
+            public sealed record DamageCtx(int Damage);
+
+            [HookResult]
+            public readonly partial record struct DamageResult(bool Success, string? Reason, int Damage)
+            {
+                public DamageResult WithDamage() => this with { Damage = 999 };
+            }
+
+            public static class Usage
+            {
+                public static void Configure(HookRegistry hooks)
+                    => hooks.On<DamageCtx>()
+                        .Register(ctx => DamageResult.Ok().WithDamage(ctx.Damage), 100);
+            }
+            """);
+
+        Assert.DoesNotContain(result.Diagnostics, d => d.Id == "DBXK113");
+        Assert.Contains(
+            result.GeneratedTrees,
+            tree => tree.ToString().Contains("UseGeneratedResultChain", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void RegisterLocal_returning_the_wrong_result_type_reports_DBXK113()
     {
         var result = RunGenerator("""

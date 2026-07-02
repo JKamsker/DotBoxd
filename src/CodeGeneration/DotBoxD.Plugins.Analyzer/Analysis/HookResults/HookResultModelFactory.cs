@@ -11,7 +11,7 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.HookResults;
 /// <c>bool Success</c> and a <c>string? Reason</c> field; anything else either yields no model (non-partial —
 /// the builders simply are not generated) or a DBXK112 diagnostic.
 /// </summary>
-internal static class HookResultModelFactory
+internal static partial class HookResultModelFactory
 {
     private const string SuccessField = "Success";
     private const string ReasonField = "Reason";
@@ -108,7 +108,7 @@ internal static class HookResultModelFactory
             type.Name,
             DeclarationKeywords(type),
             EquatableArray<HookResultField>.FromOwned([.. fields]),
-            EquatableArray<string>.FromOwned([.. ExistingMemberNames(type)]),
+            EquatableArray<HookResultExistingMember>.FromOwned([.. ExistingMembers(type)]),
             hasSuccess,
             hasReason,
             diagnostic);
@@ -120,7 +120,7 @@ internal static class HookResultModelFactory
             type.Name,
             string.Empty,
             EquatableArray<HookResultField>.FromOwned([]),
-            EquatableArray<string>.FromOwned([]),
+            EquatableArray<HookResultExistingMember>.FromOwned([]),
             HasSuccess: false,
             HasReason: false,
             new HookResultDiagnostic(PluginDiagnosticLocation.From(declaration.Identifier.GetLocation()), message));
@@ -258,20 +258,6 @@ internal static class HookResultModelFactory
         }
 
         return null;
-    }
-
-    // Author-declared member names that must not be shadowed by a generated builder. Includes methods,
-    // properties, and fields: a positional parameter named e.g. `Ok` synthesizes a property `Ok`, which would
-    // collide (CS0102) with a generated `Ok()` method, so all member kinds are collected.
-    private static IEnumerable<string> ExistingMemberNames(INamedTypeSymbol type)
-    {
-        foreach (var member in type.GetMembers())
-        {
-            if (member is (IMethodSymbol or IPropertySymbol or IFieldSymbol) and { IsImplicitlyDeclared: false })
-            {
-                yield return member.Name;
-            }
-        }
     }
 
     private static string DeclarationKeywords(INamedTypeSymbol type)

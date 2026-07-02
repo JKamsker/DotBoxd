@@ -35,7 +35,7 @@ internal sealed partial class InvokeAsyncResultReaderSource
             SpecialType.System_Int32 => $"{expression}.Int32Value",
             SpecialType.System_Int64 => $"{expression}.Int64Value",
             SpecialType.System_Double => $"{expression}.DoubleValue",
-            SpecialType.System_Single => $"(float){expression}.DoubleValue",
+            SpecialType.System_Single => $"{EnsureSingleValueReader()}({expression})",
             SpecialType.System_String => $"{expression}.TextValue",
             _ => ReadComplexExpression(type, expression)
         };
@@ -47,11 +47,39 @@ internal sealed partial class InvokeAsyncResultReaderSource
             return $"{expression}.GuidValue";
         }
 
+        if (DotBoxDRpcTypeMapper.IsDateTimeWireType(type))
+        {
+            return $"{EnsureDateTimeValueReader(type)}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
+        {
+            return $"new global::System.TimeSpan({expression}.Int64Value)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
+        {
+            return $"{EnsureDateOnlyValueReader()}({expression}.Int32Value)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeOnlyWireType(type))
+        {
+            return $"{EnsureTimeOnlyValueReader()}({expression}.Int64Value)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsIndexWireType(type))
+        {
+            return $"{EnsureIndexValueReader()}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsRangeWireType(type))
+        {
+            return $"{EnsureRangeValueReader()}({expression})";
+        }
+
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
-            return DotBoxDRpcTypeMapper.EnumUsesI64(enumType)
-                ? $"unchecked(({TypeName(type)}){expression}.Int64Value)"
-                : $"unchecked(({TypeName(type)}){expression}.Int32Value)";
+            return $"{EnsureEnumValueReader(enumType)}({expression})";
         }
 
         if (DotBoxDRpcTypeMapper.ListElementType(type) is not null)
@@ -85,14 +113,14 @@ internal sealed partial class InvokeAsyncResultReaderSource
         var elementType = DotBoxDRpcTypeMapper.ListElementType(type)!;
         var elementName = TypeName(elementType);
         var itemExpression = ReadExpression(elementType, "value.GetItem(i)");
-        var returnsArray = type is IArrayTypeSymbol;
-        var returnType = returnsArray ? TypeName(type) : $"global::System.Collections.Generic.List<{elementName}>";
+        var arrayType = type as IArrayTypeSymbol;
+        var returnType = arrayType is not null ? TypeName(type) : $"global::System.Collections.Generic.List<{elementName}>";
         _helpers.Append("        private static ").Append(returnType).Append(' ').Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("        {");
-        _helpers.AppendLine("            value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.List);");
+        _helpers.AppendLine($"            value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.List);");
         _helpers.AppendLine("            var __count = value.ItemCount;");
-        AppendListReaderBody(elementName, itemExpression, returnsArray);
+        AppendListReaderBody(elementName, itemExpression, arrayType);
         _helpers.AppendLine();
         _helpers.AppendLine("            return __result;");
         _helpers.AppendLine("        }");
@@ -117,9 +145,9 @@ internal sealed partial class InvokeAsyncResultReaderSource
         var keyExpression = ReadExpression(map.Key, "value.GetItem(i)");
         var valueExpression = ReadExpression(map.Value, "value.GetItem(i + 1)");
         _helpers.Append("        private static ").Append(TypeName(type)).Append(' ').Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("        {");
-        _helpers.AppendLine("            value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Map);");
+        _helpers.AppendLine($"            value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Map);");
         _helpers.AppendLine("            if ((value.ItemCount & 1) != 0)");
         _helpers.AppendLine("            {");
         _helpers.AppendLine("                throw new global::System.NotSupportedException(\"InvokeAsync map result had an odd key/value entry count.\");");
@@ -128,7 +156,12 @@ internal sealed partial class InvokeAsyncResultReaderSource
             .Append(keyName).Append(", ").Append(valueName).AppendLine(">(value.ItemCount / 2);");
         _helpers.AppendLine("            for (var i = 0; i < value.ItemCount; i += 2)");
         _helpers.AppendLine("            {");
-        _helpers.Append("                __result[").Append(keyExpression).Append("] = ").Append(valueExpression).AppendLine(";");
+        _helpers.Append("                var __key = ").Append(keyExpression).AppendLine(";");
+        _helpers.AppendLine("                if (__result.ContainsKey(__key))");
+        _helpers.AppendLine("                {");
+        _helpers.AppendLine("                    throw new global::System.FormatException(\"InvokeAsync map result contains a duplicate key.\");");
+        _helpers.AppendLine("                }");
+        _helpers.Append("                __result.Add(__key, ").Append(valueExpression).AppendLine(");");
         _helpers.AppendLine("            }");
         _helpers.AppendLine();
         _helpers.AppendLine("            return __result;");
@@ -137,11 +170,13 @@ internal sealed partial class InvokeAsyncResultReaderSource
         return method;
     }
 
-    private void AppendListReaderBody(string elementName, string itemExpression, bool returnsArray)
+    private void AppendListReaderBody(string elementName, string itemExpression, IArrayTypeSymbol? arrayType)
     {
-        if (returnsArray)
+        if (arrayType is not null)
         {
-            _helpers.Append("            var __result = new ").Append(elementName).AppendLine("[__count];");
+            _helpers.Append("            var __result = ")
+                .Append(ArrayCreation(arrayType, "__count"))
+                .AppendLine(";");
             _helpers.AppendLine("            for (var i = 0; i < __count; i++)");
             _helpers.AppendLine("            {");
             _helpers.Append("                __result[i] = ").Append(itemExpression).AppendLine(";");
@@ -168,15 +203,28 @@ internal sealed partial class InvokeAsyncResultReaderSource
         var method = NextHelperName();
         _readers[key] = method;
         var fields = DotBoxDRpcTypeMapper.RecordFields(type);
+        var fieldReads = new string[fields.Count];
+        for (var i = 0; i < fields.Count; i++)
+        {
+            fieldReads[i] = ReadExpression(fields[i].Type, "value.GetItem(" + i + ")");
+        }
+
         var body = BuildDtoReconstruction(type, fields);
         _helpers.Append("        private static ").Append(TypeName(type)).Append(' ').Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("        {");
-        _helpers.AppendLine("            value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Record);");
+        _helpers.AppendLine($"            value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Record);");
         _helpers.Append("            if (value.ItemCount != ").Append(fields.Count).AppendLine(")");
         _helpers.AppendLine("            {");
         _helpers.AppendLine("                throw new global::System.NotSupportedException(\"Server extension record field count did not match the generated DTO shape.\");");
         _helpers.AppendLine("            }");
+        _helpers.AppendLine();
+        for (var i = 0; i < fields.Count; i++)
+        {
+            _helpers.Append("            var ").Append(FieldLocal(i)).Append(" = ")
+                .Append(fieldReads[i]).AppendLine(";");
+        }
+
         _helpers.AppendLine();
         _helpers.AppendLine(body);
         _helpers.AppendLine("        }");
@@ -186,6 +234,34 @@ internal sealed partial class InvokeAsyncResultReaderSource
 
     private string NextHelperName() => _helperPrefix + _nextHelper++;
 
+    private static string ArrayCreation(IArrayTypeSymbol arrayType, string lengthExpression)
+    {
+        if (arrayType.Rank != 1)
+        {
+            throw new NotSupportedException(
+                $"InvokeAsync multidimensional array return type '{arrayType.ToDisplayString()}' is not supported.");
+        }
+
+        var elementType = arrayType.ElementType;
+        var trailingRanks = string.Empty;
+        while (elementType is IArrayTypeSymbol nestedArray)
+        {
+            if (nestedArray.Rank != 1)
+            {
+                throw new NotSupportedException(
+                    $"InvokeAsync multidimensional array return type '{nestedArray.ToDisplayString()}' is not supported.");
+            }
+
+            trailingRanks += "[]";
+            elementType = nestedArray.ElementType;
+        }
+
+        return $"new {TypeName(elementType)}[{lengthExpression}]{trailingRanks}";
+    }
+
     private static string TypeName(ITypeSymbol type)
         => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+    private static string FieldLocal(int index)
+        => "__field" + index.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }

@@ -144,6 +144,13 @@ internal static class LiveSettingTypeConverter
             _ => throw Diagnostic($"Live setting type '{type}' is not supported.")
         };
 
+    public static void ValidateDefinition(LiveSettingDefinition definition)
+    {
+        _ = ToSandboxType(definition.Type);
+        var defaultValue = CoerceClr(definition.Type, definition.DefaultValue);
+        ValidateRangeValue(definition, defaultValue);
+    }
+
     public static void ValidateRangeDefinition(LiveSettingDefinition definition)
     {
         if (definition.Min is null && definition.Max is null)

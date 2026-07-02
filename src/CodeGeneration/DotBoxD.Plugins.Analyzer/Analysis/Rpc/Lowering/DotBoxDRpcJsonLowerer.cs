@@ -25,39 +25,49 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     private readonly string? _serverContextParameterName;
     private readonly ITypeSymbol? _serverContextType;
     private readonly Dictionary<string, string> _serviceHandleLocals = new(StringComparer.Ordinal);
+    private readonly Dictionary<ISymbol, string> _serviceHandleMembers = new(SymbolEqualityComparer.Default);
     private readonly HashSet<string> _reservedNames = new(StringComparer.Ordinal);
     private Func<AssignmentExpressionSyntax, Func<ExpressionSyntax, string>, string?>? _assignmentOverride;
     private Func<ExpressionSyntax, string?>? _expressionOverride;
     private List<string>? _expressionPrelude;
     private IReadOnlyList<string> _returnRecordFields = [];
     private string? _returnRecordType;
+    private ITypeSymbol? _returnValueType;
     private int _tempCounter;
 
-    /// <summary>True once the body builds a list or record, so the manifest declares the Alloc effect.</summary>
+    /// <summary>True once the body builds an allocating value, so the manifest declares the Alloc effect.</summary>
     public bool Allocates { get; private set; }
 
     public string LowerBody(BlockSyntax block) => LowerBody(block, [], [], returnRecordType: null, assignmentOverride: null);
     internal void AddServiceHandleLocal(string name, string handleIdJson)
         => _serviceHandleLocals[name] = handleIdJson;
+    internal void AddServiceHandleMember(ISymbol member, string handleIdJson)
+    {
+        _serviceHandleLocals[member.Name] = handleIdJson;
+        _serviceHandleMembers[member] = handleIdJson;
+    }
+
     internal string LowerBody(
         BlockSyntax block,
-        IReadOnlyList<(string Name, ExpressionSyntax Value)> leadingLocals,
+        IReadOnlyList<(string Name, string Value)> leadingLocals,
         IReadOnlyList<string> returnRecordFields,
         string? returnRecordType,
         Func<AssignmentExpressionSyntax, Func<ExpressionSyntax, string>, string?>? assignmentOverride,
-        Func<ExpressionSyntax, string?>? expressionOverride = null)
+        Func<ExpressionSyntax, string?>? expressionOverride = null,
+        ITypeSymbol? returnValueType = null)
     {
         _assignmentOverride = assignmentOverride;
         _expressionOverride = null;
         _returnRecordFields = returnRecordFields;
         _returnRecordType = returnRecordType;
+        _returnValueType = returnValueType;
         try
         {
             ReserveUserNames(block);
             var parts = new List<string>();
             for (var i = 0; i < leadingLocals.Count; i++)
             {
-                parts.Add(SetStatement(leadingLocals[i].Name, LowerExpressionWithPrelude(leadingLocals[i].Value, parts)));
+                parts.Add(SetStatement(leadingLocals[i].Name, leadingLocals[i].Value));
             }
 
             _expressionOverride = expressionOverride;
@@ -70,6 +80,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             _expressionOverride = null;
             _returnRecordFields = [];
             _returnRecordType = null;
+            _returnValueType = null;
         }
     }
     internal static string SetGeneratedLocal(string name, string value) => SetStatement(name, value);
@@ -95,13 +106,20 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             case ForEachStatementSyntax loop:
                 LowerForEach(loop, output);
                 break;
+            case WhileStatementSyntax loop:
+                LowerWhile(loop, output);
+                break;
             case IfStatementSyntax branch:
                 LowerIf(branch, output);
                 break;
             case ReturnStatementSyntax { Expression: { } returned }:
+                var value = LowerExpressionWithPrelude(returned, output);
+                if (_returnValueType is not null)
+                    value = ApplyNumericConversion(returned, _returnValueType, value);
+
                 output.Add(Obj(
                     ("op", Str("return")),
-                    ("value", ReturnValue(LowerExpressionWithPrelude(returned, output)))));
+                    ("value", ReturnValue(value))));
                 break;
             case ReturnStatementSyntax:
                 output.Add(Obj(("op", Str("return")), ("value", Unit())));
@@ -113,11 +131,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 output.Add(Obj(("op", Str("break"))));
                 break;
             case BlockSyntax block:
-                foreach (var inner in block.Statements)
-                {
-                    LowerStatement(inner, output);
-                }
-
+                LowerServiceHandleScopedBlock(block, output);
                 break;
             default:
                 throw new NotSupportedException($"Server extension statement '{statement.Kind()}' is not supported.");
@@ -130,7 +144,8 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             if (declarator.Initializer is not { } initializer)
             {
-                throw new NotSupportedException("Server extension locals must be initialized.");
+                ValidateUninitializedLocalDeclaration(declarator);
+                continue;
             }
 
             var localName = declarator.Identifier.ValueText;
@@ -164,8 +179,11 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 return;
             case PostfixUnaryExpressionSyntax { Operand: IdentifierNameSyntax inc } postfix
                 when postfix.Kind() is SyntaxKind.PostIncrementExpression or SyntaxKind.PostDecrementExpression:
-                var op = postfix.Kind() == SyntaxKind.PostIncrementExpression ? "add" : "sub";
-                output.Add(SetStatement(inc.Identifier.ValueText, BinaryJson(op, Var(inc.Identifier.ValueText), I32(1))));
+                output.Add(IncrementStatement(inc, postfix.Kind()));
+                return;
+            case PrefixUnaryExpressionSyntax { Operand: IdentifierNameSyntax inc } prefix
+                when prefix.Kind() is SyntaxKind.PreIncrementExpression or SyntaxKind.PreDecrementExpression:
+                output.Add(IncrementStatement(inc, prefix.Kind()));
                 return;
             case InvocationExpressionSyntax invocation when TryLowerListAdd(invocation, output) is { } listAdd:
                 output.Add(listAdd);
@@ -187,6 +205,23 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
     private string LowerCompound(AssignmentExpressionSyntax assignment, IdentifierNameSyntax target, List<string> output)
     {
+        if (assignment.Kind() == SyntaxKind.AddAssignmentExpression &&
+            TypeOf(target).SpecialType == SpecialType.System_String)
+        {
+            if (!IsStringExpression(assignment.Right))
+            {
+                throw new NotSupportedException(
+                    "Server extension operator '+=' requires both operands to be strings or matching numeric operands.");
+            }
+
+            Allocates = true;
+            return Call(
+                "string.concatBudgeted",
+                null,
+                Var(target.Identifier.ValueText),
+                LowerExpressionWithPrelude(assignment.Right, output));
+        }
+
         var op = assignment.Kind() switch
         {
             SyntaxKind.AddAssignmentExpression => "add",

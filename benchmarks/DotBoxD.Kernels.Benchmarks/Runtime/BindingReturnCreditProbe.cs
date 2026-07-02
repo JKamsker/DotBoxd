@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Reflection;
 using DotBoxD.Kernels.Bindings;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Policies;
@@ -12,8 +11,8 @@ internal static class BindingReturnCreditProbe
     private const int Warmup = 20_000;
     private const int Iterations = 500_000;
 
-    private static readonly Func<SandboxContext, SandboxType, IDisposable?> BeginConditionalScope =
-        CreateConditionalScopeDelegate();
+    private static readonly Func<SandboxContext, SandboxType, BindingReturnCreditTracker.Scope> BeginConditionalScope =
+        static (context, returnType) => context.BeginBindingReturnCreditScope(returnType);
 
     public static void Run()
     {
@@ -25,22 +24,26 @@ internal static class BindingReturnCreditProbe
         _ = Measure(Warmup, i32Descriptor, i32, conditionalScope: false);
         _ = Measure(Warmup, i32Descriptor, i32, conditionalScope: true);
         _ = Measure(Warmup, stringDescriptor, text, conditionalScope: true);
+        _ = Measure(Warmup, stringDescriptor, text, conditionalScope: true, prechargeString: true);
 
         var legacyI32 = Measure(Iterations, i32Descriptor, i32, conditionalScope: false);
         var conditionalI32 = Measure(Iterations, i32Descriptor, i32, conditionalScope: true);
         var conditionalString = Measure(Iterations, stringDescriptor, text, conditionalScope: true);
+        var prechargedString = Measure(Iterations, stringDescriptor, text, conditionalScope: true, prechargeString: true);
 
         Console.WriteLine($"iterations = {Iterations:N0}");
         Write("legacy scope I32 return", legacyI32);
         Write("conditional I32 return", conditionalI32);
         Write("conditional String return", conditionalString);
+        Write("precharged String return", prechargedString);
     }
 
     private static Measurement Measure(
         int iterations,
         BindingDescriptor descriptor,
         SandboxValue value,
-        bool conditionalScope)
+        bool conditionalScope,
+        bool prechargeString = false)
     {
         GC.Collect();
         GC.WaitForPendingFinalizers();
@@ -51,10 +54,16 @@ internal static class BindingReturnCreditProbe
         var sw = Stopwatch.StartNew();
         for (var i = 0; i < iterations; i++)
         {
-            using var scope = conditionalScope
-                ? BeginConditionalScope(context, descriptor.ReturnType)
-                : context.BeginBindingReturnCreditScope();
-            _ = context.ChargeBindingReturn(descriptor, value);
+            if (conditionalScope)
+            {
+                using var scope = BeginConditionalScope(context, descriptor.ReturnType);
+                ChargeReturn(context, descriptor, value, prechargeString);
+            }
+            else
+            {
+                using var scope = context.BeginBindingReturnCreditScope();
+                ChargeReturn(context, descriptor, value, prechargeString);
+            }
         }
 
         sw.Stop();
@@ -62,6 +71,20 @@ internal static class BindingReturnCreditProbe
             sw.Elapsed.TotalMilliseconds,
             GC.GetAllocatedBytesForCurrentThread() - before,
             context.Budget.StringBytes);
+    }
+
+    private static void ChargeReturn(
+        SandboxContext context,
+        BindingDescriptor descriptor,
+        SandboxValue value,
+        bool prechargeString)
+    {
+        if (prechargeString && value is StringValue text)
+        {
+            context.ChargeString(text.Value);
+        }
+
+        _ = context.ChargeBindingReturn(descriptor, value);
     }
 
     private static SandboxContext CreateContext()
@@ -93,17 +116,6 @@ internal static class BindingReturnCreditProbe
             BindingSafety.PureHostFacade,
             static (_, _, _) => ValueTask.FromResult(SandboxValue.Unit),
             CompiledBinding.RuntimeStub("Probe", "Probe"));
-
-    private static Func<SandboxContext, SandboxType, IDisposable?> CreateConditionalScopeDelegate()
-    {
-        var method = typeof(SandboxContext).GetMethod(
-            "BeginBindingReturnCreditScope",
-            BindingFlags.Instance | BindingFlags.NonPublic,
-            binder: null,
-            [typeof(SandboxType)],
-            modifiers: null)!;
-        return method.CreateDelegate<Func<SandboxContext, SandboxType, IDisposable?>>();
-    }
 
     private static void Write(string name, Measurement summary)
         => Console.WriteLine(

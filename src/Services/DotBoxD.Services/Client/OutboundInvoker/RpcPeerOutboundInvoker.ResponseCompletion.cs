@@ -31,11 +31,27 @@ internal sealed partial class RpcPeerOutboundInvoker
             return false;
         }
 
+        if (response.MessageId != messageId)
+        {
+            _pending.TryFail(
+                messageId,
+                new ServiceProtocolException("Response envelope message id does not match frame header."));
+            return false;
+        }
+
         if (messageType == MessageType.Error && response.IsSuccess)
         {
             _pending.TryFail(
                 messageId,
                 new ServiceProtocolException("Malformed error response frame."));
+            return false;
+        }
+
+        if (messageType == MessageType.Error && payload.Length != 0)
+        {
+            _pending.TryFail(
+                messageId,
+                new ServiceProtocolException("Error response payload is not allowed."));
             return false;
         }
 
@@ -78,6 +94,16 @@ internal sealed partial class RpcPeerOutboundInvoker
         {
             throw new ServiceProtocolException(
                 "Response opened a stream for a non-streaming invocation.");
+        }
+    }
+
+    private static void EnsureNoResponsePayload(ReceivedResponse received)
+    {
+        EnsureNonStreamingResponse(received);
+        if (received.Payload.Length != 0)
+        {
+            throw new ServiceProtocolException(
+                "Response payload is not allowed for a no-response invocation.");
         }
     }
 }

@@ -27,7 +27,7 @@ internal static class SafeHttpGrantValidator
             "allowedHosts",
             SafeHttpGrantValueValidator.IsAllowedAuthority,
             "a host or host:port authority");
-        RequireCsv(
+        RequireOptionalCsv(
             grant,
             diagnostics,
             "allowedSchemes",
@@ -35,7 +35,7 @@ internal static class SafeHttpGrantValidator
             "http or https");
         RequireOptionalNonNegativeLong(grant, diagnostics, "maxRequestBytes");
         RequireNonNegativeLong(grant, diagnostics, "maxResponseBytes");
-        RequireRangeLong(grant, diagnostics, "timeoutMs", min: 1, max: 60_000);
+        RequireOptionalRangeLong(grant, diagnostics, "timeoutMs", min: 1, max: 60_000);
         RequireOptionalBool(grant, diagnostics, "allowIpLiterals");
         RequireOptionalBool(grant, diagnostics, "allowPrivateNetwork");
     }
@@ -81,6 +81,19 @@ internal static class SafeHttpGrantValidator
         }
     }
 
+    private static void RequireOptionalCsv(
+        CapabilityGrant grant,
+        ICollection<SandboxDiagnostic> diagnostics,
+        string key,
+        Func<string, bool> isValid,
+        string description)
+    {
+        if (grant.Parameters.ContainsKey(key))
+        {
+            RequireCsv(grant, diagnostics, key, isValid, description);
+        }
+    }
+
     private static void RequireNonNegativeLong(
         CapabilityGrant grant,
         ICollection<SandboxDiagnostic> diagnostics,
@@ -111,6 +124,19 @@ internal static class SafeHttpGrantValidator
             parsed > max)
         {
             Add(diagnostics, grant, $"parameter '{key}' must be between {min} and {max}");
+        }
+    }
+
+    private static void RequireOptionalRangeLong(
+        CapabilityGrant grant,
+        ICollection<SandboxDiagnostic> diagnostics,
+        string key,
+        long min,
+        long max)
+    {
+        if (grant.Parameters.ContainsKey(key))
+        {
+            RequireRangeLong(grant, diagnostics, key, min, max);
         }
     }
 

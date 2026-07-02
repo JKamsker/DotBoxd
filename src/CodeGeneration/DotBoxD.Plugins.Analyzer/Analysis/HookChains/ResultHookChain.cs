@@ -44,14 +44,18 @@ internal static partial class ResultHookChain
         {
             if (stage.IsSelect)
             {
-                throw new NotSupportedException();
+                throw new NotSupportedException("Result hook chains support Where filters before Register; Select is not supported before a result terminal.");
             }
         }
 
-        if (!TryResolveHook(contextType, out var hookName, out var resultType) ||
-            !HookResultModelFactory.CanSatisfyHookResult(resultType, model.Compilation, cancellationToken))
+        if (!TryResolveHook(contextType, out var hookName, out var resultType))
         {
-            throw new NotSupportedException();
+            throw new NotSupportedException("Result hook context types must declare [Hook(name, typeof(TResult))].");
+        }
+
+        if (!HookResultModelFactory.CanSatisfyHookResult(resultType, model.Compilation, cancellationToken))
+        {
+            throw new NotSupportedException("Result hook result types must be constructible from the generated hook result builder.");
         }
 
         // The handler's TResult is NOT read from the Register call symbol: when the handler body is a fluent
@@ -212,16 +216,20 @@ internal static partial class ResultHookChain
         resultType = null!;
         foreach (var attribute in contextType.GetAttributes())
         {
-            if (string.Equals(attribute.AttributeClass?.ToDisplayString(), DotBoxDMetadataNames.HookAttribute, StringComparison.Ordinal) &&
-                attribute.ConstructorArguments.Length == 2 &&
-                attribute.ConstructorArguments[0].Value is string declaredName &&
-                !string.IsNullOrWhiteSpace(declaredName) &&
-                attribute.ConstructorArguments[1].Value is INamedTypeSymbol declaredResult)
+            if (!EventTypeName.TryHookName(attribute, out var declaredName))
             {
-                hookName = declaredName;
-                resultType = declaredResult;
-                return true;
+                continue;
             }
+
+            if (attribute.ConstructorArguments.Length != 2 ||
+                attribute.ConstructorArguments[1].Value is not INamedTypeSymbol declaredResult)
+            {
+                throw new NotSupportedException("Result hook attributes must provide a hook name and result type.");
+            }
+
+            hookName = declaredName;
+            resultType = declaredResult;
+            return true;
         }
 
         return false;

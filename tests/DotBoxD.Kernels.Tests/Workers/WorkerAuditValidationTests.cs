@@ -217,6 +217,27 @@ public sealed class WorkerAuditValidationTests
     }
 
     [Fact]
+    public async Task Worker_result_with_forged_audit_sequence_number_is_rejected()
+    {
+        var worker = new AuditForgingWorker(
+            (plan, runId) => new SandboxAuditEvent(
+                runId,
+                "WorkerExecution",
+                DateTimeOffset.UtcNow,
+                true,
+                ResourceId: $"module:{plan.ModuleHash}"),
+            MutateAuditEvents: events => events[1] = events[1] with { SequenceNumber = 42 });
+        var host = Host(worker);
+        var plan = await PrepareAsync(host);
+
+        var result = await ExecuteAsync(host, plan);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.HostFailure, result.Error!.Code);
+        Assert.Contains(result.AuditEvents, e => e.Kind == "WorkerIsolationFailed");
+    }
+
+    [Fact]
     public async Task Worker_path_clears_successful_summary_suppression_so_audit_stays_valid()
     {
         // SuppressSuccessfulRunSummaryAudit is an in-process-only optimization. Worker-result

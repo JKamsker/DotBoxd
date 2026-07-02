@@ -1,0 +1,4 @@
+interface:
+  display_name: "Surprise Hunt Graph"
+  short_description: "GitHub-issue-graph protocol for continuous bug hunting"
+  default_prompt: "Use $surprise-hunt-graph to record and coordinate a lens-sharded surprise hunt through GitHub issues."

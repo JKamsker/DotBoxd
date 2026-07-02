@@ -33,12 +33,11 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             AwaitExpressionSyntax awaited => LowerExpression(awaited.Expression),
             IdentifierNameSyntax identifier => LowerIdentifier(identifier),
             PrefixUnaryExpressionSyntax unary => LowerUnary(unary),
-            BinaryExpressionSyntax binary => BinaryJson(
-                JsonBinaryOperator(binary),
-                LowerExpression(binary.Left),
-                LowerExpression(binary.Right)),
+            CastExpressionSyntax cast => LowerCast(cast),
+            BinaryExpressionSyntax binary => LowerBinary(binary),
             InvocationExpressionSyntax invocation => LowerInvocation(invocation),
             ObjectCreationExpressionSyntax creation => LowerRecordCreation(creation),
+            ImplicitObjectCreationExpressionSyntax creation => LowerRecordCreation(creation),
             ElementAccessExpressionSyntax element => LowerElementAccess(element),
             MemberAccessExpressionSyntax member => LowerMemberAccess(member),
             _ => throw new NotSupportedException($"Server extension expression '{expression}' is not supported.")
@@ -50,8 +49,35 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             SyntaxKind.LogicalNotExpression => Obj(("unary", Str("not")), ("operand", LowerExpression(unary.Operand))),
             SyntaxKind.UnaryMinusExpression => Obj(("unary", Str("-")), ("operand", LowerExpression(unary.Operand))),
+            SyntaxKind.UnaryPlusExpression => LowerExpression(unary.Operand),
             _ => throw new NotSupportedException($"Server extension unary '{unary.Kind()}' is not supported.")
         };
+
+    private string LowerBinary(BinaryExpressionSyntax binary)
+        => LowerBinary(binary, LowerExpression);
+
+    private string LowerBinary(BinaryExpressionSyntax binary, Func<ExpressionSyntax, string> lower)
+    {
+        if (binary.Kind() == SyntaxKind.AddExpression)
+        {
+            var leftIsString = IsStringExpression(binary.Left);
+            var rightIsString = IsStringExpression(binary.Right);
+            if (leftIsString && rightIsString)
+            {
+                Allocates = true;
+                return Call("string.concatBudgeted", null, lower(binary.Left), lower(binary.Right));
+            }
+
+            if (leftIsString || rightIsString)
+            {
+                throw new NotSupportedException(
+                    "Server extension operator '+' requires both operands to be strings or matching numeric operands.");
+            }
+        }
+
+        return BinaryJson(JsonBinaryOperator(binary), lower(binary.Left), lower(binary.Right));
+    }
+
     private string LiteralJson(ExpressionSyntax expression, object? value)
     {
         var converted = _model.GetTypeInfo(expression, _cancellationToken).ConvertedType;
@@ -82,7 +108,8 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             return mapCall;
         }
 
-        if (_model.GetSymbolInfo(invocation, _cancellationToken).Symbol is IMethodSymbol method &&
+        var symbolInfo = _model.GetSymbolInfo(invocation, _cancellationToken);
+        if (symbolInfo.Symbol is IMethodSymbol method &&
             DotBoxDHostBindingExpressionLowerer.HostBinding(method, _model.Compilation) is { } binding)
         {
             AddBindingMetadata(binding);
@@ -92,6 +119,10 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                 $"Host binding '{binding.BindingId}'");
             return Call(binding.BindingId, null, args);
         }
+        if (TryLowerServerContextHostBinding(invocation, symbolInfo.Symbol as IMethodSymbol) is { } serverContextCall)
+        {
+            return serverContextCall;
+        }
         if (TryLowerKernelMethodInvocation(invocation) is { } kernelMethod)
         {
             return kernelMethod;
@@ -99,8 +130,93 @@ internal sealed partial class DotBoxDRpcJsonLowerer
 
         throw new NotSupportedException($"Server extension call '{invocation}' is not a host binding.");
     }
+
+    private string? TryLowerServerContextHostBinding(
+        InvocationExpressionSyntax invocation,
+        IMethodSymbol? resolvedMethod)
+    {
+        if (resolvedMethod is not null)
+        {
+            return null;
+        }
+
+        if (invocation.Expression is not MemberAccessExpressionSyntax member ||
+            !IsServerContextExpression(member.Expression) ||
+            ServerContextHostBindingCandidates(member.Name.Identifier.ValueText, invocation.ArgumentList.Arguments) is not { Count: > 0 } candidates)
+        {
+            return null;
+        }
+
+        if (candidates.Count != 1)
+        {
+            throw new NotSupportedException(
+                $"Server extension call '{invocation}' is ambiguous on server context type '{_serverContextType}'.");
+        }
+
+        var (method, binding) = candidates[0];
+        AddBindingMetadata(binding);
+        var args = LowerArgumentsInParameterOrder(
+            invocation.ArgumentList.Arguments,
+            method.Parameters,
+            $"Host binding '{binding.BindingId}'");
+        return Call(binding.BindingId, null, args);
+    }
+
+    private List<(IMethodSymbol Method, (string BindingId, string? Capability, IReadOnlyList<string> Effects, bool IsAsync) Binding)>
+        ServerContextHostBindingCandidates(string methodName, SeparatedSyntaxList<ArgumentSyntax> arguments)
+    {
+        var candidates = new List<(IMethodSymbol Method, (string BindingId, string? Capability, IReadOnlyList<string> Effects, bool IsAsync) Binding)>();
+        if (_serverContextType is null)
+        {
+            return candidates;
+        }
+
+        foreach (var method in ServerContextMethods(methodName))
+        {
+            if (!CanBindArgumentsInParameterOrder(arguments, method.Parameters))
+            {
+                continue;
+            }
+
+            if (DotBoxDHostBindingExpressionLowerer.HostBinding(method, _model.Compilation) is { } binding)
+            {
+                candidates.Add((method, binding));
+            }
+        }
+
+        return candidates;
+    }
+
+    private IEnumerable<IMethodSymbol> ServerContextMethods(string methodName)
+    {
+        if (_serverContextType is not INamedTypeSymbol named)
+        {
+            yield break;
+        }
+
+        for (INamedTypeSymbol? current = named; current is not null; current = current.BaseType)
+        {
+            foreach (var method in current.GetMembers(methodName).OfType<IMethodSymbol>())
+            {
+                yield return method;
+            }
+        }
+
+        foreach (var @interface in named.AllInterfaces)
+        {
+            foreach (var method in @interface.GetMembers(methodName).OfType<IMethodSymbol>())
+            {
+                yield return method;
+            }
+        }
+    }
     private string LowerMemberAccess(MemberAccessExpressionSyntax member)
     {
+        if (TryLowerLiveSettingMemberAccess(member) is { } liveSetting)
+        {
+            return liveSetting;
+        }
+
         var receiverType = TypeOf(member.Expression);
         if (string.Equals(member.Name.Identifier.ValueText, "Count", StringComparison.Ordinal) &&
             DotBoxDRpcTypeMapper.ListElementType(receiverType) is not null)
@@ -136,8 +252,32 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             ?? throw new NotSupportedException($"Server extension indexing '{element}' is not supported.");
     }
     private ITypeSymbol TypeOf(ExpressionSyntax expression)
-        => _model.GetTypeInfo(expression, _cancellationToken).Type
-           ?? throw new NotSupportedException($"Server extension could not resolve the type of '{expression}'.");
+    {
+        if (IsServerContextExpression(expression) && _serverContextType is { } serverContextType)
+        {
+            return serverContextType;
+        }
+
+        var type = _model.GetTypeInfo(expression, _cancellationToken);
+        return type.Type
+               ?? type.ConvertedType
+               ?? throw new NotSupportedException($"Server extension could not resolve the type of '{expression}'.");
+    }
+
+    private bool IsStringExpression(ExpressionSyntax expression)
+        => TypeOf(expression).SpecialType == SpecialType.System_String;
+
+    private bool IsServerContextExpression(ExpressionSyntax expression)
+        => expression switch
+        {
+            ParenthesizedExpressionSyntax parenthesized => IsServerContextExpression(parenthesized.Expression),
+            ThisExpressionSyntax => _serverContextType is not null && string.IsNullOrEmpty(_serverContextParameterName),
+            IdentifierNameSyntax identifier => string.Equals(
+                identifier.Identifier.ValueText,
+                _serverContextParameterName,
+                StringComparison.Ordinal),
+            _ => false
+        };
 
     private static bool HasDotBoxDServiceAttribute(ITypeSymbol type)
     {
@@ -155,22 +295,4 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         return false;
     }
 
-    private string JsonBinaryOperator(BinaryExpressionSyntax binary)
-        => binary.Kind() switch
-        {
-            SyntaxKind.AddExpression => "add",
-            SyntaxKind.SubtractExpression => "sub",
-            SyntaxKind.MultiplyExpression => "mul",
-            SyntaxKind.DivideExpression => "div",
-            SyntaxKind.ModuloExpression => "rem",
-            SyntaxKind.EqualsExpression => "eq",
-            SyntaxKind.NotEqualsExpression => "ne",
-            SyntaxKind.LessThanExpression => "lt",
-            SyntaxKind.LessThanOrEqualExpression => "lte",
-            SyntaxKind.GreaterThanExpression => "gt",
-            SyntaxKind.GreaterThanOrEqualExpression => "gte",
-            SyntaxKind.LogicalAndExpression => "and",
-            SyntaxKind.LogicalOrExpression => "or",
-            _ => throw new NotSupportedException($"Server extension operator '{binary.OperatorToken.ValueText}' is not supported.")
-        };
 }

@@ -14,6 +14,14 @@ public partial class HookPipeline<TEvent, TContext>
     public HookPipeline<TEvent, TContext> UseGeneratedChain(PluginPackage package)
     {
         ArgumentNullException.ThrowIfNull(package);
+        return UseGeneratedChain(package, shouldInvoke: null);
+    }
+
+    internal HookPipeline<TEvent, TContext> UseGeneratedChain(
+        PluginPackage package,
+        Func<TEvent, TContext, ValueTask<bool>>? shouldInvoke)
+    {
+        ArgumentNullException.ThrowIfNull(package);
         if (_installer is null)
         {
             throw new SandboxValidationException([
@@ -26,7 +34,20 @@ public partial class HookPipeline<TEvent, TContext>
         var kernel = _installer(package);
         try
         {
-            return Use(kernel);
+            if (shouldInvoke is null)
+            {
+                return Use(kernel);
+            }
+
+            kernel.ValidateFor(_adapter);
+            _handlerSet.Add(kernel, async (e, rawContext, context) =>
+            {
+                if (await shouldInvoke(e, context).ConfigureAwait(false))
+                {
+                    await kernel.InvokeAsync(_adapter, e, rawContext.CancellationToken).ConfigureAwait(false);
+                }
+            });
+            return this;
         }
         catch
         {

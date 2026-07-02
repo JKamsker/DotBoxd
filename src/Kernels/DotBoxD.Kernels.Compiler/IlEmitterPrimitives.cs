@@ -89,8 +89,9 @@ internal static class IlEmitterPrimitives
         {
             // Build DotBoxD.Kernels.SandboxType[] via the trusted runtime facade (no newarr in verified IL),
             // populate each field type, then fold into a record type — mirrors the value-array path.
+            il.Emit(OpCodes.Ldarg_0);
             EmitInt32(il, type.Arguments.Count);
-            il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.CreateTypeArray)));
+            il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.CreateMeteredTypeArray)));
             for (var i = 0; i < type.Arguments.Count; i++)
             {
                 il.Emit(OpCodes.Dup);

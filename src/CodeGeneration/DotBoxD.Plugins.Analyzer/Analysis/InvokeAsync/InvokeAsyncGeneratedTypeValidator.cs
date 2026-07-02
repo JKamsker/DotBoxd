@@ -77,6 +77,8 @@ internal static class InvokeAsyncGeneratedTypeValidator
 
         if (DotBoxDRpcTypeMapper.IsScalar(type) ||
             DotBoxDRpcTypeMapper.IsGuid(type) ||
+            DotBoxDRpcTypeMapper.IsDateTimeWireType(type) ||
+            DotBoxDRpcTypeMapper.IsTimeSpanWireType(type) ||
             type.TypeKind == TypeKind.Enum)
         {
             return;

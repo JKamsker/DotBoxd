@@ -93,6 +93,48 @@ public sealed partial class PluginAnalyzerTests
         Assert.Empty(driver.GetRunResult().GeneratedTrees);
     }
 
+    [Theory]
+    [InlineData("Plugin(\"nested-plugin\")")]
+    [InlineData("EventKernel(\"nested-event\")")]
+    public void Generator_rejects_nested_package_owner_kernels(string attribute)
+    {
+        var compilation = CreateCompilation($$"""
+            using DotBoxD.Plugins;
+            using DotBoxD.Abstractions;
+
+            namespace Sample;
+
+            public sealed record DamageEvent(string DamageType);
+
+            public sealed class Outer
+            {
+                [{{attribute}}]
+                public sealed partial class DamageKernel : IEventKernel<DamageEvent>
+                {
+                    public bool ShouldHandle(DamageEvent e, HookContext ctx) => e.DamageType == "fire";
+
+                    public void Handle(DamageEvent e, HookContext ctx)
+                        => ctx.Messages.Send("player-1", "message");
+                }
+            }
+            """);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            [new PluginPackageGenerator().AsSourceGenerator()],
+            parseOptions: ParseOptions);
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out _,
+            out var generatorDiagnostics);
+
+        Assert.Contains(
+            generatorDiagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("top-level", StringComparison.OrdinalIgnoreCase) &&
+                 d.GetMessage().Contains("nested", StringComparison.OrdinalIgnoreCase));
+        Assert.Empty(driver.GetRunResult().GeneratedTrees);
+    }
+
     [Fact]
     public void Generator_reports_block_bodied_should_handle_with_extra_statements()
     {

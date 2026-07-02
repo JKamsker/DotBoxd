@@ -12,6 +12,14 @@ internal static class RpcErrors
         Exception exception,
         Func<Exception, RpcErrorInfo?>? transformer = null)
     {
+        if (exception is RemoteServiceException remote)
+        {
+            var type = string.IsNullOrWhiteSpace(remote.RemoteExceptionType)
+                ? RpcErrorTypes.InternalError
+                : remote.RemoteExceptionType;
+            return new RpcError(Truncate(remote.Message), Truncate(type));
+        }
+
         if (exception is ServiceNotFoundException notFound)
         {
             // Map to a distinct error type so the caller can branch on service vs method vs instance,

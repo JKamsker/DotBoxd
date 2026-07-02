@@ -4,6 +4,17 @@ namespace DotBoxD.Services.Protocol;
 
 internal static class MessageFrameReader
 {
+    public static int GetOutgoingFrameLength(int payloadLength)
+    {
+        var totalLength = (long)MessageFramer.HeaderSize + payloadLength;
+        if (totalLength < MessageFramer.HeaderSize || totalLength > MessageFramer.MaxMessageSize)
+        {
+            throw new InvalidDataException($"Invalid DotBoxD frame length: {totalLength}.");
+        }
+
+        return (int)totalLength;
+    }
+
     public static void ValidateOutgoingFrame(ReadOnlySpan<byte> frame, int maxMessageSize)
     {
         if (frame.Length < MessageFramer.HeaderSize)
@@ -22,7 +33,34 @@ internal static class MessageFrameReader
         {
             throw new InvalidDataException($"Invalid DotBoxD frame length: {declaredLength}.");
         }
+
+        if (!IsDefinedMessageType((MessageType)frame[8]))
+        {
+            throw new InvalidDataException($"Invalid DotBoxD message type: 0x{frame[8]:X2}.");
+        }
     }
+
+    public static void ThrowIfUndefinedMessageType(MessageType type)
+    {
+        if (!IsDefinedMessageType(type))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(type),
+                type,
+                "Unsupported DotBoxD message type.");
+        }
+    }
+
+    public static bool IsDefinedMessageType(MessageType type) =>
+        type is MessageType.Request or
+            MessageType.Response or
+            MessageType.Error or
+            MessageType.Cancel or
+            MessageType.StreamItem or
+            MessageType.StreamComplete or
+            MessageType.StreamError or
+            MessageType.StreamCredit or
+            MessageType.StreamCancel;
 
     public static bool TryReadFrame(
         ReadOnlyMemory<byte> source,
@@ -44,13 +82,20 @@ internal static class MessageFrameReader
         var span = source.Span;
         var totalLength = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(0, 4));
         if (totalLength < MessageFramer.HeaderSize + MessageFramer.EnvelopeLengthSize ||
-            totalLength != source.Length)
+            totalLength != source.Length ||
+            totalLength > MessageFramer.MaxMessageSize)
+        {
+            return false;
+        }
+
+        var messageType = (MessageType)span[8];
+        if (!IsDefinedMessageType(messageType))
         {
             return false;
         }
 
         messageId = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(4, 4));
-        type = (MessageType)span[8];
+        type = messageType;
 
         var envelopeLength = BinaryPrimitives.ReadInt32LittleEndian(
             span.Slice(MessageFramer.HeaderSize, MessageFramer.EnvelopeLengthSize));
@@ -70,6 +115,19 @@ internal static class MessageFrameReader
         ReadOnlyMemory<byte> source,
         out int messageId,
         out MessageType type)
+        => TryReadFrameHeader(source, validateMessageType: true, out messageId, out type);
+
+    public static bool TryReadFrameHeaderUnchecked(
+        ReadOnlyMemory<byte> source,
+        out int messageId,
+        out MessageType type)
+        => TryReadFrameHeader(source, validateMessageType: false, out messageId, out type);
+
+    private static bool TryReadFrameHeader(
+        ReadOnlyMemory<byte> source,
+        bool validateMessageType,
+        out int messageId,
+        out MessageType type)
     {
         messageId = 0;
         type = default;
@@ -81,13 +139,21 @@ internal static class MessageFrameReader
 
         var span = source.Span;
         var totalLength = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(0, 4));
-        if (totalLength < MessageFramer.HeaderSize || totalLength != source.Length)
+        if (totalLength < MessageFramer.HeaderSize ||
+            totalLength != source.Length ||
+            totalLength > MessageFramer.MaxMessageSize)
+        {
+            return false;
+        }
+
+        var messageType = (MessageType)span[8];
+        if (validateMessageType && !IsDefinedMessageType(messageType))
         {
             return false;
         }
 
         messageId = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(4, 4));
-        type = (MessageType)span[8];
+        type = messageType;
         return true;
     }
 }

@@ -37,13 +37,24 @@ public sealed partial class HookRegistry
         ]);
     }
 
-    private (object? Single, object[]? Multiple) PipelinesForEventLocked<TEvent>()
+    private (object? Single, CachedPipelineFanout Multiple) PipelinesForEventLocked<TEvent>()
     {
+        var eventType = typeof(TEvent);
+        if (!_pipelineEventTypes.Contains(eventType))
+        {
+            return (null, CachedPipelineFanout.Empty);
+        }
+
+        if (_pipelineFanout.TryGetValue(eventType, out var cached))
+        {
+            return cached;
+        }
+
         object? single = null;
         List<object>? multiple = null;
         foreach (var (key, pipeline) in _pipelines)
         {
-            if (key.EventType != typeof(TEvent))
+            if (key.EventType != eventType)
             {
                 continue;
             }
@@ -59,22 +70,35 @@ public sealed partial class HookRegistry
             multiple.Add(pipeline);
         }
 
-        return multiple is null ? (single, null) : (null, [.. multiple]);
+        (object? Single, CachedPipelineFanout Multiple) fanout = multiple is null
+            ? (single, CachedPipelineFanout.Empty)
+            : (null, CachedPipelineFanout.From(multiple));
+        _pipelineFanout[eventType] = fanout;
+        return fanout;
+    }
+
+    private void RegisterEventTypeLocked<TEvent>()
+    {
+        var eventType = typeof(TEvent);
+        _pipelineEventTypes.Add(eventType);
+        _pipelineFanout.Remove(eventType);
     }
 
     private static async ValueTask PublishManyAsync<TEvent>(
-        object[] pipelines,
+        CachedPipelineFanout pipelines,
         TEvent e,
         CancellationToken cancellationToken)
     {
-        foreach (var pipeline in pipelines)
+        cancellationToken.ThrowIfCancellationRequested();
+        for (var i = 0; i < pipelines.Count; i++)
         {
-            await ((IHookPipeline<TEvent>)pipeline).PublishAsync(e, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            await ((IHookPipeline<TEvent>)pipelines[i]).PublishAsync(e, cancellationToken).ConfigureAwait(false);
         }
     }
 
     private static async ValueTask<TResult?> FireManyAsync<TEvent, TResult>(
-        object[] pipelines,
+        CachedPipelineFanout pipelines,
         TEvent e,
         CancellationToken cancellationToken)
         where TResult : struct, IHookResult
@@ -82,6 +106,7 @@ public sealed partial class HookRegistry
         var registrations = OrderedResultRegistrations<TEvent>(pipelines);
         foreach (var registration in registrations)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var result = await registration
                 .InvokeAsync<TResult>(e, options: null, cancellationToken)
                 .ConfigureAwait(false);
@@ -95,7 +120,7 @@ public sealed partial class HookRegistry
     }
 
     private static async ValueTask<TResult?> FireManyAsync<TEvent, TResult>(
-        object[] pipelines,
+        CachedPipelineFanout pipelines,
         TEvent e,
         ResultHookDispatchOptions<TResult> options,
         CancellationToken cancellationToken)
@@ -104,6 +129,7 @@ public sealed partial class HookRegistry
         var registrations = OrderedResultRegistrations<TEvent>(pipelines);
         foreach (var registration in registrations)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var result = await registration
                 .InvokeAsync(e, options, cancellationToken)
                 .ConfigureAwait(false);
@@ -116,12 +142,13 @@ public sealed partial class HookRegistry
         return null;
     }
 
-    private static Hooks.IResultHookRegistration<TEvent>[] OrderedResultRegistrations<TEvent>(object[] pipelines)
+    private static Hooks.IResultHookRegistration<TEvent>[] OrderedResultRegistrations<TEvent>(
+        CachedPipelineFanout pipelines)
     {
         var registrations = new List<Hooks.IResultHookRegistration<TEvent>>();
-        foreach (var pipeline in pipelines)
+        for (var i = 0; i < pipelines.Count; i++)
         {
-            registrations.AddRange(((IHookPipeline<TEvent>)pipeline).ResultRegistrations());
+            registrations.AddRange(((IHookPipeline<TEvent>)pipelines[i]).ResultRegistrations());
         }
 
         registrations.Sort(static (left, right) => left.Priority != right.Priority

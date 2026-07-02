@@ -10,8 +10,15 @@ internal sealed partial class RpcPeerOutboundInvoker
         string instanceId,
         string method,
         TRequest request,
-        CancellationToken ct = default) =>
-        SendUnaryRequestAsync<TRequest, TResponse>(service, method, request, instanceId, ct);
+        CancellationToken ct = default)
+    {
+        if (instanceId is null)
+        {
+            return MissingInstanceIdTask<TResponse>();
+        }
+
+        return SendUnaryRequestAsync<TRequest, TResponse>(service, method, request, instanceId, ct);
+    }
 
     public async Task<TResponse> InvokeOnInstanceAsync<TRequest, TResponse>(
         string service,
@@ -21,6 +28,7 @@ internal sealed partial class RpcPeerOutboundInvoker
         RpcStreamAttachment[] streams,
         CancellationToken ct = default)
     {
+        instanceId = ValidateInstanceId(instanceId);
         using var received = await SendRequestAsync(service, method, request, instanceId, streams, ct)
             .ConfigureAwait(false);
         return DeserializeNonStreamingResponse<TResponse>(received);
@@ -30,8 +38,15 @@ internal sealed partial class RpcPeerOutboundInvoker
         string service,
         string instanceId,
         string method,
-        CancellationToken ct = default) =>
-        SendUnaryRequestAsync<TResponse>(service, method, instanceId, ct);
+        CancellationToken ct = default)
+    {
+        if (instanceId is null)
+        {
+            return MissingInstanceIdTask<TResponse>();
+        }
+
+        return SendUnaryRequestAsync<TResponse>(service, method, instanceId, ct);
+    }
 
     public async Task InvokeOnInstanceAsync<TRequest>(
         string service,
@@ -40,6 +55,7 @@ internal sealed partial class RpcPeerOutboundInvoker
         TRequest request,
         CancellationToken ct = default)
     {
+        instanceId = ValidateInstanceId(instanceId);
         using var received = await SendRequestAsync(
             service,
             method,
@@ -47,7 +63,7 @@ internal sealed partial class RpcPeerOutboundInvoker
             instanceId,
             streams: null,
             ct).ConfigureAwait(false);
-        EnsureNonStreamingResponse(received);
+        EnsureNoResponsePayload(received);
     }
 
     public async Task InvokeOnInstanceAsync<TRequest>(
@@ -58,9 +74,10 @@ internal sealed partial class RpcPeerOutboundInvoker
         RpcStreamAttachment[] streams,
         CancellationToken ct = default)
     {
+        instanceId = ValidateInstanceId(instanceId);
         using var received = await SendRequestAsync(service, method, request, instanceId, streams, ct)
             .ConfigureAwait(false);
-        EnsureNonStreamingResponse(received);
+        EnsureNoResponsePayload(received);
     }
 
     public async Task InvokeOnInstanceAsync(
@@ -69,16 +86,24 @@ internal sealed partial class RpcPeerOutboundInvoker
         string method,
         CancellationToken ct = default)
     {
+        instanceId = ValidateInstanceId(instanceId);
         using var received = await SendRequestAsync(service, method, instanceId, ct).ConfigureAwait(false);
-        EnsureNonStreamingResponse(received);
+        EnsureNoResponsePayload(received);
     }
 
     public Task<Stream> InvokeStreamOnInstanceAsync(
         string service,
         string instanceId,
         string method,
-        CancellationToken ct = default) =>
-        _streamingCalls.ReadStreamAsync(SendRequestAsync(service, method, instanceId, ct));
+        CancellationToken ct = default)
+    {
+        if (instanceId is null)
+        {
+            return MissingInstanceIdTask<Stream>();
+        }
+
+        return _streamingCalls.ReadStreamAsync(SendRequestAsync(service, method, instanceId, ct));
+    }
 
     public Task<Stream> InvokeStreamOnInstanceAsync<TRequest>(
         string service,
@@ -86,15 +111,29 @@ internal sealed partial class RpcPeerOutboundInvoker
         string method,
         TRequest request,
         RpcStreamAttachment[]? streams = null,
-        CancellationToken ct = default) =>
-        _streamingCalls.ReadStreamAsync(SendRequestAsync(service, method, request, instanceId, streams, ct));
+        CancellationToken ct = default)
+    {
+        if (instanceId is null)
+        {
+            return MissingInstanceIdTask<Stream>();
+        }
+
+        return _streamingCalls.ReadStreamAsync(SendRequestAsync(service, method, request, instanceId, streams, ct));
+    }
 
     public Task<Pipe> InvokePipeOnInstanceAsync(
         string service,
         string instanceId,
         string method,
-        CancellationToken ct = default) =>
-        _streamingCalls.ReadPipeAsync(SendRequestAsync(service, method, instanceId, ct));
+        CancellationToken ct = default)
+    {
+        if (instanceId is null)
+        {
+            return MissingInstanceIdTask<Pipe>();
+        }
+
+        return _streamingCalls.ReadPipeAsync(SendRequestAsync(service, method, instanceId, ct));
+    }
 
     public Task<Pipe> InvokePipeOnInstanceAsync<TRequest>(
         string service,
@@ -102,17 +141,27 @@ internal sealed partial class RpcPeerOutboundInvoker
         string method,
         TRequest request,
         RpcStreamAttachment[]? streams = null,
-        CancellationToken ct = default) =>
-        _streamingCalls.ReadPipeAsync(SendRequestAsync(service, method, request, instanceId, streams, ct));
+        CancellationToken ct = default)
+    {
+        if (instanceId is null)
+        {
+            return MissingInstanceIdTask<Pipe>();
+        }
+
+        return _streamingCalls.ReadPipeAsync(SendRequestAsync(service, method, request, instanceId, streams, ct));
+    }
 
     public IAsyncEnumerable<T> InvokeAsyncEnumerableOnInstance<T>(
         string service,
         string instanceId,
         string method,
-        CancellationToken ct = default) =>
-        _streamingCalls.EnumerateAsync<T>(
+        CancellationToken ct = default)
+    {
+        instanceId = ValidateInstanceId(instanceId);
+        return _streamingCalls.EnumerateAsync<T>(
             invokeCt => SendRequestAsync(service, method, instanceId, invokeCt),
             ct);
+    }
 
     public IAsyncEnumerable<T> InvokeAsyncEnumerableOnInstance<TRequest, T>(
         string service,
@@ -120,17 +169,27 @@ internal sealed partial class RpcPeerOutboundInvoker
         string method,
         TRequest request,
         RpcStreamAttachment[]? streams = null,
-        CancellationToken ct = default) =>
-        _streamingCalls.EnumerateAsync<T>(
+        CancellationToken ct = default)
+    {
+        instanceId = ValidateInstanceId(instanceId);
+        return _streamingCalls.EnumerateAsync<T>(
             invokeCt => SendRequestAsync(service, method, request, instanceId, streams, invokeCt),
             ct);
+    }
 
     public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableOnInstanceAsync<T>(
         string service,
         string instanceId,
         string method,
-        CancellationToken ct = default) =>
-        _streamingCalls.ReadAsyncEnumerableAsync<T>(SendRequestAsync(service, method, instanceId, ct));
+        CancellationToken ct = default)
+    {
+        if (instanceId is null)
+        {
+            return MissingInstanceIdTask<IAsyncEnumerable<T>>();
+        }
+
+        return _streamingCalls.ReadAsyncEnumerableAsync<T>(SendRequestAsync(service, method, instanceId, ct));
+    }
 
     public Task<IAsyncEnumerable<T>> InvokeAsyncEnumerableOnInstanceAsync<TRequest, T>(
         string service,
@@ -138,7 +197,14 @@ internal sealed partial class RpcPeerOutboundInvoker
         string method,
         TRequest request,
         RpcStreamAttachment[]? streams = null,
-        CancellationToken ct = default) =>
-        _streamingCalls.ReadAsyncEnumerableAsync<T>(
+        CancellationToken ct = default)
+    {
+        if (instanceId is null)
+        {
+            return MissingInstanceIdTask<IAsyncEnumerable<T>>();
+        }
+
+        return _streamingCalls.ReadAsyncEnumerableAsync<T>(
             SendRequestAsync(service, method, request, instanceId, streams, ct));
+    }
 }

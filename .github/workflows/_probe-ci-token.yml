@@ -1,0 +1,41 @@
+name: _probe-ci-token
+# Throwaway diagnostic: determine whether GH_AW_CI_TRIGGER_TOKEN has
+# pull_requests:write (needed for the "full token override" that makes
+# bot-created red-test PRs run CI without manual approval).
+# Non-destructive: attempts a PR create with an invalid head so no PR is ever made.
+#   403 => token lacks pull_requests:write (Contents-only)
+#   422 => token HAS pull_requests:write (auth passed, validation rejected the bogus head)
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe pull_requests:write on GH_AW_CI_TRIGGER_TOKEN
+        env:
+          TOKEN: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
+        run: |
+          if [ -z "${TOKEN}" ]; then
+            echo "RESULT: secret GH_AW_CI_TRIGGER_TOKEN is EMPTY/unset"
+            exit 0
+          fi
+          code=$(curl -s -o /tmp/body.json -w '%{http_code}' \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls \
+            -d '{"title":"__ci_token_probe__","head":"__nonexistent_probe_branch__","base":"main"}')
+          echo "HTTP_STATUS: ${code}"
+          echo "--- response body (message field only) ---"
+          python3 -c "import json,sys; d=json.load(open('/tmp/body.json')); print('message:', d.get('message'))" 2>/dev/null || cat /tmp/body.json
+          echo "------------------------------------------"
+          case "${code}" in
+            422) echo "VERDICT: token HAS pull_requests:write  -> full override will work" ;;
+            403) echo "VERDICT: token LACKS pull_requests:write -> add 'Pull requests: R/W' to the PAT" ;;
+            401) echo "VERDICT: token INVALID/expired (401)" ;;
+            *)   echo "VERDICT: unexpected status ${code} - inspect body above" ;;
+          esac

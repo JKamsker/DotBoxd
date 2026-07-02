@@ -59,7 +59,16 @@ internal static partial class MethodModelFactory
         SetUnsupported(
             ref unsupportedReason,
             ref unsupportedLocation,
-            RpcTypeValidator.GetUnsupportedTypeReason(returnType, "return type", ct),
+            RpcTypeValidator.GetUnsupportedTypeReason(
+                returnType,
+                "return type",
+                ct,
+                allowTopLevelAsyncWrapper: true,
+                allowCurrentTransportShape:
+                    NamingHelpers.IsStreamReturn(returnKind) ||
+                    NamingHelpers.IsPipeReturn(returnKind) ||
+                    NamingHelpers.IsAsyncEnumerableReturn(returnKind),
+                cancellationTokenSymbol: cancellationTokenSymbol),
             methodLocation);
         SetUnsupported(
             ref unsupportedReason,
@@ -98,10 +107,11 @@ internal static partial class MethodModelFactory
                 methodLocation);
         }
 
-        foreach (var param in methodSymbol.Parameters)
+        for (var parameterIndex = 0; parameterIndex < methodSymbol.Parameters.Length; parameterIndex++)
         {
             ct.ThrowIfCancellationRequested();
 
+            var param = methodSymbol.Parameters[parameterIndex];
             var parameterLocation = DiagnosticLocationFactory.FromSymbol(param);
             requiresUnsafeSignature |= RpcTypeValidator.RequiresUnsafeContext(param.Type, ct);
             var isCancellationToken = cancellationTokenSymbol is not null &&
@@ -134,7 +144,14 @@ internal static partial class MethodModelFactory
             SetUnsupported(
                 ref unsupportedReason,
                 ref unsupportedLocation,
-                GetUnsupportedParameterTypeReason(param.Type, streamKind, streamItemType, param.Name, ct),
+                GetUnsupportedParameterTypeReason(
+                    param.Type,
+                    streamKind,
+                    streamItemType,
+                    param.Name,
+                    isCancellationToken,
+                    cancellationTokenSymbol,
+                    ct),
                 parameterLocation);
             SetUnsupported(
                 ref unsupportedReason,
@@ -154,20 +171,35 @@ internal static partial class MethodModelFactory
                 parameterLocation);
 
             // A cancellation-token default is always emitted as "= default"; capture the literal text of
-            // any other parameter's explicit default so the generated proxy/async-sibling preserve it.
-            var defaultValueLiteral = isCancellationToken ? string.Empty : FormatDefaultValueLiteral(param) ?? string.Empty;
+            // any other optional/defaulted parameter so the generated proxy/async-sibling preserve it.
+            var hasDefaultValue = HasDefaultParameterValue(param);
+            var preserveOptionalAttributeDefault = ShouldPreserveOptionalAttributeDefault(methodSymbol, parameterIndex);
+            var defaultValueLiteral = isCancellationToken || preserveOptionalAttributeDefault
+                ? string.Empty
+                : FormatDefaultValueLiteral(param, hasDefaultValue) ?? string.Empty;
+            var metadataDefaultValueExpression = isCancellationToken
+                ? string.Empty
+                : FormatMetadataDefaultValueExpression(param, hasDefaultValue, defaultValueLiteral);
 
             parameters.Add(new ParameterModel(
                 IdentifierHelpers.EscapeIdentifier(param.Name),
                 param.Type.ToDisplayString(s_qualifiedFormat),
                 MethodSignatureFacts.GetCanonicalType(param.Type, methodSymbol, ct),
                 ParameterRefKindKeyword(param.RefKind),
+                param.IsParams,
                 isCancellationToken,
-                param.HasExplicitDefaultValue,
+                hasDefaultValue,
                 defaultValueLiteral,
+                metadataDefaultValueExpression,
                 streamKind,
                 streamItemType?.ToDisplayString(s_qualifiedFormat),
-                MetadataType: TypeOfExpressionFormatter.Format(param.Type, ct)));
+                MetadataType: TypeOfExpressionFormatter.Format(param.Type, ct),
+                CallerInfoAttributePrefix: BuildCallerInfoAttributePrefix(
+                    param,
+                    ct,
+                    preserveOptionalAttributeDefault,
+                    preserveMetadataDefaultAttributes: defaultValueLiteral.Length == 0),
+                ScopeKeyword: ParameterScopeKeyword(param, ct)));
         }
 
         if (unsupportedReason is not null)
@@ -189,6 +221,7 @@ internal static partial class MethodModelFactory
             DeclaredReturnType: declaredReturnType,
             UnwrappedReturnType: unwrappedReturnType,
             ReturnRefKindKeyword: ReturnRefKindKeyword(methodSymbol.RefKind),
+            ReturnAttributePrefix: BuildReturnFlowAttributePrefix(methodSymbol, ct),
             HasCancellationToken: hasCancellationToken,
             Parameters: parameters.ToEquatableArray(),
             AdditionalExplicitImplementationTypes: EquatableArray<string>.Empty,

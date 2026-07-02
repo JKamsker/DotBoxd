@@ -10,12 +10,20 @@ internal static class PluginManifestEffectValidator
         List<SandboxDiagnostic> diagnostics)
     {
         var effects = SandboxEffect.None;
+        var declared = new HashSet<string>(StringComparer.Ordinal);
         foreach (var effect in manifest.Effects)
         {
             if (!TryParseDeclaredEffect(effect, out var parsed))
             {
                 diagnostics.Add(new SandboxDiagnostic("DBXK040", $"Plugin manifest effect '{effect}' is not supported."));
                 continue;
+            }
+
+            if (!declared.Add(effect))
+            {
+                diagnostics.Add(new SandboxDiagnostic(
+                    "DBXK040",
+                    $"Plugin manifest effect '{effect}' is declared more than once."));
             }
 
             effects |= parsed;

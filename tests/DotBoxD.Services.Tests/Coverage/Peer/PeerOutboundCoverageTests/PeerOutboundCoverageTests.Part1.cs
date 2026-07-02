@@ -1,3 +1,4 @@
+using System.Buffers;
 using DotBoxD.Services.Buffers;
 using DotBoxD.Services.Exceptions;
 using DotBoxD.Services.Peer;
@@ -46,6 +47,28 @@ public sealed partial class PeerOutboundCoverageTests
         var second = peer.InvokeAsync<int, string>(Service, Method, request: 2);
         channel.Enqueue(ResponseFrame(serializer, messageId: 2, result: "second"));
         Assert.Equal("second", await second.WaitAsync(Timeout));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ResponseEnvelopeMessageIdMismatch_FaultsRequestWithProtocolException()
+    {
+        var serializer = NewSerializer();
+        await using var channel = new ScriptedConnection();
+        await using var peer = RpcPeer.Over(channel, serializer, Options()).Start();
+
+        var call = peer.InvokeAsync<int, string>(Service, Method, request: 1);
+
+        var payloadWriter = new ArrayBufferWriter<byte>();
+        serializer.Serialize(payloadWriter, "tampered");
+        channel.Enqueue(MessageFramer.FrameMessage(
+            serializer,
+            messageId: 1,
+            MessageType.Response,
+            new RpcResponse { MessageId = 99, IsSuccess = true },
+            payloadWriter.WrittenSpan));
+
+        var ex = await Assert.ThrowsAsync<ServiceProtocolException>(() => call.WaitAsync(Timeout));
+        Assert.Contains("message id", ex.Message);
     }
 
     [Fact]

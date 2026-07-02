@@ -1,0 +1,4 @@
+interface:
+  display_name: "Library Surprise Sweep"
+  short_description: "Find and close API behavior surprises"
+  default_prompt: "Use $library-surprise-sweep to find fail-open or misleading library behavior and turn it into support or diagnostics."

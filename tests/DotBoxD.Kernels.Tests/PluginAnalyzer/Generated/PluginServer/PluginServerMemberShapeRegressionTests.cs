@@ -2,7 +2,7 @@ using Microsoft.CodeAnalysis;
 
 namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Generated;
 
-public sealed class PluginServerMemberShapeRegressionTests
+public sealed partial class PluginServerMemberShapeRegressionTests
 {
     [Fact]
     public void Generated_plugin_server_forwards_world_get_only_properties()
@@ -90,17 +90,17 @@ public sealed class PluginServerMemberShapeRegressionTests
     }
 
     [Fact]
-    public void Generated_plugin_server_preserves_forwarded_method_default_parameters()
+    public void Generated_plugin_server_reports_unsupported_event_members()
     {
-        var (generated, outputCompilation) = PluginServerGenerationTestDriver.Run(ServerSource("""
-                    ValueTask<int> ReadAsync(int max = 10, CancellationToken ct = default);
+        var diagnostics = PluginServerGenerationTestDriver.Diagnostics(ServerSource("""
+                    event global::System.Action Changed;
             """));
 
-        PluginServerGenerationTestDriver.AssertNoCompilationErrors(outputCompilation);
         Assert.Contains(
-            "ReadAsync(int @max = 10, global::System.Threading.CancellationToken @ct = default)",
-            generated,
-            StringComparison.Ordinal);
+            diagnostics,
+            diagnostic => diagnostic.Id == "DBXK100" &&
+                          diagnostic.Severity == DiagnosticSeverity.Error &&
+                          diagnostic.GetMessage().Contains("event", StringComparison.Ordinal));
     }
 
     [Fact]

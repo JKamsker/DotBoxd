@@ -39,12 +39,14 @@ internal static partial class HookChainModelFactory
                 : default;
         }
 
+        // With two untyped parameters, "ct" is commonly used for either context or cancellation.
+        // Preserve the context shape unless Roslyn or an explicit parameter type proves it is a token.
         if (parameters.Count == 2 && LooksLikeCancellationToken(
                 lambda,
                 index: 1,
                 model,
                 cancellationToken,
-                allowNameFallback: asyncLocal))
+                allowNameFallback: false))
         {
             return new ResultLocalTerminalShape(parameters[0], null, true, true);
         }

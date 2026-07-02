@@ -70,7 +70,7 @@ internal static class RegistrationAccumulatorEmitter
         {
             builder.Append("        ").Append(FieldName(child.PropertyName))
                 .Append(" = new ").Append(child.AccumulatorName)
-                .Append("(target.").Append(Identifier(child.PropertyName)).AppendLine(");");
+                .Append('(').Append(ChildTargetExpression(child)).AppendLine(");");
         }
 
         builder.AppendLine("    }");
@@ -106,6 +106,9 @@ internal static class RegistrationAccumulatorEmitter
         builder.AppendLine("        }");
         builder.AppendLine("    }");
     }
+
+    private static string ChildTargetExpression(RegistrationChildAccumulatorModel child)
+        => "((" + child.DeclaringTypeName + ")target)." + Identifier(child.PropertyName);
 
     private static void AppendConstraintClauses(
         StringBuilder builder,

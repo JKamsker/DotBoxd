@@ -7,6 +7,10 @@
 [![NuGet packages](https://img.shields.io/badge/NuGet-packages-004880.svg?logo=nuget)](https://www.nuget.org/packages?q=DotBoxD)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-8%20%7C%209%20%7C%2010-512BD4.svg)](https://dotnet.microsoft.com/)
+[![Docs](https://img.shields.io/badge/docs-online-2ea44f.svg)](https://dotboxd.kamsker.at/)
+
+📖 **Documentation site:** <https://dotboxd.kamsker.at/> — guide, tutorials, examples, and the
+generated API reference.
 
 DotBoxD lets a host and its clients share **one C# contract** and use it in three different ways,
 all driven by Roslyn source generators (no runtime reflection on the hot path):
@@ -25,9 +29,9 @@ The Kernels and Pushdown stack targets `net10.0`.
 
 The snippets below use the real, compiling API. The maintained runnable example is the GameServer
 sample at [`samples/GameServer/Examples.GameServer.Server`](samples/GameServer/Examples.GameServer.Server),
-which combines service IPC, event kernels, live settings, host bindings, policies, and kernel RPC.
+which combines service IPC, event kernels, live settings, host bindings, policies, and server extensions.
 Features that used to be split across removed samples are tracked in
-[`docs/examples/coverage-gaps.md`](docs/examples/coverage-gaps.md).
+[the examples coverage-gaps page](https://dotboxd.kamsker.at/examples/coverage-gaps/).
 
 ### 1. Services — define a contract, host it, call it remotely
 
@@ -69,7 +73,7 @@ compile time.
 A kernel is restricted JSON IR (never C#, IL, or arbitrary host calls). The host imports it,
 validates it against a capability/resource policy, and executes it inside a fuel-metered sandbox.
 Hosts can still expose their own APIs deliberately through policy-gated host bindings; see
-[`docs/concepts/host-bindings.md`](docs/concepts/host-bindings.md).
+[Host bindings](https://dotboxd.kamsker.at/concepts/host-bindings/).
 
 ```csharp
 using DotBoxD.Hosting;
@@ -110,7 +114,7 @@ if (result.Succeeded && result.Value is I32Value total)
 This is the payoff. The host is typically **frozen at release** and exposes only **fine-grained**
 bindings (e.g. "kill *one* monster"); it ships **no batch operations**. A client that needs to act on
 many entities would otherwise make **one remote call per entity**. With pushdown, a **plugin supplies its
-own server-side aggregate** as a sandboxed **kernel RPC service**: the analyzer lowers its C# batch method
+own server-side aggregate** as a sandboxed **server extension**: the analyzer lowers its C# batch method
 to verified IR that runs server-side, looping over the host's *existing* bindings. The server is never
 recompiled — only the plugin changes — and N round-trips collapse into **one**.
 
@@ -128,7 +132,7 @@ public interface IGameWorld
 public interface IMonsterKillerService { List<KillResult> KillMonsters(List<int> monsterIds); }
 public readonly record struct KillResult(int MonsterId, bool Success);
 
-[KernelRpcService("monster-killer")]
+[ServerExtension("monster-killer", typeof(IMonsterKillerService))]
 public sealed partial class MonsterKillerKernel
 {
     public List<KillResult> KillMonsters(List<int> monsterIds, HookContext ctx)
@@ -141,14 +145,14 @@ public sealed partial class MonsterKillerKernel
 }
 
 // Server installs the plugin's kernel; the caller invokes it in ONE round-trip:
-await server.RegisterRpcServiceAsync<IMonsterKillerService, MonsterKillerKernel>();
-List<KillResult> killed = server.RpcService<IMonsterKillerService>().KillMonsters(ids); // 1 round-trip, not N
+await server.RegisterServerExtensionAsync<IMonsterKillerService, MonsterKillerKernel>();
+List<KillResult> killed = server.ServerExtension<IMonsterKillerService>().KillMonsters(ids); // 1 round-trip, not N
 ```
 
 The batch logic is **author-supplied**, so it runs as a validated sandboxed kernel under the same trust
 model as event kernels: it can reach only the host bindings the server already exposes, gated by
 capabilities and fuel/quota limits, and it can take and return complex objects and lists of objects
-(via the IR `Record` type). The GameServer sample demonstrates kernel RPC over the plugin IPC
+(via the IR `Record` type). The GameServer sample demonstrates server extensions over the plugin IPC
 control plane; see
 [`docs/design/plugin-fluent-hooks-api/followups.md`](docs/design/plugin-fluent-hooks-api/followups.md)
 for the full design.
@@ -168,7 +172,7 @@ dotnet add package DotBoxD.Services.All --prerelease
 dotnet add package DotBoxD.Pushdown.Services --prerelease
 ```
 
-Then read [`docs/getting-started`](docs/getting-started/) for first-service, first-kernel, and
+Then read [Getting started](https://dotboxd.kamsker.at/getting-started/) for first-service, first-kernel, and
 pushdown walkthroughs, or run the maintained example:
 
 ```bash
@@ -257,7 +261,7 @@ flowchart LR
 
 The generators (`DotBoxD.Services.SourceGenerator`, `DotBoxD.Plugins.Analyzer`) emit proxies,
 dispatchers, and plugin factories at compile time. Diagnostics are namespaced `DBXS###` (services)
-and `DBXK###` (kernels/plugins). See [`docs/index.md`](docs/index.md) for the full picture.
+and `DBXK###` (kernels/plugins). See [the docs overview](https://dotboxd.kamsker.at/overview/) for the full picture.
 
 ---
 
@@ -317,8 +321,8 @@ DotBoxD is precise about its trust boundary — read this before deploying:
   defend against accidental and many malicious-author attacks, but hard multi-tenant isolation
   requires a worker process, container, or OS-level boundary.
 
-See [`SECURITY.md`](SECURITY.md) and [`docs/security`](docs/security/) for the threat model, the
-three execution modes, and the capabilities/bindings model.
+See [`SECURITY.md`](SECURITY.md) and [Sandbox caveats](https://dotboxd.kamsker.at/security/sandbox-caveats/) for the threat model,
+the three execution modes, and the capabilities/bindings model.
 
 ---
 
@@ -340,7 +344,7 @@ dotnet test  DotBoxD.slnx -c Release
 
 Please read the [Code of Conduct](CODE_OF_CONDUCT.md). For how to view pre-merge history of the two
 original repos, see
-[`docs/contributing/migration-from-standalone-repos.md`](docs/contributing/migration-from-standalone-repos.md).
+[Migration from standalone repos](https://dotboxd.kamsker.at/contributing/migration-from-standalone-repos/).
 
 ## License
 

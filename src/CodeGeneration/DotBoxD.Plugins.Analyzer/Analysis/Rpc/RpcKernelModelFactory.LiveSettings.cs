@@ -10,12 +10,21 @@ internal static partial class RpcKernelModelFactory
 {
     private static void ValidateGeneratedParameterNames(
         IMethodSymbol method,
-        EquatableArray<LiveSettingModel> liveSettings)
+        EquatableArray<LiveSettingModel> liveSettings,
+        RpcServerExtensionGraft? graft)
     {
         var parameterNames = new HashSet<string>(StringComparer.Ordinal);
         for (var i = 0; i < method.Parameters.Length - 1; i++)
         {
-            parameterNames.Add(method.Parameters[i].Name);
+            var parameterName = method.Parameters[i].Name;
+            if (graft is { InjectsReceiverId: true } &&
+                string.Equals(parameterName, RpcKernelReceiverHandleSeeder.ReceiverIdParameter, StringComparison.Ordinal))
+            {
+                throw new NotSupportedException(
+                    $"Server extension parameter '{parameterName}' conflicts with the generated receiver id parameter.");
+            }
+
+            parameterNames.Add(parameterName);
         }
 
         foreach (var setting in liveSettings)

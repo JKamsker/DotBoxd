@@ -209,8 +209,65 @@ public sealed class StreamingProtocolValidationRegressionTests
 
         Assert.False(accepted);
         Assert.Equal(MessageType.Error, sentType);
-        Assert.Single(protocolErrors, error => error.Contains("Stream id must not be zero."));
+        Assert.Single(protocolErrors, error => error.Contains("Stream id must be positive."));
         Assert.Equal(0, inbound.ActiveInboundCount);
         Assert.Equal(0, streams.InboundReceiverCount);
     }
+
+    [Fact]
+    public async Task NegativeInboundStreamHandle_ReturnsProtocolErrorWithoutRegisteringReceiver()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var streams = new RpcStreamManager(serializer, SendNoopAsync, exceptionTransformer: null);
+        MessageType? sentType = null;
+        var protocolErrors = new List<string>();
+        var inbound = new RpcPeerInboundDispatcher(
+            serializer,
+            new RpcPeerOptions(),
+            streams,
+            (frame, ct) =>
+            {
+                Assert.True(MessageFramer.TryReadFrameHeader(frame, out _, out var type));
+                sentType = type;
+                return Task.CompletedTask;
+            },
+            (id, type, message, _) => protocolErrors.Add($"{id}:{type}:{message}"),
+            dispatchError: static (_, _) => { });
+        using var frame = MessageFramer.FrameMessage(
+            serializer,
+            12,
+            MessageType.Request,
+            new RpcRequest
+            {
+                MessageId = 12,
+                ServiceName = "Svc",
+                MethodName = "Upload",
+                Streams = new[] { new RpcStreamHandle(-7, RpcStreamKind.Binary) },
+            },
+            ReadOnlySpan<byte>.Empty);
+
+        var accepted = await inbound.AcceptRequestAsync(frame, 12, CancellationToken.None);
+
+        Assert.False(accepted);
+        Assert.Equal(MessageType.Error, sentType);
+        Assert.Single(protocolErrors, error => error.Contains("Stream id", StringComparison.Ordinal));
+        Assert.Equal(0, inbound.ActiveInboundCount);
+        Assert.Equal(0, streams.InboundReceiverCount);
+    }
+
+    [Fact]
+    public void RegisterInbound_RejectsNegativeStreamHandle()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var streams = new RpcStreamManager(serializer, SendNoopAsync, exceptionTransformer: null);
+
+        var ex = Assert.Throws<ServiceProtocolException>(() =>
+            streams.RegisterInbound(
+                new[] { new RpcStreamHandle(-7, RpcStreamKind.Binary) },
+                CancellationToken.None));
+
+        Assert.Contains("Stream id", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(0, streams.InboundReceiverCount);
+    }
+
 }

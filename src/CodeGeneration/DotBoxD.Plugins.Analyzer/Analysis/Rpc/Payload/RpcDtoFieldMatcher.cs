@@ -1,9 +1,22 @@
-using Microsoft.CodeAnalysis;
-
 namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
+
+using DotBoxD.Plugins.Analyzer.Analysis;
+using Microsoft.CodeAnalysis;
 
 internal static class RpcDtoFieldMatcher
 {
+    public static void ValidateNoRefLikeParameters(IMethodSymbol constructor, string owner)
+    {
+        foreach (var parameter in constructor.Parameters)
+        {
+            if (parameter.RefKind != RefKind.None)
+            {
+                throw new NotSupportedException(
+                    $"{owner} constructor '{constructor.ToDisplayString()}' must not declare ref, out, or in parameters.");
+            }
+        }
+    }
+
     public static int FieldIndex(
         IReadOnlyList<RecordMember> fields,
         IParameterSymbol parameter)
@@ -37,4 +50,11 @@ internal static class RpcDtoFieldMatcher
 
         return match;
     }
+
+    public static string DefaultConstructorArgument(IParameterSymbol parameter)
+        => string.Concat(
+            "@",
+            parameter.Name,
+            ": ",
+            LiteralReader.ObjectDefaultLiteral(parameter.Type, parameter.ExplicitDefaultValue));
 }

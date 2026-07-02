@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using DotBoxD.Queryable.Ast;
 
 namespace DotBoxD.Queryable.Authoring;
@@ -66,17 +67,102 @@ internal readonly record struct EventQueryRoutingKey(
     /// alias, and the exact kinds use their canonical (scale-normalized / instant) form so the route agrees
     /// with the comparer's equality.
     /// </summary>
-    public string ValueToken() => Kind switch
+    public string ValueToken()
     {
-        QueryValueKind.Boolean => Boolean ? "B1" : "B0",
-        // Canonicalize signed zero (-0.0 and 0.0 compare equal) so a member holding -0.0 still routes to a
-        // `== 0.0` subscription, keeping the routing token consistent with the comparer's equality.
-        QueryValueKind.Number => "N" + (Number == 0.0 ? 0.0 : Number).ToString("R", CultureInfo.InvariantCulture),
-        QueryValueKind.String => "S" + Text,
-        QueryValueKind.Guid => "G" + Guid.ToString("N"),
-        QueryValueKind.Decimal => "M" + QueryValue.CanonicalDecimal(Decimal),
-        QueryValueKind.UnsignedInteger => "U" + UnsignedInteger.ToString(CultureInfo.InvariantCulture),
-        QueryValueKind.Timestamp => "T" + Ticks.ToString(CultureInfo.InvariantCulture),
-        _ => "X",
-    };
+        var builder = new StringBuilder(24);
+        AppendValueToken(builder);
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Appends this key's value token to <paramref name="builder"/> without the per-path intermediate string
+    /// that <see cref="ValueToken"/> would allocate. Scalar values span-format directly into the builder; the
+    /// output is byte-identical to <see cref="ValueToken"/> so composite keys built at registration and at
+    /// runtime still agree. This is the single source of truth — <see cref="ValueToken"/> delegates here.
+    /// </summary>
+    public void AppendValueToken(StringBuilder builder)
+    {
+        switch (Kind)
+        {
+            case QueryValueKind.Boolean:
+                builder.Append(Boolean ? "B1" : "B0");
+                return;
+            case QueryValueKind.Number:
+                // Canonicalize signed zero (-0.0 and 0.0 compare equal) so a member holding -0.0 still routes
+                // to a `== 0.0` subscription, keeping the routing token consistent with the comparer's equality.
+                builder.Append('N');
+                AppendFormatted(builder, Number == 0.0 ? 0.0 : Number, "R");
+                return;
+            case QueryValueKind.String:
+                builder.Append('S').Append(Text);
+                return;
+            case QueryValueKind.Guid:
+                builder.Append('G');
+                AppendGuidN(builder, Guid);
+                return;
+            case QueryValueKind.Decimal:
+                // Decimal has no span format that yields the scale-normalized canonical form, so keep the string.
+                builder.Append('M').Append(QueryValue.CanonicalDecimal(Decimal));
+                return;
+            case QueryValueKind.UnsignedInteger:
+                builder.Append('U');
+                AppendFormatted(builder, UnsignedInteger);
+                return;
+            case QueryValueKind.Timestamp:
+                builder.Append('T');
+                AppendFormatted(builder, Ticks);
+                return;
+            default:
+                builder.Append('X');
+                return;
+        }
+    }
+
+    private static void AppendFormatted(StringBuilder builder, double value, string format)
+    {
+        Span<char> buffer = stackalloc char[32];
+        if (value.TryFormat(buffer, out var written, format, CultureInfo.InvariantCulture))
+        {
+            builder.Append(buffer[..written]);
+            return;
+        }
+
+        builder.Append(value.ToString(format, CultureInfo.InvariantCulture));
+    }
+
+    private static void AppendFormatted(StringBuilder builder, ulong value)
+    {
+        Span<char> buffer = stackalloc char[20];
+        if (value.TryFormat(buffer, out var written, default, CultureInfo.InvariantCulture))
+        {
+            builder.Append(buffer[..written]);
+            return;
+        }
+
+        builder.Append(value.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private static void AppendFormatted(StringBuilder builder, long value)
+    {
+        Span<char> buffer = stackalloc char[20];
+        if (value.TryFormat(buffer, out var written, default, CultureInfo.InvariantCulture))
+        {
+            builder.Append(buffer[..written]);
+            return;
+        }
+
+        builder.Append(value.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private static void AppendGuidN(StringBuilder builder, Guid value)
+    {
+        Span<char> buffer = stackalloc char[32];
+        if (value.TryFormat(buffer, out var written, "N"))
+        {
+            builder.Append(buffer[..written]);
+            return;
+        }
+
+        builder.Append(value.ToString("N"));
+    }
 }

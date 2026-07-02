@@ -27,87 +27,196 @@ internal static class JsonImport
         => element.TryGetProperty(name, out var value) ? ReadStringValue(value, name) : null;
 
     public static string ReadStringValue(JsonElement value, string name)
+        => ReadStringValue(value, name, JsonSpan);
+
+    public static string ReadStringValue(JsonElement value, string name, SourceSpan span)
     {
         if (value.ValueKind != JsonValueKind.String)
         {
-            throw Error("E-JSON-TYPE", $"'{name}' must be a string");
+            throw Error("E-JSON-TYPE", $"'{name}' must be a string", span);
+        }
+
+        return value.GetString() ?? "";
+    }
+
+    public static string ReadStringValue(JsonElement value, string name, JsonSourceMap source)
+    {
+        if (value.ValueKind != JsonValueKind.String)
+        {
+            throw Error("E-JSON-TYPE", $"'{name}' must be a string", source.SpanFor(value));
         }
 
         return value.GetString() ?? "";
     }
 
     public static string ReadPathValue(JsonElement value, string name)
+        => ReadPathValue(value, name, JsonSpan);
+
+    public static string ReadPathValue(JsonElement value, string name, SourceSpan span)
     {
-        var path = ReadStringValue(value, name);
+        var path = ReadStringValue(value, name, span);
         if (!SandboxLiteralConstraints.IsPortableRelativePath(path))
         {
-            throw Error("E-JSON-PATH", $"'{name}' must be a portable relative path");
+            throw Error("E-JSON-PATH", $"'{name}' must be a portable relative path", span);
+        }
+
+        return path;
+    }
+
+    public static string ReadPathValue(JsonElement value, string name, JsonSourceMap source)
+    {
+        var path = ReadStringValue(value, name, source);
+        if (!SandboxLiteralConstraints.IsPortableRelativePath(path))
+        {
+            throw Error("E-JSON-PATH", $"'{name}' must be a portable relative path", source.SpanFor(value));
         }
 
         return path;
     }
 
     public static string ReadUriValue(JsonElement value, string name)
+        => ReadUriValue(value, name, JsonSpan);
+
+    public static string ReadUriValue(JsonElement value, string name, SourceSpan span)
     {
-        var uri = ReadStringValue(value, name);
+        var uri = ReadStringValue(value, name, span);
         if (!SandboxLiteralConstraints.IsSandboxUri(uri))
         {
-            throw Error("E-JSON-URI", $"'{name}' must be an absolute URI without user info");
+            throw Error("E-JSON-URI", $"'{name}' must be an absolute URI without user info", span);
+        }
+
+        return uri;
+    }
+
+    public static string ReadUriValue(JsonElement value, string name, JsonSourceMap source)
+    {
+        var uri = ReadStringValue(value, name, source);
+        if (!SandboxLiteralConstraints.IsSandboxUri(uri))
+        {
+            throw Error("E-JSON-URI", $"'{name}' must be an absolute URI without user info", source.SpanFor(value));
         }
 
         return uri;
     }
 
     public static System.Guid ReadGuidValue(JsonElement value, string name)
+        => ReadGuidValue(value, name, JsonSpan);
+
+    public static System.Guid ReadGuidValue(JsonElement value, string name, SourceSpan span)
     {
-        var text = ReadStringValue(value, name);
+        var text = ReadStringValue(value, name, span);
         // Pin the canonical hyphenated form JsonExporter emits (Guid.ToString() == "D"), so a round-trip is
         // deterministic and non-canonical spellings (braces, no hyphens) are rejected up front.
         if (!System.Guid.TryParseExact(text, "D", out var guid))
         {
-            throw Error("E-JSON-TYPE", $"'{name}' must be a canonical hyphenated GUID");
+            throw Error("E-JSON-TYPE", $"'{name}' must be a canonical hyphenated GUID", span);
+        }
+
+        return guid;
+    }
+
+    public static System.Guid ReadGuidValue(JsonElement value, string name, JsonSourceMap source)
+    {
+        var text = ReadStringValue(value, name, source);
+        if (!System.Guid.TryParseExact(text, "D", out var guid))
+        {
+            throw Error("E-JSON-TYPE", $"'{name}' must be a canonical hyphenated GUID", source.SpanFor(value));
         }
 
         return guid;
     }
 
     public static int ReadInt32Value(JsonElement value, string name)
+        => ReadInt32Value(value, name, JsonSpan);
+
+    public static int ReadInt32Value(JsonElement value, string name, SourceSpan span)
     {
         if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out var result))
         {
-            throw Error("E-JSON-TYPE", $"'{name}' must be a 32-bit integer");
+            throw Error("E-JSON-TYPE", $"'{name}' must be a 32-bit integer", span);
+        }
+
+        return result;
+    }
+
+    public static int ReadInt32Value(JsonElement value, string name, JsonSourceMap source)
+    {
+        if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out var result))
+        {
+            throw Error("E-JSON-TYPE", $"'{name}' must be a 32-bit integer", source.SpanFor(value));
         }
 
         return result;
     }
 
     public static long ReadInt64Value(JsonElement value, string name)
+        => ReadInt64Value(value, name, JsonSpan);
+
+    public static long ReadInt64Value(JsonElement value, string name, SourceSpan span)
     {
         if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt64(out var result))
         {
-            throw Error("E-JSON-TYPE", $"'{name}' must be a 64-bit integer");
+            throw Error("E-JSON-TYPE", $"'{name}' must be a 64-bit integer", span);
+        }
+
+        return result;
+    }
+
+    public static long ReadInt64Value(JsonElement value, string name, JsonSourceMap source)
+    {
+        if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt64(out var result))
+        {
+            throw Error("E-JSON-TYPE", $"'{name}' must be a 64-bit integer", source.SpanFor(value));
         }
 
         return result;
     }
 
     public static double ReadDoubleValue(JsonElement value, string name)
+        => ReadDoubleValue(value, name, JsonSpan);
+
+    public static double ReadDoubleValue(JsonElement value, string name, SourceSpan span)
     {
         if (value.ValueKind != JsonValueKind.Number ||
             !value.TryGetDouble(out var result) ||
             !double.IsFinite(result))
         {
-            throw Error("E-JSON-TYPE", $"'{name}' must be a finite number");
+            throw Error("E-JSON-TYPE", $"'{name}' must be a finite number", span);
+        }
+
+        return result;
+    }
+
+    public static double ReadDoubleValue(JsonElement value, string name, JsonSourceMap source)
+    {
+        if (value.ValueKind != JsonValueKind.Number ||
+            !value.TryGetDouble(out var result) ||
+            !double.IsFinite(result))
+        {
+            throw Error("E-JSON-TYPE", $"'{name}' must be a finite number", source.SpanFor(value));
         }
 
         return result;
     }
 
     public static bool ReadBoolValue(JsonElement value, string name)
+        => ReadBoolValue(value, name, JsonSpan);
+
+    public static bool ReadBoolValue(JsonElement value, string name, SourceSpan span)
     {
         if (value.ValueKind is not JsonValueKind.True and not JsonValueKind.False)
         {
-            throw Error("E-JSON-TYPE", $"'{name}' must be a boolean");
+            throw Error("E-JSON-TYPE", $"'{name}' must be a boolean", span);
+        }
+
+        return value.GetBoolean();
+    }
+
+    public static bool ReadBoolValue(JsonElement value, string name, JsonSourceMap source)
+    {
+        if (value.ValueKind is not JsonValueKind.True and not JsonValueKind.False)
+        {
+            throw Error("E-JSON-TYPE", $"'{name}' must be a boolean", source.SpanFor(value));
         }
 
         return value.GetBoolean();
@@ -163,5 +272,8 @@ internal static class JsonImport
     }
 
     public static SandboxValidationException Error(string code, string message)
-        => new([new SandboxDiagnostic(code, message, Span: JsonSpan)]);
+        => Error(code, message, JsonSpan);
+
+    public static SandboxValidationException Error(string code, string message, SourceSpan span)
+        => new([new SandboxDiagnostic(code, message, Span: span)]);
 }

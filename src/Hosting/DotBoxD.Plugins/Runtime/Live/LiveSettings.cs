@@ -149,6 +149,7 @@ public sealed class LiveSettingStore
     }
 
     public T As<T>() where T : class => LiveContextProxy<T>.Create(this);
+    internal T As<T>(Func<bool> isRevoked) where T : class => LiveContextProxy<T>.Create(this, isRevoked);
 
     internal SandboxValue ToSandboxValue(LiveSettingDefinition setting)
     {

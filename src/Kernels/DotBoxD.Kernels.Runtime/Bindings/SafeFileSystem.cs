@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
@@ -6,6 +7,7 @@ namespace DotBoxD.Kernels.Runtime.Bindings;
 
 public static partial class SafeFileSystem
 {
+    private static readonly char[] PathSeparators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
     public static async ValueTask<string> ReadTextAsync(
         SandboxContext context,
         SandboxPath path,
@@ -155,7 +157,7 @@ public static partial class SafeFileSystem
         }
 
         EnsureNoReparsePoint(rootFull, fullPath);
-        EnsureExtensionAllowed(grant, fullPath);
+        EnsureExtensionAllowed(grant, fullPath, bindingId);
         return new ResolvedPath(grant, rootFull, fullPath, $"sandbox://{capabilityId}/" + relative.Replace('\\', '/'));
     }
 
@@ -191,9 +193,9 @@ public static partial class SafeFileSystem
         {
             EnsureNoReparsePoint(resolved.RootFull, resolved.FullPath);
             var memory = new MemoryStream();
+            var buffer = ArrayPool<byte>.Shared.Rent(4096);
             try
             {
-                var buffer = new byte[4096];
                 while (true)
                 {
                     context.Budget.CheckDeadline();
@@ -219,6 +221,7 @@ public static partial class SafeFileSystem
                 memory.Dispose();
                 throw;
             }
+            finally { ArrayPool<byte>.Shared.Return(buffer, clearArray: true); }
         }
     }
 
@@ -244,14 +247,12 @@ public static partial class SafeFileSystem
         }
 
         var current = root;
-        foreach (var part in relative.Split(
-            new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
-            StringSplitOptions.RemoveEmptyEntries))
+        foreach (var part in relative.Split(PathSeparators, StringSplitOptions.RemoveEmptyEntries))
         {
             current = Path.Combine(current, part);
-            if (Directory.Exists(current) || File.Exists(current))
+            if (SafeFilePathAttributes.IsReparsePointOrDeny(current))
             {
-                CheckAttributes(current);
+                throw Error(SandboxErrorCode.PermissionDenied, "file access denied: reparse points are not allowed");
             }
         }
     }
@@ -271,7 +272,7 @@ public static partial class SafeFileSystem
         }
     }
 
-    private static void EnsureExtensionAllowed(CapabilityGrant grant, string fullPath)
+    private static void EnsureExtensionAllowed(CapabilityGrant grant, string fullPath, string bindingId)
     {
         var allowed = SafeFileGrantReader.Read(grant).AllowedExtensions;
         if (allowed is null)
@@ -282,7 +283,7 @@ public static partial class SafeFileSystem
         var extension = Path.GetExtension(fullPath);
         if (!allowed.Contains(extension))
         {
-            throw Error(SandboxErrorCode.PermissionDenied, "file.readText denied: extension is not allowed");
+            throw Error(SandboxErrorCode.PermissionDenied, $"{bindingId} denied: extension is not allowed");
         }
     }
 

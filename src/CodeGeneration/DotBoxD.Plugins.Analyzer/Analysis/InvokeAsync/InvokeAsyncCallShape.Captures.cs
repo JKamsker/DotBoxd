@@ -12,7 +12,7 @@ internal sealed partial class InvokeAsyncCallShape
         BlockSyntax block,
         InvokeAsyncCaptureParameter captureParameter,
         SemanticModel model,
-        ISet<string> captureAliases)
+        ISet<ISymbol> captureAliases)
     {
         ValidateExplicitCaptureMutations(block, captureParameter, model, captureAliases);
         var syncOuts = new List<InvokeAsyncSyncOut>();
@@ -24,14 +24,25 @@ internal sealed partial class InvokeAsyncCallShape
                     captureParameter.Name,
                     captureAliases,
                     model,
-                    out var member,
+                    out _,
                     out var target))
             {
                 continue;
             }
 
-            var recordMember = DotBoxDRpcTypeMapper.RecordFields(captureParameter.Type)
-                .FirstOrDefault(field => SymbolEqualityComparer.Default.Equals(field.Symbol, target));
+            var recordFields = DotBoxDRpcTypeMapper.RecordFields(captureParameter.Type);
+            var recordMemberIndex = -1;
+            RecordMember recordMember = default;
+            for (var i = 0; i < recordFields.Count; i++)
+            {
+                if (SymbolEqualityComparer.Default.Equals(recordFields[i].Symbol, target))
+                {
+                    recordMember = recordFields[i];
+                    recordMemberIndex = i;
+                    break;
+                }
+            }
+
             if (recordMember.Symbol is null)
             {
                 throw new NotSupportedException(
@@ -54,7 +65,9 @@ internal sealed partial class InvokeAsyncCallShape
                 recordMember.Name,
                 recordMember.Type,
                 ReserveSyncOutLocal(recordMember.Name, reservedLocalNames),
-                member));
+                DotBoxDRpcJsonLowerer.RecordGet(
+                    DotBoxDRpcJsonLowerer.Var(captureParameter.Name),
+                    recordMemberIndex)));
         }
 
         return syncOuts;
@@ -116,7 +129,7 @@ internal sealed partial class InvokeAsyncCallShape
     private static bool TryCaptureMember(
         ExpressionSyntax expression,
         string captureParameterName,
-        ISet<string> captureAliases,
+        ISet<ISymbol> captureAliases,
         SemanticModel model,
         out MemberAccessExpressionSyntax member,
         out ISymbol target)
@@ -127,7 +140,7 @@ internal sealed partial class InvokeAsyncCallShape
             {
                 Expression: IdentifierNameSyntax receiver
             } found ||
-            !IsCaptureBagName(receiver.Identifier.ValueText, captureParameterName, captureAliases))
+            !IsCaptureBagExpression(receiver, captureParameterName, captureAliases, model))
         {
             return false;
         }
@@ -151,7 +164,7 @@ internal sealed partial class InvokeAsyncCallShape
     private static bool IsAccessibleFromGeneratedCode(ISymbol symbol, Compilation compilation)
         => compilation.IsSymbolAccessibleWithin(symbol, compilation.Assembly);
 
-    private static IReadOnlyList<(string Name, ExpressionSyntax Value)> CreateLeadingLocals(
+    private static IReadOnlyList<(string Name, string Value)> CreateLeadingLocals(
         IReadOnlyList<InvokeAsyncSyncOut> syncOuts)
         => syncOuts
             .Where(static syncOut => syncOut.Initializer is not null)
@@ -162,7 +175,8 @@ internal sealed partial class InvokeAsyncCallShape
         AssignmentExpressionSyntax assignment,
         InvokeAsyncCaptureParameter captureParameter,
         IReadOnlyList<InvokeAsyncSyncOut> syncOuts,
-        ISet<string> captureAliases,
+        ISet<ISymbol> captureAliases,
+        SemanticModel model,
         Func<ExpressionSyntax, string> lower)
     {
         if (!TryCaptureMember(
@@ -170,6 +184,7 @@ internal sealed partial class InvokeAsyncCallShape
                 captureParameter.Name,
                 captureParameter.Type,
                 captureAliases,
+                model,
                 out var propertyName))
         {
             return null;
@@ -189,13 +204,15 @@ internal sealed partial class InvokeAsyncCallShape
         ExpressionSyntax expression,
         InvokeAsyncCaptureParameter captureParameter,
         IReadOnlyList<InvokeAsyncSyncOut> syncOuts,
-        ISet<string> captureAliases)
+        ISet<ISymbol> captureAliases,
+        SemanticModel model)
     {
         if (!TryCaptureMember(
                 expression,
                 captureParameter.Name,
                 captureParameter.Type,
                 captureAliases,
+                model,
                 out var propertyName))
         {
             return null;
@@ -209,7 +226,8 @@ internal sealed partial class InvokeAsyncCallShape
         ExpressionSyntax expression,
         string captureParameterName,
         INamedTypeSymbol captureType,
-        ISet<string> captureAliases,
+        ISet<ISymbol> captureAliases,
+        SemanticModel model,
         out string propertyName)
     {
         propertyName = string.Empty;
@@ -217,7 +235,7 @@ internal sealed partial class InvokeAsyncCallShape
             {
                 Expression: IdentifierNameSyntax receiver
             } member ||
-            !IsCaptureBagName(receiver.Identifier.ValueText, captureParameterName, captureAliases))
+            !IsCaptureBagExpression(receiver, captureParameterName, captureAliases, model))
         {
             return false;
         }
@@ -233,58 +251,14 @@ internal sealed partial class InvokeAsyncCallShape
         return true;
     }
 
-    private static HashSet<string> CaptureBagAliases(
-        BlockSyntax block,
-        string captureParameterName)
-    {
-        var aliases = new HashSet<string>(StringComparer.Ordinal);
-        var changed = true;
-        while (changed)
-        {
-            changed = false;
-            foreach (var declarator in block.DescendantNodes().OfType<VariableDeclaratorSyntax>())
-            {
-                if (declarator.Initializer?.Value is { } initializer &&
-                    IsCaptureBagExpression(initializer, captureParameterName, aliases))
-                {
-                    changed |= aliases.Add(declarator.Identifier.ValueText);
-                }
-            }
-
-            foreach (var assignment in block.DescendantNodes().OfType<AssignmentExpressionSyntax>())
-            {
-                if (assignment.Kind() == SyntaxKind.SimpleAssignmentExpression &&
-                    assignment.Left is IdentifierNameSyntax left &&
-                    IsCaptureBagExpression(assignment.Right, captureParameterName, aliases))
-                {
-                    changed |= aliases.Add(left.Identifier.ValueText);
-                }
-            }
-        }
-
-        return aliases;
-    }
-
-    private static bool IsCaptureBagExpression(
-        ExpressionSyntax expression,
-        string captureParameterName,
-        ISet<string> captureAliases)
-        => expression is IdentifierNameSyntax identifier &&
-           IsCaptureBagName(identifier.Identifier.ValueText, captureParameterName, captureAliases);
-
-    private static bool IsCaptureBagName(
-        string name,
-        string captureParameterName,
-        ISet<string> captureAliases)
-        => string.Equals(name, captureParameterName, StringComparison.Ordinal) ||
-           captureAliases.Contains(name);
-
-    private static string CaptureParametersJson(InvokeAsyncCaptureParameter captureParameter)
+    private static string CaptureParametersJson(
+        InvokeAsyncCaptureParameter captureParameter,
+        Compilation compilation)
         => "[{\"name\":" + DotBoxDRpcJsonLowerer.Str(captureParameter.Name) +
-           ",\"type\":" + DotBoxDRpcTypeMapper.JsonType(captureParameter.Type) + "}]";
+           ",\"type\":" + DotBoxDRpcTypeMapper.JsonType(captureParameter.Type, compilation) + "}]";
 
     private static string CaptureArgumentsExpression(ITypeSymbol captureType)
-        => "new global::DotBoxD.Plugins.KernelRpcValue[] { " +
+        => $"new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[] {{ " +
            InvokeAsyncArgumentWriterSource.WriteExpression(captureType, "captures") +
            " }";
 }

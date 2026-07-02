@@ -31,7 +31,7 @@ internal static partial class DotBoxDHostBindingExpressionLowerer
         }
 
         var candidates = WorldMethods(worldType, access.Name.Identifier.ValueText)
-            .Where(method => method.Parameters.Length == invocation.ArgumentList.Arguments.Count)
+            .Where(method => CanBindHostBindingArguments(invocation.ArgumentList.Arguments, method.Parameters))
             .ToArray();
         if (candidates.Length == 0)
         {

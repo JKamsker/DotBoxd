@@ -23,6 +23,19 @@ internal static partial class CompiledBindingDispatcher
         }
     }
 
+    private static void ValidateArguments(BindingDescriptor descriptor, SandboxValue arg0)
+    {
+        if (descriptor.Parameters.Count != 1)
+        {
+            throw ArgumentCountMismatch(descriptor);
+        }
+
+        if (!TypeMatches(arg0, descriptor.Parameters[0]))
+        {
+            throw ArgumentTypeMismatch(descriptor);
+        }
+    }
+
     private static void ValidateArguments(BindingDescriptor descriptor, SandboxValue arg0, SandboxValue arg1)
     {
         if (descriptor.Parameters.Count != 2)

@@ -9,6 +9,10 @@ public interface IGeneratedStreamingService
 
     Task<IAsyncEnumerable<int>> NumbersAsync(CancellationToken ct = default);
 
+    Task<int> UploadBytesAsync(
+        Stream bytes,
+        CancellationToken ct = default);
+
     Task<int> UploadAsync(
         Stream bytes,
         IAsyncEnumerable<int> items,

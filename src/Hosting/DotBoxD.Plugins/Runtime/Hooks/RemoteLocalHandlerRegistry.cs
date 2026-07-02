@@ -52,6 +52,11 @@ public sealed class RemoteLocalHandlerRegistry
         // Runtime fallback: validate the projected type once, then decode straight from KernelRpcValue. This is
         // used when the projected type has no generated decoder, so it avoids the SandboxValue graph on dispatch.
         _ = KernelRpcMarshaller.SandboxTypeOf(typeof(TProjected));
+        if (RemoteLocalScalarHandlerFactory.TryCreate(handler, out var scalarHandler))
+        {
+            return RegisterKernelHandler(subscriptionId, scalarHandler);
+        }
+
         return RegisterKernelHandler(subscriptionId, (wireValue, context) =>
         {
             var projected = (TProjected)KernelRpcMarshaller.FromKernelRpcValue(wireValue, typeof(TProjected))!;
@@ -121,7 +126,7 @@ public sealed class RemoteLocalHandlerRegistry
         ArgumentException.ThrowIfNullOrEmpty(subscriptionId);
         ArgumentNullException.ThrowIfNull(handler);
         _ = KernelRpcMarshaller.SandboxTypeOf(typeof(TContext));
-        _ = KernelRpcMarshaller.SandboxTypeOf(typeof(TResult));
+        _ = KernelRpcMarshaller.HookResultSandboxTypeOf(typeof(TResult));
 
         var entry = new ResultHandler(async (payload, hookContext, cancellationToken) =>
         {

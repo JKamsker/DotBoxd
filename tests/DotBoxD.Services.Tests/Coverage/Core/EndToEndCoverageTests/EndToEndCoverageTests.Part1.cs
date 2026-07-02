@@ -104,6 +104,28 @@ public sealed partial class EndToEndCoverageTests
         }
     }
 
+    [Fact]
+    public async Task NullInstanceId_OnInstancePrimitive_FailsBeforeSingletonDispatch()
+    {
+        var (server, client, _) = StartInMemoryPair(
+            peer => peer.ProvideGameService(new TestGameService()));
+        try
+        {
+            var ex = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => client.InvokeOnInstanceAsync<ServerStatus>(
+                    "IGameService",
+                    null!,
+                    "GetServerStatusAsync").WaitAsync(Timeout));
+
+            Assert.Equal("instanceId", ex.ParamName);
+        }
+        finally
+        {
+            await client.DisposeAsync();
+            await server.DisposeAsync();
+        }
+    }
+
     // ---------------------------------------------------------------------------------------------
     // Remote cancellation through the generated proxy: the client cancels its CancellationToken and
     // the server-side handler observes cancellation on its own token.

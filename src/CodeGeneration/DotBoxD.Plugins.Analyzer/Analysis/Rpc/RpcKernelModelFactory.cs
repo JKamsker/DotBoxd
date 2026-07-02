@@ -31,6 +31,16 @@ internal static partial class RpcKernelModelFactory
             return Fail(declaration, "Server extension id must be a non-empty string.");
         }
 
+        if (type.IsGenericType || type.TypeParameters.Length > 0)
+        {
+            return Fail(declaration, $"Generated server extension '{type.Name}' cannot be generic.");
+        }
+
+        if (type.ContainingType is not null)
+        {
+            return Fail(declaration, $"Server extension kernels must be top-level types; '{type.ToDisplayString()}' is nested.");
+        }
+
         var serviceType = ServiceType(context.Attributes);
         var graftType = GraftType(context.Attributes);
 
@@ -45,14 +55,21 @@ internal static partial class RpcKernelModelFactory
                 throw new NotSupportedException("Live settings must use supported scalar types.");
             }
 
-            ValidateGeneratedParameterNames(method, liveSettings);
+            ValidateGeneratedParameterNames(method, liveSettings, graft);
             IMethodSymbol? serviceMethod = null;
             RpcKernelClientExtensions? clientExtensions = null;
             RpcKernelClientMethodExtension? directClientMethod = null;
             if (serviceType is not null)
             {
-                serviceMethod = RpcKernelClientProxyEmitter.ResolveServiceMethod(serviceType, method);
+                serviceMethod = RpcKernelClientProxyEmitter.ResolveServiceMethod(
+                    serviceType,
+                    method,
+                    context.SemanticModel.Compilation);
                 clientExtensions = RpcKernelClientExtensionModelFactory.Resolve(type, method);
+                RpcKernelClientExtensionModelFactory.ValidateLanguageVersion(
+                    clientExtensions,
+                    context.SemanticModel.SyntaxTree.Options);
+                ValidateGeneratedClientTypeCollisions(type, clientExtensions);
             }
             else if (graft is not null)
             {
@@ -64,6 +81,15 @@ internal static partial class RpcKernelModelFactory
                         $"Server extension client method receiver '{directClientMethod.ReceiverType.ToDisplayString()}' " +
                         $"must match the class receiver '{graft.ReceiverType.ToDisplayString()}'.");
                 }
+
+                if (directClientMethod is not null)
+                {
+                    ValidateGeneratedTypeCollision(type, type.Name + "DirectServerExtensionClientExtensions");
+                }
+            }
+            else if (RpcKernelClientExtensionModelFactory.HasClientPropertyAttribute(type))
+            {
+                RejectClientPropertyWithoutService(type);
             }
             else if (RpcKernelClientExtensionModelFactory.HasReceiverExtensionAttribute(method))
             {
@@ -81,7 +107,7 @@ internal static partial class RpcKernelModelFactory
                 cancellationToken,
                 serverContextParameterName: contextParameter.Name,
                 serverContextType: contextParameter.Type);
-            var hasReceiverId = RpcKernelReceiverHandleSeeder.TrySeed(lowerer, graft);
+            var hasReceiverId = RpcKernelReceiverHandleSeeder.TrySeed(lowerer, type, graft);
             var bodyJson = body.Block is { } block
                 ? lowerer.LowerBody(block)
                 : lowerer.LowerExpressionBody(body.Expression!, method.ReturnsVoid);
@@ -122,6 +148,12 @@ internal static partial class RpcKernelModelFactory
         }
     }
 
+    private static void RejectClientPropertyWithoutService(INamedTypeSymbol type)
+    {
+        throw new NotSupportedException(
+            $"[ServerExtensionClient] on server extension '{type.ToDisplayString()}' requires a service-backed [ServerExtension(id, serviceType)] class.");
+    }
+
     private static GeneratedPluginPackage EmitPackage(
         INamedTypeSymbol type,
         string pluginId,
@@ -139,7 +171,7 @@ internal static partial class RpcKernelModelFactory
         Compilation compilation)
     {
         var methodName = method.Name;
-        var returnType = DotBoxDRpcReturnType.JsonType(method.ReturnType);
+        var returnType = DotBoxDRpcReturnType.JsonType(method.ReturnType, compilation);
         var parameters = new List<string>();
         if (hasReceiverId)
         {
@@ -149,7 +181,7 @@ internal static partial class RpcKernelModelFactory
         for (var i = 0; i < method.Parameters.Length - 1; i++)
         {
             var parameter = method.Parameters[i];
-            parameters.Add($"{{\"name\":{Str(parameter.Name)},\"type\":{DotBoxDRpcTypeMapper.JsonType(parameter.Type)}}}");
+            parameters.Add($"{{\"name\":{Str(parameter.Name)},\"type\":{DotBoxDRpcTypeMapper.JsonType(parameter.Type, compilation)}}}");
         }
 
         foreach (var setting in liveSettings)
@@ -278,6 +310,29 @@ internal static partial class RpcKernelModelFactory
 
     private static RpcKernelModelResult Fail(ClassDeclarationSyntax declaration, string message)
         => new(null, PluginKernelDiagnostic.Create(declaration.Identifier, message), default);
+
+    private static void ValidateGeneratedClientTypeCollisions(
+        INamedTypeSymbol type,
+        RpcKernelClientExtensions? clientExtensions)
+    {
+        ValidateGeneratedTypeCollision(type, type.Name + "ServerExtensionClient");
+        if (clientExtensions is { IsEmpty: false })
+        {
+            ValidateGeneratedTypeCollision(type, type.Name + "ServerExtensionClientExtensions");
+        }
+    }
+
+    private static void ValidateGeneratedTypeCollision(INamedTypeSymbol type, string generatedName)
+    {
+        foreach (var existing in type.ContainingNamespace.GetTypeMembers(generatedName))
+        {
+            if (!SymbolEqualityComparer.Default.Equals(existing, type))
+            {
+                throw new NotSupportedException(
+                    $"Generated server extension type '{generatedName}' collides with an existing type in namespace '{type.ContainingNamespace.ToDisplayString()}'.");
+            }
+        }
+    }
 }
 
 internal sealed record RpcKernelModelResult(

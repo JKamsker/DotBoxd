@@ -57,7 +57,10 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             }
         }
 
-        return LowerDerivedExpression(body, memberBindings, named, derived);
+        return ApplyNumericConversion(
+            body,
+            property.Type,
+            LowerDerivedExpression(body, memberBindings, named, derived));
     }
 
     private string LowerDerivedExpression(
@@ -66,24 +69,24 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         INamedTypeSymbol named,
         RecordMember derived)
     {
-        switch (expression)
+        var lowered = expression switch
         {
-            case ParenthesizedExpressionSyntax parenthesized:
-                return LowerDerivedExpression(parenthesized.Expression, memberBindings, named, derived);
+            ParenthesizedExpressionSyntax parenthesized =>
+                LowerDerivedExpression(parenthesized.Expression, memberBindings, named, derived),
 
-            case LiteralExpressionSyntax literal:
-                return LiteralJson(literal.Token.Value);
+            LiteralExpressionSyntax literal =>
+                LiteralJson(literal.Token.Value),
 
-            case IdentifierNameSyntax identifier
-                when memberBindings.TryGetValue(identifier.Identifier.ValueText, out var bound):
-                return bound;
+            IdentifierNameSyntax identifier
+                when memberBindings.TryGetValue(identifier.Identifier.ValueText, out var bound) =>
+                bound,
 
-            case MemberAccessExpressionSyntax { Expression: ThisExpressionSyntax } thisMember
-                when memberBindings.TryGetValue(thisMember.Name.Identifier.ValueText, out var boundThis):
-                return boundThis;
+            MemberAccessExpressionSyntax { Expression: ThisExpressionSyntax } thisMember
+                when memberBindings.TryGetValue(thisMember.Name.Identifier.ValueText, out var boundThis) =>
+                boundThis,
 
-            case PrefixUnaryExpressionSyntax unary:
-                return unary.Kind() switch
+            PrefixUnaryExpressionSyntax unary =>
+                unary.Kind() switch
                 {
                     SyntaxKind.LogicalNotExpression => Obj(
                         ("unary", Str("not")),
@@ -91,18 +94,20 @@ internal sealed partial class DotBoxDRpcJsonLowerer
                     SyntaxKind.UnaryMinusExpression => Obj(
                         ("unary", Str("-")),
                         ("operand", LowerDerivedExpression(unary.Operand, memberBindings, named, derived))),
+                    SyntaxKind.UnaryPlusExpression =>
+                        LowerDerivedExpression(unary.Operand, memberBindings, named, derived),
                     _ => throw DerivedNotSupported(named, derived),
-                };
+                },
 
-            case BinaryExpressionSyntax binary:
-                return BinaryJson(
-                    JsonBinaryOperator(binary),
-                    LowerDerivedExpression(binary.Left, memberBindings, named, derived),
-                    LowerDerivedExpression(binary.Right, memberBindings, named, derived));
+            BinaryExpressionSyntax binary =>
+                LowerBinary(
+                    binary,
+                    part => LowerDerivedExpression(part, memberBindings, named, derived)),
 
-            default:
-                throw DerivedNotSupported(named, derived);
-        }
+            _ => throw DerivedNotSupported(named, derived)
+        };
+
+        return ApplyNumericConversion(expression, lowered);
     }
 
     private static System.NotSupportedException DerivedNotSupported(INamedTypeSymbol named, RecordMember derived)

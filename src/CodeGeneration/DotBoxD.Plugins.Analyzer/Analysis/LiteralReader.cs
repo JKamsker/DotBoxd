@@ -31,6 +31,11 @@ internal static class LiteralReader
                 : "unchecked((" + TypeName(type) + ")" + EnumSignedLiteral((INamedTypeSymbol)type, value) + ")";
         }
 
+        if (NullableEnumUnderlying(type) is { } nullableEnum)
+        {
+            return ObjectDefaultLiteral(nullableEnum, value);
+        }
+
         if (type.SpecialType == SpecialType.System_Single && value is float number)
         {
             if (float.IsNaN(number))
@@ -51,6 +56,33 @@ internal static class LiteralReader
             return number.ToString(
                 DotBoxDGenerationNames.CSharpLiterals.DoubleRoundTripFormat,
                 System.Globalization.CultureInfo.InvariantCulture) + "f";
+        }
+
+        if (type.SpecialType == SpecialType.System_Double && value is double doubleNumber)
+        {
+            if (double.IsNaN(doubleNumber))
+            {
+                return "global::System.Double.NaN";
+            }
+
+            if (double.IsPositiveInfinity(doubleNumber))
+            {
+                return "global::System.Double.PositiveInfinity";
+            }
+
+            if (double.IsNegativeInfinity(doubleNumber))
+            {
+                return "global::System.Double.NegativeInfinity";
+            }
+        }
+
+        if (type.SpecialType == SpecialType.System_DateTime &&
+            value is DateTime dateTime &&
+            dateTime == default)
+        {
+            // Metadata optional DateTime defaults arrive boxed, not as a source literal. Re-emit the
+            // equivalent source default instead of an invalid culture-formatted DateTime string.
+            return "default";
         }
 
         return ObjectLiteral(value);
@@ -100,6 +132,8 @@ internal static class LiteralReader
                     System.Globalization.CultureInfo.InvariantCulture) +
                 DotBoxDGenerationNames.CSharpLiterals.DoubleSuffix,
             double => throw new NotSupportedException("Double literal values must be finite."),
+            decimal number => number.ToString(System.Globalization.CultureInfo.InvariantCulture) + "m",
+            char character => SymbolDisplay.FormatLiteral(character, quote: true),
             string text => SymbolDisplay.FormatLiteral(text, quote: true),
             _ => Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ??
                 DotBoxDGenerationNames.CSharpLiterals.Null
@@ -109,6 +143,19 @@ internal static class LiteralReader
 
     private static string TypeName(ITypeSymbol type)
         => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+    private static ITypeSymbol? NullableEnumUnderlying(ITypeSymbol type)
+    {
+        if (type is not INamedTypeSymbol named ||
+            named.ConstructedFrom.SpecialType != SpecialType.System_Nullable_T ||
+            named.TypeArguments.Length != 1 ||
+            named.TypeArguments[0].TypeKind != TypeKind.Enum)
+        {
+            return null;
+        }
+
+        return named.TypeArguments[0];
+    }
 
     private static string EnumSignedLiteral(INamedTypeSymbol enumType, object value)
     {

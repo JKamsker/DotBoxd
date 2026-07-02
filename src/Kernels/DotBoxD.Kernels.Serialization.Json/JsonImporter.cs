@@ -128,12 +128,12 @@ public static class JsonImporter
         return new SandboxFunction(
             RequiredString(element, "id"),
             StringComparer.Ordinal.Equals(visibility, "entrypoint"),
-            ReadParameters(element),
-            JsonExpressionReader.ReadType(Required(element, "returnType")),
+            ReadParameters(element, source),
+            JsonExpressionReader.ReadType(Required(element, "returnType"), source),
             ReadStatements(RequiredArray(element, "body"), source));
     }
 
-    private static IReadOnlyList<Parameter> ReadParameters(JsonElement function)
+    private static IReadOnlyList<Parameter> ReadParameters(JsonElement function, JsonSourceMap source)
     {
         if (!function.TryGetProperty("parameters", out var array))
         {
@@ -153,7 +153,7 @@ public static class JsonImporter
             RequireAllowedProperties(parameter, "parameter", ["name", "type"]);
             parameters[index++] = new Parameter(
                 RequiredString(parameter, "name"),
-                JsonExpressionReader.ReadType(Required(parameter, "type")));
+                JsonExpressionReader.ReadType(Required(parameter, "type"), source));
         }
 
         return parameters;

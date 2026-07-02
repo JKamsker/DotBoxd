@@ -104,8 +104,20 @@ internal static class QueryTextTokenizer
             var c = text[index++];
             if (c == '\\' && index < text.Length)
             {
-                builder.Append(text[index++]);
+                var escaped = text[index++];
+                if (escaped is not ('"' or '\\'))
+                {
+                    throw new QueryTranslationException(
+                        $"Unsupported string escape '\\{escaped}' at position {index - 2}; only '\\\"' and '\\\\' are supported.");
+                }
+
+                builder.Append(escaped);
                 continue;
+            }
+
+            if (c == '\\')
+            {
+                throw new QueryTranslationException("Unterminated string escape in query text.");
             }
 
             if (c == '"')

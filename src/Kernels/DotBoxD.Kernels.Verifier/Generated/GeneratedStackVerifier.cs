@@ -96,7 +96,7 @@ internal static class GeneratedStackVerifier
                 or ILOpCode.Ldc_i4_2 or ILOpCode.Ldc_i4_3 or ILOpCode.Ldc_i4_4 or ILOpCode.Ldc_i4_5
                 or ILOpCode.Ldc_i4_6 or ILOpCode.Ldc_i4_7 or ILOpCode.Ldc_i4_8 or ILOpCode.Ldc_i4_m1
                 or ILOpCode.Ldc_i8 or ILOpCode.Ldc_r8 or ILOpCode.Ldstr => 1,
-            ILOpCode.Starg or ILOpCode.Starg_s or ILOpCode.Stloc or ILOpCode.Stloc_s or ILOpCode.Stloc_0
+            ILOpCode.Stloc or ILOpCode.Stloc_s or ILOpCode.Stloc_0
                 or ILOpCode.Stloc_1 or ILOpCode.Stloc_2 or ILOpCode.Stloc_3 or ILOpCode.Pop
                 or ILOpCode.Brtrue or ILOpCode.Brtrue_s or ILOpCode.Brfalse or ILOpCode.Brfalse_s
                 or ILOpCode.Switch => -1,

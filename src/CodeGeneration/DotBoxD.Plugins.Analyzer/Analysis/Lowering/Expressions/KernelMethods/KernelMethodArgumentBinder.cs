@@ -9,6 +9,7 @@ internal static class KernelMethodArgumentBinder
     public static BoundKernelMethodCall Bind(
         InvocationExpressionSyntax invocation,
         IMethodSymbol method,
+        Compilation compilation,
         string description)
     {
         var definition = method.ReducedFrom ?? method;
@@ -60,12 +61,12 @@ internal static class KernelMethodArgumentBinder
                 continue;
             }
 
-            if (!parameters[i].HasExplicitDefaultValue)
+            if (!TryGetDefaultValue(parameters[i], compilation, out var defaultValue))
             {
                 throw new NotSupportedException($"{description} call must pass parameter '{parameters[i].Name}'.");
             }
 
-            bound[i] = new BoundKernelMethodArgument(parameters[i], null, parameters[i].ExplicitDefaultValue, UsesDefault: true);
+            bound[i] = new BoundKernelMethodArgument(parameters[i], null, defaultValue, UsesDefault: true);
         }
 
         return new BoundKernelMethodCall(definition, bound, evaluationOrder);
@@ -117,6 +118,54 @@ internal static class KernelMethodArgumentBinder
 
         throw new NotSupportedException($"{description} has no parameter '{name}'.");
     }
+
+    private static bool TryGetDefaultValue(IParameterSymbol parameter, Compilation compilation, out object? value)
+    {
+        if (parameter.HasExplicitDefaultValue)
+        {
+            value = parameter.ExplicitDefaultValue;
+            return true;
+        }
+
+        if (parameter.IsOptional && TryGetDateTimeConstantDefault(parameter, compilation, out var dateTime))
+        {
+            value = dateTime;
+            return true;
+        }
+
+        value = null;
+        return false;
+    }
+
+    private static bool TryGetDateTimeConstantDefault(
+        IParameterSymbol parameter,
+        Compilation compilation,
+        out DateTime value)
+    {
+        var dateTimeConstantAttribute =
+            compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.DateTimeConstantAttribute");
+        if (parameter.Type.SpecialType == SpecialType.System_DateTime &&
+            dateTimeConstantAttribute is not null)
+        {
+            foreach (var attribute in parameter.GetAttributes())
+            {
+                if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, dateTimeConstantAttribute) &&
+                    attribute.ConstructorArguments.Length == 1 &&
+                    attribute.ConstructorArguments[0].Value is long ticks &&
+                    IsValidDateTimeTicks(ticks))
+                {
+                    value = new DateTime(ticks);
+                    return true;
+                }
+            }
+        }
+
+        value = default;
+        return false;
+    }
+
+    private static bool IsValidDateTimeTicks(long ticks)
+        => ticks >= DateTime.MinValue.Ticks && ticks <= DateTime.MaxValue.Ticks;
 }
 
 internal sealed record BoundKernelMethodCall(

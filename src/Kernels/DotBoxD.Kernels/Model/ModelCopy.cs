@@ -8,7 +8,20 @@ internal static class ModelCopy
     public static IReadOnlyList<T> List<T>(IEnumerable<T> values)
     {
         ArgumentNullException.ThrowIfNull(values);
+
+        // The empty case is hot: every scalar SandboxType and every empty-argument model copy lands here.
+        // Hand back a single shared, immutable empty view instead of allocating a fresh wrapper each time.
+        if (values is IReadOnlyCollection<T> { Count: 0 } or ICollection<T> { Count: 0 })
+        {
+            return EmptyReadOnlyList<T>.Instance;
+        }
+
         return new ReadOnlyCollection<T>(values.ToArray());
+    }
+
+    private static class EmptyReadOnlyList<T>
+    {
+        public static readonly ReadOnlyCollection<T> Instance = new(Array.Empty<T>());
     }
 
     /// <summary>

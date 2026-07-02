@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
@@ -28,6 +29,8 @@ internal static partial class DotBoxDExpressionModelFactory
             InvocationExpressionSyntax invocation =>
                 DotBoxDInvocationExpressionLowerer.Lower(invocation, context, part => Lower(part, context)),
             IsPatternExpressionSyntax pattern => DotBoxDPatternExpressionLowerer.Lower(pattern, context, part => Lower(part, context)),
+            IdentifierNameSyntax identifier when TryLowerImplicitThisIdentifier(identifier, context) is { } implicitThis =>
+                implicitThis,
             IdentifierNameSyntax identifier => DotBoxDIdentifierExpressionLowerer.Lower(identifier.Identifier.ValueText, context),
             MemberAccessExpressionSyntax member
                 when DotBoxDStringExpressionLowerer.TryLowerMember(member, context, part => Lower(part, context)) is { } lowered =>
@@ -97,12 +100,16 @@ internal static partial class DotBoxDExpressionModelFactory
                 left,
                 right,
                 negate: false,
-                allocates),
+                allocates,
+                ConvertedType(binary.Left, context),
+                ConvertedType(binary.Right, context)),
             SyntaxKind.NotEqualsExpression => DotBoxDEqualityExpressionLowerer.Lower(
                 left,
                 right,
                 negate: true,
-                allocates),
+                allocates,
+                ConvertedType(binary.Left, context),
+                ConvertedType(binary.Right, context)),
             SyntaxKind.GreaterThanOrEqualExpression => NumericBinary(
                 DotBoxDGenerationNames.Helpers.Ge,
                 DotBoxDGenerationNames.Operators.GreaterThanOrEqual,
@@ -293,6 +300,9 @@ internal static partial class DotBoxDExpressionModelFactory
 
     internal static bool IsString(DotBoxDExpressionModel expression)
         => string.Equals(expression.Type, DotBoxDGenerationNames.ManifestTypes.String, StringComparison.Ordinal);
+
+    private static ITypeSymbol? ConvertedType(ExpressionSyntax expression, DotBoxDExpressionLoweringContext context)
+        => context.SemanticModel.GetTypeInfo(expression, context.CancellationToken).ConvertedType;
 
     private static DotBoxDExpressionModel Unsupported(ExpressionSyntax expression)
         => throw new NotSupportedException($"Unsupported plugin expression '{expression}'.");

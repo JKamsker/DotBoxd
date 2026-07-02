@@ -103,16 +103,13 @@ public sealed partial class MessageFramerCoverageTests
     }
 
     [Fact]
-    public async Task ReadMessageAsync_HeaderTruncated_ReturnsNull()
+    public async Task ReadMessageAsync_HeaderTruncated_ThrowsInvalidDataException()
     {
-        // Arrange: fewer than HeaderSize bytes -> connection-closed signal (line 281-284).
         using var stream = new MemoryStream(new byte[MessageFramer.HeaderSize - 1]);
 
-        // Act
-        var result = await MessageFramer.ReadMessageAsync(stream).AsTaskWithTimeout(Timeout);
-
-        // Assert
-        Assert.Null(result);
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(
+            () => MessageFramer.ReadMessageAsync(stream).AsTaskWithTimeout(Timeout));
+        Assert.Contains("frame header bytes", ex.Message);
     }
 
     [Fact]

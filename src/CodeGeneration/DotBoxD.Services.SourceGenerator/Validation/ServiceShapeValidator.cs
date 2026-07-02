@@ -122,9 +122,17 @@ internal static class ServiceShapeValidator
 
     private static UnsupportedMemberDiagnostic? GetUnsupportedPropertyDiagnostic(IPropertySymbol property)
     {
+        if (property.IsIndexer || property.Parameters.Length != 0)
+        {
+            return CreateDiagnostic(
+                property,
+                $"interface indexer '{property.Name}' is not supported; DotBoxD service properties must be named public get-only sub-service controls");
+        }
+
         if (property.GetMethod is null ||
             property.GetMethod.DeclaredAccessibility != Accessibility.Public ||
             property.GetMethod.IsStatic ||
+            property.Parameters.Length != 0 ||
             property.SetMethod is not null)
         {
             return CreateDiagnostic(
@@ -137,11 +145,18 @@ internal static class ServiceShapeValidator
             return null;
         }
 
-        if (!ReturnTypeClassifier.TryGetSubServiceInfo(property.Type, CancellationToken.None, out _))
+        if (!ReturnTypeClassifier.TryGetSubServiceInfo(property.Type, CancellationToken.None, out var subService))
         {
             return CreateDiagnostic(
                 property,
                 $"interface property '{property.Name}' is not supported; DotBoxD service properties must return a [DotBoxDService] interface or be the string Id of an instance handle");
+        }
+
+        if (subService.AllowsNull)
+        {
+            return CreateDiagnostic(
+                property,
+                $"nullable sub-service property '{property.Name}' is not supported; use a method returning a nullable sub-service when absence must be represented");
         }
 
         return null;

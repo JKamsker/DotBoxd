@@ -28,6 +28,18 @@ public interface IVoidPingService
     void Ping();
 }
 
+public interface ILeftVoidPingService
+{
+    void Ping();
+}
+
+public interface IRightVoidPingService
+{
+    void Ping();
+}
+
+public interface IDiamondVoidPingService : ILeftVoidPingService, IRightVoidPingService;
+
 public interface IMultiMethodService
 {
     int Kill(int id);
@@ -82,6 +94,15 @@ public sealed class ServerExtensionProxyAsyncTests
         var kernel = await server.InstallServerExtensionAsync(UnitPackage("ping-void", nameof(IVoidPingService)));
 
         ServerExtensionProxy.Create<IVoidPingService>(kernel).Ping();
+    }
+
+    [Fact]
+    public async Task Runtime_proxy_accepts_a_diamond_inherited_single_method_contract()
+    {
+        using var server = PluginServer.Create(defaultPolicy: AsyncPolicy());
+        var kernel = await server.InstallServerExtensionAsync(UnitPackage("diamond-void", nameof(IDiamondVoidPingService)));
+
+        Assert.NotNull(ServerExtensionProxy.Create<IDiamondVoidPingService>(kernel));
     }
 
     [Fact]

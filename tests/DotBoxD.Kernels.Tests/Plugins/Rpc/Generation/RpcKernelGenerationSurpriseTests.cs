@@ -76,6 +76,114 @@ public sealed partial class RpcKernelGenerationTests
         Assert.Equal(SandboxValue.FromInt64(-1), result);
     }
 
+    [Fact]
+    public async Task Server_extension_lowers_string_concatenation_to_budgeted_concat()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create("""
+            using DotBoxD.Abstractions;
+            using DotBoxD.Plugins;
+
+            namespace Sample;
+
+            [ServerExtension("string-concat")]
+            public sealed partial class StringConcatKernel
+            {
+                public string Combine(string left, string right, HookContext ctx)
+                {
+                    return left + ":" + right;
+                }
+            }
+            """, "Sample.StringConcatPluginPackage");
+
+        Assert.Contains("Alloc", package.Manifest.Effects);
+
+        var returned = Assert.IsType<ReturnStatement>(Assert.Single(Assert.Single(package.Module.Functions).Body));
+        var concat = Assert.IsType<CallExpression>(returned.Value);
+        Assert.Equal("string.concatBudgeted", concat.Name);
+
+        using var server = PluginServer.Create(defaultPolicy: PurePolicy());
+        var kernel = await server.InstallServerExtensionAsync(package);
+
+        var result = await kernel.InvokeServerExtensionAsync(
+            [SandboxValue.FromString("left"), SandboxValue.FromString("right")]);
+
+        Assert.Equal("left:right", Assert.IsType<StringValue>(result).Value);
+    }
+
+    [Fact]
+    public async Task Server_extension_lowers_string_add_assignment_to_budgeted_concat()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create("""
+            using DotBoxD.Abstractions;
+            using DotBoxD.Plugins;
+
+            namespace Sample;
+
+            [ServerExtension("string-add-assign")]
+            public sealed partial class StringAddAssignKernel
+            {
+                public string Combine(string left, string right, HookContext ctx)
+                {
+                    var combined = left;
+                    combined += ":";
+                    combined += right;
+                    return combined;
+                }
+            }
+            """, "Sample.StringAddAssignPluginPackage");
+
+        Assert.Contains("Alloc", package.Manifest.Effects);
+
+        using var server = PluginServer.Create(defaultPolicy: PurePolicy());
+        var kernel = await server.InstallServerExtensionAsync(package);
+
+        var result = await kernel.InvokeServerExtensionAsync(
+            [SandboxValue.FromString("left"), SandboxValue.FromString("right")]);
+
+        Assert.Equal("left:right", Assert.IsType<StringValue>(result).Value);
+    }
+
+    [Fact]
+    public async Task Server_extension_wire_invoke_observes_pre_canceled_token_before_decoding_arguments()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create(
+            ControlStringSource,
+            "Sample.ControlStringPluginPackage");
+
+        using var server = PluginServer.Create(defaultPolicy: PurePolicy());
+        var kernel = await server.InstallServerExtensionAsync(package);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => kernel.InvokeServerExtensionRpcAsync([0x80], cts.Token).AsTask());
+    }
+
+    [Fact]
+    public void Server_extension_reports_mixed_string_addition()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
+            using DotBoxD.Abstractions;
+            using DotBoxD.Plugins;
+
+            namespace Sample;
+
+            [ServerExtension("mixed-string-add")]
+            public sealed partial class MixedStringAddKernel
+            {
+                public string Combine(string left, int count, HookContext ctx)
+                {
+                    return left + count;
+                }
+            }
+            """);
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("both operands to be strings", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData("double.NaN")]
     [InlineData("double.PositiveInfinity")]

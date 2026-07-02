@@ -49,64 +49,77 @@ internal static partial class SandboxValidatedValueShapeMeter
             return scalarShape;
         }
 
+        if (TryMeasureEmptyCollection(value, expectedType, failure, limits, out var emptyShape))
+        {
+            return emptyShape;
+        }
+
         if (!expectedType.IsKnown())
         {
             throw Error(failure);
         }
 
-        var active = new HashSet<object>(ReferenceEqualityComparer.Instance);
-        var stack = new Stack<Frame>();
+        var state = SandboxTraversalState<Frame>.Rent();
+        var active = state.Active;
+        var stack = state.Stack;
         var shape = new ValueShape(0, 0, 0, 0, 0, 0);
         var scanned = 0;
-        stack.Push(new Frame(value, expectedType, Depth: 0, Exit: false));
-        while (stack.Count > 0)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (++scanned % 64 == 0)
+            stack.Push(new Frame(value, expectedType, Depth: 0, Exit: false));
+            while (stack.Count > 0)
             {
-                meter?.ChargeFuel(1);
-                meter?.CheckDeadline();
+                cancellationToken.ThrowIfCancellationRequested();
+                if (++scanned % 64 == 0)
+                {
+                    meter?.ChargeFuel(1);
+                    meter?.CheckDeadline();
+                }
+
+                var frame = stack.Pop();
+                if (frame.Exit)
+                {
+                    active.Remove(frame.Value);
+                    continue;
+                }
+
+                ValidateKnownType(frame.Value, frame.ExpectedType, failure);
+                RequireScalarInvariants(frame.Value, failure);
+                switch (frame.Value)
+                {
+                    case StringValue text:
+                        shape = AddText(shape, SandboxLiteralConstraints.TextShape(text.Value), limits);
+                        break;
+                    case OpaqueIdValue id:
+                        RequireOpaqueId(id, failure);
+                        shape = AddText(shape, SandboxLiteralConstraints.TextShape(id.Value), limits);
+                        break;
+                    case SandboxPathValue path:
+                        shape = AddText(shape, SandboxLiteralConstraints.TextShape(path.Value.RelativePath), limits);
+                        break;
+                    case SandboxUriValue uri:
+                        shape = AddText(shape, SandboxLiteralConstraints.TextShape(uri.Value.Value), limits);
+                        break;
+                    case ListValue list:
+                        shape = AddList(shape, list, frame.ExpectedType, frame.Depth, active, stack, limits, failure);
+                        break;
+                    case MapValue map:
+                        shape = AddMap(shape, map, frame.ExpectedType, frame.Depth, active, stack, limits, failure);
+                        break;
+                    case RecordValue record:
+                        shape = AddRecord(shape, record, frame.ExpectedType, frame.Depth, active, stack, limits, failure);
+                        break;
+                    case UnitValue or BoolValue or I32Value or I64Value or F64Value:
+                        break;
+                }
             }
 
-            var frame = stack.Pop();
-            if (frame.Exit)
-            {
-                active.Remove(frame.Value);
-                continue;
-            }
-
-            ValidateKnownType(frame.Value, frame.ExpectedType, failure);
-            RequireScalarInvariants(frame.Value, failure);
-            switch (frame.Value)
-            {
-                case StringValue text:
-                    shape = AddText(shape, SandboxLiteralConstraints.TextShape(text.Value), limits);
-                    break;
-                case OpaqueIdValue id:
-                    RequireOpaqueId(id, failure);
-                    shape = AddText(shape, SandboxLiteralConstraints.TextShape(id.Value), limits);
-                    break;
-                case SandboxPathValue path:
-                    shape = AddText(shape, SandboxLiteralConstraints.TextShape(path.Value.RelativePath), limits);
-                    break;
-                case SandboxUriValue uri:
-                    shape = AddText(shape, SandboxLiteralConstraints.TextShape(uri.Value.Value), limits);
-                    break;
-                case ListValue list:
-                    shape = AddList(shape, list, frame.ExpectedType, frame.Depth, active, stack, limits, failure);
-                    break;
-                case MapValue map:
-                    shape = AddMap(shape, map, frame.ExpectedType, frame.Depth, active, stack, limits, failure);
-                    break;
-                case RecordValue record:
-                    shape = AddRecord(shape, record, frame.ExpectedType, frame.Depth, active, stack, limits, failure);
-                    break;
-                case UnitValue or BoolValue or I32Value or I64Value or F64Value:
-                    break;
-            }
+            return shape;
         }
-
-        return shape;
+        finally
+        {
+            SandboxTraversalState<Frame>.Return(state);
+        }
     }
     private static void Enter(
         object value,

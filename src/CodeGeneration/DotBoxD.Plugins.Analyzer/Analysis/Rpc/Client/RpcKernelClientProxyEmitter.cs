@@ -1,6 +1,5 @@
 namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 
-using System.Collections.Generic;
 using System.Text;
 using Microsoft.CodeAnalysis;
 
@@ -12,7 +11,7 @@ internal static partial class RpcKernelClientProxyEmitter
         INamedTypeSymbol serviceType,
         Compilation compilation)
     {
-        var serviceMethod = ResolveServiceMethod(serviceType, kernelMethod);
+        var serviceMethod = ResolveServiceMethod(serviceType, kernelMethod, compilation);
         return Emit(kernelType, serviceType, serviceMethod, compilation);
     }
 
@@ -31,52 +30,19 @@ internal static partial class RpcKernelClientProxyEmitter
         return new ProxySourceWriter(kernelType, serviceType, serviceMethod, compilation).Emit();
     }
 
-    internal static IMethodSymbol ResolveServiceMethod(INamedTypeSymbol serviceType, IMethodSymbol kernelMethod)
+    internal static IMethodSymbol ResolveServiceMethod(
+        INamedTypeSymbol serviceType,
+        IMethodSymbol kernelMethod,
+        Compilation compilation)
     {
         EnsureAccessibleFromGeneratedClient(serviceType);
-        return RpcKernelClientServiceMethodResolver.Resolve(serviceType, kernelMethod);
+        return RpcKernelClientServiceMethodResolver.Resolve(serviceType, kernelMethod, compilation);
     }
 
     private static void EnsureAccessibleFromGeneratedClient(INamedTypeSymbol serviceType)
-    {
-        for (INamedTypeSymbol? current = serviceType; current is not null; current = current.ContainingType)
-        {
-            if (!IsAccessibleFromGeneratedClient(current.DeclaredAccessibility))
-            {
-                throw new NotSupportedException(
-                    $"Server extension interface '{serviceType.ToDisplayString()}' must be accessible from generated client code.");
-            }
-        }
-    }
-
-    private static bool IsAccessibleFromGeneratedClient(Accessibility accessibility)
-        => accessibility is Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal;
-
-    private static bool IsGenericTask(ITypeSymbol type, out ITypeSymbol inner)
-        => TryGenericTaskLike(type, "Task", out inner);
-
-    private static bool IsGenericValueTask(ITypeSymbol type, out ITypeSymbol inner)
-        => TryGenericTaskLike(type, "ValueTask", out inner);
-
-    private static bool TryGenericTaskLike(ITypeSymbol type, string name, out ITypeSymbol inner)
-    {
-        if (type is INamedTypeSymbol
-            {
-                IsGenericType: true,
-                TypeArguments.Length: 1,
-                Name: var typeName,
-                ContainingNamespace: { } ns
-            } named &&
-            string.Equals(typeName, name, StringComparison.Ordinal) &&
-            string.Equals(ns.ToDisplayString(), "System.Threading.Tasks", StringComparison.Ordinal))
-        {
-            inner = named.TypeArguments[0];
-            return true;
-        }
-
-        inner = type;
-        return false;
-    }
+        => RpcGeneratedClientAccessibility.EnsureAccessible(
+            serviceType,
+            $"Server extension interface '{serviceType.ToDisplayString()}'");
 
     private enum ReturnShape
     {
@@ -104,7 +70,7 @@ internal static partial class RpcKernelClientProxyEmitter
             _serviceType = serviceType;
             _serviceMethod = serviceMethod;
             _conv = new RpcKernelValueConversionEmitter(compilation);
-            _returnShape = Shape(serviceMethod.ReturnType, out _payloadReturnType);
+            _returnShape = Shape(serviceMethod.ReturnType, compilation, out _payloadReturnType);
         }
 
         public string Emit()
@@ -124,7 +90,7 @@ internal static partial class RpcKernelClientProxyEmitter
             builder.AppendLine("        _pluginId = pluginId ?? throw new global::System.ArgumentNullException(nameof(pluginId));");
             builder.AppendLine("    }");
             builder.AppendLine();
-            builder.Append("    public static ").Append(TypeName(_serviceType))
+            builder.Append("    public static ").Append(clientName)
                 .AppendLine(" Create(global::DotBoxD.Abstractions.IServerExtensionWireClient client, string pluginId)");
             builder.Append("        => new ").Append(clientName).AppendLine("(client, pluginId);");
             builder.AppendLine();
@@ -139,12 +105,14 @@ internal static partial class RpcKernelClientProxyEmitter
 
         private void AppendServiceMethod(StringBuilder builder)
         {
-            var locals = new GeneratedLocalNames(_serviceMethod);
+            var locals = new RpcGeneratedLocalNames(_serviceMethod);
             var arguments = locals.Next("__arguments");
             var request = locals.Next("__request");
             var response = locals.Next("__response");
             var result = locals.Next("__result");
+            var payloadParameterCount = RpcKernelClientParameters.PayloadParameterCount(_serviceMethod);
 
+            RpcReturnFlowAttributeSource.Append(builder, _serviceMethod, "    ");
             builder.Append("    public ");
             if (_returnShape != ReturnShape.Direct)
             {
@@ -153,11 +121,11 @@ internal static partial class RpcKernelClientProxyEmitter
 
             builder.Append(TypeName(_serviceMethod.ReturnType)).Append(' ')
                 .Append(Identifier(_serviceMethod.Name)).Append('(')
-                .Append(ParameterList(_serviceMethod)).AppendLine(")");
+                .Append(RpcKernelClientParameterSource.ParameterList(_serviceMethod)).AppendLine(")");
             builder.AppendLine("    {");
-            builder.Append("        var ").Append(arguments).Append(" = new global::DotBoxD.Plugins.KernelRpcValue[")
-                .Append(_serviceMethod.Parameters.Length).AppendLine("];");
-            for (var i = 0; i < _serviceMethod.Parameters.Length; i++)
+            builder.Append("        var ").Append(arguments).Append($" = new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[")
+                .Append(payloadParameterCount).AppendLine("];");
+            for (var i = 0; i < payloadParameterCount; i++)
             {
                 var parameter = _serviceMethod.Parameters[i];
                 builder.Append("        ").Append(arguments).Append('[').Append(i).Append("] = ")
@@ -165,29 +133,36 @@ internal static partial class RpcKernelClientProxyEmitter
             }
 
             builder.Append("        var ").Append(request)
-                .Append(" = global::DotBoxD.Plugins.KernelRpcBinaryCodec.EncodeArguments(")
+                .Append($" = {DotBoxDRpcValueNames.GlobalKernelRpcBinaryCodec}.EncodeArguments(")
                 .Append(arguments).AppendLine(");");
             if (_returnShape == ReturnShape.Direct)
             {
                 builder.Append("        var ").Append(response)
                     .Append(" = _client.InvokeServerExtensionAsync(_pluginId, ")
-                    .Append(request).AppendLine(").AsTask().GetAwaiter().GetResult();");
+                    .Append(request).Append(", ")
+                    .Append(RpcKernelClientParameters.CancellationTokenArgument(_serviceMethod))
+                    .AppendLine(").AsTask().GetAwaiter().GetResult();");
             }
             else
             {
                 builder.Append("        var ").Append(response)
                     .Append(" = await _client.InvokeServerExtensionAsync(_pluginId, ")
-                    .Append(request).AppendLine(").ConfigureAwait(false);");
+                    .Append(request).Append(", ")
+                    .Append(RpcKernelClientParameters.CancellationTokenArgument(_serviceMethod))
+                    .AppendLine(").ConfigureAwait(false);");
             }
 
             if (_payloadReturnType is null)
             {
+                builder.Append($"        {DotBoxDRpcValueNames.GlobalKernelRpcBinaryCodec}.DecodeValue(")
+                    .Append(response)
+                    .AppendLine($").RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Unit);");
                 builder.AppendLine("        return;");
             }
             else
             {
                 builder.Append("        var ").Append(result)
-                    .Append(" = global::DotBoxD.Plugins.KernelRpcBinaryCodec.DecodeValue(")
+                    .Append($" = {DotBoxDRpcValueNames.GlobalKernelRpcBinaryCodec}.DecodeValue(")
                     .Append(response).AppendLine(");");
                 builder.Append("        return ").Append(_conv.ReadExpression(_payloadReturnType, result)).AppendLine(";");
             }
@@ -196,7 +171,10 @@ internal static partial class RpcKernelClientProxyEmitter
             builder.AppendLine();
         }
 
-        private static ReturnShape Shape(ITypeSymbol type, out ITypeSymbol? payloadType)
+        private static ReturnShape Shape(
+            ITypeSymbol type,
+            Compilation compilation,
+            out ITypeSymbol? payloadType)
         {
             if (type.SpecialType == SpecialType.System_Void)
             {
@@ -204,21 +182,21 @@ internal static partial class RpcKernelClientProxyEmitter
                 return ReturnShape.Direct;
             }
 
-            if (DotBoxDRpcReturnType.PayloadType(type) is null)
+            if (DotBoxDRpcReturnType.PayloadType(type, compilation) is null)
             {
                 payloadType = null;
-                return type is INamedTypeSymbol { Name: "ValueTask" }
+                return DotBoxDWellKnownTaskTypes.IsValueTask(type, compilation)
                     ? ReturnShape.ValueTask
                     : ReturnShape.Task;
             }
 
-            if (IsGenericTask(type, out var taskPayloadType))
+            if (DotBoxDWellKnownTaskTypes.IsGenericTask(type, compilation, out var taskPayloadType))
             {
                 payloadType = taskPayloadType;
                 return ReturnShape.Task;
             }
 
-            if (IsGenericValueTask(type, out var valueTaskPayloadType))
+            if (DotBoxDWellKnownTaskTypes.IsGenericValueTask(type, compilation, out var valueTaskPayloadType))
             {
                 payloadType = valueTaskPayloadType;
                 return ReturnShape.ValueTask;
@@ -226,41 +204,6 @@ internal static partial class RpcKernelClientProxyEmitter
 
             payloadType = type;
             return ReturnShape.Direct;
-        }
-
-        private static string ParameterList(IMethodSymbol method)
-        {
-            var parts = new List<string>();
-            foreach (var parameter in method.Parameters)
-            {
-                parts.Add(TypeName(parameter.Type) + " " + Identifier(parameter.Name));
-            }
-
-            return string.Join(", ", parts);
-        }
-
-        private sealed class GeneratedLocalNames
-        {
-            private readonly HashSet<string> _used = new(StringComparer.Ordinal);
-
-            public GeneratedLocalNames(IMethodSymbol serviceMethod)
-            {
-                foreach (var parameter in serviceMethod.Parameters)
-                {
-                    _used.Add(parameter.Name);
-                }
-            }
-
-            public string Next(string baseName)
-            {
-                var name = baseName;
-                for (var suffix = 0; !_used.Add(name); suffix++)
-                {
-                    name = baseName + suffix.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
-                }
-
-                return name;
-            }
         }
 
         private static string TypeName(ITypeSymbol type)

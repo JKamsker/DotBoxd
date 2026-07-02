@@ -33,13 +33,13 @@ internal sealed partial class RpcKernelValueConversionEmitter
     public string WriteExpression(ITypeSymbol type, string expression)
         => type.SpecialType switch
         {
-            SpecialType.System_Boolean => $"global::DotBoxD.Plugins.KernelRpcValue.Bool({expression})",
-            SpecialType.System_Int32 => $"global::DotBoxD.Plugins.KernelRpcValue.Int32({expression})",
-            SpecialType.System_Int64 => $"global::DotBoxD.Plugins.KernelRpcValue.Int64({expression})",
-            SpecialType.System_Double => $"global::DotBoxD.Plugins.KernelRpcValue.Double({expression})",
+            SpecialType.System_Boolean => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Bool({expression})",
+            SpecialType.System_Int32 => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32({expression})",
+            SpecialType.System_Int64 => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64({expression})",
+            SpecialType.System_Double => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Double({expression})",
             // float widens losslessly to the wire's only floating kind (F64); read narrows it back.
-            SpecialType.System_Single => $"global::DotBoxD.Plugins.KernelRpcValue.Double({expression})",
-            SpecialType.System_String => $"global::DotBoxD.Plugins.KernelRpcValue.String({expression})",
+            SpecialType.System_Single => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Double({expression})",
+            SpecialType.System_String => $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.String({expression})",
             _ => WriteComplexExpression(type, expression)
         };
 
@@ -51,23 +51,63 @@ internal sealed partial class RpcKernelValueConversionEmitter
             SpecialType.System_Int32 => $"{expression}.Int32Value",
             SpecialType.System_Int64 => $"{expression}.Int64Value",
             SpecialType.System_Double => $"{expression}.DoubleValue",
-            SpecialType.System_Single => $"(float){expression}.DoubleValue",
+            SpecialType.System_Single => $"{EnsureSingleValueReader()}({expression})",
             SpecialType.System_String => $"{expression}.TextValue",
             _ => ReadComplexExpression(type, expression)
         };
 
     private string WriteComplexExpression(ITypeSymbol type, string expression)
     {
+        if (DotBoxDNullableScalarType.TryGetSupportedUnderlying(type, out var nullableUnderlying))
+        {
+            return $"{EnsureNullableValueWriter(type, nullableUnderlying)}({expression})";
+        }
+
         if (DotBoxDRpcTypeMapper.IsGuid(type))
         {
-            return $"global::DotBoxD.Plugins.KernelRpcValue.Guid({expression})";
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Guid({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsDateTimeWireType(type))
+        {
+            return $"{EnsureDateTimeValueWriter(type)}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
+        {
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32({expression}.DayNumber)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeOnlyWireType(type))
+        {
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64({expression}.Ticks)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
+        {
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64({expression}.Ticks)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsCancellationTokenWireType(type))
+        {
+            return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Bool({expression}.IsCancellationRequested)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsIndexWireType(type))
+        {
+            return $"{EnsureIndexValueWriter()}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsRangeWireType(type))
+        {
+            return $"{EnsureRangeValueWriter()}({expression})";
         }
 
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return DotBoxDRpcTypeMapper.EnumUsesI64(enumType)
-                ? $"global::DotBoxD.Plugins.KernelRpcValue.Int64(unchecked((long){expression}))"
-                : $"global::DotBoxD.Plugins.KernelRpcValue.Int32(unchecked((int){expression}))";
+                ? $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64(unchecked((long){expression}))"
+                : $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32(unchecked((int){expression}))";
         }
 
         if (DotBoxDRpcTypeMapper.ListElementType(type) is not null)
@@ -90,15 +130,54 @@ internal sealed partial class RpcKernelValueConversionEmitter
 
     private string ReadComplexExpression(ITypeSymbol type, string expression)
     {
+        if (DotBoxDNullableScalarType.TryGetSupportedUnderlying(type, out var nullableUnderlying))
+        {
+            return $"{EnsureNullableValueReader(type, nullableUnderlying)}({expression})";
+        }
+
         if (DotBoxDRpcTypeMapper.IsGuid(type))
         {
             return $"{expression}.GuidValue";
         }
 
+        if (DotBoxDRpcTypeMapper.IsDateTimeWireType(type))
+        {
+            return $"{EnsureDateTimeValueReader(type)}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
+        {
+            return $"{EnsureDateOnlyValueReader()}({expression}.Int32Value)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeOnlyWireType(type))
+        {
+            return $"{EnsureTimeOnlyValueReader()}({expression}.Int64Value)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
+        {
+            return $"new global::System.TimeSpan({expression}.Int64Value)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsCancellationTokenWireType(type))
+        {
+            return $"new global::System.Threading.CancellationToken({expression}.BoolValue)";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsIndexWireType(type))
+        {
+            return $"{EnsureIndexValueReader()}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsRangeWireType(type))
+        {
+            return $"{EnsureRangeValueReader()}({expression})";
+        }
+
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
-            var accessor = DotBoxDRpcTypeMapper.EnumUsesI64(enumType) ? "Int64Value" : "Int32Value";
-            return $"unchecked(({TypeName(type)}){expression}.{accessor})";
+            return $"{EnsureEnumValueReader(enumType)}({expression})";
         }
 
         if (DotBoxDRpcTypeMapper.ListElementType(type) is not null)
@@ -117,129 +196,6 @@ internal sealed partial class RpcKernelValueConversionEmitter
         }
 
         throw new NotSupportedException($"Server extension type '{type.ToDisplayString()}' is not supported.");
-    }
-
-    private string EnsureListWriter(ITypeSymbol type)
-    {
-        var key = TypeKey(type);
-        if (_writers.TryGetValue(key, out var existing))
-        {
-            return existing;
-        }
-
-        var method = NextHelperName("Write");
-        _writers[key] = method;
-        var elementType = DotBoxDRpcTypeMapper.ListElementType(type)!;
-        var itemExpression = WriteExpression(elementType, "__item");
-        _helpers.Append("    private static global::DotBoxD.Plugins.KernelRpcValue ").Append(method)
-            .Append('(').Append(TypeName(type)).AppendLine(" value)");
-        _helpers.AppendLine("    {");
-        _helpers.AppendLine("        global::System.ArgumentNullException.ThrowIfNull(value);");
-        AppendListWriterBody(type, itemExpression);
-        _helpers.AppendLine("    }");
-        _helpers.AppendLine();
-        return method;
-    }
-
-    private void AppendListWriterBody(ITypeSymbol type, string itemExpression)
-    {
-        if (DotBoxDRpcTypeMapper.SupportsIndexedListWrite(type))
-        {
-            var countExpression = type is IArrayTypeSymbol ? "value.Length" : "value.Count";
-            _helpers.Append("        var __items = new global::DotBoxD.Plugins.KernelRpcValue[")
-                .Append(countExpression).AppendLine("];");
-            _helpers.Append("        for (var i = 0; i < ").Append(countExpression).AppendLine("; i++)");
-            _helpers.AppendLine("        {")
-                .AppendLine("            var __item = value[i];");
-            _helpers.Append("            __items[i] = ").Append(itemExpression).AppendLine(";");
-            _helpers.AppendLine("        }")
-                .AppendLine()
-                .AppendLine("        return global::DotBoxD.Plugins.KernelRpcValue.List(__items);");
-            return;
-        }
-
-        _helpers.AppendLine("        var __items = new global::System.Collections.Generic.List<global::DotBoxD.Plugins.KernelRpcValue>();")
-            .AppendLine("        foreach (var __item in value)")
-            .AppendLine("        {");
-        _helpers.Append("            __items.Add(").Append(itemExpression).AppendLine(");");
-        _helpers.AppendLine("        }")
-            .AppendLine()
-            .AppendLine("        return global::DotBoxD.Plugins.KernelRpcValue.List(__items.ToArray());");
-    }
-
-    private string EnsureListReader(ITypeSymbol type)
-    {
-        var key = TypeKey(type);
-        if (_readers.TryGetValue(key, out var existing))
-        {
-            return existing;
-        }
-
-        var method = NextHelperName("Read");
-        _readers[key] = method;
-        var elementType = DotBoxDRpcTypeMapper.ListElementType(type)!;
-        var elementName = TypeName(elementType);
-        var itemExpression = ReadExpression(elementType, "value.GetItem(i)");
-        var arrayType = type as IArrayTypeSymbol;
-        var returnType = arrayType is not null ? TypeName(type) : $"global::System.Collections.Generic.List<{elementName}>";
-        _helpers.Append("    private static ").Append(returnType).Append(' ').Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
-        _helpers.AppendLine("    {");
-        _helpers.AppendLine("        value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.List);");
-        _helpers.AppendLine("        var __count = value.ItemCount;");
-        AppendListReaderBody(elementName, itemExpression, arrayType);
-        _helpers.AppendLine();
-        _helpers.AppendLine("        return __result;");
-        _helpers.AppendLine("    }");
-        _helpers.AppendLine();
-        return method;
-    }
-
-    private void AppendListReaderBody(string elementName, string itemExpression, IArrayTypeSymbol? arrayType)
-    {
-        if (arrayType is not null)
-        {
-            _helpers.Append("        var __result = ")
-                .Append(ArrayCreation(arrayType, "__count"))
-                .AppendLine(";");
-            _helpers.AppendLine("        for (var i = 0; i < __count; i++)");
-            _helpers.AppendLine("        {");
-            _helpers.Append("            __result[i] = ").Append(itemExpression).AppendLine(";");
-            _helpers.AppendLine("        }");
-            return;
-        }
-
-        _helpers.Append("        var __result = new global::System.Collections.Generic.List<")
-            .Append(elementName).AppendLine(">(__count);");
-        _helpers.AppendLine("        for (var i = 0; i < __count; i++)");
-        _helpers.AppendLine("        {");
-        _helpers.Append("            __result.Add(").Append(itemExpression).AppendLine(");");
-        _helpers.AppendLine("        }");
-    }
-
-    private static string ArrayCreation(IArrayTypeSymbol arrayType, string lengthExpression)
-    {
-        if (arrayType.Rank != 1)
-        {
-            throw new NotSupportedException(
-                $"Server extension multidimensional array type '{arrayType.ToDisplayString()}' is not supported.");
-        }
-
-        var elementType = arrayType.ElementType;
-        var trailingRanks = string.Empty;
-        while (elementType is IArrayTypeSymbol nestedArray)
-        {
-            if (nestedArray.Rank != 1)
-            {
-                throw new NotSupportedException(
-                    $"Server extension multidimensional array type '{nestedArray.ToDisplayString()}' is not supported.");
-            }
-
-            trailingRanks += "[]";
-            elementType = nestedArray.ElementType;
-        }
-
-        return $"new {TypeName(elementType)}[{lengthExpression}]{trailingRanks}";
     }
 
     private string NextHelperName(string prefix) => prefix + "KernelRpcValue" + _nextHelper++;

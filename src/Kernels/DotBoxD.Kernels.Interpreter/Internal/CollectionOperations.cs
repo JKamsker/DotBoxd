@@ -21,6 +21,14 @@ internal static class CollectionOperations
         return Charge(context, SandboxValue.FromList(values));
     }
 
+    public static SandboxValue BuildList(SandboxValue[] values, SandboxContext context)
+    {
+        context.ChargeFuel(SandboxCollectionFuel.Copy(values.Length));
+        context.ChargeAllocation(SandboxCollectionFuel.AllocationBytes(values.Length, 16));
+        var itemType = values.Length == 0 ? SandboxType.Unit : values[0].Type;
+        return Charge(context, SandboxValue.FromOwnedList(values, itemType));
+    }
+
     public static SandboxValue CountList(SandboxValue list, SandboxContext context)
     {
         var values = AsListReadOnly(list).Values;
@@ -71,6 +79,13 @@ internal static class CollectionOperations
         return Charge(context, SandboxValue.FromRecord(fields));
     }
 
+    public static SandboxValue BuildRecord(SandboxValue[] fields, SandboxContext context)
+    {
+        context.ChargeFuel(SandboxCollectionFuel.Copy(fields.Length));
+        context.ChargeAllocation(SandboxCollectionFuel.AllocationBytes(fields.Length, 16));
+        return Charge(context, SandboxValue.FromOwnedRecord(fields));
+    }
+
     public static SandboxValue GetRecordField(SandboxValue index, SandboxValue record, SandboxContext context)
     {
         var fields = AsRecordReadOnly(record).Fields;
@@ -95,7 +110,7 @@ internal static class CollectionOperations
         context.ChargeAllocation(16);
         return Charge(
             context,
-            SandboxValue.FromMap(new Dictionary<SandboxValue, SandboxValue>(), mapType.Arguments[0], mapType.Arguments[1]));
+            SandboxValue.FromOwnedMap(new MapValueBuilder(), mapType.Arguments[0], mapType.Arguments[1]));
     }
 
     public static SandboxValue ContainsMapKey(SandboxValue key, SandboxValue map, SandboxContext context)
@@ -135,12 +150,14 @@ internal static class CollectionOperations
             minimumOne: true));
         var updated = typedMap.SetEntry(key, value);
 
-        // Replacing an existing key changes a value subtree in place, which cannot be composed forward from
-        // the source shape; fall back to a full walk (rare in build loops). Inserting a new key adds exactly
+        // Replacing a zero-shape scalar entry keeps the aggregate map shape unchanged, so it can reuse the
+        // source shape exactly. Complex replacements fall back to a full walk. Inserting a new key adds exactly
         // one entry, so charge it incrementally from the source's cached shape (same fuel/shape as a walk).
         if (isReplace)
         {
-            return Charge(context, updated);
+            return ValueShapeCache.TryChargeScalarMapReplace(context, typedMap, updated)
+                ? updated
+                : Charge(context, updated);
         }
 
         ValueShapeCache.ChargeMapInsert(context, typedMap, key, value, updated, typedMap.Values.Count + 1);
@@ -150,14 +167,18 @@ internal static class CollectionOperations
     public static SandboxValue RemoveMapValue(SandboxValue key, SandboxValue map, SandboxContext context)
     {
         // Source map is already validated and immutable, so trust its entries (as reads and map.set do) and
-        // validate only the key. The result still uses a full shape charge because removal changes an
-        // existing subtree set and cannot be composed forward from the source shape without subtracting.
+        // validate only the key. Zero-shape scalar maps can subtract the removed entry exactly; complex maps
+        // still fall back to a full shape walk because removal can change nested maxima.
         var typedMap = AsMapReadOnly(map);
         RequireType(key, typedMap.KeyType, "map key type mismatch");
         context.ChargeFuel(SandboxCollectionFuel.Copy(typedMap.Values.Count));
-        var count = typedMap.Values.ContainsKey(key) ? typedMap.Values.Count - 1 : typedMap.Values.Count;
+        var keyWasPresent = typedMap.Values.ContainsKey(key);
+        var count = keyWasPresent ? typedMap.Values.Count - 1 : typedMap.Values.Count;
         context.ChargeAllocation(SandboxCollectionFuel.AllocationBytes(count, 32, minimumOne: true));
-        return Charge(context, typedMap.RemoveEntry(key));
+        var removed = typedMap.RemoveEntry(key);
+        return ValueShapeCache.TryChargeScalarMapRemove(context, typedMap, removed, keyWasPresent)
+            ? removed
+            : Charge(context, removed);
     }
 
     private static ListValue AsList(SandboxValue value)

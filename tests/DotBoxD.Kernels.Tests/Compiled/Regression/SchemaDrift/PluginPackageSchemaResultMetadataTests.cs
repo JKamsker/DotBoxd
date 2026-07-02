@@ -50,6 +50,18 @@ public sealed class PluginPackageSchemaResultMetadataTests
             required.EnumerateArray().Any(value => value.GetString() == "projectedType"));
     }
 
+    [Fact]
+    public void Plugin_package_schema_projected_type_requires_local_terminal()
+    {
+        var rules = SubscriptionRules();
+        var rule = Assert.Single(rules.EnumerateArray(), RuleRequiresProjectedType);
+
+        Assert.True(rule.GetProperty("then").GetProperty("properties").GetProperty("localTerminal").GetProperty("const").GetBoolean());
+        Assert.Equal(
+            "localTerminal",
+            Assert.Single(rule.GetProperty("then").GetProperty("required").EnumerateArray()).GetString());
+    }
+
     private static JsonElement SubscriptionProperties()
     {
         using var document = JsonDocument.Parse(PluginPackageJsonSchemas.PackageEnvelope);
@@ -77,6 +89,10 @@ public sealed class PluginPackageSchemaResultMetadataTests
     private static bool RuleRequiresResultType(JsonElement rule)
         => rule.GetProperty("if").TryGetProperty("required", out var required) &&
            required.EnumerateArray().Any(value => value.GetString() == "resultType");
+
+    private static bool RuleRequiresProjectedType(JsonElement rule)
+        => rule.GetProperty("if").TryGetProperty("required", out var required) &&
+           required.EnumerateArray().Any(value => value.GetString() == "projectedType");
 
     private static bool RequiresLocalTerminalConstTrue(JsonElement item)
         => item.TryGetProperty("required", out var required) &&

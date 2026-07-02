@@ -82,6 +82,14 @@ public sealed class KernelRpcMarshallerDtoOrderTests
         => Assert.Throws<NotSupportedException>(
             () => KernelRpcMarshaller.SandboxTypeOf(typeof(int?[][][][][][][][])));
 
+    [Theory]
+    [InlineData(typeof(DateTime[][][][][][][][]))]
+    [InlineData(typeof(Index[][][][][][][][]))]
+    [InlineData(typeof(Range[][][][][][][]))]
+    public void SandboxTypeOf_rejects_record_shaped_framework_types_past_composite_depth(Type type)
+        => Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.SandboxTypeOf(type));
+
     [Fact]
     public void SandboxTypeOf_rejects_a_self_referential_dto_instead_of_stack_overflowing()
         => Assert.Throws<NotSupportedException>(
@@ -156,29 +164,26 @@ public sealed class KernelRpcMarshallerDtoOrderTests
     }
 
     [Fact]
-    public void ToSandboxValue_ignores_inherited_dto_properties()
+    public void ToSandboxValue_rejects_inherited_dto_properties()
     {
         var dto = new DerivedDto(10, true);
 
-        var sandbox = KernelRpcMarshaller.ToSandboxValue(dto, typeof(DerivedDto));
+        var ex = Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.ToSandboxValue(dto, typeof(DerivedDto)));
 
-        var record = Assert.IsType<RecordValue>(sandbox);
-        Assert.Equal(
-            [SandboxValue.FromInt32(10), SandboxValue.FromBool(true)],
-            record.Fields);
+        Assert.Contains("inherits public", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void FromSandboxValue_uses_declared_dto_properties_only()
+    public void FromSandboxValue_rejects_inherited_dto_properties()
     {
         var sandbox = SandboxValue.FromRecord(
             [SandboxValue.FromInt32(11), SandboxValue.FromBool(false)]);
 
-        var dto = Assert.IsType<DerivedDto>(
-            KernelRpcMarshaller.FromSandboxValue(sandbox, typeof(DerivedDto)));
+        var ex = Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.FromSandboxValue(sandbox, typeof(DerivedDto)));
 
-        Assert.Equal(11, dto.MonsterId);
-        Assert.False(dto.Success);
+        Assert.Contains("inherits public", ex.Message, StringComparison.Ordinal);
     }
 
     private sealed class ReorderedDto

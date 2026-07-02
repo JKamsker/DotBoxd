@@ -11,6 +11,9 @@ if (args.Length == 1)
         case "--probe-stream-connection-receive-tracking":
             StreamConnectionReceiveTrackingProbe.Run();
             return;
+        case "--probe-generated-metadata-parameters":
+            GeneratedMetadataParameterArrayProbe.Run();
+            return;
     }
 }
 

@@ -2,14 +2,16 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Reflection;
 
+using LinqExpression = System.Linq.Expressions.Expression;
+
 namespace DotBoxD.Plugins.Runtime.Rpc;
 
 public static partial class KernelRpcMarshaller
 {
     private static readonly ConcurrentDictionary<Type, OptionalType> ElementTypeCache = new();
     private static readonly ConcurrentDictionary<Type, OptionalMapTypes> MapTypeCache = new();
-    private static readonly ConcurrentDictionary<Type, Type> ListTypeCache = new();
-    private static readonly ConcurrentDictionary<(Type Key, Type Value), Type> DictionaryTypeCache = new();
+    private static readonly ConcurrentDictionary<Type, Func<int, IList>> ListFactoryCache = new();
+    private static readonly ConcurrentDictionary<(Type Key, Type Value), Func<int, IDictionary>> DictionaryFactoryCache = new();
     private static readonly ConcurrentDictionary<Type, RecordShape> RecordShapeCache = new();
     private static readonly ConcurrentDictionary<Type, OptionalRecordShape> DtoShapeCache = new();
 
@@ -68,12 +70,16 @@ public static partial class KernelRpcMarshaller
 
     private static RecordShape? FindDtoShape(Type type)
     {
-        if (type == typeof(string) ||
+        if (IsDateTimeWireType(type) ||
+            IsFrameworkStructWireType(type) ||
+            type == typeof(TimeSpan) ||
+            type == typeof(string) ||
             type.IsPrimitive ||
             type.IsEnum ||
             ElementType(type) is not null ||
             MapTypes(type) is not null ||
-            !(type.IsClass || type.IsValueType))
+            !(type.IsClass || type.IsValueType) ||
+            ImplementsGenericEnumerable(type))
         {
             return null;
         }
@@ -82,30 +88,72 @@ public static partial class KernelRpcMarshaller
         return shape.Fields.Count > 0 ? shape : null;
     }
 
-    private static IList CreateList(Type elementType)
+    private static IList CreateList(Type elementType, int capacity)
+        => ListFactoryCache.GetOrAdd(elementType, CreateListFactory)(capacity);
+
+    private static IDictionary CreateDictionary(Type keyType, Type valueType, int capacity)
+        => DictionaryFactoryCache.GetOrAdd((keyType, valueType), CreateDictionaryFactory)(capacity);
+
+    // An IEnumerable<T> reaches here only after the recognized list/map shapes have been ruled out, so any
+    // remaining one — e.g. ImmutableArray<T>, ImmutableList<T>, Queue<T> — exposes only scalar getters
+    // (Length/Count/...) and would otherwise be mis-marshalled as a metadata-only record that silently drops its
+    // elements. Excluding it makes the type fail closed with the marshaller's unsupported-type exception, mirroring
+    // the analyzer's DotBoxDRpcTypeMapper.ImplementsGenericEnumerable. A plain DTO does not implement
+    // IEnumerable<T>, so this does not over-exclude.
+    private static bool ImplementsGenericEnumerable(Type type)
     {
-        var listType = ListTypeCache.GetOrAdd(
-            elementType,
-            static type => typeof(List<>).MakeGenericType(type));
-        return (IList)Activator.CreateInstance(listType)!;
+        foreach (var @interface in type.GetInterfaces())
+        {
+            if (@interface.IsGenericType &&
+                @interface.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    private static IDictionary CreateDictionary(Type keyType, Type valueType)
+    private static Func<int, IList> CreateListFactory(Type elementType)
     {
-        var dictionaryType = DictionaryTypeCache.GetOrAdd(
-            (keyType, valueType),
-            static pair => typeof(Dictionary<,>).MakeGenericType(pair.Key, pair.Value));
-        return (IDictionary)Activator.CreateInstance(dictionaryType)!;
+        var constructor = typeof(List<>)
+            .MakeGenericType(elementType)
+            .GetConstructor([typeof(int)])
+            ?? throw new MissingMethodException($"List<{elementType}>", ".ctor(int)");
+        return CompileCollectionFactory<IList>(constructor);
+    }
+
+    private static Func<int, IDictionary> CreateDictionaryFactory((Type Key, Type Value) types)
+    {
+        var constructor = typeof(Dictionary<,>)
+            .MakeGenericType(types.Key, types.Value)
+            .GetConstructor([typeof(int)])
+            ?? throw new MissingMethodException($"Dictionary<{types.Key},{types.Value}>", ".ctor(int)");
+        return CompileCollectionFactory<IDictionary>(constructor);
+    }
+
+    private static Func<int, TCollection> CompileCollectionFactory<TCollection>(ConstructorInfo constructor)
+    {
+        var capacity = LinqExpression.Parameter(typeof(int), "capacity");
+        var created = LinqExpression.New(constructor, capacity);
+        return LinqExpression.Lambda<Func<int, TCollection>>(
+            LinqExpression.Convert(created, typeof(TCollection)),
+            capacity).Compile();
     }
 
     private static RecordShape GetRecordShape(Type type)
         => RecordShapeCache.GetOrAdd(type, static candidate =>
         {
+            RejectInheritedDtoMembers(candidate);
+
             var members = new List<RecordMember>();
             const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
-            foreach (var property in candidate.GetProperties(flags))
+            var properties = candidate.GetProperties(flags);
+            Array.Sort(properties, static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
+            foreach (var property in properties)
             {
-                if (property.CanRead && property.GetIndexParameters().Length == 0 &&
+                if (property.GetMethod is { IsPublic: true } &&
+                    property.GetIndexParameters().Length == 0 &&
                     !string.Equals(property.Name, "EqualityContract", StringComparison.Ordinal) &&
                     !IsIgnoredMember(property))
                 {
@@ -113,24 +161,56 @@ public static partial class KernelRpcMarshaller
                 }
             }
 
-            // A value type that carries its data in public fields rather than properties (e.g. a math vector
-            // like System.Numerics.Vector3, whose X/Y/Z are float fields) has no readable properties; fall back
-            // to its public instance fields so it still marshals as a record. The fallback only runs when there
-            // are no properties, so property-based DTOs are unaffected and this stays strictly additive.
-            if (members.Count == 0)
+            // Reflection reports declared properties and fields separately, so the wire shape is readable
+            // properties first, then public fields. That keeps existing property-only DTOs stable while mixed
+            // DTOs still marshal every public data member.
+            var fields = candidate.GetFields(flags);
+            Array.Sort(fields, static (left, right) => left.MetadataToken.CompareTo(right.MetadataToken));
+            foreach (var field in fields)
             {
-                foreach (var field in candidate.GetFields(flags))
+                if (!IsIgnoredMember(field))
                 {
-                    if (!IsIgnoredMember(field))
-                    {
-                        members.Add(RecordMember.FromField(field));
-                    }
+                    members.Add(RecordMember.FromField(field));
                 }
             }
 
-            members.Sort(static (left, right) => left.Member.MetadataToken.CompareTo(right.Member.MetadataToken));
             return new RecordShape(candidate, members.ToArray());
         });
+
+    private static void RejectInheritedDtoMembers(Type type)
+    {
+        for (var baseType = type.BaseType; baseType is not null; baseType = baseType.BaseType)
+        {
+            if (baseType == typeof(object) || baseType == typeof(ValueType))
+            {
+                continue;
+            }
+
+            const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+            foreach (var property in baseType.GetProperties(flags))
+            {
+                if (property.GetMethod is not null &&
+                    property.GetIndexParameters().Length == 0 &&
+                    !string.Equals(property.Name, "EqualityContract", StringComparison.Ordinal) &&
+                    !IsIgnoredMember(property))
+                {
+                    throw new NotSupportedException(
+                        $"Server extension DTO '{type}' inherits public properties from base type " +
+                        $"'{baseType}'; flatten the DTO into a single type.");
+                }
+            }
+
+            foreach (var field in baseType.GetFields(flags))
+            {
+                if (!field.IsLiteral && !IsIgnoredMember(field))
+                {
+                    throw new NotSupportedException(
+                        $"Server extension DTO '{type}' inherits public fields from base type " +
+                        $"'{baseType}'; flatten the DTO into a single type.");
+                }
+            }
+        }
+    }
 
     // A member marked [IgnoreDataMember] (System.Runtime.Serialization) is non-wire — a lazily-resolved or
     // computed member, not serialized data — so it is excluded from the marshalled record shape, matching the

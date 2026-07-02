@@ -265,7 +265,7 @@ internal static class GeneratedStackTypeOperations
 
         if (actual == NullType && IsReferenceType(expected))
         {
-            return true;
+            return expected != SandboxTypeName;
         }
 
         if (actual == Int32Name && expected == BooleanName)

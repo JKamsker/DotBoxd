@@ -37,6 +37,11 @@ internal static class ServiceResultValidationPipeline
             .Select(static (r, _) => ServiceIdentity.From(r))
             .WithTrackingName("WireServiceNameInputs");
 
+        var generatedServices = CreateGeneratedServices(
+            results,
+            "GeneratedSubServiceInputs",
+            "GeneratedSubServices");
+
         var wireServiceNames = activeServiceIdentities
             .Collect()
             .Select(static (arr, ct) => ServiceWireNameIndex.Create(arr, ct))
@@ -50,6 +55,7 @@ internal static class ServiceResultValidationPipeline
 
         var subServiceResults = ApplySubServiceAvailability(
             results,
+            generatedServices,
             CreateRejectedServices(results, "RejectedServiceInputs", "RejectedServices"),
             "SubServiceValidatedServiceResults");
 
@@ -65,6 +71,10 @@ internal static class ServiceResultValidationPipeline
 
         results = ApplySubServiceAvailability(
             subServiceResults,
+            CreateGeneratedServices(
+                subServiceResults,
+                "FinalGeneratedSubServiceInputs",
+                "FinalGeneratedSubServices"),
             finalRejectedServices,
             "FinalSubServiceValidatedServiceResults");
 
@@ -73,12 +83,14 @@ internal static class ServiceResultValidationPipeline
 
     private static IncrementalValuesProvider<ServiceResult> ApplySubServiceAvailability(
         IncrementalValuesProvider<ServiceResult> results,
+        IncrementalValueProvider<GeneratedServiceIndex> generatedServices,
         IncrementalValueProvider<RejectedServiceIndex> rejectedServices,
         string trackingName) =>
         results
+            .Combine(generatedServices)
             .Combine(rejectedServices)
             .Select(static (pair, ct) =>
-                SubServiceAvailabilityValidator.Apply(pair.Left, pair.Right, ct))
+                SubServiceAvailabilityValidator.Apply(pair.Left.Left, pair.Left.Right, pair.Right, ct))
             .WithTrackingName(trackingName);
 
     private static IncrementalValuesProvider<ServiceResult> ApplyAsyncSiblingTypeCollisions(
@@ -105,6 +117,22 @@ internal static class ServiceResultValidationPipeline
         return rejectedServiceIdentities
             .Collect()
             .Select(static (arr, ct) => RejectedServiceIndex.Create(arr, ct))
+            .WithTrackingName(indexTrackingName);
+    }
+
+    private static IncrementalValueProvider<GeneratedServiceIndex> CreateGeneratedServices(
+        IncrementalValuesProvider<ServiceResult> results,
+        string inputTrackingName,
+        string indexTrackingName)
+    {
+        var generatedServiceIdentities = results
+            .Where(static r => r.Model is not null)
+            .Select(static (r, ct) => GeneratedServiceAvailability.From(r, ct))
+            .WithTrackingName(inputTrackingName);
+
+        return generatedServiceIdentities
+            .Collect()
+            .Select(static (arr, ct) => GeneratedServiceIndex.Create(arr, ct))
             .WithTrackingName(indexTrackingName);
     }
 }

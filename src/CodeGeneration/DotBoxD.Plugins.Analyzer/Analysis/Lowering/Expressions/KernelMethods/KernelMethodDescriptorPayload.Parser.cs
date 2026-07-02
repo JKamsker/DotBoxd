@@ -4,10 +4,26 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 
 internal static partial class KernelMethodDescriptorPayloadParser
 {
+    private static readonly string[] RootPropertyNames =
+    [
+        "allocates",
+        "capabilities",
+        "contextType",
+        "effects",
+        "methodMetadataName",
+        "normalizedSignature",
+        "parameters",
+        "returnType",
+        "source",
+        "version"
+    ];
+
+    private static readonly string[] ParameterPropertyNames = ["placeholder", "type"];
+
     public static bool TryParse(string payload, out KernelMethodDescriptorPayload? descriptor)
     {
         descriptor = null;
-        if (!TryObject(payload, out var properties) ||
+        if (!TryObject(payload, RootPropertyNames, out var properties) ||
             !TryBool(properties, "allocates", out var allocates) ||
             !TryStringArray(properties, "capabilities", out var capabilities) ||
             !TryString(properties, "contextType", out var contextType) ||
@@ -36,7 +52,10 @@ internal static partial class KernelMethodDescriptorPayloadParser
         return true;
     }
 
-    private static bool TryObject(string json, out Dictionary<string, string> properties)
+    private static bool TryObject(
+        string json,
+        IReadOnlyList<string> allowedNames,
+        out Dictionary<string, string> properties)
     {
         properties = new Dictionary<string, string>(StringComparer.Ordinal);
         var index = SkipWhitespace(json, 0);
@@ -59,6 +78,11 @@ internal static partial class KernelMethodDescriptorPayloadParser
                 return false;
             }
 
+            if (!ContainsName(allowedNames, name) || properties.ContainsKey(name))
+            {
+                return false;
+            }
+
             index = SkipWhitespace(json, index);
             if (index >= json.Length || json[index++] != ':')
             {
@@ -72,7 +96,7 @@ internal static partial class KernelMethodDescriptorPayloadParser
                 return false;
             }
 
-            properties[name] = json.Substring(valueStart, index - valueStart);
+            properties.Add(name, json.Substring(valueStart, index - valueStart));
             index = SkipWhitespace(json, index);
             if (index < json.Length && json[index] == ',')
             {
@@ -103,7 +127,7 @@ internal static partial class KernelMethodDescriptorPayloadParser
         var result = new KernelMethodDescriptorParameter[items.Count];
         for (var i = 0; i < items.Count; i++)
         {
-            if (!TryObject(items[i], out var item) ||
+            if (!TryObject(items[i], ParameterPropertyNames, out var item) ||
                 !TryString(item, "placeholder", out var placeholder) ||
                 !TryString(item, "type", out var type))
             {
@@ -215,6 +239,19 @@ internal static partial class KernelMethodDescriptorPayloadParser
 
             return false;
         }
+    }
+
+    private static bool ContainsName(IReadOnlyList<string> allowedNames, string name)
+    {
+        for (var i = 0; i < allowedNames.Count; i++)
+        {
+            if (string.Equals(allowedNames[i], name, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 }

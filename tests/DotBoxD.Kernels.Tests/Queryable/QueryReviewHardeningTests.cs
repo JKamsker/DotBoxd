@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -57,6 +58,24 @@ public sealed class QueryReviewHardeningTests
                 e => e.TargetId.StartsWith("x", StringComparison.InvariantCultureIgnoreCase)));
 
     [Fact]
+    public void Legacy_culture_sensitive_string_overload_is_rejected()
+        => Assert.Throws<QueryTranslationException>(() =>
+            ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(
+                e => e.TargetId.StartsWith("PL", ignoreCase: true, CultureInfo.InvariantCulture)));
+
+    [Fact]
+    public void One_argument_starts_with_is_rejected_because_it_is_culture_sensitive()
+        => Assert.Throws<QueryTranslationException>(() =>
+            ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(
+                e => e.TargetId.StartsWith("caf\u00e9")));
+
+    [Fact]
+    public void One_argument_ends_with_is_rejected_because_it_is_culture_sensitive()
+        => Assert.Throws<QueryTranslationException>(() =>
+            ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(
+                e => e.TargetId.EndsWith("caf\u00e9")));
+
+    [Fact]
     public void Contains_over_a_case_insensitive_collection_is_rejected()
     {
         var watched = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "a", "b" };
@@ -65,10 +84,63 @@ public sealed class QueryReviewHardeningTests
     }
 
     [Fact]
+    public void Static_contains_over_a_case_insensitive_collection_is_rejected()
+    {
+        var watched = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "a", "b" };
+        Assert.Throws<QueryTranslationException>(() =>
+            ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(
+                e => Enumerable.Contains(watched, e.AttackerId)));
+    }
+
+    [Fact]
+    public void Contains_over_case_insensitive_dictionary_keys_is_rejected()
+    {
+        var watched = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["a"] = 1,
+        };
+
+        Assert.Equal(1, watched["A"]);
+        Assert.Throws<QueryTranslationException>(() =>
+            ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(
+                e => watched.Keys.Contains(e.AttackerId)));
+    }
+
+    [Fact]
+    public void Contains_over_case_insensitive_read_only_dictionary_keys_is_rejected()
+    {
+        var inner = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["a"] = 1,
+        };
+        var watched = new ReadOnlyDictionary<string, int>(inner);
+
+        Assert.Equal(1, watched["A"]);
+        Assert.Throws<QueryTranslationException>(() =>
+            ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(
+                e => watched.Keys.Contains(e.AttackerId)));
+    }
+
+    [Fact]
     public void Contains_over_a_default_collection_still_lowers_to_in()
     {
         var ids = new[] { "a", "b" };
         var filter = ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(e => ids.Contains(e.AttackerId));
+        Assert.Equal(QueryFilterKind.In, filter.Kind);
+    }
+
+    [Fact]
+    public void Contains_over_default_dictionary_keys_still_lowers_to_in()
+    {
+        var watched = new Dictionary<string, int>
+        {
+            ["a"] = 1,
+            ["b"] = 2,
+        };
+
+        var filter = ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(
+            e => watched.Keys.Contains(e.AttackerId));
+
         Assert.Equal(QueryFilterKind.In, filter.Kind);
     }
 
@@ -147,9 +219,44 @@ public sealed class QueryReviewHardeningTests
     }
 
     [Fact]
+    public void Contains_over_a_case_sensitive_culture_comparer_is_rejected()
+    {
+        var watched = new HashSet<string>(StringComparer.InvariantCulture) { "a\0" };
+        Assert.True(watched.Comparer.Equals("a\0", "a"));
+        var ex = Assert.Throws<QueryTranslationException>(() =>
+            ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(e => watched.Contains(e.AttackerId)));
+        Assert.Contains("culture-sensitive", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Contains_over_a_sorted_set_with_non_ordinal_comparer_is_rejected()
+    {
+        var watched = new SortedSet<string>(
+            Comparer<string>.Create((left, right) =>
+                string.Equals(left, right, StringComparison.OrdinalIgnoreCase)
+                    ? 0
+                    : string.CompareOrdinal(left, right)))
+        {
+            "a",
+        };
+
+        Assert.True(watched.TryGetValue("A", out _));
+        Assert.Throws<QueryTranslationException>(() =>
+            ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(e => watched.Contains(e.AttackerId)));
+    }
+
+    [Fact]
     public void Contains_over_a_default_hashset_still_lowers_to_in()
     {
         var watched = new HashSet<string> { "a", "b" };
+        var filter = ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(e => watched.Contains(e.AttackerId));
+        Assert.Equal(QueryFilterKind.In, filter.Kind);
+    }
+
+    [Fact]
+    public void Contains_over_an_ordinal_sorted_set_still_lowers_to_in()
+    {
+        var watched = new SortedSet<string>(StringComparer.Ordinal) { "a", "b" };
         var filter = ExpressionQueryTranslator.TranslateFilter<AttackTestEvent>(e => watched.Contains(e.AttackerId));
         Assert.Equal(QueryFilterKind.In, filter.Kind);
     }

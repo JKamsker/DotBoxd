@@ -23,26 +23,29 @@ internal static class PluginKernelModelFactory
         var eventTypes = PluginSymbolReader.EventTypes(type);
         if (string.IsNullOrWhiteSpace(pluginId))
         {
-            var diagnostic = PluginKernelDiagnostic.Create(
-                declaration.Identifier,
-                "Plugin id must be a non-empty string.");
-            return new PluginKernelModelResult(null, diagnostic);
+            return Fail(declaration, "Plugin id must be a non-empty string.");
+        }
+
+        if (type.IsGenericType || type.TypeParameters.Length > 0)
+        {
+            return Fail(declaration, $"Plugin kernel '{type.Name}' cannot be generic.");
+        }
+
+        if (type.ContainingType is not null)
+        {
+            return Fail(
+                declaration,
+                $"Plugin kernels must be top-level types; '{type.ToDisplayString()}' is nested.");
         }
 
         if (eventTypes.Count == 0)
         {
-            var diagnostic = PluginKernelDiagnostic.Create(
-                declaration.Identifier,
-                "Plugin kernels must implement IEventKernel<TEvent>.");
-            return new PluginKernelModelResult(null, diagnostic);
+            return Fail(declaration, "Plugin kernels must implement IEventKernel<TEvent>.");
         }
 
         if (eventTypes.Count > 1)
         {
-            var diagnostic = PluginKernelDiagnostic.Create(
-                declaration.Identifier,
-                "Plugin kernels must implement exactly one IEventKernel<TEvent>.");
-            return new PluginKernelModelResult(null, diagnostic);
+            return Fail(declaration, "Plugin kernels must implement exactly one IEventKernel<TEvent>.");
         }
 
         var validatedPluginId = pluginId!;
@@ -54,7 +57,7 @@ internal static class PluginKernelModelFactory
             var eventProperties = PluginSymbolReader.EventProperties(eventType);
             if (ContainsUnsupported(eventProperties))
             {
-                throw new NotSupportedException("Kernel event properties must use supported scalar types.");
+                throw new NotSupportedException(PluginKernelUnsupportedShapeMessage.EventProperties(eventType));
             }
 
             var liveSettings = PluginSymbolReader.LiveSettings(type, context.SemanticModel, cancellationToken);
@@ -140,10 +143,12 @@ internal static class PluginKernelModelFactory
         }
         catch (NotSupportedException ex)
         {
-            var diagnostic = PluginKernelDiagnostic.Create(declaration.Identifier, ex.Message);
-            return new PluginKernelModelResult(null, diagnostic);
+            return Fail(declaration, ex.Message);
         }
     }
+
+    private static PluginKernelModelResult Fail(ClassDeclarationSyntax declaration, string message)
+        => new(null, PluginKernelDiagnostic.Create(declaration.Identifier, message));
 
     private static void ValidateGeneratedParameterNames(
         EquatableArray<EventPropertyModel> eventProperties,

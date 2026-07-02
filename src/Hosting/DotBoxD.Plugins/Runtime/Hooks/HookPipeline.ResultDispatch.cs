@@ -30,6 +30,7 @@ public partial class HookPipeline<TEvent, TContext>
         CancellationToken cancellationToken = default)
         where TResult : struct, IHookResult
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (!_resultHooks.HasHandlers)
         {
             return new ValueTask<TResult?>((TResult?)null);
@@ -55,6 +56,7 @@ public partial class HookPipeline<TEvent, TContext>
         CancellationToken cancellationToken = default)
         where TResult : struct, IHookResult
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var rawContext = cancellationToken.CanBeCanceled
             ? new HookContext(_messages, cancellationToken)
             : _defaultRawContext;

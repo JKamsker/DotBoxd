@@ -61,6 +61,7 @@ public sealed partial class InstalledKernel
         var function = _rpcEntrypointFunction ?? throw new InvalidOperationException(
             $"Kernel '{Manifest.PluginId}' is not a server extension (no rpcEntrypoint).");
 
+        cancellationToken.ThrowIfCancellationRequested();
         var rpcArguments = KernelRpcBinaryCodec.DecodeArguments(arguments);
         var callerCount = _rpcCallerArgumentCount;
         if (callerCount < 0 || rpcArguments.Length != callerCount)
@@ -69,7 +70,9 @@ public sealed partial class InstalledKernel
                 $"Server extension '{Manifest.PluginId}' expects {callerCount} argument(s) but received {rpcArguments.Length}.");
         }
 
-        var sandboxArguments = new SandboxValue[rpcArguments.Length];
+        var sandboxArguments = rpcArguments.Length == 0
+            ? Array.Empty<SandboxValue>()
+            : new SandboxValue[rpcArguments.Length];
         for (var i = 0; i < rpcArguments.Length; i++)
         {
             sandboxArguments[i] = KernelRpcValueConverter.ToSandboxValue(rpcArguments[i], function.Parameters[i].Type);

@@ -43,7 +43,7 @@ public sealed class SandboxPolicyBuilder
     public SandboxPolicyBuilder GrantFileRead(string root, long maxBytesPerRun)
     {
         ThrowIfNegative(maxBytesPerRun, nameof(maxBytesPerRun));
-        var normalizedRoot = NormalizeFileRoot(root, nameof(root));
+        var normalizedRoot = FileGrantRoot.NormalizeCanonicalDirectory(root, nameof(root));
         _allowedEffects |= SandboxEffect.FileRead;
         _grants.Add(new CapabilityGrant("file.read", new Dictionary<string, string>
         {
@@ -60,7 +60,7 @@ public sealed class SandboxPolicyBuilder
         bool allowOverwrite = false)
     {
         ThrowIfNegative(maxBytesPerRun, nameof(maxBytesPerRun));
-        var normalizedRoot = NormalizeFileRoot(root, nameof(root));
+        var normalizedRoot = FileGrantRoot.NormalizeCanonicalDirectory(root, nameof(root));
         _allowedEffects |= SandboxEffect.FileWrite | SandboxEffect.Audit;
         _grants.Add(new CapabilityGrant("file.write", new Dictionary<string, string>
         {
@@ -273,28 +273,4 @@ public sealed class SandboxPolicyBuilder
         }
     }
 
-    private static string NormalizeFileRoot(string root, string paramName)
-    {
-        if (string.IsNullOrWhiteSpace(root) || !Path.IsPathFullyQualified(root))
-        {
-            throw new ArgumentException("file grant root must be an absolute canonical path", paramName);
-        }
-
-        var fullPath = Path.GetFullPath(root);
-        if (!PathsEqual(NormalizeRootForCompare(root), NormalizeRootForCompare(fullPath)))
-        {
-            throw new ArgumentException("file grant root must be an absolute canonical path", paramName);
-        }
-
-        return fullPath;
-    }
-
-    private static string NormalizeRootForCompare(string path)
-        => Path.TrimEndingDirectorySeparator(path);
-
-    private static bool PathsEqual(string left, string right)
-        => string.Equals(
-            left,
-            right,
-            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 }

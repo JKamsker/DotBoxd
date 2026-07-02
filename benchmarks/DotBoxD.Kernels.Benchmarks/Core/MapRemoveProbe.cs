@@ -18,17 +18,22 @@ internal static class MapRemoveProbe
     {
         var source = CreateSourceMap();
         var key = SandboxValue.FromInt32(Entries / 2);
+        var stringSource = CreateStringSourceMap();
+        var missingStringKey = SandboxValue.FromString("missing-key");
 
         _ = MeasureLegacy(source, key, Warmup);
         _ = MeasureCurrent(source, key, Warmup);
+        _ = MeasureCurrent(stringSource, missingStringKey, Warmup);
 
         var legacy = MeasureLegacy(source, key, Iterations);
         var current = MeasureCurrent(source, key, Iterations);
+        var stringMiss = MeasureCurrent(stringSource, missingStringKey, Iterations);
 
         Console.WriteLine($"entries = {Entries:N0}");
         Console.WriteLine($"iterations = {Iterations:N0}");
-        Print("legacy copy remove", legacy);
-        Print("structural remove", current);
+        Print("legacy scalar present remove", legacy);
+        Print("scalar present remove", current);
+        Print("string missing remove", stringMiss);
     }
 
     private static MapValue CreateSourceMap()
@@ -42,6 +47,22 @@ internal static class MapRemoveProbe
                 map,
                 SandboxValue.FromInt32(i),
                 SandboxValue.FromInt32(i * 10));
+        }
+
+        return (MapValue)map;
+    }
+
+    private static MapValue CreateStringSourceMap()
+    {
+        var run = RunState.Create();
+        SandboxValue map = CompiledRuntime.MapEmpty(run.Context, SandboxType.String, SandboxType.String);
+        for (var i = 0; i < Entries; i++)
+        {
+            map = CompiledRuntime.MapSet(
+                run.Context,
+                map,
+                SandboxValue.FromString($"key-{i}"),
+                SandboxValue.FromString($"value-{i}"));
         }
 
         return (MapValue)map;
@@ -125,7 +146,8 @@ internal static class MapRemoveProbe
                 MaxWallTime: TimeSpan.FromMinutes(5),
                 MaxAllocatedBytes: long.MaxValue,
                 MaxMapEntries: int.MaxValue,
-                MaxTotalCollectionElements: long.MaxValue);
+                MaxTotalCollectionElements: long.MaxValue,
+                MaxTotalStringBytes: long.MaxValue);
             var policy = SandboxPolicyBuilder.Create().Build() with { ResourceLimits = limits };
             return new RunState(new SandboxContext(
                 SandboxRunId.New(),

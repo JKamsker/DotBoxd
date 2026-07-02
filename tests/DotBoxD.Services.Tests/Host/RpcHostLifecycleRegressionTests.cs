@@ -90,6 +90,30 @@ public sealed class RpcHostLifecycleRegressionTests
     }
 
     [Fact]
+    public async Task StopAsync_WithPreCanceledToken_StopsListenerBeforeCancelingAcceptLoop()
+    {
+        var transport = new PreCanceledStopServerTransport();
+        var host = RpcHost.Listen(transport, NewSerializer());
+        try
+        {
+            await host.StartAsync();
+            await transport.AcceptStarted.WaitAsync(TimeSpan.FromSeconds(1));
+
+            using var stopCts = new CancellationTokenSource();
+            stopCts.Cancel();
+
+            await host.StopAsync(stopCts.Token).WaitAsync(TimeSpan.FromSeconds(1));
+
+            Assert.Equal(1, transport.StopCompletedCalls);
+            Assert.False(transport.AcceptTokenCanceledWhenStopRan);
+        }
+        finally
+        {
+            await host.DisposeAsync();
+        }
+    }
+
+    [Fact]
     public async Task AcceptedPeerConfigurationFailure_RaisesAcceptError()
     {
         var (clientConnection, serverConnection) = InMemoryPipe.CreateConnectionPair();
@@ -179,6 +203,51 @@ public sealed class RpcHostLifecycleRegressionTests
         public void AllowStart() => _allowStart.TrySetResult(true);
     }
 
+    private sealed class PreCanceledStopServerTransport : IServerTransport
+    {
+        private readonly TaskCompletionSource<bool> _acceptStarted =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _acceptTokenCanceled;
+        private int _acceptTokenCanceledWhenStopRan;
+        private int _stopCompletedCalls;
+
+        public Task AcceptStarted => _acceptStarted.Task;
+
+        public bool AcceptTokenCanceled => Volatile.Read(ref _acceptTokenCanceled) != 0;
+
+        public bool AcceptTokenCanceledWhenStopRan => Volatile.Read(ref _acceptTokenCanceledWhenStopRan) != 0;
+
+        public int StopCompletedCalls => Volatile.Read(ref _stopCompletedCalls);
+
+        public Task StartAsync(CancellationToken ct = default) => Task.CompletedTask;
+
+        public async Task<IRpcChannel> AcceptAsync(CancellationToken ct = default)
+        {
+            using var registration = ct.Register(
+                static state => ((PreCanceledStopServerTransport)state!).MarkAcceptTokenCanceled(),
+                this);
+            _acceptStarted.TrySetResult(true);
+            await Task.Delay(Timeout.Infinite, ct).ConfigureAwait(false);
+            throw new OperationCanceledException(ct);
+        }
+
+        public Task StopAsync(CancellationToken ct = default)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (AcceptTokenCanceled)
+            {
+                Volatile.Write(ref _acceptTokenCanceledWhenStopRan, 1);
+            }
+
+            Interlocked.Increment(ref _stopCompletedCalls);
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync() => default;
+
+        private void MarkAcceptTokenCanceled() => Volatile.Write(ref _acceptTokenCanceled, 1);
+    }
+
     private sealed class CancelFirstStopServerTransport : IServerTransport
     {
         private readonly IRpcChannel _connection;
@@ -206,7 +275,7 @@ public sealed class RpcHostLifecycleRegressionTests
         {
             var call = Interlocked.Increment(ref _stopCalls);
             return call == 1
-                ? Task.Delay(Timeout.Infinite, ct)
+                ? Task.FromException(new OperationCanceledException())
                 : Task.CompletedTask;
         }
 

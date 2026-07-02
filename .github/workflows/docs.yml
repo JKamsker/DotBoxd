@@ -1,0 +1,122 @@
+name: docs
+
+# Builds the documentation site (Astro Starlight in docs-site/ + generated .NET API reference)
+# and publishes it to the `gh-pages` branch on pushes to main.
+#
+# Pipeline: `docfx metadata` emits markdown API pages into docs-site/src/content/docs/api,
+# `postprocess-api` adapts them for Starlight (frontmatter, slugs, sidebar), `astro build`
+# renders the site.
+#
+# GitHub Pages coexistence: this repo's benchmarks workflow (benchmarks.yml) auto-pushes
+# BenchmarkDotNet history to `gh-pages` under `dev/bench/**` via github-action-benchmark.
+# We therefore publish the docs site to the SAME branch root and use `clean-exclude` to
+# preserve `dev/bench/**`. Do NOT switch this to actions/deploy-pages: that would flip the
+# Pages source to "GitHub Actions" and stop serving the branch, breaking the benchmark charts.
+#
+# Pages setup (repo admin): Settings -> Pages -> "Deploy from a branch" -> gh-pages / (root),
+# with the custom domain dotboxd.kamsker.at. The site is served at https://dotboxd.kamsker.at/
+# and benchmarks at https://dotboxd.kamsker.at/dev/bench/.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs-site/**'
+      - 'src/**'
+      - '**/*.csproj'
+      - 'docfx.json'
+      - 'filterConfig.yml'
+      - '.config/dotnet-tools.json'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs-site/**'
+      - 'docfx.json'
+      - 'filterConfig.yml'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    name: Build & deploy Starlight site
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed only for the deploy step, which pushes the built site to the gh-pages branch.
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          # Full history so Starlight's lastUpdated dates come from real git metadata.
+          fetch-depth: 0
+
+      - name: Setup .NET SDKs
+        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
+        with:
+          # docfx builds the library projects for API metadata; they span netstandard2.0/2.1
+          # and net10.0. global.json pins the build SDK (10.0.x, rollForward latestFeature).
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+
+      - name: Restore .NET tools (docfx)
+        run: dotnet tool restore
+
+      - name: Generate API reference markdown
+        # Builds the library projects and emits one markdown page per public type into
+        # docs-site/src/content/docs/api (gitignored; regenerated on every build).
+        run: dotnet docfx metadata docfx.json
+
+      - name: Install site dependencies
+        working-directory: docs-site
+        run: npm ci
+
+      - name: Post-process API markdown for Starlight
+        # Injects frontmatter/slugs, rewrites links, and builds the API sidebar JSON.
+        working-directory: docs-site
+        run: npm run postprocess-api
+
+      - name: Build documentation site
+        working-directory: docs-site
+        run: npm run build
+
+      - name: Disable Jekyll on the published site
+        # Astro emits hashed assets under _astro/, which Jekyll would otherwise ignore.
+        run: touch docs-site/dist/.nojekyll
+
+      - name: Deploy to GitHub Pages (gh-pages branch)
+        # Only publish from the canonical repo's main branch; PRs and forks build but do not deploy.
+        if: >-
+          github.event_name != 'pull_request' &&
+          github.ref == 'refs/heads/main' &&
+          github.repository == 'JKamsker/DotBoxD'
+        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4
+        with:
+          branch: gh-pages
+          folder: docs-site/dist
+          # Custom domain: write the CNAME file on every deploy so `clean: true` cannot drop it
+          # (GitHub also manages this file when the domain is set in Settings, but owning it here
+          # keeps the domain pinned regardless of that setting).
+          cname: dotboxd.kamsker.at
+          clean: true
+          # Preserve BenchmarkDotNet history published by benchmarks.yml.
+          clean-exclude: |
+            dev/bench/**
+          commit-message: 'docs: publish Starlight site for ${{ github.sha }}'

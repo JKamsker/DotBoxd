@@ -12,7 +12,8 @@ public sealed partial class InstalledKernel
     private SandboxValue BuildInput<TEvent>(
         IPluginEventAdapter<TEvent> adapter,
         TEvent e,
-        string entrypoint)
+        string entrypoint,
+        IReadOnlyList<Parameter> parameters)
     {
         lock (_lifecycleGate)
         {
@@ -21,6 +22,7 @@ public sealed partial class InstalledKernel
                 ? PluginKernelInputBuilder.BuildWithReusableBuffer(
                     adapter,
                     e,
+                    parameters,
                     deferredUpdates,
                     Manifest.LiveSettings,
                     Value,
@@ -30,6 +32,7 @@ public sealed partial class InstalledKernel
                 : PluginKernelInputBuilder.Build(
                     adapter,
                     e,
+                    parameters,
                     deferredUpdates,
                     Manifest.LiveSettings,
                     Value,

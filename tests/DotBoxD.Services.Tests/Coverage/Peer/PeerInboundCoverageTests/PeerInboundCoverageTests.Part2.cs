@@ -61,6 +61,19 @@ public sealed partial class PeerInboundCoverageTests
             new RpcRequest { MessageId = messageId, ServiceName = service, MethodName = method },
             ReadOnlySpan<byte>.Empty);
 
+    private static Payload CreateRequestFrame(
+        ISerializer serializer,
+        int frameMessageId,
+        int envelopeMessageId,
+        string service,
+        string method) =>
+        MessageFramer.FrameMessage(
+            serializer,
+            frameMessageId,
+            MessageType.Request,
+            new RpcRequest { MessageId = envelopeMessageId, ServiceName = service, MethodName = method },
+            ReadOnlySpan<byte>.Empty);
+
     private static Payload RentFrame(byte[] bytes)
     {
         var payload = Payload.Rent(bytes.Length);
@@ -73,6 +86,26 @@ public sealed partial class PeerInboundCoverageTests
         var copy = Payload.Rent(source.Length);
         source.Memory.Span.CopyTo(copy.Memory.Span);
         return copy;
+    }
+
+    private static async Task WaitForPayloadDisposedAsync(Payload payload)
+    {
+        var deadline = DateTime.UtcNow + ShortTimeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            try
+            {
+                _ = payload.Memory;
+            }
+            catch (ObjectDisposedException)
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(10)).ConfigureAwait(false);
+        }
+
+        Assert.Throws<ObjectDisposedException>(() => payload.Memory);
     }
 
     private sealed class EchoDispatcher : IServiceDispatcher
@@ -138,6 +171,9 @@ public sealed partial class PeerInboundCoverageTests
 
         public TaskCompletionSource Canceled { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        public TaskCompletionSource<CancellationToken> ObservedToken { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public async Task DispatchAsync(
             string method,
             ReadOnlyMemory<byte> payload,
@@ -146,6 +182,7 @@ public sealed partial class PeerInboundCoverageTests
             IBufferWriter<byte> output,
             CancellationToken ct = default)
         {
+            ObservedToken.TrySetResult(ct);
             Started.TrySetResult();
             try
             {

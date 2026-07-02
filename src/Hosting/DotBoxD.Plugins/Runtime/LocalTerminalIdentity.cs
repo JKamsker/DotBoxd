@@ -1,3 +1,5 @@
+using DotBoxD.Plugins.Json;
+
 namespace DotBoxD.Plugins.Runtime;
 
 internal static class LocalTerminalIdentity
@@ -38,6 +40,32 @@ internal static class LocalTerminalIdentity
         {
             [CallbackSubscriptionIdMetadataKey] = callbackSubscriptionId
         };
+        return package with
+        {
+            Module = package.Module with { Metadata = metadata }
+        };
+    }
+
+    public static bool HasSameReplayPackageIdentity(PluginPackage left, PluginPackage right)
+    {
+        ArgumentNullException.ThrowIfNull(left);
+        ArgumentNullException.ThrowIfNull(right);
+
+        return string.Equals(
+            PluginPackageJsonSerializer.Export(WithoutCallbackSubscriptionId(left)),
+            PluginPackageJsonSerializer.Export(WithoutCallbackSubscriptionId(right)),
+            StringComparison.Ordinal);
+    }
+
+    private static PluginPackage WithoutCallbackSubscriptionId(PluginPackage package)
+    {
+        if (!package.Module.Metadata.ContainsKey(CallbackSubscriptionIdMetadataKey))
+        {
+            return package;
+        }
+
+        var metadata = new Dictionary<string, string>(package.Module.Metadata, StringComparer.Ordinal);
+        metadata.Remove(CallbackSubscriptionIdMetadataKey);
         return package with
         {
             Module = package.Module with { Metadata = metadata }

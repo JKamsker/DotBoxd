@@ -27,8 +27,71 @@ internal static partial class RemoteStagedUseDiagnosticFactory
             return true;
         }
 
+        expression = HookChainAliasResolver.UnwrapTransparentExpression(expression);
+        if (expression is ConditionalExpressionSyntax conditional)
+        {
+            return ContainsStageInvocationOrAlias(conditional.WhenTrue, model, cancellationToken, depth + 1) ||
+                ContainsStageInvocationOrAlias(conditional.WhenFalse, model, cancellationToken, depth + 1);
+        }
+
+        if (ReturnedExpression(expression, model, cancellationToken) is { } returned)
+        {
+            return ContainsStageInvocationOrAlias(returned, model, cancellationToken, depth + 1);
+        }
+
         return HookChainAliasResolver.Initializer(expression, model, cancellationToken) is { } initializer &&
             ContainsStageInvocationOrAlias(initializer, model, cancellationToken, depth + 1);
+    }
+
+    private static ExpressionSyntax? ReturnedExpression(
+        ExpressionSyntax expression,
+        SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        expression = HookChainAliasResolver.UnwrapTransparentExpression(expression);
+        if (expression is not InvocationExpressionSyntax invocation ||
+            model.GetSymbolInfo(invocation, cancellationToken).Symbol is not IMethodSymbol method)
+        {
+            return null;
+        }
+
+        foreach (var reference in method.DeclaringSyntaxReferences)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var syntax = reference.GetSyntax(cancellationToken);
+            var expressionBody = syntax switch
+            {
+                MethodDeclarationSyntax methodDeclaration => methodDeclaration.ExpressionBody?.Expression,
+                LocalFunctionStatementSyntax localFunction => localFunction.ExpressionBody?.Expression,
+                _ => null
+            };
+            if (expressionBody is not null)
+            {
+                return expressionBody;
+            }
+
+            var body = syntax switch
+            {
+                MethodDeclarationSyntax methodDeclaration => methodDeclaration.Body,
+                LocalFunctionStatementSyntax localFunction => localFunction.Body,
+                _ => null
+            };
+            if (body is null)
+            {
+                continue;
+            }
+
+            var returns = body.DescendantNodes(static node =>
+                    node is not LambdaExpressionSyntax and not LocalFunctionStatementSyntax)
+                .OfType<ReturnStatementSyntax>()
+                .ToArray();
+            if (returns.Length == 1)
+            {
+                return returns[0].Expression;
+            }
+        }
+
+        return null;
     }
 
     private static bool IsGeneratedRemoteChain(
@@ -46,7 +109,7 @@ internal static partial class RemoteStagedUseDiagnosticFactory
         SemanticModel model,
         CancellationToken cancellationToken)
     {
-        expression = HookChainAliasResolver.UnwrapParentheses(expression);
+        expression = HookChainAliasResolver.UnwrapTransparentExpression(expression);
 
         if (HookChainAliasResolver.Initializer(expression, model, cancellationToken) is { } initializer)
         {
@@ -56,7 +119,7 @@ internal static partial class RemoteStagedUseDiagnosticFactory
         var current = expression;
         while (true)
         {
-            current = HookChainAliasResolver.UnwrapParentheses(current);
+            current = HookChainAliasResolver.UnwrapTransparentExpression(current);
             if (HookChainAliasResolver.Initializer(current, model, cancellationToken) is { } currentInitializer)
             {
                 current = currentInitializer;

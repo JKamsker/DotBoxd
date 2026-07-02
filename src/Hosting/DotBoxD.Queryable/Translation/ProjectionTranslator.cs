@@ -16,7 +16,7 @@ internal sealed class ProjectionTranslator(ParameterExpression parameter)
     /// <summary>Translates a projection body into a projection AST.</summary>
     public QueryProjection Translate(Expression body)
     {
-        var expression = MemberPathReader.StripConvert(body);
+        var expression = MemberPathReader.StripPathConvert(body, parameter);
         if (expression == parameter)
         {
             return QueryProjection.Identity;
@@ -38,22 +38,16 @@ internal sealed class ProjectionTranslator(ParameterExpression parameter)
 
     private QueryProjection TranslateNew(NewExpression construct)
     {
-        var parameters = construct.Constructor?.GetParameters();
         var fields = new List<QueryProjectionField>(construct.Arguments.Count);
-        for (var i = 0; i < construct.Arguments.Count; i++)
-        {
-            var name = construct.Members is { } members
-                ? members[i].Name
-                : parameters?[i].Name ?? $"item{i}";
-            fields.Add(BuildField(name, construct.Arguments[i]));
-        }
+        AddConstructorFields(construct, fields);
 
         return QueryProjection.Construct(TypeName(construct.Type), fields);
     }
 
     private QueryProjection TranslateMemberInit(MemberInitExpression init)
     {
-        var fields = new List<QueryProjectionField>(init.Bindings.Count);
+        var fields = new List<QueryProjectionField>(init.NewExpression.Arguments.Count + init.Bindings.Count);
+        AddConstructorFields(init.NewExpression, fields);
         foreach (var binding in init.Bindings)
         {
             if (binding is not MemberAssignment assignment)
@@ -66,6 +60,18 @@ internal sealed class ProjectionTranslator(ParameterExpression parameter)
         }
 
         return QueryProjection.Construct(TypeName(init.Type), fields);
+    }
+
+    private void AddConstructorFields(NewExpression construct, List<QueryProjectionField> fields)
+    {
+        var parameters = construct.Constructor?.GetParameters();
+        for (var i = 0; i < construct.Arguments.Count; i++)
+        {
+            var name = construct.Members is { } members
+                ? members[i].Name
+                : parameters?[i].Name ?? $"item{i}";
+            fields.Add(BuildField(name, construct.Arguments[i]));
+        }
     }
 
     private QueryProjectionField BuildField(string name, Expression argument)

@@ -37,6 +37,35 @@ public sealed class WorkerTimeoutResultHardeningTests
     }
 
     [Fact]
+    public async Task Worker_wall_time_timeout_does_not_require_worker_cooperation()
+    {
+        var worker = new NonCooperativeTimeoutWorker();
+        using var host = Host(worker);
+        var module = await host.ImportJsonAsync(SandboxTestHost.PureScoreJson());
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create()
+                .WithFuel(1_000)
+                .WithWallTime(TimeSpan.FromMilliseconds(20))
+                .Build());
+
+        var resultTask = host.ExecuteAsync(
+                plan,
+                "main",
+                SandboxValue.FromList([SandboxValue.FromInt32(1), SandboxValue.FromInt32(1)]),
+                new SandboxExecutionOptions { Isolation = SandboxIsolation.WorkerProcess })
+            .AsTask();
+
+        await worker.Started.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        var result = await resultTask.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.Timeout, result.Error!.Code);
+        await worker.TimeoutObserved.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.True(worker.ObservedTimeoutCancellation);
+    }
+
+    [Fact]
     public async Task Worker_execution_observes_caller_cancellation()
     {
         var worker = new CallerCancellationWorker();
@@ -124,6 +153,35 @@ public sealed class WorkerTimeoutResultHardeningTests
                 PlanHash = plan.PlanHash,
                 PolicyHash = plan.PolicyHash
             };
+        }
+    }
+
+    private sealed class NonCooperativeTimeoutWorker : ISandboxWorkerClient
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource TimeoutObserved { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public bool ObservedTimeoutCancellation { get; private set; }
+
+        public async ValueTask<SandboxExecutionResult> ExecuteInWorkerAsync(
+            ExecutionPlan plan,
+            string entrypoint,
+            SandboxValue input,
+            SandboxExecutionOptions options,
+            CancellationToken cancellationToken = default)
+        {
+            Started.SetResult();
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                ObservedTimeoutCancellation = true;
+                TimeoutObserved.SetResult();
+            }
+
+            await Task.Delay(Timeout.InfiniteTimeSpan, CancellationToken.None).ConfigureAwait(false);
+            throw new InvalidOperationException("The non-cooperative worker should not return.");
         }
     }
 

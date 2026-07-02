@@ -91,7 +91,7 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         CancellationToken ct = default)
     {
         using var received = await SendRequestAsync(service, method, request, instanceId: null, streams: null, ct).ConfigureAwait(false);
-        EnsureNonStreamingResponse(received);
+        EnsureNoResponsePayload(received);
     }
 
     public async Task InvokeAsync<TRequest>(
@@ -102,13 +102,13 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         CancellationToken ct = default)
     {
         using var received = await SendRequestAsync(service, method, request, instanceId: null, streams, ct).ConfigureAwait(false);
-        EnsureNonStreamingResponse(received);
+        EnsureNoResponsePayload(received);
     }
 
     public async Task InvokeAsync(string service, string method, CancellationToken ct = default)
     {
         using var received = await SendRequestAsync(service, method, instanceId: null, ct).ConfigureAwait(false);
-        EnsureNonStreamingResponse(received);
+        EnsureNoResponsePayload(received);
     }
 
     public void FailPending(Exception error) => _pending.FailAll(error);
@@ -126,11 +126,40 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         string? instanceId,
         RpcStreamAttachment[]? streams,
         CancellationToken ct)
+        => SendRequestAsync(
+            service,
+            method,
+            request,
+            instanceId,
+            RpcStreamAttachmentSet.FromArray(streams),
+            ct);
+
+    private Task<ReceivedResponse> SendRequestAsync<TRequest>(
+        string service,
+        string method,
+        TRequest request,
+        string? instanceId,
+        RpcStreamAttachment stream,
+        CancellationToken ct)
+        => SendRequestAsync(
+            service,
+            method,
+            request,
+            instanceId,
+            RpcStreamAttachmentSet.FromSingle(stream),
+            ct);
+
+    private Task<ReceivedResponse> SendRequestAsync<TRequest>(
+        string service,
+        string method,
+        TRequest request,
+        string? instanceId,
+        RpcStreamAttachmentSet streams,
+        CancellationToken ct)
     {
         try
         {
-            ValidateTarget(service, method);
-            _ensureStarted();
+            ValidateTargetAndStart(service, method, ct);
         }
         catch (Exception ex)
         {
@@ -190,8 +219,7 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         string? instanceId,
         CancellationToken ct)
     {
-        ValidateTarget(service, method);
-        _ensureStarted();
+        ValidateTargetAndStart(service, method, ct);
         var pending = ReservePendingRequest(ct);
         try
         {

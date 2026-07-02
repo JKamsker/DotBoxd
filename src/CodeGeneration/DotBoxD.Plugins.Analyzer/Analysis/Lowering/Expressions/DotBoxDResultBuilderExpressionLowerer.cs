@@ -11,8 +11,8 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 /// Lowers a fluent hook-result builder chain — <c>Result.Ok().With&lt;Field&gt;(value)…</c> or
 /// <c>Result.Reject(reason)</c> — directly to a single <c>record.new</c>. The generated <c>Ok</c>/<c>Reject</c>/
 /// <c>With&lt;Field&gt;</c> members are emitted by the same generator pass, so their method symbols are NOT visible
-/// while this chain is being lowered; recognition is therefore <b>syntactic</b> (by member name), resolving only
-/// the result <i>type</i> at the chain seed (which already exists). The chain is walked once and the field-source
+/// while this chain is being lowered; recognition is therefore <b>syntactic</b> (by member name and arity),
+/// resolving only the result <i>type</i> at the chain seed (which already exists). The chain is walked once and the field-source
 /// array tracked structurally — the <c>Ok</c>/<c>Reject</c> seed sets <c>Success</c>/<c>Reason</c>, each
 /// <c>With&lt;Field&gt;</c> overrides one slot, omitted slots take their manifest-tag zero — so the record is
 /// materialised once with no quadratic <c>record.get</c> copying. Only a chain whose seed is a marshaller-eligible
@@ -203,7 +203,10 @@ internal static class DotBoxDResultBuilderExpressionLowerer
         var current = invocation;
         while (current.Expression is MemberAccessExpressionSyntax member)
         {
-            if (HasAuthorDefinedMember(resultType, member.Name.Identifier.ValueText))
+            if (HasAuthorDefinedMember(
+                    resultType,
+                    member.Name.Identifier.ValueText,
+                    current.ArgumentList.Arguments.Count))
             {
                 return true;
             }
@@ -219,11 +222,26 @@ internal static class DotBoxDResultBuilderExpressionLowerer
         return false;
     }
 
-    private static bool HasAuthorDefinedMember(INamedTypeSymbol resultType, string name)
+    private static bool HasAuthorDefinedMember(INamedTypeSymbol resultType, string name, int parameterCount)
     {
         foreach (var member in resultType.GetMembers(name))
         {
-            if (!member.IsImplicitlyDeclared)
+            if (member.IsImplicitlyDeclared)
+            {
+                continue;
+            }
+
+            if (member is IMethodSymbol { MethodKind: MethodKind.Ordinary } method)
+            {
+                if (method.Parameters.Length == parameterCount)
+                {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if (member is IPropertySymbol or IFieldSymbol or IEventSymbol)
             {
                 return true;
             }

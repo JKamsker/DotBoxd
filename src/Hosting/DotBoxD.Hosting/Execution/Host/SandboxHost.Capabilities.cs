@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Runtime;
 
 namespace DotBoxD.Hosting.Execution;
@@ -28,11 +29,29 @@ public sealed partial class SandboxHost
             return false;
         }
 
-        foreach (var capabilityId in plan.GetEntrypointMetadata(entrypoint).RequiredCapabilities)
+        var requiredCapabilities = plan.GetEntrypointMetadata(entrypoint).RequiredCapabilities;
+        foreach (var capabilityId in requiredCapabilities)
         {
             if (_revokedCapabilities.TryGetValue(capabilityId, out revoked!))
             {
                 return true;
+            }
+        }
+
+        foreach (var revokedCapability in _revokedCapabilities.Values)
+        {
+            if (!CapabilityPattern.IsWildcard(revokedCapability.Id))
+            {
+                continue;
+            }
+
+            foreach (var capabilityId in requiredCapabilities)
+            {
+                if (CapabilityPattern.Matches(revokedCapability.Id, capabilityId))
+                {
+                    revoked = revokedCapability;
+                    return true;
+                }
             }
         }
 

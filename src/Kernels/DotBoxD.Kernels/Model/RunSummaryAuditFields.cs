@@ -2,6 +2,36 @@ namespace DotBoxD.Kernels.Model;
 
 public static class RunSummaryAuditFields
 {
+    private const string Redacted = "[redacted]";
+
+    private static readonly string[] SecretMarkers =
+    [
+        "authorization",
+        "bearer",
+        "password",
+        "passwd",
+        "pwd",
+        "secret",
+        "token",
+        "access-token",
+        "access_token",
+        "refresh-token",
+        "refresh_token",
+        "session-token",
+        "session_token",
+        "api-key",
+        "api_key",
+        "apikey",
+        "account-key",
+        "account_key",
+        "client-key",
+        "client_key",
+        "client-secret",
+        "client_secret",
+        "private-key",
+        "private_key"
+    ];
+
     public static IReadOnlyDictionary<string, string> Create(
         ExecutionPlan plan,
         ResourceMeter budget,
@@ -66,54 +96,65 @@ public static class RunSummaryAuditFields
 
     internal static string SafePolicyId(string? policyId)
     {
-        if (string.IsNullOrWhiteSpace(policyId))
+        if (string.IsNullOrEmpty(policyId))
         {
-            return "[redacted]";
+            return Redacted;
         }
 
-        var sanitized = new string(policyId.Select(c => char.IsControl(c) ? ' ' : c).ToArray()).Trim();
-        if (sanitized.Length is 0 or > 128 ||
-            ContainsSecretMarker(sanitized) ||
-            sanitized.Contains("://", StringComparison.Ordinal) ||
-            sanitized.Contains('/') ||
-            sanitized.Contains('\\') ||
-            sanitized.Any(c => !IsPolicyIdChar(c)))
+        var start = 0;
+        var end = policyId.Length - 1;
+        while (start <= end && IsPolicyIdTrimChar(policyId[start]))
         {
-            return "[redacted]";
+            start++;
         }
 
-        return sanitized;
+        while (end >= start && IsPolicyIdTrimChar(policyId[end]))
+        {
+            end--;
+        }
+
+        var length = end - start + 1;
+        if (length is <= 0 or > 128)
+        {
+            return Redacted;
+        }
+
+        for (var i = start; i <= end; i++)
+        {
+            var c = policyId[i];
+            if (char.IsControl(c) || !IsPolicyIdChar(c))
+            {
+                return Redacted;
+            }
+        }
+
+        if (ContainsSecretMarker(policyId, start, length))
+        {
+            return Redacted;
+        }
+
+        return start == 0 && length == policyId.Length
+            ? policyId
+            : policyId.Substring(start, length);
     }
+
+    private static bool IsPolicyIdTrimChar(char c)
+        => char.IsWhiteSpace(c) || char.IsControl(c);
 
     private static bool IsPolicyIdChar(char c)
         => char.IsAsciiLetterOrDigit(c) ||
            c is '-' or '_' or '.' or ':';
 
-    private static bool ContainsSecretMarker(string value)
+    private static bool ContainsSecretMarker(string value, int startIndex, int count)
     {
-        var normalized = value.ToLowerInvariant();
-        return normalized.Contains("authorization", StringComparison.Ordinal) ||
-               normalized.Contains("bearer", StringComparison.Ordinal) ||
-               normalized.Contains("password", StringComparison.Ordinal) ||
-               normalized.Contains("passwd", StringComparison.Ordinal) ||
-               normalized.Contains("pwd", StringComparison.Ordinal) ||
-               normalized.Contains("secret", StringComparison.Ordinal) ||
-               normalized.Contains("token", StringComparison.Ordinal) ||
-               normalized.Contains("access-token", StringComparison.Ordinal) ||
-               normalized.Contains("access_token", StringComparison.Ordinal) ||
-               normalized.Contains("refresh-token", StringComparison.Ordinal) ||
-               normalized.Contains("refresh_token", StringComparison.Ordinal) ||
-               normalized.Contains("session-token", StringComparison.Ordinal) ||
-               normalized.Contains("session_token", StringComparison.Ordinal) ||
-               normalized.Contains("api-key", StringComparison.Ordinal) ||
-               normalized.Contains("api_key", StringComparison.Ordinal) ||
-               normalized.Contains("apikey", StringComparison.Ordinal) ||
-               normalized.Contains("account-key", StringComparison.Ordinal) ||
-               normalized.Contains("account_key", StringComparison.Ordinal) ||
-               normalized.Contains("client_key", StringComparison.Ordinal) ||
-               normalized.Contains("client-secret", StringComparison.Ordinal) ||
-               normalized.Contains("client_secret", StringComparison.Ordinal) ||
-               normalized.Contains("private-key", StringComparison.Ordinal) ||
-               normalized.Contains("private_key", StringComparison.Ordinal);
+        foreach (var marker in SecretMarkers)
+        {
+            if (value.IndexOf(marker, startIndex, count, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

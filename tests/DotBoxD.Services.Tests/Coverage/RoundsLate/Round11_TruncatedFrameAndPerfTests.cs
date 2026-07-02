@@ -41,19 +41,16 @@ public sealed class Round11_TruncatedFrameAndPerfTests
     }
 
     [Fact]
-    public async Task ReadMessageAsync_TruncatedHeader_ReturnsNull()
+    public async Task ReadMessageAsync_TruncatedHeader_ThrowsInvalidDataException()
     {
-        // A partial header (fewer than 9 bytes) with no prior complete frame is a clean EOF.
-        // This is the legitimate case — the peer closed before sending anything meaningful.
         var buffer = new byte[5]; // partial header
         BinaryPrimitives.WriteInt32LittleEndian(buffer.AsSpan(0, 4), MessageFramer.HeaderSize + 10);
         buffer[4] = 0x01;
 
         using var stream = new MemoryStream(buffer);
 
-        var result = await MessageFramer.ReadMessageAsync(stream);
-
-        Assert.Null(result);
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(() => MessageFramer.ReadMessageAsync(stream));
+        Assert.Contains("frame header bytes", ex.Message);
     }
 
     // ────────────────────────────────────────────────────────────────────

@@ -7,6 +7,14 @@ namespace DotBoxD.Plugins.Runtime.Rpc;
 
 public static partial class KernelRpcMarshaller
 {
+    private static object? DefaultParameterValue(ParameterInfo parameter)
+    {
+        var value = parameter.DefaultValue;
+        return value is DBNull or Missing
+            ? (parameter.ParameterType.IsValueType ? Activator.CreateInstance(parameter.ParameterType) : null)
+            : value;
+    }
+
     private static class RecordShapeKernelFactory
     {
         public static Func<KernelRpcValue, object>? Create(
@@ -25,6 +33,14 @@ public static partial class KernelRpcMarshaller
             for (var i = 0; i < parameters.Length; i++)
             {
                 var fieldIndex = constructorMap[i];
+                if (fieldIndex < 0)
+                {
+                    arguments[i] = LinqExpression.Constant(
+                        DefaultParameterValue(parameters[i]),
+                        parameters[i].ParameterType);
+                    continue;
+                }
+
                 var kernelField = LinqExpression.Call(
                     value,
                     nameof(KernelRpcValue.GetItem),
@@ -36,8 +52,7 @@ public static partial class KernelRpcMarshaller
             }
 
             var created = LinqExpression.New(constructor, arguments);
-            if (RecordTailBindings(
-                    constructorMap,
+            if (RecordInitializerBindings(
                     fields,
                     fieldIndex => LinqExpression.Call(
                         value,
@@ -181,6 +196,12 @@ public static partial class KernelRpcMarshaller
     private static readonly MethodInfo ReadFloatMethod = ScalarReader(nameof(ReadFloat));
     private static readonly MethodInfo ReadStringMethod = ScalarReader(nameof(ReadString));
     private static readonly MethodInfo ReadGuidMethod = ScalarReader(nameof(ReadGuid));
+    private static readonly MethodInfo DoubleToSingleMethod =
+        MarshallerMethod(nameof(DoubleToSingle), typeof(double));
+    private static readonly MethodInfo EnumFromInt32Method =
+        MarshallerMethod(nameof(EnumFromInt32), typeof(Type), typeof(int));
+    private static readonly MethodInfo EnumFromInt64Method =
+        MarshallerMethod(nameof(EnumFromInt64), typeof(Type), typeof(long));
 
     private static LinqExpression ReadSandboxRecordField(LinqExpression sandboxField, Type fieldType)
     {
@@ -215,9 +236,9 @@ public static partial class KernelRpcMarshaller
             return LinqExpression.Property(kernelField, nameof(KernelRpcValue.Int64Value));
         if (fieldType == typeof(float))
         {
-            return LinqExpression.Convert(
-                LinqExpression.Property(kernelField, nameof(KernelRpcValue.DoubleValue)),
-                typeof(float));
+            return LinqExpression.Call(
+                DoubleToSingleMethod,
+                LinqExpression.Property(kernelField, nameof(KernelRpcValue.DoubleValue)));
         }
         if (fieldType == typeof(double))
             return LinqExpression.Property(kernelField, nameof(KernelRpcValue.DoubleValue));
@@ -228,7 +249,13 @@ public static partial class KernelRpcMarshaller
         if (fieldType.IsEnum)
         {
             var propertyName = EnumUsesI64(fieldType) ? nameof(KernelRpcValue.Int64Value) : nameof(KernelRpcValue.Int32Value);
-            return LinqExpression.Convert(LinqExpression.Property(kernelField, propertyName), fieldType);
+            var method = EnumUsesI64(fieldType) ? EnumFromInt64Method : EnumFromInt32Method;
+            return LinqExpression.Convert(
+                LinqExpression.Call(
+                    method,
+                    LinqExpression.Constant(fieldType, typeof(Type)),
+                    LinqExpression.Property(kernelField, propertyName)),
+                fieldType);
         }
 
         return LinqExpression.Call(
@@ -239,6 +266,14 @@ public static partial class KernelRpcMarshaller
 
     private static MethodInfo ScalarReader(string name)
         => typeof(KernelRpcMarshaller).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    private static MethodInfo MarshallerMethod(string name, params Type[] parameterTypes)
+        => typeof(KernelRpcMarshaller).GetMethod(
+            name,
+            BindingFlags.NonPublic | BindingFlags.Static,
+            null,
+            parameterTypes,
+            null)!;
 
     private static bool ReadBool(SandboxValue value)
         => value is BoolValue typed ? typed.Value : throw CannotMarshalScalar(value, typeof(bool));
@@ -253,7 +288,7 @@ public static partial class KernelRpcMarshaller
         => value is F64Value typed ? typed.Value : throw CannotMarshalScalar(value, typeof(double));
 
     private static float ReadFloat(SandboxValue value)
-        => value is F64Value typed ? (float)typed.Value : throw CannotMarshalScalar(value, typeof(float));
+        => value is F64Value typed ? DoubleToSingle(typed.Value) : throw CannotMarshalScalar(value, typeof(float));
 
     private static string ReadString(SandboxValue value)
         => value is StringValue typed ? typed.Value : throw CannotMarshalScalar(value, typeof(string));

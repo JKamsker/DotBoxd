@@ -82,8 +82,10 @@ internal static class AsyncInterfaceGenerator
             if (i > 0)
                 paramList.Append(", ");
             var p = s.Parameters[i];
-            paramList.Append(p.RefKindKeyword).Append(p.Type).Append(' ').Append(p.Name);
-            ProxyGenerationHelpers.AppendDefaultValue(paramList, p);
+            ProxyGenerationHelpers.AppendParameter(
+                paramList,
+                p,
+                isLast: i == s.Parameters.Count - 1);
         }
 
         sb.AppendLine($"        {returnText} {s.Name}({paramList});");

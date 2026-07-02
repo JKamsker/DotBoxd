@@ -23,6 +23,200 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
         Assert.False(usage.Inherited);
     }
 
+    [Fact]
+    public void Same_compilation_generated_registry_method_return_type_lowers()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public static class MethodAliasUsage
+            {
+                private static AlphaPluginHookRegistry Hooks(AlphaPluginServer server)
+                    => server.Hooks;
+
+                public static void Configure(AlphaPluginServer server)
+                    => Hooks(server).On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                        .Where(e => e.Distance <= 5)
+                        .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "method-alias"));
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("method-alias", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Same_compilation_generated_registry_indexer_return_type_lowers()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public sealed class IndexerAliasUsage
+            {
+                private readonly AlphaPluginServer _server;
+
+                public IndexerAliasUsage(AlphaPluginServer server)
+                    => _server = server;
+
+                private AlphaPluginHookRegistry this[int _]
+                    => _server.Hooks;
+
+                public void Configure()
+                    => this[0].On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                        .Where(e => e.Distance <= 5)
+                        .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "indexer-alias"));
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("indexer-alias", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Same_compilation_generated_registry_cast_lowers()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public static class CastAliasUsage
+            {
+                public static void Configure(AlphaPluginServer server)
+                {
+                    object hooks = server.Hooks;
+                    ((AlphaPluginHookRegistry)hooks)
+                        .On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                        .Where(e => e.Distance <= 5)
+                        .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "cast-alias"));
+                }
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("cast-alias", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Same_compilation_generated_registry_as_cast_lowers()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public static class AsCastAliasUsage
+            {
+                public static void Configure(AlphaPluginServer server)
+                {
+                    object hooks = server.Hooks;
+                    (hooks as AlphaPluginHookRegistry)!
+                        .On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                        .Where(e => e.Distance <= 5)
+                        .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "as-cast-alias"));
+                }
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("as-cast-alias", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Same_compilation_generated_registry_pattern_alias_lowers()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public static class PatternAliasUsage
+            {
+                public static void Configure(AlphaPluginServer server)
+                {
+                    object hooks = server.Hooks;
+                    if (hooks is AlphaPluginHookRegistry typed)
+                    {
+                        typed.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                            .Where(e => e.Distance <= 5)
+                            .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "pattern-alias"));
+                    }
+                }
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("pattern-alias", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Same_compilation_generated_registry_out_alias_lowers()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public static class OutAliasUsage
+            {
+                private static bool TryHooks(AlphaPluginServer server, out AlphaPluginHookRegistry hooks)
+                {
+                    hooks = server.Hooks;
+                    return true;
+                }
+
+                public static void Configure(AlphaPluginServer server)
+                {
+                    if (TryHooks(server, out AlphaPluginHookRegistry hooks))
+                    {
+                        hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                            .Where(e => e.Distance <= 5)
+                            .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "out-alias"));
+                    }
+                }
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("out-alias", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Same_compilation_generated_registry_out_var_alias_lowers()
+    {
+        var result = RunGenerator(GeneratedServerSource + """
+
+            namespace ChainSample.Plugin
+            {
+            public static class OutVarAliasUsage
+            {
+                private static bool TryHooks(AlphaPluginServer server, out AlphaPluginHookRegistry hooks)
+                {
+                    hooks = server.Hooks;
+                    return true;
+                }
+
+                public static void Configure(AlphaPluginServer server)
+                {
+                    if (TryHooks(server, out var hooks))
+                    {
+                        hooks.On<global::DotBoxD.Kernels.Tests.PluginAnalyzer.Runtime.ChainAggroEvent>()
+                            .Where(e => e.Distance <= 5)
+                            .Run((e, ctx) => ctx.Messages.Send(e.MonsterId, "out-var-alias"));
+                    }
+                }
+            }
+            }
+            """);
+        var generated = string.Join("\n", GeneratedSources(result));
+
+        Assert.Contains("out-var-alias", generated, StringComparison.Ordinal);
+    }
+
     private const string WrongOnShapeMarkerSdkSource = """
         using DotBoxD.Abstractions;
 

@@ -1,4 +1,5 @@
 using System.Reflection;
+using DotBoxD.Plugins.Runtime;
 
 namespace DotBoxD.Plugins.Kernel;
 
@@ -46,8 +47,37 @@ public static class KernelPackageRegistry
             Factories.TryGetValue(kernelType, out factory);
         }
 
-        factory ??= ReflectPackageFactory(kernelType);
+        if (factory is not null)
+        {
+            return CreatePackage(kernelType, factory);
+        }
+
+        factory = ReflectPackageFactory(kernelType);
+        lock (Gate)
+        {
+            if (!Factories.TryGetValue(kernelType, out var current))
+            {
+                Factories[kernelType] = factory;
+            }
+            else
+            {
+                factory = current;
+            }
+        }
+
         return factory();
+    }
+
+    private static PluginPackage CreatePackage(Type kernelType, Func<PluginPackage> factory)
+    {
+        var package = factory();
+        if (package is null)
+        {
+            throw new InvalidOperationException(
+                $"The package factory for kernel '{kernelType.FullName}' returned null.");
+        }
+
+        return package;
     }
 
     private static Func<PluginPackage> ReflectPackageFactory(Type kernelType)
@@ -72,6 +102,8 @@ public static class KernelPackageRegistry
                 "or an explicit KernelPackageRegistry.Register for this type.");
         }
 
-        return () => (PluginPackage)create.Invoke(null, null)!;
+        var factory = create.CreateDelegate<Func<PluginPackage>>();
+        var package = new Lazy<PluginPackage>(() => PluginModelCopy.Package(CreatePackage(kernelType, factory)));
+        return () => package.Value;
     }
 }

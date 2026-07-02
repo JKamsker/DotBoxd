@@ -151,6 +151,7 @@ internal static class ServiceWireNameCollisionValidator
             Error: null,
             MethodDiagnostics: EquatableArray<MethodDiagnostic>.Empty,
             MethodLocations: EquatableArray<DiagnosticLocation>.Empty,
+            PropertyLocations: EquatableArray<DiagnosticLocation>.Empty,
             ServiceLocation: result.ServiceLocation,
             QualifiedInterfaceName: result.QualifiedInterfaceName,
             ServiceDiagnostic: new ServiceDiagnostic(

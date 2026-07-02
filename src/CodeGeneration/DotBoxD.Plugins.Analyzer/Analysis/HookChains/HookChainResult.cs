@@ -31,6 +31,8 @@ internal sealed record HookChainNotLoweredDiagnostic(
     bool LocalResultTerminal = false,
     string Detail = "")
 {
+    private static readonly string GenericNotSupportedDetail = new NotSupportedException().Message;
+
     private const string ResultMessage =
         "this On<TContext>().Register/RegisterLocal chain could not be lowered to verified IR (the "
         + "context lacks [Hook], the handler returns the wrong result type, or the filter/handler shape "
@@ -41,14 +43,21 @@ internal sealed record HookChainNotLoweredDiagnostic(
         {
             HookChainNotLoweredKind.RemoteRunLocal => Diagnostic.Create(
                 PluginAnalyzerDiagnostics.RunLocalNotLoweredRule,
-                Location?.ToLocation() ?? Microsoft.CodeAnalysis.Location.None),
+                Location?.ToLocation() ?? Microsoft.CodeAnalysis.Location.None,
+                DetailSuffix()),
             HookChainNotLoweredKind.RunChain => Diagnostic.Create(
                 PluginAnalyzerDiagnostics.RunChainNotLoweredRule,
                 Location?.ToLocation() ?? Microsoft.CodeAnalysis.Location.None,
-                string.IsNullOrEmpty(Detail) ? string.Empty : " (" + Detail + ")"),
+                DetailSuffix()),
             HookChainNotLoweredKind.ResultChain => ResultDiagnostic(),
             _ => throw new InvalidOperationException($"Unsupported not-lowered diagnostic kind '{Kind}'.")
         };
+
+    private string DetailSuffix()
+        => string.IsNullOrWhiteSpace(Detail) ||
+           string.Equals(Detail, GenericNotSupportedDetail, StringComparison.Ordinal)
+            ? string.Empty
+            : " (" + Detail + ")";
 
     private Diagnostic ResultDiagnostic()
     {
@@ -115,4 +124,8 @@ internal sealed record HookChainInterception(
     string? InterceptorTypeParameters = null,
     // For a result chain (Register/RegisterLocal): the fully-qualified result type the install entrypoint is
     // closed over (UseGeneratedResultChain<TResult> / UseGeneratedLocalResultChain<TResult>). Null otherwise.
-    string? ResultTypeFullName = null);
+    string? ResultTypeFullName = null,
+    // True when the intercepted receiver is a local staged fluent chain. The generated package already contains
+    // that receiver's stages, so the interceptor must bypass the runtime stage guard to avoid evaluating them
+    // once as native delegates and again inside the sandbox package.
+    bool BypassReceiverStage = false);

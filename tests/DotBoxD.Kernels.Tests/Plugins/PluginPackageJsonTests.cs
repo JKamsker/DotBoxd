@@ -5,7 +5,7 @@ using DotBoxD.Plugins.Json;
 
 namespace DotBoxD.Kernels.Tests.Plugins;
 
-public sealed class PluginPackageJsonTests
+public sealed partial class PluginPackageJsonTests
 {
     [Fact]
     public async Task InstallJsonAsync_installs_serialized_package_data()
@@ -85,6 +85,22 @@ public sealed class PluginPackageJsonTests
         Assert.Contains(ex.Diagnostics, d =>
             d.Code == "E-JSON-TYPE" &&
             d.Message.Contains("'projectedType' must be a string", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Import_rejects_projected_type_without_local_terminal()
+    {
+        var json = JsonDamagePackage().Replace(
+            """{ "event": "DamageEvent", "kernel": "JsonDamageKernel" }""",
+            """{ "event": "DamageEvent", "kernel": "JsonDamageKernel", "projectedType": "string" }""",
+            StringComparison.Ordinal);
+
+        var ex = Assert.Throws<SandboxValidationException>(() => PluginPackageJsonSerializer.Import(json));
+
+        Assert.Contains(ex.Diagnostics, d =>
+            d.Code == "DBXK031" &&
+            d.Message.Contains("projectedType", StringComparison.Ordinal) &&
+            d.Message.Contains("localTerminal", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -203,6 +219,14 @@ public sealed class PluginPackageJsonTests
                 Assert.IsType<int>(setting.Min);
                 Assert.IsType<int>(setting.Max);
             });
+    }
+
+    [Fact]
+    public void Import_rejects_live_setting_default_outside_manifest_range()
+    {
+        var ex = Assert.Throws<SandboxValidationException>(() => PluginPackageJsonSerializer.Import(JsonDamagePackage(
+            """{ "name": "MinDamage", "type": "int", "defaultValue": 10001, "min": 0, "max": 10000 }""")));
+        Assert.Contains(ex.Diagnostics, d => d.Code == "DBXK023");
     }
 
     private static string JsonDamagePackageWithSettings()

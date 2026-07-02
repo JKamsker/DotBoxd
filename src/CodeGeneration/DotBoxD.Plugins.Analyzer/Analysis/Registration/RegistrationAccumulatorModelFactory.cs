@@ -16,6 +16,8 @@ internal static class RegistrationAccumulatorModelFactory
     private static readonly SymbolDisplayFormat FullyQualifiedFormat =
         SymbolDisplayFormat.FullyQualifiedFormat;
 
+    private const string FlushMemberName = "FlushAsync";
+
     public static RegistrationAccumulatorGenerationResult? CreateTarget(
         GeneratorAttributeSyntaxContext context,
         CancellationToken cancellationToken)
@@ -35,9 +37,11 @@ internal static class RegistrationAccumulatorModelFactory
             var methodName = RequiredStringArgument(attribute, 1, "method name");
             ValidateIdentifier(accumulatorName, "Accumulator");
             ValidateIdentifier(methodName, "Registration method");
+            ValidateGeneratedTypeName(type, accumulatorName);
 
-            var method = ResolveRegistrationMethod(type, methodName);
+            var method = ResolveRegistrationMethod(type, methodName, context.SemanticModel.Compilation);
             var typeParameters = TypeParameters(method);
+            ValidateGeneratedMemberName(methodName, typeParameters);
             var model = new RegistrationAccumulatorTargetModel(
                 Namespace(type),
                 TypeName(type),
@@ -69,11 +73,12 @@ internal static class RegistrationAccumulatorModelFactory
             EnsureTopLevel(type);
             var accumulatorName = RequiredStringArgument(context.Attributes[0], 0, "accumulator name");
             ValidateIdentifier(accumulatorName, "Accumulator");
+            ValidateGeneratedTypeName(type, accumulatorName);
             var model = new RegistrationRootAccumulatorModel(
                 Namespace(type),
                 TypeName(type),
                 accumulatorName,
-                PublicInstanceProperties(type),
+                PublicInstanceProperties(type, context.SemanticModel.Compilation),
                 Location(declaration));
             return new RegistrationAccumulatorGenerationResult(null, model, null);
         }
@@ -112,7 +117,10 @@ internal static class RegistrationAccumulatorModelFactory
         }
     }
 
-    private static IMethodSymbol ResolveRegistrationMethod(INamedTypeSymbol type, string methodName)
+    private static IMethodSymbol ResolveRegistrationMethod(
+        INamedTypeSymbol type,
+        string methodName,
+        Compilation compilation)
     {
         var methods = type.GetMembers(methodName)
             .OfType<IMethodSymbol>()
@@ -131,19 +139,43 @@ internal static class RegistrationAccumulatorModelFactory
                 $"Registration accumulator method '{methodName}' must not declare parameters.");
         }
 
-        if (!IsAwaitableRegistrationReturn(method.ReturnType))
+        if (!IsCallableFromGeneratedAccumulator(method))
         {
             throw new NotSupportedException(
-                $"Registration accumulator method '{methodName}' must return Task or ValueTask.");
+                $"Registration accumulator method '{methodName}' must be accessible from generated accumulator code.");
+        }
+
+        if (!IsResultBearingAwaitableRegistrationReturn(method.ReturnType, compilation))
+        {
+            throw new NotSupportedException(
+                $"Registration accumulator method '{methodName}' must return Task<T> or ValueTask<T>; " +
+                $"'{method.ReturnType.ToDisplayString()}' has no result payload.");
         }
 
         return method;
     }
 
-    private static bool IsAwaitableRegistrationReturn(ITypeSymbol type)
-        => type is INamedTypeSymbol named &&
-           named.Name is "Task" or "ValueTask" &&
-           string.Equals(named.ContainingNamespace.ToDisplayString(), "System.Threading.Tasks", StringComparison.Ordinal);
+    private static void ValidateGeneratedMemberName(
+        string methodName,
+        EquatableArray<RegistrationTypeParameterModel> typeParameters)
+    {
+        if (methodName == FlushMemberName && typeParameters.Count == 0)
+        {
+            throw new NotSupportedException(
+                $"Registration accumulator method '{methodName}' collides with generated member '{FlushMemberName}'.");
+        }
+    }
+
+    private static bool IsResultBearingAwaitableRegistrationReturn(
+        ITypeSymbol type,
+        Compilation compilation)
+        => DotBoxDWellKnownTaskTypes.IsGenericTask(type, compilation, out _) ||
+           DotBoxDWellKnownTaskTypes.IsGenericValueTask(type, compilation, out _);
+
+    private static bool IsCallableFromGeneratedAccumulator(IMethodSymbol method)
+        => method.DeclaredAccessibility is Accessibility.Public
+            or Accessibility.Internal
+            or Accessibility.ProtectedOrInternal;
 
     private static EquatableArray<RegistrationTypeParameterModel> TypeParameters(IMethodSymbol method)
     {
@@ -171,7 +203,9 @@ internal static class RegistrationAccumulatorModelFactory
         }
         else if (parameter.HasReferenceTypeConstraint)
         {
-            yield return "class";
+            yield return parameter.ReferenceTypeConstraintNullableAnnotation == NullableAnnotation.Annotated
+                ? "class?"
+                : "class";
         }
 
         if (parameter.HasNotNullConstraint)
@@ -190,17 +224,35 @@ internal static class RegistrationAccumulatorModelFactory
         }
     }
 
-    private static EquatableArray<RegistrationRootPropertyModel> PublicInstanceProperties(INamedTypeSymbol type)
+    private static EquatableArray<RegistrationRootPropertyModel> PublicInstanceProperties(
+        INamedTypeSymbol type,
+        Compilation compilation)
     {
-        var properties = type.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Where(static property =>
-                property is { IsStatic: false, DeclaredAccessibility: Accessibility.Public } &&
-                property.GetMethod is not null &&
-                property.Parameters.Length == 0)
-            .Select(static property => new RegistrationRootPropertyModel(property.Name, TypeName(property.Type)))
-            .ToArray();
-        return EquatableArray<RegistrationRootPropertyModel>.FromOwned(properties);
+        var properties = new List<RegistrationRootPropertyModel>();
+        var seenNames = new HashSet<string>(StringComparer.Ordinal);
+        for (INamedTypeSymbol? current = type; current is not null; current = current.BaseType)
+        {
+            foreach (var property in current.GetMembers().OfType<IPropertySymbol>())
+            {
+                if (property is { IsStatic: false, DeclaredAccessibility: Accessibility.Public } &&
+                    property.GetMethod is not null &&
+                    property.Parameters.Length == 0)
+                {
+                    if (!seenNames.Add(property.Name))
+                    {
+                        continue;
+                    }
+
+                    properties.Add(new RegistrationRootPropertyModel(
+                        property.Name,
+                        TypeName(property.ContainingType),
+                        RegistrationAssignableTypeNameCollector.Collect(property.Type),
+                        compilation.IsSymbolAccessibleWithin(property.GetMethod, compilation.Assembly)));
+                }
+            }
+        }
+
+        return EquatableArray<RegistrationRootPropertyModel>.FromOwned(properties.ToArray());
     }
 
     private static RegistrationAccumulatorGenerationResult Fail(TypeDeclarationSyntax declaration, string message)
@@ -227,4 +279,17 @@ internal static class RegistrationAccumulatorModelFactory
 
         return kind == SyntaxKind.None ? name : "@" + name;
     }
+
+    private static void ValidateGeneratedTypeName(INamedTypeSymbol receiverType, string generatedName)
+    {
+        foreach (var existing in receiverType.ContainingNamespace.GetTypeMembers(generatedName, 0))
+        {
+            throw new NotSupportedException(
+                $"Generated registration accumulator type '{existing.Name}' collides with an existing type in namespace " +
+                $"'{NamespaceDisplay(receiverType.ContainingNamespace)}'.");
+        }
+    }
+
+    private static string NamespaceDisplay(INamespaceSymbol @namespace)
+        => @namespace.IsGlobalNamespace ? "<global namespace>" : @namespace.ToDisplayString();
 }

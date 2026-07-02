@@ -112,6 +112,38 @@ public partial class CodegenRegressionTests
         proxy.Should().Contain("global::System.Threading.Tasks.Task<@class>");
     }
 
+    [Fact]
+    public void GenericServiceMethod_WithRefStructAntiConstraint_PreservesConstraintOnProxyStub()
+    {
+        const string source = """
+            using DotBoxD.Services.Attributes;
+
+            namespace Regress.RefStructAntiConstraint
+            {
+                [DotBoxDService]
+                public interface IRefStructAntiConstraint
+                {
+                    T Echo<T>(T value) where T : allows ref struct;
+                }
+            }
+            """;
+
+        var (final, runResult) = RunWithPreviewByRefLikeGenerics(source);
+        AssertCompiles(final);
+
+        runResult.Diagnostics.Should().Contain(d => d.Id == "DBXS002" &&
+            d.GetMessage().Contains("generic service methods are not supported"));
+
+        var proxy = runResult.Results.Single().GeneratedSources
+            .Single(g => g.HintName == GeneratorTestHelper.HintName(
+                "Regress.RefStructAntiConstraint",
+                "IRefStructAntiConstraint",
+                GeneratorTestHelper.GeneratedKind.Proxy))
+            .SourceText.ToString();
+        proxy.Should().Contain("Echo<T>(T value) where T : allows ref struct");
+        proxy.Should().Contain("throw new global::System.NotSupportedException");
+    }
+
     /// <summary>
     /// Regression: <see cref="System.Threading.CancellationToken"/> parameters can be
     /// written through aliases and can appear before later payload parameters. The

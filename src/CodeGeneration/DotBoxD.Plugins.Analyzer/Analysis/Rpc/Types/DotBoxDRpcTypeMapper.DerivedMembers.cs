@@ -144,20 +144,84 @@ internal static partial class DotBoxDRpcTypeMapper
 
             if (declaration.ExpressionBody is { } arrow)
             {
-                return arrow.Expression;
+                return ExpandDerivedGetterExpression(property.ContainingType, arrow.Expression);
             }
 
             var getter = declaration.AccessorList?.Accessors
                 .FirstOrDefault(accessor => accessor.IsKind(SyntaxKind.GetAccessorDeclaration));
             if (getter?.ExpressionBody is { } getterArrow)
             {
-                return getterArrow.Expression;
+                return ExpandDerivedGetterExpression(property.ContainingType, getterArrow.Expression);
             }
 
             if (getter?.Body is { Statements.Count: 1 } getterBody &&
                 getterBody.Statements[0] is ReturnStatementSyntax { Expression: { } returned })
             {
-                return returned;
+                return ExpandDerivedGetterExpression(property.ContainingType, returned);
+            }
+        }
+
+        return null;
+    }
+
+    private static ExpressionSyntax ExpandDerivedGetterExpression(
+        INamedTypeSymbol containingType,
+        ExpressionSyntax expression,
+        int depth = 0)
+    {
+        if (depth >= 4 ||
+            expression is not InvocationExpressionSyntax
+            {
+                ArgumentList.Arguments.Count: 0
+            } invocation ||
+            HelperName(invocation.Expression) is not { } helperName ||
+            TryGetParameterlessHelperExpression(containingType, helperName) is not { } helperBody)
+        {
+            return expression;
+        }
+
+        return ExpandDerivedGetterExpression(containingType, helperBody, depth + 1);
+    }
+
+    private static string? HelperName(ExpressionSyntax expression)
+        => expression switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+            MemberAccessExpressionSyntax { Expression: ThisExpressionSyntax } member =>
+                member.Name.Identifier.ValueText,
+            _ => null,
+        };
+
+    private static ExpressionSyntax? TryGetParameterlessHelperExpression(
+        INamedTypeSymbol containingType,
+        string helperName)
+    {
+        foreach (var method in containingType.GetMembers(helperName).OfType<IMethodSymbol>())
+        {
+            if (method.IsStatic ||
+                method.MethodKind != MethodKind.Ordinary ||
+                method.Parameters.Length != 0)
+            {
+                continue;
+            }
+
+            foreach (var reference in method.DeclaringSyntaxReferences)
+            {
+                if (reference.GetSyntax() is not MethodDeclarationSyntax declaration)
+                {
+                    continue;
+                }
+
+                if (declaration.ExpressionBody is { } arrow)
+                {
+                    return arrow.Expression;
+                }
+
+                if (declaration.Body is { Statements.Count: 1 } body &&
+                    body.Statements[0] is ReturnStatementSyntax { Expression: { } returned })
+                {
+                    return returned;
+                }
             }
         }
 

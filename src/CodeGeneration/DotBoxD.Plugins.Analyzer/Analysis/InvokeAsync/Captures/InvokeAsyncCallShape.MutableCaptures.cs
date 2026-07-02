@@ -39,7 +39,7 @@ internal sealed partial class InvokeAsyncCallShape
         BlockSyntax block,
         InvokeAsyncCaptureParameter captureParameter,
         SemanticModel model,
-        ISet<string> captureAliases)
+        ISet<ISymbol> captureAliases)
     {
         string? CapturedName(ExpressionSyntax expression)
         {

@@ -61,7 +61,9 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
             "ReadProjectedPayload(global::System.ReadOnlyMemory<byte> payload)",
             generated,
             StringComparison.Ordinal);
-        Assert.Contains("(float)reader.ReadDouble()", generated, StringComparison.Ordinal);
+        Assert.Contains("var __value = reader.ReadDouble();", generated, StringComparison.Ordinal);
+        Assert.Contains("global::System.Double.IsFinite(__value)", generated, StringComparison.Ordinal);
+        Assert.Contains("global::System.Single.IsFinite(__result)", generated, StringComparison.Ordinal);
     }
 
     private static void AssertFieldStruct(FieldStructEvent received)

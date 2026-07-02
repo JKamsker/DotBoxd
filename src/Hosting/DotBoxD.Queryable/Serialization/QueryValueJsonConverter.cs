@@ -113,13 +113,41 @@ public sealed class QueryValueJsonConverter : JsonConverter<QueryValue>
 
         return kind switch
         {
-            "guid" => QueryValue.FromGuid(Guid.Parse(text)),
-            "decimal" => QueryValue.FromDecimal(decimal.Parse(text, NumberStyles.Number, CultureInfo.InvariantCulture)),
-            "ulong" => QueryValue.FromUnsignedInteger(ulong.Parse(text, NumberStyles.Integer, CultureInfo.InvariantCulture)),
-            "timestamp" => QueryValue.HasExplicitTimestampOffset(text)
-                ? QueryValue.FromTimestamp(DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind))
-                : throw new JsonException($"Timestamp '{text}' must include an explicit UTC 'Z' or +/-hh:mm offset."),
+            "guid" => ReadGuid(kind, text),
+            "decimal" => ReadDecimal(kind, text),
+            "ulong" => ReadUnsignedInteger(kind, text),
+            "timestamp" => ReadTimestamp(kind, text),
             _ => throw new JsonException($"Unknown tagged query value kind '{kind}'."),
         };
     }
+
+    private static QueryValue ReadGuid(string kind, string text) =>
+        Guid.TryParse(text, out var value)
+            ? QueryValue.FromGuid(value)
+            : throw InvalidTaggedValue(kind, text);
+
+    private static QueryValue ReadDecimal(string kind, string text) =>
+        decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out var value)
+            ? QueryValue.FromDecimal(value)
+            : throw InvalidTaggedValue(kind, text);
+
+    private static QueryValue ReadUnsignedInteger(string kind, string text) =>
+        ulong.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+            ? QueryValue.FromUnsignedInteger(value)
+            : throw InvalidTaggedValue(kind, text);
+
+    private static QueryValue ReadTimestamp(string kind, string text)
+    {
+        if (!QueryValue.HasExplicitTimestampOffset(text))
+        {
+            throw new JsonException($"Timestamp '{text}' must include an explicit UTC 'Z' or +/-hh:mm offset.");
+        }
+
+        return DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var value)
+            ? QueryValue.FromTimestamp(value)
+            : throw InvalidTaggedValue(kind, text);
+    }
+
+    private static JsonException InvalidTaggedValue(string kind, string text) =>
+        new($"Invalid tagged query value '{text}' for kind '{kind}'.");
 }

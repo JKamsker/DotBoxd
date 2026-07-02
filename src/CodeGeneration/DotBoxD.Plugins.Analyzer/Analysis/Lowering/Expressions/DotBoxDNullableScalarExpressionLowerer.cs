@@ -127,6 +127,13 @@ internal static class DotBoxDNullableScalarExpressionLowerer
                 $"{Helpers.F64}({DotBoxDGenerationNames.CSharpLiterals.DoubleDefault})",
             _ when DotBoxDRpcTypeMapper.IsGuid(underlying) =>
                 $"new {TypeNames.GlobalLiteralExpression}({TypeNames.GlobalSandboxValue}.FromGuid(global::System.Guid.Empty), Span)",
+            _ when DotBoxDRpcTypeMapper.IsDateOnlyWireType(underlying) =>
+                $"{Helpers.I32}({DotBoxDGenerationNames.CSharpLiterals.Int32Default})",
+            _ when DotBoxDRpcTypeMapper.IsTimeOnlyWireType(underlying) ||
+                   DotBoxDRpcTypeMapper.IsTimeSpanWireType(underlying) =>
+                $"{Helpers.I64}({DotBoxDGenerationNames.CSharpLiterals.Int64Default})",
+            _ when DotBoxDRpcTypeMapper.IsCancellationTokenWireType(underlying) =>
+                BoolSource(value: false),
             _ when underlying.TypeKind == TypeKind.Enum && underlying is INamedTypeSymbol enumType =>
                 DotBoxDRpcTypeMapper.EnumUsesI64(enumType)
                     ? $"{Helpers.I64}({DotBoxDGenerationNames.CSharpLiterals.Int64Default})"

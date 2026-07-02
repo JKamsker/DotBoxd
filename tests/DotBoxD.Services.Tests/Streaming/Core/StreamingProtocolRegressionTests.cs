@@ -1,4 +1,5 @@
 using DotBoxD.Codecs.MessagePack;
+using DotBoxD.Services.Buffers;
 using DotBoxD.Services.Client;
 using DotBoxD.Services.Exceptions;
 using DotBoxD.Services.Peer;
@@ -6,6 +7,7 @@ using DotBoxD.Services.Protocol;
 using DotBoxD.Services.Streaming.Core;
 using DotBoxD.Services.Streaming.Frames;
 using DotBoxD.Services.Streaming.Remote;
+using DotBoxD.Services.Tests.Support;
 using Xunit;
 using static DotBoxD.Services.Tests.Streaming.Core.StreamingProtocolRegressionTestSupport;
 
@@ -158,7 +160,7 @@ public sealed class StreamingProtocolRegressionTests
             SendAndCompleteErrorAsync,
             streams);
 
-        await Assert.ThrowsAsync<RemoteServiceException>(() =>
+        await Assert.ThrowsAsync<ServiceProtocolException>(() =>
             invoker.InvokeAsync<int>("Svc", "Bad", CancellationToken.None));
 
         Assert.Equal(0, streams.InboundReceiverCount);
@@ -171,19 +173,7 @@ public sealed class StreamingProtocolRegressionTests
                 return Task.CompletedTask;
             }
 
-            var response = MessageFramer.FrameMessage(
-                serializer,
-                messageId,
-                MessageType.Error,
-                new RpcResponse
-                {
-                    MessageId = messageId,
-                    IsSuccess = false,
-                    ErrorMessage = "failed",
-                    ErrorType = "Remote",
-                    Stream = new RpcStreamHandle(604, RpcStreamKind.Binary),
-                },
-                ReadOnlySpan<byte>.Empty);
+            var response = FrameErrorResponseWithStream(serializer, messageId);
             if (!invoker!.TryCompleteResponse(messageId, response))
             {
                 response.Dispose();
@@ -243,4 +233,14 @@ public sealed class StreamingProtocolRegressionTests
         streams.RemoveOutbound(existing.StreamId);
     }
 
+    private static Payload FrameErrorResponseWithStream(MessagePackRpcSerializer serializer, int messageId)
+        => RpcEnvelopeTestFrames.FrameErrorResponse(
+            serializer,
+            frameMessageId: messageId,
+            messageType: MessageType.Error,
+            envelopeMessageId: messageId,
+            isSuccess: false,
+            errorMessage: "failed",
+            errorType: "Remote",
+            stream: new RpcStreamHandle(604, RpcStreamKind.Binary));
 }

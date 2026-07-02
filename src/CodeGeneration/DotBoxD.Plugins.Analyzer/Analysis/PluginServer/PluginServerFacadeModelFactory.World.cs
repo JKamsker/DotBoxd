@@ -39,7 +39,7 @@ internal static partial class PluginServerFacadeModelFactory
             return explicitControlService;
         }
 
-        var worldNamespace = worldType.ContainingNamespace.ToDisplayString();
+        var worldNamespace = PluginServerFacadeNameFormatter.NamespaceMetadataName(worldType.ContainingNamespace);
         return compilation.GetTypeByMetadataName(worldNamespace + ".Ipc.IGamePluginControlService");
     }
 

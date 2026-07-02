@@ -11,7 +11,7 @@ namespace Snap.Mixed
     {
         private readonly global::Snap.Mixed.IMix? _service;
 
-        internal MixDispatcher()
+        public MixDispatcher()
         {
         }
 
@@ -56,6 +56,10 @@ namespace Snap.Mixed
             {
                 case "GetNameAsync":
                 {
+                    if (payload.Length != 0)
+                    {
+                        throw new global::DotBoxD.Services.Exceptions.ServiceProtocolException("Request payload is not allowed for a parameterless RPC method.");
+                    }
                     var __dotboxd_task = receiver.GetNameAsync();
                     var __dotboxd_result = __dotboxd_task.IsCompletedSuccessfully
                         ? __dotboxd_task.Result
@@ -82,6 +86,10 @@ namespace Snap.Mixed
                 }
                 case "SyncPing":
                 {
+                    if (payload.Length != 0)
+                    {
+                        throw new global::DotBoxD.Services.Exceptions.ServiceProtocolException("Request payload is not allowed for a parameterless RPC method.");
+                    }
                     receiver.SyncPing();
                     return;
                 }

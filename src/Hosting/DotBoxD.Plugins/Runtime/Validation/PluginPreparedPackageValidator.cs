@@ -31,10 +31,15 @@ internal static partial class PluginPreparedPackageValidator
         ValidateAsyncCapability(package, plan, diagnostics);
         PluginManifestCapabilityValidator.Validate(
             package.Manifest,
+            package.Module,
             plan,
             [package.Entrypoints.ShouldHandle, package.Entrypoints.Handle],
             diagnostics);
-        ValidateRequiredCapabilityGrants(package.Manifest, installPolicy, diagnostics);
+        PluginManifestCapabilityValidator.ValidateRequiredCapabilityGrants(
+            package.Manifest,
+            package.Module,
+            installPolicy,
+            diagnostics);
         var contractEvent = ValidateContract(package, diagnostics);
         ValidatePreparedEntrypoints(package, plan, events, contractEvent, diagnostics);
         ThrowIfErrors(diagnostics);
@@ -80,26 +85,6 @@ internal static partial class PluginPreparedPackageValidator
     private static bool EntrypointRequiresAsync(string entrypoint, ExecutionPlan plan)
         => plan.FunctionAnalysis.TryGetValue(entrypoint, out var analysis) &&
            (analysis.Effects & SandboxEffect.Concurrency) != 0;
-
-    private static void ValidateRequiredCapabilityGrants(
-        PluginManifest manifest,
-        SandboxPolicy installPolicy,
-        List<SandboxDiagnostic> diagnostics)
-    {
-        var now = installPolicy.GrantClock;
-        foreach (var capability in manifest.RequiredCapabilities.Distinct(StringComparer.Ordinal))
-        {
-            if (string.Equals(capability, RuntimeCapabilityIds.Async, StringComparison.Ordinal) ||
-                installPolicy.GrantsCapability(capability, now))
-            {
-                continue;
-            }
-
-            diagnostics.Add(new SandboxDiagnostic(
-                "E-POLICY-CAP",
-                $"required capability '{capability}' is not granted"));
-        }
-    }
 
     private static string? ValidateContract(PluginPackage package, List<SandboxDiagnostic> diagnostics)
     {
@@ -156,7 +141,7 @@ internal static partial class PluginPreparedPackageValidator
         }
 
         ValidateReturnTypes(plan, shouldHandle, handle, handleReturnsValue, diagnostics);
-        ValidateLocalTerminalRouting(package.Manifest.Subscriptions, plan, handle.Id, diagnostics);
+        ValidateLocalTerminalRouting(package, plan, diagnostics);
         if (!ParametersMatch(shouldHandle.Parameters, handle.Parameters))
         {
             diagnostics.Add(new SandboxDiagnostic("DBXK034", "Kernel entrypoints must use the same parameter shape."));

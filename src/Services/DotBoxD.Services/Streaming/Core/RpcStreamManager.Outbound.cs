@@ -13,7 +13,7 @@ internal sealed partial class RpcStreamManager
         while (true)
         {
             var streamId = Interlocked.Increment(ref _outboundStreamIdCounter);
-            if (streamId == 0 || _senders.ContainsKey(streamId))
+            if (streamId <= 0 || _senders.ContainsKey(streamId))
             {
                 continue;
             }
@@ -27,11 +27,7 @@ internal sealed partial class RpcStreamManager
 
     internal void ReserveOutbound(int streamId)
     {
-        if (streamId == 0)
-        {
-            throw new ServiceProtocolException("Stream id must not be zero.");
-        }
-
+        RpcStreamValidation.ValidateStreamId(streamId);
         if (_senders.ContainsKey(streamId) || !_reservedOutbound.TryAdd(streamId, 0))
         {
             throw new ServiceProtocolException($"Duplicate outbound stream id '{streamId}'.");
@@ -48,15 +44,13 @@ internal sealed partial class RpcStreamManager
     }
 
     internal void ReleaseOutboundReservations(RpcStreamAttachment[]? attachments)
-    {
-        if (attachments is null)
-        {
-            return;
-        }
+        => ReleaseOutboundReservations(RpcStreamAttachmentSet.FromArray(attachments));
 
-        foreach (var attachment in attachments)
+    internal void ReleaseOutboundReservations(RpcStreamAttachmentSet attachments)
+    {
+        for (var i = 0; i < attachments.Count; i++)
         {
-            if (attachment is not null)
+            if (attachments.GetAt(i) is { } attachment)
             {
                 ReleaseOutboundReservation(attachment.Handle.StreamId);
             }
@@ -64,15 +58,18 @@ internal sealed partial class RpcStreamManager
     }
 
     public RpcOutboundStreamSet RegisterOutbound(RpcStreamAttachment[]? attachments, CancellationToken ct)
+        => RegisterOutbound(RpcStreamAttachmentSet.FromArray(attachments), ct);
+
+    internal RpcOutboundStreamSet RegisterOutbound(RpcStreamAttachmentSet attachments, CancellationToken ct)
     {
-        if (attachments is null || attachments.Length == 0)
+        if (attachments.IsEmpty)
         {
             return RpcOutboundStreamSet.Empty;
         }
 
-        return attachments.Length == 1
-            ? RegisterOutbound(attachments[0], ct)
-            : RegisterOutboundMany(attachments, ct);
+        return attachments.IsSingle
+            ? RegisterOutbound(attachments.Single, ct)
+            : RegisterOutboundMany(attachments.Many, ct);
     }
 
     private RpcOutboundStreamSet RegisterOutboundMany(RpcStreamAttachment[] attachments, CancellationToken ct)
@@ -158,7 +155,9 @@ internal sealed partial class RpcStreamManager
     public bool TryAddCredit(ReadOnlyMemory<byte> frame)
     {
         if (!MessageFramer.TryReadFrameHeader(frame, out var streamId, out _) ||
+            streamId == 0 ||
             !RpcRawFrame.TryReadInt32(frame, out var count) ||
+            streamId == 0 ||
             count <= 0)
         {
             return false;

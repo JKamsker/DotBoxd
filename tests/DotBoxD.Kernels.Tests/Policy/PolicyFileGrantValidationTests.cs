@@ -34,6 +34,22 @@ public sealed class PolicyFileGrantValidationTests
     }
 
     [Fact]
+    public void File_grant_builder_allows_missing_root_directory()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "dotboxd-missing-" + Guid.NewGuid().ToString("N"));
+
+        var readPolicy = SandboxPolicyBuilder.Create().GrantFileRead(root, 1024).Build();
+        var writePolicy = SandboxPolicyBuilder.Create().GrantFileWrite(root, 1024).Build();
+
+        Assert.Contains(readPolicy.Grants, grant =>
+            grant.Id == "file.read" &&
+            string.Equals(grant.Parameters["root"], root, StringComparison.Ordinal));
+        Assert.Contains(writePolicy.Grants, grant =>
+            grant.Id == "file.write" &&
+            string.Equals(grant.Parameters["root"], root, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Prepare_rejects_direct_file_grant_with_relative_root()
     {
         var host = SandboxTestHost.Create();
@@ -58,6 +74,36 @@ public sealed class PolicyFileGrantValidationTests
         Assert.Contains(ex.Diagnostics, d =>
             d.Code == "E-POLICY-GRANT-PARAM" &&
             d.Message.Contains("absolute canonical", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Prepare_rejects_direct_file_grant_with_missing_root_directory()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "dotboxd-missing-" + Guid.NewGuid().ToString("N"));
+
+        var ex = await PrepareWithDirectReadRootAsync(root);
+
+        Assert.Contains(ex.Diagnostics, d =>
+            d.Code == "E-POLICY-GRANT-PARAM" &&
+            d.Message.Contains("existing directory", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Prepare_rejects_direct_file_grant_with_file_root()
+    {
+        var root = Path.GetTempFileName();
+        try
+        {
+            var ex = await PrepareWithDirectReadRootAsync(root);
+
+            Assert.Contains(ex.Diagnostics, d =>
+                d.Code == "E-POLICY-GRANT-PARAM" &&
+                d.Message.Contains("existing directory", StringComparison.Ordinal));
+        }
+        finally
+        {
+            File.Delete(root);
+        }
     }
 
     [Fact]
@@ -86,5 +132,27 @@ public sealed class PolicyFileGrantValidationTests
         Assert.Contains(ex.Diagnostics, d =>
             d.Code == "E-POLICY-GRANT-PARAM" &&
             d.Message.Contains("absolute canonical", StringComparison.Ordinal));
+    }
+
+    private static async Task<SandboxValidationException> PrepareWithDirectReadRootAsync(string root)
+    {
+        var host = SandboxTestHost.Create();
+        var module = await host.ImportJsonAsync(InterpreterAndPolicyTests.FileReadJson("settings.json"));
+        var policy = new SandboxPolicy(
+            "bad-file-root",
+            SandboxEffects.Pure | SandboxEffect.FileRead,
+            [
+                new CapabilityGrant(
+                    "file.read",
+                    new Dictionary<string, string>
+                    {
+                        ["root"] = root,
+                        ["maxBytesPerRun"] = "1024"
+                    })
+            ],
+            new ResourceLimits(MaxFuel: 1_000, MaxFileBytesRead: 1024));
+
+        return await Assert.ThrowsAsync<SandboxValidationException>(async () =>
+            await host.PrepareAsync(module, policy));
     }
 }

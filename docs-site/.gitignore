@@ -1,0 +1,13 @@
+# Build output
+dist/
+.astro/
+
+# Dependencies
+node_modules/
+
+# Generated API reference (produced by `dotnet docfx metadata` + scripts/postprocess-api.mjs)
+src/content/docs/api/
+src/generated/
+
+# Logs
+npm-debug.log*

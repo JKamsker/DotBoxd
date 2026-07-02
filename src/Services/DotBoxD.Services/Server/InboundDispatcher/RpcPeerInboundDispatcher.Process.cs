@@ -43,7 +43,7 @@ internal sealed partial class RpcPeerInboundDispatcher
         {
             using (inbound.Frame)
             {
-                streaming = inbound.RequiresStreamingContext
+                streaming = inbound.RequiresStreamingContext || inbound.Request.Streams is { Length: > 0 }
                     ? new RpcStreamingContext(
                         _streams,
                         _serializer,

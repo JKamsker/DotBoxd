@@ -41,6 +41,63 @@ public sealed class Fix_CMP_0026_Tests
     }
 
     [Fact]
+    public void Plugin_package_schema_indexed_predicate_values_match_declared_type()
+    {
+        using var document = JsonDocument.Parse(PluginPackageJsonSchemas.PackageEnvelope);
+        var rules = document.RootElement
+            .GetProperty("$defs")
+            .GetProperty("indexedPredicate")
+            .GetProperty("allOf")
+            .EnumerateArray()
+            .ToArray();
+
+        Assert.Equal(5, rules.Length);
+        Assert.Contains(rules, rule => MatchesIndexedPredicateType(rule, "bool", "boolean"));
+        Assert.Contains(rules, rule => MatchesIndexedPredicateType(rule, "int", "integer", (decimal)int.MinValue, int.MaxValue));
+        Assert.Contains(rules, rule => MatchesIndexedPredicateType(rule, "long", "integer", (decimal)long.MinValue, long.MaxValue));
+        Assert.Contains(rules, rule => MatchesIndexedPredicateType(rule, "double", "number", -double.MaxValue, double.MaxValue));
+        Assert.Contains(rules, rule => MatchesIndexedPredicateType(rule, "string", "string"));
+    }
+
+    [Fact]
+    public void Plugin_package_schema_local_terminal_requires_projected_type()
+    {
+        using var document = JsonDocument.Parse(PluginPackageJsonSchemas.PackageEnvelope);
+        var rules = document.RootElement
+            .GetProperty("$defs")
+            .GetProperty("subscription")
+            .GetProperty("allOf")
+            .EnumerateArray()
+            .ToArray();
+
+        Assert.Contains(rules, RequiresProjectedTypeForLocalTerminal);
+    }
+
+    [Fact]
+    public void Plugin_package_schema_subscription_cardinality_matches_kernel_kind()
+    {
+        using var document = JsonDocument.Parse(PluginPackageJsonSchemas.PackageEnvelope);
+        var rules = document.RootElement
+            .GetProperty("$defs")
+            .GetProperty("manifest")
+            .GetProperty("allOf")
+            .EnumerateArray()
+            .ToArray();
+
+        var rule = Assert.Single(rules, RuleTestsManifestRpcEntrypoint);
+        var rpcSubscriptions = rule.GetProperty("then")
+            .GetProperty("properties")
+            .GetProperty("subscriptions");
+        var eventSubscriptions = rule.GetProperty("else")
+            .GetProperty("properties")
+            .GetProperty("subscriptions");
+
+        Assert.Equal(0, rpcSubscriptions.GetProperty("maxItems").GetInt32());
+        Assert.Equal(1, eventSubscriptions.GetProperty("minItems").GetInt32());
+        Assert.Equal(1, eventSubscriptions.GetProperty("maxItems").GetInt32());
+    }
+
+    [Fact]
     public void Drift_guard_rejects_same_property_set_when_required_properties_are_relaxed()
     {
         var contract = new JsonSchemaObjectContract(
@@ -129,4 +186,55 @@ public sealed class Fix_CMP_0026_Tests
             ? type.EnumerateArray().Select(item => item.GetString()!).ToArray()
             : [type.GetString()!];
     }
+
+    private static bool MatchesIndexedPredicateType(
+        JsonElement rule,
+        string valueType,
+        string expectedType)
+        => ConditionValueType(rule, valueType) &&
+           PropertyTypes(rule, "value").SequenceEqual([expectedType]) &&
+           !rule.GetProperty("then").GetProperty("properties").GetProperty("value").TryGetProperty("minimum", out _) &&
+           !rule.GetProperty("then").GetProperty("properties").GetProperty("value").TryGetProperty("maximum", out _);
+
+    private static bool MatchesIndexedPredicateType(
+        JsonElement rule,
+        string valueType,
+        string expectedType,
+        decimal expectedMinimum,
+        decimal expectedMaximum)
+        => ConditionValueType(rule, valueType) &&
+           PropertyTypes(rule, "value").SequenceEqual([expectedType]) &&
+           rule.GetProperty("then").GetProperty("properties").GetProperty("value").GetProperty("minimum").GetDecimal() == expectedMinimum &&
+           rule.GetProperty("then").GetProperty("properties").GetProperty("value").GetProperty("maximum").GetDecimal() == expectedMaximum;
+
+    private static bool MatchesIndexedPredicateType(
+        JsonElement rule,
+        string valueType,
+        string expectedType,
+        double expectedMinimum,
+        double expectedMaximum)
+        => ConditionValueType(rule, valueType) &&
+           PropertyTypes(rule, "value").SequenceEqual([expectedType]) &&
+           rule.GetProperty("then").GetProperty("properties").GetProperty("value").GetProperty("minimum").GetDouble() == expectedMinimum &&
+           rule.GetProperty("then").GetProperty("properties").GetProperty("value").GetProperty("maximum").GetDouble() == expectedMaximum;
+
+    private static bool ConditionValueType(JsonElement rule, string valueType)
+        => rule.GetProperty("if")
+            .GetProperty("properties")
+            .GetProperty("valueType")
+            .GetProperty("const")
+            .GetString() == valueType;
+
+    private static bool RequiresProjectedTypeForLocalTerminal(JsonElement rule)
+        => rule.GetProperty("if").TryGetProperty("properties", out var properties) &&
+           properties.TryGetProperty("localTerminal", out var localTerminal) &&
+           localTerminal.TryGetProperty("const", out var constValue) &&
+           constValue.ValueKind == JsonValueKind.True &&
+           rule.GetProperty("then").GetProperty("required")
+               .EnumerateArray()
+               .Any(value => value.GetString() == "projectedType");
+
+    private static bool RuleTestsManifestRpcEntrypoint(JsonElement rule)
+        => rule.GetProperty("if").TryGetProperty("required", out var required) &&
+           required.EnumerateArray().Any(value => value.GetString() == "rpcEntrypoint");
 }

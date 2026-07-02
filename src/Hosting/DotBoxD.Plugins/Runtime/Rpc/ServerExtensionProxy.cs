@@ -41,13 +41,25 @@ public class ServerExtensionProxy : DispatchProxy
         }
 
         var method = MethodCache.GetOrAdd(targetMethod, static target => new ServerExtensionMethod(target));
-        var arguments = new SandboxValue[method.ParameterTypes.Length];
-        for (var i = 0; i < method.ParameterTypes.Length; i++)
+        var arguments = ConvertPayloadArguments(args, method.PayloadParameterTypes);
+
+        return method.Materialize(_kernel.InvokeServerExtensionAsync(arguments, method.CancellationToken(args)));
+    }
+
+    private static SandboxValue[] ConvertPayloadArguments(object?[]? args, Type[] payloadParameterTypes)
+    {
+        if (payloadParameterTypes.Length == 0)
         {
-            arguments[i] = KernelRpcMarshaller.ToSandboxValue(args?[i], method.ParameterTypes[i]);
+            return Array.Empty<SandboxValue>();
         }
 
-        return method.Materialize(_kernel.InvokeServerExtensionAsync(arguments));
+        var arguments = new SandboxValue[payloadParameterTypes.Length];
+        for (var i = 0; i < payloadParameterTypes.Length; i++)
+        {
+            arguments[i] = KernelRpcMarshaller.ToSandboxValue(args?[i], payloadParameterTypes[i]);
+        }
+
+        return arguments;
     }
 
     private static Func<ValueTask<SandboxValue>, object?> CreateMaterializer(Type returnType)
@@ -93,7 +105,11 @@ public class ServerExtensionProxy : DispatchProxy
 
         return pending =>
         {
-            var result = pending.AsTask().GetAwaiter().GetResult();
+            // Synchronous return shape: block on the ValueTask directly. InvokeServerExtensionAsync uses
+            // the default non-pooled ValueTask shape here; AsTask() only allocated a throwaway Task<T>.
+            // Direct GetResult() is valid for this path's single consumption and unwraps exceptions
+            // identically (no AggregateException).
+            var result = pending.GetAwaiter().GetResult();
             return KernelRpcMarshaller.FromSandboxValue(result, returnType);
         };
     }
@@ -106,6 +122,12 @@ public class ServerExtensionProxy : DispatchProxy
         }
 
         var methods = ContractMethods(serviceType).ToArray();
+        if (methods.Any(static method => method.IsSpecialName))
+        {
+            throw new NotSupportedException(
+                "Server extension proxy service type must declare exactly one ordinary method.");
+        }
+
         if (methods.Length != 1)
         {
             throw new NotSupportedException(
@@ -114,40 +136,54 @@ public class ServerExtensionProxy : DispatchProxy
 
         foreach (var method in methods)
         {
-            foreach (var parameter in method.GetParameters())
+            if (method.IsGenericMethodDefinition || method.ContainsGenericParameters)
             {
-                KernelRpcMarshaller.RejectNullableValueTypesForServerExtension(parameter.ParameterType);
+                throw new NotSupportedException("Server extension proxy service methods must be non-generic.");
+            }
+
+            var parameters = method.GetParameters();
+            for (var i = 0; i < parameters.Length; i++)
+            {
+                var parameterType = parameters[i].ParameterType;
+                if (IsCancellationToken(parameterType))
+                {
+                    if (i != parameters.Length - 1)
+                    {
+                        throw new NotSupportedException(
+                            "Server extension proxy cancellation tokens must be the final method parameter.");
+                    }
+
+                    continue;
+                }
+
+                ServerExtensionProxyValidation.RejectNullReferenceDefault(parameters[i]);
+                ServerExtensionProxyValidation.ValidatePayloadType(parameterType);
             }
 
             if (UnwrapReturnType(method.ReturnType) is { } payloadType)
             {
-                KernelRpcMarshaller.RejectNullableValueTypesForServerExtension(payloadType);
+                ServerExtensionProxyValidation.ValidatePayloadType(payloadType);
             }
         }
     }
 
     private static IEnumerable<MethodInfo> ContractMethods(Type serviceType)
     {
-        var seen = new HashSet<MethodInfo>();
-        foreach (var method in serviceType.GetMethods())
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var methods = serviceType.GetMethods()
+            .Concat(serviceType.GetInterfaces().SelectMany(static inherited => inherited.GetMethods()));
+        foreach (var method in methods)
         {
-            if (seen.Add(method))
+            if (seen.Add(ContractMethodKey(method)))
             {
                 yield return method;
             }
         }
-
-        foreach (var inherited in serviceType.GetInterfaces())
-        {
-            foreach (var method in inherited.GetMethods())
-            {
-                if (seen.Add(method))
-                {
-                    yield return method;
-                }
-            }
-        }
     }
+
+    private static string ContractMethodKey(MethodInfo method)
+        => method.Name + "|" + method.ReturnType.FullName + "|" +
+           string.Join("|", method.GetParameters().Select(static parameter => parameter.ParameterType.FullName));
 
     private static Type? UnwrapReturnType(Type type)
     {
@@ -165,6 +201,9 @@ public class ServerExtensionProxy : DispatchProxy
 
         return type;
     }
+
+    private static bool IsCancellationToken(Type type)
+        => type == typeof(CancellationToken);
 
     private static object BoxTaskAsync<T>(ValueTask<SandboxValue> pending)
         => InvokeTaskAsync<T>(pending);
@@ -189,17 +228,43 @@ public class ServerExtensionProxy : DispatchProxy
 
     private sealed class ServerExtensionMethod
     {
+        private readonly int _cancellationTokenIndex;
         private readonly Func<ValueTask<SandboxValue>, object?> _materializer;
 
         public ServerExtensionMethod(MethodInfo method)
         {
-            ParameterTypes = method.GetParameters()
-                .Select(static parameter => parameter.ParameterType)
-                .ToArray();
+            var parameters = method.GetParameters();
+            _cancellationTokenIndex = parameters.Length > 0 &&
+                IsCancellationToken(parameters[^1].ParameterType)
+                    ? parameters.Length - 1
+                    : -1;
+
+            var payloadParameterCount = _cancellationTokenIndex >= 0
+                ? _cancellationTokenIndex
+                : parameters.Length;
+            PayloadParameterTypes = new Type[payloadParameterCount];
+            for (var i = 0; i < payloadParameterCount; i++)
+            {
+                PayloadParameterTypes[i] = parameters[i].ParameterType;
+            }
+
             _materializer = CreateMaterializer(method.ReturnType);
         }
 
-        public Type[] ParameterTypes { get; }
+        public Type[] PayloadParameterTypes { get; }
+
+        public CancellationToken CancellationToken(object?[]? args)
+        {
+            if (_cancellationTokenIndex < 0 ||
+                args is null ||
+                args.Length <= _cancellationTokenIndex ||
+                args[_cancellationTokenIndex] is not CancellationToken cancellationToken)
+            {
+                return default;
+            }
+
+            return cancellationToken;
+        }
 
         public object? Materialize(ValueTask<SandboxValue> pending)
             => _materializer(pending);

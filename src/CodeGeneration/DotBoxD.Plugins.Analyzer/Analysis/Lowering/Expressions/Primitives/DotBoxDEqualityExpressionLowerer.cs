@@ -1,4 +1,5 @@
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
+using Microsoft.CodeAnalysis;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 
@@ -8,7 +9,9 @@ internal static class DotBoxDEqualityExpressionLowerer
         DotBoxDExpressionModel left,
         DotBoxDExpressionModel right,
         bool negate,
-        bool allocates)
+        bool allocates,
+        ITypeSymbol? leftType,
+        ITypeSymbol? rightType)
     {
         var symbol = negate
             ? DotBoxDGenerationNames.Operators.NotEqualTo
@@ -22,7 +25,7 @@ internal static class DotBoxDEqualityExpressionLowerer
         // Only scalar operands may be compared. The sandbox compares a list/map/record value by STRUCTURE, but C#
         // `==` on an array, List<T>, dictionary, or ordinary class is REFERENCE equality — so lowering
         // `e.Ids == e.OtherIds` would silently change the predicate's meaning. Reject non-scalars (fail safe).
-        if (!IsEquatableScalar(left.Type))
+        if (!IsEquatableScalar(left.Type) && !IsDateTimeRecordEquality(left.Type, leftType, rightType))
         {
             throw new NotSupportedException(
                 $"Operator '{symbol}' is only supported on scalar operands; '{left.Type}' would compare by structure " +
@@ -54,4 +57,9 @@ internal static class DotBoxDEqualityExpressionLowerer
         || string.Equals(tag, DotBoxDGenerationNames.ManifestTypes.Double, StringComparison.Ordinal)
         || string.Equals(tag, DotBoxDGenerationNames.ManifestTypes.String, StringComparison.Ordinal)
         || string.Equals(tag, DotBoxDGenerationNames.ManifestTypes.Guid, StringComparison.Ordinal);
+
+    private static bool IsDateTimeRecordEquality(string tag, ITypeSymbol? leftType, ITypeSymbol? rightType)
+        => string.Equals(tag, DotBoxDGenerationNames.ManifestTypes.Record, StringComparison.Ordinal) &&
+           leftType?.SpecialType == SpecialType.System_DateTime &&
+           rightType?.SpecialType == SpecialType.System_DateTime;
 }

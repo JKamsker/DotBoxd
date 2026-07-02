@@ -5,6 +5,8 @@ using DotBoxD.Plugins.Analyzer.Analysis;
 
 internal static class RegistrationAccumulatorBatchFactory
 {
+    private const string FlushMemberName = "FlushAsync";
+
     public static RegistrationGenerationBatch CreateTargets(
         ImmutableArray<RegistrationAccumulatorTargetModel> targets)
     {
@@ -62,8 +64,14 @@ internal static class RegistrationAccumulatorBatchFactory
                 continue;
             }
 
-            var children = Children(root, targetByReceiver);
-            if (children.Count == 0)
+            var childSelection = Children(root, targetByReceiver);
+            diagnostics.AddRange(childSelection.Diagnostics);
+            if (childSelection.Diagnostics.Count != 0)
+            {
+                continue;
+            }
+
+            if (childSelection.Children.Count == 0)
             {
                 diagnostics.Add(Diagnostic(
                     root.Location,
@@ -71,7 +79,7 @@ internal static class RegistrationAccumulatorBatchFactory
                 continue;
             }
 
-            sources.Add(RegistrationAccumulatorEmitter.EmitRoot(root, children));
+            sources.Add(RegistrationAccumulatorEmitter.EmitRoot(root, childSelection.Children));
         }
 
         return Batch(sources, diagnostics);
@@ -93,21 +101,102 @@ internal static class RegistrationAccumulatorBatchFactory
         return result;
     }
 
-    private static EquatableArray<RegistrationChildAccumulatorModel> Children(
+    private static RegistrationChildSelection Children(
         RegistrationRootAccumulatorModel root,
         Dictionary<string, RegistrationAccumulatorTargetModel> targetByReceiver)
     {
         var children = new List<RegistrationChildAccumulatorModel>();
+        var diagnostics = new List<PluginKernelDiagnostic>();
         foreach (var property in root.Properties)
         {
-            if (targetByReceiver.TryGetValue(property.TypeName, out var target))
+            var matches = MatchingTargets(property, targetByReceiver);
+            if (matches.Count == 0)
             {
-                children.Add(new RegistrationChildAccumulatorModel(property.Name, target.AccumulatorName));
+                continue;
+            }
+
+            if (matches.Count > 1)
+            {
+                diagnostics.Add(Diagnostic(
+                    root.Location,
+                    $"Registration root property '{root.ReceiverTypeName}.{property.Name}' matches more than one generated accumulator receiver: {ReceiverList(matches)}."));
+                continue;
+            }
+
+            var target = matches[0];
+            if (property.Name == FlushMemberName)
+            {
+                diagnostics.Add(Diagnostic(
+                    root.Location,
+                    $"Registration root property '{root.ReceiverTypeName}.{property.Name}' collides with generated member '{FlushMemberName}'."));
+                continue;
+            }
+
+            if (!property.GetterAccessibleFromGeneratedAccumulator)
+            {
+                diagnostics.Add(Diagnostic(
+                    root.Location,
+                    $"Registration root property '{root.ReceiverTypeName}.{property.Name}' matches a generated accumulator receiver, but its getter is not accessible from generated accumulator code."));
+                continue;
+            }
+
+            children.Add(new RegistrationChildAccumulatorModel(
+                property.Name,
+                property.DeclaringTypeName,
+                target.AccumulatorName));
+        }
+
+        diagnostics.AddRange(GeneratedMemberCollisionDiagnostics(root, children));
+        return new RegistrationChildSelection(
+            new EquatableArray<RegistrationChildAccumulatorModel>(children),
+            new EquatableArray<PluginKernelDiagnostic>(diagnostics));
+    }
+
+    private static List<RegistrationAccumulatorTargetModel> MatchingTargets(
+        RegistrationRootPropertyModel property,
+        Dictionary<string, RegistrationAccumulatorTargetModel> targetByReceiver)
+    {
+        var matches = new List<RegistrationAccumulatorTargetModel>();
+        foreach (var receiverTypeName in property.AssignableReceiverTypeNames)
+        {
+            if (targetByReceiver.TryGetValue(receiverTypeName, out var target))
+            {
+                matches.Add(target);
             }
         }
 
-        return new EquatableArray<RegistrationChildAccumulatorModel>(children);
+        return matches;
     }
+
+    private static IEnumerable<PluginKernelDiagnostic> GeneratedMemberCollisionDiagnostics(
+        RegistrationRootAccumulatorModel root,
+        List<RegistrationChildAccumulatorModel> children)
+    {
+        foreach (var group in children.GroupBy(static child => FieldName(child.PropertyName), StringComparer.Ordinal))
+        {
+            var collidingProperties = group
+                .Select(static child => child.PropertyName)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            if (collidingProperties.Length <= 1)
+            {
+                continue;
+            }
+
+            yield return Diagnostic(
+                root.Location,
+                $"Registration root properties {PropertyList(collidingProperties)} collide on generated backing field '{group.Key}'.");
+        }
+    }
+
+    private static string ReceiverList(List<RegistrationAccumulatorTargetModel> matches)
+        => string.Join(", ", matches.Select(static match => "'" + match.ReceiverTypeName + "'"));
+
+    private static string PropertyList(IEnumerable<string> propertyNames)
+        => string.Join(", ", propertyNames.Select(static propertyName => "'" + propertyName + "'"));
+
+    private static string FieldName(string propertyName)
+        => "_" + char.ToLowerInvariant(propertyName[0]) + propertyName.Substring(1);
 
     private static HashSet<string> DuplicateKeys(IEnumerable<string> keys)
     {
@@ -139,4 +228,8 @@ internal static class RegistrationAccumulatorBatchFactory
 
     private static string NamespaceDisplay(string @namespace)
         => string.IsNullOrWhiteSpace(@namespace) ? "<global>" : @namespace;
+
+    private sealed record RegistrationChildSelection(
+        EquatableArray<RegistrationChildAccumulatorModel> Children,
+        EquatableArray<PluginKernelDiagnostic> Diagnostics);
 }

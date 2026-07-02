@@ -35,6 +35,61 @@ public sealed class SafeNetworkGrantValidationTests
                 timeout: timeout));
     }
 
+    [Fact]
+    public async Task Http_get_allows_configured_host_case_insensitively()
+    {
+        var result = await ExecuteNetworkAsync(
+            "https://api.example.com/config",
+            NetworkPolicyBuilder()
+                .GrantHttpGet(["API.EXAMPLE.COM"], maxResponseBytes: 1024)
+                .WithFuel(5_000)
+                .Build());
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+    }
+
+    [Fact]
+    public async Task Http_get_allows_explicit_default_port_authority()
+    {
+        var result = await ExecuteNetworkAsync(
+            "https://api.example.com/config",
+            NetworkPolicyBuilder()
+                .GrantHttpGet(["api.example.com:443"], maxResponseBytes: 1024)
+                .WithFuel(5_000)
+                .Build());
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+    }
+
+    [Fact]
+    public async Task Direct_http_grant_uses_default_scheme_and_timeout()
+    {
+        var host = SandboxTestHost.Create(networkInvoker: FakeInvoker("ok"));
+        var module = await host.ImportJsonAsync(NetworkJson("https://api.example.com/config"));
+        var policy = new SandboxPolicy(
+            "direct-http-defaults",
+            SandboxEffects.Pure | SandboxEffect.Network | SandboxEffect.Concurrency,
+            [
+                new CapabilityGrant(RuntimeCapabilityIds.Async, new Dictionary<string, string>()),
+                new CapabilityGrant(
+                    "net.http.get",
+                    new Dictionary<string, string>
+                    {
+                        ["allowedHosts"] = "api.example.com",
+                        ["maxResponseBytes"] = "1024"
+                    })
+            ],
+            new ResourceLimits(
+                MaxFuel: 5_000,
+                MaxNetworkBytesRead: 1024,
+                MaxNetworkBytesWritten: 1024));
+
+        var plan = await host.PrepareAsync(module, policy);
+        var result = await host.ExecuteAsync(plan, "main", SandboxValue.Unit);
+
+        Assert.True(result.Succeeded, result.Error?.SafeMessage);
+    }
+
     [Theory]
     [InlineData("api.example.com,,evil.example", "https")]
     [InlineData("https://api.example.com", "https")]

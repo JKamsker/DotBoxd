@@ -32,6 +32,28 @@ public sealed class QuerySatisfiabilityTests
     }
 
     [Fact]
+    public void Distinct_large_integer_equality_and_inequality_are_satisfiable()
+    {
+        var filter = QueryFilter.And([
+            QueryFilter.Compare("Id", QueryComparisonOperator.Equal, QueryValue.FromInteger(9007199254740993L)),
+            QueryFilter.Compare("Id", QueryComparisonOperator.NotEqual, QueryValue.FromInteger(9007199254740992L)),
+        ]);
+
+        Assert.True(QuerySatisfiability.IsSatisfiable(filter));
+    }
+
+    [Fact]
+    public void Distinct_large_integer_equalities_are_unsatisfiable()
+    {
+        var filter = QueryFilter.And([
+            QueryFilter.Compare("Id", QueryComparisonOperator.Equal, QueryValue.FromInteger(9007199254740993L)),
+            QueryFilter.Compare("Id", QueryComparisonOperator.Equal, QueryValue.FromInteger(9007199254740992L)),
+        ]);
+
+        Assert.False(QuerySatisfiability.IsSatisfiable(filter));
+    }
+
+    [Fact]
     public void Term_and_its_negation_is_rejected()
     {
         var filter = ExpressionQueryTranslator.TranslateFilter<SourcedTestEvent>(e => e.Flagged && !e.Flagged);

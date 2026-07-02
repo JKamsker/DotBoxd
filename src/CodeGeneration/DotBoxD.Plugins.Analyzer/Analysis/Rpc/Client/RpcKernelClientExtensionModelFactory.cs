@@ -37,9 +37,31 @@ internal static class RpcKernelClientExtensionModelFactory
         return new RpcKernelClientExtensions(property, method);
     }
 
+    public static void ValidateLanguageVersion(RpcKernelClientExtensions extensions, ParseOptions parseOptions)
+    {
+        if (extensions.IsEmpty ||
+            parseOptions is not CSharpParseOptions csharpOptions)
+        {
+            return;
+        }
+
+        var languageVersion = LanguageVersionFacts.MapSpecifiedToEffectiveVersion(csharpOptions.SpecifiedLanguageVersion);
+        if (languageVersion > LanguageVersion.CSharp13)
+        {
+            return;
+        }
+
+        throw new NotSupportedException(
+            "Service-backed server extension receiver helpers require C# 14 or later because generated client " +
+            "extensions use C# extension blocks; set LangVersion to 14.0/preview or remove the receiver extension attributes.");
+    }
+
     public static bool HasExtensionAttribute(ISymbol symbol)
         => HasAttribute(symbol, DotBoxDMetadataNames.ServerExtensionClientAttribute) ||
            HasAttribute(symbol, DotBoxDMetadataNames.ServerExtensionMethodAttribute);
+
+    public static bool HasClientPropertyAttribute(ISymbol symbol)
+        => HasAttribute(symbol, DotBoxDMetadataNames.ServerExtensionClientAttribute);
 
     public static bool HasReceiverExtensionAttribute(ISymbol symbol)
     {
@@ -66,7 +88,7 @@ internal static class RpcKernelClientExtensionModelFactory
             }
 
             var receiverType = ReceiverType(attribute, "property");
-            var name = OptionalName(attribute) ?? DefaultPropertyName(kernelType.Name);
+            var name = OptionalName(attribute, "property") ?? DefaultPropertyName(kernelType.Name);
             ValidateMemberName(name, "property");
             return new RpcKernelClientPropertyExtension(receiverType, name);
         }
@@ -86,7 +108,7 @@ internal static class RpcKernelClientExtensionModelFactory
             }
 
             var receiverType = ReceiverType(attribute, "method", defaultReceiverType);
-            var name = OptionalName(attribute) ?? kernelMethod.Name;
+            var name = OptionalName(attribute, "method") ?? kernelMethod.Name;
             ValidateMemberName(name, "method");
             ValidateReceiver(receiverType, name, "method");
             return new RpcKernelClientMethodExtension(receiverType, name);
@@ -120,16 +142,26 @@ internal static class RpcKernelClientExtensionModelFactory
         throw new NotSupportedException($"Server extension client {memberKind} requires a receiver type.");
     }
 
-    private static string? OptionalName(AttributeData attribute)
+    private static string? OptionalName(AttributeData attribute, string memberKind)
     {
         if (attribute.ConstructorArguments.Length < 2)
         {
             return null;
         }
 
-        return attribute.ConstructorArguments[1].Value is string name && !string.IsNullOrWhiteSpace(name)
-            ? name
-            : null;
+        if (attribute.ConstructorArguments[1].Value is null)
+        {
+            return null;
+        }
+
+        if (attribute.ConstructorArguments[1].Value is not string name ||
+            string.IsNullOrWhiteSpace(name))
+        {
+            throw new NotSupportedException(
+                $"Server extension client {memberKind} name must not be empty or whitespace.");
+        }
+
+        return name;
     }
 
     private static void ValidateMemberName(string name, string memberKind)
@@ -179,46 +211,7 @@ internal static class RpcKernelClientExtensionModelFactory
     }
 
     private static void EnsureAccessibleFromGeneratedClient(ITypeSymbol type, string description)
-    {
-        if (!IsTypeAccessibleFromGeneratedClient(type))
-        {
-            throw new NotSupportedException($"{description} must be accessible from generated client code.");
-        }
-    }
-
-    private static bool IsTypeAccessibleFromGeneratedClient(ITypeSymbol type)
-        => type switch
-        {
-            INamedTypeSymbol named => IsNamedTypeAccessibleFromGeneratedClient(named),
-            IArrayTypeSymbol array => IsTypeAccessibleFromGeneratedClient(array.ElementType),
-            IPointerTypeSymbol pointer => IsTypeAccessibleFromGeneratedClient(pointer.PointedAtType),
-            ITypeParameterSymbol or IDynamicTypeSymbol => true,
-            _ => false
-        };
-
-    private static bool IsNamedTypeAccessibleFromGeneratedClient(INamedTypeSymbol type)
-    {
-        for (INamedTypeSymbol? current = type; current is not null; current = current.ContainingType)
-        {
-            if (!IsAccessibleFromGeneratedClient(current.DeclaredAccessibility))
-            {
-                return false;
-            }
-
-            foreach (var typeArgument in current.TypeArguments)
-            {
-                if (!IsTypeAccessibleFromGeneratedClient(typeArgument))
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    private static bool IsAccessibleFromGeneratedClient(Accessibility accessibility)
-        => accessibility is Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal;
+        => RpcGeneratedClientAccessibility.EnsureAccessible(type, description);
 
     private static bool HasAttribute(ISymbol symbol, string metadataName)
     {

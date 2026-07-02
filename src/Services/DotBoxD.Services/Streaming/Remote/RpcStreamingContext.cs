@@ -15,11 +15,8 @@ public sealed class RpcStreamingContext : IRpcStreamingContext
     private readonly RpcStreamManager? _streams;
     private readonly ISerializer? _serializer;
     private readonly CancellationToken _ct;
-    private readonly RpcStreamHandle[]? _declaredInboundStreams;
-    private int[]? _claimedInboundStreamIds;
+    private readonly RpcInboundStreamClaims? _inboundClaims;
     private RpcStreamAttachment? _response;
-    private int _claimedInboundStreamCount;
-    private bool _claimedSingleInboundStream;
 
     public static RpcStreamingContext Disabled { get; } = new();
 
@@ -36,10 +33,15 @@ public sealed class RpcStreamingContext : IRpcStreamingContext
         _streams = streams;
         _serializer = serializer;
         _ct = ct;
-        _declaredInboundStreams = NormalizeDeclaredInboundStreams(declaredInboundStreams);
+        _inboundClaims = RpcInboundStreamClaims.Create(declaredInboundStreams);
     }
 
     internal RpcStreamAttachment? Response => _response;
+
+    internal void EnsureAllDeclaredInboundStreamsClaimed()
+    {
+        _inboundClaims?.EnsureAllClaimed();
+    }
 
     internal async ValueTask AbandonResponseAsync()
     {
@@ -147,68 +149,14 @@ public sealed class RpcStreamingContext : IRpcStreamingContext
 
     private void ClaimDeclaredInbound(RpcStreamHandle handle)
     {
-        var declared = _declaredInboundStreams;
-        if (declared is null ||
-            !TryGetDeclaredKind(declared, handle.StreamId, out var declaredKind))
+        var claims = _inboundClaims;
+        if (claims is null)
         {
             throw new ServiceProtocolException(
                 $"Inbound stream id '{handle.StreamId}' was not declared by the request.");
         }
 
-        if (declaredKind != handle.Kind)
-        {
-            throw new ServiceProtocolException(
-                $"Inbound stream id '{handle.StreamId}' was declared as '{declaredKind}', not '{handle.Kind}'.");
-        }
-
-        if (declared.Length == 1)
-        {
-            if (_claimedSingleInboundStream)
-            {
-                throw new ServiceProtocolException(
-                    $"Inbound stream id '{handle.StreamId}' was already claimed.");
-            }
-
-            _claimedSingleInboundStream = true;
-            return;
-        }
-
-        var claimed = _claimedInboundStreamIds ??= new int[declared.Length];
-        for (var i = 0; i < _claimedInboundStreamCount; i++)
-        {
-            if (claimed[i] == handle.StreamId)
-            {
-                throw new ServiceProtocolException(
-                    $"Inbound stream id '{handle.StreamId}' was already claimed.");
-            }
-        }
-
-        claimed[_claimedInboundStreamCount++] = handle.StreamId;
-    }
-
-    private static bool TryGetDeclaredKind(
-        RpcStreamHandle[] declared,
-        int streamId,
-        out RpcStreamKind kind)
-    {
-        if (declared.Length == 1)
-        {
-            var handle = declared[0];
-            kind = handle.Kind;
-            return handle.StreamId == streamId;
-        }
-
-        foreach (var handle in declared)
-        {
-            if (handle.StreamId == streamId)
-            {
-                kind = handle.Kind;
-                return true;
-            }
-        }
-
-        kind = default;
-        return false;
+        claims.Claim(handle);
     }
 
     private void EnsureEnabled()
@@ -227,33 +175,4 @@ public sealed class RpcStreamingContext : IRpcStreamingContext
         }
     }
 
-    private static RpcStreamHandle[]? NormalizeDeclaredInboundStreams(
-        RpcStreamHandle[]? handles)
-    {
-        if (handles is null || handles.Length == 0)
-        {
-            return null;
-        }
-
-        if (handles.Length == 1)
-        {
-            return handles;
-        }
-
-        for (var i = 0; i < handles.Length - 1; i++)
-        {
-            var streamId = handles[i].StreamId;
-            for (var j = i + 1; j < handles.Length; j++)
-            {
-                if (handles[j].StreamId == streamId)
-                {
-                    throw new ArgumentException(
-                        $"Duplicate inbound stream id '{streamId}'.",
-                        nameof(handles));
-                }
-            }
-        }
-
-        return handles;
-    }
 }

@@ -58,7 +58,11 @@ internal enum ParameterStreamKind
 /// interface name (so the proxy can construct a sibling proxy) and the RPC service name
 /// (so the wire instance dispatch hits the right registry slot).
 /// </summary>
-internal sealed record SubServiceInfo(string QualifiedInterfaceName, string ServiceName, bool AllowsNull);
+internal sealed record SubServiceInfo(
+    string QualifiedInterfaceName,
+    string ServiceName,
+    bool AllowsNull,
+    bool HasProxyCompanion);
 
 /// <summary>
 /// Immutable, value-equatable representation of a DotBoxD service.
@@ -74,9 +78,11 @@ internal sealed record ServiceModel(
 /// <summary>Immutable, value-equatable representation of a get-only sub-service property.</summary>
 internal sealed record ServicePropertyModel(
     string Name,
+    string ImplementationType,
     string Type,
     string? ProxyType,
-    bool IsInstanceId);
+    bool IsInstanceId,
+    SubServiceInfo? SubService);
 
 /// <summary>
 /// Immutable, value-equatable representation of a service method. When
@@ -92,6 +98,7 @@ internal sealed record MethodModel(
     string DeclaredReturnType,
     string? UnwrappedReturnType,
     string ReturnRefKindKeyword,
+    string ReturnAttributePrefix,
     bool HasCancellationToken,
     EquatableArray<ParameterModel> Parameters,
     EquatableArray<string> AdditionalExplicitImplementationTypes,
@@ -110,24 +117,36 @@ internal sealed record MethodModel(
 /// Immutable, value-equatable representation of a method parameter.
 /// <see cref="IsCancellationToken"/> marks parameters that are part of the user's
 /// signature but are not serialized into the RPC payload.
+/// <see cref="ScopeKeyword"/> preserves a user-authored <c>scoped</c> modifier.
 /// <see cref="RefKindKeyword"/> holds the C# modifier text (<c>""</c>, <c>"ref "</c>,
 /// <c>"in "</c>, or <c>"out "</c>).
+/// <see cref="IsParams"/> preserves a user-authored <c>params</c> modifier for generated public
+/// signatures when the parameter is still the final parameter.
+/// <see cref="CallerInfoAttributePrefix"/> preserves compiler-recognized parameter attributes as
+/// generated-source text, including a trailing space when non-empty.
 /// <see cref="DefaultValueLiteral"/> holds the C# literal text of a non-cancellation-token
-/// parameter's explicit default value (e.g. <c>"\"x\""</c>, <c>"5"</c>, <c>"null"</c>), so the
-/// generated proxy and async-sibling signatures preserve it; empty when there is no default or it
-/// cannot be expressed as a literal. Cancellation-token defaults are emitted as <c>= default</c>.
+/// parameter's default value (e.g. <c>"\"x\""</c>, <c>"5"</c>, <c>"null"</c>, <c>"default"</c>),
+/// so the generated proxy and async-sibling signatures preserve it; empty when there is no default
+/// or it cannot be expressed as a literal. Cancellation-token defaults are emitted as
+/// <c>= default</c>.
+/// <see cref="MetadataDefaultValueExpression"/> holds the generated C# expression used for metadata
+/// default values when it differs from the public signature literal.
 /// </summary>
 internal sealed record ParameterModel(
     string Name,
     string Type,
     string SignatureType,
     string RefKindKeyword = "",
+    bool IsParams = false,
     bool IsCancellationToken = false,
     bool HasDefaultValue = false,
     string DefaultValueLiteral = "",
+    string MetadataDefaultValueExpression = "",
     ParameterStreamKind StreamKind = ParameterStreamKind.None,
     string? StreamItemType = null,
-    string MetadataType = "");
+    string MetadataType = "",
+    string CallerInfoAttributePrefix = "",
+    string ScopeKeyword = "");
 
 /// <summary>
 /// A <see cref="ServiceModel"/> paired with its computed async-sibling projection. Lives

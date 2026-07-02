@@ -131,14 +131,13 @@ public sealed class StreamConnectionCoverageTests
     }
 
     [Fact]
-    public async Task ReceiveAsync_ReturnsEmpty_WhenPrefixTruncated()
+    public async Task ReceiveAsync_Throws_WhenPrefixTruncated()
     {
-        // Fewer than 4 bytes available: ReadExactAsync returns < 4 and the receive returns Empty.
         await using var connection = new StreamConnection(new MemoryStream(new byte[] { 1, 2 }));
 
-        using var received = await connection.ReceiveAsync().WaitAsync(Timeout);
-
-        Assert.Same(Payload.Empty, received);
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(
+            () => connection.ReceiveAsync().WaitAsync(Timeout));
+        Assert.Contains("frame length bytes", ex.Message);
     }
 
     [Fact]
@@ -225,6 +224,23 @@ public sealed class StreamConnectionCoverageTests
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => receiveTask.WaitAsync(Timeout));
+    }
+
+    [Fact]
+    public async Task ReceiveAsync_ConcurrentCall_ThrowsInvalidOperation()
+    {
+        await using var stream = new NeverReturnsStream();
+        await using var connection = new StreamConnection(stream, ownsStream: false);
+        using var cts = new CancellationTokenSource();
+        var firstReceive = connection.ReceiveAsync(cts.Token);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => connection.ReceiveAsync().WaitAsync(Timeout));
+
+        Assert.Contains("one pending receive", ex.Message);
+        cts.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => firstReceive.WaitAsync(Timeout));
     }
 
     [Fact]

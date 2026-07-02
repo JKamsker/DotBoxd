@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Text;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.HookResults;
 
@@ -7,7 +9,7 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.HookResults;
 /// <c>Reject(string? reason = null)</c>, and a <c>With&lt;Field&gt;(value)</c> per non-control field — into a
 /// partial declaration. Bodies are tiny (<c>new() { Success = true }</c> / <c>this with { … }</c>) so the
 /// inliner can fold them when a <c>.Register(...)</c> handler is lowered to verified <c>record.new</c> IR.
-/// Only members the author did not declare manually are emitted.
+/// Only same-arity methods the author did not declare manually are emitted.
 /// </summary>
 internal static class HookResultBuilderEmitter
 {
@@ -64,7 +66,7 @@ internal static class HookResultBuilderEmitter
 
     private static void EmitOk(StringBuilder builder, string indent, HookResultModel model)
     {
-        if (Contains(model.ExistingMembers, "Ok"))
+        if (Contains(model.ExistingMembers, "Ok", parameterCount: 0))
         {
             return;
         }
@@ -76,7 +78,7 @@ internal static class HookResultBuilderEmitter
 
     private static void EmitReject(StringBuilder builder, string indent, HookResultModel model)
     {
-        if (Contains(model.ExistingMembers, "Reject"))
+        if (Contains(model.ExistingMembers, "Reject", parameterCount: 1))
         {
             return;
         }
@@ -89,23 +91,36 @@ internal static class HookResultBuilderEmitter
     private static void EmitWith(StringBuilder builder, string indent, HookResultModel model, HookResultField field)
     {
         var methodName = "With" + field.Name;
-        if (Contains(model.ExistingMembers, methodName))
+        if (Contains(model.ExistingMembers, methodName, parameterCount: 1))
         {
             return;
         }
 
         builder.Append(indent).Append("public ").Append(model.TypeName).Append(' ').Append(methodName)
             .Append('(').Append(field.TypeFullName).Append(' ').Append(field.ParameterName).AppendLine(")");
-        builder.Append(indent).Append("    => this with { ").Append(field.Name).Append(" = ")
+        builder.Append(indent).Append("    => this with { ").Append(EscapeIdentifier(field.Name)).Append(" = ")
             .Append(field.ParameterName).AppendLine(" };");
         builder.AppendLine();
     }
 
-    private static bool Contains(EquatableArray<string> members, string name)
+    private static string EscapeIdentifier(string name)
+    {
+        var kind = SyntaxFacts.GetKeywordKind(name);
+        if (kind == SyntaxKind.None)
+        {
+            kind = SyntaxFacts.GetContextualKeywordKind(name);
+        }
+
+        return kind == SyntaxKind.None ? name : "@" + name;
+    }
+
+    private static bool Contains(EquatableArray<HookResultExistingMember> members, string name, int parameterCount)
     {
         for (var i = 0; i < members.Count; i++)
         {
-            if (string.Equals(members[i], name, StringComparison.Ordinal))
+            var member = members[i];
+            if (string.Equals(member.Name, name, StringComparison.Ordinal) &&
+                (member.BlocksAllOverloads || member.ParameterCount == parameterCount))
             {
                 return true;
             }
@@ -115,8 +130,67 @@ internal static class HookResultBuilderEmitter
     }
 
     private static string HintName(HookResultModel model)
-        => (model.Namespace is null ? model.TypeName : model.Namespace.Replace('.', '_') + "_" + model.TypeName)
+        => (model.Namespace is null ? model.TypeName : NamespaceHint(model.Namespace) + "_" + model.TypeName)
             + ".HookResultBuilders.g.cs";
+
+    private static string NamespaceHint(string @namespace)
+    {
+        var builder = new StringBuilder();
+        foreach (var segment in @namespace.Split('.'))
+        {
+            if (builder.Length > 0)
+            {
+                builder.Append("__");
+            }
+
+            builder.Append(segment.Length.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                .Append('_')
+                .Append(HintNameSegment(segment));
+        }
+
+        return builder.ToString();
+    }
+
+    private static string HintNameSegment(string segment)
+    {
+        var builder = new StringBuilder(segment.Length);
+        for (var i = 0; i < segment.Length; i++)
+        {
+            var character = segment[i];
+            var characterCount = IsSurrogatePair(segment, i) ? 2 : 1;
+            if ((characterCount == 1 && character == '_') || IsLetterOrDigit(segment, i))
+            {
+                builder.Append(segment, i, characterCount);
+                i += characterCount - 1;
+                continue;
+            }
+
+            var scalar = characterCount == 2
+                ? char.ConvertToUtf32(character, segment[i + 1])
+                : character;
+            builder.Append("_x")
+                .Append(scalar.ToString(scalar <= 0xFFFF ? "X4" : "X", CultureInfo.InvariantCulture));
+            i += characterCount - 1;
+        }
+
+        return builder.ToString();
+    }
+
+    private static bool IsSurrogatePair(string value, int index)
+        => index + 1 < value.Length &&
+           char.IsHighSurrogate(value[index]) &&
+           char.IsLowSurrogate(value[index + 1]);
+
+    private static bool IsLetterOrDigit(string value, int index)
+    {
+        var category = CharUnicodeInfo.GetUnicodeCategory(value, index);
+        return category is UnicodeCategory.UppercaseLetter or
+            UnicodeCategory.LowercaseLetter or
+            UnicodeCategory.TitlecaseLetter or
+            UnicodeCategory.ModifierLetter or
+            UnicodeCategory.OtherLetter or
+            UnicodeCategory.DecimalDigitNumber;
+    }
 }
 
 internal sealed record HookResultBuilderSource(string HintName, string Source);

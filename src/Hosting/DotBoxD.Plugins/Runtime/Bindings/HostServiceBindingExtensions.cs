@@ -18,7 +18,7 @@ public static class HostServiceBindingExtensions
         ArgumentNullException.ThrowIfNull(implementation);
 
         var visited = new HashSet<Type>();
-        var registeredBindings = new HashSet<string>(StringComparer.Ordinal);
+        var registeredBindings = new Dictionary<string, HostServiceBindingRegistration>(StringComparer.Ordinal);
         AddServiceBindings(builder, typeof(TService), implementation, visited, registeredBindings);
         return builder;
     }
@@ -28,8 +28,14 @@ public static class HostServiceBindingExtensions
         Type serviceType,
         object implementation,
         HashSet<Type> visited,
-        HashSet<string> registeredBindings)
+        Dictionary<string, HostServiceBindingRegistration> registeredBindings)
     {
+        if (!serviceType.IsInterface)
+        {
+            throw new InvalidOperationException(
+                $"Host service contract '{serviceType.FullName}' must be an interface.");
+        }
+
         if (!visited.Add(serviceType))
         {
             return;
@@ -59,7 +65,8 @@ public static class HostServiceBindingExtensions
             AddBinding(
                 builder,
                 registeredBindings,
-                HostServiceBindingFactory.CreateBinding(method, target, implementation, capability));
+                HostServiceBindingFactory.CreateBinding(method, target, implementation, capability),
+                HostServiceBindingRouteSignature.ForMethod(method));
         }
 
         foreach (var property in ServiceProperties(serviceType))
@@ -95,12 +102,18 @@ public static class HostServiceBindingExtensions
         Type parentServiceType,
         object parentImplementation,
         MethodInfo factoryMethod,
-        HashSet<string> registeredBindings)
+        Dictionary<string, HostServiceBindingRegistration> registeredBindings)
     {
         if (HostServiceBindingFactory.UnwrapReturnType(factoryMethod.ReturnType) is not { } handleServiceType ||
             !HasDotBoxDServiceAttribute(handleServiceType))
         {
             return false;
+        }
+
+        if (!handleServiceType.IsInterface)
+        {
+            throw new InvalidOperationException(
+                $"Host service contract '{handleServiceType.FullName}' must be an interface.");
         }
 
         var factoryDeclaringType = factoryMethod.DeclaringType ?? parentServiceType;
@@ -127,7 +140,8 @@ public static class HostServiceBindingExtensions
                     targetFactory,
                     parentImplementation,
                     handleMethod,
-                    capability));
+                    capability),
+                HostServiceBindingRouteSignature.ForHandle(factoryMethod, handleMethod));
         }
 
         return true;
@@ -138,7 +152,7 @@ public static class HostServiceBindingExtensions
         Type serviceType,
         object implementation,
         PropertyInfo property,
-        HashSet<string> registeredBindings)
+        Dictionary<string, HostServiceBindingRegistration> registeredBindings)
     {
         var binding = property.GetCustomAttribute<HostBindingAttribute>();
         if (binding is null)
@@ -153,19 +167,53 @@ public static class HostServiceBindingExtensions
         AddBinding(
             builder,
             registeredBindings,
-            HostServiceBindingFactory.CreatePropertyBinding(property, targetGetter, implementation, binding));
+            HostServiceBindingFactory.CreatePropertyBinding(property, targetGetter, implementation, binding),
+            HostServiceBindingRouteSignature.ForProperty(property));
         return true;
     }
 
     private static void AddBinding(
         SandboxHostBuilder builder,
-        HashSet<string> registeredBindings,
-        BindingDescriptor descriptor)
+        Dictionary<string, HostServiceBindingRegistration> registeredBindings,
+        BindingDescriptor descriptor,
+        HostServiceBindingRouteSignature signature)
     {
-        if (registeredBindings.Add(descriptor.Id))
+        if (!registeredBindings.TryAdd(descriptor.Id, new HostServiceBindingRegistration(descriptor, signature)))
         {
-            builder.AddBinding(descriptor);
+            var existing = registeredBindings[descriptor.Id];
+            if (BindingShapesMatch(existing.Descriptor, descriptor))
+            {
+                if (existing.Signature.Matches(signature))
+                {
+                    return;
+                }
+
+                throw new InvalidOperationException(
+                    $"Host service duplicate host binding route '{descriptor.Id}' maps to the same positional " +
+                    "sandbox shape with different CLR contract or DTO field names. Overloaded host service " +
+                    "methods must use distinct binding routes.");
+            }
+
+            throw new InvalidOperationException(
+                $"Host service duplicate host binding route '{descriptor.Id}' maps to multiple service member shapes. " +
+                "Overloaded host service methods must use distinct binding routes.");
         }
+
+        builder.AddBinding(descriptor);
+    }
+
+    private static bool BindingShapesMatch(BindingDescriptor left, BindingDescriptor right)
+    {
+        return left.Version == right.Version &&
+               left.ReturnType == right.ReturnType &&
+               left.Effects == right.Effects &&
+               string.Equals(left.RequiredCapability, right.RequiredCapability, StringComparison.Ordinal) &&
+               left.CostModel == right.CostModel &&
+               left.AuditLevel == right.AuditLevel &&
+               left.Safety == right.Safety &&
+               left.Compiled == right.Compiled &&
+               left.IsAsync == right.IsAsync &&
+               left.Parameters.SequenceEqual(right.Parameters);
     }
 
     private static MethodInfo ResolveTargetMethod(Type interfaceType, Type implementationType, MethodInfo method)

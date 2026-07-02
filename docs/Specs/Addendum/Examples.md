@@ -6,14 +6,14 @@ The addendum is now demonstrated through one maintained runnable example:
   contracts, plugin control-plane service contract, MessagePack DTOs, and host binding facade.
 - `samples/GameServer/Examples.GameServer.Plugin` is the plugin child process. It authors
   kernels in C#, resolves the analyzer-generated packages, ships verified IR over IPC, tunes live
-  settings, and invokes a kernel RPC service.
+  settings, and invokes a server extension.
 - `samples/GameServer/Examples.GameServer.Server` is the parent process. It hosts the world
   simulation, installs packages into `DotBoxD.Plugins`, grants least-privilege policies, binds
   host-world capabilities, and unloads kernels when the plugin connection ends.
 
 The old topic-specific examples were removed to keep one high-quality sample. Their historical source
 is preserved by the `examples-before-prune-2026-06-15` tag, and the feature gaps left by removing them
-are tracked in [`docs/examples/coverage-gaps.md`](../../examples/coverage-gaps.md).
+are tracked in [`docs-site/src/content/docs/examples/coverage-gaps.md`](../../../docs-site/src/content/docs/examples/coverage-gaps.md).
 
 ## Recommended Walkthrough
 
@@ -110,20 +110,20 @@ it does not receive the world-read grant.
 The GameServer host also emits per-resource audit events from those bindings, uses deterministic cost
 models, and sets fuel and host-call budgets in `ServerPolicy`.
 
-### 5. Use Kernel RPC For Pushdown
+### 5. Use Server Extensions For Pushdown
 
 GameServer also shows the pushdown shape: the plugin supplies a batch operation that runs on the
 server next to fine-grained host bindings.
 
 ```csharp
-[KernelRpcService("monster-killer", typeof(IMonsterKillerService))]
+[ServerExtension("monster-killer", typeof(IMonsterKillerService))]
 public sealed partial class MonsterKillerKernel
 {
     private readonly IGameWorldAccess _world;
 
     public MonsterKillerKernel(IGameWorldAccess world) => _world = world;
 
-    [KernelRpcClientMethod(typeof(RemoteMonsterControl), "KillMonstersAsync")]
+    [ServerExtensionMethod(typeof(RemoteMonsterControl), "KillMonstersAsync")]
     public List<MonsterKillResult> KillMonsters(List<string> monsterIds, HookContext ctx)
     {
         var results = new List<MonsterKillResult>();
@@ -140,7 +140,7 @@ public sealed partial class MonsterKillerKernel
 ```
 
 The plugin invokes the generated client once; the server executes the generated verified IR and returns
-the result list. The server still exposes only reviewed fine-grained bindings, and the kernel RPC
+the result list. The server still exposes only reviewed fine-grained bindings, and the server-extension
 package receives write capability only because its manifest declares the kill binding.
 
 ### 6. Run The Example
@@ -150,5 +150,5 @@ dotnet run --project samples/GameServer/Examples.GameServer.Server/Examples.Game
 ```
 
 The server prints a baseline phase, launches the plugin child process, installs event kernels and the
-kernel RPC service, runs a with-plugin phase, then disconnects the plugin and shows that its kernels
+server-extension package, runs a with-plugin phase, then disconnects the plugin and shows that its kernels
 were unloaded with the connection.

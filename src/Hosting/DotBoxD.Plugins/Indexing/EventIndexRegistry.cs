@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Plugins.Kernel;
@@ -24,7 +25,10 @@ public sealed partial class EventIndexRegistry
 {
     private readonly object _gate = new();
     private readonly Action<SubscriptionDeliveryFault>? _onFault;
-    private readonly Dictionary<Type, IEventIndexChannel> _channels = [];
+    // Read lock-free on the hot Publish path; _gate still serializes Register's create-and-add and
+    // Unregister so a channel is created once per event type and _inFlight stays consistent. The channel's
+    // own Snapshot()/Add()/Remove() are already safe to run concurrently (Publish snapshots outside _gate).
+    private readonly ConcurrentDictionary<Type, IEventIndexChannel> _channels = new();
     private readonly List<Task> _inFlight = [];
     private long _considered;
     private long _prefiltered;
@@ -103,23 +107,16 @@ public sealed partial class EventIndexRegistry
     /// </summary>
     public void Publish<TEvent>(TEvent value, CancellationToken cancellationToken = default)
     {
-        if (cancellationToken.IsCancellationRequested)
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // Lock-free lookup: ConcurrentDictionary makes the read safe against Register's concurrent create,
+        // and the channel's Snapshot() already tolerates a registration adding to it mid-publish.
+        if (!_channels.TryGetValue(typeof(TEvent), out var existing))
         {
             return;
         }
 
-        EventIndexChannel<TEvent>? channel;
-        lock (_gate)
-        {
-            channel = _channels.TryGetValue(typeof(TEvent), out var existing)
-                ? (EventIndexChannel<TEvent>)existing
-                : null;
-        }
-
-        if (channel is null)
-        {
-            return;
-        }
+        var channel = (EventIndexChannel<TEvent>)existing;
 
         foreach (var entry in channel.Snapshot())
         {

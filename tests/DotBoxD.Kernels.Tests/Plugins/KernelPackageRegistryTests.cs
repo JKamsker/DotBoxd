@@ -1,3 +1,6 @@
+using DotBoxD.Kernels.Model;
+using DotBoxD.Kernels.Sandbox;
+using DotBoxD.Plugins;
 using DotBoxD.Plugins.Kernel;
 
 namespace DotBoxD.Kernels.Tests.Plugins;
@@ -29,6 +32,33 @@ public sealed class KernelPackageRegistryTests
     }
 
     [Fact]
+    public void Resolve_rejects_explicit_factories_that_return_null()
+    {
+        KernelPackageRegistry.Register(typeof(NullFactoryKernel), () => null!);
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => KernelPackageRegistry.Resolve<NullFactoryKernel>());
+
+        Assert.Contains(typeof(NullFactoryKernel).FullName!, ex.Message, StringComparison.Ordinal);
+        Assert.Contains("returned null", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Explicit_registration_overrides_cached_convention_factory()
+    {
+        var convention = KernelPackageRegistry.Resolve<CachedConventionKernel>();
+        var cached = KernelPackageRegistry.Resolve<CachedConventionKernel>();
+        var sentinel = KernelPackageRegistry.Resolve<FireDamageKernel>();
+
+        KernelPackageRegistry.Register(typeof(CachedConventionKernel), () => sentinel);
+        var resolved = KernelPackageRegistry.Resolve<CachedConventionKernel>();
+
+        Assert.Equal("cached-convention", convention.Manifest.PluginId);
+        Assert.Same(convention, cached);
+        Assert.Same(sentinel, resolved);
+    }
+
+    [Fact]
     public void Resolve_throws_a_clear_error_when_no_package_exists()
     {
         var ex = Assert.Throws<InvalidOperationException>(
@@ -39,5 +69,40 @@ public sealed class KernelPackageRegistryTests
 
     private sealed class ExplicitlyRegisteredKernel;
 
+    private sealed class NullFactoryKernel;
+
     private sealed class UngeneratedKernel;
+}
+
+public sealed class CachedConventionKernel;
+
+public static class CachedConventionPluginPackage
+{
+    private static readonly SourceSpan Span = new(1, 1);
+
+    public static PluginPackage Create()
+    {
+        var function = new SandboxFunction(
+            "Handle",
+            IsEntrypoint: true,
+            [],
+            SandboxType.Unit,
+            [new ReturnStatement(new LiteralExpression(SandboxValue.Unit, Span), Span)]);
+        var module = new SandboxModule(
+            "cached-convention",
+            SemVersion.One,
+            SemVersion.One,
+            [],
+            [function],
+            new Dictionary<string, string> { ["pluginId"] = "cached-convention" });
+        var manifest = new PluginManifest(
+            "cached-convention",
+            "CachedConvention",
+            ExecutionMode.Auto,
+            ["Cpu"],
+            [],
+            []);
+
+        return PluginPackage.Create(manifest, module, new KernelEntrypoints("Handle", "Handle"));
+    }
 }

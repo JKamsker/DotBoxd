@@ -8,7 +8,7 @@ namespace DotBoxD.Services.SourceGenerator.Generation;
 internal static class ProxyStreamSetupEmitter
 {
     public static (
-        string? ArrayName,
+        string? ArgumentName,
         System.Collections.Generic.Dictionary<int, string> Handles,
         System.Collections.Generic.List<(string HandleName, string ReservedName)>? Reservations) Emit(
         StringBuilder sb,
@@ -25,7 +25,7 @@ internal static class ProxyStreamSetupEmitter
             return (null, handles, null);
         }
 
-        var arrayName = locals.Reserve("__dotboxd_streams", ct);
+        var streamArgumentName = locals.Reserve("__dotboxd_streams", ct);
         var reservations =
             new System.Collections.Generic.List<(string HandleName, string ReservedName, string Kind, string AttachmentExpression)>(streamCount);
         var reservationFlags = new System.Collections.Generic.List<(string HandleName, string ReservedName)>(streamCount);
@@ -45,7 +45,9 @@ internal static class ProxyStreamSetupEmitter
             reservations.Add((
                 handleName,
                 reservedName,
-                parameter.StreamKind == ParameterStreamKind.AsyncEnumerable ? "Items" : "Binary",
+                parameter.StreamKind == ParameterStreamKind.AsyncEnumerable
+                    ? ServicesGeneratorMemberNames.RpcStreamKind.Items
+                    : ServicesGeneratorMemberNames.RpcStreamKind.Binary,
                 BuildAttachmentExpression(parameter, handleName)));
             reservationFlags.Add((handleName, reservedName));
 
@@ -53,8 +55,8 @@ internal static class ProxyStreamSetupEmitter
             sb.AppendLine($"{indent}var {reservedName} = false;");
         }
 
-        EmitReservationBlock(sb, method, reservations, locals, ct, indent, arrayName);
-        return (arrayName, handles, reservationFlags);
+        EmitReservationBlock(sb, method, reservations, locals, ct, indent, streamArgumentName);
+        return (streamArgumentName, handles, reservationFlags);
     }
 
     private static int CountStreamedParameters(
@@ -81,27 +83,38 @@ internal static class ProxyStreamSetupEmitter
         GeneratedLocalNames locals,
         CancellationToken ct,
         string indent,
-        string arrayName)
+        string streamArgumentName)
     {
-        sb.AppendLine($"{indent}{ServicesGeneratorTypeNames.ArrayOf(ServicesGeneratorTypeNames.GlobalRpcStreamAttachment)} {arrayName};");
+        var argumentType = reservations.Count == 1
+            ? ServicesGeneratorTypeNames.GlobalRpcStreamAttachment
+            : ServicesGeneratorTypeNames.ArrayOf(ServicesGeneratorTypeNames.GlobalRpcStreamAttachment);
+        sb.AppendLine($"{indent}{argumentType} {streamArgumentName};");
         sb.AppendLine($"{indent}try");
         sb.AppendLine($"{indent}{{");
         foreach (var reservation in reservations)
         {
             ct.ThrowIfCancellationRequested();
-            sb.AppendLine($"{indent}    {reservation.HandleName} = this._invoker.ReserveStream({ServicesGeneratorTypeNames.GlobalRpcStreamKind}.{reservation.Kind});");
+            sb.AppendLine($"{indent}    {reservation.HandleName} = this._invoker.{ServicesGeneratorMemberNames.RpcInvoker.ReserveStream}({ServicesGeneratorTypeNames.GlobalRpcStreamKind}.{reservation.Kind});");
             sb.AppendLine($"{indent}    {reservation.ReservedName} = true;");
         }
 
-        sb.AppendLine($"{indent}    {arrayName} = new {ServicesGeneratorTypeNames.ArrayOf(ServicesGeneratorTypeNames.GlobalRpcStreamAttachment)}");
-        sb.AppendLine($"{indent}    {{");
-        foreach (var reservation in reservations)
+        if (reservations.Count == 1)
         {
-            ct.ThrowIfCancellationRequested();
-            sb.AppendLine($"{indent}        {reservation.AttachmentExpression},");
+            sb.AppendLine($"{indent}    {streamArgumentName} = {reservations[0].AttachmentExpression};");
+        }
+        else
+        {
+            sb.AppendLine($"{indent}    {streamArgumentName} = new {ServicesGeneratorTypeNames.ArrayOf(ServicesGeneratorTypeNames.GlobalRpcStreamAttachment)}");
+            sb.AppendLine($"{indent}    {{");
+            foreach (var reservation in reservations)
+            {
+                ct.ThrowIfCancellationRequested();
+                sb.AppendLine($"{indent}        {reservation.AttachmentExpression},");
+            }
+
+            sb.AppendLine($"{indent}    }};");
         }
 
-        sb.AppendLine($"{indent}    }};");
         sb.AppendLine($"{indent}}}");
         var canReturnFaulted = ProxyFaultedReturnEmitter.CanReturnFaulted(method.ReturnKind);
         if (canReturnFaulted)
@@ -140,7 +153,7 @@ internal static class ProxyStreamSetupEmitter
             var reservation = reservations[i];
             sb.AppendLine($"{indent}    if ({reservation.ReservedName})");
             sb.AppendLine($"{indent}    {{");
-            sb.AppendLine($"{indent}        this._invoker.ReleaseStream({reservation.HandleName});");
+            sb.AppendLine($"{indent}        this._invoker.{ServicesGeneratorMemberNames.RpcInvoker.ReleaseStream}({reservation.HandleName});");
             sb.AppendLine($"{indent}    }}");
         }
     }
@@ -149,11 +162,11 @@ internal static class ProxyStreamSetupEmitter
         parameter.StreamKind switch
         {
             ParameterStreamKind.Stream =>
-                $"{ServicesGeneratorTypeNames.GlobalRpcStreamAttachment}.FromStream({handleName}, {parameter.Name})",
+                $"{ServicesGeneratorTypeNames.GlobalRpcStreamAttachment}.{ServicesGeneratorMemberNames.RpcStreamAttachment.FromStream}({handleName}, {parameter.Name})",
             ParameterStreamKind.Pipe =>
-                $"{ServicesGeneratorTypeNames.GlobalRpcStreamAttachment}.FromPipe({handleName}, {parameter.Name})",
+                $"{ServicesGeneratorTypeNames.GlobalRpcStreamAttachment}.{ServicesGeneratorMemberNames.RpcStreamAttachment.FromPipe}({handleName}, {parameter.Name})",
             ParameterStreamKind.AsyncEnumerable =>
-                $"{ServicesGeneratorTypeNames.GlobalRpcStreamAttachment}.FromAsyncEnumerable<{parameter.StreamItemType}>({handleName}, {parameter.Name})",
+                $"{ServicesGeneratorTypeNames.GlobalRpcStreamAttachment}.{ServicesGeneratorMemberNames.RpcStreamAttachment.FromAsyncEnumerable}<{parameter.StreamItemType}>({handleName}, {parameter.Name})",
             _ => throw new System.InvalidOperationException("Parameter is not streamed."),
         };
 }

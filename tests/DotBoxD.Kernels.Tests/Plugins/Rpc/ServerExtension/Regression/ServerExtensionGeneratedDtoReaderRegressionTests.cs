@@ -152,6 +152,28 @@ public sealed partial class ServerExtensionGeneratedDtoReaderRegressionTests
     }
 
     [Fact]
+    public void Direct_extension_rejects_a_mismatched_computed_get_only_member()
+    {
+        var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly(ComputedDtoSource);
+        var control = CreateControl(
+            assembly,
+            "point",
+            KernelRpcBinaryCodec.EncodeValue(KernelRpcValue.Record(
+            [
+                KernelRpcValue.Int32(3),
+                KernelRpcValue.Int32(4),
+                KernelRpcValue.Int32(999)
+            ])));
+
+        var probe = assembly.GetType("Sample.Probe", throwOnError: true)!
+            .GetMethod("Read", BindingFlags.Public | BindingFlags.Static)!;
+
+        var ex = Assert.Throws<TargetInvocationException>(() => probe.Invoke(null, [control, 3]));
+
+        Assert.IsType<NotSupportedException>(ex.InnerException);
+    }
+
+    [Fact]
     public void Direct_extension_reconstructs_a_dto_with_constructor_and_settable_members()
     {
         var assembly = PluginAnalyzerGeneratedPackageFactory.CreateAssembly(ConstructorAndInitializerDtoSource);

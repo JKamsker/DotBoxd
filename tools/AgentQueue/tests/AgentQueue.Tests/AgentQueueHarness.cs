@@ -8,7 +8,7 @@ internal sealed class AgentQueueHarness : IDisposable
 
     public AgentQueueHarness()
     {
-        Root = Path.Combine(Path.GetTempPath(), "agentq-tests", Guid.NewGuid().ToString("N"));
+        Root = Path.Combine(Path.GetTempPath(), "agentq-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(Root);
         Directory.CreateDirectory(Path.Combine(Root, ".git"));
     }

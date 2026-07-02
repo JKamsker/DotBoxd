@@ -18,6 +18,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         var call = KernelMethodArgumentBinder.Bind(
             invocation,
             resolvedMethod,
+            _model.Compilation,
             $"[KernelMethod] '{KernelMethodArgumentBinder.Definition(resolvedMethod).Name}'");
         var method = call.Method;
         if (!method.IsStatic && !IsServerContextReceiver(invocation, method))
@@ -146,6 +147,11 @@ internal sealed partial class DotBoxDRpcJsonLowerer
         {
             throw new NotSupportedException(
                 $"[KernelMethod] '{parameter.ContainingSymbol.Name}' optional nullable parameter '{parameter.Name}' is not supported in InvokeAsync/server-extension IR.");
+        }
+
+        if (converted.SpecialType == SpecialType.System_String && value is string)
+        {
+            Allocates = true;
         }
 
         return LiteralJson(value);

@@ -69,6 +69,37 @@ internal static class SandboxTypeSourceEmitter
             return ManifestTypes.Guid;
         }
 
+        if (DotBoxDRpcTypeMapper.IsDateTimeWireType(type))
+        {
+            return ManifestTypes.Record;
+        }
+
+        if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
+        {
+            return ManifestTypes.Int;
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeOnlyWireType(type))
+        {
+            return ManifestTypes.Long;
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
+        {
+            return ManifestTypes.Long;
+        }
+
+        if (DotBoxDRpcTypeMapper.IsCancellationTokenWireType(type))
+        {
+            return ManifestTypes.Bool;
+        }
+
+        if (DotBoxDRpcTypeMapper.IsIndexWireType(type) ||
+            DotBoxDRpcTypeMapper.IsRangeWireType(type))
+        {
+            return ManifestTypes.Record;
+        }
+
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumType)
         {
             return DotBoxDRpcTypeMapper.EnumUsesI64(enumType) ? ManifestTypes.Long : ManifestTypes.Int;
@@ -110,6 +141,46 @@ internal static class SandboxTypeSourceEmitter
             return SandboxType + ".Guid";
         }
 
+        if (DotBoxDRpcTypeMapper.IsDateTimeWireType(type))
+        {
+            RejectNestedRecordAtDepth(depth);
+            return $"{SandboxType}.Record(new {SandboxType}[] {{ {SandboxType}.I64, {SandboxType}.I64 }})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
+        {
+            return SandboxType + ".I32";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeOnlyWireType(type))
+        {
+            return SandboxType + ".I64";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsTimeSpanWireType(type))
+        {
+            return SandboxType + ".I64";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsCancellationTokenWireType(type))
+        {
+            return SandboxType + ".Bool";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsIndexWireType(type))
+        {
+            RejectNestedRecordAtDepth(depth);
+            return $"{SandboxType}.Record(new {SandboxType}[] {{ {SandboxType}.I32, {SandboxType}.Bool }})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsRangeWireType(type))
+        {
+            RejectRangeRecordAtDepth(depth);
+            var indexType = $"{SandboxType}.Record(new {SandboxType}[] {{ {SandboxType}.I32, {SandboxType}.Bool }})";
+            return $"{SandboxType}.Record(new {SandboxType}[] {{ {indexType}, {indexType} }})";
+        }
+
+
         if (DotBoxDNullableScalarType.TryGetSupportedUnderlying(type, out var nullableUnderlying))
         {
             if (depth >= MaxDepth)
@@ -149,9 +220,9 @@ internal static class SandboxTypeSourceEmitter
 
         if (type is INamedTypeSymbol named && DotBoxDRpcTypeMapper.IsRecordDto(named))
         {
-            // A DTO that inherits public instance properties would silently drop them: RecordFields (and the
+            // A DTO that inherits public instance data members would silently drop them: RecordFields (and the
             // runtime marshaller's GetRecordShape) see only declared members. Fail safe instead of emitting a
-            // partial record shape — same rule the server-extension JsonType path enforces.
+            // partial record shape -- same rule the server-extension JsonType path enforces.
             DotBoxDRpcTypeMapper.RejectInheritedDtoProperties(named);
             var fields = DotBoxDRpcTypeMapper.RecordFields(named);
             var fieldTypes = new string[fields.Count];
@@ -164,5 +235,21 @@ internal static class SandboxTypeSourceEmitter
         }
 
         throw new NotSupportedException();
+    }
+
+    private static void RejectNestedRecordAtDepth(int depth)
+    {
+        if (depth >= MaxDepth)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private static void RejectRangeRecordAtDepth(int depth)
+    {
+        if (depth + 1 >= MaxDepth)
+        {
+            throw new NotSupportedException();
+        }
     }
 }
