@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\..\docs\channels\named-pipe-transport.md"
+    <None Include="..\..\..\docs-site\src\content\docs\channels\named-pipe-transport.md"
           Pack="true"
           PackagePath="\" />
   </ItemGroup>
