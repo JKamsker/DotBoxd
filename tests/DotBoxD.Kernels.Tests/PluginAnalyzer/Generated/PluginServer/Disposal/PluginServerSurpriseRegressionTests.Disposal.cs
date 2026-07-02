@@ -51,9 +51,12 @@ public sealed partial class PluginServerSurpriseRegressionTests
         Assert.IsType<ObjectDisposedException>(exception.InnerException);
         Assert.Contains(
             "public string PluginId<TService>() where TService : class\n    {\n        ThrowIfDisposed();\n        return _serverExtensions.TryGetValue",
-            generated,
+            NormalizeLineEndings(generated),
             StringComparison.Ordinal);
     }
+
+    private static string NormalizeLineEndings(string value)
+        => value.Replace("\r\n", "\n", StringComparison.Ordinal);
 
     private static Assembly Emit(Microsoft.CodeAnalysis.Compilation compilation)
     {
