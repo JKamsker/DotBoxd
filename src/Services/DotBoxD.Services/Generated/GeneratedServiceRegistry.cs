@@ -50,7 +50,7 @@ public static class GeneratedServiceRegistry
             throw new ArgumentNullException(nameof(dispatcherFactory));
         }
 
-        ValidateService<TService>(service);
+        GeneratedServiceMetadataValidator.ValidateForRegistration<TService>(service, nameof(service));
 
         lock (s_registrationLock)
         {
@@ -265,34 +265,6 @@ public static class GeneratedServiceRegistry
             $"No DotBoxD generated factory is registered for {FormatType(serviceInterface)}: {reason}. " +
             "Mark the interface with [DotBoxDService] and ensure the assembly that declares it runs the DotBoxD source generator. " +
             $"Assembly: {assemblyName}.");
-    }
-
-    private static void ValidateService<TService>(GeneratedService service)
-        where TService : class
-    {
-        if (service.ServiceType is null)
-        {
-            throw new ArgumentException("Generated service metadata must include a service type.", nameof(service));
-        }
-        if (service.ProxyType is null)
-        {
-            throw new ArgumentException("Generated service metadata must include a proxy type.", nameof(service));
-        }
-        if (service.DispatcherType is null)
-        {
-            throw new ArgumentException("Generated service metadata must include a dispatcher type.", nameof(service));
-        }
-        if (string.IsNullOrEmpty(service.ServiceName))
-        {
-            throw new ArgumentException("Generated service metadata must include a service name.", nameof(service));
-        }
-        if (service.ServiceType != typeof(TService))
-        {
-            throw new ArgumentException(
-                $"Generated service metadata describes {FormatType(service.ServiceType)}, " +
-                $"but it was registered for {FormatType(typeof(TService))}.",
-                nameof(service));
-        }
     }
 
     private static string FormatType(Type type) => type.FullName ?? type.Name;
