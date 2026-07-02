@@ -129,6 +129,64 @@ public sealed partial class PeerInboundCoverageTests
         await dispatcher.Canceled.Task.WaitAsync(ShortTimeout);
     }
 
+    [Fact]
+    public async Task ZeroIdCancelFrame_RaisesProtocolError_AndDisposesFrame()
+    {
+        var serializer = NewSerializer();
+        await using var connection = new ScriptedConnection();
+        var protocolErrors = new List<RpcProtocolErrorEventArgs>();
+        var cancelFrame = MessageFramer.FrameToPayload(0, MessageType.Cancel, ReadOnlySpan<byte>.Empty);
+
+        connection.Enqueue(cancelFrame);
+
+        await using var peer = RpcPeer.Over(connection, serializer);
+        peer.ProtocolError += (_, args) => protocolErrors.Add(args);
+        peer.Start();
+
+        await connection.WaitForReceiveCountAsync(1, ShortTimeout);
+        await WaitForPayloadDisposedAsync(cancelFrame);
+
+        var args = Assert.Single(protocolErrors);
+        Assert.Equal(0, args.MessageId);
+        Assert.Equal(MessageType.Cancel, args.MessageType);
+        Assert.Contains("Malformed cancel frame", args.Message);
+    }
+
+    [Fact]
+    public async Task CancelFrameWithTrailingPayload_RaisesProtocolErrorWithoutCancelingInboundRequest()
+    {
+        var serializer = NewSerializer();
+        await using var connection = new ScriptedConnection();
+        var dispatcher = new CancelAwareDispatcher();
+        var protocolErrors = new List<RpcProtocolErrorEventArgs>();
+
+        connection.Enqueue(CreateRequestFrame(serializer, 13, CancelAwareDispatcher.Service, "Wait"));
+
+        await using var peer = RpcPeer
+            .Over(
+                connection,
+                serializer,
+                new RpcPeerOptions { InboundQueueCapacity = null, RequestTimeout = TimeSpan.FromMinutes(5) })
+            .Provide((IServiceDispatcher)dispatcher);
+        peer.ProtocolError += (_, args) => protocolErrors.Add(args);
+        peer.Start();
+
+        await dispatcher.Started.Task.WaitAsync(ShortTimeout);
+        var requestToken = await dispatcher.ObservedToken.Task.WaitAsync(ShortTimeout);
+
+        var cancelFrame = MessageFramer.FrameToPayload(13, MessageType.Cancel, new byte[] { 1 });
+        connection.Enqueue(cancelFrame);
+
+        await connection.WaitForReceiveCountAsync(2, ShortTimeout);
+        await WaitForPayloadDisposedAsync(cancelFrame);
+
+        Assert.False(requestToken.IsCancellationRequested);
+        var args = Assert.Single(protocolErrors);
+        Assert.Equal(13, args.MessageId);
+        Assert.Equal(MessageType.Cancel, args.MessageType);
+        Assert.Contains("Malformed cancel frame", args.Message);
+    }
+
     // ---- StopAsync awaits in-flight inline (unbounded) dispatch on dispose (154-156, ObserveShutdown) --
 
 }
