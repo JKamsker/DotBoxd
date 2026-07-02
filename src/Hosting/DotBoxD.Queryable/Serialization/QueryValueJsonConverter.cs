@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -23,7 +24,7 @@ public sealed class QueryValueJsonConverter : JsonConverter<QueryValue>
             JsonTokenType.Null => QueryValue.Null,
             JsonTokenType.True => QueryValue.FromBoolean(true),
             JsonTokenType.False => QueryValue.FromBoolean(false),
-            JsonTokenType.String => QueryValue.FromString(reader.GetString()),
+            JsonTokenType.String => QueryValue.FromString(ReadString(ref reader, "query value")),
             JsonTokenType.Number => ReadNumber(ref reader),
             JsonTokenType.StartObject => ReadTagged(ref reader),
             _ => throw new JsonException($"Unsupported JSON token '{reader.TokenType}' for a query value."),
@@ -49,7 +50,7 @@ public sealed class QueryValueJsonConverter : JsonConverter<QueryValue>
                 writer.WriteNumberValue(value.Number);
                 break;
             case QueryValueKind.String:
-                writer.WriteStringValue(value.String);
+                WriteStringValue(writer, value.String);
                 break;
             case QueryValueKind.Guid:
                 WriteTagged(writer, "guid", value.Guid.ToString("D"));
@@ -76,6 +77,20 @@ public sealed class QueryValueJsonConverter : JsonConverter<QueryValue>
         writer.WriteEndObject();
     }
 
+    private static string? ReadString(ref Utf8JsonReader reader, string name)
+    {
+        RejectMalformedEscapedUtf16(ref reader, name);
+        var value = reader.GetString();
+        EnsureWellFormedUtf16(value, name);
+        return value;
+    }
+
+    private static void WriteStringValue(Utf8JsonWriter writer, string? value)
+    {
+        EnsureWellFormedUtf16(value, "query value");
+        writer.WriteStringValue(value);
+    }
+
     private static QueryValue ReadNumber(ref Utf8JsonReader reader) =>
         reader.TryGetInt64(out var integer)
             ? QueryValue.FromInteger(integer)
@@ -98,11 +113,11 @@ public sealed class QueryValueJsonConverter : JsonConverter<QueryValue>
             reader.Read();
             if (property == "kind")
             {
-                kind = reader.GetString();
+                kind = ReadString(ref reader, "tagged query value kind");
             }
             else if (property == "value")
             {
-                text = reader.GetString();
+                text = ReadString(ref reader, "tagged query value");
             }
         }
 
@@ -150,4 +165,125 @@ public sealed class QueryValueJsonConverter : JsonConverter<QueryValue>
 
     private static JsonException InvalidTaggedValue(string kind, string text) =>
         new($"Invalid tagged query value '{text}' for kind '{kind}'.");
+
+    private static void EnsureWellFormedUtf16(string? value, string name)
+    {
+        if (value is null)
+        {
+            return;
+        }
+
+        for (var i = 0; i < value.Length; i++)
+        {
+            var current = value[i];
+            if (char.IsHighSurrogate(current))
+            {
+                if (i + 1 < value.Length && char.IsLowSurrogate(value[i + 1]))
+                {
+                    i++;
+                    continue;
+                }
+
+                throw MalformedUtf16(name);
+            }
+
+            if (char.IsLowSurrogate(current))
+            {
+                throw MalformedUtf16(name);
+            }
+        }
+    }
+
+    private static void RejectMalformedEscapedUtf16(ref Utf8JsonReader reader, string name)
+    {
+        if (reader.HasValueSequence)
+        {
+            var value = reader.ValueSequence.ToArray();
+            RejectMalformedEscapedUtf16(value, name);
+            return;
+        }
+
+        RejectMalformedEscapedUtf16(reader.ValueSpan, name);
+    }
+
+    private static void RejectMalformedEscapedUtf16(ReadOnlySpan<byte> value, string name)
+    {
+        var index = 0;
+        while (index < value.Length)
+        {
+            if (value[index] != (byte)'\\')
+            {
+                index++;
+                continue;
+            }
+
+            index++;
+            if (index >= value.Length)
+            {
+                return;
+            }
+
+            if (value[index] != (byte)'u')
+            {
+                index++;
+                continue;
+            }
+
+            var codeUnit = ReadUnicodeEscape(value, index + 1);
+            if (char.IsHighSurrogate((char)codeUnit))
+            {
+                var nextEscape = index + 5;
+                if (nextEscape + 5 >= value.Length ||
+                    value[nextEscape] != (byte)'\\' ||
+                    value[nextEscape + 1] != (byte)'u')
+                {
+                    throw MalformedUtf16(name);
+                }
+
+                var nextCodeUnit = ReadUnicodeEscape(value, nextEscape + 2);
+                if (!char.IsLowSurrogate((char)nextCodeUnit))
+                {
+                    throw MalformedUtf16(name);
+                }
+
+                index = nextEscape + 6;
+                continue;
+            }
+
+            if (char.IsLowSurrogate((char)codeUnit))
+            {
+                throw MalformedUtf16(name);
+            }
+
+            index += 5;
+        }
+    }
+
+    private static int ReadUnicodeEscape(ReadOnlySpan<byte> value, int hexStart)
+    {
+        var codeUnit = 0;
+        for (var i = 0; i < 4; i++)
+        {
+            var digit = HexValue(value[hexStart + i]);
+            if (digit < 0)
+            {
+                throw new JsonException("Invalid Unicode escape in query value JSON.");
+            }
+
+            codeUnit = (codeUnit << 4) | digit;
+        }
+
+        return codeUnit;
+    }
+
+    private static int HexValue(byte value) => value switch
+    {
+        >= (byte)'0' and <= (byte)'9' => value - (byte)'0',
+        >= (byte)'A' and <= (byte)'F' => value - (byte)'A' + 10,
+        >= (byte)'a' and <= (byte)'f' => value - (byte)'a' + 10,
+        _ => -1,
+    };
+
+    private static JsonException MalformedUtf16(string name) =>
+        new($"The {name} contains malformed UTF-16 text with an unpaired surrogate.");
 }

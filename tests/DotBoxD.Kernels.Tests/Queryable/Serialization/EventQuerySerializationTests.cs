@@ -95,6 +95,9 @@ public sealed class EventQuerySerializationTests
         catch (InvalidOperationException)
         {
         }
+
+        Assert.Throws<JsonException>(() => EventQueryJson.Deserialize(
+            "{\"event\":\"E\",\"filter\":{\"kind\":\"compare\",\"path\":\"Name\",\"op\":\"eq\",\"value\":\"\\uD800\"}}"));
     }
 
     [Fact]
