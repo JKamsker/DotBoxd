@@ -138,6 +138,21 @@ public sealed class LoweredPipelineComposerTests
             new LoweredPipelineComposition("collide", [collides], SandboxType.I32)));
     }
 
+    [Fact]
+    public void Rejects_colliding_entrypoint_function_ids()
+    {
+        // ShouldHandle and Handle must have distinct, non-empty ids, else the module carries two functions with
+        // a colliding id. Guard at compose time rather than leaving it to the downstream structural validator.
+        var steps = MergeableIrPipelineFixture.ConfigureSteps();
+
+        Assert.Throws<ArgumentException>(() => LoweredPipelineComposer.Compose(
+            new LoweredPipelineComposition("dup", steps, SandboxType.String)
+            {
+                ShouldHandleFunctionId = "Same",
+                HandleFunctionId = "Same",
+            }));
+    }
+
     private static LoweredPipelineStep Step(
         LoweredPipelineStepKind kind,
         string inputTag,

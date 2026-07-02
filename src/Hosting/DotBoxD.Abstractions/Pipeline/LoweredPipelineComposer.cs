@@ -40,6 +40,14 @@ public static class LoweredPipelineComposer
     {
         ArgumentNullException.ThrowIfNull(composition);
         ArgumentException.ThrowIfNullOrEmpty(composition.ModuleId);
+        ArgumentException.ThrowIfNullOrEmpty(composition.ShouldHandleFunctionId);
+        ArgumentException.ThrowIfNullOrEmpty(composition.HandleFunctionId);
+        if (string.Equals(composition.ShouldHandleFunctionId, composition.HandleFunctionId, StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                "ShouldHandleFunctionId and HandleFunctionId must be distinct.", nameof(composition));
+        }
+
         var steps = composition.Steps;
         if (steps.Count == 0)
         {
