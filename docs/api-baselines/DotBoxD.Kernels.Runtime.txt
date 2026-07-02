@@ -21,6 +21,8 @@ public static bool CanBulkChargeFuel(SandboxContext context, long fuelPerUnit, i
 public static bool CanBulkChargeLoopIterations(SandboxContext context, int count, int fuelPerIteration)
 public static bool CanBulkChargeLoopIterationsAndFuel( SandboxContext context, int count, int fuelPerIteration, long fuelPerUnit)
 public static bool CanBulkChargeSandboxValue(SandboxContext context, SandboxValue value, int count)
+public static bool CanUseModuloBranchAccumulatorRaw( SandboxContext context, int current, int iterations, int divisor, int match, int thenDelta, int elseDelta, int loopFuel, int thenFuel, int elseFuel)
+public static bool CanUseModuloIndexAccumulatorRaw( SandboxContext context, int current, int index, int end, int divisor, int conditionFuel, int loopFuel)
 public static bool StringEqualsRaw(SandboxValue left, SandboxValue right)
 public static class DefaultSandboxBindings
 public static class MathBindings
@@ -34,6 +36,8 @@ public static double FloorF64Raw(double value) => Math.Floor(value)
 public static double RoundF64Raw(double value) => Math.Round(value, MidpointRounding.ToEven)
 public static double SqrtF64Raw(double value)
 public static int AccumulateLinearI32(SandboxContext context, int total, int inv, int iterations, int fuelPerIteration)
+public static int AddModuloBranchDeltasI32LoopRaw( SandboxContext context, int current, int iterations, int divisor, int match, int thenDelta, int elseDelta, int loopFuel, int thenFuel, int elseFuel)
+public static int AddModuloIndexAccumulatorI32LoopRaw( SandboxContext context, int current, int index, int end, int divisor, int conditionFuel, int loopFuel)
 public static int ClampI32Raw(int value, int min, int max)
 public static int ListCountRaw(SandboxValue value)
 public static int ListGetI32Raw(SandboxValue value, int index)

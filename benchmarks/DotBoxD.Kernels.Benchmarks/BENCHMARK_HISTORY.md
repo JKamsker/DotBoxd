@@ -1010,3 +1010,33 @@ one RPC arg control         28.9 ms     32,000,040 B checksum=1,000,000
 
 The one-argument control still allocates for the required argument array; the empty wire argument path removes
 the per-call zero-length array allocation.
+
+## General Bulk-Metered Loops + Guarded Accumulator Closed Forms
+
+Implemented the shared compiled loop-body mode that reuses the scalar `ExpressionEmitter` with per-node fuel
+suppressed inside reviewed loop regions, then bulk-charges the statically-known condition/body fuel. The first
+callers cover non-combinatorial gaps that were previously handled only by dedicated shape/type emitters:
+branched i64 bodies and f64/i64 while bodies. Added guarded O(1) helpers for the modulo-branch and modulo-index
+i32 accumulator shapes; guards fall back to the per-iteration loop whenever budget or overflow safety cannot be
+proven. The existing list remainder-cycle helper now charges only through the exact failing iteration on
+overflow or cyclic-index failure.
+
+Command:
+
+```text
+dotnet run --project benchmarks/DotBoxD.Kernels.Benchmarks/DotBoxD.Kernels.Benchmarks.csproj -c Release -- --probe-matrix
+```
+
+Representative local run:
+
+```text
+case                         handwritten   compiled      x   interpreted      x
+i32 add/rem loop                 31.1 ms     31.9 ms   1.0      117.9 ms    3.8
+branch in loop                    3.1 ms      3.6 ms   1.2       29.4 ms    9.4
+while loop                        3.1 ms      0.0 ms   0.0       38.2 ms   12.3
+i64 arithmetic loop               3.5 ms      6.0 ms   1.7       27.4 ms    7.8
+branched f64 loop                 1.5 ms      6.6 ms   4.5       39.2 ms   26.7
+```
+
+The `while loop` row is the new guarded modulo-index closed form. The `branch in loop` row now has an O(1)
+success path for same-direction modulo-branch deltas and an exact per-iteration fallback for unsafe cases.

@@ -172,8 +172,10 @@ internal sealed class MethodEmitter
             ListCountLoopFastPathEmitter.TryEmit(range, _il, _stackPlan, Declare) ||
             StringLengthLoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _bindings, Declare) ||
             I32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, _functionModels, _bindings, Declare) ||
+            I32ModuloBranchAccumulatorLoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, Declare) ||
             BranchedI32LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, _functionModels, Declare) ||
-            I64LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, Declare))
+            I64LoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, Declare) ||
+            BulkMeteredLoopFastPathEmitter.TryEmit(range, _il, _stackPlan, _expressions, Declare))
         {
             _nonNegativeF64Locals.Clear();
             return;
@@ -215,12 +217,13 @@ internal sealed class MethodEmitter
     private void EmitWhile(WhileStatement loop)
     {
         _nonNegativeF64Locals.Clear();
-        if (WhileI32LoopFastPathEmitter.TryEmit(loop, _il, _stackPlan, _expressions, _functionModels, Declare))
+        if (I32ModuloIndexWhileLoopFastPathEmitter.TryEmit(loop, _il, _stackPlan, Declare) ||
+            WhileI32LoopFastPathEmitter.TryEmit(loop, _il, _stackPlan, _expressions, _functionModels, Declare) ||
+            BulkMeteredLoopFastPathEmitter.TryEmit(loop, _il, _stackPlan, _expressions, Declare))
         {
             _nonNegativeF64Locals.Clear();
             return;
         }
-
         var startLabel = _il.DefineLabel();
         var finishLabel = _il.DefineLabel();
         _il.MarkLabel(startLabel);
@@ -235,21 +238,18 @@ internal sealed class MethodEmitter
         _il.Emit(OpCodes.Br, startLabel);
         _il.MarkLabel(finishLabel);
     }
-
     private (LocalBuilder Local, StackKind Kind) Declare(string name)
     {
         if (_locals.TryGetValue(name, out var existing))
         {
             return existing;
         }
-
         var kind = _stackPlan.LocalKind(name);
         var local = _il.DeclareLocal(LocalType(kind));
         var entry = (local, kind);
         _locals[name] = entry;
         return entry;
     }
-
     private static Type LocalType(StackKind kind)
         => kind switch
         {

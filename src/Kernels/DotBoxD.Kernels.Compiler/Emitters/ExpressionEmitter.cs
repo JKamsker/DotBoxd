@@ -17,6 +17,7 @@ internal sealed class ExpressionEmitter
     private readonly IReadOnlyDictionary<string, FunctionAnalysis> _functionAnalysis;
     private readonly IReadOnlyDictionary<string, (LocalBuilder Local, StackKind Kind)> _locals;
     private readonly LocalStackKindPlanner _stackPlan;
+    private readonly bool _chargeExpressionFuel;
 
     public ExpressionEmitter(
         ILGenerator il,
@@ -24,7 +25,8 @@ internal sealed class ExpressionEmitter
         IBindingCatalog bindings,
         IReadOnlyDictionary<string, FunctionAnalysis> functionAnalysis,
         IReadOnlyDictionary<string, (LocalBuilder Local, StackKind Kind)> locals,
-        LocalStackKindPlanner stackPlan)
+        LocalStackKindPlanner stackPlan,
+        bool chargeExpressionFuel = true)
     {
         _il = il;
         _functions = functions;
@@ -32,7 +34,11 @@ internal sealed class ExpressionEmitter
         _functionAnalysis = functionAnalysis;
         _locals = locals;
         _stackPlan = stackPlan;
+        _chargeExpressionFuel = chargeExpressionFuel;
     }
+
+    public ExpressionEmitter WithoutExpressionFuel()
+        => new(_il, _functions, _bindings, _functionAnalysis, _locals, _stackPlan, chargeExpressionFuel: false);
 
     public void EmitAs(Expression expression, StackKind want)
     {
@@ -94,7 +100,11 @@ internal sealed class ExpressionEmitter
 
     public StackKind EmitValue(Expression expression)
     {
-        CompiledMeterEmitter.Fuel(_il, 1);
+        if (_chargeExpressionFuel)
+        {
+            CompiledMeterEmitter.Fuel(_il, 1);
+        }
+
         switch (expression)
         {
             case LiteralExpression literal:

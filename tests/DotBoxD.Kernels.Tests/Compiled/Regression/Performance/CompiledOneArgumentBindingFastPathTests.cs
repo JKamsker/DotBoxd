@@ -21,7 +21,9 @@ public sealed class CompiledOneArgumentBindingFastPathTests
             builder.UseCompilerIfAvailable();
         });
         var module = await host.ImportJsonAsync(IdentityModuleJson);
-        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create().WithFuel(1_000).WithWallTime(TimeSpan.FromSeconds(2)).Build());
 
         var result = await host.ExecuteAsync(
             plan,
@@ -47,7 +49,9 @@ public sealed class CompiledOneArgumentBindingFastPathTests
             builder.UseCompilerIfAvailable();
         });
         var module = await host.ImportJsonAsync(IdentityModuleJson);
-        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create().WithFuel(1_000).WithWallTime(TimeSpan.FromSeconds(2)).Build());
 
         var result = await host.ExecuteAsync(
             plan,
