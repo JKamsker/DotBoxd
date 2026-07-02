@@ -1,4 +1,6 @@
+using DotBoxD.Codecs.MessagePack;
 using DotBoxD.Services.Client;
+using DotBoxD.Services.Exceptions;
 using DotBoxD.Services.Protocol;
 using DotBoxD.Services.Streaming.Core;
 using DotBoxD.Services.Streaming.Frames;
@@ -19,7 +21,7 @@ public sealed class Wave5_ValidationAndGuardTests
         var result = RpcStreamValidation.TryValidateInboundHandles(handles, out var error);
 
         Assert.False(result);
-        Assert.Contains("zero", error!);
+        Assert.Contains("positive", error!);
     }
 
     [Fact]
@@ -34,7 +36,18 @@ public sealed class Wave5_ValidationAndGuardTests
         var result = RpcStreamValidation.TryValidateInboundHandles(handles, out var error);
 
         Assert.False(result);
-        Assert.Contains("zero", error!);
+        Assert.Contains("positive", error!);
+    }
+
+    [Fact]
+    public void TryValidateInboundHandles_SingleHandle_NegativeStreamId_ReturnsFalse()
+    {
+        var handles = new[] { new RpcStreamHandle(-1, RpcStreamKind.Binary) };
+
+        var result = RpcStreamValidation.TryValidateInboundHandles(handles, out var error);
+
+        Assert.False(result);
+        Assert.Contains("positive", error!);
     }
 
     [Fact]
@@ -189,6 +202,38 @@ public sealed class Wave5_ValidationAndGuardTests
     }
 
     [Fact]
+    public void StreamCompleteFrameReader_NegativeStreamId_ReturnsFalse()
+    {
+        using var frame = MessageFramer.FrameToPayload(
+            -1, MessageType.StreamComplete, ReadOnlySpan<byte>.Empty);
+
+        var result = RpcStreamCompleteFrameReader.TryRead(frame, out _);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void StreamErrorFrameReader_NegativeStreamId_ReturnsFalse()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        using var frame = MessageFramer.FrameMessage(
+            serializer,
+            -1,
+            MessageType.StreamError,
+            new RpcResponse
+            {
+                MessageId = -1,
+                IsSuccess = false,
+                ErrorMessage = "Failed",
+            },
+            ReadOnlySpan<byte>.Empty);
+
+        var result = RpcStreamErrorFrameReader.TryRead(frame, serializer, out _, out _);
+
+        Assert.False(result);
+    }
+
+    [Fact]
     public void StreamCompleteFrameReader_WrongMessageType_ReturnsFalse()
     {
         using var frame = MessageFramer.FrameToPayload(
@@ -213,7 +258,18 @@ public sealed class Wave5_ValidationAndGuardTests
         var handle = new RpcStreamHandle(0, RpcStreamKind.Binary);
         var attachment = RpcStreamAttachment.FromStream(handle, stream);
 
-        Assert.Throws<DotBoxD.Services.Exceptions.ServiceProtocolException>(
+        Assert.Throws<ServiceProtocolException>(
+            () => RpcStreamValidation.ValidateOutboundAttachment(attachment));
+    }
+
+    [Fact]
+    public void ValidateOutboundAttachment_NegativeStreamId_ThrowsProtocolException()
+    {
+        var stream = new MemoryStream();
+        var handle = new RpcStreamHandle(-1, RpcStreamKind.Binary);
+        var attachment = RpcStreamAttachment.FromStream(handle, stream);
+
+        Assert.Throws<ServiceProtocolException>(
             () => RpcStreamValidation.ValidateOutboundAttachment(attachment));
     }
 
@@ -226,7 +282,7 @@ public sealed class Wave5_ValidationAndGuardTests
         var a1 = RpcStreamAttachment.FromStream(handle, s1);
         var a2 = RpcStreamAttachment.FromStream(handle, s2);
 
-        var ex = Assert.Throws<DotBoxD.Services.Exceptions.ServiceProtocolException>(
+        var ex = Assert.Throws<ServiceProtocolException>(
             () => RpcStreamValidation.ValidateOutboundAttachments(new[] { a1, a2 }));
         Assert.Contains("Duplicate", ex.Message);
     }

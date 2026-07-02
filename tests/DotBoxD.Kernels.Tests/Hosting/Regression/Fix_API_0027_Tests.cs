@@ -10,6 +10,7 @@ public sealed class Fix_API_0027_Tests
         Path.Combine("docs-site", "src", "content", "docs", "index.mdx"),
         Path.Combine("docs-site", "src", "content", "docs", "getting-started.md"),
         Path.Combine("docs-site", "src", "content", "docs", "concepts", "pushdown.md"),
+        Path.Combine("docs-site", "src", "content", "docs", "tutorials", "pushdown-server-extension.md"),
         Path.Combine("docs", "Specs", "Addendum", "Examples.md"),
         Path.Combine("docs", "design", "plugin-fluent-hooks-api", "followups.md"),
         Path.Combine("docs", "design", "remote-plugin-server-builder", "invoke-async.md"),

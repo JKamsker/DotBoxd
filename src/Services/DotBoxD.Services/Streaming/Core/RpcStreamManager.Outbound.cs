@@ -27,11 +27,7 @@ internal sealed partial class RpcStreamManager
 
     internal void ReserveOutbound(int streamId)
     {
-        if (streamId == 0)
-        {
-            throw new ServiceProtocolException("Stream id must not be zero.");
-        }
-
+        RpcStreamValidation.ValidateStreamId(streamId);
         if (_senders.ContainsKey(streamId) || !_reservedOutbound.TryAdd(streamId, 0))
         {
             throw new ServiceProtocolException($"Duplicate outbound stream id '{streamId}'.");
