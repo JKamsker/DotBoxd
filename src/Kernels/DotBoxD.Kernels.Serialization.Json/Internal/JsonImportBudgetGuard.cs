@@ -16,13 +16,46 @@ internal static class JsonImportBudgetGuard
     public static void Validate(string json)
     {
         ArgumentNullException.ThrowIfNull(json);
+        ValidateMaxJsonBytes(json);
         var utf8 = Encoding.UTF8.GetBytes(json);
-        if (utf8.Length > MaxJsonBytes)
+        Scan(utf8);
+    }
+
+    private static void ValidateMaxJsonBytes(string json)
+    {
+        var bytes = 0;
+        for (var i = 0; i < json.Length; i++)
         {
-            throw Error("E-JSON-LIMIT", "JSON IR exceeds maximum byte length");
+            bytes += Utf8ByteCount(json, ref i);
+            if (bytes > MaxJsonBytes)
+            {
+                throw Error("E-JSON-LIMIT", "JSON IR exceeds maximum byte length");
+            }
+        }
+    }
+
+    private static int Utf8ByteCount(string json, ref int index)
+    {
+        var value = json[index];
+        if (value <= 0x7F)
+        {
+            return 1;
         }
 
-        Scan(utf8);
+        if (value <= 0x7FF)
+        {
+            return 2;
+        }
+
+        if (char.IsHighSurrogate(value) &&
+            index + 1 < json.Length &&
+            char.IsLowSurrogate(json[index + 1]))
+        {
+            index++;
+            return 4;
+        }
+
+        return 3;
     }
 
     private static void Scan(byte[] utf8)

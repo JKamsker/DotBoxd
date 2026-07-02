@@ -9,10 +9,16 @@ public sealed class JsonImporterBudgetTests
     public void Import_rejects_json_over_byte_budget_before_materialization()
     {
         var json = new string(' ', 1_048_577);
+        _ = Assert.Throws<SandboxValidationException>(() => JsonImporter.Import(" "));
+
+        GC.Collect();
+        var before = GC.GetAllocatedBytesForCurrentThread();
 
         var ex = Assert.Throws<SandboxValidationException>(() => JsonImporter.Import(json));
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         Assert.Contains(ex.Diagnostics, d => d.Code == "E-JSON-LIMIT");
+        Assert.True(allocated < 256_000, $"rejection allocated {allocated} bytes");
     }
 
     [Fact]
