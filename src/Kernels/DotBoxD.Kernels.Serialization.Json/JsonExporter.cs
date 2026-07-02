@@ -56,6 +56,8 @@ public static class JsonExporter
         writer.WriteStartObject();
         foreach (var item in metadata.OrderBy(item => item.Key, StringComparer.Ordinal))
         {
+            JsonStringSafety.RequireWellFormedUtf16(item.Key, "metadata key");
+            JsonStringSafety.RequireWellFormedUtf16(item.Value, "metadata value");
             writer.WriteString(item.Key, item.Value);
         }
 
