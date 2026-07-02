@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DotBoxD.Kernels.Model;
 using DotBoxD.Kernels.Serialization.Json;
 
 namespace DotBoxD.Plugins.Json;
@@ -173,6 +174,12 @@ public static partial class PluginPackageJsonSerializer
         writer.WriteStartArray();
         foreach (var predicate in predicates)
         {
+            if (!Enum.IsDefined(predicate.Operator))
+            {
+                throw new SandboxValidationException(
+                    [new SandboxDiagnostic("DBXK046", $"Indexed predicate operator '{predicate.Operator}' is not supported.")]);
+            }
+
             writer.WriteStartObject();
             writer.WriteString("path", predicate.Path);
             writer.WriteString("operator", predicate.Operator.ToString());
