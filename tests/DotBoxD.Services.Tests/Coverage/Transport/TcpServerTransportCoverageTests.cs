@@ -50,7 +50,44 @@ public sealed class TcpServerTransportCoverageTests
     [Fact]
     public void Constructor_NullAddress_ThrowsArgumentNull()
     {
-        Assert.Throws<ArgumentNullException>(() => new TcpServerTransport((IPAddress)null!, 0));
+        var ex = Assert.Throws<ArgumentNullException>(() => new TcpServerTransport((IPAddress)null!, 0));
+        Assert.Equal("address", ex.ParamName);
+    }
+
+    [Fact]
+    public void Constructor_NullStringAddress_ThrowsArgumentNullForPublicParameter()
+    {
+        var ex = Assert.Throws<ArgumentNullException>(() => new TcpServerTransport((string)null!, 0));
+        Assert.Equal("address", ex.ParamName);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(65536)]
+    public void Constructor_IpAddressPortOutsideTcpRange_ThrowsArgumentOutOfRange(int port)
+    {
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(
+            () => new TcpServerTransport(IPAddress.Loopback, port));
+        Assert.Equal("port", ex.ParamName);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(65536)]
+    public void Constructor_StringAddressPortOutsideTcpRange_ThrowsArgumentOutOfRange(int port)
+    {
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(
+            () => new TcpServerTransport("127.0.0.1", port));
+        Assert.Equal("port", ex.ParamName);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(65536)]
+    public void Constructor_PortOnlyOutsideTcpRange_ThrowsArgumentOutOfRange(int port)
+    {
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new TcpServerTransport(port));
+        Assert.Equal("port", ex.ParamName);
     }
 
     // ---- Start lifecycle ------------------------------------------------------------------

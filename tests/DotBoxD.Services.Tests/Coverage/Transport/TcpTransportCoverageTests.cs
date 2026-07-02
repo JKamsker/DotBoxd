@@ -111,7 +111,17 @@ public sealed class TcpTransportCoverageTests
     [Fact]
     public void Constructor_NullHost_ThrowsArgumentNull()
     {
-        Assert.Throws<ArgumentNullException>(() => new TcpTransport(null!, 1234));
+        var ex = Assert.Throws<ArgumentNullException>(() => new TcpTransport(null!, 1234));
+        Assert.Equal("host", ex.ParamName);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(65536)]
+    public void Constructor_PortOutsideTcpRange_ThrowsArgumentOutOfRange(int port)
+    {
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new TcpTransport("127.0.0.1", port));
+        Assert.Equal("port", ex.ParamName);
     }
 
     // ---- End-to-end framed send/receive over loopback -------------------------------------
