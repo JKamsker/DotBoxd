@@ -17,7 +17,7 @@ internal sealed class PluginEventAdapterValidationCache
 
         var eventName = adapter.EventName;
         var parameters = adapter.Parameters;
-        PluginEventAdapterShapeValidator.Validate(adapter, parameters);
+        PluginEventAdapterShapeValidator.Validate(adapter, eventName, parameters);
         if (_validatedAdapters.TryGetValue(adapter, out var cached) &&
             cached.Value.Matches(eventName, parameters))
         {
@@ -37,16 +37,44 @@ internal static class PluginEventAdapterShapeValidator
 
     public static void Validate<TEvent>(
         IPluginEventAdapter<TEvent> adapter,
+        string eventName,
         IReadOnlyList<Parameter> parameters)
     {
+        if (string.IsNullOrEmpty(eventName))
+        {
+            throw CreateException("Plugin event adapter event name must be non-empty.");
+        }
+
+        if (parameters is null)
+        {
+            throw CreateException("Plugin event adapter parameters must be non-null.");
+        }
+
+        for (var i = 0; i < parameters.Count; i++)
+        {
+            var parameter = parameters[i];
+            if (parameter is null)
+            {
+                throw CreateException("Plugin event adapter parameters must not contain null entries.");
+            }
+
+            if (string.IsNullOrEmpty(parameter.Name))
+            {
+                throw CreateException("Plugin event adapter parameter names must be non-empty.");
+            }
+        }
+
         if (adapter is IPluginEventValueWriter<TEvent> writer &&
             writer.EventValueCount != parameters.Count)
         {
-            throw new SandboxValidationException([
-                new SandboxDiagnostic(DiagnosticCode, "Plugin event value writer count does not match adapter parameters.")
-            ]);
+            throw CreateException("Plugin event value writer count does not match adapter parameters.");
         }
     }
+
+    private static SandboxValidationException CreateException(string message) =>
+        new([
+            new SandboxDiagnostic(DiagnosticCode, message)
+        ]);
 }
 
 internal readonly struct PluginEventShape
