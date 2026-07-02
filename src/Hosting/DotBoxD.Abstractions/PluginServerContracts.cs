@@ -99,7 +99,7 @@ public sealed class GeneratePluginServerAttribute : Attribute
 
 /// <summary>Marks a server-authored context helper as native-only and unavailable to lowered IR.</summary>
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, Inherited = false)]
-public sealed class LocalAttribute : Attribute;
+public sealed class NativeOnlyAttribute : Attribute;
 
 /// <summary>Analyzer-visible generated IR for server-authored SDK context <c>[KernelMethod]</c> helpers.</summary>
 [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
@@ -147,27 +147,6 @@ public enum GeneratedPluginServerRegistryKind
 {
     Hook,
     Subscription,
-}
-
-/// <summary>Explicit host-service effects for analyzer-visible auto bindings.</summary>
-[Flags]
-public enum HostBindingEffect
-{
-    None = 0,
-    HostStateRead = 1,
-    HostStateWrite = 2,
-    Allocates = 4
-}
-
-/// <summary>
-/// Declares the capability and host-state effects required by an analyzer-visible host binding contract.
-/// </summary>
-[AttributeUsage(AttributeTargets.Method, Inherited = false)]
-public sealed class HostCapabilityAttribute(string capability, HostBindingEffect effects) : Attribute
-{
-    public string Capability { get; } = capability;
-
-    public HostBindingEffect Effects { get; } = effects;
 }
 
 /// <summary>Wire client used by generated server-extension proxies.</summary>

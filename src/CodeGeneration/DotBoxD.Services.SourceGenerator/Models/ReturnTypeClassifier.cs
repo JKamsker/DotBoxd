@@ -6,7 +6,6 @@ namespace DotBoxD.Services.SourceGenerator.Models;
 
 internal static partial class ReturnTypeClassifier
 {
-    private const string DotBoxDServiceAttributeName = ServicesGeneratorTypeNames.DotBoxDServiceAttribute;
     private const string SystemCollectionsGeneric = ServicesGeneratorTypeNames.SystemCollectionsGenericNamespace;
     private const string SystemIO = ServicesGeneratorTypeNames.SystemIoNamespace;
     private const string SystemIOPipelines = ServicesGeneratorTypeNames.SystemIoPipelinesNamespace;
@@ -234,7 +233,7 @@ internal static partial class ReturnTypeClassifier
         {
             ct.ThrowIfCancellationRequested();
 
-            if (attr.AttributeClass?.ToDisplayString() == DotBoxDServiceAttributeName)
+            if (ServicesGeneratorTypeNames.IsRpcServiceAttribute(attr.AttributeClass?.ToDisplayString()))
             {
                 return true;
             }
@@ -263,7 +262,7 @@ internal static partial class ReturnTypeClassifier
         {
             ct.ThrowIfCancellationRequested();
 
-            if (attr.AttributeClass?.ToDisplayString() == DotBoxDServiceAttributeName)
+            if (ServicesGeneratorTypeNames.IsRpcServiceAttribute(attr.AttributeClass?.ToDisplayString()))
             {
                 serviceAttr = attr;
                 break;

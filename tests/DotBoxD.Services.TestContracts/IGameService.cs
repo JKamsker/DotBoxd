@@ -5,7 +5,7 @@ namespace Shared;
 /// <summary>
 /// Game service interface defining the RPC contract.
 /// </summary>
-[DotBoxDService]
+[RpcService]
 public interface IGameService
 {
     Task<PlayerState> GetPlayerStateAsync(PlayerId playerId, CancellationToken ct = default);

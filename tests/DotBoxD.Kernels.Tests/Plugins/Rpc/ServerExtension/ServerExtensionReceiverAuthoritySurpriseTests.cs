@@ -10,17 +10,18 @@ public sealed class ServerExtensionReceiverAuthoritySurpriseTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
             using DotBoxD.Plugins;
             using DotBoxD.Services.Attributes;
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteMonster
             {
                 string Id { get; }
 
-                [HostCapability("game.world.monster.read.threat", HostBindingEffect.HostStateRead)]
+                [HostBinding("game.world.monster.read.threat", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
                 int Threat();
             }
 
@@ -43,17 +44,18 @@ public sealed class ServerExtensionReceiverAuthoritySurpriseTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
             using DotBoxD.Plugins;
             using DotBoxD.Services.Attributes;
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteMonster
             {
                 string Id { get; }
 
-                [HostCapability("game.world.monster.read.threat", HostBindingEffect.HostStateRead)]
+                [HostBinding("game.world.monster.read.threat", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
                 int Threat();
             }
 
@@ -83,21 +85,22 @@ public sealed class ServerExtensionReceiverAuthoritySurpriseTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
             using DotBoxD.Plugins;
             using DotBoxD.Services.Attributes;
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteEntity
             {
                 string Id { get; }
 
-                [HostCapability("game.world.entity.read.threat", HostBindingEffect.HostStateRead)]
+                [HostBinding("game.world.entity.read.threat", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
                 int Threat();
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteMonster : IRemoteEntity;
 
             [ServerExtension(typeof(IRemoteMonster), "cast-threat")]
@@ -119,21 +122,22 @@ public sealed class ServerExtensionReceiverAuthoritySurpriseTests
     {
         var package = PluginAnalyzerGeneratedPackageFactory.Create("""
             using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
             using DotBoxD.Plugins;
             using DotBoxD.Services.Attributes;
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteMonster
             {
                 string Id { get; }
 
-                [HostCapability("game.world.monster.read.threat", HostBindingEffect.HostStateRead)]
+                [HostBinding("game.world.monster.read.threat", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
                 int Threat();
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IMonsterDirectory
             {
                 IRemoteMonster Get(string id);
@@ -173,17 +177,18 @@ public sealed class ServerExtensionReceiverAuthoritySurpriseTests
     {
         var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
             using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
             using DotBoxD.Plugins;
             using DotBoxD.Services.Attributes;
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteMonster
             {
                 string Id { get; }
 
-                [HostCapability("game.world.monster.read.threat", HostBindingEffect.HostStateRead)]
+                [HostBinding("game.world.monster.read.threat", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
                 int Threat();
             }
 
@@ -218,7 +223,7 @@ public sealed class ServerExtensionReceiverAuthoritySurpriseTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteMonster
             {
                 string Id { get; }

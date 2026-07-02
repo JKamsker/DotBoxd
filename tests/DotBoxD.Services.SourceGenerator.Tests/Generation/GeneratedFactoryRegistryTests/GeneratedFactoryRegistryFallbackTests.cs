@@ -12,7 +12,7 @@ public class GeneratedFactoryRegistryFallbackTests
             GeneratedServiceRegistry.CreateProxy(typeof(INotGeneratedService), new NullClient()));
 
         Assert.Contains("No DotBoxD generated factory is registered", ex.Message);
-        Assert.Contains("[DotBoxDService]", ex.Message);
+        Assert.Contains("[RpcService]", ex.Message);
         Assert.Contains("source generator", ex.Message);
     }
 

@@ -37,7 +37,7 @@ internal static partial class GeneratedRemoteHookChainFallback
     {
         foreach (var candidate in serverType.Interfaces)
         {
-            if (HasAttribute(candidate, DotBoxDMetadataNames.DotBoxDServiceAttribute))
+            if (HasAttribute(candidate, DotBoxDMetadataNames.RpcServiceAttribute))
             {
                 return candidate;
             }
@@ -50,7 +50,11 @@ internal static partial class GeneratedRemoteHookChainFallback
     {
         foreach (var attribute in symbol.GetAttributes())
         {
-            if (string.Equals(attribute.AttributeClass?.ToDisplayString(), metadataName, StringComparison.Ordinal))
+            var attributeName = attribute.AttributeClass?.ToDisplayString();
+            var matches = string.Equals(metadataName, DotBoxDMetadataNames.RpcServiceAttribute, StringComparison.Ordinal)
+                ? DotBoxDMetadataNames.IsRpcServiceAttribute(attributeName)
+                : string.Equals(attributeName, metadataName, StringComparison.Ordinal);
+            if (matches)
             {
                 return true;
             }

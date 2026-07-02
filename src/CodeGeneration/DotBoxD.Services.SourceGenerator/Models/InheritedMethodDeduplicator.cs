@@ -7,8 +7,6 @@ namespace DotBoxD.Services.SourceGenerator.Models;
 
 internal static class InheritedMethodDeduplicator
 {
-    private const string DotBoxDMethodAttributeName = ServicesGeneratorTypeNames.DotBoxDMethodAttribute;
-
     public static bool HasCompatibleReturnShape(
         IMethodSymbol left,
         IMethodSymbol right,
@@ -159,7 +157,7 @@ internal static class InheritedMethodDeduplicator
     {
         foreach (var attr in methodSymbol.GetAttributes())
         {
-            if (attr.AttributeClass?.ToDisplayString() != DotBoxDMethodAttributeName)
+            if (!ServicesGeneratorTypeNames.IsRpcMethodAttribute(attr.AttributeClass?.ToDisplayString()))
             {
                 continue;
             }

@@ -112,10 +112,7 @@ internal static class PluginServerWorldExtensionSuffixResolver
     {
         foreach (var attribute in type.GetAttributes())
         {
-            if (!string.Equals(
-                    attribute.AttributeClass?.ToDisplayString(),
-                    DotBoxDMetadataNames.DotBoxDServiceAttribute,
-                    StringComparison.Ordinal))
+            if (!DotBoxDMetadataNames.IsRpcServiceAttribute(attribute.AttributeClass?.ToDisplayString()))
             {
                 continue;
             }
@@ -137,10 +134,7 @@ internal static class PluginServerWorldExtensionSuffixResolver
     {
         foreach (var attribute in type.GetAttributes())
         {
-            if (string.Equals(
-                    attribute.AttributeClass?.ToDisplayString(),
-                    DotBoxDMetadataNames.DotBoxDServiceAttribute,
-                    StringComparison.Ordinal))
+            if (DotBoxDMetadataNames.IsRpcServiceAttribute(attribute.AttributeClass?.ToDisplayString()))
             {
                 return true;
             }

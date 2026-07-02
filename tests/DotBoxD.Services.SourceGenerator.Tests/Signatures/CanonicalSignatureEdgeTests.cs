@@ -24,7 +24,7 @@ public class CanonicalSignatureEdgeTests
                     void M(object value);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ICombined : ILeft, IRight
                 {
                 }
@@ -63,7 +63,7 @@ public class CanonicalSignatureEdgeTests
                     void M(out int value);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ICombined : ILeft, IRight
                 {
                 }
@@ -103,7 +103,7 @@ public class CanonicalSignatureEdgeTests
                     void Take(Outer<string>.Inner value);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ICombined : ILeft, IRight
                 {
                 }

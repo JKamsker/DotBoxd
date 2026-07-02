@@ -7,8 +7,6 @@ namespace DotBoxD.Services.SourceGenerator.Validation;
 
 internal static class SubServicePayloadInspector
 {
-    private const string DotBoxDServiceAttributeName = ServicesGeneratorTypeNames.DotBoxDServiceAttribute;
-
     public static bool ContainsDotBoxDServiceInterface(ITypeSymbol type, CancellationToken ct) =>
         ContainsDotBoxDServiceInterface(
             type,
@@ -104,7 +102,7 @@ internal static class SubServicePayloadInspector
         {
             ct.ThrowIfCancellationRequested();
 
-            if (attr.AttributeClass?.ToDisplayString() == DotBoxDServiceAttributeName)
+            if (ServicesGeneratorTypeNames.IsRpcServiceAttribute(attr.AttributeClass?.ToDisplayString()))
             {
                 return true;
             }

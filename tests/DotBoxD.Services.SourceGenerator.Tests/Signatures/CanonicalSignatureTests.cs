@@ -24,7 +24,7 @@ public class CanonicalSignatureTests
                     void Echo<U>(U value);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ICombined : ILeft, IRight
                 {
                 }
@@ -59,7 +59,7 @@ public class CanonicalSignatureTests
                     void Echo<U>(U value) where U : struct;
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ICombined : ILeft, IRight
                 {
                 }
@@ -98,7 +98,7 @@ public class CanonicalSignatureTests
                     void Echo<U>(U value) where U : IFace<U>;
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ICombined : ILeft, IRight
                 {
                 }
@@ -142,7 +142,7 @@ public class CanonicalSignatureTests
                     void Echo<U>(U value) where U : IB, IA;
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ICombined : ILeft, IRight
                 {
                 }
@@ -180,7 +180,7 @@ public class CanonicalSignatureTests
                     Task<int> EchoAsync((int X, int Y) value, CancellationToken ct = default);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ICombined : ILeft, IRight
                 {
                 }

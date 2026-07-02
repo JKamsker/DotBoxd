@@ -26,8 +26,8 @@ internal static partial class DotBoxDExpressionModelFactory
 
         return context.SemanticModel.GetSymbolInfo(member, context.CancellationToken).Symbol switch
         {
-            IPropertySymbol property when HasLocalAttribute(property) => throw new NotSupportedException(
-                "[Local] context members cannot be used in lowered server-side IR."),
+            IPropertySymbol property when HasNativeOnlyAttribute(property) => throw new NotSupportedException(
+                "[NativeOnly] context members cannot be used in lowered server-side IR."),
             IPropertySymbol property => DotBoxDHostBindingExpressionLowerer.TryLowerProperty(property, context)
                 ?? throw new NotSupportedException(
                     $"Unsupported server context property '{memberName}'. Use generated context surfaces or [KernelMethod] helpers for server-side IR."),
@@ -160,10 +160,10 @@ internal static partial class DotBoxDExpressionModelFactory
         }
     }
 
-    private static bool HasLocalAttribute(IPropertySymbol property)
+    private static bool HasNativeOnlyAttribute(IPropertySymbol property)
         => property.GetAttributes().Any(attribute => string.Equals(
             attribute.AttributeClass?.ToDisplayString(),
-            DotBoxDMetadataNames.LocalAttribute,
+            DotBoxDMetadataNames.NativeOnlyAttribute,
             StringComparison.Ordinal));
 
     /// <summary>

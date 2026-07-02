@@ -16,7 +16,7 @@ public sealed class UnsupportedTransportPayloadShapeTests
 
             namespace Regress.UnsupportedTransportPayloads
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRawStreamHandle
                 {
                     Task<int> UploadAsync(RpcStreamHandle stream);
@@ -51,7 +51,7 @@ public sealed class UnsupportedTransportPayloadShapeTests
 
             namespace Regress.UnsupportedTransportPayloads
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ITransportPayloads
                 {
                     Task<int> UploadManyAsync(Stream[] streams);
@@ -104,7 +104,7 @@ public sealed class UnsupportedTransportPayloadShapeTests
 
             namespace Regress.UnsupportedTransportPayloads
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IDirectTransportShapes
                 {
                     Task<int> UploadStreamAsync(Stream stream, CancellationToken ct = default);

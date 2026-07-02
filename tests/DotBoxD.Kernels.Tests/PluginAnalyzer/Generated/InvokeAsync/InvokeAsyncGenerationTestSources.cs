@@ -20,7 +20,7 @@ internal static partial class InvokeAsyncGenerationTestSources
 
         namespace DotBoxD.Kernels.Game.Server.Abstractions
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorldAccess
             {
                 [HostBinding("host.world.getHealth", "game.world.monster.read.health", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
@@ -92,7 +92,7 @@ internal static partial class InvokeAsyncGenerationTestSources
         {
             public sealed record MonsterSnapshot(string Id, string Name, int Health, int Level, int Position);
 
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorldAccess
             {
                 [HostBinding("host.world.getMonster", "game.world.monster.read.snapshot", SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateRead)]
@@ -162,7 +162,7 @@ internal static partial class InvokeAsyncGenerationTestSources
         {
             public sealed record MonsterSnapshot(string Id, string Name, int Health, int Level, int Position);
 
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorldAccess
             {
                 [HostBinding("host.world.getMonster", "game.world.monster.read.snapshot", SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateRead)]
@@ -224,7 +224,7 @@ internal static partial class InvokeAsyncGenerationTestSources
 
         namespace DotBoxD.Kernels.Game.Server.Abstractions
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorldAccess
             {
                 [HostBinding("host.world.getHealth", "game.world.monster.read.health", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]

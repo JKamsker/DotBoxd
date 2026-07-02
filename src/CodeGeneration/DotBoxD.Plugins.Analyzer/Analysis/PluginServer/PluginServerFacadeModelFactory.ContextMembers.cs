@@ -133,7 +133,7 @@ internal static partial class PluginServerFacadeModelFactory
                     StringComparison.Ordinal))
             {
                 throw new NotSupportedException(
-                    $"Generated plugin server context '{contextType.ToDisplayString()}' must not declare [HostBinding] members; expose host services through [DotBoxDService] selectors.");
+                    $"Generated plugin server context '{contextType.ToDisplayString()}' must not declare [HostBinding] members; expose host services through [RpcService] selectors.");
             }
         }
     }

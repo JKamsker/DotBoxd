@@ -12,13 +12,13 @@ public sealed class AsyncSiblingSubServiceTests
 
             namespace AsyncSibling.SubServices
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     ISub Open();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     int Count();

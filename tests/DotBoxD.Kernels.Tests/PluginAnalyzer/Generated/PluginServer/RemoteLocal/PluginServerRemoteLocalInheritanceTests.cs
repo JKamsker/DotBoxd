@@ -14,7 +14,7 @@ public sealed class PluginServerRemoteLocalInheritanceTests
 
             namespace Reactive.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 
@@ -47,7 +47,7 @@ public sealed class PluginServerRemoteLocalInheritanceTests
                         CancellationToken ct = default);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IPluginEventCallback : IPluginEventCallbackBase;
             }
 

@@ -14,7 +14,7 @@ public partial class UnsupportedShapeCoverageTests
 
             namespace Regress.UnsupportedCoverage
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IDelegatePayloads
                 {
                     Func<int, int> GetTransform();

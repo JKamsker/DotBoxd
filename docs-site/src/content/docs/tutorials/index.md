@@ -5,7 +5,7 @@ description: 'Three end-to-end walkthroughs, one per mode. Each mode exists for 
 Three end-to-end walkthroughs, one per mode. Each mode exists for a different reason — pick by what
 you need before you click in:
 
-1. **[First Service (RPC)](/tutorials/first-service/)** — define a `[DotBoxDService]` contract, host it, and
+1. **[First Service (RPC)](/tutorials/first-service/)** — define a `[RpcService]` contract, host it, and
    call it from a client over a typed proxy. *Why this mode:* easy interop — one C# contract compiles
    to a typed proxy + dispatcher, so there is no hand-written marshaling and no runtime reflection on
    the hot path (AOTs, runs on Unity/IL2CPP); the interface is the single source of truth.

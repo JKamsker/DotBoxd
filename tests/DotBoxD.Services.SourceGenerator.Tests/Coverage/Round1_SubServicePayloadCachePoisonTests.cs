@@ -6,7 +6,7 @@ namespace DotBoxD.Services.SourceGenerator.Tests.Coverage;
 ///
 /// <para>
 /// <see cref="DotBoxD.Services.SourceGenerator"/>'s SubServicePayloadInspector caches the result of
-/// "does this DTO transitively reach a [DotBoxDService] interface?". In a cyclic DTO graph
+/// "does this DTO transitively reach a [RpcService] interface?". In a cyclic DTO graph
 /// (A holds B, B holds A) where A *also* holds a service-interface field, visiting B while
 /// already inside A's traversal trips the cycle-break guard and returns <c>false</c> for B —
 /// a context-dependent answer that is only correct because A is mid-traversal. The inspector
@@ -54,13 +54,13 @@ namespace Bug.Reg.CyclePoison
         public A Parent;
     }
 
-    [DotBoxDService]
+    [RpcService]
     public interface IMyRpc
     {
         Task<int> PingAsync();
     }
 
-    [DotBoxDService]
+    [RpcService]
     public interface IRoot
     {
         Task UseAAsync(A a);

@@ -49,7 +49,7 @@ The plugin ships IR and tunes settings over this; the plugin's shim wraps it, so
 never calls it directly.
 
 ```csharp
-[DotBoxDService]
+[RpcService]
 public interface IGamePluginControlService
 {
     ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default);
@@ -220,7 +220,7 @@ Sandbox-lowered stages and terminals such as `Where`, `Select`, `Run`, and `Regi
 members the analyzer knows how to lower into verified IR. The supported contract is explicit:
 extend the declared partial context with pure helper methods marked `[KernelMethod]` so their bodies
 inline into the chain. Host calls flow through analyzer-visible host-service contracts annotated with
-`[HostCapability]`; use `RunLocal` / `RegisterLocal` when the handler needs arbitrary in-process
+`[HostBinding]`; use `RunLocal` / `RegisterLocal` when the handler needs arbitrary in-process
 services from the generated server context.
 
 For example, the generated context supplies the raw hook plumbing, while the plugin adds domain

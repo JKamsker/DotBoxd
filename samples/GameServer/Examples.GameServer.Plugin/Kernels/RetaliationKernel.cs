@@ -8,7 +8,7 @@ namespace DotBoxD.Kernels.Game.Plugin.Kernels;
 /// Lowered to verified DotBoxD.Kernels and shipped as opaque IR over IPC. Install id derives from the type
 /// name (<c>"retaliation"</c>).
 /// </summary>
-[EventKernel]
+[Plugin]
 public sealed partial class RetaliationKernel : IAttackService
 {
     [LiveSetting]

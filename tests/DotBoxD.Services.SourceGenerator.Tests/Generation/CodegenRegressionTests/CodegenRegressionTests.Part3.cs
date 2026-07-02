@@ -16,14 +16,14 @@ public partial class CodegenRegressionTests
             {
                 public class Outer
                 {
-                    [DotBoxDService]
+                    [RpcService]
                     public interface IInner
                     {
                         Task<int> CountAsync();
                     }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<Outer.IInner> GetInnerAsync();
@@ -64,7 +64,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.HintA
             {
-                [DotBoxDService(Name = "HintA.IFoo")]
+                [RpcService(Name = "HintA.IFoo")]
                 public interface IFoo
                 {
                     Task<int> AAsync();
@@ -72,7 +72,7 @@ public partial class CodegenRegressionTests
             }
             namespace Regress.HintB
             {
-                [DotBoxDService(Name = "HintB.IFoo")]
+                [RpcService(Name = "HintB.IFoo")]
                 public interface IFoo
                 {
                     Task<int> BAsync();
@@ -112,7 +112,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.Flat
             {
-                [DotBoxDService(Name = "Dotted.IFoo")]
+                [RpcService(Name = "Dotted.IFoo")]
                 public interface IFoo
                 {
                     Task<int> FromDottedAsync();
@@ -121,7 +121,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress_Flat
             {
-                [DotBoxDService(Name = "Underscore.IFoo")]
+                [RpcService(Name = "Underscore.IFoo")]
                 public interface IFoo
                 {
                     Task<int> FromUnderscoreAsync();
@@ -165,7 +165,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.GenericHygiene
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRepo<T>
                 {
                     Task<T> GetAsync(string id);
@@ -201,7 +201,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.RefOutRuntime
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRor
                 {
                     void BadOut(out int x);

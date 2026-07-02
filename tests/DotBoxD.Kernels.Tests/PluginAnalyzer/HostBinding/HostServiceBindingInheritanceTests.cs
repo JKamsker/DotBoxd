@@ -18,14 +18,14 @@ public sealed class HostServiceBindingInheritanceTests
 
         namespace DotBoxD.Kernels.Tests.PluginAnalyzer.HostBinding;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IBaseProbeWorld
         {
-            [HostCapability("probe.read.value", HostBindingEffect.HostStateRead)]
+            [HostBinding("probe.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
             int GetValue(string id);
         }
 
-        [DotBoxDService]
+        [RpcService]
         public interface IProbeWorld : IBaseProbeWorld;
 
         public sealed record ProbeEvent(string TargetId, string Message, int Threshold);
@@ -44,16 +44,17 @@ public sealed class HostServiceBindingInheritanceTests
     private const string ExplicitEffectSource = """
         using DotBoxD.Abstractions;
         using DotBoxD.Kernels;
+        using DotBoxD.Kernels.Sandbox;
         using DotBoxD.Plugins;
         using DotBoxD.Plugins.Runtime;
         using DotBoxD.Services.Attributes;
 
         namespace DotBoxD.Kernels.Tests.PluginAnalyzer.HostBinding;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IExplicitEffectProbeWorld
         {
-            [HostCapability("probe.action.patch", HostBindingEffect.HostStateWrite)]
+            [HostBinding("probe.action.patch", SandboxEffect.Cpu | SandboxEffect.HostStateWrite)]
             int PatchValue(string id);
         }
 
@@ -96,8 +97,8 @@ public sealed class HostServiceBindingInheritanceTests
     }
 
     [Theory]
-    [MemberData(nameof(InvalidHostCapabilityCases))]
-    public void AddBindingsFrom_rejects_invalid_host_capability_effects(
+    [MemberData(nameof(InvalidHostBindingCases))]
+    public void AddBindingsFrom_rejects_invalid_host_binding_effects(
         Action<SandboxHostBuilder> configure,
         string expectedMessage)
     {
@@ -151,8 +152,7 @@ public sealed class HostServiceBindingInheritanceTests
 
     private interface IBaseProbeWorld
     {
-        [HostCapability("probe.read.value", HostBindingEffect.HostStateRead)]
-        [HostBinding("host.probe.getValue", "probe.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
+        [HostBinding("probe.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         int GetValue(string id);
     }
 
@@ -160,36 +160,35 @@ public sealed class HostServiceBindingInheritanceTests
 
     private sealed class DerivedProbeWorld : IDerivedProbeWorld
     {
-        [HostCapability("probe.read.value", HostBindingEffect.HostStateRead)]
+        [HostBinding("probe.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         public int GetValue(string id) => 42;
     }
 
     private interface INullableProbeWorld
     {
-        [HostCapability("probe.read.value", HostBindingEffect.HostStateRead)]
         [HostBinding("host.probe.echo", "probe.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         int Echo(int? value);
     }
 
     private sealed class NullableProbeWorld : INullableProbeWorld
     {
-        [HostCapability("probe.read.value", HostBindingEffect.HostStateRead)]
+        [HostBinding("probe.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         public int Echo(int? value) => value.GetValueOrDefault();
     }
 
     private interface IExplicitEffectProbeWorld
     {
-        [HostCapability("probe.action.patch", HostBindingEffect.HostStateWrite)]
+        [HostBinding("probe.action.patch", SandboxEffect.Cpu | SandboxEffect.HostStateWrite)]
         int PatchValue(string id);
     }
 
     private sealed class ExplicitEffectProbeWorld : IExplicitEffectProbeWorld
     {
-        [HostCapability("probe.action.patch", HostBindingEffect.HostStateRead)]
+        [HostBinding("probe.action.patch", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         public int PatchValue(string id) => 1;
     }
 
-    public static TheoryData<Action<SandboxHostBuilder>, string> InvalidHostCapabilityCases()
+    public static TheoryData<Action<SandboxHostBuilder>, string> InvalidHostBindingCases()
         => new()
         {
             {
@@ -202,17 +201,17 @@ public sealed class HostServiceBindingInheritanceTests
             },
             {
                 builder => builder.AddBindingsFrom<IMissingAllocProbeWorld>(new MissingAllocProbeWorld()),
-                "must declare Allocates because its return shape allocates"
+                "must declare Alloc because its return shape allocates"
             },
             {
                 builder => builder.AddBindingsFrom<IExtraAllocProbeWorld>(new ExtraAllocProbeWorld()),
-                "must not declare Allocates because its return shape does not allocate"
+                "must not declare Alloc because its return shape does not allocate"
             }
         };
 
     private interface INoAccessProbeWorld
     {
-        [HostCapability("probe.bad.none", HostBindingEffect.None)]
+        [HostBinding("probe.bad.none", SandboxEffect.None)]
         int Read();
     }
 
@@ -223,7 +222,7 @@ public sealed class HostServiceBindingInheritanceTests
 
     private interface IBothAccessProbeWorld
     {
-        [HostCapability("probe.bad.both", HostBindingEffect.HostStateRead | HostBindingEffect.HostStateWrite)]
+        [HostBinding("probe.bad.both", SandboxEffect.HostStateRead | SandboxEffect.HostStateWrite)]
         int Read();
     }
 
@@ -234,7 +233,7 @@ public sealed class HostServiceBindingInheritanceTests
 
     private interface IMissingAllocProbeWorld
     {
-        [HostCapability("probe.bad.missing-alloc", HostBindingEffect.HostStateRead)]
+        [HostBinding("probe.bad.missing-alloc", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         string ReadName();
     }
 
@@ -245,7 +244,7 @@ public sealed class HostServiceBindingInheritanceTests
 
     private interface IExtraAllocProbeWorld
     {
-        [HostCapability("probe.bad.extra-alloc", HostBindingEffect.HostStateRead | HostBindingEffect.Allocates)]
+        [HostBinding("probe.bad.extra-alloc", SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateRead)]
         int Read();
     }
 

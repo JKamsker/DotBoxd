@@ -103,7 +103,7 @@ public sealed class RaceConditionDeterministicTests
     //      another thread installed after the fault.
     //      BEFORE: key-only TryRemove evicts whatever is at the key -> removes the successor -> RED.
     [Fact]
-    public void DotBoxDGeneratedAssemblyCatalog_FaultRecovery_PreservesSuccessor()
+    public void RpcGeneratedAssemblyCatalog_FaultRecovery_PreservesSuccessor()
     {
         // A unique throwaway assembly so this never collides with any real assembly's catalog entry.
         Assembly asm = AssemblyBuilder.DefineDynamicAssembly(
@@ -113,12 +113,12 @@ public sealed class RaceConditionDeterministicTests
         var faulted = new Lazy<bool>(() => false);   // thread A's attempt that faulted
         var successor = new Lazy<bool>(() => true);  // thread C's replacement, installed after A faulted
 
-        DotBoxDGeneratedAssemblyCatalog.SetRegistrationAttemptForTest(asm, faulted);
-        DotBoxDGeneratedAssemblyCatalog.SetRegistrationAttemptForTest(asm, successor);
+        RpcGeneratedAssemblyCatalog.SetRegistrationAttemptForTest(asm, faulted);
+        RpcGeneratedAssemblyCatalog.SetRegistrationAttemptForTest(asm, successor);
 
         // Thread A's fault-recovery path runs now, holding only its own (faulted) Lazy.
-        DotBoxDGeneratedAssemblyCatalog.EvictFaultedAttempt(asm, faulted);
+        RpcGeneratedAssemblyCatalog.EvictFaultedAttempt(asm, faulted);
 
-        Assert.Same(successor, DotBoxDGeneratedAssemblyCatalog.GetRegistrationAttemptForTest(asm));
+        Assert.Same(successor, RpcGeneratedAssemblyCatalog.GetRegistrationAttemptForTest(asm));
     }
 }

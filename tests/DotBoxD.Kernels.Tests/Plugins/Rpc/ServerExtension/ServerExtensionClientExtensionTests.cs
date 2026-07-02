@@ -18,7 +18,7 @@ public sealed class ServerExtensionClientExtensionTests
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteMonsterControl
         {
         }
@@ -76,7 +76,7 @@ public sealed class ServerExtensionClientExtensionTests
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteMonsterControl
         {
         }
@@ -206,7 +206,7 @@ public sealed class ServerExtensionClientExtensionTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteMonsterControl
             {
                 {{receiverMember}}

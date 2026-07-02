@@ -39,7 +39,7 @@ Features that used to be split across removed samples are tracked in
 using DotBoxD.Services.Attributes;
 
 // One contract, shared by host and client.
-[DotBoxDService]
+[RpcService]
 public interface ICatalogService
 {
     ValueTask<int> GetUnitPriceAsync(string itemId, CancellationToken cancellationToken = default);
@@ -64,7 +64,7 @@ var catalog = connection.Get<ICatalogService>();
 var unitPrice = await catalog.GetUnitPriceAsync("sword"); // one remote round-trip
 ```
 
-The `[DotBoxDService]` attribute drives the `DotBoxD.Services.SourceGenerator`, which emits a typed
+The `[RpcService]` attribute drives the `DotBoxD.Services.SourceGenerator`, which emits a typed
 proxy, a dispatcher, and the `ProvideCatalogService(...)` / `Get<ICatalogService>()` extensions at
 compile time.
 
@@ -296,7 +296,7 @@ published as a standalone package.
 
 After installing, these are the entry points you'll reach for:
 
-- `DotBoxD.Services`: `[DotBoxDService]` contracts, `RpcPeer` / `RpcHost`, and the generated
+- `DotBoxD.Services`: `[RpcService]` contracts, `RpcPeer` / `RpcHost`, and the generated
   `Provide{Service}` / `Get<TService>()` wiring.
 - `DotBoxD.Hosting`: `SandboxHost` — import, validate, prepare, and execute kernels under policy.
 - `DotBoxD.Kernels.Serialization.Json`: JSON IR import **and export** round-trip via

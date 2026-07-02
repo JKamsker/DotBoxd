@@ -15,13 +15,13 @@ public class UnsupportedSubServicePayloadTests
 
             namespace Regress.UnsupportedSubPayload
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task SendAsync(ISub sub);
@@ -45,13 +45,13 @@ public class UnsupportedSubServicePayloadTests
 
             namespace Regress.UnsupportedSubPayload
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<IList<ISub>> ListAsync();
@@ -76,13 +76,13 @@ public class UnsupportedSubServicePayloadTests
             {
                 public sealed record Result(ISub Inner);
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<Result> GetAsync();
@@ -107,13 +107,13 @@ public class UnsupportedSubServicePayloadTests
             {
                 public sealed record Request(ISub Inner);
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task SendAsync(Request request);
@@ -143,13 +143,13 @@ public class UnsupportedSubServicePayloadTests
 
                 public sealed record Outer(Inner Inner);
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<Outer> GetAsync();
@@ -182,13 +182,13 @@ public class UnsupportedSubServicePayloadTests
                     public int Id { get; init; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task SendAsync(Request request);
@@ -216,13 +216,13 @@ public class UnsupportedSubServicePayloadTests
                     public Node<ISub> SubNode { get; init; } = null!;
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<Node<int>> GetAsync();

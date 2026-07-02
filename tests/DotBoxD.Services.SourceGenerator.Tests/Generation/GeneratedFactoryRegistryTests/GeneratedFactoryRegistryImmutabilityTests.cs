@@ -111,7 +111,7 @@ public sealed class GeneratedFactoryRegistryImmutabilityTests
 
         namespace Metadata.ImmutableCatalog
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IImmutableCatalog
             {
                 Task<int> EchoAsync(int value);

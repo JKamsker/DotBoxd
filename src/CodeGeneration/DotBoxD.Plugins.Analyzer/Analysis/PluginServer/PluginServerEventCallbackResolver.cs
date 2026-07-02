@@ -7,7 +7,7 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.PluginServer;
 /// Resolves the reverse server-&gt;plugin event-callback contract for a generated plugin facade, discovered by
 /// the same <c>{worldNs}.Ipc</c> convention the factory uses for the control service. Optional: a world with no
 /// such contract keeps the original facade (no local handlers). Two guards keep the emitted facade compilable:
-/// a shape guard requires the <c>[DotBoxDService]</c> interface to carry the expected
+/// a shape guard requires the <c>[RpcService]</c> interface to carry the expected
 /// <c>OnEventAsync(string, ReadOnlyMemory&lt;byte&gt;, CancellationToken) -&gt; ValueTask</c>/<c>ValueTask&lt;T&gt;</c> method, and a transport guard requires
 /// the compilation to actually expose the generated <c>DotBoxDGeneratedExtensions.Provide{suffix}</c> extension
 /// (absent or ambiguous — e.g. a test stub — falls back to the original wiring instead of a dangling call).
@@ -182,10 +182,7 @@ internal static class PluginServerEventCallbackResolver
     {
         foreach (var attribute in type.GetAttributes())
         {
-            if (string.Equals(
-                    attribute.AttributeClass?.ToDisplayString(),
-                    DotBoxDMetadataNames.DotBoxDServiceAttribute,
-                    StringComparison.Ordinal))
+            if (DotBoxDMetadataNames.IsRpcServiceAttribute(attribute.AttributeClass?.ToDisplayString()))
             {
                 return true;
             }

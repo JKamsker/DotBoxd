@@ -131,13 +131,13 @@ public sealed partial class PluginServerSurpriseRegressionTests
 
         namespace Sample
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IInventoryControl
             {
                 ValueTask<int> CountAsync(CancellationToken ct = default);
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorldAccess
             {
                 int CurrentTick { get; }
@@ -267,7 +267,7 @@ public sealed partial class PluginServerSurpriseRegressionTests
             using System.Threading.Tasks;
             using DotBoxD.Services.Attributes;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IPluginEventCallback
             {
                 ValueTask OnEventAsync(string subscriptionId, ReadOnlyMemory<byte> projectedValue, CancellationToken ct = default);

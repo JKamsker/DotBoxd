@@ -4,6 +4,8 @@ internal static class ServicesGeneratorTypeNames
 {
     public const string GlobalPrefix = "global::";
 
+    public const string RpcServiceAttribute = "DotBoxD.Services.Attributes.RpcServiceAttribute";
+    public const string RpcMethodAttribute = "DotBoxD.Services.Attributes.RpcMethodAttribute";
     public const string DotBoxDServiceAttribute = "DotBoxD.Services.Attributes.DotBoxDServiceAttribute";
     public const string DotBoxDMethodAttribute = "DotBoxD.Services.Attributes.DotBoxDMethodAttribute";
     public const string CancellationTokenMetadata = "System.Threading.CancellationToken";
@@ -46,9 +48,9 @@ internal static class ServicesGeneratorTypeNames
     public const string GlobalGeneratedServiceRegistry =
         GlobalPrefix + GeneratedNamespace + ".GeneratedServiceRegistry";
     public const string GlobalServiceRegistrationSink =
-        GlobalPrefix + GeneratedNamespace + ".IDotBoxDServiceRegistrationSink";
+        GlobalPrefix + GeneratedNamespace + ".IRpcServiceRegistrationSink";
     public const string GlobalGeneratedServiceRegistrationSink =
-        GlobalPrefix + GeneratedNamespace + ".IDotBoxDGeneratedServiceRegistrationSink";
+        GlobalPrefix + GeneratedNamespace + ".IRpcGeneratedServiceRegistrationSink";
 
     public const string GlobalRpcPeer = GlobalPrefix + "DotBoxD.Services.Peer.RpcPeer";
     public const string GlobalRpcStreamHandle = GlobalPrefix + "DotBoxD.Services.Protocol.RpcStreamHandle";
@@ -81,4 +83,10 @@ internal static class ServicesGeneratorTypeNames
         => typeName + "<" + firstTypeArgument + ", " + secondTypeArgument + ">";
 
     public static string NullableOf(string typeName) => typeName + "?";
+
+    public static bool IsRpcServiceAttribute(string? typeName) =>
+        typeName is RpcServiceAttribute or DotBoxDServiceAttribute;
+
+    public static bool IsRpcMethodAttribute(string? typeName) =>
+        typeName is RpcMethodAttribute or DotBoxDMethodAttribute;
 }

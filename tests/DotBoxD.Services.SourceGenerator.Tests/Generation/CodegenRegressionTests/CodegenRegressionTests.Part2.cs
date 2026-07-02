@@ -13,7 +13,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.@event
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface @class
                 {
                     Task<int> CountAsync();
@@ -44,7 +44,7 @@ public partial class CodegenRegressionTests
             using DotBoxD.Services.Attributes;
             using System.Threading.Tasks;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IGlobal
             {
                 Task<int> GoAsync(int x);
@@ -72,10 +72,10 @@ public partial class CodegenRegressionTests
 
             namespace Regress.Escape
             {
-                [DotBoxDService(Name = "Foo\"Bar")]
+                [RpcService(Name = "Foo\"Bar")]
                 public interface IEsc
                 {
-                    [DotBoxDMethod(Name = "do\"it")]
+                    [RpcMethod(Name = "do\"it")]
                     Task<int> DoAsync(int x);
                 }
             }
@@ -94,13 +94,13 @@ public partial class CodegenRegressionTests
 
             namespace Regress.SubServiceEscape
             {
-                [DotBoxDService(Name = "Sub\"{Svc")]
+                [RpcService(Name = "Sub\"{Svc")]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService(Name = "Root{Svc")]
+                [RpcService(Name = "Root{Svc")]
                 public interface IRoot
                 {
                     Task<ISub> GetSubAsync();
@@ -127,13 +127,13 @@ public partial class CodegenRegressionTests
             using DotBoxD.Services.Attributes;
             using System.Threading.Tasks;
 
-            [DotBoxDService]
+            [RpcService]
             public interface ISub
             {
                 Task<int> CountAsync();
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRoot
             {
                 Task<ISub> GetSubAsync();
@@ -159,13 +159,13 @@ public partial class CodegenRegressionTests
 
             namespace Regress.SyncSubService
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     ISub GetSub();
@@ -206,13 +206,13 @@ public partial class CodegenRegressionTests
 
             namespace Regress.GenericSubService
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IChild<T>
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<IChild<int>> GetChildAsync();

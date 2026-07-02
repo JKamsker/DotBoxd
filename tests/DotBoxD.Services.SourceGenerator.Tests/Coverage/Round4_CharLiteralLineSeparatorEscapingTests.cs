@@ -29,7 +29,7 @@ public sealed class Round4_CharLiteralLineSeparatorEscapingTests
             "using System.Threading.Tasks;\n" +
             "using DotBoxD.Services.Attributes;\n" +
             "namespace Bug.CharSep\n{\n" +
-            "    [DotBoxDService]\n" +
+            "    [RpcService]\n" +
             "    public interface ILineSepDefaults\n    {\n" +
             "        Task<int> LineAsync(char sep = '" + UnicodeEscape(LineSeparator) + "', CancellationToken ct = default);\n" +
             "        Task<int> ParaAsync(char sep = '" + UnicodeEscape(ParagraphSeparator) + "', CancellationToken ct = default);\n" +

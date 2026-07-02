@@ -10,7 +10,7 @@ Services, Kernels, and Pushdown.
   [Migration from standalone repos](https://dotboxd.kamsker.at/contributing/migration-from-standalone-repos/)
   for how to view pre-merge history.
 - **Full rebrand:** all assemblies, namespaces, attributes, and diagnostics renamed to the
-  `DotBoxD.*` family (`[DotBoxDService]`, `DBXS###` services diagnostics, `DBXK###` kernel/plugin
+  `DotBoxD.*` family (`[RpcService]`, `DBXS###` services diagnostics, `DBXK###` kernel/plugin
   diagnostics). The wire format is unchanged.
 - **Central Package Management (CPM):** versions are managed centrally via
   `Directory.Packages.props`; the solution uses the `DotBoxD.slnx` format.
@@ -65,8 +65,8 @@ Services, Kernels, and Pushdown.
   `DotBoxDGeneratedParameter` → `GeneratedParameter`, `DotBoxDGeneratedReturnKind` → `GeneratedReturnKind`;
   `DotBoxDNamedPipeOptions` → `NamedPipeTransportOptions`;
   `DotBoxDPluginAnalyzer` → `PluginAnalyzer`, `DotBoxDPluginPackageGenerator` → `PluginPackageGenerator`.
-  Sanctioned public brand entry points are unchanged: `[DotBoxDService]` / `DotBoxDServiceAttribute`,
-  `[DotBoxDMethod]` / `DotBoxDMethodAttribute`, `DotBoxDGenerated`, `DotBoxDGeneratedExtensions`,
+  Sanctioned public brand entry points are unchanged: `[RpcService]` / `RpcServiceAttribute`,
+  `[RpcMethod]` / `RpcMethodAttribute`, `DotBoxDGenerated`, `DotBoxDGeneratedExtensions`,
   `DotBoxDInfo`, `DotBoxDServicesInfo`, and all `DotBoxD.*` assembly/namespace names.
 
 ---

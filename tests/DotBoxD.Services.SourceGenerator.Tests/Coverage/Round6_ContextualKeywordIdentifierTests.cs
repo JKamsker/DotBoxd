@@ -20,7 +20,7 @@ using DotBoxD.Services.Attributes;
 
 namespace Bug.ContextualKw
 {
-    [DotBoxDService]
+    [RpcService]
     public interface IContextualKeywords
     {
         Task<int> @async(int @await, int @record, CancellationToken ct = default);

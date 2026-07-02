@@ -13,7 +13,7 @@ work around.
 
 | Prefix | Area | Source |
 |--------|------|--------|
-| `DBXS` | **Services** — `[DotBoxDService]` proxy/dispatcher generation | `DotBoxD.Services.SourceGenerator` |
+| `DBXS` | **Services** — `[RpcService]` proxy/dispatcher generation | `DotBoxD.Services.SourceGenerator` |
 | `DBXK` | **Kernels / plugins** — plugin authoring + validation | `DotBoxD.Plugins.Analyzer` + kernel validators |
 | `DBXP` | **Pushdown** | reserved |
 | `DBXH` | **Hosting** | reserved |
@@ -22,7 +22,7 @@ work around.
 
 ## Shipped Services codes (`DBXS###`)
 
-If you hit one of these while generating a `[DotBoxDService]` proxy, look it up here:
+If you hit one of these while generating a `[RpcService]` proxy, look it up here:
 
 | ID | Severity | Meaning |
 |--------|----------|---------|

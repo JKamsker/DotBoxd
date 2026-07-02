@@ -18,27 +18,28 @@ public sealed class ServerExtensionInlineScopedHandleTests
     private const string InlineKernel = """
         using System.Threading.Tasks;
         using DotBoxD.Abstractions;
+        using DotBoxD.Kernels.Sandbox;
         using DotBoxD.Services.Attributes;
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IGameWorldAccess
         {
             IMonsterControl Monsters { get; }
         }
 
-        [DotBoxDService]
+        [RpcService]
         public interface IMonsterControl
         {
-            [HostCapability("game.world.monster.read.handle", HostBindingEffect.HostStateRead)]
+            [HostBinding("game.world.monster.read.handle", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
             IMonster Get(string entityId);
         }
 
-        [DotBoxDService]
+        [RpcService]
         public interface IMonster
         {
-            [HostCapability("game.world.monster.write.kill", HostBindingEffect.HostStateWrite)]
+            [HostBinding("game.world.monster.write.kill", SandboxEffect.Cpu | SandboxEffect.HostStateWrite)]
             ValueTask<bool> KillAsync();
         }
 
@@ -59,27 +60,28 @@ public sealed class ServerExtensionInlineScopedHandleTests
     private const string LocalKernel = """
         using System.Threading.Tasks;
         using DotBoxD.Abstractions;
+        using DotBoxD.Kernels.Sandbox;
         using DotBoxD.Services.Attributes;
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IGameWorldAccess
         {
             IMonsterControl Monsters { get; }
         }
 
-        [DotBoxDService]
+        [RpcService]
         public interface IMonsterControl
         {
-            [HostCapability("game.world.monster.read.handle", HostBindingEffect.HostStateRead)]
+            [HostBinding("game.world.monster.read.handle", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
             IMonster Get(string entityId);
         }
 
-        [DotBoxDService]
+        [RpcService]
         public interface IMonster
         {
-            [HostCapability("game.world.monster.write.kill", HostBindingEffect.HostStateWrite)]
+            [HostBinding("game.world.monster.write.kill", SandboxEffect.Cpu | SandboxEffect.HostStateWrite)]
             ValueTask<bool> KillAsync();
         }
 
@@ -166,27 +168,28 @@ public sealed class ServerExtensionInlineScopedHandleTests
     {
         var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""
             using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
             using DotBoxD.Services.Attributes;
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorldAccess
             {
                 IMonsterControl Monsters { get; }
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IMonsterControl
             {
-                [HostCapability("game.world.monster.read.handle", HostBindingEffect.HostStateRead)]
+                [HostBinding("game.world.monster.read.handle", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
                 IMonster Get(ref string entityId);
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IMonster
             {
-                [HostCapability("game.world.monster.read.threat", HostBindingEffect.HostStateRead)]
+                [HostBinding("game.world.monster.read.threat", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
                 int Threat();
             }
 
@@ -227,7 +230,7 @@ public sealed class ServerExtensionInlineScopedHandleTests
         => PluginAnalyzerGeneratedPackageFactory.Create(
             source,
             "Sample.ScopedCallPluginPackage",
-            typeof(DotBoxD.Services.Attributes.DotBoxDServiceAttribute));
+            typeof(DotBoxD.Services.Attributes.RpcServiceAttribute));
 
     private static CallExpression HostCall(PluginPackage package, string methodSuffix)
         => package.Module.Functions

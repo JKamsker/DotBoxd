@@ -8,7 +8,7 @@ namespace DotBoxD.Kernels.Game.Server.Simulation;
 /// <c>ctx.Host&lt;IGameWorldAccess&gt;()</c>).
 ///
 /// UNIFIED-DESIGN NOTE: the sandbox host bindings are now DERIVED from the server's
-/// <see cref="GameWorldAccess"/> impl and its <c>[HostCapability]</c> annotations — one server-side source
+/// <see cref="GameWorldAccess"/> impl and its <c>[HostBinding]</c> annotations — one server-side source
 /// of truth. For each interface method the framework registers one capability-gated binding: the binding
 /// id (routing) comes from the method identity, the capability from the annotation, the read/write effect
 /// from the implementation. No hand-typed binding ids or capability strings live here anymore — compare

@@ -38,8 +38,12 @@ public sealed class ServicesGeneratorTypeNameContractTests
         {
             [nameof(ServicesGeneratorTypeNames.GlobalPrefix)] = "global::",
 
-            [nameof(ServicesGeneratorTypeNames.DotBoxDServiceAttribute)] = TypeName(typeof(DotBoxDServiceAttribute)),
-            [nameof(ServicesGeneratorTypeNames.DotBoxDMethodAttribute)] = TypeName(typeof(DotBoxDMethodAttribute)),
+            [nameof(ServicesGeneratorTypeNames.RpcServiceAttribute)] = TypeName(typeof(RpcServiceAttribute)),
+            [nameof(ServicesGeneratorTypeNames.RpcMethodAttribute)] = TypeName(typeof(RpcMethodAttribute)),
+            [nameof(ServicesGeneratorTypeNames.DotBoxDServiceAttribute)] =
+                "DotBoxD.Services.Attributes.DotBoxDServiceAttribute",
+            [nameof(ServicesGeneratorTypeNames.DotBoxDMethodAttribute)] =
+                "DotBoxD.Services.Attributes.DotBoxDMethodAttribute",
             [nameof(ServicesGeneratorTypeNames.CancellationTokenMetadata)] = TypeName(typeof(CancellationToken)),
 
             [nameof(ServicesGeneratorTypeNames.GeneratedNamespace)] = typeof(GeneratedService).Namespace!,
@@ -83,9 +87,9 @@ public sealed class ServicesGeneratorTypeNameContractTests
             [nameof(ServicesGeneratorTypeNames.GlobalGeneratedServiceRegistry)] =
                 GlobalTypeName(typeof(GeneratedServiceRegistry)),
             [nameof(ServicesGeneratorTypeNames.GlobalServiceRegistrationSink)] =
-                GlobalTypeName(typeof(IDotBoxDServiceRegistrationSink)),
+                GlobalTypeName(typeof(IRpcServiceRegistrationSink)),
             [nameof(ServicesGeneratorTypeNames.GlobalGeneratedServiceRegistrationSink)] =
-                GlobalTypeName(typeof(IDotBoxDGeneratedServiceRegistrationSink)),
+                GlobalTypeName(typeof(IRpcGeneratedServiceRegistrationSink)),
 
             [nameof(ServicesGeneratorTypeNames.GlobalRpcPeer)] = GlobalTypeName(typeof(RpcPeer)),
             [nameof(ServicesGeneratorTypeNames.GlobalRpcStreamHandle)] = GlobalTypeName(typeof(RpcStreamHandle)),

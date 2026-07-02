@@ -13,7 +13,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.ZeroVoidRuntime
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IZvr
                 {
                     void Ping();
@@ -84,7 +84,7 @@ public partial class CodegenRegressionTests
 
             namespace DotBoxD.Services.MyService
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IMine
                 {
                     Task<int> CountAsync();
@@ -109,7 +109,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.AllUnsupported
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IAllBad
                 {
                     void OnlyOut(out int x);
@@ -149,7 +149,7 @@ public partial class CodegenRegressionTests
     }
 
     /// <summary>
-    /// Regression: <see cref="DotBoxD.Services.Attributes.DotBoxDMethodAttribute"/> declared on
+    /// Regression: <see cref="DotBoxD.Services.Attributes.RpcMethodAttribute"/> declared on
     /// a BASE interface method must propagate to the wire name used by the DERIVED proxy.
     /// </summary>
     [Fact]
@@ -163,11 +163,11 @@ public partial class CodegenRegressionTests
             {
                 public interface IBaseWire
                 {
-                    [DotBoxDMethod(Name = "wire_name")]
+                    [RpcMethod(Name = "wire_name")]
                     Task<int> FetchAsync(int id);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IDerivedWire : IBaseWire
                 {
                 }
@@ -182,7 +182,7 @@ public partial class CodegenRegressionTests
                 "Regress.InheritWire", "IDerivedWire", GeneratorTestHelper.GeneratedKind.Dispatcher))
             .SourceText.ToString();
         dispatcher.Should().Contain("case \"wire_name\":",
-            "the inherited [DotBoxDMethod(Name=...)] must drive the dispatcher's case literal");
+            "the inherited [RpcMethod(Name=...)] must drive the dispatcher's case literal");
         dispatcher.Should().NotContain("case \"FetchAsync\":",
             "the CLR name must not leak into the wire when an explicit name is set");
     }
@@ -201,7 +201,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.OverloadDefault
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ILookup
                 {
                     Task<int> GetAsync(int id);
@@ -225,7 +225,7 @@ public partial class CodegenRegressionTests
 
     /// <summary>
     /// Overloaded CLR method names are supported when the user gives each overload a
-    /// distinct wire name through <see cref="DotBoxD.Services.Attributes.DotBoxDMethodAttribute"/>.
+    /// distinct wire name through <see cref="DotBoxD.Services.Attributes.RpcMethodAttribute"/>.
     /// </summary>
     [Fact]
     public void OverloadedServiceMethods_WithDistinctWireNames_GenerateDistinctDispatcherCases()
@@ -236,13 +236,13 @@ public partial class CodegenRegressionTests
 
             namespace Regress.OverloadNamed
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ILookup
                 {
-                    [DotBoxDMethod(Name = "GetById")]
+                    [RpcMethod(Name = "GetById")]
                     Task<int> GetAsync(int id);
 
-                    [DotBoxDMethod(Name = "GetByName")]
+                    [RpcMethod(Name = "GetByName")]
                     Task<string> GetAsync(string name);
                 }
             }

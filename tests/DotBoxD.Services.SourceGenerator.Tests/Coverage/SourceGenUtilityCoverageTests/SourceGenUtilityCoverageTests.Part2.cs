@@ -25,7 +25,7 @@ public partial class SourceGenUtilityCoverageTests
                     int Echo(System.ValueTuple<int, int, int, int, int, int, int, System.ValueTuple<int, int>> value);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight { }
             }
             """;
@@ -52,7 +52,7 @@ public partial class SourceGenUtilityCoverageTests
                 public interface ILeft  { int Echo(Dictionary<string, int> map); }
                 public interface IRight { int Echo(List<int> map); }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight { }
             }
             """;
@@ -79,7 +79,7 @@ public partial class SourceGenUtilityCoverageTests
 
             namespace @namespace.@class
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IThing
                 {
                     Task<int> AddAsync(int a, int b);
@@ -114,13 +114,13 @@ public partial class SourceGenUtilityCoverageTests
                     public ISub? Inner;
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task SendAsync(Carrier carrier);
@@ -161,7 +161,7 @@ public partial class SourceGenUtilityCoverageTests
                 public interface ILeft  { int Echo((int A, int B) value); }
                 public interface IRight { int Echo((int X, int Y) value); }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight { }
             }
             """;
@@ -194,7 +194,7 @@ public partial class SourceGenUtilityCoverageTests
             .GetRunResult();
 
         runResult.Results.Single().GeneratedSources.Should().BeEmpty(
-            "with no [DotBoxDService] the aggregate must early-return and emit no source");
+            "with no [RpcService] the aggregate must early-return and emit no source");
         runResult.Diagnostics.Should().BeEmpty();
     }
 

@@ -122,7 +122,7 @@ public sealed class InvokeAsyncGenerationTests
             {
                 public sealed record MonsterSnapshot(string Id, string Name, int Health);
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess
                 {
                     [HostBinding("host.world.getMonster", "game.world.monster.read.snapshot", SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateRead)]

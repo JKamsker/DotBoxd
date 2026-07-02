@@ -29,7 +29,7 @@ internal sealed record RpcServerExtensionGraft(
         if (receiverType.TypeKind != TypeKind.Interface || !IsDotBoxDService(receiverType))
         {
             throw new NotSupportedException(
-                $"{description} '{receiverType.ToDisplayString()}' must be a server-owned [DotBoxDService] interface.");
+                $"{description} '{receiverType.ToDisplayString()}' must be a server-owned [RpcService] interface.");
         }
     }
 
@@ -125,10 +125,7 @@ internal sealed record RpcServerExtensionGraft(
     {
         foreach (var attribute in type.GetAttributes())
         {
-            if (string.Equals(
-                attribute.AttributeClass?.ToDisplayString(),
-                DotBoxDMetadataNames.DotBoxDServiceAttribute,
-                StringComparison.Ordinal))
+            if (DotBoxDMetadataNames.IsRpcServiceAttribute(attribute.AttributeClass?.ToDisplayString()))
             {
                 return true;
             }

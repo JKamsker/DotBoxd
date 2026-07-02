@@ -13,12 +13,12 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
             ForgedLookalikeHostMetadataDescriptorSdkSource(
                 """
                 [global::System.AttributeUsage(global::System.AttributeTargets.Method | global::System.AttributeTargets.Property)]
-                public sealed class HostCapabilityAttribute : global::System.Attribute
+                public sealed class HostBindingAttribute : global::System.Attribute
                 {
-                    public HostCapabilityAttribute(string capability, HostBindingEffect effects) { }
+                    public HostBindingAttribute(string capability, global::DotBoxD.Kernels.Sandbox.SandboxEffect effects) { }
                 }
                 """,
-                "[HostCapability(\"sample.secret.read\", HostBindingEffect.HostStateRead)]"),
+                "[HostBinding(\"sample.secret.read\", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]"),
             "ForgedLookalikeHostCapabilityDescriptorSdk");
         var diagnostics = GeneratorDiagnostics(SecretConsumerSource(), sdkReference);
 
@@ -38,10 +38,10 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
                 [global::System.AttributeUsage(global::System.AttributeTargets.Method | global::System.AttributeTargets.Property)]
                 public sealed class HostBindingAttribute : global::System.Attribute
                 {
-                    public HostBindingAttribute(string bindingId, string capability, HostBindingEffect effects) { }
+                    public HostBindingAttribute(string bindingId, string capability, global::DotBoxD.Kernels.Sandbox.SandboxEffect effects) { }
                 }
                 """,
-                "[HostBinding(\"host.Sdk.ISecretWorld.Secret\", \"sample.secret.read\", HostBindingEffect.HostStateRead)]"),
+                "[HostBinding(\"host.Sdk.ISecretWorld.Secret\", \"sample.secret.read\", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]"),
             "ForgedLookalikeHostBindingDescriptorSdk");
         var diagnostics = GeneratorDiagnostics(SecretConsumerSource(), sdkReference);
 
@@ -101,6 +101,7 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
         var hash = KernelMethodDescriptorPayload.Hash(json);
         return $$"""
             using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
             using DotBoxD.Services.Attributes;
 
             [assembly: global::DotBoxD.Abstractions.GeneratedKernelMethodDescriptorAttribute(
@@ -118,7 +119,7 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
 
             namespace Sdk
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISecretWorld
                 {
                     {{methodAttribute}}
@@ -168,6 +169,7 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
         var hash = KernelMethodDescriptorPayload.Hash(json);
         return $$"""
             using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
             using DotBoxD.Services.Attributes;
 
             [assembly: global::DotBoxD.Abstractions.GeneratedKernelMethodDescriptorAttribute(
@@ -180,10 +182,10 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
 
             namespace Sdk
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorld
                 {
-                    [HostCapability("sample.read.value", HostBindingEffect.HostStateRead)]
+                    [HostBinding("sample.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
                     int Read(string id) => throw new System.NotSupportedException("metadata-only world");
                 }
 

@@ -15,7 +15,7 @@ public class SubServicePropertyInheritanceTests
 
             namespace Regress.SubServicePropertyInheritance
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
@@ -31,7 +31,7 @@ public class SubServicePropertyInheritanceTests
                     ISub Child { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot : ILeft, IRight
                 {
                 }
@@ -59,7 +59,7 @@ public class SubServicePropertyInheritanceTests
 
             namespace Regress.SubServicePropertyInheritance
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
@@ -70,7 +70,7 @@ public class SubServicePropertyInheritanceTests
                     ISub Child { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot : IBase
                 {
                     new ISub Child { get; }
@@ -99,13 +99,13 @@ public class SubServicePropertyInheritanceTests
 
             namespace Regress.SubServicePropertyInheritance
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISubA
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISubB
                 {
                     Task<int> CountAsync();
@@ -121,7 +121,7 @@ public class SubServicePropertyInheritanceTests
                     ISubB Child { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot : ILeft, IRight
                 {
                 }
@@ -145,7 +145,7 @@ public class SubServicePropertyInheritanceTests
 
             namespace Regress.SubServicePropertyInheritance
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
@@ -161,7 +161,7 @@ public class SubServicePropertyInheritanceTests
                     int Open();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot : IProperties, IMethods
                 {
                 }
@@ -189,13 +189,13 @@ public class SubServicePropertyInheritanceTests
 
             namespace Regress.SubServicePropertyInheritance
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     ISub {{propertyName}} { get; }

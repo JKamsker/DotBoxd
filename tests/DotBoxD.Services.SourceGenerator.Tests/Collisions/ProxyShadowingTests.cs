@@ -16,7 +16,7 @@ public class ProxyShadowingTests
 
             namespace Regress.ProxyShadow
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IShadow
                 {
                     Task<int> EchoAsync(int _invoker, string _instanceId, CancellationToken ct = default);
@@ -43,13 +43,13 @@ public class ProxyShadowingTests
 
             namespace Regress.ProxyShadow
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<ISub> GetAsync(string __dotboxd_handle);

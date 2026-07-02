@@ -14,7 +14,7 @@ public class ReviewedCodegenRegressionTests
 
             namespace Regress.RefReadonlyReturn
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRefReadonly
                 {
                     ref readonly int Get();
@@ -46,7 +46,7 @@ public class ReviewedCodegenRegressionTests
 
             namespace A.B
             {
-                [DotBoxDService(Name = "A.B.IFoo")]
+                [RpcService(Name = "A.B.IFoo")]
                 public interface IFoo
                 {
                     Task<int> OneAsync();
@@ -55,7 +55,7 @@ public class ReviewedCodegenRegressionTests
 
             namespace C
             {
-                [DotBoxDService(Name = "C.IFoo")]
+                [RpcService(Name = "C.IFoo")]
                 public interface IFoo
                 {
                     Task<int> TwoAsync();
@@ -64,7 +64,7 @@ public class ReviewedCodegenRegressionTests
 
             namespace X
             {
-                [DotBoxDService(Name = "X.IA_B_Foo")]
+                [RpcService(Name = "X.IA_B_Foo")]
                 public interface IA_B_Foo
                 {
                     Task<int> ThreeAsync();
@@ -92,10 +92,10 @@ public class ReviewedCodegenRegressionTests
 
             namespace Regress.UnicodeWireNames
             {
-                [DotBoxDService(Name = "svc\u2028name")]
+                [RpcService(Name = "svc\u2028name")]
                 public interface ILineSeparator
                 {
-                    [DotBoxDMethod(Name = "method\u2029name")]
+                    [RpcMethod(Name = "method\u2029name")]
                     Task<int> GetAsync();
                 }
             }
@@ -121,7 +121,7 @@ public class ReviewedCodegenRegressionTests
             using DotBoxD.Services.Attributes;
             using System.Threading.Tasks;
 
-            [DotBoxDService(Name = "Global.A_B")]
+            [RpcService(Name = "Global.A_B")]
             public interface A_B
             {
                 Task<int> OneAsync();
@@ -129,7 +129,7 @@ public class ReviewedCodegenRegressionTests
 
             namespace A
             {
-                [DotBoxDService(Name = "Namespace.A.B")]
+                [RpcService(Name = "Namespace.A.B")]
                 public interface B
                 {
                     Task<int> TwoAsync();
@@ -156,10 +156,10 @@ public class ReviewedCodegenRegressionTests
 
             namespace Regress.ControlWireNames
             {
-                [DotBoxDService(Name = "svc\u0085\n\r\t\0end")]
+                [RpcService(Name = "svc\u0085\n\r\t\0end")]
                 public interface IControlNames
                 {
-                    [DotBoxDMethod(Name = "method\u0085\n\r\t\0end")]
+                    [RpcMethod(Name = "method\u0085\n\r\t\0end")]
                     Task<int> GetAsync();
                 }
             }
@@ -193,10 +193,10 @@ public class ReviewedCodegenRegressionTests
 
             namespace Regress.SlashedUnicodeWireNames
             {
-                [DotBoxDService(Name = "svc\\\u2028name")]
+                [RpcService(Name = "svc\\\u2028name")]
                 public interface IBackslashNames
                 {
-                    [DotBoxDMethod(Name = "method\\\u2029name")]
+                    [RpcMethod(Name = "method\\\u2029name")]
                     Task<int> GetAsync();
                 }
             }
@@ -230,7 +230,7 @@ public class ReviewedCodegenRegressionTests
 
             namespace Regress.NullableConstraint
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGenericConstraint
                 {
                     T Echo<T>(T value) where T : class?;

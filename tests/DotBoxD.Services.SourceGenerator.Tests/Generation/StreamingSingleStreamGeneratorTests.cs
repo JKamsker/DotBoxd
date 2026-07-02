@@ -17,7 +17,7 @@ public sealed class StreamingSingleStreamGeneratorTests
 
             namespace Streaming.Single
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IUpload
                 {
                     Task<int> UploadAsync(Stream bytes, CancellationToken ct = default);

@@ -72,7 +72,7 @@ public sealed class PluginServerLiveSettingsRequiredSurpriseTests
 
         namespace Sample.Game
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorldAccess;
         }
 

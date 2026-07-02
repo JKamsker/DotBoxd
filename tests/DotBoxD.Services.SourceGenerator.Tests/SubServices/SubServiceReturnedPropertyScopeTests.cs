@@ -15,20 +15,20 @@ public class SubServiceReturnedPropertyScopeTests
 
             namespace Regress.ReturnedSubServiceScope
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IChild
                 {
                     Task<int> PingAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     IChild Child { get; }
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<ISub> OpenAsync();

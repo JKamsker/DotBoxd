@@ -193,7 +193,7 @@ public sealed partial class GeneratedServiceRegistryCoverageTests
             CancellationToken ct = default) => Task.CompletedTask;
     }
 
-    private sealed class RecordingServiceSink : IDotBoxDServiceRegistrationSink
+    private sealed class RecordingServiceSink : IRpcServiceRegistrationSink
     {
         public List<Type> ServiceTypes { get; } = new();
 
@@ -203,7 +203,7 @@ public sealed partial class GeneratedServiceRegistryCoverageTests
             ServiceTypes.Add(typeof(TService));
     }
 
-    private sealed class RecordingGeneratedSink : IDotBoxDGeneratedServiceRegistrationSink
+    private sealed class RecordingGeneratedSink : IRpcGeneratedServiceRegistrationSink
     {
         public List<Type> ServiceTypes { get; } = new();
 

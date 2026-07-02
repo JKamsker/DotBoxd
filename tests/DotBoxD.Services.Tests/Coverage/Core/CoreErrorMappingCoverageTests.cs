@@ -227,7 +227,7 @@ public sealed class CoreErrorMappingCoverageTests
 }
 
 /// <summary>
-/// Round-2 coverage for <c>DotBoxDGeneratedAssemblyCatalog</c> sink registration over an assembly that
+/// Round-2 coverage for <c>RpcGeneratedAssemblyCatalog</c> sink registration over an assembly that
 /// runs no DotBoxD generator: the sink registrar short-circuits to a no-op (returns <c>default</c>) so
 /// the supplied sink receives nothing rather than faulting. Reached via the public
 /// <see cref="GeneratedServiceRegistry"/> sink overloads. The catalog type is internal; this exercises
@@ -273,7 +273,7 @@ public sealed class CatalogEmptyAssemblyCoverageTests
         Assert.Contains(typeof(IGameService), sink.ServiceTypes);
     }
 
-    private sealed class RecordingServiceSink : IDotBoxDServiceRegistrationSink
+    private sealed class RecordingServiceSink : IRpcServiceRegistrationSink
     {
         public List<Type> ServiceTypes { get; } = new();
 
@@ -283,7 +283,7 @@ public sealed class CatalogEmptyAssemblyCoverageTests
             ServiceTypes.Add(typeof(TService));
     }
 
-    private sealed class RecordingGeneratedSink : IDotBoxDGeneratedServiceRegistrationSink
+    private sealed class RecordingGeneratedSink : IRpcGeneratedServiceRegistrationSink
     {
         public List<Type> ServiceTypes { get; } = new();
 

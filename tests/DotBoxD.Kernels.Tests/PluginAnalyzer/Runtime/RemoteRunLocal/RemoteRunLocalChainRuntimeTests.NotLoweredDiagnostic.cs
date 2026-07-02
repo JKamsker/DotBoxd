@@ -24,6 +24,8 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
     }
 
     private const string ReorderedDtoConstructorEvaluationOrderSource = HostPrelude + """
+        using DotBoxD.Kernels.Sandbox;
+
         public sealed record OrderedPair(int First, int Second);
 
         public interface IOrderProbe
@@ -44,6 +46,8 @@ public sealed partial class RemoteRunLocalChainRuntimeTests
         """;
 
     private const string ReorderedDtoInitializerEvaluationOrderSource = HostPrelude + """
+        using DotBoxD.Kernels.Sandbox;
+
         public sealed class OrderedPair
         {
             public int First { get; init; }

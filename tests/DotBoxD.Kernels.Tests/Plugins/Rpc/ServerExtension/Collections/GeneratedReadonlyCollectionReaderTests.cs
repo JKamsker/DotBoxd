@@ -86,7 +86,7 @@ public sealed class GeneratedReadonlyCollectionReaderTests
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteWorldControl
         {
         }

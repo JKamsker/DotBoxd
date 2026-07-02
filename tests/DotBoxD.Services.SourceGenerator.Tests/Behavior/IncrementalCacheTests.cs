@@ -17,7 +17,7 @@ public class IncrementalCacheTests
 
         namespace Demo.Svc
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IFooService
             {
                 Task<int> AddAsync(int a, int b);
@@ -42,7 +42,7 @@ public class IncrementalCacheTests
 
         namespace Demo.Svc2
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IBarService
             {
                 Task<string> EchoAsync(string s);
@@ -66,7 +66,7 @@ public class IncrementalCacheTests
 
             namespace Demo.Svc
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFooService
                 {
                     // comment-only change should not invalidate the model
@@ -157,7 +157,7 @@ public class IncrementalCacheTests
 
             namespace Demo.Svc
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFooService
                 {
                     Task<int> SumAsync(int a, int b);

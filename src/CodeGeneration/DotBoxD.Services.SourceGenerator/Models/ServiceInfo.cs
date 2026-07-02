@@ -15,15 +15,15 @@ internal enum MethodReturnKind
     Task,
     /// <summary><see cref="System.Threading.Tasks.Task{TResult}"/> — async with payload.</summary>
     TaskOf,
-    /// <summary>A synchronous <c>[DotBoxDService]</c> interface return — nested sub-service.</summary>
+    /// <summary>A synchronous <c>[RpcService]</c> interface return — nested sub-service.</summary>
     SyncSubService,
     /// <summary>Non-generic <see cref="System.Threading.Tasks.ValueTask"/> — async, no payload.</summary>
     ValueTask,
     /// <summary><see cref="System.Threading.Tasks.ValueTask{TResult}"/> — async with payload.</summary>
     ValueTaskOf,
-    /// <summary><see cref="System.Threading.Tasks.Task{TResult}"/> where <c>TResult</c> is itself a <c>[DotBoxDService]</c> interface — nested sub-service.</summary>
+    /// <summary><see cref="System.Threading.Tasks.Task{TResult}"/> where <c>TResult</c> is itself a <c>[RpcService]</c> interface — nested sub-service.</summary>
     TaskOfSubService,
-    /// <summary><see cref="System.Threading.Tasks.ValueTask{TResult}"/> where <c>TResult</c> is itself a <c>[DotBoxDService]</c> interface — nested sub-service.</summary>
+    /// <summary><see cref="System.Threading.Tasks.ValueTask{TResult}"/> where <c>TResult</c> is itself a <c>[RpcService]</c> interface — nested sub-service.</summary>
     ValueTaskOfSubService,
     /// <summary><c>IAsyncEnumerable&lt;T&gt;</c> streamed item-by-item.</summary>
     AsyncEnumerable,

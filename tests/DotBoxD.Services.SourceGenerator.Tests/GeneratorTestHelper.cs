@@ -34,7 +34,7 @@ internal static class GeneratorTestHelper
 
         var references = new List<MetadataReference>(Basic.Reference.Assemblies.Net80.References.All)
         {
-            MetadataReference.CreateFromFile(typeof(DotBoxDServiceAttribute).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(RpcServiceAttribute).Assembly.Location),
             CreatePipelinesReference(),
         };
 

@@ -50,8 +50,8 @@ none of them block the current green build.
   non-breaking helper types still carry the brand and should be de-branded in a later mechanical pass
   (internal only, so no public-API break and no api-baseline churn):
   `DotBoxDRpcGenerator`, `DotBoxDRpcJsonLowerer`, `DotBoxDRpcTypeMapper`,
-  `DotBoxDGeneratedAssemblyCatalog`, `DotBoxDGenerationNames`, and all the analyzer
+  `RpcGeneratedAssemblyCatalog`, `DotBoxDGenerationNames`, and all the analyzer
   `DotBoxD*ExpressionLowerer` / `*ModelFactory` / `*BodyModelFactory` / `*Model` / `*Emitter` /
   `*Promoter` / `*Inliner` / `*Reader` internal helpers. Keep the sanctioned public brand entry
-  points untouched (`DotBoxDServiceAttribute`, `DotBoxDMethodAttribute`, `DotBoxDGenerated`,
+  points untouched (`RpcServiceAttribute`, `RpcMethodAttribute`, `DotBoxDGenerated`,
   `DotBoxDGeneratedExtensions`, `DotBoxDInfo`, `DotBoxDServicesInfo`).

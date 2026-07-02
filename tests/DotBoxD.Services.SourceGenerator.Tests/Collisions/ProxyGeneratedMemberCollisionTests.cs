@@ -15,7 +15,7 @@ public class ProxyGeneratedMemberCollisionTests
 
             namespace Regress.ProxyGeneratedMembers
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFieldCollision
                 {
                     int _invoker();

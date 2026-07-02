@@ -155,7 +155,7 @@ public sealed class ServerExtensionClientAccessibilityTests
 
             public sealed class EchoKernelServerExtensionClientExtensions;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteControl;
 
             public interface IEchoService

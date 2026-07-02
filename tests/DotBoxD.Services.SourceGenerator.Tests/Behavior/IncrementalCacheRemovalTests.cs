@@ -12,7 +12,7 @@ public class IncrementalCacheRemovalTests
 
         namespace Demo.Svc
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IFooService
             {
                 Task<int> AddAsync(int a, int b);
@@ -30,7 +30,7 @@ public class IncrementalCacheRemovalTests
 
             namespace Demo.OrderA
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IOrderA
                 {
                     Task<int> AAsync();
@@ -44,7 +44,7 @@ public class IncrementalCacheRemovalTests
 
             namespace Demo.OrderB
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IOrderB
                 {
                     Task<int> BAsync();

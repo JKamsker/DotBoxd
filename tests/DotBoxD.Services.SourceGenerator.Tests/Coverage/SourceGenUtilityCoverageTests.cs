@@ -45,7 +45,7 @@ public partial class SourceGenUtilityCoverageTests
 
             namespace Zeta.Pkg
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IZeta { Task PingAsync(); }
             }
             """;
@@ -56,7 +56,7 @@ public partial class SourceGenUtilityCoverageTests
 
             namespace Alpha.Pkg
             {
-                [DotBoxDService(Name = "Bravo")]
+                [RpcService(Name = "Bravo")]
                 public interface IAlphaService { Task PingAsync(); }
             }
             """;
@@ -67,7 +67,7 @@ public partial class SourceGenUtilityCoverageTests
 
             namespace Alpha.Pkg
             {
-                [DotBoxDService(Name = "Alpha")]
+                [RpcService(Name = "Alpha")]
                 public interface IBetaService { Task PingAsync(); }
             }
             """;
@@ -94,10 +94,10 @@ public partial class SourceGenUtilityCoverageTests
 
             namespace Same.Ns
             {
-                [DotBoxDService(Name = "Zeta")]
+                [RpcService(Name = "Zeta")]
                 public interface IAaa { Task PingAsync(); }
 
-                [DotBoxDService(Name = "Alpha")]
+                [RpcService(Name = "Alpha")]
                 public interface IBbb { Task PingAsync(); }
             }
             """;
@@ -129,7 +129,7 @@ public partial class SourceGenUtilityCoverageTests
 
             namespace Eq.Demo
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IThing
                 {
                     Task<int> AddAsync(int a, int b);
@@ -148,7 +148,7 @@ public partial class SourceGenUtilityCoverageTests
 
             namespace Eq.Demo
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IThing
                 {
                     // trivia-only edit: identical symbols, identical EquatableArray contents
@@ -181,7 +181,7 @@ public partial class SourceGenUtilityCoverageTests
 
             namespace Eq.Demo2
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IThing
                 {
                     Task<int> AddAsync(int a, int b);
@@ -200,7 +200,7 @@ public partial class SourceGenUtilityCoverageTests
 
             namespace Eq.Demo2
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IThing
                 {
                     Task<int> AddAsync(int a, int b, int c);
@@ -236,7 +236,7 @@ public partial class SourceGenUtilityCoverageTests
 
             namespace Eq.Empty
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface INoArgs
                 {
                     void Ping();

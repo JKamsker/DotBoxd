@@ -156,7 +156,7 @@ internal static class InvokeAsyncGeneratedServerInterfaceResolver
         => HasAttribute(type, DotBoxDMetadataNames.GeneratePluginServerAttribute);
 
     private static bool HasDotBoxDServiceAttribute(INamedTypeSymbol type)
-        => HasAttribute(type, DotBoxDMetadataNames.DotBoxDServiceAttribute);
+        => HasAttribute(type, DotBoxDMetadataNames.RpcServiceAttribute);
 
     private static bool HasGeneratedServerShape(INamedTypeSymbol type)
         => type.GetMembers("Services").OfType<IPropertySymbol>().Any(property =>
@@ -168,10 +168,11 @@ internal static class InvokeAsyncGeneratedServerInterfaceResolver
     {
         foreach (var attribute in type.GetAttributes())
         {
-            if (string.Equals(
-                    attribute.AttributeClass?.ToDisplayString(),
-                    metadataName,
-                    StringComparison.Ordinal))
+            var attributeName = attribute.AttributeClass?.ToDisplayString();
+            var matches = string.Equals(metadataName, DotBoxDMetadataNames.RpcServiceAttribute, StringComparison.Ordinal)
+                ? DotBoxDMetadataNames.IsRpcServiceAttribute(attributeName)
+                : string.Equals(attributeName, metadataName, StringComparison.Ordinal);
+            if (matches)
             {
                 return true;
             }

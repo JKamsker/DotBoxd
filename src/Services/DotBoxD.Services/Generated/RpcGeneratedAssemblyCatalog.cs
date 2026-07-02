@@ -4,14 +4,14 @@ using System.Runtime.CompilerServices;
 
 namespace DotBoxD.Services.Generated;
 
-internal static class DotBoxDGeneratedAssemblyCatalog
+internal static class RpcGeneratedAssemblyCatalog
 {
     private const string GeneratedFactoryTypeName = "DotBoxD.Services.Generated.DotBoxDGenerated";
 
     private static readonly ConcurrentDictionary<Assembly, IReadOnlyList<GeneratedService>> s_serviceCatalogs = new();
     private static readonly ConcurrentDictionary<Assembly, Lazy<bool>> s_registrationAttempts = new();
-    private static readonly ConcurrentDictionary<Assembly, SinkRegistrar<IDotBoxDServiceRegistrationSink>> s_serviceSinks = new();
-    private static readonly ConcurrentDictionary<Assembly, SinkRegistrar<IDotBoxDGeneratedServiceRegistrationSink>> s_generatedSinks = new();
+    private static readonly ConcurrentDictionary<Assembly, SinkRegistrar<IRpcServiceRegistrationSink>> s_serviceSinks = new();
+    private static readonly ConcurrentDictionary<Assembly, SinkRegistrar<IRpcGeneratedServiceRegistrationSink>> s_generatedSinks = new();
 
     public static bool EnsureRegistered(Assembly assembly)
     {
@@ -77,16 +77,16 @@ internal static class DotBoxDGeneratedAssemblyCatalog
     public static void PublishServices(Assembly assembly, IReadOnlyList<GeneratedService> services) =>
         s_serviceCatalogs[assembly] = GeneratedServiceCatalogSnapshot.Snapshot(services);
 
-    public static void RegisterServices(Assembly assembly, IDotBoxDServiceRegistrationSink sink) =>
+    public static void RegisterServices(Assembly assembly, IRpcServiceRegistrationSink sink) =>
         s_serviceSinks
-            .GetOrAdd(assembly, static assembly => CreateSinkRegistrar<IDotBoxDServiceRegistrationSink>(
+            .GetOrAdd(assembly, static assembly => CreateSinkRegistrar<IRpcServiceRegistrationSink>(
                 assembly,
                 "RegisterServices"))
             .Invoke(sink);
 
-    public static void RegisterGeneratedServices(Assembly assembly, IDotBoxDGeneratedServiceRegistrationSink sink) =>
+    public static void RegisterGeneratedServices(Assembly assembly, IRpcGeneratedServiceRegistrationSink sink) =>
         s_generatedSinks
-            .GetOrAdd(assembly, static assembly => CreateSinkRegistrar<IDotBoxDGeneratedServiceRegistrationSink>(
+            .GetOrAdd(assembly, static assembly => CreateSinkRegistrar<IRpcGeneratedServiceRegistrationSink>(
                 assembly,
                 "RegisterGeneratedServices"))
             .Invoke(sink);

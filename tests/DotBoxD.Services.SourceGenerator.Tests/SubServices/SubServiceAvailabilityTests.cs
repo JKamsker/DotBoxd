@@ -15,13 +15,13 @@ public class SubServiceAvailabilityTests
 
             namespace Regress.SubServiceAvailability
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     int Count { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<ISub> GetSubAsync();
@@ -72,13 +72,13 @@ public class SubServiceAvailabilityTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<ISub> GetSubAsync();
@@ -119,13 +119,13 @@ public class SubServiceAvailabilityTests
 
             namespace Regress.SubServiceAvailability
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     int Count { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     ISub Sub { get; }
@@ -162,19 +162,19 @@ public class SubServiceAvailabilityTests
 
             namespace Regress.SubServiceAvailability
             {
-                [DotBoxDService(Name = "dup")]
+                [RpcService(Name = "dup")]
                 public interface ISubA
                 {
                     Task<int> AAsync();
                 }
 
-                [DotBoxDService(Name = "dup")]
+                [RpcService(Name = "dup")]
                 public interface ISubB
                 {
                     Task<int> BAsync();
                 }
 
-                [DotBoxDService(Name = "root")]
+                [RpcService(Name = "root")]
                 public interface IRoot
                 {
                     Task<ISubA> GetSubAsync();
@@ -199,19 +199,19 @@ public class SubServiceAvailabilityTests
 
             namespace Regress.SubServiceAvailability
             {
-                [DotBoxDService(Name = "ifoo")]
+                [RpcService(Name = "ifoo")]
                 public interface IFoo
                 {
                     Task<int> AAsync();
                 }
 
-                [DotBoxDService(Name = "foo")]
+                [RpcService(Name = "foo")]
                 public interface Foo
                 {
                     Task<int> BAsync();
                 }
 
-                [DotBoxDService(Name = "root")]
+                [RpcService(Name = "root")]
                 public interface IRoot
                 {
                     Task<IFoo> GetSubAsync();

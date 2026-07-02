@@ -23,19 +23,19 @@ public class SubServiceFinalRejectionTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     int Count();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<ISub> OpenAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IParent
                 {
                     Task<IRoot> GetRootAsync();
@@ -91,19 +91,19 @@ public class SubServiceFinalRejectionTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IA
                 {
                     Task<IB> GetBAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IB
                 {
                     Task<IA> GetAAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IParent
                 {
                     Task<IA> GetAAsync();

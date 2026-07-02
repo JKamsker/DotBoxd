@@ -22,13 +22,13 @@ public sealed class Round9_ServiceIndexerPropertyDiagnosticTests
 
             namespace Regress.IndexerProperty
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     ISub this[int slot] { get; }

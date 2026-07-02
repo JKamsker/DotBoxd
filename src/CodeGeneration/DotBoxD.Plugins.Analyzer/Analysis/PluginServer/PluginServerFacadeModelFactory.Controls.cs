@@ -24,7 +24,7 @@ internal static partial class PluginServerFacadeModelFactory
                     SetMethod: null,
                     Type: INamedTypeSymbol propertyType
                 } property ||
-                !HasAttribute(propertyType, DotBoxDMetadataNames.DotBoxDServiceAttribute))
+                !HasAttribute(propertyType, DotBoxDMetadataNames.RpcServiceAttribute))
             {
                 continue;
             }

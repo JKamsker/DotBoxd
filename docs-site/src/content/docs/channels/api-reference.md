@@ -5,15 +5,15 @@ title: 'DotBoxD API Reference'
 
 ### Attributes
 
-#### `DotBoxDServiceAttribute`
+#### `RpcServiceAttribute`
 Marks an interface as a DotBoxD service.
 
 ```csharp
-[DotBoxDService]
+[RpcService]
 public interface IMyService { }
 
 // With custom name
-[DotBoxDService(Name = "CustomServiceName")]
+[RpcService(Name = "CustomServiceName")]
 public interface IMyService { }
 ```
 
@@ -21,11 +21,11 @@ public interface IMyService { }
 |----------|------|-------------|
 | `Name` | `string?` | Custom service name (default: interface name) |
 
-#### `DotBoxDMethodAttribute`
+#### `RpcMethodAttribute`
 Optionally customizes an RPC method.
 
 ```csharp
-[DotBoxDMethod(Name = "CustomMethodName")]
+[RpcMethod(Name = "CustomMethodName")]
 Task<Result> MyMethodAsync(Request req, CancellationToken ct = default);
 ```
 
@@ -419,7 +419,7 @@ The default options include a formatter for `ReadOnlyMemory<byte>` so binary DTO
 
 ## Generated Extensions
 
-For each `[DotBoxDService]` interface `IFooService`, the generator creates `RpcPeer` extension
+For each `[RpcService]` interface `IFooService`, the generator creates `RpcPeer` extension
 methods. The method suffix drops the leading `I` of the interface name
 (`IFooService` -> `ProvideFooService` / `GetFooService`):
 
@@ -443,8 +443,8 @@ The proxy factories take an `IRpcInvoker` (an `RpcPeer` implements it), so pass 
 public static class DotBoxDGenerated
 {
     public static IReadOnlyList<GeneratedService> Services { get; }
-    public static void RegisterServices(IDotBoxDServiceRegistrationSink sink);
-    public static void RegisterGeneratedServices(IDotBoxDGeneratedServiceRegistrationSink sink);
+    public static void RegisterServices(IRpcServiceRegistrationSink sink);
+    public static void RegisterGeneratedServices(IRpcGeneratedServiceRegistrationSink sink);
     public static TService CreateProxy<TService>(IRpcInvoker invoker) where TService : class;
     public static object CreateProxy(Type serviceInterface, IRpcInvoker invoker);
     public static IServiceDispatcher CreateDispatcher<TService>(TService implementation) where TService : class;
@@ -460,11 +460,11 @@ public static class DotBoxDGenerated
 records. Each descriptor includes `ServiceType`, `ProxyType`, `DispatcherType`, and
 `ServiceName`, so hosts can build a service map without scanning assembly types.
 
-`RegisterServices(IDotBoxDServiceRegistrationSink)` emits one direct generic call per
+`RegisterServices(IRpcServiceRegistrationSink)` emits one direct generic call per
 service, using the generated proxy as `TImplementation`:
 
 ```csharp
-public interface IDotBoxDServiceRegistrationSink
+public interface IRpcServiceRegistrationSink
 {
     void AddService<TService, TImplementation>()
         where TService : class
@@ -472,11 +472,11 @@ public interface IDotBoxDServiceRegistrationSink
 }
 ```
 
-`RegisterGeneratedServices(IDotBoxDGeneratedServiceRegistrationSink)` emits one direct
+`RegisterGeneratedServices(IRpcGeneratedServiceRegistrationSink)` emits one direct
 generic call per service with service, proxy, and dispatcher types:
 
 ```csharp
-public interface IDotBoxDGeneratedServiceRegistrationSink
+public interface IRpcGeneratedServiceRegistrationSink
 {
     void AddService<TService, TProxy, TDispatcher>()
         where TService : class

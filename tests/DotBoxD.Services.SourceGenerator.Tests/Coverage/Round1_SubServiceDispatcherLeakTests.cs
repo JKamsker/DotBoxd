@@ -29,13 +29,13 @@ public sealed class Round1_SubServiceDispatcherLeakTests
 
         namespace Round1.Leak
         {
-            [DotBoxDService]
+            [RpcService]
             public interface ISubService : IDisposable
             {
                 Task<int> CountAsync();
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRootService
             {
                 Task<ISubService> GetSubAsync(string label);

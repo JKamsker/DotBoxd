@@ -16,7 +16,7 @@ public class ReviewedIncrementalCollisionTests
             {
                 public sealed class FooProxy { }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Get();
@@ -32,7 +32,7 @@ public class ReviewedIncrementalCollisionTests
 
             namespace Incremental.Collision
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Get();
@@ -55,13 +55,13 @@ public class ReviewedIncrementalCollisionTests
 
             namespace Incremental.Wire
             {
-                [DotBoxDService(Name = "same")]
+                [RpcService(Name = "same")]
                 public interface IFoo
                 {
                     int A();
                 }
 
-                [DotBoxDService(Name = "same")]
+                [RpcService(Name = "same")]
                 public interface IBar
                 {
                     int B();
@@ -78,13 +78,13 @@ public class ReviewedIncrementalCollisionTests
 
             namespace Incremental.Wire
             {
-                [DotBoxDService(Name = "foo")]
+                [RpcService(Name = "foo")]
                 public interface IFoo
                 {
                     int A();
                 }
 
-                [DotBoxDService(Name = "bar")]
+                [RpcService(Name = "bar")]
                 public interface IBar
                 {
                     int B();
@@ -111,7 +111,7 @@ public class ReviewedIncrementalCollisionTests
             {
                 public sealed class FooProxy { }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Get();
@@ -129,7 +129,7 @@ public class ReviewedIncrementalCollisionTests
                 // line-only move for the colliding type
                 public sealed class FooProxy { }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Get();
@@ -155,13 +155,13 @@ public class ReviewedIncrementalCollisionTests
 
             namespace Incremental.Mixed
             {
-                [DotBoxDService(Name = "foo")]
+                [RpcService(Name = "foo")]
                 public interface IFoo
                 {
                     int Get();
                 }
 
-                [DotBoxDService(Name = "stable")]
+                [RpcService(Name = "stable")]
                 public interface IStable
                 {
                     int Get();
@@ -178,13 +178,13 @@ public class ReviewedIncrementalCollisionTests
             {
                 public sealed class FooProxy { }
 
-                [DotBoxDService(Name = "foo")]
+                [RpcService(Name = "foo")]
                 public interface IFoo
                 {
                     int Get();
                 }
 
-                [DotBoxDService(Name = "stable")]
+                [RpcService(Name = "stable")]
                 public interface IStable
                 {
                     int Get();
@@ -214,13 +214,13 @@ public class ReviewedIncrementalCollisionTests
 
             namespace Incremental.GeneratedName
             {
-                [DotBoxDService(Name = "ifoo")]
+                [RpcService(Name = "ifoo")]
                 public interface IFoo
                 {
                     int A();
                 }
 
-                [DotBoxDService(Name = "foo")]
+                [RpcService(Name = "foo")]
                 public interface Foo
                 {
                     int B();
@@ -237,13 +237,13 @@ public class ReviewedIncrementalCollisionTests
 
             namespace Incremental.GeneratedName
             {
-                [DotBoxDService(Name = "ifoo")]
+                [RpcService(Name = "ifoo")]
                 public interface IFoo
                 {
                     int A();
                 }
 
-                [DotBoxDService(Name = "bar")]
+                [RpcService(Name = "bar")]
                 public interface IBar
                 {
                     int B();

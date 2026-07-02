@@ -9,7 +9,7 @@ namespace DotBoxD.Services.Tests.Coverage.Core;
 /// <summary>
 /// Behavioral coverage for the generated runtime registry and assembly catalog. The
 /// <c>Shared</c> sample assembly declares <see cref="IGameService"/> / <see cref="IPlayerNotifications"/>
-/// with <c>[DotBoxDService]</c> and runs the DotBoxD source generator, so these public registry
+/// with <c>[RpcService]</c> and runs the DotBoxD source generator, so these public registry
 /// entry points resolve real generated proxy/dispatcher factories without any reflection hacks.
 /// </summary>
 public sealed partial class GeneratedServiceRegistryCoverageTests
@@ -92,12 +92,12 @@ public sealed partial class GeneratedServiceRegistryCoverageTests
     public void GetService_UnknownGeneratedInterface_ThrowsInvalidOperationWithGuidance()
     {
         // This interface lives in the test assembly, which has no DotBoxD generated registry type,
-        // so resolution must fail with the diagnostic that points at [DotBoxDService] + the generator.
+        // so resolution must fail with the diagnostic that points at [RpcService] + the generator.
         var ex = Assert.Throws<InvalidOperationException>(
             () => GeneratedServiceRegistry.GetService(typeof(IUngeneratedCoverageService)));
 
         Assert.Contains("No DotBoxD generated factory is registered", ex.Message);
-        Assert.Contains("[DotBoxDService]", ex.Message);
+        Assert.Contains("[RpcService]", ex.Message);
         Assert.Contains("source generator", ex.Message);
     }
 
@@ -199,7 +199,7 @@ public sealed partial class GeneratedServiceRegistryCoverageTests
     public void RegisterServices_NullSink_ThrowsArgumentNull()
     {
         Assert.Throws<ArgumentNullException>(
-            () => GeneratedServiceRegistry.RegisterServices(new[] { SharedAssembly }, (IDotBoxDServiceRegistrationSink)null!));
+            () => GeneratedServiceRegistry.RegisterServices(new[] { SharedAssembly }, (IRpcServiceRegistrationSink)null!));
     }
 
     [Fact]
@@ -226,7 +226,7 @@ public sealed partial class GeneratedServiceRegistryCoverageTests
         Assert.Throws<ArgumentNullException>(
             () => GeneratedServiceRegistry.RegisterGeneratedServices(
                 new[] { SharedAssembly },
-                (IDotBoxDGeneratedServiceRegistrationSink)null!));
+                (IRpcGeneratedServiceRegistrationSink)null!));
     }
 
     [Fact]

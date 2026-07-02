@@ -68,6 +68,8 @@ public sealed partial class PluginServerContextContractTests
     public void Context_host_binding_member_reports_a_generation_diagnostic()
     {
         var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics(MinimalServer("""
+            using DotBoxD.Kernels.Sandbox;
+
             [GeneratePluginServer(Context = typeof(GameContext))]
             public partial class RemotePluginServer : Sample.Game.IGameWorld;
 
@@ -113,7 +115,7 @@ public sealed partial class PluginServerContextContractTests
 
             public sealed class Helper
             {
-                [Local]
+                [NativeOnly]
                 public string Native => "x";
             }
             """);
@@ -134,7 +136,7 @@ public sealed partial class PluginServerContextContractTests
             {
                 public GameContext(HookContext raw) { }
 
-                [Local]
+                [NativeOnly]
                 public string NativeName => "local";
             }
 
@@ -163,7 +165,7 @@ public sealed partial class PluginServerContextContractTests
             {
                 public GameContext(HookContext raw) { }
 
-                [Local]
+                [NativeOnly]
                 public string NativeName => "local";
             }
 
@@ -186,7 +188,7 @@ public sealed partial class PluginServerContextContractTests
 
             public sealed partial class GameContext
             {
-                [Local]
+                [NativeOnly]
                 public string NativeName => "local";
             }
 
@@ -211,7 +213,7 @@ public sealed partial class PluginServerContextContractTests
 
             namespace Sample.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorld;
             }
 
@@ -260,7 +262,7 @@ public sealed partial class PluginServerContextContractTests
                 .Append(MetadataReference.CreateFromFile(typeof(PluginPackage).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(
-                    typeof(DotBoxD.Services.Attributes.DotBoxDServiceAttribute).Assembly.Location)),
+                    typeof(DotBoxD.Services.Attributes.RpcServiceAttribute).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         var analyzers = ImmutableArray.Create<DiagnosticAnalyzer>(new RuntimePluginAnalyzer());
         return await compilation.WithAnalyzers(analyzers).GetAnalyzerDiagnosticsAsync();

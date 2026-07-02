@@ -13,7 +13,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.FloatDefaults
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFloatDefaults
                 {
                     Task<double> MeasureAsync(
@@ -60,7 +60,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.ParamsSurface
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IParamsSurface
                 {
                     Task SubmitAsync(params string[] names);
@@ -99,7 +99,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.CallerInfoSurface
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ICallerInfoSurface
                 {
                     Task TraceAsync(
@@ -147,7 +147,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.NullableFlowSurface
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface INullableFlowSurface
                 {
                     Task<string?> EchoAsync(
@@ -205,7 +205,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.CallerExpressionCancellation
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ICallerExpressionCancellation
                 {
                     int Measure(

@@ -166,7 +166,7 @@ internal static class PluginAnalyzerGeneratedPackageFactory
                 .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(PluginPackage).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location))
-                .Append(MetadataReference.CreateFromFile(typeof(DotBoxDServiceAttribute).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(typeof(RpcServiceAttribute).Assembly.Location))
                 .Concat(additionalReferences),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 

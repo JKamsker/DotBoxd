@@ -10,7 +10,7 @@ internal static partial class PluginServerFacadeModelFactory
         INamedTypeSymbol? worldType = null;
         foreach (var candidate in type.Interfaces)
         {
-            if (!HasAttribute(candidate, DotBoxDMetadataNames.DotBoxDServiceAttribute))
+            if (!HasAttribute(candidate, DotBoxDMetadataNames.RpcServiceAttribute))
             {
                 continue;
             }
@@ -18,7 +18,7 @@ internal static partial class PluginServerFacadeModelFactory
             if (worldType is not null)
             {
                 throw new NotSupportedException(
-                    $"Generated plugin server '{type.Name}' must directly implement one [DotBoxDService] world interface.");
+                    $"Generated plugin server '{type.Name}' must directly implement one [RpcService] world interface.");
             }
 
             worldType = candidate;

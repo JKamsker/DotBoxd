@@ -14,7 +14,7 @@ public sealed class SubServicePropertyDeclaringTypeTests
 
             namespace Regress.GenericBaseProperty
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     int Count();
@@ -25,7 +25,7 @@ public sealed class SubServicePropertyDeclaringTypeTests
                     T Child { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot : IBase<ISub>
                 {
                 }
@@ -47,7 +47,7 @@ public sealed class SubServicePropertyDeclaringTypeTests
 
             namespace Regress.NestedBaseProperty
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     int Count();
@@ -61,7 +61,7 @@ public sealed class SubServicePropertyDeclaringTypeTests
                     }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot : Host.IBase
                 {
                 }

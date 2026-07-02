@@ -12,7 +12,7 @@ public class SnapshotTests
 
         namespace Snap.One
         {
-            [DotBoxDService]
+            [RpcService]
             public interface ICalculator
             {
                 Task<int> AddAsync(int a, int b);
@@ -26,7 +26,7 @@ public class SnapshotTests
 
         namespace Snap.Mixed
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IMix
             {
                 Task<string> GetNameAsync();
@@ -43,10 +43,10 @@ public class SnapshotTests
 
         namespace Snap.Renamed
         {
-            [DotBoxDService(Name = "Greeter")]
+            [RpcService(Name = "Greeter")]
             public interface IHello
             {
-                [DotBoxDMethod(Name = "Greet")]
+                [RpcMethod(Name = "Greet")]
                 Task<string> HelloAsync(string who);
             }
         }
@@ -58,13 +58,13 @@ public class SnapshotTests
 
         namespace Snap.Two
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IOne
             {
                 Task<int> AAsync(int x);
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface ITwo
             {
                 Task<string> BAsync();
@@ -78,7 +78,7 @@ public class SnapshotTests
 
         namespace Snap.Vt
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IVtSnap
             {
                 ValueTask<int> AddAsync(int a, int b);
@@ -93,7 +93,7 @@ public class SnapshotTests
 
         namespace Snap.RefOut
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IRefOutSnap
             {
                 void BadOut(out int x);
@@ -113,7 +113,7 @@ public class SnapshotTests
                 Task<int> BaseAsync(int x);
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IDerived : IBase
             {
                 Task<string> DerivedAsync();
@@ -127,7 +127,7 @@ public class SnapshotTests
 
         namespace Snap.Kw
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IKwSnap
             {
                 Task<int> DoAsync(int @class, int @default);
@@ -141,13 +141,13 @@ public class SnapshotTests
 
         namespace Snap.Nested
         {
-            [DotBoxDService]
+            [RpcService]
             public interface ISubSnap
             {
                 Task<int> CountAsync();
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRootSnap
             {
                 Task<ISubSnap> GetSubAsync(string label);

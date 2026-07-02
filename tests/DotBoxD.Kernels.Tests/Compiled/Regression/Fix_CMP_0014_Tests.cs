@@ -209,7 +209,7 @@ public readonly struct DamageRequest
     public int Amount { get; }
 }
 
-[DotBoxDService]
+[RpcService]
 public interface IGenericPluginControl
 {
     ValueTask<string> GetSettingAsync(string name, CancellationToken cancellationToken = default);
@@ -219,13 +219,13 @@ public interface IGenericPluginControl
     ValueTask<string[]> PublishDamageAsync(DamageRequest request, CancellationToken cancellationToken = default);
 }
 
-[DotBoxDService]
+[RpcService]
 public interface IGenericNotifier
 {
     ValueTask<string> NotifyAsync(string message, CancellationToken cancellationToken = default);
 }
 
-[DotBoxDService]
+[RpcService]
 public interface IGenericObserver
 {
     ValueTask<string> OnNotifiedAsync(string message, CancellationToken cancellationToken = default);

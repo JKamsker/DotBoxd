@@ -2,7 +2,7 @@ namespace DotBoxD.Services.Protocol;
 
 /// <summary>
 /// Wire payload returned by a service method whose declared return type is itself
-/// a <c>[DotBoxDService]</c> interface. Carries the opaque instance identifier the
+/// a <c>[RpcService]</c> interface. Carries the opaque instance identifier the
 /// server allocated when the root method ran; the client wraps the handle in a
 /// generated sub-service proxy that uses the identifier on every subsequent call.
 /// </summary>

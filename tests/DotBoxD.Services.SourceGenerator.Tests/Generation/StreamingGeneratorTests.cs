@@ -19,7 +19,7 @@ public sealed class StreamingGeneratorTests
 
             namespace Streaming.Gen
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IStreamingService
                 {
                     IAsyncEnumerable<int> Numbers(CancellationToken ct = default);
@@ -76,7 +76,7 @@ public sealed class StreamingGeneratorTests
 
             namespace Streaming.Tasks
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ITaskWrappedStreaming
                 {
                     Task<IAsyncEnumerable<int>> NumbersAsync(CancellationToken ct = default);
@@ -118,7 +118,7 @@ public sealed class StreamingGeneratorTests
 
             namespace Streaming.Lazy
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ILazyStreaming
                 {
                     IAsyncEnumerable<int> Echo(Stream bytes, IAsyncEnumerable<int> items, CancellationToken ct = default);
@@ -164,7 +164,7 @@ public sealed class StreamingGeneratorTests
 
             namespace Streaming.ReservationCleanup
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IUpload
                 {
                     Task<int> UploadAsync(Stream first, Stream second, CancellationToken ct = default);
@@ -214,7 +214,7 @@ public sealed class StreamingGeneratorTests
 
             namespace Streaming.LazySibling
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ILazySiblingStreaming
                 {
                     IAsyncEnumerable<int> EchoAsync(Stream bytes);
@@ -258,7 +258,7 @@ public sealed class StreamingGeneratorTests
 
             namespace Streaming.Locals
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ILocalCollisionStreaming
                 {
                     Task<int> UploadAsync(

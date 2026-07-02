@@ -15,7 +15,7 @@ public class ReviewedAsyncSiblingProjectionTests
 
             namespace AsyncSibling.K
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IUnsupportedClash
                 {
                     int Fetch(int ct);
@@ -45,7 +45,7 @@ public class ReviewedAsyncSiblingProjectionTests
 
             namespace AsyncSibling.KeywordCollision
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IKeywords
                 {
                     int @class();
@@ -75,7 +75,7 @@ public class ReviewedAsyncSiblingProjectionTests
 
             namespace AsyncSibling.GenericArity
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGenericOriginal
                 {
                     int Fetch(int id);
@@ -111,7 +111,7 @@ public class ReviewedAsyncSiblingProjectionTests
                     int Fetch(int id);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IDerived : IBase
                 {
                     Task<int> FetchAsync(int id, CancellationToken ct = default);
@@ -139,7 +139,7 @@ public class ReviewedAsyncSiblingProjectionTests
 
             namespace AsyncSibling.SelfCollision
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int FetchAsync(CancellationToken ct = default);

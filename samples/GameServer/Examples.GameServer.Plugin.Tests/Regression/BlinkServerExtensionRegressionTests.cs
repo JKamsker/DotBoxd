@@ -67,7 +67,7 @@ public sealed class BlinkServerExtensionRegressionTests
     {
         public IMonster Get(string entityId) => new StubMonster(entityId);
 
-        [HostCapability("game.world.monster.read.kind", HostBindingEffect.HostStateRead)]
+        [HostBinding("game.world.monster.read.kind", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         public ValueTask<bool> IsMonsterAsync(string entityId) => ValueTask.FromResult(true);
     }
 

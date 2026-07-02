@@ -35,7 +35,7 @@ public sealed class PluginServerKeywordNamespaceRegressionTests
 
             namespace Keyword.@event
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 

@@ -21,6 +21,8 @@ public bool IsSuccess { get; set; }
 public bool RejectInboundCalls { get; init; }
 public bool TryGet(string serviceName, string instanceId, out object instance)
 public class RemoteServiceException : ServiceException
+public class RpcMethodAttribute : Attribute
+public class RpcServiceAttribute : Attribute
 public class ServiceConnectionException : ServiceException
 public class ServiceException : Exception
 public class ServiceNotFoundException : ServiceException
@@ -108,12 +110,14 @@ public int MessageId { get; set; }
 public int StreamId { get; set; }
 public int WrittenCount => _written
 public int? InboundQueueCapacity
-public interface IDotBoxDGeneratedServiceRegistrationSink
-public interface IDotBoxDServiceRegistrationSink
+public interface IDotBoxDGeneratedServiceRegistrationSink : IRpcGeneratedServiceRegistrationSink
+public interface IDotBoxDServiceRegistrationSink : IRpcServiceRegistrationSink
 public interface IInstanceRegistry
 public interface INonStreamingServiceDispatcher
 public interface IRpcChannel : IAsyncDisposable
 public interface IRpcFrameChannel : IRpcValueTaskChannel
+public interface IRpcGeneratedServiceRegistrationSink
+public interface IRpcServiceRegistrationSink
 public interface IRpcStreamingContext
 public interface IRpcValueTaskChannel : IRpcChannel
 public interface ISerializer
@@ -165,8 +169,8 @@ public RpcStreamHandle? Stream { get; set; }
 public RpcStreamHandle(int streamId, RpcStreamKind kind)
 public RpcStreamHandle[]? Streams { get; set; }
 public RpcStreamKind Kind { get; set; }
-public sealed class DotBoxDMethodAttribute : Attribute
-public sealed class DotBoxDServiceAttribute : Attribute
+public sealed class DotBoxDMethodAttribute : RpcMethodAttribute
+public sealed class DotBoxDServiceAttribute : RpcServiceAttribute
 public sealed class InstanceRegistry : IInstanceRegistry
 public sealed class Payload : IMemoryOwner<byte>
 public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
@@ -180,13 +184,13 @@ public sealed class RpcPeerSession : IAsyncDisposable
 public sealed class RpcProtocolErrorEventArgs : EventArgs
 public sealed class RpcReadErrorEventArgs : EventArgs
 public sealed class RpcStreamingContext : IRpcStreamingContext
+public sealed class SingleConnectionServerTransport : IServerTransport
+public sealed class SingleConnectionTransport : ITransport
+public sealed class StreamConnection : IRpcFrameChannel
 public sealed partial class RpcHost
 public sealed partial class RpcHost : IAsyncDisposable
 public sealed partial class RpcPeer
 public sealed partial class RpcPeer : IAsyncDisposable, IRpcInvoker
-public sealed class SingleConnectionServerTransport : IServerTransport
-public sealed class SingleConnectionTransport : ITransport
-public sealed class StreamConnection : IRpcFrameChannel
 public ServiceConnectionException(string message, Exception innerException) : base(message, innerException)
 public ServiceConnectionException(string message) : base(message)
 public ServiceException()
@@ -238,8 +242,8 @@ public static Task<RpcPeerSession> ConnectPeerAsync( this ITransport transport, 
 public static TService CreateProxy<TService>(IRpcInvoker invoker) where TService : class
 public static void Register<TService>( Func<IRpcInvoker, TService> proxyFactory, Func<object, IServiceDispatcher> dispatcherFactory, GeneratedService service) where TService : class
 public static void Register<TService>( Func<IRpcInvoker, TService> proxyFactory, Func<object, IServiceDispatcher> dispatcherFactory) where TService : class
-public static void RegisterGeneratedServices( IEnumerable<Assembly> assemblies, IDotBoxDGeneratedServiceRegistrationSink sink)
-public static void RegisterServices( IEnumerable<Assembly> assemblies, IDotBoxDServiceRegistrationSink sink)
+public static void RegisterGeneratedServices( IEnumerable<Assembly> assemblies, IRpcGeneratedServiceRegistrationSink sink)
+public static void RegisterServices( IEnumerable<Assembly> assemblies, IRpcServiceRegistrationSink sink)
 public static void RegisterServices(Assembly assembly, IReadOnlyList<GeneratedService> services)
 public static void ValidateOutgoingFrame(ReadOnlySpan<byte> frame, int maxMessageSize = MaxMessageSize)
 public static void WriteFrame(IBufferWriter<byte> writer, int messageId, MessageType type, ReadOnlySpan<byte> payload)

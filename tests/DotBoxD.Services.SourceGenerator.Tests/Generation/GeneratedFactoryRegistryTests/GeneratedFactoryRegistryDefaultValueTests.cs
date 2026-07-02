@@ -22,7 +22,7 @@ public sealed class GeneratedFactoryRegistryDefaultValueTests
                     Ready
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IDefaults
                 {
                     Task<int> EchoAsync(
@@ -62,7 +62,7 @@ public sealed class GeneratedFactoryRegistryDefaultValueTests
 
             namespace Metadata.OptionalDefaults
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IOptionalDefaults
                 {
                     Task<int> CountAsync([Optional] int value, [Optional] string? label);
@@ -112,7 +112,7 @@ public sealed class GeneratedFactoryRegistryDefaultValueTests
 
             namespace Metadata.DateTimeConstantDefaults
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IDateTimeConstantDefaults
                 {
                     Task<int> CountAsync([Optional, DateTimeConstant(637135200000000000L)] DateTime at);
@@ -159,7 +159,7 @@ public sealed class GeneratedFactoryRegistryDefaultValueTests
 
             namespace Metadata.DecimalConstantDefaults
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IDecimalConstantDefaults
                 {
                     Task<int> CountAsync(
@@ -208,7 +208,7 @@ public sealed class GeneratedFactoryRegistryDefaultValueTests
 
             namespace Metadata.OptionalBeforeRequired
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IOptionalBeforeRequired
                 {
                     Task<int> CountAsync([Optional] int optional, int required);
@@ -253,7 +253,7 @@ public sealed class GeneratedFactoryRegistryDefaultValueTests
 
             namespace Metadata.DefaultParameterValueBeforeRequired
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IDefaultParameterValueBeforeRequired
                 {
                     Task<int> CountAsync([Optional, DefaultParameterValue(42)] int optional, int required);

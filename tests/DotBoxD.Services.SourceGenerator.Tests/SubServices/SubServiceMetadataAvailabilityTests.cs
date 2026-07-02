@@ -20,7 +20,7 @@ public class SubServiceMetadataAvailabilityTests
 
             namespace ReferencedContracts;
 
-            [DotBoxDService]
+            [RpcService]
             public interface ISub
             {
                 Task<int> CountAsync();
@@ -33,7 +33,7 @@ public class SubServiceMetadataAvailabilityTests
 
             namespace Consumer;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRoot
             {
                 Task<ISub> GetSubAsync();
@@ -53,7 +53,7 @@ public class SubServiceMetadataAvailabilityTests
 
             namespace ReferencedContracts;
 
-            [DotBoxDService]
+            [RpcService]
             public interface ISub
             {
                 Task<int> CountAsync();
@@ -73,7 +73,7 @@ public class SubServiceMetadataAvailabilityTests
 
             namespace Consumer;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRoot
             {
                 Task<ISub> GetSubAsync();
@@ -146,7 +146,7 @@ public class SubServiceMetadataAvailabilityTests
             yield return reference;
         }
 
-        yield return MetadataReference.CreateFromFile(typeof(DotBoxDServiceAttribute).Assembly.Location);
+        yield return MetadataReference.CreateFromFile(typeof(RpcServiceAttribute).Assembly.Location);
         yield return MetadataReference.CreateFromFile(typeof(Pipe).Assembly.Location);
     }
 }

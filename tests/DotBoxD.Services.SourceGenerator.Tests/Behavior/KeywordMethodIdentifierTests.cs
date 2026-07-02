@@ -15,7 +15,7 @@ public class KeywordMethodIdentifierTests
 
             namespace Regress.KeywordMethods
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IKeywordMethods
                 {
                     Task<int> @return(int @params);

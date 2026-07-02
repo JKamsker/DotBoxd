@@ -21,7 +21,7 @@ public class InheritedExplicitProxyTests
                     int _instanceId();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : IBase
                 {
                 }
@@ -47,7 +47,7 @@ public class InheritedExplicitProxyTests
 
             namespace Regress.ObjectMemberProxy
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     Type GetType();
@@ -88,7 +88,7 @@ public class InheritedExplicitProxyTests
                     Type GetType();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight
                 {
                 }
@@ -115,17 +115,17 @@ public class InheritedExplicitProxyTests
             {
                 public interface ILeft
                 {
-                    [DotBoxDMethod(Name = "left")]
+                    [RpcMethod(Name = "left")]
                     int Get();
                 }
 
                 public interface IRight
                 {
-                    [DotBoxDMethod(Name = "right")]
+                    [RpcMethod(Name = "right")]
                     int Get();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight
                 {
                 }
@@ -150,7 +150,7 @@ public class InheritedExplicitProxyTests
             {
                 public interface ILeft
                 {
-                    [DotBoxDMethod(Name = "Get")]
+                    [RpcMethod(Name = "Get")]
                     int Get();
                 }
 
@@ -159,7 +159,7 @@ public class InheritedExplicitProxyTests
                     int Get();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight
                 {
                 }
@@ -182,7 +182,7 @@ public class InheritedExplicitProxyTests
 
             namespace Regress.DuplicateInheritedSubServiceProperty
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
@@ -198,7 +198,7 @@ public class InheritedExplicitProxyTests
                     ISub Child { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot : ILeft, IRight
                 {
                 }
@@ -229,7 +229,7 @@ public class InheritedExplicitProxyTests
 
             namespace Regress.DuplicateInheritedNullableAnnotations
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
@@ -245,7 +245,7 @@ public class InheritedExplicitProxyTests
                     Task<ISub?> OpenAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight
                 {
                 }

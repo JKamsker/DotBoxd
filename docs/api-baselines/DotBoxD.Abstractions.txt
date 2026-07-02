@@ -4,22 +4,19 @@
 
 protected static NotSupportedException ControlPlaneOnly()
 public bool IsAsync { get; set; }
+public bool IsAutoBinding => BindingId.Length == 0
 public bool Success { get; }
 public CancellationToken CancellationToken { get; }
 public delegate ValueTask<TReturn> RemoteServerInvocation<TWorld, TCaptures, TReturn>( TWorld world, TCaptures captures)
 public enum GeneratedPluginServerRegistryKind
 public enum GeneratedPluginServerRegistryKind.Hook
 public enum GeneratedPluginServerRegistryKind.Subscription
-public enum HostBindingEffect
-public enum HostBindingEffect.Allocates = 4
-public enum HostBindingEffect.HostStateRead = 1
-public enum HostBindingEffect.HostStateWrite = 2
-public enum HostBindingEffect.None = 0
 public GeneratedPluginServerRegistryKind Kind { get; } = kind
 public HandleSubtypeAttribute( Type subtype, string discriminator, string bindingPrefix, string capability)
 public HookAttribute(string name, Type resultType)
 public HookContext(IPluginMessageSink messages, CancellationToken cancellationToken)
-public HostBindingEffect Effects { get; } = effects
+public HostBindingAttribute(string bindingId, string capability, SandboxEffect effects)
+public HostBindingAttribute(string capability, SandboxEffect effects)
 public InMemoryPluginMessageSink()
 public int Version { get; } = version
 public interface IEventKernel<TEvent>
@@ -36,9 +33,9 @@ public interface IServerExtensionWireClient
 public interface IServiceControl : IExtensibleControl
 public IPluginMessageSink Messages { get; }
 public IReadOnlyList<PluginMessage> Messages => _readOnlyMessages
-public PluginAttribute(string id) => Id = id
+public PluginAttribute(string? id = null) => Id = id
 public PolymorphicHandleAttribute(string keyMember)
-public SandboxEffect Effects { get; } = effects
+public SandboxEffect Effects { get; }
 public sealed class CapabilityAttribute(string id) : Attribute
 public sealed class EventKernelAttribute(string? id = null) : Attribute
 public sealed class GeneratedKernelMethodDescriptorAttribute( int version, Type contextType, string methodMetadataName, string normalizedSignature, string descriptorHash, string descriptorPayload)
@@ -50,12 +47,11 @@ public sealed class HandleSubtypeAttribute : Attribute
 public sealed class HookAttribute : Attribute
 public sealed class HookContext
 public sealed class HookResultAttribute : Attribute
-public sealed class HostBindingAttribute(string bindingId, string capability, SandboxEffect effects) : Attribute
-public sealed class HostCapabilityAttribute(string capability, HostBindingEffect effects) : Attribute
+public sealed class HostBindingAttribute : Attribute
 public sealed class InMemoryPluginMessageSink : IPluginMessageSink
 public sealed class KernelMethodAttribute : Attribute
 public sealed class LiveSettingAttribute : Attribute
-public sealed class LocalAttribute : Attribute
+public sealed class NativeOnlyAttribute : Attribute
 public sealed class PluginAttribute : Attribute
 public sealed class PolymorphicHandleAttribute : Attribute
 public sealed class ServerExtensionAttribute : Attribute
@@ -66,32 +62,30 @@ public ServerExtensionAttribute(string id, Type serviceType)
 public ServerExtensionAttribute(string id) => Id = id
 public ServerExtensionAttribute(Type grafts, string? id = null)
 public string AccumulatorName { get; } = accumulatorName
-public string BindingId { get; } = bindingId
+public string BindingId { get; }
 public string BindingPrefix { get; }
 public string Capability { get; }
-public string Capability { get; } = capability
-public string? ContextFactory { get; set; }
 public string DescriptorHash { get; } = descriptorHash
 public string DescriptorPayload { get; } = descriptorPayload
 public string Discriminator { get; }
-public string Id { get; }
 public string Id { get; } = id
 public string KeyMember { get; }
-public string MethodName { get; } = methodName
 public string MethodMetadataName { get; } = methodMetadataName
+public string MethodName { get; } = methodName
 public string Name { get; }
 public string NormalizedSignature { get; } = normalizedSignature
+public string? ContextFactory { get; set; }
 public string? Id { get; }
 public string? Id { get; } = id
 public string? Name { get; } = name
 public THost Host<THost>() where THost : class
 public Type ContextType { get; } = contextType
-public Type? Context { get; set; }
-public Type? ControlService { get; set; }
 public Type ReceiverType { get; } = receiverType
 public Type ResultType { get; }
 public Type ServerType { get; } = serverType
 public Type Subtype { get; }
+public Type? Context { get; set; }
+public Type? ControlService { get; set; }
 public Type? Grafts { get; }
 public Type? ReceiverType { get; } = receiverType
 public Type? ServiceType { get; }

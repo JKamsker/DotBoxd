@@ -27,7 +27,7 @@ public partial class GeneratedRoundTripTests
 
             namespace RoundTrip.Matrix
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IMatrix
                 {
                     Task<int> NoArgsAsync(CancellationToken ct = default);
@@ -95,7 +95,7 @@ public partial class GeneratedRoundTripTests
 
                 public record Point(int X, int Y);
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IData
                 {
                     Task<Point> EchoPointAsync(Point p, CancellationToken ct = default);
@@ -166,10 +166,10 @@ public partial class GeneratedRoundTripTests
 
             namespace RoundTrip.Custom
             {
-                [DotBoxDService(Name = "calc-svc")]
+                [RpcService(Name = "calc-svc")]
                 public interface ICalculator
                 {
-                    [DotBoxDMethod(Name = "do-add")]
+                    [RpcMethod(Name = "do-add")]
                     Task<int> AddAsync(int a, int b, CancellationToken ct = default);
                 }
 
@@ -183,7 +183,7 @@ public partial class GeneratedRoundTripTests
         var h = Harness.Build(source, "RoundTrip.Custom.ICalculator", "RoundTrip.Custom.CalculatorServer");
 
         h.Dispatcher.ServiceName.Should().Be("calc-svc",
-            "the dispatcher must advertise the custom [DotBoxDService(Name=...)] wire name");
+            "the dispatcher must advertise the custom [RpcService(Name=...)] wire name");
         (await h.CallAsync("AddAsync", 20, 22)).Should().Be(42,
             "the proxy must call service 'calc-svc' / method 'do-add' and the dispatcher must resolve that exact pair");
     }
@@ -198,7 +198,7 @@ public partial class GeneratedRoundTripTests
 
             namespace RoundTrip.Errors
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IThing
                 {
                     Task<int> GetAsync(CancellationToken ct = default);
@@ -233,13 +233,13 @@ public partial class GeneratedRoundTripTests
 
             namespace RoundTrip.Multi
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IAlpha
                 {
                     Task<int> IncAsync(int x, CancellationToken ct = default);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IBeta
                 {
                     Task<string> GreetAsync(string who, CancellationToken ct = default);

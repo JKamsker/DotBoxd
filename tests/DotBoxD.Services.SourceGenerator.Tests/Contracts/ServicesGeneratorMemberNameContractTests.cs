@@ -93,7 +93,7 @@ public sealed class ServicesGeneratorMemberNameContractTests
             ["GeneratedServiceRegistry.CreateProxy"] = nameof(GeneratedServiceRegistry.CreateProxy),
             ["GeneratedServiceRegistry.CreateDispatcher"] = nameof(GeneratedServiceRegistry.CreateDispatcher),
 
-            ["ServiceRegistrationSink.AddService"] = nameof(IDotBoxDServiceRegistrationSink.AddService),
+            ["ServiceRegistrationSink.AddService"] = nameof(IRpcServiceRegistrationSink.AddService),
 
             ["ServiceHandle.ServiceName"] = nameof(ServiceHandle.ServiceName),
             ["ServiceHandle.InstanceId"] = nameof(ServiceHandle.InstanceId),

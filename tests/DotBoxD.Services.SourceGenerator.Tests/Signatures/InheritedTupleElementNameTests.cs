@@ -24,7 +24,7 @@ public class InheritedTupleElementNameTests
                     int Echo((int A, int B) value);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight
                 {
                 }
@@ -56,7 +56,7 @@ public class InheritedTupleElementNameTests
                     int Echo((int X, int Y) value);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight
                 {
                 }
@@ -86,7 +86,7 @@ public class InheritedTupleElementNameTests
                     int Echo(System.ValueTuple<int, int> value);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight
                 {
                 }
@@ -116,7 +116,7 @@ public class InheritedTupleElementNameTests
                     int Echo(System.ValueTuple<int, int> value);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight
                 {
                 }
@@ -148,7 +148,7 @@ public class InheritedTupleElementNameTests
                     int Echo(System.ValueTuple<int, int, int, int, int, int, int, System.ValueTuple<int, int>> value);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight
                 {
                 }
@@ -181,7 +181,7 @@ public class InheritedTupleElementNameTests
                     (int X, int Y) Echo();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight
                 {
                 }
@@ -211,7 +211,7 @@ public class InheritedTupleElementNameTests
                     System.ValueTuple<int, int> Echo();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight
                 {
                 }
@@ -244,7 +244,7 @@ public class InheritedTupleElementNameTests
                     int Echo(List<(int X, int Y)[]> values);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight
                 {
                 }

@@ -22,7 +22,7 @@ public sealed class StreamingProxyReservationBehaviorTests
 
             namespace Behavior.Streaming
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IUpload
                 {
                     Task<int> UploadAsync(Stream first, Stream second, CancellationToken ct = default);
@@ -61,7 +61,7 @@ public sealed class StreamingProxyReservationBehaviorTests
 
             namespace Behavior.Streaming
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IUpload
                 {
                     Task<int> UploadAsync(Stream first, Stream second, CancellationToken ct = default);

@@ -23,7 +23,7 @@ public sealed class PluginServerRemoteLocalWiringTests
 
             namespace Reactive.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 
@@ -44,7 +44,7 @@ public sealed class PluginServerRemoteLocalWiringTests
                     ValueTask HoldUntilShutdownAsync(CancellationToken ct = default);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IPluginEventCallback
                 {
                     ValueTask OnEventAsync(string subscriptionId, System.ReadOnlyMemory<byte> projectedValue, CancellationToken ct = default);
@@ -139,7 +139,7 @@ public sealed class PluginServerRemoteLocalWiringTests
 
             namespace Plain.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 
@@ -206,7 +206,7 @@ public sealed class PluginServerRemoteLocalWiringTests
 
             namespace WrongCallback.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 
@@ -227,7 +227,7 @@ public sealed class PluginServerRemoteLocalWiringTests
                     ValueTask HoldUntilShutdownAsync(CancellationToken ct = default);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IPluginEventCallback
                 {
                     Task OnEventAsync(string subscriptionId, System.ReadOnlyMemory<byte> projectedValue, CancellationToken ct = default);
@@ -282,7 +282,7 @@ public sealed class PluginServerRemoteLocalWiringTests
                 .Append(MetadataReference.CreateFromFile(typeof(GeneratePluginServerAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(PluginPackage).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Peer.RpcPeer).Assembly.Location))
-                .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Attributes.DotBoxDServiceAttribute).Assembly.Location)),
+                .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Attributes.RpcServiceAttribute).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             [new PluginPackageGenerator().AsSourceGenerator()],

@@ -9,7 +9,7 @@ namespace DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
 /// lifecycle plumbing that backs <c>Replace</c>/<c>Extend</c>/<c>Get</c>/<c>InvokeAsync</c> and the
 /// <c>IPluginServer&lt;TWorld&gt;</c> lifecycle — the dev never calls these directly.
 /// </summary>
-[DotBoxDService]
+[RpcService]
 public interface IGamePluginControlService : DotBoxD.Plugins.IServerExtensionWireClient
 {
     ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default);

@@ -171,7 +171,7 @@ reasons).
 
 ### 3.2 — med — Capability requirements are invisible where install fails **[wf]**
 
-By design caps live on the server impl (`GameWorldAccess` `[HostCapability]`), an assembly the plugin author
+By design caps live on the server impl (`GameWorldAccess` `[HostBinding]`), an assembly the plugin author
 never opens. A server-extension kernel can legally `await _world.Monsters.GetThreatAsync(id)` (compiles against
 the pure interface) yet **fail closed at install with no local signal**.
 
@@ -204,7 +204,7 @@ path + an advanced file** (Codex's recommendation).
 (`.Plugin`), *and* the event-kernel role (`[Plugin("guardian")]`) — sitting beside `[ServerExtension]` for the
 sibling role.
 
-**Fix:** rename the attribute to `[EventKernel]`/`[ServiceKernel]` so the two kernel roles read as a matched
+**Fix:** rename the attribute to `[Plugin]`/`[ServiceKernel]` so the two kernel roles read as a matched
 pair and "Plugin" means the deployable unit. (The naming-decision doc deferred *class* renames but never
 reconciled this *attribute* overload.)
 

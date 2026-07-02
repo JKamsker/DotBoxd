@@ -64,7 +64,7 @@ Grounded aspects:
 - **Adding a transport = implement three interfaces, change zero contracts.** The
   [WebSocket guide](/channels/websocket-setup/) is proof by construction: it is not a shipped
   package but a walkthrough that implements `ITransport`, `IServerTransport`, and `IRpcChannel` — the
-  same `[DotBoxDService]` interfaces and generated proxies then run over a transport the framework never
+  same `[RpcService]` interfaces and generated proxies then run over a transport the framework never
   shipped.
 - **Codec neutrality is the same trick applied to bytes.** `RpcPeer`/`RpcHost` take an `ISerializer`;
   swapping codecs is passing a different one. The

@@ -15,13 +15,13 @@ public class ReviewedRejectedSubServicePropagationTests
 
             namespace Reviewed.RejectedSubService.Sub
             {
-                [DotBoxDService(Name = "dup")]
+                [RpcService(Name = "dup")]
                 public interface ISubA
                 {
                     Task<int> AAsync();
                 }
 
-                [DotBoxDService(Name = "dup")]
+                [RpcService(Name = "dup")]
                 public interface ISubB
                 {
                     Task<int> BAsync();
@@ -30,7 +30,7 @@ public class ReviewedRejectedSubServicePropagationTests
 
             namespace Reviewed.RejectedSubService.Root
             {
-                [DotBoxDService(Name = "root")]
+                [RpcService(Name = "root")]
                 public interface IRoot
                 {
                     Task<Reviewed.RejectedSubService.Sub.ISubA> OpenTaskAsync();

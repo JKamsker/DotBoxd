@@ -18,7 +18,7 @@ public sealed class DateTimeConstantDefaultParameterRegressionTests
 
         namespace Bug.Reg;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IClock
         {
             void Ping([Optional, DateTimeConstant(0L)] DateTime when);

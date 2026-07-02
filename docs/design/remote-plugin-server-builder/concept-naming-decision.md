@@ -174,7 +174,7 @@ lowering + #2's value path, a new *combination*, not new machinery. New, additiv
 
 The IPC surface has three layers; #2's **invocation already lives in it** — only its registration floated.
 
-1. **Raw control plane** — `IGamePluginControlService` (`[DotBoxDService]` proxy over the named pipe).
+1. **Raw control plane** — `IGamePluginControlService` (`[RpcService]` proxy over the named pipe).
    #2 wire verbs: `InstallKernelRpcAsync(json)` + `InvokeKernelRpcAsync(pluginId, bytes)` (from
    `IKernelRpcWireClient`). Also `InstallPluginAsync` (#1), `UpdateSettingsAsync`, lifecycle, direct domain
    ops (`KillMonsterAsync`, `GetEntity*`).

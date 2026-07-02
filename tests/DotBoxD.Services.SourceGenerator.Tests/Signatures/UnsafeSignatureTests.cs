@@ -15,7 +15,7 @@ public class UnsafeSignatureTests
 
             namespace Regress.UnsafeShapes
             {
-                [DotBoxDService]
+                [RpcService]
                 public unsafe interface IUnsafeRpc
                 {
                     void PointerParameter(int* value);

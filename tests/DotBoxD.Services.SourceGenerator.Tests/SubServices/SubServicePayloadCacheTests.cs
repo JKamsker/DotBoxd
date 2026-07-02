@@ -30,7 +30,7 @@ public class SubServicePayloadCacheTests
 
             namespace Shared
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
@@ -51,7 +51,7 @@ public class SubServicePayloadCacheTests
 
             namespace Regress.ExternAliasPayloadCache
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task CleanAsync(Clean::Shared.Request request);
@@ -111,6 +111,6 @@ public class SubServicePayloadCacheTests
             yield return reference;
         }
 
-        yield return MetadataReference.CreateFromFile(typeof(DotBoxDServiceAttribute).Assembly.Location);
+        yield return MetadataReference.CreateFromFile(typeof(RpcServiceAttribute).Assembly.Location);
     }
 }

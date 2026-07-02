@@ -22,7 +22,7 @@ public sealed class PluginServerRemoteLocalProvideShapeTests
 
             namespace MissingResult.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 
@@ -43,7 +43,7 @@ public sealed class PluginServerRemoteLocalProvideShapeTests
                     ValueTask HoldUntilShutdownAsync(CancellationToken ct = default);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IPluginEventCallback
                 {
                     ValueTask OnEventAsync(string subscriptionId, System.ReadOnlyMemory<byte> projectedValue, CancellationToken ct = default);
@@ -100,7 +100,7 @@ public sealed class PluginServerRemoteLocalProvideShapeTests
 
             namespace WrongProvide.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 
@@ -121,7 +121,7 @@ public sealed class PluginServerRemoteLocalProvideShapeTests
                     ValueTask HoldUntilShutdownAsync(CancellationToken ct = default);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IPluginEventCallback
                 {
                     ValueTask OnEventAsync(string subscriptionId, System.ReadOnlyMemory<byte> projectedValue, CancellationToken ct = default);
@@ -175,7 +175,7 @@ public sealed class PluginServerRemoteLocalProvideShapeTests
                 .Append(MetadataReference.CreateFromFile(typeof(GeneratePluginServerAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(PluginPackage).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Peer.RpcPeer).Assembly.Location))
-                .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Attributes.DotBoxDServiceAttribute).Assembly.Location)),
+                .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Attributes.RpcServiceAttribute).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             [new PluginPackageGenerator().AsSourceGenerator()],

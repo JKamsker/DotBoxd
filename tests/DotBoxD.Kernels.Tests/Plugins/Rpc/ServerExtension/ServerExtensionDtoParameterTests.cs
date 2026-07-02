@@ -25,7 +25,7 @@ public sealed class ServerExtensionDtoParameterTests
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteWorldControl
         {
         }

@@ -25,7 +25,7 @@ public sealed class Round8_GeneratedFactoryCollisionTests
 
             namespace Regress.GeneratedFactoryCollision
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Bar();

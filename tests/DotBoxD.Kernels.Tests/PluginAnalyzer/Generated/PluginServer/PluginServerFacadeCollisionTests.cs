@@ -14,13 +14,13 @@ public sealed class PluginServerFacadeCollisionTests
 
             namespace Collision.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess
                 {
                     IMonsterControl Monsters { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IMonsterControl
                 {
                     ValueTask<Collision.Game.Alpha.IMonster> GetAlphaAsync(string id);
@@ -30,7 +30,7 @@ public sealed class PluginServerFacadeCollisionTests
 
             namespace Collision.Game.Alpha
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IMonster
                 {
                     ValueTask<int> GetHealthAsync();
@@ -39,7 +39,7 @@ public sealed class PluginServerFacadeCollisionTests
 
             namespace Collision.Game.Beta
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IMonster
                 {
                     ValueTask<int> GetLevelAsync();
@@ -103,13 +103,13 @@ public sealed class PluginServerFacadeCollisionTests
 
             namespace Collision.One
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 
             namespace Collision.Two
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 

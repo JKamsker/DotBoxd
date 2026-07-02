@@ -149,7 +149,7 @@ internal static class ServiceShapeValidator
         {
             return CreateDiagnostic(
                 property,
-                $"interface property '{property.Name}' is not supported; DotBoxD service properties must return a [DotBoxDService] interface or be the string Id of an instance handle");
+                $"interface property '{property.Name}' is not supported; DotBoxD service properties must return a [RpcService] interface or be the string Id of an instance handle");
         }
 
         if (subService.AllowsNull)

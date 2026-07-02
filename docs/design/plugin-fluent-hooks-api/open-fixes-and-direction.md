@@ -15,7 +15,7 @@ revised after a multi-lens review (see [How this doc was reviewed](#how-this-doc
 **Implementation update (2026-06-24):** this branch now implements the §3.1/§3.2 explicit context contract:
 `GeneratePluginServerAttribute.Context` is required, `ContextFactory` is supported, the generated context
 augmentation targets the author-declared partial class, convention `{Root}Context` fallback has been removed,
-context `[HostBinding]` members are rejected, `[Local]` is explicit and diagnosed when used from lowered IR, and
+context `[HostBinding]` members are rejected, `[NativeOnly]` is explicit and diagnosed when used from lowered IR, and
 prebuilt SDK context `[KernelMethod]` helpers emit/consume `GeneratedKernelMethodDescriptorAttribute` metadata.
 
 **Recheck update (2026-06-24):** P1.1-P1.8, P2.4-P2.14, and P3.15-P3.19 have been re-audited against the
@@ -77,8 +77,8 @@ it and **safely extends** it with `[ServerExtension]` — see
 Two roles, one SDK boundary:
 
 - **Server author** ships an **SDK** (one package): DotBoxD runtime/abstractions + the domain contracts
-  (`[DotBoxDService] IGameWorldAccess` and its handle/control types `IMonster`, `IMonsterControl`, …), the
-  event types, the host capabilities (`[HostCapability]`), and the generated client facade
+  (`[RpcService] IGameWorldAccess` and its handle/control types `IMonster`, `IMonsterControl`, …), the
+  event types, the host capabilities (`[HostBinding]`), and the generated client facade
   (`server.Hooks`/`Subscriptions`, the context, the builder).
 - **Plugin dev** references that one package and writes against ready-made types — never seeing DotBoxD
   primitives, IPC, lowering, or binding ids.
@@ -137,14 +137,14 @@ public partial class GamePluginServer : IGameWorldAccess;
 public sealed partial class GamePluginContext;
 ```
 
-From the `[DotBoxDService]` interface graph the generator **enumerates members** and emits the RPC proxy
+From the `[RpcService]` interface graph the generator **enumerates members** and emits the RPC proxy
 forwarders, the `IPluginServer<IGameWorldAccess>` lifecycle, the `Setup` accumulator, live-settings `Get`,
 `IGameWorldServer`, and `GamePluginServerBuilder`:
 
 | Generated artifact | Driven by | Exact location |
 |---|---|---|
-| World resolution | the directly-implemented interface carrying `[DotBoxDService]` (not the class name) | [PluginServerFacadeModelFactory.cs:71](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer/PluginServerFacadeModelFactory.cs) `ResolveWorldType` |
-| Controls / forwarders / scoped clients | walking the interface's members + nested `[DotBoxDService]` returns | same file: `ResolveControls` :89, `ResolveMethods` :125, `ResolveReturnWrapper` :196 |
+| World resolution | the directly-implemented interface carrying `[RpcService]` (not the class name) | [PluginServerFacadeModelFactory.cs:71](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer/PluginServerFacadeModelFactory.cs) `ResolveWorldType` |
+| Controls / forwarders / scoped clients | walking the interface's members + nested `[RpcService]` returns | same file: `ResolveControls` :89, `ResolveMethods` :125, `ResolveReturnWrapper` :196 |
 | `I{World}Server`, lifecycle, builder | the world **type symbol** | [PluginServerFacadeEmitter.cs:20](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer/PluginServerFacadeEmitter.cs); `ServerInterfaceName` at [PluginServerFacadeNameFormatter.cs:30](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer/PluginServerFacadeNameFormatter.cs) |
 | **Context + hook/sub registries** | explicit `[GeneratePluginServer(Context = typeof(TContext))]`; registries still use generated names but expose the declared context | [PluginServerFacadeModelFactory.Context.cs](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer/PluginServerFacadeModelFactory.Context.cs); [PluginServerContextSurfaceEmitter.cs](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/PluginServer/PluginServerContextSurfaceEmitter.cs) |
 
@@ -175,7 +175,7 @@ one deliberately separate native terminal.** Treat the analyzer↔runtime seam a
    ([DotBoxDHostBindingExpressionLowerer.cs:89](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/Lowering/Expressions/DotBoxDHostBindingExpressionLowerer.cs)
    for method form, `:95` `TryLowerProperty` for property form). For an **explicit** `[HostBinding(...)]`
    the `bindingId` is the attribute's first constructor argument (`ExplicitHostBinding` at :126); for an
-   **auto** host-service binding (a `[DotBoxDService]` interface method with no `[HostBinding]`) it is
+   **auto** host-service binding (a `[RpcService]` interface method with no `[HostBinding]`) it is
    derived by `HostBindingRoute` as `"host." + ns + type.MetadataName + "." + method.Name`
    (`TryAutoHostBinding` :152 → `HostBindingRoute` :187, formula :192). At **exec** time the interpreter
    resolves the id **per call** against the host-curated `BindingRegistry`
@@ -282,7 +282,7 @@ place. The convention-named `{Root}Context` partial is **removed**, not kept as 
     verifier (unknown-binding rejection + `DBXK041`/`DBXK044`), independent of where anything is declared.
     Not a design choice.
   - **Declaration:** the context is **server-authored and ships in the SDK** — it carries the re-exposed
-    server-owned `[DotBoxDService]` services (`ctx.World.Damage.GetAdjustment(id)`, auto-lowering to a host
+    server-owned `[RpcService]` services (`ctx.World.Damage.GetAdjustment(id)`, auto-lowering to a host
     binding) plus any server-authored helpers, and **never** plugin-declared `[HostBinding]` members.
     (`ctx.Messages.Send(...)` already works this way — a re-exposed `IPluginMessageSink`, not a
     plugin-declared binding.) A **plugin dev's** own `[KernelMethod]` helpers are **static methods in the
@@ -317,7 +317,7 @@ place. The convention-named `{Root}Context` partial is **removed**, not kept as 
   `TContext Factory(HookContext raw)`; a missing, overloaded, non-static, or wrong-return factory is a build
   diagnostic.
 - **Service selectors:** `ctx.World`/control members are lowerable SDK service selectors, not live native
-  proxies for arbitrary plugin code. They are valid in server-side lowered bodies; using them from `[Local]`
+  proxies for arbitrary plugin code. They are valid in server-side lowered bodies; using them from `[NativeOnly]`
   context members or native terminals is a diagnostic. A future IPC client surface must be explicitly named
   and separately reviewed, never reached through an accidental host-binding shortcut.
 
@@ -344,8 +344,8 @@ across those locations. The current signal — an attribute, or its **absence** 
 |---|---|---|---|---|
 | SDK context helper | `[KernelMethod]` on the server-authored context | server-side sandbox (verified IR) | scalars; other `[KernelMethod]` members; re-exposed host-service calls; **no** native services | "pure computation over event fields" |
 | Plugin static helper | static `[KernelMethod]` in the plugin assembly | server-side sandbox (verified IR) | scalar parameters/returns only in the current plan; **no** context/service parameter and no native services | "plugin-local pure helper, not a context member" |
-| Host capability | a re-exposed `[DotBoxDService]` member (`ctx.World.X()`; auto-lowers) — **not** a `[HostBinding]` on the context | server-side host | the host call, gated by its `[HostCapability]` | "reads/writes host/game state" |
-| Native SDK helper | **`[Local]`** (decided; today it is the absence of a marker) | server-authored SDK/native side, post-IPC | SDK-provided in-process helper code; **no** host-service selectors | "server SDK native convenience, not plugin extension" |
+| Host capability | a re-exposed `[RpcService]` member (`ctx.World.X()`; auto-lowers) — **not** a `[HostBinding]` on the context | server-side host | the host call, gated by its `[HostBinding]` | "reads/writes host/game state" |
+| Native SDK helper | **`[NativeOnly]`** (decided; today it is the absence of a marker) | server-authored SDK/native side, post-IPC | SDK-provided in-process helper code; **no** host-service selectors | "server SDK native convenience, not plugin extension" |
 
 This table is about callable helpers/services used inside a chain. Rows 1, 3, and 4 are context or
 context-backed members; row 2 is a plugin-owned static helper. A whole grafted operation is the separate
@@ -362,15 +362,15 @@ Two precise corrections:
   `RunLocal`/`RegisterLocal` run arbitrary native code. A `RunLocal` body that calls a plugin service does
   **not** become a valid `Run` by dropping the suffix — it fails to lower. Do **not** claim "the same
   expression, the suffix chooses where it runs."
-- **Native is opt-in via `[Local]` (decided — option A).** A native (in-process) context member carries
-  `[Local]`; execution site is never inferred from a *missing* attribute. The analyzer raises a **build
-  error** if a `[Local]` member is used in a lowered stage (`Where`/`Select`/`Run`/`Register`) or a lowered
+- **Native is opt-in via `[NativeOnly]` (decided — option A).** A native (in-process) context member carries
+  `[NativeOnly]`; execution site is never inferred from a *missing* attribute. The analyzer raises a **build
+  error** if a `[NativeOnly]` member is used in a lowered stage (`Where`/`Select`/`Run`/`Register`) or a lowered
   `[ServerExtensionMethod]`/RPC body — a new
   diagnostic alongside the `DBXK111`/`DBXK113`/`DBXK062` family. (Rejected: splitting the context into a
   *lowerable facet* + a *native facet* — more types, less minimal.) The native terminal is the
   trust-boundary exit, so the generator must still route tiers by **owned symbol identity** (§3.3), never by
   string name (P2.4), so a typo or a foreign API cannot route a body to the wrong tier.
-- **`[Local]` contract.** Add `LocalAttribute` in `DotBoxD.Abstractions`, `AttributeTargets.Method |
+- **`[NativeOnly]` contract.** Add `NativeOnlyAttribute` in `DotBoxD.Abstractions`, `AttributeTargets.Method |
   AttributeTargets.Property`, non-inherited. It is valid only on instance members of the declared server SDK
   context type. Applying it to static helpers, arbitrary plugin classes, services, or members referenced from
   lowered stages is a diagnostic. Properties are allowed only for local/native use; they are not lowerable
@@ -380,7 +380,7 @@ Two precise corrections:
   native helper contract would need its own marker, callback identity model, and tests; do not imply it here.
 - **Static `[KernelMethod]` scope.** Keep plugin static helpers scalar-only unless a later PR explicitly adds
   context-parameter rebinding for static helpers. That later work would need diagnostics for context type /
-  accessibility, lowerable service-selector use, and rejection of `[Local]`/native escapes through the helper.
+  accessibility, lowerable service-selector use, and rejection of `[NativeOnly]`/native escapes through the helper.
 - **Prebuilt SDK helper bodies.** Server-authored SDK context `[KernelMethod]` helpers cannot rely only on
   Roslyn syntax inlining once the context ships as a compiled SDK: metadata-only methods have no
   `DeclaringSyntaxReferences`. The §3.1 implementation must emit analyzer-visible helper descriptors into
@@ -483,13 +483,13 @@ both." A shared runtime object is not buildable: the analyzer is `netstandard2.0
   and [HostServiceBindingFactory.cs:218-227](../../../src/Hosting/DotBoxD.Plugins/Runtime/Bindings/HostServiceBindingFactory.cs))
   with an **explicit effect declaration**, so effects are no longer inferred from method names on two sides
   (a method named `Patch` or `Spawn` is silently read-only today on both).
-- Concrete authoring shape: add a dependency-free `[Flags] HostBindingEffect` enum in `DotBoxD.Abstractions`
+- Concrete authoring shape: add a dependency-free `[Flags] SandboxEffect` enum in `DotBoxD.Abstractions`
   with `None`, `HostStateRead`, `HostStateWrite`, and `Allocates`, and make host-capability declarations
-  explicit, e.g. `[HostCapability("game.world.monster.write.position", HostBindingEffect.HostStateWrite)]`.
+  explicit, e.g. `[HostBinding("game.world.monster.write.position", SandboxEffect.Cpu | SandboxEffect.HostStateWrite)]`.
   `Concurrency` and the `runtime.async` capability are derived from async/Task-returning shape; `Cpu` remains
   module-execution overhead; audit/cost/safety stay runtime descriptor metadata. A declared flag that
   conflicts with signature-derived facts is a diagnostic, not a silent override. Missing effect metadata on an
-  auto-bound `[DotBoxDService]` method is a build/runtime registration diagnostic, not a fallback to
+  auto-bound `[RpcService]` method is a build/runtime registration diagnostic, not a fallback to
   method-name inference.
 - Define capability metadata precedence per binding kind in the shared core. For plugin-visible SDK
   contracts and handle methods, interface metadata is analyzer-visible and must remain authoritative unless
@@ -634,12 +634,12 @@ Every item verified against head `41ec9172`.
    ([lowerer:226](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/Lowering/Expressions/DotBoxDHostBindingExpressionLowerer.cs),
    [runtime:218-227](../../../src/Hosting/DotBoxD.Plugins/Runtime/Bindings/HostServiceBindingFactory.cs)).
    Also: capability metadata is read from **different declarations** on the two sides — the analyzer's
-   auto-binding reads `[HostCapability]` off the **interface** method
+   auto-binding reads `[HostBinding]` off the **interface** method
    ([DotBoxDHostBindingExpressionLowerer.cs:163](../../../src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/Lowering/Expressions/DotBoxDHostBindingExpressionLowerer.cs),
-   `HostCapability` helper at :195), while the runtime reads `[HostCapability]` off the **implementation**
+   auto-binding helper at :195), while the runtime reads `[HostBinding]` off the **implementation**
    method and throws if absent
    ([HostServiceBindingExtensions.cs:52,55-56](../../../src/Hosting/DotBoxD.Plugins/Runtime/Bindings/HostServiceBindingExtensions.cs)).
-   The GameServer abstractions carry `[HostCapability]` **without** `[HostBinding]` (the auto-binding path).
+   The GameServer abstractions carry `[HostBinding]` **without** `[HostBinding]` (the auto-binding path).
    **Correction:** a blanket implementation-first rule is not currently implementable on both sides. The
    analyzer sees the SDK/interface symbol, not the host implementation; handle bindings are also created from
    handle interface methods. §3.4 must define an analyzer-visible, server-owned metadata source per binding
@@ -794,8 +794,8 @@ metadata/signature changes these hazards require.
 helper descriptors for prebuilt context `[KernelMethod]` bodies; without a matching descriptor,
 metadata-only context helpers are rejected. These changes carry their own `DotBoxD.Abstractions` public API
 baseline updates for
-`GeneratePluginServerAttribute.Context`, `ContextFactory`, `LocalAttribute`, `HostBindingEffect` /
-`HostCapabilityAttribute` effect metadata, `GeneratedKernelMethodDescriptorAttribute`, and `[KernelMethod]`
+`GeneratePluginServerAttribute.Context`, `ContextFactory`, `NativeOnlyAttribute`, `SandboxEffect` /
+`HostBindingAttribute` effect metadata, `GeneratedKernelMethodDescriptorAttribute`, and `[KernelMethod]`
 XML docs, plus package metadata expectations for the generated descriptor attributes in packed SDKs.
 
 > **Half-state note (resolved for §3.1):** this branch no longer keeps the convention-named context as an
@@ -896,7 +896,7 @@ scope.
   future `[GeneratePluginServer(Context = ...)]` mode; a prebuilt SDK referenced cross-assembly resolves from
   generated return types/marker metadata.
 - **Host-binding descriptor parity (P2.6 / §3.4).** Analyzer-derived route + effects equal runtime-derived
-  route + effects for the same `[DotBoxDService]` method (guards the `DBXK041` seam at compile time). Expand
+  route + effects for the same `[RpcService]` method (guards the `DBXK041` seam at compile time). Expand
   this to required capability, async flag, parameter/return shape ids, and the binding-kind-specific
   metadata precedence, including handle methods where interface metadata is authoritative.
 - **Typed hook/subscription overload parity (P2.8).** `RemoteHookPipeline.Typed` and
@@ -916,22 +916,22 @@ scope.
 - **Context contract diagnostics (§3.1).** Missing `Context`, non-partial/generic/nested context types, wrong
   namespace emission, context accessibility below the generated surface, invalid `ContextFactory`, and
   duplicate generated context augmentation produce clear diagnostics. **Implemented coverage:** missing
-  `Context`, cross-namespace emission, context `[HostBinding]`, duplicate context use, and `[Local]`
+  `Context`, cross-namespace emission, context `[HostBinding]`, duplicate context use, and `[NativeOnly]`
   placement/use diagnostics are covered; add narrower fixtures for every remaining shape variant as the
   contract hardens.
 - **Context `[HostBinding]` rejection (§3.1/§3.2).** A plugin-declared `[HostBinding]` member on the context is
-  rejected; host access goes through re-exposed `[DotBoxDService]` selectors only.
-- **`[Local]` and service-selector misuse (§3.2).** `[Local]` outside the declared context, `[Local]` members
+  rejected; host access goes through re-exposed `[RpcService]` selectors only.
+- **`[NativeOnly]` and service-selector misuse (§3.2).** `[NativeOnly]` outside the declared context, `[NativeOnly]` members
   used in lowered stages or lowered `[ServerExtensionMethod]`/RPC bodies, and `RunLocal`/`RegisterLocal` or
-  `[Local]` members attempting `ctx.World.*` produce the planned diagnostic. Add a positive server-authored
-  SDK `[Local]` context helper case and a negative plugin-assembly attempt to add a native context helper, so
+  `[NativeOnly]` members attempting `ctx.World.*` produce the planned diagnostic. Add a positive server-authored
+  SDK `[NativeOnly]` context helper case and a negative plugin-assembly attempt to add a native context helper, so
   the SDK split is explicit.
 - **Static `[KernelMethod]` helper scope (§3.2).** Plugin static helpers with scalar parameters/returns inline
   successfully; static helpers that take a context/service parameter fail with the planned diagnostic unless
   a future PR implements explicit context rebinding and adds the corresponding positive/negative tests.
 - **Prebuilt SDK context `[KernelMethod]` descriptors (§3.2/§3.1).** A plugin project referencing a prebuilt
   SDK calls a server-authored context `[KernelMethod]` helper and the analyzer consumes the SDK helper
-  descriptor/IR. Include a helper that calls a re-exposed `[DotBoxDService]` selector and assert the generated
+  descriptor/IR. Include a helper that calls a re-exposed `[RpcService]` selector and assert the generated
   package carries the descriptor's transitive capabilities/effects and installs without `DBXK041`/`DBXK044`.
   Cover `this.World...` and implicit `World...` receiver rebinding in same-compilation descriptor generation
   and prebuilt SDK consumption. A metadata-only helper with no descriptor fails with the planned diagnostic.

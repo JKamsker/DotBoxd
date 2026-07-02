@@ -169,19 +169,19 @@ public sealed class RpcIpcAddonTests
     }
 }
 
-[DotBoxDService]
+[RpcService]
 public interface IProbeService
 {
     ValueTask<int> IncrementAsync(int value, CancellationToken cancellationToken = default);
 }
 
-[DotBoxDService]
+[RpcService]
 public interface ICallbackCaller
 {
     ValueTask<int> CallAsync(int value, CancellationToken cancellationToken = default);
 }
 
-[DotBoxDService]
+[RpcService]
 public interface IProbeCallback
 {
     ValueTask<int> IncrementAsync(int value, CancellationToken cancellationToken = default);

@@ -13,8 +13,6 @@ namespace DotBoxD.Services.SourceGenerator.EntryPoint;
 [Generator(LanguageNames.CSharp)]
 public sealed class DotBoxDRpcGenerator : IIncrementalGenerator
 {
-    private const string DotBoxDServiceAttributeName = ServicesGeneratorTypeNames.DotBoxDServiceAttribute;
-
     private static readonly DiagnosticDescriptor s_generatorErrorRule = new(
         id: "DBXS001",
         title: "DotBoxD source generator error",
@@ -49,11 +47,23 @@ public sealed class DotBoxDRpcGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var results = context.SyntaxProvider
+        var rpcServiceResults = context.SyntaxProvider
             .ForAttributeWithMetadataName(
-                DotBoxDServiceAttributeName,
+                ServicesGeneratorTypeNames.RpcServiceAttribute,
                 predicate: static (node, _) => node is InterfaceDeclarationSyntax,
                 transform: static (ctx, ct) => ServiceModelFactory.GetServiceResult(ctx, ct))
+            .WithTrackingName("RawRpcServiceResults");
+        var legacyServiceResults = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                ServicesGeneratorTypeNames.DotBoxDServiceAttribute,
+                predicate: static (node, _) => node is InterfaceDeclarationSyntax,
+                transform: static (ctx, ct) => ServiceModelFactory.GetServiceResult(ctx, ct))
+            .WithTrackingName("RawLegacyServiceResults");
+
+        var results = rpcServiceResults
+            .Collect()
+            .Combine(legacyServiceResults.Collect())
+            .SelectMany(static (pair, ct) => ServiceResultMerger.Merge(pair.Left, pair.Right, ct))
             .WithTrackingName("RawServiceResults");
 
         var existingTypeDeclarations = context.SyntaxProvider

@@ -30,7 +30,7 @@ public sealed partial class PluginAnalyzer
             context.ReportDiagnostic(Diagnostic.Create(
                 PluginAnalyzerDiagnostics.LocalContextMemberRule,
                 member.Locations.FirstOrDefault(),
-                "[Local] is valid only on instance members of the declared generated plugin server context."));
+                "[NativeOnly] is valid only on instance members of the declared generated plugin server context."));
         }
     }
 
@@ -80,7 +80,7 @@ public sealed partial class PluginAnalyzer
     private static void ReportLocalUseIfInvalid(OperationAnalysisContext context, ISymbol target)
     {
         var model = context.Operation.SemanticModel;
-        if (!HasAttribute(target, DotBoxDMetadataNames.LocalAttribute) ||
+        if (!HasAttribute(target, DotBoxDMetadataNames.NativeOnlyAttribute) ||
             model is null ||
             !IsLocalUseForbidden(context.Operation.Syntax, context.ContainingSymbol, model, context.CancellationToken))
         {
@@ -90,7 +90,7 @@ public sealed partial class PluginAnalyzer
         context.ReportDiagnostic(Diagnostic.Create(
             PluginAnalyzerDiagnostics.LocalContextMemberRule,
             context.Operation.Syntax.GetLocation(),
-            "[Local] context members run natively and cannot be used in lowered hook chains or server-extension bodies."));
+            "[NativeOnly] context members run natively and cannot be used in lowered hook chains or server-extension bodies."));
     }
 
     private static bool IsLocalUseForbidden(

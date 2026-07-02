@@ -13,13 +13,13 @@ public partial class CodegenRegressionTests
 
             namespace Regress.CustomWireCollision
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ILookup
                 {
-                    [DotBoxDMethod(Name = "lookup")]
+                    [RpcMethod(Name = "lookup")]
                     Task<int> GetByIdAsync(int id);
 
-                    [DotBoxDMethod(Name = "lookup")]
+                    [RpcMethod(Name = "lookup")]
                     Task<string> GetByNameAsync(string name);
                 }
             }
@@ -52,7 +52,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.GenericMethod
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGenericMethod
                 {
                     Task<T> EchoAsync<T>(T value) where T : class;
@@ -90,7 +90,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.GenericKeyword
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGenericKeyword
                 {
                     Task<@class> EchoAsync<@class>(@class value) where @class : class;
@@ -120,7 +120,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.RefStructAntiConstraint
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRefStructAntiConstraint
                 {
                     T Echo<T>(T value) where T : allows ref struct;
@@ -161,7 +161,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.CtOrder
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ICtOrder
                 {
                     Task<int> SumAsync(int a, CT cancellationToken, int b);

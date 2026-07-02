@@ -28,7 +28,7 @@ internal static class DotBoxDGenerationNames
         public const string HostBindingAttribute = "DotBoxD.Abstractions.HostBindingAttribute";
         public const string CapabilityAttribute = "DotBoxD.Abstractions.CapabilityAttribute";
         public const string KernelMethodAttribute = "DotBoxD.Abstractions.KernelMethodAttribute";
-        public const string LocalAttribute = "DotBoxD.Abstractions.LocalAttribute";
+        public const string NativeOnlyAttribute = "DotBoxD.Abstractions.NativeOnlyAttribute";
         public const string ServerExtensionAttribute = "DotBoxD.Abstractions.ServerExtensionAttribute";
         public const string ServerExtensionClientAttribute = "DotBoxD.Abstractions.ServerExtensionClientAttribute";
         public const string ServerExtensionMethodAttribute = "DotBoxD.Abstractions.ServerExtensionMethodAttribute";
@@ -37,6 +37,7 @@ internal static class DotBoxDGenerationNames
             "DotBoxD.Abstractions.GeneratedKernelMethodDescriptorAttribute";
         public const string PolymorphicHandleAttribute = "DotBoxD.Abstractions.PolymorphicHandleAttribute";
         public const string HandleSubtypeAttribute = "DotBoxD.Abstractions.HandleSubtypeAttribute";
+        public const string RpcServiceAttribute = "DotBoxD.Services.Attributes.RpcServiceAttribute";
         public const string DotBoxDServiceAttribute = "DotBoxD.Services.Attributes.DotBoxDServiceAttribute";
         public const string HookContext = "DotBoxD.Abstractions.HookContext";
         public const string ServerInvocationDelegateType = "DotBoxD.Abstractions.RemoteServerInvocation";

@@ -18,7 +18,7 @@ public sealed class ServerExtensionClientExtensionInterfaceTests
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteMonsterControl
         {
         }
@@ -132,7 +132,7 @@ public sealed class ServerExtensionClientExtensionInterfaceTests
         Assert.Contains(
             diagnostics,
             d => d.Id == "DBXK100" &&
-                 d.GetMessage().Contains("server-owned [DotBoxDService] interface", StringComparison.Ordinal));
+                 d.GetMessage().Contains("server-owned [RpcService] interface", StringComparison.Ordinal));
         Assert.DoesNotContain(diagnostics, d => d.Id == "CS0122");
     }
 

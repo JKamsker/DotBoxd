@@ -11,10 +11,10 @@ public sealed class PluginServerFacadeRegressionTests
 
             namespace Regression.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IAlphaWorld;
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IBetaWorld;
             }
 
@@ -31,7 +31,7 @@ public sealed class PluginServerFacadeRegressionTests
             """);
 
         Assert.Contains(diagnostics, diagnostic => diagnostic.GetMessage().Contains(
-            "must directly implement one [DotBoxDService] world interface",
+            "must directly implement one [RpcService] world interface",
             StringComparison.Ordinal));
     }
 
@@ -47,22 +47,22 @@ public sealed class PluginServerFacadeRegressionTests
 
             namespace Regression.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldBase
                 {
                     IMonsterControl Monsters { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess : IGameWorldBase;
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IMonsterControl
                 {
                     ValueTask<IMonster> GetAsync(string entityId);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IMonster
                 {
                     string Id { get; }
@@ -134,7 +134,7 @@ public sealed class PluginServerFacadeRegressionTests
 
             namespace Explicit.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 

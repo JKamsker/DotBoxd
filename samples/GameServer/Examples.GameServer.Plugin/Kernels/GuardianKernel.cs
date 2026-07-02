@@ -8,7 +8,7 @@ namespace DotBoxD.Kernels.Game.Plugin.Kernels;
 /// C#, lowered to verified DotBoxD.Kernels by the source generator, and shipped to the server as opaque IR.
 /// The install id derives from the type name (<c>"guardian"</c>) — nothing hand-typed.
 /// </summary>
-[EventKernel]
+[Plugin]
 public sealed partial class GuardianKernel : IMonsterAggroService
 {
     [LiveSetting]

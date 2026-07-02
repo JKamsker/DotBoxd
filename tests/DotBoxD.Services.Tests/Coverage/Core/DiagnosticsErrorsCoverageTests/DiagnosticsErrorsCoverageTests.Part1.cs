@@ -220,7 +220,7 @@ public sealed class AttributeCoverageTests
     [Fact]
     public void DotBoxDServiceAttribute_DefaultName_IsNull()
     {
-        var attribute = new DotBoxDServiceAttribute();
+        var attribute = new RpcServiceAttribute();
 
         Assert.Null(attribute.Name);
     }
@@ -228,7 +228,7 @@ public sealed class AttributeCoverageTests
     [Fact]
     public void DotBoxDServiceAttribute_WithCustomName_ExposesName()
     {
-        var attribute = new DotBoxDServiceAttribute { Name = "Custom.Service" };
+        var attribute = new RpcServiceAttribute { Name = "Custom.Service" };
 
         Assert.Equal("Custom.Service", attribute.Name);
     }
@@ -236,8 +236,8 @@ public sealed class AttributeCoverageTests
     [Fact]
     public void DotBoxDServiceAttribute_AppliedToInterface_IsDiscoverableViaReflection()
     {
-        var attribute = typeof(IDecoratedService).GetCustomAttributes(typeof(DotBoxDServiceAttribute), false)
-            .Cast<DotBoxDServiceAttribute>()
+        var attribute = typeof(IDecoratedService).GetCustomAttributes(typeof(RpcServiceAttribute), false)
+            .Cast<RpcServiceAttribute>()
             .Single();
 
         Assert.Equal("decorated-wire", attribute.Name);
@@ -246,7 +246,7 @@ public sealed class AttributeCoverageTests
     [Fact]
     public void DotBoxDMethodAttribute_DefaultName_IsNull()
     {
-        var attribute = new DotBoxDMethodAttribute();
+        var attribute = new RpcMethodAttribute();
 
         Assert.Null(attribute.Name);
     }
@@ -254,7 +254,7 @@ public sealed class AttributeCoverageTests
     [Fact]
     public void DotBoxDMethodAttribute_WithCustomName_ExposesName()
     {
-        var attribute = new DotBoxDMethodAttribute { Name = "CustomMethod" };
+        var attribute = new RpcMethodAttribute { Name = "CustomMethod" };
 
         Assert.Equal("CustomMethod", attribute.Name);
     }

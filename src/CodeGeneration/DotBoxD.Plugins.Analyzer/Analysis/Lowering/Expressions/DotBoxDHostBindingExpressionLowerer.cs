@@ -10,7 +10,8 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 /// Lowers a host-service call the kernel reaches through <c>ctx.Host&lt;T&gt;()</c> or a
 /// constructor-injected service field — e.g. <c>_world.GetHealth(e.MonsterId)</c> — into a sandbox
 /// <c>CallExpression(bindingId, args)</c>. The called method must carry
-/// <c>[HostBinding(bindingId, capability)]</c>; the capability is collected so it lands in the
+/// <c>[HostBinding(bindingId, capability, effects)]</c> or the auto-binding
+/// <c>[HostBinding(capability, effects)]</c>; the capability is collected so it lands in the
 /// manifest's required capabilities and gates the install (the host registers a matching binding whose
 /// <c>RequiredCapability</c> the policy must grant). Arguments lower in parameter order, with explicit
 /// defaults filled in only for marshaller-eligible scalars; reordered named calls fail closed because this
@@ -18,8 +19,6 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 /// </summary>
 internal static partial class DotBoxDHostBindingExpressionLowerer
 {
-    private const string HostCapabilityAttribute = "DotBoxD.Abstractions.HostCapabilityAttribute";
-
     public static DotBoxDExpressionModel? TryLower(
         InvocationExpressionSyntax invocation,
         DotBoxDExpressionLoweringContext context,
@@ -136,17 +135,17 @@ internal static partial class DotBoxDHostBindingExpressionLowerer
         }
 
         var returnType = DotBoxDTypeNameReader.UnwrapTaskLike(method.ReturnType);
-        var capability = HostCapability(method, ReturnAllocates(returnType), compilation);
-        if (capability is null)
+        var binding = AutoHostBinding(method, ReturnAllocates(returnType), compilation);
+        if (binding is null)
         {
             throw new NotSupportedException(
-                $"Auto host binding '{HostBindingRoute(method.ContainingType, method)}' must declare [HostCapability] with explicit effects.");
+                $"Auto host binding '{HostBindingRoute(method.ContainingType, method)}' must declare [HostBinding] with explicit effects.");
         }
 
         return (
             HostBindingRoute(method.ContainingType, method),
-            capability.Value.Capability,
-            capability.Value.Effects,
+            binding.Value.Capability,
+            binding.Value.Effects,
             IsTaskLike(method.ReturnType));
     }
 
@@ -154,7 +153,7 @@ internal static partial class DotBoxDHostBindingExpressionLowerer
     {
         foreach (var attribute in type.GetAttributes())
         {
-            if (IsDotBoxDAttribute(attribute, compilation, DotBoxDMetadataNames.DotBoxDServiceAttribute))
+            if (IsDotBoxDAttribute(attribute, compilation, DotBoxDMetadataNames.RpcServiceAttribute))
             {
                 return true;
             }
@@ -171,19 +170,19 @@ internal static partial class DotBoxDHostBindingExpressionLowerer
         return HostBindingMetadataRules.BindingId(ns, type.MetadataName, method.Name);
     }
 
-    private static (string Capability, IReadOnlyList<string> Effects)? HostCapability(
+    private static (string Capability, IReadOnlyList<string> Effects)? AutoHostBinding(
         IMethodSymbol method,
         bool returnAllocates,
         Compilation compilation)
     {
         foreach (var attribute in method.GetAttributes())
         {
-            if (IsDotBoxDAttribute(attribute, compilation, HostCapabilityAttribute) &&
+            if (IsDotBoxDAttribute(attribute, compilation, DotBoxDMetadataNames.HostBindingAttribute) &&
                 attribute.ConstructorArguments.Length == 2 &&
                 attribute.ConstructorArguments[0].Value is string capability &&
                 !string.IsNullOrWhiteSpace(capability))
             {
-                var effects = HostCapabilityEffects(attribute.ConstructorArguments[1], returnAllocates, method);
+                var effects = AutoHostBindingSandboxEffects(attribute.ConstructorArguments[1], returnAllocates, method);
                 return (capability, effects);
             }
         }
@@ -192,8 +191,35 @@ internal static partial class DotBoxDHostBindingExpressionLowerer
     }
 
     private static bool IsDotBoxDAttribute(AttributeData attribute, Compilation compilation, string metadataName)
-        => compilation.GetTypeByMetadataName(metadataName) is { } expected &&
-           SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, expected);
+    {
+        if (string.Equals(metadataName, DotBoxDMetadataNames.RpcServiceAttribute, StringComparison.Ordinal))
+        {
+            return IsAnyDotBoxDAttribute(
+                attribute,
+                compilation,
+                DotBoxDMetadataNames.RpcServiceAttribute,
+                DotBoxDMetadataNames.DotBoxDServiceAttribute);
+        }
+
+        return IsAnyDotBoxDAttribute(attribute, compilation, metadataName);
+    }
+
+    private static bool IsAnyDotBoxDAttribute(
+        AttributeData attribute,
+        Compilation compilation,
+        params string[] metadataNames)
+    {
+        foreach (var metadataName in metadataNames)
+        {
+            if (compilation.GetTypeByMetadataName(metadataName) is { } expected &&
+                SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, expected))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     // Keep auto-binding Alloc classification in sync with runtime binding registration.
     private static bool ReturnAllocates(ITypeSymbol type)

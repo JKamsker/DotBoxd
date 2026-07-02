@@ -19,7 +19,7 @@ public sealed partial class PluginServerSurpriseRegressionTests
 
             namespace Regression.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess
                 {
             {{worldMembers}}

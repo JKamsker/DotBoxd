@@ -17,7 +17,7 @@ public partial class CodegenRegressionTests
             {
                 public class Outer
                 {
-                    [DotBoxDService]
+                    [RpcService]
                     public interface IInner
                     {
                         Task<int> DoAsync(int x);
@@ -47,7 +47,7 @@ public partial class CodegenRegressionTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Bar();
@@ -74,7 +74,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.InternalService
             {
-                [DotBoxDService]
+                [RpcService]
                 internal interface IInternal
                 {
                     Task<int> CountAsync();
@@ -101,7 +101,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.PropertyMember
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IWithProperty
                 {
                     int Count { get; }
@@ -130,7 +130,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.EventMember
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IWithEvent
                 {
                     event EventHandler Changed;
@@ -158,7 +158,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.StaticMember
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IWithStatic
                 {
                     static abstract Task<int> CountAsync();
@@ -185,7 +185,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.PrivateMethod
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IWithPrivate
                 {
                     private int Hidden() => 1;
@@ -215,7 +215,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.Keyword
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IKw
                 {
                     Task<int> DoAsync(int @class, int @default);
@@ -236,7 +236,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.KeywordType
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface @event
                 {
                     Task<int> CountAsync();

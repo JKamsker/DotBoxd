@@ -105,22 +105,22 @@ There is no `Monster` object, no `Position`, no `Players` collection on the even
 
 ```csharp
 // samples/.../IGameWorldAccess.cs
-[DotBoxDService] public interface IGameWorldAccess { IMonsterControl Monsters { get; } IEntityControl Entities { get; } }
+[RpcService] public interface IGameWorldAccess { IMonsterControl Monsters { get; } IEntityControl Entities { get; } }
 
-[DotBoxDService] public interface IMonsterControl {
-    [HostCapability("game.world.monster.read.handle")] IMonster Get(string entityId);
-    [HostCapability("game.world.monster.read.kind")]   ValueTask<bool> IsMonsterAsync(string entityId);
+[RpcService] public interface IMonsterControl {
+    [HostBinding("game.world.monster.read.handle")] IMonster Get(string entityId);
+    [HostBinding("game.world.monster.read.kind")]   ValueTask<bool> IsMonsterAsync(string entityId);
 }
 
-[DotBoxDService] public interface IMonster : IEntity {
-    [HostCapability("game.world.monster.read.snapshot")] ValueTask<MonsterSnapshot> SnapshotAsync();
-    [HostCapability("game.world.monster.write.kill")]    ValueTask<bool> KillAsync();
-    [HostCapability("game.world.combat.threat")]         ValueTask<int>  GetThreatAsync();
-    [HostCapability("game.world.monster.write.position")] ValueTask      TeleportToAsync(int position);
+[RpcService] public interface IMonster : IEntity {
+    [HostBinding("game.world.monster.read.snapshot")] ValueTask<MonsterSnapshot> SnapshotAsync();
+    [HostBinding("game.world.monster.write.kill")]    ValueTask<bool> KillAsync();
+    [HostBinding("game.world.combat.threat")]         ValueTask<int>  GetThreatAsync();
+    [HostBinding("game.world.monster.write.position")] ValueTask      TeleportToAsync(int position);
 }
 ```
 
-- A method is **callable from lowered IR** when it carries `[HostBinding]` *or* auto-binds (ordinary, non-static, non-generic method on a `[DotBoxDService]` interface); binding id = `host.{ns}.{Type}.{Method}`, capability from `[HostCapability]`.
+- A method is **callable from lowered IR** when it carries `[HostBinding]` *or* auto-binds (ordinary, non-static, non-generic method on a `[RpcService]` interface); binding id = `host.{ns}.{Type}.{Method}`, capability from `[HostBinding]`.
 - **Effects** are inferred: `Cpu` always; `Alloc` for allocating returns; `HostStateWrite` if the method name starts `Kill|Set|Update|Delete|Add|Remove|Move|Teleport` or the capability contains `.write.`; else `HostStateRead`.
   (`src/CodeGeneration/DotBoxD.Plugins.Analyzer/Analysis/Lowering/Expressions/DotBoxDHostBindingExpressionLowerer.cs`)
 - **There is no aggro setter today** — the closest writes are `KillAsync` / `TeleportToAsync`.
@@ -183,7 +183,7 @@ event ─▶ Where(pred) ─▶ Select(proj w/ ctx.* host reads) ─▶ Where(pr
 
 **Result:** `ctx.Monsters.IsMonsterAsync(e.MonsterId)` (scalar return) lowers; capabilities/effects flow into the manifest exactly as `ctx.Host<T>().M()` does today.
 
-> Note: this generalizes the existing `ctx.Host<T>()` form to the auto-bound `[DotBoxDService]` property-chain form. Both resolve to a bindable `IMethodSymbol`; the only new work is letting the *receiver* be the bound `ctx` parameter rather than a `Host<T>()` call.
+> Note: this generalizes the existing `ctx.Host<T>()` form to the auto-bound `[RpcService]` property-chain form. Both resolve to a bindable `IMethodSymbol`; the only new work is letting the *receiver* be the bound `ctx` parameter rather than a `Host<T>()` call.
 
 ### 5.2 Non-scalar host-call returns (G2)
 
@@ -240,7 +240,7 @@ Key points:
 Entities are referenced by **id**. To make the snippets' real intent (set aggro to 0) work, add a small write surface:
 
 ```csharp
-[HostCapability("game.world.monster.write.aggro")]
+[HostBinding("game.world.monster.write.aggro")]
 ValueTask SetAggroRangeAsync(int range);   // on IMonster, sibling of TeleportToAsync
 ```
 
@@ -251,12 +251,12 @@ ValueTask SetAggroRangeAsync(int range);   // on IMonster, sibling of TeleportTo
 The examples in §6 call `ctx.Players.GetInRange(...)`, which does not exist yet. The current `IGameWorldAccess` exposes `Monsters` (`IMonsterControl`) and `Entities` (`IEntityControl`) but no player control. The examples assume two additions:
 
 ```csharp
-[DotBoxDService]
+[RpcService]
 public interface IPlayerControl
 {
     // Returns player IDs (scalars), NOT live Player objects — a live entity is not marshallable
     // across the host-call boundary, even when only .Count is read.
-    [HostCapability("game.world.player.read.in_range")]
+    [HostBinding("game.world.player.read.in_range")]
     IReadOnlyList<string> GetInRange(string monsterId, int radius);
 }
 
@@ -264,7 +264,7 @@ public interface IPlayerControl
 IPlayerControl Players { get; }
 
 // a scalar name read used in §6 (sibling reads on the monster control):
-[HostCapability("game.world.monster.read.name")]
+[HostBinding("game.world.monster.read.name")]
 string GetName(string monsterId);   // on IMonsterControl
 ```
 

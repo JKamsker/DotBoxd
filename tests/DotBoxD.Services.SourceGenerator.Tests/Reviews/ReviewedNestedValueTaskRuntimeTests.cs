@@ -18,13 +18,13 @@ public class ReviewedNestedValueTaskRuntimeTests
 
         namespace Reviewed.NestedValueTask
         {
-            [DotBoxDService]
+            [RpcService]
             public interface ISub
             {
                 ValueTask<int> CountAsync(int value, CancellationToken ct = default);
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRoot
             {
                 ValueTask<ISub> OpenAsync(string label, CancellationToken ct = default);

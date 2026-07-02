@@ -2,7 +2,7 @@ using DotBoxD.Services.Attributes;
 
 namespace Shared;
 
-[DotBoxDService]
+[RpcService]
 public interface IStreamedArgumentBenchmarkService
 {
     Task<int> UploadBytesAsync(Stream bytes, CancellationToken ct = default);

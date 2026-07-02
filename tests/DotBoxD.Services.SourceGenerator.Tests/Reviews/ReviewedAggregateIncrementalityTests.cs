@@ -13,9 +13,9 @@ public class ReviewedAggregateIncrementalityTests
             using DotBoxD.Services.Attributes;
             namespace Reviewed.IncrementalWire
             {
-                [DotBoxDService(Name = "a")] public interface IA { int A(); }
-                [DotBoxDService(Name = "b")] public interface IB { int B(); }
-                [DotBoxDService(Name = "stable")] public interface IStable { int S(); }
+                [RpcService(Name = "a")] public interface IA { int A(); }
+                [RpcService(Name = "b")] public interface IB { int B(); }
+                [RpcService(Name = "stable")] public interface IStable { int S(); }
             }
             """);
         var compilation = GeneratorTestHelper.CreateCompilation().AddSyntaxTrees(original);
@@ -25,9 +25,9 @@ public class ReviewedAggregateIncrementalityTests
             using DotBoxD.Services.Attributes;
             namespace Reviewed.IncrementalWire
             {
-                [DotBoxDService(Name = "a")] public interface IA { int A(); }
-                [DotBoxDService(Name = "a")] public interface IB { int B(); }
-                [DotBoxDService(Name = "stable")] public interface IStable { int S(); }
+                [RpcService(Name = "a")] public interface IA { int A(); }
+                [RpcService(Name = "a")] public interface IB { int B(); }
+                [RpcService(Name = "stable")] public interface IStable { int S(); }
             }
             """);
 
@@ -49,9 +49,9 @@ public class ReviewedAggregateIncrementalityTests
             using DotBoxD.Services.Attributes;
             namespace Reviewed.IncrementalGenerated
             {
-                [DotBoxDService] public interface IFoo { int A(); }
-                [DotBoxDService] public interface IBar { int B(); }
-                [DotBoxDService] public interface IStable { int S(); }
+                [RpcService] public interface IFoo { int A(); }
+                [RpcService] public interface IBar { int B(); }
+                [RpcService] public interface IStable { int S(); }
             }
             """);
         var compilation = GeneratorTestHelper.CreateCompilation().AddSyntaxTrees(original);
@@ -61,9 +61,9 @@ public class ReviewedAggregateIncrementalityTests
             using DotBoxD.Services.Attributes;
             namespace Reviewed.IncrementalGenerated
             {
-                [DotBoxDService] public interface IFoo { int A(); }
-                [DotBoxDService] public interface Foo { int B(); }
-                [DotBoxDService] public interface IStable { int S(); }
+                [RpcService] public interface IFoo { int A(); }
+                [RpcService] public interface Foo { int B(); }
+                [RpcService] public interface IStable { int S(); }
             }
             """);
 
@@ -86,9 +86,9 @@ public class ReviewedAggregateIncrementalityTests
             using System.Threading.Tasks;
             namespace Reviewed.IncrementalRejectedSub
             {
-                [DotBoxDService] public interface ISub { Task<int> CountAsync(); }
-                [DotBoxDService] public interface IRoot { Task<ISub> OpenAsync(); }
-                [DotBoxDService] public interface IStable { int S(); }
+                [RpcService] public interface ISub { Task<int> CountAsync(); }
+                [RpcService] public interface IRoot { Task<ISub> OpenAsync(); }
+                [RpcService] public interface IStable { int S(); }
             }
             """);
         var compilation = GeneratorTestHelper.CreateCompilation().AddSyntaxTrees(original);
@@ -99,9 +99,9 @@ public class ReviewedAggregateIncrementalityTests
             using System.Threading.Tasks;
             namespace Reviewed.IncrementalRejectedSub
             {
-                [DotBoxDService] public interface ISub { int Count { get; } }
-                [DotBoxDService] public interface IRoot { Task<ISub> OpenAsync(); }
-                [DotBoxDService] public interface IStable { int S(); }
+                [RpcService] public interface ISub { int Count { get; } }
+                [RpcService] public interface IRoot { Task<ISub> OpenAsync(); }
+                [RpcService] public interface IStable { int S(); }
             }
             """);
 
@@ -125,9 +125,9 @@ public class ReviewedAggregateIncrementalityTests
             using System.Threading.Tasks;
             namespace Reviewed.IncrementalFinalRejected
             {
-                [DotBoxDService] public interface ISub { int Count(); }
-                [DotBoxDService] public interface IRoot { Task<ISub> OpenAsync(); }
-                [DotBoxDService] public interface IStable { int S(); }
+                [RpcService] public interface ISub { int Count(); }
+                [RpcService] public interface IRoot { Task<ISub> OpenAsync(); }
+                [RpcService] public interface IStable { int S(); }
             }
             """);
         var compilation = GeneratorTestHelper.CreateCompilation().AddSyntaxTrees(original);
@@ -139,9 +139,9 @@ public class ReviewedAggregateIncrementalityTests
             namespace Reviewed.IncrementalFinalRejected
             {
                 public interface ISubAsync { }
-                [DotBoxDService] public interface ISub { int Count(); }
-                [DotBoxDService] public interface IRoot { Task<ISub> OpenAsync(); }
-                [DotBoxDService] public interface IStable { int S(); }
+                [RpcService] public interface ISub { int Count(); }
+                [RpcService] public interface IRoot { Task<ISub> OpenAsync(); }
+                [RpcService] public interface IStable { int S(); }
             }
             """);
 
@@ -164,9 +164,9 @@ public class ReviewedAggregateIncrementalityTests
             using System.Threading.Tasks;
             namespace Reviewed.IncrementalFinalRejectedShape
             {
-                [DotBoxDService] public interface ISub { int Count(); }
-                [DotBoxDService] public interface IRoot { Task<ISub> OpenAsync(); }
-                [DotBoxDService] public interface IStable { int S(); }
+                [RpcService] public interface ISub { int Count(); }
+                [RpcService] public interface IRoot { Task<ISub> OpenAsync(); }
+                [RpcService] public interface IStable { int S(); }
             }
             """);
         var compilation = GeneratorTestHelper.CreateCompilation().AddSyntaxTrees(original);
@@ -177,9 +177,9 @@ public class ReviewedAggregateIncrementalityTests
             using System.Threading.Tasks;
             namespace Reviewed.IncrementalFinalRejectedShape
             {
-                [DotBoxDService] public interface ISub { int Count(); }
-                [DotBoxDService] public interface IRoot { Task<ISub> OpenAsync(); }
-                [DotBoxDService] public interface IStable { [DotBoxDMethod(Name = "Stable")] int S(); }
+                [RpcService] public interface ISub { int Count(); }
+                [RpcService] public interface IRoot { Task<ISub> OpenAsync(); }
+                [RpcService] public interface IStable { [RpcMethod(Name = "Stable")] int S(); }
             }
             """);
 

@@ -53,7 +53,7 @@ link for the full treatment.
 ## Services, RPC, and transport
 
 - **RPC** — Remote procedure call: a discrete, typed request→response to a host capability behind a
-  shared C# [`[DotBoxDService]` contract](/concepts/services/).
+  shared C# [`[RpcService]` contract](/concepts/services/).
 - **Peer** — An [`RpcPeer`/`RpcHost`](/concepts/services/) endpoint; the runtime is peer-based and
   bidirectional, so one connection can both serve and call services.
 - **Proxy / dispatcher** — The [generated](/concepts/services/) client-side stub (proxy) that marshals

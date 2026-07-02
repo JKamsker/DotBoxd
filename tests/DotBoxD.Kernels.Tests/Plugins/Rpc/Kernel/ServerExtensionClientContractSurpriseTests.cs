@@ -18,7 +18,7 @@ public sealed partial class ServerExtensionClientContractSurpriseTests
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteControl
         {
         }
@@ -61,7 +61,7 @@ public sealed partial class ServerExtensionClientContractSurpriseTests
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteControl
         {
         }
@@ -100,7 +100,7 @@ public sealed partial class ServerExtensionClientContractSurpriseTests
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteControl
         {
         }

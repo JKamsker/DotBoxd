@@ -18,7 +18,7 @@ public class DiagnosticTests
 
             namespace Diag.Empty
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IEmpty
                 {
                 }
@@ -46,6 +46,39 @@ public class DiagnosticTests
     }
 
     [Fact]
+    public void LegacyServiceAndMethodAttributes_StillGenerateForCompatibilityWindow()
+    {
+        const string source = """
+            using DotBoxD.Services.Attributes;
+
+            namespace Diag.Legacy
+            {
+            #pragma warning disable CS0618
+                [DotBoxDService(Name = "LegacyService")]
+                public interface ILegacy
+                {
+                    [DotBoxDMethod(Name = "LegacyPing")]
+                    void Ping();
+                }
+            #pragma warning restore CS0618
+            }
+            """;
+
+        var compilation = GeneratorTestHelper.CreateCompilation(source);
+        var driver = GeneratorTestHelper.CreateDriver().RunGenerators(compilation);
+        var runResult = driver.GetRunResult();
+
+        runResult.Diagnostics.Should().NotContain(d => d.Severity == DiagnosticSeverity.Error);
+        var hints = runResult.Results.Single().GeneratedSources.Select(g => g.HintName).ToArray();
+        hints.Should().Contain("Diag_Legacy_ILegacy.DotBoxDRpcProxy.g.cs");
+        hints.Should().Contain("Diag_Legacy_ILegacy.DotBoxDRpcDispatcher.g.cs");
+
+        var generated = string.Join("\n", runResult.GeneratedTrees.Select(tree => tree.ToString()));
+        generated.Should().Contain("\"LegacyService\"");
+        generated.Should().Contain("\"LegacyPing\"");
+    }
+
+    [Fact]
     public void ServiceWithUnresolvableMethodSignature_DoesNotCrashAndStillEmitsAFile()
     {
         // This source references a type the user hasn't declared (UnknownType). The
@@ -59,7 +92,7 @@ public class DiagnosticTests
 
             namespace Diag.Broken
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IBroken
                 {
                     Task<UnknownType> DoSomethingAsync(UnknownType input);
@@ -92,7 +125,7 @@ public class DiagnosticTests
 
             namespace Diag.Location
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRefParam
                 {
                     void Bad(ref int value);
@@ -119,7 +152,7 @@ public class DiagnosticTests
 
             namespace Diag.Location
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IWithProperty
                 {
                     int Count { get; }

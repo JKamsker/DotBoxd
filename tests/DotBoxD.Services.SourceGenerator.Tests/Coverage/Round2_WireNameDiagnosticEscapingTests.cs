@@ -43,13 +43,13 @@ public sealed class Round2_WireNameDiagnosticEscapingTests
 
             namespace Regress.WireMethodEscaping
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IService
                 {
-                    [DotBoxDMethod(Name = "foo\\bar")]
+                    [RpcMethod(Name = "foo\\bar")]
                     int First();
 
-                    [DotBoxDMethod(Name = "foo\\bar")]
+                    [RpcMethod(Name = "foo\\bar")]
                     int Second();
                 }
             }
@@ -87,13 +87,13 @@ public sealed class Round2_WireNameDiagnosticEscapingTests
 
             namespace Regress.WireServiceEscaping
             {
-                [DotBoxDService(Name = "foo\\bar")]
+                [RpcService(Name = "foo\\bar")]
                 public interface IFoo
                 {
                     int Foo();
                 }
 
-                [DotBoxDService(Name = "foo\\bar")]
+                [RpcService(Name = "foo\\bar")]
                 public interface IBar
                 {
                     int Bar();

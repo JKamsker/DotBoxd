@@ -22,7 +22,7 @@ Create a shared library with your service interface:
 using DotBoxD.Services.Attributes;
 using MessagePack;
 
-[DotBoxDService]
+[RpcService]
 public interface IMyService
 {
     Task<GreetingResponse> GreetAsync(GreetingRequest request, CancellationToken ct = default);
@@ -175,12 +175,12 @@ foreach (var service in DotBoxDGenerated.Services)
 ```
 
 For DI containers or host registries that need generic service/implementation pairs,
-implement `IDotBoxDServiceRegistrationSink` and pass it to the generated callback:
+implement `IRpcServiceRegistrationSink` and pass it to the generated callback:
 
 ```csharp
 using DotBoxD.Services.Generated;
 
-public sealed class MySink : IDotBoxDServiceRegistrationSink
+public sealed class MySink : IRpcServiceRegistrationSink
 {
     public void AddService<TService, TImplementation>()
         where TService : class
@@ -194,13 +194,13 @@ DotBoxDGenerated.RegisterServices(new MySink());
 ```
 
 If the host needs both generated implementation types, use
-`IDotBoxDGeneratedServiceRegistrationSink`:
+`IRpcGeneratedServiceRegistrationSink`:
 
 ```csharp
 using DotBoxD.Services.Generated;
 using DotBoxD.Services.Server;
 
-public sealed class GeneratedSink : IDotBoxDGeneratedServiceRegistrationSink
+public sealed class GeneratedSink : IRpcGeneratedServiceRegistrationSink
 {
     public void AddService<TService, TProxy, TDispatcher>()
         where TService : class

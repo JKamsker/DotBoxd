@@ -125,7 +125,7 @@ public sealed partial class PluginAnalyzerHookChainTests
 
             namespace Sample.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorld;
             }
 
@@ -187,7 +187,7 @@ public sealed partial class PluginAnalyzerHookChainTests
 
             namespace Sample.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorld;
             }
 
@@ -249,7 +249,7 @@ public sealed partial class PluginAnalyzerHookChainTests
 
             namespace Sample.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorld;
             }
 

@@ -25,7 +25,7 @@ public sealed class UnsupportedDtoPayloadShapeTests
                     public int Value { get; private set; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IDtoAccessors
                 {
                     Task<int> SendAsync(PrivateInitRequest request);
@@ -80,7 +80,7 @@ public sealed class UnsupportedDtoPayloadShapeTests
                     public int Id { get; init; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IDtoPayloads
                 {
                     Task<int> SendObjectAsync(ObjectRequest request);
@@ -134,7 +134,7 @@ public sealed class UnsupportedDtoPayloadShapeTests
                     public int Value { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IMismatchedConstructorDto
                 {
                     Task<int> SendAsync(MismatchedConstructorRequest request);
@@ -184,7 +184,7 @@ public sealed class UnsupportedDtoPayloadShapeTests
                     public string Name { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISplitConstructorDto
                 {
                     Task<int> SendAsync(SplitConstructorRequest request);
@@ -237,7 +237,7 @@ public sealed class UnsupportedDtoPayloadShapeTests
                     public string Name { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IInheritedConstructorDto
                 {
                     Task<int> SendAsync(DerivedRequest request);

@@ -43,7 +43,7 @@ public sealed partial class PluginServerSurpriseRegressionTests
                     ITools Tools { get; }
             """, extraGameTypes: """
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ITools;
             """, extraPluginTypes: """
 
@@ -68,7 +68,7 @@ public sealed partial class PluginServerSurpriseRegressionTests
                 private sealed class ToolsPluginControl;
             """, extraGameTypes: """
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ITools;
             """));
 
@@ -157,7 +157,7 @@ public sealed partial class PluginServerSurpriseRegressionTests
 
             namespace Regression.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 
@@ -230,7 +230,7 @@ public sealed partial class PluginServerSurpriseRegressionTests
 
             namespace Regression.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 

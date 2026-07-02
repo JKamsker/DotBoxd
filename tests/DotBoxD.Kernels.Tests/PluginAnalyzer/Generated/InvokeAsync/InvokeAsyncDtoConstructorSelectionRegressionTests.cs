@@ -57,7 +57,7 @@ public sealed class InvokeAsyncDtoConstructorSelectionRegressionTests
                     public int Rank { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess
                 {
                     [HostBinding("host.world.getProfile", "game.world.monster.read.profile", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
@@ -148,7 +148,7 @@ public sealed class InvokeAsyncDtoConstructorSelectionRegressionTests
                     public int Rank { get; set; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess
                 {
                     [HostBinding("host.world.getProfile", "game.world.monster.read.profile", SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateRead)]
@@ -233,7 +233,7 @@ public sealed class InvokeAsyncDtoConstructorSelectionRegressionTests
                     public int Health { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess
                 {
                     [HostBinding("host.world.getProfile", "game.world.monster.read.profile", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]

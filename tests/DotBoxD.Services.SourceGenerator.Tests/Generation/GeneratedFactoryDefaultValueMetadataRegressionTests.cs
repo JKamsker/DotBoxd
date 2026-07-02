@@ -16,7 +16,7 @@ public sealed class GeneratedFactoryDefaultValueMetadataRegressionTests
 
             namespace Metadata.DefaultBoxing
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ITemporalDefaults
                 {
                     Task PingAsync(DateTime when = default, Guid id = default, CancellationToken ct = default);

@@ -41,7 +41,7 @@ onto these strategies.
 
 ## First Service (RPC)
 
-1. Define a contract and annotate it with `[DotBoxDService]`.
+1. Define a contract and annotate it with `[RpcService]`.
 2. Implement it on the host and `Provide…` it on each accepted peer.
 3. Connect from the client and call the generated typed proxy.
 

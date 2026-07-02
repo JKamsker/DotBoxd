@@ -14,7 +14,7 @@ public class ProxyMemberNameCollisionTests
 
             namespace Regress.ProxyMemberName
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int FooProxy();
@@ -42,7 +42,7 @@ public class ProxyMemberNameCollisionTests
 
             namespace Regress.ProxyAsyncMemberName
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     Task<int> FooProxy(CancellationToken ct = default);

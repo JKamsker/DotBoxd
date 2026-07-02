@@ -1,7 +1,7 @@
 # Generated Service Registry
 
 DotBoxD emits a generated service registry for every compilation that contains valid
-`[DotBoxDService]` interfaces. This lets callers create typed proxies and dispatchers
+`[RpcService]` interfaces. This lets callers create typed proxies and dispatchers
 without scanning assemblies for generated types.
 
 ## What Gets Generated
@@ -11,7 +11,7 @@ For a shared contract assembly like this:
 ```csharp
 using DotBoxD.Services.Attributes;
 
-[DotBoxDService]
+[RpcService]
 public interface IChatService
 {
     Task SendAsync(string message, CancellationToken ct = default);
@@ -34,10 +34,10 @@ type scan is needed.
 
 Each `GeneratedService` descriptor contains:
 
-- `ServiceType` - the `[DotBoxDService]` interface type
+- `ServiceType` - the `[RpcService]` interface type
 - `ProxyType` - the generated client proxy implementation type
 - `DispatcherType` - the generated server dispatcher implementation type
-- `ServiceName` - the wire service name after `[DotBoxDService(Name = ...)]`
+- `ServiceName` - the wire service name after `[RpcService(Name = ...)]`
 
 ## Typed Factory Usage
 
@@ -84,15 +84,14 @@ does not allocate another buffer and does not enumerate assembly types.
 
 ## Registration Sink
 
-Use `IDotBoxDServiceRegistrationSink` when a framework needs compile-time generic
+Use `IRpcServiceRegistrationSink` when a framework needs compile-time generic
 registrations instead of `Type` descriptors:
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using DotBoxD.Services.Generated;
-using DotBoxD.Services.Generated;
 
-public sealed class MySink : IDotBoxDServiceRegistrationSink
+public sealed class MySink : IRpcServiceRegistrationSink
 {
     private readonly IServiceCollection _services;
 
@@ -112,7 +111,7 @@ public sealed class MySink : IDotBoxDServiceRegistrationSink
 DotBoxDGenerated.RegisterServices(new MySink(services));
 ```
 
-For each valid `[DotBoxDService]` interface generated into the assembly,
+For each valid `[RpcService]` interface generated into the assembly,
 `RegisterServices` calls:
 
 ```csharp
@@ -124,15 +123,14 @@ that implements that interface. The method is generated as direct generic calls,
 does not scan assembly types. The generated type initializer still publishes the shared
 descriptor catalog once per assembly.
 
-Use `IDotBoxDGeneratedServiceRegistrationSink` when the host needs both generated
+Use `IRpcGeneratedServiceRegistrationSink` when the host needs both generated
 implementation types:
 
 ```csharp
 using DotBoxD.Services.Generated;
 using DotBoxD.Services.Server;
-using DotBoxD.Services.Generated;
 
-public sealed class GeneratedSink : IDotBoxDGeneratedServiceRegistrationSink
+public sealed class GeneratedSink : IRpcGeneratedServiceRegistrationSink
 {
     public void AddService<TService, TProxy, TDispatcher>()
         where TService : class
@@ -152,9 +150,9 @@ For the same `IChatService`, the generated method emits a direct generic call:
 sink.AddService<IChatService, ChatServiceProxy, ChatServiceDispatcher>();
 ```
 
-The all-caps compatibility aliases `IDotBoxDServiceRegistrationSink` and
-`IDotBoxDGeneratedServiceRegistrationSink` are also available for callers that prefer
-the project acronym casing.
+The obsolete compatibility aliases `IDotBoxDServiceRegistrationSink` and
+`IDotBoxDGeneratedServiceRegistrationSink` remain for one release and forward to
+the `IRpc...` interfaces. New code should use the `IRpc...` names.
 
 ## Dynamic Factory Usage
 
@@ -240,7 +238,7 @@ all types in the assembly.
 
 If the source generator did not run, the registry throws a diagnostic exception that
 names the service interface and assembly and tells the caller to mark the interface with
-`[DotBoxDService]` and ensure the DotBoxD generator is referenced.
+`[RpcService]` and ensure the DotBoxD generator is referenced.
 
 ## Bidirectional Peer Example
 

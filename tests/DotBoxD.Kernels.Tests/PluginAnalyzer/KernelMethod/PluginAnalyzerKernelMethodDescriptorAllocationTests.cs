@@ -46,6 +46,7 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
         var hash = KernelMethodDescriptorPayload.Hash(json);
         return $$"""
             using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
             using DotBoxD.Services.Attributes;
 
             [assembly: global::DotBoxD.Abstractions.GeneratedKernelMethodDescriptorAttribute(
@@ -58,10 +59,10 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
 
             namespace Sdk
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorld
                 {
-                    [HostCapability("sample.read.name", HostBindingEffect.HostStateRead | HostBindingEffect.Allocates)]
+                    [HostBinding("sample.read.name", SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateRead)]
                     string Name(string id) => throw new System.NotSupportedException("metadata-only world");
                 }
 

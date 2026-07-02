@@ -62,7 +62,7 @@ internal interface INotGeneratedService
 {
 }
 
-internal sealed class RegistrationSink : IDotBoxDServiceRegistrationSink
+internal sealed class RegistrationSink : IRpcServiceRegistrationSink
 {
     public List<ServiceRegistration> Services { get; } = new();
 
@@ -74,7 +74,7 @@ internal sealed class RegistrationSink : IDotBoxDServiceRegistrationSink
 
 internal readonly record struct ServiceRegistration(Type ServiceType, Type ImplementationType);
 
-internal sealed class GeneratedRegistrationSink : IDotBoxDGeneratedServiceRegistrationSink
+internal sealed class GeneratedRegistrationSink : IRpcGeneratedServiceRegistrationSink
 {
     public List<GeneratedServiceRegistration> Services { get; } = new();
 

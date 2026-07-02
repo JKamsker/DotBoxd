@@ -14,7 +14,7 @@ public class ScopedSignatureTests
 
             namespace Regress.ScopedSignatures
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IScopedParameters
                 {
                     void Inspect(scoped ReadOnlySpan<byte> value);

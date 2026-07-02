@@ -101,7 +101,7 @@ internal static partial class PluginServerFacadeModelFactory
         CancellationToken cancellationToken)
     {
         if (returnType is not INamedTypeSymbol namedReturnType ||
-            !HasAttribute(namedReturnType, DotBoxDMetadataNames.DotBoxDServiceAttribute))
+            !HasAttribute(namedReturnType, DotBoxDMetadataNames.RpcServiceAttribute))
         {
             return new ServicePropertyWrapper(null);
         }

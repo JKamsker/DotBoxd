@@ -13,7 +13,7 @@ public sealed class ServerExtensionGraftCollisionTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteMonsterControl
             {
             }
@@ -55,7 +55,7 @@ public sealed class ServerExtensionGraftCollisionTests
 
             namespace Domain
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRemoteMonsterControl
                 {
                 }

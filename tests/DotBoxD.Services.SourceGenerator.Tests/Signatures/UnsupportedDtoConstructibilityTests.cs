@@ -35,7 +35,7 @@ public sealed class UnsupportedDtoConstructibilityTests
                     public AbstractBody Body { get; init; } = null!;
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IConstructibility
                 {
                     Task<int> SendInterfaceAsync(InterfaceEnvelope request);

@@ -50,7 +50,7 @@ public sealed class ServerExtensionClientDecodeSurpriseTests
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteControl
         {
         }
@@ -86,7 +86,7 @@ public sealed class ServerExtensionClientDecodeSurpriseTests
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteControl
         {
         }

@@ -19,7 +19,7 @@ public partial class GeneratedRoundTripTests
 
             namespace RoundTrip.Sync
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ICounter
                 {
                     int Add(int a, int b);

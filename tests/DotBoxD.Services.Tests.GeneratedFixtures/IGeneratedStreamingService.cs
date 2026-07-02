@@ -2,7 +2,7 @@ using DotBoxD.Services.Attributes;
 
 namespace DotBoxD.Services.Tests.GeneratedFixtures;
 
-[DotBoxDService]
+[RpcService]
 public interface IGeneratedStreamingService
 {
     IAsyncEnumerable<int> Numbers(CancellationToken ct = default);

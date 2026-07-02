@@ -105,7 +105,7 @@ namespace DotBoxD.Services.Generated
         /// <summary>
         /// Adds generated service proxy registrations to <paramref name="sink" /> without scanning generated types.
         /// </summary>
-        public static void RegisterServices(global::DotBoxD.Services.Generated.IDotBoxDServiceRegistrationSink sink)
+        public static void RegisterServices(global::DotBoxD.Services.Generated.IRpcServiceRegistrationSink sink)
         {
             if (sink is null)
             {
@@ -118,7 +118,7 @@ namespace DotBoxD.Services.Generated
         /// <summary>
         /// Adds generated service proxy and dispatcher registrations to <paramref name="sink" /> without scanning generated types.
         /// </summary>
-        public static void RegisterGeneratedServices(global::DotBoxD.Services.Generated.IDotBoxDGeneratedServiceRegistrationSink sink)
+        public static void RegisterGeneratedServices(global::DotBoxD.Services.Generated.IRpcGeneratedServiceRegistrationSink sink)
         {
             if (sink is null)
             {

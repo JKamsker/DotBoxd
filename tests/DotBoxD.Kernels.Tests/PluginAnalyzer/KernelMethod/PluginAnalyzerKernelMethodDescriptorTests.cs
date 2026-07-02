@@ -173,7 +173,7 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
                 .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(PluginPackage).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location))
-                .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Attributes.DotBoxDServiceAttribute).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Attributes.RpcServiceAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(KernelMethodAggroEvent).Assembly.Location))
                 .Concat(references),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));

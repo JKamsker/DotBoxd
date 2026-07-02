@@ -15,7 +15,7 @@ public class GeneratedFactoryRegistryTests
 
             namespace PublicFactory.Sample
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGreeter
                 {
                     Task<string> HelloAsync();
@@ -51,7 +51,7 @@ public class GeneratedFactoryRegistryTests
 
             namespace Factory.Sample
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGreeter
                 {
                     Task<string> HelloAsync();
@@ -144,16 +144,16 @@ public class GeneratedFactoryRegistryTests
 
             namespace Metadata.Sample
             {
-                [DotBoxDService(Name = "ChildWire")]
+                [RpcService(Name = "ChildWire")]
                 public interface IChild
                 {
                     ValueTask<int> CountAsync(CancellationToken ct = default);
                 }
 
-                [DotBoxDService(Name = "RootWire")]
+                [RpcService(Name = "RootWire")]
                 public interface IRoot
                 {
-                    [DotBoxDMethod(Name = "sum")]
+                    [RpcMethod(Name = "sum")]
                     Task<int> AddAsync(int a, string label = "guest", CancellationToken ct = default);
 
                     ValueTask<string> NameAsync(int id = 7);
@@ -250,7 +250,7 @@ public class GeneratedFactoryRegistryTests
 
             namespace Escape.Sample
             {
-                [DotBoxDService(Name = "svc\\path")]
+                [RpcService(Name = "svc\\path")]
                 public interface IThing
                 {
                     Task PingAsync();

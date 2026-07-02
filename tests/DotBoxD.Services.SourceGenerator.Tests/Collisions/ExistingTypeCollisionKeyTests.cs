@@ -28,7 +28,7 @@ public class ExistingTypeCollisionKeyTests
                     }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Get();
@@ -68,13 +68,13 @@ public class ExistingTypeCollisionKeyTests
                     Value
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Get();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IBar
                 {
                     int Get();
@@ -106,7 +106,7 @@ public class ExistingTypeCollisionKeyTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Get();

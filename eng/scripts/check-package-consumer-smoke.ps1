@@ -348,7 +348,7 @@ if (service.ServiceName != "IMetaSmokeService")
 
 Console.WriteLine(service.ProxyType.Name + ":" + service.DispatcherType.Name);
 
-[DotBoxDService]
+[RpcService]
 public interface IMetaSmokeService
 {
     Task<int> EchoAsync(int value, CancellationToken ct = default);
@@ -486,23 +486,24 @@ function Invoke-PluginSdkSplitSmoke {
 using System.Threading;
 using System.Threading.Tasks;
 using DotBoxD.Abstractions;
+using DotBoxD.Kernels.Sandbox;
 using DotBoxD.Services.Attributes;
 
 namespace SplitSdk
 {
-    [DotBoxDService]
+    [RpcService]
     public interface ISplitControls
     {
-        [HostCapability("split.read.tool", HostBindingEffect.HostStateRead)]
+        [HostBinding("split.read.tool", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         int Peek(string id);
     }
 
-    [DotBoxDService]
+    [RpcService]
     public interface IGameWorld
     {
         ISplitControls Tools { get; }
 
-        [HostCapability("split.read.value", HostBindingEffect.HostStateRead)]
+        [HostBinding("split.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         int Read(string id);
     }
 
@@ -527,7 +528,7 @@ namespace SplitSdk.Ipc
 {
     public readonly record struct LiveSettingUpdate(string Name, string Value);
 
-    [DotBoxDService]
+    [RpcService]
     public interface IGamePluginControlService : DotBoxD.Plugins.IServerExtensionWireClient
     {
         ValueTask<string> InstallPluginAsync(string packageJson, CancellationToken ct = default);

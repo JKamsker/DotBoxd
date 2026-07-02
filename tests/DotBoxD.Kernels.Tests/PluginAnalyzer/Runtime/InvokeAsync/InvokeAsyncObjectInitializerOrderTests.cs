@@ -61,7 +61,7 @@ public sealed class InvokeAsyncObjectInitializerOrderTests
                 public int A { get; init; }
                 public int B { get; init; }
             }
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorldAccess
             {
                 [HostBinding("host.world.getA", "game.world.read.a", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
@@ -167,7 +167,7 @@ public sealed class InvokeAsyncObjectInitializerOrderTests
                 .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(PluginPackage).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location))
-                .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Attributes.DotBoxDServiceAttribute).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Attributes.RpcServiceAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Peer.RpcPeerSession).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Pushdown.Services.RpcMessagePackIpc).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));

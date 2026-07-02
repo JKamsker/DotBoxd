@@ -3,7 +3,7 @@ title: 'Services (RPC)'
 description: 'A Service is a handwritten host capability behind a shared C# contract. Annotate an interface with'
 ---
 A **Service** is a handwritten host capability behind a shared C# contract. Annotate an interface with
-`[DotBoxDService]` and the `DotBoxD.Services.SourceGenerator` emits, at compile time:
+`[RpcService]` and the `DotBoxD.Services.SourceGenerator` emits, at compile time:
 
 - a typed **client proxy** (calls marshal over the wire, no runtime reflection),
 - a server **dispatcher**, and

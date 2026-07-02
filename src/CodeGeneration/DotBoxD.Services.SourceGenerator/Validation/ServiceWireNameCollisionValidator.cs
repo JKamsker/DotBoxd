@@ -144,7 +144,7 @@ internal static class ServiceWireNameCollisionValidator
         }
 
         var reason =
-            $"wire service name '{result.Model.RawServiceName}' is used by multiple services; give each service a distinct [DotBoxDService(Name = ...)] value";
+            $"wire service name '{result.Model.RawServiceName}' is used by multiple services; give each service a distinct [RpcService(Name = ...)] value";
 
         return new ServiceResult(
             Model: null,

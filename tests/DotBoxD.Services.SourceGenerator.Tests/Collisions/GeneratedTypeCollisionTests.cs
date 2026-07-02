@@ -17,7 +17,7 @@ public class GeneratedTypeCollisionTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Bar();
@@ -46,7 +46,7 @@ public class GeneratedTypeCollisionTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Bar();
@@ -75,7 +75,7 @@ public class GeneratedTypeCollisionTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     Task<int> GetAsync();
@@ -104,7 +104,7 @@ public class GeneratedTypeCollisionTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     Task<int> GetAsync();
@@ -133,7 +133,7 @@ public class GeneratedTypeCollisionTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Bar();
@@ -162,7 +162,7 @@ public class GeneratedTypeCollisionTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Bar();
@@ -192,7 +192,7 @@ public class GeneratedTypeCollisionTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     ref int Bad();
@@ -227,7 +227,7 @@ public class GeneratedTypeCollisionTests
 
             namespace Regress.GeneratedTypeCollision
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Bar();
@@ -253,13 +253,13 @@ public class GeneratedTypeCollisionTests
 
             namespace Regress.GeneratedTypeCollision
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Bar();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface Foo
                 {
                     int Baz();

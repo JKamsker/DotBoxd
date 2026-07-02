@@ -16,7 +16,7 @@ public class AsyncSiblingCollisionTests
 
             namespace AsyncSibling.D
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IClash
                 {
                     int Add(int a, int b);
@@ -45,7 +45,7 @@ public class AsyncSiblingCollisionTests
 
             namespace AsyncSibling.H
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IClashCt
                 {
                     int Add(int x);
@@ -83,12 +83,12 @@ public class AsyncSiblingCollisionTests
 
             namespace AsyncSibling.J
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IAsyncClash
                 {
-                    [DotBoxDMethod(Name = "FetchNoCt")]
+                    [RpcMethod(Name = "FetchNoCt")]
                     Task<int> FetchAsync(int value);
-                    [DotBoxDMethod(Name = "FetchWithCt")]
+                    [RpcMethod(Name = "FetchWithCt")]
                     Task<int> FetchAsync(int value, CancellationToken ct = default);
                 }
             }
@@ -115,7 +115,7 @@ public class AsyncSiblingCollisionTests
 
             namespace AsyncSibling.I
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface INameCollision
                 {
                     int Echo(int ct);
@@ -149,7 +149,7 @@ public class AsyncSiblingCollisionTests
 
             namespace AsyncSibling.E
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IThing
                 {
                     int Compute(int x);
@@ -174,7 +174,7 @@ public class AsyncSiblingCollisionTests
 
             namespace AsyncSibling.G
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFooAsync
                 {
                     Task<int> GetAsync();

@@ -15,7 +15,7 @@ public partial class UnsupportedShapeCoverageTests
 
             namespace Regress.UnsupportedCoverage
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRefLikeReturn
                 {
                     ReadOnlySpan<byte> GetBytes();
@@ -44,7 +44,7 @@ public partial class UnsupportedShapeCoverageTests
 
             namespace Regress.UnsupportedCoverage
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IMultipleTokens
                 {
                     Task<int> BadAsync(int x, CancellationToken first = default, CancellationToken second = default);
@@ -81,7 +81,7 @@ public partial class UnsupportedShapeCoverageTests
 
             namespace Regress.UnsupportedCoverage
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface INestedAsyncPayloads
                 {
                     Task<Task<int>> NestedReturnAsync();
@@ -126,7 +126,7 @@ public partial class UnsupportedShapeCoverageTests
 
             namespace Regress.UnsupportedCoverage
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IOpenEndedPayloads
                 {
                     object GetObject();
@@ -173,7 +173,7 @@ public partial class UnsupportedShapeCoverageTests
 
             namespace Regress.UnsupportedCoverage
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IInParameter
                 {
                     void Inspect(in int value);
@@ -206,7 +206,7 @@ public partial class UnsupportedShapeCoverageTests
 
             namespace Regress.UnsupportedCoverage
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRefReadonlyParameter
                 {
                     void Inspect(ref readonly int value);
@@ -239,13 +239,13 @@ public partial class UnsupportedShapeCoverageTests
 
             namespace Regress.UnsupportedCoverage
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IChildService
                 {
                     void Ping();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRootService
                 {
                     IChildService this[int id] { get; }

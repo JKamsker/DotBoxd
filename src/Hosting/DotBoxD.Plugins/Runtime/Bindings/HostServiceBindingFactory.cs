@@ -13,15 +13,15 @@ internal static partial class HostServiceBindingFactory
         MethodInfo interfaceMethod,
         MethodInfo targetMethod,
         object target,
-        HostCapabilityAttribute capability)
+        HostBindingAttribute binding)
     {
         var payloadType = UnwrapReturnType(interfaceMethod.ReturnType);
         var parameters = interfaceMethod.GetParameters()
             .Select(parameter => ServerExtensionSandboxTypeOf(parameter.ParameterType))
             .ToArray();
         var returnType = payloadType is null ? SandboxType.Unit : ServerExtensionSandboxTypeOf(payloadType);
-        var effects = DeclaredEffects(interfaceMethod, returnType, capability);
-        var id = HostBindingRoute(interfaceMethod.DeclaringType!, interfaceMethod);
+        var effects = DeclaredEffects(interfaceMethod, returnType, binding);
+        var id = HostBindingId(interfaceMethod.DeclaringType!, interfaceMethod, binding);
         var callTarget = new HostServiceCallTarget(targetMethod);
 
         return CreateDescriptor(
@@ -29,10 +29,10 @@ internal static partial class HostServiceBindingFactory
             parameters,
             returnType,
             effects,
-            capability.Capability,
+            binding.Capability,
             IsTaskLike(interfaceMethod.ReturnType),
             (context, args, cancellationToken) =>
-                InvokeAsync(context, args, cancellationToken, id, capability.Capability, effects, callTarget, target, payloadType));
+                InvokeAsync(context, args, cancellationToken, id, binding.Capability, effects, callTarget, target, payloadType));
     }
 
     public static BindingDescriptor CreateHandleBinding(
@@ -40,7 +40,7 @@ internal static partial class HostServiceBindingFactory
         MethodInfo factoryTargetMethod,
         object factoryTarget,
         MethodInfo handleInterfaceMethod,
-        HostCapabilityAttribute capability)
+        HostBindingAttribute binding)
     {
         var payloadType = UnwrapReturnType(handleInterfaceMethod.ReturnType);
         var parameters = factoryInterfaceMethod.GetParameters()
@@ -48,8 +48,8 @@ internal static partial class HostServiceBindingFactory
             .Select(parameter => ServerExtensionSandboxTypeOf(parameter.ParameterType))
             .ToArray();
         var returnType = payloadType is null ? SandboxType.Unit : ServerExtensionSandboxTypeOf(payloadType);
-        var effects = DeclaredEffects(handleInterfaceMethod, returnType, capability);
-        var id = HostBindingRoute(handleInterfaceMethod.DeclaringType!, handleInterfaceMethod);
+        var effects = DeclaredEffects(handleInterfaceMethod, returnType, binding);
+        var id = HostBindingId(handleInterfaceMethod.DeclaringType!, handleInterfaceMethod, binding);
         var factoryCallTarget = new HostServiceCallTarget(factoryTargetMethod);
         var handleCallTarget = new HostServiceCallTarget(handleInterfaceMethod);
 
@@ -58,7 +58,7 @@ internal static partial class HostServiceBindingFactory
             parameters,
             returnType,
             effects,
-            capability.Capability,
+            binding.Capability,
             IsTaskLike(handleInterfaceMethod.ReturnType),
             (context, args, cancellationToken) =>
                 InvokeHandleAsync(
@@ -66,7 +66,7 @@ internal static partial class HostServiceBindingFactory
                     args,
                     cancellationToken,
                     id,
-                    capability.Capability,
+                    binding.Capability,
                     effects,
                     factoryInterfaceMethod,
                     factoryCallTarget,
@@ -211,21 +211,33 @@ internal static partial class HostServiceBindingFactory
     private static SandboxEffect DeclaredEffects(
         MethodInfo method,
         SandboxType returnType,
-        HostCapabilityAttribute capability)
+        HostBindingAttribute binding)
     {
-        var declaredEffects = HostBindingMetadataRules.ValidateDeclaredEffects(
-            (long)capability.Effects,
-            ReturnAllocates(returnType),
-            $"Host capability on '{method.DeclaringType?.FullName}.{method.Name}'");
-        var effects = SandboxEffect.Cpu;
-        if ((declaredEffects & HostBindingMetadataRules.Allocates) == HostBindingMetadataRules.Allocates)
+        var effects = binding.Effects;
+        if (!effects.ContainsOnlyKnownBits())
         {
-            effects |= SandboxEffect.Alloc;
+            throw new InvalidOperationException(
+                $"Host binding method '{method.DeclaringType?.FullName}.{method.Name}' declares unknown effects.");
         }
 
-        return (declaredEffects & HostBindingMetadataRules.HostStateWrite) == HostBindingMetadataRules.HostStateWrite
-            ? effects | SandboxEffect.HostStateWrite
-            : effects | SandboxEffect.HostStateRead;
+        var access = effects & (SandboxEffect.HostStateRead | SandboxEffect.HostStateWrite);
+        if (access is not SandboxEffect.HostStateRead and not SandboxEffect.HostStateWrite)
+        {
+            throw new InvalidOperationException(
+                $"Host binding method '{method.DeclaringType?.FullName}.{method.Name}' must declare exactly one of HostStateRead or HostStateWrite.");
+        }
+
+        var allocates = (effects & SandboxEffect.Alloc) == SandboxEffect.Alloc;
+        var returnAllocates = ReturnAllocates(returnType);
+        if (allocates != returnAllocates)
+        {
+            throw new InvalidOperationException(
+                returnAllocates
+                    ? $"Host binding method '{method.DeclaringType?.FullName}.{method.Name}' must declare Alloc because its return shape allocates."
+                    : $"Host binding method '{method.DeclaringType?.FullName}.{method.Name}' must not declare Alloc because its return shape does not allocate.");
+        }
+
+        return effects;
     }
 
     private static bool ReturnAllocates(SandboxType type)
@@ -235,4 +247,7 @@ internal static partial class HostServiceBindingFactory
 
     private static string HostBindingRoute(Type type, MethodInfo method)
         => HostBindingMetadataRules.BindingId(type.Namespace, type.Name, method.Name);
+
+    private static string HostBindingId(Type type, MethodInfo method, HostBindingAttribute binding)
+        => binding.IsAutoBinding ? HostBindingRoute(type, method) : binding.BindingId;
 }

@@ -38,13 +38,13 @@ world that the server implements, the plugin proxies, and kernels consume.
 
 **One interface, three consumers.** The game declares a single async domain surface `IGameWorldAccess`. The
 **server implements it** for real. The **plugin gets an RPC proxy** generated for it (exactly like any other
-`[DotBoxDService]`) — that proxy *is* the plugin's `GamePluginServer` facade. A **kernel gets it injected**;
+`[RpcService]`) — that proxy *is* the plugin's `GamePluginServer` facade. A **kernel gets it injected**;
 because the kernel runs on the server its calls are local (a completed `ValueTask`, no real IPC hop), but the
 dev writes them exactly like the remote calls.
 
 Because the server implements the same method names the plugin calls, there is **no separate wire contract
 and no `[WireCall]` mapping**. Because routing is the method's identity, there are **no per-method routing
-annotations**. The analyzer-visible capability and effect declaration lives on the `[DotBoxDService]`
+annotations**. The analyzer-visible capability and effect declaration lives on the `[RpcService]`
 contract; the host still recomputes route/effect/capability metadata at install.
 
 ## 3. Layering — who declares what, who owns what
@@ -52,7 +52,7 @@ contract; the host still recomputes route/effect/capability metadata at install.
 | Layer | Lives in | Authored by | Contents |
 |---|---|---|---|
 | **Framework contracts** | `DotBoxD.Abstractions` (markers) + `DotBoxD.Plugins.Client` (runtime) | framework | `IPluginServer<TWorld>`, `ILiveSettingsHandle<>`, `RemoteServerInvocation<,,>`, `[GeneratePluginServer]`, extension-client registry/accessor contracts |
-| **Game domain surface** | game `*.Server.Abstractions` | game-SDK owner | `IGameWorldAccess`, `IMonsterControl`/`IEntityControl`, `MonsterSnapshot`, `[HostCapability]` per host-visible member |
+| **Game domain surface** | game `*.Server.Abstractions` | game-SDK owner | `IGameWorldAccess`, `IMonsterControl`/`IEntityControl`, `MonsterSnapshot`, `[HostBinding]` per host-visible member |
 | **Generated plugin facade** | plugin assembly (generated) | source generator | `GamePluginServer : IGameWorldServer`, `IGameWorldServer : IGameWorldAccess` + `GamePluginServerBuilder.Setup(...)` + `IGamePluginSetup`/control accumulators + control RPC wrappers |
 | **Reusable runtime library** | `DotBoxD.Plugins.Client` (hand-written once) | framework | lifecycle helpers, live-settings contracts, extension registry/accessor contracts, anonymous-`InvokeAsync` plumbing |
 | **Server implementation** | game server | server author | `GameWorldAccess : IGameWorldAccess` over the live world; host registers bindings from the service contract |
@@ -82,22 +82,22 @@ public interface IPluginServer<TWorld> where TWorld : class
 ### Game domain surface (the only thing the SDK owner writes)
 
 ```csharp
-[DotBoxDService]                                          // -> plugin RPC proxy generated "like normally"
+[RpcService]                                          // -> plugin RPC proxy generated "like normally"
 public interface IGameWorldAccess
 { IMonsterControl Monsters { get; } IEntityControl Entities { get; } }
 
 public interface IMonsterControl
 {
-    [HostCapability("game.world.monster.read.snapshot", HostBindingEffect.HostStateRead | HostBindingEffect.Allocates)]
+    [HostBinding("game.world.monster.read.snapshot", SandboxEffect.Cpu | SandboxEffect.HostStateRead | SandboxEffect.Alloc)]
     ValueTask<MonsterSnapshot> GetAsync(string entityId);
 
-    [HostCapability("game.world.monster.write.kill", HostBindingEffect.HostStateWrite)]
+    [HostBinding("game.world.monster.write.kill", SandboxEffect.Cpu | SandboxEffect.HostStateWrite)]
     ValueTask<bool> KillAsync(string entityId);
 
-    [HostCapability("game.world.entity.read.kind", HostBindingEffect.HostStateRead)]
+    [HostBinding("game.world.entity.read.kind", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
     ValueTask<bool> IsMonsterAsync(string entityId);
 
-    [HostCapability("game.world.combat.threat", HostBindingEffect.HostStateRead)]
+    [HostBinding("game.world.combat.threat", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
     ValueTask<int> GetThreatAsync(string entityId);
 }
 public interface IEntityControl
@@ -134,11 +134,11 @@ The contract carries no `[HostBinding]`; host-service calls are auto-bindings. T
 what must be explicit and what can be derived:
 
 - **routing id** -> derived from the method identity (no annotation);
-- **effect** (read/write/alloc) -> declared explicitly on `[HostCapability]`;
-- **capability** -> declared explicitly on `[HostCapability]`:
+- **effect** (read/write/alloc) -> declared explicitly on `[HostBinding]`;
+- **capability** -> declared explicitly on `[HostBinding]`:
 
 ```csharp
-[HostCapability("game.world.monster.write.kill", HostBindingEffect.HostStateWrite)]
+[HostBinding("game.world.monster.write.kill", SandboxEffect.Cpu | SandboxEffect.HostStateWrite)]
 public ValueTask<bool> KillAsync(string entityId) => ValueTask.FromResult(_world.KillMonster(entityId));
 ```
 
@@ -146,7 +146,7 @@ public ValueTask<bool> KillAsync(string entityId) => ValueTask.FromResult(_world
 > (`monster.read.{method}`), but `GetThreatAsync` is gated under `game.world.combat.threat` — a different
 > subtree from the `monster.read.*` grants (it is the capability the guardian is deliberately denied). A
 > naming convention would force it into `monster.read.threat` and silently break that boundary. Once
-> exceptions need a home, one uniform `[HostCapability]` on the interface contract beats
+> exceptions need a home, one uniform `[HostBinding]` on the interface contract beats
 > convention-plus-overrides.
 
 This **removes the drift**: route/effect/capability derivation is shared by analyzer and runtime, while the
@@ -195,7 +195,7 @@ await server.HoldUntilShutdownAsync();
 
 These are grounded in the current analyzer; they are the work to make the design real.
 
-1. **RPC proxy for `IGameWorldAccess`** — the existing `[DotBoxDService]` proxy path, extended to a nested
+1. **RPC proxy for `IGameWorldAccess`** — the existing `[RpcService]` proxy path, extended to a nested
    control graph (the root returns `IMonsterControl`/`IEntityControl`, themselves proxied).
 2. **`InvokeAsync` interceptor must track a user-named facade.** Today the receiver-type guard
    (`InvokeAsyncModelFactory.IsServerInvocationSurface`) string-compares against the constant
@@ -216,7 +216,7 @@ These are grounded in the current analyzer; they are the work to make the design
    `I{Control}Accumulator` per domain control. These are build-time surfaces only; `Build()` records install
    intent and `StartAsync()` replays it.
 5. **Bindings derived from the contract** — register sandbox host bindings from `GameWorldAccess` and its
-   `[HostCapability]` annotations instead of hand-written route/effect/capability copies.
+   `[HostBinding]` annotations instead of hand-written route/effect/capability copies.
 
 ## 9. Server side
 
@@ -225,11 +225,11 @@ install IR, settings, hold, world snapshot) and the domain surface (`IGameWorldA
 
 ```csharp
 peer.ProvideGamePluginControlService(service);
-peer.ProvideGameWorldAccess(new GameWorldAccess(world));   // generated from [DotBoxDService]
+peer.ProvideGameWorldAccess(new GameWorldAccess(world));   // generated from [RpcService]
 ```
 
 `GameWorldAccess` wraps the live `GameWorld`; its `Monsters`/`Entities` controls forward to the world while
-the service interfaces carry `[HostCapability]`. `GameWorldHost` no longer hand-types binding
+the service interfaces carry `[HostBinding]`. `GameWorldHost` no longer hand-types binding
 ids/capabilities — it derives them from `GameWorldAccess`.
 
 ## 10. Open questions / unresolved tensions
@@ -247,7 +247,7 @@ ids/capabilities — it derives them from `GameWorldAccess`.
   facade) rather than on `IGameWorldAccess` — the interceptor needs a concrete receiver and the locked
   decision puts `InvokeAsync` top-level. The user's original sketch had it on the game interface; this is the
   reconciliation.
-- **[D] Effect declaration.** Effects are explicit on `[HostCapability]`; the remaining design question is
+- **[D] Effect declaration.** Effects are explicit on `[HostBinding]`; the remaining design question is
   whether higher-level helpers can make common read/write/allocation declarations less noisy.
 - **[E] Wire generalization.** `GameWorldAccess`/the library are hard-typed to `IGamePluginControlService`
   for the control-plane. Parameterizing over the wire interface is deferred (YAGNI until a second game).
@@ -260,7 +260,7 @@ ids/capabilities — it derives them from `GameWorldAccess`.
   `Kernels/MonsterKillerKernel.cs` (async, injected unified surface), `Kernels/GuardianKernel.cs` (carries
   the tension-A note); `Client/*` deleted.
 - **`Examples.GameServer.Server`** — `Ipc/GameWorldAccess.cs` (`IGameWorldAccess` over the world +
-  `[HostCapability]` + `ServerControlBase`), `Ipc/GamePluginControlService.cs` (domain methods removed),
+  `[HostBinding]` + `ServerControlBase`), `Ipc/GamePluginControlService.cs` (domain methods removed),
   `Simulation/GameWorldHost.cs` (bindings derived from the contract), `Program.cs` (registers both services).
 
 ## 12. Delta from the original sketch
@@ -270,7 +270,7 @@ ids/capabilities — it derives them from `GameWorldAccess`.
 - The world-access and remote-control surfaces are **unified** into one `IGameWorldAccess` the server
   implements and the plugin proxies (kills the separate wire contract and `[WireCall]`).
 - `[HostBinding]` **removed** from the abstraction; capability and effects annotated on the service contract
-  (`[HostCapability]`), routing derived.
+  (`[HostBinding]`), routing derived.
 - Install verbs moved out of domain interfaces entirely: `Setup(...)` records `Replace`/`Extend`, while the
   runtime control properties are bare domain interfaces.
 

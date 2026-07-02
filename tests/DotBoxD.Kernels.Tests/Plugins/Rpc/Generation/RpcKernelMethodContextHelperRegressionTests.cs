@@ -20,7 +20,7 @@ public sealed class RpcKernelMethodContextHelperRegressionTests
 
             namespace Sample
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorld;
 
                 [GeneratePluginServer(Context = typeof(GamePluginContext))]

@@ -6,14 +6,15 @@ internal static class PluginAnalyzerKernelMethodDescriptorTestSources
         using System.Threading;
         using System.Threading.Tasks;
         using DotBoxD.Abstractions;
+        using DotBoxD.Kernels.Sandbox;
         using DotBoxD.Services.Attributes;
 
         namespace Sdk
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorld
             {
-                [HostCapability("sample.read.value", HostBindingEffect.HostStateRead)]
+                [HostBinding("sample.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
                 int Read(string id);
             }
 
@@ -77,7 +78,7 @@ internal static class PluginAnalyzerKernelMethodDescriptorTestSources
 
         namespace Sdk
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorld;
 
             [GeneratePluginServer(Context = typeof(GamePluginContext))]

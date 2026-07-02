@@ -154,7 +154,7 @@ public sealed partial class PluginAnalyzerHookChainTests
 
             public sealed record DamageEvent(string TargetId);
 
-            [DotBoxDService]
+            [RpcService]
             public interface IProbe
             {
                 [HostBinding("probe.next", "probe.next", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
@@ -194,7 +194,7 @@ public sealed partial class PluginAnalyzerHookChainTests
 
             public sealed record DamageEvent(string TargetId);
 
-            [DotBoxDService]
+            [RpcService]
             public interface IProbe
             {
                 [HostBinding("probe.next", "probe.next", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
@@ -233,7 +233,7 @@ public sealed partial class PluginAnalyzerHookChainTests
 
             namespace Sample.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorld;
             }
 

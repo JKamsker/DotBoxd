@@ -92,8 +92,8 @@ internal static class ServicesGeneratorMemberNames
         public const string CreateDispatcher = "CreateDispatcher";
     }
 
-    /// <summary>The registration member shared by <c>IDotBoxDServiceRegistrationSink</c> and
-    /// <c>IDotBoxDGeneratedServiceRegistrationSink</c> in <c>DotBoxD.Services.Generated</c>.</summary>
+    /// <summary>The registration member shared by <c>IRpcServiceRegistrationSink</c> and
+    /// <c>IRpcGeneratedServiceRegistrationSink</c> in <c>DotBoxD.Services.Generated</c>.</summary>
     public static class ServiceRegistrationSink
     {
         public const string AddService = "AddService";

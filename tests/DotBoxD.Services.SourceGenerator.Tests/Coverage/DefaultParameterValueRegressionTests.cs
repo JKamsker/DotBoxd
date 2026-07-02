@@ -19,7 +19,7 @@ namespace Bug.Reg
 {
     public enum BugKind { First, Second, Third }
 
-    [DotBoxDService]
+    [RpcService]
     public interface IBugDefaults
     {
         Task<int> ComputeAsync(

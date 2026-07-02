@@ -40,13 +40,13 @@ public sealed partial class PluginServerSurpriseRegressionTests
 
             namespace Keyword.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess
                 {
                     IControl @event { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IControl
                 {
                     ValueTask<int> @class(string @record);
@@ -107,7 +107,7 @@ public sealed partial class PluginServerSurpriseRegressionTests
                     IFoo foo { get; }
             """, extraGameTypes: """
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo;
             """));
 
@@ -123,7 +123,7 @@ public sealed partial class PluginServerSurpriseRegressionTests
                     IControl World { get; }
             """, extraGameTypes: """
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IControl;
             """));
 
@@ -214,25 +214,25 @@ public sealed partial class PluginServerSurpriseRegressionTests
 
             namespace Regression.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ILeftControl;
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRightControl;
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ILeftWorld
                 {
                     ILeftControl Tools { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRightWorld
                 {
                     IRightControl Tools { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess : ILeftWorld, IRightWorld;
             }
 

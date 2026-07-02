@@ -33,7 +33,7 @@ public sealed class InvokeAsyncCaptureArgumentWriterAllocationTests
 
         namespace DotBoxD.Kernels.Game.Server.Abstractions
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorldAccess
             {
                 [HostBinding("host.world.sumValues", "game.world.values.read", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]

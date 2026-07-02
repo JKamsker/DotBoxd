@@ -58,7 +58,7 @@ Both `Server` and `Plugin` reference the `Server.Abstractions` project (see the 
 Everything hinges on **one pure domain interface** that has three consumers: the server implements it, the plugin gets an RPC proxy of it, and a kernel gets it injected. From [`IGameWorldAccess.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Server.Abstractions/IGameWorldAccess.cs):
 
 ```csharp
-[DotBoxDService]
+[RpcService]
 public interface IGameWorldAccess
 {
     /// <summary>Monster-specific commands and scoped monster handles exposed by the game world.</summary>
@@ -73,17 +73,17 @@ Each method carries the capability and host-state effect it needs as metadata, s
 
 ```csharp
 /// <summary>Kills this monster and returns whether the world changed.</summary>
-[HostCapability("game.world.monster.write.kill", HostBindingEffect.HostStateWrite)]
+[HostBinding("game.world.monster.write.kill", SandboxEffect.Cpu | SandboxEffect.HostStateWrite)]
 ValueTask<bool> KillAsync();
 ```
 
-`[HostCapability]` here is the *auto-binding* form (the source calls these "analyzer-visible auto bindings"): on a `[DotBoxDService]` domain-interface method you declare only the capability and its `HostBindingEffect`, and the framework derives the binding from the interface method — whereas the explicit [`[HostBinding("id", "cap", SandboxEffect)]`](/tutorials/pushdown-server-extension/) you met in Pushdown Step 2 (the [glossary](/reference/glossary/)'s *Host binding*) makes you pin the binding id yourself and declares its effects with a different enum, `SandboxEffect` rather than `HostBindingEffect`.
+`[HostBinding]` here is the *auto-binding* form (the source calls these "analyzer-visible auto bindings"): on a `[RpcService]` domain-interface method you declare only the capability and its `SandboxEffect`, and the framework derives the binding from the interface method — whereas the explicit [`[HostBinding("id", "cap", SandboxEffect)]`](/tutorials/pushdown-server-extension/) you met in Pushdown Step 2 (the [glossary](/reference/glossary/)'s *Host binding*) makes you pin the binding id yourself.
 
 Supporting contracts in this project:
 
 - **Events** — [`Events/MonsterAggroEvent.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Server.Abstractions/Events/MonsterAggroEvent.cs) and [`Events/AttackEvent.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Server.Abstractions/Events/AttackEvent.cs). Both are plain records; the framework infers the sandbox event shape from their properties. `AttackEvent` marks `AttackerId`, `TargetId`, and `Damage` with `[EventIndexKey]` so lowered `.Where(...)` predicates can be prefiltered through host dispatch indexes.
 - **Named service contracts** — [`ServiceContracts.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Server.Abstractions/ServiceContracts.cs) exposes `IMonsterAggroService : IEventKernel<MonsterAggroEvent>` and `IAttackService : IEventKernel<AttackEvent>`, letting a kernel declare its behavior as a named domain service.
-- **The IPC control plane** — [`Ipc/IGamePluginControlService.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Server.Abstractions/Ipc/IGamePluginControlService.cs) (install IR, update settings, hold the connection) and the reverse-direction [`Ipc/IPluginEventCallback.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Server.Abstractions/Ipc/IPluginEventCallback.cs) (server → plugin push for remote `RunLocal` chains). Both are `[DotBoxDService]`.
+- **The IPC control plane** — [`Ipc/IGamePluginControlService.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Server.Abstractions/Ipc/IGamePluginControlService.cs) (install IR, update settings, hold the connection) and the reverse-direction [`Ipc/IPluginEventCallback.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Server.Abstractions/Ipc/IPluginEventCallback.cs) (server → plugin push for remote `RunLocal` chains). Both are `[RpcService]`.
 - **The command DSL** — [`GameCommands.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Server.Abstractions/GameCommands.cs) defines what a kernel's `host.message.write` messages *mean* (`calm:<player>:<strength>`, `taunt:<target>`); this meaning is defined in the example, never in the DotBoxD core.
 
 ## The server (parent process)
@@ -122,7 +122,7 @@ public static Task<PluginConnectionHost<GamePluginControlService>> StartAsync(
         {
 ```
 
-Two `[DotBoxDService]` implementations are provided per connection (the control plane and the world surface), and the reverse `IPluginEventCallback` proxy is fetched from the peer.
+Two `[RpcService]` implementations are provided per connection (the control plane and the world surface), and the reverse `IPluginEventCallback` proxy is fetched from the peer.
 
 The control-plane implementation is [`Ipc/GamePluginControlService.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Server/Ipc/GamePluginControlService.cs). It never sees kernel *source* — the plugin ships opaque verified IR as `packageJson`, and the service installs and wires it through its owning `PluginSession`:
 
@@ -160,7 +160,7 @@ Kernels are authored as ordinary C# and lowered to verified IR by the analyzer. 
     s.Subscriptions.On<AttackEvent>().Use<RetaliationKernel>();
 ```
 
-- **`GuardianKernel`** ([`Kernels/GuardianKernel.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin/Kernels/GuardianKernel.cs)) is a *hook* (awaited decision) on `MonsterAggroEvent`. It calms a monster that is about to bully a low-level player. Its `[EventKernel]` install id derives from the type name (`"guardian"`) — nothing is hand-typed.
+- **`GuardianKernel`** ([`Kernels/GuardianKernel.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin/Kernels/GuardianKernel.cs)) is a *hook* (awaited decision) on `MonsterAggroEvent`. It calms a monster that is about to bully a low-level player. Its `[Plugin]` install id derives from the type name (`"guardian"`) — nothing is hand-typed.
 - **`RetaliationKernel`** ([`Kernels/RetaliationKernel.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Plugin/Kernels/RetaliationKernel.cs)) is a fire-and-forget *subscription* on `AttackEvent` that taunts a strong attacker away.
 
 `GuardianKernel` also factors its gate into a reusable, unit-testable `[KernelMethod]` that the generator inlines:
@@ -194,10 +194,10 @@ The setters are strongly typed member expressions; only `[LiveSetting]` members 
 
 ## Host bindings
 
-The server's real implementation of the domain surface is [`Ipc/GameWorldAccess.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Server/Ipc/GameWorldAccess.cs). Its calls are synchronous against the in-process world, returned as completed `ValueTask`s — the async shape exists only so the remote proxy and in-sandbox kernels share one contract. `Get(id)` returns a scoped handle that captures the id, and each method carries the same `[HostCapability]` metadata as the SDK contract:
+The server's real implementation of the domain surface is [`Ipc/GameWorldAccess.cs`](https://github.com/JKamsker/DotBoxD/blob/main/samples/GameServer/Examples.GameServer.Server/Ipc/GameWorldAccess.cs). Its calls are synchronous against the in-process world, returned as completed `ValueTask`s — the async shape exists only so the remote proxy and in-sandbox kernels share one contract. `Get(id)` returns a scoped handle that captures the id, and each method carries the same `[HostBinding]` metadata as the SDK contract:
 
 ```csharp
-[HostCapability("game.world.monster.write.kill", HostBindingEffect.HostStateWrite)]
+[HostBinding("game.world.monster.write.kill", SandboxEffect.Cpu | SandboxEffect.HostStateWrite)]
 public ValueTask<bool> KillAsync()
     => ValueTask.FromResult(_world().KillMonster(Id));
 ```

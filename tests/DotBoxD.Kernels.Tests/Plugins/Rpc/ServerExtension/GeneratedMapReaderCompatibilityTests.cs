@@ -18,7 +18,7 @@ public sealed class GeneratedMapReaderCompatibilityTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteWorldControl;
 
             public sealed class RemoteWorldControl : IRemoteWorldControl, IServerExtensionClientAccessor

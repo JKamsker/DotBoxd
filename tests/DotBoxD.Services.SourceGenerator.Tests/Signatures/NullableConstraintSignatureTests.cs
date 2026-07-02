@@ -29,7 +29,7 @@ public class NullableConstraintSignatureTests
                     void Echo<U>(U value) where U : IFace?;
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ICombined : ILeft, IRight
                 {
                 }
@@ -66,7 +66,7 @@ public class NullableConstraintSignatureTests
                     void Echo<U>(U value) where U : IFace?;
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ICombined : ILeft, IRight
                 {
                 }

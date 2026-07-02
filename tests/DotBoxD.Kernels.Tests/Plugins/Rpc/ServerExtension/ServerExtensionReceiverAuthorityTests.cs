@@ -8,18 +8,19 @@ public sealed class ServerExtensionReceiverAuthorityTests
 {
     private const string ScopedReceiverSource = """
         using DotBoxD.Abstractions;
+        using DotBoxD.Kernels.Sandbox;
         using DotBoxD.Plugins;
         using DotBoxD.Plugins.Runtime;
         using DotBoxD.Services.Attributes;
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteMonster
         {
             string Id { get; }
 
-            [HostCapability("game.world.monster.read.threat", HostBindingEffect.HostStateRead)]
+            [HostBinding("game.world.monster.read.threat", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
             int Threat();
         }
 
@@ -60,18 +61,19 @@ public sealed class ServerExtensionReceiverAuthorityTests
 
     private const string ScopedReceiverPropertySource = """
         using DotBoxD.Abstractions;
+        using DotBoxD.Kernels.Sandbox;
         using DotBoxD.Plugins;
         using DotBoxD.Plugins.Runtime;
         using DotBoxD.Services.Attributes;
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteMonster
         {
             string Id { get; }
 
-            [HostCapability("game.world.monster.read.threat", HostBindingEffect.HostStateRead)]
+            [HostBinding("game.world.monster.read.threat", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
             int Threat();
         }
 
@@ -118,7 +120,7 @@ public sealed class ServerExtensionReceiverAuthorityTests
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteMonster
         {
             string Id { get; }
@@ -179,7 +181,7 @@ public sealed class ServerExtensionReceiverAuthorityTests
             diagnostics,
             d => d.Id == "DBXK100" &&
                  d.GetMessage().Contains("PluginReceiver", StringComparison.Ordinal) &&
-                 d.GetMessage().Contains("server-owned [DotBoxDService] interface", StringComparison.Ordinal));
+                 d.GetMessage().Contains("server-owned [RpcService] interface", StringComparison.Ordinal));
     }
 
     [Fact]

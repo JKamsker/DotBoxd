@@ -23,27 +23,28 @@ public sealed class ServerExtensionInlineScopedHandleRuntimeTests
 
     private const string InlineKernel = """
         using DotBoxD.Abstractions;
+        using DotBoxD.Kernels.Sandbox;
         using DotBoxD.Services.Attributes;
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IGameWorldAccess
         {
             IMonsterControl Monsters { get; }
         }
 
-        [DotBoxDService]
+        [RpcService]
         public interface IMonsterControl
         {
-            [HostCapability("game.world.monster.read.handle", HostBindingEffect.HostStateRead)]
+            [HostBinding("game.world.monster.read.handle", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
             IMonster Get(string entityId);
         }
 
-        [DotBoxDService]
+        [RpcService]
         public interface IMonster
         {
-            [HostCapability("game.world.monster.read.threat", HostBindingEffect.HostStateRead)]
+            [HostBinding("game.world.monster.read.threat", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
             int GetThreat();
         }
 
@@ -63,27 +64,28 @@ public sealed class ServerExtensionInlineScopedHandleRuntimeTests
 
     private const string LocalKernel = """
         using DotBoxD.Abstractions;
+        using DotBoxD.Kernels.Sandbox;
         using DotBoxD.Services.Attributes;
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IGameWorldAccess
         {
             IMonsterControl Monsters { get; }
         }
 
-        [DotBoxDService]
+        [RpcService]
         public interface IMonsterControl
         {
-            [HostCapability("game.world.monster.read.handle", HostBindingEffect.HostStateRead)]
+            [HostBinding("game.world.monster.read.handle", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
             IMonster Get(string entityId);
         }
 
-        [DotBoxDService]
+        [RpcService]
         public interface IMonster
         {
-            [HostCapability("game.world.monster.read.threat", HostBindingEffect.HostStateRead)]
+            [HostBinding("game.world.monster.read.threat", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
             int GetThreat();
         }
 
@@ -117,7 +119,7 @@ public sealed class ServerExtensionInlineScopedHandleRuntimeTests
         var package = PluginAnalyzerGeneratedPackageFactory.Create(
             source,
             "Sample.ScopedReadPluginPackage",
-            typeof(DotBoxD.Services.Attributes.DotBoxDServiceAttribute));
+            typeof(DotBoxD.Services.Attributes.RpcServiceAttribute));
 
         using var server = PluginServer.Create(
             configureHost: AddThreatBinding,

@@ -20,7 +20,7 @@ public sealed class InvokeAsyncArrayRegressionTests
 
             namespace DotBoxD.Kernels.Game.Server.Abstractions
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess
                 {
                     [HostBinding("host.world.getHealthGrid", "game.world.monster.read.healthGrid", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]

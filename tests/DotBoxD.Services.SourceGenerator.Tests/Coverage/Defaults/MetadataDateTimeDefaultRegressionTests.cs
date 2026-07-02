@@ -36,7 +36,7 @@ public sealed class MetadataDateTimeDefaultRegressionTests
 
             namespace Regress.MetadataDefaults
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISchedule : global::MetadataDefaults.IBaseSchedule
                 {
                 }
@@ -107,6 +107,6 @@ public sealed class MetadataDateTimeDefaultRegressionTests
             yield return reference;
         }
 
-        yield return MetadataReference.CreateFromFile(typeof(DotBoxDServiceAttribute).Assembly.Location);
+        yield return MetadataReference.CreateFromFile(typeof(RpcServiceAttribute).Assembly.Location);
     }
 }

@@ -1,4 +1,3 @@
-using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -6,8 +5,6 @@ namespace DotBoxD.Plugins.Analyzer.Analysis.InvokeAsync;
 
 internal static partial class InvokeAsyncReceiverResolver
 {
-    private const string BuilderSuffix = "Builder";
-
     public static bool TryResolve(
         SemanticModel model,
         ExpressionSyntax receiver,
@@ -40,7 +37,11 @@ internal static partial class InvokeAsyncReceiverResolver
             return true;
         }
 
-        if (TryResolveGeneratedBuilderLocal(model, receiver, cancellationToken, out var generatedType) &&
+        if (InvokeAsyncGeneratedBuilderResolver.TryResolve(
+                model,
+                receiver,
+                cancellationToken,
+                out var generatedType) &&
             TryResolveWorld(generatedType, out worldType))
         {
             receiverType = PluginServerInterfaceTypeName(worldType);
@@ -168,125 +169,6 @@ internal static partial class InvokeAsyncReceiverResolver
            type.GetMembers("WireClient").OfType<IPropertySymbol>().Any() &&
            type.GetMembers("EnsureAnonymousKernelAsync").OfType<IMethodSymbol>().Any();
 
-    private static bool TryResolveGeneratedBuilderLocal(
-        SemanticModel model,
-        ExpressionSyntax receiver,
-        CancellationToken cancellationToken,
-        out INamedTypeSymbol receiverType)
-    {
-        receiverType = null!;
-        if (TryResolveGeneratedBuilderProjection(model, receiver, cancellationToken, out receiverType))
-        {
-            return true;
-        }
-
-        if (receiver is not IdentifierNameSyntax identifier ||
-            model.GetSymbolInfo(identifier, cancellationToken).Symbol is not ILocalSymbol local)
-        {
-            return false;
-        }
-
-        foreach (var reference in local.DeclaringSyntaxReferences)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (reference.GetSyntax(cancellationToken) is VariableDeclaratorSyntax
-                {
-                    Initializer.Value: { } initializer
-                } &&
-                TryFacadeNameFromBuilderInitializer(initializer, out var facadeName) &&
-                TryFindGeneratedFacade(model.Compilation, facadeName, cancellationToken, out receiverType))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static bool TryFacadeNameFromBuilderInitializer(
-        ExpressionSyntax initializer,
-        out string facadeName)
-    {
-        facadeName = string.Empty;
-        return initializer is InvocationExpressionSyntax
-        {
-            Expression: MemberAccessExpressionSyntax
-            {
-                Name.Identifier.ValueText: "Build",
-                Expression: { } buildReceiver
-            }
-        } && TryFacadeNameFromBuilderFactory(buildReceiver, out facadeName);
-    }
-
-    private static bool TryFacadeNameFromBuilderFactory(
-        ExpressionSyntax buildReceiver,
-        out string facadeName)
-    {
-        facadeName = string.Empty;
-        var current = buildReceiver;
-        while (current is InvocationExpressionSyntax
-            {
-                Expression: MemberAccessExpressionSyntax { Expression: { } next }
-            })
-        {
-            if (TryFacadeNameFromBuilderType(next, out facadeName))
-            {
-                return true;
-            }
-
-            current = next;
-        }
-
-        return TryFacadeNameFromBuilderType(current, out facadeName);
-    }
-
-    private static bool TryFacadeNameFromBuilderType(
-        ExpressionSyntax builderType,
-        out string facadeName)
-    {
-        var builderName = builderType switch
-        {
-            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
-            QualifiedNameSyntax qualified => qualified.Right.Identifier.ValueText,
-            MemberAccessExpressionSyntax member => member.Name.Identifier.ValueText,
-            _ => string.Empty
-        };
-
-        if (!builderName.EndsWith(BuilderSuffix, StringComparison.Ordinal) ||
-            builderName.Length == BuilderSuffix.Length)
-        {
-            facadeName = string.Empty;
-            return false;
-        }
-
-        facadeName = builderName.Substring(0, builderName.Length - BuilderSuffix.Length);
-        return true;
-    }
-
-    private static bool TryFindGeneratedFacade(
-        Compilation compilation,
-        string facadeName,
-        CancellationToken cancellationToken,
-        out INamedTypeSymbol receiverType)
-    {
-        receiverType = null!;
-        foreach (var symbol in compilation.GetSymbolsWithName(
-                     name => string.Equals(name, facadeName, StringComparison.Ordinal),
-                     SymbolFilter.Type,
-                     cancellationToken))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (symbol is INamedTypeSymbol candidate &&
-                HasGeneratePluginServerAttribute(candidate))
-            {
-                receiverType = candidate;
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private static bool TryResolveWorld(
         INamedTypeSymbol type,
         out INamedTypeSymbol worldType)
@@ -317,25 +199,8 @@ internal static partial class InvokeAsyncReceiverResolver
     }
 
     private static bool HasGeneratePluginServerAttribute(INamedTypeSymbol type)
-        => HasAttribute(type, DotBoxDMetadataNames.GeneratePluginServerAttribute);
+        => InvokeAsyncAttributeMatcher.HasGeneratePluginServerAttribute(type);
 
     private static bool HasDotBoxDServiceAttribute(INamedTypeSymbol type)
-        => HasAttribute(type, DotBoxDMetadataNames.DotBoxDServiceAttribute);
-
-    private static bool HasAttribute(INamedTypeSymbol type, string metadataName)
-    {
-        foreach (var attribute in type.GetAttributes())
-        {
-            if (string.Equals(
-                    attribute.AttributeClass?.ToDisplayString(),
-                    metadataName,
-                    StringComparison.Ordinal))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
+        => InvokeAsyncAttributeMatcher.HasRpcServiceAttribute(type);
 }

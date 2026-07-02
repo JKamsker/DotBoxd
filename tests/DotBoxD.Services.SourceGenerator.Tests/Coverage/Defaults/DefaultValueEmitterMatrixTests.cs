@@ -67,7 +67,7 @@ public sealed class ServiceDefaultValueEmitterMatrixTests
                 Slow = 2
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IDefaults
             {
                 Task<int> EchoAsync({{parameters}});

@@ -72,6 +72,7 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
             using System.Threading;
             using System.Threading.Tasks;
             using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
             using DotBoxD.Services.Attributes;
 
             [assembly: global::DotBoxD.Abstractions.GeneratedKernelMethodDescriptorAttribute(
@@ -84,10 +85,10 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
 
             namespace Sdk
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorld
                 {
-                    [HostCapability("sample.read.value", HostBindingEffect.HostStateRead)]
+                    [HostBinding("sample.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
                     int Read(string id) => throw new System.NotSupportedException("metadata-only world");
                 }
 
@@ -172,6 +173,7 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
         var hash = KernelMethodDescriptorPayload.Hash(json);
         return $$"""
             using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
             using DotBoxD.Services.Attributes;
 
             [assembly: global::DotBoxD.Abstractions.GeneratedKernelMethodDescriptorAttribute(
@@ -184,10 +186,10 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
 
             namespace Sdk
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorld
                 {
-                    [HostCapability("sample.read.value", HostBindingEffect.HostStateRead | HostBindingEffect.Allocates)]
+                    [HostBinding("sample.read.value", SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateRead)]
                     string ReadName(string id) => throw new System.NotSupportedException("metadata-only world");
                 }
 

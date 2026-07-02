@@ -19,7 +19,7 @@ public sealed partial class ServerExtensionGeneratedDtoReaderRegressionTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteWorldControl
             {
             }
@@ -88,7 +88,7 @@ public sealed partial class ServerExtensionGeneratedDtoReaderRegressionTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteWorldControl
             {
             }
@@ -164,7 +164,7 @@ public sealed partial class ServerExtensionGeneratedDtoReaderRegressionTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteWorldControl
             {
             }

@@ -14,13 +14,13 @@ public class GeneratedDispatcherSurfaceTests
 
             namespace NestedSurface.Sample
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IChild
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<IChild> OpenAsync();

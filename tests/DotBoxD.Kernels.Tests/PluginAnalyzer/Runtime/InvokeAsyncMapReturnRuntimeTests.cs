@@ -41,7 +41,7 @@ public sealed class InvokeAsyncMapReturnRuntimeTests
 
         namespace DotBoxD.Kernels.Game.Server.Abstractions
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorldAccess
             {
                 [HostBinding("host.world.getScores", "game.world.score.read", SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateRead)]
@@ -152,7 +152,7 @@ public sealed class InvokeAsyncMapReturnRuntimeTests
                 .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(PluginPackage).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location))
-                .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Attributes.DotBoxDServiceAttribute).Assembly.Location))
+                .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Attributes.RpcServiceAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Peer.RpcPeerSession).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Pushdown.Services.RpcMessagePackIpc).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));

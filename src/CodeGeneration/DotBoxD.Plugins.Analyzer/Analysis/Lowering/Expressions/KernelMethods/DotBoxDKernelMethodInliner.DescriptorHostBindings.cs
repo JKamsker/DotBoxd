@@ -85,7 +85,7 @@ internal static partial class DotBoxDKernelMethodInliner
 
         foreach (var iface in matchedServer.AllInterfaces)
         {
-            if (HasAttribute(iface, DotBoxDMetadataNames.DotBoxDServiceAttribute, compilation))
+            if (HasAttribute(iface, DotBoxDMetadataNames.RpcServiceAttribute, compilation))
             {
                 yield return iface;
             }

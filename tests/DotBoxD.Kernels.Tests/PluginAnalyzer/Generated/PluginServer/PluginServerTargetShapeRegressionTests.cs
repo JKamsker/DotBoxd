@@ -61,7 +61,7 @@ public sealed class PluginServerTargetShapeRegressionTests
 
             namespace Sample.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorld;
             }
 

@@ -19,7 +19,7 @@ The original root files of ShaRPC (README, solution, license) are archived under
   the root [README](https://github.com/JKamsker/DotBoxD/blob/main/README.md)).
 - **Diagnostic IDs** were renamed: ShaRPC's `SHARPC###` → `DBXS###` (Services); Safe-IR's `SGP###` →
   `DBXK###` (Kernels). If you suppressed any of the old IDs, update your suppressions.
-- **Marker attributes**: `[ShaRpcService]`/`[ShaRpcMethod]` → `[DotBoxDService]`/`[DotBoxDMethod]`.
+- **Marker attributes**: `[ShaRpcService]`/`[ShaRpcMethod]` → `[RpcService]`/`[RpcMethod]`.
 - **JSON schemas** were renamed to `schemas/v1/dotboxd-kernel-module.schema.json` and
   `dotboxd-plugin-package.schema.json`.
 - **Build**: one solution (`DotBoxD.slnx`), Central Package Management (`Directory.Packages.props`),

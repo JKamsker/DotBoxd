@@ -92,7 +92,7 @@ public sealed partial class ServerExtensionGeneratedContextParameterTests
                 .Append(MetadataReference.CreateFromFile(typeof(PluginPackage).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(
-                    typeof(DotBoxD.Services.Attributes.DotBoxDServiceAttribute).Assembly.Location)),
+                    typeof(DotBoxD.Services.Attributes.RpcServiceAttribute).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
     private static IEnumerable<MetadataReference> TrustedPlatformReferences()
@@ -106,15 +106,16 @@ public sealed partial class ServerExtensionGeneratedContextParameterTests
         using System.Threading;
         using System.Threading.Tasks;
         using DotBoxD.Abstractions;
+        using DotBoxD.Kernels.Sandbox;
         using DotBoxD.Plugins;
         using DotBoxD.Services.Attributes;
 
         namespace Sample
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorld
             {
-                [HostCapability("sample.read.value", HostBindingEffect.HostStateRead)]
+                [HostBinding("sample.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
                 int Read();
             }
 
@@ -173,14 +174,15 @@ public sealed partial class ServerExtensionGeneratedContextParameterTests
         using System.Threading;
         using System.Threading.Tasks;
         using DotBoxD.Abstractions;
+        using DotBoxD.Kernels.Sandbox;
         using DotBoxD.Services.Attributes;
 
         namespace Sdk
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorld
             {
-                [HostCapability("sample.read.value", HostBindingEffect.HostStateRead)]
+                [HostBinding("sample.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
                 int Read();
             }
 

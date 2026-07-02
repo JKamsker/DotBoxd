@@ -34,7 +34,7 @@ public sealed class RpcRequest
 public sealed record ServiceHandle(string ServiceName, string InstanceId);
 ```
 
-When a dispatcher method's *return value* is itself a `[DotBoxDService]`, the generated dispatcher serializes a `ServiceHandle` instead of attempting to serialize the live object. When the client proxy sees a method whose declared return is a `[DotBoxDService]` interface, it deserializes the response payload as `ServiceHandle` and constructs a `SubServiceProxy(client, ServiceName, InstanceId)`.
+When a dispatcher method's *return value* is itself a `[RpcService]`, the generated dispatcher serializes a `ServiceHandle` instead of attempting to serialize the live object. When the client proxy sees a method whose declared return is a `[RpcService]` interface, it deserializes the response payload as `ServiceHandle` and constructs a `SubServiceProxy(client, ServiceName, InstanceId)`.
 
 **New invoke overload** on `IRpcInvoker` (the call surface implemented by `RpcPeer`):
 
@@ -97,7 +97,7 @@ In the per-peer inbound dispatch path (`RpcPeerInboundDispatcher` / its response
 
 A SubService dispatcher's generated `DispatchOnInstanceAsync` resolves `registry.TryGet(ServiceName, instanceId, out var inst)`, casts `inst` to the interface, and runs the same switch as `DispatchAsync` but against `inst` instead of `_service`. A *root* service dispatcher only emits `DispatchAsync` (and inherits the throwing default).
 
-When a root-service method's return type is itself a `[DotBoxDService]`, the generated case in `DispatchAsync` registers the returned object and serializes a `ServiceHandle`:
+When a root-service method's return type is itself a `[RpcService]`, the generated case in `DispatchAsync` registers the returned object and serializes a `ServiceHandle`:
 
 ```csharp
 var result = await _service.GetSubServiceAsync(arg, ct);
@@ -109,14 +109,14 @@ This means `DispatchAsync` also needs `IInstanceRegistry` — extend the existin
 
 ## 4. Generator changes
 
-**Detecting sub-service returns at semantic-analysis time.** In `ClassifyReturnType`, after unwrapping `Task<T>` / `ValueTask<T>`, check the unwrapped symbol for the presence of an attribute whose `AttributeClass.ToDisplayString() == "DotBoxD.Services.Attributes.DotBoxDServiceAttribute"`. If matched, return a new variant:
+**Detecting sub-service returns at semantic-analysis time.** In `ClassifyReturnType`, after unwrapping `Task<T>` / `ValueTask<T>`, check the unwrapped symbol for the presence of an attribute whose `AttributeClass.ToDisplayString() == "DotBoxD.Services.Attributes.RpcServiceAttribute"`. If matched, return a new variant:
 
 ```csharp
 internal enum MethodReturnKind { Void, Sync, Task, TaskOf, ValueTask, ValueTaskOf,
     TaskOfSubService, ValueTaskOfSubService }   // NEW
 ```
 
-This stays incremental — it operates only on `IMethodSymbol.ReturnType` and an attribute name string, never on the full `Compilation`. `MethodModel` gets one additional value-equatable field carrying the sub-service interface's qualified name and its RPC service name (extracted from the same `[DotBoxDService(Name=...)]` attribute), both as strings, preserving record equality.
+This stays incremental — it operates only on `IMethodSymbol.ReturnType` and an attribute name string, never on the full `Compilation`. `MethodModel` gets one additional value-equatable field carrying the sub-service interface's qualified name and its RPC service name (extracted from the same `[RpcService(Name=...)]` attribute), both as strings, preserving record equality.
 
 **Proxy for a sub-service-returning method.** Instead of `_invoker.InvokeAsync<ISubService>(...)` (which would fail to deserialize), emit:
 
@@ -130,11 +130,11 @@ return new global::App.SubServiceProxy(_invoker, handle.InstanceId);
 - Constructor signature is `(IRpcInvoker invoker, string instanceId)`; stores both.
 - Every `InvokeAsync(...)` call site is rewritten to `InvokeOnInstanceAsync("ISubService", _instanceId, "MethodName", ...)`.
 
-A `[DotBoxDService]` interface is *always* emitted as a top-level proxy (callable from the root) PLUS the same class doubles as a SubServiceProxy via a second public constructor `(IRpcInvoker, string instanceId)`. The proxy carries a `_instanceId` field (nullable). When null, it emits singleton calls; when non-null, instance calls. This avoids generating two near-duplicate classes per interface.
+A `[RpcService]` interface is *always* emitted as a top-level proxy (callable from the root) PLUS the same class doubles as a SubServiceProxy via a second public constructor `(IRpcInvoker, string instanceId)`. The proxy carries a `_instanceId` field (nullable). When null, it emits singleton calls; when non-null, instance calls. This avoids generating two near-duplicate classes per interface.
 
 **Out of scope (flag with DBXS004 / DBXS005 diagnostics, do not emit):**
 - `Task<ICollection<ISubService>>`, arrays, dictionaries containing sub-services.
-- `[DotBoxDService]` interfaces used as **parameter** types (server-to-client callbacks, bidirectional handles).
+- `[RpcService]` interfaces used as **parameter** types (server-to-client callbacks, bidirectional handles).
 - `ref`/`out`/`in` sub-service parameters (already covered by DBXS002).
 
 ## 5. Sample
@@ -142,8 +142,8 @@ A `[DotBoxDService]` interface is *always* emitted as a top-level proxy (callabl
 User code (no change required beyond the new return type):
 
 ```csharp
-[DotBoxDService] public interface IRootService { Task<ISubService> GetSubServiceAsync(string id); }
-[DotBoxDService] public interface ISubService  { Task<int> CountAsync(); }
+[RpcService] public interface IRootService { Task<ISubService> GetSubServiceAsync(string id); }
+[RpcService] public interface ISubService  { Task<int> CountAsync(); }
 ```
 
 Generated `RootServiceProxy.GetSubServiceAsync`:
@@ -202,7 +202,7 @@ public sealed record ServiceHandle(string ServiceName, string InstanceId);
 
 The detection works entirely from `IMethodSymbol.ReturnType` and a fixed attribute metadata-name string lookup — the existing `ForAttributeWithMetadataName` pipeline is unchanged. We never call `Compilation.GetSymbolsWithName` or enumerate the assembly. The new `MethodModel` fields are all `string` / enum (value-equatable). The new `SubServiceInfo` record (qualified interface name + RPC service name) is also `string`/`string` and equatable. No `Compilation`-typed value is captured in the model pipeline, so cache hit-rate stays identical to today.
 
-The one subtlety: detecting `[DotBoxDService]` on a return type symbol requires walking `INamedTypeSymbol.GetAttributes()` for that symbol. This is a symbol query, not a compilation query, and is safe inside the existing `transform` lambda.
+The one subtlety: detecting `[RpcService]` on a return type symbol requires walking `INamedTypeSymbol.GetAttributes()` for that symbol. This is a symbol query, not a compilation query, and is safe inside the existing `transform` lambda.
 
 ## 7. Explicitly NOT covered
 
@@ -228,7 +228,7 @@ The one subtlety: detecting `[DotBoxDService]` on a return type symbol requires 
 7. Add `InvokeOnInstanceAsync` overloads to `IRpcInvoker` and implement in `RpcPeer` (forward to the outbound request path with `InstanceId` set).
 8. Add new `MethodReturnKind` variants `TaskOfSubService` / `ValueTaskOfSubService` and a `SubServiceInfo(string InterfaceQualifiedName, string ServiceName)` value-equatable record.
 9. Extend `MethodModel` with an optional `SubServiceInfo? SubService` field.
-10. Update `RpcGenerator.ClassifyReturnType` to detect `[DotBoxDService]` on the unwrapped return symbol and emit the new return kinds plus `SubServiceInfo`.
+10. Update `RpcGenerator.ClassifyReturnType` to detect `[RpcService]` on the unwrapped return symbol and emit the new return kinds plus `SubServiceInfo`.
 11. Update `ProxyGenerator` to add the second constructor `(IRpcInvoker, string instanceId)`, `_instanceId` field, and per-call branching between `InvokeAsync` and `InvokeOnInstanceAsync`.
 12. Update `ProxyGenerator` to emit `ServiceHandle`-aware code for sub-service-returning methods (deserialize handle, construct sub-proxy).
 13. Update `DispatcherGenerator` to emit `registry.Register(...)` + `ServiceHandle` serialization for sub-service-returning method cases.

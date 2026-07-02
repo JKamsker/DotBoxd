@@ -17,7 +17,7 @@ public sealed partial class ServerExtensionSurpriseRegressionTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteControl;
 
             [ServerExtension("id-only")]
@@ -46,13 +46,13 @@ public sealed partial class ServerExtensionSurpriseRegressionTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteMonster
             {
                 string Id { get; }
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteZone
             {
                 string Id { get; }
@@ -87,7 +87,7 @@ public sealed partial class ServerExtensionSurpriseRegressionTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteControl;
 
             public sealed class RemoteControl : IRemoteControl, IServerExtensionClientAccessor
@@ -136,7 +136,7 @@ public sealed partial class ServerExtensionSurpriseRegressionTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteControl;
 
             public sealed class RemoteControl : IRemoteControl, IServerExtensionClientAccessor
@@ -230,7 +230,7 @@ public sealed partial class ServerExtensionSurpriseRegressionTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IEntity
             {
                 string Id { get; }
@@ -239,7 +239,7 @@ public sealed partial class ServerExtensionSurpriseRegressionTests
                 int Threat();
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteMonster : IEntity;
 
             [ServerExtension(typeof(IRemoteMonster), "threat")]

@@ -40,7 +40,7 @@ DotBoxD is a transport-agnostic RPC framework designed with Unity compatibility 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Shared Library                          │
-│  [DotBoxDService] IGameService + Models (PlayerId, PlayerState)  │
+│  [RpcService] IGameService + Models (PlayerId, PlayerState)  │
 └─────────────────────────────────────────────────────────────────┘
                     │                           │
                     ▼                           ▼
@@ -168,7 +168,7 @@ using DotBoxD.Services.Attributes;
 
 namespace YourGame.Shared;
 
-[DotBoxDService]
+[RpcService]
 public interface IGameService
 {
     // Simple request/response
@@ -249,10 +249,10 @@ public class PlayerInput
 ### Custom Method Names (Optional)
 
 ```csharp
-[DotBoxDService(Name = "Game")]
+[RpcService(Name = "Game")]
 public interface IGameService
 {
-    [DotBoxDMethod(Name = "Info")]
+    [RpcMethod(Name = "Info")]
     Task<ServerInfo> GetServerInfoAsync(CancellationToken ct = default);
 }
 ```
@@ -1290,9 +1290,9 @@ Register multiple services on the same server:
 
 ```csharp
 // Shared
-[DotBoxDService] public interface IGameService { ... }
-[DotBoxDService] public interface IChatService { ... }
-[DotBoxDService] public interface IInventoryService { ... }
+[RpcService] public interface IGameService { ... }
+[RpcService] public interface IChatService { ... }
+[RpcService] public interface IInventoryService { ... }
 
 // Server: provide every service on each accepted peer
 await using var host = RpcHost

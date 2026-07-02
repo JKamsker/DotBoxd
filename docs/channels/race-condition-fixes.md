@@ -183,9 +183,9 @@ minimal-valid-frame boundary still works). There is nothing to red-test because 
 
 ---
 
-## #10 — `DotBoxDGeneratedAssemblyCatalog`: fault-recovery could evict a successor entry
+## #10 — `RpcGeneratedAssemblyCatalog`: fault-recovery could evict a successor entry
 
-**Location:** `src/DotBoxD.Services/Generated/DotBoxDGeneratedAssemblyCatalog.cs`, `EnsureRegistered`.
+**Location:** `src/DotBoxD.Services/Generated/RpcGeneratedAssemblyCatalog.cs`, `EnsureRegistered`.
 
 **Defect.** On a faulted registration the catch did `s_registrationAttempts.TryRemove(assembly, out _)`
 — a **key-only** removal. If another thread had already replaced the faulted `Lazy<bool>` with a fresh
@@ -202,7 +202,7 @@ in progress or had succeeded. (Independent review note: this is recoverable — 
 +                .Remove(new KeyValuePair<Assembly, Lazy<bool>>(assembly, registration));
 ```
 
-**Proven by:** `RaceConditionDeterministicTests.DotBoxDGeneratedAssemblyCatalog_FaultRecovery_PreservesSuccessor`.
+**Proven by:** `RaceConditionDeterministicTests.RpcGeneratedAssemblyCatalog_FaultRecovery_PreservesSuccessor`.
 The eviction was factored into an internal `EvictFaultedAttempt(assembly, faulted)`. Using a unique
 throwaway `AssemblyBuilder` assembly (so it never collides with a real catalog entry), the test installs a
 faulted attempt, replaces it with a successor `Lazy`, then runs `EvictFaultedAttempt` holding only the

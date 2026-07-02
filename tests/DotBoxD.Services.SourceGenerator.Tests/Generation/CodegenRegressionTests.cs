@@ -57,7 +57,7 @@ public partial class CodegenRegressionTests
                     Task<int> FromBaseAsync(int x);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IDerived : IBase
                 {
                     Task<string> FromDerivedAsync();
@@ -87,7 +87,7 @@ public partial class CodegenRegressionTests
                     string M();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IC : IA, IB
                 {
                 }
@@ -114,7 +114,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.ValueTaskNs
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IVt
                 {
                     ValueTask<int> AddAsync(int a, int b);
@@ -139,7 +139,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.RefOut
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRefOut
                 {
                     void BadOut(out int x);
@@ -166,7 +166,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.RefReturn
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRefReturn
                 {
                     ref int GetRef();
@@ -203,7 +203,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.RefLikePayload
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISpanSvc
                 {
                     int Count(ReadOnlySpan<byte> bytes);
@@ -243,7 +243,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.Generic
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRepo<T>
                 {
                     Task<T> GetAsync(string id);

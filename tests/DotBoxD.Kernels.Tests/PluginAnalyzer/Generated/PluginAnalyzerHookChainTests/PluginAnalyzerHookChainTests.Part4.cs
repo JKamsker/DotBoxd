@@ -130,7 +130,7 @@ public sealed partial class PluginAnalyzerHookChainTests
 
             namespace Sample.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorld;
             }
 
@@ -196,7 +196,7 @@ public sealed partial class PluginAnalyzerHookChainTests
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(PluginServer).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(
-                    typeof(DotBoxD.Services.Attributes.DotBoxDServiceAttribute).Assembly.Location)),
+                    typeof(DotBoxD.Services.Attributes.RpcServiceAttribute).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             [new PluginPackageGenerator().AsSourceGenerator()],

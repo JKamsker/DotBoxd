@@ -26,7 +26,7 @@ public sealed class ServerExtensionMapTypeSupportTests
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteWorldControl
         {
         }

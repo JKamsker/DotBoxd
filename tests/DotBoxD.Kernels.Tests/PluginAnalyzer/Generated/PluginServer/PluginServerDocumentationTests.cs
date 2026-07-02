@@ -24,14 +24,14 @@ public sealed class PluginServerDocumentationTests
             namespace DotBoxD.Kernels.Game.Server.Abstractions
             {
                 /// <summary>Domain docs for the game world.</summary>
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess
                 {
                     /// <summary>Domain docs for monster commands.</summary>
                     IMonsterControl Monsters { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IMonsterControl
                 {
                     /// <summary>Domain docs for scoped monster handles.</summary>
@@ -42,7 +42,7 @@ public sealed class PluginServerDocumentationTests
                 }
 
                 /// <summary>Domain docs for the monster handle type.</summary>
-                [DotBoxDService]
+                [RpcService]
                 public interface IMonster
                 {
                     /// <summary>Domain docs for the monster handle id.</summary>
@@ -114,7 +114,7 @@ public sealed class PluginServerDocumentationTests
                 .Append(MetadataReference.CreateFromFile(typeof(PluginAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(PluginPackage).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location))
-                .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Attributes.DotBoxDServiceAttribute).Assembly.Location)),
+                .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Attributes.RpcServiceAttribute).Assembly.Location)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             [new PluginPackageGenerator().AsSourceGenerator()],

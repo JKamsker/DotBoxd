@@ -6,7 +6,7 @@ Status: implemented on `feature/peer-model`. The legacy `RpcClient` / `RpcServer
 
 This document describes the move from a `client` / `server` mental model to a single,
 symmetric **peer** model: two sides connect over a transport, either side can *provide*
-implementations of `[DotBoxDService]` interfaces, and either side can *call* the
+implementations of `[RpcService]` interfaces, and either side can *call* the
 implementations the other side provides. Bidirectional is the default capability;
 one-directional ("I call you and get data back, you cannot call me") is just the
 asymmetric configuration of the same type.
@@ -200,7 +200,7 @@ public sealed class RpcHost : IAsyncDisposable
 `IServerTransport` is kept as the listener abstraction (it yields `IRpcChannel`).
 "IChannelListener" is the conceptual name for the same role.
 
-## Generated surface (per `[DotBoxDService] IGameService`)
+## Generated surface (per `[RpcService] IGameService`)
 
 The generator emits the same proxy + dispatcher pair. The proxy's backing field is typed
 `IRpcInvoker` and named `_invoker` internally. The generated extension methods target

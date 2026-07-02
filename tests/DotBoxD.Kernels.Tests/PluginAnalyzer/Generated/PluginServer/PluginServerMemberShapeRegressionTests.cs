@@ -22,13 +22,13 @@ public sealed partial class PluginServerMemberShapeRegressionTests
                     IMonsterControl Monsters { get; }
             """, """
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IMonsterControl
                 {
                     IInventory Inventory { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IInventory
                 {
                     ValueTask<int> Count();
@@ -78,7 +78,7 @@ public sealed partial class PluginServerMemberShapeRegressionTests
                     IMonsterControl Monsters { get; set; }
             """, """
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IMonsterControl;
             """));
 
@@ -115,19 +115,19 @@ public sealed partial class PluginServerMemberShapeRegressionTests
 
             namespace Regression.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ILeftWorld
                 {
                     ValueTask<int> PingAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRightWorld
                 {
                     ValueTask<int> PingAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess : ILeftWorld, IRightWorld;
             }
 
@@ -182,7 +182,7 @@ public sealed partial class PluginServerMemberShapeRegressionTests
                     IMonsterControl Monsters { get; }
             """, """
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IMonsterControl
                 {
                     string ServerExtensions { get; }
@@ -237,7 +237,7 @@ public sealed partial class PluginServerMemberShapeRegressionTests
 
             namespace Regression.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess
                 {
             {{worldMembers}}

@@ -16,7 +16,7 @@ public sealed class ValueTaskStreamingProxyRegressionTests
 
             namespace Regress.ValueTaskStreams
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IUpload
                 {
                     ValueTask<int> CountAsync(Stream data);

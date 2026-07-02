@@ -20,7 +20,7 @@ public class BehavioralTests
 
         namespace Behavior.Demo
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IMath
             {
                 Task<int> AddAsync(int a, int b, CancellationToken ct = default);
@@ -112,7 +112,7 @@ public class BehavioralTests
 
             namespace Behavior.NoCt
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface INoCt
                 {
                     Task<int> AddAsync(int a, int b);
@@ -153,7 +153,7 @@ public class BehavioralTests
 
             namespace Behavior.Sync
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISync
                 {
                     int Add(int a, int b);

@@ -7,8 +7,6 @@ namespace DotBoxD.Services.SourceGenerator.Validation;
 
 internal static class RpcPayloadReconstructibilityInspector
 {
-    private const string DotBoxDServiceAttributeName = ServicesGeneratorTypeNames.DotBoxDServiceAttribute;
-
     public static string? GetUnsupportedReason(
         ITypeSymbol type,
         string role,
@@ -186,7 +184,7 @@ internal static class RpcPayloadReconstructibilityInspector
         {
             ct.ThrowIfCancellationRequested();
 
-            if (attr.AttributeClass?.ToDisplayString() == DotBoxDServiceAttributeName)
+            if (ServicesGeneratorTypeNames.IsRpcServiceAttribute(attr.AttributeClass?.ToDisplayString()))
             {
                 return true;
             }

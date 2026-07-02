@@ -7,6 +7,7 @@ public static class HostServiceBindingExtensions
 {
     private const string ExtensibleControlType = "DotBoxD.Abstractions.IExtensibleControl";
     private const string ServiceControlType = "DotBoxD.Abstractions.IServiceControl";
+    private const string RpcServiceAttributeType = "DotBoxD.Services.Attributes.RpcServiceAttribute";
     private const string DotBoxDServiceAttributeType = "DotBoxD.Services.Attributes.DotBoxDServiceAttribute";
 
     public static SandboxHostBuilder AddBindingsFrom<TService>(
@@ -55,17 +56,17 @@ public static class HostServiceBindingExtensions
 
             var declaringType = method.DeclaringType ?? serviceType;
             var target = ResolveTargetMethod(declaringType, implementation.GetType(), method);
-            var capability = method.GetCustomAttribute<HostCapabilityAttribute>();
-            if (capability is null)
+            var binding = method.GetCustomAttribute<HostBindingAttribute>();
+            if (binding is null)
             {
                 throw new InvalidOperationException(
-                    $"Host service method '{declaringType.FullName}.{method.Name}' must declare [HostCapability] on its service contract.");
+                    $"Host service method '{declaringType.FullName}.{method.Name}' must declare [HostBinding] on its service contract.");
             }
 
             AddBinding(
                 builder,
                 registeredBindings,
-                HostServiceBindingFactory.CreateBinding(method, target, implementation, capability),
+                HostServiceBindingFactory.CreateBinding(method, target, implementation, binding),
                 HostServiceBindingRouteSignature.ForMethod(method));
         }
 
@@ -125,11 +126,11 @@ public static class HostServiceBindingExtensions
                 continue;
             }
 
-            var capability = handleMethod.GetCustomAttribute<HostCapabilityAttribute>();
-            if (capability is null)
+            var binding = handleMethod.GetCustomAttribute<HostBindingAttribute>();
+            if (binding is null)
             {
                 throw new InvalidOperationException(
-                    $"Host service handle method '{handleServiceType.FullName}.{handleMethod.Name}' must declare [HostCapability].");
+                    $"Host service handle method '{handleServiceType.FullName}.{handleMethod.Name}' must declare [HostBinding].");
             }
 
             AddBinding(
@@ -140,7 +141,7 @@ public static class HostServiceBindingExtensions
                     targetFactory,
                     parentImplementation,
                     handleMethod,
-                    capability),
+                    binding),
                 HostServiceBindingRouteSignature.ForHandle(factoryMethod, handleMethod));
         }
 
@@ -158,6 +159,12 @@ public static class HostServiceBindingExtensions
         if (binding is null)
         {
             return false;
+        }
+
+        if (binding.IsAutoBinding)
+        {
+            throw new InvalidOperationException(
+                $"Host service property '{serviceType.FullName}.{property.Name}' must declare an explicit binding id.");
         }
 
         var getter = property.GetMethod
@@ -277,8 +284,5 @@ public static class HostServiceBindingExtensions
 
     private static bool HasDirectDotBoxDServiceAttribute(Type type)
         => type.GetCustomAttributes(inherit: false)
-            .Any(attribute => string.Equals(
-                attribute.GetType().FullName,
-                DotBoxDServiceAttributeType,
-                StringComparison.Ordinal));
+            .Any(attribute => attribute.GetType().FullName is RpcServiceAttributeType or DotBoxDServiceAttributeType);
 }

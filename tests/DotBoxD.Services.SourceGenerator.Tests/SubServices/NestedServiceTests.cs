@@ -8,7 +8,7 @@ namespace DotBoxD.Services.SourceGenerator.Tests.SubServices;
 
 /// <summary>
 /// End-to-end coverage of Feature 2 (nested services): a root service method whose
-/// return type is itself a <c>[DotBoxDService]</c> interface returns a generated
+/// return type is itself a <c>[RpcService]</c> interface returns a generated
 /// sub-service proxy bound to a server-side instance through a per-connection
 /// <see cref="IInstanceRegistry"/>.
 /// </summary>
@@ -20,14 +20,14 @@ public class NestedServiceTests
 
         namespace Nested.Demo
         {
-            [DotBoxDService]
+            [RpcService]
             public interface ISubService
             {
                 Task<int> CountAsync();
                 Task<int> SumAsync(int a, int b);
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRootService
             {
                 Task<ISubService> GetSubAsync(string label);
@@ -201,7 +201,7 @@ public class NestedServiceTests
 
             namespace Nested.Cross.Sub
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISubService
                 {
                     ValueTask<int> CountAsync();
@@ -210,7 +210,7 @@ public class NestedServiceTests
 
             namespace Nested.Cross.Root
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRootService
                 {
                     ValueTask<Nested.Cross.Sub.ISubService> GetSubAsync();

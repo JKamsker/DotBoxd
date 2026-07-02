@@ -38,7 +38,7 @@ internal static partial class PluginServerFacadeModelFactory
 
         var worldType = ResolveWorldType(type)
             ?? throw new NotSupportedException(
-                $"Generated plugin server '{type.Name}' must directly implement one [DotBoxDService] world interface.");
+                $"Generated plugin server '{type.Name}' must directly implement one [RpcService] world interface.");
         var controlServiceType = ResolveControlService(type, compilation, worldType)
             ?? throw new NotSupportedException(
                 $"Generated plugin server '{type.Name}' could not resolve a control-plane contract. Set ControlService = typeof(TControlService), or declare {worldType.ContainingNamespace}.Ipc.IGamePluginControlService.");
@@ -140,7 +140,7 @@ internal static partial class PluginServerFacadeModelFactory
                 : PluginServerReturnWrapperKind.ValueTask;
         }
         if (serviceType is not INamedTypeSymbol namedServiceType ||
-            !HasAttribute(namedServiceType, DotBoxDMetadataNames.DotBoxDServiceAttribute))
+            !HasAttribute(namedServiceType, DotBoxDMetadataNames.RpcServiceAttribute))
         {
             return (null, PluginServerReturnWrapperKind.None);
         }
@@ -225,7 +225,11 @@ internal static partial class PluginServerFacadeModelFactory
     {
         foreach (var attribute in type.GetAttributes())
         {
-            if (string.Equals(attribute.AttributeClass?.ToDisplayString(), metadataName, StringComparison.Ordinal))
+            var attributeName = attribute.AttributeClass?.ToDisplayString();
+            var matches = string.Equals(metadataName, DotBoxDMetadataNames.RpcServiceAttribute, StringComparison.Ordinal)
+                ? DotBoxDMetadataNames.IsRpcServiceAttribute(attributeName)
+                : string.Equals(attributeName, metadataName, StringComparison.Ordinal);
+            if (matches)
             {
                 return true;
             }

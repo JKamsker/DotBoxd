@@ -13,7 +13,7 @@ public partial class CodegenRegressionTests
 
             namespace Regress.VtRun
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IVtRun
                 {
                     ValueTask<int> AddAsync(int a, int b);

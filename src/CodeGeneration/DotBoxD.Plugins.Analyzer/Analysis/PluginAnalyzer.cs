@@ -58,7 +58,7 @@ public sealed partial class PluginAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeMethod(SymbolAnalysisContext context)
     {
         var method = (IMethodSymbol)context.Symbol;
-        if (!HasAttribute(method, DotBoxDMetadataNames.LocalAttribute))
+        if (!HasAttribute(method, DotBoxDMetadataNames.NativeOnlyAttribute))
         {
             return;
         }
@@ -69,7 +69,7 @@ public sealed partial class PluginAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeProperty(SymbolAnalysisContext context)
     {
         var property = (IPropertySymbol)context.Symbol;
-        if (HasAttribute(property, DotBoxDMetadataNames.LocalAttribute))
+        if (HasAttribute(property, DotBoxDMetadataNames.NativeOnlyAttribute))
         {
             ValidateLocalMember(context, property, property);
         }

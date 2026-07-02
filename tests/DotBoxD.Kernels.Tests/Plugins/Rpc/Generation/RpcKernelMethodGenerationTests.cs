@@ -89,7 +89,7 @@ public sealed class RpcKernelMethodGenerationTests
 
             namespace Sample
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorld;
 
                 [GeneratePluginServer(Context = typeof(GamePluginContext))]

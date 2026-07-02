@@ -15,10 +15,10 @@ public class LiteralEscapingTests
 
             namespace Regress.LowControlWireNames
             {
-                [DotBoxDService(Name = "svc\a\b\f\v\u001fend")]
+                [RpcService(Name = "svc\a\b\f\v\u001fend")]
                 public interface IControlNames
                 {
-                    [DotBoxDMethod(Name = "method\a\b\f\v\u001fend")]
+                    [RpcMethod(Name = "method\a\b\f\v\u001fend")]
                     Task<int> GetAsync();
                 }
             }

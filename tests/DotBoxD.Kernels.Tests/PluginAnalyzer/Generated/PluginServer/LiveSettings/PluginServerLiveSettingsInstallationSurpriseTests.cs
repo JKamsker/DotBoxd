@@ -18,7 +18,7 @@ public sealed class PluginServerLiveSettingsInstallationSurpriseTests
 
             namespace Regression.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 

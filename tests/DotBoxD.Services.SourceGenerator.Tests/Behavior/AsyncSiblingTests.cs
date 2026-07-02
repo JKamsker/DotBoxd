@@ -6,7 +6,7 @@ namespace DotBoxD.Services.SourceGenerator.Tests.Behavior;
 
 /// <summary>
 /// Coverage for the auto-generated async sibling interface. For every
-/// <c>[DotBoxDService]</c> interface the generator emits a sibling
+/// <c>[RpcService]</c> interface the generator emits a sibling
 /// <c>I{Name}Async</c> whose members are non-blocking. The proxy class
 /// implements both interfaces.
 /// </summary>
@@ -25,7 +25,7 @@ public class AsyncSiblingTests
 
             namespace AsyncSibling.A
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ICalc
                 {
                     int Add(int a, int b);
@@ -75,7 +75,7 @@ public class AsyncSiblingTests
 
             namespace AsyncSibling.B
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IAlready
                 {
                     Task<int> FooAsync(int x, CancellationToken ct = default);
@@ -104,7 +104,7 @@ public class AsyncSiblingTests
 
             namespace AsyncSibling.C
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface INoCt
                 {
                     Task<int> FetchAsync(int id);
@@ -135,7 +135,7 @@ public class AsyncSiblingTests
 
             namespace AsyncSibling.F
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IBlocker
                 {
                     int Slow(int x);

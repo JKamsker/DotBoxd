@@ -19,7 +19,7 @@ public partial class CodegenRegressionTests
                 CSharpSyntaxTree.ParseText(source, parseOptions),
             ],
             references: Net10ReferenceAssemblies()
-                .Append(MetadataReference.CreateFromFile(typeof(DotBoxDServiceAttribute).Assembly.Location)),
+                .Append(MetadataReference.CreateFromFile(typeof(RpcServiceAttribute).Assembly.Location)),
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         var driver = GeneratorTestHelper.CreateDriver(parseOptions).RunGenerators(compilation);
         var runResult = driver.GetRunResult();

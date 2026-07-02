@@ -44,7 +44,7 @@ The **server** author does not. ~400 lines of DotBoxD plumbing are hand-written 
 | `Ipc/GamePluginControlService.cs` | 204 | three near-identical install→validate→policy→install→wire→rollback methods + reflection-friendly ctor overloads | ~70% ceremony |
 | `Ipc/GamePluginHost.cs` | 73 | per-connection: mint session, get reverse callback, `Provide*` two services, dispose on disconnect | pure ceremony |
 | `Ipc/GamePluginServerExtensionInvoker.cs` | 68 | decode RPC args → count vs live-settings → convert each `SandboxValue` → invoke → encode | pure marshalling |
-| `Ipc/GameWorldAccess.cs` | 126 | `KillAsync() => world.KillMonster(Id)` + `[HostCapability]` | **domain — the good model** |
+| `Ipc/GameWorldAccess.cs` | 126 | `KillAsync() => world.KillMonster(Id)` + `[HostBinding]` | **domain — the good model** |
 
 ### Root cause
 
@@ -149,8 +149,8 @@ index survivor (index is prefilter only). One audited implementation replaces N 
 > `Connected`/`Disconnected`/`PipeName`), no generator, lower risk. The host keeps the `(peer, session) =>`
 > provide-services callback. The generator design below is retained for the record / a future iteration.
 
-Extend the `[GeneratePluginServer]` / `[DotBoxDService]` codegen to also emit a **host-side** accept helper
-that mints a session per peer, resolves+provides every `[DotBoxDService]` impl from a host-supplied factory,
+Extend the `[GeneratePluginServer]` / `[RpcService]` codegen to also emit a **host-side** accept helper
+that mints a session per peer, resolves+provides every `[RpcService]` impl from a host-supplied factory,
 wires reverse callbacks, and disposes the session on disconnect:
 
 ```csharp

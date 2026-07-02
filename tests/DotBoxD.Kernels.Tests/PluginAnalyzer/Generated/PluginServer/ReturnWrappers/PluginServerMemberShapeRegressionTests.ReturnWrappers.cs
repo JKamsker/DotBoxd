@@ -9,7 +9,7 @@ public sealed partial class PluginServerMemberShapeRegressionTests
                     ValueTask<IMonster> FindMonsterAsync(string id);
             """, """
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IMonster
                 {
                     string Id { get; }
@@ -36,13 +36,13 @@ public sealed partial class PluginServerMemberShapeRegressionTests
 
             namespace Regression.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess
                 {
                     ValueTask<IMonster> FindMonsterAsync(string id);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IMonster;
             }
 

@@ -23,7 +23,7 @@ public sealed class StreamingProxyEnumeratorCancellationTests
 
             namespace Behavior.StreamingCancellation
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ILazyStreaming
                 {
                     IAsyncEnumerable<int> Echo(Stream bytes, IAsyncEnumerable<int> items, CancellationToken ct = default);

@@ -17,7 +17,7 @@ public sealed class StreamingGeneratorDiagnosticTests
 
             namespace Streaming.Nullable
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface INullableStreaming
                 {
                     Stream? Download();
@@ -72,7 +72,7 @@ public sealed class StreamingGeneratorDiagnosticTests
                         => throw new System.NotSupportedException();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IConcreteStreaming
                 {
                     MemoryStream Download();

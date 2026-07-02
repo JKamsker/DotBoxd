@@ -14,7 +14,7 @@ using DotBoxD.Services.Attributes;
 
 namespace Bug.KeywordOutParam
 {
-    [DotBoxDService]
+    [RpcService]
     public interface IKw
     {
         void @event(out int x);

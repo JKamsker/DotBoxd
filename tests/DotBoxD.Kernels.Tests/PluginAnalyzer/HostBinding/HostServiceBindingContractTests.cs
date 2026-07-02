@@ -81,13 +81,13 @@ public sealed class HostServiceBindingContractTests
 
     private sealed class ConcreteProbeWorld
     {
-        [HostCapability("probe.read.value", HostBindingEffect.HostStateRead)]
+        [HostBinding("probe.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         public int Read() => 1;
     }
 
     private interface IConcreteHandleProbeWorld
     {
-        [HostCapability("probe.read.handle", HostBindingEffect.HostStateRead)]
+        [HostBinding("probe.read.handle", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         ConcreteProbeHandle GetHandle(string id);
     }
 
@@ -103,10 +103,10 @@ public sealed class HostServiceBindingContractTests
 
     private interface IOverloadedProbeWorld
     {
-        [HostCapability("probe.read.text", HostBindingEffect.HostStateRead)]
+        [HostBinding("probe.read.text", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         int Read(string id);
 
-        [HostCapability("probe.read.number", HostBindingEffect.HostStateRead)]
+        [HostBinding("probe.read.number", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         int Read(int id);
     }
 
@@ -119,10 +119,10 @@ public sealed class HostServiceBindingContractTests
 
     private interface IDtoShapeProbeWorld
     {
-        [HostCapability("probe.read.value", HostBindingEffect.HostStateRead)]
+        [HostBinding("probe.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         int Read(ProbeById probe);
 
-        [HostCapability("probe.read.value", HostBindingEffect.HostStateRead)]
+        [HostBinding("probe.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         int Read(ProbeByStats probe);
     }
 
@@ -139,10 +139,10 @@ public sealed class HostServiceBindingContractTests
 
     private interface IDtoIdentityProbeWorld
     {
-        [HostCapability("probe.read.value", HostBindingEffect.HostStateRead)]
+        [HostBinding("probe.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         int Read(ProbeIdentityA probe);
 
-        [HostCapability("probe.read.value", HostBindingEffect.HostStateRead)]
+        [HostBinding("probe.read.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         int Read(ProbeIdentityB probe);
     }
 
@@ -180,9 +180,9 @@ public sealed class HostServiceBindingContractTests
     }
 }
 
-[DotBoxDService]
+[RpcService]
 public interface IConcreteProbeHandle
 {
-    [HostCapability("probe.read.handle.value", HostBindingEffect.HostStateRead)]
+    [HostBinding("probe.read.handle.value", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
     int GetValue();
 }

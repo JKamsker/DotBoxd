@@ -234,7 +234,7 @@ public sealed class AnalyzerDefaultValueEmitterMatrixTests
                     Slow = 2
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess
                 {
                     ValueTask<int> ReadAsync({{worldParameters}});

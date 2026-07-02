@@ -3,7 +3,7 @@ namespace DotBoxD.Kernels.Benchmarks.Ipc;
 using DotBoxD.Services.Attributes;
 using MessagePack;
 
-[DotBoxDService]
+[RpcService]
 public interface IAllocationProbeService
 {
     ValueTask<int> AddAsync(int value, CancellationToken cancellationToken = default);

@@ -66,7 +66,7 @@ public sealed class PluginServerLiveSettingsSurpriseTests
 
         namespace Sample
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorldAccess;
 
             public sealed record DamageEvent(string TargetId, int Amount);

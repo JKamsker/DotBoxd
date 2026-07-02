@@ -12,13 +12,13 @@ public class ServiceWireNameCollisionTests
 
             namespace Regress.WireServiceCollision
             {
-                [DotBoxDService(Name = "same")]
+                [RpcService(Name = "same")]
                 public interface IFoo
                 {
                     int Foo();
                 }
 
-                [DotBoxDService(Name = "same")]
+                [RpcService(Name = "same")]
                 public interface IBar
                 {
                     int Bar();
@@ -46,7 +46,7 @@ public class ServiceWireNameCollisionTests
 
             namespace Regress.WireServiceCollision.A
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int A();
@@ -55,7 +55,7 @@ public class ServiceWireNameCollisionTests
 
             namespace Regress.WireServiceCollision.B
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int B();

@@ -17,13 +17,13 @@ public class GeneratedTypeCollisionOrderingTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     int Count { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<ISub> OpenAsync();

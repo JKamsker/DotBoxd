@@ -1,5 +1,7 @@
 using DotBoxD.Abstractions;
 using DotBoxD.Kernels.Game.Server.Abstractions;
+using DotBoxD.Kernels.Sandbox;
+
 namespace DotBoxD.Kernels.Game.Plugin.Tests;
 
 public sealed partial class RemotePluginServerBuilderTests
@@ -21,7 +23,7 @@ public sealed partial class RemotePluginServerBuilderTests
     {
         public IMonster Get(string entityId) => new FakeMonster(entityId);
 
-        [HostCapability("game.world.monster.read.kind", HostBindingEffect.HostStateRead)]
+        [HostBinding("game.world.monster.read.kind", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
         public ValueTask<bool> IsMonsterAsync(string entityId)
             => ValueTask.FromResult(true);
     }

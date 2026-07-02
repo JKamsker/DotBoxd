@@ -8,27 +8,28 @@ public sealed class ServerExtensionScopedHandleReviewTests
     private const string Prelude = """
         using System.Threading.Tasks;
         using DotBoxD.Abstractions;
+        using DotBoxD.Kernels.Sandbox;
         using DotBoxD.Services.Attributes;
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IGameWorldAccess
         {
             IMonsterControl Monsters { get; }
         }
 
-        [DotBoxDService]
+        [RpcService]
         public interface IMonsterControl
         {
-            [HostCapability("game.world.monster.read.handle", HostBindingEffect.HostStateRead)]
+            [HostBinding("game.world.monster.read.handle", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
             IMonster Get(string entityId);
         }
 
-        [DotBoxDService]
+        [RpcService]
         public interface IMonster
         {
-            [HostCapability("game.world.monster.write.kill", HostBindingEffect.HostStateWrite)]
+            [HostBinding("game.world.monster.write.kill", SandboxEffect.Cpu | SandboxEffect.HostStateWrite)]
             ValueTask<bool> KillAsync();
         }
 
@@ -82,7 +83,7 @@ public sealed class ServerExtensionScopedHandleReviewTests
             }
             """,
             "Sample.ScopedCallPluginPackage",
-            typeof(DotBoxD.Services.Attributes.DotBoxDServiceAttribute));
+            typeof(DotBoxD.Services.Attributes.RpcServiceAttribute));
 
         Assert.Empty(HostCall(package).Arguments);
     }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering.Expressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -283,10 +284,7 @@ internal sealed partial class DotBoxDRpcJsonLowerer
     {
         foreach (var attribute in type.GetAttributes())
         {
-            if (string.Equals(
-                attribute.AttributeClass?.ToDisplayString(),
-                "DotBoxD.Services.Attributes.DotBoxDServiceAttribute",
-                StringComparison.Ordinal))
+            if (DotBoxDMetadataNames.IsRpcServiceAttribute(attribute.AttributeClass?.ToDisplayString()))
             {
                 return true;
             }

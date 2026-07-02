@@ -147,7 +147,7 @@ public sealed partial class ServerExtensionSurpriseRegressionTests
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteMonsterControl
         {
         }
@@ -194,7 +194,7 @@ public sealed partial class ServerExtensionSurpriseRegressionTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteMonsterControl
             {
             }

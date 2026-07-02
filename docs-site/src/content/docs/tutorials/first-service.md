@@ -3,7 +3,7 @@ title: 'Tutorial: your first Service (RPC)'
 description: 'A Service is the first of DotBoxD''s three ways to use one C# contract: the host implements the contract, and clients call it remotely over RPC. You write…'
 ---
 A **Service** is the first of DotBoxD's three ways to use one C# contract: the host implements the
-contract, and clients call it remotely over RPC. You write one `[DotBoxDService]` interface, a Roslyn
+contract, and clients call it remotely over RPC. You write one `[RpcService]` interface, a Roslyn
 source generator emits the typed proxy and dispatcher at compile time (no runtime reflection on the hot
 path), and a MessagePack named-pipe transport carries the calls.
 
@@ -17,7 +17,7 @@ maintained sample under
 
 Services exist to make interop easy. Hand-writing RPC marshaling — build a request envelope, serialize
 args, match a response to its call, deserialize, cast — is repetitive and easy to get subtly wrong. With
-DotBoxD you annotate one interface with `[DotBoxDService]` and a Roslyn source generator emits three
+DotBoxD you annotate one interface with `[RpcService]` and a Roslyn source generator emits three
 artifacts at compile time: a **typed client proxy** (what `Get<T>()` returns), a **server dispatcher**
 that decodes a request and invokes your implementation, and the `Provide{Service}` / `Get<T>()`
 extensions
@@ -55,7 +55,7 @@ in Kernels/Pushdown, not here.
 
 Three pieces, mirroring how the GameServer sample is laid out (shared abstractions, server, client):
 
-- A **shared contract** project holding the `[DotBoxDService]` interface and its DTOs (data transfer objects — the plain data types that cross the wire).
+- A **shared contract** project holding the `[RpcService]` interface and its DTOs (data transfer objects — the plain data types that cross the wire).
 - A **host** that implements the contract and listens on a named pipe.
 - A **client** that connects and calls the contract through a generated proxy.
 
@@ -101,7 +101,7 @@ dotnet add MyApp.Client    package DotBoxD --prerelease
 > matrix. `DotBoxD.Services.SourceGenerator` is bundled inside the Services package as an analyzer
 > asset — you never add it as a standalone package.
 
-## Step 2 — Define the `[DotBoxDService]` contract
+## Step 2 — Define the `[RpcService]` contract
 
 Put the interface and its DTOs in the shared project so the host and the client compile against the
 exact same shape. This is the contract from the README's Services example
@@ -112,7 +112,7 @@ exact same shape. This is the contract from the README's Services example
 using DotBoxD.Services.Attributes;
 
 // One contract, shared by host and client.
-[DotBoxDService]
+[RpcService]
 public interface ICatalogService
 {
     ValueTask<int> GetUnitPriceAsync(string itemId, CancellationToken cancellationToken = default);
@@ -159,12 +159,12 @@ public readonly struct CartTotal
 
 Two attributes are worth knowing, both in `DotBoxD.Services.Attributes`:
 
-- `[DotBoxDService]` marks the interface; it has an optional `Name` property to override the wire
+- `[RpcService]` marks the interface; it has an optional `Name` property to override the wire
   service name (default: the interface name). See
-  `src/Services/DotBoxD.Services/Attributes/DotBoxDServiceAttribute.cs`.
-- `[DotBoxDMethod]` is **optional** on methods — every method in the interface is included by default.
+  `src/Services/DotBoxD.Services/Attributes/RpcServiceAttribute.cs`.
+- `[RpcMethod]` is **optional** on methods — every method in the interface is included by default.
   Use it only to customize a method (e.g. its `Name`). See
-  `src/Services/DotBoxD.Services/Attributes/DotBoxDMethodAttribute.cs`.
+  `src/Services/DotBoxD.Services/Attributes/RpcMethodAttribute.cs`.
 
 > Contract shape rules: keep methods to plain parameters plus an optional trailing
 > `CancellationToken`, and return `Task`/`Task<T>`/`ValueTask`/`ValueTask<T>`. `ref`/`in`/`out`
@@ -291,7 +291,7 @@ cart: 2 items, total = 175
 
 ## Step 6 — What the source generator emits
 
-The `[DotBoxDService]` attribute drives `DotBoxD.Services.SourceGenerator` (bundled inside the Services
+The `[RpcService]` attribute drives `DotBoxD.Services.SourceGenerator` (bundled inside the Services
 package). At compile time, for each annotated interface it emits:
 
 - a **typed client proxy** — the object returned by `Get<ICatalogService>()`, which marshals each call
@@ -333,7 +333,7 @@ dotnet run -c Release --project samples/GameServer/Examples.GameServer.Server/Ex
 Real contracts to read next:
 `samples/GameServer/Examples.GameServer.Server.Abstractions/Ipc/IGamePluginControlService.cs` and
 `samples/GameServer/Examples.GameServer.Server.Abstractions/IGameWorldAccess.cs` (both
-`[DotBoxDService]`), wired on the host in
+`[RpcService]`), wired on the host in
 `samples/GameServer/Examples.GameServer.Server/Ipc/GamePluginHost.cs`.
 
 ### Unity and the netstandard2.1 stack
@@ -348,7 +348,7 @@ dotnet add package DotBoxD.Services.All --prerelease
 `RpcMessagePackIpc` itself is a net10.0 convenience wrapper (in `DotBoxD.Pushdown.Services`); on the
 netstandard2.1 stack you compose the same `RpcHost` / `RpcPeer` primitives directly with the
 `DotBoxD.Transports.NamedPipes` (or `.Tcp`) transport and the `DotBoxD.Codecs.MessagePack` codec. The
-generated `[DotBoxDService]` proxy, dispatcher, and `Provide`/`Get` extensions are identical either way.
+generated `[RpcService]` proxy, dispatcher, and `Provide`/`Get` extensions are identical either way.
 
 ## Next steps
 

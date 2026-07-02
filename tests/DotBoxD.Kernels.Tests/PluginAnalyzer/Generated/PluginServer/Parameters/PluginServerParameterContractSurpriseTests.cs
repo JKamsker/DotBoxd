@@ -14,7 +14,7 @@ public sealed class PluginServerParameterContractSurpriseTests
 
             namespace Regression.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess
                 {
                     ValueTask<int> SumAsync(params int[] values);
@@ -22,7 +22,7 @@ public sealed class PluginServerParameterContractSurpriseTests
                     IMonsterControl Monsters { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IMonsterControl
                 {
                     int Sum(params int[] values);

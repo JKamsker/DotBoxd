@@ -29,9 +29,9 @@ internal static class DotBoxDInvocationExpressionLowerer
     {
         context.CancellationToken.ThrowIfCancellationRequested();
         if (context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken).Symbol is IMethodSymbol method &&
-            HasLocalAttribute(method))
+            HasNativeOnlyAttribute(method))
         {
-            throw new NotSupportedException("[Local] context members cannot be used in lowered server-side IR.");
+            throw new NotSupportedException("[NativeOnly] context members cannot be used in lowered server-side IR.");
         }
 
         if (DotBoxDHostBindingExpressionLowerer.TryLower(invocation, context, lowerExpression) is { } hostCall)
@@ -64,10 +64,10 @@ internal static class DotBoxDInvocationExpressionLowerer
         throw new NotSupportedException($"Unsupported plugin invocation '{invocation}'.");
     }
 
-    private static bool HasLocalAttribute(IMethodSymbol method)
+    private static bool HasNativeOnlyAttribute(IMethodSymbol method)
         => method.GetAttributes().Any(attribute => string.Equals(
             attribute.AttributeClass?.ToDisplayString(),
-            DotBoxDMetadataNames.LocalAttribute,
+            DotBoxDMetadataNames.NativeOnlyAttribute,
             StringComparison.Ordinal));
 
     private static DotBoxDExpressionModel LowerEquals(

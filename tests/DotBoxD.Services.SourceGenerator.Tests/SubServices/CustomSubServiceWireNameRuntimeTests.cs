@@ -17,13 +17,13 @@ public class CustomSubServiceWireNameRuntimeTests
 
         namespace Reviewed.CustomSubWire
         {
-            [DotBoxDService(Name = "sub-custom")]
+            [RpcService(Name = "sub-custom")]
             public interface ISub
             {
                 Task<int> CountAsync(int value, CancellationToken ct = default);
             }
 
-            [DotBoxDService(Name = "root-custom")]
+            [RpcService(Name = "root-custom")]
             public interface IRoot
             {
                 Task<ISub> OpenAsync(CancellationToken ct = default);

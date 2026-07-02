@@ -10,7 +10,7 @@ namespace DotBoxD.Kernels.Game.Server.Abstractions.Ipc;
 /// <see cref="IGamePluginControlService"/>: the PLUGIN provides it and the SERVER calls into it over the same
 /// connection (the bidirectional peer makes this one wire serve both directions).
 /// </summary>
-[DotBoxDService]
+[RpcService]
 public interface IPluginEventCallback
 {
     ValueTask OnEventAsync(string subscriptionId, ReadOnlyMemory<byte> projectedValue, CancellationToken ct = default);

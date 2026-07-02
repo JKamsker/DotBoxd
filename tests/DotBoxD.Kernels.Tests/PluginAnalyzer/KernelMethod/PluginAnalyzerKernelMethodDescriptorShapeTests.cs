@@ -29,7 +29,7 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
                     new("__dotboxd_kernel_method_arg_0__", DotBoxDGenerationNames.ManifestTypes.String)
                 ],
                 source,
-                "[HostCapability(\"sample.read.tags\", HostBindingEffect.HostStateRead | HostBindingEffect.Allocates)]\n" +
+                "[HostBinding(\"sample.read.tags\", SandboxEffect.Cpu | SandboxEffect.Alloc | SandboxEffect.HostStateRead)]\n" +
                     "        System.Collections.Generic.List<string> Tags(string id);",
                 "public bool HasTags(string id) => throw new System.NotSupportedException(\"metadata-only descriptor\");"),
             "ForgedListKernelMethodDescriptorSdk");
@@ -198,6 +198,7 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
                 StringComparison.Ordinal);
         return $$"""
             using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
             using DotBoxD.Services.Attributes;
 
             [assembly: global::DotBoxD.Abstractions.GeneratedKernelMethodDescriptorAttribute(
@@ -210,7 +211,7 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
 
             namespace Sdk
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorld
                 {
                     {{interfaceWorldMembers}}

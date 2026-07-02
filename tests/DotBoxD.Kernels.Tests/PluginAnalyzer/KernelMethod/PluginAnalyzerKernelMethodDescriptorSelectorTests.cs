@@ -105,6 +105,7 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
         var hash = KernelMethodDescriptorPayload.Hash(json);
         return $$"""
             using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
             using DotBoxD.Services.Attributes;
 
             [assembly: global::DotBoxD.Abstractions.GeneratedKernelMethodDescriptorAttribute(
@@ -126,10 +127,10 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
 
             namespace Sdk
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISecretWorld
                 {
-                    [HostCapability("sample.secret.read", HostBindingEffect.HostStateRead)]
+                    [HostBinding("sample.secret.read", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
                     int Secret(string id) => throw new System.NotSupportedException("metadata-only world");
                 }
 
@@ -206,15 +207,16 @@ public sealed partial class PluginAnalyzerKernelMethodDescriptorTests
     private static string ForeignRealSelectorSource()
         => """
             using DotBoxD.Abstractions;
+            using DotBoxD.Kernels.Sandbox;
             using DotBoxD.Services.Attributes;
             using Sdk;
 
             namespace Foreign;
 
-            [DotBoxDService]
+            [RpcService]
             public interface ISecretWorld
             {
-                [HostCapability("sample.secret.read", HostBindingEffect.HostStateRead)]
+                [HostBinding("sample.secret.read", SandboxEffect.Cpu | SandboxEffect.HostStateRead)]
                 int Secret(string id) => throw new System.NotSupportedException("metadata-only world");
             }
 

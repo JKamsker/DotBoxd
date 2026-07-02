@@ -18,7 +18,7 @@ public sealed class PluginServerSurfaceCollisionRegressionTests
 
             namespace ReservedHelper.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess
                 {
                     void RequireWorld();
@@ -85,22 +85,22 @@ public sealed class PluginServerSurfaceCollisionRegressionTests
 
             namespace CrossCategory.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IMonsterControl;
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ILeftWorld
                 {
                     int Value { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRightWorld
                 {
                     IMonsterControl Value { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess : ILeftWorld, IRightWorld;
             }
 
@@ -168,7 +168,7 @@ public sealed class PluginServerSurfaceCollisionRegressionTests
 
             namespace Overloads.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess
                 {
                     int Ping();
@@ -234,19 +234,19 @@ public sealed class PluginServerSurfaceCollisionRegressionTests
 
             namespace PropMethod.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ILeftWorld
                 {
                     int Status { get; }
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRightWorld
                 {
                     void Status();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess : ILeftWorld, IRightWorld;
             }
 

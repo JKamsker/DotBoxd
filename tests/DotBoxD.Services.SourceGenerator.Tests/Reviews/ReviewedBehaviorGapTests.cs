@@ -16,13 +16,13 @@ public class ReviewedBehaviorGapTests
 
             namespace Reviewed.GeneratedNameRejected.Sub
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     Task<int> AAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface Foo
                 {
                     Task<int> BAsync();
@@ -31,7 +31,7 @@ public class ReviewedBehaviorGapTests
 
             namespace Reviewed.GeneratedNameRejected.Root
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     ValueTask<Reviewed.GeneratedNameRejected.Sub.IFoo> OpenAsync();
@@ -77,7 +77,7 @@ public class ReviewedBehaviorGapTests
                     Task<int> FetchAsync(int id, CancellationToken ct = default);
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IDerived : IBaseSync, IBaseAsync
                 {
                 }
@@ -114,7 +114,7 @@ public class ReviewedBehaviorGapTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IGenericConstraints
                 {
                     TStruct StructEcho<TStruct>(TStruct value) where TStruct : struct;

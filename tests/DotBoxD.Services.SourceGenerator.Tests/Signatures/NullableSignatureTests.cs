@@ -16,7 +16,7 @@ public class NullableSignatureTests
 
             namespace Regress.NullableSignatures
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface INulls
                 {
                     Task<string?> EchoAsync(string? value);
@@ -56,7 +56,7 @@ public class NullableSignatureTests
 
             namespace Regress.NullableSignatures
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface INulls
                 {
                     [return: NotNullIfNotNull(nameof(value))]

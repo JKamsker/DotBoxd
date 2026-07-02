@@ -67,12 +67,12 @@ internal static class PluginAnalyzerDiagnostics
 
     public static readonly DiagnosticDescriptor LocalContextMemberRule = new(
         "DBXK116",
-        "Local context helper is not valid in server-side IR",
+        "NativeOnly context helper is not valid in server-side IR",
         "{0}",
         "DotBoxD.Kernels.Generation",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "[Local] marks server-authored context helpers that may only run natively; they cannot be "
+        description: "[NativeOnly] marks server-authored context helpers that may only run natively; they cannot be "
             + "used in lowered hook chains or server-extension bodies.",
         helpLinkUri: UnshippedRulesHelpLinkBase + "DBXK116");
 

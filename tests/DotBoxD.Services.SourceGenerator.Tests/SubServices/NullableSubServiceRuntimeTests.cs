@@ -16,13 +16,13 @@ public class NullableSubServiceRuntimeTests
 
         namespace Regress.NullableSubRuntime
         {
-            [DotBoxDService]
+            [RpcService]
             public interface ISub
             {
                 Task<int> CountAsync();
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRoot
             {
                 Task<ISub?> OpenAsync();
@@ -37,13 +37,13 @@ public class NullableSubServiceRuntimeTests
 
         namespace Regress.NullableSubRuntime
         {
-            [DotBoxDService]
+            [RpcService]
             public interface ISub
             {
                 Task<int> CountAsync();
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRoot
             {
                 ValueTask<ISub?> OpenAsync();

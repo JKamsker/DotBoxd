@@ -17,7 +17,7 @@ public sealed class PluginServerControlServiceTests
 
             namespace Precedence.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 
@@ -102,7 +102,7 @@ public sealed class PluginServerControlServiceTests
 
             namespace Renamed.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 
@@ -164,7 +164,7 @@ public sealed class PluginServerControlServiceTests
 
             namespace MissingWire.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 
@@ -228,7 +228,7 @@ public sealed class PluginServerControlServiceTests
 
             namespace RefControl.Game
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IGameWorldAccess;
             }
 

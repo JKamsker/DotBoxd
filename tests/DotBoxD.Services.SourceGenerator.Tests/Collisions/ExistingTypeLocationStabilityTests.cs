@@ -23,7 +23,7 @@ public class ExistingTypeLocationStabilityTests
 
             namespace Regress.StableCollision
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo
                 {
                     int Bar();

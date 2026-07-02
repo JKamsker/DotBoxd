@@ -20,7 +20,7 @@ public partial class SourceGenUtilityCoverageTests
 
             namespace Collide.Single
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IThing { int Bar(); }
             }
             """, path: "Service.cs");
@@ -54,7 +54,7 @@ public partial class SourceGenUtilityCoverageTests
 
             namespace Collide.Dup
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IThing { int Bar(); }
             }
             """, path: "Service.cs");
@@ -86,13 +86,13 @@ public partial class SourceGenUtilityCoverageTests
 
             namespace Collide.Many
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface IAaa { int A(); }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IMmm { int M(); }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IZzz { int Z(); }
             }
             """, path: "Services.cs");
@@ -130,13 +130,13 @@ public partial class SourceGenUtilityCoverageTests
                 // finally rejects ISub, which in turn stubs IRoot.OpenAsync.
                 public interface ISubAsync { }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     int Count();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<ISub> OpenAsync(int id, CancellationToken ct = default);
@@ -170,13 +170,13 @@ public partial class SourceGenUtilityCoverageTests
             {
                 public interface ISubAsync { }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     int Count();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     // No CancellationToken declared: the stub builder must synthesize a
@@ -217,7 +217,7 @@ public partial class SourceGenUtilityCoverageTests
                 public interface ILeft  { int Echo((int A, int B)[] values); }
                 public interface IRight { int Echo((int A, int B)[] values); }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight { }
             }
             """;
@@ -240,7 +240,7 @@ public partial class SourceGenUtilityCoverageTests
                 public interface ILeft  { int Echo((int A, int B)[] values); }
                 public interface IRight { int Echo((int X, int Y)[] values); }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight { }
             }
             """;
@@ -261,7 +261,7 @@ public partial class SourceGenUtilityCoverageTests
                 public interface ILeft  { Dictionary<string, (int A, int B)> Echo(); }
                 public interface IRight { Dictionary<string, (int X, int Y)> Echo(); }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IFoo : ILeft, IRight { }
             }
             """;

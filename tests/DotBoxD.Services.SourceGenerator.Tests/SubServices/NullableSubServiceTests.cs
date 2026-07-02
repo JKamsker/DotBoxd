@@ -16,13 +16,13 @@ public class NullableSubServiceTests
 
             namespace Regress.NullableSubService
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<ISub?> OpenAsync();
@@ -56,13 +56,13 @@ public class NullableSubServiceTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     int Count();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     Task<ISub?> OpenAsync();
@@ -96,13 +96,13 @@ public class NullableSubServiceTests
 
             namespace Regress.NullableValueTaskSubService
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     ValueTask<ISub?> OpenAsync();
@@ -136,13 +136,13 @@ public class NullableSubServiceTests
                 {
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     int Count();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     ValueTask<ISub?> OpenAsync();
@@ -176,13 +176,13 @@ public class NullableSubServiceTests
 
             namespace Regress.NullableSubServiceProperty
             {
-                [DotBoxDService]
+                [RpcService]
                 public interface ISub
                 {
                     Task<int> CountAsync();
                 }
 
-                [DotBoxDService]
+                [RpcService]
                 public interface IRoot
                 {
                     ISub? Maybe { get; }

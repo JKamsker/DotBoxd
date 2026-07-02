@@ -160,7 +160,7 @@ public sealed class ServerExtensionClientProxySurpriseTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteControl;
 
             [ServerExtension(typeof(IRemoteControl), "direct-local-collision")]
@@ -186,7 +186,7 @@ public sealed class ServerExtensionClientProxySurpriseTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteControl;
 
             [ServerExtension(typeof(IRemoteControl), "generic-direct")]
@@ -216,7 +216,7 @@ public sealed class ServerExtensionClientProxySurpriseTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteControl;
 
             [ServerExtension(typeof(IRemoteControl), "generic-method")]

@@ -189,7 +189,7 @@ public sealed class Fix_PAL_0014_Tests
     }
 }
 
-[DotBoxDService]
+[RpcService]
 public interface IAllocProbe
 {
     ValueTask<int> AddAsync(int value, CancellationToken cancellationToken = default);

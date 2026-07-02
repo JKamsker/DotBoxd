@@ -23,13 +23,13 @@ public sealed class Round6_DispatcherSubServiceDisposeThrowTests
 
         namespace Round6.SubDispose
         {
-            [DotBoxDService]
+            [RpcService]
             public interface ISubService : IAsyncDisposable
             {
                 Task<int> CountAsync();
             }
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRootService
             {
                 Task<ISubService> GetSubAsync(string label);

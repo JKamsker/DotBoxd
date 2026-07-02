@@ -50,7 +50,7 @@ public sealed class PluginServerInstallIdMismatchSurpriseTests
 
         namespace Sample.Game
         {
-            [DotBoxDService]
+            [RpcService]
             public interface IGameWorldAccess;
         }
 

@@ -248,7 +248,7 @@ public sealed partial class GeneratedRemoteHookChainFallbackTests
                 .Append(MetadataReference.CreateFromFile(typeof(SandboxModule).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(DotBoxD.Services.Peer.RpcPeer).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(
-                    typeof(DotBoxD.Services.Attributes.DotBoxDServiceAttribute).Assembly.Location))
+                    typeof(DotBoxD.Services.Attributes.RpcServiceAttribute).Assembly.Location))
                 .Append(MetadataReference.CreateFromFile(typeof(ChainAggroEvent).Assembly.Location))
                 .Concat(additionalReferences ?? []),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));

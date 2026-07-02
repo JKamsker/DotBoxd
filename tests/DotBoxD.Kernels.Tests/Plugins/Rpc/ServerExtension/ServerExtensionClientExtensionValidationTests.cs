@@ -14,7 +14,7 @@ public sealed class ServerExtensionClientExtensionValidationTests
 
         namespace Sample;
 
-        [DotBoxDService]
+        [RpcService]
         public interface IRemoteMonsterControl;
 
         public interface IMonsterKillerService
@@ -58,7 +58,7 @@ public sealed class ServerExtensionClientExtensionValidationTests
 
             namespace Sample;
 
-            [DotBoxDService]
+            [RpcService]
             public interface IRemoteMonsterControl;
 
             public interface IMonsterKillerService
