@@ -229,37 +229,6 @@ public interface IPluginEventValueWriter<in TEvent> : IPluginEventAdapter<TEvent
     void CopySandboxValues(TEvent e, SandboxValue[] destination, int destinationIndex);
 }
 
-public sealed record PluginMessage(string TargetId, string Message);
-
-public interface IPluginMessageSink
-{
-    void Send(string targetId, string message)
-        => SendAsync(targetId, message).AsTask().GetAwaiter().GetResult();
-
-    ValueTask SendAsync(string targetId, string message, CancellationToken cancellationToken = default);
-}
-
-public sealed class InMemoryPluginMessageSink : IPluginMessageSink
-{
-    private readonly List<PluginMessage> _messages = [];
-    private readonly IReadOnlyList<PluginMessage> _readOnlyMessages;
-
-    public InMemoryPluginMessageSink()
-        => _readOnlyMessages = _messages.AsReadOnly();
-
-    public IReadOnlyList<PluginMessage> Messages => _readOnlyMessages;
-
-    public void Send(string targetId, string message)
-        => _messages.Add(new PluginMessage(targetId, message));
-
-    public ValueTask SendAsync(string targetId, string message, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        _messages.Add(new PluginMessage(targetId, message));
-        return ValueTask.CompletedTask;
-    }
-}
-
 public sealed class HookContext
 {
     public HookContext(IPluginMessageSink messages, CancellationToken cancellationToken)

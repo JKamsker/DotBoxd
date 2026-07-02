@@ -21,6 +21,7 @@ public HookAttribute(string name, Type resultType)
 public HookContext(IPluginMessageSink messages, CancellationToken cancellationToken)
 public HostBindingEffect Effects { get; } = effects
 public InMemoryPluginMessageSink()
+public InMemoryPluginMessageSink(int maxMessages)
 public int Version { get; } = version
 public interface IEventKernel<TEvent>
 public interface IExtensibleControl
@@ -35,7 +36,7 @@ public interface IServerExtensionClientRegistry : IServerExtensionWireClient
 public interface IServerExtensionWireClient
 public interface IServiceControl : IExtensibleControl
 public IPluginMessageSink Messages { get; }
-public IReadOnlyList<PluginMessage> Messages => _readOnlyMessages
+public IReadOnlyList<PluginMessage> Messages
 public PluginAttribute(string id) => Id = id
 public PolymorphicHandleAttribute(string keyMember)
 public SandboxEffect Effects { get; } = effects
@@ -70,28 +71,28 @@ public string BindingId { get; } = bindingId
 public string BindingPrefix { get; }
 public string Capability { get; }
 public string Capability { get; } = capability
-public string? ContextFactory { get; set; }
 public string DescriptorHash { get; } = descriptorHash
 public string DescriptorPayload { get; } = descriptorPayload
 public string Discriminator { get; }
 public string Id { get; }
 public string Id { get; } = id
 public string KeyMember { get; }
-public string MethodName { get; } = methodName
 public string MethodMetadataName { get; } = methodMetadataName
+public string MethodName { get; } = methodName
 public string Name { get; }
 public string NormalizedSignature { get; } = normalizedSignature
+public string? ContextFactory { get; set; }
 public string? Id { get; }
 public string? Id { get; } = id
 public string? Name { get; } = name
 public THost Host<THost>() where THost : class
 public Type ContextType { get; } = contextType
-public Type? Context { get; set; }
-public Type? ControlService { get; set; }
 public Type ReceiverType { get; } = receiverType
 public Type ResultType { get; }
 public Type ServerType { get; } = serverType
 public Type Subtype { get; }
+public Type? Context { get; set; }
+public Type? ControlService { get; set; }
 public Type? Grafts { get; }
 public Type? ReceiverType { get; } = receiverType
 public Type? ServiceType { get; }

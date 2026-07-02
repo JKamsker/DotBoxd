@@ -61,4 +61,47 @@ public sealed class Fix_COR_0062_Tests
             sink.Messages is List<PluginMessage>,
             "Messages exposed the mutable backing List<PluginMessage> to callers.");
     }
+
+    [Fact]
+    public void Messages_returns_snapshot_instead_of_live_backing_view()
+    {
+        var sink = new InMemoryPluginMessageSink();
+        sink.Send("hud", "first");
+
+        var snapshot = sink.Messages;
+        sink.Send("hud", "second");
+
+        Assert.Single(snapshot);
+        Assert.Equal(2, sink.Messages.Count);
+    }
+
+    [Fact]
+    public void Send_rejects_messages_after_configured_capacity()
+    {
+        var sink = new InMemoryPluginMessageSink(maxMessages: 2);
+        sink.Send("hud", "first");
+        sink.Send("hud", "second");
+
+        var ex = Assert.Throws<InvalidOperationException>(() => sink.Send("hud", "third"));
+
+        Assert.Contains("capacity", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, sink.Messages.Count);
+    }
+
+    [Fact]
+    public async Task SendAsync_records_concurrent_messages_without_lost_writes()
+    {
+        var sink = new InMemoryPluginMessageSink(maxMessages: 128);
+
+        var tasks = Enumerable
+            .Range(0, 128)
+            .Select(i => Task.Run(() => sink.Send("hud", i.ToString())))
+            .ToArray();
+
+        await Task.WhenAll(tasks);
+
+        var messages = sink.Messages;
+        Assert.Equal(128, messages.Count);
+        Assert.Equal(128, messages.Select(m => m.Message).Distinct().Count());
+    }
 }
