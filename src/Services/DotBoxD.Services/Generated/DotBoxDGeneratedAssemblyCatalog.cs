@@ -108,7 +108,7 @@ internal static class DotBoxDGeneratedAssemblyCatalog
         var property = generatedType.GetProperty("Services", BindingFlags.Public | BindingFlags.Static);
         if (property?.GetValue(null) is IReadOnlyList<GeneratedService> legacyServices)
         {
-            var snapshot = GeneratedServiceCatalogSnapshot.Snapshot(legacyServices);
+            var snapshot = GeneratedServiceCatalogSnapshot.Snapshot(legacyServices, validateImplementationTypes: false);
             s_serviceCatalogs[assembly] = snapshot;
             return snapshot;
         }

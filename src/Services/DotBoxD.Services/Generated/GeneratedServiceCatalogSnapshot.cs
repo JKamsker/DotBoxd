@@ -3,17 +3,29 @@ namespace DotBoxD.Services.Generated;
 internal static class GeneratedServiceCatalogSnapshot
 {
     public static IReadOnlyList<GeneratedService> Snapshot(IReadOnlyList<GeneratedService> services)
+        => Snapshot(services, validateImplementationTypes: true);
+
+    public static IReadOnlyList<GeneratedService> Snapshot(
+        IReadOnlyList<GeneratedService> services,
+        bool validateImplementationTypes)
     {
         var snapshot = new GeneratedService[services.Count];
         for (var i = 0; i < services.Count; i++)
         {
-            snapshot[i] = Snapshot(services[i]);
+            GeneratedServiceMetadataValidator.Validate(services[i], nameof(services), validateImplementationTypes);
+            snapshot[i] = SnapshotCore(services[i]);
         }
 
         return Array.AsReadOnly(snapshot);
     }
 
     public static GeneratedService Snapshot(GeneratedService service)
+    {
+        GeneratedServiceMetadataValidator.Validate(service, nameof(service));
+        return SnapshotCore(service);
+    }
+
+    private static GeneratedService SnapshotCore(GeneratedService service)
         => service with { Methods = SnapshotMethods(service.Methods) };
 
     private static IReadOnlyList<GeneratedMethod> SnapshotMethods(IReadOnlyList<GeneratedMethod>? methods)
