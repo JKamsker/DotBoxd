@@ -5,6 +5,8 @@ using DotBoxD.Plugins.Analyzer.Analysis;
 
 internal static class RegistrationAccumulatorBatchFactory
 {
+    private const string FlushMemberName = "FlushAsync";
+
     public static RegistrationGenerationBatch CreateTargets(
         ImmutableArray<RegistrationAccumulatorTargetModel> targets)
     {
@@ -122,6 +124,14 @@ internal static class RegistrationAccumulatorBatchFactory
             }
 
             var target = matches[0];
+            if (property.Name == FlushMemberName)
+            {
+                diagnostics.Add(Diagnostic(
+                    root.Location,
+                    $"Registration root property '{root.ReceiverTypeName}.{property.Name}' collides with generated member '{FlushMemberName}'."));
+                continue;
+            }
+
             children.Add(new RegistrationChildAccumulatorModel(
                 property.Name,
                 property.DeclaringTypeName,
