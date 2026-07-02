@@ -133,7 +133,7 @@ public sealed partial class RemoteResultHookChainTests
     }
 
     [Fact]
-    public async Task Remote_RegisterLocal_result_request_receives_the_fire_token()
+    public async Task Remote_RegisterLocal_result_request_receives_timeout_token_by_default()
     {
         using var server = PluginServer.Create(defaultPolicy: TestPolicies.Chain());
         var localHandlers = new RemoteLocalHandlerRegistry();
@@ -152,7 +152,8 @@ public sealed partial class RemoteResultHookChainTests
         RemoteDamagePlugin.ConfigureLocal(registry);
         var result = await server.Hooks.FireAsync(new RemoteDamageContext(12), cts.Token);
 
-        Assert.Equal(cts.Token, observed);
+        Assert.True(observed.CanBeCanceled);
+        Assert.NotEqual(cts.Token, observed);
         Assert.Equal(24, result!.Value.Damage);
     }
 

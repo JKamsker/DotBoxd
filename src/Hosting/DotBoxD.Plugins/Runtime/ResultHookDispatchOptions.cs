@@ -11,7 +11,7 @@ public sealed class ResultHookDispatchOptions<TResult>
 
     public static ResultHookDispatchOptions<TResult> Default { get; } = new();
 
-    public TimeSpan RemoteHandlerTimeout { get; init; } = Timeout.InfiniteTimeSpan;
+    public TimeSpan RemoteHandlerTimeout { get; init; } = TimeSpan.FromSeconds(30);
 
     public TResult? RemoteTimeoutResult { get; init; }
 

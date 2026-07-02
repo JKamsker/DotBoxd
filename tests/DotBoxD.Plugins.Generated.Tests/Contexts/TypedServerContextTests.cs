@@ -142,7 +142,7 @@ public sealed class TypedServerContextTests
                 new TypedDamageContext("near", 3, 5));
 
             Assert.Null(miss);
-            Assert.Equal("hook-native", hit!.Value.Reason);
+            Assert.Equal("hook-native-cancelable", hit!.Value.Reason);
             Assert.Equal(16, hit.Value.Damage);
         }
     }

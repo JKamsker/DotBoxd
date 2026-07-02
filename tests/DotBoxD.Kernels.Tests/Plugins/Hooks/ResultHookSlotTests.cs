@@ -203,6 +203,37 @@ public sealed class ResultHookSlotTests
     }
 
     [Fact]
+    public void Default_remote_timeout_is_finite()
+    {
+        Assert.NotEqual(
+            Timeout.InfiniteTimeSpan,
+            ResultHookDispatchOptions<TestResult>.Default.RemoteHandlerTimeout);
+    }
+
+    [Fact]
+    public async Task Infinite_remote_timeout_is_explicit_opt_in()
+    {
+        var slot = NewSlot();
+        slot.AddDirect(
+            0,
+            async (_, _, cancellationToken) =>
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(25), cancellationToken);
+                return new TestResult(true, null, 5);
+            },
+            remote: true);
+        var options = new ResultHookDispatchOptions<TestResult>
+        {
+            RemoteHandlerTimeout = Timeout.InfiniteTimeSpan
+        };
+
+        var context = Context();
+        var result = await slot.FireAsync(new DamageCtx(10), context, context, options, CancellationToken.None);
+
+        Assert.Equal(5, result!.Value.Value);
+    }
+
+    [Fact]
     public async Task Wrong_result_type_is_reported_and_dispatch_continues()
     {
         var faults = new List<ResultHookFault>();
