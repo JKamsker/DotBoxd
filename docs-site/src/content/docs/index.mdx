@@ -31,10 +31,11 @@ import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
 ## What is DotBoxD?
 
 **A complete plugin system for .NET hosts.** .NET can't safely isolate arbitrary code in-process,
-so plugins live in a sidecar process behind IPC — safe, but every interaction becomes a
-round-trip. DotBoxD ships that whole architecture from one C# contract (transports, typed RPC,
-event pipelines) and fixes the latency: plugin logic runs *inside the host* as a validated,
-fuel-metered sandbox — restricted IR, never loaded C#/IL.
+so plugins live in a sidecar process behind IPC — safe, but the boundary costs you round-trips and
+an unwinnable filter API. DotBoxD ships that whole architecture from one C# contract (transports,
+typed RPC, event pipelines) and dissolves both costs: plugin-authored logic — filters,
+projections, batches — runs *inside the host* as a validated, fuel-metered sandbox — restricted
+IR, never loaded C#/IL.
 
 [Why DotBoxD? The dilemma, in three diagrams ›](/why-dotboxd/)
 
