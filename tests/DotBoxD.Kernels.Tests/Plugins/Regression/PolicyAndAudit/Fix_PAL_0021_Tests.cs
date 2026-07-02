@@ -12,6 +12,7 @@ namespace DotBoxD.Kernels.Tests.Plugins.Regression.PolicyAndAudit;
 /// allocating another copy, while still defending against mutable inputs (COR-0014).
 /// </summary>
 [Collection(AllocationMeasurementCollection.Name)]
+[Trait(AllocationMeasurementCollection.TraitName, AllocationMeasurementCollection.TraitValue)]
 public sealed class Fix_PAL_0021_Tests
 {
     private const int EmptySinkWarmupIterations = 1_000;

@@ -24,7 +24,8 @@ internal sealed record RegistrationRootAccumulatorModel(
 internal sealed record RegistrationRootPropertyModel(
     string Name,
     string DeclaringTypeName,
-    EquatableArray<string> AssignableReceiverTypeNames);
+    EquatableArray<string> AssignableReceiverTypeNames,
+    bool GetterAccessibleFromGeneratedAccumulator);
 
 internal sealed record RegistrationChildAccumulatorModel(
     string PropertyName,

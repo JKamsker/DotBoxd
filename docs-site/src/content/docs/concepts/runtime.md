@@ -121,9 +121,9 @@ Every run is bounded by a `SandboxPolicy`:
 
 ## Effects & capabilities
 
-Bindings (`DotBoxD.Kernels.Runtime`, `DotBoxD.Hosting.Http`) are the only way a kernel reaches outside
-pure computation, and only when the policy grants the matching capability. This is what makes
-author-supplied logic safe to run in-process. See
+Bindings (`DotBoxD.Kernels.Runtime`, `DotBoxD.Hosting.Http`, or [host service bindings](/concepts/host-bindings/))
+are the only way a kernel reaches outside pure computation, and only when the policy grants the
+matching capability. This is what makes author-supplied logic safe to run in-process. See
 [security/sandbox-caveats.md](/security/sandbox-caveats/) and the full specification under
 [`docs/Specs/`](https://github.com/JKamsker/DotBoxD/tree/main/docs/Specs).
 

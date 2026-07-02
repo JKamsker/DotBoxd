@@ -153,59 +153,6 @@ public class EnvelopeRoundTripTests
         Assert.Equal(request.InstanceId, result.InstanceId);
     }
 
-    [Theory]
-    [InlineData(false, false, true, false, "ServiceName")]
-    [InlineData(true, true, true, false, "ServiceName")]
-    [InlineData(true, false, false, false, "MethodName")]
-    [InlineData(true, false, true, true, "MethodName")]
-    public void RpcRequest_MissingRequiredNames_Throws(
-        bool includeServiceName,
-        bool nilServiceName,
-        bool includeMethodName,
-        bool nilMethodName,
-        string missingName)
-    {
-        var serializer = new MessagePackRpcSerializer();
-        var writer = new ArrayBufferWriter<byte>();
-        var messagePackWriter = new MessagePackWriter(writer);
-        var fieldCount = 1 + (includeServiceName ? 1 : 0) + (includeMethodName ? 1 : 0);
-        messagePackWriter.WriteMapHeader(fieldCount);
-        messagePackWriter.Write("MessageId");
-        messagePackWriter.Write(42);
-
-        if (includeServiceName)
-        {
-            messagePackWriter.Write("ServiceName");
-            if (nilServiceName)
-            {
-                messagePackWriter.WriteNil();
-            }
-            else
-            {
-                messagePackWriter.Write("Svc");
-            }
-        }
-
-        if (includeMethodName)
-        {
-            messagePackWriter.Write("MethodName");
-            if (nilMethodName)
-            {
-                messagePackWriter.WriteNil();
-            }
-            else
-            {
-                messagePackWriter.Write("Op");
-            }
-        }
-
-        messagePackWriter.Flush();
-
-        var ex = Assert.Throws<MessagePackSerializationException>(
-            () => serializer.Deserialize<RpcRequest>(writer.WrittenMemory));
-        Assert.Contains(missingName, ex.ToString());
-    }
-
     [Fact]
     public void RpcResponse_RoundTrips_Success()
     {

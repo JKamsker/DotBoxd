@@ -58,6 +58,35 @@ public sealed class RpcPeerInvokeAndCloseReviewTests
         Assert.Null(ex);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Invocation_WithPreCanceledToken_DoesNotStartTheReadLoop(bool useValueTask)
+    {
+        var (clientConnection, serverConnection) = InMemoryPipe.CreateConnectionPair();
+        await using var client = clientConnection;
+        await using var peer = RpcPeer.Over(
+            serverConnection,
+            NewSerializer(),
+            new RpcPeerOptions { RequestTimeout = TimeSpan.FromSeconds(5) });
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        if (useValueTask)
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                async () => await peer.InvokeValueAsync<int>("Service", "Method", cts.Token));
+        }
+        else
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                () => peer.InvokeAsync<int>("Service", "Method", cts.Token));
+        }
+
+        var ex = Record.Exception(() => peer.Provide((IServiceDispatcher)new NoopDispatcher()));
+        Assert.Null(ex);
+    }
+
     [Fact]
     public async Task CloseAsync_FailsFast_WhenTokenAlreadyCancelled()
     {

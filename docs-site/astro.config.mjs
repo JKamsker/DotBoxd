@@ -53,6 +53,7 @@ export default defineConfig({
             { label: 'Kernels (sandbox)', slug: 'concepts/kernels' },
             { label: 'Pushdown', slug: 'concepts/pushdown' },
             { label: 'Event pipelines', slug: 'concepts/event-pipelines' },
+            { label: 'Host bindings', slug: 'concepts/host-bindings' },
             { label: 'Kernel runtime', slug: 'concepts/runtime' },
             { label: 'Channels & transports', slug: 'concepts/channels-transports' },
           ],

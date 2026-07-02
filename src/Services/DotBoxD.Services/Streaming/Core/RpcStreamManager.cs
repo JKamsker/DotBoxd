@@ -36,6 +36,7 @@ internal sealed partial class RpcStreamManager
     internal int PendingCreditCount => _pendingCredits.Count;
     internal int CanceledInboundCount => _canceledInbound.Count;
     internal int CanceledInboundTrackingCount => _canceledInbound.TrackingCount;
+    internal int OutboundStreamIdCounterForTest { set => Volatile.Write(ref _outboundStreamIdCounter, value); }
     internal void DecrementActiveInbound() => Interlocked.Decrement(ref _activeInboundCount);
     internal Action<int, RpcStreamReceiver>? AfterInboundReceiverObservedForTest { get; set; }
     internal Action<int>? AfterReservedOutboundCreditObservedForTest { get; set; }

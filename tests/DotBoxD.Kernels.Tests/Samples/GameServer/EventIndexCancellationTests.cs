@@ -20,7 +20,7 @@ namespace DotBoxD.Kernels.Tests.Samples.GameServer;
 public sealed partial class EventIndexCancellationTests
 {
     [Fact]
-    public async Task Index_registry_skips_pre_canceled_publish()
+    public async Task Index_registry_pre_canceled_publish_throws_before_considering_entries()
     {
         var package = GeneratedAttackPackage();
         var subscription = Assert.Single(package.Manifest.Subscriptions);
@@ -36,9 +36,11 @@ public sealed partial class EventIndexCancellationTests
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
-        registry.Publish(new AttackEvent("player-1", "player-2", 7, 8), cancellation.Token);
+        var exception = Record.Exception(
+            () => registry.Publish(new AttackEvent("player-1", "player-2", 7, 8), cancellation.Token));
         await registry.DrainAsync();
 
+        Assert.IsType<OperationCanceledException>(exception);
         Assert.Equal(0, registry.Stats.Considered);
         Assert.Empty(sink.Messages);
     }

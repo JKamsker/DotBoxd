@@ -131,7 +131,10 @@ internal static class PluginServerWrapperEmitter
     }
 
     private static string ParameterList(PluginServerForwardedMethod method)
-        => string.Join(", ", method.Parameters.Select(static p => ParamsModifier(p) + p.Type + " @" + p.Name + p.DefaultClause));
+        => string.Join(
+            ", ",
+            method.Parameters.Select(static p =>
+                p.AttributePrefix + ParamsModifier(p) + p.Type + " @" + p.Name + p.DefaultClause));
 
     private static string ParamsModifier(PluginServerParameter parameter)
         => parameter.IsParams ? "params " : string.Empty;

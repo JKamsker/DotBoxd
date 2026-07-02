@@ -159,8 +159,7 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
     {
         try
         {
-            ValidateTarget(service, method);
-            _ensureStarted();
+            ValidateTargetAndStart(service, method, ct);
         }
         catch (Exception ex)
         {
@@ -220,8 +219,7 @@ internal sealed partial class RpcPeerOutboundInvoker : IRpcInvoker
         string? instanceId,
         CancellationToken ct)
     {
-        ValidateTarget(service, method);
-        _ensureStarted();
+        ValidateTargetAndStart(service, method, ct);
         var pending = ReservePendingRequest(ct);
         try
         {

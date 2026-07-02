@@ -27,7 +27,7 @@ internal static class RpcStreamErrorFrameReader
                 out var envelope,
                 out var payload) ||
             !payload.IsEmpty ||
-            streamId == 0 ||
+            streamId <= 0 ||
             type != MessageType.StreamError)
         {
             return false;

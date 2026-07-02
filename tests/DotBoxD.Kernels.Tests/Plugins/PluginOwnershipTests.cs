@@ -48,6 +48,21 @@ public sealed class PluginOwnershipTests
     }
 
     [Fact]
+    public async Task Server_dispose_revokes_and_unregisters_direct_installs()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: LongWallPluginPolicy());
+        var kernel = await server.InstallAsync(FireDamagePluginPackage.Create());
+        Assert.True((bool)server.Kernels.TryGet("fire-damage", out _));
+        Assert.Single(server.Kernels.Snapshot());
+
+        server.Dispose();
+
+        Assert.True((bool)kernel.IsRevoked);
+        Assert.False((bool)server.Kernels.TryGet("fire-damage", out _));
+        Assert.Empty(server.Kernels.Snapshot());
+    }
+
+    [Fact]
     public async Task Same_owner_reinstall_replaces_and_revokes_prior()
     {
         using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: LongWallPluginPolicy());

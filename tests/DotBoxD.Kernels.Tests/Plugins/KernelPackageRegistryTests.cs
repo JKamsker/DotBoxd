@@ -32,6 +32,18 @@ public sealed class KernelPackageRegistryTests
     }
 
     [Fact]
+    public void Resolve_rejects_explicit_factories_that_return_null()
+    {
+        KernelPackageRegistry.Register(typeof(NullFactoryKernel), () => null!);
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => KernelPackageRegistry.Resolve<NullFactoryKernel>());
+
+        Assert.Contains(typeof(NullFactoryKernel).FullName!, ex.Message, StringComparison.Ordinal);
+        Assert.Contains("returned null", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Explicit_registration_overrides_cached_convention_factory()
     {
         var convention = KernelPackageRegistry.Resolve<CachedConventionKernel>();
@@ -56,6 +68,8 @@ public sealed class KernelPackageRegistryTests
     }
 
     private sealed class ExplicitlyRegisteredKernel;
+
+    private sealed class NullFactoryKernel;
 
     private sealed class UngeneratedKernel;
 }

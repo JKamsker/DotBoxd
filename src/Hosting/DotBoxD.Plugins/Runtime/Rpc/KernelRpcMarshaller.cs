@@ -112,6 +112,7 @@ public static partial class KernelRpcMarshaller
 
         if (DtoShape(type) is { } shape)
         {
+            shape.RejectUnmatchedRequiredConstructor();
             var fields = shape.Fields;
             var values = new SandboxValue[fields.Count];
             for (var i = 0; i < fields.Count; i++)

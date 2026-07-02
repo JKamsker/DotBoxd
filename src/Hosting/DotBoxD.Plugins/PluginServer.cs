@@ -31,8 +31,14 @@ public sealed partial class PluginServer : IDisposable
         _executionMode = executionMode;
         Events = new PluginEventAdapterRegistry();
         Kernels = new KernelRegistry();
-        Hooks = new HookRegistry(messages, Events, Kernels, InstallChainPackage, onResultHookFault);
-        Subscriptions = new SubscriptionRegistry(messages, Events, Kernels, InstallChainPackage, onSubscriptionFault);
+        Hooks = new HookRegistry(messages, Events, Kernels, InstallChainPackage, onResultHookFault, ThrowIfDisposed);
+        Subscriptions = new SubscriptionRegistry(
+            messages,
+            Events,
+            Kernels,
+            InstallChainPackage,
+            onSubscriptionFault,
+            ThrowIfDisposed);
     }
 
     // Synchronous installer the hook pipelines use to wire analyzer-generated chain packages at
@@ -100,7 +106,7 @@ public sealed partial class PluginServer : IDisposable
             .ToHashSet(StringComparer.Ordinal);
         if (package.Manifest.RpcEntrypoint is null)
         {
-            required.UnionWith(PluginManifestCapabilityValidator.NonBindingRequiredCapabilities(package.Manifest));
+            required.UnionWith(PluginManifestCapabilityValidator.ModuleNonBindingRequiredCapabilities(package.Module));
         }
 
         return required.Order(StringComparer.Ordinal).ToArray();
@@ -114,6 +120,8 @@ public sealed partial class PluginServer : IDisposable
 
     public PluginServer RegisterEventAdapter<TEvent>(IPluginEventAdapter<TEvent> adapter)
     {
+        ArgumentNullException.ThrowIfNull(adapter);
+        ThrowIfDisposed();
         Hooks.EnsureCanRegister(adapter);
         Subscriptions.EnsureCanRegister(adapter);
         Events.Register(adapter);
@@ -250,7 +258,12 @@ public sealed partial class PluginServer : IDisposable
             // into a disposed SandboxHost; revocation cancels each kernel's execution token first.
             foreach (var kernel in Kernels.Snapshot())
             {
-                kernel.Revoke();
+                var removed = Kernels.Remove(kernel);
+                if (removed is not null)
+                {
+                    RemoveKernelReferences(removed);
+                    ClearServerExtensionRegistrations(removed.Manifest.PluginId);
+                }
             }
 
             foreach (var pool in KernelPoolSnapshot())

@@ -10,11 +10,7 @@ internal sealed partial class RpcStreamManager
 {
     public RpcStreamReceiver GetRegisteredInbound(RpcStreamHandle handle)
     {
-        if (handle.StreamId == 0)
-        {
-            throw new ServiceProtocolException("Stream id must not be zero.");
-        }
-
+        RpcStreamValidation.ValidateStreamId(handle.StreamId);
         RpcStreamValidation.ValidateKind(handle.Kind);
         if (!_receivers.TryGetValue(handle.StreamId, out var existing))
         {
@@ -92,11 +88,7 @@ internal sealed partial class RpcStreamManager
 
     private RpcStreamReceiver RegisterInbound(RpcStreamHandle handle, CancellationToken ct)
     {
-        if (handle.StreamId == 0)
-        {
-            throw new ServiceProtocolException("Stream id must not be zero.");
-        }
-
+        RpcStreamValidation.ValidateStreamId(handle.StreamId);
         RpcStreamValidation.ValidateKind(handle.Kind);
         var receiver = new RpcStreamReceiver(this, handle);
         lock (_inboundGate)

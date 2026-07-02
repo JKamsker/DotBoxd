@@ -21,7 +21,7 @@ internal sealed class EventQueryDispatcher<TEvent>(MemberValueReader reader)
     private volatile Snapshot _snapshot = Snapshot.Empty;
 
     public long EventsObserved => Interlocked.Read(ref _eventsObserved);
-
+    public bool HasSubscriptions => !_snapshot.IsEmpty;
     public EventQuerySubscriptionHandle Register(
         EventQueryDocument document,
         EventQueryPlan plan,
@@ -47,6 +47,7 @@ internal sealed class EventQueryDispatcher<TEvent>(MemberValueReader reader)
 
     public async ValueTask PublishAsync(TEvent e, HookContext context)
     {
+        context.CancellationToken.ThrowIfCancellationRequested();
         Interlocked.Increment(ref _eventsObserved);
         var snapshot = _snapshot;
         if (snapshot.IsEmpty || e is null)

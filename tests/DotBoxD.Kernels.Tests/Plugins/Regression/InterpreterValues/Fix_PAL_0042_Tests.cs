@@ -33,6 +33,7 @@ namespace DotBoxD.Kernels.Tests.Plugins.Regression.InterpreterValues;
 /// instance. The assertion is RED while every frame allocates its own dictionary.
 /// </summary>
 [Collection(AllocationMeasurementCollection.Name)]
+[Trait(AllocationMeasurementCollection.TraitName, AllocationMeasurementCollection.TraitValue)]
 public sealed class Fix_PAL_0042_Tests
 {
     // Two iteration counts whose difference is large enough that one allocation

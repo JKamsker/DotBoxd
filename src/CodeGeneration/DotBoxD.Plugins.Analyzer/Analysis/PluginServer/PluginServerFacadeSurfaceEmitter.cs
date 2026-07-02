@@ -119,7 +119,10 @@ internal static class PluginServerFacadeSurfaceEmitter
             "    ",
             "Returns the installed plugin id for a server extension service type.");
         builder.AppendLine("    public string PluginId<TService>() where TService : class");
-        builder.AppendLine("        => _serverExtensions.TryGetValue(typeof(TService), out var pluginId) ? pluginId : throw new global::System.InvalidOperationException($\"Server extension '{typeof(TService).FullName}' has not been registered.\");");
+        builder.AppendLine("    {");
+        builder.AppendLine("        ThrowIfDisposed();");
+        builder.AppendLine("        return _serverExtensions.TryGetValue(typeof(TService), out var pluginId) ? pluginId : throw new global::System.InvalidOperationException($\"Server extension '{typeof(TService).FullName}' has not been registered.\");");
+        builder.AppendLine("    }");
         PluginServerXmlDocumentation.AppendSummary(
             builder,
             "    ",
@@ -132,6 +135,7 @@ internal static class PluginServerFacadeSurfaceEmitter
             "Installs the package produced by the factory at most once and returns the installed plugin id.");
         builder.AppendLine("    public async global::System.Threading.Tasks.Task<string> EnsureAnonymousKernelAsync(string pluginId, global::System.Func<global::DotBoxD.Plugins.PluginPackage> factory, global::System.Threading.CancellationToken cancellationToken = default)");
         builder.AppendLine("    {");
+        builder.AppendLine("        ThrowIfDisposed();");
         builder.AppendLine("        while (true)");
         builder.AppendLine("        {");
         builder.AppendLine("            var created = false;");
@@ -169,6 +173,7 @@ internal static class PluginServerFacadeSurfaceEmitter
         builder.AppendLine("    {");
         builder.AppendLine("        try");
         builder.AppendLine("        {");
+        builder.AppendLine("            ThrowIfDisposed();");
         builder.AppendLine("            var installedId = await InstallServerExtensionPackageAsync(factory(), default).ConfigureAwait(false);");
         builder.AppendLine("            if (!global::System.StringComparer.Ordinal.Equals(installedId, pluginId))");
         builder.AppendLine("            {");
@@ -188,6 +193,7 @@ internal static class PluginServerFacadeSurfaceEmitter
         builder.AppendLine("        global::System.Threading.Tasks.Task<string>? installTask = null;");
         builder.AppendLine("        try");
         builder.AppendLine("        {");
+        builder.AppendLine("            ThrowIfDisposed();");
         builder.AppendLine("            installTask = install.Value;");
         builder.AppendLine("            var installedId = await installTask.WaitAsync(cancellationToken).ConfigureAwait(false);");
         builder.AppendLine("            return installedId;");
@@ -207,20 +213,37 @@ internal static class PluginServerFacadeSurfaceEmitter
         builder.AppendLine("    private async global::System.Threading.Tasks.ValueTask<string> InstallPluginPackageAsync(global::DotBoxD.Plugins.PluginPackage package, global::System.Threading.CancellationToken cancellationToken = default)");
         builder.AppendLine("    {");
         builder.AppendLine("        var pluginId = await RequireControl().InstallPluginAsync(global::DotBoxD.Plugins.Json.PluginPackageJsonSerializer.Export(package), cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine("        RequireInstalledPackageId(package, pluginId);");
         builder.AppendLine("        _installedPluginIds.Add(package.Manifest.PluginId);");
         builder.AppendLine("        return pluginId;");
         builder.AppendLine("    }");
         builder.AppendLine("    private async global::System.Threading.Tasks.ValueTask<string> InstallSubscriptionPackageAsync(global::DotBoxD.Plugins.PluginPackage package, global::System.Threading.CancellationToken cancellationToken = default)");
         builder.AppendLine("    {");
         builder.AppendLine("        var pluginId = await RequireControl().InstallSubscriptionAsync(global::DotBoxD.Plugins.Json.PluginPackageJsonSerializer.Export(package), cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine("        RequireInstalledPackageId(package, pluginId);");
         builder.AppendLine("        _installedPluginIds.Add(package.Manifest.PluginId);");
         builder.AppendLine("        return pluginId;");
         builder.AppendLine("    }");
         builder.AppendLine("    private async global::System.Threading.Tasks.ValueTask<string> InstallServerExtensionPackageAsync(global::DotBoxD.Plugins.PluginPackage package, global::System.Threading.CancellationToken cancellationToken = default)");
         builder.AppendLine("    {");
         builder.AppendLine("        var pluginId = await RequireControl().InstallServerExtensionAsync(global::DotBoxD.Plugins.Json.PluginPackageJsonSerializer.Export(package), cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine("        RequireInstalledPackageId(package, pluginId);");
         builder.AppendLine("        _installedPluginIds.Add(package.Manifest.PluginId);");
         builder.AppendLine("        return pluginId;");
+        builder.AppendLine("    }");
+        builder.AppendLine("    private static void RequireInstalledPackageId(global::DotBoxD.Plugins.PluginPackage package, string pluginId)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        var manifestId = package.Manifest.PluginId;");
+        builder.AppendLine("        if (global::System.StringComparer.Ordinal.Equals(pluginId, manifestId))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return;");
+        builder.AppendLine("        }");
+        builder.AppendLine("        var callbackId = package.CallbackSubscriptionId;");
+        builder.AppendLine("        if (callbackId is not null && global::System.StringComparer.Ordinal.Equals(pluginId, callbackId))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return;");
+        builder.AppendLine("        }");
+        builder.AppendLine("        throw new global::System.InvalidOperationException($\"Installed package id '{pluginId}' did not match manifest id '{manifestId}'.\");");
         builder.AppendLine("    }");
         builder.AppendLine("    private void RequireInstalledKernel<TKernel>(string pluginId)");
         builder.AppendLine("    {");

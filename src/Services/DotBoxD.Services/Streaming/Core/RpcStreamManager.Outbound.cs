@@ -13,7 +13,7 @@ internal sealed partial class RpcStreamManager
         while (true)
         {
             var streamId = Interlocked.Increment(ref _outboundStreamIdCounter);
-            if (streamId == 0 || _senders.ContainsKey(streamId))
+            if (streamId <= 0 || _senders.ContainsKey(streamId))
             {
                 continue;
             }
@@ -27,11 +27,7 @@ internal sealed partial class RpcStreamManager
 
     internal void ReserveOutbound(int streamId)
     {
-        if (streamId == 0)
-        {
-            throw new ServiceProtocolException("Stream id must not be zero.");
-        }
-
+        RpcStreamValidation.ValidateStreamId(streamId);
         if (_senders.ContainsKey(streamId) || !_reservedOutbound.TryAdd(streamId, 0))
         {
             throw new ServiceProtocolException($"Duplicate outbound stream id '{streamId}'.");
@@ -159,7 +155,9 @@ internal sealed partial class RpcStreamManager
     public bool TryAddCredit(ReadOnlyMemory<byte> frame)
     {
         if (!MessageFramer.TryReadFrameHeader(frame, out var streamId, out _) ||
+            streamId == 0 ||
             !RpcRawFrame.TryReadInt32(frame, out var count) ||
+            streamId == 0 ||
             count <= 0)
         {
             return false;

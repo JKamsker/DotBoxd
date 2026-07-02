@@ -46,7 +46,7 @@ public static class MessageFramer
     {
         MessageFrameReader.ThrowIfUndefinedMessageType(type);
 
-        var totalLength = HeaderSize + payload.Length;
+        var totalLength = MessageFrameReader.GetOutgoingFrameLength(payload.Length);
         var span = writer.GetSpan(totalLength);
 
         BinaryPrimitives.WriteInt32LittleEndian(span.Slice(0, 4), totalLength);
@@ -68,7 +68,7 @@ public static class MessageFramer
     {
         MessageFrameReader.ThrowIfUndefinedMessageType(type);
 
-        var totalLength = HeaderSize + payload.Length;
+        var totalLength = MessageFrameReader.GetOutgoingFrameLength(payload.Length);
         var result = Payload.Rent(totalLength);
         var span = result.Memory.Span;
 

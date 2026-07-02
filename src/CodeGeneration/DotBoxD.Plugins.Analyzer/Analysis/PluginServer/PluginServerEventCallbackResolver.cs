@@ -35,7 +35,7 @@ internal static class PluginServerEventCallbackResolver
         Compilation compilation,
         INamedTypeSymbol worldType)
     {
-        var worldNamespace = worldType.ContainingNamespace.ToDisplayString();
+        var worldNamespace = PluginServerFacadeNameFormatter.NamespaceMetadataName(worldType.ContainingNamespace);
         var callback = compilation.GetTypeByMetadataName(worldNamespace + ".Ipc.IPluginEventCallback");
         if (callback is null ||
             callback.TypeKind != TypeKind.Interface ||

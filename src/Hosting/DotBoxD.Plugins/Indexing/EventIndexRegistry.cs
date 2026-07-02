@@ -107,10 +107,7 @@ public sealed partial class EventIndexRegistry
     /// </summary>
     public void Publish<TEvent>(TEvent value, CancellationToken cancellationToken = default)
     {
-        if (cancellationToken.IsCancellationRequested)
-        {
-            return;
-        }
+        cancellationToken.ThrowIfCancellationRequested();
 
         // Lock-free lookup: ConcurrentDictionary makes the read safe against Register's concurrent create,
         // and the channel's Snapshot() already tolerates a registration adding to it mid-publish.

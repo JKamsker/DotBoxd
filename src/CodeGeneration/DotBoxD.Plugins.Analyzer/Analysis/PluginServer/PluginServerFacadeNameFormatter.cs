@@ -63,6 +63,20 @@ internal static class PluginServerFacadeNameFormatter
     internal static string TypeName(ITypeSymbol type)
         => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
+    internal static string NamespaceMetadataName(INamespaceSymbol @namespace)
+    {
+        if (@namespace.IsGlobalNamespace)
+        {
+            return string.Empty;
+        }
+
+        var parent = NamespaceMetadataName(@namespace.ContainingNamespace);
+        return string.IsNullOrEmpty(parent) ? @namespace.Name : parent + "." + @namespace.Name;
+    }
+
+    internal static string HintNamePart(string value)
+        => value.Replace("@", string.Empty);
+
     internal static string AccessibilityText(Accessibility accessibility)
         => accessibility switch
         {

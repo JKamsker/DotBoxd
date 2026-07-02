@@ -58,7 +58,11 @@ safe-outputs:
     max: 1
     if-no-changes: "ignore"
     protected-files: fallback-to-issue
-    github-token-for-extra-empty-commit: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
+    # Full token override: open the PR as the PAT's user (not github-actions[bot]) so
+    # its CI runs execute without manual approval. A PAT-created PR is not subject to
+    # recursion-prevention, so CI triggers directly — no extra empty commit needed.
+    # Requires the PAT to have Contents:R/W + Pull requests:R/W (verified via _probe-ci-token).
+    github-token: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
   dispatch-workflow:
     workflows: [library-surprise-fix-dispatcher]
     max: 1

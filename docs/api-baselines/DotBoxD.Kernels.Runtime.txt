@@ -55,6 +55,7 @@ public static SandboxType TypeList(SandboxType itemType) => SandboxType.List(ite
 public static SandboxType TypeMap(SandboxType keyType, SandboxType valueType) => SandboxType.Map(keyType, valueType)
 public static SandboxType TypeRecord(SandboxType[] fieldTypes) => SandboxType.Record(fieldTypes)
 public static SandboxType TypeScalar(string name)
+public static SandboxType[] CreateMeteredTypeArray(SandboxContext context, int count)
 public static SandboxType[] CreateTypeArray(int count)
 public static SandboxValue AbsI32(SandboxValue value)
 public static SandboxValue Add(SandboxValue left, SandboxValue right) => SandboxNumericOperations.Add(left, right)

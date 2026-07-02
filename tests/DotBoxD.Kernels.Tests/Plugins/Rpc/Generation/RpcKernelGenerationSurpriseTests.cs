@@ -144,6 +144,22 @@ public sealed partial class RpcKernelGenerationTests
     }
 
     [Fact]
+    public async Task Server_extension_wire_invoke_observes_pre_canceled_token_before_decoding_arguments()
+    {
+        var package = PluginAnalyzerGeneratedPackageFactory.Create(
+            ControlStringSource,
+            "Sample.ControlStringPluginPackage");
+
+        using var server = PluginServer.Create(defaultPolicy: PurePolicy());
+        var kernel = await server.InstallServerExtensionAsync(package);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => kernel.InvokeServerExtensionRpcAsync([0x80], cts.Token).AsTask());
+    }
+
+    [Fact]
     public void Server_extension_reports_mixed_string_addition()
     {
         var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics("""

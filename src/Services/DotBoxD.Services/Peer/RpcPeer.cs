@@ -189,6 +189,11 @@ public sealed partial class RpcPeer : IAsyncDisposable, IRpcInvoker
                 throw new ObjectDisposedException(nameof(RpcPeer));
             }
 
+            if (_closed != 0)
+            {
+                throw new ServiceConnectionException("Connection closed.");
+            }
+
             var serviceType = typeof(TService);
             if (_proxyCache is not null && _proxyCache.TryGetValue(serviceType, out var cached))
             {

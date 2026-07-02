@@ -173,6 +173,8 @@ public sealed class StreamConnection : IRpcFrameChannel
     /// </summary>
     public async Task CloseAsync(CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
+
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
             return;

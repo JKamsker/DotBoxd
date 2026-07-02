@@ -96,6 +96,44 @@ public sealed class VerifierShapeHardeningTests
             d.Message.Contains("long instruction sequences", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Verifier_rejects_null_sandbox_type_record_fields()
+    {
+        var result = await VerifierTestHelpers.VerifyAsync(VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
+            var fn = DefineFunction(type);
+            var il = fn.GetILGenerator();
+            var typeArray = il.DeclareLocal(typeof(SandboxType[]));
+            var resultValue = il.DeclareLocal(typeof(SandboxValue));
+            EmitEnterCall(il);
+            EmitChargeFuel(il);
+            il.Emit(OpCodes.Ldc_I4_1);
+            il.Emit(OpCodes.Call, RuntimeMethod(nameof(CompiledRuntime.CreateTypeArray)));
+            il.Emit(OpCodes.Stloc, typeArray);
+            il.Emit(OpCodes.Ldloc, typeArray);
+            il.Emit(OpCodes.Ldc_I4_0);
+            il.Emit(OpCodes.Ldnull);
+            il.Emit(OpCodes.Stelem_Ref);
+            EmitChargeFuel(il);
+            il.Emit(OpCodes.Ldloc, typeArray);
+            il.Emit(OpCodes.Call, RuntimeMethod(nameof(CompiledRuntime.TypeRecord)));
+            il.Emit(OpCodes.Pop);
+            il.Emit(OpCodes.Ldc_I4_0);
+            il.Emit(OpCodes.Call, RuntimeMethod(nameof(CompiledRuntime.I32)));
+            il.Emit(OpCodes.Stloc, resultValue);
+            EmitExitCall(il);
+            il.Emit(OpCodes.Ldloc, resultValue);
+            il.Emit(OpCodes.Ret);
+            EmitExecuteCalling(type, fn);
+        }));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d =>
+            d.Code == "V-STACK-TYPE" &&
+            d.Message.Contains("SandboxType", StringComparison.Ordinal) &&
+            d.Message.Contains("null", StringComparison.Ordinal));
+    }
+
     private static MethodBuilder DefineExecute(TypeBuilder type)
         => type.DefineMethod(
             "Execute",
@@ -152,4 +190,7 @@ public sealed class VerifierShapeHardeningTests
         il.Emit(OpCodes.Ldarg_0);
         il.Emit(OpCodes.Call, typeof(CompiledRuntime).GetMethod(nameof(Kernels.Runtime.CompiledRuntime.ExitCall))!);
     }
+
+    private static MethodInfo RuntimeMethod(string name)
+        => typeof(CompiledRuntime).GetMethod(name) ?? throw new MissingMethodException(nameof(CompiledRuntime), name);
 }

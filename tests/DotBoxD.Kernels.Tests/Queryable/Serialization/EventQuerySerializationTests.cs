@@ -1,3 +1,4 @@
+using System.Text.Json;
 using DotBoxD.Queryable.Ast;
 using DotBoxD.Queryable.Serialization;
 using DotBoxD.Queryable.Translation;
@@ -28,6 +29,32 @@ public sealed class EventQuerySerializationTests
         Assert.Equal("DotBoxD.Kernels.Tests.Queryable.AttackTestEvent", restored.EventName);
         Assert.Equal(QueryFilterKind.And, restored.Filter.Kind);
         Assert.Equal(QueryProjectionKind.Construct, restored.Projection.Kind);
+    }
+
+    [Fact]
+    public void Missing_filter_and_projection_default_to_match_all_identity()
+    {
+        var restored = EventQueryJson.Deserialize("{\"event\":\"E\"}");
+
+        Assert.Equal("E", restored.EventName);
+        Assert.Equal(QueryFilterKind.MatchAll, restored.Filter.Kind);
+        Assert.Equal(QueryProjectionKind.Identity, restored.Projection.Kind);
+        Assert.Equal(64, QueryFingerprint.Compute(restored).Length);
+    }
+
+    [Theory]
+    [InlineData("{\"event\":\"E\",\"filter\":null}", "filter")]
+    [InlineData("{\"event\":\"E\",\"projection\":null}", "projection")]
+    [InlineData("{\"event\":\"E\",\"filter\":null,\"projection\":null}", "filter")]
+    public void Explicit_null_document_subtrees_are_rejected(string json, string property)
+    {
+        var exception = Record.Exception(() => EventQueryJson.Deserialize(json));
+
+        Assert.NotNull(exception);
+        Assert.True(exception is JsonException or InvalidOperationException);
+        Assert.Contains("EventQueryDocument", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(property, exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("null", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

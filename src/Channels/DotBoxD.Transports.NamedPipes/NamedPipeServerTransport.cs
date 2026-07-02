@@ -29,8 +29,10 @@ public sealed class NamedPipeServerTransport : IServerTransport
         int maxMessageSize = MessageFramer.MaxMessageSize)
     {
         _pipeName = ValidatePipeName(pipeName);
-        _maxAllowedServerInstances = ValidateMaxAllowedServerInstances(maxAllowedServerInstances);
-        _maxMessageSize = ValidateMaxMessageSize(maxMessageSize);
+        _maxAllowedServerInstances = ValidateMaxAllowedServerInstances(
+            maxAllowedServerInstances,
+            nameof(maxAllowedServerInstances));
+        _maxMessageSize = ValidateMaxMessageSize(maxMessageSize, nameof(maxMessageSize));
     }
     /// <summary>
     /// Inter-read idle timeout applied to accepted connections' in-progress frame body reads (slow-loris
@@ -264,7 +266,7 @@ public sealed class NamedPipeServerTransport : IServerTransport
         return pipeName;
     }
 
-    private static int ValidateMaxAllowedServerInstances(int value)
+    private static int ValidateMaxAllowedServerInstances(int value, string paramName)
     {
         if (value == NamedPipeServerStream.MaxAllowedServerInstances)
         {
@@ -274,7 +276,7 @@ public sealed class NamedPipeServerTransport : IServerTransport
         if (value < 1 || value > MaxSpecificServerInstances)
         {
             throw new ArgumentOutOfRangeException(
-                nameof(value),
+                paramName,
                 value,
                 $"Maximum server instances must be {NamedPipeServerStream.MaxAllowedServerInstances} or between 1 and {MaxSpecificServerInstances}.");
         }
@@ -282,12 +284,12 @@ public sealed class NamedPipeServerTransport : IServerTransport
         return value;
     }
 
-    private static int ValidateMaxMessageSize(int value)
+    private static int ValidateMaxMessageSize(int value, string paramName)
     {
         if (value < MessageFramer.HeaderSize)
         {
             throw new ArgumentOutOfRangeException(
-                nameof(value),
+                paramName,
                 value,
                 "Maximum message size must be at least the DotBoxD header size.");
         }

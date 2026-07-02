@@ -100,6 +100,7 @@ public static partial class KernelRpcMarshaller
 
         if (DtoShape(type) is { } shape)
         {
+            shape.RejectUnmatchedRequiredConstructor();
             if (rejectNullableReferences)
             {
                 RejectNullableReferenceDtoShape(type, shape);
