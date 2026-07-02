@@ -87,11 +87,24 @@ internal sealed class QueueDoctor
             errors.Add($"{finding.Id} has invalid priority '{finding.Priority}'.");
         }
 
+        ValidateFindingId(finding, errors);
         ValidateAreaAndFilename(finding, errors);
         ValidateDedupKey(finding, dedupKeys, errors);
         if (string.IsNullOrWhiteSpace(finding.Body))
         {
             errors.Add($"{finding.Id} has an empty body.");
+        }
+    }
+
+    private static void ValidateFindingId(Finding finding, List<string> errors)
+    {
+        try
+        {
+            AgentQueuePaths.ValidateFindingId(finding.Id);
+        }
+        catch (AgentQueueException ex)
+        {
+            errors.Add(ex.Message);
         }
     }
 
@@ -133,7 +146,17 @@ internal sealed class QueueDoctor
 
     private void CheckEvents(Finding finding, List<string> errors)
     {
-        string path = paths.EventFileFor(finding.Id);
+        string path;
+        try
+        {
+            path = paths.EventFileFor(finding.Id);
+        }
+        catch (AgentQueueException ex)
+        {
+            errors.Add(ex.Message);
+            return;
+        }
+
         if (!File.Exists(path))
         {
             errors.Add($"{finding.Id} is missing event file {paths.ToDisplayPath(path)}.");

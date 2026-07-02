@@ -45,6 +45,50 @@ public sealed class AgentQueueMutationHardeningTests
             harness.LastOutput);
     }
 
+    [Fact]
+    public void MutationRejectsFindingIdThatEscapesEventDirectory()
+    {
+        using AgentQueueHarness harness = new();
+        Assert.Equal(0, harness.Run("init"));
+        string findingPath = Path.Combine(
+            harness.Root,
+            "docs",
+            "agent-loop",
+            "findings",
+            "COR-0001-malicious.md");
+        File.WriteAllText(findingPath, """
+            ---
+            id: ../outside
+            area: correctness
+            status: open
+            priority: high
+            title: Malicious id
+            dedup_key: correctness/malicious/id
+            created_at: 2026-06-12T10:00:00.0000000+00:00
+            created_by: attacker
+            created_commit:
+            updated_at: 2026-06-12T10:00:00.0000000+00:00
+            claimed_by:
+            claimed_at:
+            claim_branch:
+            fixed_by:
+            fixed_at:
+            fixed_commit:
+            verified_by:
+            verified_at:
+            verified_commit:
+            duplicate_of:
+            ---
+
+            # malicious
+            """);
+
+        Assert.Equal(2, harness.Run("claim", "../outside", "--agent", "fixer"));
+
+        Assert.Contains("Invalid finding id '../outside'.", harness.LastError);
+        Assert.False(File.Exists(Path.Combine(harness.Root, "docs", "agent-loop", "outside.jsonl")));
+    }
+
     private static void AppendExampleFinding(AgentQueueHarness harness, string priority)
     {
         string bodyFile = harness.WriteBody("## Claim" + Environment.NewLine + "Example.");

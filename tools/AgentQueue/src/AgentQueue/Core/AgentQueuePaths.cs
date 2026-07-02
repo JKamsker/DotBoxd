@@ -47,9 +47,53 @@ internal sealed class AgentQueuePaths
     public string QueueFileFor(AgentArea area) =>
         Path.Combine(QueuesDirectory, area.QueueFile);
 
-    public string EventFileFor(string id) =>
-        Path.Combine(EventsDirectory, id + ".jsonl");
+    public string EventFileFor(string id)
+    {
+        string canonicalId = ValidateFindingId(id);
+        string path = Path.GetFullPath(Path.Combine(EventsDirectory, canonicalId + ".jsonl"));
+        if (!IsInsideDirectory(EventsDirectory, path))
+        {
+            throw new AgentQueueException($"Invalid finding id '{id}'.", ExitCodes.ValidationError);
+        }
+
+        return path;
+    }
 
     public string ToDisplayPath(string path) =>
         Path.GetRelativePath(RootDirectory, path).Replace('\\', '/');
+
+    public static string ValidateFindingId(string id)
+    {
+        string value = id.Trim();
+        foreach (AgentArea area in AgentQueueCatalog.Areas)
+        {
+            string prefix = area.Prefix + "-";
+            if (!value.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            string number = value[prefix.Length..];
+            if (number.Length >= 4 && number.All(char.IsAsciiDigit))
+            {
+                return value;
+            }
+        }
+
+        throw new AgentQueueException($"Invalid finding id '{id}'.", ExitCodes.ValidationError);
+    }
+
+    private static bool IsInsideDirectory(string directory, string path)
+    {
+        string root = Path.GetFullPath(directory);
+        if (!root.EndsWith(Path.DirectorySeparatorChar))
+        {
+            root += Path.DirectorySeparatorChar;
+        }
+
+        return path.StartsWith(root, PathComparison);
+    }
+
+    private static StringComparison PathComparison =>
+        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 }
