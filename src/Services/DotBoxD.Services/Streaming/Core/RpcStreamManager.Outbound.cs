@@ -159,6 +159,7 @@ internal sealed partial class RpcStreamManager
     public bool TryAddCredit(ReadOnlyMemory<byte> frame)
     {
         if (!MessageFramer.TryReadFrameHeader(frame, out var streamId, out _) ||
+            streamId == 0 ||
             !RpcRawFrame.TryReadInt32(frame, out var count) ||
             count <= 0)
         {

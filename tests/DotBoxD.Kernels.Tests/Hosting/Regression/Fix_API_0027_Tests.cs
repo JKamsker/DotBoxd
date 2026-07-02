@@ -7,9 +7,9 @@ public sealed class Fix_API_0027_Tests
     private static readonly string[] CurrentServerExtensionDocumentation =
     [
         "README.md",
-        Path.Combine("docs", "index.md"),
-        Path.Combine("docs", "getting-started", "README.md"),
-        Path.Combine("docs", "concepts", "pushdown.md"),
+        Path.Combine("docs-site", "src", "content", "docs", "index.mdx"),
+        Path.Combine("docs-site", "src", "content", "docs", "getting-started.md"),
+        Path.Combine("docs-site", "src", "content", "docs", "concepts", "pushdown.md"),
         Path.Combine("docs", "Specs", "Addendum", "Examples.md"),
         Path.Combine("docs", "design", "plugin-fluent-hooks-api", "followups.md"),
         Path.Combine("docs", "design", "remote-plugin-server-builder", "invoke-async.md"),
@@ -19,7 +19,13 @@ public sealed class Fix_API_0027_Tests
     public void Documented_pushdown_samples_use_current_server_extension_surface()
     {
         var readme = ReadRepositoryText("README.md");
-        var concepts = ReadRepositoryText(Path.Combine("docs", "concepts", "pushdown.md"));
+        var concepts = ReadRepositoryText(Path.Combine(
+            "docs-site",
+            "src",
+            "content",
+            "docs",
+            "concepts",
+            "pushdown.md"));
         var addendum = ReadRepositoryText(Path.Combine("docs", "Specs", "Addendum", "Examples.md"));
         var docs = string.Join(Environment.NewLine, CurrentServerExtensionDocumentation.Select(ReadRepositoryText));
 
