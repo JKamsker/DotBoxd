@@ -1,4 +1,5 @@
 using DotBoxD.Services.Buffers;
+using DotBoxD.Services.Protocol;
 
 namespace DotBoxD.Services.Streaming.Core;
 
@@ -8,6 +9,16 @@ internal readonly struct RpcStreamFrameSender(
 {
     public async ValueTask SendAsync(PooledBufferWriter frame, CancellationToken ct)
     {
+        try
+        {
+            MessageFramer.ValidateOutgoingFrame(frame.WrittenSpan);
+        }
+        catch
+        {
+            frame.Dispose();
+            throw;
+        }
+
         if (sendFrameAsync is not null)
         {
             await sendFrameAsync(frame, ct).ConfigureAwait(false);
