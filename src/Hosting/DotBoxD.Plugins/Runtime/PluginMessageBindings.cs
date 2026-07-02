@@ -220,7 +220,11 @@ public static class PluginMessageBindings
             {
                 for (var i = 0; i < TargetPrefixes.Count; i++)
                 {
-                    if (targetId.StartsWith(TargetPrefixes[i], StringComparison.Ordinal))
+                    var prefix = TargetPrefixes[i];
+                    if (targetId.StartsWith(prefix, StringComparison.Ordinal) &&
+                        (targetId.Length == prefix.Length ||
+                         prefix[^1] is '.' or ':' ||
+                         targetId[prefix.Length] is '.' or ':'))
                     {
                         return true;
                     }
