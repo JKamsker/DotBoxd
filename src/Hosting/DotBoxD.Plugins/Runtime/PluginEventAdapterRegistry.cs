@@ -10,9 +10,10 @@ public sealed class PluginEventAdapterRegistry
 
     public void Register<TEvent>(IPluginEventAdapter<TEvent> adapter)
     {
+        var eventName = adapter.EventName;
         var parameters = adapter.Parameters;
-        PluginEventAdapterShapeValidator.Validate(adapter, parameters);
-        var shape = new PluginEventShape(adapter.EventName, parameters);
+        PluginEventAdapterShapeValidator.Validate(adapter, eventName, parameters);
+        var shape = new PluginEventShape(eventName, parameters);
         ValidateEventNameShape(typeof(TEvent), shape);
         // Capture the type-erased wire closure here — the single store site both the explicit Register path and
         // the lazy Resolve auto-register path flow through — so the router can wire by event name with no
