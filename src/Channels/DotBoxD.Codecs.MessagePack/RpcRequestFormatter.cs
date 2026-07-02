@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text;
 using DotBoxD.Services.Protocol;
 using MessagePack;
@@ -14,6 +15,7 @@ internal sealed class RpcRequestFormatter : IMessagePackFormatter<RpcRequest>
     private static readonly byte[] MethodNameKey = Encoding.UTF8.GetBytes("MethodName");
     private static readonly byte[] InstanceIdKey = Encoding.UTF8.GetBytes("InstanceId");
     private static readonly byte[] StreamsKey = Encoding.UTF8.GetBytes("Streams");
+    private const int MaxNameUtf8Bytes = 256;
 
     private RpcRequestFormatter()
     {
@@ -24,6 +26,8 @@ internal sealed class RpcRequestFormatter : IMessagePackFormatter<RpcRequest>
         RpcRequest value,
         MessagePackSerializerOptions options)
     {
+        ValidateName(value.ServiceName, nameof(RpcRequest.ServiceName));
+        ValidateName(value.MethodName, nameof(RpcRequest.MethodName));
         RpcRequestNameCache.Register(value.ServiceName);
         RpcRequestNameCache.Register(value.MethodName);
 
@@ -62,12 +66,12 @@ internal sealed class RpcRequestFormatter : IMessagePackFormatter<RpcRequest>
                 case RpcRequestField.ServiceName:
                     ThrowIfDuplicate(seenServiceName, nameof(RpcRequest.ServiceName));
                     seenServiceName = true;
-                    request.ServiceName = ReadCachedName(ref reader)!;
+                    request.ServiceName = ReadCachedName(ref reader, nameof(RpcRequest.ServiceName))!;
                     break;
                 case RpcRequestField.MethodName:
                     ThrowIfDuplicate(seenMethodName, nameof(RpcRequest.MethodName));
                     seenMethodName = true;
-                    request.MethodName = ReadCachedName(ref reader)!;
+                    request.MethodName = ReadCachedName(ref reader, nameof(RpcRequest.MethodName))!;
                     break;
                 case RpcRequestField.InstanceId:
                     ThrowIfDuplicate(seenInstanceId, nameof(RpcRequest.InstanceId));
@@ -134,16 +138,56 @@ internal sealed class RpcRequestFormatter : IMessagePackFormatter<RpcRequest>
         writer.Write(value);
     }
 
-    private static string? ReadCachedName(ref MessagePackReader reader)
+    private static string? ReadCachedName(ref MessagePackReader reader, string fieldName)
     {
         if (reader.TryReadNil())
         {
             return null;
         }
 
-        return reader.TryReadStringSpan(out var utf8)
-            ? RpcRequestNameCache.GetOrAdd(utf8)
-            : RpcRequestNameCache.GetOrAdd(reader.ReadString()!);
+        if (reader.TryReadStringSpan(out var utf8))
+        {
+            ValidateNameBytes(utf8.Length, fieldName);
+            return RpcRequestNameCache.GetOrAdd(utf8);
+        }
+
+        var sequence = reader.ReadStringSequence();
+        if (sequence is null)
+        {
+            return null;
+        }
+
+        ValidateNameBytes(sequence.Value.Length, fieldName);
+        return ReadCachedName(sequence.Value);
+    }
+
+    private static string ReadCachedName(ReadOnlySequence<byte> utf8)
+    {
+        if (utf8.IsSingleSegment)
+        {
+            return RpcRequestNameCache.GetOrAdd(utf8.FirstSpan);
+        }
+
+        return RpcRequestNameCache.GetOrAdd(utf8.ToArray());
+    }
+
+    private static void ValidateName(string? value, string fieldName)
+    {
+        if (value is null)
+        {
+            return;
+        }
+
+        ValidateNameBytes(Encoding.UTF8.GetByteCount(value), fieldName);
+    }
+
+    private static void ValidateNameBytes(long byteCount, string fieldName)
+    {
+        if (byteCount > MaxNameUtf8Bytes)
+        {
+            throw new MessagePackSerializationException(
+                $"RPC request {fieldName} exceeds the maximum encoded length of {MaxNameUtf8Bytes} bytes.");
+        }
     }
 
     private static RpcRequestField ReadField(ref MessagePackReader reader)

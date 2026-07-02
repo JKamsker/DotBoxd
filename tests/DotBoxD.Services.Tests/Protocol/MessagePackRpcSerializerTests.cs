@@ -48,19 +48,16 @@ public class MessagePackRpcSerializerTests
     }
 
     [Fact]
-    public void LongRpcRequestNames_AreNotCached()
+    public void LongRpcRequestNames_AreRejected()
     {
         var serializer = new MessagePackRpcSerializer();
         var serviceName = new string('S', 300);
         var methodName = new string('M', 300);
 
-        var first = RoundTrip(serializer, CreateRequest(1, serviceName, methodName));
-        var second = RoundTrip(serializer, CreateRequest(2, serviceName, methodName));
+        var ex = Assert.Throws<MessagePackSerializationException>(
+            () => RoundTrip(serializer, CreateRequest(1, serviceName, methodName)));
 
-        Assert.Equal(serviceName, first.ServiceName);
-        Assert.Equal(methodName, first.MethodName);
-        Assert.NotSame(first.ServiceName, second.ServiceName);
-        Assert.NotSame(first.MethodName, second.MethodName);
+        Assert.Contains(nameof(RpcRequest.ServiceName), ex.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
