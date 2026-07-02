@@ -46,7 +46,7 @@ public sealed class RpcStreamManagerRegressionTests
     }
 
     [Fact]
-    public async Task ActiveStreamOverCredit_DoesNotThrowOutOfFrameProcessing()
+    public async Task ActiveStreamOverCredit_IsRejectedWithoutThrowing()
     {
         var streams = CreateStreamManager();
         var handle = streams.ReserveOutbound(RpcStreamKind.Binary);
@@ -63,12 +63,12 @@ public sealed class RpcStreamManagerRegressionTests
             MessageType.StreamCredit,
             1);
 
-        Assert.True(streams.TryAddCredit(maxCredit));
         var accepted = false;
-        var error = Record.Exception(() => accepted = streams.TryAddCredit(extraCredit));
+        var error = Record.Exception(() => accepted = streams.TryAddCredit(maxCredit));
 
         Assert.Null(error);
-        Assert.True(accepted);
+        Assert.False(accepted);
+        Assert.True(streams.TryAddCredit(extraCredit));
     }
 
     [Fact]

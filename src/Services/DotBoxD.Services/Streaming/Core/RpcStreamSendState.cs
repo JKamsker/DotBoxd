@@ -5,6 +5,7 @@ internal sealed class RpcStreamSendState : IDisposable
     private readonly CancellationTokenSource _cts;
     private readonly CancellationToken _token;
     private readonly SemaphoreSlim _credits = new(0);
+    private int _availableCredits;
     private int _disposed;
 
     public RpcStreamSendState(int streamId, CancellationToken ownerToken)
@@ -20,14 +21,27 @@ internal sealed class RpcStreamSendState : IDisposable
 
     public bool IsCancellationRequested => _token.IsCancellationRequested;
 
-    public Task WaitForCreditAsync(CancellationToken ct) =>
-        _credits.WaitAsync(ct);
-
-    public void AddCredit(int count)
+    public async Task WaitForCreditAsync(CancellationToken ct)
     {
-        if (count <= 0 || Volatile.Read(ref _disposed) != 0)
+        await _credits.WaitAsync(ct).ConfigureAwait(false);
+        Interlocked.Decrement(ref _availableCredits);
+    }
+
+    public bool AddCredit(int count)
+    {
+        if (count <= 0)
         {
-            return;
+            return true;
+        }
+
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return true;
+        }
+
+        if (!TryReserveCredits(count))
+        {
+            return false;
         }
 
         try
@@ -37,8 +51,29 @@ internal sealed class RpcStreamSendState : IDisposable
         catch (ObjectDisposedException)
         {
         }
-        catch (SemaphoreFullException)
+
+        return true;
+    }
+
+    private bool TryReserveCredits(int count)
+    {
+        if (count > RpcStreamManager.WindowSize)
         {
+            return false;
+        }
+
+        while (true)
+        {
+            var current = Volatile.Read(ref _availableCredits);
+            if (current > RpcStreamManager.WindowSize - count)
+            {
+                return false;
+            }
+
+            if (Interlocked.CompareExchange(ref _availableCredits, current + count, current) == current)
+            {
+                return true;
+            }
         }
     }
 

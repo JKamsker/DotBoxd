@@ -160,15 +160,14 @@ internal sealed partial class RpcStreamManager
     {
         if (!MessageFramer.TryReadFrameHeader(frame, out var streamId, out _) ||
             !RpcRawFrame.TryReadInt32(frame, out var count) ||
-            count <= 0)
+            !RpcStreamCreditWindow.IsValidCount(count))
         {
             return false;
         }
 
         if (_senders.TryGetValue(streamId, out var state))
         {
-            state.AddCredit(count);
-            return true;
+            return state.AddCredit(count);
         }
 
         AfterOutboundSenderMissForTest?.Invoke(streamId);
@@ -176,14 +175,13 @@ internal sealed partial class RpcStreamManager
         {
             if (_senders.TryGetValue(streamId, out state))
             {
-                state.AddCredit(count);
+                return state.AddCredit(count);
             }
 
             return true;
         }
 
-        BufferReservedOutboundCredit(streamId, count);
-        return true;
+        return BufferReservedOutboundCredit(streamId, count);
     }
 
     public void CancelOutbound(int streamId)
@@ -257,38 +255,22 @@ internal sealed partial class RpcStreamManager
 
         if (_pendingCredits.TryRemove(state.StreamId, out var credits))
         {
-            state.AddCredit(credits);
+            if (!state.AddCredit(credits))
+            {
+                throw new ServiceProtocolException("Pending stream credits exceeded the receiver window.");
+            }
         }
     }
 
-    private void BufferReservedOutboundCredit(int streamId, int count)
+    private bool BufferReservedOutboundCredit(int streamId, int count)
     {
         AfterReservedOutboundCreditObservedForTest?.Invoke(streamId);
-        while (true)
-        {
-            if (_pendingCredits.TryGetValue(streamId, out var current))
-            {
-                var next = current > int.MaxValue - count ? int.MaxValue : current + count;
-                if (_pendingCredits.TryUpdate(streamId, next, current))
-                {
-                    break;
-                }
-            }
-            else if (_pendingCredits.TryAdd(streamId, count))
-            {
-                break;
-            }
-        }
-
-        if (_senders.TryGetValue(streamId, out var state) &&
-            _pendingCredits.TryRemove(streamId, out var pending))
-        {
-            state.AddCredit(pending);
-        }
-        else if (!_reservedOutbound.ContainsKey(streamId))
-        {
-            _pendingCredits.TryRemove(streamId, out _);
-        }
+        return RpcStreamCreditWindow.TryBufferReserved(
+            _pendingCredits,
+            _senders,
+            _reservedOutbound,
+            streamId,
+            count);
     }
 
     private void ClearOutboundTracking(int streamId)
