@@ -71,6 +71,33 @@ public sealed class EventQuerySerializationTests
     }
 
     [Fact]
+    public void Query_string_values_round_trip_without_utf16_replacement()
+    {
+        const string validSurrogatePair = "prefix-\uD83D\uDE00-suffix";
+        var validJson = EventQueryJson.Serialize(StringValueDocument(validSurrogatePair));
+        var validRestored = EventQueryJson.Deserialize(validJson);
+
+        Assert.Equal(validSurrogatePair, validRestored.Filter.Value!.String);
+
+        const string malformedUtf16 = "prefix-\uD800-suffix";
+        var document = StringValueDocument(malformedUtf16);
+
+        try
+        {
+            var json = EventQueryJson.Serialize(document);
+            var restored = EventQueryJson.Deserialize(json);
+
+            Assert.Equal(malformedUtf16, restored.Filter.Value!.String);
+        }
+        catch (JsonException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+    }
+
+    [Fact]
     public void Fingerprint_is_stable_and_order_independent()
     {
         var attacker = QueryFilter.Compare("AttackerId", QueryComparisonOperator.Equal, QueryValue.FromString("player-1"));
@@ -111,4 +138,10 @@ public sealed class EventQuerySerializationTests
 
         Assert.NotEqual(QueryFingerprint.Compute(a), QueryFingerprint.Compute(b));
     }
+
+    private static EventQueryDocument StringValueDocument(string value) =>
+        EventQueryDocument.Create(
+            "E",
+            QueryFilter.Compare("Name", QueryComparisonOperator.Equal, QueryValue.FromString(value)),
+            QueryProjection.Identity);
 }
