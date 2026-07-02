@@ -90,6 +90,7 @@ public sealed partial class GeneratedAssemblyVerifier
             if (method.RelativeVirtualAddress != 0)
             {
                 var body = peReader.GetMethodBody(method.RelativeVirtualAddress);
+                VerifyLocalSignature(reader, body, name, diagnostics);
                 var instructions = GeneratedIlReader.ReadInstructions(reader, body, diagnostics, memberSignatures);
                 OpCodeVerifier.VerifyBody(reader, policy, body, instructions, diagnostics);
                 GeneratedMethodShapeVerifier.VerifyBody(reader, method, body, signature, instructions, name, diagnostics);
@@ -211,6 +212,38 @@ public sealed partial class GeneratedAssemblyVerifier
                 $"method '{name}' uses unsupported implementation attributes"));
         }
     }
+
+    private static void VerifyLocalSignature(
+        MetadataReader reader,
+        MethodBodyBlock body,
+        string name,
+        List<VerificationDiagnostic> diagnostics)
+    {
+        if (!IsGeneratedExecutableMethod(name) || body.LocalSignature.IsNil)
+        {
+            return;
+        }
+
+        foreach (var localType in reader
+                     .GetStandaloneSignature(body.LocalSignature)
+                     .DecodeLocalSignature(MethodSignatureNameProvider.Instance, genericContext: null))
+        {
+            if (!HasUnsupportedLocalSignatureShape(localType))
+            {
+                continue;
+            }
+
+            diagnostics.Add(new VerificationDiagnostic(
+                name == "Execute" ? "V-EXECUTE-SIGNATURE" : "V-FUNCTION-SIGNATURE",
+                $"method '{name}' declares unsupported local type '{localType}'"));
+            return;
+        }
+    }
+
+    private static bool HasUnsupportedLocalSignatureShape(string localType)
+        => localType.Contains("fnptr", StringComparison.Ordinal) ||
+           localType.Contains('*') ||
+           localType.Contains('&');
 
     private static bool IsGeneratedExecutableMethod(string name)
         => name == "Execute" || name.StartsWith("Fn_", StringComparison.Ordinal);
