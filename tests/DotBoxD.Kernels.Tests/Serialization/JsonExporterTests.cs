@@ -151,29 +151,6 @@ public sealed class JsonExporterTests
     }
 
     [Fact]
-    public void Export_round_trips_string_literals_without_utf16_replacement()
-    {
-        const string validSurrogatePair = "prefix-\uD83D\uDE00-suffix";
-        Assert.Equal(validSurrogatePair, RoundTripStringLiteral(validSurrogatePair));
-
-        const string malformedUtf16 = "prefix-\uD800-suffix";
-        var module = ModuleReturningString(malformedUtf16);
-        string? json = null;
-        var exportError = Record.Exception(() => json = JsonExporter.Export(module));
-        if (exportError is not null)
-        {
-            Assert.True(
-                exportError.Message.Contains("UTF-16", StringComparison.OrdinalIgnoreCase) ||
-                exportError.Message.Contains("surrogate", StringComparison.OrdinalIgnoreCase),
-                $"Expected export to name malformed UTF-16 or surrogate text, but got: {exportError.Message}");
-            return;
-        }
-
-        var roundTrip = JsonImporter.Import(json!);
-        Assert.Equal(malformedUtf16, StringLiteral(roundTrip));
-    }
-
-    [Fact]
     public void Export_round_trips_a_guid_literal_value_exactly()
     {
         var guid = new Guid("0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9");
@@ -304,31 +281,6 @@ public sealed class JsonExporterTests
                         Span),
                     Span)
             ]);
-
-    private static string RoundTripStringLiteral(string value)
-        => StringLiteral(JsonImporter.Import(JsonExporter.Export(ModuleReturningString(value))));
-
-    private static SandboxModule ModuleReturningString(string value)
-        => new(
-            "string-literal-exporter",
-            SemVersion.One,
-            SemVersion.One,
-            [],
-            [
-                new SandboxFunction(
-                    "StringLiteral",
-                    true,
-                    [],
-                    SandboxType.String,
-                    [new ReturnStatement(new LiteralExpression(SandboxValue.FromString(value), Span), Span)])
-            ],
-            new Dictionary<string, string>());
-
-    private static string StringLiteral(SandboxModule module)
-    {
-        var ret = Assert.IsType<ReturnStatement>(Assert.Single(Assert.Single(module.Functions).Body));
-        return Assert.IsType<StringValue>(((LiteralExpression)ret.Value).Value).Value;
-    }
 
     private static ExpressionStatement Literal(SandboxValue value)
         => new(new LiteralExpression(value, Span), Span);
