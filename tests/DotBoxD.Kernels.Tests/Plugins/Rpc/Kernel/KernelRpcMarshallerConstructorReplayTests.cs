@@ -50,6 +50,28 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
         Assert.Contains(nameof(ConstructorReadOnlyReplayDto.Id), ex.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void SandboxTypeOf_rejects_setter_dto_with_unmatched_required_constructor()
+    {
+        var ex = Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.SandboxTypeOf(typeof(ConstructorOnlySetterDto)));
+
+        Assert.Contains(nameof(ConstructorOnlySetterDto), ex.Message, StringComparison.Ordinal);
+        Assert.Contains("constructor", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ToSandboxValue_rejects_setter_dto_with_unmatched_required_constructor()
+    {
+        var dto = new ConstructorOnlySetterDto(42) { Name = "ember" };
+
+        var ex = Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.ToSandboxValue(dto, typeof(ConstructorOnlySetterDto)));
+
+        Assert.Contains(nameof(ConstructorOnlySetterDto), ex.Message, StringComparison.Ordinal);
+        Assert.Contains("constructor", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private sealed class ConstructorInitReplayDto(int id)
     {
         public int Id { get; init; } = Math.Abs(id);
@@ -63,5 +85,13 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
     private sealed class ConstructorReadOnlyReplayDto(int id)
     {
         public int Id { get; } = Math.Abs(id);
+    }
+
+    private sealed class ConstructorOnlySetterDto
+    {
+        public ConstructorOnlySetterDto(int seed)
+            => _ = seed;
+
+        public string Name { get; set; } = string.Empty;
     }
 }
