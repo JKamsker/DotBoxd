@@ -42,7 +42,7 @@ public sealed partial class PluginAnalyzerHookChainTests
 
             namespace Sample;
 
-            public sealed record MixedEvent(string TargetId, decimal Amount);
+            public sealed record MixedEvent(string TargetId, char Marker);
 
             public static class Usage
             {

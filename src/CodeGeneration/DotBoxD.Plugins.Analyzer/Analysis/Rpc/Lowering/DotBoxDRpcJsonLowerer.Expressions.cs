@@ -5,9 +5,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 /// <summary>
-/// Expression lowering and JSON emission for <see cref="DotBoxDRpcJsonLowerer"/>: constants, identifiers,
-/// operators, host-binding calls, <c>list.*</c>/<c>record.*</c> intrinsics, DTO construction, and the
-/// small JSON writer the statement half also uses.
+/// Expression lowering and JSON emission for <see cref="DotBoxDRpcJsonLowerer"/>.
 /// </summary>
 internal sealed partial class DotBoxDRpcJsonLowerer
 {
@@ -94,6 +92,10 @@ internal sealed partial class DotBoxDRpcJsonLowerer
             value is IConvertible convertible)
         {
             return LiteralJson(convertible.ToDouble(CultureInfo.InvariantCulture));
+        }
+        if (converted?.SpecialType == SpecialType.System_Decimal && value is decimal decimalValue)
+        {
+            return DecimalLiteralJson(decimalValue);
         }
         return LiteralJson(value);
     }

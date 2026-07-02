@@ -71,6 +71,7 @@ public static partial class KernelRpcMarshaller
     private static RecordShape? FindDtoShape(Type type)
     {
         if (IsDateTimeWireType(type) ||
+            IsDecimalWireType(type) ||
             IsFrameworkStructWireType(type) ||
             type == typeof(TimeSpan) ||
             type == typeof(string) ||

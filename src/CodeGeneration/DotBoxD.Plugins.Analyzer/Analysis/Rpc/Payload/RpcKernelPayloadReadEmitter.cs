@@ -52,6 +52,11 @@ internal sealed partial class RpcKernelPayloadReadEmitter
             return $"{EnsureDateTimePayloadReader(type)}(ref {reader})";
         }
 
+        if (DotBoxDRpcTypeMapper.IsDecimalWireType(type))
+        {
+            return $"{EnsureDecimalPayloadReader()}(ref {reader})";
+        }
+
         if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
         {
             return $"{EnsureDateOnlyPayloadReader()}({reader}.ReadInt32())";

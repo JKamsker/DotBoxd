@@ -7,7 +7,7 @@ internal static partial class DotBoxDRpcTypeMapper
     public static bool IsScalar(ITypeSymbol type)
         => type.SpecialType is SpecialType.System_Boolean or SpecialType.System_Int32
             or SpecialType.System_Int64 or SpecialType.System_Double or SpecialType.System_Single
-            or SpecialType.System_String ||
+            or SpecialType.System_Decimal or SpecialType.System_String ||
            IsDateOnlyWireType(type) ||
            IsTimeOnlyWireType(type) ||
            IsTimeSpanWireType(type) ||
@@ -45,6 +45,9 @@ internal static partial class DotBoxDRpcTypeMapper
         => type is INamedTypeSymbol { Name: "DateTime" or "DateTimeOffset", ContainingNamespace: { Name: "System" } ns } &&
            ns.ContainingNamespace is { IsGlobalNamespace: true };
 
+    public static bool IsDecimalWireType(ITypeSymbol type)
+        => type.SpecialType == SpecialType.System_Decimal;
+
     public static bool IsTimeSpanWireType(ITypeSymbol type)
         => type is INamedTypeSymbol { Name: "TimeSpan", ContainingNamespace: { Name: "System" } ns } &&
            ns.ContainingNamespace is { IsGlobalNamespace: true };
@@ -80,6 +83,7 @@ internal static partial class DotBoxDRpcTypeMapper
 
     public static bool IsFirstClassFrameworkWireStruct(ITypeSymbol type)
         => IsDateTimeWireType(type) ||
+           IsDecimalWireType(type) ||
            IsTimeSpanWireType(type) ||
            IsDateOnlyWireType(type) ||
            IsTimeOnlyWireType(type) ||
@@ -89,6 +93,9 @@ internal static partial class DotBoxDRpcTypeMapper
 
     public static string DateTimeWireJsonType()
         => "{\"name\":\"Record\",\"arguments\":[\"I64\",\"I64\"]}";
+
+    public static string DecimalWireJsonType()
+        => "{\"name\":\"Record\",\"arguments\":[\"I32\",\"I32\",\"I32\",\"I32\"]}";
 
     public static string IndexWireJsonType()
         => "{\"name\":\"Record\",\"arguments\":[\"I32\",\"Bool\"]}";

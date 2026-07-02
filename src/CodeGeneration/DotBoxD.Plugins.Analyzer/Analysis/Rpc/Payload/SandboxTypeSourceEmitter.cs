@@ -74,6 +74,11 @@ internal static class SandboxTypeSourceEmitter
             return ManifestTypes.Record;
         }
 
+        if (DotBoxDRpcTypeMapper.IsDecimalWireType(type))
+        {
+            return ManifestTypes.Record;
+        }
+
         if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
         {
             return ManifestTypes.Int;
@@ -145,6 +150,12 @@ internal static class SandboxTypeSourceEmitter
         {
             RejectNestedRecordAtDepth(depth);
             return $"{SandboxType}.Record(new {SandboxType}[] {{ {SandboxType}.I64, {SandboxType}.I64 }})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsDecimalWireType(type))
+        {
+            RejectNestedRecordAtDepth(depth);
+            return $"{SandboxType}.Record(new {SandboxType}[] {{ {SandboxType}.I32, {SandboxType}.I32, {SandboxType}.I32, {SandboxType}.I32 }})";
         }
 
         if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))

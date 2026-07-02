@@ -60,6 +60,11 @@ public static partial class KernelRpcMarshaller
             RejectRecordTypeTooDeep(type, depth);
             return DateTimeWireSandboxType();
         }
+        if (IsDecimalWireType(type))
+        {
+            RejectRecordTypeTooDeep(type, depth);
+            return DecimalWireSandboxType();
+        }
         if (type == typeof(Index))
         {
             RejectRecordTypeTooDeep(type, depth);

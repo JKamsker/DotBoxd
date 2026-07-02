@@ -73,6 +73,11 @@ internal sealed partial class RpcKernelValueConversionEmitter
             return $"{EnsureDateTimeValueWriter(type)}({expression})";
         }
 
+        if (DotBoxDRpcTypeMapper.IsDecimalWireType(type))
+        {
+            return $"{EnsureDecimalValueWriter()}({expression})";
+        }
+
         if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
         {
             return $"{DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32({expression}.DayNumber)";
@@ -143,6 +148,11 @@ internal sealed partial class RpcKernelValueConversionEmitter
         if (DotBoxDRpcTypeMapper.IsDateTimeWireType(type))
         {
             return $"{EnsureDateTimeValueReader(type)}({expression})";
+        }
+
+        if (DotBoxDRpcTypeMapper.IsDecimalWireType(type))
+        {
+            return $"{EnsureDecimalValueReader()}({expression})";
         }
 
         if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))

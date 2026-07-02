@@ -60,6 +60,14 @@ internal static class KernelMethodDefaultArgumentLowerer
             return LowerDateTimeDefault(parameterType, dateTime, parameter);
         }
 
+        if (DotBoxDRpcTypeMapper.IsDecimalWireType(parameterType) && value is decimal decimalValue)
+        {
+            return new(
+                DecimalRecord(parameterType, decimalValue),
+                DotBoxDGenerationNames.ManifestTypes.Record,
+                true);
+        }
+
         if (DotBoxDRpcTypeMapper.IsGuid(parameterType) &&
             value is Guid guid &&
             guid == Guid.Empty &&
@@ -148,6 +156,11 @@ internal static class KernelMethodDefaultArgumentLowerer
             return new(DateTimeRecordDefault(type), DotBoxDGenerationNames.ManifestTypes.Record, true);
         }
 
+        if (DotBoxDRpcTypeMapper.IsDecimalWireType(type))
+        {
+            return new(DecimalRecord(type, default), DotBoxDGenerationNames.ManifestTypes.Record, true);
+        }
+
         if (DotBoxDRpcTypeMapper.IsDateOnlyWireType(type))
             return new(
                 $"{DotBoxDGenerationNames.Helpers.I32}({DotBoxDGenerationNames.CSharpLiterals.Int32Default})",
@@ -176,6 +189,19 @@ internal static class KernelMethodDefaultArgumentLowerer
                 $"{DotBoxDGenerationNames.Helpers.I64}({offsetTicks})"
             ],
             SandboxTypeSourceEmitter.TryEmit(type) ?? throw new NotSupportedException());
+
+    private static string DecimalRecord(ITypeSymbol type, decimal value)
+    {
+        var bits = decimal.GetBits(value);
+        return DotBoxDRecordCreationExpressionLowerer.RecordNew(
+            [
+                $"{DotBoxDGenerationNames.Helpers.I32}({LiteralReader.ObjectLiteral(bits[0])})",
+                $"{DotBoxDGenerationNames.Helpers.I32}({LiteralReader.ObjectLiteral(bits[1])})",
+                $"{DotBoxDGenerationNames.Helpers.I32}({LiteralReader.ObjectLiteral(bits[2])})",
+                $"{DotBoxDGenerationNames.Helpers.I32}({LiteralReader.ObjectLiteral(bits[3])})"
+            ],
+            SandboxTypeSourceEmitter.TryEmit(type) ?? throw new NotSupportedException());
+    }
 
     private static bool IsFinite(double value)
         => !double.IsNaN(value) && !double.IsInfinity(value);
