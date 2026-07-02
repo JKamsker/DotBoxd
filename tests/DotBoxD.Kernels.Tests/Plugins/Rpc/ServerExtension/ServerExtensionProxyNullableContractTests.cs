@@ -42,6 +42,19 @@ public sealed class ServerExtensionProxyNullableContractTests
     }
 
     [Fact]
+    public async Task Runtime_proxy_allows_supported_nullable_DateTime_values_in_service_contracts()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(
+            configureHost: RpcKernelTestPackages.AddKillBinding,
+            defaultPolicy: RpcKernelTestPackages.KillPolicy());
+        var kernel = await server.InstallServerExtensionAsync(RpcKernelTestPackages.MonsterKiller());
+
+        var service = ServerExtensionProxy.Create<INullableDateTimeEchoService>(kernel);
+
+        Assert.NotNull(service);
+    }
+
+    [Fact]
     public async Task Runtime_proxy_rejects_unsupported_nullable_value_types_in_service_contracts()
     {
         using var server = DotBoxD.Plugins.PluginServer.Create(
@@ -119,15 +132,22 @@ public sealed class ServerExtensionProxyNullableContractTests
 
     private interface INullableEchoService
     {
-        int Echo(DateTime? value);
+        int Echo(decimal? value);
     }
 
     private interface INullableEchoBaseService
     {
-        int Echo(DateTime? value);
+        int Echo(decimal? value);
     }
 
     private interface IInheritedNullableEchoService : INullableEchoBaseService;
+
+    private interface INullableDateTimeEchoService
+    {
+        NullableDateTimePair Echo(DateTime? date, DateTimeOffset? offset);
+    }
+
+    private readonly record struct NullableDateTimePair(DateTime? Date, DateTimeOffset? Offset);
 
     private interface INullableFrameworkEchoService
     {

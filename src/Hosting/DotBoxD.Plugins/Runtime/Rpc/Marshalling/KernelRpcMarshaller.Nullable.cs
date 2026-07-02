@@ -111,6 +111,8 @@ public static partial class KernelRpcMarshaller
             return SandboxValue.FromDouble(0D);
         if (underlying == typeof(Guid))
             return SandboxValue.FromGuid(Guid.Empty);
+        if (IsDateTimeWireType(underlying))
+            return NullableDateTimeZeroValue();
         if (underlying == typeof(DateOnly))
             return SandboxValue.FromInt32(0);
         if (underlying == typeof(TimeOnly))
@@ -133,6 +135,7 @@ public static partial class KernelRpcMarshaller
             underlying == typeof(float) ||
             underlying == typeof(double) ||
             underlying == typeof(Guid) ||
+            IsDateTimeWireType(underlying) ||
             underlying == typeof(DateOnly) ||
             underlying == typeof(TimeOnly) ||
             underlying == typeof(TimeSpan) ||
@@ -144,6 +147,13 @@ public static partial class KernelRpcMarshaller
 
         throw UnsupportedNullableUnderlying(underlying);
     }
+
+    private static SandboxValue NullableDateTimeZeroValue()
+        => SandboxValue.FromOwnedRecord(
+        [
+            SandboxValue.FromInt64(0L),
+            SandboxValue.FromInt64(0L)
+        ]);
 
     private static NotSupportedException UnsupportedNullableUnderlying(Type underlying)
         => new($"Kernel RPC service nullable type '{typeof(Nullable<>).MakeGenericType(underlying)}' is not supported.");

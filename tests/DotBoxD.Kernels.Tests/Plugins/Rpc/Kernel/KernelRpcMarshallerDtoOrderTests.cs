@@ -75,7 +75,7 @@ public sealed class KernelRpcMarshallerDtoOrderTests
     [Fact]
     public void SandboxTypeOf_rejects_unsupported_nullable_value_types()
         => Assert.Throws<NotSupportedException>(
-            () => KernelRpcMarshaller.SandboxTypeOf(typeof(DateTime?)));
+            () => KernelRpcMarshaller.SandboxTypeOf(typeof(decimal?)));
 
     [Fact]
     public void SandboxTypeOf_rejects_nullable_scalar_types_past_composite_depth()

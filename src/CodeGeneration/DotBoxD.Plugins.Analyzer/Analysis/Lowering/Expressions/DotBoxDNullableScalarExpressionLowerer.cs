@@ -127,6 +127,7 @@ internal static class DotBoxDNullableScalarExpressionLowerer
                 $"{Helpers.F64}({DotBoxDGenerationNames.CSharpLiterals.DoubleDefault})",
             _ when DotBoxDRpcTypeMapper.IsGuid(underlying) =>
                 $"new {TypeNames.GlobalLiteralExpression}({TypeNames.GlobalSandboxValue}.FromGuid(global::System.Guid.Empty), Span)",
+            _ when DotBoxDRpcTypeMapper.IsDateTimeWireType(underlying) => DateTimeZeroSource(underlying),
             _ when DotBoxDRpcTypeMapper.IsDateOnlyWireType(underlying) =>
                 $"{Helpers.I32}({DotBoxDGenerationNames.CSharpLiterals.Int32Default})",
             _ when DotBoxDRpcTypeMapper.IsTimeOnlyWireType(underlying) ||
@@ -140,6 +141,14 @@ internal static class DotBoxDNullableScalarExpressionLowerer
                     : $"{Helpers.I32}({DotBoxDGenerationNames.CSharpLiterals.Int32Default})",
             _ => throw new NotSupportedException()
         };
+
+    private static string DateTimeZeroSource(ITypeSymbol underlying)
+        => DotBoxDRecordCreationExpressionLowerer.RecordNew(
+            [
+                $"{Helpers.I64}({DotBoxDGenerationNames.CSharpLiterals.Int64Default})",
+                $"{Helpers.I64}({DotBoxDGenerationNames.CSharpLiterals.Int64Default})"
+            ],
+            SandboxTypeSourceEmitter.TryEmit(underlying) ?? throw new NotSupportedException());
 
     private static string BoolSource(bool value)
         => $"{Helpers.Bool}({(value ? DotBoxDGenerationNames.CSharpLiterals.True : DotBoxDGenerationNames.CSharpLiterals.False)})";
