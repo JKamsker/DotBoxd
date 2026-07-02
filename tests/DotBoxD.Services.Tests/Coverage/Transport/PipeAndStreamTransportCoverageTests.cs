@@ -211,7 +211,7 @@ public sealed class NamedPipeServerTransportCoverageTests
     {
         var ex = Assert.Throws<ArgumentOutOfRangeException>(
             () => new NamedPipeServerTransport(CreatePipeName(), maxAllowedServerInstances: 0));
-        Assert.Equal("value", ex.ParamName);
+        Assert.Equal("maxAllowedServerInstances", ex.ParamName);
     }
 
     [Fact]
@@ -219,7 +219,7 @@ public sealed class NamedPipeServerTransportCoverageTests
     {
         var ex = Assert.Throws<ArgumentOutOfRangeException>(
             () => new NamedPipeServerTransport(CreatePipeName(), maxAllowedServerInstances: 255));
-        Assert.Equal("value", ex.ParamName);
+        Assert.Equal("maxAllowedServerInstances", ex.ParamName);
     }
 
     [Fact]
@@ -229,7 +229,7 @@ public sealed class NamedPipeServerTransportCoverageTests
             () => new NamedPipeServerTransport(
                 CreatePipeName(),
                 maxMessageSize: MessageFramer.HeaderSize - 1));
-        Assert.Equal("value", ex.ParamName);
+        Assert.Equal("maxMessageSize", ex.ParamName);
     }
 
     [Fact]
