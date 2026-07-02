@@ -59,6 +59,8 @@ public sealed partial class PluginServerContextContractTests
 
             file sealed partial class RemotePluginContext
             {
+                partial void OnCreated(global::DotBoxD.Abstractions.HookContext raw);
+
                 partial void OnCreated(global::DotBoxD.Abstractions.HookContext raw)
                 {
                 }

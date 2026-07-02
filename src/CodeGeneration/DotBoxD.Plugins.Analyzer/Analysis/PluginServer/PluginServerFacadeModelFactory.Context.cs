@@ -107,6 +107,12 @@ internal static partial class PluginServerFacadeModelFactory
                 $"Generated plugin server context '{contextType.ToDisplayString()}' must be a non-generic, non-nested partial class.");
         }
 
+        if (IsFileLocalClass(contextType, cancellationToken))
+        {
+            throw new NotSupportedException(
+                $"Generated plugin server context '{contextType.ToDisplayString()}' must not be file-local because generated source cannot augment a file-local type from another file.");
+        }
+
         if (!IsPartialClass(contextType, cancellationToken))
         {
             throw new NotSupportedException(
@@ -127,6 +133,20 @@ internal static partial class PluginServerFacadeModelFactory
         {
             if (reference.GetSyntax(cancellationToken) is ClassDeclarationSyntax declaration &&
                 declaration.Modifiers.Any(SyntaxKind.PartialKeyword))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsFileLocalClass(INamedTypeSymbol type, CancellationToken cancellationToken)
+    {
+        foreach (var reference in type.DeclaringSyntaxReferences)
+        {
+            if (reference.GetSyntax(cancellationToken) is ClassDeclarationSyntax declaration &&
+                declaration.Modifiers.Any(SyntaxKind.FileKeyword))
             {
                 return true;
             }
