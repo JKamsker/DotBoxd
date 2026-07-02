@@ -1,4 +1,5 @@
 using System.Reflection.Metadata;
+using DotBoxD.Kernels.Sandbox;
 
 namespace DotBoxD.Kernels.Verifier.Generated.Methods;
 
@@ -19,6 +20,7 @@ internal static class GeneratedMethodShapeVerifier
         var analysis = GeneratedMethodFlowAnalyzer.Analyze(instructions, StateFor);
         GeneratedStackVerifier.Verify(signature, analysis, diagnostics);
         GeneratedStackTypeVerifier.Verify(reader, method, body, signature, analysis, diagnostics);
+        VerifySandboxTypeScalarShape(methodName, analysis, diagnostics);
         if (methodName == "Execute")
         {
             GeneratedExecuteShapeVerifier.Verify(analysis, diagnostics);
@@ -95,6 +97,47 @@ internal static class GeneratedMethodShapeVerifier
                     $"method '{methodName}' must not call generated functions after exiting the call meter"));
             }
         }
+    }
+
+    private static void VerifySandboxTypeScalarShape(
+        string methodName,
+        GeneratedMethodFlow analysis,
+        List<VerificationDiagnostic> diagnostics)
+    {
+        foreach (var instruction in analysis.Instructions.Where(i => i.CalledMember == TypeScalarSignature))
+        {
+            if (!IsReachable(analysis, instruction))
+            {
+                continue;
+            }
+
+            var scalarName = PreviousStringLiteral(analysis, instruction);
+            if (scalarName is null)
+            {
+                diagnostics.Add(new VerificationDiagnostic(
+                    "V-COMPILED-SHAPE",
+                    $"method '{methodName}' must construct SandboxType scalars from literal names"));
+                continue;
+            }
+
+            if (!SandboxType.Scalar(scalarName).IsKnown())
+            {
+                diagnostics.Add(new VerificationDiagnostic(
+                    "V-COMPILED-SHAPE",
+                    $"method '{methodName}' constructs unknown or forbidden SandboxType scalar '{scalarName}'"));
+            }
+        }
+    }
+
+    private static string? PreviousStringLiteral(GeneratedMethodFlow analysis, GeneratedInstruction instruction)
+    {
+        if (!analysis.IndexByOffset.TryGetValue(instruction.Offset, out var index) || index == 0)
+        {
+            return null;
+        }
+
+        var previous = analysis.Instructions[index - 1];
+        return previous.Opcode == ILOpCode.Ldstr ? previous.StringValue : null;
     }
 
     private static void VerifyRuntimeCallOrder(

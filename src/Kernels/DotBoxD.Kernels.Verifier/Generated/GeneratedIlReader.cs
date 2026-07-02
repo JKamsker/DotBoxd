@@ -54,7 +54,8 @@ internal static class GeneratedIlReader
                 operand.IsLocalCall,
                 operand.Handle,
                 operand.OperandIndex,
-                operand.Int32Value);
+                operand.Int32Value,
+                operand.StringValue);
             return true;
         }
         catch (Exception ex) when (IsIlFormatException(ex))
@@ -93,6 +94,12 @@ internal static class GeneratedIlReader
         if (opcode == ILOpCode.Newarr)
         {
             return new DecodedOperand(ReadHandle(ref il));
+        }
+
+        if (opcode == ILOpCode.Ldstr)
+        {
+            var handle = MetadataTokens.UserStringHandle(il.ReadInt32());
+            return new DecodedOperand(StringValue: reader.GetUserString(handle));
         }
 
         if (opcode == ILOpCode.Switch)
@@ -272,7 +279,8 @@ internal static class GeneratedIlReader
         int? BranchTarget = null,
         IReadOnlyList<int>? SwitchTargetsValue = null,
         int? OperandIndex = null,
-        int? Int32Value = null)
+        int? Int32Value = null,
+        string? StringValue = null)
     {
         public static DecodedOperand None { get; } = new();
 

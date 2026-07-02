@@ -20,10 +20,12 @@ internal static class GeneratedMethodShapeSignatures
     // internally, so it counts as a fuel meter for the instruction-density / sparsity rule.
     internal static readonly string AccumulateLinearI32Signature =
         $"{CompiledRuntimeName}.AccumulateLinearI32({SandboxContextName},{Int32Name},{Int32Name},{Int32Name},{Int32Name}):{Int32Name}";
+    internal static readonly string TypeScalarSignature =
+        $"{CompiledRuntimeName}.TypeScalar({StringName}):{SandboxTypeName}";
     internal static readonly IReadOnlySet<string> ExecuteAllowedCalls = new HashSet<string>(StringComparer.Ordinal) {
         ValidateInput,
         $"{CompiledRuntimeName}.GetInputArgument({SandboxValueName},{Int32Name},{Int32Name},{SandboxTypeName}):{SandboxValueName}",
-        $"{CompiledRuntimeName}.TypeScalar({StringName}):{SandboxTypeName}",
+        TypeScalarSignature,
         $"{CompiledRuntimeName}.TypeList({SandboxTypeName}):{SandboxTypeName}",
         $"{CompiledRuntimeName}.TypeMap({SandboxTypeName},{SandboxTypeName}):{SandboxTypeName}",
         $"{CompiledRuntimeName}.TypeRecord({SandboxTypeArrayName}):{SandboxTypeName}",

@@ -35,7 +35,8 @@ internal sealed record GeneratedInstruction(
     bool IsLocalCall,
     EntityHandle? OperandHandle,
     int? OperandIndex,
-    int? Int32Value);
+    int? Int32Value,
+    string? StringValue);
 
 [Flags]
 internal enum GeneratedMeterState

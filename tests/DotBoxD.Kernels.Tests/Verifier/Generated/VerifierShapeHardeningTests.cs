@@ -134,6 +134,40 @@ public sealed class VerifierShapeHardeningTests
             d.Message.Contains("null", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Verifier_rejects_forbidden_sandbox_type_scalar_names()
+    {
+        var result = await VerifierTestHelpers.VerifyAsync(VerifierTestHelpers.BuildGeneratedAssembly(type =>
+        {
+            var fn = DefineFunction(type);
+            var il = fn.GetILGenerator();
+            var resultValue = il.DeclareLocal(typeof(SandboxValue));
+            EmitEnterCall(il);
+            EmitChargeFuel(il);
+            il.Emit(OpCodes.Ldstr, "System.String");
+            il.Emit(OpCodes.Call, RuntimeMethod(nameof(CompiledRuntime.TypeScalar)));
+            EmitChargeFuel(il);
+            il.Emit(OpCodes.Call, RuntimeMethod(nameof(CompiledRuntime.TypeList)));
+            il.Emit(OpCodes.Pop);
+            il.Emit(OpCodes.Ldc_I4_0);
+            il.Emit(OpCodes.Call, RuntimeMethod(nameof(CompiledRuntime.I32)));
+            il.Emit(OpCodes.Stloc, resultValue);
+            EmitExitCall(il);
+            il.Emit(OpCodes.Ldloc, resultValue);
+            il.Emit(OpCodes.Ret);
+            EmitExecuteCalling(type, fn);
+        }));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Diagnostics, d =>
+            (d.Code == "V-COMPILED-SHAPE" || d.Code == "V-STACK-TYPE") &&
+            d.Message.Contains("SandboxType", StringComparison.Ordinal) &&
+            (d.Message.Contains("System.String", StringComparison.Ordinal) ||
+                d.Message.Contains(nameof(CompiledRuntime.TypeScalar), StringComparison.Ordinal)) &&
+            (d.Message.Contains("forbidden", StringComparison.OrdinalIgnoreCase) ||
+                d.Message.Contains("unknown", StringComparison.OrdinalIgnoreCase)));
+    }
+
     private static MethodBuilder DefineExecute(TypeBuilder type)
         => type.DefineMethod(
             "Execute",
