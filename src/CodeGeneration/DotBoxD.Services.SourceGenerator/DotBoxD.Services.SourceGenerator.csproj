@@ -32,6 +32,7 @@
 
   <ItemGroup>
     <Compile Include="..\Shared\Defaults\*.cs" Link="Shared\Defaults\%(Filename)%(Extension)" />
+    <Compile Include="..\..\Shared\Routing\RpcRequestRouteNameLimits.cs" Link="Shared\Routing\RpcRequestRouteNameLimits.cs" />
   </ItemGroup>
 
   <ItemGroup>

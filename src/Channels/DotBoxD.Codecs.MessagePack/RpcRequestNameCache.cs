@@ -1,11 +1,11 @@
 using System.Text;
+using DotBoxD.Shared.Routing;
 
 namespace DotBoxD.Codecs.MessagePack;
 
 internal static class RpcRequestNameCache
 {
     private const int MaxEntries = 128;
-    private const int MaxCachedUtf8Bytes = 256;
 
     private static readonly object Gate = new();
     private static Entry[] _entries = Array.Empty<Entry>();
@@ -22,7 +22,7 @@ internal static class RpcRequestNameCache
 
     public static string GetOrAdd(ReadOnlySpan<byte> utf8)
     {
-        if (utf8.Length > MaxCachedUtf8Bytes)
+        if (utf8.Length > RpcRequestRouteNameLimits.MaxUtf8Bytes)
         {
             return Encoding.UTF8.GetString(utf8);
         }
@@ -80,8 +80,8 @@ internal static class RpcRequestNameCache
     }
 
     private static bool CanCache(string value) =>
-        value.Length <= MaxCachedUtf8Bytes &&
-        Encoding.UTF8.GetByteCount(value) <= MaxCachedUtf8Bytes;
+        value.Length <= RpcRequestRouteNameLimits.MaxUtf8Bytes &&
+        Encoding.UTF8.GetByteCount(value) <= RpcRequestRouteNameLimits.MaxUtf8Bytes;
 
     private readonly struct Entry
     {

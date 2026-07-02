@@ -1,5 +1,7 @@
+using System.Buffers;
 using System.Text;
 using DotBoxD.Services.Protocol;
+using DotBoxD.Shared.Routing;
 using MessagePack;
 using MessagePack.Formatters;
 
@@ -64,12 +66,12 @@ internal sealed class RpcRequestFormatter : IMessagePackFormatter<RpcRequest>
                 case RpcRequestField.ServiceName:
                     ThrowIfDuplicate(seenServiceName, nameof(RpcRequest.ServiceName));
                     seenServiceName = true;
-                    request.ServiceName = ReadCachedName(ref reader)!;
+                    request.ServiceName = ReadCachedName(ref reader, nameof(RpcRequest.ServiceName))!;
                     break;
                 case RpcRequestField.MethodName:
                     ThrowIfDuplicate(seenMethodName, nameof(RpcRequest.MethodName));
                     seenMethodName = true;
-                    request.MethodName = ReadCachedName(ref reader)!;
+                    request.MethodName = ReadCachedName(ref reader, nameof(RpcRequest.MethodName))!;
                     break;
                 case RpcRequestField.InstanceId:
                     ThrowIfDuplicate(seenInstanceId, nameof(RpcRequest.InstanceId));
@@ -147,6 +149,7 @@ internal sealed class RpcRequestFormatter : IMessagePackFormatter<RpcRequest>
         }
 
         ThrowIfEmptyRequiredName(value, fieldName);
+        ValidateNameBytes(Encoding.UTF8.GetByteCount(value), fieldName);
     }
 
     private static void WriteNullableString(ref MessagePackWriter writer, string? value)
@@ -160,16 +163,46 @@ internal sealed class RpcRequestFormatter : IMessagePackFormatter<RpcRequest>
         writer.Write(value);
     }
 
-    private static string? ReadCachedName(ref MessagePackReader reader)
+    private static string? ReadCachedName(ref MessagePackReader reader, string fieldName)
     {
         if (reader.TryReadNil())
         {
             return null;
         }
 
-        return reader.TryReadStringSpan(out var utf8)
-            ? RpcRequestNameCache.GetOrAdd(utf8)
-            : RpcRequestNameCache.GetOrAdd(reader.ReadString()!);
+        if (reader.TryReadStringSpan(out var utf8))
+        {
+            ValidateNameBytes(utf8.Length, fieldName);
+            return RpcRequestNameCache.GetOrAdd(utf8);
+        }
+
+        var sequence = reader.ReadStringSequence();
+        if (sequence is null)
+        {
+            return null;
+        }
+
+        ValidateNameBytes(sequence.Value.Length, fieldName);
+        return ReadCachedName(sequence.Value);
+    }
+
+    private static string ReadCachedName(ReadOnlySequence<byte> utf8)
+    {
+        if (utf8.IsSingleSegment)
+        {
+            return RpcRequestNameCache.GetOrAdd(utf8.FirstSpan);
+        }
+
+        return RpcRequestNameCache.GetOrAdd(utf8.ToArray());
+    }
+
+    private static void ValidateNameBytes(long byteCount, string fieldName)
+    {
+        if (byteCount > RpcRequestRouteNameLimits.MaxUtf8Bytes)
+        {
+            throw new MessagePackSerializationException(
+                $"RPC request {fieldName} exceeds the maximum encoded length of {RpcRequestRouteNameLimits.MaxUtf8Bytes} bytes.");
+        }
     }
 
     private static RpcRequestField ReadField(ref MessagePackReader reader)

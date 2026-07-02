@@ -112,13 +112,12 @@ internal static class ServiceModelFactory
         ct.ThrowIfCancellationRequested();
 
         var serviceName = GetConfiguredServiceName(context) ?? interfaceSymbol.Name;
-        if (string.IsNullOrWhiteSpace(serviceName))
+        var serviceNameReason = RouteNameBudgetValidator.GetUnsupportedServiceNameReason(serviceName);
+        if (serviceNameReason is not null)
         {
-            // An explicit empty/whitespace [DotBoxDService(Name = "")] compiles but no inbound call can ever
-            // match the empty wire name, so every dispatch fails at runtime. Reject it at build time.
             return RejectedService(
                 displayName,
-                "[DotBoxDService(Name = ...)] wire name must not be empty or whitespace",
+                serviceNameReason,
                 serviceLocation,
                 qualifiedInterfaceName);
         }

@@ -60,3 +60,164 @@ namespace Bug.EmptyMethodName
             d => d.Id == "DBXS002" && d.Severity == DiagnosticSeverity.Error);
     }
 }
+
+public sealed class RouteNameBudgetDiagnosticTests
+{
+    [Fact]
+    public void Generator_ReportsError_ForOversizedCustomServiceWireName()
+    {
+        var source = $$"""
+            using DotBoxD.Services.Attributes;
+
+            namespace Bug.RouteNameBudget
+            {
+                [DotBoxDService(Name = "{{LongAsciiName()}}")]
+                public interface ICustomServiceName
+                {
+                    int Get();
+                }
+            }
+            """;
+
+        var runResult = Run(source);
+
+        Assert.Contains(
+            runResult.Diagnostics,
+            d => d.Id == "DBXS003" &&
+                d.Severity == DiagnosticSeverity.Error &&
+                d.GetMessage().Contains("ServiceName limit is 256 bytes", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Generator_ReportsError_ForOversizedDefaultServiceWireName()
+    {
+        var interfaceName = "I" + new string('A', 256);
+        var source = $$"""
+            using DotBoxD.Services.Attributes;
+
+            namespace Bug.RouteNameBudget
+            {
+                [DotBoxDService]
+                public interface {{interfaceName}}
+                {
+                    int Get();
+                }
+            }
+            """;
+
+        var runResult = Run(source);
+
+        Assert.Contains(
+            runResult.Diagnostics,
+            d => d.Id == "DBXS003" &&
+                d.Severity == DiagnosticSeverity.Error &&
+                d.GetMessage().Contains("ServiceName limit is 256 bytes", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Generator_ReportsError_ForOversizedCustomMethodWireName()
+    {
+        var source = $$"""
+            using DotBoxD.Services.Attributes;
+
+            namespace Bug.RouteNameBudget
+            {
+                [DotBoxDService]
+                public interface ICustomMethodName
+                {
+                    [DotBoxDMethod(Name = "{{LongAsciiName()}}")]
+                    int Get();
+                }
+            }
+            """;
+
+        var runResult = Run(source);
+
+        Assert.Contains(
+            runResult.Diagnostics,
+            d => d.Id == "DBXS002" &&
+                d.Severity == DiagnosticSeverity.Error &&
+                d.GetMessage().Contains("MethodName limit is 256 bytes", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Generator_CountsUtf8Bytes_ForCustomMethodWireName()
+    {
+        var source = $$"""
+            using DotBoxD.Services.Attributes;
+
+            namespace Bug.RouteNameBudget
+            {
+                [DotBoxDService]
+                public interface IUtf8MethodName
+                {
+                    [DotBoxDMethod(Name = "{{new string('é', 129)}}")]
+                    int Get();
+                }
+            }
+            """;
+
+        var runResult = Run(source);
+
+        Assert.Contains(
+            runResult.Diagnostics,
+            d => d.Id == "DBXS002" &&
+                d.Severity == DiagnosticSeverity.Error &&
+                d.GetMessage().Contains("258 UTF-8 bytes", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Generator_ReportsError_ForOversizedDefaultMethodWireName()
+    {
+        var methodName = "M" + new string('A', 256);
+        var source = $$"""
+            using DotBoxD.Services.Attributes;
+
+            namespace Bug.RouteNameBudget
+            {
+                [DotBoxDService]
+                public interface IDefaultMethodName
+                {
+                    int {{methodName}}();
+                }
+            }
+            """;
+
+        var runResult = Run(source);
+
+        Assert.Contains(
+            runResult.Diagnostics,
+            d => d.Id == "DBXS002" &&
+                d.Severity == DiagnosticSeverity.Error &&
+                d.GetMessage().Contains("MethodName limit is 256 bytes", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Generator_AllowsRouteNamesAtUtf8ByteLimit()
+    {
+        var source = $$"""
+            using DotBoxD.Services.Attributes;
+
+            namespace Bug.RouteNameBudget
+            {
+                [DotBoxDService(Name = "{{new string('S', 256)}}")]
+                public interface IAtLimit
+                {
+                    [DotBoxDMethod(Name = "{{new string('M', 256)}}")]
+                    int Get();
+                }
+            }
+            """;
+
+        var runResult = Run(source);
+
+        Assert.DoesNotContain(runResult.Diagnostics, d => d.Id is "DBXS002" or "DBXS003");
+    }
+
+    private static Microsoft.CodeAnalysis.GeneratorDriverRunResult Run(string source) =>
+        GeneratorTestHelper.CreateDriver()
+            .RunGenerators(GeneratorTestHelper.CreateCompilation(source))
+            .GetRunResult();
+
+    private static string LongAsciiName() => new('A', 257);
+}

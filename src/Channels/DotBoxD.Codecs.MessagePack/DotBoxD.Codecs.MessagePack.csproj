@@ -15,4 +15,8 @@
     <ProjectReference Include="..\..\Services\DotBoxD.Services\DotBoxD.Services.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\..\Shared\Routing\RpcRequestRouteNameLimits.cs" Link="Shared\Routing\RpcRequestRouteNameLimits.cs" />
+  </ItemGroup>
+
 </Project>
