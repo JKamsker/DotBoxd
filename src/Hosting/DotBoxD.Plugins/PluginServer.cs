@@ -100,7 +100,7 @@ public sealed partial class PluginServer : IDisposable
             .ToHashSet(StringComparer.Ordinal);
         if (package.Manifest.RpcEntrypoint is null)
         {
-            required.UnionWith(PluginManifestCapabilityValidator.NonBindingRequiredCapabilities(package.Manifest));
+            required.UnionWith(PluginManifestCapabilityValidator.ModuleNonBindingRequiredCapabilities(package.Module));
         }
 
         return required.Order(StringComparer.Ordinal).ToArray();

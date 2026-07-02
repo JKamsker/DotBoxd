@@ -58,8 +58,22 @@ internal static class PluginManifestCapabilityValidator
             message));
     }
 
-    public static IEnumerable<string> NonBindingRequiredCapabilities(PluginManifest manifest)
-        => manifest.RequiredCapabilities.Where(IsKnownNonBindingCapability);
+    public static IEnumerable<string> ModuleNonBindingRequiredCapabilities(SandboxModule module)
+    {
+        if (!module.Metadata.TryGetValue(PluginManifestNames.ModuleMetadata.RequiredCapabilities, out var metadata) ||
+            string.IsNullOrWhiteSpace(metadata))
+        {
+            yield break;
+        }
+
+        foreach (var capability in metadata.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (IsKnownNonBindingCapability(capability))
+            {
+                yield return capability;
+            }
+        }
+    }
 
     public static void ValidateRequiredCapabilityGrants(
         PluginManifest manifest,
@@ -101,19 +115,14 @@ internal static class PluginManifestCapabilityValidator
         HashSet<string> capabilities,
         bool include)
     {
-        if (!include ||
-            !module.Metadata.TryGetValue(PluginManifestNames.ModuleMetadata.RequiredCapabilities, out var metadata) ||
-            string.IsNullOrWhiteSpace(metadata))
+        if (!include)
         {
             return;
         }
 
-        foreach (var capability in metadata.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        foreach (var capability in ModuleNonBindingRequiredCapabilities(module))
         {
-            if (IsKnownNonBindingCapability(capability))
-            {
-                capabilities.Add(capability);
-            }
+            capabilities.Add(capability);
         }
     }
 
