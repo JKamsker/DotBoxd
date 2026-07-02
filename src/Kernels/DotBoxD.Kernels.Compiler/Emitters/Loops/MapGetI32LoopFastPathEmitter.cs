@@ -86,7 +86,7 @@ internal static class MapGetI32LoopFastPathEmitter
         il.Emit(OpCodes.Bge, finish);
 
         CompiledMeterEmitter.Fuel(il, 1);
-        CompiledLiteralEmitter.EmitUncharged(il, plan.Key);
+        CompiledLiteralEmitter.Emit(il, plan.Key);
         il.Emit(OpCodes.Stloc, key);
         il.Emit(OpCodes.Ldloc, declare(plan.Source).Local);
         il.Emit(OpCodes.Call, Runtime(nameof(CompiledRuntime.MapCountRaw)));

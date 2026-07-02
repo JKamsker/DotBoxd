@@ -10,12 +10,9 @@ using static DotBoxD.Kernels.Compiler.IlEmitterPrimitives;
 internal static class CompiledLiteralEmitter
 {
     public static void Emit(ILGenerator il, SandboxValue value)
-        => Emit(il, value, chargeLiteral: true);
+        => EmitCharged(il, value);
 
-    public static void EmitUncharged(ILGenerator il, SandboxValue value)
-        => Emit(il, value, chargeLiteral: false);
-
-    private static void Emit(ILGenerator il, SandboxValue value, bool chargeLiteral)
+    private static void EmitCharged(ILGenerator il, SandboxValue value)
     {
         switch (value)
         {
@@ -39,54 +36,36 @@ internal static class CompiledLiteralEmitter
                 il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.F64)));
                 break;
             case GuidValue guid:
+                il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldstr, guid.Value.ToString("D"));
-                il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.GuidLiteralValue)));
+                il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.GuidConst)));
                 break;
             case StringValue text:
-                if (chargeLiteral)
-                {
-                    EmitContextStringCall(il, text.Value, nameof(Kernels.Runtime.CompiledRuntime.StringConst));
-                }
-                else
-                {
-                    il.Emit(OpCodes.Ldstr, text.Value);
-                    il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.StringLiteralValue)));
-                }
-
+                EmitContextStringCall(il, text.Value, nameof(Kernels.Runtime.CompiledRuntime.StringConst));
                 break;
             case OpaqueIdValue id:
-                if (chargeLiteral)
-                {
-                    il.Emit(OpCodes.Ldarg_0);
-                }
-
+                il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldstr, id.TypeName);
                 il.Emit(OpCodes.Ldstr, id.Value);
-                il.Emit(OpCodes.Call, chargeLiteral
-                    ? Runtime(nameof(Kernels.Runtime.CompiledRuntime.OpaqueIdConst))
-                    : Runtime(nameof(Kernels.Runtime.CompiledRuntime.OpaqueIdLiteralValue)));
+                il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.OpaqueIdConst)));
                 break;
             case SandboxPathValue path:
                 EmitStringBackedValue(
                     il,
                     path.Value.RelativePath,
-                    chargeLiteral,
-                    nameof(Kernels.Runtime.CompiledRuntime.PathConst),
-                    nameof(Kernels.Runtime.CompiledRuntime.PathLiteralValue));
+                    nameof(Kernels.Runtime.CompiledRuntime.PathConst));
                 break;
             case SandboxUriValue uri:
                 EmitStringBackedValue(
                     il,
                     uri.Value.Value,
-                    chargeLiteral,
-                    nameof(Kernels.Runtime.CompiledRuntime.UriConst),
-                    nameof(Kernels.Runtime.CompiledRuntime.UriLiteralValue));
+                    nameof(Kernels.Runtime.CompiledRuntime.UriConst));
                 break;
             case ListValue list:
-                EmitListLiteral(il, list, chargeLiteral);
+                EmitListLiteral(il, list);
                 break;
             case MapValue map:
-                EmitMapLiteral(il, map, chargeLiteral);
+                EmitMapLiteral(il, map);
                 break;
             default:
                 throw Unsupported("literal not supported by compiler");
@@ -103,59 +82,44 @@ internal static class CompiledLiteralEmitter
     private static void EmitStringBackedValue(
         ILGenerator il,
         string value,
-        bool chargeLiteral,
-        string chargedRuntimeMethod,
-        string unchargedFactoryMethod)
+        string chargedRuntimeMethod)
     {
-        if (chargeLiteral)
-        {
-            EmitContextStringCall(il, value, chargedRuntimeMethod);
-            return;
-        }
-
-        il.Emit(OpCodes.Ldstr, value);
-        il.Emit(OpCodes.Call, Runtime(unchargedFactoryMethod));
+        EmitContextStringCall(il, value, chargedRuntimeMethod);
     }
 
-    private static void EmitListLiteral(ILGenerator il, ListValue list, bool chargeLiteral)
+    private static void EmitListLiteral(ILGenerator il, ListValue list)
     {
-        if (chargeLiteral)
-        {
-            il.Emit(OpCodes.Ldarg_0);
-        }
-
+        il.Emit(OpCodes.Ldarg_0);
         EmitSandboxType(il, list.ItemType);
         EmitValueArray(il, list.Values);
-        il.Emit(OpCodes.Call, Runtime(chargeLiteral
-            ? nameof(Kernels.Runtime.CompiledRuntime.ListLiteral)
-            : nameof(Kernels.Runtime.CompiledRuntime.ListLiteralValue)));
+        il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.ListLiteral)));
     }
 
-    private static void EmitMapLiteral(ILGenerator il, MapValue map, bool chargeLiteral)
+    private static void EmitMapLiteral(ILGenerator il, MapValue map)
     {
-        if (chargeLiteral)
-        {
-            il.Emit(OpCodes.Ldarg_0);
-        }
-
+        il.Emit(OpCodes.Ldarg_0);
         EmitSandboxType(il, map.KeyType);
         EmitSandboxType(il, map.ValueType);
         EmitValueArray(il, map.Values.Keys.ToArray());
         EmitValueArray(il, map.Values.Values.ToArray());
-        il.Emit(OpCodes.Call, Runtime(chargeLiteral
-            ? nameof(Kernels.Runtime.CompiledRuntime.MapLiteral)
-            : nameof(Kernels.Runtime.CompiledRuntime.MapLiteralValue)));
+        il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.MapLiteral)));
     }
 
     private static void EmitValueArray(ILGenerator il, IReadOnlyList<SandboxValue> values)
     {
+        il.Emit(OpCodes.Ldarg_0);
         EmitInt32(il, values.Count);
-        il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.CreateLiteralValueArray)));
+        il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.CreateValueArray)));
         for (var i = 0; i < values.Count; i++)
         {
+            if (i % 4 == 0)
+            {
+                CompiledMeterEmitter.Fuel(il, 1);
+            }
+
             il.Emit(OpCodes.Dup);
             EmitInt32(il, i);
-            Emit(il, values[i], chargeLiteral: false);
+            EmitCharged(il, values[i]);
             il.Emit(OpCodes.Stelem_Ref);
         }
     }

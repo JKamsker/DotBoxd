@@ -116,9 +116,13 @@ internal static class BindingCallEmitter
         ILGenerator il,
         Action<Expression> emitExpression)
     {
+        ValueArrayEmitter.Emit(il, call.Arguments, emitExpression);
+        var args = il.DeclareLocal(typeof(SandboxValue[]));
+        il.Emit(OpCodes.Stloc, args);
+
         il.Emit(OpCodes.Ldarg_0);
         il.Emit(OpCodes.Ldstr, call.Name);
-        ValueArrayEmitter.Emit(il, call.Arguments, emitExpression);
+        il.Emit(OpCodes.Ldloc, args);
         il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.CallBinding)));
     }
 

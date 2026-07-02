@@ -17,8 +17,11 @@ internal static class PureBindingCallEmitter
                 EmitListEmpty(call, il);
                 return true;
             case "list.of":
-                il.Emit(OpCodes.Ldarg_0);
                 ValueArrayEmitter.Emit(il, call.Arguments, emitExpression);
+                var listValues = il.DeclareLocal(typeof(SandboxValue[]));
+                il.Emit(OpCodes.Stloc, listValues);
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldloc, listValues);
                 il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.ListOf)));
                 return true;
             case "list.count":
@@ -33,8 +36,11 @@ internal static class PureBindingCallEmitter
                 il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.ListAdd)));
                 return true;
             case "record.new":
-                il.Emit(OpCodes.Ldarg_0);
                 ValueArrayEmitter.Emit(il, call.Arguments, emitExpression);
+                var fields = il.DeclareLocal(typeof(SandboxValue[]));
+                il.Emit(OpCodes.Stloc, fields);
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldloc, fields);
                 il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.RecordNew)));
                 return true;
             case "record.get":

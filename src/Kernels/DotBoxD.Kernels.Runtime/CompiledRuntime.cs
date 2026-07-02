@@ -113,6 +113,11 @@ public static partial class CompiledRuntime
         context.ChargeString(value);
         return SandboxValue.FromUri(value);
     }
+    public static SandboxValue GuidConst(SandboxContext context, string value)
+    {
+        context.ChargeFuel(1);
+        return SandboxValue.FromGuid(System.Guid.ParseExact(value, "D"));
+    }
     public static SandboxValue StringLiteralValue(string value) => SandboxValue.FromString(value);
     public static SandboxValue OpaqueIdLiteralValue(string typeName, string value)
         => SandboxValue.FromOpaqueId(typeName, value);

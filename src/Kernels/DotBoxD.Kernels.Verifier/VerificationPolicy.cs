@@ -89,11 +89,7 @@ public sealed record VerificationPolicy(
                 RuntimeMember("OpaqueIdConst", $"{SandboxContextName},{StringName},{StringName}", SandboxValueName),
                 RuntimeMember("PathConst", $"{SandboxContextName},{StringName}", SandboxValueName),
                 RuntimeMember("UriConst", $"{SandboxContextName},{StringName}", SandboxValueName),
-                RuntimeMember("StringLiteralValue", StringName, SandboxValueName),
-                RuntimeMember("OpaqueIdLiteralValue", $"{StringName},{StringName}", SandboxValueName),
-                RuntimeMember("GuidLiteralValue", StringName, SandboxValueName),
-                RuntimeMember("PathLiteralValue", StringName, SandboxValueName),
-                RuntimeMember("UriLiteralValue", StringName, SandboxValueName),
+                RuntimeMember("GuidConst", $"{SandboxContextName},{StringName}", SandboxValueName),
                 RuntimeMember("AsI32", SandboxValueName, Int32Name),
                 RuntimeMember("AsI64", SandboxValueName, Int64Name),
                 RuntimeMember("AsBool", SandboxValueName, BooleanName),
@@ -189,17 +185,14 @@ public sealed record VerificationPolicy(
                 RuntimeMember("RoundF64Raw", DoubleName, DoubleName),
                 RuntimeMember("CreateValueArray", $"{SandboxContextName},{Int32Name}", SandboxValueArrayName),
                 RuntimeMember("ChargeValueArray", $"{SandboxContextName},{Int32Name}", VoidName),
-                RuntimeMember("CreateLiteralValueArray", Int32Name, SandboxValueArrayName),
                 RuntimeMember("ListEmpty", $"{SandboxContextName},{SandboxTypeName}", SandboxValueName),
                 RuntimeMember("ListOf", $"{SandboxContextName},{SandboxValueArrayName}", SandboxValueName),
                 RuntimeMember("ListLiteral", $"{SandboxContextName},{SandboxTypeName},{SandboxValueArrayName}", SandboxValueName),
-                RuntimeMember("ListLiteralValue", $"{SandboxTypeName},{SandboxValueArrayName}", SandboxValueName),
                 RuntimeMember("ListCount", $"{SandboxContextName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("ListGet", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("ListAdd", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("MapEmpty", $"{SandboxContextName},{SandboxTypeName},{SandboxTypeName}", SandboxValueName),
                 RuntimeMember("MapLiteral", $"{SandboxContextName},{SandboxTypeName},{SandboxTypeName},{SandboxValueArrayName},{SandboxValueArrayName}", SandboxValueName),
-                RuntimeMember("MapLiteralValue", $"{SandboxTypeName},{SandboxTypeName},{SandboxValueArrayName},{SandboxValueArrayName}", SandboxValueName),
                 RuntimeMember("MapContainsKey", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("MapGet", $"{SandboxContextName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
                 RuntimeMember("MapSet", $"{SandboxContextName},{SandboxValueName},{SandboxValueName},{SandboxValueName}", SandboxValueName),
@@ -218,7 +211,7 @@ public sealed record VerificationPolicy(
                 "System.Linq.Expressions.", "Microsoft.CSharp."
             },
             RuntimeFacadeIdentityDefaults(),
-            "dotboxd-verifier-8");
+            "dotboxd-verifier-9");
 
     public bool IsMemberAllowed(string memberSignature) => AllowedMembers.Contains(memberSignature);
 
