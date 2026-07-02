@@ -144,8 +144,10 @@ public sealed class SubscriptionRuntimeTests
         using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: ChainPolicy());
         server.Subscriptions.On<ChainAggroEvent>().RunLocal(_ => ran.SetResult());
 
-        server.Subscriptions.Publish(new ChainAggroEvent("monster-1", 3), cancellation.Token);
+        var exception = Record.Exception(
+            () => server.Subscriptions.Publish(new ChainAggroEvent("monster-1", 3), cancellation.Token));
 
+        Assert.IsType<OperationCanceledException>(exception);
         await AssertNoFaultAsync(ran.Task);
     }
 

@@ -4,6 +4,8 @@ using DotBoxD.Kernels.Policies;
 using DotBoxD.Kernels.Serialization.Json.Hosting;
 using DotBoxD.Kernels.Tests._TestSupport;
 using DotBoxD.Kernels.Tests.Compiled.Core;
+using DotBoxD.Kernels.Verifier;
+using DotBoxD.Kernels.Verifier.Generated;
 
 namespace DotBoxD.Kernels.Tests.Compiled.Generated;
 
@@ -63,6 +65,23 @@ public sealed class CompiledMaterializationCancellationTests
     }
 
     [Fact]
+    public async Task Precancelled_reflection_emit_compile_does_not_invoke_verifier()
+    {
+        using var host = SandboxTestHost.Create(compiler: true);
+        var module = await host.ImportJsonAsync(SandboxTestHost.PureScoreJson());
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var verifier = new CountingGeneratedAssemblyVerifier();
+        var compiler = new ReflectionEmitSandboxCompiler(verifier);
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
+            await compiler.CompileAsync(plan, new CompileOptions("main"), cancellation.Token).AsTask());
+
+        Assert.Equal(0, verifier.Calls);
+    }
+
+    [Fact]
     public async Task Cancelled_waiter_does_not_cancel_shared_materialization()
     {
         using var host = SandboxTestHost.Create(compiler: true);
@@ -108,5 +127,22 @@ public sealed class CompiledMaterializationCancellationTests
             CompiledArtifactTestFactory.BuildI32Assembly(parameterCount: 2, value: 123));
 
         return (plan, artifact);
+    }
+
+    private sealed class CountingGeneratedAssemblyVerifier : IGeneratedAssemblyVerifier
+    {
+        private readonly GeneratedAssemblyVerifier _inner = new();
+
+        public int Calls { get; private set; }
+
+        public ValueTask<VerificationResult> VerifyAsync(
+            ReadOnlyMemory<byte> assemblyBytes,
+            ArtifactManifest manifest,
+            VerificationPolicy policy,
+            CancellationToken cancellationToken)
+        {
+            Calls++;
+            return _inner.VerifyAsync(assemblyBytes, manifest, policy, cancellationToken);
+        }
     }
 }

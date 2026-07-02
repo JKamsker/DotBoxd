@@ -29,6 +29,12 @@ internal static class RpcPeerInboundRequestReader
         try
         {
             request = serializer.Deserialize<RpcRequest>(envelope);
+            if (expectedMessageId == 0 || request.MessageId == 0)
+            {
+                protocolError = "Request message id must not be zero.";
+                return false;
+            }
+
             if (request.MessageId != expectedMessageId)
             {
                 protocolError = "Request envelope message id does not match frame header.";

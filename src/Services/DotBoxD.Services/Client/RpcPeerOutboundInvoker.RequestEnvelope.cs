@@ -18,6 +18,13 @@ internal sealed partial class RpcPeerOutboundInvoker
         }
     }
 
+    private void ValidateTargetAndStart(string service, string method, CancellationToken ct)
+    {
+        ValidateTarget(service, method);
+        ct.ThrowIfCancellationRequested();
+        _ensureStarted();
+    }
+
     private static string ValidateInstanceId(string instanceId)
     {
         if (instanceId is null)

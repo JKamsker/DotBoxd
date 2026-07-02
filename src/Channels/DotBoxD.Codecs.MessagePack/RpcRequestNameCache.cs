@@ -1,4 +1,5 @@
 using System.Text;
+using DotBoxD.Shared.Routing;
 
 namespace DotBoxD.Codecs.MessagePack;
 
@@ -94,9 +95,4 @@ internal static class RpcRequestNameCache
 
         public byte[] Utf8 { get; }
     }
-}
-
-internal static class RpcRequestRouteNameLimits
-{
-    public const int MaxUtf8Bytes = 256;
 }

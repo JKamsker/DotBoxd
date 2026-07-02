@@ -49,7 +49,7 @@ public static class KernelPackageRegistry
 
         if (factory is not null)
         {
-            return factory();
+            return CreatePackage(kernelType, factory);
         }
 
         factory = ReflectPackageFactory(kernelType);
@@ -66,6 +66,18 @@ public static class KernelPackageRegistry
         }
 
         return factory();
+    }
+
+    private static PluginPackage CreatePackage(Type kernelType, Func<PluginPackage> factory)
+    {
+        var package = factory();
+        if (package is null)
+        {
+            throw new InvalidOperationException(
+                $"The package factory for kernel '{kernelType.FullName}' returned null.");
+        }
+
+        return package;
     }
 
     private static Func<PluginPackage> ReflectPackageFactory(Type kernelType)
@@ -91,7 +103,7 @@ public static class KernelPackageRegistry
         }
 
         var factory = create.CreateDelegate<Func<PluginPackage>>();
-        var package = new Lazy<PluginPackage>(() => PluginModelCopy.Package(factory()));
+        var package = new Lazy<PluginPackage>(() => PluginModelCopy.Package(CreatePackage(kernelType, factory)));
         return () => package.Value;
     }
 }

@@ -47,6 +47,14 @@ internal sealed partial class RpcPeerOutboundInvoker
             return false;
         }
 
+        if (messageType == MessageType.Error && payload.Length != 0)
+        {
+            _pending.TryFail(
+                messageId,
+                new ServiceProtocolException("Error response payload is not allowed."));
+            return false;
+        }
+
         if (!_pending.TryTake(messageId, out var completion))
         {
             return false;

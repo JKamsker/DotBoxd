@@ -90,6 +90,20 @@ public sealed class NoPayloadProtocolSurpriseTests
     }
 
     [Fact]
+    public async Task InvokeAsync_error_response_rejects_unexpected_payload_bytes()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        await using var channel = new ScriptedConnection();
+        await using var peer = RpcPeer.Over(channel, serializer).Start();
+
+        var call = peer.InvokeAsync<int, string>("Svc", "Op", request: 1);
+        channel.Enqueue(BuildErrorResponseFrameWithPayload(serializer, messageId: 1));
+
+        var ex = await Assert.ThrowsAsync<ServiceProtocolException>(() => call.WaitAsync(Timeout));
+        Assert.Contains("payload", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task InvokeOnInstanceAsync_no_response_rejects_unexpected_payload_bytes()
     {
         var serializer = new MessagePackRpcSerializer();
@@ -210,6 +224,25 @@ public sealed class NoPayloadProtocolSurpriseTests
             messageId,
             MessageType.Response,
             new RpcResponse { MessageId = messageId, IsSuccess = true },
+            payload.WrittenSpan);
+    }
+
+    private static Payload BuildErrorResponseFrameWithPayload(
+        MessagePackRpcSerializer serializer,
+        int messageId)
+    {
+        var payload = SerializeGarbagePayload(serializer);
+        return MessageFramer.FrameMessage(
+            serializer,
+            messageId,
+            MessageType.Error,
+            new RpcResponse
+            {
+                MessageId = messageId,
+                IsSuccess = false,
+                ErrorMessage = "boom",
+                ErrorType = "Remote",
+            },
             payload.WrittenSpan);
     }
 

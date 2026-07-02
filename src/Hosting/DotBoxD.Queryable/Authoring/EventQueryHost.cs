@@ -29,6 +29,7 @@ public sealed class EventQueryHost : IEventQuerySource
     public ValueTask PublishAsync<TEvent>(TEvent e, HookContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        context.CancellationToken.ThrowIfCancellationRequested();
         return TryGetDispatcher<TEvent>() is { } dispatcher
             ? dispatcher.PublishAsync(e, context)
             : ValueTask.CompletedTask;
@@ -103,7 +104,13 @@ public sealed class EventQueryHost : IEventQuerySource
     }
 
     private EventQueryDispatcher<TEvent>? TryGetDispatcher<TEvent>()
-        => _dispatchers.TryGetValue(typeof(TEvent), out var existing)
-            ? (EventQueryDispatcher<TEvent>)existing
-            : null;
+    {
+        if (!_dispatchers.TryGetValue(typeof(TEvent), out var existing))
+        {
+            return null;
+        }
+
+        var dispatcher = (EventQueryDispatcher<TEvent>)existing;
+        return dispatcher.HasSubscriptions ? dispatcher : null;
+    }
 }

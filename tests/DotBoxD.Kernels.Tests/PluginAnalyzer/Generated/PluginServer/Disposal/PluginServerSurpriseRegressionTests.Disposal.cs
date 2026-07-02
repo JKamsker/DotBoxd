@@ -4,6 +4,35 @@ namespace DotBoxD.Kernels.Tests.PluginAnalyzer.Generated;
 
 public sealed partial class PluginServerSurpriseRegressionTests
 {
+    [Theory]
+    [InlineData("EnsureAnonymousDirect")]
+    [InlineData("EnsureAnonymousThroughInterface")]
+    public async Task Generated_plugin_server_anonymous_install_rejects_disposed_before_factory(string methodName)
+    {
+        var (_, outputCompilation) = PluginServerGenerationTestDriver.Run(DisposedSurfaceSource);
+        PluginServerGenerationTestDriver.AssertNoCompilationErrors(outputCompilation);
+
+        var assembly = Emit(outputCompilation);
+        var control = Activator.CreateInstance(assembly.GetType("Sample.RecordingControlService", throwOnError: true)!)!;
+        var world = Activator.CreateInstance(assembly.GetType("Sample.RecordingWorld", throwOnError: true)!)!;
+        var serverType = assembly.GetType("Sample.RemotePluginServer", throwOnError: true)!;
+        var server = Activator.CreateInstance(serverType, [control, world])!;
+        var factoryCalls = 0;
+        Func<DotBoxD.Plugins.PluginPackage> factory = () =>
+        {
+            factoryCalls++;
+            return null!;
+        };
+
+        await DisposeAsync(server);
+
+        var method = assembly.GetType("Sample.Usage", throwOnError: true)!
+            .GetMethod(methodName, BindingFlags.Public | BindingFlags.Static)!;
+        var task = (Task)method.Invoke(null, [server, factory])!;
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => task);
+        Assert.Equal(0, factoryCalls);
+    }
+
     [Fact]
     public async Task Generated_plugin_server_disposal_closes_runtime_surfaces()
     {
@@ -27,6 +56,37 @@ public sealed partial class PluginServerSurpriseRegressionTests
         Assert.Contains("_localHandlers.Clear();", generated, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Generated_plugin_server_cached_extension_registry_observes_disposal()
+    {
+        var (generated, outputCompilation) = PluginServerGenerationTestDriver.Run(DisposedSurfaceSource);
+        PluginServerGenerationTestDriver.AssertNoCompilationErrors(outputCompilation);
+
+        var assembly = Emit(outputCompilation);
+        var control = Activator.CreateInstance(assembly.GetType("Sample.RecordingControlService", throwOnError: true)!)!;
+        var world = Activator.CreateInstance(assembly.GetType("Sample.RecordingWorld", throwOnError: true)!)!;
+        var start = assembly.GetType("Sample.Usage", throwOnError: true)!
+            .GetMethod("StartServerWithRegisteredExtension", BindingFlags.Public | BindingFlags.Static)!;
+        var server = await AwaitValueTaskResult<object>(start.Invoke(null, [control, world])!);
+        var registry = server.GetType().GetProperty("ServerExtensions", BindingFlags.Public | BindingFlags.Instance)!
+            .GetValue(server)!;
+
+        await DisposeAsync(server);
+
+        var serviceType = assembly.GetType("Sample.IScoreService", throwOnError: true)!;
+        var pluginId = registry.GetType().GetMethod("PluginId", BindingFlags.Public | BindingFlags.Instance)!
+            .MakeGenericMethod(serviceType);
+        var exception = Assert.Throws<TargetInvocationException>(() => pluginId.Invoke(registry, null));
+        Assert.IsType<ObjectDisposedException>(exception.InnerException);
+        Assert.Contains(
+            "public string PluginId<TService>() where TService : class\n    {\n        ThrowIfDisposed();\n        return _serverExtensions.TryGetValue",
+            NormalizeLineEndings(generated),
+            StringComparison.Ordinal);
+    }
+
+    private static string NormalizeLineEndings(string value)
+        => value.Replace("\r\n", "\n", StringComparison.Ordinal);
+
     private static Assembly Emit(Microsoft.CodeAnalysis.Compilation compilation)
     {
         using var stream = new MemoryStream();
@@ -45,6 +105,12 @@ public sealed partial class PluginServerSurpriseRegressionTests
     {
         var asTask = valueTask.GetType().GetMethod("AsTask", Type.EmptyTypes)!;
         await ((Task)asTask.Invoke(valueTask, null)!).ConfigureAwait(false);
+    }
+
+    private static async Task<T> AwaitValueTaskResult<T>(object valueTask)
+    {
+        var asTask = valueTask.GetType().GetMethod("AsTask", Type.EmptyTypes)!;
+        return await ((Task<T>)asTask.Invoke(valueTask, null)!).ConfigureAwait(false);
     }
 
     private static void AssertObjectDisposed(Assembly assembly, string methodName, object server)
@@ -95,6 +161,11 @@ public sealed partial class PluginServerSurpriseRegressionTests
 
             public sealed record DamageEvent(string TargetId, int Amount);
 
+            public interface IScoreService
+            {
+                ValueTask<int> ReadAsync(CancellationToken ct = default);
+            }
+
             [Plugin("sample-live")]
             public sealed partial class LiveKernel : IEventKernel<DamageEvent>
             {
@@ -103,6 +174,12 @@ public sealed partial class PluginServerSurpriseRegressionTests
 
                 public bool ShouldHandle(DamageEvent e, HookContext ctx) => e.Amount >= MinDamage;
                 public void Handle(DamageEvent e, HookContext ctx) => ctx.Messages.Send(e.TargetId, "hit");
+            }
+
+            [ServerExtension("score", typeof(IScoreService))]
+            public sealed partial class ScoreKernel
+            {
+                public int Read(HookContext ctx) => 1;
             }
 
             [GeneratePluginServer(
@@ -121,7 +198,7 @@ public sealed partial class PluginServerSurpriseRegressionTests
                     => ValueTask.FromResult("plugin-id");
 
                 public ValueTask<string> InstallServerExtensionAsync(string packageJson, CancellationToken ct = default)
-                    => ValueTask.FromResult("plugin-id");
+                    => ValueTask.FromResult("score");
 
                 public ValueTask UpdateSettingsAsync(
                     string pluginId,
@@ -154,12 +231,32 @@ public sealed partial class PluginServerSurpriseRegressionTests
 
             public static class Usage
             {
+                public static async ValueTask<object> StartServerWithRegisteredExtension(
+                    IGamePluginControlService control,
+                    IGameWorldAccess world)
+                {
+                    var server = RemotePluginServerBuilder
+                        .FromConnection(control, world)
+                        .Setup(setup => setup.Inventory.Extend<IScoreService, ScoreKernel>())
+                        .Build();
+                    await server.StartAsync();
+                    return server;
+                }
+
                 public static object ReadHooks(RemotePluginServer server) => server.Hooks;
                 public static object ReadSubscriptions(RemotePluginServer server) => server.Subscriptions;
                 public static int ReadCurrentTick(RemotePluginServer server) => server.CurrentTick;
                 public static object ReadInventory(RemotePluginServer server) => server.Inventory;
                 public static object ReadLiveSettings(RemotePluginServer server) => server.Get<LiveKernel>();
                 public static ValueTask Hold(RemotePluginServer server) => server.HoldUntilShutdownAsync();
+                public static Task<string> EnsureAnonymousDirect(
+                    RemotePluginServer server,
+                    Func<PluginPackage> factory)
+                    => server.EnsureAnonymousKernelAsync("probe", factory);
+                public static Task<string> EnsureAnonymousThroughInterface(
+                    RemotePluginServer server,
+                    Func<PluginPackage> factory)
+                    => ((IGameWorldServer)server).EnsureAnonymousKernelAsync("probe", factory);
             }
         }
 

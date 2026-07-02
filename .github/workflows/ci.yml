@@ -349,6 +349,8 @@ jobs:
               "PluginAnalyzerEnumerableDtoValidationTests",
               "PluginAnalyzerLiveSettingTypeValidationTests",
               "ServerExtensionGeneratedContextParameterTests",
+              "LoweringFailClosedInvariantTests",
+              "LoweringNegativeShapeMatrixTests",
               "PluginAnalyzerHookChainTests",
               "InvokeAsyncGenerationTests",
               "InvokeAsyncSurpriseGenerationTests",
@@ -372,6 +374,7 @@ jobs:
               "PluginAnalyzerKernelMethodSurpriseRegressionTests",
               "PluginAnalyzerKernelMethodEnumDefaultRegressionTests",
               "PluginAnalyzerKernelMethodImplicitThisRegressionTests",
+              "AnalyzerDefaultValueEmitterMatrixTests",
               "PluginAnalyzerKernelMethodDescriptor",
               "PluginServerFacadeRegressionTests",
               "PluginServerMemberShapeRegressionTests",
@@ -477,6 +480,7 @@ jobs:
               "CallerArgumentExpression_TargetingCancellationToken_RemainsValidOnAsyncSibling",
               "GenericServiceMethod_WithRefStructAntiConstraint_PreservesConstraintOnProxyStub",
               "GeneratedFactoryRegistryDefaultValueTests",
+              "ServiceDefaultValueEmitterMatrixTests",
               "GeneratedFactoryRegistryImmutabilityTests",
               "GeneratedDispatcherSurfaceTests"
             )
@@ -535,7 +539,10 @@ jobs:
           # Native `dotnet test` failures do not stop a pwsh script on their own, so check
           # $LASTEXITCODE after each run. Otherwise a crashed/failed suite that still emitted
           # partial coverage could let check-coverage.ps1 pass while a suite never contributed.
+          # Allocation-measurement tests run in the normal matrix. Do not run them under
+          # Coverlet: coverage instrumentation changes the allocation profile they assert.
           dotnet test tests/DotBoxD.Kernels.Tests/DotBoxD.Kernels.Tests.csproj -c Release --no-restore `
+            --filter "Category!=AllocationMeasurement" `
             --collect "XPlat Code Coverage" --results-directory artifacts/coverage
           if ($LASTEXITCODE -ne 0) { throw "Kernels coverage test run failed (exit $LASTEXITCODE)." }
           dotnet test tests/DotBoxD.Services.Tests/DotBoxD.Services.Tests.csproj -c Release --no-restore `

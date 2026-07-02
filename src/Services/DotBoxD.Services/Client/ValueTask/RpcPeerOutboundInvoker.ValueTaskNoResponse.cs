@@ -65,8 +65,7 @@ internal sealed partial class RpcPeerOutboundInvoker
         PendingValueTaskNoResponse pending;
         try
         {
-            ValidateTarget(service, method);
-            _ensureStarted();
+            ValidateTargetAndStart(service, method, ct);
             pending = ReservePendingValueTaskNoResponseRequest(ct);
         }
         catch (Exception ex)
@@ -113,8 +112,7 @@ internal sealed partial class RpcPeerOutboundInvoker
         PendingValueTaskNoResponse pending;
         try
         {
-            ValidateTarget(service, method);
-            _ensureStarted();
+            ValidateTargetAndStart(service, method, ct);
             pending = ReservePendingValueTaskNoResponseRequest(ct);
         }
         catch (Exception ex)

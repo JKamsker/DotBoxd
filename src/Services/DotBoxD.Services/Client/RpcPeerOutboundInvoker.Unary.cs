@@ -16,8 +16,7 @@ internal sealed partial class RpcPeerOutboundInvoker
         PendingUnaryResponse<TResponse> pending;
         try
         {
-            ValidateTarget(service, method);
-            _ensureStarted();
+            ValidateTargetAndStart(service, method, ct);
             pending = ReservePendingUnaryRequest<TResponse>(service, method, ct);
         }
         catch (Exception ex)
@@ -61,8 +60,7 @@ internal sealed partial class RpcPeerOutboundInvoker
         PendingUnaryResponse<TResponse> pending;
         try
         {
-            ValidateTarget(service, method);
-            _ensureStarted();
+            ValidateTargetAndStart(service, method, ct);
             pending = ReservePendingUnaryRequest<TResponse>(service, method, ct);
         }
         catch (Exception ex)

@@ -63,6 +63,7 @@ Query and Pushdown **both** run author-supplied logic server-side as sandboxed
 - **Concepts** — [Services](/concepts/services/), [Kernels](/concepts/kernels/),
   [Pushdown](/concepts/pushdown/), [Event pipelines](/concepts/event-pipelines/) (react to server events;
   `Hooks` vs `Subscriptions`, the stages, and all five terminals),
+  [Host bindings](/concepts/host-bindings/) (policy-gated calls from kernels into host-owned APIs),
   [Channels & transports](/concepts/channels-transports/), and the kernel
   [runtime](/concepts/runtime/) (interpreted vs verified-IL, fuel/quotas/capabilities).
 - **Security** — the threat model and the all-important

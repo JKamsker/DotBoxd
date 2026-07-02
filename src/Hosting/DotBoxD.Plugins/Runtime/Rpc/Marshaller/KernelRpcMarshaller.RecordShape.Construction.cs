@@ -30,6 +30,13 @@ public static partial class KernelRpcMarshaller
         {
             if (_constructor is null)
             {
+                if (!HasPublicParameterlessConstructor())
+                {
+                    throw new NotSupportedException(
+                        $"Server extension DTO '{_type}' does not expose a public parameterless constructor " +
+                        "or a public constructor matching its public fields.");
+                }
+
                 return Activator.CreateInstance(_type)
                     ?? throw new NotSupportedException($"Server extension could not construct '{_type}'.");
             }

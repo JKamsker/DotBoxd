@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using DotBoxD.Services.SourceGenerator.Infrastructure;
 using DotBoxD.Services.SourceGenerator.Models;
+using DotBoxD.Shared.Routing;
 
 namespace DotBoxD.Services.SourceGenerator.Validation;
 
@@ -52,8 +53,6 @@ internal static class WireNameValidator
 
 internal static class RouteNameBudgetValidator
 {
-    private const int MaxNameUtf8Bytes = 256;
-
     public static string? GetUnsupportedServiceNameReason(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -77,11 +76,11 @@ internal static class RouteNameBudgetValidator
     private static string? GetOverBudgetReason(string name, string routeKind, string requestField)
     {
         var byteCount = Encoding.UTF8.GetByteCount(name);
-        if (byteCount <= MaxNameUtf8Bytes)
+        if (byteCount <= RpcRequestRouteNameLimits.MaxUtf8Bytes)
         {
             return null;
         }
 
-        return $"wire {routeKind} routing key is {byteCount} UTF-8 bytes; the RPC request {requestField} limit is {MaxNameUtf8Bytes} bytes";
+        return $"wire {routeKind} routing key is {byteCount} UTF-8 bytes; the RPC request {requestField} limit is {RpcRequestRouteNameLimits.MaxUtf8Bytes} bytes";
     }
 }

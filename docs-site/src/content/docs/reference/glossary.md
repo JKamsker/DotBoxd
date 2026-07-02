@@ -16,7 +16,7 @@ link for the full treatment.
   before it runs.
 - **Lowering** — Compile-time rewriting of authored C# (a `.Where`/`.Select` chain or a
   `[ServerExtension]` batch) into [verified IR that runs server-side](/tutorials/event-pipeline-runlocal/).
-- **Host binding** — A [`[HostBinding]`](/concepts/kernels/) method the host explicitly exposes;
+- **Host binding** — A [`[HostBinding]`](/concepts/host-bindings/) method the host explicitly exposes;
   the only way a kernel reaches outside pure computation, and only when the matching capability is granted.
 - **Capability** — A named grant (e.g. `file.read`) the [host policy must give](/security/sandbox-caveats/)
   before a kernel may use the matching effect; derived from the IR the kernel actually touches, and

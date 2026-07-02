@@ -36,6 +36,7 @@ namespace DotBoxD.Kernels.Tests.Wave9Fixes;
 /// </para>
 /// </summary>
 [Collection(AllocationMeasurementCollection.Name)]
+[Trait(AllocationMeasurementCollection.TraitName, AllocationMeasurementCollection.TraitValue)]
 public sealed class Fix_PAL_0034_Tests
 {
     private const int ManyObservers = 64;

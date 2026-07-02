@@ -88,6 +88,17 @@ public sealed class RpcStreamManagerRegressionTests
     }
 
     [Fact]
+    public void ReserveOutbound_SkipsNonPositiveIdsAfterCounterWrap()
+    {
+        var streams = CreateStreamManager();
+        streams.OutboundStreamIdCounterForTest = -2;
+
+        var handle = streams.ReserveOutbound(RpcStreamKind.Binary);
+
+        Assert.Equal(1, handle.StreamId);
+    }
+
+    [Fact]
     public async Task TryAddCredit_WhenRegistrationCompletesAfterSenderMiss_CreditsActiveSender()
     {
         var sentItem = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

@@ -61,8 +61,8 @@ kernel (see [Kernels](/concepts/kernels/)). That substrate is what makes accepti
 logic safe in-process.
 
 **Why capabilities (least privilege).** A kernel starts with *no* ambient authority: every host
-operation it can reach — files, time, random, logging, HTTP — must be an explicit `[HostBinding]` the
-host exposed and a capability the policy granted. In the
+operation it can reach — files, time, random, logging, HTTP — must be an explicit
+[`HostBinding`](/concepts/host-bindings/) the host exposed and a capability the policy granted. In the
 [`README`](https://github.com/JKamsker/DotBoxD/blob/main/README.md) example, `Kill` is pinned to
 capability `"game.world.monster.write.kill"` with effects `SandboxEffect.Cpu |
 SandboxEffect.HostStateWrite`; nothing outside that enumerated surface is reachable. Grants are

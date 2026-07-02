@@ -126,6 +126,37 @@ public sealed class RegistryGuardCoverageTests
         Assert.Equal("service", ex.ParamName);
     }
 
+    // ----- Factory return value guards -----
+
+    [Fact]
+    public void CreateProxy_FactoryReturnsNull_ThrowsInvalidOperationException()
+    {
+        GeneratedServiceRegistry.Register<INullProxyFactoryService>(
+            _ => null!,
+            _ => new NullProxyFactoryDispatcher());
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => GeneratedServiceRegistry.CreateProxy<INullProxyFactoryService>(new NoopInvoker()));
+
+        Assert.Contains("proxy", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(nameof(INullProxyFactoryService), ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CreateDispatcher_FactoryReturnsNull_ThrowsInvalidOperationException()
+    {
+        GeneratedServiceRegistry.Register<INullDispatcherFactoryService>(
+            _ => new NullDispatcherFactoryProxy(),
+            _ => null!);
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => GeneratedServiceRegistry.CreateDispatcher<INullDispatcherFactoryService>(
+                new NullDispatcherFactoryImpl()));
+
+        Assert.Contains("dispatcher", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(nameof(INullDispatcherFactoryService), ex.Message, StringComparison.Ordinal);
+    }
+
     // --- Throwaway service surfaces (no generator runs for these) ---
 
     public interface IDefaultMetadataService
@@ -134,6 +165,16 @@ public sealed class RegistryGuardCoverageTests
     }
 
     public interface IValidationProbeService
+    {
+        Task DoAsync(CancellationToken ct = default);
+    }
+
+    public interface INullProxyFactoryService
+    {
+        Task DoAsync(CancellationToken ct = default);
+    }
+
+    public interface INullDispatcherFactoryService
     {
         Task DoAsync(CancellationToken ct = default);
     }
@@ -153,9 +194,32 @@ public sealed class RegistryGuardCoverageTests
         public Task DoAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 
+    private sealed class NullDispatcherFactoryImpl : INullDispatcherFactoryService
+    {
+        public Task DoAsync(CancellationToken ct = default) => Task.CompletedTask;
+    }
+
+    private sealed class NullDispatcherFactoryProxy : INullDispatcherFactoryService
+    {
+        public Task DoAsync(CancellationToken ct = default) => Task.CompletedTask;
+    }
+
     private sealed class DefaultMetadataDispatcher : IServiceDispatcher
     {
         public string ServiceName => nameof(IDefaultMetadataService);
+
+        public Task DispatchAsync(
+            string method,
+            ReadOnlyMemory<byte> payload,
+            ISerializer serializer,
+            IInstanceRegistry registry,
+            IBufferWriter<byte> output,
+            CancellationToken ct = default) => Task.CompletedTask;
+    }
+
+    private sealed class NullProxyFactoryDispatcher : IServiceDispatcher
+    {
+        public string ServiceName => nameof(INullProxyFactoryService);
 
         public Task DispatchAsync(
             string method,

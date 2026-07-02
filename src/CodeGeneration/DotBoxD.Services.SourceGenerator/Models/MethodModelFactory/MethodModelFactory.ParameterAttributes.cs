@@ -1,5 +1,6 @@
 using System.Text;
 using System.Threading;
+using DotBoxD.CodeGeneration.Shared.Defaults;
 using DotBoxD.Services.SourceGenerator.Infrastructure;
 using Microsoft.CodeAnalysis;
 
@@ -14,9 +15,12 @@ internal static partial class MethodModelFactory
         bool preserveMetadataDefaultAttributes)
     {
         var attributes = new StringBuilder();
-        var hasDateTimeConstant = preserveMetadataDefaultAttributes && HasDateTimeConstantAttribute(parameter);
-        var hasDecimalConstant = preserveMetadataDefaultAttributes && HasDecimalConstantAttribute(parameter);
-        var hasDefaultParameterValue = preserveMetadataDefaultAttributes && HasDefaultParameterValueAttribute(parameter);
+        var hasDateTimeConstant = preserveMetadataDefaultAttributes &&
+            ParameterDefaultValueEmitter.HasDateTimeConstantAttribute(parameter);
+        var hasDecimalConstant = preserveMetadataDefaultAttributes &&
+            ParameterDefaultValueEmitter.HasDecimalConstantAttribute(parameter);
+        var hasDefaultParameterValue = preserveMetadataDefaultAttributes &&
+            ParameterDefaultValueEmitter.HasDefaultParameterValueAttribute(parameter);
         var preserveOptionalAttribute =
             preserveOptionalAttributeDefault ||
             hasDateTimeConstant ||
@@ -52,7 +56,7 @@ internal static partial class MethodModelFactory
                 case "System.Runtime.CompilerServices.DateTimeConstantAttribute":
                     if (preserveMetadataDefaultAttributes)
                     {
-                        AppendDateTimeConstantAttribute(attributes, parameter);
+                        attributes.Append(ParameterDefaultValueEmitter.FormatDateTimeConstantAttribute(parameter));
                     }
 
                     break;
@@ -60,7 +64,7 @@ internal static partial class MethodModelFactory
                 case "System.Runtime.CompilerServices.DecimalConstantAttribute":
                     if (preserveMetadataDefaultAttributes)
                     {
-                        AppendDecimalConstantAttribute(attributes, parameter);
+                        attributes.Append(ParameterDefaultValueEmitter.FormatDecimalConstantAttribute(parameter));
                     }
 
                     break;
@@ -68,7 +72,7 @@ internal static partial class MethodModelFactory
                 case "System.Runtime.InteropServices.DefaultParameterValueAttribute":
                     if (preserveMetadataDefaultAttributes)
                     {
-                        AppendDefaultParameterValueAttribute(attributes, parameter);
+                        attributes.Append(ParameterDefaultValueEmitter.FormatDefaultParameterValueAttribute(parameter));
                     }
 
                     break;
@@ -237,27 +241,4 @@ internal static partial class MethodModelFactory
             .Append("\")] ");
     }
 
-    private static void AppendDateTimeConstantAttribute(StringBuilder sb, IParameterSymbol parameter)
-    {
-        if (!TryGetDateTimeConstantTicks(parameter, out var ticks))
-        {
-            return;
-        }
-
-        sb.Append("[global::System.Runtime.CompilerServices.DateTimeConstantAttribute(")
-            .Append(ticks)
-            .Append("L)] ");
-    }
-
-    private static void AppendDefaultParameterValueAttribute(StringBuilder sb, IParameterSymbol parameter)
-    {
-        if (!TryFormatDefaultParameterValueAttributeLiteral(parameter, out var literal))
-        {
-            return;
-        }
-
-        sb.Append("[global::System.Runtime.InteropServices.DefaultParameterValueAttribute(")
-            .Append(literal)
-            .Append(")] ");
-    }
 }

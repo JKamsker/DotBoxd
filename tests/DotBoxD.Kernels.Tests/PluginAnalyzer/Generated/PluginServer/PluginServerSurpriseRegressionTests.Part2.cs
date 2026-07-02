@@ -129,6 +129,23 @@ public sealed partial class PluginServerSurpriseRegressionTests
     }
 
     [Fact]
+    public void Generated_plugin_server_reports_existing_RequireInstalledPackageId_signature_collision()
+    {
+        var diagnostics = PluginServerGenerationTestDriver.Diagnostics(BaseServerSource(serverMembers: """
+                private static void RequireInstalledPackageId(PluginPackage package, string pluginId)
+                {
+                }
+            """));
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("RequireInstalledPackageId", StringComparison.Ordinal) &&
+                 d.GetMessage().Contains("collides with the generated facade surface", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics, d => d.Id == "CS0111");
+    }
+
+    [Fact]
     public void Generated_plugin_server_rejects_live_setting_update_type_without_name_value_constructor()
     {
         var diagnostics = PluginServerGenerationTestDriver.Diagnostics("""

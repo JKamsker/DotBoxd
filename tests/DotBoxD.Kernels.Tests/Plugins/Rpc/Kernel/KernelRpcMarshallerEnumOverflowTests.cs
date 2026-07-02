@@ -17,6 +17,9 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
             DefinedHugeEnum.Top,
             Assert.IsType<DefinedHugeEnum>(
                 KernelRpcMarshaller.FromSandboxValue(SandboxValue.FromInt64(-1), typeof(DefinedHugeEnum))));
+        Assert.Equal(
+            SandboxValue.FromInt64(-1),
+            KernelRpcMarshaller.ToSandboxValue(DefinedHugeEnum.Top, typeof(DefinedHugeEnum)));
     }
 
     [Fact]
@@ -26,6 +29,19 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
             () => KernelRpcMarshaller.FromKernelRpcValue(KernelRpcValue.Int64(-1), typeof(SparseHugeEnum)));
         Assert.Throws<NotSupportedException>(
             () => KernelRpcMarshaller.FromSandboxValue(SandboxValue.FromInt64(-1), typeof(SparseHugeEnum)));
+    }
+
+    [Fact]
+    public void Runtime_marshaller_rejects_undefined_high_bit_ulong_enum_before_encoding()
+    {
+        const ulong highBit = 1UL << 63;
+        var value = (SparseHugeEnum)highBit;
+        var wire = unchecked((long)highBit);
+
+        Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.FromSandboxValue(SandboxValue.FromInt64(wire), typeof(SparseHugeEnum)));
+        Assert.Throws<NotSupportedException>(
+            () => KernelRpcMarshaller.ToSandboxValue(value, typeof(SparseHugeEnum)));
     }
 
     [Fact]
@@ -41,6 +57,9 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
             HugeFlags.High | HugeFlags.Low,
             Assert.IsType<HugeFlags>(
                 KernelRpcMarshaller.FromSandboxValue(SandboxValue.FromInt64(wire), typeof(HugeFlags))));
+        Assert.Equal(
+            SandboxValue.FromInt64(wire),
+            KernelRpcMarshaller.ToSandboxValue(HugeFlags.High | HugeFlags.Low, typeof(HugeFlags)));
     }
 
     [Fact]

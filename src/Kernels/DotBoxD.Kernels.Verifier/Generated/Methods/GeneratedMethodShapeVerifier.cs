@@ -15,6 +15,7 @@ internal static class GeneratedMethodShapeVerifier
         string methodName,
         List<VerificationDiagnostic> diagnostics)
     {
+        VerifyLocalInitialization(body, methodName, diagnostics);
         var analysis = GeneratedMethodFlowAnalyzer.Analyze(instructions, StateFor);
         GeneratedStackVerifier.Verify(signature, analysis, diagnostics);
         GeneratedStackTypeVerifier.Verify(reader, method, body, signature, analysis, diagnostics);
@@ -29,6 +30,24 @@ internal static class GeneratedMethodShapeVerifier
             VerifyFunction(methodName, analysis, diagnostics);
         }
     }
+
+    private static void VerifyLocalInitialization(
+        MethodBodyBlock body,
+        string methodName,
+        List<VerificationDiagnostic> diagnostics)
+    {
+        if (body.LocalVariablesInitialized || body.LocalSignature.IsNil || !IsGeneratedExecutableMethod(methodName))
+        {
+            return;
+        }
+
+        diagnostics.Add(new VerificationDiagnostic(
+            "V-COMPILED-SHAPE",
+            $"method '{methodName}' declares locals with initlocals disabled; generated method bodies must use local initialization"));
+    }
+
+    private static bool IsGeneratedExecutableMethod(string methodName)
+        => methodName == "Execute" || methodName.StartsWith("Fn_", StringComparison.Ordinal);
 
     private static void VerifyFunction(
         string methodName,
@@ -55,6 +74,7 @@ internal static class GeneratedMethodShapeVerifier
         VerifyWorkHasMeterDensity(methodName, analysis, diagnostics);
         VerifyInstructionMeterDensity(methodName, analysis, diagnostics);
         VerifyRuntimeCallOrder(methodName, analysis, diagnostics);
+        GeneratedUnchargedLiteralShapeVerifier.Verify(methodName, analysis, diagnostics);
         foreach (var instruction in analysis.Instructions.Where(i => i.IsLocalCall))
         {
             var state = analysis.EntryStates.TryGetValue(instruction.Offset, out var entryState)

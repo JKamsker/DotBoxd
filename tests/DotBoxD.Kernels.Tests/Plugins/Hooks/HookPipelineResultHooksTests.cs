@@ -250,6 +250,7 @@ public sealed class HookPipelineResultHooksTests
 /// HookRegistry.FireAsync — a regression that reintroduced a per-dispatch reflection lookup would fail here.
 /// </summary>
 [Collection(AllocationMeasurementCollection.Name)]
+[Trait(AllocationMeasurementCollection.TraitName, AllocationMeasurementCollection.TraitValue)]
 public sealed class ResultHookFastPathAllocationTests
 {
     [Hook("test.damage", typeof(DamageResult))]

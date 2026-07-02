@@ -39,8 +39,23 @@ internal static class CompiledLiteralEmitter
                 il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.F64)));
                 break;
             case GuidValue guid:
+                LocalBuilder? guidLocal = null;
+                if (chargeLiteral)
+                {
+                    guidLocal = il.DeclareLocal(typeof(SandboxValue));
+                }
+
                 il.Emit(OpCodes.Ldstr, guid.Value.ToString("D"));
                 il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.GuidLiteralValue)));
+                if (guidLocal is not null)
+                {
+                    il.Emit(OpCodes.Stloc, guidLocal);
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldloc, guidLocal);
+                    il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.ChargeSandboxValue)));
+                    il.Emit(OpCodes.Ldloc, guidLocal);
+                }
+
                 break;
             case StringValue text:
                 if (chargeLiteral)

@@ -180,16 +180,23 @@ public static partial class KernelRpcBinaryCodec
     // fills it in place, so there is no per-string transient byte[] (the array the old MemoryStream path leaked).
     private static void WriteString(IBufferWriter<byte> writer, string value)
     {
-        var byteCount = Encoding.UTF8.GetByteCount(value);
-        WriteLength(writer, byteCount);
-        if (byteCount == 0)
+        try
         {
-            return;
-        }
+            var byteCount = StrictUtf8.GetByteCount(value);
+            WriteLength(writer, byteCount);
+            if (byteCount == 0)
+            {
+                return;
+            }
 
-        var span = writer.GetSpan(byteCount);
-        var written = Encoding.UTF8.GetBytes(value, span);
-        writer.Advance(written);
+            var span = writer.GetSpan(byteCount);
+            var written = StrictUtf8.GetBytes(value, span);
+            writer.Advance(written);
+        }
+        catch (EncoderFallbackException ex)
+        {
+            throw new ArgumentException("Server extension payload contains invalid UTF-16.", nameof(value), ex);
+        }
     }
 
     private static void WriteGuid(IBufferWriter<byte> writer, Guid value)

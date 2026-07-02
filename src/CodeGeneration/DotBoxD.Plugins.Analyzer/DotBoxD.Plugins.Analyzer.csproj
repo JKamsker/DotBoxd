@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\Shared\Defaults\*.cs" Link="Shared\Defaults\%(Filename)%(Extension)" />
     <Compile Include="..\..\Shared\HostBindings\HostBindingMetadataRules.cs" Link="Shared\HostBindingMetadataRules.cs" />
   </ItemGroup>
 

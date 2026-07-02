@@ -6,11 +6,11 @@ param(
 $ErrorActionPreference = "Stop"
 
 # Scripts live under eng/scripts/ (two levels below repo root); walk up twice.
-$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$root = [System.IO.Directory]::GetParent([System.IO.Directory]::GetParent($PSScriptRoot).FullName).FullName
 $baselineRoot = if ([System.IO.Path]::IsPathRooted($BaselineDirectory)) {
     $BaselineDirectory
 } else {
-    Join-Path $root $BaselineDirectory
+    [System.IO.Path]::Combine($root, $BaselineDirectory)
 }
 
 $packages = @(

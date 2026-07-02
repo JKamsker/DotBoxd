@@ -58,7 +58,11 @@ safe-outputs:
     max: 1
     if-no-changes: "ignore"
     protected-files: fallback-to-issue
-    github-token-for-extra-empty-commit: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
+    # Full token override: open the PR as the PAT's user (not github-actions[bot]) so
+    # its CI runs execute without manual approval. A PAT-created PR is not subject to
+    # recursion-prevention, so CI triggers directly — no extra empty commit needed.
+    # Requires the PAT to have Contents:R/W + Pull requests:R/W (verified via _probe-ci-token).
+    github-token: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
   dispatch-workflow:
     workflows: [library-surprise-fix-dispatcher]
     max: 1
@@ -370,6 +374,17 @@ The PR body must include these sections:
 - `Duplicate check`: search terms used and open PRs inspected.
 - `Validation`: restore/build commands that passed and the focused test command
   that failed as expected.
+
+## Protected files — never touch them
+
+Never include top-level protected files in your patch: `README.md`, `CONTRIBUTING.md`,
+`CHANGELOG.md`, `AGENTS.md`, `CLAUDE.md`, `DESIGN.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`,
+`Directory.Packages.props`, `NuGet.Config`, `global.json`, lockfiles, or anything under dot-folders.
+The push layer hard-blocks the ENTIRE patch when it contains any of them (your work is discarded
+into a "[gh-aw] Protected Files" issue instead of landing). Documented samples and doc pages live
+under `docs/**`, which is allowed — put documentation updates there. If a protected file genuinely
+must change for correctness, say so in a comment/PR body and leave the file itself untouched for a
+human.
 
 Do not print, inspect, or summarize secrets, API keys, virtual tokens, endpoint
 hosts, or full endpoint URLs.

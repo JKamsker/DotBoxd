@@ -12,6 +12,10 @@ internal static class GeneratedMethodShapeSignatures
         $"{CompiledRuntimeName}.ChargeFuel({SandboxContextName},{Int32Name}):{VoidName}";
     internal static readonly string ChargeLoopIterationSignature =
         $"{CompiledRuntimeName}.ChargeLoopIteration({SandboxContextName},{Int32Name}):{VoidName}";
+    internal static readonly string ChargeSandboxValueSignature =
+        $"{CompiledRuntimeName}.ChargeSandboxValue({SandboxContextName},{SandboxValueName}):{VoidName}";
+    internal static readonly string ChargeSandboxValuesSignature =
+        $"{CompiledRuntimeName}.ChargeSandboxValues({SandboxContextName},{SandboxValueName},{Int32Name}):{VoidName}";
     // Closed-form linear accumulation (exp/closed-form-accumulation): charges a bulk of loop-iteration fuel
     // internally, so it counts as a fuel meter for the instruction-density / sparsity rule.
     internal static readonly string AccumulateLinearI32Signature =
@@ -21,7 +25,9 @@ internal static class GeneratedMethodShapeSignatures
         $"{CompiledRuntimeName}.GetInputArgument({SandboxValueName},{Int32Name},{Int32Name},{SandboxTypeName}):{SandboxValueName}",
         $"{CompiledRuntimeName}.TypeScalar({StringName}):{SandboxTypeName}",
         $"{CompiledRuntimeName}.TypeList({SandboxTypeName}):{SandboxTypeName}",
-        $"{CompiledRuntimeName}.TypeMap({SandboxTypeName},{SandboxTypeName}):{SandboxTypeName}"
+        $"{CompiledRuntimeName}.TypeMap({SandboxTypeName},{SandboxTypeName}):{SandboxTypeName}",
+        $"{CompiledRuntimeName}.TypeRecord({SandboxTypeArrayName}):{SandboxTypeName}",
+        $"{CompiledRuntimeName}.CreateMeteredTypeArray({SandboxContextName},{Int32Name}):{SandboxTypeArrayName}"
     };
 
     private static readonly string RequireValueType =
@@ -110,6 +116,15 @@ internal static class GeneratedMethodShapeSignatures
            calledMember.StartsWith(CompiledRuntimeName + ".GuidLiteralValue(", StringComparison.Ordinal) ||
            calledMember.StartsWith(CompiledRuntimeName + ".PathLiteralValue(", StringComparison.Ordinal) ||
            calledMember.StartsWith(CompiledRuntimeName + ".UriLiteralValue(", StringComparison.Ordinal) ||
-           calledMember.StartsWith(CompiledRuntimeName + ".ListLiteralValue(", StringComparison.Ordinal) ||
-           calledMember.StartsWith(CompiledRuntimeName + ".MapLiteralValue(", StringComparison.Ordinal);
+           IsUnchargedLiteralCall(calledMember);
+
+    internal static bool IsUnchargedLiteralCall(string? calledMember)
+        => calledMember is not null &&
+           (calledMember.StartsWith(CompiledRuntimeName + ".StringLiteralValue(", StringComparison.Ordinal) ||
+            calledMember.StartsWith(CompiledRuntimeName + ".OpaqueIdLiteralValue(", StringComparison.Ordinal) ||
+            calledMember.StartsWith(CompiledRuntimeName + ".GuidLiteralValue(", StringComparison.Ordinal) ||
+            calledMember.StartsWith(CompiledRuntimeName + ".PathLiteralValue(", StringComparison.Ordinal) ||
+            calledMember.StartsWith(CompiledRuntimeName + ".UriLiteralValue(", StringComparison.Ordinal) ||
+            calledMember.StartsWith(CompiledRuntimeName + ".ListLiteralValue(", StringComparison.Ordinal) ||
+            calledMember.StartsWith(CompiledRuntimeName + ".MapLiteralValue(", StringComparison.Ordinal));
 }

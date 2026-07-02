@@ -33,6 +33,7 @@ namespace DotBoxD.Kernels.Tests.Plugins.Regression.InterpreterValues;
 /// it does not weaken the &lt; 64 byte/call threshold or any measured value.
 /// </summary>
 [Collection(AllocationMeasurementCollection.Name)]
+[Trait(AllocationMeasurementCollection.TraitName, AllocationMeasurementCollection.TraitValue)]
 public sealed class Fix_PAL_0038_Tests
 {
     [Fact]

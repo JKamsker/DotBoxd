@@ -1,3 +1,5 @@
+using System.Buffers;
+using System.Buffers.Binary;
 using DotBoxD.Codecs.MessagePack;
 using DotBoxD.Services.Buffers;
 using DotBoxD.Services.Diagnostics;
@@ -6,6 +8,7 @@ using DotBoxD.Services.Protocol;
 using DotBoxD.Services.Server;
 using DotBoxD.Services.Tests.Support;
 using DotBoxD.Services.Transport;
+using MessagePack;
 using Xunit;
 
 namespace DotBoxD.Services.Tests.Review;
@@ -60,12 +63,7 @@ public sealed class BulletproofReviewRegressionTests
         // A hostile/malformed envelope can carry a null ServiceName (MessagePack nil). It must map to
         // a clean protocol error, not an ArgumentNullException from the dictionary lookup surfaced as
         // InternalError.
-        using var requestFrame = MessageFramer.FrameMessage(
-            serializer,
-            99,
-            MessageType.Request,
-            new RpcRequest { MessageId = 99, ServiceName = null!, MethodName = "Whatever" },
-            ReadOnlySpan<byte>.Empty);
+        using var requestFrame = FrameMalformedRequestWithNullServiceName();
         await client.SendAsync(requestFrame.Memory);
 
         using var responseFrame = await client.ReceiveAsync().WaitAsync(TimeSpan.FromSeconds(2));
@@ -81,6 +79,34 @@ public sealed class BulletproofReviewRegressionTests
         Assert.Equal(MessageType.Error, messageType);
         Assert.False(response.IsSuccess);
         Assert.Equal(RpcErrorTypes.ProtocolError, response.ErrorType);
+    }
+
+    private static Payload FrameMalformedRequestWithNullServiceName()
+    {
+        var envelope = MalformedRequestEnvelopeWithNullServiceName();
+        var body = new byte[MessageFramer.EnvelopeLengthSize + envelope.Length];
+        BinaryPrimitives.WriteInt32LittleEndian(body, envelope.Length);
+        envelope.CopyTo(body.AsSpan(MessageFramer.EnvelopeLengthSize));
+        return MessageFramer.FrameToPayload(99, MessageType.Request, body);
+    }
+
+    private static byte[] MalformedRequestEnvelopeWithNullServiceName()
+    {
+        var writer = new ArrayBufferWriter<byte>();
+        var messagePackWriter = new MessagePackWriter(writer);
+        messagePackWriter.WriteMapHeader(5);
+        messagePackWriter.Write("MessageId");
+        messagePackWriter.Write(99);
+        messagePackWriter.Write("ServiceName");
+        messagePackWriter.WriteNil();
+        messagePackWriter.Write("MethodName");
+        messagePackWriter.Write("Whatever");
+        messagePackWriter.Write("InstanceId");
+        messagePackWriter.WriteNil();
+        messagePackWriter.Write("Streams");
+        messagePackWriter.WriteArrayHeader(0);
+        messagePackWriter.Flush();
+        return writer.WrittenMemory.ToArray();
     }
 
     /// <summary>

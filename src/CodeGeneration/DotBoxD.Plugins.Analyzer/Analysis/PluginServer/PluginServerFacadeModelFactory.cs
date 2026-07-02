@@ -1,3 +1,4 @@
+using DotBoxD.CodeGeneration.Shared.Defaults;
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -176,15 +177,49 @@ internal static partial class PluginServerFacadeModelFactory
         for (var i = 0; i < method.Parameters.Length; i++)
         {
             var parameter = method.Parameters[i];
+            var preserveMetadataDefaultAttributes =
+                ShouldPreserveMetadataDefaultAttributes(method, i, out var defaultClause);
             parameters[i] = new PluginServerParameter(
                 parameter.Name,
                 TypeName(parameter.Type),
-                LiteralReader.ParameterDefaultLiteral(parameter),
+                preserveMetadataDefaultAttributes
+                    ? ParameterDefaultValueEmitter.FormatMetadataDefaultAttributePrefix(
+                        parameter,
+                        includeOptionalAttribute: true)
+                    : string.Empty,
+                defaultClause,
                 parameter.IsParams);
         }
 
         return parameters;
     }
+
+    private static bool ShouldPreserveMetadataDefaultAttributes(
+        IMethodSymbol method,
+        int parameterIndex,
+        out string defaultClause)
+    {
+        var parameter = method.Parameters[parameterIndex];
+        var preserveOptionalAttributeDefault =
+            ParameterDefaultValueEmitter.ShouldPreserveOptionalAttributeDefault(method, parameterIndex);
+        var hasDefaultValue = ParameterDefaultValueEmitter.HasDefaultValue(parameter);
+        var literal = preserveOptionalAttributeDefault
+            ? null
+            : ParameterDefaultValueEmitter.FormatSignatureDefaultLiteral(
+                parameter,
+                hasDefaultValue,
+                DefaultLiteralOptions.Analyzer);
+        defaultClause = preserveOptionalAttributeDefault || literal is null
+            ? string.Empty
+            : " = " + literal;
+        return preserveOptionalAttributeDefault ||
+            (literal is null && HasMetadataDefaultAttribute(parameter));
+    }
+
+    private static bool HasMetadataDefaultAttribute(IParameterSymbol parameter)
+        => ParameterDefaultValueEmitter.HasDateTimeConstantAttribute(parameter) ||
+           ParameterDefaultValueEmitter.HasDecimalConstantAttribute(parameter) ||
+           ParameterDefaultValueEmitter.HasDefaultParameterValueAttribute(parameter);
 
     private static bool HasAttribute(INamedTypeSymbol type, string metadataName)
     {

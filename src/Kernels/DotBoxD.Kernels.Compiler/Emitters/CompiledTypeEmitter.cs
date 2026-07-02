@@ -28,8 +28,9 @@ internal static class CompiledTypeEmitter
 
         if (type.IsRecord)
         {
+            il.Emit(OpCodes.Ldarg_0);
             EmitInt32(il, type.Arguments.Count);
-            il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.CreateTypeArray)));
+            il.Emit(OpCodes.Call, Runtime(nameof(Kernels.Runtime.CompiledRuntime.CreateMeteredTypeArray)));
             for (var i = 0; i < type.Arguments.Count; i++)
             {
                 il.Emit(OpCodes.Dup);

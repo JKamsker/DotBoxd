@@ -246,6 +246,7 @@ public static class JsonExporter
                 writer.WriteNumber("f64", number.Value);
                 break;
             case StringValue text:
+                JsonStringSafety.RequireWellFormedUtf16(text.Value, "string");
                 writer.WriteString("string", text.Value);
                 break;
             case GuidValue guid:
