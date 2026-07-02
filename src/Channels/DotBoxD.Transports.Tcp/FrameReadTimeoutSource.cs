@@ -76,7 +76,14 @@ internal sealed class FrameReadTimeoutSource : IDisposable
         var source = _source;
         if (source is { IsCancellationRequested: false })
         {
-            source.CancelAfter(Timeout.InfiniteTimeSpan);
+            try
+            {
+                source.CancelAfter(Timeout.InfiniteTimeSpan);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Dispose can race a read finally block that is clearing a pending timeout.
+            }
         }
     }
 

@@ -25,6 +25,7 @@ public sealed class StreamConnection : IRpcFrameChannel
     /// <summary>
     /// Creates a framed connection over <paramref name="stream"/>. A null
     /// <paramref name="frameReadIdleTimeout"/> uses the finite default frame-read idle timeout.
+    /// Pass <see cref="Timeout.InfiniteTimeSpan"/> to disable the timeout for trusted streams.
     /// </summary>
     public StreamConnection(
         Stream stream,

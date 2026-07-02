@@ -117,6 +117,12 @@ internal static class PolicyGrantValidator
             return;
         }
 
+        if (grant.Id.StartsWith("event.read.", StringComparison.Ordinal))
+        {
+            ValidateEventReadGrant(grant, requiredCapabilities, requestedCapabilities, diagnostics);
+            return;
+        }
+
         if (ValidateConcreteGrant(grant.Id, grant, bindings, diagnostics))
         {
             return;
@@ -128,6 +134,35 @@ internal static class PolicyGrantValidator
                 "E-POLICY-GRANT",
                 $"grant '{grant.Id}' is not supported by the prepared module"));
         }
+    }
+
+    private static void ValidateEventReadGrant(
+        CapabilityGrant grant,
+        IReadOnlySet<string> requiredCapabilities,
+        IReadOnlyList<CapabilityRequest> requestedCapabilities,
+        List<SandboxDiagnostic> diagnostics)
+    {
+        RequireAllowedKeys(grant, diagnostics, NoAllowedParameterKeys);
+        if (!requiredCapabilities.Contains(grant.Id) &&
+            !ContainsRequest(requestedCapabilities, grant.Id))
+        {
+            diagnostics.Add(new SandboxDiagnostic(
+                "E-POLICY-GRANT",
+                $"grant '{grant.Id}' is not supported by the prepared module"));
+        }
+    }
+
+    private static bool ContainsRequest(IReadOnlyList<CapabilityRequest> requests, string capabilityId)
+    {
+        for (var i = 0; i < requests.Count; i++)
+        {
+            if (string.Equals(requests[i].Id, capabilityId, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void ValidateWildcardGrant(

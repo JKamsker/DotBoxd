@@ -51,14 +51,17 @@ internal sealed class QueueDoctor
 
         foreach (Finding finding in findings)
         {
-            CheckFinding(finding, ids, dedupKeys, errors);
-            CheckEvents(finding, errors);
+            bool hasValidId = CheckFinding(finding, ids, dedupKeys, errors);
+            if (hasValidId)
+            {
+                CheckEvents(finding, errors);
+            }
         }
 
         CheckDuplicateReferences(findings, errors);
     }
 
-    private void CheckFinding(
+    private bool CheckFinding(
         Finding finding,
         HashSet<string> ids,
         Dictionary<string, string> dedupKeys,
@@ -87,24 +90,28 @@ internal sealed class QueueDoctor
             errors.Add($"{finding.Id} has invalid priority '{finding.Priority}'.");
         }
 
-        ValidateFindingId(finding, errors);
+        bool hasValidId = ValidateFindingId(finding, errors);
         ValidateAreaAndFilename(finding, errors);
         ValidateDedupKey(finding, dedupKeys, errors);
         if (string.IsNullOrWhiteSpace(finding.Body))
         {
             errors.Add($"{finding.Id} has an empty body.");
         }
+
+        return hasValidId;
     }
 
-    private static void ValidateFindingId(Finding finding, List<string> errors)
+    private static bool ValidateFindingId(Finding finding, List<string> errors)
     {
         try
         {
             AgentQueuePaths.ValidateFindingId(finding.Id);
+            return true;
         }
         catch (AgentQueueException ex)
         {
             errors.Add(ex.Message);
+            return false;
         }
     }
 

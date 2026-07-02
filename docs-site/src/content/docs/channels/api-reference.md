@@ -214,9 +214,10 @@ Options for both `RpcPeer` and `RpcHost`.
 
 The TCP transport additionally enforces a per-frame read idle timeout (`TcpConnection`, default 30s;
 `Timeout.InfiniteTimeSpan` disables), set via `TcpServerTransport.FrameReadIdleTimeout` /
-`TcpTransport.FrameReadIdleTimeout`. It tears down a connection whose *in-progress* frame read stalls
-(a slow-loris peer that declares a large frame then trickles or sends nothing), but never times out a
-connection idly awaiting its next request.
+`TcpTransport.FrameReadIdleTimeout`. `StreamConnection` and `MessageFramer.ReadMessageAsync` use the
+same finite 30s default unless callers pass an explicit timeout. The timeout covers a receive with no
+new frame bytes, including the first byte of the next frame, so long-lived idle links should use an
+application heartbeat, a larger timeout, or `Timeout.InfiniteTimeSpan` for trusted transports.
 
 `RejectInboundCalls` is not an authentication or authorization boundary. Any connected peer can
 still send request frames; secure transports or application-level checks should enforce trust.

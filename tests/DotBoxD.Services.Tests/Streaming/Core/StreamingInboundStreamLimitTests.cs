@@ -90,6 +90,28 @@ public sealed class StreamingInboundStreamLimitTests
         Assert.Equal(0, streams.InboundReceiverCount);
     }
 
+    [Fact]
+    public void PeerInboundStreamCapacity_ReleasesSlotAfterCompletion()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var streams = new RpcStreamManager(
+            serializer,
+            SendNoopAsync,
+            exceptionTransformer: null,
+            maxInboundStreamsPerPeer: 1);
+        var first = new RpcStreamHandle(814, RpcStreamKind.Binary);
+        var second = new RpcStreamHandle(815, RpcStreamKind.Items);
+
+        streams.RegisterInboundResponse(first, CancellationToken.None);
+        streams.CompleteInbound(first.StreamId);
+        var receiver = streams.RegisterInboundResponse(second, CancellationToken.None);
+
+        Assert.Equal(1, streams.InboundReceiverCount);
+        Assert.Equal(second, receiver.Handle);
+
+        streams.RemoveInbound(second.StreamId);
+    }
+
     private static RpcPeerInboundDispatcher CreateInbound(
         MessagePackRpcSerializer serializer,
         RpcStreamManager streams,

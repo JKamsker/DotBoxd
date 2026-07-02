@@ -156,15 +156,17 @@ public sealed partial class RpcHost : IAsyncDisposable
             // A PeerConnected handler disposed the peer (a documented access-control gesture). peer.Start()
             // then throws on the disposed peer — this is not an accept/transport failure, so do NOT raise
             // AcceptError. Unsubscribe and drop it from the host's collection (the read loop never started,
-            // so OnPeerDisconnected will never run to do this); the peer/channel disposal is already in
-            // flight from the handler.
+            // so OnPeerDisconnected will never run to do this); DisposeAsync is idempotent and awaits the
+            // handler-started cleanup if it is already in flight.
             peer.Disconnected -= OnPeerDisconnected;
             _peers.Remove(peer);
+            await peer.DisposeAsync().ConfigureAwait(false);
         }
         catch
         {
             peer.Disconnected -= OnPeerDisconnected;
             _peers.Remove(peer);
+            await peer.DisposeAsync().ConfigureAwait(false);
             throw;
         }
     }

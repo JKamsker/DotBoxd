@@ -1,10 +1,13 @@
 using System.Buffers.Binary;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using DotBoxD.Services.Protocol;
 using DotBoxD.Services.Transport;
 using DotBoxD.Transports.Tcp;
 using Xunit;
+using ServiceFrameReadTimeoutSource = DotBoxD.Services.Protocol.FrameReadTimeoutSource;
+using TcpFrameReadTimeoutSource = DotBoxD.Transports.Tcp.FrameReadTimeoutSource;
 
 namespace DotBoxD.Services.Tests.Transport;
 
@@ -71,6 +74,40 @@ public sealed class FrameReadIdleTimeoutRegressionTests
 
         await Assert.ThrowsAsync<IOException>(
             () => MessageFramer.ReadMessageAsync(stream, IdleTimeout).WaitAsync(Guard));
+    }
+
+    [Fact]
+    public void ServiceFrameReadTimeoutSource_CancelPendingTimeout_IgnoresDisposedSource()
+    {
+        using var source = new ServiceFrameReadTimeoutSource();
+        source.Start(CancellationToken.None, IdleTimeout);
+        DisposeInnerCancellationTokenSource(source);
+
+        var exception = Record.Exception(source.CancelPendingTimeout);
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void TcpFrameReadTimeoutSource_CancelPendingTimeout_IgnoresDisposedSource()
+    {
+        using var source = new TcpFrameReadTimeoutSource();
+        source.Start(CancellationToken.None, IdleTimeout);
+        DisposeInnerCancellationTokenSource(source);
+
+        var exception = Record.Exception(source.CancelPendingTimeout);
+
+        Assert.Null(exception);
+    }
+
+    private static void DisposeInnerCancellationTokenSource(object timeoutSource)
+    {
+        var field = timeoutSource.GetType().GetField(
+            "_source",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(field);
+        var source = Assert.IsType<CancellationTokenSource>(field.GetValue(timeoutSource));
+        source.Dispose();
     }
 
     private sealed class PrefixThenStallStream : Stream

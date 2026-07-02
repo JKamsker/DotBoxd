@@ -50,6 +50,45 @@ public sealed class AgentQueueMutationHardeningTests
     {
         using AgentQueueHarness harness = new();
         Assert.Equal(0, harness.Run("init"));
+        WriteEscapingIdFinding(harness);
+
+        Assert.Equal(2, harness.Run("claim", "../outside", "--agent", "fixer"));
+
+        Assert.Contains("Invalid finding id '../outside'.", harness.LastError);
+        Assert.False(File.Exists(Path.Combine(harness.Root, "docs", "agent-loop", "outside.jsonl")));
+    }
+
+    [Fact]
+    public void DoctorReportsEscapingFindingIdOnce()
+    {
+        using AgentQueueHarness harness = new();
+        Assert.Equal(0, harness.Run("init"));
+        WriteEscapingIdFinding(harness);
+
+        Assert.Equal(2, harness.Run("doctor"));
+
+        Assert.Equal(1, CountOccurrences(harness.LastOutput, "Invalid finding id '../outside'."));
+    }
+
+    private static void AppendExampleFinding(AgentQueueHarness harness, string priority)
+    {
+        string bodyFile = harness.WriteBody("## Claim" + Environment.NewLine + "Example.");
+        Assert.Equal(0, harness.Run("append",
+            "--area", "correctness",
+            "--priority", priority,
+            "--title", "Example bug",
+            "--dedup-key", "correctness/example/bug",
+            "--agent", "auditor",
+            "--body-file", bodyFile));
+    }
+
+    private static string FindingFile(AgentQueueHarness harness)
+        => Directory.GetFiles(
+            Path.Combine(harness.Root, "docs", "agent-loop", "findings"),
+            "COR-0001-*.md").Single();
+
+    private static void WriteEscapingIdFinding(AgentQueueHarness harness)
+    {
         string findingPath = Path.Combine(
             harness.Root,
             "docs",
@@ -82,27 +121,18 @@ public sealed class AgentQueueMutationHardeningTests
 
             # malicious
             """);
-
-        Assert.Equal(2, harness.Run("claim", "../outside", "--agent", "fixer"));
-
-        Assert.Contains("Invalid finding id '../outside'.", harness.LastError);
-        Assert.False(File.Exists(Path.Combine(harness.Root, "docs", "agent-loop", "outside.jsonl")));
     }
 
-    private static void AppendExampleFinding(AgentQueueHarness harness, string priority)
+    private static int CountOccurrences(string value, string needle)
     {
-        string bodyFile = harness.WriteBody("## Claim" + Environment.NewLine + "Example.");
-        Assert.Equal(0, harness.Run("append",
-            "--area", "correctness",
-            "--priority", priority,
-            "--title", "Example bug",
-            "--dedup-key", "correctness/example/bug",
-            "--agent", "auditor",
-            "--body-file", bodyFile));
-    }
+        var count = 0;
+        var index = 0;
+        while ((index = value.IndexOf(needle, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += needle.Length;
+        }
 
-    private static string FindingFile(AgentQueueHarness harness)
-        => Directory.GetFiles(
-            Path.Combine(harness.Root, "docs", "agent-loop", "findings"),
-            "COR-0001-*.md").Single();
+        return count;
+    }
 }

@@ -103,7 +103,10 @@ decision** the host acts on.
 - **`RegisterLocal`** — a **result hook**: the filter runs server-side, the matching event is pushed to your
   plugin, your delegate computes an `IHookResult`, and that value returns to the host to influence the
   decision. Use it when computing the decision needs your plugin's own types or services. Carries an
-  `int priority`; the result type is a `readonly record struct … : IHookResult`.
+  `int priority`; the result type is a `readonly record struct … : IHookResult`. Remote result handlers
+  time out after 30s by default; configure `ResultHookDispatchOptions.FailClosedAfter(...)` to return an
+  explicit fallback result, or set `RemoteHandlerTimeout` to `Timeout.InfiniteTimeSpan` for trusted
+  handlers that may legitimately run without a deadline.
 - **`Register`** — the server-side counterpart to `RegisterLocal`: the whole decision (filter, projection,
   and result computation) lowers into the sandbox and runs on the host, with nothing crossing the pipe. Use
   it when the decision is pure host-data logic.
