@@ -44,12 +44,12 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
 
       - name: Setup .NET SDKs
-        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
         with:
           dotnet-version: |
             8.0.x
@@ -121,7 +121,7 @@ jobs:
           path: artifacts/packages
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
           subject-path: |
             artifacts/packages/*.nupkg
@@ -138,7 +138,7 @@ jobs:
       contents: read
     steps:
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
         with:
           dotnet-version: 10.0.x
 
@@ -152,7 +152,7 @@ jobs:
       # ShaRPC repo). The repo provides the BW_ACCESS_TOKEN secret; the access token only
       # lives on the canonical JKamsker/DotBoxD repo, so forks/PRs cannot publish.
       - name: Fetch NuGet API key from Bitwarden
-        uses: bitwarden/sm-action@f1de238fc00c738c56140796018be9084c2b5d21 # v2
+        uses: bitwarden/sm-action@14f92f1d294ae3c2b6a3845d389cd2c318b0dfd8 # v2.2.0
         with:
           access_token: ${{ secrets.BW_ACCESS_TOKEN }}
           base_url: https://vault.bitwarden.eu
@@ -181,7 +181,7 @@ jobs:
           path: artifacts/packages
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           generate_release_notes: true
           # A tag containing '-' (e.g. v1.2.3-rc.1) is a prerelease.

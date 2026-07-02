@@ -39,7 +39,7 @@
 #   - OPENAI_API_KEY
 #
 # Custom actions used:
-#   - JKamsker/gh-aw/actions/setup@21e402d7a4b5367258a7692cbb84fee60b507598
+#   - JKamsker/gh-aw/actions/setup@be745b1aaf691dea9880c4dec3d55777027529c4
 #   - actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
 #   - actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
 #   - actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -108,7 +108,7 @@ jobs:
     steps:
       - name: Setup Scripts
         id: setup
-        uses: JKamsker/gh-aw/actions/setup@21e402d7a4b5367258a7692cbb84fee60b507598
+        uses: JKamsker/gh-aw/actions/setup@be745b1aaf691dea9880c4dec3d55777027529c4
         with:
           destination: ${{ runner.temp }}/gh-aw/actions
           job-name: ${{ github.job }}
@@ -442,7 +442,7 @@ jobs:
     steps:
       - name: Setup Scripts
         id: setup
-        uses: JKamsker/gh-aw/actions/setup@21e402d7a4b5367258a7692cbb84fee60b507598
+        uses: JKamsker/gh-aw/actions/setup@be745b1aaf691dea9880c4dec3d55777027529c4
         with:
           destination: ${{ runner.temp }}/gh-aw/actions
           job-name: ${{ github.job }}
@@ -1179,7 +1179,7 @@ jobs:
     steps:
       - name: Setup Scripts
         id: setup
-        uses: JKamsker/gh-aw/actions/setup@21e402d7a4b5367258a7692cbb84fee60b507598
+        uses: JKamsker/gh-aw/actions/setup@be745b1aaf691dea9880c4dec3d55777027529c4
         with:
           destination: ${{ runner.temp }}/gh-aw/actions
           job-name: ${{ github.job }}
@@ -1405,7 +1405,7 @@ jobs:
     steps:
       - name: Setup Scripts
         id: setup
-        uses: JKamsker/gh-aw/actions/setup@21e402d7a4b5367258a7692cbb84fee60b507598
+        uses: JKamsker/gh-aw/actions/setup@be745b1aaf691dea9880c4dec3d55777027529c4
         with:
           destination: ${{ runner.temp }}/gh-aw/actions
           job-name: ${{ github.job }}
@@ -1795,7 +1795,7 @@ jobs:
     steps:
       - name: Setup Scripts
         id: setup
-        uses: JKamsker/gh-aw/actions/setup@21e402d7a4b5367258a7692cbb84fee60b507598
+        uses: JKamsker/gh-aw/actions/setup@be745b1aaf691dea9880c4dec3d55777027529c4
         with:
           destination: ${{ runner.temp }}/gh-aw/actions
           job-name: ${{ github.job }}
