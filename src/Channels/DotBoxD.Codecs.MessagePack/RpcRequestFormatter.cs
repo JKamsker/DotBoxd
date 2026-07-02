@@ -97,11 +97,15 @@ internal sealed class RpcRequestFormatter : IMessagePackFormatter<RpcRequest>
                 "RPC request is missing required ServiceName.");
         }
 
+        ThrowIfEmptyRequiredName(request.ServiceName, nameof(RpcRequest.ServiceName));
+
         if (!seenMethodName || request.MethodName is null)
         {
             throw new MessagePackSerializationException(
                 "RPC request is missing required MethodName.");
         }
+
+        ThrowIfEmptyRequiredName(request.MethodName, nameof(RpcRequest.MethodName));
 
         return request;
     }
@@ -120,6 +124,15 @@ internal sealed class RpcRequestFormatter : IMessagePackFormatter<RpcRequest>
         {
             throw new MessagePackSerializationException(
                 $"RPC request contains duplicate {fieldName}.");
+        }
+    }
+
+    private static void ThrowIfEmptyRequiredName(string value, string fieldName)
+    {
+        if (value.Length == 0)
+        {
+            throw new MessagePackSerializationException(
+                $"RPC request contains empty required {fieldName}.");
         }
     }
 
