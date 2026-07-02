@@ -70,7 +70,12 @@ internal sealed record PluginServerServiceWrapper(
     EquatableArray<PluginServerForwardedProperty> Properties,
     EquatableArray<PluginServerForwardedMethod> Methods);
 
-internal sealed record PluginServerParameter(string Name, string Type, string DefaultClause, bool IsParams);
+internal sealed record PluginServerParameter(
+    string Name,
+    string Type,
+    string AttributePrefix,
+    string DefaultClause,
+    bool IsParams);
 
 internal sealed record GeneratedKernelMethodDescriptorModel(
     string ContextType,

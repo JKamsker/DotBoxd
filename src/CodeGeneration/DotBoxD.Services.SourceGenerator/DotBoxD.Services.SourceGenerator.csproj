@@ -31,6 +31,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\Shared\Defaults\*.cs" Link="Shared\Defaults\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Expose internal generator utilities (EquatableArray, model records, comparers, ordering and
          index helpers) to the test assembly so they can be unit-tested directly. The generator runs
          only at compile time and is never referenced by consumers at runtime, so this grants no

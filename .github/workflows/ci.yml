@@ -372,6 +372,7 @@ jobs:
               "PluginAnalyzerKernelMethodSurpriseRegressionTests",
               "PluginAnalyzerKernelMethodEnumDefaultRegressionTests",
               "PluginAnalyzerKernelMethodImplicitThisRegressionTests",
+              "AnalyzerDefaultValueEmitterMatrixTests",
               "PluginAnalyzerKernelMethodDescriptor",
               "PluginServerFacadeRegressionTests",
               "PluginServerMemberShapeRegressionTests",
@@ -477,6 +478,7 @@ jobs:
               "CallerArgumentExpression_TargetingCancellationToken_RemainsValidOnAsyncSibling",
               "GenericServiceMethod_WithRefStructAntiConstraint_PreservesConstraintOnProxyStub",
               "GeneratedFactoryRegistryDefaultValueTests",
+              "ServiceDefaultValueEmitterMatrixTests",
               "GeneratedFactoryRegistryImmutabilityTests",
               "GeneratedDispatcherSurfaceTests"
             )

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading;
+using DotBoxD.CodeGeneration.Shared.Defaults;
 using DotBoxD.Services.SourceGenerator.Generation;
 using DotBoxD.Services.SourceGenerator.Infrastructure;
 using DotBoxD.Services.SourceGenerator.Validation;
@@ -172,14 +173,21 @@ internal static partial class MethodModelFactory
 
             // A cancellation-token default is always emitted as "= default"; capture the literal text of
             // any other optional/defaulted parameter so the generated proxy/async-sibling preserve it.
-            var hasDefaultValue = HasDefaultParameterValue(param);
-            var preserveOptionalAttributeDefault = ShouldPreserveOptionalAttributeDefault(methodSymbol, parameterIndex);
+            var hasDefaultValue = ParameterDefaultValueEmitter.HasDefaultValue(param);
+            var preserveOptionalAttributeDefault =
+                ParameterDefaultValueEmitter.ShouldPreserveOptionalAttributeDefault(methodSymbol, parameterIndex);
             var defaultValueLiteral = isCancellationToken || preserveOptionalAttributeDefault
                 ? string.Empty
-                : FormatDefaultValueLiteral(param, hasDefaultValue) ?? string.Empty;
+                : ParameterDefaultValueEmitter.FormatSignatureDefaultLiteral(
+                    param,
+                    hasDefaultValue,
+                    DefaultLiteralOptions.SourceGenerator) ?? string.Empty;
             var metadataDefaultValueExpression = isCancellationToken
                 ? string.Empty
-                : FormatMetadataDefaultValueExpression(param, hasDefaultValue, defaultValueLiteral);
+                : ParameterDefaultValueEmitter.FormatMetadataDefaultValueExpression(
+                    param,
+                    hasDefaultValue,
+                    defaultValueLiteral);
 
             parameters.Add(new ParameterModel(
                 IdentifierHelpers.EscapeIdentifier(param.Name),
