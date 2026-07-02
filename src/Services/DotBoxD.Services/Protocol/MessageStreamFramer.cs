@@ -52,7 +52,8 @@ internal static class MessageStreamFramer
         ReadOnlyMemory<byte> payload,
         CancellationToken ct)
     {
-        using var writer = PooledBufferWriter.Rent(MessageFramer.HeaderSize + payload.Length);
+        var totalLength = MessageFrameReader.GetOutgoingFrameLength(payload.Length);
+        using var writer = PooledBufferWriter.Rent(totalLength);
         MessageFramer.WriteFrame(writer, messageId, type, payload.Span);
         await stream.WriteAsync(writer.WrittenMemory, ct).ConfigureAwait(false);
         await stream.FlushAsync(ct).ConfigureAwait(false);

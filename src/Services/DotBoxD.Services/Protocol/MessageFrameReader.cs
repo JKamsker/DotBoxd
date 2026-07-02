@@ -4,6 +4,17 @@ namespace DotBoxD.Services.Protocol;
 
 internal static class MessageFrameReader
 {
+    public static int GetOutgoingFrameLength(int payloadLength)
+    {
+        var totalLength = (long)MessageFramer.HeaderSize + payloadLength;
+        if (totalLength < MessageFramer.HeaderSize || totalLength > MessageFramer.MaxMessageSize)
+        {
+            throw new InvalidDataException($"Invalid DotBoxD frame length: {totalLength}.");
+        }
+
+        return (int)totalLength;
+    }
+
     public static void ValidateOutgoingFrame(ReadOnlySpan<byte> frame, int maxMessageSize)
     {
         if (frame.Length < MessageFramer.HeaderSize)
