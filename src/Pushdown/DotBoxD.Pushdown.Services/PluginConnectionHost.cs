@@ -129,7 +129,16 @@ public sealed class PluginConnectionHost<TConnection> : IAsyncDisposable
                 self._disconnected.TrySetException(ex);
             }
         });
-        await self._host.StartAsync().ConfigureAwait(false);
+        try
+        {
+            await self._host.StartAsync().ConfigureAwait(false);
+        }
+        catch
+        {
+            await self.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+
         return self;
     }
 
