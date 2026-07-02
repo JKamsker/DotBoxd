@@ -97,6 +97,34 @@ public sealed class WorkerTimeoutResultHardeningTests
         Assert.True(worker.ObservedCancellation);
     }
 
+    [Fact]
+    public async Task Worker_execution_with_pre_canceled_caller_token_does_not_dispatch_worker()
+    {
+        var worker = new PreCanceledDispatchWorker();
+        using var host = Host(worker);
+        var module = await host.ImportJsonAsync(SandboxTestHost.PureScoreJson());
+        var plan = await host.PrepareAsync(
+            module,
+            SandboxPolicyBuilder.Create()
+                .WithFuel(1_000)
+                .WithWallTime(TimeSpan.FromSeconds(30))
+                .Build());
+
+        using var caller = new CancellationTokenSource();
+        await caller.CancelAsync();
+
+        var result = await host.ExecuteAsync(
+            plan,
+            "main",
+            SandboxValue.FromList([SandboxValue.FromInt32(1), SandboxValue.FromInt32(1)]),
+            new SandboxExecutionOptions { Isolation = SandboxIsolation.WorkerProcess },
+            caller.Token);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(SandboxErrorCode.Cancelled, result.Error!.Code);
+        Assert.Equal(0, worker.Calls);
+    }
+
     private static SandboxHost Host(ISandboxWorkerClient worker)
         => SandboxHost.Create(builder =>
         {
@@ -209,6 +237,48 @@ public sealed class WorkerTimeoutResultHardeningTests
             }
 
             throw new InvalidOperationException("The caller cancellation test should cancel the worker.");
+        }
+    }
+
+    private sealed class PreCanceledDispatchWorker : ISandboxWorkerClient
+    {
+        public int Calls { get; private set; }
+
+        public ValueTask<SandboxExecutionResult> ExecuteInWorkerAsync(
+            ExecutionPlan plan,
+            string entrypoint,
+            SandboxValue input,
+            SandboxExecutionOptions options,
+            CancellationToken cancellationToken = default)
+        {
+            Calls++;
+            var budget = new ResourceMeter(plan.Budget);
+            var runId = options.RunId ?? SandboxRunId.New();
+            var audit = new InMemoryAuditSink();
+            audit.Write(new SandboxAuditEvent(
+                runId,
+                "RunSummary",
+                DateTimeOffset.UtcNow,
+                Success: true,
+                ResourceId: $"module:{plan.ModuleHash}",
+                Fields: RunSummaryAuditFields.Create(
+                    plan,
+                    budget,
+                    ExecutionMode.Interpreted,
+                    "None",
+                    executionDispatched: true)));
+
+            return ValueTask.FromResult(new SandboxExecutionResult
+            {
+                Succeeded = true,
+                Value = SandboxValue.FromInt32(35),
+                ResourceUsage = budget.Snapshot(),
+                AuditEvents = audit.Events,
+                ActualMode = ExecutionMode.Interpreted,
+                ModuleHash = plan.ModuleHash,
+                PlanHash = plan.PlanHash,
+                PolicyHash = plan.PolicyHash
+            });
         }
     }
 }
