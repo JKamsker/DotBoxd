@@ -122,6 +122,14 @@ internal static class RegistrationAccumulatorBatchFactory
             }
 
             var target = matches[0];
+            if (!property.GetterAccessibleFromGeneratedAccumulator)
+            {
+                diagnostics.Add(Diagnostic(
+                    root.Location,
+                    $"Registration root property '{root.ReceiverTypeName}.{property.Name}' matches a generated accumulator receiver, but its getter is not accessible from generated accumulator code."));
+                continue;
+            }
+
             children.Add(new RegistrationChildAccumulatorModel(
                 property.Name,
                 property.DeclaringTypeName,

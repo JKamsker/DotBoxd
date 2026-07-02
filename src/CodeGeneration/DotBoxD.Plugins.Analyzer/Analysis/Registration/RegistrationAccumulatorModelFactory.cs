@@ -75,7 +75,7 @@ internal static class RegistrationAccumulatorModelFactory
                 Namespace(type),
                 TypeName(type),
                 accumulatorName,
-                PublicInstanceProperties(type),
+                PublicInstanceProperties(type, context.SemanticModel.Compilation),
                 Location(declaration));
             return new RegistrationAccumulatorGenerationResult(null, model, null);
         }
@@ -210,7 +210,9 @@ internal static class RegistrationAccumulatorModelFactory
         }
     }
 
-    private static EquatableArray<RegistrationRootPropertyModel> PublicInstanceProperties(INamedTypeSymbol type)
+    private static EquatableArray<RegistrationRootPropertyModel> PublicInstanceProperties(
+        INamedTypeSymbol type,
+        Compilation compilation)
     {
         var properties = new List<RegistrationRootPropertyModel>();
         var seenNames = new HashSet<string>(StringComparer.Ordinal);
@@ -230,7 +232,8 @@ internal static class RegistrationAccumulatorModelFactory
                     properties.Add(new RegistrationRootPropertyModel(
                         property.Name,
                         TypeName(property.ContainingType),
-                        RegistrationAssignableTypeNameCollector.Collect(property.Type)));
+                        RegistrationAssignableTypeNameCollector.Collect(property.Type),
+                        compilation.IsSymbolAccessibleWithin(property.GetMethod, compilation.Assembly)));
                 }
             }
         }
