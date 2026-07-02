@@ -18,6 +18,21 @@ public sealed class ServerExtensionRegistrationTests
     }
 
     [Fact]
+    public async Task ServerExtension_after_dispose_throws_before_returning_cached_proxy()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(
+            configureHost: RpcKernelTestPackages.AddKillBinding,
+            defaultPolicy: RpcKernelTestPackages.KillPolicy());
+        await server.RegisterServerExtensionAsync<IMonsterKillerService, BatchKillerKernel>();
+        _ = server.ServerExtension<IMonsterKillerService>();
+
+        server.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(
+            () => server.ServerExtension<IMonsterKillerService>());
+    }
+
+    [Fact]
     public async Task RegisterServerExtension_replaces_cached_proxy()
     {
         using var server = DotBoxD.Plugins.PluginServer.Create(
