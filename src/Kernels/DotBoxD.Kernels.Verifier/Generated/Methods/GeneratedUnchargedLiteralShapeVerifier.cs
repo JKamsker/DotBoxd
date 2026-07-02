@@ -65,8 +65,7 @@ internal static class GeneratedUnchargedLiteralShapeVerifier
 
             var currentIndex = analysis.IndexByOffset[candidate.Offset];
             var charged = state.Charged ||
-                IsChargeSandboxValueCall(candidate) &&
-                PreviousInstructionsLoadLocal(analysis.Instructions, currentIndex, localIndex);
+                IsChargeForLocal(analysis.Instructions, currentIndex, localIndex);
             if (candidate.Opcode == ILOpCode.Ret)
             {
                 if (!charged &&
@@ -106,9 +105,30 @@ internal static class GeneratedUnchargedLiteralShapeVerifier
         }
     }
 
-    private static bool IsChargeSandboxValueCall(GeneratedInstruction instruction)
-        => instruction.CalledMember == ChargeSandboxValueSignature ||
-           instruction.CalledMember == ChargeSandboxValuesSignature;
+    private static bool IsChargeForLocal(
+        IReadOnlyList<GeneratedInstruction> instructions,
+        int index,
+        int localIndex)
+    {
+        var instruction = instructions[index];
+        if (!PreviousInstructionsLoadLocal(instructions, index, localIndex))
+        {
+            return false;
+        }
+
+        if (instruction.CalledMember == ChargeSandboxValueSignature)
+        {
+            return true;
+        }
+
+        return instruction.CalledMember == ChargeSandboxValuesSignature &&
+               PreviousInstructionLoadsPositiveInt32(instructions, index);
+    }
+
+    private static bool PreviousInstructionLoadsPositiveInt32(
+        IReadOnlyList<GeneratedInstruction> instructions,
+        int index)
+        => index > 0 && instructions[index - 1].Int32Value > 0;
 
     private static bool PreviousInstructionsLoadLocal(
         IReadOnlyList<GeneratedInstruction> instructions,
