@@ -83,7 +83,14 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
     /// <summary>
     /// The number of bytes written so far.
     /// </summary>
-    public int WrittenCount => _written;
+    public int WrittenCount
+    {
+        get
+        {
+            _ = _buffer ?? throw new ObjectDisposedException(nameof(PooledBufferWriter));
+            return _written;
+        }
+    }
 
     internal Span<byte> WrittenSpan =>
         (_buffer ?? throw new ObjectDisposedException(nameof(PooledBufferWriter))).AsSpan(0, _written);

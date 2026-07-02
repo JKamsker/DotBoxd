@@ -273,6 +273,35 @@ public sealed class PooledBufferWriterCoverageTests
     }
 
     [Fact]
+    public void WrittenCount_AfterDispose_ThrowsObjectDisposed()
+    {
+        // Arrange
+        var writer = new PooledBufferWriter();
+        var bytes = new byte[] { 1, 2, 3 };
+        bytes.CopyTo(writer.GetSpan(bytes.Length));
+        writer.Advance(bytes.Length);
+        writer.Dispose();
+
+        // Act + Assert
+        Assert.Throws<ObjectDisposedException>(() => _ = writer.WrittenCount);
+    }
+
+    [Fact]
+    public void WrittenCount_AfterDetachPayload_ThrowsObjectDisposed()
+    {
+        // Arrange
+        var writer = new PooledBufferWriter();
+        var bytes = new byte[] { 1, 2, 3, 4 };
+        bytes.CopyTo(writer.GetSpan(bytes.Length));
+        writer.Advance(bytes.Length);
+        var payload = writer.DetachPayload();
+        payload.Dispose();
+
+        // Act + Assert
+        Assert.Throws<ObjectDisposedException>(() => _ = writer.WrittenCount);
+    }
+
+    [Fact]
     public void Dispose_CalledTwice_IsNoOp()
     {
         // Arrange
