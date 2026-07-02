@@ -119,7 +119,10 @@ internal static class PluginServerFacadeSurfaceEmitter
             "    ",
             "Returns the installed plugin id for a server extension service type.");
         builder.AppendLine("    public string PluginId<TService>() where TService : class");
-        builder.AppendLine("        => _serverExtensions.TryGetValue(typeof(TService), out var pluginId) ? pluginId : throw new global::System.InvalidOperationException($\"Server extension '{typeof(TService).FullName}' has not been registered.\");");
+        builder.AppendLine("    {");
+        builder.AppendLine("        ThrowIfDisposed();");
+        builder.AppendLine("        return _serverExtensions.TryGetValue(typeof(TService), out var pluginId) ? pluginId : throw new global::System.InvalidOperationException($\"Server extension '{typeof(TService).FullName}' has not been registered.\");");
+        builder.AppendLine("    }");
         PluginServerXmlDocumentation.AppendSummary(
             builder,
             "    ",
