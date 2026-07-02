@@ -1,0 +1,52 @@
+/* DotBoxD Starlight theme: .NET-adjacent violet accent with full light/dark ramps. */
+
+/* Dark mode colors. */
+:root {
+  --sl-color-accent-low: #2a2062;
+  --sl-color-accent: #6f58e8;
+  --sl-color-accent-high: #c8bcff;
+  --sl-color-white: #ffffff;
+  --sl-color-gray-1: #ebe9f5;
+  --sl-color-gray-2: #bfbcce;
+  --sl-color-gray-3: #8a86a1;
+  --sl-color-gray-4: #57536d;
+  --sl-color-gray-5: #37344c;
+  --sl-color-gray-6: #262338;
+  --sl-color-black: #17151f;
+}
+
+/* Light mode colors. */
+:root[data-theme='light'] {
+  --sl-color-accent-low: #e3ddff;
+  --sl-color-accent: #5b3fd6;
+  --sl-color-accent-high: #2c1e75;
+  --sl-color-white: #17151f;
+  --sl-color-gray-1: #262338;
+  --sl-color-gray-2: #37344c;
+  --sl-color-gray-3: #57536d;
+  --sl-color-gray-4: #8a86a1;
+  --sl-color-gray-5: #bfbcce;
+  --sl-color-gray-6: #ebe9f5;
+  --sl-color-gray-7: #f5f4fa;
+  --sl-color-black: #ffffff;
+}
+
+/* Inline code inside headings: slightly subordinate to the heading text so code reads
+   as a token, not a shout, and short chains fit next to the heading prose. The class is
+   doubled because Starlight ships an equal-specificity `font-size: inherit` rule that
+   comes later in the bundle. */
+.sl-markdown-content.sl-markdown-content :is(h1, h2, h3, h4, h5, h6) code {
+  font-size: 0.85em;
+}
+
+/* Give the hero title a subtle accent gradient on the splash page. */
+[data-has-hero] .hero h1 {
+  background: linear-gradient(
+    120deg,
+    var(--sl-color-white) 35%,
+    var(--sl-color-accent-high)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

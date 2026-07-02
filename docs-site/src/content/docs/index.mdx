@@ -1,0 +1,104 @@
+---
+title: DotBoxD
+description: >-
+  Source-generated, contract-first .NET extension runtime. One C# contract, used three ways —
+  Services (RPC), sandboxed Kernels, and Pushdown — with no runtime reflection on the hot path.
+template: splash
+editUrl: false
+hero:
+  title: DotBoxD
+  tagline: >-
+    Source-generated, contract-first .NET extension runtime. One C# contract, used three ways —
+    all driven by Roslyn source generators, with no runtime reflection on the hot path.
+  actions:
+    - text: Get started
+      link: /getting-started/
+      icon: right-arrow
+    - text: Choose a mode
+      link: /overview/
+      variant: minimal
+      icon: open-book
+    - text: GitHub
+      link: https://github.com/JKamsker/DotBoxD
+      variant: minimal
+      icon: github
+---
+
+import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
+
+## The three ways to use one contract
+
+<CardGrid stagger>
+  <Card title="Services (RPC)" icon="rocket">
+    The host implements a contract; clients call it remotely over RPC (remote procedure call).
+    Proxy and implementation are generated from the same interface, so they cannot drift — and it
+    compiles ahead-of-time, so it runs on Unity's IL2CPP.
+
+    [Tutorial: your first service ›](/tutorials/first-service/)
+  </Card>
+  <Card title="Kernels (Query / RunLocal)" icon="seti:shell">
+    A client supplies validated logic — e.g. a `Where`/`Select` event filter — the host runs safely
+    inside a fuel-metered sandbox, so a plugin can't run away with CPU. Downstream this mode is
+    called *Query (RunLocal)*.
+
+    [Tutorial: event pipelines ›](/tutorials/event-pipeline-runlocal/)
+  </Card>
+  <Card title="Pushdown" icon="seti:pipeline">
+    A plugin ships its *own* sandboxed batch operation that runs **server-side**, collapsing N
+    round-trips into one validated submission.
+
+    [Tutorial: pushdown server extension ›](/tutorials/pushdown-server-extension/)
+  </Card>
+</CardGrid>
+
+## Install
+
+```bash
+# Full net10.0 stack (Services + Kernels + Pushdown):
+dotnet add package DotBoxD --prerelease
+
+# Unity / netstandard2.1 service bundle:
+dotnet add package DotBoxD.Services.All --prerelease
+```
+
+The Services and channel libraries target `netstandard2.1`, so they run on **Unity / IL2CPP**.
+The Kernels and Pushdown stack targets `net10.0`.
+
+## Security in one line
+
+<Aside type="caution" title="Safe mode is the real boundary">
+  A kernel is restricted IR (intermediate representation) that is validated, capability-gated,
+  fuel/quota-metered, and (for compiled mode) verified before it runs — consumers never supply C#,
+  IL, or arbitrary host calls. Trusted-plugin mode (`AssemblyLoadContext`) is **not** a sandbox.
+  Read [Sandbox caveats](/security/sandbox-caveats/) before deploying.
+</Aside>
+
+## Explore the docs
+
+<CardGrid>
+  <LinkCard
+    title="Overview & choosing a mode"
+    href="/overview/"
+    description="Same contract, three delivery strategies — pick by call shape and trust model."
+  />
+  <LinkCard
+    title="Tutorials"
+    href="/tutorials/"
+    description="End-to-end walkthroughs: your first service, event pipelines with RunLocal, and a pushdown server extension."
+  />
+  <LinkCard
+    title="Examples"
+    href="/examples/"
+    description="An annotated tour of the maintained GameServer sample."
+  />
+  <LinkCard
+    title="API reference"
+    href="/api/"
+    description="Generated from the source of every published package."
+  />
+</CardGrid>
+
+---
+
+DotBoxD merges the former standalone **ShaRPC** (RPC) and **Safe-IR** (kernel sandbox) projects into
+one contract-first runtime. It is [MIT licensed](https://github.com/JKamsker/DotBoxD/blob/main/LICENSE).

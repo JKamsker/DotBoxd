@@ -24,10 +24,18 @@ on:
   # completion does NOT fire this dispatcher. Verified 2026-07-01: bot-dispatched
   # red-tests 28523484435 / 28523516570 / 28523545465 (which opened PRs #170-172)
   # did NOT fire it; only a JKamsker-dispatched red-test did. The schedule closes
-  # the loop regardless of who opened the red PR. max=2 + the per-PR busy-check
-  # and retry cap below keep any single tick from bursting the backlog.
+  # the loop regardless of who opened the red PR. The per-PR busy-check, retry cap,
+  # and a GLOBAL in-flight cap (MAX_INFLIGHT) below keep the higher cadence + per-tick
+  # max from bursting the backlog or running away on cost.
   schedule:
-    - cron: "15,45 * * * *"
+    # Off-peak minutes on purpose: GitHub throttles/drops short-interval schedule
+    # slots, and drops disproportionately at :00/:05-multiples (observed 2026-07-01:
+    # `*/10` fired 1 of 6 slots in its first hour). Ticks are cheap and self-healing
+    # (each re-scans the full frontier), so dropped slots degrade latency, not
+    # correctness — and the red-test worker now ALSO kicks this dispatcher directly
+    # via safe-outputs dispatch on every PR it opens, so the cron is the fallback
+    # path, not the primary latency path.
+    - cron: "7,17,27,37,47,57 * * * *"
   # Kept for immediacy: fires instantly when a human/PAT dispatches a red-test
   # (those DO emit workflow_run). Harmless for bot-dispatched ones (never fires).
   workflow_run:
@@ -38,7 +46,7 @@ on:
       max:
         description: Max fix workers to dispatch this tick.
         required: false
-        default: "2"
+        default: "4"
         type: string
 
 permissions:
@@ -61,8 +69,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          MAX_DISPATCH: ${{ inputs.max || '2' }}
+          MAX_DISPATCH: ${{ inputs.max || '4' }}
           MAX_ATTEMPTS: "3"
+          MAX_INFLIGHT: "8"
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -132,10 +141,25 @@ jobs:
           except ValueError:
               max_attempts = 3
 
+          # Global concurrency cap: never let total in-flight fix runs exceed
+          # MAX_INFLIGHT. This is what makes the higher cadence + per-tick max safe —
+          # raising throughput can't runaway on cost; it fills to the cap and holds
+          # there until fixes finish. len(busy) = current in-flight fix count.
+          try:
+              max_inflight = int(os.environ.get("MAX_INFLIGHT") or "8")
+          except ValueError:
+              max_inflight = 8
+          slots = max(0, max_inflight - len(busy))
+          budget = min(max_dispatch, slots)
+          if budget <= 0:
+              print(f"{len(busy)} fix run(s) in flight >= cap {max_inflight}; "
+                    f"no dispatch this tick")
+
           dispatched = 0
           for pr in candidates:
-              if dispatched >= max_dispatch:
-                  print(f"reached max ({max_dispatch}); "
+              if dispatched >= budget:
+                  cap_name = "in-flight cap" if slots < max_dispatch else f"per-tick max {max_dispatch}"
+                  print(f"reached {cap_name}; dispatched {dispatched}, "
                         f"{len(candidates) - dispatched} candidate(s) deferred to next tick")
                   break
               n = pr["number"]

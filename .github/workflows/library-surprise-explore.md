@@ -2,9 +2,10 @@
 description: |
   Per-lens discovery agent for the surprise-hunt graph. Dispatched by
   library-surprise-dispatcher with one `lens_issue`. Reads the lens charter + its full comment
-  trail, dedups against the graph and open PRs, investigates one cohesive candidate inside that
-  lens (read-only), logs the trail as a lens comment, and — on a concrete surprise — dispatches
-  the red-test worker. It does not edit files or open PRs. See docs/Task/BugHunting/README.md.
+  trail, dedups against the graph and open PRs, investigates candidates inside that lens
+  (read-only), logs the trail as a lens comment, and — per concrete surprise found, up to 3 —
+  dispatches the red-test worker. It does not edit files or open PRs.
+  See docs/Task/BugHunting/README.md.
 
 on:
   workflow_dispatch:
@@ -65,7 +66,7 @@ safe-outputs:
     labels: [sweep:bug]
   dispatch-workflow:
     workflows: [library-surprise-red-test]
-    max: 1
+    max: 3
   noop:
     report-as-issue: false
   missing-tool: false
@@ -115,33 +116,47 @@ shows a candidate was **dispatched but no matching PR exists** (its red-test run
 failed), re-dispatching it is correct — do not treat the bare "dispatched" log line as coverage.
 Never re-mine a lead already **refuted** in the trail.
 
-## 3. Investigate one cohesive candidate
+## 3. Investigate candidates (one is the norm, up to three)
 
-Pick at most one cohesive candidate within this lens: a charter sub-area not yet swept, or the
-continuation of an open thread from the comments. Map the focused promise surface and build a small
-surprise inventory per the technique skill. You may run restore/build to confirm a lead; you must
-not edit files.
+Pick a cohesive candidate within this lens: a charter sub-area not yet swept, or the continuation
+of an open thread from the comments. Map the focused promise surface and build a small surprise
+inventory per the technique skill. You may run restore/build to confirm a lead; you must not edit
+files.
+
+If that investigation surfaces **additional, independently concrete** surprises (each with its own
+distinct failing shape, not restatements or facets of the same defect), **dispatch them too — up to
+three total — rather than deferring them to a future run.** A concrete candidate you park under
+"promising next leads" costs an entire future explore run to re-derive; harvest everything that
+already meets the bar while you hold the context. One candidate is the right outcome only when
+that is all the seam actually yielded. Never pad toward the cap, never split one defect into
+multiple candidates, and never lower the concreteness bar to reach a second candidate — a
+speculative dispatch is worse than none, but a deferred concrete one is a wasted run.
 
 ## 4. Log the trail on the lens (always)
 
 Post one concise progress comment on lens issue **#${{ inputs.lens_issue }}**
 (`add-comment`, target = ${{ inputs.lens_issue }}) recording: what you checked this run, promising
-leads for next time, dead ends, any lead you **refuted** (so it is not re-mined), and — if you
-dispatch a red-test below — the exact `candidate_title` and failing shape you dispatched. This
-comment is the durable dedup ledger: a red-test PR may later be merged and closed, so a dispatched
-candidate MUST be recorded here or a future run will re-dispatch it. Keep it short and specific.
+leads for next time, dead ends, any lead you **refuted** (so it is not re-mined), and — for **each**
+red-test you dispatch below — its exact `candidate_title` and failing shape. This comment is the
+durable dedup ledger: a red-test PR may later be merged and closed, so every dispatched candidate
+MUST be recorded here or a future run will re-dispatch it. It is also what lets a concurrently
+running red-test from another lens detect an in-flight duplicate before its PR exists. Keep it
+short and specific.
 
 ## 5. Outcome
 
 Exactly one of:
 
-- **Concrete, non-duplicate surprise found** — dispatch the red-test worker by calling the
-  **dedicated** `library_surprise_red_test` safe-output tool (NOT the generic `dispatch_workflow`
-  tool, which is a no-op in this runtime) with:
+- **Concrete, non-duplicate surprise(s) found** — for each candidate (up to 3), dispatch the
+  red-test worker by calling the **dedicated** `library_surprise_red_test` safe-output tool once
+  per candidate (NOT the generic `dispatch_workflow` tool, which is a no-op in this runtime) with:
   - `candidate_title`: concise, PR-title-ready, without the `[surprise-red-test] ` prefix.
   - `candidate_payload`: compact JSON with `bug`, `expected_red_test`, `expected_failure`,
     `suggested_test_area`, `suggested_source_area`, `duplicate_check`, and
     `lens_issue`: "${{ inputs.lens_issue }}".
+
+  Multiple candidates must be mutually distinct defects — if two would be fixed by the same
+  production change, dispatch only the stronger one.
 
   If (and only if) the finding needs tracking beyond a single PR — it is not yet reducible to one
   red test, or it is a cluster of related surprises — also `create-issue` (`sweep:bug`) with a repro

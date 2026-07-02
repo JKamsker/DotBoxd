@@ -35,5 +35,5 @@ access for *author-supplied logic expressed as IR*. It does **not** turn `Assemb
 sandbox and does **not** make loading untrusted compiled assemblies safe.
 
 For the full threat model, capability/binding model, and the verifier's guarantees, see
-[`docs/security/`](docs/security/sandbox-caveats.md) and the kernel sandbox specification under
+[Sandbox caveats](https://dotboxd.kamsker.at/security/sandbox-caveats/) and the kernel sandbox specification under
 [`docs/Specs/`](https://github.com/JKamsker/DotBoxD/tree/main/docs/Specs).
