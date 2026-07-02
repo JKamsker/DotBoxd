@@ -61,6 +61,11 @@ internal static class PluginManifestCapabilityValidator
     public static IEnumerable<string> NonBindingRequiredCapabilities(PluginManifest manifest)
         => manifest.RequiredCapabilities.Where(IsKnownNonBindingCapability);
 
+    public static IEnumerable<string> NonBindingRequiredCapabilities(PluginManifest manifest, SandboxModule module)
+        => manifest.RequiredCapabilities
+            .Concat(ModuleNonBindingRequiredCapabilities(module))
+            .Where(IsKnownNonBindingCapability);
+
     public static void ValidateRequiredCapabilityGrants(
         PluginManifest manifest,
         SandboxModule module,
@@ -101,22 +106,34 @@ internal static class PluginManifestCapabilityValidator
         HashSet<string> capabilities,
         bool include)
     {
-        if (!include ||
-            !module.Metadata.TryGetValue(PluginManifestNames.ModuleMetadata.RequiredCapabilities, out var metadata) ||
-            string.IsNullOrWhiteSpace(metadata))
+        if (!include)
         {
             return;
+        }
+
+        foreach (var capability in ModuleNonBindingRequiredCapabilities(module))
+        {
+            capabilities.Add(capability);
+        }
+    }
+
+    public static bool IsKnownNonBindingCapability(string capability)
+        => capability.StartsWith("event.read.", StringComparison.Ordinal);
+
+    private static IEnumerable<string> ModuleNonBindingRequiredCapabilities(SandboxModule module)
+    {
+        if (!module.Metadata.TryGetValue(PluginManifestNames.ModuleMetadata.RequiredCapabilities, out var metadata) ||
+            string.IsNullOrWhiteSpace(metadata))
+        {
+            yield break;
         }
 
         foreach (var capability in metadata.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             if (IsKnownNonBindingCapability(capability))
             {
-                capabilities.Add(capability);
+                yield return capability;
             }
         }
     }
-
-    private static bool IsKnownNonBindingCapability(string capability)
-        => capability.StartsWith("event.read.", StringComparison.Ordinal);
 }

@@ -198,6 +198,12 @@ internal static class PolicyGrantValidator
                     $"grant '{RuntimeCapabilityIds.Reentrant}' is not supported until intra-kernel reentrancy ships"));
                 return true;
             default:
+                if (capabilityId.StartsWith("event.read.", StringComparison.Ordinal))
+                {
+                    RequireAllowedKeys(grant, diagnostics, NoAllowedParameterKeys);
+                    return true;
+                }
+
                 if (bindings.TryGetCapabilityGrantValidator(capabilityId, out var validator))
                 {
                     validator(grant, diagnostics);

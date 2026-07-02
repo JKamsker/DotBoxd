@@ -18,6 +18,7 @@ internal sealed class PluginEventAdapterValidationCache
         var eventName = adapter.EventName;
         var parameters = adapter.Parameters;
         PluginEventAdapterShapeValidator.Validate(adapter, parameters);
+        PluginEventCapabilityValidator.Validate<TEvent>(plan, entrypoints, parameters);
         if (_validatedAdapters.TryGetValue(adapter, out var cached) &&
             cached.Value.Matches(eventName, parameters))
         {
