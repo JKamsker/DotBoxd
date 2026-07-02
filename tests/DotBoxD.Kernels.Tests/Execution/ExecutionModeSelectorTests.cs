@@ -47,6 +47,27 @@ public sealed class ExecutionModeSelectorTests
     }
 
     [Fact]
+    public async Task Auto_mode_pre_canceled_execution_does_not_advance_hotness()
+    {
+        var host = SandboxTestHost.Create(compiler: true);
+        var module = await host.ImportJsonAsync(SandboxTestHost.PureScoreJson());
+        var plan = await host.PrepareAsync(module, SandboxPolicyBuilder.Create().WithFuel(1_000).Build());
+        var options = new SandboxExecutionOptions { Mode = ExecutionMode.Auto, AutoCompileThreshold = 2 };
+        var input = SandboxValue.FromList([SandboxValue.FromInt32(1), SandboxValue.FromInt32(1)]);
+        using var canceled = new CancellationTokenSource();
+        canceled.Cancel();
+
+        var cancelled = await host.ExecuteAsync(plan, "main", input, options, canceled.Token);
+        var next = await host.ExecuteAsync(plan, "main", input, options);
+
+        Assert.False(cancelled.Succeeded);
+        Assert.Equal(SandboxErrorCode.Cancelled, cancelled.Error!.Code);
+        Assert.False(cancelled.ExecutionDispatched);
+        Assert.True(next.Succeeded, next.Error?.SafeMessage);
+        Assert.Equal(ExecutionMode.Interpreted, next.ActualMode);
+    }
+
+    [Fact]
     public async Task Auto_mode_rejects_invalid_selector_decision_without_compiler_dispatch()
     {
         var selector = new RecordingSelector(new ExecutionModeDecision((ExecutionMode)123));
