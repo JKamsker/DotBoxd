@@ -95,7 +95,7 @@ public sealed class Fix_COR_0062_Tests
 
         var tasks = Enumerable
             .Range(0, 128)
-            .Select(i => Task.Run(() => sink.Send("hud", i.ToString())))
+            .Select(i => Task.Run(async () => await sink.SendAsync("hud", i.ToString())))
             .ToArray();
 
         await Task.WhenAll(tasks);
