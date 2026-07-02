@@ -21,7 +21,9 @@ internal static class GeneratedMethodShapeSignatures
         $"{CompiledRuntimeName}.GetInputArgument({SandboxValueName},{Int32Name},{Int32Name},{SandboxTypeName}):{SandboxValueName}",
         $"{CompiledRuntimeName}.TypeScalar({StringName}):{SandboxTypeName}",
         $"{CompiledRuntimeName}.TypeList({SandboxTypeName}):{SandboxTypeName}",
-        $"{CompiledRuntimeName}.TypeMap({SandboxTypeName},{SandboxTypeName}):{SandboxTypeName}"
+        $"{CompiledRuntimeName}.TypeMap({SandboxTypeName},{SandboxTypeName}):{SandboxTypeName}",
+        $"{CompiledRuntimeName}.TypeRecord({SandboxTypeArrayName}):{SandboxTypeName}",
+        $"{CompiledRuntimeName}.CreateMeteredTypeArray({SandboxContextName},{Int32Name}):{SandboxTypeArrayName}"
     };
 
     private static readonly string RequireValueType =

@@ -84,7 +84,7 @@ public sealed record VerificationPolicy(
                 RuntimeMember("TypeList", SandboxTypeName, SandboxTypeName),
                 RuntimeMember("TypeMap", $"{SandboxTypeName},{SandboxTypeName}", SandboxTypeName),
                 RuntimeMember("TypeRecord", SandboxTypeArrayName, SandboxTypeName),
-                RuntimeMember("CreateTypeArray", Int32Name, SandboxTypeArrayName),
+                RuntimeMember("CreateMeteredTypeArray", $"{SandboxContextName},{Int32Name}", SandboxTypeArrayName),
                 RuntimeMember("StringConst", $"{SandboxContextName},{StringName}", SandboxValueName),
                 RuntimeMember("OpaqueIdConst", $"{SandboxContextName},{StringName},{StringName}", SandboxValueName),
                 RuntimeMember("PathConst", $"{SandboxContextName},{StringName}", SandboxValueName),

@@ -10,15 +10,21 @@ namespace DotBoxD.Kernels.Tests.Verifier.Core;
 
 public sealed class VerifierDocumentedAttackMatrixTests
 {
-    public static TheoryData<string, Func<byte[]>, string[]> DocumentedAttackCases()
+    public static TheoryData<string, Func<byte[]>, string[], Func<string, bool>?> DocumentedAttackCases()
         => new() {
-            { "exception handlers", ExceptionHandlerAssembly, ["V-EXCEPTION"] },
-            { "embedded resources", EmbeddedResourceAssembly, ["V-RESOURCE"] },
-            { "Thread.Start", ThreadStartAssembly, ["V-TYPE-FORBIDDEN", "V-MEMBER"] },
-            { "raw Stream", StreamAssembly, ["V-TYPE-FORBIDDEN", "V-MEMBER"] },
-            { "IServiceProvider.GetService", ServiceProviderAssembly, ["V-TYPE-FORBIDDEN", "V-MEMBER"] },
-            { "unmanaged function pointer signature", FunctionPointerSignatureAssembly, ["V-FUNCTION-SIGNATURE"] },
-            { "unmetered type array allocation", TypeArrayAllocationAssembly, ["V-COMPILED-SHAPE", "V-MEMBER"] }
+            { "exception handlers", ExceptionHandlerAssembly, ["V-EXCEPTION"], null },
+            { "embedded resources", EmbeddedResourceAssembly, ["V-RESOURCE"], null },
+            { "Thread.Start", ThreadStartAssembly, ["V-TYPE-FORBIDDEN", "V-MEMBER"], null },
+            { "raw Stream", StreamAssembly, ["V-TYPE-FORBIDDEN", "V-MEMBER"], null },
+            { "IServiceProvider.GetService", ServiceProviderAssembly, ["V-TYPE-FORBIDDEN", "V-MEMBER"], null },
+            { "unmanaged function pointer signature", FunctionPointerSignatureAssembly, ["V-FUNCTION-SIGNATURE"], null },
+            {
+                "unmetered type array allocation",
+                TypeArrayAllocationAssembly,
+                ["V-COMPILED-SHAPE", "V-MEMBER"],
+                static message => message.Contains("CreateTypeArray", StringComparison.Ordinal) ||
+                                  message.Contains("type array", StringComparison.OrdinalIgnoreCase)
+            }
         };
 
     [Theory]
@@ -26,16 +32,15 @@ public sealed class VerifierDocumentedAttackMatrixTests
     public async Task Verifier_rejects_documented_boundary_attacks(
         string name,
         Func<byte[]> build,
-        string[] expectedCodes)
+        string[] expectedCodes,
+        Func<string, bool>? messagePredicate)
     {
         var result = await VerifierTestHelpers.VerifyAsync(build());
 
         Assert.False(result.Succeeded);
         Assert.Contains(result.Diagnostics, d =>
             expectedCodes.Contains(d.Code) &&
-            (name != "unmetered type array allocation" ||
-             d.Message.Contains("CreateTypeArray", StringComparison.Ordinal) ||
-             d.Message.Contains("type array", StringComparison.OrdinalIgnoreCase)));
+            (messagePredicate is null || messagePredicate(d.Message)));
         Assert.NotEmpty(name);
     }
 
