@@ -19,6 +19,14 @@ internal sealed partial class SandboxWorkerExecutor(ConfiguredSandboxWorker? wor
             return Execution.SandboxHost.WorkerIsolationUnavailableResult(plan, options, worker?.Profile);
         }
 
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return Execution.SandboxHost.WorkerIsolationFailedResult(
+                plan,
+                options,
+                WorkerCancellationOrTimeoutError(cancellationToken));
+        }
+
         // SuppressSuccessfulRunSummaryAudit is an in-process allocation optimization only.
         // Worker-result validation (WorkerAuditMatches) structurally requires exactly one
         // RunSummary, so the worker must always emit it; suppressing it here would make every
