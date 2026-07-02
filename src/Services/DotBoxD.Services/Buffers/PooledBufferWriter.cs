@@ -19,6 +19,7 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
 
     private byte[]? _buffer;
     private int _written;
+    private int _maxWritten = int.MaxValue;
     private bool _returnToCache;
     private int _cacheThreadId;
     private int _cached;
@@ -40,8 +41,13 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
     /// disposed writers permanently unusable; this internal pool is only used where the writer never
     /// escapes the method that rented it.
     /// </summary>
-    internal static PooledBufferWriter Rent(int initialCapacity = 256)
+    internal static PooledBufferWriter Rent(int initialCapacity = 256, int maxWritten = int.MaxValue)
     {
+        if (maxWritten <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxWritten));
+        }
+
         var writer = s_cachedWriter;
         if (writer is null)
         {
@@ -57,17 +63,21 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
 
             if (writer is null)
             {
-                writer = new PooledBufferWriter(initialCapacity) { _returnToCache = true };
+                writer = new PooledBufferWriter(NormalizeInitialCapacity(initialCapacity, maxWritten))
+                {
+                    _maxWritten = maxWritten,
+                    _returnToCache = true,
+                };
             }
             else
             {
-                writer.Reset(initialCapacity);
+                writer.Reset(initialCapacity, maxWritten);
             }
         }
         else
         {
             s_cachedWriter = null;
-            writer.Reset(initialCapacity);
+            writer.Reset(initialCapacity, maxWritten);
         }
 
         writer._cacheThreadId = Environment.CurrentManagedThreadId;
@@ -98,11 +108,13 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
         var buffer = _buffer ?? throw new ObjectDisposedException(nameof(PooledBufferWriter));
         // Widen to 64-bit: _written + count in 32-bit signed arithmetic can overflow to a negative value,
         // making this guard pass and silently corrupting _written (symmetric with the EnsureCapacity fix).
-        if ((long)_written + count > buffer.Length)
+        var requested = (long)_written + count;
+        if (requested > buffer.Length)
         {
             throw new InvalidOperationException("Cannot advance past the end of the buffer.");
         }
 
+        ThrowIfBudgetExceeded(requested);
         _written += count;
     }
 
@@ -175,14 +187,10 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
         }
     }
 
-    private void Reset(int initialCapacity)
+    private void Reset(int initialCapacity, int maxWritten)
     {
-        if (initialCapacity <= 0)
-        {
-            initialCapacity = 256;
-        }
-
-        _buffer = ArrayPool<byte>.Shared.Rent(initialCapacity);
+        _maxWritten = maxWritten;
+        _buffer = ArrayPool<byte>.Shared.Rent(NormalizeInitialCapacity(initialCapacity, maxWritten));
         _written = 0;
         _returnToCache = true;
         _cached = 0;
@@ -202,6 +210,7 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
         // value, making the guard below pass and handing back a span SMALLER than sizeHint (an
         // IBufferWriter<T> contract break the caller cannot detect).
         var required = (long)_written + Math.Max(sizeHint, 1);
+        ThrowIfBudgetExceeded(required);
         if (required <= buffer.Length)
         {
             return;
@@ -221,5 +230,24 @@ public sealed class PooledBufferWriter : IBufferWriter<byte>, IDisposable
         Array.Copy(buffer, 0, newBuffer, 0, _written);
         _buffer = newBuffer;
         ArrayPool<byte>.Shared.Return(buffer);
+    }
+
+    private static int NormalizeInitialCapacity(int initialCapacity, int maxWritten)
+    {
+        if (initialCapacity <= 0)
+        {
+            initialCapacity = 256;
+        }
+
+        return Math.Min(initialCapacity, maxWritten);
+    }
+
+    private void ThrowIfBudgetExceeded(long requested)
+    {
+        if (_maxWritten != int.MaxValue && requested > _maxWritten)
+        {
+            throw new InvalidDataException(
+                $"Requested buffer capacity ({requested}) exceeds the configured limit ({_maxWritten}).");
+        }
     }
 }

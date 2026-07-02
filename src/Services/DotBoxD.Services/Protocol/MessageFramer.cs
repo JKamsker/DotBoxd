@@ -217,7 +217,7 @@ public static class MessageFramer
     internal static PooledBufferWriter RentFrameWriter(int knownPayloadLength = 0)
         => PooledBufferWriter.Rent(Math.Max(
             HeaderSize + EnvelopeLengthSize + knownPayloadLength,
-            MinimumFrameWriterCapacity));
+            MinimumFrameWriterCapacity), MaxMessageSize);
 
     /// <summary>
     /// Detaches the written bytes as a <see cref="Payload"/> and patches the total length and the
