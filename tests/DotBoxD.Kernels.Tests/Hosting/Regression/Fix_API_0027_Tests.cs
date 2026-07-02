@@ -7,7 +7,7 @@ public sealed class Fix_API_0027_Tests
     private static readonly string[] CurrentServerExtensionDocumentation =
     [
         "README.md",
-        Path.Combine("docs-site", "src", "content", "docs", "index.mdx"),
+        Path.Combine("docs-site", "src", "content", "docs", "overview.md"),
         Path.Combine("docs-site", "src", "content", "docs", "getting-started.md"),
         Path.Combine("docs-site", "src", "content", "docs", "concepts", "pushdown.md"),
         Path.Combine("docs", "Specs", "Addendum", "Examples.md"),

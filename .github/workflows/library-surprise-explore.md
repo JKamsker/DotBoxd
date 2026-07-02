@@ -123,12 +123,14 @@ of an open thread from the comments. Map the focused promise surface and build a
 inventory per the technique skill. You may run restore/build to confirm a lead; you must not edit
 files.
 
-If — and only if — that investigation surfaces **additional, independently concrete** surprises
-(each with its own distinct failing shape, not restatements or facets of the same defect), you may
-carry up to **three** candidates out of this run. One well-specified candidate is the normal
-outcome; two or three is the exception for a genuinely rich seam. Never pad toward the cap, never
-split one defect into multiple candidates, and never lower the concreteness bar to reach a second
-candidate — a speculative second dispatch is worse than none.
+If that investigation surfaces **additional, independently concrete** surprises (each with its own
+distinct failing shape, not restatements or facets of the same defect), **dispatch them too — up to
+three total — rather than deferring them to a future run.** A concrete candidate you park under
+"promising next leads" costs an entire future explore run to re-derive; harvest everything that
+already meets the bar while you hold the context. One candidate is the right outcome only when
+that is all the seam actually yielded. Never pad toward the cap, never split one defect into
+multiple candidates, and never lower the concreteness bar to reach a second candidate — a
+speculative dispatch is worse than none, but a deferred concrete one is a wasted run.
 
 ## 4. Log the trail on the lens (always)
 

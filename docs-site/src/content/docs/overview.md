@@ -55,6 +55,7 @@ Query and Pushdown **both** run author-supplied logic server-side as sandboxed
 
 ## Map
 
+- **Why DotBoxD** — [the isolation-vs-latency dilemma, in three diagrams](/why-dotboxd/).
 - **Getting started** — [install, first service, first kernel, pushdown quickstart](/getting-started/).
 - **Tutorials** — end-to-end walkthroughs: [first Service](/tutorials/first-service/),
   [event pipelines (RunLocal)](/tutorials/event-pipeline-runlocal/), [Pushdown server extension](/tutorials/pushdown-server-extension/).
