@@ -174,6 +174,23 @@ public sealed class PluginOwnershipTests
     }
 
     [Fact]
+    public async Task Disposed_session_rejects_install_and_wire_before_validate()
+    {
+        using var server = DotBoxD.Plugins.PluginServer.Create(defaultPolicy: LongWallPluginPolicy());
+        var session = server.CreateSession();
+        session.Dispose();
+        var validateCalls = 0;
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(
+            async () => await session.InstallAndWireAsync(
+                FireDamagePluginPackage.Create(),
+                _ => { },
+                validate: _ => validateCalls++).AsTask());
+
+        Assert.Equal(0, validateCalls);
+    }
+
+    [Fact]
     public async Task Owner_with_null_id_keeps_legacy_replace_semantics()
     {
         // Direct (sessionless) installs have no owner; reusing an id replaces + revokes, as before.
