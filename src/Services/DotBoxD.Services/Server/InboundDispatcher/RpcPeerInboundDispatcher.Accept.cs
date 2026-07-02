@@ -88,7 +88,10 @@ internal sealed partial class RpcPeerInboundDispatcher
             return false;
         }
 
-        if (!RpcStreamValidation.TryValidateInboundHandles(request.Streams, out protocolError))
+        if (!RpcStreamValidation.TryValidateInboundHandles(
+            request.Streams,
+            _maxInboundStreamsPerRequest,
+            out protocolError))
         {
             return false;
         }

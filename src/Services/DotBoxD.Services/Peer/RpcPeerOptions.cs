@@ -12,6 +12,8 @@ public sealed class RpcPeerOptions
     public const int DefaultInboundQueueCapacity = 1024;
     public const int DefaultMaxPendingRequests = 4096;
     public const int DefaultMaxConcurrentInboundDispatch = 1;
+    public const int DefaultMaxInboundStreamsPerRequest = 32;
+    public const int DefaultMaxInboundStreamsPerPeer = 1024;
 
     /// <summary>Default <see cref="MaxInboundBytes"/>: 64 MiB of in-flight inbound frames per peer.</summary>
     public const long DefaultMaxInboundBytes = 64L * 1024 * 1024;
@@ -19,6 +21,8 @@ public sealed class RpcPeerOptions
     private int? _inboundQueueCapacity = DefaultInboundQueueCapacity;
     private int _maxPendingRequests = DefaultMaxPendingRequests;
     private int _maxConcurrentInboundDispatch = DefaultMaxConcurrentInboundDispatch;
+    private int _maxInboundStreamsPerRequest = DefaultMaxInboundStreamsPerRequest;
+    private int _maxInboundStreamsPerPeer = DefaultMaxInboundStreamsPerPeer;
     private long? _maxInboundBytes = DefaultMaxInboundBytes;
     private QueueFullMode _queueFullMode = QueueFullMode.Wait;
     private TimeSpan _requestTimeout = TimeSpan.FromSeconds(30);
@@ -179,6 +183,48 @@ public sealed class RpcPeerOptions
             }
 
             _maxConcurrentInboundDispatch = value;
+        }
+    }
+
+    /// <summary>
+    /// Maximum inbound stream handles a single request may declare before dispatch. This bounds
+    /// pre-handler stream validation and receiver setup work for untrusted peers.
+    /// </summary>
+    public int MaxInboundStreamsPerRequest
+    {
+        get => _maxInboundStreamsPerRequest;
+        init
+        {
+            if (value <= 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(MaxInboundStreamsPerRequest),
+                    value,
+                    "Maximum inbound streams per request must be greater than zero.");
+            }
+
+            _maxInboundStreamsPerRequest = value;
+        }
+    }
+
+    /// <summary>
+    /// Maximum active inbound stream receivers held by this peer. This bounds per-peer receiver state
+    /// before stream registration allocates receiver objects.
+    /// </summary>
+    public int MaxInboundStreamsPerPeer
+    {
+        get => _maxInboundStreamsPerPeer;
+        init
+        {
+            if (value <= 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(MaxInboundStreamsPerPeer),
+                    value,
+                    "Maximum inbound streams per peer must be greater than zero.");
+            }
+
+            _maxInboundStreamsPerPeer = value;
         }
     }
 

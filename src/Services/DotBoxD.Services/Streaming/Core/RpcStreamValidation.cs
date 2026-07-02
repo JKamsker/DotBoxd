@@ -6,14 +6,36 @@ namespace DotBoxD.Services.Streaming.Core;
 
 internal static class RpcStreamValidation
 {
+    internal const int DefaultMaxInboundStreamsPerRequest = 32;
+
     public static bool TryValidateInboundHandles(
         RpcStreamHandle[]? handles,
+        out string? protocolError) =>
+        TryValidateInboundHandles(handles, DefaultMaxInboundStreamsPerRequest, out protocolError);
+
+    public static bool TryValidateInboundHandles(
+        RpcStreamHandle[]? handles,
+        int maxHandles,
         out string? protocolError)
     {
+        if (maxHandles <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maxHandles),
+                maxHandles,
+                "Maximum inbound stream handles must be greater than zero.");
+        }
+
         protocolError = null;
         if (handles is null || handles.Length == 0)
         {
             return true;
+        }
+
+        if (handles.Length > maxHandles)
+        {
+            protocolError = $"Request declares {handles.Length} inbound streams; maximum is {maxHandles}.";
+            return false;
         }
 
         if (handles.Length == 1)

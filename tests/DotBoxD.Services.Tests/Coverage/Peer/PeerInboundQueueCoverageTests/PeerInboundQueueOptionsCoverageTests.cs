@@ -44,6 +44,26 @@ public sealed class PeerInboundQueueOptionsCoverageTests
 
     [Theory]
     [InlineData(0)]
+    [InlineData(-1)]
+    public void MaxInboundStreamsPerRequest_NonPositive_Throws(int value)
+    {
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RpcPeerOptions { MaxInboundStreamsPerRequest = value });
+        Assert.Equal("MaxInboundStreamsPerRequest", ex.ParamName);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void MaxInboundStreamsPerPeer_NonPositive_Throws(int value)
+    {
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(
+            () => new RpcPeerOptions { MaxInboundStreamsPerPeer = value });
+        Assert.Equal("MaxInboundStreamsPerPeer", ex.ParamName);
+    }
+
+    [Theory]
+    [InlineData(0)]
     [InlineData(-5)]
     public void InboundQueueCapacity_NonPositive_Throws(int value)
     {

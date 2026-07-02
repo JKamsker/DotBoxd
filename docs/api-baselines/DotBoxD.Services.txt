@@ -28,6 +28,8 @@ public class ServiceProtocolException : ServiceException
 public class ServiceTimeoutException : ServiceException
 public const int DefaultInboundQueueCapacity = 1024
 public const int DefaultMaxConcurrentInboundDispatch = 1
+public const int DefaultMaxInboundStreamsPerPeer = 1024
+public const int DefaultMaxInboundStreamsPerRequest = 32
 public const int DefaultMaxPendingRequests = 4096
 public const int EnvelopeLengthSize = 4
 public const int HeaderSize = 9
@@ -102,6 +104,8 @@ public InstanceRegistry(int maxInstances)
 public int Length => _length
 public int Length => _memory.Length
 public int MaxConcurrentInboundDispatch
+public int MaxInboundStreamsPerPeer
+public int MaxInboundStreamsPerRequest
 public int MaxPendingRequests
 public int MessageId { get; }
 public int MessageId { get; set; }

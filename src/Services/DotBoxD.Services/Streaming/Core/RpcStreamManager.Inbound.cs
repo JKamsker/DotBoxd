@@ -47,6 +47,7 @@ internal sealed partial class RpcStreamManager
             return;
         }
 
+        EnsureCanRegisterInbound(handles.Length);
         RegisterInboundMany(handles, ct);
     }
 
@@ -98,16 +99,18 @@ internal sealed partial class RpcStreamManager
         }
 
         RpcStreamValidation.ValidateKind(handle.Kind);
-        var receiver = new RpcStreamReceiver(this, handle);
+        RpcStreamReceiver receiver;
         lock (_inboundGate)
         {
             _canceledInbound.ThrowIfOverflowed();
+            EnsureInboundCapacityLocked(1);
             if (_canceledInbound.Contains(handle.StreamId))
             {
                 throw new ServiceProtocolException(
                     $"Inbound stream id '{handle.StreamId}' is awaiting a terminal frame after local cancellation.");
             }
 
+            receiver = new RpcStreamReceiver(this, handle);
             if (!_receivers.TryAdd(handle.StreamId, receiver) &&
                 (!_receivers.TryGetValue(handle.StreamId, out var existing) ||
                  !existing.IsCompleted ||
@@ -121,6 +124,28 @@ internal sealed partial class RpcStreamManager
 
         receiver.SendCreditBestEffort(WindowSize, ct);
         return receiver;
+    }
+
+    private void EnsureCanRegisterInbound(int count)
+    {
+        lock (_inboundGate)
+        {
+            _canceledInbound.ThrowIfOverflowed();
+            EnsureInboundCapacityLocked(count);
+        }
+    }
+
+    private void EnsureInboundCapacityLocked(int count)
+    {
+        var active = Volatile.Read(ref _activeInboundCount);
+        var available = _maxInboundStreamsPerPeer - active;
+        if (count <= available)
+        {
+            return;
+        }
+
+        throw new ServiceProtocolException(
+            $"Inbound stream capacity exceeded: {count} requested, {Math.Max(available, 0)} available, maximum active inbound streams per peer is {_maxInboundStreamsPerPeer}.");
     }
 
     public bool TryAcceptItem(int streamId, Payload frame)
