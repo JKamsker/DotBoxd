@@ -628,7 +628,7 @@ public T As<T>() where T : class => LiveContextProxy<T>.Create(this)
 public T Get<T>(string name)
 public T Value
 public T Value { get; }
-public TimeSpan RemoteHandlerTimeout { get; init; } = Timeout.InfiniteTimeSpan
+public TimeSpan RemoteHandlerTimeout { get; init; } = TimeSpan.FromSeconds(30)
 public TResult? RemoteTimeoutResult { get; init; }
 public TService ServerExtension<TService>() where TService : class
 public TSettings Value { get; }

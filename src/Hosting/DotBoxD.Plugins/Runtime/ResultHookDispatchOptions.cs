@@ -7,12 +7,11 @@ namespace DotBoxD.Plugins.Runtime;
 public sealed class ResultHookDispatchOptions<TResult>
     where TResult : struct, IHookResult
 {
-    private static readonly TimeSpan DefaultRemoteHandlerTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan MaxRemoteHandlerTimeout = TimeSpan.FromMilliseconds(int.MaxValue);
 
     public static ResultHookDispatchOptions<TResult> Default { get; } = new();
 
-    public TimeSpan RemoteHandlerTimeout { get; init; } = DefaultRemoteHandlerTimeout;
+    public TimeSpan RemoteHandlerTimeout { get; init; } = TimeSpan.FromSeconds(30);
 
     public TResult? RemoteTimeoutResult { get; init; }
 
