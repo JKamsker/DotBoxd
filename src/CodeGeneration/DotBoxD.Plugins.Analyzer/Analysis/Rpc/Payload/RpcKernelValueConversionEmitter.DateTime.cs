@@ -22,7 +22,7 @@ internal sealed partial class RpcKernelValueConversionEmitter
         var offsetWriter = EnsureDateTimeOffsetValueWriter();
         var dateTimeMethod = NextHelperName("Write");
         _writers[key] = dateTimeMethod;
-        _helpers.Append("    private static global::DotBoxD.Plugins.KernelRpcValue ").Append(dateTimeMethod)
+        _helpers.Append($"    private static {DotBoxDRpcValueNames.GlobalKernelRpcValue} ").Append(dateTimeMethod)
             .AppendLine("(global::System.DateTime value)");
         _helpers.AppendLine("    {");
         _helpers.AppendLine("        return " + offsetWriter + "(DateTimeToWireOffset(value));");
@@ -52,7 +52,7 @@ internal sealed partial class RpcKernelValueConversionEmitter
         var dateTimeMethod = NextHelperName("Read");
         _readers[key] = dateTimeMethod;
         _helpers.Append("    private static global::System.DateTime ").Append(dateTimeMethod)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("    {");
         _helpers.AppendLine("        return " + dateTimeReader + "(" + offsetReader + "(value));");
         _helpers.AppendLine("    }");
@@ -90,13 +90,13 @@ internal sealed partial class RpcKernelValueConversionEmitter
 
     private void AppendDateTimeOffsetWriter(string method)
     {
-        _helpers.Append("    private static global::DotBoxD.Plugins.KernelRpcValue ").Append(method)
+        _helpers.Append($"    private static {DotBoxDRpcValueNames.GlobalKernelRpcValue} ").Append(method)
             .AppendLine("(global::System.DateTimeOffset value)");
         _helpers.AppendLine("    {");
-        _helpers.AppendLine("        return global::DotBoxD.Plugins.KernelRpcValue.Record(new global::DotBoxD.Plugins.KernelRpcValue[]");
+        _helpers.AppendLine($"        return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.Record(new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[]");
         _helpers.AppendLine("        {");
-        _helpers.AppendLine("            global::DotBoxD.Plugins.KernelRpcValue.Int64(value.UtcTicks),");
-        _helpers.AppendLine("            global::DotBoxD.Plugins.KernelRpcValue.Int64(value.Offset.Ticks),");
+        _helpers.AppendLine($"            {DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64(value.UtcTicks),");
+        _helpers.AppendLine($"            {DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int64(value.Offset.Ticks),");
         _helpers.AppendLine("        });");
         _helpers.AppendLine("    }");
         _helpers.AppendLine();
@@ -106,9 +106,9 @@ internal sealed partial class RpcKernelValueConversionEmitter
     {
         var fromWire = EnsureDateTimeOffsetFromWireHelper();
         _helpers.Append("    private static global::System.DateTimeOffset ").Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("    {");
-        _helpers.AppendLine("        value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Record);");
+        _helpers.AppendLine($"        value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Record);");
         _helpers.AppendLine("        if (value.ItemCount != 2)");
         _helpers.AppendLine("        {");
         _helpers.AppendLine("            throw new global::System.NotSupportedException(\"Server extension DateTime wire value field count did not match the generated projection shape.\");");

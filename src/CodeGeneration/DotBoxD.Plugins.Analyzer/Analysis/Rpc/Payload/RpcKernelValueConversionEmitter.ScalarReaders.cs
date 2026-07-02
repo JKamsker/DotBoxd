@@ -15,7 +15,7 @@ internal sealed partial class RpcKernelValueConversionEmitter
         var method = NextHelperName("Read");
         _readers[key] = method;
         _helpers.Append("    private static float ").Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("    {");
         _helpers.AppendLine("        var __value = value.DoubleValue;");
         _helpers.AppendLine("        var __result = (float)__value;");
@@ -42,7 +42,7 @@ internal sealed partial class RpcKernelValueConversionEmitter
         _readers[key] = method;
         var typeName = TypeName(enumType);
         _helpers.Append("    private static ").Append(typeName).Append(' ').Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("    {");
         if (DotBoxDRpcTypeMapper.EnumUsesI64(enumType))
         {

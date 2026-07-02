@@ -23,11 +23,11 @@ internal sealed partial class RpcKernelValueConversionEmitter
         var method = NextHelperName("Write");
         _writers[key] = method;
         var fieldExpressions = DtoWriteExpressions(type);
-        _helpers.Append("    private static global::DotBoxD.Plugins.KernelRpcValue ").Append(method)
+        _helpers.Append($"    private static {DotBoxDRpcValueNames.GlobalKernelRpcValue} ").Append(method)
             .Append('(').Append(TypeName(type)).AppendLine(" value)");
         _helpers.AppendLine("    {");
         _helpers.AppendLine("        global::System.ArgumentNullException.ThrowIfNull(value);");
-        _helpers.AppendLine("        return global::DotBoxD.Plugins.KernelRpcValue.Record(new global::DotBoxD.Plugins.KernelRpcValue[]");
+        _helpers.AppendLine($"        return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.Record(new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[]");
         _helpers.AppendLine("        {");
         foreach (var fieldExpression in fieldExpressions)
         {
@@ -62,9 +62,9 @@ internal sealed partial class RpcKernelValueConversionEmitter
         var body = BuildDtoReconstruction(type, fields);
 
         _helpers.Append("    private static ").Append(TypeName(type)).Append(' ').Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("    {");
-        _helpers.AppendLine("        value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Record);");
+        _helpers.AppendLine($"        value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Record);");
         _helpers.Append("        if (value.ItemCount != ").Append(fields.Count).AppendLine(")");
         _helpers.AppendLine("        {");
         _helpers.AppendLine("            throw new global::System.NotSupportedException(\"Server extension record field count did not match the generated DTO shape.\");");

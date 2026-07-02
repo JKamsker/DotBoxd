@@ -76,7 +76,7 @@ internal sealed partial class InvokeAsyncCallShape
                 DotBoxDRpcJsonLowerer.Str(captures[i].Name) + ")");
         }
 
-        return "new global::DotBoxD.Plugins.KernelRpcValue[] { " + string.Join(", ", arguments) + " }";
+        return $"new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[] {{ " + string.Join(", ", arguments) + " }";
     }
 
     private static string TypeName(ITypeSymbol type)

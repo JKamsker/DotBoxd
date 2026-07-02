@@ -16,7 +16,7 @@ internal sealed partial class RpcKernelValueConversionEmitter
         _writers[key] = method;
         var elementType = DotBoxDRpcTypeMapper.ListElementType(type)!;
         var itemExpression = WriteExpression(elementType, "__item");
-        _helpers.Append("    private static global::DotBoxD.Plugins.KernelRpcValue ").Append(method)
+        _helpers.Append($"    private static {DotBoxDRpcValueNames.GlobalKernelRpcValue} ").Append(method)
             .Append('(').Append(TypeName(type)).AppendLine(" value)");
         _helpers.AppendLine("    {");
         _helpers.AppendLine("        global::System.ArgumentNullException.ThrowIfNull(value);");
@@ -33,23 +33,23 @@ internal sealed partial class RpcKernelValueConversionEmitter
             var countExpression = type is IArrayTypeSymbol ? "value.Length" : "value.Count";
             _helpers.Append("        var __count = ").Append(countExpression).AppendLine(";");
             _helpers.AppendLine("        var __items = __count == 0")
-                .AppendLine("            ? global::System.Array.Empty<global::DotBoxD.Plugins.KernelRpcValue>()")
-                .AppendLine("            : new global::DotBoxD.Plugins.KernelRpcValue[__count];");
+                .AppendLine($"            ? global::System.Array.Empty<{DotBoxDRpcValueNames.GlobalKernelRpcValue}>()")
+                .AppendLine($"            : new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[__count];");
             _helpers.AppendLine("        for (var i = 0; i < __count; i++)");
             _helpers.AppendLine("        {")
                 .AppendLine("            var __item = value[i];");
             _helpers.Append("            __items[i] = ").Append(itemExpression).AppendLine(";");
             _helpers.AppendLine("        }")
                 .AppendLine()
-                .AppendLine("        return global::DotBoxD.Plugins.KernelRpcValue.List(__items);");
+                .AppendLine($"        return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.List(__items);");
             return;
         }
 
         _helpers.AppendLine("        if (global::System.Linq.Enumerable.TryGetNonEnumeratedCount(value, out var __count))")
             .AppendLine("        {")
             .AppendLine("            var __items = __count == 0")
-            .AppendLine("                ? global::System.Array.Empty<global::DotBoxD.Plugins.KernelRpcValue>()")
-            .AppendLine("                : new global::DotBoxD.Plugins.KernelRpcValue[__count];")
+            .AppendLine($"                ? global::System.Array.Empty<{DotBoxDRpcValueNames.GlobalKernelRpcValue}>()")
+            .AppendLine($"                : new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[__count];")
             .AppendLine("            var __index = 0;")
             .AppendLine("            foreach (var __item in value)")
             .AppendLine("            {")
@@ -66,17 +66,17 @@ internal sealed partial class RpcKernelValueConversionEmitter
             .AppendLine("                global::System.Array.Resize(ref __items, __index);")
             .AppendLine("            }")
             .AppendLine()
-            .AppendLine("            return global::DotBoxD.Plugins.KernelRpcValue.List(__items);")
+            .AppendLine($"            return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.List(__items);")
             .AppendLine("        }")
             .AppendLine();
 
-        _helpers.AppendLine("        var __fallbackItems = new global::System.Collections.Generic.List<global::DotBoxD.Plugins.KernelRpcValue>();")
+        _helpers.AppendLine($"        var __fallbackItems = new global::System.Collections.Generic.List<{DotBoxDRpcValueNames.GlobalKernelRpcValue}>();")
             .AppendLine("        foreach (var __item in value)")
             .AppendLine("        {");
         _helpers.Append("            __fallbackItems.Add(").Append(itemExpression).AppendLine(");");
         _helpers.AppendLine("        }")
             .AppendLine()
-            .AppendLine("        return global::DotBoxD.Plugins.KernelRpcValue.List(__fallbackItems.ToArray());");
+            .AppendLine($"        return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.List(__fallbackItems.ToArray());");
     }
 
     private string EnsureListReader(ITypeSymbol type)
@@ -95,9 +95,9 @@ internal sealed partial class RpcKernelValueConversionEmitter
         var arrayType = type as IArrayTypeSymbol;
         var returnType = arrayType is not null ? TypeName(type) : ListReaderReturnType(type, elementName);
         _helpers.Append("    private static ").Append(returnType).Append(' ').Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("    {");
-        _helpers.AppendLine("        value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.List);");
+        _helpers.AppendLine($"        value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.List);");
         _helpers.AppendLine("        var __count = value.ItemCount;");
         AppendListReaderBody(elementName, itemExpression, arrayType);
         _helpers.AppendLine();

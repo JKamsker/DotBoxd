@@ -42,12 +42,12 @@ internal static class ExtensionsGenerator
             sb.AppendLine($"        public static {ServicesGeneratorTypeNames.GlobalRpcPeer} Provide{extensionSuffix}(this {ServicesGeneratorTypeNames.GlobalRpcPeer} peer, {fullInterfaceName} implementation)");
             if (!HasSubServiceProperties(service, ct) && service.MethodSubServices.Array.Length == 0)
             {
-                sb.AppendLine($"            => peer.Provide(({ServicesGeneratorTypeNames.GlobalServiceDispatcher})new {fullDispatcherName}(implementation));");
+                sb.AppendLine($"            => peer.{ServicesGeneratorMemberNames.RpcPeer.Provide}(({ServicesGeneratorTypeNames.GlobalServiceDispatcher})new {fullDispatcherName}(implementation));");
             }
             else
             {
                 sb.AppendLine("        {");
-                sb.AppendLine($"            peer.Provide(({ServicesGeneratorTypeNames.GlobalServiceDispatcher})new {fullDispatcherName}(implementation));");
+                sb.AppendLine($"            peer.{ServicesGeneratorMemberNames.RpcPeer.Provide}(({ServicesGeneratorTypeNames.GlobalServiceDispatcher})new {fullDispatcherName}(implementation));");
                 foreach (var property in service.Properties.Array)
                 {
                     ct.ThrowIfCancellationRequested();
@@ -67,7 +67,7 @@ internal static class ExtensionsGenerator
                         var propertyDispatcher = proxyType.EndsWith("Proxy", StringComparison.Ordinal)
                             ? proxyType.Substring(0, proxyType.Length - "Proxy".Length) + "Dispatcher"
                             : proxyType + "Dispatcher";
-                        sb.AppendLine($"            peer.Provide(({ServicesGeneratorTypeNames.GlobalServiceDispatcher})new {propertyDispatcher}({propertyAccess}));");
+                        sb.AppendLine($"            peer.{ServicesGeneratorMemberNames.RpcPeer.Provide}(({ServicesGeneratorTypeNames.GlobalServiceDispatcher})new {propertyDispatcher}({propertyAccess}));");
                     }
                 }
 
@@ -81,7 +81,7 @@ internal static class ExtensionsGenerator
 
                     var methodDispatcherName = NamingHelpers.StripInterfacePrefix(methodService.InterfaceName) + "Dispatcher";
                     var fullMethodDispatcherName = IdentifierHelpers.QualifyTypeName(methodService.Namespace, methodDispatcherName);
-                    sb.AppendLine($"            peer.Provide(({ServicesGeneratorTypeNames.GlobalServiceDispatcher})new {fullMethodDispatcherName}());");
+                    sb.AppendLine($"            peer.{ServicesGeneratorMemberNames.RpcPeer.Provide}(({ServicesGeneratorTypeNames.GlobalServiceDispatcher})new {fullMethodDispatcherName}());");
                 }
                 sb.AppendLine("            return peer;");
                 sb.AppendLine("        }");
@@ -92,7 +92,7 @@ internal static class ExtensionsGenerator
             sb.AppendLine($"        /// Gets a proxy to call {service.InterfaceName} on the other peer.");
             sb.AppendLine("        /// </summary>");
             sb.AppendLine($"        public static {fullInterfaceName} Get{extensionSuffix}(this {ServicesGeneratorTypeNames.GlobalRpcPeer} peer)");
-            sb.AppendLine($"            => peer.Get<{fullInterfaceName}>();");
+            sb.AppendLine($"            => peer.{ServicesGeneratorMemberNames.RpcPeer.Get}<{fullInterfaceName}>();");
         }
 
         sb.AppendLine("    }");

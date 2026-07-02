@@ -191,7 +191,7 @@ internal sealed partial class InvokeAsyncCallShape
             usesReflectionCaptures: false,
             parametersJson: "[]",
             returnTypeJson: DotBoxDRpcReturnType.JsonType(returnType, compilation),
-            argumentsExpression: "global::System.Array.Empty<global::DotBoxD.Plugins.KernelRpcValue>()",
+            argumentsExpression: $"global::System.Array.Empty<{DotBoxDRpcValueNames.GlobalKernelRpcValue}>()",
             argumentTypes: [],
             default,
             [],

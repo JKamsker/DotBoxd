@@ -31,7 +31,7 @@ internal static class DispatcherCaseGenerator
         else if (requestParameters.Count == 1)
         {
             var wireType = ProxyGenerationHelpers.GetWireType(requestParameters[0]);
-            sb.AppendLine($"                    var arg = serializer.Deserialize<{wireType}>(payload);");
+            sb.AppendLine($"                    var arg = serializer.{ServicesGeneratorMemberNames.Serializer.Deserialize}<{wireType}>(payload);");
         }
         else if (requestParameters.Count > 1)
         {
@@ -74,7 +74,7 @@ internal static class DispatcherCaseGenerator
             tupleTypes.Append(ProxyGenerationHelpers.GetWireType(requestParameters[i]));
         }
 
-        sb.AppendLine($"                    var args = serializer.Deserialize<({tupleTypes})>(payload);");
+        sb.AppendLine($"                    var args = serializer.{ServicesGeneratorMemberNames.Serializer.Deserialize}<({tupleTypes})>(payload);");
     }
 
     private static string[] BuildArgumentExpressions(
@@ -148,7 +148,7 @@ internal static class DispatcherCaseGenerator
 
             case MethodReturnKind.Sync:
                 sb.AppendLine($"                    var result = {call};");
-                sb.AppendLine("                    serializer.Serialize(output, result);");
+                sb.AppendLine($"                    serializer.{ServicesGeneratorMemberNames.Serializer.Serialize}(output, result);");
                 sb.AppendLine("                    return;");
                 break;
 
@@ -175,7 +175,7 @@ internal static class DispatcherCaseGenerator
             case MethodReturnKind.ValueTaskOf:
             case MethodReturnKind.TaskOf:
                 GenerateAwaitedResult(sb, call);
-                sb.AppendLine("                    serializer.Serialize(output, __dotboxd_result);");
+                sb.AppendLine($"                    serializer.{ServicesGeneratorMemberNames.Serializer.Serialize}(output, __dotboxd_result);");
                 sb.AppendLine("                    return;");
                 break;
 
@@ -189,7 +189,7 @@ internal static class DispatcherCaseGenerator
             case MethodReturnKind.Stream:
             case MethodReturnKind.Pipe:
                 sb.AppendLine($"                    var result = {call};");
-                sb.AppendLine("                    streaming.SetResponse(result);");
+                sb.AppendLine($"                    streaming.{ServicesGeneratorMemberNames.RpcStreamingContext.SetResponse}(result);");
                 sb.AppendLine("                    return;");
                 break;
 
@@ -200,7 +200,7 @@ internal static class DispatcherCaseGenerator
             case MethodReturnKind.TaskOfPipe:
             case MethodReturnKind.ValueTaskOfPipe:
                 GenerateAwaitedResult(sb, call);
-                sb.AppendLine("                    streaming.SetResponse(__dotboxd_result);");
+                sb.AppendLine($"                    streaming.{ServicesGeneratorMemberNames.RpcStreamingContext.SetResponse}(__dotboxd_result);");
                 sb.AppendLine("                    return;");
                 break;
         }
@@ -233,7 +233,7 @@ internal static class DispatcherCaseGenerator
         {
             sb.AppendLine("                    if (__sub is null)");
             sb.AppendLine("                    {");
-            sb.AppendLine($"                        serializer.Serialize<{ServicesGeneratorTypeNames.NullableOf(ServicesGeneratorTypeNames.GlobalServiceHandle)}>(output, null);");
+            sb.AppendLine($"                        serializer.{ServicesGeneratorMemberNames.Serializer.Serialize}<{ServicesGeneratorTypeNames.NullableOf(ServicesGeneratorTypeNames.GlobalServiceHandle)}>(output, null);");
             sb.AppendLine("                        return;");
             sb.AppendLine("                    }");
         }
@@ -241,7 +241,7 @@ internal static class DispatcherCaseGenerator
         sb.AppendLine("                    string __subId;");
         sb.AppendLine("                    try");
         sb.AppendLine("                    {");
-        sb.AppendLine($"                        __subId = registry.Register(\"{info.ServiceName}\", __sub);");
+        sb.AppendLine($"                        __subId = registry.{ServicesGeneratorMemberNames.InstanceRegistry.Register}(\"{info.ServiceName}\", __sub);");
         sb.AppendLine("                    }");
         sb.AppendLine("                    catch");
         sb.AppendLine("                    {");
@@ -283,11 +283,11 @@ internal static class DispatcherCaseGenerator
     {
         sb.AppendLine("                    try");
         sb.AppendLine("                    {");
-        sb.AppendLine($"                        serializer.Serialize(output, new {ServicesGeneratorTypeNames.GlobalServiceHandle} {{ ServiceName = \"{serviceName}\", InstanceId = __subId }});");
+        sb.AppendLine($"                        serializer.{ServicesGeneratorMemberNames.Serializer.Serialize}(output, new {ServicesGeneratorTypeNames.GlobalServiceHandle} {{ {ServicesGeneratorMemberNames.ServiceHandle.ServiceName} = \"{serviceName}\", {ServicesGeneratorMemberNames.ServiceHandle.InstanceId} = __subId }});");
         sb.AppendLine("                    }");
         sb.AppendLine("                    catch");
         sb.AppendLine("                    {");
-        sb.AppendLine($"                        await registry.ReleaseAsync(\"{serviceName}\", __subId).ConfigureAwait(false);");
+        sb.AppendLine($"                        await registry.{ServicesGeneratorMemberNames.InstanceRegistry.ReleaseAsync}(\"{serviceName}\", __subId).ConfigureAwait(false);");
         sb.AppendLine("                        throw;");
         sb.AppendLine("                    }");
         sb.AppendLine("                    return;");

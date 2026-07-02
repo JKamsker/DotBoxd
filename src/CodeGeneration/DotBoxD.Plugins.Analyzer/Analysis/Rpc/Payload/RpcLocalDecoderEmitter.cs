@@ -37,7 +37,7 @@ internal static class RpcLocalDecoderEmitter
 
             var builder = new StringBuilder();
             builder.Append("    public static ").Append(typeName)
-                .AppendLine(" ReadProjected(global::DotBoxD.Plugins.KernelRpcValue value)");
+                .AppendLine($" ReadProjected({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
             builder.Append("        => ").Append(readExpression).AppendLine(";");
             builder.AppendLine();
             builder.Append(conv.Helpers);
@@ -70,9 +70,9 @@ internal static class RpcLocalDecoderEmitter
         }
 
         var builder = new StringBuilder();
-        builder.AppendLine("    public static TProjected ReadProjected<TProjected>(global::DotBoxD.Plugins.KernelRpcValue value)");
+        builder.AppendLine($"    public static TProjected ReadProjected<TProjected>({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         builder.AppendLine("    {");
-        builder.AppendLine("        value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Record);");
+        builder.AppendLine($"        value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Record);");
         builder.Append("        if (value.ItemCount != ").Append(fields.Count).AppendLine(")");
         builder.AppendLine("        {");
         builder.AppendLine("            throw new global::System.NotSupportedException(\"Server extension record field count did not match the generated anonymous projection shape.\");");

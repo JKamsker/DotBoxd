@@ -116,9 +116,9 @@ internal sealed partial class InvokeAsyncResultReaderSource
         var arrayType = type as IArrayTypeSymbol;
         var returnType = arrayType is not null ? TypeName(type) : $"global::System.Collections.Generic.List<{elementName}>";
         _helpers.Append("        private static ").Append(returnType).Append(' ').Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("        {");
-        _helpers.AppendLine("            value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.List);");
+        _helpers.AppendLine($"            value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.List);");
         _helpers.AppendLine("            var __count = value.ItemCount;");
         AppendListReaderBody(elementName, itemExpression, arrayType);
         _helpers.AppendLine();
@@ -145,9 +145,9 @@ internal sealed partial class InvokeAsyncResultReaderSource
         var keyExpression = ReadExpression(map.Key, "value.GetItem(i)");
         var valueExpression = ReadExpression(map.Value, "value.GetItem(i + 1)");
         _helpers.Append("        private static ").Append(TypeName(type)).Append(' ').Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("        {");
-        _helpers.AppendLine("            value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Map);");
+        _helpers.AppendLine($"            value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Map);");
         _helpers.AppendLine("            if ((value.ItemCount & 1) != 0)");
         _helpers.AppendLine("            {");
         _helpers.AppendLine("                throw new global::System.NotSupportedException(\"InvokeAsync map result had an odd key/value entry count.\");");
@@ -211,9 +211,9 @@ internal sealed partial class InvokeAsyncResultReaderSource
 
         var body = BuildDtoReconstruction(type, fields);
         _helpers.Append("        private static ").Append(TypeName(type)).Append(' ').Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("        {");
-        _helpers.AppendLine("            value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Record);");
+        _helpers.AppendLine($"            value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Record);");
         _helpers.Append("            if (value.ItemCount != ").Append(fields.Count).AppendLine(")");
         _helpers.AppendLine("            {");
         _helpers.AppendLine("                throw new global::System.NotSupportedException(\"Server extension record field count did not match the generated DTO shape.\");");

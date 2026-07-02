@@ -161,12 +161,16 @@ internal static partial class ProxyGenerator
     {
         if (NamingHelpers.IsStreamReturn(returnKind))
         {
-            return isInstanceScoped ? "InvokeStreamOnInstanceAsync" : "InvokeStreamAsync";
+            return isInstanceScoped
+                ? ServicesGeneratorMemberNames.RpcInvoker.InvokeStreamOnInstanceAsync
+                : ServicesGeneratorMemberNames.RpcInvoker.InvokeStreamAsync;
         }
 
         if (NamingHelpers.IsPipeReturn(returnKind))
         {
-            return isInstanceScoped ? "InvokePipeOnInstanceAsync" : "InvokePipeAsync";
+            return isInstanceScoped
+                ? ServicesGeneratorMemberNames.RpcInvoker.InvokePipeOnInstanceAsync
+                : ServicesGeneratorMemberNames.RpcInvoker.InvokePipeAsync;
         }
 
         if (NamingHelpers.IsAsyncEnumerableReturn(returnKind))
@@ -174,16 +178,20 @@ internal static partial class ProxyGenerator
             var eager = returnKind == MethodReturnKind.TaskOfAsyncEnumerable ||
                 returnKind == MethodReturnKind.ValueTaskOfAsyncEnumerable;
             return isInstanceScoped
-                ? eager ? "InvokeAsyncEnumerableOnInstanceAsync" : "InvokeAsyncEnumerableOnInstance"
-                : eager ? "InvokeAsyncEnumerableAsync" : "InvokeAsyncEnumerable";
+                ? eager ? ServicesGeneratorMemberNames.RpcInvoker.InvokeAsyncEnumerableOnInstanceAsync : ServicesGeneratorMemberNames.RpcInvoker.InvokeAsyncEnumerableOnInstance
+                : eager ? ServicesGeneratorMemberNames.RpcInvoker.InvokeAsyncEnumerableAsync : ServicesGeneratorMemberNames.RpcInvoker.InvokeAsyncEnumerable;
         }
 
         if (returnKind is MethodReturnKind.ValueTask or MethodReturnKind.ValueTaskOf &&
             !useStreamAwareTaskValueInvocation)
         {
-            return isInstanceScoped ? "InvokeValueOnInstanceAsync" : "InvokeValueAsync";
+            return isInstanceScoped
+                ? ServicesGeneratorMemberNames.RpcInvoker.InvokeValueOnInstanceAsync
+                : ServicesGeneratorMemberNames.RpcInvoker.InvokeValueAsync;
         }
 
-        return isInstanceScoped ? "InvokeOnInstanceAsync" : "InvokeAsync";
+        return isInstanceScoped
+            ? ServicesGeneratorMemberNames.RpcInvoker.InvokeOnInstanceAsync
+            : ServicesGeneratorMemberNames.RpcInvoker.InvokeAsync;
     }
 }

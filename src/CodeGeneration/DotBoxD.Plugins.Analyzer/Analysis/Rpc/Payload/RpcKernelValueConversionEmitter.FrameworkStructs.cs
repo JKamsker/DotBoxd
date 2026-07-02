@@ -62,13 +62,13 @@ internal sealed partial class RpcKernelValueConversionEmitter
 
         var method = NextHelperName("Write");
         _writers[key] = method;
-        _helpers.Append("    private static global::DotBoxD.Plugins.KernelRpcValue ").Append(method)
+        _helpers.Append($"    private static {DotBoxDRpcValueNames.GlobalKernelRpcValue} ").Append(method)
             .AppendLine("(global::System.Index value)");
         _helpers.AppendLine("    {");
-        _helpers.AppendLine("        return global::DotBoxD.Plugins.KernelRpcValue.Record(new global::DotBoxD.Plugins.KernelRpcValue[]");
+        _helpers.AppendLine($"        return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.Record(new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[]");
         _helpers.AppendLine("        {");
-        _helpers.AppendLine("            global::DotBoxD.Plugins.KernelRpcValue.Int32(value.Value),");
-        _helpers.AppendLine("            global::DotBoxD.Plugins.KernelRpcValue.Bool(value.IsFromEnd),");
+        _helpers.AppendLine($"            {DotBoxDRpcValueNames.GlobalKernelRpcValue}.Int32(value.Value),");
+        _helpers.AppendLine($"            {DotBoxDRpcValueNames.GlobalKernelRpcValue}.Bool(value.IsFromEnd),");
         _helpers.AppendLine("        });");
         _helpers.AppendLine("    }");
         _helpers.AppendLine();
@@ -86,9 +86,9 @@ internal sealed partial class RpcKernelValueConversionEmitter
         var method = NextHelperName("Read");
         _readers[key] = method;
         _helpers.Append("    private static global::System.Index ").Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("    {");
-        _helpers.AppendLine("        value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Record);");
+        _helpers.AppendLine($"        value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Record);");
         _helpers.AppendLine("        if (value.ItemCount != 2)");
         _helpers.AppendLine("        {");
         _helpers.AppendLine("            throw new global::System.NotSupportedException(\"Server extension Index wire value field count did not match the generated projection shape.\");");
@@ -118,10 +118,10 @@ internal sealed partial class RpcKernelValueConversionEmitter
         var indexWriter = EnsureIndexValueWriter();
         var method = NextHelperName("Write");
         _writers[key] = method;
-        _helpers.Append("    private static global::DotBoxD.Plugins.KernelRpcValue ").Append(method)
+        _helpers.Append($"    private static {DotBoxDRpcValueNames.GlobalKernelRpcValue} ").Append(method)
             .AppendLine("(global::System.Range value)");
         _helpers.AppendLine("    {");
-        _helpers.AppendLine("        return global::DotBoxD.Plugins.KernelRpcValue.Record(new global::DotBoxD.Plugins.KernelRpcValue[]");
+        _helpers.AppendLine($"        return {DotBoxDRpcValueNames.GlobalKernelRpcValue}.Record(new {DotBoxDRpcValueNames.GlobalKernelRpcValue}[]");
         _helpers.AppendLine("        {");
         _helpers.AppendLine("            " + indexWriter + "(value.Start),");
         _helpers.AppendLine("            " + indexWriter + "(value.End),");
@@ -143,9 +143,9 @@ internal sealed partial class RpcKernelValueConversionEmitter
         var method = NextHelperName("Read");
         _readers[key] = method;
         _helpers.Append("    private static global::System.Range ").Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("    {");
-        _helpers.AppendLine("        value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Record);");
+        _helpers.AppendLine($"        value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Record);");
         _helpers.AppendLine("        if (value.ItemCount != 2)");
         _helpers.AppendLine("        {");
         _helpers.AppendLine("            throw new global::System.NotSupportedException(\"Server extension Range wire value field count did not match the generated projection shape.\");");

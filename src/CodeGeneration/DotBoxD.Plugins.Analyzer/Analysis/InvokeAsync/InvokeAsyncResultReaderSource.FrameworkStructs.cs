@@ -1,3 +1,5 @@
+using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
+
 namespace DotBoxD.Plugins.Analyzer.Analysis.InvokeAsync;
 
 internal sealed partial class InvokeAsyncResultReaderSource
@@ -65,9 +67,9 @@ internal sealed partial class InvokeAsyncResultReaderSource
         var method = NextHelperName();
         _readers[key] = method;
         _helpers.Append("        private static global::System.Index ").Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("        {");
-        _helpers.AppendLine("            value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Record);");
+        _helpers.AppendLine($"            value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Record);");
         _helpers.AppendLine("            if (value.ItemCount != 2)");
         _helpers.AppendLine("            {");
         _helpers.AppendLine("                throw new global::System.NotSupportedException(\"InvokeAsync Index wire value field count did not match the generated projection shape.\");");
@@ -98,9 +100,9 @@ internal sealed partial class InvokeAsyncResultReaderSource
         _readers[key] = method;
         var indexReader = EnsureIndexValueReader();
         _helpers.Append("        private static global::System.Range ").Append(method)
-            .AppendLine("(global::DotBoxD.Plugins.KernelRpcValue value)");
+            .AppendLine($"({DotBoxDRpcValueNames.GlobalKernelRpcValue} value)");
         _helpers.AppendLine("        {");
-        _helpers.AppendLine("            value.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Record);");
+        _helpers.AppendLine($"            value.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Record);");
         _helpers.AppendLine("            if (value.ItemCount != 2)");
         _helpers.AppendLine("            {");
         _helpers.AppendLine("                throw new global::System.NotSupportedException(\"InvokeAsync Range wire value field count did not match the generated projection shape.\");");

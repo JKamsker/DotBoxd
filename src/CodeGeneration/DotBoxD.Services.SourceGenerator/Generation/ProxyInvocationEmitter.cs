@@ -115,11 +115,11 @@ internal static class ProxyInvocationEmitter
         {
             // ServiceHandle is a struct, so the nullable wire type is Nullable<ServiceHandle>;
             // unwrap via .Value before reading InstanceId.
-            sb.AppendLine($"{indent}return {handleName} is null ? null : new {subProxyType}(this._invoker, {handleName}.Value.InstanceId);");
+            sb.AppendLine($"{indent}return {handleName} is null ? null : new {subProxyType}(this._invoker, {handleName}.Value.{ServicesGeneratorMemberNames.ServiceHandle.InstanceId});");
         }
         else
         {
-            sb.AppendLine($"{indent}return new {subProxyType}(this._invoker, {handleName}.InstanceId);");
+            sb.AppendLine($"{indent}return new {subProxyType}(this._invoker, {handleName}.{ServicesGeneratorMemberNames.ServiceHandle.InstanceId});");
         }
     }
 
@@ -137,11 +137,11 @@ internal static class ProxyInvocationEmitter
         sb.AppendLine($"{indent}var {handleName} = {invocation}.GetAwaiter().GetResult();");
         if (info.AllowsNull)
         {
-            sb.AppendLine($"{indent}return {handleName} is null ? null : new {subProxyType}(this._invoker, {handleName}.Value.InstanceId);");
+            sb.AppendLine($"{indent}return {handleName} is null ? null : new {subProxyType}(this._invoker, {handleName}.Value.{ServicesGeneratorMemberNames.ServiceHandle.InstanceId});");
         }
         else
         {
-            sb.AppendLine($"{indent}return new {subProxyType}(this._invoker, {handleName}.InstanceId);");
+            sb.AppendLine($"{indent}return new {subProxyType}(this._invoker, {handleName}.{ServicesGeneratorMemberNames.ServiceHandle.InstanceId});");
         }
     }
 }

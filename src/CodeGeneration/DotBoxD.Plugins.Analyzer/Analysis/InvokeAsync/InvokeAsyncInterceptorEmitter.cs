@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using DotBoxD.Plugins.Analyzer.Analysis.HookChains;
 using DotBoxD.Plugins.Analyzer.Analysis.Lowering;
+using DotBoxD.Plugins.Analyzer.Analysis.Rpc;
 using Microsoft.CodeAnalysis;
 
 namespace DotBoxD.Plugins.Analyzer.Analysis.InvokeAsync;
@@ -95,15 +96,15 @@ internal static class InvokeAsyncInterceptorEmitter
             .Append(", ")
             .Append(interception.PackageFullName)
             .AppendLine(".Create, cancellationToken).ConfigureAwait(false);");
-        builder.Append("            var __request = global::DotBoxD.Plugins.KernelRpcBinaryCodec.EncodeArguments(")
+        builder.Append($"            var __request = {DotBoxDRpcValueNames.GlobalKernelRpcBinaryCodec}.EncodeArguments(")
             .Append(interception.ArgumentsExpression)
             .AppendLine(");");
         builder.Append("            var __response = await ").Append(server)
             .AppendLine(".Services.WireClient.InvokeServerExtensionAsync(__pluginId, __request, cancellationToken).ConfigureAwait(false);");
-        builder.AppendLine("            var __result = global::DotBoxD.Plugins.KernelRpcBinaryCodec.DecodeValue(__response);");
+        builder.AppendLine($"            var __result = {DotBoxDRpcValueNames.GlobalKernelRpcBinaryCodec}.DecodeValue(__response);");
         if (interception.SyncOutAssignments.Count > 0)
         {
-            builder.AppendLine("            __result.RequireKind(global::DotBoxD.Plugins.KernelRpcValueKind.Record);");
+            builder.AppendLine($"            __result.RequireKind({DotBoxDRpcValueNames.GlobalKernelRpcValueKind}.Record);");
             builder.Append("            if (__result.ItemCount != ")
                 .Append((interception.SyncOutAssignments.Count + 1).ToString(CultureInfo.InvariantCulture))
                 .AppendLine(")");

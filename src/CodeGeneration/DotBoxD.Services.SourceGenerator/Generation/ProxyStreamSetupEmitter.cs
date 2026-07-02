@@ -45,7 +45,9 @@ internal static class ProxyStreamSetupEmitter
             reservations.Add((
                 handleName,
                 reservedName,
-                parameter.StreamKind == ParameterStreamKind.AsyncEnumerable ? "Items" : "Binary",
+                parameter.StreamKind == ParameterStreamKind.AsyncEnumerable
+                    ? ServicesGeneratorMemberNames.RpcStreamKind.Items
+                    : ServicesGeneratorMemberNames.RpcStreamKind.Binary,
                 BuildAttachmentExpression(parameter, handleName)));
             reservationFlags.Add((handleName, reservedName));
 
@@ -92,7 +94,7 @@ internal static class ProxyStreamSetupEmitter
         foreach (var reservation in reservations)
         {
             ct.ThrowIfCancellationRequested();
-            sb.AppendLine($"{indent}    {reservation.HandleName} = this._invoker.ReserveStream({ServicesGeneratorTypeNames.GlobalRpcStreamKind}.{reservation.Kind});");
+            sb.AppendLine($"{indent}    {reservation.HandleName} = this._invoker.{ServicesGeneratorMemberNames.RpcInvoker.ReserveStream}({ServicesGeneratorTypeNames.GlobalRpcStreamKind}.{reservation.Kind});");
             sb.AppendLine($"{indent}    {reservation.ReservedName} = true;");
         }
 
@@ -151,7 +153,7 @@ internal static class ProxyStreamSetupEmitter
             var reservation = reservations[i];
             sb.AppendLine($"{indent}    if ({reservation.ReservedName})");
             sb.AppendLine($"{indent}    {{");
-            sb.AppendLine($"{indent}        this._invoker.ReleaseStream({reservation.HandleName});");
+            sb.AppendLine($"{indent}        this._invoker.{ServicesGeneratorMemberNames.RpcInvoker.ReleaseStream}({reservation.HandleName});");
             sb.AppendLine($"{indent}    }}");
         }
     }
@@ -160,11 +162,11 @@ internal static class ProxyStreamSetupEmitter
         parameter.StreamKind switch
         {
             ParameterStreamKind.Stream =>
-                $"{ServicesGeneratorTypeNames.GlobalRpcStreamAttachment}.FromStream({handleName}, {parameter.Name})",
+                $"{ServicesGeneratorTypeNames.GlobalRpcStreamAttachment}.{ServicesGeneratorMemberNames.RpcStreamAttachment.FromStream}({handleName}, {parameter.Name})",
             ParameterStreamKind.Pipe =>
-                $"{ServicesGeneratorTypeNames.GlobalRpcStreamAttachment}.FromPipe({handleName}, {parameter.Name})",
+                $"{ServicesGeneratorTypeNames.GlobalRpcStreamAttachment}.{ServicesGeneratorMemberNames.RpcStreamAttachment.FromPipe}({handleName}, {parameter.Name})",
             ParameterStreamKind.AsyncEnumerable =>
-                $"{ServicesGeneratorTypeNames.GlobalRpcStreamAttachment}.FromAsyncEnumerable<{parameter.StreamItemType}>({handleName}, {parameter.Name})",
+                $"{ServicesGeneratorTypeNames.GlobalRpcStreamAttachment}.{ServicesGeneratorMemberNames.RpcStreamAttachment.FromAsyncEnumerable}<{parameter.StreamItemType}>({handleName}, {parameter.Name})",
             _ => throw new System.InvalidOperationException("Parameter is not streamed."),
         };
 }
