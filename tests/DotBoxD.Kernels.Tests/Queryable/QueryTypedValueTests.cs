@@ -171,6 +171,22 @@ public sealed class QueryTypedValueTests
         => Assert.Throws<JsonException>(() =>
             JsonSerializer.Deserialize<QueryValue>("{\"kind\":\"bogus\",\"value\":\"x\"}", EventQueryJson.Options));
 
+    [Theory]
+    [InlineData("guid", "not-a-guid")]
+    [InlineData("decimal", "not-decimal")]
+    [InlineData("ulong", "-1")]
+    [InlineData("timestamp", "not-a-dateZ")]
+    public void Invalid_tagged_exact_value_throws_json_exception(string kind, string value)
+    {
+        var json = $$"""{"kind":"{{kind}}","value":"{{value}}"}""";
+
+        var exception = Assert.Throws<JsonException>(() =>
+            JsonSerializer.Deserialize<QueryValue>(json, EventQueryJson.Options));
+
+        Assert.Contains("Invalid tagged query value", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(kind, exception.Message, StringComparison.Ordinal);
+    }
+
     // ---- text DSL round-trip ----
 
     [Fact]
