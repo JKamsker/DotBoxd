@@ -89,10 +89,11 @@ public sealed partial class PluginSession
     /// <see cref="InstallStagedAsync"/> + your wire action + <see cref="Promote"/> on success /
     /// <see cref="Uninstall"/> by the staged kernel's <see cref="InstalledKernel.InstallId"/> on failure (passing
     /// the plugin id instead would target the live incumbent in a hot-replace, not the staged kernel). <b>The
-    /// <paramref name="wire"/> callback runs while the session gate is held</b>, so it must only touch server-side
-    /// routing (e.g. <see cref="PluginServer.WireHook"/> / <see cref="PluginServer.WireSubscription"/>) and must
-    /// NOT call back into this session (<see cref="InstallAsync"/> / <see cref="InstallStagedAsync"/> /
-    /// <see cref="Promote"/> / <see cref="Uninstall"/> / <see cref="Owns"/> / <see cref="TryGetOwned"/> /
+    /// <paramref name="validate"/> and <paramref name="wire"/> callbacks run while the session gate is held</b>,
+    /// so they must only touch server-side routing (e.g. <see cref="PluginServer.WireHook"/> /
+    /// <see cref="PluginServer.WireSubscription"/>) and must NOT call back into this session
+    /// (<see cref="InstallAsync"/> / <see cref="InstallStagedAsync"/> / <see cref="Promote"/> /
+    /// <see cref="Uninstall"/> / <see cref="Owns"/> / <see cref="TryGetOwned"/> /
     /// <see cref="UpdateSettingsAsync"/>), which would deadlock on the non-reentrant gate.
     /// </remarks>
     public async ValueTask<InstalledKernel> InstallAndWireAsync(
@@ -105,13 +106,13 @@ public sealed partial class PluginSession
         ArgumentNullException.ThrowIfNull(package);
         ArgumentNullException.ThrowIfNull(wire);
 
-        validate?.Invoke(package);
-
         InstalledKernel? staged = null;
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            validate?.Invoke(package);
+
             if (TryReuseOwnedLocalTerminal(package, out var existing))
             {
                 return existing;
