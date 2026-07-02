@@ -50,6 +50,29 @@ public sealed partial class PluginServerContextContractTests
                  d.GetMessage().Contains(expectedMessage, StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void File_local_context_reports_generation_diagnostic_without_raw_compiler_errors()
+    {
+        var diagnostics = PluginAnalyzerGeneratedPackageFactory.Diagnostics(MinimalServer("""
+            [GeneratePluginServer(Context = typeof(RemotePluginContext))]
+            internal partial class RemotePluginServer : Sample.Game.IGameWorld;
+
+            file sealed partial class RemotePluginContext
+            {
+                partial void OnCreated(global::DotBoxD.Abstractions.HookContext raw)
+                {
+                }
+            }
+            """));
+
+        Assert.DoesNotContain(diagnostics, d => d.Id.StartsWith("CS", StringComparison.Ordinal));
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == "DBXK100" &&
+                 d.GetMessage().Contains("RemotePluginContext", StringComparison.Ordinal) &&
+                 d.GetMessage().Contains("file-local", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData(
         """
