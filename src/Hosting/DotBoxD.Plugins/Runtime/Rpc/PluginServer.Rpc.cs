@@ -37,6 +37,8 @@ public sealed partial class PluginServer
     /// </summary>
     public TService ServerExtension<TService>() where TService : class
     {
+        ThrowIfDisposed();
+
         if (!_serverExtensions.TryGetValue(typeof(TService), out var registration))
         {
             throw new InvalidOperationException(
