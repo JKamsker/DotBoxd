@@ -1,4 +1,5 @@
 using DotBoxD.Codecs.MessagePack;
+using DotBoxD.Services.Buffers;
 using DotBoxD.Services.Peer;
 using DotBoxD.Services.Server;
 using DotBoxD.Services.Tests.Support;
@@ -87,6 +88,33 @@ public sealed class RpcPeerSessionTests
         }
     }
 
+    [Fact]
+    public async Task ConnectPeerAsync_WithPreCanceledTokenDoesNotInvokeTransport()
+    {
+        var serializer = new MessagePackRpcSerializer();
+        var channel = new TrackingChannel();
+        var transport = new TrackingTransport(channel, ignoreCancellation: true);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        RpcPeerSession? session = null;
+        var exception = await Record.ExceptionAsync(async () =>
+        {
+            session = await transport.ConnectPeerAsync(serializer, options: null, ct: cts.Token);
+        });
+
+        if (session is not null)
+        {
+            await session.DisposeAsync();
+        }
+
+        Assert.IsAssignableFrom<OperationCanceledException>(exception);
+        Assert.False(transport.ConnectCalled);
+        Assert.Null(transport.Connection);
+        Assert.False(channel.ReceiveCalled);
+        Assert.False(channel.SendCalled);
+    }
+
     private static async Task GreetAsync(RpcPeer peer, TaskCompletionSource<string> done)
     {
         try
@@ -113,8 +141,13 @@ public sealed class RpcPeerSessionTests
     private sealed class TrackingTransport : ITransport
     {
         private readonly IRpcChannel _connection;
+        private readonly bool _ignoreCancellation;
 
-        public TrackingTransport(IRpcChannel connection) => _connection = connection;
+        public TrackingTransport(IRpcChannel connection, bool ignoreCancellation = false)
+        {
+            _connection = connection;
+            _ignoreCancellation = ignoreCancellation;
+        }
 
         public bool ConnectCalled { get; private set; }
 
@@ -126,7 +159,11 @@ public sealed class RpcPeerSessionTests
 
         public Task ConnectAsync(CancellationToken ct = default)
         {
-            ct.ThrowIfCancellationRequested();
+            if (!_ignoreCancellation)
+            {
+                ct.ThrowIfCancellationRequested();
+            }
+
             ConnectCalled = true;
             Connection = _connection;
             return Task.CompletedTask;
@@ -136,6 +173,35 @@ public sealed class RpcPeerSessionTests
         {
             Disposed = true;
             await _connection.DisposeAsync();
+        }
+    }
+
+    private sealed class TrackingChannel : IRpcChannel
+    {
+        public bool ReceiveCalled { get; private set; }
+
+        public bool SendCalled { get; private set; }
+
+        public bool IsConnected { get; private set; } = true;
+
+        public string RemoteEndpoint => "memory://tracking";
+
+        public Task SendAsync(ReadOnlyMemory<byte> data, CancellationToken ct = default)
+        {
+            SendCalled = true;
+            return Task.CompletedTask;
+        }
+
+        public Task<Payload> ReceiveAsync(CancellationToken ct = default)
+        {
+            ReceiveCalled = true;
+            return Task.FromResult(Payload.Empty);
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            IsConnected = false;
+            return ValueTask.CompletedTask;
         }
     }
 }
