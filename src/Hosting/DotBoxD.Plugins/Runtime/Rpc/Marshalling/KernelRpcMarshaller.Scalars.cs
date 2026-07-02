@@ -59,10 +59,21 @@ public static partial class KernelRpcMarshaller
         return underlying == typeof(uint) || underlying == typeof(long) || underlying == typeof(ulong);
     }
 
-    // A ulong-backed enum value above long.MaxValue overflows a range-checked Convert.ToInt64; reinterpret its
-    // bits instead so the value carries losslessly (decode uses Enum.ToObject, which is also bit-preserving).
+    // A declared ulong-backed enum value above long.MaxValue is carried as a negative I64 wire value. Reject
+    // undeclared high-bit values here so outbound encode cannot produce a value inbound decode rejects.
     private static long EnumToInt64(object value, Type type)
         => Enum.GetUnderlyingType(type) == typeof(ulong)
-            ? unchecked((long)Convert.ToUInt64(value, System.Globalization.CultureInfo.InvariantCulture))
+            ? UInt64EnumToInt64(value, type)
             : Convert.ToInt64(value, System.Globalization.CultureInfo.InvariantCulture);
+
+    private static long UInt64EnumToInt64(object value, Type type)
+    {
+        var bits = Convert.ToUInt64(value, System.Globalization.CultureInfo.InvariantCulture);
+        if ((bits & (1UL << 63)) != 0UL && !NegativeBitsMatchUInt64Enum(type, bits))
+        {
+            throw EnumOutOfRange(type, unchecked((long)bits));
+        }
+
+        return unchecked((long)bits);
+    }
 }

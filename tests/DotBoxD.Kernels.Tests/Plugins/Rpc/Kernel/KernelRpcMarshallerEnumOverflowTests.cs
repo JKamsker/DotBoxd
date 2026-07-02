@@ -17,6 +17,9 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
             DefinedHugeEnum.Top,
             Assert.IsType<DefinedHugeEnum>(
                 KernelRpcMarshaller.FromSandboxValue(SandboxValue.FromInt64(-1), typeof(DefinedHugeEnum))));
+        Assert.Equal(
+            SandboxValue.FromInt64(-1),
+            KernelRpcMarshaller.ToSandboxValue(DefinedHugeEnum.Top, typeof(DefinedHugeEnum)));
     }
 
     [Fact]
@@ -54,6 +57,9 @@ public sealed partial class KernelRpcMarshallerSurpriseTests
             HugeFlags.High | HugeFlags.Low,
             Assert.IsType<HugeFlags>(
                 KernelRpcMarshaller.FromSandboxValue(SandboxValue.FromInt64(wire), typeof(HugeFlags))));
+        Assert.Equal(
+            SandboxValue.FromInt64(wire),
+            KernelRpcMarshaller.ToSandboxValue(HugeFlags.High | HugeFlags.Low, typeof(HugeFlags)));
     }
 
     [Fact]
