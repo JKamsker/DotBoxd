@@ -240,6 +240,19 @@ public sealed class KernelRpcBinaryCodecTests
         Assert.Contains("UTF-8", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void EncodeValue_rejects_strings_with_unpaired_surrogates()
+    {
+        var text = "prefix-" + new string(new[] { (char)0xD800 }) + "-suffix";
+        var kernelValue = KernelRpcValue.String(text);
+        var sandboxValue = SandboxValue.FromString(text);
+
+        AssertInvalidUtf16(() => KernelRpcBinaryCodec.EncodeValue(kernelValue));
+        AssertInvalidUtf16(() => KernelRpcBinaryCodec.EncodeValue(kernelValue, new ArrayBufferWriter<byte>()));
+        AssertInvalidUtf16(() => KernelRpcBinaryCodec.EncodeValue(sandboxValue));
+        AssertInvalidUtf16(() => KernelRpcBinaryCodec.EncodeValue(sandboxValue, new ArrayBufferWriter<byte>()));
+    }
+
     [Theory]
     [InlineData(double.NaN)]
     [InlineData(double.PositiveInfinity)]
@@ -300,6 +313,12 @@ public sealed class KernelRpcBinaryCodecTests
         }
 
         return value;
+    }
+
+    private static void AssertInvalidUtf16(Action encode)
+    {
+        var ex = Assert.Throws<ArgumentException>(encode);
+        Assert.Contains("UTF-16", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     private static byte[] LengthPrefix(int value)
